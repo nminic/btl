@@ -1,12 +1,12 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import {
-  OFFICIAL_RESULTS,
-  officialResultsHost,
-  officialResultsLink,
-} from '../../data/officialResults'
-import fromEvent from '../../forms/definitions/prijava-sa-trke.form.json'
-import newResult from '../../forms/definitions/unos-rezultata.form.json'
+  OUTSIDE_ADDRESS,
+  outsideHost,
+  outsideLink,
+} from '../../data/outsideLink'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { useSession } from '../../session/useSession'
@@ -25,25 +25,60 @@ import { useSession } from '../../session/useSession'
  * whole suite green.
  */
 
+/** The fields of one form definition, as much of them as this file asks about. */
+function readForm(at: string): { name: string; pattern?: string; maxLength?: number }[] {
+  const parsed: { fields: { name: string; pattern?: string; maxLength?: number }[] } = JSON.parse(
+    readFileSync(at, 'utf-8'),
+  )
+
+  return parsed.fields
+}
+
 const ME = '000007'
 
-describe('the shape an address of official results must have', () => {
-  it('is one shape, and both forms carry it', async () => {
-    /* Written once in `data/officialResults.ts` and copied into the two form
-       definitions, because a definition is data and cannot import. Held so the
-       copies cannot drift, and so that deleting one is not silent: measured on
-       23.08.2026, taking the rule off either form broke nothing at all. */
-    for (const [what, form] of [
-      ['the result form', newResult],
-      ['the form on the event', fromEvent],
-    ] as const) {
+describe('the shape an address of somebody else’s page must have', () => {
+  it('is one shape, and every form that asks for one carries it', async () => {
+    /* Written once in `data/outsideLink.ts` and copied into the form definitions,
+       because a definition is data and cannot import. Held so the copies cannot
+       drift, and so that deleting one is not silent: measured on 23.08.2026,
+       taking the rule off either form broke nothing at all.
+
+       Read out of the folder rather than named here, and that is the whole lesson
+       of 27.08.2026. This loop named two forms while three carried the pattern:
+       the admin form of an event had asked for an organiser's address since
+       23.08.2026 and no guard knew of it, so the one home nobody watched was the
+       one free to drift. Naming three instead of two would fix today and leave the
+       fourth form exactly as free as the third was. What the loop asks now is the
+       question itself: every form that has a field called `link` carries this
+       shape, whichever forms those turn out to be. */
+    const definitions = join(process.cwd(), 'src/forms/definitions')
+    const forms = readdirSync(definitions)
+      .filter((name) => name.endsWith('.form.json'))
+      .map((name) => ({
+        what: name,
+        /* Annotated rather than asserted: `JSON.parse` answers `any`, and the
+           assertion that would tidy that away is forbidden (ADL A14). */
+        fields: readForm(join(definitions, name)),
+      }))
+      .filter((form) => form.fields.some((one) => one.name === 'link'))
+
+    /* A sweep that finds nothing answers „nothing is wrong" in the same words as
+       one that finds nothing broken. Three today; the number is written down so
+       that a folder read wrongly says so instead of passing. */
+    expect(forms.map((one) => one.what).sort()).toEqual([
+      'admin-dogadjaj.form.json',
+      'prijava-sa-trke.form.json',
+      'unos-rezultata.form.json',
+    ])
+
+    for (const { what, fields } of forms) {
       const link = must(
-        form.fields.find((one) => one.name === 'link'),
+        fields.find((one) => one.name === 'link'),
         `the link field of ${what}`,
       )
 
       expect(link.pattern, `${what} does not ask for the shape of an address`).toBe(
-        OFFICIAL_RESULTS.source,
+        OUTSIDE_ADDRESS.source,
       )
       /* And a ceiling, because a field with none is a column with none the day the
          store arrives. Measured: two million characters passed both forms. */
@@ -101,13 +136,13 @@ describe('the shape an address of official results must have', () => {
          anchor was written and measured by nothing. */
       'https://primer.rs\u00a0@zlo.example/p',
     ]) {
-      expect(officialResultsLink(said), `${said} was accepted as an address`).toBeUndefined()
+      expect(outsideLink(said), `${said} was accepted as an address`).toBeUndefined()
     }
 
-    expect(officialResultsLink('https://primer.rs/rezultati/2026')).toBe(
+    expect(outsideLink('https://primer.rs/rezultati/2026')).toBe(
       'https://primer.rs/rezultati/2026',
     )
-    expect(officialResultsLink('HTTPS://primer.rs/ok'), 'the scheme is read as written')
+    expect(outsideLink('HTTPS://primer.rs/ok'), 'the scheme is read as written')
       .toBeUndefined()
   })
 
@@ -115,13 +150,13 @@ describe('the shape an address of official results must have', () => {
     /* What the moderator's queue draws beside the name. Read through `new URL`
        rather than off the text, because `@` ends the user part of an address and a
        host read by eye is the trick this is drawn against. */
-    expect(officialResultsHost('https://primer.rs@zlo.example/p')).toBe('zlo.example')
-    expect(officialResultsHost('https://primer.rs:8443/rezultati')).toBe('primer.rs:8443')
+    expect(outsideHost('https://primer.rs@zlo.example/p')).toBe('zlo.example')
+    expect(outsideHost('https://primer.rs:8443/rezultati')).toBe('primer.rs:8443')
     /* Not an address at all, so there is nothing to name. */
-    expect(officialResultsHost('javascript:alert(1)')).toBeUndefined()
+    expect(outsideHost('javascript:alert(1)')).toBeUndefined()
     /* And a shape this pattern lets through which a browser still refuses: an
        unclosed IPv6 authority. Nothing to draw, and nothing to say beyond that. */
-    expect(officialResultsHost('https://[::1')).toBeUndefined()
+    expect(outsideHost('https://[::1')).toBeUndefined()
   })
 })
 

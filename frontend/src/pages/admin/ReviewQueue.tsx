@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
-import { officialResultsHost, officialResultsLink } from '../../data/officialResults'
+import { outsideHost, outsideLink } from '../../data/outsideLink'
 import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
@@ -8,6 +8,7 @@ import { QueueMeta } from './QueueMeta'
 import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import '../../styles/outsideLink.css'
 import '../member/Member.css'
 /* For `.pending__bar`, the row that carries the heading and the one decision
    for the whole queue. Every sheet is bundled into one and the class would work
@@ -133,7 +134,7 @@ export function ReviewQueue() {
                   <td>
                     {/* A link only where what is stored is an address this
                         portal is willing to hand a browser, which is asked here
-                        and not taken on trust from the form (data/officialResults.ts
+                        and not taken on trust from the form (data/outsideLink.ts
                         says why both ask). Anything else is drawn as the name and
                         nothing more, the same as an entry that carries no address
                         at all.
@@ -144,7 +145,7 @@ export function ReviewQueue() {
                         included. Words in an `href` would be an address made of
                         somebody's sentence, and that is what this screen drew
                         before the field existed. */}
-                    {officialResultsLink(one.link) === undefined ? (
+                    {outsideLink(one.link) === undefined ? (
                       one.raceName
                     ) : (
                       /* `noreferrer` because the host on the other end is one the
@@ -154,7 +155,7 @@ export function ReviewQueue() {
                          is what browsers already do for `target="_blank"`, and it
                          is written out because a rule that depends on a default
                          is a rule nobody can read. */
-                      <a href={officialResultsLink(one.link)} rel="noreferrer noopener" target="_blank">
+                      <a href={outsideLink(one.link)} rel="noreferrer noopener" target="_blank">
                         {/* The race, not the event it was run at (owner,
                             23.08.2026). */}
                         {one.raceName}
@@ -163,7 +164,7 @@ export function ReviewQueue() {
                             with it rather than after it, and drawn from the address
                             through the browser's own parser rather than off the
                             text. */}
-                        <span className="review__host">{officialResultsHost(one.link)}</span>
+                        <span className="outside-host">{outsideHost(one.link)}</span>
                       </a>
                     )}
                     {one.comment !== '' && <span className="review__said">{one.comment}</span>}

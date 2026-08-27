@@ -133,8 +133,18 @@ export const EVENTS: EntityDef = {
   /* An event entered by hand came out of nothing, and says so. Without this the
      field was simply missing from the record while the type promised a string,
      and the walk of editions stopped on the second of its two guards rather
-     than the first (data/editions.ts). */
-  blank: { copiedFrom: '' },
+     than the first (data/editions.ts).
+
+     The other two the same way since 27.08.2026, and for the same reason rather
+     than for a new one. Both are optional, so a form saved without them writes
+     nothing at all; the type promises a string, and the event's page asks each of
+     them whether it is empty before it draws (EventDetail.tsx). Asked of a field
+     that is missing rather than empty, `!== ''` is true, so the page would draw a
+     paragraph with nothing in it and a link with no address. Nothing reaches that
+     state today, because `emptyValues` seeds both with `''` (forms/validate.ts)
+     and every event in the file carries them; this is the record saying what it
+     is worth rather than a screen guessing. */
+  blank: { copiedFrom: '', description: '', link: '' },
   /* What a new event opens holding, and every one of the three is the answer
      nearly every event gives (owner, 10. and 11.08.2026): it is a race, it is
      not featured, and it is run in Serbia. A required field whose answer is the

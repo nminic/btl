@@ -20,12 +20,14 @@ import {
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { raceLabel } from '../data/raceLabel'
+import { outsideHost, outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
 import { GoingToEvent } from './event/GoingToEvent'
 import { OverallMark } from './event/OverallMark'
 import { EventComments } from './event/EventComments'
+import '../styles/outsideLink.css'
 import './Profile.css'
 
 /* The races load separately from the event on purpose: the name of the event is
@@ -383,6 +385,47 @@ export function EventDetail() {
                   <EventActions event={event} races={races.data} results={results.data} />
                 )}
               </header>
+
+              {/* What the organiser says this race is, and where they say the
+                  rest of it. Both were asked for on the form and carried onto a
+                  copy from that same day, and until now no screen drew either, so
+                  an address that could not be opened was a record rather than a
+                  link. Owner, 23.08.2026, on what an event's page shows: it
+                  „pokazuje detalje, opis i link ka strani organizatora ako
+                  postoji, ali bez trka" for a gathering, which is the sentence
+                  that puts both of them above the table rather than under it.
+
+                  Prose and not a heading, because a heading over one paragraph is
+                  a label on a thing that names itself; the owner took the heading
+                  off the table below for the same reason.
+
+                  Empty draws nothing at all, which is what „ako postoji" means and
+                  is also the ordinary case: neither field is required, and no
+                  event in the file carries either. */}
+              {event.description !== '' && <p className="event__said">{event.description}</p>}
+
+              {/* And the address, asked of the store again rather than taken on
+                  trust from the form that stored it (`data/outsideLink.ts` says
+                  why both ask). Anything that is not an address this portal is
+                  willing to hand a browser draws nothing, exactly as an event that
+                  carries none does: a repaired address is one nobody wrote.
+
+                  The host beside the words, because the words here are the
+                  portal's own and so say nothing about where the press lands, and
+                  because this link leaves the site. Inside the anchor, so it is
+                  read with the link rather than after it. */}
+              {outsideLink(event.link) !== undefined && (
+                <p className="event__where">
+                  <a
+                    href={outsideLink(event.link)}
+                    rel="noreferrer noopener"
+                    target="_blank"
+                  >
+                    {t('event.organiserPage')}
+                    <span className="outside-host">{outsideHost(event.link)}</span>
+                  </a>
+                </p>
+              )}
 
               {/* No heading over it since 23.08.2026 (owner: „Naslov TRKE ne
                   treba da postoji"). The table names itself in a caption a

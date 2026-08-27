@@ -1,0 +1,25 @@
+/* Where a link that leaves this portal actually leads, beside the words of it.
+ *
+ * Two screens draw such a link and both need this: the moderator's queue, where
+ * the words are a name the member wrote and so may say anything at all, and the
+ * event's page, where the words are the portal's own and so say nothing about
+ * where the press lands. Opposite reasons, one need, so one rule: written twice
+ * it is a fact with two homes, and the day one of them is tuned the two screens
+ * quietly disagree about how loudly a host is announced.
+ *
+ * A round measured on 23.08.2026 what its absence costs: a result named
+ * „Zvanicni rezultati BTL 2026" pointing at `btl-rezultati.zlo.example` put the
+ * host nowhere in the page, not in the text, not in `title`, not in an
+ * `aria-label`, so a moderator reading with a screen reader heard only the name.
+ *
+ * Quieter than the words and on a line of its own, so the words are still what is
+ * read first and the host is what is checked before pressing. It breaks where it
+ * runs out of room rather than pushing its row wider, because a host is one long
+ * word and both screens are read on a telephone too. */
+.outside-host {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}

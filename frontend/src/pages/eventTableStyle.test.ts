@@ -297,3 +297,31 @@ describe('the head of a competitor', () => {
     ).toBe('wrap')
   })
 })
+
+describe('what the organiser says the event is', () => {
+  it('runs the full width of the column, and breaks a word that would not', () => {
+    /* Two declarations and the absence of a third, which is the point of this
+       case. A measure stood here for an afternoon on 27.08.2026 and came off: the
+       owner asked on 12.08.2026 for prose to run the full width („Sve strane
+       treba da koriste punu širinu strane za prikaz teksta"), and `StaticPage.css`
+       and `Markdown.css` both obey it in as many words. A cap here would have made
+       this the one paragraph on the portal that breaks early, and the comment
+       justifying it claimed to match pages that measure nothing at all.
+
+       The field takes 600 characters and refuses nothing, so all 600 may arrive as
+       one word, which is the single input that pushes a page sideways. That is
+       what `overflow-wrap` is for, and it is the half of this rule a browser
+       round would catch late and a reader would catch first. */
+    const said = ruleFor(profile, '.event__said', 'Profile.css')
+
+    expect(said.getPropertyValue('overflow-wrap')).toBe('anywhere')
+    expect(
+      said.getPropertyValue('max-inline-size'),
+      'the description is capped, and the portal caps no prose',
+    ).toBe('')
+    expect(
+      said.getPropertyValue('max-width'),
+      'the description is capped, and the portal caps no prose',
+    ).toBe('')
+  })
+})

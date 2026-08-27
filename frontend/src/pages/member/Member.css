@@ -384,19 +384,3 @@
   font-size: 0.8rem;
 }
 
-/* Where a link on the queue actually leads, beside the words of it. The words are
- * the name of the event and the member wrote them, so without this the host is in
- * the page nowhere at all: a round measured it on 23.08.2026 and found it missing
- * from the text, from `title` and from `aria-label` alike.
- *
- * Quieter than the name and on a line of its own, so the name is still what the
- * moderator reads first and the host is what they check before pressing. It breaks
- * where it runs out of room rather than pushing the row wider, because a host is
- * one long word and the queue is read on a telephone too. */
-.review__host {
-  display: block;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 400;
-  overflow-wrap: anywhere;
-}

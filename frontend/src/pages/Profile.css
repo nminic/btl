@@ -232,6 +232,34 @@
   font-weight: 400;
 }
 
+/* What the organiser says the event is, under its name and over its races.
+ *
+ * No measure, and it had one for an afternoon. A line that runs the width of a
+ * wide screen is a line the eye loses on the way back, which is why prose is
+ * usually capped, but the owner asked on 12.08.2026 for the opposite and the
+ * portal obeys it everywhere else: „Sve strane treba da koriste punu širinu
+ * strane za prikaz teksta. Dakle tekst se lomi tek na kraju redova."
+ * (`StaticPage.css`, `Markdown.css`). A cap here would have made this the one
+ * paragraph on the portal that breaks early, and the comment that justified it
+ * claimed it matched the written pages, which measure nothing at all. What sets
+ * the width is the column this page already has.
+ *
+ * `overflow-wrap` because 600 characters may arrive as one word: the field asks
+ * for prose and refuses nothing, and a single unbroken word is the one input that
+ * pushes a page sideways, which is what the portal never does. */
+.event__said {
+  margin: 0 0 var(--space-8);
+  overflow-wrap: anywhere;
+}
+
+/* And where the rest of it is said. A paragraph rather than a row of controls,
+   because it is one link and not a toolbar: the two buttons this page does have
+   act on the event itself, and leaving for somebody else's site is not one of
+   them. */
+.event__where {
+  margin: 0 0 var(--space-16);
+}
+
 .profile__text {
   margin: 0;
   color: var(--text-muted);

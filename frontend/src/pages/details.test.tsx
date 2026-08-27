@@ -573,3 +573,188 @@ describe('the control that names the parts of a record', () => {
     expect(first(open).textContent).toBe('Priznanja i nagrade')
   })
 })
+
+/**
+ * What the organiser says the event is, and where they say the rest of it.
+ *
+ * Both fields were added to the form on 23.08.2026 and carried onto a copy from
+ * that same day, and until 27.08.2026 no screen drew either: the address was
+ * stored, could not be opened, and so was a record rather than a link. Owner,
+ * 23.08.2026, on what an event's page shows even when it has no races at all: it
+ * „pokazuje detalje, opis i link ka strani organizatora ako postoji, ali bez
+ * trka".
+ *
+ * Served rather than read. No event in the generated file carries either field,
+ * measured over all 1166 of them, so every one of these questions read off the
+ * file has the same answer whether the page draws them or not.
+ */
+describe('the description of an event and the organiser’s page', () => {
+  const SLUG = 'sidski-novogodisnji-maraton-2027'
+  /* A gathering, which has no races at all and is what the owner's sentence is
+     about. There are three in the file and this is the first of them. */
+  const GATHERING = 'btl-sreda-mart-2027'
+  const SAID = 'Trka se trči po zaleđenom nasipu, sa dva prelaza preko mosta.'
+
+  /** Serves the file of events as it is, with one event given the two fields. */
+  function eventCarrying(description: string, link: string, slug: string = SLUG) {
+    const served = globalThis.fetch
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = await served(input, init)
+
+      if (!String(input).endsWith('/events.json')) {
+        return answer
+      }
+
+      const events: BtlEvent[] = await answer.json()
+
+      return new Response(
+        JSON.stringify(
+          events.map((one) => (one.slug === slug ? { ...one, description, link } : one)),
+        ),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    })
+
+    return () => {
+      vi.stubGlobal('fetch', served)
+    }
+  }
+
+  it('draws both, above the races rather than under them', async () => {
+    const restore = eventCarrying(SAID, 'https://organizator.example/trka')
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      const said = await screen.findByText(SAID)
+      const link = screen.getByRole('link', { name: /^Strana organizatora/ })
+
+      expect(said).toBeVisible()
+      expect(link).toBeVisible()
+
+      /* Above the table, which is the order the owner's sentence gives: details,
+         then the description, then the link, and the races after all of it.
+         Asked of the document rather than of the stylesheet, because jsdom lays
+         nothing out and would answer the same whatever the order (ADL A18). */
+      const table = screen.getByRole('table', { name: 'Trke' })
+
+      expect(
+        said.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+        'the description is drawn under the table',
+      ).toBeTruthy()
+      expect(
+        link.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+        'the link is drawn under the table',
+      ).toBeTruthy()
+    } finally {
+      restore()
+    }
+  })
+
+  it('says where the link leads, and keeps this portal out of the other end', async () => {
+    const restore = eventCarrying(SAID, 'https://organizator.example/trka')
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      const link = await screen.findByRole('link', { name: /^Strana organizatora/ })
+
+      expect(link).toHaveAttribute('href', 'https://organizator.example/trka')
+      /* `noreferrer` so the address of this page does not travel to a host
+         somebody else chose, `noopener` for `window.opener`. Written out rather
+         than left to what browsers do for `target="_blank"`, because a rule that
+         depends on a default is a rule nobody can read. */
+      expect(link).toHaveAttribute('rel', 'noreferrer noopener')
+      expect(link).toHaveAttribute('target', '_blank')
+      /* And the host, inside the link so it is read with it. The words of this
+         link are the portal's own and so cannot lie; precisely because they
+         cannot, they say nothing about where the press lands. */
+      expect(within(link).getByText('organizator.example')).toBeVisible()
+    } finally {
+      restore()
+    }
+  })
+
+  it('draws no link at all where what is stored is not an address', async () => {
+    /* `javascript:` in an `href` is a script running on this portal with the
+       reader's session around it. The form refuses it and the screen refuses it
+       again, because a form rule is a courtesy to whoever fills it in and a store
+       is a place things arrive in by other roads (data/outsideLink.ts).
+
+       Nothing rather than a repaired address, and the description still drawn, so
+       what is measured is the link being refused and not the whole block going. */
+    const restore = eventCarrying(SAID, 'javascript:alert(1)')
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      expect(await screen.findByText(SAID)).toBeVisible()
+      expect(screen.queryByRole('link', { name: /^Strana organizatora/ })).toBeNull()
+      /* And the words are not on the page either, which the question above does
+         not answer. Measured by a mutation: asked only of the kind that is
+         refused („is the value empty" instead of „is it an address"), the block
+         is drawn, React leaves out an `href` that is `undefined`, and an anchor
+         without one is not a link in the accessible tree at all. So the question
+         above went on answering „no link" while the page carried the words with
+         nothing behind them, which is the dead control this condition exists to
+         prevent. */
+      expect(screen.queryByText('Strana organizatora')).toBeNull()
+      expect(screen.queryByText('organizator.example')).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
+  it('draws neither where the event carries neither, which is every event in the file', async () => {
+    /* The ordinary case, and the reason both are drawn conditionally: neither
+       field is required, and an empty paragraph under the name of an event is a
+       gap nobody put there. */
+    renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+    await screen.findByRole('table', { name: 'Trke' })
+
+    expect(screen.queryByRole('link', { name: /^Strana organizatora/ })).toBeNull()
+    expect(screen.queryByText(SAID)).toBeNull()
+
+    /* And no paragraph anywhere on the page is empty, which is the question the
+       two above do not answer: drawn unconditionally the block carries no text,
+       so „is the description there" and „is the link there" both go on saying no
+       while all 1166 event pages gain a gap under the name.
+
+       Asked of the role, which a paragraph does have. This was written as a
+       `querySelector` on the class, over a comment claiming there was no role to
+       ask for, and a round measured that claim wrong on 27.08.2026. The class
+       would also have passed a rename that left the element exactly as empty. */
+    const empty = screen
+      .queryAllByRole('paragraph')
+      .filter((one) => (one.textContent ?? '').trim() === '')
+
+    expect(empty, 'an empty paragraph is drawn').toEqual([])
+  })
+
+  it('draws both for a gathering, which has no races at all', async () => {
+    /* The case the owner's sentence is actually about, and the one none of the
+       four above touched: every one of them opens a race. „i dalje stoji u
+       kalendaru, može se otvoriti, i pokazuje detalje, opis i link ka strani
+       organizatora ako postoji, ali bez trka" (owner, 23.08.2026) is a sentence
+       about a gathering, so a guard that never opens one is a guard over the
+       other half of it.
+
+       Measured by a round on 27.08.2026: with both conditions narrowed to
+       `event.kind === 'race'`, a gathering stopped drawing either and 267 tests
+       stayed green. */
+    const restore = eventCarrying(SAID, 'https://organizator.example/trka', GATHERING)
+
+    try {
+      renderAt(`/sr/kalendar/${GATHERING}`, 'visitor', null, undefined, '2026-12-01')
+
+      expect(await screen.findByText(SAID)).toBeVisible()
+      expect(screen.getByRole('link', { name: /^Strana organizatora/ })).toBeVisible()
+      /* And still no table, which is the other half of the same sentence. */
+      expect(screen.queryByRole('table', { name: 'Trke' })).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+})
