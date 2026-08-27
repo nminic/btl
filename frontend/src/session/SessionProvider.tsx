@@ -63,12 +63,15 @@ export function SessionProvider({
     newsletter: false,
   })
 
-  const submit = useCallback((submission: Omit<Submission, 'id' | 'status' | 'note'>) => {
-    setSubmissions((current) => [
-      { ...submission, id: `sub-${current.length + 1}`, status: 'pending', note: '' },
-      ...current,
-    ])
-  }, [])
+  const submit = useCallback(
+    (submission: Omit<Submission, 'id' | 'status' | 'note' | 'corrected'>) => {
+      setSubmissions((current) => [
+        { ...submission, id: `sub-${current.length + 1}`, status: 'pending', note: '', corrected: false },
+        ...current,
+      ])
+    },
+    [],
+  )
 
   /**
    * The same result, corrected and sent in again (owner, 06.08.2026).
@@ -85,14 +88,40 @@ export function SessionProvider({
    */
   const resubmit = useCallback(
     (id: string, corrected: Omit<Submission, 'id' | 'status' | 'note' | 'memberNumber'>) => {
-      setSubmissions((current) =>
-        current.map((one) =>
-          one.id === id ? { ...one, ...corrected, status: 'pending', note: '' } : one,
-        ),
-      )
+      /* To the back of the queue, and not left where it stood (owner,
+         27.08.2026: „Vraća se na kraj reda kao nov"). A moderator who has
+         already opened this item read the numbers it had then; left in place with
+         different numbers, the next press decides something they never saw.
+
+         Marked as corrected on the way, and that mark is the whole of what the
+         queue is told: „samo labela, ne šta je ispravljano" (owner, same day),
+         which is the only thing that can be said while no history of a result is
+         kept (P9). */
+      setSubmissions((current) => [
+        ...current.filter((one) => one.id !== id),
+        ...current
+          .filter((one) => one.id === id)
+          .map((one) => ({ ...one, ...corrected, status: 'pending' as const, note: '', corrected: true })),
+      ])
     },
     [],
   )
+
+  /**
+   * Taking one's own result back.
+   *
+   * Owner, 27.08.2026: „član ga ili briše (ima pravo na to, iako je verifikovan)
+   * ili menja i dostavlja dokaz za tu izmenu". The half that lives here is the
+   * one about a result still in the queue; a verified one is not a submission at
+   * all and is taken back where the portal keeps it.
+   *
+   * Gone rather than kept and flagged, because the portal keeps no history of a
+   * result (P9): a withdrawn one would be a record nobody is allowed to read and
+   * a row in a queue nobody may decide.
+   */
+  const withdraw = useCallback((id: string) => {
+    setSubmissions((current) => current.filter((one) => one.id !== id))
+  }, [])
 
   /* An id of its own shape, so nothing can collide with the ids in the file the
      rest of the queue is read from, and so a decision written against it is
@@ -195,6 +224,7 @@ export function SessionProvider({
       submissions,
       submit,
       resubmit,
+      withdraw,
       decide,
       inbox,
       going,
@@ -226,6 +256,7 @@ export function SessionProvider({
       submissions,
       submit,
       resubmit,
+      withdraw,
       decide,
       inbox,
       markRead,

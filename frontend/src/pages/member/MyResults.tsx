@@ -4,6 +4,7 @@ import { resultsOf } from '../../data/derive'
 import { useResults } from '../../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { DeleteRecord } from '../admin/EntityEditor'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -14,7 +15,7 @@ import './Member.css'
  * where a pending one is visible at all. */
 export function MyResults() {
   const { locale, t } = useI18n()
-  const { memberNumber, submissions } = useSession()
+  const { memberNumber, submissions, withdraw } = useSession()
   const state = useResults()
 
   if (memberNumber === null) {
@@ -58,21 +59,49 @@ export function MyResults() {
                 </p>
                 {one.note !== '' && <p className="submissions__note">{one.note}</p>}
 
-                {/* And the way back in, on the one that was refused. A refusal
-                    is not the end of a result: the member is told why, corrects
-                    it and sends the same race again (owner, 06.08.2026). The
-                    name of the race is in the accessible name, because a list of
-                    six refusals is six buttons a screen reader cannot tell
-                    apart. */}
-                {one.status === 'rejected' && (
+                {/* What a member may do with a result that is still theirs to
+                    act on, which is one that has not been decided or has been
+                    sent back.
+
+                    The way back in was here first, on the refused one alone: a
+                    refusal is not the end of a result, the member is told why,
+                    corrects it and sends the same race again (owner,
+                    06.08.2026). Owner, 27.08.2026, on the rest of it: „član ga
+                    ili briše (ima pravo na to) ili menja i dostavlja dokaz za tu
+                    izmenu", and asked what may be changed: „sve osim trke", so
+                    somebody who picked the wrong race deletes this and enters
+                    another.
+
+                    The words differ because the two moments do: one that was
+                    sent back is sent again, one that is still waiting is simply
+                    changed. The road is the same and so is the form.
+
+                    The name of the race is in the accessible name of every
+                    control here, because a list of six waiting results is six
+                    buttons a screen reader cannot otherwise tell apart. */}
+                {one.status !== 'approved' && (
                   <p className="submissions__again">
                     <Link
                       className="button button--secondary"
-                      aria-label={t('myResults.sendAgainNamed', { name: one.raceName })}
+                      aria-label={t(
+                        one.status === 'rejected' ? 'myResults.sendAgainNamed' : 'myResults.changeNamed',
+                        { name: one.raceName },
+                      )}
                       to={`/${locale}/rezultat/novi?ponovo=${one.id}`}
                     >
-                      {t('myResults.sendAgain')}
+                      {t(one.status === 'rejected' ? 'myResults.sendAgain' : 'myResults.change')}
                     </Link>
+                    {/* Asked twice before it happens, which is the portal's one
+                        way of asking about something nothing brings back
+                        (`DeleteRecord`). Dressed as the button beside it rather
+                        than as a row of a table, which is the only difference. */}
+                    <DeleteRecord
+                      name={one.raceName}
+                      look="button button--secondary"
+                      onDelete={() => {
+                        withdraw(one.id)
+                      }}
+                    />
                   </p>
                 )}
               </li>

@@ -543,7 +543,22 @@ export function OpenRecord({
  * what?" is answered without reading back up the row, and two rows asking at
  * once are two different questions rather than two buttons called Odustani.
  */
-export function DeleteRecord({ name, onDelete }: { name: string; onDelete: () => void }) {
+export function DeleteRecord({ name, onDelete, look = 'entity-open' }: {
+  name: string
+  onDelete: () => void
+  /**
+   * What the three buttons are dressed as.
+   *
+   * The question is the same wherever it is asked and the dress is not: this
+   * began on the rows of the administration and is asked on a member's own
+   * results since 27.08.2026, where the buttons stand among `button` controls
+   * rather than in a table of records. Written as one component with two looks
+   * rather than two components, because what must not be copied is the asking:
+   * one press that opens a question, a second that answers it, and every one of
+   * the three carrying the name of what is being deleted.
+   */
+  look?: string
+}) {
   const { t } = useI18n()
   const [asking, setAsking] = useState(false)
 
@@ -551,7 +566,7 @@ export function DeleteRecord({ name, onDelete }: { name: string; onDelete: () =>
     return (
       <button
         type="button"
-        className="entity-open entity-delete"
+        className={`${look} entity-delete`}
         aria-label={t('admin.form.deleteNamed', { name })}
         onClick={() => setAsking(true)}
       >
@@ -564,7 +579,7 @@ export function DeleteRecord({ name, onDelete }: { name: string; onDelete: () =>
     <>
       <button
         type="button"
-        className="entity-open entity-delete entity-delete--sure"
+        className={`${look} entity-delete entity-delete--sure`}
         aria-label={t('admin.form.deleteSureNamed', { name })}
         onClick={onDelete}
       >
@@ -572,7 +587,7 @@ export function DeleteRecord({ name, onDelete }: { name: string; onDelete: () =>
       </button>
       <button
         type="button"
-        className="entity-open"
+        className={look}
         aria-label={t('admin.form.keepNamed', { name })}
         onClick={() => setAsking(false)}
       >

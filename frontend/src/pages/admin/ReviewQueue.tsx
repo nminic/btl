@@ -167,6 +167,19 @@ export function ReviewQueue() {
                         <span className="outside-host">{outsideHost(one.link)}</span>
                       </a>
                     )}
+                    {/* And that the member has changed this since sending it,
+                        which is the whole of what the queue is told.
+
+                        Owner, 27.08.2026, asked whether a corrected result should
+                        say so: „samo labela, ne šta je ispravljano." The mark and
+                        nothing behind it is also all that can be said, since the
+                        portal keeps no history of a result (P9).
+
+                        It earns its place because a corrected result goes to the
+                        back of the queue: what a moderator meets is an item they
+                        may have read once already, now carrying different numbers
+                        and, without this, nothing at all saying so. */}
+                    {one.corrected && <span className="tag tag--corrected">{t('admin.corrected')}</span>}
                     {one.comment !== '' && <span className="review__said">{one.comment}</span>}
                     {/* And the proof, where there is any.
                      *
