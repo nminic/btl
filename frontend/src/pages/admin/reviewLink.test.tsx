@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import {
@@ -5,9 +7,6 @@ import {
   outsideHost,
   outsideLink,
 } from '../../data/outsideLink'
-import adminEvent from '../../forms/definitions/admin-dogadjaj.form.json'
-import fromEvent from '../../forms/definitions/prijava-sa-trke.form.json'
-import newResult from '../../forms/definitions/unos-rezultata.form.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { useSession } from '../../session/useSession'
@@ -26,6 +25,15 @@ import { useSession } from '../../session/useSession'
  * whole suite green.
  */
 
+/** The fields of one form definition, as much of them as this file asks about. */
+function readForm(at: string): { name: string; pattern?: string; maxLength?: number }[] {
+  const parsed: { fields: { name: string; pattern?: string; maxLength?: number }[] } = JSON.parse(
+    readFileSync(at, 'utf-8'),
+  )
+
+  return parsed.fields
+}
+
 const ME = '000007'
 
 describe('the shape an address of somebody else’s page must have', () => {
@@ -35,18 +43,37 @@ describe('the shape an address of somebody else’s page must have', () => {
        drift, and so that deleting one is not silent: measured on 23.08.2026,
        taking the rule off either form broke nothing at all.
 
-       Three forms and not two since 27.08.2026. The admin form of an event has
-       asked for an organiser's address since 23.08.2026, with this very pattern
-       written into it, and this loop went on naming two: the fact had three homes
-       and its guard knew of two, so the one it did not know of was free to drift.
-       Found by counting the homes before drawing the link, not by a round. */
-    for (const [what, form] of [
-      ['the result form', newResult],
-      ['the form on the event', fromEvent],
-      ['the admin form of an event', adminEvent],
-    ] as const) {
+       Read out of the folder rather than named here, and that is the whole lesson
+       of 27.08.2026. This loop named two forms while three carried the pattern:
+       the admin form of an event had asked for an organiser's address since
+       23.08.2026 and no guard knew of it, so the one home nobody watched was the
+       one free to drift. Naming three instead of two would fix today and leave the
+       fourth form exactly as free as the third was. What the loop asks now is the
+       question itself: every form that has a field called `link` carries this
+       shape, whichever forms those turn out to be. */
+    const definitions = join(process.cwd(), 'src/forms/definitions')
+    const forms = readdirSync(definitions)
+      .filter((name) => name.endsWith('.form.json'))
+      .map((name) => ({
+        what: name,
+        /* Annotated rather than asserted: `JSON.parse` answers `any`, and the
+           assertion that would tidy that away is forbidden (ADL A14). */
+        fields: readForm(join(definitions, name)),
+      }))
+      .filter((form) => form.fields.some((one) => one.name === 'link'))
+
+    /* A sweep that finds nothing answers „nothing is wrong" in the same words as
+       one that finds nothing broken. Three today; the number is written down so
+       that a folder read wrongly says so instead of passing. */
+    expect(forms.map((one) => one.what).sort()).toEqual([
+      'admin-dogadjaj.form.json',
+      'prijava-sa-trke.form.json',
+      'unos-rezultata.form.json',
+    ])
+
+    for (const { what, fields } of forms) {
       const link = must(
-        form.fields.find((one) => one.name === 'link'),
+        fields.find((one) => one.name === 'link'),
         `the link field of ${what}`,
       )
 

@@ -590,10 +590,13 @@ describe('the control that names the parts of a record', () => {
  */
 describe('the description of an event and the organiser’s page', () => {
   const SLUG = 'sidski-novogodisnji-maraton-2027'
+  /* A gathering, which has no races at all and is what the owner's sentence is
+     about. There are three in the file and this is the first of them. */
+  const GATHERING = 'btl-sreda-mart-2027'
   const SAID = 'Trka se trči po zaleđenom nasipu, sa dva prelaza preko mosta.'
 
   /** Serves the file of events as it is, with one event given the two fields. */
-  function eventCarrying(description: string, link: string) {
+  function eventCarrying(description: string, link: string, slug: string = SLUG) {
     const served = globalThis.fetch
 
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -607,7 +610,7 @@ describe('the description of an event and the organiser’s page', () => {
 
       return new Response(
         JSON.stringify(
-          events.map((one) => (one.slug === SLUG ? { ...one, description, link } : one)),
+          events.map((one) => (one.slug === slug ? { ...one, description, link } : one)),
         ),
         { status: 200, headers: { 'content-type': 'application/json' } },
       )
@@ -707,27 +710,51 @@ describe('the description of an event and the organiser’s page', () => {
     /* The ordinary case, and the reason both are drawn conditionally: neither
        field is required, and an empty paragraph under the name of an event is a
        gap nobody put there. */
-    const { container } = renderAt(
-      `/sr/kalendar/${SLUG}`,
-      'visitor',
-      null,
-      undefined,
-      '2026-12-01',
-    )
+    renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
 
     await screen.findByRole('table', { name: 'Trke' })
 
     expect(screen.queryByRole('link', { name: /^Strana organizatora/ })).toBeNull()
     expect(screen.queryByText(SAID)).toBeNull()
 
-    /* Asked of the element and not of a role, which this file otherwise never
-       does. A paragraph has no role to ask for, and what is being measured is
-       that it is absent rather than empty: drawn unconditionally it would carry
-       no text, so every question above it answers the same either way while all
-       1166 event pages gain a gap under the name. The gap itself is a length and
-       jsdom measures none (ADL A18); what can be measured here is whether the
-       element is in the page at all, and that is exactly the condition. */
-    expect(container.querySelector('.event__said'), 'an empty paragraph is drawn').toBeNull()
-    expect(container.querySelector('.event__where'), 'an empty link row is drawn').toBeNull()
+    /* And no paragraph anywhere on the page is empty, which is the question the
+       two above do not answer: drawn unconditionally the block carries no text,
+       so „is the description there" and „is the link there" both go on saying no
+       while all 1166 event pages gain a gap under the name.
+
+       Asked of the role, which a paragraph does have. This was written as a
+       `querySelector` on the class, over a comment claiming there was no role to
+       ask for, and a round measured that claim wrong on 27.08.2026. The class
+       would also have passed a rename that left the element exactly as empty. */
+    const empty = screen
+      .queryAllByRole('paragraph')
+      .filter((one) => (one.textContent ?? '').trim() === '')
+
+    expect(empty, 'an empty paragraph is drawn').toEqual([])
+  })
+
+  it('draws both for a gathering, which has no races at all', async () => {
+    /* The case the owner's sentence is actually about, and the one none of the
+       four above touched: every one of them opens a race. „i dalje stoji u
+       kalendaru, može se otvoriti, i pokazuje detalje, opis i link ka strani
+       organizatora ako postoji, ali bez trka" (owner, 23.08.2026) is a sentence
+       about a gathering, so a guard that never opens one is a guard over the
+       other half of it.
+
+       Measured by a round on 27.08.2026: with both conditions narrowed to
+       `event.kind === 'race'`, a gathering stopped drawing either and 267 tests
+       stayed green. */
+    const restore = eventCarrying(SAID, 'https://organizator.example/trka', GATHERING)
+
+    try {
+      renderAt(`/sr/kalendar/${GATHERING}`, 'visitor', null, undefined, '2026-12-01')
+
+      expect(await screen.findByText(SAID)).toBeVisible()
+      expect(screen.getByRole('link', { name: /^Strana organizatora/ })).toBeVisible()
+      /* And still no table, which is the other half of the same sentence. */
+      expect(screen.queryByRole('table', { name: 'Trke' })).toBeNull()
+    } finally {
+      restore()
+    }
   })
 })

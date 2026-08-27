@@ -234,18 +234,21 @@
 
 /* What the organiser says the event is, under its name and over its races.
  *
- * Prose, so it is measured the way prose is: a line that runs the width of a wide
- * screen is a line the eye loses on the way back, and the portal caps it at the
- * same 62 characters the written pages use. The field takes 600 characters, which
- * is around ten lines here and two dozen on a telephone, so this is not a rule
- * that will never fire.
+ * No measure, and it had one for an afternoon. A line that runs the width of a
+ * wide screen is a line the eye loses on the way back, which is why prose is
+ * usually capped, but the owner asked on 12.08.2026 for the opposite and the
+ * portal obeys it everywhere else: „Sve strane treba da koriste punu širinu
+ * strane za prikaz teksta. Dakle tekst se lomi tek na kraju redova."
+ * (`StaticPage.css`, `Markdown.css`). A cap here would have made this the one
+ * paragraph on the portal that breaks early, and the comment that justified it
+ * claimed it matched the written pages, which measure nothing at all. What sets
+ * the width is the column this page already has.
  *
  * `overflow-wrap` because 600 characters may arrive as one word: the field asks
  * for prose and refuses nothing, and a single unbroken word is the one input that
  * pushes a page sideways, which is what the portal never does. */
 .event__said {
   margin: 0 0 var(--space-8);
-  max-inline-size: 62ch;
   overflow-wrap: anywhere;
 }
 

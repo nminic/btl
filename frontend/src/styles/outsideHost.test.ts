@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { sources } from '../test/sources'
-import { bodyOf } from '../test/stylesheet'
+import { ruleFor, sheetsOf } from '../test/stylesheet'
 
 /**
  * The one rule that says how loudly a link out of this portal announces where it
@@ -12,44 +12,73 @@ import { bodyOf } from '../test/stylesheet'
  * drew a second one, and the choice was between writing the rule twice and moving
  * it once. It was moved, and this file is what a move costs: a rule two screens
  * import from a third place is a rule either of them can be left without, and
- * neither jsdom nor the suite would notice, because what would be lost is a size
- * and jsdom measures none (ADL A18).
+ * without the last case below nothing would notice, because what would be lost is
+ * a size and jsdom measures none (ADL A18).
  *
- * So two things are asked here, both about source and neither about layout: that
- * the rule exists and still says what it is for, and that nothing is left on the
- * name it used to have.
+ * Nothing here is about layout. What is asked is that the rule exists and applies,
+ * that both screens that write its name really reach the sheet that defines it,
+ * and that nothing is left on the name it used to have.
  */
-const SHEET = readFileSync(join(process.cwd(), 'src/styles/outsideLink.css'), 'utf-8')
-const WAS = readFileSync(join(process.cwd(), 'src/pages/member/Member.css'), 'utf-8')
+const SRC = join(process.cwd(), 'src')
+const SHEET = join(SRC, 'styles/outsideLink.css')
+const WAS = readFileSync(join(SRC, 'pages/member/Member.css'), 'utf-8')
 
 /** Where a file sits, written the way this repository writes a path. */
 const named = (path: string) => relative(process.cwd(), path).split('\\').join('/')
 
+/** Every file that writes the class, by that exact name and not as a prefix of a
+ *  longer one: a span moved to `outside-host--event` wears a name no sheet
+ *  defines, and the portal has already been bitten by exactly that
+ *  (`test/stylesheet.ts` records `.section-body__signoff-wide`). */
+const drawing = () =>
+  sources()
+    .filter((one) => /\boutside-host\b(?!-)/.test(one.code))
+    .map((one) => named(one.path))
+    .sort()
+
 describe('the host beside a link that leaves the portal', () => {
   it('is quieter than the words, and breaks rather than widening its row', () => {
-    /* The three declarations the stylesheet argues for. A host is one long word,
-       and on a telephone a word that will not break is a page that scrolls
-       sideways, which is the one thing the portal never does. */
-    const rule = bodyOf(SHEET, '.outside-host')
+    /* Read through the browser's own parser rather than off the text, because the
+       question is whether the rule applies and not whether it is written down:
+       wrapped in `@media print` it is still there to be found and no longer draws
+       anything on a screen (ADL A18, and `unconditionalRules`). */
+    const rule = ruleFor(readFileSync(SHEET, 'utf-8'), '.outside-host', 'outsideLink.css')
 
-    expect(rule, 'the shared rule is gone').not.toBe('')
-    expect(rule).toContain('overflow-wrap: anywhere')
-    expect(rule).toContain('var(--text-muted)')
+    /* A host is one long word, and on a telephone a word that will not break is a
+       page that scrolls sideways, which is the one thing the portal never does. */
+    expect(rule.getPropertyValue('overflow-wrap')).toBe('anywhere')
+    expect(rule.getPropertyValue('color')).toBe('var(--text-muted)')
     /* On a line of its own, so the words stay what is read first. */
-    expect(rule).toContain('display: block')
+    expect(rule.getPropertyValue('display')).toBe('block')
   })
 
-  it('is asked for by both screens that draw such a link, and by that name', () => {
-    /* Counted rather than trusted. The rule was renamed while it moved, and a
-       screen left on the old name draws its host in the size of whatever stands
-       around it: still in the page, still read aloud, and no longer quiet or
-       breakable. */
-    const drawing = sources().filter((one) => one.code.includes('outside-host'))
+  it('reaches every screen that writes its name, through that screen’s own sheets', () => {
+    /* The case the move exists to fail on, and the one the first version of this
+       file was missing: with both `import '../styles/outsideLink.css'` lines
+       deleted, the class leaves the built stylesheet entirely while the markup
+       goes on writing it, and every other question here still answers yes.
+       Measured by a review on 27.08.2026: 46 tests green, `npm run build` green,
+       and `outside-host` nowhere in `dist/assets/*.css`.
 
-    expect(drawing.map((one) => named(one.path)).sort()).toEqual([
-      'src/pages/EventDetail.tsx',
-      'src/pages/admin/ReviewQueue.tsx',
-    ])
+       Asked of the closure and not of the file itself, because a screen may reach
+       the sheet through another sheet it already asks for. The same reader holds
+       the sheet of tables to the same rule (`tableScroll.test.ts`). */
+    const written = drawing()
+
+    expect(written, 'nobody draws a host any more').not.toEqual([])
+
+    for (const path of written) {
+      const at = join(process.cwd(), path)
+
+      expect(
+        [...sheetsOf(at, readFileSync(at, 'utf-8'))],
+        `${path} writes outside-host and no sheet of its own asks for styles/outsideLink.css`,
+      ).toContain(SHEET)
+    }
+  })
+
+  it('is written by both screens that draw such a link, and by no other name', () => {
+    expect(drawing()).toEqual(['src/pages/EventDetail.tsx', 'src/pages/admin/ReviewQueue.tsx'])
   })
 
   it('leaves nothing behind on the name it had before the move', () => {
@@ -59,7 +88,7 @@ describe('the host beside a link that leaves the portal', () => {
 
        The stylesheet it was moved out of is read by name rather than swept for,
        because that is the one file it was ever in and a sweep that finds no files
-       answers „nothing is wrong" in the same words as a sweep that finds none
+       answers „nothing is wrong" in the same words as one that finds none
        broken. */
     expect(WAS).not.toContain('review__host')
     expect(sources().filter((one) => one.code.includes('review__host'))).toEqual([])

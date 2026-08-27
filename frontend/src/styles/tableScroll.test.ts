@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { bare, sheetsOf } from '../test/stylesheet'
+import { join } from 'node:path'
 
 /**
  * Every table the portal draws sits in a box that scrolls, so that the page
@@ -99,67 +100,6 @@ function components(): { path: string; code: string }[] {
   return sources().filter((one) => one.path.endsWith('.tsx'))
 }
 
-/**
- * The code with every comment blanked out, and the same length as what went in,
- * so a position in it is still a position in the file.
- *
- * A `<table` written in prose is not one drawn, and this portal explains itself
- * at length: the note above the matrix names the tag it is about, and the file
- * you are reading names it a dozen times.
- */
-function bare(code: string): string {
-  return code
-    .replaceAll(/\/\*[\s\S]*?\*\//g, (comment) => comment.replaceAll(/[^\n]/g, ' '))
-    .replaceAll(/(^|[^:])\/\/[^\n]*/g, (line, before: string) =>
-      before + ' '.repeat(line.length - before.length),
-    )
-}
-
-/**
- * What a file asks for by name: `import './Member.css'` in a component,
- * `@import 'Rankings.css'` in a stylesheet. One expression for both, since a
- * component never writes the second and a stylesheet never writes the first.
- *
- * Comments are blanked first. This portal explains its imports at least as often
- * as it writes them, and the note above one of them names the file it is about.
- */
-function asks(text: string): string[] {
-  return [...bare(text).matchAll(/@?import\s+[\w{},*\s]*(?:from\s+)?(?:url\()?['"][^'"]+\.css[^'"]*['"]/g)].map(
-    (one) =>
-      /* The name without the quotes around it or the query after it, cut from
-         the whole match rather than caught in a group. A group is
-         `string | undefined` under `noUncheckedIndexedAccess` (ADL A14), and the
-         `?? ''` that would settle it is a branch nothing can reach.
-
-         The forms around the name are wider than what this portal writes today,
-         on purpose: `@import url(…)` is plain CSS, `?inline` and `?raw` are
-         ordinary Vite, and `import sheet from './x.css'` is ordinary TypeScript.
-         Unmatched, each of them would be reported as a component asking for
-         nothing, which is a failure saying the opposite of what is true. */
-      one[0].slice(one[0].search(/['"]/) + 1, -1).replace(/\?.*$/, ''),
-  )
-}
-
-/**
- * Every stylesheet a file ends up with: the ones it asks for, and the ones those
- * ask for in turn.
- *
- * Whole paths, so a sheet reached two ways is one entry and a cycle is not a
- * loop. `Profile.css` is both: it asks for `Rankings.css` and for `table.css`,
- * and `Rankings.css` has already brought `table.css` by the time it is asked.
- */
-function sheetsOf(at: string, code: string, seen = new Set<string>()): Set<string> {
-  for (const name of asks(code)) {
-    const sheet = resolve(dirname(at), name)
-
-    if (!seen.has(sheet)) {
-      seen.add(sheet)
-      sheetsOf(sheet, readFileSync(sheet, 'utf-8'), seen)
-    }
-  }
-
-  return seen
-}
 
 /** The sheet this file is about. */
 const TABLE = join(SRC, 'styles', 'table.css')

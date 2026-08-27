@@ -1,14 +1,25 @@
 /**
- * Every address of somebody else's page that the portal hands to a browser, in
- * one place.
+ * The address of somebody else's page, where the portal asks before it hands one
+ * to a browser.
  *
- * Two of them today: the official results of a race, typed by the member who sent
- * the result, and the organiser's page for an event, typed by whoever entered the
- * event. Somebody types it, the portal stores it, and a screen draws it as a
- * link. That last step is the one that matters: a link is the one thing on a page
- * that carries an instruction to the browser, and an address somebody else typed
- * is not the portal's to trust. `javascript:` in an `href` is a script running on
- * the portal, with the reader's session around it.
+ * Two fields ask through here: the official results of a race, typed by the member
+ * who sent the result, and the organiser's page for an event, typed by whoever
+ * entered the event. Somebody types it, the portal stores it, and a screen draws
+ * it as a link. That last step is the one that matters: a link is the one thing on
+ * a page that carries an instruction to the browser, and an address somebody else
+ * typed is not the portal's to trust. `javascript:` in an `href` is a script
+ * running on the portal, with the reader's session around it.
+ *
+ * **Not every outside link on the portal comes through here, and saying otherwise
+ * would be the worse mistake.** A written page is markdown, and a link inside it
+ * is drawn by `components/Markdown.tsx` (`addressOf`), which asks a weaker
+ * question: a prefix rather than an anchored shape, and nothing about the
+ * characters that split a host. Measured by a security round on 27.08.2026, a
+ * page whose author writes `[tekst](https://balkanskatrkackaliga.net<U+200B>@zlo.example/p)`
+ * gets an anchor to `zlo.example`, with no `rel` and no host shown beside it. That
+ * gap is older than this file and is not closed here; it is named here because the
+ * sentence this comment used to open with („in one place") would have read as
+ * proof that it was.
  *
  * Named for what it is rather than for where it started. It was
  * `officialResultsLink` while a result was the only thing that carried an outside
