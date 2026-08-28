@@ -13,6 +13,7 @@ import { ruleFor } from '../test/stylesheet'
  */
 const suggests = readFileSync(join(process.cwd(), 'src/forms/Suggesting.css'), 'utf-8')
 const fields = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf-8')
+const PICKER = readFileSync(join(process.cwd(), 'src/forms/DatePicker.css'), 'utf-8')
 
 describe('the box a list is typed into', () => {
   it('takes the width of its field, like every other control', () => {
@@ -108,5 +109,38 @@ describe('the calendar of a date field', () => {
     const grid = ruleFor(picker, '.datepicker__grid', 'DatePicker.css')
 
     expect(grid.getPropertyValue('grid-template-columns')).toBe('repeat(7, minmax(0, 2rem))')
+  })
+})
+
+describe('the calendar button that will not answer', () => {
+  it('looks refused, and not only says so', () => {
+    /* „Odbijeno, ne ugašeno" keeps the button in the keyboard's path and says so
+       in a word a screen reader reads; a word was all it was. Measured on
+       23.08.2026: the refused button and the live one shared their colour, their
+       background and their cursor, so whoever was looking rather than listening
+       was shown a live control and told nothing.
+
+       The same two declarations the portal already uses for a held field
+       (`.field__control--held`), which is what a member sees on the very fields
+       this button belongs to. */
+    const refused = ruleFor(PICKER, ".datepicker__open[aria-disabled='true']", 'DatePicker.css')
+
+    expect(refused.background).toBe('var(--surface-hover)')
+    expect(refused.cursor).toBe('default')
+  })
+
+  it('does not brighten under a pointer it is going to refuse', () => {
+    /* A control that lights up under the pointer promises an answer, and this one
+       has already said it will not give one. Heavier than the plain hover rule by
+       one attribute, so it wins wherever both apply, whatever order the bundle
+       puts them in. */
+    const refused = ruleFor(
+      PICKER,
+      ".datepicker__open[aria-disabled='true']:hover",
+      'DatePicker.css',
+    )
+
+    expect(refused.borderColor).toBe('var(--control-border)')
+    expect(refused.color).toBe('var(--text-muted)')
   })
 })

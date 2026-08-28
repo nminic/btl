@@ -157,6 +157,37 @@ export function DatePicker({
   }, [open])
   const [month, setMonth] = useState(() => monthOf(value, today))
   const box = useRef<HTMLDivElement>(null)
+  /** The button the calendar is opened from, so a focus inside a calendar that is
+   *  closed out from under it has somewhere of its own to land. */
+  const opener = useRef<HTMLButtonElement>(null)
+
+  /* And a calendar that is already open closes the moment the field is locked.
+   *
+     The guard on the button refuses to open one; it says nothing about one that
+     is already standing. Measured on 23.08.2026 with the keyboard alone: open the
+     calendar, walk back to the name of the race, choose one from the list; the
+     date becomes the portal's and the calendar goes on standing with its
+     thirty-one days, Enter on any of them changes nothing, closes the list without
+     a word, and drops the focus onto `<body>`.
+   *
+     The focus is carried back to the button it came from, rather than left where
+     the calendar was: a reader working by keyboard whose focus falls to the page
+     has to walk the whole form again to find their place. Only where the focus is
+     actually inside what is being closed, so a lock arriving while somebody is
+     three fields further down does not drag them backwards. */
+  useEffect(() => {
+    if (locked !== true) {
+      return
+    }
+
+    setOpen((was) => {
+      if (was && box.current?.contains(document.activeElement) === true) {
+        opener.current?.focus()
+      }
+
+      return false
+    })
+  }, [locked])
 
   useEffect(() => {
     if (!open) {
@@ -244,6 +275,7 @@ export function DatePicker({
       ))}
 
       <button
+        ref={opener}
         type="button"
         className="datepicker__open"
         aria-disabled={locked ? true : undefined}

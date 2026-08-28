@@ -1,5 +1,6 @@
 import { htmlElement, must } from '../test/at'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { useState } from 'react'
 import { setupUser } from '../test/user'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -352,5 +353,116 @@ describe('where the calendar stands', () => {
     await openAt({ top: 160, height: 40, tall: 245, room: { across: 360, down: 768 } })
 
     expect(measuredWearing).toEqual({ position: 'fixed', maxInlineSize: '344px' })
+  })
+})
+
+describe('a calendar standing open when the field is locked under it', () => {
+  const TODAY_ISO = '2027-01-01'
+
+  /** The field with a lock that can be turned while it stands, which is the whole
+   *  of what this is about: the guard on the button refuses to open a calendar
+   *  and says nothing about one already standing. */
+  function Turning() {
+    const [locked, setLocked] = useState(false)
+
+    return (
+      <ClockProvider simulatedDay={TODAY_ISO}>
+        <I18nProvider locale="sr">
+          <button
+            type="button"
+            onClick={() => {
+              setLocked(true)
+            }}
+          >
+            izaberi trku
+          </button>
+          <DatePicker
+            id="proba"
+            name="proba"
+            value="01/01/2027"
+            invalid={false}
+            describedBy={undefined}
+            locked={locked}
+            onChange={vi.fn()}
+          />
+        </I18nProvider>
+      </ClockProvider>
+    )
+  }
+
+  it('closes, rather than standing over a date nobody may change', async () => {
+    /* Measured on 23.08.2026 with the keyboard alone: open the calendar, walk back
+       to the name of the race, choose one from the list; the date becomes the
+       portal's and the calendar goes on standing with its thirty-one days. Enter
+       on any of them changes nothing and closes the list without a word.
+
+       A calendar over a locked date is not merely useless: it is the portal
+       inviting an answer to a question it has just closed. */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
+
+    expect(screen.getByRole('button', { name: '15' })).toBeVisible()
+
+    /* Turned without a press of the pointer, and that is not a convenience: a
+       press anywhere outside the calendar already closes it, by the rule that
+       exists for somebody who opened it and changed their mind. Measured on
+       28.08.2026 with the effect taken out and this walk written with
+       `user.click`: the calendar closed all the same and the case said nothing.
+       In the real walk the lock arrives because another field was answered, and
+       nothing was pressed here at all. */
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    expect(screen.queryByRole('button', { name: '15' })).toBeNull()
+  })
+
+  it('hands the focus back to the button, rather than to the page', async () => {
+    /* The other half of the same measurement: the focus fell onto `<body>`, and a
+       reader working by keyboard whose focus falls to the page has to walk the
+       whole form again to find their place (WCAG 2.2 SC 2.4.3). It goes back to
+       the button the calendar was opened from, which is where that reader was a
+       moment ago. */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    const opener = screen.getByRole('button', { name: 'Otvori kalendar' })
+
+    await user.click(opener)
+
+    screen.getByRole('button', { name: '15' }).focus()
+
+    /* Pressed without the press moving the focus, which is the walk this is
+       about: in the real one the lock arrives because a race was chosen in
+       another field and the reader's focus is still standing on a day. A press
+       through `user.click` would take the focus itself and there would be nothing
+       left inside the calendar to rescue. */
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('leaves a focus that was never inside it where it was', async () => {
+    /* And only where the focus is really inside what is being closed. A lock
+       arriving while somebody is three fields further down must not drag them
+       backwards, which would be the same fault in the other direction. */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
+
+    const elsewhere = screen.getByRole('button', { name: 'izaberi trku' })
+
+    /* Standing somewhere else while the calendar is open, which is the state the
+       rescue must not touch: the focus is outside it, so closing it takes nothing
+       away. Measured with the condition dropped, so the focus is carried back
+       whatever it was doing: it is dragged from here to the calendar's button. */
+    elsewhere.focus()
+    fireEvent.click(elsewhere)
+
+    expect(document.activeElement).toBe(elsewhere)
   })
 })

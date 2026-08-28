@@ -30,6 +30,33 @@
   color: var(--accent);
 }
 
+/* And a button that will not answer looks like one.
+ *
+   „Odbijeno, ne ugašeno" keeps it in the keyboard's path and says so in a word a
+   screen reader reads; a word is all it was. Measured on 23.08.2026: the refused
+   button and the live one shared their colour, their background and their cursor,
+   so whoever was looking rather than listening was shown a live control and told
+   nothing. The same two declarations the portal already uses for a held field
+   (`.field__control--held`, PlaceField.css), which is what a member sees on the
+   very fields this button belongs to.
+
+   Written against `[aria-disabled='true']` and never against a bare
+   `[aria-disabled]`, because a control that is not held must carry no such
+   attribute at all: ADL records that same bare selector once making five live
+   buttons of the price list read as refused. */
+.datepicker__open[aria-disabled='true'] {
+  background: var(--surface-hover);
+  cursor: default;
+}
+
+/* And it does not brighten under the pointer, which would promise an answer it
+   has just refused. Heavier than the rule above it by one attribute, so it wins
+   wherever both apply. */
+.datepicker__open[aria-disabled='true']:hover {
+  border-color: var(--control-border);
+  color: var(--text-muted);
+}
+
 /* A day the box offers, beside the calendar and in the same row as the date
    (owner, 23.08.2026). The same height as the button beside it, because they are
    one row of controls and not two: the height comes from the row rather than from
