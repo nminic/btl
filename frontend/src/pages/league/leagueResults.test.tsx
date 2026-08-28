@@ -139,6 +139,27 @@ const placings = (table: ReturnType<typeof within>): HTMLElement[] =>
         within(row).queryAllByRole('cell').length > 0,
     )
 
+/**
+ * How long the cases that page a whole standing are given, and why it is not the
+ * default.
+ *
+ * Each of them draws a field of `MANY` competitors through the whole application
+ * and then walks it page by page, so it is the most work any case in this repo
+ * does. On the machine this was written on the slowest takes 798 milliseconds; on
+ * the runner that guards the branch, four of them took 3.632, 3.695, 4.584 and
+ * 5.111 milliseconds on 28.08.2026, and the last of those is the one that failed.
+ * The default is five seconds, and four cases sitting between seventy and a
+ * hundred per cent of it tip over whenever the runner is busy. It failed on a
+ * branch that touches none of this, which is the shape of the fault: a red gate
+ * that says nothing about the change being measured.
+ *
+ * Raised for these four and not for everything, because a default long enough for
+ * the slowest case in the repo is a default that lets a hung case run for half a
+ * minute before saying so. Four times the measured worst is room for a runner
+ * three times slower than the one that failed, and no more.
+ */
+const PAGING_TIMEOUT = 20_000
+
 describe('a competition with more placed than fit on one page', () => {
   it('draws fifty of them and no more', async () => {
     const undo = await withCompetitors(MANY)
@@ -213,7 +234,7 @@ describe('a competition with more placed than fit on one page', () => {
     } finally {
       undo()
     }
-  })
+  }, PAGING_TIMEOUT)
 
   it('opens on the page the address names', async () => {
     /* A page somebody is reading is a page they can send to somebody else. */
@@ -255,7 +276,7 @@ describe('a competition with more placed than fit on one page', () => {
     } finally {
       undo()
     }
-  })
+  }, PAGING_TIMEOUT)
 })
 
 describe('a competition everybody in it fits on one page', () => {
@@ -422,7 +443,7 @@ describe('a page of a standing that is split into blocks', () => {
     } finally {
       undo()
     }
-  })
+  }, PAGING_TIMEOUT)
 
   it('loses nobody at a boundary a block falls on', async () => {
     /* Every placing once and no more, read across all three pages of a mixed
@@ -454,5 +475,5 @@ describe('a page of a standing that is split into blocks', () => {
     } finally {
       undo()
     }
-  })
+  }, PAGING_TIMEOUT)
 })
