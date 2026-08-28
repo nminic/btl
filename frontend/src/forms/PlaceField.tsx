@@ -165,29 +165,41 @@ export function PlaceField({
       return
     }
 
-    /* **And this one writes even where the field is held**, which is the only
-       place in this file that does. It was put behind the lock on 28.08.2026 and
-       taken back out the same day, and the round trip is worth keeping.
+    /* **On a held field this fills a hole and nothing else**, which is the only
+       write in this file that goes through the lock at all. It took three rounds
+       of review to get the shape right and all three are worth keeping.
      *
-       The lock says what the **reader** may not change. This is not the reader
-       answering a control: it is the portal writing down a fact about the town, in
-       the same breath as the four fields a chosen race fills in, of which the
-       renderer of forms says in as many words that they „are not refused at all.
-       They are filled by the portal from the race" (`forms/FormRenderer.tsx`).
-     *
-       Behind the lock it made exactly one thing happen, and it was a dead end:
-       measured by a review, a held place holding a town the codebook knows and no
+       The lock says what the **reader** may not change. Filling a hole is not the
+       reader answering a control: it is the portal writing down a fact about the
+       town, in the same breath as the four fields a chosen race fills in, of which
+       the renderer of forms says in as many words that they „are not refused at
+       all. They are filled by the portal from the race" (`forms/FormRenderer.tsx`).
+       Behind a flat lock, a held place holding a town the codebook knows and no
        country left the country empty, the select natively switched off because the
        town is recognised, and the form refused with „Popravi ova polja: Država"
-       over a control nobody on the screen could answer. The hole this fills is the
-       one the note above describes, and blocking it is how the note comes true.
+       over a control nobody on the screen could answer.
+     *
+       **But a flat absence of a lock overwrote what the record already said**, and
+       that is what the second half of this condition is for. Measured by a review
+       on 28.08.2026: type into a live place, so it counts as touched, then choose
+       an entry above that locks it and fills in „Beograd" with the country „AT".
+       The country came out „RS", on a select natively switched off, and the record
+       saved as Serbian though the entry said Austrian. That contradicts the note
+       ten lines above this one, which says what is saved stands where the codebook
+       disagrees with it, and it is the reason the early return there is not enough:
+       that one asks whether the field has been touched, which stops being the right
+       question the moment a lock arrives over a field somebody has been typing in.
      *
        Every other call to `onChange` in this file is behind the lock, and there are
        four of them: here, the town's own change, the country's, and `choose`. */
+    if (locked === true && country !== '') {
+      return
+    }
+
     if (known !== undefined && known !== country) {
       onChange(value, known)
     }
-  }, [known, country, value, onChange])
+  }, [known, country, value, onChange, locked])
 
   useEffect(() => {
     if (!open) {

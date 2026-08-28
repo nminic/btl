@@ -905,3 +905,84 @@ describe('a locked place whose country the codebook could fill in', () => {
   })
 
 })
+
+describe('a place that is locked over what somebody was already typing in', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  /** A live place that a press turns into a held one carrying a chosen entry:
+   *  a town the codebook knows and a country that disagrees with it. */
+  function Arriving() {
+    const [locked, setLocked] = useState(false)
+    const [town, setTown] = useState('Ne')
+    const [country, setCountry] = useState('AT')
+
+    return (
+      <I18nProvider locale="sr">
+        <button
+          type="button"
+          onClick={() => {
+            setLocked(true)
+            setTown('Beograd')
+            setCountry('AT')
+          }}
+        >
+          izaberi trku
+        </button>
+        <PlaceField
+          id="mesto"
+          name="city"
+          value={town}
+          country={country}
+          invalid={false}
+          locked={locked}
+          describedBy={undefined}
+          onChange={(next, chosen) => {
+            setTown(next)
+            setCountry(chosen)
+          }}
+        />
+      </I18nProvider>
+    )
+  }
+
+  it('keeps the country the record came with, rather than the codebook’s', async () => {
+    /* The half a flat absence of a lock got wrong. Measured by a review on
+       28.08.2026: type into a live place, so it counts as touched, then choose an
+       entry above that locks it and fills in „Beograd" with the country „AT". The
+       country came out „RS", the select was natively switched off because the town
+       is recognised, and the record saved as Serbian though the entry said
+       Austrian.
+
+       „Where the codebook disagrees with what was saved, what was saved stands"
+       is the rule this field already carries, and the early return that used to
+       enforce it asks whether the field has been touched, which stops being the
+       right question the moment a lock arrives over a field somebody has been
+       typing in. */
+    const user = setupUser()
+
+    render(<Arriving />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+
+    await user.type(box, 'k')
+
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await waitFor(() => {
+      expect(box).toHaveValue('Beograd')
+    })
+
+    expect(box).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toHaveValue('AT')
+  })
+})
