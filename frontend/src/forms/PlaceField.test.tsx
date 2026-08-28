@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { bare, ruleFor } from '../test/stylesheet'
+import { ruleFor } from '../test/stylesheet'
+import { bare } from '../test/sources'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
