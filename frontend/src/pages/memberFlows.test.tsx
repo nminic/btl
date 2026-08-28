@@ -1,3 +1,4 @@
+import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -852,7 +853,7 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText('Odobreno')).toBeVisible()
 
     unmount()
-  })
+  }, SLOW)
 
   it('carries what the member said about the race to the moderator', async () => {
     /* The form has asked for it all along (`unos-rezultata.form.json`), the

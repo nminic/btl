@@ -5,6 +5,7 @@ import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { PER_PAGE } from '../../components/pageOf'
+import { SLOW } from '../../test/slow'
 import { formatDistance, formatShortDate } from '../../i18n/format'
 
 /* Fifty placed to a page (owner, 03.08.2026, PDL P24).
@@ -21,6 +22,12 @@ const RUN = '/sr/liga/brdska-2019/rezultati'
 /** Comfortably more than one page, and not a round multiple of it, so the last
  *  page is a remainder rather than a full page. */
 const MANY = 137
+
+/** The browser's own `fetch`, taken once before anything has replaced it, so the
+ *  clean-up below has something true to put back. Read at module level rather than
+ *  inside the fixture: a case that times out leaves its own copy behind, and a
+ *  clean-up that read from the last fixture would restore that. */
+const REAL_FETCH = globalThis.fetch
 
 /**
  * The grid, with as many competitors as asked for and a result each.
@@ -113,6 +120,32 @@ async function withCompetitors(count: number, mixed = false) {
   }
 }
 
+/**
+ * The real `fetch` back after every case, whatever became of the one before it.
+ *
+ * The cases below put theirs back in a `finally`, which is right while a case
+ * runs to its end and useless when one times out: Vitest calls such a case failed
+ * and does **not** stop its body, so the `finally` runs later, in the middle of
+ * the next case, and takes that one's `fetch` away with it. Measured on
+ * 28.08.2026: with one case timing out, `is drawn whole, with no way from one page
+ * to another` failed with „expected <nav class="pager"> to be null" and `reaches
+ * across every column` with „the standing is drawn as one block", neither of which
+ * has a stub of its own and one of which never asks for one. Both had been handed
+ * somebody else's field of 137 competitors.
+ *
+ * One slow case then reads as three broken screens, and every message points at
+ * production code rather than at the clock. That is the shape of red gate this
+ * whole change exists to stop, in its worst form: the failure lies about what
+ * failed.
+ *
+ * Here rather than in place of the `finally`, because the two answer different
+ * questions: the `finally` keeps a case from leaking into the next one while the
+ * suite is healthy, and this keeps a case that never finished from leaking at all.
+ */
+afterEach(() => {
+  globalThis.fetch = REAL_FETCH
+})
+
 const grid = async () => within(await screen.findByRole('table', { name: 'Poredak takmičenja' }))
 
 /**
@@ -139,27 +172,6 @@ const placings = (table: ReturnType<typeof within>): HTMLElement[] =>
         within(row).queryAllByRole('cell').length > 0,
     )
 
-/**
- * How long the cases that page a whole standing are given, and why it is not the
- * default.
- *
- * Each of them draws a field of `MANY` competitors through the whole application
- * and then walks it page by page, so it is the most work any case in this repo
- * does. On the machine this was written on the slowest takes 798 milliseconds; on
- * the runner that guards the branch, four of them took 3.632, 3.695, 4.584 and
- * 5.111 milliseconds on 28.08.2026, and the last of those is the one that failed.
- * The default is five seconds, and four cases sitting between seventy and a
- * hundred per cent of it tip over whenever the runner is busy. It failed on a
- * branch that touches none of this, which is the shape of the fault: a red gate
- * that says nothing about the change being measured.
- *
- * Raised for these four and not for everything, because a default long enough for
- * the slowest case in the repo is a default that lets a hung case run for half a
- * minute before saying so. Four times the measured worst is room for a runner
- * three times slower than the one that failed, and no more.
- */
-const PAGING_TIMEOUT = 20_000
-
 describe('a competition with more placed than fit on one page', () => {
   it('draws fifty of them and no more', async () => {
     const undo = await withCompetitors(MANY)
@@ -173,7 +185,7 @@ describe('a competition with more placed than fit on one page', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('says which rows are on the screen and offers the way on', async () => {
     const undo = await withCompetitors(MANY)
@@ -234,7 +246,7 @@ describe('a competition with more placed than fit on one page', () => {
     } finally {
       undo()
     }
-  }, PAGING_TIMEOUT)
+  }, SLOW)
 
   it('opens on the page the address names', async () => {
     /* A page somebody is reading is a page they can send to somebody else. */
@@ -276,7 +288,7 @@ describe('a competition with more placed than fit on one page', () => {
     } finally {
       undo()
     }
-  }, PAGING_TIMEOUT)
+  }, SLOW)
 })
 
 describe('a competition everybody in it fits on one page', () => {
@@ -443,7 +455,7 @@ describe('a page of a standing that is split into blocks', () => {
     } finally {
       undo()
     }
-  }, PAGING_TIMEOUT)
+  }, SLOW)
 
   it('loses nobody at a boundary a block falls on', async () => {
     /* Every placing once and no more, read across all three pages of a mixed
@@ -475,5 +487,5 @@ describe('a page of a standing that is split into blocks', () => {
     } finally {
       undo()
     }
-  }, PAGING_TIMEOUT)
+  }, SLOW)
 })

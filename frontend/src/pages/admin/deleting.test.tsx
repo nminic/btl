@@ -1,3 +1,4 @@
+import { SLOW } from '../../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, within } from '@testing-library/react'
@@ -63,7 +64,7 @@ describe('a record entered under an identity a deletion had just freed', () => {
 
     expect(after.getByText('Probni Novak')).toBeVisible()
     expect(after.queryByText(name)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 })
 
 describe('a record entered during this visit and then deleted', () => {

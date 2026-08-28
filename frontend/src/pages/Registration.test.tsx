@@ -1,3 +1,4 @@
+import { SLOW } from '../test/slow'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -232,7 +233,7 @@ describe('Registration once it is open', () => {
     /* And whoever brought them is not named: the code belongs to that member,
        not to this one. */
     expect(screen.queryByText(/7f07b38ff7ee7543/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it.each([
     ['a link that lost its code while being copied', '/sr/registracija?preporuka='],
@@ -258,7 +259,7 @@ describe('Registration once it is open', () => {
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('says nothing about a referral to somebody who arrived without one', async () => {
     const user = setupUser()
@@ -270,7 +271,7 @@ describe('Registration once it is open', () => {
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('will not submit when the two passwords differ', async () => {
     const user = setupUser()
@@ -284,7 +285,7 @@ describe('Registration once it is open', () => {
 
     expect(screen.getByText('Ne poklapa se sa prethodnim poljem.')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('takes a photograph as proof, and lets it be taken back', async () => {
     const user = setupUser()
@@ -354,7 +355,7 @@ describe('Registration once it is open', () => {
     expect(screen.getByText(/poslata ponovo/)).toBeVisible()
     expect(screen.getByText(/vladan@primer\.rs/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
-  })
+  }, SLOW)
 })
 
 describe('the address, at the moment of joining', () => {
@@ -372,7 +373,7 @@ describe('the address, at the moment of joining', () => {
 
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /^Adresa za slanje$/ })).toBeVisible()
-  })
+  }, SLOW)
 })
 
 describe('the biography, at the moment of joining', () => {
@@ -396,7 +397,7 @@ describe('the biography, at the moment of joining', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
-  })
+  }, SLOW)
 
   it('says what happens to it, beside the field, refusal and all', async () => {
     /* Both halves. It said only that a moderator reads it, which was the whole
