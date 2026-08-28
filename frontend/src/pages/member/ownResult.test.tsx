@@ -548,3 +548,116 @@ describe('the number a deleted result leaves behind', () => {
     expect(new Set(held).size, `two submissions answer to one number: ${held.join(', ')}`).toBe(2)
   })
 })
+
+describe('a result that has been counted', () => {
+  /** A member with results in the file, and the one row this is about. */
+  const COUNTED = '/sr/moji-rezultati'
+
+  /** The first counted result, whichever race it happens to be: this member has
+   *  run some of them in more than one season, so a name does not name a row. */
+  const firstCounted = async () => {
+    const table = within(await screen.findByRole('table', { name: 'Uračunato' }))
+
+    return within(must(table.getAllByRole('row')[1], 'the first counted result'))
+  }
+
+  /** What that row is a result of, read off the row rather than assumed. */
+  const raceOf = (row: ReturnType<typeof within>) =>
+    must(row.getAllByRole('cell')[1]?.textContent, 'the race of the row')
+
+  it('may be taken back, which it may not have been before', async () => {
+    /* Owner, 27.08.2026: „član ga ili briše (ima pravo na to, iako je
+       verifikovan)". That overturned the older rule, which allowed it only while
+       the result was still waiting. Verification is a check of what is true, not
+       a transfer of ownership.
+
+       Read through the store the administration deletes with, so a result taken
+       back leaves every screen that reads results and not only this one. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+    const rows = within(await screen.findByRole('table', { name: 'Uračunato' })).getAllByRole('row').length
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('button', { name: /^Obriši/ }))
+    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje/ }))
+
+    /* Counted rather than looked for by name: this member has run the same race
+       in more than one season, so a name is not one row. What is measured is that
+       the table is one row shorter and that the row pressed is the one gone. */
+    const left = within(await screen.findByRole('table', { name: 'Uračunato' })).getAllByRole('row')
+
+    expect(left).toHaveLength(rows - 1)
+  })
+
+  it('leads to the form with its own numbers, and the race locked', async () => {
+    /* „Ili menja i dostavlja dokaz za tu izmenu (ponovo)" (owner, same day). The
+       race is locked here for the same reason it is locked on a waiting result:
+       „sve osim trke". */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+    const race = raceOf(row)
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+
+    expect(await screen.findByText(/Menjaš rezultat koji je već uračunat/)).toBeVisible()
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('readonly')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue(race)
+  })
+
+  it('is refused without new proof, and taken with it', async () => {
+    /* The one rule this road has that the others do not. Both halves, because a
+       refusal that never lifts is a screen nobody can get past. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(
+      await screen.findByText(/mora da ide link ka zvaničnim rezultatima ili slika/),
+    ).toBeVisible()
+
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+  })
+
+  it('leaves the standing while it waits, rather than counting twice', async () => {
+    /* The half that decides whether this is honest: a member who changed a
+       counted result must not have the old points counted while the new ones
+       wait. „Odmah se ažurira poredak nakon verifikacije" (owner, same day), so
+       until then it is in neither place but the queue. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const rows = within(await screen.findByRole('table', { name: 'Uračunato' })).getAllByRole('row').length
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+
+    /* Walked back rather than rendered again: the prototype keeps this visit's
+       changes in the session, and a second render is a second visit that never
+       saw them. The confirmation offers the way back, which is the road a member
+       takes anyway. */
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    const left = within(await screen.findByRole('table', { name: 'Uračunato' })).getAllByRole('row')
+
+    expect(left, 'the old result is still counted while the change waits').toHaveLength(rows - 1)
+  })
+})

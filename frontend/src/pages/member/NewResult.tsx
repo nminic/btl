@@ -6,9 +6,9 @@ import { unosRezultata } from '../../forms/definitions'
 import type { FormValues } from '../../forms/types'
 import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
-import type { BtlEvent, Race } from '../../data/types'
+import type { BtlEvent, Race, Result } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
-import { useEvents, useRaces } from '../../data/useResource'
+import { RESULTS, useEvents, useRaces, useResults } from '../../data/useResource'
 import { useToday } from '../../clock/useClock'
 import { btlPoints } from '../../data/scoring'
 import { formatDistance, formatNumericDate, formatPoints } from '../../i18n/format'
@@ -25,6 +25,32 @@ import './Member.css'
  * seconds and the record keeps one number, and a member correcting a link is not
  * to be made to type the whole race again (owner, 06.08.2026).
  */
+/**
+ * A result that has already been counted, put back into the form.
+ *
+ * The two proofs are deliberately left empty. A counted result carries none: the
+ * picture is deleted once the decision is made (ADL A12) and the link was the
+ * moderator's to read at the time. And the whole point of changing one is that
+ * new proof comes with it (owner, 27.08.2026: „menja i dostavlja dokaz za tu
+ * izmenu"), so seeding the boxes with anything would be seeding them with
+ * something that proves nothing.
+ */
+function filledFromCounted(one: Result): FormValues {
+  return {
+    raceName: one.raceName,
+    date: fieldDate(one.date),
+    distanceKm: String(one.distanceKm),
+    ascentM: String(one.ascentM),
+    descentM: String(one.descentM),
+    hours: String(Math.floor(one.seconds / 3600)),
+    minutes: String(Math.floor((one.seconds % 3600) / 60)),
+    seconds: String(one.seconds % 60),
+    link: '',
+    photo: '',
+    comment: '',
+  }
+}
+
 function filledFrom(one: Submission): FormValues {
   return {
     raceName: one.raceName,
@@ -117,7 +143,7 @@ function seconds(values: FormValues): number {
 
 export function NewResult() {
   const { locale, t } = useI18n()
-  const { memberNumber, submissions, submit, resubmit } = useSession()
+  const { memberNumber, submissions, submit, resubmit, remove } = useSession()
   /**
    * What the last entry earned and whether it was a correction, once there has
    * been one.
@@ -139,6 +165,7 @@ export function NewResult() {
   const [params] = useFilterParams()
   const today = useToday()
   const events = useEvents()
+  const results = useResults()
   const races = useRaces()
   /* Built once for the data rather than on every letter typed: the list is the
      whole calendar read through one date, and it does not change while somebody
@@ -152,6 +179,12 @@ export function NewResult() {
     [events, races, today, locale],
   )
   const again = params.get('ponovo')
+  /* The other way in: a result that has already been counted, which a member may
+     change by sending it back through the queue with new proof (owner,
+     27.08.2026). A different word in the address because it is a different thing:
+     `ponovo` names a submission that is still in the queue, this names a result
+     that has left it. */
+  const fixing = params.get('ispravka')
   /* One that was sent back, or one still waiting: both are the member's to
      change (owner, 27.08.2026), and neither is one that has been approved. The
      road in is the same address either way, so what decides is the state of the
@@ -163,6 +196,12 @@ export function NewResult() {
   const correcting = submissions.find(
     (one) => one.id === again && one.memberNumber === memberNumber && one.status !== 'approved',
   )
+  /* And the counted one this is a correction of, read the same way and against
+     the same member: an identity out of the address opens nobody else's result.
+     Read through the overlay, so a result taken back a moment ago is not offered
+     for changing. */
+  const counted = results.status === 'ready' ? results.data : []
+  const fixingOne = counted.find((one) => one.id === fixing && one.memberNumber === memberNumber)
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -217,17 +256,33 @@ export function NewResult() {
        otherwise. Sending the correction as a new result would leave the refused
        one standing beside it: two rows for one race, and the moderator reading
        the same morning twice (owner, 06.08.2026). */
-    if (correcting === undefined) {
+    if (correcting !== undefined) {
+      resubmit(correcting.id, sent)
+    } else if (fixingOne !== undefined) {
+      /* A counted result being changed leaves the standings and goes back into
+         the queue as something waiting on somebody (owner, 27.08.2026: „menja i
+         dostavlja dokaz za tu izmenu (ponovo)").
+       *
+         Both halves in one press, and the order matters only in that neither may
+         be left out: the old result is taken out of the reckoning and the new
+         values go in front of a moderator. Left in, a member would have their
+         old points counted while the new ones wait; taken out without the
+         second, the result would simply vanish.
+       *
+         And the points move only when somebody agrees again, which is the whole
+         reason this is not an edit in place: „odmah se ažurira poredak nakon
+         verifikacije" (owner, same day). */
+      remove(RESULTS, fixingOne.id)
       submit({ memberNumber: me, ...sent })
     } else {
-      resubmit(correcting.id, sent)
+      submit({ memberNumber: me, ...sent })
     }
 
     /* Stays on a confirmation rather than jumping to the list (PDL P9: "Član
        odmah po unosu vidi koliko je bodova dobio"). The points were already
        being worked out here and then thrown away, so the one thing the member
        came to find out was the one thing the screen did not say. */
-    setDone({ points: earned, again: correcting !== undefined })
+    setDone({ points: earned, again: correcting !== undefined || fixingOne !== undefined })
   }
 
   if (done !== null) {
@@ -254,8 +309,13 @@ export function NewResult() {
 
   return (
     <div className="member">
-      {correcting === undefined ? (
+      {correcting === undefined && fixingOne === undefined ? (
         <p className="member__note">{t('newResult.note')}</p>
+      ) : correcting === undefined ? (
+        /* The third state, and it says the two things this road does that the
+           others do not: the result leaves the standing until somebody agrees
+           again, and it will not be taken without new proof. */
+        <p className="member__note">{t('newResult.fixingCounted')}</p>
       ) : (
         /* Why the form is full, and of what. A member who pressed „Pošalji
            ponovo" is looking at their own words back, and the reason they are
@@ -276,14 +336,34 @@ export function NewResult() {
 
       <FormRenderer
         form={unosRezultata}
-        initial={correcting === undefined ? undefined : filledFrom(correcting)}
+        initial={
+          correcting !== undefined
+            ? filledFrom(correcting)
+            : fixingOne === undefined
+              ? undefined
+              : filledFromCounted(fixingOne)
+        }
         /* Everything except which race it was (owner, 27.08.2026: „sve osim
            trke"). A correction keeps the identity of the submission a moderator
            may already have read, so letting the race change turns that row into a
            different race under the same number, and the queue is told only that
            something was corrected. Whoever picked the wrong race deletes it and
            enters another, which is what the list beside this offers. */
-        fixed={correcting === undefined ? undefined : ['raceName']}
+        fixed={correcting === undefined && fixingOne === undefined ? undefined : ['raceName']}
+        /* And a counted result does not go back into the queue on somebody's
+           word alone: „menja i dostavlja dokaz za tu izmenu" (owner,
+           27.08.2026). Either proof will do, which is the pair the portal
+           already treats as one (PDL P9: a link or a picture, and a picture
+           carries a comment with it).
+
+           Refused rather than the fields made required, because the requirement
+           is about this one road in: on every other road both are optional, and a
+           form definition is one shape for all of them. */
+        alsoRefuses={(values) =>
+          fixingOne !== undefined && String(values.link) === '' && String(values.photo) === ''
+            ? 'newResult.needsProof'
+            : undefined
+        }
         suggests={{ raceName: offered }}
         onSubmit={onSubmit}
       />
