@@ -93,7 +93,26 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
           avoid. */}
       <div
         className={onChange === undefined ? 'crop__picture' : 'crop__picture crop__picture--dragged'}
-        style={{ aspectRatio: `${shape.width} / ${shape.height}` }}
+        style={{
+          aspectRatio: `${shape.width} / ${shape.height}`,
+          /* Never taller than most of the screen, and the width follows so the
+             box stays the shape of the picture: the percentages the frame and
+             the hole are written in are percentages of **this box**, so a box
+             that is not the picture's shape puts the circle over the wrong part
+             of it.
+
+             Measured by a review on 27.08.2026: on a 360 by 640 telephone an
+             ordinary portrait photograph (1080 by 2400) drew a box 320 by 711,
+             taller than the whole window, with the send button 533 pixels below
+             it. Because the picture takes every touch (`touch-action: none`, and
+             it must, or a drag scrolls the page instead of moving the circle),
+             the only way past it was a strip of 40 pixels beside it. Capped, the
+             picture ends well inside the screen and there is page to scroll on
+             either side of it. */
+          maxBlockSize: '60svh',
+          inlineSize: `min(100%, calc(60svh * ${shape.width} / ${shape.height}))`,
+          marginInline: 'auto',
+        }}
         onPointerDown={
           onChange === undefined
             ? undefined

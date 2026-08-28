@@ -154,7 +154,7 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
           against. */}
       {chosen !== null && (
         <img
-          className="visually-hidden crop__measuring"
+          className="visually-hidden"
           aria-hidden="true"
           alt=""
           src={chosen.picture}
@@ -177,6 +177,22 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
               setRefused(String(SMALLEST_PIXELS))
               onChange(null)
             }
+          }}
+          onError={() => {
+            /* A file the browser cannot read is not a picture, whatever it is
+               called and whatever `accept="image/*"` let through: a `.heic` from
+               a telephone is the ordinary case, and a truncated JPEG is the other
+               one. Without this the member is left with no cropper, no message
+               and a live send button, and pressing it really does put the file in
+               front of a moderator. Measured by a review on 27.08.2026, in the
+               flow: „alert: [], cropper open: false, send aria-disabled: false,
+               sent through: true".
+
+               Said in the same words as a picture that is too small, because from
+               where the member stands it is the same answer: this file cannot be
+               used, choose another. */
+            setRefused(String(SMALLEST_PIXELS))
+            onChange(null)
           }}
         />
       )}
