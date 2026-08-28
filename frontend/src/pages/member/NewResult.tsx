@@ -202,6 +202,10 @@ export function NewResult() {
      for changing. */
   const counted = results.status === 'ready' ? results.data : []
   const fixingOne = counted.find((one) => one.id === fixing && one.memberNumber === memberNumber)
+  /* Whichever of the two this is, when it is either: the race is read off the
+     record on both roads in, and one name for that saves the next reader from
+     having to notice that there are two. */
+  const named = correcting ?? fixingOne
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -219,12 +223,20 @@ export function NewResult() {
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
     const sent = {
-      /* The race a correction keeps is the one the submission already names, and
-         not what the box holds. The box is locked (`fixed` below), so the two
-         agree; read off the record anyway, because a lock is a courtesy to
-         whoever is filling the form in and the rule „sve osim trke" (owner,
-         27.08.2026) has to hold whatever reaches this function. */
-      raceName: correcting === undefined ? String(values.raceName) : correcting.raceName,
+      /* The race a correction keeps is the one the record already names, and not
+         what the box holds. The box is locked (`fixed` below), so the two agree;
+         read off the record anyway, because a lock is a courtesy to whoever is
+         filling the form in and the rule „sve osim trke" (owner, 27.08.2026) has
+         to hold whatever reaches this function.
+       *
+         Both roads in, and that is the correction rather than the rule: the rule
+         was written for a submission being sent again and the counted result was
+         added beside it without it, so `correcting === undefined` was true on the
+         new road and the name came out of the box after all. Measured by a review
+         on 28.08.2026: the locked field changed by other means and sent left
+         „Sasvim druga trka" waiting in the queue in place of the race the member
+         actually ran. */
+      raceName: named?.raceName ?? String(values.raceName),
       /* Through `storedDate`, which reads the date or throws saying what was in
          the box. It was parsed here and the result called a Date without
          looking (ADL A14 bans that), and answering with an empty date instead
@@ -360,7 +372,17 @@ export function NewResult() {
            is about this one road in: on every other road both are optional, and a
            form definition is one shape for all of them. */
         alsoRefuses={(values) =>
-          fixingOne !== undefined && String(values.link) === '' && String(values.photo) === ''
+          /* Trimmed here, because what arrives here is not. The form hands this
+             function what is on the screen and hands `onSubmit` the trimmed copy
+             (`FormRenderer`), so three spaces in Link read as proof and the
+             sentence that explains what is missing never appeared: the member saw
+             only the general complaint about an empty field, which is true and
+             says nothing about this road in particular. Measured by a review on
+             28.08.2026; the sending itself was refused either way, so what was
+             lost was the explanation and not the guard. */
+          fixingOne !== undefined &&
+          String(values.link).trim() === '' &&
+          String(values.photo).trim() === ''
             ? 'newResult.needsProof'
             : undefined
         }

@@ -131,7 +131,19 @@ export function MyResults() {
                       the race (owner, 23.08.2026), and a heading that says otherwise
                       is read out with every cell under it. */}
                   <th scope="col">{t('profile.columns.race')}</th>
-                    <th scope="col">{t('rankings.columns.category')}</th>
+                    {/* Away on a phone, so that what a member came here to do
+                        fits on the screen they are holding. Chosen rather than
+                        dropped at random: the category is worked out from the
+                        distance and nothing else (`categoryOf`), it is named in
+                        full on the profile and in every ranking, and the race in
+                        the cell beside it already says which race this was. The
+                        two controls are the only thing on this screen that
+                        exists nowhere else, so they are the last thing to go.
+                        The moderator's queue makes the same trade with five of
+                        its columns (`admin/ReviewQueue.tsx`). */}
+                    <th scope="col" className="table__hide-phone">
+                      {t('rankings.columns.category')}
+                    </th>
                     <th scope="col" className="table__hide-phone">
                       {t('profile.columns.time')}
                     </th>
@@ -153,7 +165,7 @@ export function MyResults() {
                             događaja." */}
                         {result.raceName}
                       </td>
-                      <td>{t(`category.${result.category}`)}</td>
+                      <td className="table__hide-phone">{t(`category.${result.category}`)}</td>
                       <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
                       <td className="table__points">{formatPoints(result.points, locale)}</td>
                       {/* What a member may still do with a result that has been
