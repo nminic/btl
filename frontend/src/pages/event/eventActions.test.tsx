@@ -1,3 +1,4 @@
+import { SLOW } from '../../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
@@ -707,7 +708,7 @@ describe('copying an event', () => {
       screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value),
       'the copy forgot that the race had been renamed by hand',
     ).toContain('Mrazijada, polumaraton')
-  }, 15_000)
+  }, SLOW)
 
   it('lets a copied race that was never renamed go on following its event', async () => {
     /* The other half of the rule, and the half the guard above cannot reach: the
@@ -752,7 +753,7 @@ describe('copying an event', () => {
       names.every((one) => one === 'Novo ime'),
       `the copy stopped following its event: ${names.join(' | ')}`,
     ).toBe(true)
-  }, 15_000)
+  }, SLOW)
 
   it('does not hand a third copy the races the second one answers to', async () => {
     /* The third home of one fault, and the last to be put right: the identity of a
@@ -840,5 +841,5 @@ describe('copying an event', () => {
        and either side of the default. Fifteen seconds is ten times warm; a fourfold
        slowdown of the copy itself would still be caught by the other tests of this
        file, which keep the default. */
-  }, 15_000)
+  }, SLOW)
 })

@@ -1,8 +1,32 @@
 import '@testing-library/jest-dom'
+import { configure } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
+import { SLOW } from './slow'
+
+/**
+ * How long `findBy` and `waitFor` are given, which is the clock that really fires.
+ *
+ * A case has two of them. Vitest gives the case itself five seconds, and Testing
+ * Library gives each `findBy` one, and it is the second that runs out first on
+ * anything that draws a whole screen. Raising the first without the second is
+ * raising the wrong one: the case is then allowed twenty seconds to reach an
+ * assertion that gave up after one, and the gate comes back red with „Unable to
+ * find role=table", which points at production code rather than at the clock.
+ *
+ * Measured by a review on 28.08.2026 on an untouched tree, in one full pass of the
+ * gate out of three: `leagueResults > reaches across every column` failed at 1.314
+ * milliseconds with exactly that message, while the case it sat in had twenty
+ * seconds to spare.
+ *
+ * The same number as the case's own (`SLOW`), because it is the same fact about
+ * the same runner and two numbers would drift apart. Raising it costs what every
+ * such number costs: a genuinely missing element is reported later. That is paid
+ * once per real failure, against a red gate that lied on every busy run.
+ */
+configure({ asyncUtilTimeout: SLOW })
 
 // The data layer caches a resource for the whole visit. Tests are separate
 // visits, so each one starts from an empty cache. So does the day the portal is

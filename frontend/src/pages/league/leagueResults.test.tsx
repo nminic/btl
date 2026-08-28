@@ -23,10 +23,22 @@ const RUN = '/sr/liga/brdska-2019/rezultati'
  *  page is a remainder rather than a full page. */
 const MANY = 137
 
-/** The browser's own `fetch`, taken once before anything has replaced it, so the
- *  clean-up below has something true to put back. Read at module level rather than
- *  inside the fixture: a case that times out leaves its own copy behind, and a
- *  clean-up that read from the last fixture would restore that. */
+/**
+ * The `fetch` these cases are meant to see between them, taken once at module
+ * level so the clean-up below has something true to put back.
+ *
+ * **Not the browser's own**, and the difference matters: `test/setup.ts` replaces
+ * `fetch` with a reader that serves `public/` off the disc, and it runs before this
+ * module is evaluated, so what is caught here is that reader. That is the right
+ * thing to put back, and saying so is the point of this note. A review measured
+ * what happens to somebody who believes otherwise and reaches for
+ * `vi.unstubAllGlobals()`: nine of the ten cases in this file fail with „Failed to
+ * parse URL from /mock/races.json".
+ *
+ * Read at module level rather than inside the fixture, because a case that times
+ * out leaves its own copy behind and a clean-up reading from the last fixture would
+ * put that back.
+ */
 const REAL_FETCH = globalThis.fetch
 
 /**
@@ -123,10 +135,10 @@ async function withCompetitors(count: number, mixed = false) {
 /**
  * The real `fetch` back after every case, whatever became of the one before it.
  *
- * The cases below put theirs back in a `finally`, which is right while a case
- * runs to its end and useless when one times out: Vitest calls such a case failed
- * and does **not** stop its body, so the `finally` runs later, in the middle of
- * the next case, and takes that one's `fetch` away with it. Measured on
+ * The cases below used to put theirs back in a `finally`, which is right while a
+ * case runs to its end and worse than useless when one times out: Vitest calls such
+ * a case failed and does **not** stop its body, so the `finally` runs later, in the
+ * middle of the next case, and takes that one's `fetch` away with it. Measured on
  * 28.08.2026: with one case timing out, `is drawn whole, with no way from one page
  * to another` failed with „expected <nav class="pager"> to be null" and `reaches
  * across every column` with „the standing is drawn as one block", neither of which
@@ -138,9 +150,12 @@ async function withCompetitors(count: number, mixed = false) {
  * whole change exists to stop, in its worst form: the failure lies about what
  * failed.
  *
- * Here rather than in place of the `finally`, because the two answer different
- * questions: the `finally` keeps a case from leaking into the next one while the
- * suite is healthy, and this keeps a case that never finished from leaking at all.
+ * **Instead of the `finally` and not beside it**, which was the first answer and
+ * was measured wrong: this hook cleans up before the next case begins, and the
+ * stale `finally` then runs inside that case and undoes it again. A review measured
+ * both, with one case's clock cut short: with the `finally` kept, two cases fail and
+ * the second one changes between runs; with it gone, one fails, three runs out of
+ * three. `pages/publicData.test.tsx` had already answered this the same way.
  */
 afterEach(() => {
   globalThis.fetch = REAL_FETCH
@@ -174,23 +189,18 @@ const placings = (table: ReturnType<typeof within>): HTMLElement[] =>
 
 describe('a competition with more placed than fit on one page', () => {
   it('draws fifty of them and no more', async () => {
-    const undo = await withCompetitors(MANY)
+    await withCompetitors(MANY)
 
-    try {
       renderAt(RUN)
 
       /* Counted as placings and not as every heading of a row: the row that
          opens a block carries one too, and it is not a placing. */
       expect(placings(await grid())).toHaveLength(PER_PAGE)
-    } finally {
-      undo()
-    }
   }, SLOW)
 
   it('says which rows are on the screen and offers the way on', async () => {
-    const undo = await withCompetitors(MANY)
+    await withCompetitors(MANY)
 
-    try {
       renderAt(RUN)
       await grid()
 
@@ -207,15 +217,11 @@ describe('a competition with more placed than fit on one page', () => {
         'aria-disabled',
         'false',
       )
-    } finally {
-      undo()
-    }
   })
 
   it('shows the next fifty on the next page, and the rest on the last', async () => {
-    const undo = await withCompetitors(MANY)
+    await withCompetitors(MANY)
 
-    try {
       const user = setupUser()
       const { router } = renderAt(RUN)
 
@@ -243,29 +249,21 @@ describe('a competition with more placed than fit on one page', () => {
         'aria-disabled',
         'true',
       )
-    } finally {
-      undo()
-    }
   }, SLOW)
 
   it('opens on the page the address names', async () => {
     /* A page somebody is reading is a page they can send to somebody else. */
-    const undo = await withCompetitors(MANY)
+    await withCompetitors(MANY)
 
-    try {
       renderAt(`${RUN}?strana=3`)
       await grid()
 
       expect(screen.getByText(`Prikazano 101 do ${MANY} od ${MANY}`)).toBeVisible()
-    } finally {
-      undo()
-    }
   })
 
   it('keeps the order across the pages, so the fiftieth is above the fifty first', async () => {
-    const undo = await withCompetitors(MANY)
+    await withCompetitors(MANY)
 
-    try {
       const user = setupUser()
       renderAt(RUN)
 
@@ -285,9 +283,6 @@ describe('a competition with more placed than fit on one page', () => {
       expect(lastOfFirst).not.toBeNaN()
 
       expect(firstOfSecond).toBeLessThanOrEqual(lastOfFirst)
-    } finally {
-      undo()
-    }
   }, SLOW)
 })
 
@@ -335,13 +330,12 @@ describe('a competition whose event runs over more than one morning', () => {
         ? new Response(JSON.stringify([...races, second]), { status: 200 })
         : real(input))
 
-    return { first: mine, second, undo: () => { globalThis.fetch = real } }
+    return { first: mine, second }
   }
 
   it('heads the two columns with two different days', async () => {
-    const { first, second, undo } = await overTwoMornings()
+    const { first, second } = await overTwoMornings()
 
-    try {
       renderAt(RUN)
 
       const heads = (await grid()).getAllByRole('columnheader').map((one) => one.textContent ?? '')
@@ -352,9 +346,6 @@ describe('a competition whose event runs over more than one morning', () => {
       /* Each morning said once, rather than one morning said twice. */
       expect(mine.filter((one) => one.includes(formatShortDate(second.date, 'sr')))).toHaveLength(1)
       expect(new Set(mine).size).toBe(mine.length)
-    } finally {
-      undo()
-    }
   })
 })
 
@@ -411,9 +402,8 @@ describe('a page of a standing that is split into blocks', () => {
        competitor, so the whole of it is one man of one age and the standing is
        one block: the only arithmetic this change added was never run over more
        than one. This is the case that runs it. */
-    const undo = await withCompetitors(MANY, true)
+    await withCompetitors(MANY, true)
 
-    try {
       renderAt(RUN)
 
       const table = await grid()
@@ -452,18 +442,14 @@ describe('a page of a standing that is split into blocks', () => {
           .getAllByRole('rowheader')[0]?.textContent,
         'the block is named by its code rather than in words',
       ).toBe('Muškarci')
-    } finally {
-      undo()
-    }
   }, SLOW)
 
   it('loses nobody at a boundary a block falls on', async () => {
     /* Every placing once and no more, read across all three pages of a mixed
        field. A block that runs out mid-page and one that begins mid-page are the
        two ways an off-by-one shows here, and both are on this walk. */
-    const undo = await withCompetitors(MANY, true)
+    await withCompetitors(MANY, true)
 
-    try {
       const user = setupUser()
 
       renderAt(RUN)
@@ -484,8 +470,5 @@ describe('a page of a standing that is split into blocks', () => {
 
       expect(seen).toHaveLength(MANY)
       expect(new Set(seen).size, 'somebody is drawn on two pages').toBe(MANY)
-    } finally {
-      undo()
-    }
   }, SLOW)
 })

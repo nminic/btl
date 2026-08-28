@@ -914,6 +914,9 @@ describe('a result from entry to decision', () => {
      and the queue is read at every step. Measured 23.08.2026: 1,6 seconds of test
      time on a warm run and 4,4 under the load of the whole package, against the
      package's five, and the machine that decides is about half again slower. A test
+     Re-measured 28.08.2026 under the same command: **5,8 and 6,2 seconds**, so it
+     is over the default rather than a little under it, and it is the slowest case
+     in the repo.
      that genuinely walks carries its own limit rather than raising everybody's (the
      same rule is written over the turning chart in `publicScreens.test.tsx`). */
   it('is corrected and sent again, as the same result rather than a second one', async () => {
@@ -1041,7 +1044,7 @@ describe('a result from entry to decision', () => {
     expect(said.getAllByText('540')).toHaveLength(2)
     expect(said.getByText('1:52:10')).toBeVisible()
     expect(said.getByText('23,55')).toBeVisible()
-  }, 20_000)
+  }, SLOW)
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {
     const user = setupUser()
@@ -1071,7 +1074,7 @@ describe('a result from entry to decision', () => {
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
     expect(await screen.findByText('Odbijeno')).toBeVisible()
     expect(screen.getByText('Link ne otvara rezultate.')).toBeVisible()
-  })
+  }, SLOW)
 })
 
 /**
@@ -1087,6 +1090,30 @@ describe('a result from entry to decision', () => {
  * team, their history and the price they are shown. The cache is emptied before
  * every test (test/setup.ts), so the row is gone again by the next one.
  */
+/**
+ * The `fetch` these cases are meant to see between them, and it back after every
+ * one of them, whatever became of the case before.
+ *
+ * The fixture below puts its own back in a `finally`, which is right while a case
+ * runs to its end and worse than useless when one times out: Vitest calls such a
+ * case failed and does not stop its body, so the `finally` runs later, inside the
+ * next case, and takes that one's stub away. Measured in
+ * `pages/league/leagueResults.test.tsx` on 28.08.2026, where it turned one slow
+ * case into three broken screens with messages pointing at production code.
+ *
+ * This file holds the slowest case in the repo, 5,8 seconds under the gate's own
+ * command, so it is the likeliest place for that to happen next.
+ *
+ * Not the browser's own `fetch`: `test/setup.ts` replaces it with a reader that
+ * serves `public/` off the disc, and it runs before this module is evaluated, so
+ * what is caught here is that reader, which is what has to go back.
+ */
+const REAL_FETCH = globalThis.fetch
+
+afterEach(() => {
+  globalThis.fetch = REAL_FETCH
+})
+
 async function withOneMoreResult(
   row: { memberNumber: string; date: string; points: number },
   run: () => Promise<void>,

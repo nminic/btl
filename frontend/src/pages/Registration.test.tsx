@@ -529,7 +529,7 @@ describe('the country a member lives in', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
-  })
+  }, SLOW)
 
   it('is refused when the town was typed by hand and no country was picked', async () => {
     /* The country has no field of its own: the town carries it (PDL P6). What
