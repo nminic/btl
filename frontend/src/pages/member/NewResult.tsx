@@ -152,8 +152,16 @@ export function NewResult() {
     [events, races, today, locale],
   )
   const again = params.get('ponovo')
+  /* One that was sent back, or one still waiting: both are the member's to
+     change (owner, 27.08.2026), and neither is one that has been approved. The
+     road in is the same address either way, so what decides is the state of the
+     result rather than which button was pressed to get here.
+
+     Still their own, which is the half that must not be dropped: the identity is
+     read out of the address, so without this anybody could open somebody else's
+     result by typing its number. */
   const correcting = submissions.find(
-    (one) => one.id === again && one.memberNumber === memberNumber && one.status === 'rejected',
+    (one) => one.id === again && one.memberNumber === memberNumber && one.status !== 'approved',
   )
 
   if (memberNumber === null) {
@@ -172,7 +180,12 @@ export function NewResult() {
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
     const sent = {
-      raceName: String(values.raceName),
+      /* The race a correction keeps is the one the submission already names, and
+         not what the box holds. The box is locked (`fixed` below), so the two
+         agree; read off the record anyway, because a lock is a courtesy to
+         whoever is filling the form in and the rule „sve osim trke" (owner,
+         27.08.2026) has to hold whatever reaches this function. */
+      raceName: correcting === undefined ? String(values.raceName) : correcting.raceName,
       /* Through `storedDate`, which reads the date or throws saying what was in
          the box. It was parsed here and the result called a Date without
          looking (ADL A14 bans that), and answering with an empty date instead
@@ -244,15 +257,33 @@ export function NewResult() {
       {correcting === undefined ? (
         <p className="member__note">{t('newResult.note')}</p>
       ) : (
-        /* Why the form is full, and of what. A member who pressed "correct and
-           send again" is looking at their own words back, and the reason they
-           are looking at them is the sentence the moderator wrote. */
-        <p className="member__note">{t('newResult.again', { reason: correcting.note })}</p>
+        /* Why the form is full, and of what. A member who pressed „Pošalji
+           ponovo" is looking at their own words back, and the reason they are
+           looking at them is the sentence the moderator wrote.
+
+           Two sentences and not one since 27.08.2026, because there are now two
+           ways in: a result that was sent back carries a reason and a result
+           that is still waiting carries none. Said with the words of a refusal,
+           the second told a member that something had been refused when nobody
+           had decided anything, and printed „Razlog je bio:" with nothing after
+           it. */
+        <p className="member__note">
+          {correcting.status === 'rejected'
+            ? t('newResult.again', { reason: correcting.note })
+            : t('newResult.changing')}
+        </p>
       )}
 
       <FormRenderer
         form={unosRezultata}
         initial={correcting === undefined ? undefined : filledFrom(correcting)}
+        /* Everything except which race it was (owner, 27.08.2026: „sve osim
+           trke"). A correction keeps the identity of the submission a moderator
+           may already have read, so letting the race change turns that row into a
+           different race under the same number, and the queue is told only that
+           something was corrected. Whoever picked the wrong race deletes it and
+           enters another, which is what the list beside this offers. */
+        fixed={correcting === undefined ? undefined : ['raceName']}
         suggests={{ raceName: offered }}
         onSubmit={onSubmit}
       />

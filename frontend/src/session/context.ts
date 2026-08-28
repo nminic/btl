@@ -65,6 +65,20 @@ export type Submission = {
   status: SubmissionStatus
   /** Why it was sent back, so the competitor is not left guessing. */
   note: string
+  /**
+   * Whether the member has changed this since sending it, and nothing more than
+   * that.
+   *
+   * Owner, 27.08.2026, asked whether the queue should be told: „samo labela, ne
+   * šta je ispravljano." Which sits exactly on the older decision that the
+   * history of a result is not kept: a moderator sees that something moved, not
+   * what it was before.
+   *
+   * It matters because a corrected item goes to the back of the queue, so what a
+   * moderator meets is an item they may have read once already, with different
+   * numbers in it and nothing on it saying so.
+   */
+  corrected: boolean
 }
 
 export type Message = {
@@ -195,13 +209,21 @@ export type SessionValue = {
   signOut: () => void
 
   submissions: Submission[]
-  submit: (submission: Omit<Submission, 'id' | 'status' | 'note'>) => void
-  /** The same result, corrected and sent in again after a refusal (owner,
-   *  06.08.2026). One item and not a second beside it: it is one race. */
+  submit: (submission: Omit<Submission, 'id' | 'status' | 'note' | 'corrected'>) => void
+  /** The same result, corrected and sent in again (owner, 06.08.2026 for a
+   *  refusal, 27.08.2026 for one still waiting). One item and not a second
+   *  beside it: it is one race. */
   resubmit: (
     id: string,
-    corrected: Omit<Submission, 'id' | 'status' | 'note' | 'memberNumber'>,
+    corrected: Omit<Submission, 'id' | 'status' | 'note' | 'memberNumber' | 'corrected'>,
   ) => void
+  /**
+   * Taking one's own result back, which a member may do (owner, 27.08.2026).
+   *
+   * Gone rather than marked withdrawn: the portal keeps no history of a result
+   * (P9), so a withdrawn one would be a record of something nobody may read.
+   */
+  withdraw: (id: string) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
   /**

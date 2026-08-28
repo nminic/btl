@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { EventComment, PendingItem } from '../data/types'
+import { nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
   type Creations,
@@ -63,12 +64,32 @@ export function SessionProvider({
     newsletter: false,
   })
 
-  const submit = useCallback((submission: Omit<Submission, 'id' | 'status' | 'note'>) => {
-    setSubmissions((current) => [
-      { ...submission, id: `sub-${current.length + 1}`, status: 'pending', note: '' },
-      ...current,
-    ])
-  }, [])
+  const submit = useCallback(
+    (submission: Omit<Submission, 'id' | 'status' | 'note' | 'corrected'>) => {
+      /* Counted up from the highest number already used, never from how many
+         there are. Until 27.08.2026 nothing here ever went away, so a count was
+         safe; `withdraw` on the same day made the list shorten, and a count then
+         hands a new result the number a deleted one held. Two submissions answer
+         to one id, React draws them under one key, and a moderator pressing
+         „Odobri" on one approves the other as well: measured, one press approved
+         a result belonging to another member and put it into the standings.
+
+         `nextNumber` is the module the portal already keeps this rule in, and its
+         own note records the same fault measured on races on 23.08.2026. Written
+         through it rather than beside it, so there is one rule and not two. */
+      setSubmissions((current) => [
+        {
+          ...submission,
+          id: `sub-${String(nextNumber(current.map((one) => one.id), 'sub-'))}`,
+          status: 'pending',
+          note: '',
+          corrected: false,
+        },
+        ...current,
+      ])
+    },
+    [],
+  )
 
   /**
    * The same result, corrected and sent in again (owner, 06.08.2026).
@@ -84,15 +105,79 @@ export function SessionProvider({
    * yet, saying it was refused.
    */
   const resubmit = useCallback(
-    (id: string, corrected: Omit<Submission, 'id' | 'status' | 'note' | 'memberNumber'>) => {
-      setSubmissions((current) =>
-        current.map((one) =>
-          one.id === id ? { ...one, ...corrected, status: 'pending', note: '' } : one,
-        ),
-      )
+    (id: string, corrected: Omit<Submission, 'id' | 'status' | 'note' | 'corrected' | 'memberNumber'>) => {
+      /* Where a new one goes, and not left where it stood (owner, 27.08.2026:
+         „Vraća se na kraj reda kao nov"). A moderator who has already opened this
+         item read the numbers it had then; left in place with different numbers,
+         the next press decides something they never saw.
+
+         **Where a new one goes** is the front of this list, because `submit`
+         puts a new submission there and every list in this store is newest
+         first. His sentence has two halves and under a newest-first list they
+         pull apart: put at the far end of the array, a result corrected a minute
+         ago is drawn **below** results sent last week, which is the one place a
+         new arrival is never drawn. „Kao nov" is the half that can be obeyed
+         exactly, and the half that decides: what it loses is its old place, which
+         is the whole point, and what it gains is the place anything freshly
+         arrived has. Said here because the other reading is defensible and the
+         cost of changing it is one line.
+
+         Marked as corrected on the way, and that mark is the whole of what the
+         queue is told: „samo labela, ne šta je ispravljano" (owner, same day),
+         which is the only thing that can be said while no history of a result is
+         kept (P9). */
+      setSubmissions((current) => [
+        ...current
+          .filter((one) => one.id === id)
+          .map((one) => {
+            /* Marked as corrected only where something really moved. „Samo
+               labela" (owner, 27.08.2026) is a label that has to mean something,
+               and a member who presses „Izmeni" and sends the same numbers back
+               has corrected nothing: measured, that put „Ispravljeno" on a row
+               nobody had touched, telling the moderator to re-read numbers that
+               had not changed.
+
+               Read through a plain record rather than by asserting the shape of a
+               key, because an assertion is what this portal does not write
+               (ADL A14). */
+            const before: Record<string, unknown> = { ...one }
+            const moved = Object.entries(corrected)
+              /* The two the member never types: both are worked out from what
+                 they do type, so a difference in either is a difference in
+                 something already compared beside it, and comparing them again
+                 only adds ways to be wrong. */
+              .filter(([field]) => field !== 'points' && field !== 'category')
+              .some(([field, value]) => before[field] !== value)
+
+            return {
+              ...one,
+              ...corrected,
+              status: 'pending' as const,
+              note: '',
+              corrected: one.corrected || moved,
+            }
+          }),
+        ...current.filter((one) => one.id !== id),
+      ])
     },
     [],
   )
+
+  /**
+   * Taking one's own result back.
+   *
+   * Owner, 27.08.2026: „član ga ili briše (ima pravo na to, iako je verifikovan)
+   * ili menja i dostavlja dokaz za tu izmenu". The half that lives here is the
+   * one about a result still in the queue; a verified one is not a submission at
+   * all and is taken back where the portal keeps it.
+   *
+   * Gone rather than kept and flagged, because the portal keeps no history of a
+   * result (P9): a withdrawn one would be a record nobody is allowed to read and
+   * a row in a queue nobody may decide.
+   */
+  const withdraw = useCallback((id: string) => {
+    setSubmissions((current) => current.filter((one) => one.id !== id))
+  }, [])
 
   /* An id of its own shape, so nothing can collide with the ids in the file the
      rest of the queue is read from, and so a decision written against it is
@@ -195,6 +280,7 @@ export function SessionProvider({
       submissions,
       submit,
       resubmit,
+      withdraw,
       decide,
       inbox,
       going,
@@ -226,6 +312,7 @@ export function SessionProvider({
       submissions,
       submit,
       resubmit,
+      withdraw,
       decide,
       inbox,
       markRead,
