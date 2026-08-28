@@ -303,7 +303,18 @@ const Field = memo(function Field({
     'aria-required': asked,
     'aria-invalid': error !== undefined,
     'aria-describedby': describedBy === '' ? undefined : describedBy,
-    className: 'field__control',
+    /* And a held control wears the portal's one dress for a control that is
+       reachable and will not answer. This is where the four fields a race fills
+       in actually live: `led` locks the date, the length, the climb and the fall
+       (`pages/member/NewResult.tsx`), and until 28.08.2026 all four carried the
+       plain class. Measured by a review that day in Chrome over the built
+       stylesheet: the difference between the whole computed style of a locked
+       field and a live one was the empty set, down to the same background and the
+       same text cursor. `disabled` had made exactly one visible difference and
+       the move to `aria-disabled` took it away without putting anything in its
+       place. The rule is in `PlaceField.css`, beside the control that first
+       needed it. */
+    className: locked ? 'field__control field__control--held' : 'field__control',
     autoFocus: open,
     /* Held, not switched off (PDL: „Odbijeno, ne ugaseno", and the same argument
        is written out in `PlaceField.tsx` beside the country).

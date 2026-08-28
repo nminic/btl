@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { bare, ruleFor } from '../test/stylesheet'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
@@ -584,7 +587,13 @@ describe('the place on a form that is locked by the race chosen above it', () =>
     const { box, onCountry } = renderField({ town: 'Be', country: 'RS' }, true)
 
     box.focus()
-    await user.keyboard('{ArrowDown}')
+    /* Three presses and not one, which is the difference between measuring the
+       lock and measuring nothing: the first only opens the list and leaves no row
+       standing, so Enter after it writes nothing whether the lock is there or not.
+       Measured by a review on 28.08.2026 with the lock taken out: the one press
+       version passed. With three, the same walk gives „Beočin" in place of „Be",
+       which is the scenario this case is named after. */
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
 
     expect(screen.queryByRole('listbox'), 'the list opened on a locked field').toBeNull()
 
@@ -650,5 +659,152 @@ describe('the place on a form that is locked by the race chosen above it', () =>
     expect(country).not.toHaveAttribute('aria-disabled')
     expect(box).not.toHaveClass('field__control--held')
     expect(country).not.toHaveClass('field__control--held')
+  })
+})
+
+describe('a lock that arrives while the list of towns is standing', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  /** The field with a lock that can be turned while it stands, which is the only
+   *  way to reach the state this is about: the list is opened by typing, and a
+   *  locked field cannot be typed into. */
+  function Turning() {
+    const [locked, setLocked] = useState(false)
+    const [town, setTown] = useState('Be')
+    const [country, setCountry] = useState('RS')
+
+    return (
+      <I18nProvider locale="sr">
+        <div
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              outerSawEscape()
+            }
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setLocked(true)
+            }}
+          >
+            izaberi trku
+          </button>
+          <PlaceField
+            id="mesto"
+            name="city"
+            value={town}
+            country={country}
+            invalid={false}
+            locked={locked}
+            describedBy={undefined}
+            onChange={(next, chosen) => {
+              setTown(next)
+              setCountry(chosen)
+            }}
+          />
+        </div>
+      </I18nProvider>
+    )
+  }
+
+  const outerSawEscape = vi.fn()
+
+  beforeEach(() => {
+    outerSawEscape.mockClear()
+  })
+
+  it('will not give up the town to a press on a row of it', async () => {
+    /* The fourth road in, and the only one a pointer takes. Three were shut and
+       this was left open, which is the same fault in miniature: the lock was
+       counted rather than the ways past it. Measured by a review on 28.08.2026:
+       the field wearing `aria-disabled="true"` took „Beocin" in place of „Be". */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+
+    await user.type(box, 'o')
+
+    const row = within(await screen.findByRole('listbox')).getAllByRole('option')[0]
+
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    expect(box).toHaveAttribute('aria-disabled', 'true')
+
+    fireEvent.mouseDown(must(row, 'a town on offer'))
+
+    expect(box).toHaveValue('Beo')
+  })
+
+  it('still answers Escape, which is the one press that writes nothing', async () => {
+    /* The first version of the lock refused every press, Escape with the rest, and
+       a list left standing over a field locked under it then had no keyboard
+       dismissal at all: WAI-ARIA 1.2 asks every combobox for one, and the rows of
+       that list are live (the case above). Worse, the press went on to whatever
+       ancestor was listening for it, of which the portal has four
+       (`Dropdown`, `FieldHint`, `DatePicker`, `EditableCell`), so one Escape shut
+       whatever the field was standing inside. */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+
+    await user.type(box, 'o')
+    await screen.findByRole('listbox')
+
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    box.focus()
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('listbox'), 'escape left the list standing').toBeNull()
+    expect(outerSawEscape, 'the press went on to whatever stands around it').not.toHaveBeenCalled()
+  })
+})
+
+describe('what the portal’s dress for a held control actually says', () => {
+  it('is a rule with a home, and not only a name on an element', () => {
+    /* The case further up asks that the class is on the element, and the class
+       name is written by hand in both places. That is half a guard: measured by a
+       review on 28.08.2026 by renaming the rule in the stylesheet alone, all 2229
+       tests stayed green while a locked field went back to looking exactly like a
+       live one, down to the same background and the same text cursor.
+
+       So the rule itself is read. Two declarations and no more: what makes a held
+       control tell a reader it will not answer is that it is shaded and that the
+       pointer stops promising an answer over it. */
+    const held = ruleFor(
+      readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8'),
+      '.field__control--held',
+      'PlaceField.css',
+    )
+
+    expect(held.background).toBe('var(--surface-hover)')
+    expect(held.cursor).toBe('default')
+  })
+
+  it('reaches the four fields a chosen race fills in, which is where they live', () => {
+    /* `PlaceField` is not one of them. No form on the portal locks it today, and
+       the four that a race really does lock are drawn by the renderer of forms
+       from one shared set of properties. Measured by a review on 28.08.2026 in
+       Chrome over the built stylesheet: the difference between the whole computed
+       style of a field locked there and a live one was the empty set.
+
+       Read off the renderer's source, because a screen that locks those four is a
+       flow of its own and this file is about the place. */
+    const renderer = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.tsx'), 'utf-8')
+
+    expect(bare(renderer)).toContain("locked ? 'field__control field__control--held' : 'field__control'")
   })
 })

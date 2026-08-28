@@ -189,6 +189,16 @@ export function PlaceField({
   }, [open])
 
   function choose(place: Place) {
+    /* The fourth road into a locked field, and the only one a pointer takes.
+       Three were shut on 28.08.2026 and this was left open, which is the same
+       fault in miniature: the lock was counted rather than the ways past it.
+       Measured by a review the same day: turn the lock while the list is standing
+       and press a row, and the field wearing `aria-disabled="true"` takes
+       „Beocin“ in place of „Be“. */
+    if (locked === true) {
+      return
+    }
+
     touched.current = true
     onChange(placeName(place, locale), place[1])
     setPicked(place)
@@ -197,15 +207,6 @@ export function PlaceField({
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
-    /* Nothing at all while the field is held. `readOnly` stops typing and stops
-       nothing else: ArrowDown opened the list again and Enter took a town out of
-       it, so a control the portal says cannot be answered answered anyway.
-       Measured by a review on 23.08.2026 with the keyboard alone: the value went
-       from „Be" to „Beocin" on a field that was locked. */
-    if (locked === true) {
-      return
-    }
-
     if (event.key === 'Escape') {
       /* And stops here. Any ancestor listening for Escape would otherwise take
          it too, so one press both closed these suggestions and shut whatever
@@ -214,6 +215,22 @@ export function PlaceField({
       setOpen(false)
       setAt(-1)
 
+      return
+    }
+
+    /* Nothing else at all while the field is held, and Escape above this rather
+       than below it on purpose. `readOnly` stops typing and stops nothing else:
+       ArrowDown opened the list again and Enter took a town out of it, so a
+       control the portal says cannot be answered answered anyway. Measured by a
+       review on 23.08.2026 with the keyboard alone: the value went from „Be“ to
+       „Beocin“ on a field that was locked.
+     *
+       Escape is the one press here that writes nothing, and the first version of
+       this refused it along with the rest. Measured by a review on 28.08.2026: a
+       list left standing over a field locked under it then had no keyboard
+       dismissal at all, which WAI-ARIA 1.2 asks every combobox for, and the press
+       went on to whatever ancestor was listening, of which the portal has four. */
+    if (locked === true) {
       return
     }
 
