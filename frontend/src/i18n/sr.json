@@ -963,6 +963,7 @@
     "reasonKeptPlaceholder": "Bez razloga se ne odbija. Poruka ne ide, jer nema kome.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
     "proof": "Prilog: {file}",
+    "unusableLink": "Član je poslao adresu koju portal ne otvara.",
     "decision": "Odluka",
     "confirmSendBack": "Odbij uz ovaj razlog",
     "cancel": "Odustani",

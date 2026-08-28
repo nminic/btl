@@ -8,6 +8,8 @@ import {
   outsideLink,
 } from '../../data/outsideLink'
 import { must } from '../../test/at'
+import sr from '../../i18n/sr.json'
+import { translate } from '../../i18n/translate'
 import { renderAt } from '../../test/render'
 import { useSession } from '../../session/useSession'
 
@@ -32,6 +34,12 @@ function readForm(at: string): { name: string; pattern?: string; maxLength?: num
   )
 
   return parsed.fields
+}
+
+/** The words a moderator really reads, out of the one dictionary the portal has,
+ *  so a case cannot pass over a sentence nobody wrote. */
+function t(key: string): string {
+  return translate(sr, 'sr', key)
 }
 
 const ME = '000007'
@@ -169,7 +177,11 @@ describe('the shape an address of somebody else’s page must have', () => {
 
        Both directions, because either alone would pass on a function that
        answered nothing at all. */
-    for (const said of ['https://[::1', 'https://']) {
+    /* Both of them refused by the reading and not by the pattern, which is what
+       this case is about: `https://` is refused by the pattern and would pass this
+       whether the two functions agree or not. Measured by a review on 28.08.2026,
+       which is how it was found in the first version of this. */
+    for (const said of ['https://[::1', 'https://primer.rs:99999/r']) {
       expect(outsideLink(said), `${said} was drawn as a link`).toBeUndefined()
       expect(outsideHost(said), `${said} was given a host`).toBeUndefined()
     }
@@ -272,8 +284,40 @@ describe('the queue the moderator decides in', () => {
         `${said} was drawn as a link`,
       ).toBeNull()
       expect(table.getByText(/Probna trka/)).toBeVisible()
+      /* And the moderator is told that something was sent, which is the half that
+         was missing: without it a member who attached a picture and no address
+         and a member who sent an address the portal refuses draw the same row. */
+      expect(table.getByText(t('review.unusableLink'))).toBeVisible()
 
       cleanup()
     }
+  })
+
+  it('says nothing of the sort where nothing was sent at all', async () => {
+    /* Član 37 lets a member attach a picture instead of an address, so an empty
+       link is the ordinary case and not a fault. A queue that complained about it
+       would be complaining about every second result. */
+    const table = await queueWith('')
+
+    expect(table.getByText(/Probna trka/)).toBeVisible()
+    expect(table.queryByText(t('review.unusableLink'))).toBeNull()
+  })
+
+  it('tells the moderator when an address the form took cannot be opened', async () => {
+    /* The form asks a pattern and this screen asks a browser, and the browser is
+       stricter: `https://primer.rs:99999/rezultati` is a port nobody has, and the
+       form takes it. Measured by a review on 28.08.2026 in that exact case: the
+       queue drew the race name and nothing else, so a moderator was deciding on
+       evidence they could not see had been sent.
+
+       The address itself is not drawn, on purpose. It is a string the member
+       wrote and this screen has already decided it will not hand it to a browser;
+       printing it beside the name would put an unopenable address in front of
+       somebody who might copy it out. */
+    const table = await queueWith('https://primer.rs:99999/rezultati')
+
+    expect(table.queryByRole('link', { name: /Probna trka/ })).toBeNull()
+    expect(table.getByText(t('review.unusableLink'))).toBeVisible()
+    expect(table.queryByText(/99999/)).toBeNull()
   })
 })

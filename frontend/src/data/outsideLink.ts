@@ -153,8 +153,14 @@ function parsed(said: string): URL | undefined {
     return new URL(said)
   } catch {
     /* Thrown on an address whose shape passes the pattern and whose authority a
-       browser refuses: `https://` with nothing after it, and `https://[::1` with
-       a bracket nobody closed. */
+       browser refuses: `https://[::1` with a bracket nobody closed, a port no
+       machine has (`https://primer.rs:99999/`), a host with a stray percent in it
+       (`https://prim%er.rs/`).
+     *
+       Not `https://` with nothing after it, which an earlier version of this
+       comment gave as the example: the pattern asks for at least one character
+       after the slashes, so that one never reaches here at all. A review measured
+       it on 28.08.2026 by throwing from the branch above. */
     return undefined
   }
 }
