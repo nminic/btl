@@ -1,6 +1,7 @@
-import { CLOSEST, WHOLE } from './crop'
-import type { Crop } from './crop'
+import { bigEnough, closestIn, SMALLEST_PIXELS, WHOLE } from './crop'
+import type { Crop, Shape } from './crop'
 import { CropWindow } from './CropWindow'
+import { useState } from 'react'
 import { AskedLabel } from '../forms/AskedLabel'
 import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -49,6 +50,21 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
   onChange: (chosen: Chosen | null) => void
 }) {
   const { locale, t } = useI18n()
+  /* Why the last file was not taken, where it was not. Held here rather than
+     handed up, because it is about the choosing and goes the moment another file
+     is chosen; the screen above only ever hears about pictures it can use. */
+  const [refused, setRefused] = useState<'small' | 'unreadable' | null>(null)
+  /* How big the file turned out to be, which only the browser can answer and only
+     after it has decoded the picture. Held here rather than inside the window
+     below, because two things on this screen need it and neither is the drawing:
+     a picture too small to draw the circle without loss is refused outright and
+     the cropper is never opened over it (owner, 23.08.2026: „slika manja od te
+     granice se odbija pri podizanju … kroper se nad njom i ne otvara"), and one
+     that passes decides how small its own circle may be. */
+  const [shape, setShape] = useState<Shape | null>(null)
+  /* The shape only once it is one the portal will take. Anything else has already
+     been refused above, and a `null` here is what keeps the cropper shut. */
+  const measured = shape !== null && bigEnough(shape) ? shape : null
 
   /* One slider, three times over. Written out three times it drifted within a
      day of being written: the zoom kept the label of the axis above it.
@@ -103,21 +119,115 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
           accept="image/*"
           aria-required={asked}
           onChange={(event) => {
+            setShape(null)
+            setRefused(null)
             take(event.target.files?.[0], onChange)
           }}
         />
         <p className="member__note">{rule}</p>
+
+        {/* And why a file was turned away, said where the rule about files is
+            said. `role="alert"` because it appears in answer to a press and
+            nothing else on the screen changes: without it a member reading by
+            ear chooses a picture and hears nothing at all.
+
+            The number is in the sentence rather than in the code beside it, so
+            the boundary is said in the same words wherever it is said. */}
+        {refused !== null && (
+          <p className="member__note member__note--refused" role="alert">
+            {refused === 'small' ? t('crop.tooSmall', { least: String(SMALLEST_PIXELS) }) : t('crop.unreadable')}
+          </p>
+        )}
       </div>
 
+      {/* The picture measured before anything is offered over it.
+       *
+          Drawn rather than decoded on the side, because a picture has no width
+          until a browser has read it and this is the reading everything else on
+          the portal already does (`CropWindow`, and the queue). Off the screen
+          and out of the accessible tree: it is a measurement and not something to
+          look at, and the picture itself is shown a moment later by the window
+          below.
+       *
+          Both or neither, the same as everywhere else: a file the browser could
+          not decode reports nought for each, and nought is not a size to judge
+          against. */}
       {chosen !== null && (
+        <img
+          className="visually-hidden"
+          aria-hidden="true"
+          alt=""
+          src={chosen.picture}
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget
+
+            if (naturalWidth === 0 || naturalHeight === 0) {
+              /* The same answer as a file that failed outright, because it is the
+                 same state: nothing was measured, so nothing can be offered over
+                 it. It used to return in silence, which left the member with no
+                 cropper, no message and a live send button, which is the very
+                 thing `onError` below was added to close. One decision reached by
+                 two roads had two different endings until 28.08.2026. */
+              setRefused('unreadable')
+              onChange(null)
+
+              return
+            }
+
+            const size = { width: naturalWidth, height: naturalHeight }
+
+            setShape(size)
+
+            if (!bigEnough(size)) {
+              /* Refused, and the picture goes with the refusal: the cropper is
+                 never opened over something the portal cannot draw without loss,
+                 and a member left holding a file they cannot use would have to
+                 work out for themselves that it is gone. */
+              setRefused('small')
+              onChange(null)
+            }
+          }}
+          onError={() => {
+            /* A file the browser cannot read is not a picture, whatever it is
+               called and whatever `accept="image/*"` let through: a `.heic` from
+               a telephone is the ordinary case, and a truncated JPEG is the other
+               one. Without this the member is left with no cropper, no message
+               and a live send button, and pressing it really does put the file in
+               front of a moderator. Measured by a review on 27.08.2026, in the
+               flow: „alert: [], cropper open: false, send aria-disabled: false,
+               sent through: true".
+
+               Said in its own words and not in the words of a picture that is
+               too small. Measured by a review on 28.08.2026: a 4032 by 3024 photo
+               off an iPhone, which Chrome cannot decode because it is `.heic`,
+               was answered with „Slika je premala. Najkraća strana mora da ima bar
+               240 piksela", which is untrue of that file and asks the member to do
+               something that cannot help. Every following `.heic` said the same,
+               and the portal had no way out of it. */
+            setRefused('unreadable')
+            onChange(null)
+          }}
+        />
+      )}
+
+      {chosen !== null && measured !== null && (
         /* Named as a group, because what is on screen is a picture and three
            controls that only mean anything together. Without this a screen
            reader meets „Levo i desno" with nothing saying what moves. */
         <div className="crop__choosing" role="group" aria-label={t('crop.choosing')}>
-          <CropWindow picture={chosen.picture} crop={chosen.crop} alt={alt}>
+          <CropWindow
+            picture={chosen.picture}
+            crop={chosen.crop}
+            alt={alt}
+            /* The picture answers a pointer, the sliders answer everything else,
+               and both write the same three numbers into the same place. */
+            onChange={(crop) => {
+              onChange({ ...chosen, crop })
+            }}
+          >
             {slider(chosen, 'x', 0)}
             {slider(chosen, 'y', 0)}
-            {slider(chosen, 'size', CLOSEST)}
+            {slider(chosen, 'size', closestIn(measured))}
           </CropWindow>
         </div>
       )}

@@ -1355,6 +1355,8 @@
   "crop": {
     "choosing": "Isecanje slike",
     "framed": "Deo slike u krugu je ono što će se videti. Ostatak je zatamnjen, ali se i dalje nazire.",
+    "tooSmall": "Slika je premala. Najkraća strana mora da ima bar {least} piksela, da bi krug ostao oštar svuda gde se prikazuje.",
+    "unreadable": "Ova slika se ne može otvoriti. Izaberi drugu, na primer u JPG ili PNG obliku.",
     "x": "Pomeri levo i desno",
     "y": "Pomeri gore i dole",
     "size": "Veličina isečka",

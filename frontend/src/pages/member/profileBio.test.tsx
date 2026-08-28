@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import type { Competitor } from '../../data/types'
 import { must } from '../../test/at'
+import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import sr from '../../i18n/sr.json'
 import { setupUser } from '../../test/user'
@@ -217,6 +218,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       await picture.findByLabelText(/Izaberi novu sliku/),
       new File(['slika'], 'nova.jpg', { type: 'image/jpeg' }),
     )
+    await measurePicture()
     await picture.findByLabelText('Veličina isečka')
     await user.click(picture.getByRole('button', { name: 'Pošalji na odobrenje' }))
 

@@ -115,3 +115,23 @@ describe('the part of a picture the cropper lights up', () => {
     expect(fitted.getPropertyValue('border-radius')).toBe('')
   })
 })
+
+describe('the picture while there is something on it to drag', () => {
+  it('takes the touch itself, rather than letting the page scroll under it', () => {
+    /* The whole reason the class exists, and until 28.08.2026 nothing read it:
+       the two cases in `cropChooser.test.tsx` assert that the class is on the
+       element, and the declaration inside it had no reader at all. Measured by a
+       review that day: the line taken out of `Crop.css` altogether left both of
+       those green, and a drag on a telephone would again scroll the page while
+       the circle stayed where it was.
+
+       That is the fault the sliders were written to avoid (`CropChooser.tsx`), so
+       dragging has to answer for it rather than reintroduce it. */
+    const dragged = ruleFor(CROP, '.crop__picture--dragged', 'Crop.css')
+
+    expect(dragged.touchAction).toBe('none')
+    /* And what the pointer is told it may do. `grab` and not `move`: the picture
+       is not what moves, the circle over it is. */
+    expect(dragged.cursor).toBe('grab')
+  })
+})
