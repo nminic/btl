@@ -853,6 +853,7 @@
     "sendAgainNamed": "Ispravi i pošalji ponovo: {name}",
     "change": "Izmeni",
     "changeNamed": "Izmeni rezultat: {name}",
+    "own": "Moje",
     "noneSent": "Nijedan rezultat još nije poslat na proveru.",
     "counted": "Uračunato"
   },
@@ -862,6 +863,8 @@
     "note": "Rezultat ulazi u rang liste tek kad ga administrator odobri. Dok čeka, vidiš ga samo ti.",
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
     "changing": "Menjaš rezultat koji još čeka proveru. Kad ga pošalješ, vraća se na kraj reda.",
+    "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok se izmena ne odobri, on izlazi iz poretka, i uz nju mora da ide nov dokaz.",
+    "needsProof": "Uz izmenu uračunatog rezultata mora da ide link ka zvaničnim rezultatima ili slika kao dokaz.",
     "againDone": "Rezultat je ponovo poslat na proveru.",
     "raceName": "Naziv trke",
     "raceNameHint": "Posle dva slova nudimo trke iz kalendara, od poslednje ka ranijim. Kad izabereš jednu, datum, dužina, uspon i spust se popune sa nje. Ako naziv posle toga izmeniš, ta četiri polja se prazne i unosiš ih sam.",

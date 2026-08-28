@@ -384,3 +384,33 @@
   font-size: 0.8rem;
 }
 
+
+/* The two things a member may still do with a result that has been counted, in
+   the last cell of its row.
+
+   Written the same way as `.review__decide` above and for the same reason: a
+   pair of controls in a table cell needs a box of its own, because flex on the
+   `td` itself fights the table's own layout. What that comment there says about
+   the box applies here word for word.
+
+   It was named in the markup and never written, and the gap is why that
+   mattered rather than being untidy: measured by a review on 28.08.2026 at
+   360px, „Izmeni" ended at 542 and „Obriši" began at 542, so a destructive
+   control sat flush against a harmless one with nothing between them to catch a
+   thumb aimed at the wrong one.
+
+   The compact button is the same one the moderator's queue uses, and it is what
+   lets both fit a phone: full-sized, this column alone added 106px to a table
+   already 70px wider than the screen, and both controls ended up past the right
+   edge where nothing on the screen said they were there. */
+.my-results__own {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.my-results__own .button {
+  padding: var(--space-6) var(--space-12);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}

@@ -1,4 +1,6 @@
 import { fireEvent, screen, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { useEffect, useRef } from 'react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -25,6 +27,13 @@ import { useSession } from '../../session/useSession'
  */
 
 const ME = '000007'
+/** The counted results as the portal reads them, straight out of the file the
+ *  screens are served. Read rather than written down because a result's number
+ *  is the file's to choose, and a case about whose result it is has to name one
+ *  that really belongs to somebody else. */
+const countedResults: { id: string; memberNumber: string; raceName: string }[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/mock/results.json'), 'utf-8'),
+)
 const MINE = '/sr/moji-rezultati'
 const QUEUE = '/sr/administracija/verifikacija/rezultati'
 
@@ -344,13 +353,26 @@ describe('the queue a corrected result comes back to', () => {
   })
 })
 
-describe('one’s own result that has already been counted', () => {
-  it('does not open in the form, whatever the address says', async () => {
-    /* The road for a verified result is a different one (owner: „ili menja i
-       dostavlja dokaz za tu izmenu"), and it is not this form quietly reopening
-       something that is already in the standing. The list offers no way in, so
-       the only way to try is to type the address, which is exactly why the form
-       and not only the list has to say no.
+describe('a submission of one’s own that a moderator has already approved', () => {
+  it('does not open on the `?ponovo=` road, whatever the address says', async () => {
+    /* Two things on this screen are called „counted“ and they are not the same
+       thing, which is worth saying here because the block further down carries
+       the other one and reads like a contradiction of this one.
+     *
+       **This** is a `Submission` a moderator has approved: it stays in the queue's
+       own store wearing „Odobreno“, and the road to it is `?ponovo=`. **That** is
+       a `Result` in the standing, which is a different record with a different id,
+       and the road to it is `?ispravka=`. A member may change the second (owner,
+       27.08.2026: „ili menja i dostavlja dokaz za tu izmenu (ponovo)“); the first
+       has no road at all, because in the prototype an approval produces no
+       `Result` and there is nothing to take out of any standing. That gap is
+       recorded in `btl-produkt/PENDING.md` and waits on the owner, since closing
+       it means deciding what an approval does.
+     *
+       What this case guards is that the door for a submission still being decided
+       does not quietly reopen one that has been. The list offers no way in, so the
+       only way to try is to type the address, which is exactly why the form and
+       not only the list has to say no.
 
        Measured: with the condition widened to let anything through, every other
        test here stayed green, so this case is the whole of that guard. */
@@ -385,6 +407,37 @@ describe('one’s own result that has already been counted', () => {
     expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
     expect(screen.queryByText(/Menjaš rezultat koji još čeka/)).toBeNull()
     expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+  })
+})
+
+describe('somebody else’s result that has been counted', () => {
+  it('does not open on the `?ispravka=` road either, however the address is typed', async () => {
+    /* The same rule the waiting one has, on the road added beside it. It is the
+       one condition standing between a member and another member's standing, and
+       it is worth spelling out what goes if it fails: the screen opens saying
+       „Menjaš rezultat koji je već uračunat“, and Pošalji then calls
+       `remove(RESULTS, …)` on somebody else's number. Their result leaves every
+       ranking, every board and their own profile, and a submission goes into the
+       queue under the number of whoever typed the address.
+     *
+       Measured by a review on 28.08.2026: with the owner taken out of the
+       condition the whole suite stayed green at 2222 of 2222, and the screen
+       really did open. The sibling road had had this case since 27.08.2026 and it
+       was not copied across with the rest of it.
+     *
+       The number is read out of the file rather than written here: the ids are
+       the file's business, and a member's own result would prove nothing. */
+    const theirs = must(
+      countedResults.find((one) => one.memberNumber !== '000001'),
+      'a counted result belonging to somebody else',
+    )
+
+    renderAt(`/sr/rezultat/novi?ispravka=${theirs.id}`, 'competitor', '000001', undefined, '2026-08-23')
+
+    await screen.findByLabelText(/^Naziv trke/)
+
+    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+    expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
   })
 })
 
@@ -546,5 +599,216 @@ describe('the number a deleted result leaves behind', () => {
 
     expect(held, 'the walk did not end with two results').toHaveLength(2)
     expect(new Set(held).size, `two submissions answer to one number: ${held.join(', ')}`).toBe(2)
+  })
+})
+
+describe('a result that has been counted', () => {
+  /** A member with results in the file, and the one row this is about. */
+  const COUNTED = '/sr/moji-rezultati'
+
+  /** The first counted result, whichever race it happens to be: this member has
+   *  run some of them in more than one season, so a name does not name a row. */
+  const firstCounted = async () => {
+    const table = within(await screen.findByRole('table', { name: 'Uračunato' }))
+
+    return within(must(table.getAllByRole('row')[1], 'the first counted result'))
+  }
+
+  /** Every counted row as the words in it, in the order the table draws them.
+   *  Enough to tell one row from another: the same race run twice differs by its
+   *  date, and two results of one race on one day would be the same result. */
+  const countedRows = async () =>
+    within(await screen.findByRole('table', { name: 'Uračunato' }))
+      .getAllByRole('row')
+      /* Without the heading, which is a row to `getAllByRole` and not a result.
+         Left in, the comparison below would drop it instead of the row pressed
+         and pass whatever was deleted. */
+      .slice(1)
+      .map((one) => one.textContent ?? '')
+
+  /** What that row is a result of, read off the row rather than assumed. */
+  const raceOf = (row: ReturnType<typeof within>) =>
+    must(row.getAllByRole('cell')[1]?.textContent, 'the race of the row')
+
+  it('may be taken back, which it may not have been before', async () => {
+    /* Owner, 27.08.2026: „član ga ili briše (ima pravo na to, iako je
+       verifikovan)". That overturned the older rule, which allowed it only while
+       the result was still waiting. Verification is a check of what is true, not
+       a transfer of ownership.
+
+       Read through the store the administration deletes with, so a result taken
+       back leaves every screen that reads results and not only this one. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+    const before = await countedRows()
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('button', { name: /^Obriši/ }))
+    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje/ }))
+
+    /* The whole table before against the whole table after, and not the count of
+       either. Measured by a review on 28.08.2026: with `remove` given another
+       result's number the table was still one row shorter, so a press that
+       deleted somebody's third result read as success. Row by row it cannot: the
+       order is by date and nothing else (`resultsOf`), so taking out the first
+       leaves exactly the rest of the list, and taking out any other leaves the
+       first still standing at the front. */
+    expect(await countedRows()).toEqual(before.slice(1))
+  })
+
+  it('leads to the form with its own numbers, and the race locked', async () => {
+    /* „Ili menja i dostavlja dokaz za tu izmenu (ponovo)" (owner, same day). The
+       race is locked here for the same reason it is locked on a waiting result:
+       „sve osim trke". */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+    const race = raceOf(row)
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+
+    expect(await screen.findByText(/Menjaš rezultat koji je već uračunat/)).toBeVisible()
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('readonly')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue(race)
+  })
+
+  it('gives up its category on a phone rather than its controls', async () => {
+    /* The column had to come from somewhere. Measured by a review on 28.08.2026
+       at 360 by 780: with the new column the table drew 504 pixels inside a box of
+       328 and both controls stood entirely past the right edge, where nothing on
+       the screen said they were there.
+     *
+       The category is what goes, and not at random: it is worked out from the
+       distance and nothing else (`categoryOf`), it is named in full on the profile
+       and in every ranking, and the race beside it already says which race this
+       was. The controls exist on no other screen, so they are the last thing to
+       go. The moderator's queue makes the same trade with five of its columns.
+     *
+       jsdom draws no stylesheet, so what is measured is the ask and not the
+       pixels; the pixels are in `ownResultStyle.test.ts`. */
+    renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+    const row = await firstCounted()
+    const cells = row.getAllByRole('cell')
+
+    expect(must(cells[2], 'the category').className).toContain('table__hide-phone')
+    expect(must(cells[5], 'what a member may do').className).not.toContain('table__hide-phone')
+  })
+
+  it('says what is missing even when the box holds only spaces', async () => {
+    /* The sentence is the whole of what this road adds to the form, and it was
+       skipped for anything that is not exactly empty. Measured by a review on
+       28.08.2026: three spaces in Link and the member saw only „obavezno polje",
+       which does not say that a link or a picture is what this particular change
+       needs. Sending was refused either way, so nothing got past; what was lost
+       was the explanation. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), '   ')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(
+      await screen.findByText(/mora da ide link ka zvaničnim rezultatima ili slika/),
+    ).toBeVisible()
+  })
+
+  it('keeps its own race whatever the box is made to say', async () => {
+    /* „Sve osim trke“ (owner, 27.08.2026) was written for a submission being sent
+       again and the counted result was added beside it without carrying the rule
+       across: the name was read off the record only when `correcting` was set, so
+       on this road it came out of the box after all.
+     *
+       Measured by a review on 28.08.2026 with exactly this walk: the queue took
+       „Sasvim druga trka“ in place of the race the member had actually run, under
+       a member who never ran it. The lock is still a courtesy and is measured by
+       the case above; what is measured here is what holds when something reaches
+       the code past it, which is the same half the sibling road already guards. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23', <Sent />)
+
+    const row = await firstCounted()
+    const race = raceOf(row)
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+
+    fireEvent.change(screen.getByLabelText(/^Naziv trke/), { target: { value: 'Sasvim druga trka' } })
+
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+
+    const stored = within(screen.getByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(stored).toHaveLength(1)
+    expect(stored[0]?.textContent).toContain(race)
+    expect(stored[0]?.textContent).not.toContain('Sasvim druga trka')
+  })
+
+  it('is refused without new proof, and taken with it', async () => {
+    /* The one rule this road has that the others do not. Both halves, because a
+       refusal that never lifts is a screen nobody can get past. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(
+      await screen.findByText(/mora da ide link ka zvaničnim rezultatima ili slika/),
+    ).toBeVisible()
+
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+  })
+
+  it('leaves the standing while it waits, rather than counting twice', async () => {
+    /* The half that decides whether this is honest: a member who changed a
+       counted result must not have the old points counted while the new ones
+       wait. „Odmah se ažurira poredak nakon verifikacije" (owner, same day), so
+       until then it is in neither place but the queue. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const before = await countedRows()
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+
+    /* Walked back rather than rendered again: the prototype keeps this visit's
+       changes in the session, and a second render is a second visit that never
+       saw them. The confirmation offers the way back, which is the road a member
+       takes anyway. */
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    /* Which row left, and not how many. The same review measured the same hole
+       here: sending the correction while another result was deleted instead left
+       the changed one counted and waiting at once, which is the very thing this
+       case is named after, and the count did not notice. */
+    expect(await countedRows(), 'the row changed is the row that left the standing').toEqual(
+      before.slice(1),
+    )
   })
 })

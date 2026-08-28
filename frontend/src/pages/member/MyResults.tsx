@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { resultsOf } from '../../data/derive'
-import { useResults } from '../../data/useResource'
+import { RESULTS, useResults } from '../../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { DeleteRecord } from '../admin/EntityEditor'
@@ -15,7 +15,7 @@ import './Member.css'
  * where a pending one is visible at all. */
 export function MyResults() {
   const { locale, t } = useI18n()
-  const { memberNumber, submissions, withdraw } = useSession()
+  const { memberNumber, submissions, withdraw, remove } = useSession()
   const state = useResults()
 
   if (memberNumber === null) {
@@ -131,11 +131,27 @@ export function MyResults() {
                       the race (owner, 23.08.2026), and a heading that says otherwise
                       is read out with every cell under it. */}
                   <th scope="col">{t('profile.columns.race')}</th>
-                    <th scope="col">{t('rankings.columns.category')}</th>
+                    {/* Away on a phone, so that what a member came here to do
+                        fits on the screen they are holding. Chosen rather than
+                        dropped at random: the category is worked out from the
+                        distance and nothing else (`categoryOf`), it is named in
+                        full on the profile and in every ranking, and the race in
+                        the cell beside it already says which race this was. The
+                        two controls are the only thing on this screen that
+                        exists nowhere else, so they are the last thing to go.
+                        The moderator's queue makes the same trade with five of
+                        its columns (`admin/ReviewQueue.tsx`). */}
+                    <th scope="col" className="table__hide-phone">
+                      {t('rankings.columns.category')}
+                    </th>
                     <th scope="col" className="table__hide-phone">
                       {t('profile.columns.time')}
                     </th>
                     <th scope="col">{t('profile.columns.points')}</th>
+                    {/* Named, because two controls in a cell with no heading are
+                        two buttons a screen reader meets with nothing saying what
+                        column they are in. */}
+                    <th scope="col">{t('myResults.own')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -149,9 +165,42 @@ export function MyResults() {
                             događaja." */}
                         {result.raceName}
                       </td>
-                      <td>{t(`category.${result.category}`)}</td>
+                      <td className="table__hide-phone">{t(`category.${result.category}`)}</td>
                       <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
                       <td className="table__points">{formatPoints(result.points, locale)}</td>
+                      {/* What a member may still do with a result that has been
+                          counted. Owner, 27.08.2026: „član ga ili briše (ima
+                          pravo na to, iako je verifikovan) ili menja i dostavlja
+                          dokaz za tu izmenu (ponovo)."
+
+                          That overturned an older decision, which said a member
+                          may delete their own result only while it is waiting.
+                          Verification is a check of what is true, not a transfer
+                          of ownership: the result is the member's own record and
+                          the right to withdraw it does not end because a
+                          moderator agreed with it.
+
+                          Changing it is not an edit in place. It leaves the
+                          standings, goes back to the queue carrying new proof,
+                          and returns only when somebody has agreed with it again;
+                          anything else would let a member move their own points
+                          after they were counted. */}
+                      <td className="my-results__own">
+                        <Link
+                          className="button button--secondary"
+                          aria-label={t('myResults.changeNamed', { name: result.raceName })}
+                          to={`/${locale}/rezultat/novi?ispravka=${result.id}`}
+                        >
+                          {t('myResults.change')}
+                        </Link>
+                        <DeleteRecord
+                          name={result.raceName}
+                          look="button button--secondary"
+                          onDelete={() => {
+                            remove(RESULTS, result.id)
+                          }}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
