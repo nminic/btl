@@ -165,24 +165,29 @@ export function PlaceField({
       return
     }
 
-    /* And nothing at all while the field is held, which is the fifth road in and
-       the one nobody was counting: this writes without a press, so no guard on a
-       press could ever have covered it. Measured by a review on 28.08.2026 with a
-       form whose chosen entry fills the town and leaves the country empty: the
-       country came out `RS` on a field wearing `aria-disabled="true"` that nobody
-       had touched.
-
-       Counted rather than felt this time. `onChange` is called from five places
-       in this file: here, the town's own change, the country's, `choose`, and the
-       road through `onKeyDown` into `choose`. All five are behind the lock. */
-    if (locked === true) {
-      return
-    }
-
+    /* **And this one writes even where the field is held**, which is the only
+       place in this file that does. It was put behind the lock on 28.08.2026 and
+       taken back out the same day, and the round trip is worth keeping.
+     *
+       The lock says what the **reader** may not change. This is not the reader
+       answering a control: it is the portal writing down a fact about the town, in
+       the same breath as the four fields a chosen race fills in, of which the
+       renderer of forms says in as many words that they „are not refused at all.
+       They are filled by the portal from the race" (`forms/FormRenderer.tsx`).
+     *
+       Behind the lock it made exactly one thing happen, and it was a dead end:
+       measured by a review, a held place holding a town the codebook knows and no
+       country left the country empty, the select natively switched off because the
+       town is recognised, and the form refused with „Popravi ova polja: Država"
+       over a control nobody on the screen could answer. The hole this fills is the
+       one the note above describes, and blocking it is how the note comes true.
+     *
+       Every other call to `onChange` in this file is behind the lock, and there are
+       four of them: here, the town's own change, the country's, and `choose`. */
     if (known !== undefined && known !== country) {
       onChange(value, known)
     }
-  }, [known, country, value, onChange, locked])
+  }, [known, country, value, onChange])
 
   useEffect(() => {
     if (!open) {
@@ -205,9 +210,11 @@ export function PlaceField({
   function choose(place: Place) {
     /* The road a pointer takes into a locked field. Three were shut on
        28.08.2026 and this was left open, which was the same fault in miniature:
-       the lock was counted rather than the ways past it. A round later a fifth was
-       found in the effect above, so they are counted now and not felt: five calls
-       to `onChange` in this file, all five behind the lock.
+       the lock was counted rather than the ways past it. Counted now and not
+       felt: `onChange` is called from four places in this file, and the three
+       that are the reader answering a control are all behind the lock. The
+       fourth, the effect above, is the portal filling a hole, and it says there
+       why it is not.
        Measured by a review the same day: turn the lock while the list is standing
        and press a row, and the field wearing `aria-disabled="true"` takes
        „Beocin“ in place of „Be“. */

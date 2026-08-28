@@ -874,39 +874,33 @@ describe('a locked place whose country the codebook could fill in', () => {
     )
   }
 
-  it('is left exactly as it stands, because nothing here may write to it', async () => {
-    /* The fifth road in, and the one nobody was counting: this one writes without
-       a press, so no guard on a press could ever have covered it. A record that
-       carries a town the codebook knows and no country at all is a hole, and
-       filling a hole from the codebook is what the effect exists for; on a locked
-       field it is a write into a control the portal says cannot be answered.
-
-       Measured by a review on 28.08.2026 with a form whose chosen entry fills the
-       town and leaves the country empty: the country came out „RS" on a field
-       wearing `aria-disabled="true"` that nobody had touched. */
+  it('still has its country filled in, because that write is the portal’s', async () => {
+    /* The one write in this file that goes through a held field, and it was put
+       behind the lock for a few hours on 28.08.2026 before a review measured what
+       that did.
+     *
+       The lock says what the **reader** may not change. This is not a reader
+       answering a control: it is the portal writing down a fact about the town, in
+       the same breath as the four fields a chosen race fills in, of which the
+       renderer of forms says that they „are not refused at all. They are filled by
+       the portal from the race".
+     *
+       Behind the lock it made exactly one thing happen, and it was a dead end: the
+       country stayed empty, the select was natively switched off because the town
+       is recognised, and the form refused with „Popravi ova polja: Država" over a
+       control nobody on the screen could answer.
+     *
+       Measured against the live twin, so what is asserted is that both arrive, and
+       not merely that the assertion was made before either did. */
     render(<Pair />)
 
     const countries = () => screen.getAllByRole('combobox', { name: /^Država/ })
 
-    /* The live twin is what says the turn has come: its country is filled from the
-       codebook, and only after that has happened is „the held one was not filled"
-       a statement about anything. */
     await waitFor(() => {
       expect(must(countries()[1], 'the live country')).toHaveValue('RS')
     })
 
-    expect(must(countries()[0], 'the held country')).toHaveValue('')
+    expect(must(countries()[0], 'the held country')).toHaveValue('RS')
   })
 
-  it('still fills that hole where the field is not held', async () => {
-    /* The other direction, because a guard that refused everything would pass the
-       case above and take the effect away with it. A record carrying a town the
-       codebook knows and no country at all is a hole, and filling a hole is what
-       the effect is for. */
-    const { onCountry } = renderField({ town: 'Beograd', country: '' })
-
-    await waitFor(() => {
-      expect(onCountry).toHaveBeenCalledWith('RS')
-    })
-  })
 })
