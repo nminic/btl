@@ -44,11 +44,52 @@ export type { Crop }
  */
 export const WHOLE: Crop = { x: 0.5, y: 0.5, size: 1 }
 
-/** The smallest square a member may cut down to, as a fraction of the shorter
- *  edge. A fifth of a photograph is already a close portrait; below that the
- *  thing in the circle is a handful of pixels blown up, which looks like a
- *  fault rather than a choice. */
-export const CLOSEST = 0.2
+/**
+ * The smallest circle the portal can still draw without loss, in real pixels.
+ *
+ * Owner, 23.08.2026: „najmanji krug je onaj koji portal još prikazuje bez
+ * gubitka", and that boundary is to be worked out from the largest size the
+ * picture is drawn at anywhere. Owner, 27.08.2026, choosing between three
+ * measured candidates: „Poslušaću preporuku 240."
+ *
+ * Where 240 comes from: a face is drawn in three sizes, `2,9rem` in tables,
+ * `4rem` on the front page and `clamp(3,25rem, 9vw, 5rem)` on a profile. The
+ * largest is 5rem, which is 80 CSS pixels at the ordinary text size, and 240 is
+ * that on a screen of three device pixels to one. The two candidates either side
+ * were 160, which covers an ordinary retina screen, and 480, which would also
+ * cover a reader at 200 per cent text and would halve how closely anybody could
+ * crop.
+ *
+ * Two rules come out of this one number, and they are not the same rule: a file
+ * whose shorter edge is under it is refused outright, and a circle may not be
+ * drawn smaller than it inside a file that passed.
+ */
+export const SMALLEST_PIXELS = 240
+
+/**
+ * The smallest circle allowed in a picture of this shape, as a fraction.
+ *
+ * A fraction of the shorter edge, which is what `size` means, so a photograph of
+ * 1200 pixels allows 0,20 and one of 480 allows 0,50: the closer a member may
+ * crop depends on what they handed over, which is the whole point of measuring in
+ * pixels rather than in fractions.
+ *
+ * It was a flat 0,2 until 27.08.2026, and that number said nothing about loss: a
+ * fifth of a large photograph is a portrait and a fifth of a small one is a
+ * handful of pixels blown up.
+ *
+ * Never above 1, because a picture may be exactly as small as the boundary, and a
+ * smallest circle larger than the whole picture is a slider with no room in it.
+ */
+export function closestIn(shape: Shape): number {
+  return Math.min(1, SMALLEST_PIXELS / Math.min(shape.width, shape.height))
+}
+
+/** What a picture must be to be taken at all: the shorter edge is what a square
+ *  is cut from, so it is the edge the boundary is about. */
+export function bigEnough(shape: Shape): boolean {
+  return Math.min(shape.width, shape.height) >= SMALLEST_PIXELS
+}
 
 /** How wide and how tall the picture actually is. Nought until the browser has
  *  the file, which is why `frameOf` treats it as a square: a frame drawn over
@@ -81,6 +122,113 @@ export function frameOf(crop: Crop, shape: Shape): Frame {
 }
 
 export type Frame = { left: string; top: string; width: string; height: string }
+
+/** A place inside the drawn picture, as a share of it in each direction: 0 is the
+ *  start of that edge and 1 the end. Shares and not pixels for the same reason a
+ *  crop is shares (see the head of this file). */
+export type Spot = { across: number; down: number }
+
+/** How much of each edge the square takes up in the drawn box, which is not the
+ *  same number in the two directions unless the picture is square. */
+function sides(crop: Crop, shape: Shape): { across: number; down: number } {
+  const side = crop.size * Math.min(shape.width, shape.height)
+
+  return { across: side / shape.width, down: side / shape.height }
+}
+
+/** A number pushed back between two others. */
+function held(value: number, least: number, most: number): number {
+  return Math.min(most, Math.max(least, value))
+}
+
+/**
+ * The same crop with its circle centred on a spot somebody is pointing at.
+ *
+ * Owner, 23.08.2026: „krug se pomera prstom na telefonu i tabletu, mišem na
+ * velikom ekranu, i time se bira drugi deo slike", and „krug nikad ne izlazi van
+ * ivice slike": moving stops at the edge, so a cut can never have an empty
+ * corner.
+ *
+ * The centre follows the pointer rather than the pointer carrying the circle by
+ * a remembered offset. A remembered offset has to be taken at the moment of the
+ * press and kept correct through every resize and every re-render, and gets it
+ * wrong exactly once, on the first press after something else moved.
+ *
+ * Nothing to clamp against but 0 and 1, because `x` and `y` are shares of the
+ * room left over rather than distances from an edge (see the head of this file).
+ * At a size of 1 there is no room in one axis and the division would be by
+ * nought, so that axis simply keeps what it had: a circle as wide as the picture
+ * has nowhere to go sideways.
+ */
+export function movedTo(crop: Crop, shape: Shape, spot: Spot): Crop {
+  const { across, down } = sides(crop, shape)
+
+  return {
+    ...crop,
+    x: across >= 1 ? crop.x : held((spot.across - across / 2) / (1 - across), 0, 1),
+    y: down >= 1 ? crop.y : held((spot.down - down / 2) / (1 - down), 0, 1),
+  }
+}
+
+/**
+ * The same crop grown or shrunk so its edge reaches the spot being dragged.
+ *
+ * Owner, 23.08.2026: „povlačenjem ivice krug se širi ili sužava", and „ispod nje
+ * se krug prosto ne da smanjiti, bez ijedne poruke o tome zašto". So the floor is
+ * a floor and not a refusal: the circle stops and nothing is said, because a
+ * message about a limit reached by dragging is a message nobody asked for.
+ *
+ * Measured from the middle of the circle to the spot, in the shorter edge's own
+ * units, because that is what `size` is a share of. The two directions are
+ * measured in the same units for the same reason: a share of a wide picture is a
+ * different number of pixels across than down, and a circle drawn from two
+ * different units is an ellipse.
+ *
+ * Kept inside the picture as well as above the floor. Growing past the edge would
+ * put the empty corner back that moving is careful not to make, so the ceiling is
+ * whatever still fits where the circle now sits.
+ */
+export function sizedTo(crop: Crop, shape: Shape, spot: Spot, least: number): Crop {
+  const shorter = Math.min(shape.width, shape.height)
+  const { across, down } = sides(crop, shape)
+  /* Where the middle of the circle is now, as a share of each edge. It stays
+     exactly there: owner, 27.08.2026, „Kad razvlačim deo kruga, treba da centralna
+     pozicija bude nepokretna, a da se kružnica širi i skuplja."
+
+     That has to be worked out and put back, because `x` and `y` are not the middle:
+     they are shares of the room left over (see the head of this file), so leaving
+     them alone while the size changes slides the middle across the picture. */
+  const middleAcross = crop.x * (1 - across) + across / 2
+  const middleDown = crop.y * (1 - down) + down / 2
+  /* The pointer's distance from that middle, both in units of the shorter edge,
+     because that is what `size` is a share of and because a circle measured in two
+     different units is an ellipse. */
+  const reachAcross = Math.abs(spot.across - middleAcross) * (shape.width / shorter)
+  const reachDown = Math.abs(spot.down - middleDown) * (shape.height / shorter)
+  const wanted = 2 * Math.max(reachAcross, reachDown)
+  /* How far it may grow before it touches an edge, with the middle standing
+     still: „Širi se dok ne udari u neku od ivica slike" (owner, same day). The
+     nearest edge in each direction decides, and both are measured in the shorter
+     edge's units like everything else here. */
+  const roomAcross = Math.min(middleAcross, 1 - middleAcross) * (shape.width / shorter)
+  const roomDown = Math.min(middleDown, 1 - middleDown) * (shape.height / shorter)
+  const most = Math.min(1, 2 * Math.min(roomAcross, roomDown))
+  /* And how far it may shrink: „skuplja dok ne udari o minimum koji je potreban za
+     dobar prikaz po portalu". A floor and not a refusal, so nothing is said and
+     the circle simply stops. Held under the ceiling as well, for a picture so
+     small that the smallest circle is already larger than the room. */
+  const size = held(wanted, Math.min(held(least, 0, 1), most), most)
+  const grown = { across: (size * shorter) / shape.width, down: (size * shorter) / shape.height }
+
+  return {
+    size,
+    /* The middle put back where it was, read out of the new size. Where the
+       circle now fills an axis there is no room in it and no choice to make, so
+       the share is the one value that means „nowhere to go". */
+    x: grown.across >= 1 ? 0.5 : held((middleAcross - grown.across / 2) / (1 - grown.across), 0, 1),
+    y: grown.down >= 1 ? 0.5 : held((middleDown - grown.down / 2) / (1 - grown.down), 0, 1),
+  }
+}
 
 /**
  * The same circle, written as a hole to cut out of a sheet of shade.
@@ -220,7 +368,11 @@ export function cropIn(value: unknown): Crop {
 
   const { x, y, size } = value
 
-  if (!isFraction(x) || !isFraction(y) || !within(size, CLOSEST, 1)) {
+  /* A size of nought is not a crop, and a size above one is not a square that
+     fits. How **small** a crop may be is not asked here: that depends on the
+     picture in front of the reader (`closestIn`) and a stored record does not
+     carry one, so the screen holds that boundary and this holds the shape. */
+  if (!isFraction(x) || !isFraction(y) || !within(size, 0, 1) || size === 0) {
     return WHOLE
   }
 

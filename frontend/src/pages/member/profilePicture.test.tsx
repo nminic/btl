@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import type { PendingItem } from '../../data/types'
 import { must } from '../../test/at'
+import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 
@@ -59,6 +60,7 @@ describe('the picture on a profile, changed later', () => {
     expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
 
     await user.upload(await panel.findByLabelText(/Izaberi novu sliku/), anImage())
+    await measurePicture()
     /* Waited for rather than assumed. The browser reads the file off the disc
        and hands it back a tick later, and the cropper is what says it has: sent
        before that, the picture would be a name with nothing behind it. */
@@ -138,6 +140,7 @@ describe('the picture on a profile, changed later', () => {
     const panel = await panelFor()
 
     await user.upload(await panel.findByLabelText(/Izaberi novu sliku/), anImage())
+    await measurePicture()
     /* Waited for, as above. Without this the send is pressed while the browser
        is still reading the file and nothing is sent at all: it passed on this
        machine, alone, and failed the moment the whole suite ran beside it. */

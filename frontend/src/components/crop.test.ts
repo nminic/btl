@@ -1,5 +1,5 @@
 import { must } from '../test/at'
-import { CLOSEST, cropIn, fittedTo, frameOf, holeOf, UNKNOWN, WHOLE } from './crop'
+import { bigEnough, closestIn, cropIn, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
 import type { CoverStyle, Crop, Frame, Shape } from './crop'
 
 /* Which square of a picture is the picture.
@@ -304,11 +304,45 @@ describe('a crop read out of a record', () => {
   })
 
   it('keeps the closest crop a member is allowed to make', () => {
-    /* The limit is a limit and not a suggestion: exactly `CLOSEST` is a crop a
-       slider can produce and has to survive the trip through a record, and a
-       hair below it is not. */
-    expect(cropIn({ x: 0.5, y: 0.5, size: CLOSEST }).size).toBe(CLOSEST)
-    expect(cropIn({ x: 0.5, y: 0.5, size: CLOSEST - 0.01 })).toEqual(WHOLE)
+    /* A record is read for its shape and not for how close it crops: what the
+       smallest circle is depends on the picture, and a record does not carry one
+       (`closestIn`). Nought is still not a fraction of anything, so it is refused
+       here as everything outside 0 to 1 is.
+
+       It used to be refused below a flat 0,2, and that number is gone: the
+       boundary is measured in pixels since 27.08.2026, and a store cannot check
+       it without the picture in front of it. Held instead where the picture is,
+       which is the screen. */
+    expect(cropIn({ x: 0.5, y: 0.5, size: 0.05 }).size).toBe(0.05)
+    expect(cropIn({ x: 0.5, y: 0.5, size: 1.2 })).toEqual(WHOLE)
+  })
+
+  it('says how close a crop may be from the picture rather than from a constant', () => {
+    /* Owner, 23.08.2026: „najmanji krug je onaj koji portal još prikazuje bez
+       gubitka", worked out from the largest size a face is drawn at; owner,
+       27.08.2026, choosing the number: „Poslušaću preporuku 240."
+
+       The point of measuring in pixels is that the answer differs with the
+       picture: a fifth of a large photograph is a portrait and a fifth of a small
+       one is a handful of pixels blown up. */
+    expect(closestIn({ width: 1200, height: 1600 })).toBeCloseTo(0.2, 5)
+    expect(closestIn({ width: 800, height: 900 })).toBeCloseTo(0.3, 5)
+    expect(closestIn({ width: 480, height: 480 })).toBeCloseTo(0.5, 5)
+
+    /* Never above the whole picture: a file may be exactly as small as the
+       boundary, and a smallest circle larger than the picture is a slider with no
+       room in it. */
+    expect(closestIn({ width: 240, height: 240 })).toBe(1)
+  })
+
+  it('refuses a picture too small to draw the circle without loss', () => {
+    /* The other rule out of the same number, and it is a different rule: this one
+       is about the file and the one above is about the circle inside a file that
+       passed. The shorter edge is what a square is cut from, so it is the edge the
+       boundary is about. */
+    expect(bigEnough({ width: 240, height: 240 }), 'exactly the boundary is refused').toBe(true)
+    expect(bigEnough({ width: 1600, height: 239 }), 'wide and short is still short').toBe(false)
+    expect(bigEnough({ width: 239, height: 1600 })).toBe(false)
   })
 })
 
@@ -352,7 +386,7 @@ describe('the hole the shade is cut with', () => {
     /* The smallest circle pushed flush against the start of both axes. The hole
        has to travel with the frame, and its middle is then its own radius in
        from each edge, which is what „flush" means for a circle. */
-    const small: Crop = { x: 0, y: 0, size: CLOSEST }
+    const small: Crop = { x: 0, y: 0, size: 0.2 }
 
     expect(holeOf(frameOf(small, portrait))).toEqual({
       x: '10%',
@@ -373,5 +407,177 @@ describe('the hole the shade is cut with', () => {
       across: '50%',
       down: '50%',
     })
+  })
+})
+
+describe('moving the circle with a finger or a mouse', () => {
+  it('centres it on the spot being pointed at', () => {
+    /* Owner, 23.08.2026: „krug se pomera prstom na telefonu i tabletu, mišem na
+       velikom ekranu". A square picture and a circle of half its width: pointing
+       at the very middle leaves it in the middle, and pointing a quarter of the
+       way in puts it flush against the start, because a circle of half the width
+       has exactly half the width to travel in. */
+    const half: Crop = { x: 0.5, y: 0.5, size: 0.5 }
+    const square = { width: 1000, height: 1000 }
+
+    expect(movedTo(half, square, { across: 0.5, down: 0.5 })).toEqual(half)
+    expect(movedTo(half, square, { across: 0.25, down: 0.25 })).toEqual({ ...half, x: 0, y: 0 })
+    expect(movedTo(half, square, { across: 0.75, down: 0.75 })).toEqual({ ...half, x: 1, y: 1 })
+  })
+
+  it('stops at the edge rather than letting the circle hang over it', () => {
+    /* Owner, same day: „krug nikad ne izlazi van ivice slike", so a cut can never
+       have an empty corner. Pointed well past both edges, and past both the other
+       way. */
+    const half: Crop = { x: 0.5, y: 0.5, size: 0.5 }
+    const square = { width: 1000, height: 1000 }
+
+    expect(movedTo(half, square, { across: 5, down: 5 })).toEqual({ ...half, x: 1, y: 1 })
+    expect(movedTo(half, square, { across: -5, down: -5 })).toEqual({ ...half, x: 0, y: 0 })
+  })
+
+  it('leaves an axis alone where the circle fills it', () => {
+    /* At the largest size a tall picture has no room across at all, so pointing
+       sideways cannot move the circle and must not divide by that nought either:
+       written carelessly this is where `NaN` gets into a style. */
+    const tall = { width: 400, height: 1000 }
+    const moved = movedTo(WHOLE, tall, { across: 0.9, down: 0.1 })
+
+    expect(moved.x, 'a circle as wide as the picture moved sideways').toBe(WHOLE.x)
+    expect(Number.isNaN(moved.x)).toBe(false)
+    expect(moved.y).toBeLessThan(WHOLE.y)
+
+    /* And the same the other way round, because the two axes are two branches:
+       on a wide picture the circle fills the height instead. */
+    const wide = { width: 1000, height: 400 }
+    const sideways = movedTo(WHOLE, wide, { across: 0.1, down: 0.9 })
+
+    expect(sideways.y, 'a circle as tall as the picture moved up and down').toBe(WHOLE.y)
+    expect(Number.isNaN(sideways.y)).toBe(false)
+    expect(sideways.x).toBeLessThan(WHOLE.x)
+  })
+})
+
+describe('growing and shrinking the circle by its edge', () => {
+  it('reaches the spot being dragged', () => {
+    /* Owner, 23.08.2026: „povlačenjem ivice krug se širi ili sužava". A circle in
+       the middle of a square picture, dragged to a quarter of the way in: the
+       distance from the middle is a quarter of the edge, so the circle is half of
+       it across. */
+    const middle: Crop = { x: 0.5, y: 0.5, size: 0.4 }
+    const square = { width: 1000, height: 1000 }
+
+    expect(sizedTo(middle, square, { across: 0.25, down: 0.5 }, 0.1).size).toBeCloseTo(0.5, 5)
+    expect(sizedTo(middle, square, { across: 0.5, down: 0.9 }, 0.1).size).toBeCloseTo(0.8, 5)
+  })
+
+  it('will not shrink below what the picture can still draw', () => {
+    /* Owner, same day: „ispod nje se krug prosto ne da smanjiti, bez ijedne
+       poruke o tome zašto". A floor and not a refusal, so nothing is said and the
+       circle simply stops. */
+    const middle: Crop = { x: 0.5, y: 0.5, size: 0.4 }
+    const square = { width: 1000, height: 1000 }
+    const least = closestIn(square)
+
+    expect(least).toBeCloseTo(0.24, 5)
+    expect(sizedTo(middle, square, { across: 0.5, down: 0.5 }, least).size).toBeCloseTo(least, 5)
+    expect(sizedTo(middle, square, { across: 0.49, down: 0.5 }, least).size).toBeCloseTo(least, 5)
+  })
+
+  it('will not grow past the whole picture', () => {
+    /* The other end of the same rule: growing past the edge would put back the
+       empty corner that moving is careful never to make. */
+    const middle: Crop = { x: 0.5, y: 0.5, size: 0.4 }
+    const square = { width: 1000, height: 1000 }
+
+    expect(sizedTo(middle, square, { across: 5, down: 5 }, 0.1).size).toBe(1)
+  })
+
+  it('measures both directions in the same units, or a circle is an ellipse', () => {
+    /* A share of a wide picture is a different number of pixels across than down.
+       On a picture twice as wide as it is tall, the same share sideways is twice
+       the distance, and the size that comes out has to say so. */
+    const middle: Crop = { x: 0.5, y: 0.5, size: 0.4 }
+    const wide = { width: 1000, height: 500 }
+
+    const across = sizedTo(middle, wide, { across: 0.6, down: 0.5 }, 0.1).size
+    const down = sizedTo(middle, wide, { across: 0.5, down: 0.6 }, 0.1).size
+
+    expect(across).toBeCloseTo(0.4, 5)
+    expect(down).toBeCloseTo(0.2, 5)
+    expect(across, 'both directions came out the same, so the circle is an ellipse').not.toBe(down)
+  })
+})
+
+describe('the middle of the circle while it is being resized', () => {
+  /** Where the middle of a crop sits over the picture, as a share of each edge. */
+  const middleOf = (crop: Crop, shape: Shape) => {
+    const side = crop.size * Math.min(shape.width, shape.height)
+    const across = side / shape.width
+    const down = side / shape.height
+
+    return {
+      across: crop.x * (1 - across) + across / 2,
+      down: crop.y * (1 - down) + down / 2,
+    }
+  }
+
+  it('stands still, whether the circle grows or shrinks', () => {
+    /* Owner, 27.08.2026: „Kad razvlačim deo kruga, treba da centralna pozicija
+       bude nepokretna, a da se kružnica širi i skuplja."
+
+       This is not what leaving `x` and `y` alone does. They are shares of the room
+       left over rather than the middle itself, so a circle that changes size while
+       they stand still slides across the picture: measured on a square picture
+       with the circle a quarter of the way in, growing from 0,3 to 0,6 moved the
+       middle by a tenth of the whole width. */
+    const off: Crop = { x: 0.25, y: 0.75, size: 0.3 }
+    const square = { width: 1000, height: 1000 }
+    const was = middleOf(off, square)
+
+    for (const spot of [
+      { across: was.across + 0.05, down: was.down },
+      { across: was.across + 0.2, down: was.down },
+      { across: was.across + 0.001, down: was.down },
+    ]) {
+      const now = middleOf(sizedTo(off, square, spot, closestIn(square)), square)
+
+      expect(now.across).toBeCloseTo(was.across, 5)
+      expect(now.down).toBeCloseTo(was.down, 5)
+    }
+  })
+
+  it('stops growing where the circle meets the nearest edge', () => {
+    /* „Širi se dok ne udari u neku od ivica slike" (owner, same day). The middle
+       here sits three tenths of the way down, so there is three tenths of the
+       height above it and the circle may be six tenths across and no more,
+       whatever the pointer says.
+
+       Three tenths and not a quarter, and the difference is the point of this
+       whole case: `y` is 0,25 but it is a share of the room left over, not the
+       middle. Written the first time against 0,25 this case failed, which is
+       exactly the confusion the code stopped making. */
+    const high: Crop = { x: 0.5, y: 0.25, size: 0.2 }
+    const square = { width: 1000, height: 1000 }
+    const was = middleOf(high, square)
+    const grown = sizedTo(high, square, { across: 5, down: 5 }, closestIn(square))
+    const now = middleOf(grown, square)
+
+    expect(was.down).toBeCloseTo(0.3, 5)
+    expect(grown.size).toBeCloseTo(0.6, 5)
+    expect(now.down, 'the middle moved to make room').toBeCloseTo(0.3, 5)
+    /* And it really is touching that edge rather than stopping short of it. */
+    expect(now.down - grown.size / 2).toBeCloseTo(0, 5)
+  })
+
+  it('stops shrinking at the smallest circle the picture allows', () => {
+    /* „Skuplja dok ne udari o minimum koji je potreban za dobar prikaz po
+       portalu" (owner, same day), which is `closestIn` and depends on the file. */
+    const middle: Crop = { x: 0.5, y: 0.5, size: 0.6 }
+    const small = { width: 480, height: 480 }
+    const least = closestIn(small)
+
+    expect(least).toBeCloseTo(0.5, 5)
+    expect(sizedTo(middle, small, { across: 0.5, down: 0.5 }, least).size).toBeCloseTo(least, 5)
   })
 })

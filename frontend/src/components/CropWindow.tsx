@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { cropIn, frameOf, holeOf, UNKNOWN } from './crop'
+import { closestIn, cropIn, frameOf, holeOf, movedTo, sizedTo, UNKNOWN } from './crop'
 import type { Crop, Shape } from './crop'
 import { useI18n } from '../i18n/useI18n'
 import './Crop.css'
@@ -26,7 +26,7 @@ import './Crop.css'
  * two components drawing the same three numbers is two chances to draw them
  * differently.
  */
-export function CropWindow({ picture, crop, alt, children }: {
+export function CropWindow({ picture, crop, alt, children, onChange }: {
   /** The picture itself. In the prototype this is what the browser read off the
    *  member's own disc; after F5 it is a path, and nothing here changes. */
   picture: string
@@ -39,6 +39,27 @@ export function CropWindow({ picture, crop, alt, children }: {
    *  looked at. They sit under the picture inside the same group so that what
    *  moves and what is moved are one thing to a screen reader. */
   children?: ReactNode
+  /**
+   * Where a drag on the picture is sent, on the screen where the crop is being
+   * chosen rather than looked at.
+   *
+   * Owner, 23.08.2026: „krug se pomera prstom na telefonu i tabletu, mišem na
+   * velikom ekranu", and „povlačenjem ivice krug se širi ili sužava".
+   *
+   * **Added beside the sliders and not instead of them.** The sliders were
+   * written that way on purpose: a drag handle cannot be operated from a
+   * keyboard, has no value to read out and fights the scroll of the page it sits
+   * in, while a range control takes arrows, Home and End and announces itself
+   * (WCAG 2.2 SC 2.1.1 and 4.1.2, and the rule about full keyboard navigation in
+   * `CLAUDE.md`). Dragging is what a pointer is good at, so the picture answers a
+   * pointer and the sliders answer everything else. Both write the same three
+   * numbers.
+   *
+   * Missing where the crop is only being looked at, and then nothing on the
+   * picture listens at all: a moderator reading a member's choice has nothing to
+   * drag.
+   */
+  onChange?: (crop: Crop) => void
 }) {
   const { t } = useI18n()
   /* What the browser knows about the file, which is nothing until it has
@@ -48,12 +69,97 @@ export function CropWindow({ picture, crop, alt, children }: {
   const [shape, setShape] = useState<Shape>(UNKNOWN)
   /* The same check, for the same reason: what a waiting item carries came out
      of a file on this portal today and out of a database tomorrow. */
-  const frame = frameOf(cropIn(crop), shape)
+  const held = cropIn(crop)
+  const frame = frameOf(held, shape)
   const hole = holeOf(frame)
+  /* Which of the two a press began, held for as long as it lasts. A press decides
+     once, at the moment it lands: deciding again on every move would turn a drag
+     that starts on the edge into a move the instant the circle catches up with
+     the finger. */
+  const doing = useRef<'moving' | 'sizing' | null>(null)
+
+  /** Where a pointer is, as a share of the drawn picture in each direction. */
+  const spotOf = (event: { clientX: number; clientY: number }, box: DOMRect) => ({
+    across: (event.clientX - box.left) / box.width,
+    down: (event.clientY - box.top) / box.height,
+  })
 
   return (
     <div className="crop">
-      <div className="crop__picture" style={{ aspectRatio: `${shape.width} / ${shape.height}` }}>
+      {/* The picture answers a pointer only where there is somewhere to send the
+          answer. `touch-action: none` comes with it (Crop.css): without it a drag
+          on a telephone scrolls the page under the finger and the circle stays
+          where it was, which is the very thing the sliders were written to
+          avoid. */}
+      <div
+        className={onChange === undefined ? 'crop__picture' : 'crop__picture crop__picture--dragged'}
+        style={{ aspectRatio: `${shape.width} / ${shape.height}` }}
+        onPointerDown={
+          onChange === undefined
+            ? undefined
+            : (event) => {
+                const box = event.currentTarget.getBoundingClientRect()
+                const spot = spotOf(event, box)
+                /* How far out the press landed, measured against the circle's own
+                   radius: inside it is a move, around the rim is a resize. The rim
+                   is a band and not a line, because a finger is not a pixel; the
+                   share is the same at every size, so a small circle keeps a rim
+                   somebody can actually hit. */
+                const middle = { across: Number.parseFloat(hole.x) / 100, down: Number.parseFloat(hole.y) / 100 }
+                const reach = Math.hypot(
+                  (spot.across - middle.across) / (Number.parseFloat(hole.across) / 100),
+                  (spot.down - middle.down) / (Number.parseFloat(hole.down) / 100),
+                )
+
+                doing.current = reach > 0.75 ? 'sizing' : 'moving'
+                /* Held by the box for the rest of the gesture, so a finger that
+                   wanders off the picture goes on moving the circle rather than
+                   being handed to whatever it wandered onto. Asked for rather
+                   than assumed: jsdom has no pointer capture at all, and a drag
+                   that threw here would leave the press decided and nothing
+                   moved. */
+                if (typeof event.currentTarget.setPointerCapture === 'function') {
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                }
+                onChange(
+                  doing.current === 'moving'
+                    ? movedTo(held, shape, spot)
+                    : sizedTo(held, shape, spot, closestIn(shape)),
+                )
+              }
+        }
+        onPointerMove={
+          onChange === undefined
+            ? undefined
+            : (event) => {
+                if (doing.current === null) {
+                  return
+                }
+
+                const spot = spotOf(event, event.currentTarget.getBoundingClientRect())
+
+                onChange(
+                  doing.current === 'moving'
+                    ? movedTo(held, shape, spot)
+                    : sizedTo(held, shape, spot, closestIn(shape)),
+                )
+              }
+        }
+        onPointerUp={
+          onChange === undefined
+            ? undefined
+            : () => {
+                doing.current = null
+              }
+        }
+        onPointerCancel={
+          onChange === undefined
+            ? undefined
+            : () => {
+                doing.current = null
+              }
+        }
+      >
         <img
           className="crop__whole"
           src={picture}

@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import { must } from '../test/at'
+import { measurePicture } from '../test/picture'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import { CropChooser } from './CropChooser'
@@ -60,7 +61,33 @@ const anImage = () => new File(['slika'], 'trka.jpg', { type: 'image/jpeg' })
 /** The picture and its sliders, once the browser has read the file off the
  *  disc. Waited for rather than assumed: reading is a tick later than the
  *  choosing, and everything here happens after it. */
-const cropper = async () => within(await screen.findByRole('group', { name: 'Isecanje slike' }))
+/**
+ * The cropper, once the picture behind it has been measured.
+ *
+ * Nothing is offered over a file until the browser says how big it is: a picture
+ * too small to draw the circle without loss is refused and the cropper is never
+ * opened over it (owner, 23.08.2026), and one that passes decides how small its
+ * own circle may be. jsdom decodes nothing, so the measurement has to be handed
+ * to it, exactly as the tests below already hand the drawn picture its shape.
+ *
+ * Big enough by default, because most cases here are not about the boundary; the
+ * one that is passes its own numbers.
+ */
+async function measured(width = 1200, height = 1200) {
+  /* Waited for: the file is read off the disc a turn after the press, so at the
+     moment this is called there may be nothing to measure yet. */
+  const measuring = await waitFor(() =>
+    must(document.querySelector('.crop__measuring'), 'the picture being measured'),
+  )
+
+  Object.defineProperty(measuring, 'naturalWidth', { value: width, configurable: true })
+  Object.defineProperty(measuring, 'naturalHeight', { value: height, configurable: true })
+  fireEvent.load(measuring)
+
+  return within(await screen.findByRole('group', { name: 'Isecanje slike' }))
+}
+
+const cropper = measured
 
 const sent = () => must(screen.getByTestId('sent').textContent, 'what would be sent')
 
@@ -380,5 +407,233 @@ describe('choosing which square of a picture counts', () => {
     renderWithI18n(<Choosing asked={false} />)
 
     expect(screen.getByLabelText(/Izaberi sliku/)).toHaveAttribute('aria-required', 'false')
+  })
+})
+
+describe('a picture the portal cannot draw the circle from', () => {
+  it('is refused when it is chosen, and the cropper never opens over it', async () => {
+    /* Owner, 23.08.2026: „slika manja od te granice se odbija pri podizanju, uz
+       poruku koja kaže zašto i koliko treba; kroper se nad njom i ne otvara." The
+       boundary is 240 pixels on the shorter edge (owner, 27.08.2026: „Poslušaću
+       preporuku 240"), which is the largest size a face is drawn at on a screen of
+       three device pixels to one.
+
+       Wide and short, so what is refused is plainly the shorter edge and not the
+       area: a picture 1600 across is not big enough if it is 239 tall. */
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    await measurePicture(1600, 239)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Najkraća strana mora da ima bar 240/)
+    expect(screen.queryByRole('group', { name: 'Isecanje slike' })).toBeNull()
+    /* And the file goes with the refusal: a member left holding a picture they
+       cannot use would have to work out for themselves that it is gone. */
+    expect(sent()).toBe('nista')
+  })
+
+  it('is taken at exactly the boundary, which is a boundary and not a suggestion', async () => {
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    await measured(240, 240)
+
+    expect(await screen.findByRole('group', { name: 'Isecanje slike' })).toBeVisible()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('says nothing at all about a file the browser could not decode', async () => {
+    /* Nought is not a size to judge against, so it is neither refused nor taken:
+       what is drawn is what a picture that has not arrived yet looks like. */
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    await measurePicture(0, 0)
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Isecanje slike' })).toBeNull()
+  })
+
+  it('lets the next file try again after one was refused', async () => {
+    /* The message is about the choosing and goes the moment another file is
+       chosen, or a member who fixed their picture reads a complaint about the one
+       before it. */
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    await measurePicture(100, 100)
+
+    expect(await screen.findByRole('alert')).toBeVisible()
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    await measured(1200, 1200)
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('group', { name: 'Isecanje slike' })).toBeVisible()
+  })
+
+  it('offers no closer crop than the picture can carry', async () => {
+    /* The other rule out of the same number. A picture of 480 pixels may be cut
+       to half of itself and no closer, because half of 480 is the 240 the portal
+       draws; a picture of 1200 may be cut to a fifth. Read off the control rather
+       than off the arithmetic, because the control is what a member meets. */
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    const wide = await measured(1200, 1600)
+
+    expect(wide.getByLabelText('Veličina isečka')).toHaveAttribute('min', '0.2')
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    const small = await measured(480, 640)
+
+    expect(small.getByLabelText('Veličina isečka')).toHaveAttribute('min', '0.5')
+  })
+})
+
+describe('choosing with a finger or a mouse instead of the sliders', () => {
+  /** The picture as something to press on, and where it sits. */
+  const picture = () => must(document.querySelector('.crop__picture'), 'the picture')
+
+  /** A press, a drag and a release at shares of the drawn picture. jsdom lays
+   *  nothing out, so the box it would measure is handed over. */
+  function dragTo(from: { across: number; down: number }, to?: { across: number; down: number }) {
+    const box = picture()
+
+    box.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => '' })
+
+    fireEvent.pointerDown(box, { clientX: from.across * 200, clientY: from.down * 200, pointerId: 1 })
+
+    if (to !== undefined) {
+      fireEvent.pointerMove(box, { clientX: to.across * 200, clientY: to.down * 200, pointerId: 1 })
+    }
+
+    fireEvent.pointerUp(box, { pointerId: 1 })
+  }
+
+  async function ready() {
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+
+    const group = await measured(1000, 1000)
+    const whole = must(document.querySelector('.crop__whole'), 'the picture drawn')
+
+    Object.defineProperty(whole, 'naturalWidth', { value: 1000, configurable: true })
+    Object.defineProperty(whole, 'naturalHeight', { value: 1000, configurable: true })
+    fireEvent.load(whole)
+
+    return group
+  }
+
+  it('moves the circle to where the pointer is', async () => {
+    /* Owner, 23.08.2026: „krug se pomera prstom na telefonu i tabletu, mišem na
+       velikom ekranu, i time se bira drugi deo slike." Pressed inside the circle,
+       so this is a move; the whole picture is the circle to begin with, so it is
+       first made smaller with the slider it shares its numbers with. */
+    const group = await ready()
+    const user = setupUser()
+
+    fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
+    dragTo({ across: 0.5, down: 0.5 }, { across: 0.25, down: 0.25 })
+
+    expect(sent()).toContain('"x":0')
+    expect(sent()).toContain('"y":0')
+    /* And the sliders say the same thing, because both write the same numbers. */
+    expect(group.getByLabelText('Pomeri levo i desno')).toHaveValue('0')
+    void user
+  })
+
+  it('grows and shrinks the circle when the press lands on its rim', async () => {
+    /* Owner, same day: „povlačenjem ivice krug se širi ili sužava", and
+       27.08.2026: „centralna pozicija bude nepokretna". Pressed well outside the
+       circle's own radius, which is what tells a resize from a move. */
+    const group = await ready()
+
+    fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.4' } })
+    dragTo({ across: 0.9, down: 0.5 })
+
+    expect(group.getByLabelText('Veličina isečka')).toHaveValue('0.8')
+
+    /* Shrinking is the same gesture the other way, and it has to begin on the rim
+       as well: a press inside the circle is a move, whichever way the finger then
+       goes. The circle is now eight tenths across, so its rim is at nine tenths.
+
+       Dragged past the floor on purpose: „skuplja dok ne udari o minimum koji je
+       potreban za dobar prikaz po portalu" (owner, 27.08.2026), and on a picture
+       of a thousand pixels that floor is 240 of them, which is 0,24. */
+    dragTo({ across: 0.88, down: 0.5 }, { across: 0.51, down: 0.5 })
+
+    expect(group.getByLabelText('Veličina isečka')).toHaveValue('0.24')
+  })
+
+  it('stops following the pointer once it is let go', async () => {
+    /* A press decides which of the two it is and a release ends it. Without the
+       release the picture would go on answering every pass of a mouse over it,
+       which is a circle that moves when nobody is touching anything. */
+    const group = await ready()
+
+    fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
+    dragTo({ across: 0.5, down: 0.5 }, { across: 0.25, down: 0.25 })
+
+    const box = picture()
+
+    fireEvent.pointerMove(box, { clientX: 190, clientY: 190, pointerId: 1 })
+
+    expect(group.getByLabelText('Pomeri levo i desno'), 'the circle moved with nothing held').toHaveValue('0')
+  })
+
+  it('holds the pointer where the browser lets it, so a finger may wander off', async () => {
+    /* A drag that leaves the picture goes on moving the circle rather than being
+       handed to whatever it wandered onto. jsdom has no pointer capture at all,
+       so the branch that uses it is only reachable by giving the element one;
+       what is measured is that it is asked for and used where it exists. */
+    const group = await ready()
+    const box = picture()
+    const held: number[] = []
+
+    Object.defineProperty(box, 'setPointerCapture', {
+      value: (id: number) => held.push(id),
+      configurable: true,
+    })
+
+    fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
+    dragTo({ across: 0.5, down: 0.5 }, { across: 0.25, down: 0.25 })
+
+    expect(held, 'the press was not held by the picture').toEqual([1])
+    expect(group.getByLabelText('Pomeri levo i desno')).toHaveValue('0')
+  })
+
+  it('lets go when the browser takes the press away', async () => {
+    /* A pointer can be cancelled rather than released: a telephone taking the
+       gesture for something of its own, or a window losing focus mid-drag. Left
+       out, the drag would still be running the next time a finger passed over. */
+    const group = await ready()
+
+    fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
+
+    const box = picture()
+
+    box.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => '' })
+
+    fireEvent.pointerDown(box, { clientX: 100, clientY: 100, pointerId: 1 })
+    fireEvent.pointerCancel(box, { pointerId: 1 })
+    fireEvent.pointerMove(box, { clientX: 20, clientY: 20, pointerId: 1 })
+
+    expect(group.getByLabelText('Pomeri levo i desno')).toHaveValue('0.5')
   })
 })

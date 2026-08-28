@@ -139,3 +139,18 @@
   block-size: 100%;
   object-fit: cover;
 }
+
+/* The picture while it is something to drag on.
+
+   `touch-action: none` is the whole of it, and it is not decoration: without it a
+   drag on a telephone is read as a scroll, the page moves under the finger and
+   the circle stays where it was. The sliders under the picture were written the
+   way they were partly because of that (`CropChooser.tsx`), so dragging has to
+   answer for itself rather than reintroduce the problem they avoid.
+
+   `grab` and not `move`: the whole picture is not being moved, the circle over it
+   is, and the cursor says which of the two a press will pick up. */
+.crop__picture--dragged {
+  touch-action: none;
+  cursor: grab;
+}

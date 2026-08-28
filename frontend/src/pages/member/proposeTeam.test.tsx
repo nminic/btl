@@ -1,6 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
+import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 
@@ -70,6 +71,7 @@ describe('a proposal a member sends', () => {
       await screen.findByLabelText(/Znak tima/),
       new File(['znak'], 'znak-tima.png', { type: 'image/png' }),
     )
+    await measurePicture()
 
     const cutting = within(await screen.findByRole('group', { name: 'Isecanje slike' }))
 
