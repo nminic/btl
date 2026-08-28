@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { WHOLE_PORTAL } from '../test/sources'
+import { readFileSync } from 'node:fs'
+import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 import { join } from 'node:path'
 
 /* Every filter on the portal writes itself into the address, and to the router
@@ -30,40 +30,39 @@ const SRC = join(process.cwd(), 'src')
 /** The one file allowed to reach for the router's own hook. */
 const HOME = join('app', 'useFilterParams.ts')
 
-function sourceFiles(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name)
-
-    if (entry.isDirectory()) {
-      return sourceFiles(path)
-    }
-
-    /* Tests are left out: they mount screens rather than write filters, and one
-       of them is this file, which names the hook in order to forbid it. */
-    return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : []
-  })
-}
-
 describe('writing a filter into the address', () => {
-  const files = sourceFiles(SRC)
+  /* The sweep that fact lives beside (`test/sources.ts`), and not a copy of it
+     written here. A copy read the helpers the tests are written with as though
+     they were screens, and its own floor was a number typed in by hand. */
+  const files = sources()
 
   it('reads the whole of the application, so it cannot pass on an empty list', () => {
     /* The floor comes from `test/sources.ts`, where that fact lives and where the
        reason for the number is written: the largest single folder holds under a
-       hundred, so no one folder can meet it on its own. Held here as 80 for a while,
-       which is a number written by hand, and a round measured what it cost on
-       23.08.2026: with `pages` skipped the sweep still counted 118 and stayed green
-       while an offender sat in the folder it had stopped reading. */
+       hundred, so no one folder can meet it on its own. Held here as 80 for a
+       while, which is a number written by hand, and a round measured what that
+       cost on 23.08.2026: with `pages` skipped the sweep stayed green while an
+       offender sat in the folder it had stopped reading.
+
+       Re-measured on 28.08.2026, over the shared sweep this now uses: the whole
+       portal is 204 files and `pages` alone is 98 of them, so skipping it leaves
+       106 and the floor of 150 catches it. The number written here before was
+       119, and it was 118 in the sentence: it counted a different sweep, the one
+       this file kept for itself, which read `src/test/` as well. */
     expect(files.length).toBeGreaterThan(WHOLE_PORTAL)
-    expect(files.some((path) => path.endsWith(HOME))).toBe(true)
+    expect(files.some(({ path }) => path.endsWith(HOME))).toBe(true)
   })
 
   it('goes through the one hook that says a filter is not an arrival', () => {
     const elsewhere = files.filter(
-      (path) => !path.endsWith(HOME) && readFileSync(path, 'utf-8').includes('useSearchParams'),
+      /* Comments blanked, so a file that only explains the rule is not read as
+         breaking it. This file is not in the sweep and says the name a dozen
+         times; the day a screen does the same in a note, the sweep would have
+         called it an offender. */
+      ({ path, code }) => !path.endsWith(HOME) && bare(code).includes('useSearchParams'),
     )
 
-    expect(elsewhere.map((path) => path.slice(SRC.length + 1))).toEqual([])
+    expect(elsewhere.map(({ path }) => path.slice(SRC.length + 1))).toEqual([])
   })
 
   it('and that hook does say it', () => {

@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { bare, sheetsOf } from '../test/stylesheet'
+import { sheetsOf } from '../test/stylesheet'
+import { bare } from '../test/sources'
 import { join } from 'node:path'
 
 /**

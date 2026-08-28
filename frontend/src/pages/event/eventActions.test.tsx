@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
 import { at, first, inputElement, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
@@ -39,6 +41,11 @@ async function openEvent(
 
   return rendered
 }
+
+/** The sheet that decides what an empty control box costs, read rather than
+ *  quoted: the rule below turns on the name of a class, and a guard that writes
+ *  that name by hand goes quiet the day the class is renamed. */
+const rankingsCss = readFileSync(join(process.cwd(), 'src/pages/Rankings.css'), 'utf-8')
 
 describe('who is offered what on an event', () => {
   it('offers a visitor nothing at all, and no column to put it in', async () => {
@@ -188,6 +195,34 @@ describe('who is offered what on an event', () => {
     expect(
       head.querySelector('.rankings__head-tool'),
       'a control box is drawn for a member with nothing to press',
+    ).toBeNull()
+
+    /* And the same thing asked of the rule that really charges for it, because
+       the line above cannot fail on its own: it passes when the box is absent and
+       it passes just as quietly when the class is renamed and the box is drawn
+       under the new name. Measured on 28.08.2026 by renaming it in
+       `EventActions.tsx`: the line above stayed green while the empty box was in
+       the head.
+
+       The name is read out of the stylesheet rather than written here, so the two
+       cannot drift apart. `Rankings.css` charges the sixteen pixels through
+       `.rankings--tooled:has(> .X)`, so whatever `X` is there today is what has to
+       be absent here, and a rename that reaches both places is measured while a
+       rename that reaches only one takes the charge away with it.
+
+       An earlier version of this asked instead for „no empty child", which was
+       wrong in both directions and a review measured both: an empty child that is
+       not the control box failed it while the stylesheet charged nothing, and a
+       box under another name with one empty child inside it passed while the head
+       carried one. */
+    const charged = must(
+      /\.rankings--tooled:has\(>\s*\.([\w-]+)\)/.exec(rankingsCss)?.[1],
+      'the class the head is charged for',
+    )
+
+    expect(
+      head.querySelector(`.${charged}`),
+      'the box the stylesheet charges sixteen pixels for is drawn',
     ).toBeNull()
   })
 

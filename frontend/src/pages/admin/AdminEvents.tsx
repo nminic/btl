@@ -119,22 +119,6 @@ export function AdminEvents() {
   /** Whether the last press was refused over a row, which is when the rows start
    *  saying what is missing. */
   const [refused, setRefused] = useState(false)
-  /**
-   * How many times the races have moved the event while its own form was open.
-   *
-   * The form is seeded once, when it is drawn (FormRenderer), and the races
-   * beside it may move the event: entering one on an earlier morning, or taking
-   * the first one away, makes that day the event's (owner, 10.08.2026). The form
-   * then holds the day the event used to be on, and saving it, even untouched,
-   * moved every race by the difference between the two: delete the first race of
-   * a two-day event, press Sačuvaj without touching anything, and the race that
-   * was left went back to the morning nothing runs on any more.
-   *
-   * So the form is drawn again from the record as it now is. Counted rather than
-   * keyed on the date itself, because the date also changes when the form is the
-   * thing that changed it, and there the form must stay where it is: it has just
-   * said "Sačuvano" and remounting would take that away.
-   */
   const state = combinePair(useEvents(), useRaces())
   /* Read for what it is worth rather than waited for. No row here shows a
      result: they are read only to take them down with the event they belong to.

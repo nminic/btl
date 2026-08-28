@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { unwritten } from '../test/unwritten'
+import { bare } from '../test/sources'
 import type { MembershipBasis } from '../data/types'
 import { SUBMISSION_STATUSES } from '../session/context'
 import { join } from 'node:path'
@@ -125,12 +125,6 @@ function valueLength(text: string, at: number): number {
   return 0
 }
 
-/** The text with every comment blanked, so a name that survives only in prose
- *  counts for nothing. Written here first and lifted into `test/unwritten.ts` on
- *  23.08.2026, when a second sweep wrote the same idea again from memory and got it
- *  wrong: „from `//` to the end of the line" ate `'https://…'` and everything after
- *  it. One home, two readers. */
-const bare = unwritten
 
 /**
  * Every hook named in the given files, with where each one was found.

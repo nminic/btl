@@ -1,6 +1,7 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { RESOURCE_NAMES } from './client'
+import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
 /* Two rules that say something the code cannot say for itself, and that have
  * each been broken once without anything noticing.
@@ -55,26 +56,6 @@ describe('the list of resources', () => {
   })
 })
 
-function sourceFiles(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name)
-
-    if (entry.isDirectory()) {
-      return sourceFiles(path)
-    }
-
-    return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : []
-  })
-}
-
-/** A file with what it says about itself taken out, so a rule about what the code
- *  does is not answered by a comment explaining the rule. */
-function codeOf(path: string): string {
-  return readFileSync(path, 'utf-8')
-    .replaceAll(/\/\*[\s\S]*?\*\//g, '')
-    .replaceAll(/\/\/[^\n]*/g, '')
-}
-
 describe('the screens that draw a section of a written page', () => {
   /* Three of them: the rulebook, the written pages, and the card on the front
    * page that carries the address of the president. What a record shows is its
@@ -93,7 +74,14 @@ describe('the screens that draw a section of a written page', () => {
    * ways of reading a record draw the same thing. The day one does, the screen
    * that reads it the wrong way draws less, and nothing says so.
    */
-  const files = sourceFiles(SRC)
+  /* The sweep every guard of this kind uses (`test/sources.ts`), and not a copy
+     of it written here. The copy is what this is about: it read the whole of
+     `src` including the helpers the tests are written with, and its floor was the
+     number 80 typed in by hand. Measured on 23.08.2026: narrowing that copy to
+     three folders left a violator in `components/` unseen while 80 still passed,
+     so the guard reported „nothing is wrong" where it meant „nothing was looked
+     at". The shared sweep carries its own floor, so the two move together. */
+  const files = sources()
 
   /* The two files that reach for the field itself, each for a reason that is not
      drawing a page: one says what a page shows, the other lists the pages for the
@@ -101,8 +89,8 @@ describe('the screens that draw a section of a written page', () => {
   const ALLOWED = [join('data', 'pages.ts'), join('pages', 'admin', 'AdminPages.tsx')]
 
   it('reads the whole application, and finds both files that are allowed it', () => {
-    expect(files.length).toBeGreaterThan(80)
-    expect(files.filter((path) => ALLOWED.some((one) => path.endsWith(one)))).toHaveLength(2)
+    expect(files.length).toBeGreaterThan(WHOLE_PORTAL)
+    expect(files.filter(({ path }) => ALLOWED.some((one) => path.endsWith(one)))).toHaveLength(2)
   })
 
   it('reaches a record through sectionsOf, never through its own sections', () => {
@@ -116,12 +104,17 @@ describe('the screens that draw a section of a written page', () => {
        `sectionsOf` is called that in the rulebook, and rightly. */
     const READ_OFF_THE_RECORD = /\.sections\b|\{[^}]*\bsections\b[^}]*\}\s*=/
 
+    /* Comments blanked with the one blanker (`test/sources.ts`), which this file
+       used to keep a copy of. The copy blanked from the first `//` to the end of
+       the line, so an address blanked everything written after it: measured in
+       `src/app/head.ts`, a violation on the same line as an address went unseen
+       and the identical violation on the next line was found. */
     const straight = files.filter(
-      (path) =>
-        !ALLOWED.some((one) => path.endsWith(one)) && READ_OFF_THE_RECORD.test(codeOf(path)),
+      ({ path, code }) =>
+        !ALLOWED.some((one) => path.endsWith(one)) && READ_OFF_THE_RECORD.test(bare(code)),
     )
 
-    expect(straight.map((path) => path.slice(SRC.length + 1))).toEqual([])
+    expect(straight.map(({ path }) => path.slice(SRC.length + 1))).toEqual([])
   })
 })
 
@@ -225,7 +218,12 @@ describe('what the ducats are called', () => {
   })
 
   it('reads every file, so the sweep above is looking at something', () => {
-    expect(everything().length).toBeGreaterThan(150)
+    /* Read rather than written down. The number here happened to equal the floor
+       every other sweep uses and was not taken from it, so the two could drift
+       apart without a word. This sweep reads more than that one does, the words a
+       visitor sees and the records the portal is generated from among them, so
+       the shared floor is a floor for it too. */
+    expect(everything().length).toBeGreaterThan(WHOLE_PORTAL)
     expect(everything().some((one) => one.path.endsWith('DucatGallery.tsx'))).toBe(true)
   })
 })
