@@ -720,17 +720,25 @@ describe('the explanation of what a race is called', () => {
        nobody could read.
 
        Asked as what a reader is told rather than as which element exists: a hint
-       that is drawn and pointed at by nothing is the same as no hint at all. */
+       that is drawn and pointed at by nothing is the same as no hint at all.
+
+       **More than one row**, and that is not a nicety: the first event on the list
+       holds a single race, so a case built on it walks exactly one box. Measured by
+       a review on 28.08.2026 with the description put on the first row alone: every
+       row after it went silent to a screen reader and all 2.257 tests stayed green,
+       which is the very fault this case is named after („six races or sixty"). A
+       row is added the way the rest of this file adds one. */
     const user = setupUser()
 
     await openFirstEvent(user)
+    await user.click(screen.getByRole('button', { name: t('admin.form.new.races') }))
 
     const table = within(screen.getByRole('table', { name: /^Trke na doga\u0111aju/ }))
     /* Named „Trka, 1. trka" and so on, by the column and by the row: that is how
        every control of this table names itself. */
     const boxes = table.getAllByRole('textbox', { name: /^Trka, / })
 
-    expect(boxes.length, 'the event has no races to read').toBeGreaterThan(0)
+    expect(boxes.length, 'the walk is built on a single row after all').toBeGreaterThan(1)
 
     for (const box of boxes) {
       expect(box).toHaveAccessibleDescription(t('admin.hint.raceName'))
@@ -755,5 +763,24 @@ describe('the explanation of what a race is called', () => {
     expect(screen.getAllByText(t('admin.hint.raceName'))).toHaveLength(1)
     expect(within(table).queryByText(t('admin.hint.raceName'))).toBeNull()
     expect(within(table).queryByRole('button', { name: t('form.explain') })).toBeNull()
+  })
+})
+
+describe('the explanation on an event that has no races yet', () => {
+  it('is not said at all, because there is no column to explain', async () => {
+    /* An event entered a fortnight before its distances are known is the ordinary
+       state of a new one, and the table is not drawn then. The sentence explained a
+       column nobody could see and nothing pointed at it. Measured by a review on
+       28.08.2026 on „Novi događaj" at 360px: the section read the heading, then the
+       sentence, then „Ovaj događaj još nema nijednu trku." */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: t('admin.form.new.events') }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    expect(screen.getByText(t('admin.noRaces'))).toBeVisible()
+    expect(screen.queryByText(t('admin.hint.raceName'))).toBeNull()
   })
 })

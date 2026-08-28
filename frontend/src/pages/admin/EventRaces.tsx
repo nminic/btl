@@ -196,12 +196,28 @@ export function EventRaces({
           and that is a decision rather than a shortcut. The mark lives inside the
           label it explains, and the label of a column is a `th`: a button and a
           sentence inside a header cell are read out with the column every time a
-          reader moves into it, six races or sixty. Said once above the table it is
-          read once, and every box in the column points at it, so a reader who
-          reaches one of them is still told what it is for. */}
-      <p className="member__note" id={NAME_HINT}>
-        {t('admin.hint.raceName')}
-      </p>
+          reader moves into it, six races or sixty, and the button itself is then a
+          control inside a header cell, which is a thing to walk past on the way to
+          every box.
+       *
+          **It is still said once per box**, through `aria-describedby`, and the
+          first version of this note claimed otherwise. What is bought is not fewer
+          repetitions of the sentence but no control inside the heading and no
+          sentence in the column's own name; the repetition is what a description
+          is, and the alternative, saying it nowhere, is what this change is
+          undoing. Two screens of the portal already do exactly this
+          (`admin/AdminPricing.tsx`, `admin/PendingQueue.tsx`). */}
+      {/* And only where there is a column to explain. An event with no races yet is
+          the ordinary state of one entered a fortnight before its distances are
+          known, and the sentence then explains a column nobody can see and nothing
+          points at it. Measured by a review on 28.08.2026 on „Novi događaj" at
+          360px: the section read the heading, then this sentence, then „Ovaj
+          događaj još nema nijednu trku." */}
+      {rows.length > 0 && (
+        <p className="member__note" id={NAME_HINT}>
+          {t('admin.hint.raceName')}
+        </p>
+      )}
 
       {rows.length === 0 ? (
         /* Said rather than left as an empty table. An event with no races yet is
