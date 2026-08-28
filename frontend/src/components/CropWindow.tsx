@@ -108,10 +108,24 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
              it must, or a drag scrolls the page instead of moving the circle),
              the only way past it was a strip of 40 pixels beside it. Capped, the
              picture ends well inside the screen and there is page to scroll on
-             either side of it. */
-          maxBlockSize: '60svh',
-          inlineSize: `min(100%, calc(60svh * ${shape.width} / ${shape.height}))`,
-          marginInline: 'auto',
+             either side of it.
+
+             And only where there is something to drag. The reason above is that
+             the picture takes every touch, which is true of this screen and of no
+             other: a moderator reading a member's choice has nothing to drag and
+             can scroll past a tall picture like any other. Measured by a review on
+             28.08.2026 in a window 805 pixels high: capped, a 1080 by 2400
+             photograph draws 217 by 483 instead of 320 by 711, so the part that
+             will be thrown away is at 68 per cent of its linear size on the one
+             screen where „zatamnjen ali dovoljno vidljiv ostatak" (owner,
+             12.08.2026) is the whole point. */
+          ...(onChange === undefined
+            ? {}
+            : {
+                maxBlockSize: '60svh',
+                inlineSize: `min(100%, calc(60svh * ${shape.width} / ${shape.height}))`,
+                marginInline: 'auto',
+              }),
         }}
         onPointerDown={
           onChange === undefined

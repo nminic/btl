@@ -46,7 +46,7 @@ export async function measurePicture(width = 1200, height = 1200): Promise<void>
  * first of several is the fault; refusing more than one is the fix, so the day a
  * second hidden picture appears this says which two it found.
  */
-function theMeasuringPicture(): HTMLImageElement {
+export function theMeasuringPicture(): HTMLImageElement {
   const found = document.querySelectorAll<HTMLImageElement>('img.visually-hidden[aria-hidden="true"][alt=""]')
 
   if (found.length !== 1) {

@@ -53,7 +53,7 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
   /* Why the last file was not taken, where it was not. Held here rather than
      handed up, because it is about the choosing and goes the moment another file
      is chosen; the screen above only ever hears about pictures it can use. */
-  const [refused, setRefused] = useState<string | null>(null)
+  const [refused, setRefused] = useState<'small' | 'unreadable' | null>(null)
   /* How big the file turned out to be, which only the browser can answer and only
      after it has decoded the picture. Held here rather than inside the window
      below, because two things on this screen need it and neither is the drawing:
@@ -135,7 +135,7 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
             the boundary is said in the same words wherever it is said. */}
         {refused !== null && (
           <p className="member__note member__note--refused" role="alert">
-            {t('crop.tooSmall', { least: refused })}
+            {refused === 'small' ? t('crop.tooSmall', { least: String(SMALLEST_PIXELS) }) : t('crop.unreadable')}
           </p>
         )}
       </div>
@@ -162,6 +162,15 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
             const { naturalWidth, naturalHeight } = event.currentTarget
 
             if (naturalWidth === 0 || naturalHeight === 0) {
+              /* The same answer as a file that failed outright, because it is the
+                 same state: nothing was measured, so nothing can be offered over
+                 it. It used to return in silence, which left the member with no
+                 cropper, no message and a live send button, which is the very
+                 thing `onError` below was added to close. One decision reached by
+                 two roads had two different endings until 28.08.2026. */
+              setRefused('unreadable')
+              onChange(null)
+
               return
             }
 
@@ -174,7 +183,7 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
                  never opened over something the portal cannot draw without loss,
                  and a member left holding a file they cannot use would have to
                  work out for themselves that it is gone. */
-              setRefused(String(SMALLEST_PIXELS))
+              setRefused('small')
               onChange(null)
             }
           }}
@@ -188,10 +197,14 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
                flow: „alert: [], cropper open: false, send aria-disabled: false,
                sent through: true".
 
-               Said in the same words as a picture that is too small, because from
-               where the member stands it is the same answer: this file cannot be
-               used, choose another. */
-            setRefused(String(SMALLEST_PIXELS))
+               Said in its own words and not in the words of a picture that is
+               too small. Measured by a review on 28.08.2026: a 4032 by 3024 photo
+               off an iPhone, which Chrome cannot decode because it is `.heic`,
+               was answered with „Slika je premala. Najkraća strana mora da ima bar
+               240 piksela", which is untrue of that file and asks the member to do
+               something that cannot help. Every following `.heic` said the same,
+               and the portal had no way out of it. */
+            setRefused('unreadable')
             onChange(null)
           }}
         />

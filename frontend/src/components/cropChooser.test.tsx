@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import { must } from '../test/at'
-import { measurePicture } from '../test/picture'
+import { measurePicture, theMeasuringPicture } from '../test/picture'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
 import { CropChooser } from './CropChooser'
@@ -78,7 +78,7 @@ async function measured(width = 1200, height = 1200) {
   /* Waited for: the file is read off the disc a turn after the press, so at the
      moment this is called there may be nothing to measure yet. */
   const measuring = await waitFor(() =>
-    must(document.querySelector('img.visually-hidden[aria-hidden="true"][alt=""]'), 'the picture being measured'),
+    theMeasuringPicture(),
   )
 
   Object.defineProperty(measuring, 'naturalWidth', { value: width, configurable: true })
@@ -428,7 +428,13 @@ describe('a picture the portal cannot draw the circle from', () => {
     await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
     await measurePicture(1600, 239)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Najkraća strana mora da ima bar 240/)
+    /* And in the words that belong to this refusal and not to the other one. The
+       two are told apart nowhere else: both take the picture away and leave the
+       same screen behind, so the sentence is the only thing a member has to go
+       on. */
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Slika je premala. Najkraća strana mora da ima bar 240 piksela, da bi krug ostao oštar svuda gde se prikazuje.',
+    )
     expect(screen.queryByRole('group', { name: 'Isecanje slike' })).toBeNull()
     /* And the file goes with the refusal: a member left holding a picture they
        cannot use would have to work out for themselves that it is gone. */
@@ -447,9 +453,13 @@ describe('a picture the portal cannot draw the circle from', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('says nothing at all about a file the browser could not decode', async () => {
-    /* Nought is not a size to judge against, so it is neither refused nor taken:
-       what is drawn is what a picture that has not arrived yet looks like. */
+  it('is refused when it arrives measuring nothing, the same as one that fails', async () => {
+    /* Nought is not a size to judge against, so nothing can be offered over it,
+       and until 28.08.2026 that ended in silence: no cropper, no message, and a
+       live send button, which is exactly the state `onError` was added to close.
+       One decision reached by two roads had two different endings, and a review
+       counted them: the file that fails outright was answered and the file that
+       arrives measuring nothing was not. */
     const user = setupUser()
 
     renderWithI18n(<Choosing />)
@@ -457,8 +467,11 @@ describe('a picture the portal cannot draw the circle from', () => {
     await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
     await measurePicture(0, 0)
 
-    expect(screen.queryByRole('alert')).toBeNull()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ova slika se ne može otvoriti. Izaberi drugu, na primer u JPG ili PNG obliku.',
+    )
     expect(screen.queryByRole('group', { name: 'Isecanje slike' })).toBeNull()
+    expect(sent()).toBe('nista')
   })
 
   it('lets the next file try again after one was refused', async () => {
@@ -672,9 +685,21 @@ describe('what the picture is dressed as while it can be dragged', () => {
       <CropWindow picture="data:image/jpeg;base64,x" crop={WHOLE} alt="Proba" />,
     )
 
-    expect(must(container.querySelector('.crop__picture'), 'the picture')).not.toHaveClass(
-      'crop__picture--dragged',
-    )
+    const box = must(container.querySelector<HTMLElement>('.crop__picture'), 'the picture')
+
+    expect(box).not.toHaveClass('crop__picture--dragged')
+
+    /* And it keeps its whole height there, which is the other half of the same
+       decision. The cap exists because a picture that takes every touch is a wall
+       between the member and the send button; a moderator has nothing to drag and
+       scrolls past a tall picture like any other. Measured by a review on
+       28.08.2026 in a window 805 pixels high: capped, a 1080 by 2400 photograph
+       drew 217 by 483 instead of 320 by 711, so the part being thrown away, which
+       is the whole of what a moderator is looking at (owner, 12.08.2026:
+       „zatamnjen ali dovoljno vidljiv ostatak"), stood at 68 per cent of its
+       linear size. */
+    expect(box.style.maxBlockSize).toBe('')
+    expect(box.style.inlineSize).toBe('')
   })
 })
 
@@ -710,7 +735,7 @@ describe('the band that tells a move from a resize', () => {
 
     fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
 
-    const box = must(document.querySelector('.crop__picture'), 'the picture')
+    const box = must(document.querySelector<HTMLElement>('.crop__picture'), 'the picture')
 
     box.getBoundingClientRect = () =>
       ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => '' })
@@ -741,12 +766,20 @@ describe('a file the browser cannot read at all', () => {
     await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
 
     const measuring = await waitFor(() =>
-      must(document.querySelector('img.visually-hidden[aria-hidden="true"][alt=""]'), 'the picture being measured'),
+      theMeasuringPicture(),
     )
 
     fireEvent.error(measuring)
 
-    expect(await screen.findByRole('alert')).toBeVisible()
+    /* The words themselves, and not merely that something was said. Measured by a
+       review on 28.08.2026: this answered a 4032 by 3024 photograph off an iPhone
+       with „Slika je premala. Najkraća strana mora da ima bar 240 piksela", which
+       is untrue of that file and asks for something that cannot help, and every
+       following `.heic` said the same. A guard that only asks whether an alert
+       exists cannot tell the two answers apart. */
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ova slika se ne može otvoriti. Izaberi drugu, na primer u JPG ili PNG obliku.',
+    )
     expect(screen.queryByRole('group', { name: 'Isecanje slike' })).toBeNull()
     expect(sent()).toBe('nista')
   })
@@ -780,10 +813,19 @@ describe('the picture while it is being chosen', () => {
     Object.defineProperty(whole, 'naturalHeight', { value: 2400, configurable: true })
     fireEvent.load(whole)
 
-    const box = must(document.querySelector('.crop__picture'), 'the picture')
+    const box = must(document.querySelector<HTMLElement>('.crop__picture'), 'the picture')
 
     expect(box).toHaveStyle({ maxBlockSize: '60svh' })
-    expect(box.getAttribute('style')).toContain('60svh * 1080 / 2400')
+    /* The whole declaration and not a piece of it. Measured by a review on
+       28.08.2026: with `min(` written as `max(` the piece is still there and the
+       box stops being the shape of the picture, which is what the width is for.
+       In a window 805 pixels high the box came out 320 by 483 against a picture
+       of 1080 by 2400, so `object-fit: contain` left grey bands 51 pixels wide
+       down each side and the circle was drawn as an ellipse across them. */
+    expect(box.style.inlineSize).toBe('min(100%, calc(60svh * 1080 / 2400))')
+    /* And centred, which is the third of the three and was measured by nothing:
+       a box narrower than the panel with no margin sits against one edge. */
+    expect(box.style.marginInline).toBe('auto')
   })
 })
 
@@ -804,12 +846,17 @@ describe('the copy of the picture that is only there to be measured', () => {
 
     await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
 
+    /* Found by the one thing that is not being asserted, which is the class that
+       puts it off the screen. Measured by a review on 28.08.2026: with the
+       element looked for by `[aria-hidden="true"][alt=""]`, taking `aria-hidden`
+       off failed in the helper saying the picture was not there, rather than on
+       the assertion about it, and the third line passed regardless because an
+       `<img alt="">` carries no `img` role to begin with. */
     const measuring = await waitFor(() =>
-      must(document.querySelector('img.visually-hidden[aria-hidden="true"][alt=""]'), 'the picture being measured'),
+      must(document.querySelector('img.visually-hidden'), 'the picture being measured'),
     )
 
     expect(measuring).toHaveAttribute('aria-hidden', 'true')
     expect(measuring).toHaveAttribute('alt', '')
-    expect(screen.queryAllByRole('img', { hidden: false })).toHaveLength(0)
   })
 })
