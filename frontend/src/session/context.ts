@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { EventComment, MembershipBasis, RaceCategory, PendingItem } from '../data/types'
+import type { EventComment, MembershipBasis, RaceCategory, PendingItem, Result } from '../data/types'
 
 /* What the prototype remembers between screens.
  *
@@ -79,6 +79,32 @@ export type Submission = {
    * numbers in it and nothing on it saying so.
    */
   corrected: boolean
+  /**
+   * The counted result this is a correction of, as it should read once somebody
+   * agrees with it.
+   *
+   * Owner, 28.08.2026, choosing between four outcomes: **the old result stays in
+   * the standing while the correction waits, and changes only when a moderator
+   * approves it.** That overturned what the portal did until then, which was to
+   * take the result out of the standing the moment the correction was sent: a
+   * refusal then lost the points for good, measured at 180 races and 1.752,86
+   * points falling to 179 and 1.744,60 with no way back. The portal's own rule is
+   * that the standing is brought up to date **after** verification (PDL P9, owner
+   * 27.08.2026), and that is the sentence this restores.
+   *
+   * The whole record and not the identity alone, because a `Submission` does not
+   * know what a `Result` needs: the event's name and address travel on the result
+   * and a correction may change everything except which race it is (owner,
+   * 27.08.2026, „sve osim trke"). Built where both are in hand, which is the
+   * member's own screen.
+   *
+   * It keeps the identity of the result it replaces, so approving a correction
+   * swaps what that record says rather than adding a second one beside it.
+   *
+   * Absent on every other submission: a result sent for the first time is counted
+   * by nobody yet, and there is nothing for it to replace.
+   */
+  corrects?: Result
 }
 
 export type Message = {
@@ -210,6 +236,19 @@ export type SessionValue = {
 
   submissions: Submission[]
   submit: (submission: Omit<Submission, 'id' | 'status' | 'note' | 'corrected'>) => void
+  /**
+   * The counted results a moderator has agreed to change during this visit, by
+   * the identity of the record each one replaces.
+   *
+   * Read by `useResults`, so every screen that counts a result sees the same
+   * thing: the standing, the profile, the boards and the league all read that one
+   * function (`data/useResource.ts`).
+   *
+   * A record and not a patch, because what is agreed to is the whole of what the
+   * member sent, and because the record it replaces may itself be replaced again
+   * the next time.
+   */
+  corrected: Record<string, Result>
   /** The same result, corrected and sent in again (owner, 06.08.2026 for a
    *  refusal, 27.08.2026 for one still waiting). One item and not a second
    *  beside it: it is one race. */

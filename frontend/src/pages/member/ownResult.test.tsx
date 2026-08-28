@@ -794,11 +794,21 @@ describe('a result that has been counted', () => {
     expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
   })
 
-  it('leaves the standing while it waits, rather than counting twice', async () => {
-    /* The half that decides whether this is honest: a member who changed a
-       counted result must not have the old points counted while the new ones
-       wait. „Odmah se ažurira poredak nakon verifikacije" (owner, same day), so
-       until then it is in neither place but the queue. */
+  it('leaves the standing exactly as it was while the correction waits', async () => {
+    /* Owner, 28.08.2026, choosing between four outcomes: the old result stays
+       where it is while the correction waits, and changes when a moderator agrees
+       with it.
+
+       Until then this screen took the result out of the standing the moment the
+       correction was sent, so a refusal lost the points for good: measured that
+       day, a profile fell from 180 races and 1.752,86 points to 179 and 1.744,60
+       with no way back, because an approved submission produced no result. That
+       contradicted the portal's own rule that the standing is brought up to date
+       **after** verification (owner, 27.08.2026).
+
+       The cost the owner accepted is the other half of this case and is measured
+       nowhere else: while the correction waits, the standing holds the numbers the
+       member has themselves said are wrong. */
     const user = setupUser()
 
     renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
@@ -814,16 +824,89 @@ describe('a result that has been counted', () => {
 
     /* Walked back rather than rendered again: the prototype keeps this visit's
        changes in the session, and a second render is a second visit that never
-       saw them. The confirmation offers the way back, which is the road a member
-       takes anyway. */
+       saw them. */
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
-    /* Which row left, and not how many. The same review measured the same hole
-       here: sending the correction while another result was deleted instead left
-       the changed one counted and waiting at once, which is the very thing this
-       case is named after, and the count did not notice. */
-    expect(await countedRows(), 'the row changed is the row that left the standing').toEqual(
-      before.slice(1),
+    expect(await countedRows(), 'the standing moved before anybody decided').toEqual(before)
+  })
+
+  /** A press that settles the newest submission, standing on the member's own
+   *  screen: the session is one, so a moderator's decision reaches this visit
+   *  without leaving the page it has to be measured on. */
+  function Decide({ as }: { as: 'approved' | 'rejected' }) {
+    const { submissions, decide } = useSession()
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          const newest = submissions[0]
+
+          if (newest !== undefined) {
+            decide(newest.id, as, '')
+          }
+        }}
+      >
+        {as === 'approved' ? 'odobri' : 'odbij'}
+      </button>
     )
+  }
+
+  /** The walk a member takes: open the newest counted result, correct it, send it. */
+  async function corrected(user: ReturnType<typeof setupUser>) {
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+
+    const hours = screen.getByLabelText(/^Sati/)
+
+    await user.clear(hours)
+    await user.type(hours, '9')
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+  }
+
+  it('changes when somebody agrees with it, which is what „after verification" means', async () => {
+    /* The other half of the owner's choice, and the half the prototype did not
+       have at all: until 28.08.2026 an approved submission produced no result, so
+       agreeing with a correction changed nothing anywhere. „Odmah se ažurira
+       poredak nakon verifikacije" (owner, 27.08.2026) is the sentence, and this is
+       where „nakon" happens.
+
+       One row and not one more: the corrected record keeps the identity of the one
+       it replaces, so the standing holds one result for one race. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23', <Decide as="approved" />)
+
+    const before = await countedRows()
+
+    await corrected(user)
+    await user.click(screen.getByRole('button', { name: 'odobri' }))
+
+    const after = await countedRows()
+
+    expect(after, 'the standing grew or shrank instead of changing').toHaveLength(before.length)
+    expect(after[0], 'the corrected row did not change').not.toEqual(before[0])
+    expect(after.slice(1), 'a row nobody touched changed').toEqual(before.slice(1))
+  })
+
+  it('is left exactly where it was when the correction is turned down', async () => {
+    /* The whole point of the outcome the owner chose: a member whose correction is
+       refused keeps the points they had. Until 28.08.2026 they lost them for good.
+     */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23', <Decide as="rejected" />)
+
+    const before = await countedRows()
+
+    await corrected(user)
+    await user.click(screen.getByRole('button', { name: 'odbij' }))
+
+    expect(await countedRows(), 'a refusal moved the standing').toEqual(before)
   })
 })

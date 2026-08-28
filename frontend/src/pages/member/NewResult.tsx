@@ -8,7 +8,7 @@ import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import type { BtlEvent, Race, Result } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
-import { RESULTS, useEvents, useRaces, useResults } from '../../data/useResource'
+import { useEvents, useRaces, useResults } from '../../data/useResource'
 import { useToday } from '../../clock/useClock'
 import { btlPoints } from '../../data/scoring'
 import { formatDistance, formatNumericDate, formatPoints } from '../../i18n/format'
@@ -143,7 +143,7 @@ function seconds(values: FormValues): number {
 
 export function NewResult() {
   const { locale, t } = useI18n()
-  const { memberNumber, submissions, submit, resubmit, remove } = useSession()
+  const { memberNumber, submissions, submit, resubmit } = useSession()
   /**
    * What the last entry earned and whether it was a correction, once there has
    * been one.
@@ -271,21 +271,42 @@ export function NewResult() {
     if (correcting !== undefined) {
       resubmit(correcting.id, sent)
     } else if (fixingOne !== undefined) {
-      /* A counted result being changed leaves the standings and goes back into
-         the queue as something waiting on somebody (owner, 27.08.2026: „menja i
-         dostavlja dokaz za tu izmenu (ponovo)").
+      /* A counted result being changed goes back into the queue as something
+         waiting on somebody, and **stays in the standing until somebody agrees**.
        *
-         Both halves in one press, and the order matters only in that neither may
-         be left out: the old result is taken out of the reckoning and the new
-         values go in front of a moderator. Left in, a member would have their
-         old points counted while the new ones wait; taken out without the
-         second, the result would simply vanish.
+         Owner, 28.08.2026, choosing between four outcomes: the old result stays
+         where it is while the correction waits, and changes when a moderator
+         approves it. Until then this took the result out of the standing at once,
+         so a refusal lost the points for good: measured that day, a profile fell
+         from 180 races and 1.752,86 points to 179 and 1.744,60 with no way back,
+         because an approved submission produced no result. That contradicted the
+         portal's own rule that the standing is brought up to date **after**
+         verification (owner, 27.08.2026: „odmah se ažurira poredak nakon
+         verifikacije").
        *
-         And the points move only when somebody agrees again, which is the whole
-         reason this is not an edit in place: „odmah se ažurira poredak nakon
-         verifikacije" (owner, same day). */
-      remove(RESULTS, fixingOne.id)
-      submit({ memberNumber: me, ...sent })
+         The cost the owner accepted, written down rather than left to be
+         discovered: while the correction waits, the standing holds numbers the
+         member has themselves said are wrong. That lasts as long as the queue
+         does.
+       *
+         What travels with the submission is the whole corrected record, under the
+         identity of the one it replaces: a `Submission` does not know the event's
+         name or address and a `Result` needs both, and this is the one place where
+         both are in hand. Approving it swaps that record (`SessionProvider`). */
+      submit({
+        memberNumber: me,
+        ...sent,
+        corrects: {
+          ...fixingOne,
+          date: sent.date,
+          distanceKm: sent.distanceKm,
+          ascentM: sent.ascentM,
+          descentM: sent.descentM,
+          seconds: sent.seconds,
+          points: sent.points,
+          category: sent.category,
+        },
+      })
     } else {
       submit({ memberNumber: me, ...sent })
     }

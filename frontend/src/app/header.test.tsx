@@ -282,6 +282,7 @@ function renderInbox(inbox: Message[]) {
     signIn: vi.fn(),
     signOut: vi.fn(),
     submissions: [],
+    corrected: {},
     withdraw: vi.fn(),
     submit: vi.fn(),
     resubmit: vi.fn(),
