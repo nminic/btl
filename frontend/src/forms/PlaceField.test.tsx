@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -47,10 +47,14 @@ function servingTheCodebook() {
 function Holder({
   onCountry,
   opensOn = { town: '', country: 'RS' },
+  locked = false,
 }: {
   onCountry: (code: string) => void
   /** What the field opens holding, for the record already written down. */
   opensOn?: { town: string; country: string }
+  /** Held because the form around it is: a race chosen from the list fills the
+   *  place in and the member may not move it. */
+  locked?: boolean
 }) {
   const [town, setTown] = useState(opensOn.town)
   const [country, setCountry] = useState(opensOn.country)
@@ -63,6 +67,7 @@ function Holder({
         value={town}
         country={country}
         invalid={false}
+        locked={locked}
         describedBy={undefined}
         onChange={(next, chosen) => {
           setTown(next)
@@ -74,9 +79,9 @@ function Holder({
   )
 }
 
-function renderField(opensOn?: { town: string; country: string }) {
+function renderField(opensOn?: { town: string; country: string }, locked = false) {
   const onCountry = vi.fn()
-  render(<Holder onCountry={onCountry} opensOn={opensOn} />)
+  render(<Holder onCountry={onCountry} opensOn={opensOn} locked={locked} />)
 
   /* Two comboboxes stand in this field since 11.08.2026, the town and the
      country beside it, so the town is asked for by name. */
@@ -549,5 +554,101 @@ describe('the town on a form', () => {
     })
 
     globalThis.fetch = real
+  })
+})
+
+describe('the place on a form that is locked by the race chosen above it', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  it('will not give up a town to the keyboard, which is the way past `readOnly`', async () => {
+    /* „Odbijeno, ne ugašeno" is the portal's shape for a control that may not be
+       answered, and it costs something: `disabled` would take the control out of
+       the keyboard's path, so nobody reading by keyboard would ever be told why
+       it cannot be answered. `readOnly` keeps it reachable and stops typing, and
+       it stops nothing else.
+
+       Measured by a review on 23.08.2026 with the keyboard alone: ArrowDown
+       opened the list again, Enter took a town out of it, and the value went from
+       „Be" to „Beocin" on a field the portal said was locked. A lock that is
+       decoration is worse than none, which is what the same review said about the
+       buttons of a choice. */
+    const user = setupUser()
+    const { box, onCountry } = renderField({ town: 'Be', country: 'RS' }, true)
+
+    box.focus()
+    await user.keyboard('{ArrowDown}')
+
+    expect(screen.queryByRole('listbox'), 'the list opened on a locked field').toBeNull()
+
+    await user.keyboard('{Enter}')
+
+    expect(box).toHaveValue('Be')
+    expect(onCountry).not.toHaveBeenCalled()
+  })
+
+  it('will not give up a town to anything else that reaches it either', async () => {
+    /* The half beneath the lock. `readOnly` is what a browser honours and this is
+       what holds whatever else reaches the component, which is the same pair the
+       form renderer keeps on every field it locks. Forced rather than typed,
+       because `user.type` refuses a box that is not editable, and that refusal is
+       the attribute doing its job rather than this guard. */
+    const { box, onCountry } = renderField({ town: 'Be', country: 'RS' }, true)
+
+    fireEvent.change(box, { target: { value: 'Beograd' } })
+
+    expect(box).toHaveValue('Be')
+    expect(onCountry).not.toHaveBeenCalled()
+  })
+
+  it('will not give up its country either, which was reachable and writing through', async () => {
+    /* Two rules meet on this control and only one of them switched it off. A town
+       from the codebook makes it `disabled`, which is the owner's own exception
+       (23.08.2026); a form locked by the race above it leaves it reachable and
+       merely told off, and until 28.08.2026 nothing under that refused anything.
+       Measured by the same review: the country of a locked form changed by
+       keyboard alone. */
+    const { country, onCountry } = renderField({ town: 'Neko mesto', country: 'RS' }, true)
+
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+
+    fireEvent.change(country, { target: { value: 'ME' } })
+
+    expect(country).toHaveValue('RS')
+    expect(onCountry).not.toHaveBeenCalled()
+  })
+
+  it('wears the dress the portal keeps for a control that will not answer', () => {
+    /* The portal has one (`.field__control--held`) and four locked fields wore
+       nothing at all. Measured by a review on 23.08.2026 by comparing computed
+       styles: with `disabled` there had been exactly one visible difference, the
+       cursor, and the change to `aria-disabled` took it away without putting
+       anything in its place. A control that refuses and looks willing is a
+       question the reader answers twice. */
+    const { box, country } = renderField({ town: 'Neko mesto', country: 'RS' }, true)
+
+    expect(box).toHaveClass('field__control--held')
+    expect(country).toHaveClass('field__control--held')
+  })
+
+  it('leaves a field that is not held carrying no such word at all', () => {
+    /* `undefined` and not `false`. Written as a bare boolean it put
+       `aria-disabled="false"` on every live country select on the portal, and ADL
+       records that same attribute once making five live buttons of the price list
+       read as refused. Nothing on the portal matches a bare `[aria-disabled]`
+       today, so the trap was set and had not gone off. */
+    const { box, country } = renderField({ town: 'Neko mesto', country: 'RS' })
+
+    expect(box).not.toHaveAttribute('aria-disabled')
+    expect(country).not.toHaveAttribute('aria-disabled')
+    expect(box).not.toHaveClass('field__control--held')
+    expect(country).not.toHaveClass('field__control--held')
   })
 })

@@ -197,6 +197,15 @@ export function PlaceField({
   }
 
   function onKeyDown(event: React.KeyboardEvent) {
+    /* Nothing at all while the field is held. `readOnly` stops typing and stops
+       nothing else: ArrowDown opened the list again and Enter took a town out of
+       it, so a control the portal says cannot be answered answered anyway.
+       Measured by a review on 23.08.2026 with the keyboard alone: the value went
+       from „Be" to „Beocin" on a field that was locked. */
+    if (locked === true) {
+      return
+    }
+
     if (event.key === 'Escape') {
       /* And stops here. Any ancestor listening for Escape would otherwise take
          it too, so one press both closed these suggestions and shut whatever
@@ -256,7 +265,12 @@ export function PlaceField({
       <input
         id={id}
         name={name}
-        className="field__control"
+        /* And it looks held as well as being held. The portal has one dress for a
+           control that is reachable and will not answer, and until 28.08.2026
+           four locked fields wore nothing at all: measured by comparing computed
+           styles, the one visible difference `disabled` used to make (the cursor)
+           went when `disabled` did, and nothing took its place. */
+        className={locked === true ? 'field__control field__control--held' : 'field__control'}
         type="text"
         role="combobox"
         aria-disabled={locked ? true : undefined}
@@ -285,6 +299,16 @@ export function PlaceField({
              because the country was written and never shown and the danger was a
              race in Beograd edited into Zagreb and filed in Serbia with nothing
              saying so. There is something saying so now. */
+          /* And the same refusal beneath the lock, because a lock is a courtesy
+             to whoever is filling the form in: `readOnly` is what a browser
+             honours, and this is what holds whatever else reaches the component.
+             Written as its own guard rather than trusted to the attribute, which
+             is the shape the portal uses wherever a field is held
+             (`forms/FormRenderer.tsx`). */
+          if (locked === true) {
+            return
+          }
+
           touched.current = true
           onChange(event.target.value, country)
           /* Typed over, so what was picked is no longer what stands here: the
@@ -354,7 +378,11 @@ export function PlaceField({
           /* An id of its own, because it is a control of its own: the summary of
              errors leads here when the country is what is unanswered. */
           id={`${id}-country`}
-          className={known === undefined ? 'field__control' : 'field__control field__control--held'}
+          className={
+            known === undefined && locked !== true
+              ? 'field__control'
+              : 'field__control field__control--held'
+          }
           value={country}
           /* Locked on a town the codebook knows, for the reason written where
              `known` is worked out. Held rather than switched off: `disabled`
@@ -385,7 +413,14 @@ export function PlaceField({
              portal uses wherever a control is held back
              (admin/PendingQueue.tsx). */
           disabled={known !== undefined}
-          aria-disabled={known !== undefined || locked}
+          /* `undefined` and not `false`, so a control that is not held carries no
+             such attribute at all. Written as a bare boolean it put
+             `aria-disabled="false"` on every live country select on the portal,
+             against the rule this very file's renderer spells out
+             (`forms/FormRenderer.tsx`) and against ADL, where that same attribute
+             is recorded as having once made five live buttons of the price list
+             read as refused. */
+          aria-disabled={known !== undefined || locked === true ? true : undefined}
           aria-required={required}
           aria-invalid={countryInvalid}
           /* What is wrong with it, or why it is held, and never the rule that
@@ -405,6 +440,20 @@ export function PlaceField({
              they became branches nothing could reach, and an unreachable branch is
              a claim nothing checks. */
           onChange={(event) => {
+            /* Refused where the form is locked, and there the control is not
+               switched off: `disabled` covers only the town from the codebook, so
+               a locked form left this reachable, told off in words and writing
+               straight through. Measured by a review on 23.08.2026: the country
+               of a locked form changed by keyboard alone.
+
+               The one that is switched off needs no guard here and gets one all
+               the same by standing in the same condition, because a browser that
+               hands a `disabled` control no event is a courtesy and not a rule.
+               */
+            if (locked === true) {
+              return
+            }
+
             onChange(value, event.target.value)
           }}
         >
