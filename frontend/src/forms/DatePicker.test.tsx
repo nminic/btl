@@ -418,51 +418,60 @@ describe('a calendar standing open when the field is locked under it', () => {
     expect(screen.queryByRole('button', { name: '15' })).toBeNull()
   })
 
-  it('hands the focus back to the button, rather than to the page', async () => {
-    /* The other half of the same measurement: the focus fell onto `<body>`, and a
-       reader working by keyboard whose focus falls to the page has to walk the
-       whole form again to find their place (WCAG 2.2 SC 2.4.3). It goes back to
-       the button the calendar was opened from, which is where that reader was a
-       moment ago. */
+})
+
+describe('where the focus goes when the calendar closes under it', () => {
+  /** The ordinary field, opened and then closed the two ways a reader closes it.
+   *  Nothing here is about a lock: this is every date field on the portal. */
+  function opened() {
+    const onChange = vi.fn()
+
+    render(
+      <ClockProvider simulatedDay={TODAY}>
+        <I18nProvider locale="sr">
+          <DatePicker
+            id="proba"
+            name="proba"
+            value="01/01/2027"
+            invalid={false}
+            describedBy={undefined}
+            onChange={onChange}
+          />
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    return { onChange, opener: screen.getByRole('button', { name: 'Otvori kalendar' }) }
+  }
+
+  it('goes back to the button when a day is taken, not to the page', async () => {
+    /* Measured by a review on 28.08.2026: focus a day, press Enter, and
+       `document.activeElement` is `<body>`. The day the focus was standing on has
+       just stopped existing, so somebody reading by keyboard has to walk the whole
+       form again to find their place (WCAG 2.2 SC 2.4.3). Every date field on the
+       portal, and every press, not a corner of it. */
     const user = setupUser()
-
-    render(<Turning />)
-
-    const opener = screen.getByRole('button', { name: 'Otvori kalendar' })
+    const { opener, onChange } = opened()
 
     await user.click(opener)
 
     screen.getByRole('button', { name: '15' }).focus()
+    await user.keyboard('{Enter}')
 
-    /* Pressed without the press moving the focus, which is the walk this is
-       about: in the real one the lock arrives because a race was chosen in
-       another field and the reader's focus is still standing on a day. A press
-       through `user.click` would take the focus itself and there would be nothing
-       left inside the calendar to rescue. */
-    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
-
+    expect(onChange, 'the day was not taken').toHaveBeenCalled()
     expect(document.activeElement).toBe(opener)
   })
 
-  it('leaves a focus that was never inside it where it was', async () => {
-    /* And only where the focus is really inside what is being closed. A lock
-       arriving while somebody is three fields further down must not drag them
-       backwards, which would be the same fault in the other direction. */
+  it('goes back to the button on Escape as well, for the same reason', async () => {
     const user = setupUser()
+    const { opener } = opened()
 
-    render(<Turning />)
+    await user.click(opener)
 
-    await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
+    screen.getByRole('button', { name: '15' }).focus()
+    await user.keyboard('{Escape}')
 
-    const elsewhere = screen.getByRole('button', { name: 'izaberi trku' })
-
-    /* Standing somewhere else while the calendar is open, which is the state the
-       rescue must not touch: the focus is outside it, so closing it takes nothing
-       away. Measured with the condition dropped, so the focus is carried back
-       whatever it was doing: it is dragged from here to the calendar's button. */
-    elsewhere.focus()
-    fireEvent.click(elsewhere)
-
-    expect(document.activeElement).toBe(elsewhere)
+    expect(screen.queryByRole('button', { name: '15' }), 'escape left the calendar').toBeNull()
+    expect(document.activeElement).toBe(opener)
   })
 })

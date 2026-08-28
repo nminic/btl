@@ -131,9 +131,25 @@ describe('the calendar button that will not answer', () => {
 
   it('does not brighten under a pointer it is going to refuse', () => {
     /* A control that lights up under the pointer promises an answer, and this one
-       has already said it will not give one. Heavier than the plain hover rule by
-       one attribute, so it wins wherever both apply, whatever order the bundle
-       puts them in. */
+       has already said it will not give one.
+
+       **What this asks and what it cannot ask.** It asks that the rule is written
+       and what it says. It does not ask what the cascade does with it, and a
+       review on 28.08.2026 measured that gap: a rule of greater weight added later
+       in the same sheet (`.datepicker .datepicker__open:hover`) puts the accent
+       back on the refused button and leaves this green. It is not a gap this file
+       can close, and `scripts/refused-control-appearance.mjs` says why in its own
+       header: nine rounds of review on `entityStyle.test.ts` proved that computing
+       the cascade outside a browser is blind to the next axis every time.
+
+       Measured in a browser instead, by that review, over the built bundle and the
+       markup the portal really draws: the refused button hovered against the same
+       button at rest differs in **nothing**, at 1280 and at 360, in both themes.
+       With the heavier rule added, seventeen properties differ and the colour goes
+       to the accent, which is the live button's.
+
+       That script measures one control today and the portal now has two. What
+       covering both would take is recorded in `btl-produkt/PENDING.md`. */
     const refused = ruleFor(
       PICKER,
       ".datepicker__open[aria-disabled='true']:hover",

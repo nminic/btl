@@ -167,26 +167,26 @@ export function DatePicker({
      is already standing. Measured on 23.08.2026 with the keyboard alone: open the
      calendar, walk back to the name of the race, choose one from the list; the
      date becomes the portal's and the calendar goes on standing with its
-     thirty-one days, Enter on any of them changes nothing, closes the list without
-     a word, and drops the focus onto `<body>`.
+     thirty-one days, and Enter on any of them changes nothing and closes the list
+     without a word.
    *
-     The focus is carried back to the button it came from, rather than left where
-     the calendar was: a reader working by keyboard whose focus falls to the page
-     has to walk the whole form again to find their place. Only where the focus is
-     actually inside what is being closed, so a lock arriving while somebody is
-     three fields further down does not drag them backwards. */
+     Nothing is done about the focus here, and the first version of this did: it
+     carried the focus back to the button whenever the lock arrived while the
+     focus was inside the calendar. Measured by a review on 28.08.2026 through the
+     real screen, that branch is unreachable. The one thing on the portal that
+     locks a date is choosing a race from the list above it, and the list puts the
+     focus back into the race name itself before this runs (`forms/Suggesting.tsx`,
+     `putBack`), so the focus is never inside the calendar by the time the lock is
+     seen. An unreachable branch is a claim nothing checks.
+   *
+     Where the focus really did fall to the page is somewhere else entirely, and
+     it is answered where it happens: `pick` and Escape, below. */
   useEffect(() => {
     if (locked !== true) {
       return
     }
 
-    setOpen((was) => {
-      if (was && box.current?.contains(document.activeElement) === true) {
-        opener.current?.focus()
-      }
-
-      return false
-    })
+    setOpen(false)
   }, [locked])
 
   useEffect(() => {
@@ -203,6 +203,10 @@ export function DatePicker({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setOpen(false)
+        /* And back to the button, for the reason `pick` gives: whoever pressed
+           Escape was standing inside the thing that has just gone. Measured the
+           same way and with the same answer, `<body>`. */
+        opener.current?.focus()
       }
     }
 
@@ -221,6 +225,16 @@ export function DatePicker({
   function pick(day: number) {
     onChange(`${String(day).padStart(2, '0')}/${String(index).padStart(2, '0')}/${year}`)
     setOpen(false)
+    /* And the focus goes back to the button, because the day it was standing on is
+       about to stop existing. Measured by a review on 28.08.2026: focus a day,
+       press Enter, and `document.activeElement` is `<body>`, so a reader working
+       by keyboard has to walk the whole form again to find their place (WCAG 2.2
+       SC 2.4.3). That is true of every date field on the portal and of every
+       press, not of some corner of it.
+
+       The same shape the list of races already uses when it closes under the
+       finger that chose from it (`forms/Suggesting.tsx`, `putBack`). */
+    opener.current?.focus()
   }
 
   return (
