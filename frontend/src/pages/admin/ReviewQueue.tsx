@@ -146,7 +146,30 @@ export function ReviewQueue() {
                         somebody's sentence, and that is what this screen drew
                         before the field existed. */}
                     {outsideLink(one.link) === undefined ? (
-                      one.raceName
+                      <>
+                        {one.raceName}
+                        {/* And that something was sent which the portal will not
+                            open, where something was.
+                         *
+                            Without this the moderator cannot tell a member who
+                            attached a picture and no address from one who sent an
+                            address the portal refuses: both draw the name alone.
+                            Measured by a review on 28.08.2026 with
+                            `https://primer.rs:99999/rezultati`, which the form
+                            takes and a browser will not open: the queue drew the
+                            race name and nothing else, so the moderator was
+                            deciding on evidence they could not see was there.
+                         *
+                            The address itself is not drawn. It is a string the
+                            member wrote and this screen has already decided it
+                            will not hand it to a browser; printing it beside the
+                            name would put an unopenable address in front of a
+                            moderator who might copy it out. What is said is that
+                            one was sent. */}
+                        {one.link !== '' && (
+                          <span className="outside-host">{t('review.unusableLink')}</span>
+                        )}
+                      </>
                     ) : (
                       /* `noreferrer` because the host on the other end is one the
                          member chose, and without it the address of this
