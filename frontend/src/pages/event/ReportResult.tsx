@@ -156,7 +156,13 @@ export function ReportResult() {
                  23.08.2026, and nothing in the package saw it because every race in
                  the file carries its event's name. */
               raceName: race.name,
-              date: event.date,
+              /* The race's day and not the event's, for the same reason the name
+                 beside it is the race's. An event may run over several mornings
+                 (PDL P10) and the event's own day is the first of them, so a
+                 result reported from the second morning of a two day event was
+                 filed on the first: the race carries the day it is run on
+                 (`data/types.ts`), and that is the day somebody ran. */
+              date: race.date,
               /* Off the race, not off the member. These are the official figures
                  and a moderator corrects them on the race itself, where the
                  correction reaches everybody who ran it. */

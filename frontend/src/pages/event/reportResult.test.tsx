@@ -6,6 +6,22 @@ import { I18nProvider } from '../../i18n/I18nProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
+
+/** Everything the session is holding, one line each, so a case can read what was
+ *  really sent rather than what the screen says about it. The same shape
+ *  `pages/member/ownResult.test.tsx` uses. */
+function Sent() {
+  const { submissions } = useSession()
+
+  return (
+    <ul aria-label="store">
+      {submissions.map((one) => (
+        <li key={one.id}>{`${one.id} | ${one.raceName} | ${one.date}`}</li>
+      ))}
+    </ul>
+  )
+}
+
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
@@ -445,6 +461,40 @@ describe('a race, which has no name of its own', () => {
      is the event and the measurements of the race they ran, „Beogradski maraton,
      21,1 km". So every screen that writes a race writes its length, and a race
      is told from the one beside it by that. */
+  /** The one race in the file whose name is not its event's, which is the only
+   *  kind that can tell a name apart from a length. Every other race carries the
+   *  event's name, so a case built on one of those passes whether the label is the
+   *  name or the length: the sentence it is read out of names the event as well.
+   *  Measured on 28.08.2026, which is how this helper came to exist. */
+  async function renamedRace() {
+    const races = await loadResource<Race[]>('races')
+    const events = await loadResource<BtlEvent[]>('events')
+    const named = must(
+      races
+        .map((race) => ({ race, event: events.find((one) => one.id === race.eventId) }))
+        .find(({ race, event }) => event !== undefined && event.name !== race.name),
+      'a race called something other than its event',
+    )
+
+    return { race: named.race, event: must(named.event, 'the event it belongs to') }
+  }
+
+  /** And one run on a morning its event did not begin on, for the same reason: a
+   *  race that carries its event's day cannot tell the two apart. Thirty of them
+   *  in the file, counted the same day. */
+  async function secondMorning() {
+    const races = await loadResource<Race[]>('races')
+    const events = await loadResource<BtlEvent[]>('events')
+    const later = must(
+      races
+        .map((race) => ({ race, event: events.find((one) => one.id === race.eventId) }))
+        .find(({ race, event }) => event !== undefined && event.date !== race.date),
+      'a race run on a later morning than its event began',
+    )
+
+    return { race: later.race, event: must(later.event, 'the event it belongs to') }
+  }
+
   async function anyRace() {
     const races = await loadResource<Race[]>('races')
     const events = await loadResource<BtlEvent[]>('events')
@@ -472,15 +522,53 @@ describe('a race, which has no name of its own', () => {
       .toBeGreaterThan(0)
   })
 
-  it('is named by its length on the form that reports a result', async () => {
-    const { race, event } = await anyRace()
+  it('is named by its own name on the form that reports a result', async () => {
+    const { race, event } = await renamedRace()
 
     renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-    /* By the length alone, which is the whole of what tells two races of one
-       event apart. */
-    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
+    /* By its name, since 23.08.2026, when the owner gave a race one: „ja mogu da u
+       okviru Beogradskog maratona imam dve trke, od 42.2 i 21.1, i obe će dobiti
+       default naziv Beogradski maraton. Ali onda mogu izmeniti ovu drugu da se
+       zove Beogradski polumaraton." Until 28.08.2026 this sentence said the
+       length, so a race the administrator had renamed read „21,10 km" here and on
+       the event's own page. */
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(race.name)
+    /* And not by its length, which is what it said until 28.08.2026. Both halves,
+       because the sentence names the event too and every other race in the file
+       carries the event's name: on one of those, „the name is there" is true
+       whichever of the two is drawn. */
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).not.toHaveTextContent(
       formatDistance(race.distanceKm, 'sr-Latn'),
     )
+  })
+
+  it('files the result on the day the race was run, not the day the event began', async () => {
+    /* An event may run over several mornings (PDL P10) and its own day is the
+       first of them, so a result reported from the second morning of a two day
+       event was filed on the first. The race carries the day it is run on, and
+       that is the day somebody ran.
+
+       On a race whose day really differs from its event's, because thirty of the
+       file's races do and the rest cannot tell the two apart. */
+    const { race, event } = await secondMorning()
+
+    expect(race.date, 'the walk is built on a race that begins its event').not.toBe(event.date)
+
+    const user = setupUser()
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+
+    await screen.findByText(/Prijavljuješ rezultat/)
+    await user.type(await screen.findByLabelText(/Sati/), '3')
+    await user.type(screen.getByLabelText(/Minuta/), '30')
+    await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    const stored = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(stored[0]?.textContent).toContain(race.date)
+    expect(stored[0]?.textContent).not.toContain(event.date)
   })
 })
