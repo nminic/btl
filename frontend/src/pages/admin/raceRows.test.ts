@@ -138,6 +138,7 @@ describe('the races of an event while they are being entered', () => {
       distanceKm: '10',
       ascentM: '0',
       descentM: '0',
+      category: 'short',
     })
     /* And what was typed, where something was. Read through `Number`, so „042" is
        stored as the number it is rather than as the digits somebody typed. */
@@ -145,5 +146,34 @@ describe('the races of an event while they are being entered', () => {
       ascentM: '42',
       descentM: '7',
     })
+  })
+
+  it('writes the category the length says, and writes it again when the length changes', () => {
+    /* A race carries a category (`data/types.ts`) and it is the length and nothing
+       else, by the exact value and with no tolerance (PDL P5). The table stopped
+       asking for it on 23.08.2026, when the owner took the column out, and the
+       writing went with the asking.
+
+       What that cost was measured by a review: a saved record is merged over the
+       one before it, so a race of 42,2 km whose length is corrected to 10 kept
+       `category: 'marathon'` on the record, and the record was a marathon of ten
+       kilometres. Nothing draws it wrong today, because the public screens read the
+       file rather than the layer of edits; the shape of the record is what the
+       database phase inherits, which is why it is written rather than left.
+
+       Both halves, because the first alone passes on a function that writes one
+       category for everything. */
+    expect(storedRow(row({ distanceKm: '42.2' }), 'evt')).toMatchObject({
+      distanceKm: '42.2',
+      category: 'marathon',
+    })
+    expect(storedRow(row({ distanceKm: '10' }), 'evt')).toMatchObject({
+      distanceKm: '10',
+      category: 'short',
+    })
+    /* And on the boundary, which is where „the exact value and no tolerance" means
+       something: 21,1 is a half and 21,0 is not. */
+    expect(storedRow(row({ distanceKm: '21.1' }), 'evt')).toMatchObject({ category: 'half' })
+    expect(storedRow(row({ distanceKm: '21' }), 'evt')).toMatchObject({ category: 'short' })
   })
 })
