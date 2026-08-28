@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ruleFor } from '../../test/stylesheet'
-import { bare } from '../../test/stylesheet'
+import { bare } from '../../test/sources'
 
 /**
  * The two controls a member has over a result that has been counted, and the
