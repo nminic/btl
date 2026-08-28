@@ -385,6 +385,29 @@ describe('LeagueDetail', () => {
   })
 })
 
+
+/**
+ * The rows of the competition grid that are people, out of a table that also
+ * carries a row per block.
+ *
+ * The standing is split into blocks since 27.08.2026 (PDL P15): a competition
+ * ranks by category or by gender alone, and each block is introduced by one
+ * heading across the whole width. Those rows are not placings. `slice(1)` was
+ * enough while the only row that was not a person stood at the top.
+ *
+ * Told apart by role and not by position: a placing carries a heading of its own
+ * row, the runner's name, while a block heading is a column header over a group
+ * of columns. Neither can be mistaken for the other.
+ */
+const placings = (grid: HTMLElement): HTMLElement[] =>
+  within(grid)
+    .getAllByRole('row')
+    .filter(
+      (row) =>
+        within(row).queryAllByRole('rowheader').length > 0 &&
+        within(row).queryAllByRole('cell').length > 0,
+    )
+
 describe('a competition, in two parts', () => {
   /* Owner, 31.07.2026: the same shape the profile has. The standing is a grid,
      with everybody who ran down the side and every race across the top. The
@@ -406,24 +429,45 @@ describe('a competition, in two parts', () => {
     expect(heads.length).toBeGreaterThan(2)
   })
 
-  it('orders the rows by that second column, highest first', async () => {
+  it('orders each block by that second column, highest first', async () => {
+    /* Highest first **inside a block**, and that is the whole of what splitting
+       the standing means. Read across the table the numbers now go up again at
+       every boundary, and they should: a competition that ranks by category
+       ranks nobody against somebody in another one.
+
+       Until 27.08.2026 this asked the question of the whole table, which was the
+       right question while there was one block; asked of the whole table now it
+       would fail on a correct screen, and passing it by dropping the order
+       altogether would leave the ranking unguarded. So it is asked once per
+       block, and the boundaries come from the same headings the reader sees. */
     renderAt(RUN)
 
     const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
-    const totals = within(grid)
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => Number(must(first(within(row).getAllByRole('cell')).textContent, 'text').replace(',', '.')))
+    const blocks = within(grid).getAllByRole('rowgroup').slice(1)
 
-    expect(totals.length).toBeGreaterThan(1)
-    expect([...totals].sort((left, right) => right - left)).toEqual(totals)
+    expect(blocks.length, 'the standing is drawn as one block').toBeGreaterThan(1)
+
+    for (const block of blocks) {
+      const named = must(within(block).getAllByRole('rowheader')[0]?.textContent, 'the block name')
+      const totals = within(block)
+        .getAllByRole('row')
+        .filter(
+          (row) =>
+            within(row).queryAllByRole('rowheader').length > 0 &&
+            within(row).queryAllByRole('cell').length > 0,
+        )
+        .map((row) => Number(must(first(within(row).getAllByRole('cell')).textContent, 'text').replace(',', '.')))
+
+      expect(totals.length, `the block ${named} has nobody in it`).toBeGreaterThan(0)
+      expect([...totals].sort((left, right) => right - left), `the block ${named} is out of order`).toEqual(totals)
+    }
   })
 
   it('leaves the cell of a race somebody did not run empty', async () => {
     renderAt(RUN)
 
     const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
-    const cells = within(grid).getAllByRole('row').slice(1).flatMap((row) =>
+    const cells = placings(grid).flatMap((row) =>
       within(row).getAllByRole('cell').slice(1).map((cell) => cell.textContent),
     )
 
@@ -462,7 +506,7 @@ describe('the grid of a competition, in the details the review found unguarded',
     renderAt(RUN)
 
     const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
-    const rows = within(grid).getAllByRole('row').slice(1)
+    const rows = placings(grid)
 
     /* A grid of bare cells leaves a screen reader reading numbers with nothing
        to attach them to. Every row is named by the person it belongs to. */
@@ -477,7 +521,16 @@ describe('the grid of a competition, in the details the review found unguarded',
     const number = (text: string | null) =>
       text === null || text === '' ? 0 : Number(text.replace(/\./g, '').replace(',', '.'))
 
-    for (const row of within(grid).getAllByRole('row').slice(1)) {
+    /* A loop over nothing passes, and this one can now walk nothing: before the
+       standing was split it read every row but the first, and a mutation that
+       turned the runners' names into ordinary cells failed it on `Number(...)`
+       being NaN. Reading placings by role, that same mutation leaves an empty
+       list and a green test. Counted first, so the walk means something. */
+    const rows = placings(grid)
+
+    expect(rows.length, 'the standing has nobody in it').toBeGreaterThan(1)
+
+    for (const row of rows) {
       const cells = within(row).getAllByRole('cell')
       const shown = number(first(cells).textContent)
       const races = cells.slice(1).reduce((sum, cell) => sum + number(cell.textContent), 0)

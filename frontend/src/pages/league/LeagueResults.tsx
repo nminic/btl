@@ -4,12 +4,13 @@ import { Pager } from '../../components/Pager'
 import { PER_PAGE, pageFrom } from '../../components/pageOf'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
+import { categoryLabel } from '../../data/categories'
 import { fieldFor } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
 import { formatDistance, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { leagueTable } from './leagueTable'
+import { leagueGroups, leagueTable } from './leagueTable'
 import './League.css'
 import { useFilterParams } from '../../app/useFilterParams'
 
@@ -68,7 +69,36 @@ function Grid({
      is not bounded and cannot be by paging: forty six races are forty six
      columns whatever this does, so they go on scrolling inside their own box. */
   const page = pageFrom(params.get('strana'), table.rows.length)
-  const shown = table.rows.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+
+  /* Split the way this competition says it ranks, and paged over the split
+     rather than beside it.
+
+     Owner, in P15: „Podela na kategorije se podešava na nivou svake Lige.
+     RunTrace liga ima podelu samo po polu, bez uzrasnih kategorija." Half of
+     that decision was carried: the setting is on the record, on the admin form
+     and printed on the list of competitions, and this table read none of it, so
+     both settings drew one undivided grid. Measured 27.08.2026: the word
+     „category" appeared nowhere in this file.
+
+     The blocks are cut out of one ordered list rather than paged one by one, so
+     the page is still fifty rows wherever the boundaries fall. A block that has
+     nobody left on this page is not drawn, which is also what keeps a competition
+     of five people from showing eight empty tables. */
+  const from = (page - 1) * PER_PAGE
+  const groups = leagueGroups(league, table.rows)
+  let above = 0
+  const shown = groups
+    .map((group) => {
+      const start = above
+
+      above += group.rows.length
+
+      return {
+        code: group.code,
+        rows: group.rows.slice(Math.max(0, from - start), Math.max(0, from + PER_PAGE - start)),
+      }
+    })
+    .filter((group) => group.rows.length > 0)
 
   return (
     <>
@@ -112,8 +142,35 @@ function Grid({
               ))}
             </tr>
           </thead>
-          <tbody>
-            {shown.map((row) => (
+          {shown.map((group) => (
+          <tbody key={group.code}>
+            {/* What this block is, said in the table rather than beside it: a
+                row of its own, spanning every column, so a screen reader meets
+                the name of the group before the people in it rather than after.
+                `rowgroup` and not `colgroup`, corrected 27.08.2026 after a
+                review read the two apart: `colgroup` names a group of columns and
+                the portal draws no `<colgroup>` anywhere, while this heading opens
+                a `<tbody>` and names every row inside it, which is what a row
+                group is.
+
+                Named by the same string the standing names it by
+                (`categoryLabel`), so the two screens never call one group two
+                things. It also carries the gender case unchanged, which is what
+                a competition ranking by gender alone shows. */}
+            <tr className="league__group">
+              <th scope="rowgroup" colSpan={2 + table.columns.length}>
+                {/* The words inside their own box, and it is that box that is
+                    pinned rather than the cell around it. The cell spans every
+                    column, so it is wider than the screen by design, and pinning
+                    the left edge of something wider than the window pins nothing:
+                    measured at 360px, the heading travelled from 16 to -384 as
+                    soon as the grid was scrolled 400 pixels sideways, which is
+                    the name of the block sailing off the left edge while the
+                    reader is still inside it. */}
+                <span className="league__group-name">{categoryLabel(group.code, t)}</span>
+              </th>
+            </tr>
+            {group.rows.map((row) => (
               <tr key={row.competitor.memberNumber}>
                 <th scope="row" className="league__who">
                   <CompetitorName competitor={row.competitor} />
@@ -131,6 +188,7 @@ function Grid({
               </tr>
             ))}
           </tbody>
+          ))}
         </table>
       </div>
 

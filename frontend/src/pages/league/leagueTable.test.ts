@@ -1,6 +1,7 @@
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { at, first } from '../../test/at'
-import { leagueTable } from './leagueTable'
+import { categoryOfMember } from '../../data/derive'
+import { leagueGroups, leagueTable } from './leagueTable'
 
 const person = (memberNumber: string): Competitor => ({
   memberNumber,
@@ -221,5 +222,79 @@ describe('a heading that has to be cut somewhere', () => {
     )
 
     expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
+  })
+})
+
+describe('the way a competition splits its ranking', () => {
+  /* Owner, in P15: „Podela na kategorije se podešava na nivou svake Lige.
+     RunTrace liga ima podelu samo po polu, bez uzrasnih kategorija." The flag
+     was on the record, on the admin form and printed on the list of
+     competitions, and the table read none of it: measured on 27.08.2026, the
+     word „category" appeared nowhere in `leagueTable.ts` or in the screen, so
+     both settings drew one undivided table. */
+
+  /** Four people the two settings have to tell apart: two women and two men,
+   *  and within each pair two different age bands for the season 2019. */
+  const field = [
+    { ...person('000001'), gender: 'M' as const, birthYear: 1985 },
+    { ...person('000002'), gender: 'M' as const, birthYear: 1955 },
+    { ...person('000003'), gender: 'F' as const, birthYear: 1985 },
+    { ...person('000004'), gender: 'F' as const, birthYear: 1955 },
+  ]
+
+  const rowsOf = (people: Competitor[]) =>
+    people.map((competitor) => ({ competitor, points: new Map<string, number>(), total: 0 }))
+
+  it('splits into two where the competition ranks by gender alone', () => {
+    /* „Samo po polu" is not „no grouping"; it is grouping into two, and that is
+       the half that is easy to lose. A competition ranking by gender that draws
+       one list places a woman behind men she was never competing against. */
+    const groups = leagueGroups({ ...league, groupsByCategory: false }, rowsOf(field))
+
+    expect(groups.map((one) => one.code)).toEqual(['M', 'Ž'])
+    expect(groups.map((one) => one.rows.length)).toEqual([2, 2])
+  })
+
+  it('splits by age as well where the competition ranks by category', () => {
+    /* The same four people, four blocks: the age band is part of the code, so
+       two women of different bands are two blocks and not one. */
+    const groups = leagueGroups({ ...league, groupsByCategory: true }, rowsOf(field))
+
+    expect(groups.map((one) => one.code)).toEqual(['M25-39', 'M55+', 'Ž25-39', 'Ž55+'])
+    expect(groups.every((one) => one.rows.length === 1)).toBe(true)
+  })
+
+  it('names its blocks the way the rest of the portal names them', () => {
+    /* Read off `categoryOfMember` rather than written here, so a block on this
+       screen is never called something the standing calls otherwise. The season
+       is the competition's own, which is what makes the band right: the same
+       person is in a different band in a different season. */
+    const older = { ...person('000009'), gender: 'M' as const, birthYear: 1955 }
+
+    expect(first(leagueGroups({ ...league, groupsByCategory: true }, rowsOf([older]))).code).toBe(
+      categoryOfMember(older, league.season),
+    )
+  })
+
+  it('draws no block for a category nobody in the competition is in', () => {
+    /* A competition of one would otherwise show eight empty tables, one per
+       category the league has, seven of them saying nothing except that the
+       portal knows the categories exist. */
+    const groups = leagueGroups({ ...league, groupsByCategory: true }, rowsOf([at(field, 0)]))
+
+    expect(groups.length).toBe(1)
+  })
+
+  it('keeps the order the table already settled inside each block', () => {
+    /* `leagueTable` ranks by the total and breaks a tie on the smaller member
+       number. Splitting must not reorder anything: a block is a slice of that
+       order, and a sort here would be a second ranking nobody asked for. */
+    const two = rowsOf([at(field, 0), { ...person('000000'), gender: 'M' as const, birthYear: 1985 }])
+    const groups = leagueGroups({ ...league, groupsByCategory: false }, two)
+
+    expect(first(groups).rows.map((one) => one.competitor.memberNumber)).toEqual([
+      '000001',
+      '000000',
+    ])
   })
 })

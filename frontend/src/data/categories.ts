@@ -92,6 +92,18 @@ export function firstSeasonAllowed(points: number): boolean {
  * with the language.
  */
 export function categoryLabel(code: string, t: (key: string) => string): string {
+  /* A mark of a gender on its own is not a category code at all: it is what a
+     competition that ranks by gender alone groups by (PDL P15), and the standing
+     has always called those two groups „Muškarci" and „Žene" (`Rankings.tsx`).
+     Written here rather than beside the competition, because this is the one
+     place that turns a code into words and two places would be two names for one
+     group. Found by a review on 27.08.2026: the blocks were drawn as „M" and
+     „Ž", a single letter each, while a comment claimed they were named the way
+     the standing names them. */
+  if (code === genderMark('M') || code === genderMark('F')) {
+    return t(code === genderMark('M') ? 'rankings.men' : 'rankings.women')
+  }
+
   if (!code.endsWith(` ${FIRST_SEASON_BAND}`)) {
     return code
   }
