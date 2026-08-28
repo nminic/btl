@@ -13,6 +13,7 @@ import { ruleFor } from '../test/stylesheet'
  */
 const suggests = readFileSync(join(process.cwd(), 'src/forms/Suggesting.css'), 'utf-8')
 const fields = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf-8')
+const PICKER = readFileSync(join(process.cwd(), 'src/forms/DatePicker.css'), 'utf-8')
 
 describe('the box a list is typed into', () => {
   it('takes the width of its field, like every other control', () => {
@@ -108,5 +109,61 @@ describe('the calendar of a date field', () => {
     const grid = ruleFor(picker, '.datepicker__grid', 'DatePicker.css')
 
     expect(grid.getPropertyValue('grid-template-columns')).toBe('repeat(7, minmax(0, 2rem))')
+  })
+})
+
+describe('the calendar button that will not answer', () => {
+  it('looks refused, and not only says so', () => {
+    /* „Odbijeno, ne ugašeno" keeps the button in the keyboard's path and says so
+       in a word a screen reader reads; a word was all it was. Measured on
+       23.08.2026: the refused button and the live one shared their colour, their
+       background and their cursor, so whoever was looking rather than listening
+       was shown a live control and told nothing.
+
+       The same two declarations the portal keeps for a held control
+       (`.field__control--held`).
+
+       The fields beside this button do not wear them yet, and the same sentence
+       was corrected in `DatePicker.css` while this one was left saying otherwise:
+       one fact, two homes, one of them fixed. `field__control--held` is written
+       only by `PlaceField`, and a date locked by a chosen race carries
+       `aria-disabled` and `readOnly` and no class at all, so the button goes grey
+       beside a field that does not. That is a separate change, recorded in
+       `btl-produkt/PENDING.md`. */
+    const refused = ruleFor(PICKER, ".datepicker__open[aria-disabled='true']", 'DatePicker.css')
+
+    expect(refused.background).toBe('var(--surface-hover)')
+    expect(refused.cursor).toBe('default')
+  })
+
+  it('does not brighten under a pointer it is going to refuse', () => {
+    /* A control that lights up under the pointer promises an answer, and this one
+       has already said it will not give one.
+
+       **What this asks and what it cannot ask.** It asks that the rule is written
+       and what it says. It does not ask what the cascade does with it, and a
+       review on 28.08.2026 measured that gap: a rule of greater weight added later
+       in the same sheet (`.datepicker .datepicker__open:hover`) puts the accent
+       back on the refused button and leaves this green. It is not a gap this file
+       can close, and `scripts/refused-control-appearance.mjs` says why in its own
+       header: nine rounds of review on `entityStyle.test.ts` proved that computing
+       the cascade outside a browser is blind to the next axis every time.
+
+       Measured in a browser instead, by that review, over the built bundle and the
+       markup the portal really draws: the refused button hovered against the same
+       button at rest differs in **nothing**, at 1280 and at 360, in both themes.
+       With the heavier rule added, seventeen properties differ and the colour goes
+       to the accent, which is the live button's.
+
+       That script measures one control today and the portal now has two. What
+       covering both would take is recorded in `btl-produkt/PENDING.md`. */
+    const refused = ruleFor(
+      PICKER,
+      ".datepicker__open[aria-disabled='true']:hover",
+      'DatePicker.css',
+    )
+
+    expect(refused.borderColor).toBe('var(--control-border)')
+    expect(refused.color).toBe('var(--text-muted)')
   })
 })

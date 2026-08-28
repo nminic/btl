@@ -1,5 +1,6 @@
 import { htmlElement, must } from '../test/at'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { useState } from 'react'
 import { setupUser } from '../test/user'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -352,5 +353,179 @@ describe('where the calendar stands', () => {
     await openAt({ top: 160, height: 40, tall: 245, room: { across: 360, down: 768 } })
 
     expect(measuredWearing).toEqual({ position: 'fixed', maxInlineSize: '344px' })
+  })
+})
+
+describe('a calendar standing open when the field is locked under it', () => {
+  const TODAY_ISO = '2027-01-01'
+
+  /** The field with a lock that can be turned while it stands, which is the whole
+   *  of what this is about: the guard on the button refuses to open a calendar
+   *  and says nothing about one already standing. */
+  function Turning() {
+    const [locked, setLocked] = useState(false)
+
+    return (
+      <ClockProvider simulatedDay={TODAY_ISO}>
+        <I18nProvider locale="sr">
+          <button
+            type="button"
+            onClick={() => {
+              setLocked(true)
+            }}
+          >
+            izaberi trku
+          </button>
+          <DatePicker
+            id="proba"
+            name="proba"
+            value="01/01/2027"
+            invalid={false}
+            describedBy={undefined}
+            locked={locked}
+            onChange={vi.fn()}
+          />
+        </I18nProvider>
+      </ClockProvider>
+    )
+  }
+
+  it('closes, rather than standing over a date nobody may change', async () => {
+    /* Measured on 23.08.2026 with the keyboard alone: open the calendar, walk back
+       to the name of the race, choose one from the list; the date becomes the
+       portal's and the calendar goes on standing with its thirty-one days. Enter
+       on any of them changes nothing and closes the list without a word.
+
+       A calendar over a locked date is not merely useless: it is the portal
+       inviting an answer to a question it has just closed. */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
+
+    expect(screen.getByRole('button', { name: '15' })).toBeVisible()
+
+    /* Turned without a press of the pointer, and that is not a convenience: a
+       press anywhere outside the calendar already closes it, by the rule that
+       exists for somebody who opened it and changed their mind. Measured on
+       28.08.2026 with the effect taken out and this walk written with
+       `user.click`: the calendar closed all the same and the case said nothing.
+       In the real walk the lock arrives because another field was answered, and
+       nothing was pressed here at all. */
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    expect(screen.queryByRole('button', { name: '15' })).toBeNull()
+  })
+
+})
+
+describe('where the focus goes when the calendar closes under it', () => {
+  /** The ordinary field, opened and then closed.
+   *
+   *  Three ways out that a reader takes, not two: a day is chosen, Escape is
+   *  pressed, or something outside the calendar is pressed. The two below are the
+   *  ones that say anything about the focus; the third deliberately does not,
+   *  because a press moves the focus itself, to whatever was pressed, and putting
+   *  the button in its way would take the reader somewhere they did not press.
+   *  Measured on 28.08.2026 with the focus on a day and a press on the empty part
+   *  of the page: the focus lands on `<body>` at 1280 and on the page's own main
+   *  region at 360.
+   *
+   *  Nothing here is about a lock: this is every date field on the portal. */
+  function opened() {
+    const onChange = vi.fn()
+
+    render(
+      <ClockProvider simulatedDay={TODAY}>
+        <I18nProvider locale="sr">
+          <DatePicker
+            id="proba"
+            name="proba"
+            value="01/01/2027"
+            invalid={false}
+            describedBy={undefined}
+            onChange={onChange}
+          />
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    return { onChange, opener: screen.getByRole('button', { name: 'Otvori kalendar' }) }
+  }
+
+  it('goes back to the button when a day is taken, not to the page', async () => {
+    /* Measured by a review on 28.08.2026: focus a day, press Enter, and
+       `document.activeElement` is `<body>`. The day the focus was standing on has
+       just stopped existing, so somebody reading by keyboard has to walk the whole
+       form again to find their place (WCAG 2.2 SC 2.4.3). Every date field on the
+       portal, and every press, not a corner of it. */
+    const user = setupUser()
+    const { opener, onChange } = opened()
+
+    await user.click(opener)
+
+    screen.getByRole('button', { name: '15' }).focus()
+    await user.keyboard('{Enter}')
+
+    expect(onChange, 'the day was not taken').toHaveBeenCalled()
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('goes back to the button on Escape as well, for the same reason', async () => {
+    const user = setupUser()
+    const { opener } = opened()
+
+    await user.click(opener)
+
+    screen.getByRole('button', { name: '15' }).focus()
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('button', { name: '15' }), 'escape left the calendar').toBeNull()
+    expect(document.activeElement).toBe(opener)
+  })
+})
+
+describe('Escape pressed from somewhere that is not the calendar', () => {
+  it('leaves the cursor where the reader put it', async () => {
+    /* The condition on the focus, and it is the condition rather than a nicety:
+       Escape is heard on the document, so it arrives whatever the reader was
+       doing. Measured by a review on 28.08.2026 against the first version, which
+       moved the focus every time: open the calendar with the button, press into
+       the date box beside it, which does not close the calendar, type, and press
+       Escape. The cursor was pulled out of the box being typed into and put on
+       the button, which is the rule this was written for broken in the other
+       direction (WCAG 2.2 SC 2.4.3). */
+    const user = setupUser()
+
+    render(
+      <ClockProvider simulatedDay={TODAY}>
+        <I18nProvider locale="sr">
+          <DatePicker
+            id="proba"
+            name="proba"
+            value="01/01/2027"
+            invalid={false}
+            describedBy={undefined}
+            onChange={vi.fn()}
+          />
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
+
+    const box = screen.getByRole('textbox')
+
+    box.focus()
+
+    /* Still standing: a press inside the field is not a press outside it, so the
+       calendar does not close and Escape is the way out. */
+    expect(screen.getByRole('button', { name: '15' })).toBeVisible()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('button', { name: '15' }), 'escape left the calendar').toBeNull()
+    expect(document.activeElement).toBe(box)
   })
 })

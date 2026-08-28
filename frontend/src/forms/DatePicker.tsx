@@ -157,6 +157,37 @@ export function DatePicker({
   }, [open])
   const [month, setMonth] = useState(() => monthOf(value, today))
   const box = useRef<HTMLDivElement>(null)
+  /** The button the calendar is opened from, so a focus inside a calendar that is
+   *  closed out from under it has somewhere of its own to land. */
+  const opener = useRef<HTMLButtonElement>(null)
+
+  /* And a calendar that is already open closes the moment the field is locked.
+   *
+     The guard on the button refuses to open one; it says nothing about one that
+     is already standing. Measured on 23.08.2026 with the keyboard alone: open the
+     calendar, walk back to the name of the race, choose one from the list; the
+     date becomes the portal's and the calendar goes on standing with its
+     thirty-one days, and Enter on any of them changes nothing and closes the list
+     without a word.
+   *
+     Nothing is done about the focus here, and the first version of this did: it
+     carried the focus back to the button whenever the lock arrived while the
+     focus was inside the calendar. Measured by a review on 28.08.2026 through the
+     real screen, that branch is unreachable. The one thing on the portal that
+     locks a date is choosing a race from the list above it, and the list puts the
+     focus back into the race name itself before this runs (`forms/Suggesting.tsx`,
+     `putBack`), so the focus is never inside the calendar by the time the lock is
+     seen. An unreachable branch is a claim nothing checks.
+   *
+     Where the focus really did fall to the page is somewhere else entirely, and
+     it is answered where it happens: `pick` and Escape, below. */
+  useEffect(() => {
+    if (locked !== true) {
+      return
+    }
+
+    setOpen(false)
+  }, [locked])
 
   useEffect(() => {
     if (!open) {
@@ -171,7 +202,26 @@ export function DatePicker({
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        /* Only where the focus is really inside the calendar, which is the
+           condition and not a nicety: Escape is heard on the document, so it
+           arrives whatever the reader was doing. Measured by a review on
+           28.08.2026 with the first version, which moved it every time: open the
+           calendar with the button, press into the date box beside it, which does
+           not close it, type, and press Escape. The cursor was pulled out of the
+           box being typed into and put on the button; from the race name above it,
+           the same press moved the focus to a different field's calendar button.
+           That is the very rule this was written for (WCAG 2.2 SC 2.4.3), broken
+           in the other direction.
+
+           The popup and not the whole field: the box, the steps and the button are
+           inside `.datepicker` and none of them is going anywhere. */
+        const inside = pop.current?.contains(document.activeElement) === true
+
         setOpen(false)
+
+        if (inside) {
+          opener.current?.focus()
+        }
       }
     }
 
@@ -190,6 +240,21 @@ export function DatePicker({
   function pick(day: number) {
     onChange(`${String(day).padStart(2, '0')}/${String(index).padStart(2, '0')}/${year}`)
     setOpen(false)
+    /* And the focus goes back to the button, because the day it was standing on is
+       about to stop existing. Measured by a review on 28.08.2026: focus a day,
+       press Enter, and `document.activeElement` is `<body>`, so a reader working
+       by keyboard has to walk the whole form again to find their place (WCAG 2.2
+       SC 2.4.3). That is true of every date field on the portal and of every
+       press, not of some corner of it.
+
+       The same shape the list of races already uses when it closes under the
+       finger that chose from it (`forms/Suggesting.tsx`, `putBack`).
+
+       Unconditional here, unlike Escape below, and the difference is real rather
+       than an oversight: this runs because a day was pressed, and a day is inside
+       the calendar. Escape is heard on the document and arrives whatever the
+       reader happened to be doing. */
+    opener.current?.focus()
   }
 
   return (
@@ -244,6 +309,7 @@ export function DatePicker({
       ))}
 
       <button
+        ref={opener}
         type="button"
         className="datepicker__open"
         aria-disabled={locked ? true : undefined}
