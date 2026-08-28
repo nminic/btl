@@ -189,6 +189,22 @@ describe('who is offered what on an event', () => {
       head.querySelector('.rankings__head-tool'),
       'a control box is drawn for a member with nothing to press',
     ).toBeNull()
+
+    /* And the same thing said without naming the class, because the line above
+       cannot fail on its own: it passes when the box is absent and it passes just
+       as quietly when the class is renamed and the box is drawn under the new
+       name. Measured on 28.08.2026 by renaming it in `EventActions.tsx`: the line
+       above stayed green while the empty box was in the head.
+
+       What the layout rule is really about is an element with nothing in it, so
+       that is what is asked. Any empty child of the head costs the heading its
+       16px, whatever it is called. */
+    expect(
+      [...head.children]
+        .filter((one) => one.children.length === 0 && (one.textContent ?? '') === '')
+        .map((one) => one.tagName),
+      'an empty box is drawn in the head of the event',
+    ).toEqual([])
   })
 
   it('offers nothing on a race that has not been run yet', async () => {

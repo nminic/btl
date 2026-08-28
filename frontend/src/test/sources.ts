@@ -57,3 +57,31 @@ export function inside(...parts: string[]): string {
 /** What this platform puts between the parts of a path, for the one test that
  *  prints a path back and has to print it the same on either. */
 export const SEP = sep
+
+/**
+ * The code with every comment blanked out, and the same length as what went in,
+ * so a position in it is still a position in the file.
+ *
+ * A `<table` written in prose is not one drawn, and this portal explains itself
+ * at length: the note above the matrix names the tag it is about, and the file
+ * you are reading names it a dozen times.
+ *
+ * **Nothing is blanked after a colon**, which is the half a second copy of this
+ * kept getting wrong. An address is `https://…`, so a stripper that blanks from
+ * the first `//` to the end of the line blanks the rest of every line an address
+ * appears on, and a violation written after one is invisible to every guard built
+ * on top of it. Measured in `src/app/head.ts` on 23.08.2026: the violation on the
+ * same line as an address went unseen, the identical violation on the next line
+ * was found.
+ *
+ * Here rather than in `stylesheet.ts`, where it was written, because the third
+ * reader of it is not about stylesheets at all: `data/contract.test.ts` sweeps
+ * the portal's own source, and had a copy with the colon left out.
+ */
+export function bare(code: string): string {
+  return code
+    .replaceAll(/\/\*[\s\S]*?\*\//g, (comment) => comment.replaceAll(/[^\n]/g, ' '))
+    .replaceAll(/(^|[^:])\/\/[^\n]*/g, (line, before: string) =>
+      before + ' '.repeat(line.length - before.length),
+    )
+}

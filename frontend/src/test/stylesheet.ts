@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { must } from './at'
+import { bare } from './sources'
 
 /**
  * Reading a rule out of a stylesheet, for the guards that hold a declaration
@@ -253,23 +254,10 @@ export function ruleFor(css: string, selector: string, named: string): CSSStyleD
 /* Everything below reads what a file asks for rather than what it declares, and
  * is here rather than in one test because two of them now need it: the sheet of
  * tables, and the sheet that styles a link out of the portal. A closure written
- * twice is a closure that can be tightened once. */
-
-/**
- * The code with every comment blanked out, and the same length as what went in,
- * so a position in it is still a position in the file.
+ * twice is a closure that can be tightened once.
  *
- * A `<table` written in prose is not one drawn, and this portal explains itself
- * at length: the note above the matrix names the tag it is about, and the file
- * you are reading names it a dozen times.
- */
-export function bare(code: string): string {
-  return code
-    .replaceAll(/\/\*[\s\S]*?\*\//g, (comment) => comment.replaceAll(/[^\n]/g, ' '))
-    .replaceAll(/(^|[^:])\/\/[^\n]*/g, (line, before: string) =>
-      before + ' '.repeat(line.length - before.length),
-    )
-}
+ * `bare` used to live here and now lives beside the sweeps in `sources.ts`, which
+ * is where a third reader of it turned up (`data/contract.test.ts`). */
 
 /**
  * What a file asks for by name: `import './Member.css'` in a component,

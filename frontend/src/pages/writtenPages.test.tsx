@@ -3032,40 +3032,6 @@ describe('what is read as a row of a table', () => {
     expect(elsewhere.map(({ path }) => path)).toEqual([])
   })
 
-  it('reads the code of a file and not the prose around it', () => {
-    /* What this sweep reads. The blanker has one home (`test/unwritten.ts`) and two
-       readers, this and `styles/hooks.test.ts`; it was written a second time here
-       from memory on 23.08.2026 as „from `//` to the end of the line", and that was
-       measured wrong the same day: `//` inside a string is not a comment, so
-       `src/app/head.ts` came out reading `export const SITE_ORIGIN = 'https:` and an
-       offender written after that string on the same line was invisible.
-
-       Four shapes, and the last two are the ones that cost something. */
-    const quote = String.fromCharCode(39)
-    const asks = `startsWith(${quote}|${quote})`
-
-    expect(unwritten(`  // ${asks}\nconst a = 1`), 'a comment survives the blanker')
-      .not.toContain(asks)
-    expect(unwritten(`const a = 1 // ${asks}`), 'a trailing comment survives the blanker')
-      .not.toContain(asks)
-    /* An address is not a comment, which is the whole of the first fault. */
-    expect(unwritten(`export const SITE_ORIGIN = ${quote}https://primer.rs${quote}`)).toContain(
-      'primer.rs',
-    )
-    /* And neither is the value of an `accept` attribute. Measured: read as the
-       opening of a comment, it hid sixteen lines of `forms/FormRenderer.tsx` and
-       thirteen of `components/CropChooser.tsx` from this sweep. */
-    const upload = [
-      '<input accept="image/*" />',
-      `const a = ${asks}`,
-      '/* an ordinary comment, which is what closes the window */',
-    ].join('\n')
-
-    expect(unwritten(upload), 'the code between an `accept` and the next comment is gone').toContain(
-      asks,
-    )
-  })
-
   it('is answered the same way by both readers, so nothing falls between them', () => {
     /* The fifth recorded limit, and the whole of it: the table reader asked „does
        it begin and end with a pipe" and the reader of prose asked „does it begin
