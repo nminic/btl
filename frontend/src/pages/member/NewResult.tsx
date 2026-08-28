@@ -201,7 +201,18 @@ export function NewResult() {
      Read through the overlay, so a result taken back a moment ago is not offered
      for changing. */
   const counted = results.status === 'ready' ? results.data : []
-  const fixingOne = counted.find((one) => one.id === fixing && one.memberNumber === memberNumber)
+  /* And not one that already has a correction waiting on somebody. The list offers
+     no way in then (`MyResults`), so the only way to try is to type the address,
+     which is exactly why the form and not only the list has to say no: a second
+     correction of one result puts two rows for one race in front of a moderator,
+     and „Odobri sve" walks them newest first, so what ends up counted is the
+     oldest. Measured by a review on 28.08.2026. */
+  const waiting = submissions.some(
+    (one) => one.memberNumber === memberNumber && one.status === 'pending' && one.corrects?.id === fixing,
+  )
+  const fixingOne = waiting
+    ? undefined
+    : counted.find((one) => one.id === fixing && one.memberNumber === memberNumber)
   /* Whichever of the two this is, when it is either: the race is read off the
      record on both roads in, and one name for that saves the next reader from
      having to notice that there are two. */
@@ -264,12 +275,42 @@ export function NewResult() {
       comment: String(values.comment),
     }
 
+    /* The counted record this correction will put in place of the one it
+       replaces, rebuilt from what is being sent now.
+     *
+       **Both roads build it**, and that is the whole of a critical fault measured
+       by a review on 28.08.2026. A correction of a counted result may itself be
+       corrected before anybody decides it, and that second correction goes down the
+       `resubmit` road, which keeps the submission's earlier fields. So the record
+       waiting to be counted stayed the first version: the moderator read 7:14:46,
+       pressed Odobri, and 9:14:46 went into the standing. That is exactly the fault
+       `resubmit` exists to prevent, in its own words, „a moderator who has already
+       read it would otherwise decide numbers they never saw".
+     *
+       Written once, above both roads, so neither can be the one that forgets. A
+       submission that is not a correction of anything carries `undefined`, which
+       also clears a stale one where a member is correcting an ordinary result. */
+    const replacing = fixingOne ?? correcting?.corrects
+    const corrects =
+      replacing === undefined
+        ? undefined
+        : {
+            ...replacing,
+            date: sent.date,
+            distanceKm: sent.distanceKm,
+            ascentM: sent.ascentM,
+            descentM: sent.descentM,
+            seconds: sent.seconds,
+            points: sent.points,
+            category: sent.category,
+          }
+
     /* The same result again where one is being corrected, and a new one
        otherwise. Sending the correction as a new result would leave the refused
        one standing beside it: two rows for one race, and the moderator reading
        the same morning twice (owner, 06.08.2026). */
     if (correcting !== undefined) {
-      resubmit(correcting.id, sent)
+      resubmit(correcting.id, { ...sent, corrects })
     } else if (fixingOne !== undefined) {
       /* A counted result being changed goes back into the queue as something
          waiting on somebody, and **stays in the standing until somebody agrees**.
@@ -293,20 +334,7 @@ export function NewResult() {
          identity of the one it replaces: a `Submission` does not know the event's
          name or address and a `Result` needs both, and this is the one place where
          both are in hand. Approving it swaps that record (`SessionProvider`). */
-      submit({
-        memberNumber: me,
-        ...sent,
-        corrects: {
-          ...fixingOne,
-          date: sent.date,
-          distanceKm: sent.distanceKm,
-          ascentM: sent.ascentM,
-          descentM: sent.descentM,
-          seconds: sent.seconds,
-          points: sent.points,
-          category: sent.category,
-        },
-      })
+      submit({ memberNumber: me, ...sent, corrects })
     } else {
       submit({ memberNumber: me, ...sent })
     }

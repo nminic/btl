@@ -1,3 +1,4 @@
+import type { Result } from '../../data/types'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -31,7 +32,7 @@ const ME = '000007'
  *  screens are served. Read rather than written down because a result's number
  *  is the file's to choose, and a case about whose result it is has to name one
  *  that really belongs to somebody else. */
-const countedResults: { id: string; memberNumber: string; raceName: string }[] = JSON.parse(
+const countedResults: Result[] = JSON.parse(
   readFileSync(join(process.cwd(), 'public/mock/results.json'), 'utf-8'),
 )
 const MINE = '/sr/moji-rezultati'
@@ -624,7 +625,18 @@ describe('a result that has been counted', () => {
          Left in, the comparison below would drop it instead of the row pressed
          and pass whatever was deleted. */
       .slice(1)
-      .map((one) => one.textContent ?? '')
+      /* The result and not the controls beside it. What a row offers changes with
+         the state of the queue: since 28.08.2026 a counted result whose correction
+         is waiting loses its „Izmeni" until somebody decides. That is a change to
+         what may be done, not to what is counted, and these cases are about the
+         standing. */
+      .map((one) =>
+        within(one)
+          .getAllByRole('cell')
+          .slice(0, -1)
+          .map((cell) => cell.textContent ?? '')
+          .join(' | '),
+      )
 
   /** What that row is a result of, read off the row rather than assumed. */
   const raceOf = (row: ReturnType<typeof within>) =>
@@ -894,6 +906,148 @@ describe('a result that has been counted', () => {
     expect(after.slice(1), 'a row nobody touched changed').toEqual(before.slice(1))
   })
 
+  it('carries the numbers of the last correction, not of the first', async () => {
+    /* A critical fault, measured by a review on 28.08.2026. A correction of a
+       counted result may itself be corrected before anybody decides it, and that
+       second correction goes down the `resubmit` road, which keeps the
+       submission's earlier fields. So the record waiting to be counted stayed the
+       first version: the moderator read the second set of numbers, pressed Odobri,
+       and the first set went into the standing.
+
+       That is exactly the fault `resubmit` exists to prevent, in its own words: „a
+       moderator who has already read it would otherwise decide numbers they never
+       saw."
+
+       The walk is the one a member really takes: correct a counted result, then
+       press Izmeni on the submission that is still waiting and correct it again. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23', <Decide as="approved" />)
+
+    const before = await countedRows()
+
+    await corrected(user)
+
+    /* And again, from the list of what is waiting, which is where the way on is:
+       the counted row itself no longer offers one while its correction stands. */
+    const sent = within(must(document.querySelector('.submissions'), 'the list of what was sent'))
+
+    await user.click(sent.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji još čeka proveru/)
+
+    const hours = screen.getByLabelText(/^Sati/)
+
+    await user.clear(hours)
+    await user.type(hours, '7')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+    await user.click(screen.getByRole('button', { name: 'odobri' }))
+
+    const after = await countedRows()
+
+    expect(after, 'the standing grew or shrank instead of changing').toHaveLength(before.length)
+    /* Seven hours, which is what the moderator read, and not nine, which is what
+       the first correction said. */
+    expect(after[0]).toContain('7:')
+    expect(after[0]).not.toContain('9:')
+  })
+
+  it('offers no second correction, because two rows for one race is the fault', async () => {
+    /* Since 28.08.2026 the result stays in the standing while a correction waits
+       (owner), so the row goes on looking exactly as it did and the „Izmeni" link
+       stayed live. Measured by a review the same day: one counted result then took
+       as many corrections as somebody cared to send, the queue grew a row for
+       each, and one press of „Odobri sve" walked them newest first, so what ended
+       up counted was the oldest of them.
+
+       That is the fault the portal already refuses for a waiting result: „two rows
+       for one race, and the moderator reading the same morning twice" (owner,
+       06.08.2026).
+
+       The way on is not lost, which is the other half: the correction is in the
+       list above and carries its own „Izmeni". */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+    const race = raceOf(row)
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    const again = await firstCounted()
+
+    expect(again.queryByRole('link', { name: /^Izmeni rezultat/ })).toBeNull()
+    /* And the way on is still there, one section up. */
+    const sent = within(must(document.querySelector('.submissions'), 'the list of what was sent'))
+
+    expect(sent.getByRole('link', { name: `Izmeni rezultat: ${race}` })).toBeVisible()
+  })
+
+  it('refuses the road even when the address is typed', async () => {
+    /* The list offers no way in once a correction is waiting, so the only way to
+       try is to type the address, which is exactly why the form and not only the
+       list has to say no: a second correction of one result puts two rows for one
+       race in front of a moderator, and „Odobri sve" walks them newest first, so
+       what ends up counted is the oldest.
+
+       The waiting correction is written straight into the store, because that is
+       the state being guarded and the road to it through the screen is the one
+       being closed. */
+    const mine = must(
+      countedResults.find((one) => one.memberNumber === '000001'),
+      'a counted result of this member',
+    )
+
+    function Correcting() {
+      const session = useSession()
+      const done = useRef(false)
+
+      useEffect(() => {
+        if (!done.current) {
+          done.current = true
+          session.submit({
+            memberNumber: '000001',
+            raceName: mine.raceName,
+            date: '2026-05-10',
+            distanceKm: 21.1,
+            ascentM: 0,
+            descentM: 0,
+            photo: '',
+            seconds: 6730,
+            points: 12.34,
+            category: 'half',
+            link: 'https://primer.rs/rezultati',
+            comment: '',
+            corrects: { ...mine, seconds: 6730 },
+          })
+        }
+      }, [session])
+
+      return null
+    }
+
+    renderAt(
+      `/sr/rezultat/novi?ispravka=${mine.id}`,
+      'competitor',
+      '000001',
+      undefined,
+      '2026-08-23',
+      <Correcting />,
+    )
+
+    await screen.findByLabelText(/^Naziv trke/)
+
+    expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+  })
+
   it('is left exactly where it was when the correction is turned down', async () => {
     /* The whole point of the outcome the owner chose: a member whose correction is
        refused keeps the points they had. Until 28.08.2026 they lost them for good.
@@ -910,3 +1064,4 @@ describe('a result that has been counted', () => {
     expect(await countedRows(), 'a refusal moved the standing').toEqual(before)
   })
 })
+
