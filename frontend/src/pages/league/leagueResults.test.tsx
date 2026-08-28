@@ -28,7 +28,7 @@ const MANY = 137
  * Everything else is answered from the real files, so the competition, its
  * events and its races are the ones the screen would really draw.
  */
-async function withCompetitors(count: number) {
+async function withCompetitors(count: number, mixed = false) {
   const real = globalThis.fetch
   /* The races this competition is made of, read once, so the results put in its
      place belong to it. */
@@ -57,6 +57,19 @@ async function withCompetitors(count: number) {
             firstName: 'Takmičar',
             lastName: `Broj ${index + 1}`,
             active: true,
+            /* Both genders, in turn, where a case asks for it. Copied from one
+               record, everybody in this field is otherwise the same person with a
+               different number, so the standing they build is **one block** and
+               the arithmetic that cuts a page across blocks is never run over
+               more than one. That is what let a page of a hundred through, and it
+               is why this switch exists.
+
+               Both written out rather than only the women: the record copied from
+               is whoever stands first in the file, and if that happens to be a
+               woman then setting every other one to a woman leaves one block
+               again, which is how the first attempt at this case measured
+               nothing. */
+            ...(mixed ? { gender: index % 2 === 0 ? ('M' as const) : ('F' as const) } : {}),
           })),
         ),
         { status: 200 },
@@ -111,13 +124,20 @@ const grid = async () => within(await screen.findByRole('table', { name: 'Poreda
  * rows are not placings and must not be counted as any: `slice(1)` used to be
  * enough because the only row that was not a person was the one at the top.
  *
- * Told apart by what a placing has and a block heading does not: a heading of its
- * own row, which is the runner's name (`scope="row"`). A block heading is
- * `scope="colgroup"`, which is a column header, so neither can be mistaken for
- * the other by anything reading roles rather than positions.
+ * Both carry a heading of their own row: the runner's name on a placing, and the
+ * name of the block on the row that opens one, since a heading over a `<tbody>`
+ * is a row group heading and not a column one. What tells them apart is what
+ * follows the heading: a placing has cells, and a block heading is alone in its
+ * row.
  */
-const placings = (table: ReturnType<typeof within>) =>
-  table.getAllByRole('row').filter((row) => within(row).queryAllByRole('rowheader').length > 0)
+const placings = (table: ReturnType<typeof within>): HTMLElement[] =>
+  table
+    .getAllByRole('row')
+    .filter(
+      (row: HTMLElement) =>
+        within(row).queryAllByRole('rowheader').length > 0 &&
+        within(row).queryAllByRole('cell').length > 0,
+    )
 
 describe('a competition with more placed than fit on one page', () => {
   it('draws fifty of them and no more', async () => {
@@ -126,7 +146,9 @@ describe('a competition with more placed than fit on one page', () => {
     try {
       renderAt(RUN)
 
-      expect((await grid()).getAllByRole('rowheader')).toHaveLength(PER_PAGE)
+      /* Counted as placings and not as every heading of a row: the row that
+         opens a block carries one too, and it is not a placing. */
+      expect(placings(await grid())).toHaveLength(PER_PAGE)
     } finally {
       undo()
     }
@@ -164,11 +186,11 @@ describe('a competition with more placed than fit on one page', () => {
       const user = setupUser()
       const { router } = renderAt(RUN)
 
-      const before = (await grid()).getAllByRole('rowheader').map((cell) => cell.textContent)
+      const before = placings(await grid()).map((row) => within(row).getAllByRole('rowheader')[0]?.textContent)
 
       await user.click(screen.getByRole('button', { name: 'Sledeća' }))
 
-      const second = (await grid()).getAllByRole('rowheader').map((cell) => cell.textContent)
+      const second = placings(await grid()).map((row) => within(row).getAllByRole('rowheader')[0]?.textContent)
 
       expect(router.state.location.search).toContain('strana=2')
       expect(second).toHaveLength(PER_PAGE)
@@ -180,7 +202,7 @@ describe('a competition with more placed than fit on one page', () => {
 
       await user.click(screen.getByRole('button', { name: 'Sledeća' }))
 
-      expect((await grid()).getAllByRole('rowheader')).toHaveLength(MANY - 2 * PER_PAGE)
+      expect(placings(await grid())).toHaveLength(MANY - 2 * PER_PAGE)
       /* Said with `aria-disabled` rather than by switching the button off, so
          the keyboard is not thrown back to the top of the document by the last
          press somebody makes (Pager.tsx). */
@@ -240,7 +262,7 @@ describe('a competition everybody in it fits on one page', () => {
   it('is drawn whole, with no way from one page to another', async () => {
     renderAt(RUN)
 
-    const rows = (await grid()).getAllByRole('rowheader')
+    const rows = placings(await grid()).map((row) => must(within(row).getAllByRole('rowheader')[0], 'the name of the placing'))
 
     expect(rows.length).toBeGreaterThan(0)
     expect(rows.length).toBeLessThanOrEqual(PER_PAGE)
@@ -331,13 +353,106 @@ describe('the heading that names one block of the standing', () => {
     expect(blocks.length, 'the standing is drawn as one block').toBeGreaterThan(1)
 
     for (const block of blocks) {
-      const heading = must(within(block).getAllByRole('columnheader')[0], 'the name of the block')
+      const heading = must(within(block).getAllByRole('rowheader')[0], 'the name of the block')
 
       expect(heading).toHaveAttribute('colspan', String(columns.length))
-      /* And it is a heading over a group of columns rather than over a row,
-         which is what tells it apart from a runner's name for anything reading
-         roles. */
-      expect(heading).toHaveAttribute('scope', 'colgroup')
+      /* And it names the group of rows it opens rather than a group of columns.
+         The portal draws no `<colgroup>` anywhere, so `colgroup` pointed at
+         something that does not exist; a heading that opens a `<tbody>` is a row
+         group heading, which is what a reader moving through the table is told
+         when they ask which block they are in. */
+      expect(heading).toHaveAttribute('scope', 'rowgroup')
+    }
+  })
+})
+
+describe('a page of a standing that is split into blocks', () => {
+  it('is still fifty placings, however the blocks fall across it', async () => {
+    /* The page is cut out of the ordered list and then dealt into blocks, so the
+       arithmetic that says where a block starts runs once per block. Measured by
+       a review on 27.08.2026: with that running total left at nought, every block
+       was cut from the beginning, page one drew a hundred placings in a field of
+       two blocks and all 137 in a field of six, and 61 tests stayed green.
+
+       Green because every other case here builds its field by copying one
+       competitor, so the whole of it is one man of one age and the standing is
+       one block: the only arithmetic this change added was never run over more
+       than one. This is the case that runs it. */
+    const undo = await withCompetitors(MANY, true)
+
+    try {
+      renderAt(RUN)
+
+      const table = await grid()
+
+      expect(placings(table)).toHaveLength(PER_PAGE)
+
+      /* And the field really is two blocks, which is what makes the count above
+         mean anything. Not asked of this page: the blocks are cut out of one
+         ordered list and the men fill the first sixty nine places, so page one is
+         one block and the boundary falls on page two. Asked of the second page,
+         which is where both blocks meet. */
+      await setupUser().click(screen.getByRole('button', { name: 'Sledeća' }))
+
+      const second = await grid()
+
+      expect(
+        second.getAllByRole('rowgroup').slice(1).length,
+        'the field is one block after all',
+      ).toBeGreaterThan(1)
+      expect(placings(second)).toHaveLength(PER_PAGE)
+
+      /* And page one drew one block and not two with an empty one under it. The
+         men fill the first sixty nine places, so the women have nobody on that
+         page at all, and a block with nobody on the page is a heading over
+         nothing. This is what the filter over the cut blocks is for; the comment
+         beside it used to claim it was for a competition of five people showing
+         eight empty tables, which cannot happen at all because the blocks are
+         built only out of rows that exist. */
+      await setupUser().click(screen.getByRole('button', { name: 'Prethodna' }))
+
+      const back = await grid()
+
+      expect(back.getAllByRole('rowgroup').slice(1)).toHaveLength(1)
+      expect(
+        within(must(back.getAllByRole('rowgroup')[1], 'the one block of page one'))
+          .getAllByRole('rowheader')[0]?.textContent,
+        'the block is named by its code rather than in words',
+      ).toBe('Muškarci')
+    } finally {
+      undo()
+    }
+  })
+
+  it('loses nobody at a boundary a block falls on', async () => {
+    /* Every placing once and no more, read across all three pages of a mixed
+       field. A block that runs out mid-page and one that begins mid-page are the
+       two ways an off-by-one shows here, and both are on this walk. */
+    const undo = await withCompetitors(MANY, true)
+
+    try {
+      const user = setupUser()
+
+      renderAt(RUN)
+
+      const named = () =>
+        placings(within(screen.getByRole('table', { name: 'Poredak takmičenja' }))).map(
+          (row) => within(row).getAllByRole('rowheader')[0]?.textContent ?? '',
+        )
+
+      await grid()
+      const seen = [...named()]
+
+      for (let page = 2; page <= 3; page += 1) {
+        await user.click(screen.getByRole('button', { name: 'Sledeća' }))
+        await grid()
+        seen.push(...named())
+      }
+
+      expect(seen).toHaveLength(MANY)
+      expect(new Set(seen).size, 'somebody is drawn on two pages').toBe(MANY)
+    } finally {
+      undo()
     }
   })
 })

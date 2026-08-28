@@ -238,8 +238,8 @@ describe('the way a competition splits its ranking', () => {
   const field = [
     { ...person('000001'), gender: 'M' as const, birthYear: 1985 },
     { ...person('000002'), gender: 'M' as const, birthYear: 1955 },
-    { ...person('000003'), gender: 'Ž' as const, birthYear: 1985 },
-    { ...person('000004'), gender: 'Ž' as const, birthYear: 1955 },
+    { ...person('000003'), gender: 'F' as const, birthYear: 1985 },
+    { ...person('000004'), gender: 'F' as const, birthYear: 1955 },
   ]
 
   const rowsOf = (people: Competitor[]) =>

@@ -399,10 +399,14 @@ describe('LeagueDetail', () => {
  * row, the runner's name, while a block heading is a column header over a group
  * of columns. Neither can be mistaken for the other.
  */
-const placings = (grid: HTMLElement) =>
+const placings = (grid: HTMLElement): HTMLElement[] =>
   within(grid)
     .getAllByRole('row')
-    .filter((row) => within(row).queryAllByRole('rowheader').length > 0)
+    .filter(
+      (row) =>
+        within(row).queryAllByRole('rowheader').length > 0 &&
+        within(row).queryAllByRole('cell').length > 0,
+    )
 
 describe('a competition, in two parts', () => {
   /* Owner, 31.07.2026: the same shape the profile has. The standing is a grid,
@@ -444,10 +448,14 @@ describe('a competition, in two parts', () => {
     expect(blocks.length, 'the standing is drawn as one block').toBeGreaterThan(1)
 
     for (const block of blocks) {
-      const named = must(within(block).getAllByRole('columnheader')[0]?.textContent, 'the block name')
+      const named = must(within(block).getAllByRole('rowheader')[0]?.textContent, 'the block name')
       const totals = within(block)
         .getAllByRole('row')
-        .filter((row) => within(row).queryAllByRole('rowheader').length > 0)
+        .filter(
+          (row) =>
+            within(row).queryAllByRole('rowheader').length > 0 &&
+            within(row).queryAllByRole('cell').length > 0,
+        )
         .map((row) => Number(must(first(within(row).getAllByRole('cell')).textContent, 'text').replace(',', '.')))
 
       expect(totals.length, `the block ${named} has nobody in it`).toBeGreaterThan(0)
@@ -513,7 +521,16 @@ describe('the grid of a competition, in the details the review found unguarded',
     const number = (text: string | null) =>
       text === null || text === '' ? 0 : Number(text.replace(/\./g, '').replace(',', '.'))
 
-    for (const row of placings(grid)) {
+    /* A loop over nothing passes, and this one can now walk nothing: before the
+       standing was split it read every row but the first, and a mutation that
+       turned the runners' names into ordinary cells failed it on `Number(...)`
+       being NaN. Reading placings by role, that same mutation leaves an empty
+       list and a green test. Counted first, so the walk means something. */
+    const rows = placings(grid)
+
+    expect(rows.length, 'the standing has nobody in it').toBeGreaterThan(1)
+
+    for (const row of rows) {
       const cells = within(row).getAllByRole('cell')
       const shown = number(first(cells).textContent)
       const races = cells.slice(1).reduce((sum, cell) => sum + number(cell.textContent), 0)

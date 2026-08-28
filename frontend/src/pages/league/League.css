@@ -215,7 +215,21 @@
    Sticky to the left edge like the column of names beside it, because the grid
    scrolls sideways under forty six races: unpinned, the name of the block sails
    away and the reader is left in a table with no idea which group they are in. */
-.league__group th {
+/* Written against three classes and not one, which is what it takes to win here.
+   `.league__group th` and `.table th` are both (0,1,1), the tie goes to whichever
+   sheet the bundler puts last, and that is `table.css`: measured in the built
+   stylesheet, this rule sat at byte 47.357 and `.table th` at 72.162. The
+   heading therefore came out at 11,2px rather than the 0,78rem written here,
+   with the wrong letter spacing and the wrong padding, and read exactly the same
+   size as the column heading „Član" beside it.
+
+   The alignment needs the third class as well: `.table th:nth-child(-n + 3)` is
+   (0,2,1) and reaches this cell too.
+
+   This is the trap `League.css` already documents twice and `cellSpecificity`
+   exists to catch, and it slipped past both because the guard deliberately skips
+   rules whose last part is a bare `th`: the cell carries no class of its own. */
+.table.league__grid .league__group th {
   text-align: start;
   font-size: 0.78rem;
   text-transform: uppercase;

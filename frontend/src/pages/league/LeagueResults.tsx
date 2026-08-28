@@ -147,15 +147,18 @@ function Grid({
             {/* What this block is, said in the table rather than beside it: a
                 row of its own, spanning every column, so a screen reader meets
                 the name of the group before the people in it rather than after.
-                `colgroup` is the scope a heading over a block of columns takes,
-                and this heading is over the whole width of one.
+                `rowgroup` and not `colgroup`, corrected 27.08.2026 after a
+                review read the two apart: `colgroup` names a group of columns and
+                the portal draws no `<colgroup>` anywhere, while this heading opens
+                a `<tbody>` and names every row inside it, which is what a row
+                group is.
 
                 Named by the same string the standing names it by
                 (`categoryLabel`), so the two screens never call one group two
                 things. It also carries the gender case unchanged, which is what
                 a competition ranking by gender alone shows. */}
             <tr className="league__group">
-              <th scope="colgroup" colSpan={2 + table.columns.length}>
+              <th scope="rowgroup" colSpan={2 + table.columns.length}>
                 {/* The words inside their own box, and it is that box that is
                     pinned rather than the cell around it. The cell spans every
                     column, so it is wider than the screen by design, and pinning

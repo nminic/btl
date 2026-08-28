@@ -191,10 +191,11 @@ export type LeagueGroup = {
  * uses (`categoriesOf`), so the two screens name and order the same things the
  * same way.
  *
- * A block with nobody in it is not drawn at all. A competition of five people
- * would otherwise show eight empty tables, one per category the league has, and
- * seven of them would say nothing except that the portal knows the categories
- * exist.
+ * A block nobody is in never arises, because the map is built out of the rows
+ * themselves rather than out of the list of categories a league could have: a
+ * competition of five people has as many blocks as those five fall into. What
+ * still has to be dropped is a block with nobody on the **page** being drawn,
+ * and that belongs to the screen, which is where the paging is.
  */
 export function leagueGroups(league: League, rows: LeagueRow[]): LeagueGroup[] {
   const held = new Map<string, LeagueRow[]>()
