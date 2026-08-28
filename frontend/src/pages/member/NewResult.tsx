@@ -180,7 +180,12 @@ export function NewResult() {
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
     const sent = {
-      raceName: String(values.raceName),
+      /* The race a correction keeps is the one the submission already names, and
+         not what the box holds. The box is locked (`fixed` below), so the two
+         agree; read off the record anyway, because a lock is a courtesy to
+         whoever is filling the form in and the rule „sve osim trke" (owner,
+         27.08.2026) has to hold whatever reaches this function. */
+      raceName: correcting === undefined ? String(values.raceName) : correcting.raceName,
       /* Through `storedDate`, which reads the date or throws saying what was in
          the box. It was parsed here and the result called a Date without
          looking (ADL A14 bans that), and answering with an empty date instead
@@ -272,6 +277,13 @@ export function NewResult() {
       <FormRenderer
         form={unosRezultata}
         initial={correcting === undefined ? undefined : filledFrom(correcting)}
+        /* Everything except which race it was (owner, 27.08.2026: „sve osim
+           trke"). A correction keeps the identity of the submission a moderator
+           may already have read, so letting the race change turns that row into a
+           different race under the same number, and the queue is told only that
+           something was corrected. Whoever picked the wrong race deletes it and
+           enters another, which is what the list beside this offers. */
+        fixed={correcting === undefined ? undefined : ['raceName']}
         suggests={{ raceName: offered }}
         onSubmit={onSubmit}
       />

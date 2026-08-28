@@ -90,6 +90,20 @@ type Props = {
    */
   suggests?: Record<string, Suggestion[]>
   /**
+   * Fields this form must not let anybody change, whatever they do.
+   *
+   * `led` beside it is the same idea reached from inside: a field filled in by
+   * choosing an entry from a list is not the reader's to alter. This is the same
+   * lock decided by the caller instead, for a form that is one thing on one
+   * screen and another on the next.
+   *
+   * One reader today. Correcting a result may change everything about it except
+   * which race it was run in (owner, 27.08.2026: „sve osim trke"), because a
+   * correction keeps the identity of the submission a moderator has already seen;
+   * whoever picked the wrong race deletes it and enters another.
+   */
+  fixed?: string[]
+  /**
    * A rule the definition cannot describe, checked when the form is submitted
    * and returned in the same shape as the rules that can: errors by field name.
    * Used for the one rule that needs to know about the other records, which is
@@ -310,6 +324,15 @@ const Field = memo(function Field({
        attribute at all: one more thing in the markup is one more thing for a test
        to read as a decision somebody made. */
     'aria-disabled': locked ? true : undefined,
+    /* And the same refusal in markup, on the shared set rather than on one branch
+       of it. `change` below refuses a locked control, but a field typed against a
+       list does not go through `change`: it hands what is typed straight to its
+       own `onType` (`Suggesting`), so a locked race name announced itself as
+       locked and took a new name anyway. Measured by a review on 27.08.2026,
+       through the real screen: the box said `aria-disabled` and still read „Sasvim
+       druga trka". `readOnly` is what says it to the browser, and it is the same
+       word the four filled-in fields already wear. */
+    readOnly: locked ? true : undefined,
   }
 
   if (field.type === 'checkbox') {
@@ -668,6 +691,7 @@ export function FormRenderer({
   title,
   options = {},
   suggests = {},
+  fixed = [],
   check,
   derived,
   was,
@@ -998,7 +1022,7 @@ export function FormRenderer({
             choices={optionsFor(field, options)}
             onChange={handleChange}
             open={field.name === openAt}
-            locked={led.includes(field.name)}
+            locked={led.includes(field.name) || fixed.includes(field.name)}
             steps={field.type === 'date' ? steps : undefined}
             suggesting={suggestingOn(field)}
           />

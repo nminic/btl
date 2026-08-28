@@ -35,11 +35,15 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     memberNumber: '000007',
     signIn: vi.fn(),
     signOut: vi.fn(),
+    withdraw: vi.fn(),
     submissions: states.map((status, index) => ({
       id: `sub-${index}`,
       memberNumber: '000007',
       raceName: 'Probna trka',
       eventName: 'Probna trka',
+      /* Nothing here was corrected; these are results a moderator is deciding
+         for the first time. */
+      corrected: false,
       date: '2026-05-10',
       distanceKm: 10,
       ascentM: 0,

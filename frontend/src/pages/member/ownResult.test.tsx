@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -57,6 +57,49 @@ function Waiting({ whose, races }: { whose: string; races: string[] }) {
   }, [session, whose, races])
 
   return null
+}
+
+/** A press that sends one more result in, for a walk that needs one sent after
+ *  something else has happened rather than on mount. */
+function SendOne({ whose, race }: { whose: string; race: string }) {
+  const session = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        session.submit({
+          memberNumber: whose,
+          raceName: race,
+          date: '2026-05-10',
+          distanceKm: 21.1,
+          ascentM: 540,
+          descentM: 540,
+          photo: '',
+          seconds: 6730,
+          points: 12.34,
+          category: 'half',
+          link: 'https://primer.rs/rezultati',
+          comment: '',
+        })
+      }}
+    >
+      posalji jos jedan
+    </button>
+  )
+}
+
+/** Everything in the store, in one line each, for what no screen draws. */
+function Sent() {
+  const { submissions } = useSession()
+
+  return (
+    <ul aria-label="store">
+      {submissions.map((one) => (
+        <li key={one.id}>{`${one.id} | ${one.raceName} | ${one.status} | ${String(one.corrected)}`}</li>
+      ))}
+    </ul>
+  )
 }
 
 /** The list of results this member has sent in, as rows. */
@@ -240,10 +283,16 @@ describe('the queue a corrected result comes back to', () => {
     expect(within(row).queryByText('Ispravljeno')).toBeNull()
   })
 
-  it('puts it behind everything else, rather than where it stood', async () => {
+  it('puts it where a new one goes, rather than where it stood', async () => {
     /* Owner: „Vraća se na kraj reda kao nov." A moderator who has already opened
        this item read the numbers it had then; left in place with different
        numbers, the next press decides something they never saw.
+
+       Where a new one goes is the front, because that is where `submit` puts one
+       and every list in this store is newest first. The two halves of his
+       sentence pull apart under such a list, and „kao nov" is the half that can be
+       obeyed exactly: what the result loses is its old place, and what it gains is
+       the place of anything freshly arrived.
 
        Three results, the first of them corrected, so the question is about order
        and not about a list of one. */
@@ -254,8 +303,8 @@ describe('the queue a corrected result comes back to', () => {
       useEffect(() => {
         if (!done.current && session.submissions.length === 3) {
           done.current = true
-          session.resubmit('sub-3', {
-            raceName: 'Treća trka',
+          session.resubmit('sub-1', {
+            raceName: 'Prva trka',
             date: '2026-05-10',
             distanceKm: 21.1,
             ascentM: 540,
@@ -283,15 +332,14 @@ describe('the queue a corrected result comes back to', () => {
     const names = sent().map((one) => within(one).getAllByRole('strong')[0]?.textContent ?? '')
 
     /* Sent in as Prva, Druga, Treća, and the newest is drawn first, so the list
-       stands as Treća, Druga, Prva. Corrected is **Treća**, the one at the top,
-       precisely because correcting the one already at the bottom would leave the
-       order unchanged and this case would pass whether the move happened or not.
-       Measured: with the move taken out, the first version of this test stayed
-       green. */
+       stands as Treća, Druga, Prva. Corrected is **Prva**, the one at the bottom,
+       precisely because correcting one that is already where it would land leaves
+       the order unchanged and this case would then pass whether it moved or not.
+       Both earlier versions of this case did exactly that, once at each end. */
     expect(names, 'the corrected result kept its place').toEqual([
-      'Druga trka',
       'Prva trka',
       'Treća trka',
+      'Druga trka',
     ])
   })
 })
@@ -358,6 +406,145 @@ describe('somebody else’s result that is only waiting', () => {
 
     await screen.findByLabelText(/^Naziv trke/)
 
-    expect(screen.queryByDisplayValue('Tuđa trka')).toBeNull()
+    /* Read off the sentence over the form and not off the boxes, for the reason
+       the case above already gives: the boxes are seeded once at mount and this
+       result reaches the store a turn later, so they are empty whether the guard
+       is there or not. Measured by a review on 27.08.2026: with the owner taken
+       out of the condition, this file stayed green at ten of ten while the form
+       opened somebody else's result and said so in as many words. */
+    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+    expect(screen.queryByText(/Menjaš rezultat koji još čeka/)).toBeNull()
+    expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+  })
+})
+
+describe('the race a correction is for', () => {
+  it('cannot be changed into another one', async () => {
+    /* Owner, 27.08.2026: „sve osim trke". A correction keeps the identity of the
+       submission a moderator may already have read, so letting the race change
+       turns that row into a different race under the same number while the queue
+       is told only that something was corrected.
+
+       Measured by a review before this was here: the box was an ordinary one, a
+       member typed another name over it, and the same submission came back as
+       „Sasvim druga trka" with the date, the length and the climb of that other
+       race behind it. */
+    const user = setupUser()
+
+    /* From the list, for the reason the case above gives: a form opened straight
+       at the address comes up with empty boxes and will not send. */
+    renderAt(MINE, 'competitor', ME, undefined, '2026-08-23', (
+      <>
+        <Waiting whose={ME} races={['Probna trka']} />
+        <Sent />
+      </>
+    ))
+
+    await user.click(await screen.findByRole('link', { name: 'Izmeni rezultat: Probna trka' }))
+    await screen.findByText(/Menjaš rezultat koji još čeka proveru/)
+
+    const race = screen.getByLabelText(/^Naziv trke/)
+
+    /* Reachable and refused rather than switched off, which is the portal's way
+       of locking anything (PDL: „Odbijeno, ne ugašeno"). Both words, because a
+       screen reader hears the first and a browser obeys the second. */
+    expect(race).toHaveAttribute('aria-disabled', 'true')
+    expect(race).toHaveAttribute('readonly')
+
+    /* And then the half that actually holds. The lock is a courtesy to whoever is
+       filling the form in; what must be true whatever reaches the code is that the
+       race a correction carries is the one the submission already names. Measured
+       by typing over the box and sending, which is exactly the walk a review used
+       to get „Sasvim druga trka" into the store under the old number. */
+    /* Forced past the lock rather than typed through it: `user.type` refuses a
+       box that is not editable, which is the lock doing its job and is measured
+       above. What is measured here is the half beneath it, so the value is
+       changed the way any other code path could change it. */
+    fireEvent.change(race, { target: { value: 'Sasvim druga trka' } })
+
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    const stored = within(screen.getByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(stored).toHaveLength(1)
+    expect(stored[0]?.textContent).toContain('Probna trka')
+    expect(stored[0]?.textContent).not.toContain('Sasvim druga trka')
+  })
+})
+
+describe('a result sent back unchanged', () => {
+  it('is not marked as corrected, because nothing was', async () => {
+    /* „Samo labela" (owner, 27.08.2026) is a label that has to mean something. A
+       member who presses „Izmeni", looks at their own numbers and sends them back
+       has corrected nothing, and the mark then tells a moderator to re-read a row
+       that has not moved. Measured by a review before this was here: sending the
+       identical values straight back put „Ispravljeno" on the row. */
+    const user = setupUser()
+
+    /* Walked in from the list rather than opened at the address. The form seeds
+       its boxes once, when it mounts, and a probe writes into the store a turn
+       later, so a form opened straight at the address comes up empty and refuses
+       to send: the question would then be asked of a store nothing wrote to.
+       Pressing „Izmeni" is also the road a member takes. */
+    renderAt(MINE, 'competitor', ME, undefined, '2026-08-23', (
+      <>
+        <Waiting whose={ME} races={['Probna trka']} />
+        <Sent />
+      </>
+    ))
+
+    await user.click(await screen.findByRole('link', { name: 'Izmeni rezultat: Probna trka' }))
+    await screen.findByText(/Menjaš rezultat koji još čeka proveru/)
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    /* The send really happened, or the question below is asked of a store nothing
+       wrote to and answers the same whatever the rule is. */
+    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+
+    const stored = within(screen.getByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(stored).toHaveLength(1)
+    expect(stored[0]?.textContent, 'nothing changed and it says it did').toContain('| false')
+  })
+})
+
+describe('the number a deleted result leaves behind', () => {
+  it('is never handed to anything else', async () => {
+    /* The fault a review measured on 27.08.2026, and the reason it could happen
+       at all: identities were counted from how many submissions there were, which
+       is safe only while nothing is ever removed. `withdraw`, added the same day,
+       is the first thing that removes one.
+
+       The walk: one member sends a result, another member sends one, the first
+       deletes theirs and sends another. Counted, the new one takes the number the
+       second member's result holds; two submissions then answer to one id, and a
+       moderator pressing „Odobri" on one approves both. Measured then: a result
+       belonging to another member went into the standings on a press that never
+       touched it.
+
+       The rule the portal already keeps for every other numbered record is to
+       count up from the highest number used (`raceIds.ts`), and its own note
+       records this same fault measured on races four days earlier. */
+    const user = setupUser()
+
+    renderAt(MINE, 'competitor', ME, undefined, null, (
+      <>
+        <Waiting whose={ME} races={['Moja prva']} />
+        <Waiting whose="000021" races={['Tuđa trka']} />
+        <SendOne whose={ME} race="Moja druga" />
+        <Sent />
+      </>
+    ))
+
+    await user.click(await screen.findByRole('button', { name: 'Obriši: Moja prva' }))
+    await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Moja prva' }))
+    await user.click(screen.getByRole('button', { name: 'posalji jos jedan' }))
+
+    const held = within(screen.getByRole('list', { name: 'store' }))
+      .getAllByRole('listitem')
+      .map((one) => (one.textContent ?? '').split(' | ')[0])
+
+    expect(held, 'the walk did not end with two results').toHaveLength(2)
+    expect(new Set(held).size, `two submissions answer to one number: ${held.join(', ')}`).toBe(2)
   })
 })
