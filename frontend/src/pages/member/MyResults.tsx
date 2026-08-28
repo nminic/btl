@@ -139,7 +139,7 @@ export function MyResults() {
                         the cell beside it already says which race this was. The
                         two controls are the only thing on this screen that
                         exists nowhere else, so they are the last thing to go.
-                        The moderator's queue makes the same trade with five of
+                        The moderator's queue makes the same trade with four of
                         its columns (`admin/ReviewQueue.tsx`). */}
                     <th scope="col" className="table__hide-phone">
                       {t('rankings.columns.category')}
@@ -185,21 +185,34 @@ export function MyResults() {
                           and returns only when somebody has agreed with it again;
                           anything else would let a member move their own points
                           after they were counted. */}
-                      <td className="my-results__own">
-                        <Link
-                          className="button button--secondary"
-                          aria-label={t('myResults.changeNamed', { name: result.raceName })}
-                          to={`/${locale}/rezultat/novi?ispravka=${result.id}`}
-                        >
-                          {t('myResults.change')}
-                        </Link>
-                        <DeleteRecord
-                          name={result.raceName}
-                          look="button button--secondary"
-                          onDelete={() => {
-                            remove(RESULTS, result.id)
-                          }}
-                        />
+                      <td>
+                        {/* The controls in a box inside the cell, never on the
+                            cell itself: a `td` laid out as a flex container
+                            leaves the table and stops lining up with the row.
+                            That is what the moderator's queue says where it does
+                            the same thing (`admin/ReviewQueue.tsx`), and this was
+                            written with the class on the `td` while claiming to
+                            follow it. Measured by a review on 28.08.2026 at
+                            360px: 36 of 180 rows, every one whose race name wraps
+                            to more lines than the controls do, drew this cell
+                            5,05 pixels shorter than its row, so the rule under
+                            the row broke off short of the rest of it. */}
+                        <div className="my-results__own">
+                          <Link
+                            className="button button--secondary"
+                            aria-label={t('myResults.changeNamed', { name: result.raceName })}
+                            to={`/${locale}/rezultat/novi?ispravka=${result.id}`}
+                          >
+                            {t('myResults.change')}
+                          </Link>
+                          <DeleteRecord
+                            name={result.raceName}
+                            look="button button--secondary"
+                            onDelete={() => {
+                              remove(RESULTS, result.id)
+                            }}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
