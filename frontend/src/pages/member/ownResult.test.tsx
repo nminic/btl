@@ -689,13 +689,28 @@ describe('a result that has been counted', () => {
        go. The moderator's queue makes the same trade with five of its columns.
      *
        jsdom draws no stylesheet, so what is measured is the ask and not the
-       pixels; the pixels are in `ownResultStyle.test.ts`. */
+       pixels; the pixels are in `ownResultStyle.test.ts`.
+
+       **Both the heading and the cell**, because the fact has two homes and they
+       have to agree. Measured by a review on 28.08.2026 with the ask taken off the
+       heading alone: at 360px the head drew five columns and the body four, so the
+       body slid one column left and the points stood under „Kat.", the controls
+       under „Bodovi", and the last column empty, while the whole suite of 2224
+       stayed green. */
     renderAt(COUNTED, 'competitor', '000001', undefined, null)
 
+    const table = within(await screen.findByRole('table', { name: 'Uračunato' }))
+    const headings = within(must(table.getAllByRole('row')[0], 'the heading row')).getAllByRole(
+      'columnheader',
+    )
     const row = await firstCounted()
     const cells = row.getAllByRole('cell')
 
+    expect(must(headings[2], 'the category heading').className).toContain('table__hide-phone')
     expect(must(cells[2], 'the category').className).toContain('table__hide-phone')
+    expect(must(headings[5], 'the heading of what a member may do').className).not.toContain(
+      'table__hide-phone',
+    )
     expect(must(cells[5], 'what a member may do').className).not.toContain('table__hide-phone')
   })
 

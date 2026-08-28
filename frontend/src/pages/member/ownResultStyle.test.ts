@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ruleFor } from '../../test/stylesheet'
+import { bare } from '../../test/stylesheet'
 
 /**
  * The two controls a member has over a result that has been counted, and the
@@ -35,10 +36,47 @@ import { ruleFor } from '../../test/stylesheet'
  * scrolling work the owner has already put off („ima vremena", 24.08.2026).
  */
 const MEMBER = readFileSync(join(process.cwd(), 'src/pages/member/Member.css'), 'utf-8')
+const SCREEN = readFileSync(join(process.cwd(), 'src/pages/member/MyResults.tsx'), 'utf-8')
+
+/** The name the two of them have to agree on, written once here. */
+const OWN = 'my-results__own'
 
 describe('the cell holding what a member may do with a counted result', () => {
+  it('is written under the name the screen really uses', () => {
+    /* The first round of review found the mirror of this: a name in the markup
+       with no rule behind it. What replaced it proved only that the rule exists,
+       which is the same hole the other way round. Measured by a review on
+       28.08.2026 with the class renamed in the screen alone: the rule stopped
+       reaching the table, „Izmeni" ended at 549,09 and „Obriši" began at 549,09,
+       so the destructive control sat flush against the harmless one again, and all
+       2224 tests stayed green.
+
+       Comments blanked, so a note naming the class is not read as using it. */
+    expect(bare(SCREEN)).toContain(`<div className="${OWN}">`)
+  })
+
+  it('is a box inside the cell, and never the cell itself', () => {
+    /* The precedent this follows says it in as many words where it does the same
+       thing (`admin/ReviewQueue.tsx`): „The buttons in a box inside the cell,
+       never on the cell itself: a `td` laid out as a flex container leaves the
+       table and stops lining up with the row." This was written with the class on
+       the `td` while citing that sentence.
+
+       Measured by a review on 28.08.2026 in Chrome at 360 by 780: 36 of the 180
+       rows, every one whose race name wraps to more lines than the controls do,
+       drew the last cell 5,05 pixels shorter than its row, so the rule under the
+       row broke off short of the rest of it. Moving the same class to a box
+       inside the cell brought the offset to nought in the same page.
+
+       Asked of the source and not of the screen, because jsdom lays nothing out
+       (ADL A18) and this is a fault a browser has to draw before it exists: with
+       the class back on the `td`, everything else in this file and in
+       `ownResult.test.tsx` stayed green. */
+    expect(bare(SCREEN)).not.toContain(`<td className="${OWN}"`)
+  })
+
   it('is a box of its own, so the two controls do not touch', () => {
-    const cell = ruleFor(MEMBER, '.my-results__own', 'Member.css')
+    const cell = ruleFor(MEMBER, `.${OWN}`, 'Member.css')
 
     expect(cell.display).toBe('flex')
     /* Wrapping and not one line: in a column this narrow the two sit one above
@@ -55,7 +93,7 @@ describe('the cell holding what a member may do with a counted result', () => {
        of controls in a table cell, and it is what lets these two fit a phone at
        all: at full size this column alone added 106 pixels to a table already
        wider than the screen. */
-    const button = ruleFor(MEMBER, '.my-results__own .button', 'Member.css')
+    const button = ruleFor(MEMBER, `.${OWN} .button`, 'Member.css')
     const queue = ruleFor(MEMBER, '.review__decide .button', 'Member.css')
 
     expect(button.padding).toBe(queue.padding)
