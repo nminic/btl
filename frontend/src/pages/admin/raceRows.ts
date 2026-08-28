@@ -1,4 +1,5 @@
 import { isoDate } from '../../forms/dateField'
+import { categoryOf } from '../../data/raceCategory'
 import type { Race } from '../../data/types'
 
 /**
@@ -143,16 +144,40 @@ export function allFinished(rows: RaceRow[]): boolean {
   return rows.every((row) => whatIsMissing(row) === undefined)
 }
 
-/** What a row is worth as a record: the three measurements as they will be
- *  stored, with an empty climb or fall read as nought. */
+/**
+ * What a row is worth as a record: the three measurements as they will be stored,
+ * with an empty climb or fall read as nought.
+ *
+ * **The category comes with them, and it is not a choice.** A race carries one
+ * (`data/types.ts`) and it is the length and nothing else, by the exact value and
+ * with no tolerance (PDL P5), so `categoryOf` says it and nobody is asked. The
+ * table stopped asking on 23.08.2026, when the owner took the column out („U
+ * dodavanju trka na događaju (administriranje) ne treba da postoji Kategorija
+ * kolona ipak"), and the writing went with the asking.
+ *
+ * What that cost was measured by a review: a saved record is merged over the one
+ * before it, so a race of 42,2 km whose length is corrected to 10 kept
+ * `category: 'marathon'` on the record. Nothing draws it wrong today, because the
+ * public screens read the file rather than the layer of edits, and that is
+ * precisely why it had to be put back rather than left: the shape of the record is
+ * what the database phase inherits, and it would inherit a race that is a marathon
+ * and ten kilometres at once.
+ *
+ * Written here and not left to whoever calls this, because there is one way to
+ * store a row and this is it: a second caller working it out again is a second
+ * chance to work it out differently (ADL A31).
+ */
 export function storedRow(row: RaceRow, eventId: string): Record<string, string> {
+  const distanceKm = Number(row.distanceKm)
+
   return {
     eventId,
     name: row.name.trim(),
     renamed: row.renamed,
     date: isoDate(row.date),
-    distanceKm: String(Number(row.distanceKm)),
+    distanceKm: String(distanceKm),
     ascentM: String(Number(row.ascentM === '' ? 0 : row.ascentM)),
     descentM: String(Number(row.descentM === '' ? 0 : row.descentM)),
+    category: categoryOf(distanceKm),
   }
 }
