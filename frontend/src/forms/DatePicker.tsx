@@ -202,11 +202,26 @@ export function DatePicker({
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        /* Only where the focus is really inside the calendar, which is the
+           condition and not a nicety: Escape is heard on the document, so it
+           arrives whatever the reader was doing. Measured by a review on
+           28.08.2026 with the first version, which moved it every time: open the
+           calendar with the button, press into the date box beside it, which does
+           not close it, type, and press Escape. The cursor was pulled out of the
+           box being typed into and put on the button; from the race name above it,
+           the same press moved the focus to a different field's calendar button.
+           That is the very rule this was written for (WCAG 2.2 SC 2.4.3), broken
+           in the other direction.
+
+           The popup and not the whole field: the box, the steps and the button are
+           inside `.datepicker` and none of them is going anywhere. */
+        const inside = pop.current?.contains(document.activeElement) === true
+
         setOpen(false)
-        /* And back to the button, for the reason `pick` gives: whoever pressed
-           Escape was standing inside the thing that has just gone. Measured the
-           same way and with the same answer, `<body>`. */
-        opener.current?.focus()
+
+        if (inside) {
+          opener.current?.focus()
+        }
       }
     }
 
@@ -233,7 +248,12 @@ export function DatePicker({
        press, not of some corner of it.
 
        The same shape the list of races already uses when it closes under the
-       finger that chose from it (`forms/Suggesting.tsx`, `putBack`). */
+       finger that chose from it (`forms/Suggesting.tsx`, `putBack`).
+
+       Unconditional here, unlike Escape below, and the difference is real rather
+       than an oversight: this runs because a day was pressed, and a day is inside
+       the calendar. Escape is heard on the document and arrives whatever the
+       reader happened to be doing. */
     opener.current?.focus()
   }
 

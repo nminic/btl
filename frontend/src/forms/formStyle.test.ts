@@ -120,9 +120,16 @@ describe('the calendar button that will not answer', () => {
        background and their cursor, so whoever was looking rather than listening
        was shown a live control and told nothing.
 
-       The same two declarations the portal already uses for a held field
-       (`.field__control--held`), which is what a member sees on the very fields
-       this button belongs to. */
+       The same two declarations the portal keeps for a held control
+       (`.field__control--held`).
+
+       The fields beside this button do not wear them yet, and the same sentence
+       was corrected in `DatePicker.css` while this one was left saying otherwise:
+       one fact, two homes, one of them fixed. `field__control--held` is written
+       only by `PlaceField`, and a date locked by a chosen race carries
+       `aria-disabled` and `readOnly` and no class at all, so the button goes grey
+       beside a field that does not. That is a separate change, recorded in
+       `btl-produkt/PENDING.md`. */
     const refused = ruleFor(PICKER, ".datepicker__open[aria-disabled='true']", 'DatePicker.css')
 
     expect(refused.background).toBe('var(--surface-hover)')

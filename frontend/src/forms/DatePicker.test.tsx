@@ -421,7 +421,17 @@ describe('a calendar standing open when the field is locked under it', () => {
 })
 
 describe('where the focus goes when the calendar closes under it', () => {
-  /** The ordinary field, opened and then closed the two ways a reader closes it.
+  /** The ordinary field, opened and then closed.
+   *
+   *  Three ways out that a reader takes, not two: a day is chosen, Escape is
+   *  pressed, or something outside the calendar is pressed. The two below are the
+   *  ones that say anything about the focus; the third deliberately does not,
+   *  because a press moves the focus itself, to whatever was pressed, and putting
+   *  the button in its way would take the reader somewhere they did not press.
+   *  Measured on 28.08.2026 with the focus on a day and a press on the empty part
+   *  of the page: the focus lands on `<body>` at 1280 and on the page's own main
+   *  region at 360.
+   *
    *  Nothing here is about a lock: this is every date field on the portal. */
   function opened() {
     const onChange = vi.fn()
@@ -473,5 +483,49 @@ describe('where the focus goes when the calendar closes under it', () => {
 
     expect(screen.queryByRole('button', { name: '15' }), 'escape left the calendar').toBeNull()
     expect(document.activeElement).toBe(opener)
+  })
+})
+
+describe('Escape pressed from somewhere that is not the calendar', () => {
+  it('leaves the cursor where the reader put it', async () => {
+    /* The condition on the focus, and it is the condition rather than a nicety:
+       Escape is heard on the document, so it arrives whatever the reader was
+       doing. Measured by a review on 28.08.2026 against the first version, which
+       moved the focus every time: open the calendar with the button, press into
+       the date box beside it, which does not close the calendar, type, and press
+       Escape. The cursor was pulled out of the box being typed into and put on
+       the button, which is the rule this was written for broken in the other
+       direction (WCAG 2.2 SC 2.4.3). */
+    const user = setupUser()
+
+    render(
+      <ClockProvider simulatedDay={TODAY}>
+        <I18nProvider locale="sr">
+          <DatePicker
+            id="proba"
+            name="proba"
+            value="01/01/2027"
+            invalid={false}
+            describedBy={undefined}
+            onChange={vi.fn()}
+          />
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Otvori kalendar' }))
+
+    const box = screen.getByRole('textbox')
+
+    box.focus()
+
+    /* Still standing: a press inside the field is not a press outside it, so the
+       calendar does not close and Escape is the way out. */
+    expect(screen.getByRole('button', { name: '15' })).toBeVisible()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('button', { name: '15' }), 'escape left the calendar').toBeNull()
+    expect(document.activeElement).toBe(box)
   })
 })
