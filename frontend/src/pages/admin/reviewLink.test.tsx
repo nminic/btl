@@ -158,6 +158,27 @@ describe('the shape an address of somebody else’s page must have', () => {
        unclosed IPv6 authority. Nothing to draw, and nothing to say beyond that. */
     expect(outsideHost('https://[::1')).toBeUndefined()
   })
+
+  it('draws no link where it can name no host, because those were two questions', () => {
+    /* The two used to be asked separately and could disagree, and the moderator
+       paid for it: the pattern accepts anything without a blank in it and a
+       browser accepts rather less, so `https://[::1` was a link the queue drew
+       and a host it could not name. What the moderator then saw was the name the
+       member typed, live and pressable, with an empty box beside it where the
+       host belongs, which is the very state this pair exists to prevent.
+
+       Both directions, because either alone would pass on a function that
+       answered nothing at all. */
+    for (const said of ['https://[::1', 'https://']) {
+      expect(outsideLink(said), `${said} was drawn as a link`).toBeUndefined()
+      expect(outsideHost(said), `${said} was given a host`).toBeUndefined()
+    }
+
+    for (const said of ['https://primer.rs/rezultati/2026', 'https://primer.rs:8443/r']) {
+      expect(outsideLink(said), `${said} was refused`).toBe(said)
+      expect(outsideHost(said), `${said} was given no host`).not.toBeUndefined()
+    }
+  })
 })
 
 /**

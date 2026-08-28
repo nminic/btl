@@ -95,7 +95,7 @@ const INVISIBLE = /[\p{Cc}\p{Cf}]/u
  * reader ends up somewhere neither of them chose.
  */
 export function outsideLink(said: string): string | undefined {
-  return OUTSIDE_ADDRESS.test(said) && !INVISIBLE.test(said) ? said : undefined
+  return parsed(said) === undefined ? undefined : said
 }
 
 /**
@@ -123,18 +123,38 @@ export function outsideLink(said: string): string | undefined {
  * an address and a host read by eye is exactly the trick this is drawn against.
  */
 export function outsideHost(said: string): string | undefined {
-  const link = outsideLink(said)
+  return parsed(said)?.host
+}
 
-  if (link === undefined) {
+/**
+ * The address a browser would really open, or nothing.
+ *
+ * One reading for both answers above, and that is the whole of this function.
+ * They used to ask separately and could disagree: the pattern accepts anything
+ * without a blank in it, and a browser accepts rather less. `https://[::1` is
+ * both, so the link was drawn and the host beside it was not, and the moderator
+ * was handed a live link to an unfinished address of somebody else's choosing
+ * with an empty box where the host should be, which is exactly the state this
+ * pair of functions exists to prevent (measured by a review on 23.08.2026: „a
+ * result named „Zvanicni rezultati BTL 2026" pointing at
+ * `btl-rezultati.zlo.example` put the host nowhere in the page"). Asked once, the
+ * two cannot disagree: where there is no host there is no link either.
+ *
+ * The pattern is still asked first and is not redundant. `URL` accepts a great
+ * deal this portal will not hand to a browser, `javascript:` among it, and the
+ * shape written in `OUTSIDE_ADDRESS` is the one the form definitions copy.
+ */
+function parsed(said: string): URL | undefined {
+  if (!OUTSIDE_ADDRESS.test(said) || INVISIBLE.test(said)) {
     return undefined
   }
 
-  /* `URL` throws on an address whose shape passes the pattern and whose authority
-     a browser refuses, `https://` with nothing after it among them. Nothing to
-     draw then, and nothing to say beyond that. */
   try {
-    return new URL(link).host
+    return new URL(said)
   } catch {
+    /* Thrown on an address whose shape passes the pattern and whose authority a
+       browser refuses: `https://` with nothing after it, and `https://[::1` with
+       a bracket nobody closed. */
     return undefined
   }
 }
