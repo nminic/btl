@@ -190,9 +190,9 @@ export function ReportResult() {
             <>
               <p className="member__note">
                 {/* The race said the way every screen on the portal says one:
-                    its length, and its day where two of them are the same length
-                    (data/raceLabel.ts). It is the same sentence the chooser used
-                    to write into its own list, which is why the helper stays
+                    its name and its length, and its day where two of them share
+                    both (data/raceLabel.ts). It is the same sentence the chooser
+                    used to write into its own list, which is why the helper stays
                     after the chooser has gone. */}
                 {t('report.note', {
                   event: event.name,

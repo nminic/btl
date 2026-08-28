@@ -92,9 +92,10 @@ describe('the way to report a result', () => {
     }
   })
 
-  it('says which race it is reporting, by its length, in this language', async () => {
-    /* A race is told from the one beside it by its length and by nothing else
-       (data/types.ts): the event is the page this form was opened from. It stood
+  it('says which race it is reporting, by its name and length, in this language', async () => {
+    /* A race is told from the one beside it by its name and its length, and by
+       its day where two of them share both (`data/raceLabel.ts`, since
+       28.08.2026): the event is the page this form was opened from. It stood
        in a list of choices until 23.08.2026 and stands in the sentence over the
        form now, said by the same helper, so the two never drifted apart.
 
@@ -456,7 +457,7 @@ describe('an event that runs over two mornings', () => {
   })
 })
 
-describe('a race, which has no name of its own', () => {
+describe('a race, which has a name of its own since 23.08.2026', () => {
   /* There is no such field any more (owner, 11.08.2026): what a runner is shown
      is the event and the measurements of the race they ran, „Beogradski maraton,
      21,1 km". So every screen that writes a race writes its length, and a race
@@ -510,8 +511,10 @@ describe('a race, which has no name of its own', () => {
   }
 
   it('is listed under the event by its measurements', async () => {
-    /* And by no name, because there is none: the table of races under an event
-       carries the day, the category and the numbers. */
+    /* The table of races under an event carries the name, the day and the
+       numbers. It carried no name until 23.08.2026, when the owner gave a race
+       one; the row has said it since, and this case is about the numbers beside
+       it. */
     const { race, event } = await anyRace()
 
     renderAt(`/sr/kalendar/${event.slug}`)
@@ -534,13 +537,29 @@ describe('a race, which has no name of its own', () => {
        length, so a race the administrator had renamed read „21,10 km" here and on
        the event's own page. */
     expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(race.name)
-    /* And not by its length, which is what it said until 28.08.2026. Both halves,
-       because the sentence names the event too and every other race in the file
-       carries the event's name: on one of those, „the name is there" is true
-       whichever of the two is drawn. */
-    expect(await screen.findByText(/Prijavljuješ rezultat/)).not.toHaveTextContent(
+    /* And its length beside it, which the name does not replace. A race's name
+       starts out as its event's, and 886 of the 1163 events in the file hold
+       exactly one race, so on three quarters of them the name alone says nothing
+       the screen has not already said and the one thing that told the race apart
+       is gone. Measured by a review on 28.08.2026 in Chrome: „sa trke Mala Sveta
+       gora na događaju „Mala Sveta gora"", against „21,1 km" the day before. */
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
       formatDistance(race.distanceKm, 'sr-Latn'),
     )
+  })
+
+  it('says its length even where its name is its event’s, which is most of them', async () => {
+    /* The case the name alone got wrong, on the ordinary event rather than on the
+       one renamed race in the file: three quarters of events hold a single race,
+       and there the name is the event's name. */
+    const { race, event } = await anyRace()
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME)
+
+    const said = await screen.findByText(/Prijavljuješ rezultat/)
+
+    expect(said).toHaveTextContent(formatDistance(race.distanceKm, 'sr-Latn'))
+    expect(said).toHaveTextContent(race.name)
   })
 
   it('files the result on the day the race was run, not the day the event began', async () => {

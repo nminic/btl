@@ -269,8 +269,9 @@ describe('who is offered what on an event', () => {
 
 describe('reporting a result from the event', () => {
   it('calls a race the same thing in the row and in the form the row opens', async () => {
-    /* A race has no name of its own, so it is known by its length, and by its day
-       as well where the event ran the same length on several mornings. What it is
+    /* A race is known by its name and its length, and by its day as well where two
+       of them share both (`data/raceLabel.ts`; it had no name of its own until
+       23.08.2026 and was known by the length alone). What it is
        known among decides that, and the two screens were reading two different
        sets: the table read every race of the event and the form read only those
        already run.

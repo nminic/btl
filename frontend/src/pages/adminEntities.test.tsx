@@ -256,8 +256,9 @@ describe('the races of an event', () => {
   }
 
   it('names the button that removes a row by which row it is', async () => {
-    /* A race has no name of its own (PDL P6), and in a table of rows the number
-       of the row is what tells one „Obriši" from another. Read off the length, as
+    /* In a table of rows being typed into, the number of the row is what tells one
+       „Obriši" from another: a race has a name since 23.08.2026, but a row nobody
+       has finished typing has none yet. Read off the length, as
        it was until 23.08.2026, a row still being typed into gave „Obriši: ", and
        one of those buttons takes results with it. */
     const user = await openFirstEvent()
