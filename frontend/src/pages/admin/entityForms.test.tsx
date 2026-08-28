@@ -710,3 +710,50 @@ describe('which field of a form carries the address', () => {
     expect(takenAddress(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})
   })
 })
+
+describe('the explanation of what a race is called', () => {
+  it('reaches the boxes it was written for, which it never did', async () => {
+    /* The sentence was written on 23.08.2026 („Podrazumevano je naziv događaja.
+       Promeni ga ako se trka zove drugačije…") and has sat in the dictionary ever
+       since without reaching a screen: hints are drawn by the renderer of forms,
+       and this table draws its own controls, so `admin.hint.raceName` was a string
+       nobody could read.
+
+       Asked as what a reader is told rather than as which element exists: a hint
+       that is drawn and pointed at by nothing is the same as no hint at all. */
+    const user = setupUser()
+
+    await openFirstEvent(user)
+
+    const table = within(screen.getByRole('table', { name: /^Trke na doga\u0111aju/ }))
+    /* Named „Trka, 1. trka" and so on, by the column and by the row: that is how
+       every control of this table names itself. */
+    const boxes = table.getAllByRole('textbox', { name: /^Trka, / })
+
+    expect(boxes.length, 'the event has no races to read').toBeGreaterThan(0)
+
+    for (const box of boxes) {
+      expect(box).toHaveAccessibleDescription(t('admin.hint.raceName'))
+    }
+  })
+
+  it('is said once above the table, and nothing of it is inside the table', async () => {
+    /* The sentence is about the column, and the portal's usual mark for such a
+       sentence lives inside the label it explains. The label of a column is a
+       `th`, and a button and a sentence inside a header cell are read out with the
+       column every time a reader moves into it, six races or sixty. So it is said
+       once above the table instead, and the boxes point at it.
+
+       Both halves, because the second is what makes the first a decision rather
+       than an accident: nothing of the explanation may be inside the table. */
+    const user = setupUser()
+
+    await openFirstEvent(user)
+
+    const table = screen.getByRole('table', { name: /^Trke na događaju/ })
+
+    expect(screen.getAllByText(t('admin.hint.raceName'))).toHaveLength(1)
+    expect(within(table).queryByText(t('admin.hint.raceName'))).toBeNull()
+    expect(within(table).queryByRole('button', { name: t('form.explain') })).toBeNull()
+  })
+})

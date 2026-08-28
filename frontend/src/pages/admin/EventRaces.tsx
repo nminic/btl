@@ -19,6 +19,11 @@ import './Entity.css'
  * whole thing one question rather than two: an event and the mornings it runs on
  * are entered together and refused together.
  */
+/** The one explanation this table has. Named once, because the note above the
+ *  table and every box in the column have to agree on it, and two copies of a
+ *  string is two chances to disagree. */
+const NAME_HINT = 'race-name-hint'
+
 export function EventRaces({
   eventName,
   eventDate,
@@ -179,6 +184,25 @@ export function EventRaces({
         {t('admin.racesOf', { event: eventName })}
       </h2>
 
+      {/* What the name is for, said once above the table.
+       *
+          The sentence was written on 23.08.2026 („Podrazumevano je naziv
+          događaja…“) and until 28.08.2026 it reached nobody: hints on this portal
+          are drawn by the renderer of forms, and this table draws its own
+          controls, so `admin.hint.raceName` was a string in the dictionary that no
+          screen could show.
+       *
+          Above the table rather than as the portal's usual mark beside the field,
+          and that is a decision rather than a shortcut. The mark lives inside the
+          label it explains, and the label of a column is a `th`: a button and a
+          sentence inside a header cell are read out with the column every time a
+          reader moves into it, six races or sixty. Said once above the table it is
+          read once, and every box in the column points at it, so a reader who
+          reaches one of them is still told what it is for. */}
+      <p className="member__note" id={NAME_HINT}>
+        {t('admin.hint.raceName')}
+      </p>
+
       {rows.length === 0 ? (
         /* Said rather than left as an empty table. An event with no races yet is
            the ordinary state of one entered a fortnight before its distances are
@@ -227,6 +251,11 @@ export function EventRaces({
                       })}`}
                       aria-required="true"
                       aria-invalid={refused && isWrong(row, 'name')}
+                      /* The column's own explanation, said again for every box in
+                         it: a heading is not read out with the control on every
+                         reader, and a hint nobody is pointed at is a hint nobody
+                         hears. */
+                      aria-describedby={NAME_HINT}
                       /* Changed by hand, so this race stops following its event:
                          renaming the event afterwards leaves it alone
                          (owner, 23.08.2026). */
