@@ -587,12 +587,16 @@ describe('the place on a form that is locked by the race chosen above it', () =>
     const { box, onCountry } = renderField({ town: 'Be', country: 'RS' }, true)
 
     box.focus()
-    /* Three presses and not one, which is the difference between measuring the
-       lock and measuring nothing: the first only opens the list and leaves no row
-       standing, so Enter after it writes nothing whether the lock is there or not.
-       Measured by a review on 28.08.2026 with the lock taken out: the one press
-       version passed. With three, the same walk gives „Beočin" in place of „Be",
-       which is the scenario this case is named after. */
+    /* Three presses and not one, so that the last two assertions measure something:
+       one press only opens the list and leaves no row standing, so Enter after it
+       writes nothing whether the lock is there or not. With three, the same walk
+       gives „Beočin" in place of „Be", which is the scenario this case is named
+       after.
+     *
+       The reason first written here was wrong and a review said so: the one press
+       version did not pass with the lock taken out, because the assertion above
+       about the list catches that on its own. What three presses buy is that the
+       two below stop being decoration. */
     await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
 
     expect(screen.queryByRole('listbox'), 'the list opened on a locked field').toBeNull()
@@ -794,17 +798,115 @@ describe('what the portal’s dress for a held control actually says', () => {
     expect(held.cursor).toBe('default')
   })
 
-  it('reaches the four fields a chosen race fills in, which is where they live', () => {
+  it('reaches the fields a chosen race fills in, which is where they live', () => {
     /* `PlaceField` is not one of them. No form on the portal locks it today, and
-       the four that a race really does lock are drawn by the renderer of forms
-       from one shared set of properties. Measured by a review on 28.08.2026 in
-       Chrome over the built stylesheet: the difference between the whole computed
-       style of a field locked there and a live one was the empty set.
+       the fields a race really does lock are drawn by the renderer of forms from
+       one shared set of properties. Measured by a review on 28.08.2026 in Chrome
+       over the built stylesheet: the difference between the whole computed style
+       of a field locked there and a live one was the empty set.
 
-       Read off the renderer's source, because a screen that locks those four is a
-       flow of its own and this file is about the place. */
+       **Three of the four**, and the fourth is written down rather than reached
+       across for: the date is drawn by `forms/DatePicker.tsx`, which writes its
+       own class and never sees this object, and that file is held by another
+       change (`btl-produkt/PENDING.md`).
+
+       Read off the renderer's source, because a screen that locks those fields is
+       a flow of its own and this file is about the place. */
     const renderer = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.tsx'), 'utf-8')
 
     expect(bare(renderer)).toContain("locked ? 'field__control field__control--held' : 'field__control'")
+  })
+})
+
+describe('a locked place whose country the codebook could fill in', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  /** A held field and a live one side by side, each with its own record.
+   *
+   *  Two rather than one, and it is the whole of what makes this measurable: the
+   *  write being guarded happens without a press, a turn after the codebook
+   *  arrives, so „it has not written" is true of any moment before that whether
+   *  the guard is there or not. Measured on 28.08.2026: the first version of this
+   *  waited for the town to be in its box, which is true at once, and passed with
+   *  the guard taken out. The live twin says when the turn has come. */
+  function Pair() {
+    const [heldTown, setHeldTown] = useState('Beograd')
+    const [heldCountry, setHeldCountry] = useState('')
+    const [liveTown, setLiveTown] = useState('Beograd')
+    const [liveCountry, setLiveCountry] = useState('')
+
+    return (
+      <I18nProvider locale="sr">
+        <PlaceField
+          id="drzano"
+          name="drzano"
+          value={heldTown}
+          country={heldCountry}
+          invalid={false}
+          locked
+          describedBy={undefined}
+          onChange={(next, chosen) => {
+            setHeldTown(next)
+            setHeldCountry(chosen)
+          }}
+        />
+        <PlaceField
+          id="zivo"
+          name="zivo"
+          value={liveTown}
+          country={liveCountry}
+          invalid={false}
+          describedBy={undefined}
+          onChange={(next, chosen) => {
+            setLiveTown(next)
+            setLiveCountry(chosen)
+          }}
+        />
+      </I18nProvider>
+    )
+  }
+
+  it('is left exactly as it stands, because nothing here may write to it', async () => {
+    /* The fifth road in, and the one nobody was counting: this one writes without
+       a press, so no guard on a press could ever have covered it. A record that
+       carries a town the codebook knows and no country at all is a hole, and
+       filling a hole from the codebook is what the effect exists for; on a locked
+       field it is a write into a control the portal says cannot be answered.
+
+       Measured by a review on 28.08.2026 with a form whose chosen entry fills the
+       town and leaves the country empty: the country came out „RS" on a field
+       wearing `aria-disabled="true"` that nobody had touched. */
+    render(<Pair />)
+
+    const countries = () => screen.getAllByRole('combobox', { name: /^Država/ })
+
+    /* The live twin is what says the turn has come: its country is filled from the
+       codebook, and only after that has happened is „the held one was not filled"
+       a statement about anything. */
+    await waitFor(() => {
+      expect(must(countries()[1], 'the live country')).toHaveValue('RS')
+    })
+
+    expect(must(countries()[0], 'the held country')).toHaveValue('')
+  })
+
+  it('still fills that hole where the field is not held', async () => {
+    /* The other direction, because a guard that refused everything would pass the
+       case above and take the effect away with it. A record carrying a town the
+       codebook knows and no country at all is a hole, and filling a hole is what
+       the effect is for. */
+    const { onCountry } = renderField({ town: 'Beograd', country: '' })
+
+    await waitFor(() => {
+      expect(onCountry).toHaveBeenCalledWith('RS')
+    })
   })
 })

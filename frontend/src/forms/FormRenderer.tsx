@@ -304,10 +304,19 @@ const Field = memo(function Field({
     'aria-invalid': error !== undefined,
     'aria-describedby': describedBy === '' ? undefined : describedBy,
     /* And a held control wears the portal's one dress for a control that is
-       reachable and will not answer. This is where the four fields a race fills
-       in actually live: `led` locks the date, the length, the climb and the fall
-       (`pages/member/NewResult.tsx`), and until 28.08.2026 all four carried the
-       plain class. Measured by a review that day in Chrome over the built
+       reachable and will not answer. This is where three of the four fields a
+       race fills in actually live: `led` locks the date, the length, the climb and
+       the fall (`pages/member/NewResult.tsx`), and until 28.08.2026 all four
+       carried the plain class.
+     *
+       **Three and not four**, which a review counted on 28.08.2026 after this was
+       written claiming all of them: the date is not drawn from here at all but by
+       `forms/DatePicker.tsx`, which writes its own class and never sees this
+       object. So the length, the climb and the fall go grey and the date beside
+       them still looks like a box somebody may type into, while carrying
+       `aria-disabled` and `readOnly` like the rest. That is one line in a file a
+       separate change is holding, and it is written down in
+       `btl-produkt/PENDING.md` rather than reached across for. Measured by a review that day in Chrome over the built
        stylesheet: the difference between the whole computed style of a locked
        field and a live one was the empty set, down to the same background and the
        same text cursor. `disabled` had made exactly one visible difference and

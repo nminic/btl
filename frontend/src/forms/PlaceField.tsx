@@ -165,10 +165,24 @@ export function PlaceField({
       return
     }
 
+    /* And nothing at all while the field is held, which is the fifth road in and
+       the one nobody was counting: this writes without a press, so no guard on a
+       press could ever have covered it. Measured by a review on 28.08.2026 with a
+       form whose chosen entry fills the town and leaves the country empty: the
+       country came out `RS` on a field wearing `aria-disabled="true"` that nobody
+       had touched.
+
+       Counted rather than felt this time. `onChange` is called from five places
+       in this file: here, the town's own change, the country's, `choose`, and the
+       road through `onKeyDown` into `choose`. All five are behind the lock. */
+    if (locked === true) {
+      return
+    }
+
     if (known !== undefined && known !== country) {
       onChange(value, known)
     }
-  }, [known, country, value, onChange])
+  }, [known, country, value, onChange, locked])
 
   useEffect(() => {
     if (!open) {
@@ -189,9 +203,11 @@ export function PlaceField({
   }, [open])
 
   function choose(place: Place) {
-    /* The fourth road into a locked field, and the only one a pointer takes.
-       Three were shut on 28.08.2026 and this was left open, which is the same
-       fault in miniature: the lock was counted rather than the ways past it.
+    /* The road a pointer takes into a locked field. Three were shut on
+       28.08.2026 and this was left open, which was the same fault in miniature:
+       the lock was counted rather than the ways past it. A round later a fifth was
+       found in the effect above, so they are counted now and not felt: five calls
+       to `onChange` in this file, all five behind the lock.
        Measured by a review the same day: turn the lock while the list is standing
        and press a row, and the field wearing `aria-disabled="true"` takes
        „Beocin“ in place of „Be“. */
