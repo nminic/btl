@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { unwritten } from '../test/unwritten'
+import { bare } from '../test/sources'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -3020,7 +3020,7 @@ describe('what is read as a row of a table', () => {
 
     const elsewhere = everywhere
       .filter(({ path }) => !path.endsWith(HOME))
-      .filter(({ code }) => asks.test(unwritten(code)))
+      .filter(({ code }) => asks.test(bare(code)))
 
     /* Two limits, written down because a sweep that is quiet about its reach reads as
        one that has none. It asks for two spellings of the question, and it reads the

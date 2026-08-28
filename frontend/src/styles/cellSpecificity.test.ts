@@ -1,3 +1,4 @@
+import { bare } from '../test/sources'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { at } from '../test/at'
@@ -80,13 +81,6 @@ function sources(ending: string, dir = SRC, prefix = ''): { path: string; code: 
  * comment above says `.table th` and `font-weight` in the same breath a dozen
  * times, and every one of them would read as a declaration.
  */
-function bare(code: string): string {
-  return code
-    .replaceAll(/\/\*[\s\S]*?\*\//g, (comment) => comment.replaceAll(/[^\n]/g, ' '))
-    .replaceAll(/(^|[^:])\/\/[^\n]*/g, (line, before: string) =>
-      before + ' '.repeat(line.length - before.length),
-    )
-}
 
 type Rule = { selectors: string[]; properties: string[]; line: number }
 
