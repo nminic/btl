@@ -115,13 +115,17 @@ export type Competitor = {
   bio: string
 }
 
-/* A race has no name of its own (owner, 11.08.2026): „ipak ne treba da postoji
-   naziv trke ni kao obavezno ni kao neobavezno polje... trkačima će biti
-   evidentiran naziv događaja uz mere te određene trke koje su istrčali".
+/* ~~A race has no name of its own (owner, 11.08.2026).~~ **Overturned 23.08.2026
+   by the owner**, and this note was left behind saying the opposite of the field
+   two lines below it: „ja mogu da u okviru Beogradskog maratona imam dve trke, od
+   42.2 i 21.1, i obe će dobiti default naziv Beogradski maraton. Ali onda mogu
+   izmeniti ovu drugu da se zove Beogradski polumaraton."
  *
-   So what tells one race from another is its event and its measurements, and
-   those are what every screen writes: „Beogradski maraton, 21,1 km". The field
-   existed until then, was optional for one day, and is gone. */
+   So what tells one race from another is its name and its length, always both,
+   and its day where two of them share those (`data/raceLabel.ts`). The 11.08.2026 sentence
+   is kept here in its own words because it explains why every race in the
+   generated file still carries its event's name: they were made before there was
+   anything else to carry. */
 export type Race = {
   id: string
   eventId: string

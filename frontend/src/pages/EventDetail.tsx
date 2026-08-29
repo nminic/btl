@@ -161,8 +161,8 @@ function RaceTable({ event }: { event: BtlEvent }) {
                                  a screen reader's list of links (WCAG 2.2 SC
                                  2.4.4). The row does not name itself: it has no
                                  `th`, so nothing else tells them apart. Said the
-                                 way every screen says a race, by its length
-                                 (data/raceLabel.ts). */
+                                 way every screen says a race, by its name and its
+                                 length (data/raceLabel.ts). */
                               aria-label={t('event.enterResultNamed', {
                                 race: raceLabel(race, mine, locale),
                               })}
