@@ -726,6 +726,75 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
   })
 
+  it('is parted by the day where the hundredth cannot part it, which is the order it stands in', async () => {
+    /* Two sentences from the note above this function, taken as mutations rather
+       than believed. Both were found to be false by a review on 29.08.2026, when
+       the note said the steps stood „shortest first" and that the last of them was
+       „strictly the most telling".
+
+       One: the third step is shorter than the second, so the order is not by
+       length and the note must not say it is.
+
+       Two: rounding to the hundredth is not a refinement of rounding to the tenth.
+       8,649 km and 8,651 km are „8,6 km" and „8,7 km" written the ordinary way and
+       „8,65 km" both written out exactly, so the second step parts them and the
+       third and fourth do not. That is the one family of pairs the last rung
+       cannot part, and the label follows the row of the table, which draws „8,65"
+       twice as well. */
+    const near: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Probna trka',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 8.649,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+    }
+    const far: Race = { ...near, id: 'b', distanceKm: 8.651 }
+
+    /* Written the ordinary way they differ, written out exactly they do not. */
+    expect(formatDistance(near.distanceKm, 'sr-Latn')).not.toBe(formatDistance(far.distanceKm, 'sr-Latn'))
+    expect(formatNumber(near.distanceKm, 'sr-Latn', 2)).toBe(formatNumber(far.distanceKm, 'sr-Latn', 2))
+
+    /* And where the first step cannot part them either, the label gives up on them
+       and reads like the row. Two more races are what makes the first step fail:
+       each of the pair shares its written length with one of them, so all four go
+       on, and one morning means the day is a constant and parts nothing. */
+    const among: Race[] = [
+      near,
+      far,
+      { ...near, id: 'c', distanceKm: 8.6 },
+      { ...near, id: 'd', distanceKm: 8.7 },
+    ]
+
+    expect(raceLabel(near, among, 'sr-Latn')).toBe(raceLabel(far, among, 'sr-Latn'))
+    /* The two that the hundredth does part keep their own labels, so what is
+       being measured is this pair and not the whole set giving up. */
+    expect(new Set(among.map((one) => raceLabel(one, among, 'sr-Latn'))).size).toBe(3)
+
+    /* The order is not by length: the third step is the short one. Asked of two
+       labels the function itself wrote, one from each step, rather than of the two
+       formatters it wrote them with: the formatters are not what the sentence is
+       about, and a version of this that compared them passed while the third step
+       was made half again as long as the second. */
+    const mixed: Race[] = [
+      { ...near, id: 'p', distanceKm: 8.68 },
+      { ...near, id: 'q', distanceKm: 8.74 },
+      { ...near, id: 'r', date: '2020-01-02', distanceKm: 8.7 },
+    ]
+    const [third, , second] = mixed.map((one) => raceLabel(one, mixed, 'sr-Latn'))
+
+    expect(third, 'the third step no longer writes this one').toContain(
+      formatNumber(8.68, 'sr-Latn', 2),
+    )
+    expect(second, 'the second step no longer writes this one').toContain(
+      formatShortDate('2020-01-02', 'sr-Latn'),
+    )
+    expect(must(third, 'the shorter label').length).toBeLessThan(must(second, 'the longer label').length)
+  })
+
   it('says the fullest thing it has where nothing at all tells two races apart', async () => {
     /* The limit named in the note on the function, asked for rather than left to be
        inferred: one name, one morning and two lengths that agree to the hundredth

@@ -62,16 +62,39 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * for four races. On `pages/EventDetail.tsx` those are four „Unesi rezultat" links,
  * two pairs of which sound the same and lead somewhere different, which is the very
  * WCAG 2.2 SC 2.4.4 fault the exact length was added to close. The fourth step,
- * exact length **and** day, is the one rung that is strictly the most telling, so
- * the ladder can no longer end on a rung that says less than the one below it.
+ * exact length **and** day, closes it.
+ *
+ * **Why the steps stand in this order**, which is not by length: the third is
+ * shorter than the second, twenty characters against thirty-two on „Probna trka,
+ * 8,68 km". The day comes first because the day is what the page beside this label
+ * already draws when an event runs over more than one morning (owner, 10.08.2026),
+ * and the hundredth comes after it because it is a last resort: it is finer than
+ * anything the reader asked for, and it is only ever reached where the day has
+ * been tried and shares itself out among the races that collide.
  *
  * **What even four steps do not tell apart**, said out loud rather than left to be
  * found: two races of one event, one name, one morning, and two lengths that agree
  * to the hundredth. Measured on 28.08.2026: 8,681 km and 8,684 km both write „8,68
  * km" and read the same, and the administration takes both, since a length is typed
  * freely between 0,1 and 1000 (`pages/admin/raceRows.ts`) and a race's name comes
- * from its event unless somebody changes it. No such pair is in the file; the way
- * to close it is to rename one of them, and no label can do that for anybody.
+ * from its event unless somebody changes it. No such pair is in the file.
+ *
+ * **And rounding to the hundredth is not a refinement of rounding to the tenth,**
+ * which is the part of that limit worth spelling out, because it is surprising.
+ * Found by a review on 29.08.2026: 8,649 km and 8,651 km write „8,6 km" and „8,7
+ * km" as the second step writes them, and both write „8,65 km" as the third and
+ * fourth do. So the last rung is not strictly the most telling: there is one
+ * family of pairs, and only one, that an earlier rung parts and the last does not.
+ *
+ * **That is a decision and not an oversight.** The label writes the length the way
+ * the table of races on the same page writes it, to the hundredth
+ * (`pages/EventDetail.tsx`), and that table cannot part such a pair either: it
+ * draws „8,65" twice. A label finer than its own row, or a label carrying both
+ * roundings, would part two links on a page whose rows still read alike, which
+ * trades one confusion for a stranger one. The boundary, in both directions: a
+ * pair the **row** can part gets a label that parts it, and a pair the row cannot
+ * part gets a label that reads like the row. The way to close such a pair is to
+ * rename one of the races, and no label can do that for anybody.
  *
  * Each step only where it is needed, so the ordinary event of three lengths reads
  * as three lengths, not as three dates and not to the hundredth.
@@ -89,8 +112,9 @@ export function raceLabel(race: Race, among: Race[], locale: string): string {
     `${say(one)}, ${formatShortDate(one.date, locale)}`
   const alone = (say: (one: Race) => string) => among.filter((one) => say(one) === say(race)).length < 2
 
-  /* Shortest first, and the last of them is the fullest thing this function can
-     say, so whichever rung is reached the one below it is never more telling. */
+  /* In the order written out above: the name, then the day, then the hundredth,
+     then both. Not by length, and not strictly by how much each one tells; the
+     note says why each stands where it does. */
   const steps = [named, onItsDay(named), exact, onItsDay(exact)]
 
   return (steps.find(alone) ?? onItsDay(exact))(race)
