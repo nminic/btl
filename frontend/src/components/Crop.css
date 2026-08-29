@@ -203,4 +203,20 @@
    two that knows least (ADL A31). */
 .crop__picture--dragged {
   touch-action: none;
+  /* And a drag over it is a drag of the circle, never a sweep that takes the
+     photograph with it.
+   *
+     Owner, 29.08.2026: „Ponekad u nekim pokretima, dođe do selekcije čitave slike,
+     iako sam krenuo da povlačim kursor u obliku ruke ili u obliku pomenutih
+     strelica... sliku je nemoguće selektovati kao objekat osim ako nisam vukao
+     mišem preko nje a počev van nje." That is what this says and no more: a
+     selection **begun on this box** never starts, and one begun outside still
+     sweeps across it, which is the exception he asked for.
+
+     Beside `touch-action` rather than on the photograph itself, because both are
+     about the same thing: while there is something to drag here, the browser's own
+     gestures give way to it. On the screen where the crop is only looked at there
+     is nothing to drag, and neither rule is drawn. */
+  -webkit-user-select: none;
+  user-select: none;
 }
