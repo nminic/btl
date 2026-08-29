@@ -701,15 +701,27 @@ describe('a gesture measured from where it began', () => {
     }
   })
 
-  it('stops at the floor when the hand goes in further than the circle is wide', () => {
-    /* The one branch of this function with no other reader: a hand that travels
-       further inwards than the radius asks for a diameter below nought, and a spot
-       is a place, which has no sign. Without holding it at nought the distance is
-       read back as a circle growing out the other side, the floor is missed, and
-       the circle settles wider than the portal allows.
+  it('stops at the floor when the hand asks for a circle narrower than nothing', () => {
+    /* The one branch of this function with no other reader: a hand that travels far
+       enough inwards asks for a diameter below nought, and a spot is a place, which
+       has no sign. Without holding it at nought the distance is read back as a
+       circle growing out the other side, the floor is missed, and the circle
+       settles wider than the portal allows.
 
        Measured by a review on 29.08.2026: pressed at 0,98 of a square picture and
-       dragged in to 0,55, the circle stopped at 0,36 instead of the floor. */
+       dragged in to 0,55, the circle stopped at 0,36 instead of the floor.
+
+       **How far in is far enough, said in the one unit that is right.** The
+       diameter asked for is what it was less twice the distance the hand came in,
+       so the brake bites once the hand has come in by more than half the diameter,
+       which here is a quarter of the picture. Said as „further in than the circle is
+       wide" it would be wrong by a factor of two, and a review the same day showed
+       why that matters: the floor does **not** hold all the way in. Swept from 0,98
+       to 0,02, the answers are 0,34 at 0,9 and again 0,34 at 0,1, with the floor in
+       between and 0,5 at the far end, because the distance from the middle is a
+       distance and starts growing again once the hand passes the middle. That is
+       `sizedTo`'s reading and older than this function; what is guarded here is only
+       that the diameter never goes below nought on the way. */
     const floor = closestIn(square)
     const pulled = draggedTo(
       half,

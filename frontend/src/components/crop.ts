@@ -181,8 +181,12 @@ export type Aim = { doing: 'moving' | 'sizing'; cursor: string }
  * lying about what a press will do. One fact, one home (ADL A31).
  *
  * Everything outside the circle is the rim as well, and truthfully so: a press
- * out there takes hold of the edge, and the drag that follows carries it by as
- * much as the hand travels, which is a resize whatever it looks like. Until
+ * out there takes hold of the edge, and the drag that follows carries it by as much
+ * as the hand's distance from the middle changes, which is a resize whatever it
+ * looks like. Its **distance** and not the road it took: the reading is the larger
+ * of the two directions (`sizedTo`), so a hand that slides sideways along the rim
+ * travels a long way and changes nothing, and one that goes into a corner changes
+ * as much as one that goes straight out. Until
  * 29.08.2026 it did something stronger and wrong, dragging the edge out to meet
  * the pointer the instant the press landed; `draggedTo` is where that was mended.
  *
@@ -264,12 +268,21 @@ function pulling(out: { across: number; down: number }): string {
  * only while nothing else moves the crop under the hand. Measured by a review on
  * 29.08.2026 in Chrome: with the button held on the rim and the size slider moved
  * to 0,3 from elsewhere, the next move of the hand quietly undid it, back to 0,6
- * reckoned from the 0,5 the press remembered. The same review found no way for a
- * person to reach that state with one pointer, because pressing the picture takes
- * the focus off the sliders; it is a hole in the reasoning rather than in the
- * screen. What made the trade worth it is the owner's own correction of that day:
- * following the pointer absolutely meant the circle jumped to meet it on every
- * press.
+ * reckoned from the 0,5 the press remembered.
+ *
+ * **And a telephone gives a person the second hand that a mouse does not.** A first
+ * review called it unreachable, on the ground that pressing the picture takes the
+ * focus off the sliders, and a second one measured that a second finger needs no
+ * focus: holding the rim with one finger and dragging the size slider with another
+ * leaves the slider at its new value, and the first finger's next move throws it
+ * away. Without any slider at all, one finger on the rim and a tap in the middle
+ * with another ends the pull and jumps the circle to the edge.
+ *
+ * So it is a hole on the screen and not only in the reasoning, and it is written
+ * down here rather than mended because mending it is a question about what a
+ * second finger **should** do, which nobody has asked. What made the trade worth
+ * taking is the owner's own correction of that day: following the pointer
+ * absolutely meant the circle jumped to meet it on every press.
  *
  * Nothing to clamp against but 0 and 1, because `x` and `y` are shares of the
  * room left over rather than distances from an edge (see the head of this file).

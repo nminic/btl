@@ -855,6 +855,27 @@ describe('what the pointer says a press would do, before anybody presses', () =>
     fireEvent.pointerMove(box, at({ across: 0.95, down: 0.5 }))
 
     expect(sentCrop().size, 'the second move reckoned from the first').toBeCloseTo(0.6, 6)
+
+    /* And back to where the press landed, which is the step that tells a **third**
+       way of reckoning from the other two. Carrying both the crop and the spot
+       forward — each move measured from the last answer by the step just taken —
+       agrees with reckoning from the press for as long as the hand goes one way
+       through open room: 0,54 then 0,60 either way. It parts company the moment the
+       hand turns back or crosses a limit, because the floor swallows what the
+       inward steps asked for and the outward steps then add to a circle that never
+       shrank. Measured by a review on 29.08.2026: pressed at 0,9, taken in to 0,6
+       and back to 0,9, the third way answers 0,84 where the hand has ended exactly
+       where it began. */
+    fireEvent.pointerMove(box, at({ across: 0.6, down: 0.5 }))
+
+    expect(sentCrop().size, 'the circle did not stop at the floor').toBeCloseTo(0.24, 6)
+
+    fireEvent.pointerMove(box, at({ across: 0.9, down: 0.5 }))
+
+    expect(
+      sentCrop().size,
+      'the hand came back to where it pressed and the circle did not',
+    ).toBeCloseTo(0.5, 6)
   })
 
   it('closes the hand while the circle is being carried, and keeps it closed', async () => {
