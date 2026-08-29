@@ -28,7 +28,7 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * **Why the day.** One event may run over several mornings (PDL P10), and eleven
  * events hold two or more races of one written length across more than one day:
  * Danube maraton 2022 has four of 42,2 km on four consecutive mornings. Counted
- * over the whole file on 28.08.2026: of 1612 races, 25 labels carry the day, 4
+ * over the whole file on 28.08.2026: of 1612 races, 24 labels carry the day, 4
  * carry the exact length, and no two races of one event read the same.
  *
  * **Why the exact length, which is the step this function did not have until
@@ -42,7 +42,17 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  *
  * The exact length is what the table of races on the same page already writes
  * (`pages/EventDetail.tsx`), so the row and the link that comes out of it now agree
- * where before the row said „8,68" and the link said „8,7 km".
+ * where before the row said „8,68" and the link said „8,7 km". Two decimals and not
+ * three: the two are one fact with two homes, and a label finer than its own row
+ * would be the same disagreement the other way round.
+ *
+ * **What even three steps do not tell apart**, said out loud rather than left to be
+ * found: two races of one event, one name, one morning, and two lengths that agree
+ * to the hundredth. Measured on 28.08.2026: 8,681 km and 8,684 km both write „8,68
+ * km" and read the same, and the administration takes both, since a length is typed
+ * freely between 0,1 and 1000 (`pages/admin/raceRows.ts`) and a race's name comes
+ * from its event unless somebody changes it. No such pair is in the file; the way
+ * to close it is to rename one of them, and no label can do that for anybody.
  *
  * Each step only where it is needed, so the ordinary event of three lengths reads
  * as three lengths, not as three dates and not to the hundredth.

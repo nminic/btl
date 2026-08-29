@@ -25,7 +25,7 @@ function Sent() {
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
-import { formatDistance, formatNumber } from '../../i18n/format'
+import { formatDistance, formatNumber, formatShortDate } from '../../i18n/format'
 import { raceLabel } from '../../data/raceLabel'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -580,7 +580,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        comparison used the stored number, so a pair that merely rounded together was
        counted as different and never offered the day at all; the second compared
        the written length, which offered them the day they already shared and made
-       the labels fourteen characters longer without making them differ. What
+       the labels fifteen characters longer without making them differ. What
        closes it is writing the length out exactly, and only there.
 
        Asked of the function rather than of a screen, because the pair that shows it
@@ -595,25 +595,61 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     expect(new Set(said).size, `two races read the same: ${said.join(' / ')}`).toBe(said.length)
     /* And the exact length is what does it, written the way the table of races on
        the same page already writes it. */
-    expect(said.some((one) => one.includes(formatNumber(8.68, 'sr-Latn', 2)))).toBe(true)
+    /* The whole label and not a piece of it: „8,680 km" contains „8,68", so asking
+       for the piece would let a finer number through, and the row of the table
+       beside it writes two decimals. Measured by a review on 28.08.2026: with the
+       label written to three decimals the suite stayed green. */
+    const eight = must(
+      together.find((one) => one.distanceKm === 8.68),
+      'the race this is about',
+    )
+
+    expect(raceLabel(eight, together, 'sr-Latn')).toBe(
+      `${eight.name}, ${formatNumber(8.68, 'sr-Latn', 2)} km, ${formatShortDate(eight.date, 'sr-Latn')}`,
+    )
   })
 
   it('asks for no more than it needs, so an ordinary event reads as its lengths', async () => {
     /* Each step only where the one before it left two races reading the same. Three
-       lengths on one morning under one name need neither the day nor the second
-       decimal, and a label that carries them anyway is a label nobody can scan.
-       Measured over the whole file on 28.08.2026: of 1612 races, 25 labels carry the
-       day and 4 the exact length, and no two races of one event read the same. */
-    const races = await loadResource<Race[]>('races')
-    const plain = races.filter((one) => one.eventId === 'evt-danube-maraton-2022-03-14')
+       different lengths on one morning under one name need neither the day nor the
+       second decimal, and a label that carries them anyway is a label nobody can
+       scan. Measured over the whole file on 28.08.2026: of 1612 races, 24 labels
+       carry the day and 4 the exact length, and no two races of one event read the
+       same.
 
-    expect(plain.length, 'the file no longer holds the event this is about').toBeGreaterThan(1)
+       Measured by a review the same day: with the first step deciding on the name
+       alone rather than on the whole label, the labels carrying a day went from 24
+       to 722 and the whole suite stayed green. So this asks for the label itself,
+       not for the absence of one part of it. */
+    const races = await loadResource<Race[]>('races')
+    const plain = races.filter((one) => one.eventId === 'evt-baja-sombor-2019-12-01')
+
+    expect(plain.length, 'the file no longer holds the event this is about').toBe(3)
 
     const said = plain.map((one) => raceLabel(one, plain, 'sr-Latn'))
 
-    /* This one does need the day, because its four races share a length. What it
-       must not need is the second decimal. */
-    expect(said.every((one) => !one.includes(formatNumber(42.2, 'sr-Latn', 2)))).toBe(true)
+    expect(said).toEqual(
+      plain.map((one) => `${one.name}, ${formatDistance(one.distanceKm, 'sr-Latn')}`),
+    )
+  })
+
+  it('adds the day where the lengths repeat, and stops there', async () => {
+    /* The second step, on the event the note names: four races of 42,2 km on four
+       consecutive mornings. It needs the day and must not need the second decimal.
+     */
+    const races = await loadResource<Race[]>('races')
+    const many = races.filter((one) => one.eventId === 'evt-danube-maraton-2022-03-14')
+
+    expect(many.length, 'the file no longer holds the event this is about').toBe(4)
+
+    const said = many.map((one) => raceLabel(one, many, 'sr-Latn'))
+
+    expect(said).toEqual(
+      many.map(
+        (one) =>
+          `${one.name}, ${formatDistance(one.distanceKm, 'sr-Latn')}, ${formatShortDate(one.date, 'sr-Latn')}`,
+      ),
+    )
   })
 
   it('files the result on the day the race was run, not the day the event began', async () => {
