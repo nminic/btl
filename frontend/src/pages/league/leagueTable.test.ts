@@ -32,10 +32,19 @@ const event = (id: string, date: string): BtlEvent => ({
   kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
 })
 
-const race = (id: string, eventId: string, distanceKm = 10, date = '2027-04-03'): Race => ({
+const race = (
+  id: string,
+  eventId: string,
+  distanceKm = 10,
+  date = '2027-04-03',
+  /* What the race is called. It starts out as its event's name, so a case that
+     does not care passes the same string every event carries; a case about the
+     name passes its own. */
+  name = 'Trka',
+): Race => ({
   id,
   eventId,
-  name: 'Trka',
+  name,
   renamed: 'no',
   date,
   distanceKm,
@@ -90,7 +99,44 @@ describe('the grid of a competition', () => {
        shorter race comes first, and it is the distance that says which is
        shorter: by name "10 km" would stand in front of "5 km". */
     expect(table.columns.map((one) => one.raceId)).toEqual(['r2', 'r4', 'r1'])
-    expect(first(table.columns).event).toBe('Događaj e2')
+    expect(first(table.columns).name).toBe('Trka')
+  })
+
+  it('calls a race what the race is called, not what its event is called', async () => {
+    /* Owner, 23.08.2026, in the same breath as giving a race a name: „u listi
+       rezultata treba da se prikazuju nazivi trka na kojima je čovek učestvovao, a
+       ne događaja." This grid carried the event's name until 29.08.2026, so a race
+       somebody had renamed stood here under the name it no longer had.
+
+       Nothing moved for the races in the file, and that is the point of the case:
+       a race's name starts out as its event's, so measuring on one of those proves
+       nothing. This one is renamed. */
+    const named = [race('r5', 'e1', 12, '2019-05-02', 'Polumaraton kroz grad')]
+    const table = leagueTable(league, events, named, [], [])
+
+    expect(first(table.columns).name).toBe('Polumaraton kroz grad')
+  })
+
+  it('leads with the name where the length and the day cannot part two columns', () => {
+    /* A turned heading is cut at the end, so what tells two columns apart has to
+       come first. Two races of one length on one morning are parted by their names
+       alone, and that is what `ambiguous` says: lead with the name.
+
+       Keyed on the length and the day and not on the name as well, deliberately.
+       Were the name in the key, these two would count as different, the heading
+       would fall back to its ordinary order, and the name would be the part off the
+       edge. */
+    const clash = [
+      race('r6', 'e1', 10, '2019-05-01', 'Jutarnja trka'),
+      race('r7', 'e2', 10, '2019-05-01', 'Večernja trka'),
+    ]
+    const table = leagueTable(league, events, clash, [], [])
+
+    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
+    /* And a column nothing shares a length and a day with is left alone. */
+    const alone = leagueTable(league, events, [race('r8', 'e1', 10, '2019-05-01')], [], [])
+
+    expect(first(alone.columns).ambiguous).toBe(false)
   })
 
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {
@@ -296,5 +342,40 @@ describe('the way a competition splits its ranking', () => {
       '000001',
       '000000',
     ])
+  })
+})
+
+describe('the order the heading of a column is written in', () => {
+  /* A turned heading is cut at the end, so what tells two columns apart has to come
+     first. That is decided in `pages/league/LeagueResults.tsx` and measured here
+     rather than through the screen, because what it rests on is `ambiguous`, which
+     is this file's answer.
+
+     Measured on 29.08.2026: with the heading always written in the ordinary order,
+     the whole of `pages/league` stayed green while two columns that share a length
+     and a morning both read „10,0 km, 1. 5. 2019., …" and the names that part them
+     sat past the edge. */
+  const heading = (column: { name: string; ambiguous: boolean }, length: string, day: string) =>
+    column.ambiguous ? `${column.name}, ${length}, ${day}` : `${length}, ${day}, ${column.name}`
+
+  it('leads with the name where two columns share a length and a morning', () => {
+    const clash = [
+      race('r6', 'e1', 10, '2019-05-01', 'Jutarnja trka'),
+      race('r7', 'e2', 10, '2019-05-01', 'Večernja trka'),
+    ]
+    const table = leagueTable(league, events, clash, [], [])
+
+    expect(table.columns.map((one) => heading(one, '10,0 km', '1. 5. 2019.'))).toEqual([
+      'Jutarnja trka, 10,0 km, 1. 5. 2019.',
+      'Večernja trka, 10,0 km, 1. 5. 2019.',
+    ])
+  })
+
+  it('leads with the length where nothing else needs saying first', () => {
+    const table = leagueTable(league, events, [race('r8', 'e1', 10, '2019-05-01')], [], [])
+
+    expect(heading(first(table.columns), '10,0 km', '1. 5. 2019.')).toBe(
+      '10,0 km, 1. 5. 2019., Trka',
+    )
   })
 })

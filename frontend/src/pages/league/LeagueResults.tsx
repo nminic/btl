@@ -124,17 +124,21 @@ function Grid({
                       trek" with the length and the date beyond the edge, which is
                       the one thing that told them apart. The whole of it is in the
                       title for anyone who wants it. */}
-                  {/* The race by what it is known by, which is its length: it
-                      has no name of its own (data/types.ts). */}
+                  {/* The race by its own name, which it has had since 23.08.2026
+                      and which stood here as its event's name until 29.08.2026
+                      (owner: „u listi rezultata treba da se prikazuju nazivi trka
+                      na kojima je čovek učestvovao, a ne događaja"). It starts out
+                      as the event's name, so on most rows nothing moved; on a race
+                      somebody renamed, the grid now says what they called it. */}
                   {(() => {
-                    const name = formatDistance(column.distanceKm, locale)
+                    const length = formatDistance(column.distanceKm, locale)
                     const day = formatShortDate(column.date, locale)
 
                     return (
-                      <span className="league__race-name" title={`${column.event}, ${name}, ${day}`}>
+                      <span className="league__race-name" title={`${column.name}, ${length}, ${day}`}>
                         {column.ambiguous
-                          ? `${column.event}, ${name}, ${day}`
-                          : `${name}, ${day}, ${column.event}`}
+                          ? `${column.name}, ${length}, ${day}`
+                          : `${length}, ${day}, ${column.name}`}
                       </span>
                     )
                   })()}

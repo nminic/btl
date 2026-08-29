@@ -13,9 +13,22 @@ import type { BtlEvent, Competitor, League, Race, Result } from '../../data/type
 
 export type LeagueColumn = {
   raceId: string
-  /** The event the race belonged to. Two events can both hold a "10 km", so the
-   *  heading has to say which one, however narrow the column wants to be. */
-  event: string
+  /**
+   * What the race is called.
+   *
+   * The event's name until 29.08.2026, because a race had none of its own; the
+   * owner gave it one on 23.08.2026 and said in the same breath where it belongs:
+   * „u listi rezultata treba da se prikazuju nazivi trka na kojima je čovek
+   * učestvovao, a ne događaja." A renamed race stood in this grid under its
+   * event's name until this was changed.
+   *
+   * It is still what tells two columns apart where the length and the day cannot:
+   * two events can both hold a „10 km" on one morning, and their races carry their
+   * names. Measured on 29.08.2026 over the three competitions in the file: 23
+   * columns, 2 of them sharing a length and a day, and in neither case do the two
+   * races share a name.
+   */
+  name: string
   date: string
   /**
    * Whether this race and this date belong to more than one event in the
@@ -83,7 +96,11 @@ export function leagueTable(
         : [
             {
               raceId: race.id,
-              event: event.name,
+              /* The race's own name, which starts out as its event's and stops
+                 being it the moment somebody renames the race (owner,
+                 23.08.2026). `event` is still read above, to know whether the race
+                 belongs to this competition at all. */
+              name: race.name,
               /* The day this race is run on, which is not always the day of its
                  event: one event may run over several mornings (PDL P10). Read
                  off the event, two races of one length on two mornings shared a
@@ -99,10 +116,16 @@ export function leagueTable(
 
   const seen = new Map<string, number>()
 
-  /* What two columns have to share before the reader cannot tell them apart. A
-     race has no name of its own (types.ts), so it is its length and its day, and
-     two races of one length on one day are two columns nothing but the event
-     tells apart. */
+  /* What two columns have to share before the reader cannot tell them apart: the
+     length and the day. Two races of one length on one morning are two columns
+     that only their names can part, and the name is what the heading then leads
+     with.
+   *
+     Keyed on the length and the day and not on the name as well, deliberately. Were
+     the name in the key, those two columns would count as different and the heading
+     would fall back to its ordinary order, which puts the name last — and a turned
+     heading is cut at the end, so the one thing that tells them apart would be the
+     one thing off the edge. */
   for (const column of columns) {
     const key = `${column.distanceKm}|${column.date}`
     seen.set(key, (seen.get(key) ?? 0) + 1)
