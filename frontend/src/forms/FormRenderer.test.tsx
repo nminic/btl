@@ -1066,8 +1066,10 @@ describe('a box the portal filled in from a list', () => {
 
     const box = () => screen.getByLabelText(/proba.dopisano/)
     /* Every kind this form draws, because the dress reaches each of them by a
-       different road: two are spread onto an element here, and two are handed to a
-       component that spreads them itself. */
+       different road: `trka` through `Suggesting` and `prica` through `LongBox`,
+       which carry the shared object across a component boundary, and `dopisano`
+       spread onto its element here. The kinds this form does not draw are asked in
+       `held.test.tsx`, over a form that draws every one of them. */
     const all = () => [
       screen.getByLabelText(/proba.trka/),
       box(),
@@ -1108,8 +1110,12 @@ describe('a field filled from a list', () => {
        Two branches hand the object across a component boundary rather than
        spreading it onto an element, and both are asked here: `Suggesting` for the
        race, `LongBox` for the long one. A review on 29.08.2026 found the second, and
-       found the sentence that had claimed there was only one. The four that spread
-       the object themselves are held by the case above, which asks that object. */
+       found the sentence that had claimed there was only one.
+
+       The branches that spread the object themselves are **not** held by that: a
+       review the same day wrote `className` after the spread on the select and
+       watched the whole suite stay green. They are asked in `held.test.tsx`, over a
+       form that draws every kind at once. */
     renderWithI18n(
       <FormRenderer
         form={fillsABox}
