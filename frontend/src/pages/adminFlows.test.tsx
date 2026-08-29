@@ -15,6 +15,7 @@ import { SessionContext, type SessionValue, type SubmissionStatus } from '../ses
 import { Decided, Inbox } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
+import { unremarked } from '../test/stylesheet'
 import { setupUser } from '../test/user'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
@@ -186,6 +187,57 @@ describe('the panel', () => {
 
     expect(await screen.findByRole('button', { name: 'Podaci' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Verifikacija' })).toBeNull()
+  })
+
+  it('puts the records above the verification, in that order', async () => {
+    /* Owner, 29.08.2026: „Na strani administracije prvo treba da idu Podaci (jer
+       su sve stavke uvek tu), pa tek onda boks sa verifikacijom." They were the
+       other way round until then.
+
+       **What this case holds is the order in the document**, and that is all it
+       holds. It is the order somebody walking landmark by landmark hears, and
+       `findAllByRole` answers in document order, because Testing Library collects
+       through `querySelectorAll`, which is defined to. Not off a class name, and
+       not off the order the two were written to the props of anything.
+
+       **The order on the screen is a separate question and jsdom cannot answer
+       it**, because jsdom applies no stylesheet and lays nothing out. It was
+       asked of Chrome instead, once, over the built stylesheet and the markup
+       this shell draws: at 1264x900 the two sectors sit at `Odeljak Podaci@top=0`
+       and `Odeljak Verifikacija@top=296`, in that order, and the same at 1366 and
+       1440. A stylesheet that turns the column round moves those numbers and
+       nothing in this file would notice. */
+    renderAt('/sr/administracija', 'superadmin')
+
+    const sectors = await screen.findAllByRole('navigation', { name: /^Odeljak / })
+
+    expect(sectors.map((one) => one.getAttribute('aria-label'))).toEqual([
+      'Odeljak Podaci',
+      'Odeljak Verifikacija',
+    ])
+
+    /* **A named list of two ways to invert a flex column, and it is a list.** The
+       sectors are one flex column, so `column-reverse` on it or an `order` on
+       either sector would put verification back on top with every assertion above
+       still green. Those two are spelled out here because they are the two edits
+       a person reaches for; `display: grid` with a `grid-row` on the first child
+       does the same thing and is not caught, which was measured rather than
+       supposed. A longer list would not finish the job either, and the answer to
+       that is the browser measurement quoted above, not more spellings.
+
+       Comments blanked first, through the one reader that does it for every
+       guard over a stylesheet (`test/stylesheet.ts`): a note in this sheet
+       explaining that the two sectors must never be `column-reverse` is prose,
+       and matching it would fail the sheet for saying what it does.
+
+       `border:` is not one of the two, which is why the property is matched only
+       where a property may start. */
+    const css = unremarked(
+      readFileSync(join(process.cwd(), 'src/pages/admin/SectionNav.css'), 'utf-8'),
+    )
+
+    expect(css).not.toContain('column-reverse')
+    expect(css).not.toMatch(/(^|[\s;{])order\s*:/m)
   })
 
   it('carries no content of its own, and the work stands beside it', async () => {
@@ -1431,10 +1483,69 @@ describe('verification', () => {
 
       expect(panel).not.toBeNull()
       expect(panel?.contains(alarm)).toBe(false)
+
+      /* And above the list rather than under it. This sector is the second of
+         the two in a column that scrolls inside itself from 51.25em up
+         (`max-height: calc(100svh - 2rem)`, SectionNav.css), so the last thing
+         in it is the first thing to fall off the bottom. Measured in Chrome over
+         the built stylesheet and the markup this very render produces, at a
+         viewport of 673 CSS pixels, which is what a 1366x768 laptop leaves under
+         the browser's own chrome: under the list the column showed 641 of its
+         673 and the alarm ran from 586 to 673, so the whole of it was off the
+         screen while all six queues read nought. Above the list it runs from 356
+         to 443, and the column is 673 either way.
+
+         Held as document order, which is what carries it: jsdom lays nothing
+         out, so a box comparison here would compare two boxes of nothing. The
+         browser's half of this answer is the measurement above, taken once. */
+      expect(alarm.compareDocumentPosition(must(panel, 'the folded list'))).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
     } finally {
       globalThis.fetch = served
     }
   })
+
+  it('reads every queue as nought and says nothing while the file is still on its way', async () => {
+    const served = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/verification.json')
+        ? new Promise<Response>(() => undefined)
+        : served(input))
+
+    try {
+      /* The gap the note in `SectionNav.tsx` names, held here so the note cannot
+         drift back into claiming the alarm covers it. `failed` is one of three
+         states: a file that never answers is not a file that failed, so nothing
+         is raised, and `dataOr(items, [])` counts every queue it feeds as
+         nought. Six quiet noughts, and not a word beside them.
+
+         It is not a regression and it is not what 29.08.2026 changed. What that
+         day changed is that a nought is now the ordinary reading rather than a
+         row that would have been left out, so this reads as an afternoon's work
+         already done where before it read as a column still loading. Written
+         down because the only record of it was a comment, and a comment nobody
+         measures is a comment that gets rewritten into its opposite. */
+      renderAt('/sr/administracija', 'moderator')
+
+      const nav = within(
+        await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }),
+      )
+
+      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length)
+      for (const queue of QUEUES) {
+        expect(
+          nav.getByRole('link', {
+            name: `${translate(dictionary, 'sr', queue.labelKey)}, 0 na čekanju`,
+          }),
+        ).toBeVisible()
+      }
+
+      expect(nav.queryByRole('alert')).toBeNull()
+    } finally {
+      globalThis.fetch = served
+    }
+  }, SLOW)
 
   it('raises no alarm over a file none of the numbers come from', async () => {
     const served = globalThis.fetch
@@ -1471,32 +1582,40 @@ describe('verification', () => {
       expect(document.title).toContain('Uplate i aktivacija članova (administracija)'),
     )
 
-    /* Moved to a queue that has something in it: an empty queue is not in the
-       navigation any more (owner, 06.08.2026), and the results are empty until
-       somebody sends one in during the visit. */
+    /* Any queue other than the one already open, which is what makes the tab
+       name change at all. */
     const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
     await user.click(nav.getByRole('link', { name: /Komentari/ }))
 
     await waitFor(() => expect(document.title).toContain('Komentari (administracija)'))
   })
 
-  it('leaves an empty queue out of the navigation, and keeps the one being worked in', async () => {
-    /* Owner, 06.08.2026. A name that leads to "nothing is waiting" is a step
-       taken for nothing, and a moderator reads this list to find work rather
-       than to count doors. The results are the empty one until somebody sends a
-       result in during the visit. */
+  it('keeps an empty queue in the navigation, and says nought beside it', async () => {
+    /* Owner, 29.08.2026: „Neka ipak ne nestaju stavke iz Verifikacije kad se
+       odobre. Neka ostane vidljiva i neka piše 0." Until that, a queue holding
+       nothing was left out of the list (owner, 06.08.2026), so the column
+       changed length while a moderator worked down it.
+
+       Standing on the comments, so the empty row is not the one being worked in.
+       That one survived emptying under the old rule too, and a test taken there
+       would pass whichever rule is in force. The results are the empty one:
+       nobody sends a result in during this visit. */
     renderAt(`/sr/${QUEUE.comments.path}`, 'moderator')
 
     const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+    const empty = nav.getByRole('link', { name: /Rezultati/ })
 
-    expect(nav.getByRole('link', { name: /Komentari/ })).toBeVisible()
-    expect(nav.queryByRole('link', { name: /Rezultati/ })).toBeNull()
+    expect(empty).toBeVisible()
+    expect(within(empty).getByText('0')).toBeVisible()
   })
 
   it('draws every queue where the moderator has nothing waiting anywhere', async () => {
-    /* Somebody with no work this morning, not somebody to be shown a section
-       with no way out of it: the landing draws nothing of its own, so an empty
-       navigation beside it is an empty screen. */
+    /* The whole list and not merely more than one of it. Nothing is left out for
+       being empty since 29.08.2026, so a moderator with no work this morning
+       reads the same column as one with a full morning ahead, and the difference
+       between them is in the numbers alone. Before that this was the one case
+       the hiding had to make an exception of, because a section hiding every
+       last row is a section with no way out of it. */
     const served = globalThis.fetch
     vi.stubGlobal('fetch', async () => new Response('[]', { status: 200 }))
 
@@ -1505,16 +1624,18 @@ describe('verification', () => {
 
       const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
-      expect(nav.getAllByRole('link').length).toBeGreaterThan(1)
+      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length)
     } finally {
       vi.stubGlobal('fetch', served)
     }
   })
 
   it('keeps the queue in view even after the last thing in it is decided', async () => {
-    /* Otherwise the entry disappears from under the moderator at the moment of
-       the last decision, and they are left standing on a screen the navigation
-       beside them says is not there. */
+    /* The entry the moderator is standing on stays put through the decision that
+       empties it. It used to be the one row hiding made an exception of; since
+       29.08.2026 no row is hidden at all, and this holds the case that mattered
+       most: they are not left standing on a screen the navigation beside them
+       says is not there. */
     const user = setupUser()
     /* The reported dates and not the new teams, for the reason written out where
        the same swap was made below: a team whose name is taken keeps its button

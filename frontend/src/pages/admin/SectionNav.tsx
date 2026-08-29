@@ -39,8 +39,8 @@ function Section({
   title,
   id,
   items,
-  /** Said out loud beside the numbers when they cannot be trusted, and nothing
-   *  where the section has no numbers. */
+  /** Said above the numbers when they cannot be trusted, and nothing where the
+   *  section has no numbers. */
   alarm,
 }: {
   title: string
@@ -92,6 +92,33 @@ function Section({
           the page it belongs to and level with the sections of that page. */}
       <p className="adminsection__title">{title}</p>
 
+      {/* Above the list rather than under it, and outside the panel either way.
+
+          **Outside**, because the panel is folded on a telephone: an alert that
+          is `display: none` when it is drawn is not announced, and unfolding the
+          list later does not announce it either, because nothing new is
+          inserted. The one warning that the numbers cannot be trusted was
+          therefore both invisible and silent on the screen where the list is
+          folded.
+
+          **Above**, because the sectors are one column that scrolls inside
+          itself from 51.25em up (`max-height: calc(100svh - 2rem)`,
+          SectionNav.css), and this sector is the second of the two. Under the
+          list, the alarm was the last thing in the taller half of that column
+          and fell off the bottom of it: measured in Chrome over the built
+          stylesheet and the markup this component draws, at a viewport of 673
+          CSS pixels, which is what a 1366x768 laptop leaves under the browser's
+          own chrome, `visibleColumn=641 contentColumn=673 alarmBottomAt=673`,
+          so the alarm was out of view while all six queues read nought. The
+          same measurement above the list reads `alarmTopAt=306
+          alarmBottomAt=383`, inside the 641 that is on the screen.
+
+          The order of the sectors is not what to move (owner, 29.08.2026): the
+          records stand first. What moves is the alarm, to the top of the sector
+          whose numbers it is about, where it is also read before them rather
+          than after. */}
+      {alarm}
+
       <div
         id={panelId}
         className={open ? 'adminsection__panel adminsection__panel--open' : 'adminsection__panel'}
@@ -138,14 +165,6 @@ function Section({
           ))}
         </ul>
       </div>
-
-      {/* Outside the panel, which is folded on a telephone: an alert that is
-          `display: none` when it is drawn is not announced, and unfolding the
-          list later does not announce it either, because nothing new is
-          inserted. The one warning that the numbers above cannot be trusted was
-          therefore both invisible and silent on the screen where the list is
-          folded. */}
-      {alarm}
     </nav>
   )
 }
@@ -163,13 +182,22 @@ export function AdminSections({ children }: { children: ReactNode }) {
   return (
     <div className="adminsection">
       <div className="adminsection__sectors">
-        {/* A sector nobody may open is not drawn at all. A moderator is not to
-            be aware that there are actions nobody gave him (owner, 30.07.2026):
-            naming a sector to somebody who holds nothing in it is telling him
-            about a room he may not enter, and the button opened an empty list,
-            which is a control that answers nothing. */}
-        <QueuesSector />
+        {/* Records first, verification under them (owner, 29.08.2026: „Na strani
+            administracije prvo treba da idu Podaci (jer su sve stavke uvek tu),
+            pa tek onda boks sa verifikacijom"). The records are the half that is
+            always all there: every entity this person may open is listed
+            whatever the day holds, and nothing in it is ever worked off. The
+            queues are the half being worked through, so they stand under the
+            fixed one rather than above it. Until 29.08.2026 they were the other
+            way round.
+
+            A sector nobody may open is still not drawn at all. A moderator is
+            not to be aware that there are actions nobody gave him (owner,
+            30.07.2026): naming a sector to somebody who holds nothing in it is
+            telling him about a room he may not enter, and the button opened an
+            empty list, which is a control that answers nothing. */}
         <RecordsSector />
+        <QueuesSector />
       </div>
 
       {/* Keyed by the address, so moving from one screen to the next builds it
@@ -209,8 +237,6 @@ function QueuesSector() {
   const { submissions, decisions } = useSession()
   const items = usePending()
   const queues = usePermittedQueues()
-  /* Without the language in front of it, which is what a queue's own path is. */
-  const pathname = usePathname().split('/').slice(2).join('/')
 
   if (queues.length === 0) {
     return null
@@ -225,32 +251,32 @@ function QueuesSector() {
     decisions,
   }
 
-  /* An empty queue is not drawn (owner, 06.08.2026). A name that leads to
-     "nothing is waiting" is a step taken for nothing, and a moderator reads the
-     list to find work rather than to count doors. The one being worked in stays
-     whatever it holds: the last decision on a queue empties it, and a screen
-     that took its own entry out from under the moderator at that moment would
-     leave them standing on a page the navigation says is not there.
-
-     Where the file has not arrived, everything is drawn. A count of nought
-     because nothing was read yet is not an empty queue, and hiding on it would
-     empty the whole navigation for as long as the file takes. */
-  const unknown = items.status !== 'ready'
-  const holding = queues.filter(
-    (queue) => unknown || countFor(waiting, queue) > 0 || queue.path === pathname,
-  )
-  /* Unless that would leave nothing. A moderator whose every queue is empty is
-     somebody with no work this morning, not somebody to be shown a section with
-     no way out of it: the landing draws nothing of its own, so an empty
-     navigation beside it is an empty screen. Hiding is for the six that are
-     empty while a seventh is not, which is the case the owner described. */
-  const shown = holding.length === 0 ? queues : holding
-
   return (
     <Section
       title={t('verification.title')}
       id="verifikacija"
-      items={shown.map((queue) => ({
+      /* Every queue this person may work in, whether anything is waiting in it
+         or not (owner, 29.08.2026: „Neka ipak ne nestaju stavke iz Verifikacije
+         kad se odobre. Neka ostane vidljiva i neka piše 0.").
+
+         It used to work the other way. A queue holding nothing was left out of
+         the list until something turned up in it, on the ground that a name
+         leading to "nothing is waiting" is a step taken for nothing (owner,
+         06.08.2026). Three exceptions hung off that rule and all three go with
+         it: whether the file had arrived, so that one still on its way did not
+         empty the whole column; the address in view, so that the last decision
+         on a queue did not take the entry out from under whoever had just made
+         it; and a fall back to the whole list where every queue was empty, so
+         that a moderator with no work this morning was not handed a section with
+         no way out of it. None of the three has anything left to guard.
+
+         What the owner is answering is what the hiding did while somebody
+         worked: the column changed length under them, so an approval was
+         followed by the list moving. The nought says "nothing left here" where
+         the moderator is already looking, and it says it without moving
+         anything. Nothing is filtered here now, which is the shape the records
+         beside it always had (RecordsSector). */
+      items={queues.map((queue) => ({
         path: queue.path,
         label: t(queue.labelKey),
         /* Counted for this queue rather than looked up in a record of counts.
@@ -259,13 +285,28 @@ function QueuesSector() {
            all, which is the one thing the note below says must not happen. */
         count: countFor(waiting, queue),
       }))}
-      /* Beside the numbers, because that is where the numbers are now. A file
-         that failed counts every queue it feeds as nought, and eight quiet
-         noughts read as an afternoon's work already done. This used to be said
-         on the hub, which was the only screen the numbers were on; the hub draws
-         nothing of its own now (owner, 06.08.2026), so the numbers stand in the
-         navigation, on every screen, and an alarm on one of them is an alarm
-         nobody sees. */
+      /* With the numbers, because that is where the numbers are now. A file that
+         failed counts every queue it feeds as nought, and six quiet noughts read
+         as an afternoon's work already done. This used to be said on the hub,
+         which was the only screen the numbers were on; the hub draws nothing of
+         its own now (owner, 06.08.2026), so the numbers stand in the navigation,
+         on every screen, and an alarm on one of them is an alarm nobody sees.
+
+         **It answers a file that failed, and only that.** `failed` is one of
+         three states, and while the file is still on its way the third is the
+         one holding: `dataOr(items, [])` counts every queue it feeds as nought
+         and this raises nothing, so the column reads six noughts with not a word
+         beside them. Measured on this branch, with the file left unanswered: six
+         rows at „0 na čekanju" and no alert in this sector at all. That is not
+         new and it is not what 29.08.2026 changed, but the sentence that used to
+         be here said the alarm covered it, and it does not.
+
+         What 29.08.2026 did change is what a nought means. Until then a queue
+         holding nothing was left out of the list, so a column full of noughts was
+         itself the odd sight; now a nought is the ordinary reading, and nothing
+         about the column says whether it was counted or merely never filled in.
+         The alarm says it for the one case it knows about. The gap above is the
+         other case, and it is written down here rather than guessed at again. */
       alarm={
         failed(items) ? (
           <p className="adminsection__alarm" role="alert">
