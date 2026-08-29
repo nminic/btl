@@ -36,6 +36,56 @@ describe('what a held control wears', () => {
     expect(held.cursor).toBe('default')
   })
 
+  it('still dresses a held control after every other sheet has had its say', () => {
+    /* The cascade, asked of something that computes one.
+     *
+     * A first version of this file tried to answer it by comparing where two rules
+     * stood in the text of a sheet, and a review beat that four ways over: a
+     * selector list, an `@media` block, an `!important`, and a second sheet, each of
+     * them leaving every held control undressed in Chrome while the whole suite
+     * stayed green. The lesson taken from that was too wide — that no guard outside
+     * a browser could ask at all — and the next review showed it: jsdom does compute
+     * the cascade for the two declarations this dress is made of.
+     *
+     * **Worst case on purpose.** Every other sheet of the portal is put **after**
+     * the one the dress lives in, so a rule of the same weight anywhere in the
+     * portal has its best chance to win. If the dress survives that, it survives any
+     * order the bundler happens to emit.
+     *
+     * **What this still cannot see, said plainly:** jsdom does not apply `@media`,
+     * so a rule hidden in one is invisible here. That, and everything about how the
+     * page is laid out, is what `npm run appearance` is for.
+     */
+    const own = join('src', 'forms', 'FormRenderer.css')
+    const sheets = [own, ...globSync('src/**/*.css').filter((file) => file !== own)]
+    const style = document.createElement('style')
+
+    style.textContent = sheets
+      .map((file) => readFileSync(join(process.cwd(), file), 'utf-8'))
+      .join(NEWLINE)
+    document.head.append(style)
+
+    const held = document.createElement('input')
+    const live = document.createElement('input')
+
+    held.className = heldControl(true)
+    live.className = heldControl(false)
+    document.body.append(held, live)
+
+    try {
+      expect(getComputedStyle(held).cursor, 'a held control lost its cursor').toBe('default')
+      expect(getComputedStyle(held).background, 'a held control lost its ground').toBe(
+        'var(--surface-hover)',
+      )
+      /* And the live one is not wearing it, which is the same fault told backwards. */
+      expect(getComputedStyle(live).cursor).not.toBe('default')
+    } finally {
+      style.remove()
+      held.remove()
+      live.remove()
+    }
+  })
+
   it('names the class in one sheet and no other, and once inside it', () => {
     /* One fact, one home (ADL A31): the class is named by `heldControl` and by
        nothing else, and the rule is declared in one sheet and once.
@@ -48,13 +98,10 @@ describe('what a held control wears', () => {
        an `@media` block, with `!important`, and with a second sheet, each of them
        leaving every control undressed in Chrome while the whole suite stayed green.
 
-       That is the same wall `frontend/scripts/refused-control-appearance.mjs` was
-       written against: „Nine rounds of review on `entityStyle.test.ts` proved it:
-       every version tried to compute the cascade and each was blind to the next
-       axis." So the cascade is not asked here at all. It is asked of a browser, by
-       `npm run appearance`, and the held control is not yet one of the controls
-       that script measures; that is written down as its own piece of work rather
-       than answered with a guard that cannot fail.
+       Where the cascade **is** asked is the case above, which computes one, and in
+       `npm run appearance`, which asks a browser. The held control is not yet one of
+       the controls that script measures; that is written down as its own piece of
+       work.
 
        **And it cannot say that a control which ought to be held asks for the
        dress.** One written with a bare `field__control` passes here in silence,
@@ -99,6 +146,10 @@ describe('what a held control wears', () => {
 function named(sheet: string): number {
   return [...sheet.matchAll(new RegExp(String.raw`\.${NAME}(?![\w-])`, 'g'))].length
 }
+
+/** What joins one sheet to the next, written here because a literal newline in a
+ *  string is not something this file may carry. */
+const NEWLINE = String.fromCharCode(10)
 
 /** The sheet the rule lives in, read once. */
 const SHEET = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf-8')

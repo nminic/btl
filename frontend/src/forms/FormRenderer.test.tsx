@@ -1016,6 +1016,11 @@ const fillsABox: FormDef = {
   fields: [
     { name: 'trka', type: 'text', labelKey: 'proba.trka' },
     { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+    /* The other kind that is handed the shared object across a component boundary
+       rather than spread onto an element here. No form on the portal locks a long
+       box today, and that is the point: what holds a branch is a case, not the
+       absence of a caller. */
+    { name: 'prica', type: 'textarea', labelKey: 'proba.prica' },
   ],
 }
 
@@ -1060,10 +1065,20 @@ describe('a box the portal filled in from a list', () => {
     )
 
     const box = () => screen.getByLabelText(/proba.dopisano/)
+    /* Every kind this form draws, because the dress reaches each of them by a
+       different road: two are spread onto an element here, and two are handed to a
+       component that spreads them itself. */
+    const all = () => [
+      screen.getByLabelText(/proba.trka/),
+      box(),
+      screen.getByLabelText(/proba.prica/),
+    ]
 
-    expect(box(), 'a box nobody has filled in is dressed as a held one').not.toHaveClass(
-      'field__control--held',
-    )
+    for (const one of all()) {
+      expect(one, `${one.tagName} nobody has filled in is dressed as a held one`).not.toHaveClass(
+        'field__control--held',
+      )
+    }
 
     await user.type(screen.getByLabelText(/proba.trka/), 'pr')
     await user.click(screen.getByRole('button', { name: /Probna trka/ }))
@@ -1090,13 +1105,15 @@ describe('a field filled from a list', () => {
        27.08.2026: „sve osim trke"), and `raceName` is the one field on the portal
        with a list, so it is drawn here and nowhere else.
 
-       The other five kinds are not asked here. What holds them is that they read
-       the same object, and that object is asked in the case above; what this one
-       adds is the one branch that hands the object on rather than spreading it. */
+       Two branches hand the object across a component boundary rather than
+       spreading it onto an element, and both are asked here: `Suggesting` for the
+       race, `LongBox` for the long one. A review on 29.08.2026 found the second, and
+       found the sentence that had claimed there was only one. The four that spread
+       the object themselves are held by the case above, which asks that object. */
     renderWithI18n(
       <FormRenderer
         form={fillsABox}
-        fixed={['trka']}
+        fixed={['trka', 'prica']}
         suggests={{
           trka: [
             {
@@ -1111,14 +1128,24 @@ describe('a field filled from a list', () => {
       />,
     )
 
-    const box = screen.getByLabelText(/proba.trka/)
+    for (const one of [screen.getByLabelText(/proba.trka/), screen.getByLabelText(/proba.prica/)]) {
+      expect(one, `a held ${one.tagName} is dressed as a live one`).toHaveClass(
+        'field__control',
+        'field__control--held',
+      )
+      expect(one).toHaveAttribute('aria-disabled', 'true')
+      expect(one).not.toBeDisabled()
+    }
 
-    expect(box, 'a held box drawn through a list is dressed as a live one').toHaveClass(
-      'field__control',
-      'field__control--held',
-    )
-    expect(box).toHaveAttribute('aria-disabled', 'true')
-    expect(box).not.toBeDisabled()
+    /* And the box beside them, which nothing locked, is not wearing it. Both ways in
+       one case, because a dress that is always there is the same fault backwards:
+       every live box on the portal would read as an answer somebody else wrote.
+       Found by a review on 29.08.2026, which mutated one of these branches to dress
+       everything and watched all 2291 cases stay green. */
+    expect(
+      screen.getByLabelText(/proba.dopisano/),
+      'a box nothing locked is dressed as a held one',
+    ).not.toHaveClass('field__control--held')
   })
 
   it('is locked whatever kind of control it is drawn as', async () => {
