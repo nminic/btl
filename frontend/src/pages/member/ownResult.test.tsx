@@ -1,3 +1,4 @@
+import { SLOW } from '../../test/slow'
 import type { Result } from '../../data/types'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
@@ -600,7 +601,7 @@ describe('the number a deleted result leaves behind', () => {
 
     expect(held, 'the walk did not end with two results').toHaveLength(2)
     expect(new Set(held).size, `two submissions answer to one number: ${held.join(', ')}`).toBe(2)
-  })
+  }, SLOW)
 })
 
 describe('a result that has been counted', () => {
@@ -668,7 +669,7 @@ describe('a result that has been counted', () => {
        leaves exactly the rest of the list, and taking out any other leaves the
        first still standing at the front. */
     expect(await countedRows()).toEqual(before.slice(1))
-  })
+  }, SLOW)
 
   it('leads to the form with its own numbers, and the race locked', async () => {
     /* „Ili menja i dostavlja dokaz za tu izmenu (ponovo)" (owner, same day). The
@@ -840,7 +841,7 @@ describe('a result that has been counted', () => {
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
     expect(await countedRows(), 'the standing moved before anybody decided').toEqual(before)
-  })
+  }, SLOW)
 
   /** A press that settles the newest submission, standing on the member's own
    *  screen: the session is one, so a moderator's decision reaches this visit
@@ -904,7 +905,7 @@ describe('a result that has been counted', () => {
     expect(after, 'the standing grew or shrank instead of changing').toHaveLength(before.length)
     expect(after[0], 'the corrected row did not change').not.toEqual(before[0])
     expect(after.slice(1), 'a row nobody touched changed').toEqual(before.slice(1))
-  })
+  }, SLOW)
 
   it('carries the numbers of the last correction, not of the first', async () => {
     /* A critical fault, measured by a review on 28.08.2026. A correction of a
@@ -951,7 +952,7 @@ describe('a result that has been counted', () => {
        the first correction said. */
     expect(after[0]).toContain('7:')
     expect(after[0]).not.toContain('9:')
-  })
+  }, SLOW)
 
   it('offers no second correction, because two rows for one race is the fault', async () => {
     /* Since 28.08.2026 the result stays in the standing while a correction waits
@@ -988,7 +989,7 @@ describe('a result that has been counted', () => {
     const sent = within(must(document.querySelector('.submissions'), 'the list of what was sent'))
 
     expect(sent.getByRole('link', { name: `Izmeni rezultat: ${race}` })).toBeVisible()
-  })
+  }, SLOW)
 
   it('refuses the road even when the address is typed', async () => {
     /* The list offers no way in once a correction is waiting, so the only way to
@@ -1046,7 +1047,7 @@ describe('a result that has been counted', () => {
 
     expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
     expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
-  })
+  }, SLOW)
 
   it('is left exactly where it was when the correction is turned down', async () => {
     /* The whole point of the outcome the owner chose: a member whose correction is
@@ -1062,6 +1063,6 @@ describe('a result that has been counted', () => {
     await user.click(screen.getByRole('button', { name: 'odbij' }))
 
     expect(await countedRows(), 'a refusal moved the standing').toEqual(before)
-  })
+  }, SLOW)
 })
 

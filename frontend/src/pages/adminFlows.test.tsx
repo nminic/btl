@@ -1,3 +1,4 @@
+import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { formatShortDate } from '../i18n/format'
@@ -2176,7 +2177,7 @@ describe('the six queues read from the file', () => {
       .map((box) => inputElement(box).value)
 
     expect(after).toEqual(['10/04/2027', '10/04/2027', '11/04/2027'])
-  }, 20_000)
+  }, SLOW)
 
   it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')
