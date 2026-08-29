@@ -256,6 +256,42 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
           className="crop__whole"
           src={picture}
           alt={alt}
+          /* And the browser's own dragging of it turned off, which is what keeps
+             a gesture alive long enough to reach a limit.
+
+             A picture is draggable by default: press on it, move, and Chrome
+             starts a drag of the file itself and takes the pointer away from
+             whoever had it. That is exactly what shrinking the circle does. The
+             circle follows the pointer inwards, the rim overtakes it, and the
+             pointer is left standing over bare photograph with the button still
+             down. Measured in Chrome over the built `dist` on 29.08.2026, on a
+             picture 1000 by 2000 pressed at 0,97 of the box across and dragged
+             to 0,90, 0,70, 0,55 and 0,50 of it: without this attribute the page
+             reports `dragstart` on `IMG.crop__whole`, then `pointercancel`,
+             `lostpointercapture`, `pointerout` and `pointerleave`.
+             `pointercancel` empties `doing`, so the size went 1 to 0,94 to 0,80
+             and then stood still for the rest of the press, and the cursor fell
+             from `ew-resize` back to nothing with the button still held. Owner,
+             29.08.2026, point 4: „krug se skuplja ili širi do mogućih granica",
+             and half of that could not happen at all. With this attribute the
+             same press runs 1 to 0,94 to 0,80 to 0,40 to 0,24, which is the
+             floor `closestIn` sets for that picture, the cursor stays
+             `ew-resize` throughout, and no `dragstart` is fired at all.
+
+             On the reading screen too, where nothing is dragged and this changes
+             nothing about the gesture: one element, one answer. A conditional
+             here would be a second thing to keep in step with `onChange` for the
+             sake of letting a moderator drag a photograph out of the page, which
+             nobody asked for.
+
+             `Crop.css` does not carry this. `-webkit-user-drag` is one browser's
+             own property and is not in any specification, while the attribute is
+             what HTML gives for the purpose and is what React writes on the
+             element. `cropChooser.test.tsx` holds it, in the same shape as
+             `touch-action: none` beside it: jsdom has no native dragging at all,
+             so the attribute is what a test can see and the browser is where the
+             fault was measured. */
+          draggable={false}
           onLoad={(event) => {
             /* Both or neither. A picture that failed to decode reports nought
                for each, and a box of nought height collapses to a line with a

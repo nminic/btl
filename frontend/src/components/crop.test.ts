@@ -441,17 +441,26 @@ describe('what a press at a spot would do, and the pointer that says so first', 
     expect(aimAt(wholeOf(UNKNOWN), { across: 1.4, down: 0.5 }).doing).toBe('sizing')
   })
 
-  it('puts the band at three quarters of the radius, and not at a half', () => {
-    /* The number itself, from both sides. A member who takes hold of the circle a
-       little inside its rim to shift it must not resize it instead, which is what
-       every press between a half and three quarters would do with the band moved
-       down; and the rim has to answer at all, which is what a band of nought or
-       of two takes away.
+  it('puts the band at three quarters of the radius and nowhere else', () => {
+    /* The number itself, from both sides and from close up. A member who takes
+       hold of the circle a little inside its rim to shift it must not resize it
+       instead, which is what a band below three quarters would do; and the rim
+       has to answer while the pointer is still on the circle, which is what a
+       band above it takes away.
 
-       Six tenths of the way out is a move and nine tenths is a pull. Between them
-       lies the only number the band may be. */
-    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.6 * 0.5, down: 0.5 }).doing).toBe('moving')
-    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.9 * 0.5, down: 0.5 }).doing).toBe('sizing')
+       Measured a hundredth of a radius either side, so the two together leave
+       room for one number and no other. Written wider, they measured very little:
+       six tenths and nine tenths, which is what stood here until 29.08.2026, let
+       the band be anything from 0,65 to 0,79, and a review moved it to 0,74, to
+       0,65 and to 0,79 in turn with the whole suite staying green. It took 0,89
+       before anything noticed.
+
+       That the press really asks this one function, rather than a second copy of
+       the arithmetic that could be moved on its own, is measured on the screen at
+       these very spots (`cropChooser.test.tsx`, „the band that tells a move from
+       a resize"). */
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.74 * 0.5, down: 0.5 }).doing).toBe('moving')
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.76 * 0.5, down: 0.5 }).doing).toBe('sizing')
   })
 
   it('measures the distance in radii, so a tall picture is not read as an ellipse', () => {

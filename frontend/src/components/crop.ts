@@ -151,8 +151,15 @@ function held(value: number, least: number, most: number): number {
  * Three quarters, written by hand and measured: a review moved it to a half and
  * nothing noticed, and at a half a member who takes hold of the circle a little
  * inside its rim to shift it resizes it instead, on every press between the two.
- * The case that holds the number presses at 0,65 of the radius, in
- * `cropChooser.test.tsx`, „reads a press just inside the circle as a move".
+ *
+ * Held from both sides and a hundredth of a radius from the number, because
+ * anything wider held almost nothing: a review on 29.08.2026 moved this to 0,74,
+ * to 0,65 and to 0,79 with the whole suite green, and only 0,89 broke a case.
+ * `crop.test.ts` („puts the band at three quarters of the radius and nowhere
+ * else") holds the arithmetic, and `cropChooser.test.tsx` („the band that tells a
+ * move from a resize") presses at the same two spots on a real screen, so a
+ * second copy of this comparison written into `CropWindow.tsx` and moved on its
+ * own is a press that does the opposite of what the pointer promised.
  */
 const EDGE_BAND = 0.75
 
