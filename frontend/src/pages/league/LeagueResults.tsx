@@ -133,15 +133,41 @@ function Grid({
                       the year worth having: two seasons of one race are two columns
                       the year parts, where inside a single event it never could.
 
-                      **The name is what may be cut, and only the name.** The heading
-                      is turned on its side and cut at 144 pixels on a 1280 screen and
-                      104 on a 360. Standing last, the name was never seen at all: a
-                      review measured on 29.08.2026 that all fourteen headings of one
-                      competition were cut before it began. Standing first, it ate the
-                      measure instead, and two columns of „Šidski novogodišnji
-                      maraton" read alike though one is 32,4 km and the other 42,2.
-                      So the name has its own ellipsis (`League.css`) and what follows
-                      it always arrives. */}
+                      **The measure has its place before the name, and the name is
+                      what gives way.** The heading is turned on its side and capped
+                      at 144 pixels on a 1280 screen and 104 on a 360. Standing last,
+                      the name was never seen at all: a review measured on 29.08.2026
+                      that all fourteen headings of one competition were cut before it
+                      began. Standing first, it ate the measure instead, and two
+                      columns of „Šidski novogodišnji maraton" read alike though one
+                      is 32,4 km and the other 42,2. So the two halves are two
+                      elements, the measure refuses to shrink and the name agrees to
+                      (`League.css`, weighed by `styles/raceHeadingHalves.test.ts`).
+
+                      **That is precedence, and not a promise that the measure always
+                      fits.** Where the cap is narrower than the measure on its own,
+                      the name is gone altogether and the measure loses its own tail.
+                      Measured in Chrome over the built sheet on 29.08.2026, at 360
+                      where the cap is 104px and the label has fallen to the rung that
+                      carries the day:
+
+                        ` 15. 10. 2022. (42,2 km)`  wants 116,69px, name 0px, „m)" cut
+                        ` 12. 12. 2019. (100,0 km)` wants 122,89px, name 0px, „m)" cut
+                        ` 5. 8. 2022. (42,2 km)`    wants 104,27px, name 0px, nothing cut
+                        ` 2019. (21,1 km)`          wants  80,55px, name 23,45px
+
+                      At 1280 and at 768 the cap is 144px and all four fit whole. At
+                      200 per cent text the proportion is the same, because the cap
+                      and the letters are both written in `rem`.
+
+                      **What the order buys, measured the other way round.** With the
+                      measure allowed to give way as well (`flex: 0 1 auto` and
+                      `min-inline-size: 0` on it), the first of those four came back
+                      at 360 as 46,58px of measure beside 57,42px of name: of the
+                      116,69px that tells this column from its neighbour, 70,11 were
+                      taken away to make room for a name the two columns share. The
+                      name is the half a reader can afford to lose, because whatever
+                      shares it shares it whole. */}
                   {(() => {
                     const said = raceLabelParts(column, table.columns, locale)
 

@@ -22,10 +22,24 @@ export type Named = Pick<Race, 'name' | 'date' | 'distanceKm'>
  *
  * **Four rungs, and the first that stands alone is the one used.** The year and the
  * rough length; then the day in place of the year; then the year and the length
- * written out exactly; then the day and the exact length. Each rung is at least as
- * telling as the one before it, so the ladder cannot end on a rung that parts fewer
- * races than one it has already passed — a fault a review measured on 29.08.2026,
- * when the third rung dropped what the second had added.
+ * written out exactly; then the day and the exact length.
+ *
+ * **A rung is another way of telling races apart, not a sharper one.** This used to
+ * claim otherwise: that each rung is at least as telling as the one before it, so the
+ * ladder cannot end on a rung parting fewer races than one it has already passed. It
+ * can, and the reason is the one written out under „what no rung parts" below: the
+ * third rung rounds to the hundredth where the first rounds to the tenth, and that is
+ * not a refinement. Four races of one name on one morning, of 8,649, 8,600, 8,651 and
+ * 8,700 km, come out as three labels between them: 8,600 and 8,700 stand alone on the
+ * third rung, and the other two fall past all four and end on one and the same label,
+ * „... 5. 1. 2019. (8,65 km)", though the rough length of the first rung had parted
+ * them. Same family as the pair below, and it closes the same way, by renaming one of
+ * the races.
+ *
+ * **Rare, and measured rather than assumed.** Over `public/mock/races.json` on
+ * 29.08.2026, each race read among the races of its own event, which is the set both
+ * event screens hand in: of 1612 races, 1584 are named by the first rung, 24 by the
+ * second, 4 by the third, none by the fourth, and no two labels collide anywhere.
  *
  * What decides each rung is the whole label rather than any one part of it, because
  * a label is what a reader hears and two labels either differ or they do not.

@@ -183,13 +183,6 @@
   text-align: right;
 }
 
-/* In pixels, like the query that hides a table's columns and unlike every other
-   query on the portal, because this one narrows two columns that already cut
-   what does not fit (`overflow: hidden` and an ellipsis on `.league__who` and
-   `.league__race-name` above). Cut is content taken away: in em, at 200 per cent
-   text, a competitor's name would lose a third of its letters on a 1280 screen
-   that has room for all of them, which is what WCAG 2.2 SC 1.4.4 is about. The
-   screen's own width decides this one. */
 /* The half that gives way. `min-inline-size: 0` is what lets it: a flex item will
    not shrink below its own content without it, and then the whole heading overflows
    and the ellipsis never appears. */
@@ -213,6 +206,17 @@
   white-space: pre;
 }
 
+/* In pixels, like the query that hides a table's columns and unlike every other
+   query on the portal, because this one narrows two columns that already cut what
+   does not fit: `.league__who` clips and ends in an ellipsis, and
+   `.league__race-name` clips while the ellipsis inside it sits on
+   `.league__race-called`, the half of the heading that is allowed to shrink. Cut is
+   content taken away: in em, at 200 per cent text, a competitor's name would lose a
+   third of its letters on a 1280 screen that has room for all of them, which is what
+   WCAG 2.2 SC 1.4.4 is about. The screen's own width decides this one.
+
+   Written here rather than two rules above it, where it stood until 29.08.2026 and
+   explained a query nobody reading it could see. */
 @media (max-width: 699.98px) {
   .league__who {
     inline-size: 7.5rem;
