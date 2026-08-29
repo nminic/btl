@@ -1068,8 +1068,16 @@ describe('a box the portal filled in from a list', () => {
     /* Every kind this form draws, because the dress reaches each of them by a
        different road: `trka` through `Suggesting` and `prica` through `LongBox`,
        which carry the shared object across a component boundary, and `dopisano`
-       spread onto its element here. The kinds this form does not draw are asked in
-       `held.test.tsx`, over a form that draws every one of them. */
+       spread onto its element here.
+
+       Three of the ten roads the dress travels. The other seven are asked in
+       `held.test.tsx`, over a form that draws every one of them at once: the select,
+       the country, the picture and the confirmation, which take the shared object
+       where it is spread here, and the date, the town and the country beside the
+       town, which are drawn by components of their own that write the class
+       themselves. `choice` travels none of them, which is why it is not there
+       either: a group of radio buttons wears no `field__control` at all and is held
+       by `aria-disabled` alone, and that is asked over `fillsEverything` below. */
     const all = () => [
       screen.getByLabelText(/proba.trka/),
       box(),
@@ -1114,8 +1122,12 @@ describe('a field filled from a list', () => {
 
        The branches that spread the object themselves are **not** held by that: a
        review the same day wrote `className` after the spread on the select and
-       watched the whole suite stay green. They are asked in `held.test.tsx`, over a
-       form that draws every kind at once. */
+       watched the whole suite stay green. All four of them are asked in
+       `held.test.tsx` — the select, the country, the confirmation and the picture,
+       which was the one left out until 29.08.2026, when a review wrote
+       `className="field__control"` after the spread on it and the whole suite stayed
+       green. So are the three drawn by components of their own, which never see the
+       object at all: the date, the town and the country beside the town. */
     renderWithI18n(
       <FormRenderer
         form={fillsABox}
