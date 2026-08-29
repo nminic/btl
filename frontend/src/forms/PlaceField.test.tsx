@@ -1,4 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { ruleFor } from '../test/stylesheet'
+import { bare } from '../test/sources'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -47,10 +51,14 @@ function servingTheCodebook() {
 function Holder({
   onCountry,
   opensOn = { town: '', country: 'RS' },
+  locked = false,
 }: {
   onCountry: (code: string) => void
   /** What the field opens holding, for the record already written down. */
   opensOn?: { town: string; country: string }
+  /** Held because the form around it is: a race chosen from the list fills the
+   *  place in and the member may not move it. */
+  locked?: boolean
 }) {
   const [town, setTown] = useState(opensOn.town)
   const [country, setCountry] = useState(opensOn.country)
@@ -63,6 +71,7 @@ function Holder({
         value={town}
         country={country}
         invalid={false}
+        locked={locked}
         describedBy={undefined}
         onChange={(next, chosen) => {
           setTown(next)
@@ -74,9 +83,9 @@ function Holder({
   )
 }
 
-function renderField(opensOn?: { town: string; country: string }) {
+function renderField(opensOn?: { town: string; country: string }, locked = false) {
   const onCountry = vi.fn()
-  render(<Holder onCountry={onCountry} opensOn={opensOn} />)
+  render(<Holder onCountry={onCountry} opensOn={opensOn} locked={locked} />)
 
   /* Two comboboxes stand in this field since 11.08.2026, the town and the
      country beside it, so the town is asked for by name. */
@@ -549,5 +558,431 @@ describe('the town on a form', () => {
     })
 
     globalThis.fetch = real
+  })
+})
+
+describe('the place on a form that is locked by the race chosen above it', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  it('will not give up a town to the keyboard, which is the way past `readOnly`', async () => {
+    /* „Odbijeno, ne ugašeno" is the portal's shape for a control that may not be
+       answered, and it costs something: `disabled` would take the control out of
+       the keyboard's path, so nobody reading by keyboard would ever be told why
+       it cannot be answered. `readOnly` keeps it reachable and stops typing, and
+       it stops nothing else.
+
+       Measured by a review on 23.08.2026 with the keyboard alone: ArrowDown
+       opened the list again, Enter took a town out of it, and the value went from
+       „Be" to „Beocin" on a field the portal said was locked. A lock that is
+       decoration is worse than none, which is what the same review said about the
+       buttons of a choice. */
+    const user = setupUser()
+    const { box, onCountry } = renderField({ town: 'Be', country: 'RS' }, true)
+
+    box.focus()
+    /* Three presses and not one, so that the last two assertions measure something:
+       one press only opens the list and leaves no row standing, so Enter after it
+       writes nothing whether the lock is there or not. With three, the same walk
+       gives „Beočin" in place of „Be", which is the scenario this case is named
+       after.
+     *
+       The reason first written here was wrong and a review said so: the one press
+       version did not pass with the lock taken out, because the assertion above
+       about the list catches that on its own. What three presses buy is that the
+       two below stop being decoration. */
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+
+    expect(screen.queryByRole('listbox'), 'the list opened on a locked field').toBeNull()
+
+    await user.keyboard('{Enter}')
+
+    expect(box).toHaveValue('Be')
+    expect(onCountry).not.toHaveBeenCalled()
+  })
+
+  it('will not give up a town to anything else that reaches it either', async () => {
+    /* The half beneath the lock. `readOnly` is what a browser honours and this is
+       what holds whatever else reaches the component, which is the same pair the
+       form renderer keeps on every field it locks. Forced rather than typed,
+       because `user.type` refuses a box that is not editable, and that refusal is
+       the attribute doing its job rather than this guard. */
+    const { box, onCountry } = renderField({ town: 'Be', country: 'RS' }, true)
+
+    fireEvent.change(box, { target: { value: 'Beograd' } })
+
+    expect(box).toHaveValue('Be')
+    expect(onCountry).not.toHaveBeenCalled()
+  })
+
+  it('will not give up its country either, which was reachable and writing through', async () => {
+    /* Two rules meet on this control and only one of them switched it off. A town
+       from the codebook makes it `disabled`, which is the owner's own exception
+       (23.08.2026); a form locked by the race above it leaves it reachable and
+       merely told off, and until 28.08.2026 nothing under that refused anything.
+       Measured by the same review: the country of a locked form changed by
+       keyboard alone. */
+    const { country, onCountry } = renderField({ town: 'Neko mesto', country: 'RS' }, true)
+
+    expect(country).toHaveAttribute('aria-disabled', 'true')
+
+    fireEvent.change(country, { target: { value: 'ME' } })
+
+    expect(country).toHaveValue('RS')
+    expect(onCountry).not.toHaveBeenCalled()
+  })
+
+  it('wears the dress the portal keeps for a control that will not answer', () => {
+    /* The portal has one (`.field__control--held`) and four locked fields wore
+       nothing at all. Measured by a review on 23.08.2026 by comparing computed
+       styles: with `disabled` there had been exactly one visible difference, the
+       cursor, and the change to `aria-disabled` took it away without putting
+       anything in its place. A control that refuses and looks willing is a
+       question the reader answers twice. */
+    const { box, country } = renderField({ town: 'Neko mesto', country: 'RS' }, true)
+
+    expect(box).toHaveClass('field__control--held')
+    expect(country).toHaveClass('field__control--held')
+  })
+
+  it('leaves a field that is not held carrying no such word at all', () => {
+    /* `undefined` and not `false`. Written as a bare boolean it put
+       `aria-disabled="false"` on every live country select on the portal, and ADL
+       records that same attribute once making five live buttons of the price list
+       read as refused. Nothing on the portal matches a bare `[aria-disabled]`
+       today, so the trap was set and had not gone off. */
+    const { box, country } = renderField({ town: 'Neko mesto', country: 'RS' })
+
+    expect(box).not.toHaveAttribute('aria-disabled')
+    expect(country).not.toHaveAttribute('aria-disabled')
+    expect(box).not.toHaveClass('field__control--held')
+    expect(country).not.toHaveClass('field__control--held')
+  })
+})
+
+describe('a lock that arrives while the list of towns is standing', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  /** The field with a lock that can be turned while it stands, which is the only
+   *  way to reach the state this is about: the list is opened by typing, and a
+   *  locked field cannot be typed into. */
+  function Turning() {
+    const [locked, setLocked] = useState(false)
+    const [town, setTown] = useState('Be')
+    const [country, setCountry] = useState('RS')
+
+    return (
+      <I18nProvider locale="sr">
+        <div
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              outerSawEscape()
+            }
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setLocked(true)
+            }}
+          >
+            izaberi trku
+          </button>
+          <PlaceField
+            id="mesto"
+            name="city"
+            value={town}
+            country={country}
+            invalid={false}
+            locked={locked}
+            describedBy={undefined}
+            onChange={(next, chosen) => {
+              setTown(next)
+              setCountry(chosen)
+            }}
+          />
+        </div>
+      </I18nProvider>
+    )
+  }
+
+  const outerSawEscape = vi.fn()
+
+  beforeEach(() => {
+    outerSawEscape.mockClear()
+  })
+
+  it('will not give up the town to a press on a row of it', async () => {
+    /* The fourth road in, and the only one a pointer takes. Three were shut and
+       this was left open, which is the same fault in miniature: the lock was
+       counted rather than the ways past it. Measured by a review on 28.08.2026:
+       the field wearing `aria-disabled="true"` took „Beocin" in place of „Be". */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+
+    await user.type(box, 'o')
+
+    const row = within(await screen.findByRole('listbox')).getAllByRole('option')[0]
+
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    expect(box).toHaveAttribute('aria-disabled', 'true')
+
+    fireEvent.mouseDown(must(row, 'a town on offer'))
+
+    expect(box).toHaveValue('Beo')
+  })
+
+  it('still answers Escape, which is the one press that writes nothing', async () => {
+    /* The first version of the lock refused every press, Escape with the rest, and
+       a list left standing over a field locked under it then had no keyboard
+       dismissal at all: WAI-ARIA 1.2 asks every combobox for one, and the rows of
+       that list are live (the case above). Worse, the press went on to whatever
+       ancestor was listening for it, of which the portal has four
+       (`Dropdown`, `FieldHint`, `DatePicker`, `EditableCell`), so one Escape shut
+       whatever the field was standing inside. */
+    const user = setupUser()
+
+    render(<Turning />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+
+    await user.type(box, 'o')
+    await screen.findByRole('listbox')
+
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    box.focus()
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('listbox'), 'escape left the list standing').toBeNull()
+    expect(outerSawEscape, 'the press went on to whatever stands around it').not.toHaveBeenCalled()
+  })
+})
+
+describe('what the portal’s dress for a held control actually says', () => {
+  it('is a rule with a home, and not only a name on an element', () => {
+    /* The case further up asks that the class is on the element, and the class
+       name is written by hand in both places. That is half a guard: measured by a
+       review on 28.08.2026 by renaming the rule in the stylesheet alone, all 2229
+       tests stayed green while a locked field went back to looking exactly like a
+       live one, down to the same background and the same text cursor.
+
+       So the rule itself is read. Two declarations and no more: what makes a held
+       control tell a reader it will not answer is that it is shaded and that the
+       pointer stops promising an answer over it. */
+    const held = ruleFor(
+      readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8'),
+      '.field__control--held',
+      'PlaceField.css',
+    )
+
+    expect(held.background).toBe('var(--surface-hover)')
+    expect(held.cursor).toBe('default')
+  })
+
+  it('reaches the fields a chosen race fills in, which is where they live', () => {
+    /* `PlaceField` is not one of them. No form on the portal locks it today, and
+       the fields a race really does lock are drawn by the renderer of forms from
+       one shared set of properties. Measured by a review on 28.08.2026 in Chrome
+       over the built stylesheet: the difference between the whole computed style
+       of a field locked there and a live one was the empty set.
+
+       **Three of the four**, and the fourth is written down rather than reached
+       across for: the date is drawn by `forms/DatePicker.tsx`, which writes its
+       own class and never sees this object, and that file is held by another
+       change (`btl-produkt/PENDING.md`).
+
+       Read off the renderer's source, because a screen that locks those fields is
+       a flow of its own and this file is about the place. */
+    const renderer = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.tsx'), 'utf-8')
+
+    expect(bare(renderer)).toContain("locked ? 'field__control field__control--held' : 'field__control'")
+  })
+})
+
+describe('a locked place whose country the codebook could fill in', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  /** A held field and a live one side by side, each with its own record.
+   *
+   *  Two rather than one, and it is the whole of what makes this measurable: the
+   *  write being guarded happens without a press, a turn after the codebook
+   *  arrives, so „it has not written" is true of any moment before that whether
+   *  the guard is there or not. Measured on 28.08.2026: the first version of this
+   *  waited for the town to be in its box, which is true at once, and passed with
+   *  the guard taken out. The live twin says when the turn has come. */
+  function Pair() {
+    const [heldTown, setHeldTown] = useState('Beograd')
+    const [heldCountry, setHeldCountry] = useState('')
+    const [liveTown, setLiveTown] = useState('Beograd')
+    const [liveCountry, setLiveCountry] = useState('')
+
+    return (
+      <I18nProvider locale="sr">
+        <PlaceField
+          id="drzano"
+          name="drzano"
+          value={heldTown}
+          country={heldCountry}
+          invalid={false}
+          locked
+          describedBy={undefined}
+          onChange={(next, chosen) => {
+            setHeldTown(next)
+            setHeldCountry(chosen)
+          }}
+        />
+        <PlaceField
+          id="zivo"
+          name="zivo"
+          value={liveTown}
+          country={liveCountry}
+          invalid={false}
+          describedBy={undefined}
+          onChange={(next, chosen) => {
+            setLiveTown(next)
+            setLiveCountry(chosen)
+          }}
+        />
+      </I18nProvider>
+    )
+  }
+
+  it('still has its country filled in, because that write is the portal’s', async () => {
+    /* The one write in this file that goes through a held field, and it was put
+       behind the lock for a few hours on 28.08.2026 before a review measured what
+       that did.
+     *
+       The lock says what the **reader** may not change. This is not a reader
+       answering a control: it is the portal writing down a fact about the town, in
+       the same breath as the four fields a chosen race fills in, of which the
+       renderer of forms says that they „are not refused at all. They are filled by
+       the portal from the race".
+     *
+       Behind the lock it made exactly one thing happen, and it was a dead end: the
+       country stayed empty, the select was natively switched off because the town
+       is recognised, and the form refused with „Popravi ova polja: Država" over a
+       control nobody on the screen could answer.
+     *
+       Measured against the live twin, so what is asserted is that both arrive, and
+       not merely that the assertion was made before either did. */
+    render(<Pair />)
+
+    const countries = () => screen.getAllByRole('combobox', { name: /^Država/ })
+
+    await waitFor(() => {
+      expect(must(countries()[1], 'the live country')).toHaveValue('RS')
+    })
+
+    expect(must(countries()[0], 'the held country')).toHaveValue('RS')
+  })
+
+})
+
+describe('a place that is locked over what somebody was already typing in', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  /** A live place that a press turns into a held one carrying a chosen entry:
+   *  a town the codebook knows and a country that disagrees with it. */
+  function Arriving() {
+    const [locked, setLocked] = useState(false)
+    const [town, setTown] = useState('Ne')
+    const [country, setCountry] = useState('AT')
+
+    return (
+      <I18nProvider locale="sr">
+        <button
+          type="button"
+          onClick={() => {
+            setLocked(true)
+            setTown('Beograd')
+            setCountry('AT')
+          }}
+        >
+          izaberi trku
+        </button>
+        <PlaceField
+          id="mesto"
+          name="city"
+          value={town}
+          country={country}
+          invalid={false}
+          locked={locked}
+          describedBy={undefined}
+          onChange={(next, chosen) => {
+            setTown(next)
+            setCountry(chosen)
+          }}
+        />
+      </I18nProvider>
+    )
+  }
+
+  it('keeps the country the record came with, rather than the codebook’s', async () => {
+    /* The half a flat absence of a lock got wrong. Measured by a review on
+       28.08.2026: type into a live place, so it counts as touched, then choose an
+       entry above that locks it and fills in „Beograd" with the country „AT". The
+       country came out „RS", the select was natively switched off because the town
+       is recognised, and the record saved as Serbian though the entry said
+       Austrian.
+
+       „Where the codebook disagrees with what was saved, what was saved stands"
+       is the rule this field already carries, and the early return that used to
+       enforce it asks whether the field has been touched, which stops being the
+       right question the moment a lock arrives over a field somebody has been
+       typing in. */
+    const user = setupUser()
+
+    render(<Arriving />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+
+    await user.type(box, 'k')
+
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await waitFor(() => {
+      expect(box).toHaveValue('Beograd')
+    })
+
+    expect(box).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toHaveValue('AT')
   })
 })
