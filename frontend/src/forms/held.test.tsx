@@ -7,19 +7,34 @@ import { ruleFor } from '../test/stylesheet'
 import { bare } from '../test/sources'
 import { FormRenderer } from './FormRenderer'
 import { heldControl } from './held'
-import type { FormDef } from './types'
+import type { FieldType, FormDef } from './types'
 
 /** One form drawing every control the portal dresses as held, so the cascade is
  *  asked over the elements the renderer really puts around them.
  *
  *  **Seven branches of the renderer are handed its shared set, and all seven are
- *  here.** `trka` comes from a list (`Suggesting`) and `prica` is a long box
- *  (`LongBox`); those two cross a component boundary carrying the object. `izbor`,
- *  `drzava`, `slika` and `pristanak` are spread onto their elements here, and so is
- *  `dopisano`, which is the one nothing locks, so a dress that arrives everywhere
- *  is caught as well. Branches and not kinds, because `email`, `password` and
- *  `number` are drawn by the very branch that draws `dopisano`: one road, four
- *  kinds, and a fifth field on it would say nothing a sixth does not.
+ *  here, held.** `trka` comes from a list (`Suggesting`) and `prica` is a long box
+ *  (`LongBox`); those two cross a component boundary carrying the object. The other
+ *  five spread it onto an element of their own inside `FormRenderer.tsx`, and there
+ *  are five and not four: `izbor`, `drzava`, `slika`, `pristanak`, and the plain
+ *  `<input type={field.type}>`, which is `broj` here.
+ *
+ *  **That fifth one was represented by `dopisano` alone until 29.08.2026, and
+ *  `dopisano` is by design the one nothing locks**, so the branch that draws four
+ *  of the twelve kinds had never once been measured wearing the dress. A review
+ *  that day appended `.field > input.field__control { background: var(--surface);
+ *  cursor: text; }` to `FormRenderer.css` — (0,2,1) against the dress's (0,1,0),
+ *  and the shape is not invented, `.suggests > .field__control` and
+ *  `.entity-races .field__control` already stand in the built sheet — and the whole
+ *  suite stayed green while `distanceKm`, `ascentM` and `descentM` lost their
+ *  ground and their cursor on `unos-rezultata`, which are three of the four fields
+ *  a chosen race locks and the reason the dress exists at all.
+ *
+ *  `dopisano` stays beside `broj`, live: the two travel one and the same road, so
+ *  the pair says the dress comes from the lock rather than from the branch, and a
+ *  dress that arrives everywhere is caught as well. Branches and not kinds, because
+ *  `text`, `email`, `password` and `number` are drawn by that one branch: one road,
+ *  four kinds, and a third field on it would say nothing the second does not.
  *
  *  **Two more write the class themselves**, from components of their own, and both
  *  were missing from this form until 29.08.2026 although they are the very fault
@@ -35,18 +50,29 @@ import type { FormDef } from './types'
  *  the country beside it, which stands under `.place__country-pick` and is looked
  *  up by its own name below.
  *
- *  **That leaves one kind of the twelve unrepresented, `choice`, and on purpose.**
- *  A group of radio buttons is not a `.field__control` at all: the buttons wear
- *  `choice__input` and the lock reaches them as `aria-disabled` and nothing else,
- *  so there is no dress on them for another rule to take away. That the lock does
- *  reach them is asked in `FormRenderer.test.tsx`, over `fillsEverything`. */
+ *  **That leaves three of the twelve kinds undrawn and not one**, and each of the
+ *  three carries its reason in `KINDS` below, which is where the case that measures
+ *  the cascade takes its floor from. `email` and `password` are the other two on
+ *  `broj`'s road and would say nothing it does not. `choice` is not a
+ *  `.field__control` at all: the buttons wear `choice__input` and the lock reaches
+ *  them as `aria-disabled` and nothing else, so there is no dress on them for
+ *  another rule to take away. That the lock does reach them is asked in
+ *  `FormRenderer.test.tsx`, over `fillsEverything`. */
 const everyHeldKind: FormDef = {
   id: 'proba',
   titleKey: 'proba.naslov',
   submitKey: 'form.submit',
   fields: [
     { name: 'trka', type: 'text', labelKey: 'proba.trka' },
+    /* The plain box, twice: one the form locks and one it leaves alone, on the one
+       branch of the renderer that draws four of the twelve kinds
+       (`<input {...shared} type={field.type}>`). Only the live one was here until
+       29.08.2026, which left that branch out of every measurement this file makes,
+       and it is the branch that draws the length, the climb and the fall a chosen
+       race locks. `number` for the locked one because that is what those three
+       are. */
     { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+    { name: 'broj', type: 'number', labelKey: 'proba.broj' },
     { name: 'prica', type: 'textarea', labelKey: 'proba.prica' },
     {
       name: 'izbor',
@@ -72,7 +98,49 @@ const everyHeldKind: FormDef = {
 }
 
 /** Everything that form holds back, which is everything but `dopisano`. */
-const FIXED = ['trka', 'prica', 'izbor', 'drzava', 'slika', 'pristanak', 'datum', 'mesto']
+const FIXED = ['trka', 'broj', 'prica', 'izbor', 'drzava', 'slika', 'pristanak', 'datum', 'mesto']
+
+/**
+ * What this form does with each of the twelve kinds of field the portal has: the
+ * form above draws it and `FIXED` locks it, or the reason in words why it does
+ * not.
+ *
+ * **A record against `FieldType` rather than a list**, so a kind added to the
+ * portal and forgotten here does not compile, which is the guard
+ * `forms/definitions/index.ts` already puts on its own list of the twelve.
+ *
+ * **This is the floor of the case that measures the cascade**, and it stands there
+ * in place of a count. `expect(held).toHaveLength(9)` was `FIXED.length + 1`:
+ * arithmetic over names, blind to what was drawn. Measured on 29.08.2026, `datum`
+ * retyped from `date` to `text` left that number at nine and took the whole of
+ * `DatePicker` out of the measurement, so the ancestor rule a review had found the
+ * round before passed again in silence. This says instead that behind every name
+ * the form still stands the component the name is there for: retype `datum` and
+ * `date` is nobody's kind any more, and the case says so by name.
+ *
+ * Read both ways round below, because a list of exceptions rots in either
+ * direction.
+ */
+const KINDS: Record<FieldType, true | string> = {
+  text: true,
+  /* One `<input {...shared} type={field.type}>` draws all four of these, and
+     `number` is the one held above. A field per kind on one branch measures one
+     thing four times. */
+  email: 'drawn by the branch that draws `number`, which is held above',
+  password: 'the same branch again',
+  date: true,
+  number: true,
+  select: true,
+  country: true,
+  place: true,
+  /* Not a `.field__control` at all, so there is no dress on it to take away. The
+     lock reaches it as `aria-disabled`, and that is asked over `fillsEverything`
+     in `FormRenderer.test.tsx`. */
+  choice: 'wears `choice__input` and is held by `aria-disabled` alone',
+  checkbox: true,
+  textarea: true,
+  photo: true,
+}
 
 /** The list `trka` is filled from. */
 const SUGGESTS = {
@@ -174,9 +242,51 @@ describe('what a held control wears', () => {
         { said: 'the country beside mesto', control: screen.getByRole('combobox', { name: /^Država/ }) },
       ]
 
-      /* Nothing was found by accident: eight locked fields and the country. An
-         emptied `FIXED` would otherwise pass this case in silence. */
-      expect(held).toHaveLength(9)
+      /* The floor, and it says what was measured rather than how many names stand
+         in an array (`KINDS` above says why it is written this way and what the
+         count it replaced could not see).
+
+         Both ways round. A kind that quietly stops being drawn here leaves a branch
+         of the renderer unmeasured, which is the fault the count let through; a
+         kind written down as one this form does not draw, and drawn after all,
+         leaves a sentence up there saying the opposite of what the file does. */
+      const locked = new Set<string>(
+        everyHeldKind.fields
+          .filter((field) => FIXED.includes(field.name))
+          .map((field) => field.type),
+      )
+
+      expect(
+        Object.entries(KINDS)
+          .filter(([kind, why]) => why === true && !locked.has(kind))
+          .map(([kind]) => kind),
+        'a kind of control the portal draws is no longer drawn and held in this form',
+      ).toEqual([])
+      expect(
+        Object.entries(KINDS)
+          .filter(([kind, why]) => why !== true && locked.has(kind))
+          .map(([kind]) => kind),
+        'a kind written down as one this form does not draw is held in it after all',
+      ).toEqual([])
+
+      /* And every control the form dressed was looked at, which is what keeps the
+         country beside the town in the measurement: it is the one entry no field
+         name asks for, so a case that walked `FIXED` alone would leave it out and
+         say nothing. */
+      const measured: Element[] = held.map((one) => one.control)
+
+      expect(
+        [...document.querySelectorAll(`.${NAME}`)]
+          .filter((one) => !measured.includes(one))
+          /* Named by its tag and its id rather than printed: the country carries
+             two hundred and fifty two options, and an `outerHTML` of it buries the
+             sentence that says what is wrong. */
+          .map((one) => `${one.tagName}#${one.id}`),
+        'the form dressed a control this case never looked at',
+      ).toEqual([])
+      expect(new Set(measured).size, 'two of the names found one and the same control').toBe(
+        measured.length,
+      )
 
       for (const { said, control } of held) {
         const seen = getComputedStyle(control)

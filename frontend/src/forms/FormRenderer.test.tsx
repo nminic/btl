@@ -1122,12 +1122,16 @@ describe('a field filled from a list', () => {
 
        The branches that spread the object themselves are **not** held by that: a
        review the same day wrote `className` after the spread on the select and
-       watched the whole suite stay green. All four of them are asked in
-       `held.test.tsx` — the select, the country, the confirmation and the picture,
-       which was the one left out until 29.08.2026, when a review wrote
-       `className="field__control"` after the spread on it and the whole suite stayed
-       green. So are the three drawn by components of their own, which never see the
-       object at all: the date, the town and the country beside the town. */
+       watched the whole suite stay green. There are **five** of them, and all five
+       are asked in `held.test.tsx` — the select, the country, the confirmation, the
+       picture, and the plain `<input type={field.type}>` that draws `text`, `email`,
+       `password` and `number` alike. The picture was left out until 29.08.2026, when
+       a review wrote `className="field__control"` after the spread on it and the
+       whole suite stayed green; the plain box was miscounted as four branches
+       instead of five in this very sentence, and was measured held for the first
+       time later the same day. So are the three drawn by components of their own,
+       which never see the object at all: the date, the town and the country beside
+       the town. */
     renderWithI18n(
       <FormRenderer
         form={fillsABox}
