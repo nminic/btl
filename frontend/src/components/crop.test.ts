@@ -1,5 +1,5 @@
 import { must } from '../test/at'
-import { aimAt, bigEnough, closestIn, cropIn, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
+import { aimAt, bigEnough, closestIn, cropIn, draggedTo, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
 import type { CoverStyle, Crop, Frame, Shape } from './crop'
 
 /* Which square of a picture is the picture.
@@ -679,5 +679,92 @@ describe('the middle of the circle while it is being resized', () => {
 
     expect(least).toBeCloseTo(0.5, 5)
     expect(sizedTo(middle, small, { across: 0.5, down: 0.5 }, least).size).toBeCloseTo(least, 5)
+  })
+})
+
+describe('a gesture measured from where it began', () => {
+  const square = { width: 1000, height: 1000 }
+  const half: Crop = { x: 0.5, y: 0.5, size: 0.5 }
+
+  it('leaves the crop alone until the hand has actually moved', () => {
+    /* Owner, 29.08.2026: „krug ne mrdne dok ja ne počnem da ga resizeujem". A
+       gesture of no length is a change of nothing, and that has to hold wherever
+       the press landed: on the rim, well outside it, and inside the circle. */
+    for (const spot of [
+      { across: 0.75, down: 0.5 },
+      { across: 0.98, down: 0.5 },
+      { across: 0.55, down: 0.5 },
+    ]) {
+      for (const doing of ['moving', 'sizing'] as const) {
+        expect(draggedTo(half, square, doing, spot, spot, closestIn(square))).toEqual(half)
+      }
+    }
+  })
+
+  it('stops at the floor when the hand goes in further than the circle is wide', () => {
+    /* The one branch of this function with no other reader: a hand that travels
+       further inwards than the radius asks for a diameter below nought, and a spot
+       is a place, which has no sign. Without holding it at nought the distance is
+       read back as a circle growing out the other side, the floor is missed, and
+       the circle settles wider than the portal allows.
+
+       Measured by a review on 29.08.2026: pressed at 0,98 of a square picture and
+       dragged in to 0,55, the circle stopped at 0,36 instead of the floor. */
+    const floor = closestIn(square)
+    const pulled = draggedTo(
+      half,
+      square,
+      'sizing',
+      { across: 0.98, down: 0.5 },
+      { across: 0.55, down: 0.5 },
+      floor,
+    )
+
+    expect(floor).toBeCloseTo(0.24, 5)
+    expect(pulled.size).toBeCloseTo(floor, 5)
+  })
+
+  it('measures every move of one gesture from the press, not from the last answer', () => {
+    /* The whole of why the crop at the moment of the press is remembered. Measured
+       against a drag of two steps, because one step cannot tell the two apart: a
+       hand that goes 0,9 → 0,92 → 0,95 has travelled 0,05 in all, so the diameter
+       grows by 0,10. Reckoned from whatever the previous step produced, the second
+       step measures from a circle the first one already widened and the answer runs
+       away: 0,64 instead of 0,60, and on a real drag of dozens of steps the circle
+       escapes from under the finger. */
+    const first = draggedTo(
+      half,
+      square,
+      'sizing',
+      { across: 0.9, down: 0.5 },
+      { across: 0.92, down: 0.5 },
+      closestIn(square),
+    )
+    const second = draggedTo(
+      half,
+      square,
+      'sizing',
+      { across: 0.9, down: 0.5 },
+      { across: 0.95, down: 0.5 },
+      closestIn(square),
+    )
+
+    expect(first.size).toBeCloseTo(0.54, 5)
+    expect(second.size).toBeCloseTo(0.6, 5)
+    /* And the same second step reckoned against the circle the first step made,
+       which is exactly the shape the fault takes on the screen: the component
+       remembers where the press landed but hands over the **living** crop, so the
+       hand's whole travel is added to a circle that has already grown by part of
+       it. */
+    const runaway = draggedTo(
+      first,
+      square,
+      'sizing',
+      { across: 0.9, down: 0.5 },
+      { across: 0.95, down: 0.5 },
+      closestIn(square),
+    )
+
+    expect(runaway.size, 'the two ways of reckoning have stopped differing').toBeCloseTo(0.64, 5)
   })
 })

@@ -644,12 +644,14 @@ describe('choosing with a finger or a mouse instead of the sliders', () => {
     const group = await ready()
 
     fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.4' } })
-    /* Pressed on the rim and then pulled outwards, because the press alone does
-       nothing (owner, 29.08.2026: „krug ne mrdne dok ja ne počnem da ga
-       resizeujem"). The circle is four tenths across, so its rim is at seven
-       tenths of the box; the hand travels two tenths further out, and the diameter
-       grows by twice that. */
-    dragTo({ across: 0.7, down: 0.5 }, { across: 0.9, down: 0.5 })
+    /* Pressed a little **outside** the rim and then pulled further out. Outside on
+       purpose: a review on 29.08.2026 pointed out that a press landing exactly on
+       the rim is the one place where the old absolute arithmetic and the new
+       relative arithmetic agree, so a case written there cannot see the difference
+       between them. The circle is four tenths across, so its rim is at seven tenths
+       of the box; the hand starts at three quarters and travels a further fifth,
+       and the diameter grows by twice that. */
+    dragTo({ across: 0.75, down: 0.5 }, { across: 0.95, down: 0.5 })
 
     expect(sentCrop().size, 'the diameter did not grow by twice the pull').toBeCloseTo(0.8, 6)
 
@@ -829,6 +831,30 @@ describe('what the pointer says a press would do, before anybody presses', () =>
 
     expect(pulled.size, 'the diameter did not follow the hand').toBeCloseTo(0.6, 6)
     expect({ x: pulled.x, y: pulled.y }, 'the middle moved during a pull').toEqual({ x: 0.5, y: 0.5 })
+  })
+
+  it('reckons every move of one drag from the press, not from the circle it just made', async () => {
+    /* Two moves, because one cannot tell the two ways of reckoning apart. The hand
+       goes 0,9 then 0,92 then 0,95, so it has travelled a twentieth of the box in
+       all and the diameter grows by twice that: a half becomes six tenths.
+
+       Reckoned against the circle the previous move produced, the whole travel is
+       added to a circle that has already grown by part of it, and the answer runs
+       away: 0,64 after two moves, and on a real drag of dozens of moves the circle
+       escapes from under the finger. Found by a review on 29.08.2026, which noted
+       that every guard here fired exactly one move and so could not see it. */
+    await halved()
+
+    const box = picture()
+
+    fireEvent.pointerDown(box, at({ across: 0.9, down: 0.5 }))
+    fireEvent.pointerMove(box, at({ across: 0.92, down: 0.5 }))
+
+    expect(sentCrop().size, 'the first move did not follow the hand').toBeCloseTo(0.54, 6)
+
+    fireEvent.pointerMove(box, at({ across: 0.95, down: 0.5 }))
+
+    expect(sentCrop().size, 'the second move reckoned from the first').toBeCloseTo(0.6, 6)
   })
 
   it('closes the hand while the circle is being carried, and keeps it closed', async () => {
