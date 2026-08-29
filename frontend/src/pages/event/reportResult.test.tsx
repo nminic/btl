@@ -677,6 +677,80 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
   })
 
+  it('puts the day back where the exact length repeats across two mornings', async () => {
+    /* The fault a review found on 29.08.2026, and the reason there is a fourth step
+       at all. An event that runs the same two courses on two mornings collides at
+       every one of the first three: both mornings hold 8,68 km and 8,74 km, so the
+       name and the written length are one label for all four, the day is one label
+       for each pair, and the exact length is one label for each pair again, because
+       it repeats across the mornings. Ended at the third step, four races came out
+       under two names.
+
+       Not in `races.json` (0 collisions over 1612 races on 28.08.2026), and the
+       administration takes it: a day and a length are typed by hand
+       (`pages/admin/raceRows.ts`) and a race's name comes from its event. So the set
+       is built here, as the set for the third step is.
+
+       Where it is seen: `pages/EventDetail.tsx` draws one „Unesi rezultat" link per
+       race, named by this, and four links two of which sound the same and lead
+       somewhere different is WCAG 2.2 SC 2.4.4. */
+    const morning: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Probna trka',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 8.68,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+    }
+    const among: Race[] = [
+      morning,
+      { ...morning, id: 'b', distanceKm: 8.74 },
+      { ...morning, id: 'c', date: '2020-01-02' },
+      { ...morning, id: 'd', date: '2020-01-02', distanceKm: 8.74 },
+    ]
+
+    const said = among.map((one) => raceLabel(one, among, 'sr-Latn'))
+
+    expect(new Set(said).size, `two races read the same: ${said.join(' / ')}`).toBe(4)
+    /* And they read as the exact length **and** the day, rather than as one or the
+       other: the whole label is written out here so that a fourth step which said
+       less could not pass by making the four differ some other way. */
+    expect(said).toEqual(
+      among.map(
+        (one) =>
+          `Probna trka, ${formatNumber(one.distanceKm, 'sr-Latn', 2)} km, ${formatShortDate(one.date, 'sr-Latn')}`,
+      ),
+    )
+  })
+
+  it('says the fullest thing it has where nothing at all tells two races apart', async () => {
+    /* The limit named in the note on the function, asked for rather than left to be
+       inferred: one name, one morning and two lengths that agree to the hundredth
+       cannot be parted by any label, and 8,681 km and 8,684 km are such a pair. What
+       is being measured is that the function still answers, and answers with its
+       last step rather than with its first: a reader gets everything there is and
+       the two are then as close as the portal can bring them. */
+    const one: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Probna trka',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 8.681,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+    }
+    const among: Race[] = [one, { ...one, id: 'b', distanceKm: 8.684 }]
+
+    expect(raceLabel(one, among, 'sr-Latn')).toBe(
+      `Probna trka, ${formatNumber(8.681, 'sr-Latn', 2)} km, ${formatShortDate(one.date, 'sr-Latn')}`,
+    )
+  })
+
   it('adds the day where the lengths repeat, and stops there', async () => {
     /* The second step, on the event the note names: four races of 42,2 km on four
        consecutive mornings. It needs the day and must not need the second decimal.

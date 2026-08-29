@@ -25,6 +25,10 @@ const TWO_DAYS = '/sr/kalendar/balkansko-prvenstvo-veterana-2021'
 /** Four mornings and the same length on each of them, which is the only shape in
  *  which a race is known by more than its length (data/raceLabel.ts). */
 const FOUR_MORNINGS = '/sr/kalendar/danube-maraton-2022-03'
+/** Twelve races of one name on one morning, four of which agree on the length as it
+ *  is written, so this page is where a label that gives up too early is seen
+ *  (data/raceLabel.ts). */
+const TWELVE_RACES = '/sr/kalendar/btl-dezorijentiring-2018'
 
 /** The table of races, which is the one named after them. */
 function races(): HTMLElement {
@@ -268,6 +272,29 @@ describe('who is offered what on an event', () => {
 })
 
 describe('reporting a result from the event', () => {
+  it('names every way into the form for a different race', async () => {
+    /* Twelve links reading „Unesi rezultat" and leading twelve places is one entry
+       said twelve times in a screen reader's list of links, so each is named by its
+       race (`pages/EventDetail.tsx`, WCAG 2.2 SC 2.4.4). That the naming really
+       parts them is measured on the function that does it (`raceLabel`, in
+       reportResult.test.tsx), and here on the page itself, because the page also
+       chooses **what set** the race is named among and a right rule over the wrong
+       set draws the same two links.
+
+       This event because it is the hardest one in the file: twelve races, one name,
+       one morning, and four lengths that agree once written the ordinary way. */
+    renderAt(TWELVE_RACES, 'competitor', '000007')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    const named = within(races())
+      .getAllByRole('link', { name: /^Unesi rezultat/ })
+      .map((link) => must(link.getAttribute('aria-label'), 'what the row calls the race'))
+
+    expect(named.length, 'the file no longer holds the event this is about').toBe(12)
+    expect(new Set(named).size, `two links read the same: ${named.join(' / ')}`).toBe(12)
+  })
+
   it('calls a race the same thing in the row and in the form the row opens', async () => {
     /* A race is known by its name and its length, and by its day as well where two
        of them share both (`data/raceLabel.ts`; it had no name of its own until

@@ -12,11 +12,11 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * said in the same breath how a race is looked for: „naziv trke sa datumom i
  * dužinom".
  *
- * **Three steps, and each one is taken only where the step before it left two
+ * **Four steps, and each one is taken only where the step before it left two
  * races reading the same.** The name and the length; then the day; then the length
- * written out exactly. What decides each step is the whole label rather than any
- * one part of it, because a label is what a reader hears and two labels either
- * differ or they do not.
+ * written out exactly; then both at once. What decides each step is the whole label
+ * rather than any one part of it, because a label is what a reader hears and two
+ * labels either differ or they do not.
  *
  * **Why the name alone is not enough.** A race's name starts out as its event's,
  * and 886 of the 1163 events that hold any race at all hold exactly one, so on
@@ -46,15 +46,26 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * three: the two are one fact with two homes, and a label finer than its own row
  * would be the same disagreement the other way round.
  *
- * **The third step carries no day**, and that is not an oversight. It is reached
- * only where the day was already tried and told two races apart, so adding it there
- * would be fifteen characters that distinguish nothing. Measured by a review on
- * 28.08.2026: on BTL dezorijentiring the four labels that reach this step carried
- * „, 23. 12. 2018." while the table of races on the same page deliberately draws no
- * day column at all, because every race of that event runs on one morning (owner,
- * 10.08.2026).
+ * **The third step carries no day, and the fourth puts it back.** The third is the
+ * short one, and it is enough wherever the exact length is the only thing missing:
+ * on BTL dezorijentiring its four labels would otherwise carry „, 23. 12. 2018." —
+ * fifteen characters — while the table of races on the same page deliberately draws
+ * no day column at all, because every race of that event runs on one morning
+ * (owner, 10.08.2026).
  *
- * **What even three steps do not tell apart**, said out loud rather than left to be
+ * **But it is not enough by itself, and that was a fault of this file for one
+ * commit.** A step that drops what the step before it added can tell fewer races
+ * apart than its predecessor, and the ladder then ends lower than it started. Found
+ * by a review on 29.08.2026: an event running the same two courses on two mornings
+ * — 8,68 km and 8,74 km on each — collides at every one of the first three steps,
+ * because the exact length repeats across the mornings, and came out as two labels
+ * for four races. On `pages/EventDetail.tsx` those are four „Unesi rezultat" links,
+ * two pairs of which sound the same and lead somewhere different, which is the very
+ * WCAG 2.2 SC 2.4.4 fault the exact length was added to close. The fourth step,
+ * exact length **and** day, is the one rung that is strictly the most telling, so
+ * the ladder can no longer end on a rung that says less than the one below it.
+ *
+ * **What even four steps do not tell apart**, said out loud rather than left to be
  * found: two races of one event, one name, one morning, and two lengths that agree
  * to the hundredth. Measured on 28.08.2026: 8,681 km and 8,684 km both write „8,68
  * km" and read the same, and the administration takes both, since a length is typed
@@ -73,13 +84,14 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  */
 export function raceLabel(race: Race, among: Race[], locale: string): string {
   const named = (one: Race) => `${one.name}, ${formatDistance(one.distanceKm, locale)}`
-  const dated = (one: Race) => `${named(one)}, ${formatShortDate(one.date, locale)}`
   const exact = (one: Race) => `${one.name}, ${formatNumber(one.distanceKm, locale, 2)} km`
+  const onItsDay = (say: (one: Race) => string) => (one: Race) =>
+    `${say(one)}, ${formatShortDate(one.date, locale)}`
   const alone = (say: (one: Race) => string) => among.filter((one) => say(one) === say(race)).length < 2
 
-  if (alone(named)) {
-    return named(race)
-  }
+  /* Shortest first, and the last of them is the fullest thing this function can
+     say, so whichever rung is reached the one below it is never more telling. */
+  const steps = [named, onItsDay(named), exact, onItsDay(exact)]
 
-  return alone(dated) ? dated(race) : exact(race)
+  return (steps.find(alone) ?? onItsDay(exact))(race)
 }
