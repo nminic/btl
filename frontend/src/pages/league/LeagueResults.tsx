@@ -148,8 +148,11 @@ function Grid({
                       fits.** Where the cap is narrower than the measure on its own,
                       the name is gone altogether and the measure loses its own tail.
                       Measured in Chrome over the built sheet on 29.08.2026, at 360
-                      where the cap is 104px and the label has fallen to the rung that
-                      carries the day:
+                      where the cap is 104px, over four of these headings. Three of
+                      them have fallen to the rung that writes the day and the fourth
+                      still stands on the first rung, which writes the year
+                      (`data/raceLabel.ts`); that is what makes the last of the four
+                      short enough to leave the name anything at all:
 
                         ` 15. 10. 2022. (42,2 km)`  wants 116,69px, name 0px, „m)" cut
                         ` 12. 12. 2019. (100,0 km)` wants 122,89px, name 0px, „m)" cut
