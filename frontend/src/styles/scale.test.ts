@@ -66,6 +66,10 @@ const ALLOWED = new Map([
     'pages/TopBoards.css | margin | -1px',
     'not a space: the recipe that takes a surname off the screen without taking it out of the page, written out because a container query switches whether it applies and cannot put a class on anything',
   ],
+  [
+    'components/Crop.css | margin | -1px',
+    'the same recipe again, for the sliders under the cropper: off the screen while nobody is in them and back the moment focus reaches one, which is a selector switching whether it applies and so cannot be a class either',
+  ],
   ['components/DucatGallery.css | margin | -1px', 'a hairline pulled back over its own border'],
   ['app/Shell.css | left | -9999px', 'not a distance: the old way of putting a thing off the screen'],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],

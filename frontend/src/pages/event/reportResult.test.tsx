@@ -6,10 +6,27 @@ import { I18nProvider } from '../../i18n/I18nProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
+
+/** Everything the session is holding, one line each, so a case can read what was
+ *  really sent rather than what the screen says about it. The same shape
+ *  `pages/member/ownResult.test.tsx` uses. */
+function Sent() {
+  const { submissions } = useSession()
+
+  return (
+    <ul aria-label="store">
+      {submissions.map((one) => (
+        <li key={one.id}>{`${one.id} | ${one.raceName} | ${one.date}`}</li>
+      ))}
+    </ul>
+  )
+}
+
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
-import { formatDistance, formatNumber } from '../../i18n/format'
+import { formatDistance, formatNumber, formatShortDate } from '../../i18n/format'
+import { raceLabel } from '../../data/raceLabel'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { ReportResult } from './ReportResult'
@@ -76,9 +93,10 @@ describe('the way to report a result', () => {
     }
   })
 
-  it('says which race it is reporting, by its length, in this language', async () => {
-    /* A race is told from the one beside it by its length and by nothing else
-       (data/types.ts): the event is the page this form was opened from. It stood
+  it('says which race it is reporting, by its name and length, in this language', async () => {
+    /* A race is told from the one beside it by its name and its length, and by
+       its day where two of them share both (`data/raceLabel.ts`, since
+       28.08.2026): the event is the page this form was opened from. It stood
        in a list of choices until 23.08.2026 and stands in the sentence over the
        form now, said by the same helper, so the two never drifted apart.
 
@@ -440,11 +458,46 @@ describe('an event that runs over two mornings', () => {
   })
 })
 
-describe('a race, which has no name of its own', () => {
-  /* There is no such field any more (owner, 11.08.2026): what a runner is shown
-     is the event and the measurements of the race they ran, „Beogradski maraton,
-     21,1 km". So every screen that writes a race writes its length, and a race
-     is told from the one beside it by that. */
+describe('a race, which has a name of its own since 23.08.2026', () => {
+  /* It had none until 23.08.2026, when the owner gave it one, and a runner was
+     shown the event and the measurements instead: „Beogradski maraton, 21,1 km".
+     Since then every screen that writes a race writes its name and its length, and
+     the two together are what tells it from the one beside it
+     (`data/raceLabel.ts`). */
+  /** The one race in the file whose name is not its event's, which is the only
+   *  kind that can tell a name apart from a length. Every other race carries the
+   *  event's name, so a case built on one of those passes whether the label is the
+   *  name or the length: the sentence it is read out of names the event as well.
+   *  Measured on 28.08.2026, which is how this helper came to exist. */
+  async function renamedRace() {
+    const races = await loadResource<Race[]>('races')
+    const events = await loadResource<BtlEvent[]>('events')
+    const named = must(
+      races
+        .map((race) => ({ race, event: events.find((one) => one.id === race.eventId) }))
+        .find(({ race, event }) => event !== undefined && event.name !== race.name),
+      'a race called something other than its event',
+    )
+
+    return { race: named.race, event: must(named.event, 'the event it belongs to') }
+  }
+
+  /** And one run on a morning its event did not begin on, for the same reason: a
+   *  race that carries its event's day cannot tell the two apart. Thirty of them
+   *  in the file, counted the same day. */
+  async function secondMorning() {
+    const races = await loadResource<Race[]>('races')
+    const events = await loadResource<BtlEvent[]>('events')
+    const later = must(
+      races
+        .map((race) => ({ race, event: events.find((one) => one.id === race.eventId) }))
+        .find(({ race, event }) => event !== undefined && event.date !== race.date),
+      'a race run on a later morning than its event began',
+    )
+
+    return { race: later.race, event: must(later.event, 'the event it belongs to') }
+  }
+
   async function anyRace() {
     const races = await loadResource<Race[]>('races')
     const events = await loadResource<BtlEvent[]>('events')
@@ -460,8 +513,10 @@ describe('a race, which has no name of its own', () => {
   }
 
   it('is listed under the event by its measurements', async () => {
-    /* And by no name, because there is none: the table of races under an event
-       carries the day, the category and the numbers. */
+    /* The table of races under an event carries the name, the day and the
+       numbers. It carried no name until 23.08.2026, when the owner gave a race
+       one; the row has said it since, and this case is about the numbers beside
+       it. */
     const { race, event } = await anyRace()
 
     renderAt(`/sr/kalendar/${event.slug}`)
@@ -472,15 +527,275 @@ describe('a race, which has no name of its own', () => {
       .toBeGreaterThan(0)
   })
 
-  it('is named by its length on the form that reports a result', async () => {
+  it('is named by its own name on the form that reports a result', async () => {
+    const { race, event } = await renamedRace()
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME)
+
+    /* By its name, since 23.08.2026, when the owner gave a race one: „ja mogu da u
+       okviru Beogradskog maratona imam dve trke, od 42.2 i 21.1, i obe će dobiti
+       default naziv Beogradski maraton. Ali onda mogu izmeniti ovu drugu da se
+       zove Beogradski polumaraton." Until 28.08.2026 this sentence said the
+       length, so a race the administrator had renamed read „21,10 km" here and on
+       the event's own page. */
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(race.name)
+    /* And its length beside it, which the name does not replace. A race's name
+       starts out as its event's, and 886 of the 1163 events in the file hold
+       exactly one race, so on three quarters of them the name alone says nothing
+       the screen has not already said and the one thing that told the race apart
+       is gone. Measured by a review on 28.08.2026 in Chrome: „sa trke Mala Sveta
+       gora na događaju „Mala Sveta gora"", against „21,1 km" the day before. */
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
+      formatDistance(race.distanceKm, 'sr-Latn'),
+    )
+  })
+
+  it('says its length even where its name is its event’s, which is most of them', async () => {
+    /* The case the name alone got wrong, on the ordinary event rather than on the
+       one renamed race in the file: 886 of the 1163 events that hold any race at
+       all hold exactly one, and there the name is the event's name.
+
+       The two are asked for **together**, as the one string the label builds, and
+       not one at a time. Measured by a review on 28.08.2026: asking for the name on
+       its own passes on such an event whatever the label returns, because the
+       sentence names the event beside it. */
     const { race, event } = await anyRace()
 
     renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-    /* By the length alone, which is the whole of what tells two races of one
-       event apart. */
     expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
-      formatDistance(race.distanceKm, 'sr-Latn'),
+      `${race.name}, ${formatDistance(race.distanceKm, 'sr-Latn')}`,
     )
+  })
+
+  it('tells two races apart even where the day cannot, which is where it gave up', async () => {
+    /* `formatDistance` writes one decimal, so 8,68 km and 8,74 km are two races and
+       one label. BTL dezorijentiring 2018 runs twelve races of one name on one
+       morning and holds both of those and 9,06 and 9,07 besides, so neither the
+       name, nor the length as it is written, nor the day parts them: that page drew
+       twelve links under ten different names, which is two pairs of links that
+       sound the same and lead somewhere different (WCAG 2.2 SC 2.4.4).
+
+       Two rounds of review were spent on this before it was closed. The first
+       comparison used the stored number, so a pair that merely rounded together was
+       counted as different and never offered the day at all; the second compared
+       the written length, which offered them the day they already shared and made
+       the labels fifteen characters longer without making them differ. What
+       closes it is writing the length out exactly, and only there.
+
+       Asked of the function rather than of a screen, because the pair that shows it
+       is in one event of 1163 and the rule is about every event. */
+    const races = await loadResource<Race[]>('races')
+    const together = races.filter((one) => one.eventId === 'evt-btl-dezorijentiring-2018-12-23')
+
+    expect(together.length, 'the file no longer holds the event this is about').toBeGreaterThan(1)
+
+    const said = together.map((one) => raceLabel(one, together, 'sr-Latn'))
+
+    expect(new Set(said).size, `two races read the same: ${said.join(' / ')}`).toBe(said.length)
+    /* And the exact length is what does it, written the way the table of races on
+       the same page already writes it. */
+    /* The whole label and not a piece of it: „8,680 km" contains „8,68", so asking
+       for the piece would let a finer number through, and the row of the table
+       beside it writes two decimals. Measured by a review on 28.08.2026: with the
+       label written to three decimals the suite stayed green.
+
+       The row's own two decimals are guarded where the row is drawn („is listed
+       under the event by its measurements"), and the two are written down here as
+       one fact with two homes rather than joined into one: the row is a number in a
+       column and the label is a sentence, and a helper shared between them would be
+       a third home for a coincidence. What holds them together is that both are
+       measured, each where it lives. */
+    const eight = must(
+      together.find((one) => one.distanceKm === 8.68),
+      'the race this is about',
+    )
+
+    expect(raceLabel(eight, together, 'sr-Latn')).toBe(
+      `${eight.name}, ${formatNumber(8.68, 'sr-Latn', 2)} km`,
+    )
+  })
+
+  it('asks for no more than it needs, so an ordinary event reads as its lengths', async () => {
+    /* Each step only where the one before it left two races reading the same. Three
+       different lengths on one morning under one name need neither the day nor the
+       second decimal, and a label that carries them anyway is a label nobody can
+       scan. Measured over the whole file on 28.08.2026: of 1612 races, 24 labels
+       reach the second step and 4 the third, and no two races of one event read the
+       same.
+
+       Measured by a review the same day: with the first step deciding on the name
+       alone rather than on the whole label, the labels carrying a day went from 24
+       to 722 and the whole suite stayed green. So this asks for the label itself,
+       not for the absence of one part of it. */
+    const races = await loadResource<Race[]>('races')
+    const plain = races.filter((one) => one.eventId === 'evt-baja-sombor-2019-12-01')
+
+    expect(plain.length, 'the file no longer holds the event this is about').toBe(3)
+
+    const said = plain.map((one) => raceLabel(one, plain, 'sr-Latn'))
+
+    expect(said).toEqual(
+      plain.map((one) => `${one.name}, ${formatDistance(one.distanceKm, 'sr-Latn')}`),
+    )
+  })
+
+  it('reaches for the exact length only where the day has already failed', async () => {
+    /* The rule by which the third step is chosen over the second, which is the one
+       thing the events in the file cannot measure: a review on 28.08.2026 replaced
+       that rule with an unrelated one and **not one of the 1612 labels changed**,
+       so the whole suite stayed green over a portal that would draw two links of
+       one name.
+
+       So the set is built here rather than found. Three races of one name: two that
+       write the same length on one morning, and one on another morning. The day
+       parts the third from the other two, so it must keep the day; it does not part
+       the first two from each other, so they must go on to the exact length. */
+    const one: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Probna trka',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 8.68,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+    }
+    const two: Race = { ...one, id: 'b', distanceKm: 8.74 }
+    /* The same written length as the other two, so all three collide at the first
+       step and the day is what has to part them. */
+    const three: Race = { ...one, id: 'c', date: '2020-01-02', distanceKm: 8.7 }
+    const among = [one, two, three]
+
+    expect(raceLabel(one, among, 'sr-Latn')).toBe('Probna trka, 8,68 km')
+    expect(raceLabel(two, among, 'sr-Latn')).toBe('Probna trka, 8,74 km')
+    /* And the one the day does part keeps the day, rather than being written out to
+       the hundredth along with them. */
+    expect(raceLabel(three, among, 'sr-Latn')).toBe(
+      `Probna trka, ${formatDistance(8.7, 'sr-Latn')}, ${formatShortDate(three.date, 'sr-Latn')}`,
+    )
+  })
+
+  it('puts the day back where the exact length repeats across two mornings', async () => {
+    /* The fault a review found on 29.08.2026, and the reason there is a fourth step
+       at all. An event that runs the same two courses on two mornings collides at
+       every one of the first three: both mornings hold 8,68 km and 8,74 km, so the
+       name and the written length are one label for all four, the day is one label
+       for each pair, and the exact length is one label for each pair again, because
+       it repeats across the mornings. Ended at the third step, four races came out
+       under two names.
+
+       Not in `races.json` (0 collisions over 1612 races on 28.08.2026), and the
+       administration takes it: a day and a length are typed by hand
+       (`pages/admin/raceRows.ts`) and a race's name comes from its event. So the set
+       is built here, as the set for the third step is.
+
+       Where it is seen: `pages/EventDetail.tsx` draws one „Unesi rezultat" link per
+       race, named by this, and four links two of which sound the same and lead
+       somewhere different is WCAG 2.2 SC 2.4.4. */
+    const morning: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Probna trka',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 8.68,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+    }
+    const among: Race[] = [
+      morning,
+      { ...morning, id: 'b', distanceKm: 8.74 },
+      { ...morning, id: 'c', date: '2020-01-02' },
+      { ...morning, id: 'd', date: '2020-01-02', distanceKm: 8.74 },
+    ]
+
+    const said = among.map((one) => raceLabel(one, among, 'sr-Latn'))
+
+    expect(new Set(said).size, `two races read the same: ${said.join(' / ')}`).toBe(4)
+    /* And they read as the exact length **and** the day, rather than as one or the
+       other: the whole label is written out here so that a fourth step which said
+       less could not pass by making the four differ some other way. */
+    expect(said).toEqual(
+      among.map(
+        (one) =>
+          `Probna trka, ${formatNumber(one.distanceKm, 'sr-Latn', 2)} km, ${formatShortDate(one.date, 'sr-Latn')}`,
+      ),
+    )
+  })
+
+  it('says the fullest thing it has where nothing at all tells two races apart', async () => {
+    /* The limit named in the note on the function, asked for rather than left to be
+       inferred: one name, one morning and two lengths that agree to the hundredth
+       cannot be parted by any label, and 8,681 km and 8,684 km are such a pair. What
+       is being measured is that the function still answers, and answers with its
+       last step rather than with its first: a reader gets everything there is and
+       the two are then as close as the portal can bring them. */
+    const one: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Probna trka',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 8.681,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+    }
+    const among: Race[] = [one, { ...one, id: 'b', distanceKm: 8.684 }]
+
+    expect(raceLabel(one, among, 'sr-Latn')).toBe(
+      `Probna trka, ${formatNumber(8.681, 'sr-Latn', 2)} km, ${formatShortDate(one.date, 'sr-Latn')}`,
+    )
+  })
+
+  it('adds the day where the lengths repeat, and stops there', async () => {
+    /* The second step, on the event the note names: four races of 42,2 km on four
+       consecutive mornings. It needs the day and must not need the second decimal.
+     */
+    const races = await loadResource<Race[]>('races')
+    const many = races.filter((one) => one.eventId === 'evt-danube-maraton-2022-03-14')
+
+    expect(many.length, 'the file no longer holds the event this is about').toBe(4)
+
+    const said = many.map((one) => raceLabel(one, many, 'sr-Latn'))
+
+    expect(said).toEqual(
+      many.map(
+        (one) =>
+          `${one.name}, ${formatDistance(one.distanceKm, 'sr-Latn')}, ${formatShortDate(one.date, 'sr-Latn')}`,
+      ),
+    )
+  })
+
+  it('files the result on the day the race was run, not the day the event began', async () => {
+    /* An event may run over several mornings (PDL P10) and its own day is the
+       first of them, so a result reported from the second morning of a two day
+       event was filed on the first. The race carries the day it is run on, and
+       that is the day somebody ran.
+
+       On a race whose day really differs from its event's, because thirty of the
+       file's races do and the rest cannot tell the two apart. */
+    const { race, event } = await secondMorning()
+
+    expect(race.date, 'the walk is built on a race that begins its event').not.toBe(event.date)
+
+    const user = setupUser()
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+
+    await screen.findByText(/Prijavljuješ rezultat/)
+    await user.type(await screen.findByLabelText(/Sati/), '3')
+    await user.type(screen.getByLabelText(/Minuta/), '30')
+    await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    const stored = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(stored[0]?.textContent).toContain(race.date)
+    expect(stored[0]?.textContent).not.toContain(event.date)
   })
 })

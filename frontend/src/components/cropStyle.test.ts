@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor } from '../test/stylesheet'
+import { ruleFor, unconditionalRules } from '../test/stylesheet'
+import { must } from '../test/at'
 
 /**
  * The shape of the thing a member is choosing, and the shade that says what is
@@ -130,8 +131,87 @@ describe('the picture while there is something on it to drag', () => {
     const dragged = ruleFor(CROP, '.crop__picture--dragged', 'Crop.css')
 
     expect(dragged.touchAction).toBe('none')
-    /* And what the pointer is told it may do. `grab` and not `move`: the picture
-       is not what moves, the circle over it is. */
-    expect(dragged.cursor).toBe('grab')
+  })
+
+  it('says nothing here about what the pointer looks like', () => {
+    /* Written as an absence, like the shade above, because that is the shape the
+       fault took. `cursor: grab` stood here until 29.08.2026 and read correctly:
+       the circle is what a press picks up, so an open hand. It was true over the
+       middle of the circle and false over its rim, where a press resizes and the
+       owner asked that day for „strelice za razvlačenje", and false in a way no
+       rule in a sheet can mend, because which of the nine answers applies depends
+       on where the pointer is.
+
+       So the answer has one home, `aimAt` in components/crop.ts, and one reader,
+       `CropWindow.tsx`, which writes it on the element. A `grab` put back here
+       would be a second home and the one that knows least (ADL A31): it would go
+       on promising a hand over the rim for as long as anybody believed it. */
+    const dragged = ruleFor(CROP, '.crop__picture--dragged', 'Crop.css')
+
+    expect(dragged.cursor).toBe('')
+  })
+})
+
+describe('the sliders under the picture', () => {
+  /** The one rule that takes the sliders off the screen, whatever it is written
+   *  as. Found by what it does rather than by its selector, because the selector
+   *  is the very thing the second case is about. */
+  const hiding = () =>
+    unconditionalRules(CROP, 'Crop.css').filter(
+      (rule) =>
+        /* The whole of a class and not the head of a longer one. `stylesheet.ts`
+           carries the incident this guards against: a rule renamed to
+           `.section-body__signoff-wide` went on answering for
+           `.section-body__signoff` and the page laid out wrong while the suite
+           stayed green. Measured here on 29.08.2026: with the rule renamed to
+           `.crop__slider--nikad`, so that it hides nothing at all, a plain
+           `includes` still found it and the case below was the only one that
+           noticed. */
+        /\.crop__slider(?![\w-])/.test(rule.selectorText) &&
+        rule.style.getPropertyValue('position') === 'absolute',
+    )
+
+  it('are off the screen, and off it rather than out of the page', () => {
+    /* Owner, 29.08.2026: „Horizontalne skalice ispod ne treba da postoje / da
+       budu vidljive", and „Vidi se samo slika sa kružnim prozorom kroz koji se
+       jasno vidi."
+
+       Both halves are asked, because the second is what makes this legal. The
+       sliders carry the whole of the keyboard here: a range control takes arrows,
+       Home and End and says its value aloud, and a picture dragged with a pointer
+       does none of that (WCAG 2.2 SC 2.1.1 and 4.1.2). `display: none` or
+       `visibility: hidden` would take them out of the tab order and out of a
+       screen reader with them, which is the same cropper with no keyboard at all,
+       so those two are asserted as absences and not merely left unwritten. */
+    const [rule] = hiding()
+    const off = must(rule, 'the rule that takes the sliders off the screen').style
+
+    expect(off.getPropertyValue('clip-path')).toBe('inset(50%)')
+    expect(off.getPropertyValue('inline-size')).toBe('1px')
+    expect(off.getPropertyValue('block-size')).toBe('1px')
+    expect(off.getPropertyValue('overflow')).toBe('hidden')
+    expect(off.getPropertyValue('display')).toBe('')
+    expect(off.getPropertyValue('visibility')).toBe('')
+  })
+
+  it('come back the moment a keyboard reaches one of them', () => {
+    /* The other half, and it is not a convenience. `visually-hidden` clips a
+       control to one pixel and clips its own focus ring away with it, so a reader
+       tabbing into a slider dressed this way would have no visible focus at all
+       (WCAG 2.2 SC 2.4.7). `Stars.css` meets the same fault and answers it by
+       drawing the ring on the star beside the radio; a slider has nothing beside
+       it, so the sliders come back and wear their own ring.
+
+       Asked of the selector because there is no second rule to read: the return
+       is written as the condition on the hiding, so a sheet that hides them
+       always is a sheet with this line taken out. Measured as a mutation on
+       29.08.2026: with the `:not(:focus-within)` dropped, the case above stays
+       green over a cropper no keyboard can see. */
+    const [rule] = hiding()
+
+    expect(hiding().length, 'the sliders are hidden by more than one rule, or by none').toBe(1)
+    expect(must(rule, 'the rule that takes the sliders off the screen').selectorText).toContain(
+      ':not(:focus-within)',
+    )
   })
 })

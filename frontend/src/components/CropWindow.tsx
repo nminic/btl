@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { closestIn, cropIn, frameOf, holeOf, movedTo, sizedTo, UNKNOWN } from './crop'
+import { aimAt, closestIn, cropIn, frameOf, holeOf, movedTo, sizedTo, UNKNOWN } from './crop'
 import type { Crop, Shape } from './crop'
 import { useI18n } from '../i18n/useI18n'
 import './Crop.css'
@@ -77,12 +77,35 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
      that starts on the edge into a move the instant the circle catches up with
      the finger. */
   const doing = useRef<'moving' | 'sizing' | null>(null)
+  /**
+   * What the pointer looks like over this picture, which is nine answers rather
+   * than one and so cannot be a line in the stylesheet.
+   *
+   * Owner, 29.08.2026: „Kad je miš unutar kruga, pointer se pretvara u ruku",
+   * and „Kad je miš na samoj ivici kruga, pointer se pretvara u strelice za
+   * razvlačenje." Which of the two, and which way the arrows point, depends on
+   * where in the picture the pointer is and on how big the circle is at that
+   * moment, so it is a piece of state and not a declaration: `Crop.css`
+   * deliberately says nothing about the cursor.
+   *
+   * State rather than a value written straight onto the element, because React
+   * is what owns that attribute; and cheap, because setting a state to the value
+   * it already holds is refused before anything is drawn again, and a pointer
+   * crossing the picture answers the same thing hundreds of times in a row.
+   */
+  const [cursor, setCursor] = useState('')
 
-  /** Where a pointer is, as a share of the drawn picture in each direction. */
-  const spotOf = (event: { clientX: number; clientY: number }, box: DOMRect) => ({
-    across: (event.clientX - box.left) / box.width,
-    down: (event.clientY - box.top) / box.height,
-  })
+  /** Where a pointer is, as a share of the drawn picture in each direction. The
+   *  box is asked of the element the event was aimed at, so there is one reading
+   *  of it and every handler here is looking at the same picture. */
+  const spotOf = (event: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
+    const box = event.currentTarget.getBoundingClientRect()
+
+    return {
+      across: (event.clientX - box.left) / box.width,
+      down: (event.clientY - box.top) / box.height,
+    }
+  }
 
   return (
     <div className="crop">
@@ -125,26 +148,34 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
                 maxBlockSize: '60svh',
                 inlineSize: `min(100%, calc(60svh * ${shape.width} / ${shape.height}))`,
                 marginInline: 'auto',
+                /* And what the pointer says it may do here, which is the state
+                   above rather than a rule in the sheet: it is a different answer
+                   over the middle of the circle, over its rim and over each
+                   quarter of that rim. Empty until a pointer has been over the
+                   picture at all, and empty again once it leaves, which is
+                   exactly when nobody is looking at a cursor. */
+                cursor,
               }),
         }}
         onPointerDown={
           onChange === undefined
             ? undefined
             : (event) => {
-                const box = event.currentTarget.getBoundingClientRect()
-                const spot = spotOf(event, box)
-                /* How far out the press landed, measured against the circle's own
-                   radius: inside it is a move, around the rim is a resize. The rim
-                   is a band and not a line, because a finger is not a pixel; the
-                   share is the same at every size, so a small circle keeps a rim
-                   somebody can actually hit. */
-                const middle = { across: Number.parseFloat(hole.x) / 100, down: Number.parseFloat(hole.y) / 100 }
-                const reach = Math.hypot(
-                  (spot.across - middle.across) / (Number.parseFloat(hole.across) / 100),
-                  (spot.down - middle.down) / (Number.parseFloat(hole.down) / 100),
-                )
+                const spot = spotOf(event)
+                /* The same reading the cursor has been showing all along, asked
+                   of the one place that answers it (`aimAt` in components/crop.ts).
+                   Deciding it again here is how a portal ends up promising one
+                   thing with the pointer and doing another with the press. */
+                const aim = aimAt(hole, spot)
 
-                doing.current = reach > 0.75 ? 'sizing' : 'moving'
+                doing.current = aim.doing
+                /* And the cursor is locked to it for the rest of the gesture: a
+                   closed hand while the circle is carried, the arrows while it is
+                   pulled. It stops answering where the pointer is, because from
+                   here until the release the answer is what the press decided;
+                   without that, a drag that carries the circle out from under the
+                   pointer would flicker between a hand and the arrows. */
+                setCursor(aim.doing === 'moving' ? 'grabbing' : aim.cursor)
                 /* Held by the box for the rest of the gesture, so a finger that
                    wanders off the picture goes on moving the circle rather than
                    being handed to whatever it wandered onto. Asked for rather
@@ -155,7 +186,7 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
                   event.currentTarget.setPointerCapture(event.pointerId)
                 }
                 onChange(
-                  doing.current === 'moving'
+                  aim.doing === 'moving'
                     ? movedTo(held, shape, spot)
                     : sizedTo(held, shape, spot, closestIn(shape)),
                 )
@@ -165,11 +196,17 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
           onChange === undefined
             ? undefined
             : (event) => {
+                const spot = spotOf(event)
+
                 if (doing.current === null) {
+                  /* Nothing is held, so nothing moves: this is the pointer
+                     promising what a press would do and no more. The crop is left
+                     exactly as it was, or the circle would follow a mouse merely
+                     passing over the picture. */
+                  setCursor(aimAt(hole, spot).cursor)
+
                   return
                 }
-
-                const spot = spotOf(event, event.currentTarget.getBoundingClientRect())
 
                 onChange(
                   doing.current === 'moving'
@@ -181,8 +218,13 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
         onPointerUp={
           onChange === undefined
             ? undefined
-            : () => {
+            : (event) => {
                 doing.current = null
+                /* Back to promising rather than reporting, read off where the
+                   pointer was let go and off the circle as it now is. Waiting for
+                   the next move instead would leave a closed hand under a pointer
+                   holding nothing, for as long as it stays still. */
+                setCursor(aimAt(hole, spotOf(event)).cursor)
               }
         }
         onPointerCancel={
@@ -190,6 +232,23 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
             ? undefined
             : () => {
                 doing.current = null
+                /* Nothing is promised after a gesture somebody else took away:
+                   the press may have been stolen by the telephone's own scroll or
+                   by a window losing focus, and where the pointer ended up is not
+                   this picture's to say. The next move over the picture answers
+                   again. */
+                setCursor('')
+              }
+        }
+        onPointerLeave={
+          onChange === undefined
+            ? undefined
+            : () => {
+                /* Off the picture there is nothing to promise. Only ever fired
+                   with nothing held: while the box has the pointer captured the
+                   browser withholds the boundary events, and hands them over at
+                   the release, which is the one moment this may run after a drag. */
+                setCursor('')
               }
         }
       >
@@ -197,6 +256,42 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
           className="crop__whole"
           src={picture}
           alt={alt}
+          /* And the browser's own dragging of it turned off, which is what keeps
+             a gesture alive long enough to reach a limit.
+
+             A picture is draggable by default: press on it, move, and Chrome
+             starts a drag of the file itself and takes the pointer away from
+             whoever had it. That is exactly what shrinking the circle does. The
+             circle follows the pointer inwards, the rim overtakes it, and the
+             pointer is left standing over bare photograph with the button still
+             down. Measured in Chrome over the built `dist` on 29.08.2026, on a
+             picture 1000 by 2000 pressed at 0,97 of the box across and dragged
+             to 0,90, 0,70, 0,55 and 0,50 of it: without this attribute the page
+             reports `dragstart` on `IMG.crop__whole`, then `pointercancel`,
+             `lostpointercapture`, `pointerout` and `pointerleave`.
+             `pointercancel` empties `doing`, so the size went 1 to 0,94 to 0,80
+             and then stood still for the rest of the press, and the cursor fell
+             from `ew-resize` back to nothing with the button still held. Owner,
+             29.08.2026, point 4: „krug se skuplja ili širi do mogućih granica",
+             and half of that could not happen at all. With this attribute the
+             same press runs 1 to 0,94 to 0,80 to 0,40 to 0,24, which is the
+             floor `closestIn` sets for that picture, the cursor stays
+             `ew-resize` throughout, and no `dragstart` is fired at all.
+
+             On the reading screen too, where nothing is dragged and this changes
+             nothing about the gesture: one element, one answer. A conditional
+             here would be a second thing to keep in step with `onChange` for the
+             sake of letting a moderator drag a photograph out of the page, which
+             nobody asked for.
+
+             `Crop.css` does not carry this. `-webkit-user-drag` is one browser's
+             own property and is not in any specification, while the attribute is
+             what HTML gives for the purpose and is what React writes on the
+             element. `cropChooser.test.tsx` holds it, in the same shape as
+             `touch-action: none` beside it: jsdom has no native dragging at all,
+             so the attribute is what a test can see and the browser is where the
+             fault was measured. */
+          draggable={false}
           onLoad={(event) => {
             /* Both or neither. A picture that failed to decode reports nought
                for each, and a box of nought height collapses to a line with a
