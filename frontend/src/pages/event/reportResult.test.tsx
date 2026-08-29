@@ -598,14 +598,21 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     /* The whole label and not a piece of it: „8,680 km" contains „8,68", so asking
        for the piece would let a finer number through, and the row of the table
        beside it writes two decimals. Measured by a review on 28.08.2026: with the
-       label written to three decimals the suite stayed green. */
+       label written to three decimals the suite stayed green.
+
+       The row's own two decimals are guarded where the row is drawn („is listed
+       under the event by its measurements"), and the two are written down here as
+       one fact with two homes rather than joined into one: the row is a number in a
+       column and the label is a sentence, and a helper shared between them would be
+       a third home for a coincidence. What holds them together is that both are
+       measured, each where it lives. */
     const eight = must(
       together.find((one) => one.distanceKm === 8.68),
       'the race this is about',
     )
 
     expect(raceLabel(eight, together, 'sr-Latn')).toBe(
-      `${eight.name}, ${formatNumber(8.68, 'sr-Latn', 2)} km, ${formatShortDate(eight.date, 'sr-Latn')}`,
+      `${eight.name}, ${formatNumber(8.68, 'sr-Latn', 2)} km`,
     )
   })
 
@@ -614,7 +621,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        different lengths on one morning under one name need neither the day nor the
        second decimal, and a label that carries them anyway is a label nobody can
        scan. Measured over the whole file on 28.08.2026: of 1612 races, 24 labels
-       carry the day and 4 the exact length, and no two races of one event read the
+       reach the second step and 4 the third, and no two races of one event read the
        same.
 
        Measured by a review the same day: with the first step deciding on the name
@@ -630,6 +637,43 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
 
     expect(said).toEqual(
       plain.map((one) => `${one.name}, ${formatDistance(one.distanceKm, 'sr-Latn')}`),
+    )
+  })
+
+  it('reaches for the exact length only where the day has already failed', async () => {
+    /* The rule by which the third step is chosen over the second, which is the one
+       thing the events in the file cannot measure: a review on 28.08.2026 replaced
+       that rule with an unrelated one and **not one of the 1612 labels changed**,
+       so the whole suite stayed green over a portal that would draw two links of
+       one name.
+
+       So the set is built here rather than found. Three races of one name: two that
+       write the same length on one morning, and one on another morning. The day
+       parts the third from the other two, so it must keep the day; it does not part
+       the first two from each other, so they must go on to the exact length. */
+    const one: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Probna trka',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 8.68,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+    }
+    const two: Race = { ...one, id: 'b', distanceKm: 8.74 }
+    /* The same written length as the other two, so all three collide at the first
+       step and the day is what has to part them. */
+    const three: Race = { ...one, id: 'c', date: '2020-01-02', distanceKm: 8.7 }
+    const among = [one, two, three]
+
+    expect(raceLabel(one, among, 'sr-Latn')).toBe('Probna trka, 8,68 km')
+    expect(raceLabel(two, among, 'sr-Latn')).toBe('Probna trka, 8,74 km')
+    /* And the one the day does part keeps the day, rather than being written out to
+       the hundredth along with them. */
+    expect(raceLabel(three, among, 'sr-Latn')).toBe(
+      `Probna trka, ${formatDistance(8.7, 'sr-Latn')}, ${formatShortDate(three.date, 'sr-Latn')}`,
     )
   })
 

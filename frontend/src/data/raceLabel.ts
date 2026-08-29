@@ -28,8 +28,8 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * **Why the day.** One event may run over several mornings (PDL P10), and eleven
  * events hold two or more races of one written length across more than one day:
  * Danube maraton 2022 has four of 42,2 km on four consecutive mornings. Counted
- * over the whole file on 28.08.2026: of 1612 races, 24 labels carry the day, 4
- * carry the exact length, and no two races of one event read the same.
+ * over the whole file on 28.08.2026: of 1612 races, 24 labels reach the second step and 4 the
+ * third, and no two races of one event read the same.
  *
  * **Why the exact length, which is the step this function did not have until
  * 28.08.2026.** `formatDistance` writes one decimal, so 8,68 km and 8,74 km are
@@ -45,6 +45,14 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * where before the row said „8,68" and the link said „8,7 km". Two decimals and not
  * three: the two are one fact with two homes, and a label finer than its own row
  * would be the same disagreement the other way round.
+ *
+ * **The third step carries no day**, and that is not an oversight. It is reached
+ * only where the day was already tried and told two races apart, so adding it there
+ * would be fifteen characters that distinguish nothing. Measured by a review on
+ * 28.08.2026: on BTL dezorijentiring the four labels that reach this step carried
+ * „, 23. 12. 2018." while the table of races on the same page deliberately draws no
+ * day column at all, because every race of that event runs on one morning (owner,
+ * 10.08.2026).
  *
  * **What even three steps do not tell apart**, said out loud rather than left to be
  * found: two races of one event, one name, one morning, and two lengths that agree
@@ -66,8 +74,7 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
 export function raceLabel(race: Race, among: Race[], locale: string): string {
   const named = (one: Race) => `${one.name}, ${formatDistance(one.distanceKm, locale)}`
   const dated = (one: Race) => `${named(one)}, ${formatShortDate(one.date, locale)}`
-  const exact = (one: Race) =>
-    `${one.name}, ${formatNumber(one.distanceKm, locale, 2)} km, ${formatShortDate(one.date, locale)}`
+  const exact = (one: Race) => `${one.name}, ${formatNumber(one.distanceKm, locale, 2)} km`
   const alone = (say: (one: Race) => string) => among.filter((one) => say(one) === say(race)).length < 2
 
   if (alone(named)) {
