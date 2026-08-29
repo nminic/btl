@@ -30,8 +30,8 @@ import { renderAt } from '../../test/render'
  * **Who wins is a question for a browser, and it is not asked here.** It is asked by
  * `scripts/refused-control-appearance.mjs`, which measures the built sheet in headless
  * Chrome in both themes, at one width inside every band that sheet can tell apart from
- * 360px up, and in four states: at rest, under a real mouse, under a real press, and
- * under a real Tab. It is the only
+ * 360px up, on every screen its `@media` preludes ask about, and in four states: at rest,
+ * under a real mouse, under a real press, and under a real Tab. It is the only
  * oracle that is not another reimplementation of the cascade. That script
  * is run by hand and it writes no markup of the portal's own, so two things it cannot
  * see are answered below, where jsdom answers them exactly: what a component puts on the

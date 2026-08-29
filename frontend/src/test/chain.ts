@@ -60,6 +60,84 @@ export function chainToShell(from: Element): string[] {
   return walk.slice(0, shell + 1).map((one, index) => nameOf(one, index > 0))
 }
 
+/** The three ways a piece of the script says „this is not code": the two comments and the
+ *  three quotes. */
+const QUOTES = ['"', "'", '`']
+
+/**
+ * The script from one point onward with everything that is not code blanked out, character
+ * for character so that the two texts still line up and a position found in the one is the
+ * same position in the other.
+ *
+ * A bracket is what tells the reader below where the list of controls ends, and a bracket
+ * somebody wrote in a sentence is not one. A review put `CONTROLS[2` inside a comment in
+ * that list and three cases of this suite fell over saying the list „is not written out as
+ * one list", which names the wrong thing entirely: it sends the next reader to the list,
+ * where nothing is wrong, rather than to the comment they had just written.
+ *
+ * Regular expressions are not among the three and cannot be: telling the `/` that opens
+ * one from the `/` that divides needs the grammar of the language, and this is a reader of
+ * one declaration and not a parser. So the reading starts at the declaration rather than
+ * at the top of the file, where the script does write expressions carrying quotes of their
+ * own, and a bracket inside one written into the declaration itself is read as code. That
+ * is where this stops being able to tell, and it is said here rather than left to be
+ * found.
+ */
+function blanked(text: string, from: number): string {
+  const out = [...text]
+  const hide = (at: number, until: number) => {
+    for (let step = at; step < until; step += 1) {
+      /* Line breaks are kept, so a line of the script is still the line it was: the
+         complaints below are read by somebody looking at the file. */
+      out[step] = text[step] === '\n' ? '\n' : ' '
+    }
+  }
+  let at = from
+
+  while (at < text.length) {
+    const two = text.slice(at, at + 2)
+    const here = text[at] ?? ''
+
+    if (two === '//' || two === '/*') {
+      const shuts = two === '//' ? '\n' : '*/'
+      const found = text.indexOf(shuts, at + 2)
+      /* An unclosed comment swallows the rest of the file, which is what it does to the
+         language too. */
+      const ends = found === -1 ? text.length : found + shuts.length
+
+      hide(at, ends)
+      at = ends
+      continue
+    }
+
+    if (QUOTES.includes(here)) {
+      let step = at + 1
+
+      while (step < text.length && text[step] !== here) {
+        step += text[step] === '\\' ? 2 : 1
+      }
+
+      /* The quotes themselves stay, because the reader below looks for the backticks a
+         fixture is written between. */
+      hide(at + 1, Math.min(step, text.length))
+      at = step + 1
+      continue
+    }
+
+    at += 1
+  }
+
+  return out.join('')
+}
+
+/** Where something is written out and not where it is talked about: a declaration begins a
+ *  line of its own. Found by name anywhere in the file, a sentence of the prose above
+ *  naming `const CONTROLS` is where the reading would start, and it would start in the
+ *  middle of a comment, which is where blanking it out stops working. */
+function declaration(script: string, named: string): number {
+  return new RegExp(`^const ${named}\\b`, 'm').exec(script)?.index ?? -1
+}
+
 /**
  * The fixtures that script measures, named in the order its `CONTROLS` names them.
  *
@@ -75,21 +153,24 @@ export function chainToShell(from: Element): string[] {
  * `markup:` anywhere would go on finding it.
  */
 export function controlsOf(script: string): string[] {
-  const starts = script.indexOf('const CONTROLS')
+  const starts = declaration(script, 'CONTROLS')
 
   if (starts === -1) {
     throw new Error('the script measures no list of controls called CONTROLS')
   }
 
-  const opens = script.indexOf('[', starts)
+  const code = blanked(script, starts)
+  const opens = code.indexOf('[', starts)
   let depth = 0
   let closes = -1
 
   /* Counted rather than cut at the first `]`, because an entry of the list is written
-     with brackets of its own. */
-  for (let at = opens; at !== -1 && at < script.length && closes === -1; at += 1) {
-    depth += script[at] === '[' ? 1 : 0
-    depth -= script[at] === ']' ? 1 : 0
+     with brackets of its own. Counted over the code and not over the text, because a
+     bracket in a comment or in a name is not one of the list's: measured, a comment
+     inside the list turned three cases of this suite into a complaint about the list. */
+  for (let at = opens; at !== -1 && at < code.length && closes === -1; at += 1) {
+    depth += code[at] === '[' ? 1 : 0
+    depth -= code[at] === ']' ? 1 : 0
 
     if (depth === 0) {
       closes = at
@@ -100,7 +181,7 @@ export function controlsOf(script: string): string[] {
     throw new Error('CONTROLS is not written out as one list')
   }
 
-  return [...script.slice(opens, closes).matchAll(/\bmarkup:\s*([\w$]+)/g)].map((found) =>
+  return [...code.slice(opens, closes).matchAll(/\bmarkup:\s*([\w$]+)/g)].map((found) =>
     String(found[1]),
   )
 }
@@ -126,14 +207,18 @@ export function markupOf(script: string, named: string): string {
     )
   }
 
-  const starts = script.indexOf(`const ${named}`)
+  const starts = declaration(script, named)
 
   if (starts === -1) {
     throw new Error(`the script has no fixture called ${named}`)
   }
 
-  const opens = script.indexOf('`', starts)
-  const closes = script.indexOf('`', opens + 1)
+  /* The two backticks are found in the code and the markup is taken out of the text: a
+     backtick written into a comment between the name and the fixture is not the one the
+     fixture opens with. */
+  const code = blanked(script, starts)
+  const opens = code.indexOf('`', starts)
+  const closes = code.indexOf('`', opens + 1)
 
   if (opens === -1 || closes === -1) {
     throw new Error(`the fixture ${named} is not written out as one piece of markup`)

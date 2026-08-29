@@ -55,21 +55,31 @@
  *
  * **What none of it sees, said plainly because the rule of this repo is that a guard may
  * claim only what the tool beneath it answers:** a change applied to the live control and
- * the refused one alike, in every state and at every width, in a property nobody has
+ * the refused one alike, in every state and on every screen, in a property nobody has
  * named here. And a width a `@container` query tells apart: the bands below are cut by
  * `@media` alone, because a container is as wide as whatever holds it and that is a
  * layout this file does not draw. The portal has one such query today
  * (`pages/TopBoards.css`) and neither of these controls stands under it.
  * `font-size: 0` on `.entity-open` empties both labels and every comparison above stays
- * quiet, because nothing differs from anything. Those classes of fault are not subtle on
- * a screen, and they are what looking at QA is still for. They are not caught here, and
- * this file does not pretend they are.
+ * quiet, because nothing differs from anything. And a rule reached only where two settings
+ * hold at once that the sheet never asks for together, since the screens below are the
+ * ones its preludes name and one setting is what a prelude names today. Those classes of
+ * fault are not subtle on a screen, and they are what looking at QA is still for. They are
+ * not caught here, and this file does not pretend they are.
  *
  * **What is measured:** the built stylesheet, over the ancestor chain each control is
  * given by the screen it stands on, in both themes, at **one width inside every band the
- * built sheet can tell apart** (`widthsOf`, from 360px up), in **four states** (at rest,
- * under a real mouse, under a real press, and under a real Tab), each of the last three
- * checked to have actually landed.
+ * built sheet can tell apart** (`widthsOf`, from 360px up), on **every screen its preludes
+ * ask about** (`askedIn` and `screensOf`: the browser as it comes, and one pass with each
+ * setting the sheet names emulated, `prefers-reduced-motion: reduce` among them today), in
+ * **four states** (at rest, under a real mouse, under a real press, and under a real Tab),
+ * each of the last three checked to have actually landed.
+ *
+ * **Nothing the sheet asks for is passed over in silence.** A prelude this cannot take
+ * apart stops the run and says what it could not read, and so does a setting Chrome will
+ * not put it into. Both were measured as silence first: a second width condition beside a
+ * readable one left its band unvisited, and `@media (min-resolution: 2dppx)` took the
+ * refusal off every 2x screen with the run still green.
  *
  * **What is not measured:** the markup below is written here rather than drawn by the
  * portal, so it sees nothing a component puts on the element itself. An inline style is
@@ -349,12 +359,9 @@ const FIXTURE = (styles, markup) => `<!doctype html>
 <html lang="sr" data-theme="dark"><head><meta charset="utf-8">${styles}</head>
 <body>${markup}</body></html>`
 
-/** Whole computed styles rather than a handful of properties, for both controls and for
- *  the two pseudo-elements a rule can paint over the button with.
- *
- *  The token probe hangs on `<html>`, so it reads what the theme says at the root. Hung
- *  on `<body>` it inherits whatever an ancestor redefined along with the button, and the
- *  comparison compares a fault with itself. */
+/** Every pseudo-element the specification gives these controls, and not the two that were
+ *  thought of first: whole computed styles are compared on each of them, because a rule
+ *  can paint over a button through any of the six. */
 const PSEUDOS = ['::before', '::after', '::first-line', '::first-letter', '::selection', '::marker']
 
 /** The one pseudo-element Chrome computes out of its own defaults until something makes
@@ -384,6 +391,23 @@ function valueOf(named, theme) {
   return named.startsWith('var(') ? theme[named] : named
 }
 
+/** Everything one measurement reads off the page: both controls whole, their
+ *  pseudo-elements, whether the state being measured actually landed, and what the theme
+ *  makes of every colour the control names.
+ *
+ *  **A probe of its own for each token, coloured before it is in the document and thrown
+ *  away after.** One probe recoloured on the page is a colour changing, and a colour
+ *  changing is a transition: `index.css` gives every element
+ *  `transition-duration: .01ms !important` under `prefers-reduced-motion: reduce`, so the
+ *  value read on the next line was the one it was leaving rather than the one it was going
+ *  to. Measured on that screen, the first time this run visited it: every token came back
+ *  as the inherited text colour, and the refusal of the calendar button was held against
+ *  that at every width in both themes. A first computed style is not a change, so a probe
+ *  that arrives already coloured has nothing to transition from.
+ *
+ *  The probe hangs on `<html>`, so it reads what the theme says at the root. Hung on
+ *  `<body>` it inherits whatever an ancestor redefined along with the button, and the
+ *  comparison compares a fault with itself. */
 const readFor = (tokens) => `(() => {
   const PSEUDOS = ${JSON.stringify(PSEUDOS)}
   const TOKENS = ${JSON.stringify(tokens)}
@@ -396,16 +420,17 @@ const readFor = (tokens) => `(() => {
     }
     return out
   }
-  const probe = document.createElement('span')
-  document.documentElement.append(probe)
   const root = getComputedStyle(document.documentElement)
   const missing = TOKENS.filter((token) => root.getPropertyValue(token.slice(4, -1).trim()) === '')
   const theme = {}
   for (const token of TOKENS) {
+    const probe = document.createElement('span')
+
     probe.style.color = token
+    document.documentElement.append(probe)
     theme[token] = getComputedStyle(probe).color
+    probe.remove()
   }
-  probe.remove()
   return JSON.stringify({
     refused: all(one, null),
     live: all(document.getElementById('live'), null),
@@ -603,14 +628,17 @@ function differences(left, right) {
     .sort()
 }
 
-/** One control, one theme, four states. The theme is pinned twice, on the root the way
- *  the portal writes it and as the emulated media feature, so which theme gets measured
- *  is decided here and not by the settings of whoever runs this. */
-async function measure(socket, theme, control) {
+/** One control, one screen, one theme, four states. The theme is pinned twice, on the root
+ *  the way the portal writes it and as the emulated media feature, so which theme gets
+ *  measured is decided here and not by the settings of whoever runs this. The screen is
+ *  pinned in the same call, and not before it: `setEmulatedMedia` replaces the features it
+ *  is given rather than adding to them, so a screen set in one call and a theme in the
+ *  next is a screen that lasted until the next line. */
+async function measure(socket, theme, control, screen) {
   const READ = readFor(tokensOf(control))
 
   await send(socket, 'Emulation.setEmulatedMedia', {
-    features: [{ name: 'prefers-color-scheme', value: theme }],
+    features: [{ name: 'prefers-color-scheme', value: theme }, ...screen.features],
   })
   await evaluate(
     socket,
@@ -910,52 +938,158 @@ function complaintsFor(where, control, { resting, hovered, pressed, focused }) {
   return complaints
 }
 
-/** Every width condition the built sheet asks, as the browser is going to be asked it and
- *  as the number it names.
+/** A width condition in the two spellings its two homes use: the portal writes
+ *  `@media (min-width: 35em)` and the build hands the browser `@media (width>=35em)`. */
+const RANGE = /^\(\s*width\s*(<=|>=|<|>)\s*([\d.]+)(px|em|rem)\s*\)$/
+const BOUND = /^\(\s*(min|max)-width\s*:\s*([\d.]+)(px|em|rem)\s*\)$/
+/** Anything else of the shape `(feature: value)`, with the `min-`/`max-` of the prefixed
+ *  spellings cut off: emulating `resolution: 2dppx` is what satisfies
+ *  `(min-resolution: 2dppx)`, and the browser is asked afterwards whether it did. */
+const FEATURE = /^\(\s*(?:(?:min|max)-)?([a-z-]+)\s*:\s*([^()]+?)\s*\)$/
+
+/** The themes every measurement is taken in. A prelude asking for one of them is a prelude
+ *  already visited from both sides, and not an axis of its own. */
+const THEMES = ['dark', 'light']
+
+const HOLDS = {
+  '<=': (width, at) => width <= at,
+  '>=': (width, at) => width >= at,
+  '<': (width, at) => width < at,
+  '>': (width, at) => width > at,
+}
+
+/** Everything the built sheet asks about the screen it is shown on, split into the two
+ *  kinds this file can do something with: the **widths** it visits, and the **settings**
+ *  it puts the browser into.
  *
- *  Both spellings, because the two homes of one condition are written differently: the
- *  portal writes `@media (min-width: 35em)` and the build hands the browser
- *  `@media (width>=35em)`.
+ *  **Read out of the preludes of `@media`, and out of nothing else.** Scraped off the
+ *  whole text the way this once was, `@container (width<=45em)` reads as a media condition
+ *  and adds a band no media query cuts: a container is as wide as whatever holds it, and
+ *  that is a layout this file does not draw. The portal has one such query today
+ *  (`pages/TopBoards.css`).
  *
- *  A prelude that mentions a width and yields none of them stops the run rather than
- *  being passed over. A condition this cannot read is a band nobody visits, which is the
- *  fault this whole derivation exists for, and it would arrive silently: the day the
- *  build starts writing `(400px<=width<=800px)`, an empty parse and a sheet with no
- *  breakpoints at all look exactly alike from here. */
-function conditionsIn(css) {
-  const read = [
-    ...[...css.matchAll(/\(\s*width\s*(<=|>=|<|>)\s*([\d.]+)(px|em|rem)\s*\)/g)].map((found) => ({
-      text: found[0],
-      how: found[1],
-      px: Number(found[2]) * (found[3] === 'px' ? 1 : EM),
+ *  **And every prelude has to come apart completely.** What is left of one when its
+ *  conditions are cut out must be the word `and`, or the run stops and says what it could
+ *  not read. Two faults measured, both silent before this:
+ *
+ *  - a prelude carrying a condition this reads beside one it does not,
+ *    `@media (width>=35em) and (600px<=width<=650px)`, used to pass because one half was
+ *    recognised. The band 600..650 was cut by nothing and the widths either side of it,
+ *    560 and 699, walked straight past.
+ *  - a prelude on an axis that is not width at all,
+ *    `@media (min-resolution: 2dppx)`, used not to be looked at, so a rule taking the
+ *    refusal off on every 2x screen, which is to say on nearly every telephone, left the
+ *    run green.
+ *
+ *  A media type (`screen`, `print`), a comma, a `not`: none of them is a condition this
+ *  can put a browser into, and each stops the run by name rather than being waved through
+ *  on the grounds that it looked harmless. */
+function askedIn(css) {
+  const widths = []
+  const settings = new Map()
+
+  for (const found of css.matchAll(/@media([^{]*)\{/g)) {
+    const prelude = found[1]
+    const conditions = [...prelude.matchAll(/\([^()]*\)/g)].map((one) => one[0])
+    const leftover = conditions
+      .reduce((text, one) => text.replace(one, ' '), prelude)
+      .replace(/\band\b/g, ' ')
+      .trim()
+
+    if (leftover !== '') {
+      throw new Error(
+        `a media prelude this cannot take apart, so what it paints would go unmeasured: @media${prelude.trim()} (left over: ${leftover})`,
+      )
+    }
+
+    const features = []
+
+    for (const one of conditions) {
+      const range = RANGE.exec(one)
+      const bound = BOUND.exec(one)
+
+      if (range !== null) {
+        widths.push({
+          text: one,
+          how: range[1],
+          px: Number(range[2]) * (range[3] === 'px' ? 1 : EM),
+        })
+        continue
+      }
+      if (bound !== null) {
+        widths.push({
+          text: one,
+          how: bound[1] === 'min' ? '>=' : '<=',
+          px: Number(bound[2]) * (bound[3] === 'px' ? 1 : EM),
+        })
+        continue
+      }
+
+      const feature = FEATURE.exec(one)
+
+      if (feature === null) {
+        throw new Error(
+          `a condition this cannot read, so the screens behind it would go unmeasured: ${one}`,
+        )
+      }
+
+      const [, name, value] = feature
+
+      /* The theme is pinned by hand in every measurement and both of them are visited, so
+         a prelude asking for one is already asked from both sides. A value neither of them
+         is, is a screen nobody here ever shows. */
+      if (name === 'prefers-color-scheme') {
+        if (!THEMES.includes(value)) {
+          throw new Error(
+            `the sheet paints a ${value} theme and only ${THEMES.join(' and ')} are measured`,
+          )
+        }
+        continue
+      }
+
+      features.push({ name, value, text: one })
+    }
+
+    if (features.length > 0) {
+      /* Named by the whole conjunction and not by each half, because a prelude naming two
+         settings is a rule reached only where both hold. */
+      settings.set(
+        features
+          .map((one) => one.text)
+          .sort()
+          .join(' and '),
+        features,
+      )
+    }
+  }
+
+  return {
+    conditions: widths.map((one) => ({
+      text: one.text,
+      px: one.px,
+      holds: (width) => HOLDS[one.how](width, one.px),
     })),
-    ...[...css.matchAll(/\(\s*(min|max)-width\s*:\s*([\d.]+)(px|em|rem)\s*\)/g)].map((found) => ({
-      text: found[0],
-      how: found[1] === 'min' ? '>=' : '<=',
-      px: Number(found[2]) * (found[3] === 'px' ? 1 : EM),
+    settings: [...settings].map(([name, features]) => ({ name, features })),
+  }
+}
+
+/** The screens this run shows each control: the one the browser comes with, and one for
+ *  every setting the sheet asks about. Every width and both themes are visited on each of
+ *  them, because a prelude may name a setting and a width together and the rule inside it
+ *  is reached only where both hold.
+ *
+ *  One setting at a time and never two, which is what the preludes of the sheet name
+ *  today; a rule reached only where two settings the sheet never wrote together both hold
+ *  is not measured, and would need a prelude asking for both before this knew of it. */
+function screensOf(settings) {
+  return [
+    { name: 'as it comes', features: [], asks: [] },
+    ...settings.map((one) => ({
+      name: one.name,
+      features: one.features.map(({ name, value }) => ({ name, value })),
+      asks: one.features.map((feature) => feature.text),
     })),
   ]
-  const holds = {
-    '<=': (width, at) => width <= at,
-    '>=': (width, at) => width >= at,
-    '<': (width, at) => width < at,
-    '>': (width, at) => width > at,
-  }
-  const unread = [...css.matchAll(/@media[^{]*/g)]
-    .map((found) => found[0])
-    .filter((one) => one.includes('width') && !read.some((asked) => one.includes(asked.text)))
-
-  if (unread.length > 0) {
-    throw new Error(
-      `a width condition this cannot read, so the band behind it would go unmeasured: ${unread.join(' ')}`,
-    )
-  }
-
-  return read.map((one) => ({
-    text: one.text,
-    px: one.px,
-    holds: (width) => holds[one.how](width, one.px),
-  }))
 }
 
 /** One width inside every band the built sheet can tell apart, from the narrowest screen
@@ -974,11 +1108,20 @@ function conditionsIn(css) {
  *  from both sides of every number the sheet names, and then the ones that answer alike
  *  are dropped. */
 function widthsOf(conditions) {
-  /* Both sides of every number the sheet names, in whole pixels because a window is
-     measured in whole pixels: the last one under it, the first one at or above it, and
-     the number itself where it is whole. */
+  /* All four sides of every number the sheet names, in whole pixels because a window is
+     measured in whole pixels. Four and not three, because a whole number is a place where
+     two different pairs of conditions change their mind: `width<t` and `width>=t` change
+     between `ceil(t)-1` and `ceil(t)`, while `width<=t` and `width>t` change between
+     `floor(t)` and `floor(t)+1`, and for a whole `t` those are two different pairs of
+     pixels. Written with the first pair alone, a sheet naming `(max-width: 62.5em)`, which
+     is 1000px exactly, offered 999 and 1000 as candidates and both of them answer the same
+     way: everything wider than 1000px was a band with no width in it, which is to say
+     every ordinary desktop, and this said all was well. The portal writes whole numbers
+     both ways today (`Profile.css` has `(max-width: 38.75em)`, exactly 620px). On a number
+     that is not whole the four collapse back to two, which is the same two as before. */
   const edges = conditions.flatMap((one) => [
     Math.floor(one.px),
+    Math.floor(one.px) + 1,
     Math.ceil(one.px) - 1,
     Math.ceil(one.px),
   ])
@@ -1000,15 +1143,17 @@ function widthsOf(conditions) {
   return widths
 }
 
-/** What the browser makes of every condition of the sheet at the width it has been given,
- *  held against what this file made of the same conditions.
+/** What the browser makes of the conditions it is handed, on the screen it is on, held
+ *  against what this file made of the same conditions.
  *
  *  The bands above are arithmetic over numbers scraped out of a file, and arithmetic that
  *  has drifted from the sheet chooses widths that are all in one band while reading like
- *  a list of many. `em`, resolved here at 16px, is the likeliest way for it to drift. */
-const asksFor = (conditions) => `(() => JSON.stringify({
+ *  a list of many. `em`, resolved here at 16px, is the likeliest way for it to drift. And
+ *  a setting is only a setting if the browser took it: Chrome emulates what it emulates
+ *  and announces it nowhere, so it is asked. */
+const asksFor = (texts) => `(() => JSON.stringify({
   width: window.innerWidth,
-  holds: ${JSON.stringify(conditions.map((one) => one.text))}.map((one) => matchMedia(one).matches),
+  holds: ${JSON.stringify(texts)}.map((one) => matchMedia(one).matches),
 }))()`
 
 async function main() {
@@ -1041,13 +1186,14 @@ async function main() {
     throw new Error('no built stylesheet; run `npm run build` first')
   }
 
-  /* And the widths out of the same sheets, in the same order, because a band is cut by
-     every condition the browser is going to read and not only by the ones of the first
-     file. */
-  const conditions = conditionsIn(
+  /* And the widths and the screens out of the same sheets, in the same order, because a
+     band is cut by every condition the browser is going to read and not only by the ones
+     of the first file. */
+  const { conditions, settings } = askedIn(
     sheets.map((name) => readFileSync(join(dist, name), 'utf-8')).join('\n'),
   )
   const widths = widthsOf(conditions)
+  const screens = screensOf(settings)
 
   /* Named for this run. A browser left behind by an earlier run that never reached its
      `finally` sits on the port showing a fixture at the very same path, so matching by
@@ -1118,6 +1264,38 @@ async function main() {
       socket.addEventListener('error', reject)
     })
 
+    /* Every setting the sheet asks about, read on every screen this run shows, before a
+       single control is measured. A setting the browser answers the same way on all of
+       them is a setting whose rules are either always on or never on, so the sheet's two
+       sides are not both visited and nothing behind it is measured. That is how an axis
+       Chrome will not emulate arrives here: not as a wrong answer but as one answer, and
+       `deviceScaleFactor` is pinned to 1 a few lines below, so `resolution` is the one to
+       expect. Asked once here rather than trusted, because the alternative is a run that
+       reads „all clear" about screens it never showed. */
+    const everyAsk = [...new Set(screens.flatMap((one) => one.asks))]
+
+    if (everyAsk.length > 0) {
+      const seen = new Map(everyAsk.map((text) => [text, new Set()]))
+
+      for (const screen of screens) {
+        await send(socket, 'Emulation.setEmulatedMedia', {
+          features: [{ name: 'prefers-color-scheme', value: THEMES[0] }, ...screen.features],
+        })
+
+        const said = await evaluate(socket, asksFor(everyAsk))
+
+        everyAsk.forEach((text, at) => seen.get(text).add(said.holds[at]))
+      }
+
+      const blind = everyAsk.filter((text) => seen.get(text).size < 2)
+
+      if (blind.length > 0) {
+        throw new Error(
+          `Chrome reads ${blind.join(', ')} the same way on every screen this run shows, so the rules behind it are either always on or never on and nothing about them is measured`,
+        )
+      }
+    }
+
     const complaints = []
 
     for (const [index, one] of pages.entries()) {
@@ -1127,41 +1305,52 @@ async function main() {
         await show(socket, one.address)
       }
 
-      for (const width of widths) {
-        /* A size of its own, so the control has a box and the mouse has somewhere to land
-           whatever window the browser happened to open with. */
-        await send(socket, 'Emulation.setDeviceMetricsOverride', {
-          width,
-          height: 800,
-          deviceScaleFactor: 1,
-          mobile: false,
-        })
+      for (const screen of screens) {
+        for (const width of widths) {
+          /* A size of its own, so the control has a box and the mouse has somewhere to
+             land whatever window the browser happened to open with. */
+          await send(socket, 'Emulation.setDeviceMetricsOverride', {
+            width,
+            height: 800,
+            deviceScaleFactor: 1,
+            mobile: false,
+          })
+          /* And the screen of this pass, so what is read below is read on it. Set again
+             for each width because the size override is a good place for a browser to
+             forget things, and read back on the next line either way. */
+          await send(socket, 'Emulation.setEmulatedMedia', {
+            features: [{ name: 'prefers-color-scheme', value: THEMES[0] }, ...screen.features],
+          })
 
-        /* And the size landed, and the sheet reads here the way this file read it off the
-           file. Without the first, every width above is the width the browser opened
-           with and the list of bands is one band measured over and over. */
-        const said = await evaluate(socket, asksFor(conditions))
+          /* And the size landed, and the sheet reads here the way this file read it off
+             the file, and the screen is the screen this pass is for. Without the first,
+             every width above is the width the browser opened with and the list of bands
+             is one band measured over and over. */
+          const asked = [...conditions.map((condition) => condition.text), ...screen.asks]
+          const wanted = [...conditions.map((condition) => condition.holds(width)), ...screen.asks.map(() => true)]
+          const said = await evaluate(socket, asksFor(asked))
 
-        if (said.width !== width) {
-          throw new Error(`the browser was asked for ${width}px and gave ${said.width}px`)
-        }
+          if (said.width !== width) {
+            throw new Error(`the browser was asked for ${width}px and gave ${said.width}px`)
+          }
 
-        const apart = conditions.filter((one, at) => one.holds(width) !== said.holds[at])
+          const apart = asked.filter((text, at) => wanted[at] !== said.holds[at])
 
-        if (apart.length > 0) {
-          throw new Error(
-            `at ${width}px the browser reads ${apart.map((one) => one.text).join(', ')} the other way round from this file, so the bands it visits are not the bands of the sheet`,
-          )
-        }
+          if (apart.length > 0) {
+            throw new Error(
+              `at ${width}px on ${screen.name} the browser reads ${apart.join(', ')} the other way round from this file, so the screens it visits are not the screens of the sheet`,
+            )
+          }
 
-        for (const theme of ['dark', 'light']) {
-          complaints.push(
-            ...complaintsFor(
-              `${one.control.name}, ${theme} at ${width}px`,
-              one.control,
-              await measure(socket, theme, one.control),
-            ),
-          )
+          for (const theme of THEMES) {
+            complaints.push(
+              ...complaintsFor(
+                `${one.control.name}, ${theme} at ${width}px on ${screen.name}`,
+                one.control,
+                await measure(socket, theme, one.control, screen),
+              ),
+            )
+          }
         }
       }
     }
@@ -1184,7 +1373,7 @@ async function main() {
        held the second control in `CONTROLS`, so taking it out left this sentence saying
        both about one. */
     console.log(
-      `all ${CONTROLS.length} refused controls still look refused in both themes, at ${widths.length} widths (${widths.join(', ')}), measured in Chrome (${CONTROLS.map((one) => one.name).join('; ')})`,
+      `all ${CONTROLS.length} refused controls still look refused in both themes, at ${widths.length} widths (${widths.join(', ')}) on ${screens.length} screens (${screens.map((one) => one.name).join('; ')}), measured in Chrome (${CONTROLS.map((one) => one.name).join('; ')})`,
     )
   } finally {
     chrome.kill()
