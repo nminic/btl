@@ -39,8 +39,8 @@ function Section({
   title,
   id,
   items,
-  /** Said out loud beside the numbers when they cannot be trusted, and nothing
-   *  where the section has no numbers. */
+  /** Said above the numbers when they cannot be trusted, and nothing where the
+   *  section has no numbers. */
   alarm,
 }: {
   title: string
@@ -92,6 +92,33 @@ function Section({
           the page it belongs to and level with the sections of that page. */}
       <p className="adminsection__title">{title}</p>
 
+      {/* Above the list rather than under it, and outside the panel either way.
+
+          **Outside**, because the panel is folded on a telephone: an alert that
+          is `display: none` when it is drawn is not announced, and unfolding the
+          list later does not announce it either, because nothing new is
+          inserted. The one warning that the numbers cannot be trusted was
+          therefore both invisible and silent on the screen where the list is
+          folded.
+
+          **Above**, because the sectors are one column that scrolls inside
+          itself from 51.25em up (`max-height: calc(100svh - 2rem)`,
+          SectionNav.css), and this sector is the second of the two. Under the
+          list, the alarm was the last thing in the taller half of that column
+          and fell off the bottom of it: measured in Chrome over the built
+          stylesheet and the markup this component draws, at a viewport of 673
+          CSS pixels, which is what a 1366x768 laptop leaves under the browser's
+          own chrome, `visibleColumn=641 contentColumn=673 alarmBottomAt=673`,
+          so the alarm was out of view while all six queues read nought. The
+          same measurement above the list reads `alarmTopAt=306
+          alarmBottomAt=383`, inside the 641 that is on the screen.
+
+          The order of the sectors is not what to move (owner, 29.08.2026): the
+          records stand first. What moves is the alarm, to the top of the sector
+          whose numbers it is about, where it is also read before them rather
+          than after. */}
+      {alarm}
+
       <div
         id={panelId}
         className={open ? 'adminsection__panel adminsection__panel--open' : 'adminsection__panel'}
@@ -138,14 +165,6 @@ function Section({
           ))}
         </ul>
       </div>
-
-      {/* Outside the panel, which is folded on a telephone: an alert that is
-          `display: none` when it is drawn is not announced, and unfolding the
-          list later does not announce it either, because nothing new is
-          inserted. The one warning that the numbers above cannot be trusted was
-          therefore both invisible and silent on the screen where the list is
-          folded. */}
-      {alarm}
     </nav>
   )
 }
@@ -266,18 +285,28 @@ function QueuesSector() {
            all, which is the one thing the note below says must not happen. */
         count: countFor(waiting, queue),
       }))}
-      /* Beside the numbers, because that is where the numbers are now. A file
-         that failed counts every queue it feeds as nought, and eight quiet
-         noughts read as an afternoon's work already done. This used to be said
-         on the hub, which was the only screen the numbers were on; the hub draws
-         nothing of its own now (owner, 06.08.2026), so the numbers stand in the
-         navigation, on every screen, and an alarm on one of them is an alarm
-         nobody sees.
+      /* With the numbers, because that is where the numbers are now. A file that
+         failed counts every queue it feeds as nought, and six quiet noughts read
+         as an afternoon's work already done. This used to be said on the hub,
+         which was the only screen the numbers were on; the hub draws nothing of
+         its own now (owner, 06.08.2026), so the numbers stand in the navigation,
+         on every screen, and an alarm on one of them is an alarm nobody sees.
 
-         It carries more since 29.08.2026, not less. A nought is an ordinary
-         reading now rather than a row that would have gone away, so nothing
-         about the column itself tells a moderator that the noughts on it were
-         never counted. Only this says it. */
+         **It answers a file that failed, and only that.** `failed` is one of
+         three states, and while the file is still on its way the third is the
+         one holding: `dataOr(items, [])` counts every queue it feeds as nought
+         and this raises nothing, so the column reads six noughts with not a word
+         beside them. Measured on this branch, with the file left unanswered: six
+         rows at „0 na čekanju" and no alert in this sector at all. That is not
+         new and it is not what 29.08.2026 changed, but the sentence that used to
+         be here said the alarm covered it, and it does not.
+
+         What 29.08.2026 did change is what a nought means. Until then a queue
+         holding nothing was left out of the list, so a column full of noughts was
+         itself the odd sight; now a nought is the ordinary reading, and nothing
+         about the column says whether it was counted or merely never filled in.
+         The alarm says it for the one case it knows about. The gap above is the
+         other case, and it is written down here rather than guessed at again. */
       alarm={
         failed(items) ? (
           <p className="adminsection__alarm" role="alert">

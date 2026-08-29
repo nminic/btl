@@ -15,6 +15,7 @@ import { SessionContext, type SessionValue, type SubmissionStatus } from '../ses
 import { Decided, Inbox } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
+import { unremarked } from '../test/stylesheet'
 import { setupUser } from '../test/user'
 import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
@@ -193,11 +194,19 @@ describe('the panel', () => {
        su sve stavke uvek tu), pa tek onda boks sa verifikacijom." They were the
        other way round until then.
 
-       Read off the landmarks in the order the document holds them, which is the
-       order somebody walking landmark by landmark hears and the order the column
-       is drawn in: the sectors are one flex column with nothing reordering them
-       (SectionNav.css). Not off a class name, and not off which of the two comes
-       back first from a query that does not promise an order. */
+       **What this case holds is the order in the document**, and that is all it
+       holds. It is the order somebody walking landmark by landmark hears, and
+       `findAllByRole` answers in document order, because Testing Library collects
+       through `querySelectorAll`, which is defined to. Not off a class name, and
+       not off the order the two were written to the props of anything.
+
+       **The order on the screen is a separate question and jsdom cannot answer
+       it**, because jsdom applies no stylesheet and lays nothing out. It was
+       asked of Chrome instead, once, over the built stylesheet and the markup
+       this shell draws: at 1264x900 the two sectors sit at `Odeljak Podaci@top=0`
+       and `Odeljak Verifikacija@top=296`, in that order, and the same at 1366 and
+       1440. A stylesheet that turns the column round moves those numbers and
+       nothing in this file would notice. */
     renderAt('/sr/administracija', 'superadmin')
 
     const sectors = await screen.findAllByRole('navigation', { name: /^Odeljak / })
@@ -207,13 +216,25 @@ describe('the panel', () => {
       'Odeljak Verifikacija',
     ])
 
-    /* And the stylesheet does not turn that round. The reading above is of the
-       markup alone, because jsdom applies no stylesheet: the sectors are a flex
-       column, so `column-reverse` on it or an `order` on either sector would put
-       verification back on top with every test here still green. The two things
-       that can invert a column are held by name; `border:` is not one of them,
-       which is why the property is matched only where a property may start. */
-    const css = readFileSync(join(process.cwd(), 'src/pages/admin/SectionNav.css'), 'utf-8')
+    /* **A named list of two ways to invert a flex column, and it is a list.** The
+       sectors are one flex column, so `column-reverse` on it or an `order` on
+       either sector would put verification back on top with every assertion above
+       still green. Those two are spelled out here because they are the two edits
+       a person reaches for; `display: grid` with a `grid-row` on the first child
+       does the same thing and is not caught, which was measured rather than
+       supposed. A longer list would not finish the job either, and the answer to
+       that is the browser measurement quoted above, not more spellings.
+
+       Comments blanked first, through the one reader that does it for every
+       guard over a stylesheet (`test/stylesheet.ts`): a note in this sheet
+       explaining that the two sectors must never be `column-reverse` is prose,
+       and matching it would fail the sheet for saying what it does.
+
+       `border:` is not one of the two, which is why the property is matched only
+       where a property may start. */
+    const css = unremarked(
+      readFileSync(join(process.cwd(), 'src/pages/admin/SectionNav.css'), 'utf-8'),
+    )
 
     expect(css).not.toContain('column-reverse')
     expect(css).not.toMatch(/(^|[\s;{])order\s*:/m)
@@ -1462,10 +1483,69 @@ describe('verification', () => {
 
       expect(panel).not.toBeNull()
       expect(panel?.contains(alarm)).toBe(false)
+
+      /* And above the list rather than under it. This sector is the second of
+         the two in a column that scrolls inside itself from 51.25em up
+         (`max-height: calc(100svh - 2rem)`, SectionNav.css), so the last thing
+         in it is the first thing to fall off the bottom. Measured in Chrome over
+         the built stylesheet and the markup this very render produces, at a
+         viewport of 673 CSS pixels, which is what a 1366x768 laptop leaves under
+         the browser's own chrome: under the list the column showed 641 of its
+         673 and the alarm ran from 586 to 673, so the whole of it was off the
+         screen while all six queues read nought. Above the list it runs from 356
+         to 443, and the column is 673 either way.
+
+         Held as document order, which is what carries it: jsdom lays nothing
+         out, so a box comparison here would compare two boxes of nothing. The
+         browser's half of this answer is the measurement above, taken once. */
+      expect(alarm.compareDocumentPosition(must(panel, 'the folded list'))).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
     } finally {
       globalThis.fetch = served
     }
   })
+
+  it('reads every queue as nought and says nothing while the file is still on its way', async () => {
+    const served = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/verification.json')
+        ? new Promise<Response>(() => undefined)
+        : served(input))
+
+    try {
+      /* The gap the note in `SectionNav.tsx` names, held here so the note cannot
+         drift back into claiming the alarm covers it. `failed` is one of three
+         states: a file that never answers is not a file that failed, so nothing
+         is raised, and `dataOr(items, [])` counts every queue it feeds as
+         nought. Six quiet noughts, and not a word beside them.
+
+         It is not a regression and it is not what 29.08.2026 changed. What that
+         day changed is that a nought is now the ordinary reading rather than a
+         row that would have been left out, so this reads as an afternoon's work
+         already done where before it read as a column still loading. Written
+         down because the only record of it was a comment, and a comment nobody
+         measures is a comment that gets rewritten into its opposite. */
+      renderAt('/sr/administracija', 'moderator')
+
+      const nav = within(
+        await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }),
+      )
+
+      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length)
+      for (const queue of QUEUES) {
+        expect(
+          nav.getByRole('link', {
+            name: `${translate(dictionary, 'sr', queue.labelKey)}, 0 na čekanju`,
+          }),
+        ).toBeVisible()
+      }
+
+      expect(nav.queryByRole('alert')).toBeNull()
+    } finally {
+      globalThis.fetch = served
+    }
+  }, SLOW)
 
   it('raises no alarm over a file none of the numbers come from', async () => {
     const served = globalThis.fetch
