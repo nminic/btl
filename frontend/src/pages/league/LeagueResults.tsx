@@ -6,9 +6,10 @@ import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { categoryLabel } from '../../data/categories'
 import { fieldFor } from '../../data/derive'
+import { raceLabelParts } from '../../data/raceLabel'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
-import { formatDistance, formatPoints, formatShortDate, formatYear } from '../../i18n/format'
+import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueGroups, leagueTable } from './leagueTable'
 import './League.css'
@@ -117,40 +118,37 @@ function Grid({
               </th>
               {table.columns.map((column) => (
                 <th scope="col" key={column.raceId} className="league__race">
-                  {/* The race by its own name first, then its length, then the
-                      year it was run in.
+                  {/* The race said the way the whole portal says one: its name, when
+                      it was run, and its measure in brackets (`data/raceLabel.ts`;
+                      owner, 29.08.2026). „Mrazijada 2019. (6,4 km)".
 
-                      **The name first, and in every column.** The race has had a
-                      name of its own since 23.08.2026 and stood here under its
-                      event's name until 29.08.2026 (owner: „u listi rezultata
-                      treba da se prikazuju nazivi trka na kojima je čovek
-                      učestvovao, a ne događaja"). Standing last it was never seen:
-                      the heading is turned on its side and cut at 144 pixels on a
-                      1280 screen and 104 on a 360, and a review measured on
-                      29.08.2026 that all fourteen headings of one competition were
-                      cut before the name began. A name nobody can read is not a
-                      name the grid says.
+                      **Said by that helper and not built here.** What a race is
+                      called is one fact, and a grid that spelt it out itself would
+                      be a second home for it: the two drifted once already, when
+                      this heading carried the name of the **event** while every
+                      other screen had moved to the name of the race.
 
-                      **The year and not the day**, decided by the owner the same
-                      day, with the cost of each put to him: the day is some ten
-                      characters of the little room there is, and dropping it buys
-                      the name its place without making the heading taller or the
-                      row deeper. What it costs is written down rather than hidden:
-                      two races of one length in one year no longer differ by their
-                      day here, so they lean on their names alone, and two that
-                      share a name as well read alike.
+                      **Among the races of this competition and not of one event,**
+                      which is the set a reader is comparing here. That is what makes
+                      the year worth having: two seasons of one race are two columns
+                      the year parts, where inside a single event it never could.
 
-                      The whole of it, day included, stays in the title for a
-                      pointer. */}
+                      **The name is what may be cut, and only the name.** The heading
+                      is turned on its side and cut at 144 pixels on a 1280 screen and
+                      104 on a 360. Standing last, the name was never seen at all: a
+                      review measured on 29.08.2026 that all fourteen headings of one
+                      competition were cut before it began. Standing first, it ate the
+                      measure instead, and two columns of „Šidski novogodišnji
+                      maraton" read alike though one is 32,4 km and the other 42,2.
+                      So the name has its own ellipsis (`League.css`) and what follows
+                      it always arrives. */}
                   {(() => {
-                    const length = formatDistance(column.distanceKm, locale)
+                    const said = raceLabelParts(column, table.columns, locale)
 
                     return (
-                      <span
-                        className="league__race-name"
-                        title={`${column.name}, ${length}, ${formatShortDate(column.date, locale)}`}
-                      >
-                        {`${column.name}, ${length}, ${formatYear(column.date, locale)}`}
+                      <span className="league__race-name" title={`${said.name} ${said.rest}`}>
+                        <span className="league__race-called">{said.name}</span>
+                        <span className="league__race-measure">{` ${said.rest}`}</span>
                       </span>
                     )
                   })()}

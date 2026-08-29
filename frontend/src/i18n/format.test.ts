@@ -1,4 +1,5 @@
 import {
+  DATE_SHAPE_OPTIONS,
   formatDate,
   formatDistance,
   formatDuration,
@@ -11,6 +12,32 @@ import {
   wholePeriod,
 } from './format'
 import { intlTag } from './intlTag'
+
+describe('what a date is on this portal', () => {
+  it('is a calendar day, so every shape reads it in UTC', () => {
+    /* A race is run on the fourteenth, not at an instant. The days arrive as
+       „2019-01-05", which the browser reads as midnight UTC, and a formatter left
+       on the reader's own zone writes whatever day that instant fell on there:
+       west of Greenwich, the day before, every time and not on an edge.
+
+       Measured by a review on 29.08.2026 in Chrome with the zone forced to
+       `America/New_York`: the league grid wrote „2018." over races of 2019, all
+       fourteen columns of one competition, while the same element's title said
+       „4. 1. 2019." over a race run on the fifth.
+
+       Asked of the shapes and not of the output, because the output cannot answer
+       it: on a machine already in UTC — which is what the gate runs on — a
+       formatter that has lost this reads exactly the same. The four are read as
+       one, so a fifth shape added without it is caught by the same case. */
+    const shapes = Object.entries(DATE_SHAPE_OPTIONS)
+
+    expect(shapes.length, 'the portal no longer has four shapes of date').toBe(4)
+
+    for (const [name, options] of shapes) {
+      expect(options.timeZone, `the ${name} date reads in the browser's own zone`).toBe('UTC')
+    }
+  })
+})
 
 describe('format', () => {
   it('formats numbers in the Serbian locale', () => {

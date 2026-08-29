@@ -6,7 +6,7 @@ import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { PER_PAGE } from '../../components/pageOf'
 import { SLOW } from '../../test/slow'
-import { formatDistance, formatShortDate, formatYear } from '../../i18n/format'
+import { formatDistance, formatShortDate } from '../../i18n/format'
 
 /* Fifty placed to a page (owner, 03.08.2026, PDL P24).
  *
@@ -340,54 +340,134 @@ describe('a competition whose event runs over more than one morning', () => {
     return { first: mine, second }
   }
 
-  it('heads them alike, and parts them in the title a pointer reads', async () => {
+  it('parts two mornings by their day, where the year cannot', async () => {
+    /* A column is headed the way the whole portal names a race: its name, when it
+       was run, and its measure in brackets (`data/raceLabel.ts`, owner 29.08.2026).
+       Normally „when" is the year, and inside one competition the year is what tells
+       one season of a race from another.
+
+       Two races of one length on two mornings of one year is the case the year
+       cannot answer, and there the day takes its place, once for each morning. Left
+       to the year, those are two columns reading alike over two different races. */
     const { first, second } = await overTwoMornings()
 
     renderAt(RUN)
 
     const heads = await (await grid()).findAllByRole('columnheader')
-    const length = formatDistance(first.distanceKm, 'sr')
-    const mine = heads.filter((one) => (one.textContent ?? '').startsWith(`${first.name}, ${length},`))
+    const mine = heads.filter((one) => (one.textContent ?? '').startsWith(first.name))
 
     expect(mine.length, 'the two mornings are no longer two columns').toBe(2)
-    /* One year said twice, because that is what the heading now carries. */
-    expect(new Set(mine.map((one) => one.textContent))).toEqual(
-      new Set([`${first.name}, ${length}, ${formatYear(first.date, 'sr')}`]),
-    )
-    /* And the day is still there for a pointer, once for each morning. */
-    const titles = mine.map((one) =>
-      must(one.querySelector('.league__race-name'), 'the name of the race').getAttribute('title'),
-    )
 
-    expect(new Set(titles).size, 'the two mornings share even their title').toBe(2)
-    expect(titles).toContain(`${first.name}, ${length}, ${formatShortDate(second.date, 'sr')}`)
+    const said = mine.map((one) => one.textContent)
+    const measure = `(${formatDistance(first.distanceKm, 'sr')})`
+
+    expect(new Set(said).size, 'two columns of one competition read alike').toBe(2)
+    expect(said).toContain(`${first.name} ${formatShortDate(first.date, 'sr')} ${measure}`)
+    expect(said).toContain(`${first.name} ${formatShortDate(second.date, 'sr')} ${measure}`)
   })
 
-  it('says the name first, so the part that is cut off is the part that repeats', async () => {
-    /* The whole of why the order changed. Measured by a review on 29.08.2026 in
-       Chrome: the heading is turned on its side and cut at 144 pixels on a 1280
-       screen and 104 on a 360, and all fourteen headings of this very competition
-       were cut before the name began, so the one thing the change was made for was
-       never seen. Asked of the drawn screen rather than of a copy of the rule: the
-       version of this that lived in `leagueTable.test.ts` wrote the rule out again
-       and passed with the screen putting the name last. */
-    await overTwoMornings()
+  it('says the name first, and never cuts what tells one column from another', async () => {
+    /* Measured by a review on 29.08.2026 in Chrome: the heading is turned on its
+       side and cut at 144 pixels on a 1280 screen and 104 on a 360, and all fourteen
+       headings of this competition were cut before the name began, so the one thing
+       the change was made for was never seen. Put first, the name ate the measure
+       instead: two columns of „Šidski novogodišnji maraton" read alike though one is
+       32,4 km and the other 42,2.
+
+       So the two halves are two elements and only the first may be cut. Asked of the
+       drawn screen rather than of a copy of the rule: the version of this that lived
+       in `leagueTable.test.ts` wrote the rule out again and passed with the screen
+       putting the name last. That the cut really falls where this says is a question
+       for a browser and was measured in one; here the halves are asked to exist and
+       to carry what they should. */
+    renderAt(RUN)
+
+    const heads = (await (await grid()).findAllByRole('columnheader')).filter(
+      (head) => within(head).queryByTitle(/./) !== null,
+    )
+
+    expect(heads.length, 'the grid draws no race columns at all').toBe(14)
+
+    for (const head of heads) {
+      const whole = must(within(head).getByTitle(/./).textContent, 'the heading')
+      const called = must(
+        head.querySelector('.league__race-called')?.textContent,
+        'the half that may be cut',
+      )
+      const measure = must(
+        head.querySelector('.league__race-measure')?.textContent,
+        'the half that may not',
+      )
+
+      expect(whole).toBe(`${called}${measure}`)
+      /* When it was run and what it measured, in that order and in brackets. */
+      expect(measure).toMatch(/^ (\d{4}\.|\d{1,2}\. \d{1,2}\. \d{4}\.) \([\d.,]+ km\)$/)
+      expect(called.length, 'the name is empty').toBeGreaterThan(0)
+    }
+  })
+
+})
+
+describe('a competition holding one race in two seasons', () => {
+  /* The year is what a grid of a competition gains by carrying a date at all: inside
+     one event it is a constant, across seasons it is the whole difference. Two
+     mutations passed a whole round of review because nothing asked for values, only
+     for shape: a year pinned to a constant, and a length rounded to whole
+     kilometres.
+
+     A competition of the file cannot answer that on its own, because every race of
+     one holds one year, so the second season is built here the way the second
+     morning is above. The third mutation of that round, the year written in Serbian
+     on an English page, is **not** measured here and that is worth saying rather
+     than implying otherwise: the portal has one dictionary (`i18n/sr.json`), so
+     there is no English page to draw. What holds that claim is `i18n/format.test.ts`,
+     which asks `formatYear` for both languages. */
+  it('writes each race under its own year, and the length as it stands', async () => {
+    const real = globalThis.fetch
+    const races: Race[] = await (await real('/mock/races.json')).json()
+    const events: BtlEvent[] = await (await real('/mock/events.json')).json()
+    const leagues: League[] = await (await real('/mock/leagues.json')).json()
+    const league = must(
+      leagues.find((one) => one.slug === 'brdska-2019'),
+      'takmičenje brdska-2019',
+    )
+    const held = new Set(events.filter((one) => league.eventIds.includes(one.id)).map((one) => one.id))
+    const mine = must(
+      races.find((race) => held.has(race.eventId)),
+      'trka ovog takmičenja',
+    )
+    /* The same race a year earlier, which is what a competition looks like when it
+       has run before. */
+    const older: Race = {
+      ...mine,
+      id: `${mine.id}-ranija-sezona`,
+      date: `${Number(mine.date.slice(0, 4)) - 1}${mine.date.slice(4)}`,
+    }
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/races.json')
+        ? new Response(JSON.stringify([...races, older]), { status: 200 })
+        : real(input))
 
     renderAt(RUN)
 
-    for (const head of await (await grid()).findAllByRole('columnheader')) {
-      const said = head.textContent ?? ''
+    const said = (await (await grid()).findAllByRole('columnheader'))
+      .map((head) => head.textContent ?? '')
+      .filter((one) => one.startsWith(mine.name))
 
-      /* Only the columns of races, which are the ones carrying a name. */
-      if (head.querySelector('.league__race-name') === null) {
-        continue
-      }
-
-      /* The name, then the length, then the year, and no day: a day would be ten
-         characters of the little room there is. */
-      expect(said).toMatch(/^.+, [\d.,]+ km, \d{4}\.$/)
-    }
-  })
+    expect(said.length, 'the two seasons are no longer two columns').toBe(2)
+    expect(
+      new Set(said).size,
+      `a year that is not the race's own: ${said.join(' / ')}`,
+    ).toBe(2)
+    expect(said.some((one) => one.includes(`${mine.date.slice(0, 4)}.`)), said.join(' / ')).toBe(true)
+    expect(said.some((one) => one.includes(`${older.date.slice(0, 4)}.`)), said.join(' / ')).toBe(true)
+    /* And a length nobody rounded on the way. */
+    expect(
+      said.every((one) => one.endsWith(`(${formatDistance(mine.distanceKm, 'sr')})`)),
+      said.join(' / '),
+    ).toBe(true)
+  }, SLOW)
 })
 
 describe('the heading that names one block of the standing', () => {

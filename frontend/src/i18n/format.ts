@@ -35,15 +35,35 @@ function kept<T>(cache: Map<string, T>, key: string, build: () => T): T {
  *  name and not a string, so a fifth one cannot be asked for by typo. */
 type DateShape = 'long' | 'short' | 'monthYear' | 'year'
 
+/**
+ * **Every one of them reads its date in UTC, and that is not a detail.**
+ *
+ * Everything this portal calls a date is a calendar day and not a moment: a race
+ * is run on the fourteenth, not at an instant. Those days arrive as „2019-01-05",
+ * which the browser reads as midnight UTC, and a formatter left on the reader's own
+ * zone then writes whatever day that instant fell on **there**. West of Greenwich
+ * that is the day before, every time and not on an edge.
+ *
+ * Measured by a review on 29.08.2026 in Chrome with the zone forced to
+ * `America/New_York`: the league grid wrote „2018." over races of 2019, all
+ * fourteen columns of one competition, while the same element's title said „4. 1.
+ * 2019." over a race run on the fifth. Pinned here rather than at each of the
+ * four, because it is one fact about what a date **is** on this portal and every
+ * shape reads the same instants.
+ */
 const DATE_SHAPES: Record<DateShape, Intl.DateTimeFormatOptions> = {
-  long: { day: 'numeric', month: 'long', year: 'numeric' },
-  short: { day: 'numeric', month: 'numeric', year: 'numeric' },
-  monthYear: { month: 'long', year: 'numeric' },
+  long: { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' },
+  short: { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' },
+  monthYear: { month: 'long', year: 'numeric', timeZone: 'UTC' },
   /* A year on its own is still a date rather than a number: Serbian writes
      "2027." with the full stop that makes it an ordinal, English writes "2027".
      Formatted rather than printed, so neither language has to be special. */
-  year: { year: 'numeric' },
+  year: { year: 'numeric', timeZone: 'UTC' },
 }
+
+/** What the four shapes are, for a guard that has to say every one of them still
+ *  reads its date the same way whoever is looking. */
+export const DATE_SHAPE_OPTIONS: Readonly<Record<string, Intl.DateTimeFormatOptions>> = DATE_SHAPES
 
 function numberFormat(locale: string, fractionDigits: number): Intl.NumberFormat {
   const tag = intlTag(locale)

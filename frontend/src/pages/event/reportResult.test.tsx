@@ -25,7 +25,7 @@ function Sent() {
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
-import { formatDistance, formatNumber, formatShortDate } from '../../i18n/format'
+import { formatDistance, formatNumber, formatShortDate, formatYear } from '../../i18n/format'
 import { raceLabel } from '../../data/raceLabel'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -564,7 +564,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
     expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
-      `${race.name}, ${formatDistance(race.distanceKm, 'sr-Latn')}`,
+      `${race.name} ${formatYear(race.date, 'sr-Latn')} (${formatDistance(race.distanceKm, 'sr-Latn')})`,
     )
   })
 
@@ -612,7 +612,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
 
     expect(raceLabel(eight, together, 'sr-Latn')).toBe(
-      `${eight.name}, ${formatNumber(8.68, 'sr-Latn', 2)} km`,
+      `${eight.name} ${formatYear(eight.date, 'sr-Latn')} (${formatNumber(8.68, 'sr-Latn', 2)} km)`,
     )
   })
 
@@ -636,7 +636,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     const said = plain.map((one) => raceLabel(one, plain, 'sr-Latn'))
 
     expect(said).toEqual(
-      plain.map((one) => `${one.name}, ${formatDistance(one.distanceKm, 'sr-Latn')}`),
+      plain.map((one) => `${one.name} ${formatYear(one.date, 'sr-Latn')} (${formatDistance(one.distanceKm, 'sr-Latn')})`),
     )
   })
 
@@ -668,12 +668,12 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     const three: Race = { ...one, id: 'c', date: '2020-01-02', distanceKm: 8.7 }
     const among = [one, two, three]
 
-    expect(raceLabel(one, among, 'sr-Latn')).toBe('Probna trka, 8,68 km')
-    expect(raceLabel(two, among, 'sr-Latn')).toBe('Probna trka, 8,74 km')
+    expect(raceLabel(one, among, 'sr-Latn')).toBe('Probna trka 2020. (8,68 km)')
+    expect(raceLabel(two, among, 'sr-Latn')).toBe('Probna trka 2020. (8,74 km)')
     /* And the one the day does part keeps the day, rather than being written out to
        the hundredth along with them. */
     expect(raceLabel(three, among, 'sr-Latn')).toBe(
-      `Probna trka, ${formatDistance(8.7, 'sr-Latn')}, ${formatShortDate(three.date, 'sr-Latn')}`,
+      `Probna trka ${formatShortDate(three.date, 'sr-Latn')} (${formatDistance(8.7, 'sr-Latn')})`,
     )
   })
 
@@ -721,7 +721,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     expect(said).toEqual(
       among.map(
         (one) =>
-          `Probna trka, ${formatNumber(one.distanceKm, 'sr-Latn', 2)} km, ${formatShortDate(one.date, 'sr-Latn')}`,
+          `Probna trka ${formatShortDate(one.date, 'sr-Latn')} (${formatNumber(one.distanceKm, 'sr-Latn', 2)} km)`,
       ),
     )
   })
@@ -747,8 +747,39 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     const among: Race[] = [one, { ...one, id: 'b', distanceKm: 8.684 }]
 
     expect(raceLabel(one, among, 'sr-Latn')).toBe(
-      `Probna trka, ${formatNumber(8.681, 'sr-Latn', 2)} km, ${formatShortDate(one.date, 'sr-Latn')}`,
+      `Probna trka ${formatShortDate(one.date, 'sr-Latn')} (${formatNumber(8.681, 'sr-Latn', 2)} km)`,
     )
+  })
+
+  it('lets two names of one length stand on the first rung', async () => {
+    /* The names of the **other** races have to count, and a review on 29.08.2026
+       found that nothing asked them to: with the comparison blind to them, every
+       race read as though it shared its neighbours' name, so two races that their
+       names already part were pushed down to the day and the hundredth. „Beogradski
+       maraton 2020. (42,2 km)" became „Beogradski maraton 1. 1. 2020. (42,20 km)",
+       which is a date and two decimals spent on a difference the first rung had
+       already made.
+
+       Both are asked, and by the whole label, because a rung is chosen once for the
+       race and not once for the pair. */
+    const one: Race = {
+      id: 'a',
+      eventId: 'e',
+      name: 'Beogradski maraton',
+      renamed: 'no',
+      date: '2020-01-01',
+      distanceKm: 42.2,
+      ascentM: 0,
+      descentM: 0,
+      category: 'long',
+    }
+    const among: Race[] = [one, { ...one, id: 'b', name: 'Beogradski polumaraton' }]
+    const said = among.map((race) => raceLabel(race, among, 'sr-Latn'))
+
+    expect(said).toEqual([
+      `Beogradski maraton ${formatYear(one.date, 'sr-Latn')} (${formatDistance(42.2, 'sr-Latn')})`,
+      `Beogradski polumaraton ${formatYear(one.date, 'sr-Latn')} (${formatDistance(42.2, 'sr-Latn')})`,
+    ])
   })
 
   it('adds the day where the lengths repeat, and stops there', async () => {
@@ -765,7 +796,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     expect(said).toEqual(
       many.map(
         (one) =>
-          `${one.name}, ${formatDistance(one.distanceKm, 'sr-Latn')}, ${formatShortDate(one.date, 'sr-Latn')}`,
+          `${one.name} ${formatShortDate(one.date, 'sr-Latn')} (${formatDistance(one.distanceKm, 'sr-Latn')})`,
       ),
     )
   })

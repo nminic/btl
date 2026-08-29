@@ -43,7 +43,11 @@
 }
 
 .league__race-name {
-  display: inline-block;
+  /* A row along the turned line, so the two halves of the heading can be cut
+     differently: the name gives way and what tells the column from its neighbour
+     never does (`pages/league/LeagueResults.tsx`, and the measurement that made it
+     necessary is written there). */
+  display: inline-flex;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   /* The length of the line, which in vertical writing runs down the page and is
@@ -51,7 +55,6 @@
      of the column and let the head grow to four hundred pixels. */
   max-inline-size: 9rem;
   overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 0.78rem;
   /* Not the capitals every other heading on the portal wears. This one is a
      sentence somebody wrote, not a three letter column name, and turned text in
@@ -187,6 +190,29 @@
    text, a competitor's name would lose a third of its letters on a 1280 screen
    that has room for all of them, which is what WCAG 2.2 SC 1.4.4 is about. The
    screen's own width decides this one. */
+/* The half that gives way. `min-inline-size: 0` is what lets it: a flex item will
+   not shrink below its own content without it, and then the whole heading overflows
+   and the ellipsis never appears. */
+.league__race-called {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* And the half that does not. This is when the race was run and what it measured,
+   which is the whole of what tells two columns of one competition apart.
+
+   `white-space: pre` for the one space in front of it. A flex item drops the
+   whitespace at its own edges, so the heading came out „Mrazijada2019. (6,4 km)";
+   measured in Chrome on 29.08.2026, before this line. Kept as a space in the text
+   rather than as a margin, so what the element says is exactly what the label says
+   and a guard may compare the two. */
+.league__race-measure {
+  flex: 0 0 auto;
+  white-space: pre;
+}
+
 @media (max-width: 699.98px) {
   .league__who {
     inline-size: 7.5rem;
