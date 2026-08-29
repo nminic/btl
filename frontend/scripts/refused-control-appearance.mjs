@@ -942,10 +942,15 @@ function complaintsFor(where, control, { resting, hovered, pressed, focused }) {
  *  `@media (min-width: 35em)` and the build hands the browser `@media (width>=35em)`. */
 const RANGE = /^\(\s*width\s*(<=|>=|<|>)\s*([\d.]+)(px|em|rem)\s*\)$/
 const BOUND = /^\(\s*(min|max)-width\s*:\s*([\d.]+)(px|em|rem)\s*\)$/
-/** Anything else of the shape `(feature: value)`, with the `min-`/`max-` of the prefixed
- *  spellings cut off: emulating `resolution: 2dppx` is what satisfies
- *  `(min-resolution: 2dppx)`, and the browser is asked afterwards whether it did. */
+/** Any other feature, in the two spellings its two homes use as well: the portal writes
+ *  `@media (min-resolution: 2dppx)` and the build hands the browser
+ *  `@media (resolution>=2x)`. The prefix and the operator are read off and thrown away,
+ *  because what is done with either is the same thing: the browser is put on the value the
+ *  condition names, and then asked whether the condition holds. It answers for `>=` and
+ *  `<=` and it does not for `>` and `<`, and that is not reasoned about here either: a
+ *  setting the browser will not confirm stops the run a few lines into `main`. */
 const FEATURE = /^\(\s*(?:(?:min|max)-)?([a-z-]+)\s*:\s*([^()]+?)\s*\)$/
+const FEATURE_RANGE = /^\(\s*([a-z-]+)\s*(?:<=|>=|<|>|=)\s*([^()<>=]+?)\s*\)$/
 
 /** The themes every measurement is taken in. A prelude asking for one of them is a prelude
  *  already visited from both sides, and not an axis of its own. */
@@ -1025,7 +1030,7 @@ function askedIn(css) {
         continue
       }
 
-      const feature = FEATURE.exec(one)
+      const feature = FEATURE.exec(one) ?? FEATURE_RANGE.exec(one)
 
       if (feature === null) {
         throw new Error(
@@ -1034,6 +1039,15 @@ function askedIn(css) {
       }
 
       const [, name, value] = feature
+
+      /* A width in a spelling the two above do not know is a band and not a setting, and
+         no browser is put on a width by `setEmulatedMedia`. Said here, where the name is
+         still in hand, rather than left to come out later as a setting that never lands. */
+      if (name === 'width') {
+        throw new Error(
+          `a width condition this cannot read, so the band behind it would go unmeasured: ${one}`,
+        )
+      }
 
       /* The theme is pinned by hand in every measurement and both of them are visited, so
          a prelude asking for one is already asked from both sides. A value neither of them
@@ -1073,6 +1087,27 @@ function askedIn(css) {
   }
 }
 
+/** What a `<resolution>` is worth as a device scale factor.
+ *
+ *  Chrome turns two different knobs for what CSS calls one thing: `setEmulatedMedia`
+ *  answers for `prefers-reduced-motion` and its like and **does not answer for
+ *  `resolution`**, while `setDeviceMetricsOverride` does. Measured, not read: at
+ *  `deviceScaleFactor: 1` both `(resolution>=2x)` and `(min-resolution: 2dppx)` are false
+ *  and at 2 both are true, and `setEmulatedMedia` with `resolution` moves neither. This is
+ *  not a list of ways to break a control, which this file has none of; it is which knob of
+ *  the protocol carries which feature, and a wrong guess about that is caught rather than
+ *  believed, because every screen is read back before anything is measured.
+ *
+ *  A unit not among these leaves the condition where it was, as a media feature Chrome
+ *  will not confirm, and the run stops naming it. */
+const SCALE = { x: 1, dppx: 1, dpi: 1 / 96 }
+
+function scaleOf(value) {
+  const found = /^([\d.]+)(x|dppx|dpi)$/.exec(value.trim())
+
+  return found === null ? null : Number(found[1]) * SCALE[found[2]]
+}
+
 /** The screens this run shows each control: the one the browser comes with, and one for
  *  every setting the sheet asks about. Every width and both themes are visited on each of
  *  them, because a prelude may name a setting and a width together and the rule inside it
@@ -1083,12 +1118,24 @@ function askedIn(css) {
  *  is not measured, and would need a prelude asking for both before this knew of it. */
 function screensOf(settings) {
   return [
-    { name: 'as it comes', features: [], asks: [] },
-    ...settings.map((one) => ({
-      name: one.name,
-      features: one.features.map(({ name, value }) => ({ name, value })),
-      asks: one.features.map((feature) => feature.text),
-    })),
+    { name: 'as it comes', features: [], dpr: 1, asks: [] },
+    ...settings.map((one) => {
+      const turned = one.features.filter(
+        (feature) => feature.name === 'resolution' && scaleOf(feature.value) !== null,
+      )
+
+      return {
+        name: one.name,
+        features: one.features
+          .filter((feature) => !turned.includes(feature))
+          .map(({ name, value }) => ({ name, value })),
+        /* The widest of them where a prelude names more than one, which is what `>=`
+           wants; the run reads every one of them back either way, so a prelude this
+           chooses wrongly for stops rather than passing. */
+        dpr: turned.length === 0 ? 1 : Math.max(...turned.map((feature) => scaleOf(feature.value))),
+        asks: one.features.map((feature) => feature.text),
+      }
+    }),
   ]
 }
 
@@ -1268,16 +1315,23 @@ async function main() {
        single control is measured. A setting the browser answers the same way on all of
        them is a setting whose rules are either always on or never on, so the sheet's two
        sides are not both visited and nothing behind it is measured. That is how an axis
-       Chrome will not emulate arrives here: not as a wrong answer but as one answer, and
-       `deviceScaleFactor` is pinned to 1 a few lines below, so `resolution` is the one to
-       expect. Asked once here rather than trusted, because the alternative is a run that
-       reads „all clear" about screens it never showed. */
+       Chrome will not put itself on arrives here: not as a wrong answer but as one answer.
+       Asked once here rather than trusted, because the alternative is a run that reads
+       „all clear" about screens it never showed. */
     const everyAsk = [...new Set(screens.flatMap((one) => one.asks))]
 
     if (everyAsk.length > 0) {
       const seen = new Map(everyAsk.map((text) => [text, new Set()]))
 
       for (const screen of screens) {
+        /* Both knobs, because a screen may be a scale rather than a feature, and a screen
+           read with half of it turned is not the screen the run goes on to measure. */
+        await send(socket, 'Emulation.setDeviceMetricsOverride', {
+          width: NARROWEST,
+          height: 800,
+          deviceScaleFactor: screen.dpr,
+          mobile: false,
+        })
         await send(socket, 'Emulation.setEmulatedMedia', {
           features: [{ name: 'prefers-color-scheme', value: THEMES[0] }, ...screen.features],
         })
@@ -1308,11 +1362,12 @@ async function main() {
       for (const screen of screens) {
         for (const width of widths) {
           /* A size of its own, so the control has a box and the mouse has somewhere to
-             land whatever window the browser happened to open with. */
+             land whatever window the browser happened to open with, and the scale this
+             screen is for, which is the knob a `resolution` query reads. */
           await send(socket, 'Emulation.setDeviceMetricsOverride', {
             width,
             height: 800,
-            deviceScaleFactor: 1,
+            deviceScaleFactor: screen.dpr,
             mobile: false,
           })
           /* And the screen of this pass, so what is read below is read on it. Set again
