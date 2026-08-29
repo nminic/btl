@@ -1006,6 +1006,79 @@ const fillsEverything: FormDef = {
   ],
 }
 
+/* The same shape, with an ordinary box among the filled fields: `fillsEverything`
+ * above holds the two kinds of control that do **not** come from the renderer's
+ * shared set, and this one holds the kind that does. */
+const fillsABox: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'trka', type: 'text', labelKey: 'proba.trka' },
+    { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+  ],
+}
+
+describe('a box the portal filled in from a list', () => {
+  it('looks held as well as being held, and only once it is', async () => {
+    /* On `unos-rezultata` a chosen race locks four boxes: the day, the length, the
+       climb and the fall. Three of them come from here, out of one shared set of
+       properties, and until 29.08.2026 the portal had no dress for a held control
+       at all: measured by a review on 28.08.2026 in Chrome over the built
+       stylesheet, a locked box and a live one differed in nothing, because the one
+       visible difference `disabled` used to make went with `disabled` and nothing
+       took its place („Odbijeno, ne ugašeno", PDL).
+
+       Written here and not only over the class name, because a sweep that says
+       „nobody writes this class by hand" cannot say „this control asks for it":
+       a control drawn with a bare `field__control` passes such a sweep in silence,
+       which is exactly what this file's own control did before it was fixed. Found
+       by a review on 29.08.2026, which pointed out that deleting the old guard had
+       left these three boxes with none at all in either direction.
+
+       Both directions, in one case, because they are the same fault told two ways:
+       a dress that never arrives leaves a held box looking live, and a dress that
+       is always there makes every live box on the portal look held. */
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={fillsABox}
+        suggests={{
+          trka: [
+            {
+              id: 'jedna',
+              value: 'Probna trka',
+              said: 'Probna trka – 19.04.2026. – 42,2 km',
+              fills: { dopisano: '42,2' },
+            },
+          ],
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    const box = () => screen.getByLabelText(/proba.dopisano/)
+
+    expect(box(), 'a box nobody has filled in is dressed as a held one').not.toHaveClass(
+      'field__control--held',
+    )
+
+    await user.type(screen.getByLabelText(/proba.trka/), 'pr')
+    await user.click(screen.getByRole('button', { name: /Probna trka/ }))
+
+    expect(box(), 'the box the portal filled in still looks live').toHaveClass(
+      'field__control',
+      'field__control--held',
+    )
+    /* And held rather than switched off, which is the reason the dress has to exist
+       at all: `disabled` would have said this by taking the box out of the
+       keyboard's path. */
+    expect(box()).toHaveAttribute('aria-disabled', 'true')
+    expect(box()).not.toBeDisabled()
+  })
+})
+
 describe('a field filled from a list', () => {
   it('is locked whatever kind of control it is drawn as', async () => {
     const user = setupUser()

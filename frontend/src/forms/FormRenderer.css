@@ -190,9 +190,12 @@
    files wear this, and a rule of the same weight as the one it overrides is only
    ever as reliable as the order the sheets happen to load in.
 
-   And above the invalid rule, not below it, so a held field that is also wrong
-   still shows what is wrong with it: the two are the same weight, so what decides
-   between them is this order and nothing else. */
+   Its neighbour below says what is wrong with a field rather than that it is held,
+   and the two touch nothing in common: this one sets the ground and the cursor,
+   that one the colour of the border. So a held field that is also wrong wears both,
+   whichever of them is written first, and a review measured that in Chrome over the
+   built sheet with the two swapped: no difference over twelve controls, three
+   widths and both themes. */
 .field__control--held {
   background: var(--surface-hover);
   cursor: default;
