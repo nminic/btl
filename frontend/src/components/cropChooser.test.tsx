@@ -644,9 +644,14 @@ describe('choosing with a finger or a mouse instead of the sliders', () => {
     const group = await ready()
 
     fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.4' } })
-    dragTo({ across: 0.9, down: 0.5 })
+    /* Pressed on the rim and then pulled outwards, because the press alone does
+       nothing (owner, 29.08.2026: „krug ne mrdne dok ja ne počnem da ga
+       resizeujem"). The circle is four tenths across, so its rim is at seven
+       tenths of the box; the hand travels two tenths further out, and the diameter
+       grows by twice that. */
+    dragTo({ across: 0.7, down: 0.5 }, { across: 0.9, down: 0.5 })
 
-    expect(group.getByLabelText('Veličina isečka')).toHaveValue('0.8')
+    expect(sentCrop().size, 'the diameter did not grow by twice the pull').toBeCloseTo(0.8, 6)
 
     /* Shrinking is the same gesture the other way, and it has to begin on the rim
        as well: a press inside the circle is a move, whichever way the finger then
@@ -655,7 +660,7 @@ describe('choosing with a finger or a mouse instead of the sliders', () => {
        Dragged past the floor on purpose: „skuplja dok ne udari o minimum koji je
        potreban za dobar prikaz po portalu" (owner, 27.08.2026), and on a picture
        of a thousand pixels that floor is 240 of them, which is 0,24. */
-    dragTo({ across: 0.88, down: 0.5 }, { across: 0.51, down: 0.5 })
+    dragTo({ across: 0.9, down: 0.5 }, { across: 0.51, down: 0.5 })
 
     /* Read off what would be sent and not off the control. A range input clamps
        its own `.value` to its `min`, so a crop that fell straight through the
@@ -806,9 +811,24 @@ describe('what the pointer says a press would do, before anybody presses', () =>
 
     expect(box.style.cursor, 'the pointer did not promise a pull').toBe('ew-resize')
 
+    const before = sent()
+
     fireEvent.pointerDown(box, at(spot))
 
-    expect(sent()).toBe('{"size":0.8,"x":0.5,"y":0.5}')
+    /* And the press by itself has done nothing at all, which is the owner's first
+       correction of 29.08.2026: „krug ne mrdne dok ja ne počnem da ga
+       resizeujem". Before it, this very press moved the rim to meet the pointer,
+       and the record read `{"size":0.8,...}` without the hand having moved. */
+    expect(sent(), 'the press alone changed the crop').toBe(before)
+
+    fireEvent.pointerMove(box, at({ across: 0.95, down: 0.5 }))
+
+    /* Then the hand moves a twentieth of the box outwards and the diameter grows
+       by twice that, about a middle that stands still: a pull and not a move. */
+    const pulled = sentCrop()
+
+    expect(pulled.size, 'the diameter did not follow the hand').toBeCloseTo(0.6, 6)
+    expect({ x: pulled.x, y: pulled.y }, 'the middle moved during a pull').toEqual({ x: 0.5, y: 0.5 })
   })
 
   it('closes the hand while the circle is being carried, and keeps it closed', async () => {
@@ -1015,8 +1035,10 @@ describe('the band that tells a move from a resize', () => {
 
   it('reads a press a hundredth inside the band as a move, and says so first', async () => {
     /* A member who takes hold of the circle a little inside its rim to shift it
-       must shift it. Moved, so the size is untouched and the circle has gone to
-       where the press landed. */
+       must shift it. Carried, so the size is untouched and the circle has gone as
+       far as the hand did and no further: a press that landed a hundredth inside
+       the band and then travelled a tenth of the box moves the circle a tenth of
+       the box, not to wherever the finger happens to be. */
     await halved()
 
     const box = picture()
@@ -1027,10 +1049,13 @@ describe('the band that tells a move from a resize', () => {
     expect(box.style.cursor, 'the pointer did not promise a move').toBe('grab')
 
     fireEvent.pointerDown(box, at(spot))
-    fireEvent.pointerUp(box, at(spot))
+    fireEvent.pointerMove(box, at({ across: 0.785, down: 0.5 }))
+    fireEvent.pointerUp(box, at({ across: 0.785, down: 0.5 }))
 
+    /* Half the picture wide, so the room left over is half of it: a tenth of the
+       box is a fifth of that room, and the share goes from a half to seven tenths. */
     expect(sentCrop().size, 'the press resized instead of moving').toBe(0.5)
-    expect(sentCrop().x).toBeCloseTo(0.87, 10)
+    expect(sentCrop().x).toBeCloseTo(0.7, 10)
     expect(sentCrop().y).toBe(0.5)
   })
 
@@ -1049,9 +1074,12 @@ describe('the band that tells a move from a resize', () => {
     expect(box.style.cursor, 'the pointer did not promise a pull').toBe('ew-resize')
 
     fireEvent.pointerDown(box, at(spot))
-    fireEvent.pointerUp(box, at(spot))
+    fireEvent.pointerMove(box, at({ across: 0.59, down: 0.5 }))
+    fireEvent.pointerUp(box, at({ across: 0.59, down: 0.5 }))
 
-    expect(sentCrop().size, 'the press moved instead of resizing').toBeCloseTo(0.38, 10)
+    /* Pulled a tenth of the box inwards, so the diameter loses twice that about a
+       middle that stands still: a half becomes three tenths. */
+    expect(sentCrop().size, 'the press moved instead of resizing').toBeCloseTo(0.3, 10)
     expect(sentCrop().x).toBeCloseTo(0.5, 10)
     expect(sentCrop().y).toBeCloseTo(0.5, 10)
   })

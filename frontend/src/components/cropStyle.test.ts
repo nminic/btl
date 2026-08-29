@@ -133,6 +133,23 @@ describe('the picture while there is something on it to drag', () => {
     expect(dragged.touchAction).toBe('none')
   })
 
+  it('refuses a selection begun on it, so a drag never sweeps up the photograph', () => {
+    /* Owner, 29.08.2026: „Ponekad u nekim pokretima, dođe do selekcije čitave
+       slike, iako sam krenuo da povlačim kursor u obliku ruke ili u obliku
+       pomenutih strelica." A browser reads a press and a drag over a picture as a
+       selection unless it is told otherwise, and the circle's own gesture is
+       exactly that shape, so the two were fighting over every drag.
+
+       Both spellings, because the one that is not a prefix is younger than the
+       browsers this portal promises. And measured as two declarations rather than
+       as one, because a rule that carries only the prefixed one leaves the fault
+       standing everywhere the prefix is not read. */
+    const dragged = ruleFor(CROP, '.crop__picture--dragged', 'Crop.css')
+
+    expect(dragged.getPropertyValue('user-select')).toBe('none')
+    expect(dragged.getPropertyValue('-webkit-user-select')).toBe('none')
+  })
+
   it('says nothing here about what the pointer looks like', () => {
     /* Written as an absence, like the shade above, because that is the shape the
        fault took. `cursor: grab` stood here until 29.08.2026 and read correctly:
