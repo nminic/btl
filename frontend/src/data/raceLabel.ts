@@ -64,13 +64,17 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * WCAG 2.2 SC 2.4.4 fault the exact length was added to close. The fourth step,
  * exact length **and** day, closes it.
  *
- * **Why the steps stand in this order**, which is not by length: the third is
- * shorter than the second, twenty characters against thirty-two on „Probna trka,
- * 8,68 km". The day comes first because the day is what the page beside this label
- * already draws when an event runs over more than one morning (owner, 10.08.2026),
- * and the hundredth comes after it because it is a last resort: it is finer than
- * anything the reader asked for, and it is only ever reached where the day has
- * been tried and shares itself out among the races that collide.
+ * **Why the steps stand in this order**, which is not by length: the second step is
+ * the first plus a comma and a whole date, and the third is the first with one more
+ * digit in it, so the third is always the shorter of the two. Measured on „Probna
+ * trka, 8,68 km": twenty characters against thirty-two on 1. 1. 2020., and against
+ * thirty-four on 23. 12. 2018., which is the day BTL dezorijentiring runs on.
+ *
+ * The day comes first because the day is what the page beside this label already
+ * draws when an event runs over more than one morning (owner, 10.08.2026), and the
+ * hundredth comes after it because it is a last resort: it is finer than anything
+ * the reader asked for, and it is only ever reached where the day has been tried
+ * and shares itself out among the races that collide.
  *
  * **What even four steps do not tell apart**, said out loud rather than left to be
  * found: two races of one event, one name, one morning, and two lengths that agree
@@ -86,15 +90,29 @@ import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
  * fourth do. So the last rung is not strictly the most telling: there is one
  * family of pairs, and only one, that an earlier rung parts and the last does not.
  *
- * **That is a decision and not an oversight.** The label writes the length the way
- * the table of races on the same page writes it, to the hundredth
- * (`pages/EventDetail.tsx`), and that table cannot part such a pair either: it
- * draws „8,65" twice. A label finer than its own row, or a label carrying both
- * roundings, would part two links on a page whose rows still read alike, which
- * trades one confusion for a stranger one. The boundary, in both directions: a
- * pair the **row** can part gets a label that parts it, and a pair the row cannot
- * part gets a label that reads like the row. The way to close such a pair is to
- * rename one of the races, and no label can do that for anybody.
+ * **That is a decision and not an oversight, and what is decided is the
+ * precision.** The boundary, in both directions:
+ *
+ * - **not finer than the hundredth.** 8,681 km and 8,684 km stay one label,
+ *   because the table of races on the same page draws „8,68" for both
+ *   (`pages/EventDetail.tsx`), and a label finer than its own row would part two
+ *   links on a page whose rows still read alike.
+ * - **not coarser.** On BTL dezorijentiring 8,68 km and 8,74 km must be parted,
+ *   and the tenth writes „8,7 km" for both of them.
+ *
+ * The hundredth is the row's own precision, so the two agree; the price of that
+ * agreement is the family above, where a coarser rounding happens to part what the
+ * row's own rounding joins.
+ *
+ * **What is not decided here, said plainly because an earlier version of this note
+ * claimed it and a review found it false in both directions.** This function does
+ * not promise to part exactly what a row parts. It is built from three things —
+ * the name, the length and the day — and a row carries more than three: two races
+ * of one name, one morning and one written length are two different rows when
+ * their climb and their fall differ, and no label made of those three can part
+ * them. And it works among the races of the event, so with only two of them the
+ * first step is enough and a pair the row joins can come out parted. A label is a
+ * name and not a row; what it owes is to be the only one of its kind here.
  *
  * Each step only where it is needed, so the ordinary event of three lengths reads
  * as three lengths, not as three dates and not to the hundredth.

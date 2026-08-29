@@ -726,7 +726,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
   })
 
-  it('is parted by the day where the hundredth cannot part it, which is the order it stands in', async () => {
+  it('is parted by the tenth where the hundredth joins, and the shorter step is the third', async () => {
     /* Two sentences from the note above this function, taken as mutations rather
        than believed. Both were found to be false by a review on 29.08.2026, when
        the note said the steps stood „shortest first" and that the last of them was
@@ -737,10 +737,10 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
 
        Two: rounding to the hundredth is not a refinement of rounding to the tenth.
        8,649 km and 8,651 km are „8,6 km" and „8,7 km" written the ordinary way and
-       „8,65 km" both written out exactly, so the second step parts them and the
-       third and fourth do not. That is the one family of pairs the last rung
-       cannot part, and the label follows the row of the table, which draws „8,65"
-       twice as well. */
+       „8,65 km" both written out exactly, so the **tenth** parts them and the
+       hundredth joins them. The day is one morning here and parts nothing; what
+       makes the first step fail is the other two races, and what the pair is left
+       with is the hundredth, which is the row's own precision. */
     const near: Race = {
       id: 'a',
       eventId: 'e',
@@ -769,7 +769,12 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       { ...near, id: 'd', distanceKm: 8.7 },
     ]
 
-    expect(raceLabel(near, among, 'sr-Latn')).toBe(raceLabel(far, among, 'sr-Latn'))
+    /* Written out and not only compared with each other, so a label that gave up on
+       the length altogether could not pass by making the two agree. */
+    const said = `Probna trka, ${formatNumber(8.65, 'sr-Latn', 2)} km, ${formatShortDate(near.date, 'sr-Latn')}`
+
+    expect(raceLabel(near, among, 'sr-Latn')).toBe(said)
+    expect(raceLabel(far, among, 'sr-Latn')).toBe(said)
     /* The two that the hundredth does part keep their own labels, so what is
        being measured is this pair and not the whole set giving up. */
     expect(new Set(among.map((one) => raceLabel(one, among, 'sr-Latn'))).size).toBe(3)
