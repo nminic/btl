@@ -188,6 +188,37 @@ describe('the panel', () => {
     expect(screen.queryByRole('button', { name: 'Verifikacija' })).toBeNull()
   })
 
+  it('puts the records above the verification, in that order', async () => {
+    /* Owner, 29.08.2026: „Na strani administracije prvo treba da idu Podaci (jer
+       su sve stavke uvek tu), pa tek onda boks sa verifikacijom." They were the
+       other way round until then.
+
+       Read off the landmarks in the order the document holds them, which is the
+       order somebody walking landmark by landmark hears and the order the column
+       is drawn in: the sectors are one flex column with nothing reordering them
+       (SectionNav.css). Not off a class name, and not off which of the two comes
+       back first from a query that does not promise an order. */
+    renderAt('/sr/administracija', 'superadmin')
+
+    const sectors = await screen.findAllByRole('navigation', { name: /^Odeljak / })
+
+    expect(sectors.map((one) => one.getAttribute('aria-label'))).toEqual([
+      'Odeljak Podaci',
+      'Odeljak Verifikacija',
+    ])
+
+    /* And the stylesheet does not turn that round. The reading above is of the
+       markup alone, because jsdom applies no stylesheet: the sectors are a flex
+       column, so `column-reverse` on it or an `order` on either sector would put
+       verification back on top with every test here still green. The two things
+       that can invert a column are held by name; `border:` is not one of them,
+       which is why the property is matched only where a property may start. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/admin/SectionNav.css'), 'utf-8')
+
+    expect(css).not.toContain('column-reverse')
+    expect(css).not.toMatch(/(^|[\s;{])order\s*:/m)
+  })
+
   it('carries no content of its own, and the work stands beside it', async () => {
     /* Four counts and three links stood here, and every one of them said again
        what the navigation beside it says: the number waiting is on each queue
@@ -1471,32 +1502,40 @@ describe('verification', () => {
       expect(document.title).toContain('Uplate i aktivacija članova (administracija)'),
     )
 
-    /* Moved to a queue that has something in it: an empty queue is not in the
-       navigation any more (owner, 06.08.2026), and the results are empty until
-       somebody sends one in during the visit. */
+    /* Any queue other than the one already open, which is what makes the tab
+       name change at all. */
     const nav = within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
     await user.click(nav.getByRole('link', { name: /Komentari/ }))
 
     await waitFor(() => expect(document.title).toContain('Komentari (administracija)'))
   })
 
-  it('leaves an empty queue out of the navigation, and keeps the one being worked in', async () => {
-    /* Owner, 06.08.2026. A name that leads to "nothing is waiting" is a step
-       taken for nothing, and a moderator reads this list to find work rather
-       than to count doors. The results are the empty one until somebody sends a
-       result in during the visit. */
+  it('keeps an empty queue in the navigation, and says nought beside it', async () => {
+    /* Owner, 29.08.2026: „Neka ipak ne nestaju stavke iz Verifikacije kad se
+       odobre. Neka ostane vidljiva i neka piše 0." Until that, a queue holding
+       nothing was left out of the list (owner, 06.08.2026), so the column
+       changed length while a moderator worked down it.
+
+       Standing on the comments, so the empty row is not the one being worked in.
+       That one survived emptying under the old rule too, and a test taken there
+       would pass whichever rule is in force. The results are the empty one:
+       nobody sends a result in during this visit. */
     renderAt(`/sr/${QUEUE.comments.path}`, 'moderator')
 
     const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+    const empty = nav.getByRole('link', { name: /Rezultati/ })
 
-    expect(nav.getByRole('link', { name: /Komentari/ })).toBeVisible()
-    expect(nav.queryByRole('link', { name: /Rezultati/ })).toBeNull()
+    expect(empty).toBeVisible()
+    expect(within(empty).getByText('0')).toBeVisible()
   })
 
   it('draws every queue where the moderator has nothing waiting anywhere', async () => {
-    /* Somebody with no work this morning, not somebody to be shown a section
-       with no way out of it: the landing draws nothing of its own, so an empty
-       navigation beside it is an empty screen. */
+    /* The whole list and not merely more than one of it. Nothing is left out for
+       being empty since 29.08.2026, so a moderator with no work this morning
+       reads the same column as one with a full morning ahead, and the difference
+       between them is in the numbers alone. Before that this was the one case
+       the hiding had to make an exception of, because a section hiding every
+       last row is a section with no way out of it. */
     const served = globalThis.fetch
     vi.stubGlobal('fetch', async () => new Response('[]', { status: 200 }))
 
@@ -1505,16 +1544,18 @@ describe('verification', () => {
 
       const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
-      expect(nav.getAllByRole('link').length).toBeGreaterThan(1)
+      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length)
     } finally {
       vi.stubGlobal('fetch', served)
     }
   })
 
   it('keeps the queue in view even after the last thing in it is decided', async () => {
-    /* Otherwise the entry disappears from under the moderator at the moment of
-       the last decision, and they are left standing on a screen the navigation
-       beside them says is not there. */
+    /* The entry the moderator is standing on stays put through the decision that
+       empties it. It used to be the one row hiding made an exception of; since
+       29.08.2026 no row is hidden at all, and this holds the case that mattered
+       most: they are not left standing on a screen the navigation beside them
+       says is not there. */
     const user = setupUser()
     /* The reported dates and not the new teams, for the reason written out where
        the same swap was made below: a team whose name is taken keeps its button
