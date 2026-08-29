@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import { first, htmlElement, must } from '../test/at'
-import { chainToShell, markupOf, nameOf } from '../test/chain'
+import { chainToShell, controlsOf, markupOf, nameOf } from '../test/chain'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -17,6 +17,8 @@ import { setupUser } from '../test/user'
  * specificity alone, and the measurement then says the refusal holds when what holds is
  * a fixture nobody draws. `entityStyle.test.ts` has held that chain since; this holds
  * the second one, which arrived on 29.08.2026 with the calendar button.
+ *
+ * The control held here is the second of the two that script measures.
  *
  * **What this does not hold.** Whether the refusal wins, which is the browser's
  * question and is asked there. And every attribute of the box in front of the button:
@@ -65,7 +67,13 @@ describe('the calendar button a browser measures', () => {
        because a difference needs two controls the same sheet reaches the same way. */
     await screen.findByLabelText(/^Naziv trke/)
 
-    const free = nameOf(opener(), false)
+    /* The whole chain of the live one and not its name alone. The walk below goes upward
+       from the **refused** control, so the two ancestors the fixture invents for the live
+       twin, `div.field` and `div.datepicker`, were held against nothing: a review gave
+       the live picker a class of its own in `DatePicker.tsx`, this stayed green, and a
+       rule keyed on that class then painted the live button in the browser exactly the
+       way the refused one is painted, with the script still saying both look refused. */
+    const free = chainToShell(opener())
 
     await user.type(screen.getByLabelText(/^Naziv trke/), 'beogradski maraton')
     await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
@@ -94,9 +102,15 @@ describe('the calendar button a browser measures', () => {
        the refused one. `DatePicker.tsx` writes no `aria-disabled` at all where the price
        list writes `false`, and an attribute selector weighs as much as a class, so a
        fixture that wrote one would be measuring a button the portal has not got. */
-    expect(nameOf(must(holder.querySelector('#live'), 'the live control in the fixture'), false)).toBe(
-      free,
+    const liveInFixture = chainToShell(
+      must(holder.querySelector('#live'), 'the live control in the fixture'),
     )
+
+    expect(liveInFixture.at(-1), 'the live twin does not reach the shell').toContain('div.shell')
+    expect(free.at(-1), 'the live control on the screen does not reach the shell').toContain(
+      'div.shell',
+    )
+    expect(liveInFixture).toEqual(free)
 
     /* The box in front of the button, by its classes: it is what `.datepicker
        .field__control` is written for, and the dress of a held control is what it is
@@ -124,5 +138,47 @@ describe('the calendar button a browser measures', () => {
 
     expect(mine).toBe(above('the other fixture'))
     expect(mine).toContain('#root')
+  })
+
+  it('is one of the controls that script measures, and the script is there to be run', () => {
+    /* The same shape `entityStyle.test.ts` keeps for the other control under „says out
+       loud what it does not guarantee": a header that sends the reader somewhere is held
+       to the place it sends them.
+
+       Here that place is a list and not only a file. The script reads its fixtures by
+       reference out of `CONTROLS` and this suite read them out by name, so nothing tied
+       the two together: a review deleted the second entry of `CONTROLS`, thirteen lines,
+       and the script measured one control while every test here stayed green over a
+       fixture nobody looked at any more. */
+    const whole = readFileSync(join(process.cwd(), 'src/forms/pickerFixture.test.ts'), 'utf-8')
+    /* The header alone, and not the whole file: read whole, this finds the sentence
+       written in its own assertion below and passes over a header rewritten to claim the
+       opposite. `entityStyle.test.ts` was measured doing exactly that. */
+    const header = whole.slice(0, whole.indexOf('const ME'))
+
+    expect(header).toContain('The control held here is the second of the two that script measures')
+
+    const asked = [...header.matchAll(/`(scripts\/[\w/-]+\.mjs)`/g)].map((found) => found[1])
+
+    expect(asked.length, 'the header names no script at all').toBeGreaterThan(0)
+
+    for (const one of asked) {
+      const where = join(process.cwd(), must(one, 'a script named in the header'))
+
+      expect(existsSync(where), `${one} is named in the header and is not there`).toBe(true)
+      expect(readFileSync(where, 'utf-8').length, `${one} is empty`).toBeGreaterThan(0)
+    }
+
+    /* And the list is exactly the fixtures this suite holds against the portal, in both
+       directions: `PRICE_LIST` is held by `entityStyle.test.ts` and `LOCKED_DATE` by the
+       case above, so a control taken out of the list is a fixture guarded for nothing, and
+       a control put into it is markup measured in a browser that no render was ever held
+       beside. */
+    expect(
+      controlsOf(
+        readFileSync(join(process.cwd(), 'scripts/refused-control-appearance.mjs'), 'utf-8'),
+      ),
+      'the script measures fixtures this suite does not hold against the portal',
+    ).toEqual(['PRICE_LIST', 'LOCKED_DATE'])
   })
 })

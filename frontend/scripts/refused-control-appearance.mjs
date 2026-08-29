@@ -55,25 +55,31 @@
  *
  * **What none of it sees, said plainly because the rule of this repo is that a guard may
  * claim only what the tool beneath it answers:** a change applied to the live control and
- * the refused one alike, in every state and at both widths, in a property nobody has
- * named here. And a width between the two, or beyond them.
+ * the refused one alike, in every state and at every width, in a property nobody has
+ * named here. And a width a `@container` query tells apart: the bands below are cut by
+ * `@media` alone, because a container is as wide as whatever holds it and that is a
+ * layout this file does not draw. The portal has one such query today
+ * (`pages/TopBoards.css`) and neither of these controls stands under it.
  * `font-size: 0` on `.entity-open` empties both labels and every comparison above stays
  * quiet, because nothing differs from anything. Those classes of fault are not subtle on
  * a screen, and they are what looking at QA is still for. They are not caught here, and
  * this file does not pretend they are.
  *
  * **What is measured:** the built stylesheet, over the ancestor chain each control is
- * given by the screen it stands on, in both themes, at **three widths** (1280, 768 and
- * 360, the narrowest this portal promises), in **four states** (at rest, under a real
- * mouse, under a real press, and under a real Tab), each of the last three checked to
- * have actually landed.
+ * given by the screen it stands on, in both themes, at **one width inside every band the
+ * built sheet can tell apart** (`widthsOf`, from 360px up), in **four states** (at rest,
+ * under a real mouse, under a real press, and under a real Tab), each of the last three
+ * checked to have actually landed.
  *
  * **What is not measured:** the markup below is written here rather than drawn by the
  * portal, so it sees nothing a component puts on the element itself. An inline style is
  * the axis that beat the last jsdom guard, and it is answered where jsdom answers it
  * exactly: `entityStyle.test.ts` asserts the rendered button carries no `style`
  * attribute. That same test holds the first fixture against the chain the portal
- * renders, because a chain is a fact with two homes and it drifted twice.
+ * renders, because a chain is a fact with two homes and it drifted twice, and
+ * `forms/pickerFixture.test.ts` holds the second. Both of them read `CONTROLS` to get
+ * there, so a fixture this stops measuring is a fixture they stop guarding, and they say
+ * so rather than going quietly on.
  *
  * No new dependency. Chrome is driven over the DevTools Protocol with the WebSocket
  * built into Node.
@@ -88,12 +94,14 @@ import { pathToFileURL } from 'node:url'
 const CHROME =
   process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const PORT = Number(process.env.BTL_CDP_PORT ?? 9333)
-/** The three widths this portal promises (`CLAUDE.md`, UI standards): desktop, tablet,
- *  and the narrowest of them.
- *  Measured at one width only, a refusal written away inside `@media (max-width: ...)`
- *  is not there on a telephone and nothing says so: the shared table sheet already
- *  branches at 699.98px, and a review took the refusal out below it. */
-const WIDTHS = [1280, 768, 360]
+/** The narrowest screen this portal promises (`CLAUDE.md`, UI standards). Nothing under
+ *  it is measured, because nothing under it is promised. */
+const NARROWEST = 360
+/** What `em` is worth to a media query: the initial font size, and never the one the
+ *  portal sets on its own root. It is not trusted, only used to choose which widths to
+ *  visit; at each of them the browser is asked what it makes of every condition of the
+ *  sheet and a disagreement stops the run (`asksFor`). */
+const EM = 16
 const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
 /** Set `BTL_APPEARANCE_DIFFS=1` to print the differences of every control instead of
@@ -432,14 +440,40 @@ const START = `(() => {
   return JSON.stringify(document.activeElement === null ? 'none' : document.activeElement.id)
 })()`
 
-/** Where the keyboard has got to. One Tab reaches the price list's button and two reach
- *  the calendar's, because a date field is a box and then a button, so the walk is a
- *  walk rather than a number written per control: a count is a fact about markup kept
- *  away from the markup, and it goes stale the first time a control gains a neighbour. */
+/** Where the keyboard has got to. */
 const AT = `(() => JSON.stringify({
   at: document.activeElement === null ? 'none' : document.activeElement.id,
   ring: document.getElementById('refused').matches(':focus-visible'),
 }))()`
+
+/** How far the control stands from the sentinel in the order of focus, counted in the
+ *  fixture itself.
+ *
+ *  One Tab reaches the price list's button and two reach the calendar's, because a date
+ *  field is a box and then a button. Written per control as a number, that count is a
+ *  fact about markup kept away from the markup and it goes stale the first time a control
+ *  gains a neighbour; written as a bound of a few presses, it stops being a claim at all.
+ *  A review measured the second: with the walk allowed up to five stations, a heading
+ *  given `overflow: scroll` takes focus in Chrome, the walk simply took one step more,
+ *  and „the refused control is the next place focus lands" quietly became „it is
+ *  somewhere in the next five".
+ *
+ *  So the fixture is counted instead and then walked exactly that far. The elements below
+ *  are the ones markup makes focusable; a station something in the sheet made focusable
+ *  is not among them, which is the whole point of counting here rather than tabbing until
+ *  something turns up. */
+const STOPS = `(() => {
+  const walkable = [...document.querySelectorAll(
+    'a[href], area[href], button, input, select, textarea, iframe, [tabindex], [contenteditable]',
+  )].filter(
+    (one) => !one.hasAttribute('disabled') && one.tabIndex >= 0 && one.getClientRects().length > 0,
+  )
+
+  return JSON.stringify({
+    from: walkable.indexOf(document.getElementById('before')),
+    to: walkable.indexOf(document.getElementById('refused')),
+  })
+})()`
 
 /** Whether anything on the page is still moving.
  *
@@ -665,18 +699,28 @@ async function measure(socket, theme, control) {
     throw new Error(`${theme}: the sentinel before the control would not take focus (${from})`)
   }
 
+  const stops = await evaluate(socket, STOPS)
+
+  if (stops.from === -1 || stops.to <= stops.from) {
+    throw new Error(
+      `${theme}: the sentinel does not stand in front of the control in the order of focus (${stops.from} and ${stops.to})`,
+    )
+  }
+
+  const walk = stops.to - stops.from
+
   let landed = { at: 'before', ring: false }
 
-  /* Bounded, and the bound is a fixture that has grown a control nobody meant to put in
-     front of this one rather than a limit anybody is meant to reach. */
-  for (let step = 0; step < 6 && landed.at !== 'refused'; step += 1) {
+  /* Exactly as far as the fixture is long, so a station the fixture has not got is a walk
+     that ends somewhere else and says where. */
+  for (let step = 0; step < walk; step += 1) {
     await tab(socket)
     landed = await evaluate(socket, AT)
   }
 
   if (landed.at !== 'refused') {
     throw new Error(
-      `${theme}: Tab from the sentinel never reached the control (it stopped on ${landed.at})`,
+      `${theme}: ${walk} Tab from the sentinel is where the control stands in this fixture, and it stopped on ${landed.at}`,
     )
   }
 
@@ -866,6 +910,107 @@ function complaintsFor(where, control, { resting, hovered, pressed, focused }) {
   return complaints
 }
 
+/** Every width condition the built sheet asks, as the browser is going to be asked it and
+ *  as the number it names.
+ *
+ *  Both spellings, because the two homes of one condition are written differently: the
+ *  portal writes `@media (min-width: 35em)` and the build hands the browser
+ *  `@media (width>=35em)`.
+ *
+ *  A prelude that mentions a width and yields none of them stops the run rather than
+ *  being passed over. A condition this cannot read is a band nobody visits, which is the
+ *  fault this whole derivation exists for, and it would arrive silently: the day the
+ *  build starts writing `(400px<=width<=800px)`, an empty parse and a sheet with no
+ *  breakpoints at all look exactly alike from here. */
+function conditionsIn(css) {
+  const read = [
+    ...[...css.matchAll(/\(\s*width\s*(<=|>=|<|>)\s*([\d.]+)(px|em|rem)\s*\)/g)].map((found) => ({
+      text: found[0],
+      how: found[1],
+      px: Number(found[2]) * (found[3] === 'px' ? 1 : EM),
+    })),
+    ...[...css.matchAll(/\(\s*(min|max)-width\s*:\s*([\d.]+)(px|em|rem)\s*\)/g)].map((found) => ({
+      text: found[0],
+      how: found[1] === 'min' ? '>=' : '<=',
+      px: Number(found[2]) * (found[3] === 'px' ? 1 : EM),
+    })),
+  ]
+  const holds = {
+    '<=': (width, at) => width <= at,
+    '>=': (width, at) => width >= at,
+    '<': (width, at) => width < at,
+    '>': (width, at) => width > at,
+  }
+  const unread = [...css.matchAll(/@media[^{]*/g)]
+    .map((found) => found[0])
+    .filter((one) => one.includes('width') && !read.some((asked) => one.includes(asked.text)))
+
+  if (unread.length > 0) {
+    throw new Error(
+      `a width condition this cannot read, so the band behind it would go unmeasured: ${unread.join(' ')}`,
+    )
+  }
+
+  return read.map((one) => ({
+    text: one.text,
+    px: one.px,
+    holds: (width) => holds[one.how](width, one.px),
+  }))
+}
+
+/** One width inside every band the built sheet can tell apart, from the narrowest screen
+ *  this portal promises upward.
+ *
+ *  Written out by hand instead, the list is a guess about a file that keeps changing, and
+ *  a review measured what the guess cost: three widths stood here, 1280, 768 and 360, and
+ *  not one of them fell between 560px and 699.98px, a band this portal writes eight rules
+ *  for. The refusal of both controls was taken out inside
+ *  `@media (min-width: 35em) and (max-width: 43.74875em)` and this said both were still
+ *  refused. Only the narrowest is chosen now, and it is chosen by `CLAUDE.md`; the rest
+ *  are wherever the sheet itself changes its mind.
+ *
+ *  One width per band and not two, because inside a band every condition of the sheet
+ *  answers the same for every width in it, which is what a band is. The edges are taken
+ *  from both sides of every number the sheet names, and then the ones that answer alike
+ *  are dropped. */
+function widthsOf(conditions) {
+  /* Both sides of every number the sheet names, in whole pixels because a window is
+     measured in whole pixels: the last one under it, the first one at or above it, and
+     the number itself where it is whole. */
+  const edges = conditions.flatMap((one) => [
+    Math.floor(one.px),
+    Math.ceil(one.px) - 1,
+    Math.ceil(one.px),
+  ])
+  const answer = (width) => conditions.map((one) => (one.holds(width) ? '1' : '0')).join('')
+  const widths = []
+  let said = null
+
+  for (const width of [...new Set([NARROWEST, ...edges])]
+    .filter((width) => width >= NARROWEST)
+    .sort((left, right) => left - right)) {
+    const now = answer(width)
+
+    if (now !== said) {
+      widths.push(width)
+      said = now
+    }
+  }
+
+  return widths
+}
+
+/** What the browser makes of every condition of the sheet at the width it has been given,
+ *  held against what this file made of the same conditions.
+ *
+ *  The bands above are arithmetic over numbers scraped out of a file, and arithmetic that
+ *  has drifted from the sheet chooses widths that are all in one band while reading like
+ *  a list of many. `em`, resolved here at 16px, is the likeliest way for it to drift. */
+const asksFor = (conditions) => `(() => JSON.stringify({
+  width: window.innerWidth,
+  holds: ${JSON.stringify(conditions.map((one) => one.text))}.map((one) => matchMedia(one).matches),
+}))()`
+
 async function main() {
   const dist = join(process.cwd(), 'dist', 'assets')
 
@@ -895,6 +1040,14 @@ async function main() {
   if (sheets.length === 0) {
     throw new Error('no built stylesheet; run `npm run build` first')
   }
+
+  /* And the widths out of the same sheets, in the same order, because a band is cut by
+     every condition the browser is going to read and not only by the ones of the first
+     file. */
+  const conditions = conditionsIn(
+    sheets.map((name) => readFileSync(join(dist, name), 'utf-8')).join('\n'),
+  )
+  const widths = widthsOf(conditions)
 
   /* Named for this run. A browser left behind by an earlier run that never reached its
      `finally` sits on the port showing a fixture at the very same path, so matching by
@@ -974,7 +1127,7 @@ async function main() {
         await show(socket, one.address)
       }
 
-      for (const width of WIDTHS) {
+      for (const width of widths) {
         /* A size of its own, so the control has a box and the mouse has somewhere to land
            whatever window the browser happened to open with. */
         await send(socket, 'Emulation.setDeviceMetricsOverride', {
@@ -983,6 +1136,23 @@ async function main() {
           deviceScaleFactor: 1,
           mobile: false,
         })
+
+        /* And the size landed, and the sheet reads here the way this file read it off the
+           file. Without the first, every width above is the width the browser opened
+           with and the list of bands is one band measured over and over. */
+        const said = await evaluate(socket, asksFor(conditions))
+
+        if (said.width !== width) {
+          throw new Error(`the browser was asked for ${width}px and gave ${said.width}px`)
+        }
+
+        const apart = conditions.filter((one, at) => one.holds(width) !== said.holds[at])
+
+        if (apart.length > 0) {
+          throw new Error(
+            `at ${width}px the browser reads ${apart.map((one) => one.text).join(', ')} the other way round from this file, so the bands it visits are not the bands of the sheet`,
+          )
+        }
 
         for (const theme of ['dark', 'light']) {
           complaints.push(
@@ -1010,8 +1180,11 @@ async function main() {
       return
     }
 
+    /* Counted rather than said in a word: „both" was written here by hand while nothing
+       held the second control in `CONTROLS`, so taking it out left this sentence saying
+       both about one. */
     console.log(
-      `both refused controls still look refused in both themes, measured in Chrome (${CONTROLS.map((one) => one.name).join('; ')})`,
+      `all ${CONTROLS.length} refused controls still look refused in both themes, at ${widths.length} widths (${widths.join(', ')}), measured in Chrome (${CONTROLS.map((one) => one.name).join('; ')})`,
     )
   } finally {
     chrome.kill()
