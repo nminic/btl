@@ -1,3 +1,4 @@
+import { SLOW } from '../test/slow'
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
 import { fireEvent, screen, within } from '@testing-library/react'
@@ -65,7 +66,7 @@ describe('Home', () => {
     } finally {
       window.matchMedia = previous
     }
-  }, 20_000)
+  }, SLOW)
 
   /* Two blocks went out (owner, 31.07.2026): one explained on the front page
      what the written pages explain properly, the other counted members, which is

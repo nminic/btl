@@ -1,3 +1,4 @@
+import { SLOW } from '../test/slow'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -795,7 +796,7 @@ describe('the races of an event', () => {
        the run that failed. Ten seconds is six times warm; a fourfold slowdown of the
        form itself would still be caught by the other walks of this file, which keep
        the default. */
-  }, 10_000)
+  }, SLOW)
 
   it('takes a race away when the row it was in is gone and the press lands', async () => {
     /* A row removed from the table is a race removed from the event, and the store
@@ -919,7 +920,7 @@ describe('the races of an event', () => {
     expect(left, 'a race took the number a deleted one had freed').toContain('99')
     expect(left.filter((km) => km === '88'), 'two records answer to one identity')
       .toHaveLength(1)
-  }, 20_000)
+  }, SLOW)
 
   it('takes a row off the table without touching what is saved until the press', async () => {
     /* Nothing here saves. A row taken off the table is gone from the table, and

@@ -1,3 +1,4 @@
+import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
@@ -1696,7 +1697,7 @@ describe('CompetitorProfile', () => {
 
     expect(new Set(dots).size).toBe(new Set(kinds).size)
     expect(dots.every((one) => one !== undefined)).toBe(true)
-  }, 15_000)
+  }, SLOW)
 
   it('says which of the four kinds of nothing it is', async () => {
     /* Never raced at all is a different fact from raced but not this season, and
