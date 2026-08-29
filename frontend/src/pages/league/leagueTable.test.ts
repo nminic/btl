@@ -117,28 +117,6 @@ describe('the grid of a competition', () => {
     expect(first(table.columns).name).toBe('Polumaraton kroz grad')
   })
 
-  it('leads with the name where the length and the day cannot part two columns', () => {
-    /* A turned heading is cut at the end, so what tells two columns apart has to
-       come first. Two races of one length on one morning are parted by their names
-       alone, and that is what `ambiguous` says: lead with the name.
-
-       Keyed on the length and the day and not on the name as well, deliberately.
-       Were the name in the key, these two would count as different, the heading
-       would fall back to its ordinary order, and the name would be the part off the
-       edge. */
-    const clash = [
-      race('r6', 'e1', 10, '2019-05-01', 'Jutarnja trka'),
-      race('r7', 'e2', 10, '2019-05-01', 'Večernja trka'),
-    ]
-    const table = leagueTable(league, events, clash, [], [])
-
-    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
-    /* And a column nothing shares a length and a day with is left alone. */
-    const alone = leagueTable(league, events, [race('r8', 'e1', 10, '2019-05-01')], [], [])
-
-    expect(first(alone.columns).ambiguous).toBe(false)
-  })
-
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {
     const table = leagueTable(
       league,
@@ -216,61 +194,6 @@ describe('the grid of a competition', () => {
   })
 })
 
-describe('a heading that has to be cut somewhere', () => {
-  it('puts the event first when the race and the date do not tell two columns apart', () => {
-    /* Twice in the main competition of 2027 two different events hold the same
-       length on the same day: "10.00 km, 4. 9. 2027." is both 10K Belgrade and
-       Beljanica trail. The turned heading is cut at its end, so what repeats has
-       to go last, and which part repeats is not the same every time. */
-    const table = leagueTable(
-      { ...league, eventIds: ['e1', 'e2'] },
-      [event('e1', '2019-05-01'), event('e2', '2019-05-01')],
-      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e2', 10, '2019-05-01')],
-      [],
-      [],
-    )
-
-    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
-  })
-
-  it('leaves the event last when the race and the date already tell them apart', () => {
-    const table = leagueTable(league, events, races, [], [])
-
-    expect(table.columns.every((one) => one.ambiguous)).toBe(false)
-  })
-
-  it('tells two nameless races of one event apart by their lengths', () => {
-    /* Which is the whole of what a nameless race has (PDL P6, 11.08.2026). Told
-       apart by name alone the two shared one empty key, both were marked as not
-       telling themselves apart, and the reader was given two columns headed
-       „Događaj e1, , 1. 5. 2019." over two different races. */
-    const table = leagueTable(
-      { ...league, eventIds: ['e1'] },
-      [event('e1', '2019-05-01')],
-      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 21.1, '2019-05-01')],
-      [],
-      [],
-    )
-
-    expect(table.columns.map((one) => one.ambiguous)).toEqual([false, false])
-  })
-
-  it('still says so when two nameless races are the same length on the same day', () => {
-    /* Then there is nothing left to tell them apart with, and the heading says
-       as much by carrying the event too. Better a heading that repeats than one
-       that claims a difference it cannot show. */
-    const table = leagueTable(
-      { ...league, eventIds: ['e1'] },
-      [event('e1', '2019-05-01')],
-      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 10, '2019-05-01')],
-      [],
-      [],
-    )
-
-    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
-  })
-})
-
 describe('the way a competition splits its ranking', () => {
   /* Owner, in P15: „Podela na kategorije se podešava na nivou svake Lige.
      RunTrace liga ima podelu samo po polu, bez uzrasnih kategorija." The flag
@@ -342,40 +265,5 @@ describe('the way a competition splits its ranking', () => {
       '000001',
       '000000',
     ])
-  })
-})
-
-describe('the order the heading of a column is written in', () => {
-  /* A turned heading is cut at the end, so what tells two columns apart has to come
-     first. That is decided in `pages/league/LeagueResults.tsx` and measured here
-     rather than through the screen, because what it rests on is `ambiguous`, which
-     is this file's answer.
-
-     Measured on 29.08.2026: with the heading always written in the ordinary order,
-     the whole of `pages/league` stayed green while two columns that share a length
-     and a morning both read „10,0 km, 1. 5. 2019., …" and the names that part them
-     sat past the edge. */
-  const heading = (column: { name: string; ambiguous: boolean }, length: string, day: string) =>
-    column.ambiguous ? `${column.name}, ${length}, ${day}` : `${length}, ${day}, ${column.name}`
-
-  it('leads with the name where two columns share a length and a morning', () => {
-    const clash = [
-      race('r6', 'e1', 10, '2019-05-01', 'Jutarnja trka'),
-      race('r7', 'e2', 10, '2019-05-01', 'Večernja trka'),
-    ]
-    const table = leagueTable(league, events, clash, [], [])
-
-    expect(table.columns.map((one) => heading(one, '10,0 km', '1. 5. 2019.'))).toEqual([
-      'Jutarnja trka, 10,0 km, 1. 5. 2019.',
-      'Večernja trka, 10,0 km, 1. 5. 2019.',
-    ])
-  })
-
-  it('leads with the length where nothing else needs saying first', () => {
-    const table = leagueTable(league, events, [race('r8', 'e1', 10, '2019-05-01')], [], [])
-
-    expect(heading(first(table.columns), '10,0 km', '1. 5. 2019.')).toBe(
-      '10,0 km, 1. 5. 2019., Trka',
-    )
   })
 })

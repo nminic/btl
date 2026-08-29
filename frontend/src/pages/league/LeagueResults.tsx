@@ -8,7 +8,7 @@ import { categoryLabel } from '../../data/categories'
 import { fieldFor } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
-import { formatDistance, formatPoints, formatShortDate } from '../../i18n/format'
+import { formatDistance, formatPoints, formatShortDate, formatYear } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueGroups, leagueTable } from './leagueTable'
 import './League.css'
@@ -117,28 +117,40 @@ function Grid({
               </th>
               {table.columns.map((column) => (
                 <th scope="col" key={column.raceId} className="league__race">
-                  {/* The race and the date first, the name of the event after
-                      them. A turned heading has to be cut somewhere, and the cut
-                      has to fall on the part that repeats: three races of one
-                      event on one day gave three columns all reading "BTL trening
-                      trek" with the length and the date beyond the edge, which is
-                      the one thing that told them apart. The whole of it is in the
-                      title for anyone who wants it. */}
-                  {/* The race by its own name, which it has had since 23.08.2026
-                      and which stood here as its event's name until 29.08.2026
-                      (owner: „u listi rezultata treba da se prikazuju nazivi trka
-                      na kojima je čovek učestvovao, a ne događaja"). It starts out
-                      as the event's name, so on most rows nothing moved; on a race
-                      somebody renamed, the grid now says what they called it. */}
+                  {/* The race by its own name first, then its length, then the
+                      year it was run in.
+
+                      **The name first, and in every column.** The race has had a
+                      name of its own since 23.08.2026 and stood here under its
+                      event's name until 29.08.2026 (owner: „u listi rezultata
+                      treba da se prikazuju nazivi trka na kojima je čovek
+                      učestvovao, a ne događaja"). Standing last it was never seen:
+                      the heading is turned on its side and cut at 144 pixels on a
+                      1280 screen and 104 on a 360, and a review measured on
+                      29.08.2026 that all fourteen headings of one competition were
+                      cut before the name began. A name nobody can read is not a
+                      name the grid says.
+
+                      **The year and not the day**, decided by the owner the same
+                      day, with the cost of each put to him: the day is some ten
+                      characters of the little room there is, and dropping it buys
+                      the name its place without making the heading taller or the
+                      row deeper. What it costs is written down rather than hidden:
+                      two races of one length in one year no longer differ by their
+                      day here, so they lean on their names alone, and two that
+                      share a name as well read alike.
+
+                      The whole of it, day included, stays in the title for a
+                      pointer. */}
                   {(() => {
                     const length = formatDistance(column.distanceKm, locale)
-                    const day = formatShortDate(column.date, locale)
 
                     return (
-                      <span className="league__race-name" title={`${column.name}, ${length}, ${day}`}>
-                        {column.ambiguous
-                          ? `${column.name}, ${length}, ${day}`
-                          : `${length}, ${day}, ${column.name}`}
+                      <span
+                        className="league__race-name"
+                        title={`${column.name}, ${length}, ${formatShortDate(column.date, locale)}`}
+                      >
+                        {`${column.name}, ${length}, ${formatYear(column.date, locale)}`}
                       </span>
                     )
                   })()}

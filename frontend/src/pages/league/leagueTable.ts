@@ -30,18 +30,6 @@ export type LeagueColumn = {
    */
   name: string
   date: string
-  /**
-   * Whether this race and this date belong to more than one event in the
-   * competition.
-   *
-   * The heading is turned on its side and has to be cut somewhere, and the cut
-   * has to fall on the part that repeats. Usually that is the name of the event,
-   * because one event holds several races on one day. Twice in the main
-   * competition of 2027 it is the other way round: "10.00 km, 4. 9. 2027." is
-   * both 10K Belgrade and Beljanica trail. Where that happens the name goes
-   * first instead.
-   */
-  ambiguous: boolean
   /** Only for the ordering. Within one day the shorter race comes first, and
    *  by name "10 km" would come before "5 km". */
   distanceKm: number
@@ -108,40 +96,18 @@ export function leagueTable(
                  neither said which morning it was. */
               date: race.date,
               distanceKm: race.distanceKm,
-              ambiguous: false,
             },
           ]
     })
     .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
 
-  const seen = new Map<string, number>()
-
-  /* What two columns have to share before the reader cannot tell them apart: the
-     length and the day. Two races of one length on one morning are two columns
-     that only their names can part, and the name is what the heading then leads
-     with.
-   *
-     Keyed on the length and the day and not on the name as well, deliberately. Were
-     the name in the key, those two columns would count as different and the heading
-     would fall back to its ordinary order, which puts the name last — and a turned
-     heading is cut at the end, so the one thing that tells them apart would be the
-     one thing off the edge. */
-  for (const column of columns) {
-    const key = `${column.distanceKm}|${column.date}`
-    seen.set(key, (seen.get(key) ?? 0) + 1)
-  }
-
-  /* The keys that more than one event holds. Kept as a set rather than read back
-     out of the counts with a fallback: every column was just counted into them,
-     so the fallback is a branch that can never be taken. */
-  const shared = new Set(
-    [...seen.entries()].filter(([, howMany]) => howMany > 1).map(([key]) => key),
-  )
-
-  for (const column of columns) {
-    column.ambiguous = shared.has(`${column.distanceKm}|${column.date}`)
-  }
-
+  /* Whether two columns could be told apart used to be worked out here, so that a
+     heading could put the name first only where it had to. The owner decided on
+     29.08.2026 that the name goes first in every column and the day shrinks to its
+     year, so there is nothing left for that answer to decide and it is gone rather
+     than kept for a reader who might want it: a fact nobody reads is a fact nobody
+     keeps true. What it used to buy, and what the decision costs instead, is
+     written where the heading is drawn (`LeagueResults.tsx`). */
   const counts = new Set(columns.map((one) => one.raceId))
   const byMember = new Map<string, Map<string, number>>()
 

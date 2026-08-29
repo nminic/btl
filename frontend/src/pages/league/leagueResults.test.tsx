@@ -6,7 +6,7 @@ import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { PER_PAGE } from '../../components/pageOf'
 import { SLOW } from '../../test/slow'
-import { formatDistance, formatShortDate } from '../../i18n/format'
+import { formatDistance, formatShortDate, formatYear } from '../../i18n/format'
 
 /* Fifty placed to a page (owner, 03.08.2026, PDL P24).
  *
@@ -299,10 +299,17 @@ describe('a competition everybody in it fits on one page', () => {
 })
 
 describe('a competition whose event runs over more than one morning', () => {
-  /* A race carries no name of its own (data/types.ts), so a column is headed by
-     a length and a day. Two races of one length on two mornings therefore have
-     to differ by the day, and the day of a race is not the day of its event
-     (PDL P10). */
+  /* A column is headed by the race's name, its length and the year it was run in
+     (owner, 29.08.2026). Two races of one length on two mornings of one year
+     therefore read alike in the heading, and what still parts them is the title,
+     which carries the day.
+
+     That is the cost the owner was given and took, in his own words the day he
+     took it: „dve trke iste dužine u istoj godini se u zaglavlju više ne razlikuju
+     danom, pa se oslanjaju samo na ime." Measured over the file the same day: of
+     the 23 columns in the three competitions, no two read alike either before the
+     change or after it, so this is the shape of the cost and not a case anybody
+     meets today. */
   async function overTwoMornings() {
     const real = globalThis.fetch
     const races: Race[] = await (await real('/mock/races.json')).json()
@@ -333,19 +340,53 @@ describe('a competition whose event runs over more than one morning', () => {
     return { first: mine, second }
   }
 
-  it('heads the two columns with two different days', async () => {
+  it('heads them alike, and parts them in the title a pointer reads', async () => {
     const { first, second } = await overTwoMornings()
 
-      renderAt(RUN)
+    renderAt(RUN)
 
-      const heads = (await grid()).getAllByRole('columnheader').map((one) => one.textContent ?? '')
-      const length = formatDistance(first.distanceKm, 'sr')
-      const mine = heads.filter((one) => one.startsWith(`${length},`))
+    const heads = await (await grid()).findAllByRole('columnheader')
+    const length = formatDistance(first.distanceKm, 'sr')
+    const mine = heads.filter((one) => (one.textContent ?? '').startsWith(`${first.name}, ${length},`))
 
-      expect(mine.length).toBeGreaterThanOrEqual(2)
-      /* Each morning said once, rather than one morning said twice. */
-      expect(mine.filter((one) => one.includes(formatShortDate(second.date, 'sr')))).toHaveLength(1)
-      expect(new Set(mine).size).toBe(mine.length)
+    expect(mine.length, 'the two mornings are no longer two columns').toBe(2)
+    /* One year said twice, because that is what the heading now carries. */
+    expect(new Set(mine.map((one) => one.textContent))).toEqual(
+      new Set([`${first.name}, ${length}, ${formatYear(first.date, 'sr')}`]),
+    )
+    /* And the day is still there for a pointer, once for each morning. */
+    const titles = mine.map((one) =>
+      must(one.querySelector('.league__race-name'), 'the name of the race').getAttribute('title'),
+    )
+
+    expect(new Set(titles).size, 'the two mornings share even their title').toBe(2)
+    expect(titles).toContain(`${first.name}, ${length}, ${formatShortDate(second.date, 'sr')}`)
+  })
+
+  it('says the name first, so the part that is cut off is the part that repeats', async () => {
+    /* The whole of why the order changed. Measured by a review on 29.08.2026 in
+       Chrome: the heading is turned on its side and cut at 144 pixels on a 1280
+       screen and 104 on a 360, and all fourteen headings of this very competition
+       were cut before the name began, so the one thing the change was made for was
+       never seen. Asked of the drawn screen rather than of a copy of the rule: the
+       version of this that lived in `leagueTable.test.ts` wrote the rule out again
+       and passed with the screen putting the name last. */
+    await overTwoMornings()
+
+    renderAt(RUN)
+
+    for (const head of await (await grid()).findAllByRole('columnheader')) {
+      const said = head.textContent ?? ''
+
+      /* Only the columns of races, which are the ones carrying a name. */
+      if (head.querySelector('.league__race-name') === null) {
+        continue
+      }
+
+      /* The name, then the length, then the year, and no day: a day would be ten
+         characters of the little room there is. */
+      expect(said).toMatch(/^.+, [\d.,]+ km, \d{4}\.$/)
+    }
   })
 })
 

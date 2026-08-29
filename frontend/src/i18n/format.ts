@@ -167,6 +167,22 @@ export function formatNumericDate(isoDate: string): string {
   return `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.${isoDate.slice(0, 4)}.`
 }
 
+/**
+ * "2019." from "2019-01-05", the year of a day and nothing else.
+ *
+ * A year on its own is still a date rather than a number, which is why it goes
+ * through Intl like every other date whose words matter: Serbian writes the full
+ * stop that makes it an ordinal and English does not, and neither language has to
+ * be named here for that to come out right.
+ *
+ * Takes a whole day and not a year, because both of its readers hold a day and
+ * one of them would otherwise cut the year out of the string itself, which is the
+ * second home this exists to prevent.
+ */
+export function formatYear(isoDate: string, locale: string): string {
+  return dateFormat(locale, 'year').format(new Date(`${isoDate.slice(0, 4)}-01-01T00:00:00Z`))
+}
+
 /** "maj 2027." from "2027-05", for a calendar heading. */
 export function formatMonth(month: string, locale: string): string {
   return dateFormat(locale, 'monthYear').format(new Date(`${month}-01T00:00:00Z`))
@@ -215,7 +231,7 @@ export function wholePeriod(from: string, to: string, locale: string): string | 
   }
 
   if (from === `${year}-01-01` && to === `${year}-12-31`) {
-    return dateFormat(locale, 'year').format(new Date(`${year}-01-01T00:00:00Z`))
+    return formatYear(to, locale)
   }
 
   return null
