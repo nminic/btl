@@ -1023,18 +1023,19 @@ describe('a box the portal filled in from a list', () => {
   it('looks held as well as being held, and only once it is', async () => {
     /* On `unos-rezultata` a chosen race locks four boxes: the day, the length, the
        climb and the fall. Three of them come from here, out of one shared set of
-       properties, and until 29.08.2026 the portal had no dress for a held control
-       at all: measured by a review on 28.08.2026 in Chrome over the built
-       stylesheet, a locked box and a live one differed in nothing, because the one
-       visible difference `disabled` used to make went with `disabled` and nothing
-       took its place („Odbijeno, ne ugašeno", PDL).
+       properties, and those three have worn the portal's dress for a held control
+       since 28.08.2026. The fourth, the day, is drawn by `DatePicker.tsx` from its
+       own class and wore nothing until 29.08.2026, which is the fault that made
+       this whole change: measured in Chrome over the built stylesheet, the locked
+       date differed from a live date in nothing while the locked number beside it
+       differed in its ground and its cursor.
 
        Written here and not only over the class name, because a sweep that says
-       „nobody writes this class by hand" cannot say „this control asks for it":
-       a control drawn with a bare `field__control` passes such a sweep in silence,
-       which is exactly what this file's own control did before it was fixed. Found
-       by a review on 29.08.2026, which pointed out that deleting the old guard had
-       left these three boxes with none at all in either direction.
+       „nobody writes this class by hand" cannot say „this control asks for it": a
+       control drawn with a bare `field__control` passes such a sweep in silence,
+       which is exactly what `DatePicker.tsx` did. Found by a review on 29.08.2026,
+       which pointed out that deleting the old guard had left these three boxes with
+       none at all in either direction.
 
        Both directions, in one case, because they are the same fault told two ways:
        a dress that never arrives leaves a held box looking live, and a dress that
@@ -1080,6 +1081,46 @@ describe('a box the portal filled in from a list', () => {
 })
 
 describe('a field filled from a list', () => {
+  it('dresses a held box that is drawn through its own list of suggestions', async () => {
+    /* `shared` reaches seven kinds of control, and a case that asks one of them
+       says nothing about the other six. Found by a review on 29.08.2026: with
+       `Suggesting` handed a bare `field__control` instead of the shared set, the
+       whole suite stayed green, and this is not a shape nobody draws — on
+       `unos-rezultata` a member correcting a result has `raceName` held (owner,
+       27.08.2026: „sve osim trke"), and `raceName` is the one field on the portal
+       with a list, so it is drawn here and nowhere else.
+
+       The other five kinds are not asked here. What holds them is that they read
+       the same object, and that object is asked in the case above; what this one
+       adds is the one branch that hands the object on rather than spreading it. */
+    renderWithI18n(
+      <FormRenderer
+        form={fillsABox}
+        fixed={['trka']}
+        suggests={{
+          trka: [
+            {
+              id: 'jedna',
+              value: 'Probna trka',
+              said: 'Probna trka – 19.04.2026. – 42,2 km',
+              fills: { dopisano: '42,2' },
+            },
+          ],
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    const box = screen.getByLabelText(/proba.trka/)
+
+    expect(box, 'a held box drawn through a list is dressed as a live one').toHaveClass(
+      'field__control',
+      'field__control--held',
+    )
+    expect(box).toHaveAttribute('aria-disabled', 'true')
+    expect(box).not.toBeDisabled()
+  })
+
   it('is locked whatever kind of control it is drawn as', async () => {
     const user = setupUser()
 

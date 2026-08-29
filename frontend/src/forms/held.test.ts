@@ -36,48 +36,40 @@ describe('what a held control wears', () => {
     expect(held.cursor).toBe('default')
   })
 
-  it('comes after every rule of the same weight that would undo it', () => {
-    /* Why the rule moved out of `PlaceField.css` on 29.08.2026:
-       `.field__control--held` and `.field__control` are the same weight and set the
-       same property, so which of them wins is decided by nothing but the order the
-       sheets happen to load in, and four controls in three files wear this while
-       only one of those files imported the sheet the rule lived in.
-
-       **Every occurrence and not the first**, which is the whole of what makes this
-       measurable: a review on 29.08.2026 added a second `.field__control` rule at
-       the end of this same sheet, all four held controls lost their ground and
-       their cursor in Chrome, and a version of this that read `indexOf` stayed
-       green because the first occurrence was still where it had always been. */
-    const dress = SHEET.indexOf(`.${NAME} {`)
-    /* The bare rule and not every selector that ends in it: `.field__photo >
-       .field__control` further down is heavier than the dress and says nothing
-       about its ground or its cursor, so it is not what this is watching for. */
-    const plain = [...SHEET.matchAll(/^\.field__control \{/gm)].map((at) => at.index)
-
-    expect(plain.length, 'the plain control is no longer written here').toBeGreaterThan(0)
-    expect(Math.max(...plain), 'a later rule of the same weight undoes the dress').toBeLessThan(
-      dress,
-    )
-  })
-
-  it('is written in one place, and so is the rule', () => {
+  it('names the class in one sheet and no other, and once inside it', () => {
     /* One fact, one home (ADL A31): the class is named by `heldControl` and by
        nothing else, and the rule is declared in one sheet and once.
 
-       Both halves were found missing by a review on 29.08.2026. The first version
-       swept only the sources, so a second `.field__control--held` written into any
-       sheet that loads later took the dress off all four controls without a word;
-       measured in Chrome, `PlaceField.css` — the very sheet the rule had just left
-       — comes 25549 bytes after `FormRenderer.css` in the built bundle.
+       **What this can say and what it cannot, kept apart on purpose.** Where a name
+       is written is a fact about the sources and is answered exactly. Which rule a
+       browser lets win is a fact about the cascade, and no reading of source text
+       answers it: a review on 29.08.2026 took a version of this that compared the
+       positions of two rules and beat it four ways over, with a selector list, with
+       an `@media` block, with `!important`, and with a second sheet, each of them
+       leaving every control undressed in Chrome while the whole suite stayed green.
 
-       **What this does not say.** It cannot say that a control which ought to be
-       held asks for the dress: one written with a bare `field__control` passes here
-       in silence, and that is exactly what `DatePicker.tsx` did until this change.
-       That question is asked of each control where the control is drawn, and this
-       one only closes the way the fault spreads.
+       That is the same wall `frontend/scripts/refused-control-appearance.mjs` was
+       written against: „Nine rounds of review on `entityStyle.test.ts` proved it:
+       every version tried to compute the cascade and each was blind to the next
+       axis." So the cascade is not asked here at all. It is asked of a browser, by
+       `npm run appearance`, and the held control is not yet one of the controls
+       that script measures; that is written down as its own piece of work rather
+       than answered with a guard that cannot fail.
 
-       Read off the sources with comments blanked, because the class is named in
-       several comments on purpose and a comment cannot dress anything. */
+       **And it cannot say that a control which ought to be held asks for the
+       dress.** One written with a bare `field__control` passes here in silence,
+       which is exactly what `DatePicker.tsx` did until 29.08.2026. That is asked of
+       each control where the control is drawn: `DatePicker.test.tsx` for the date,
+       `PlaceField.test.tsx` for the town and the country, and
+       `FormRenderer.test.tsx` for a box the renderer fills and for one it fills
+       through a list.
+
+       Sources and sheets alike read with comments blanked, because the class is
+       named in several comments on purpose — `DatePicker.css` names it to say why
+       the button beside a held field repeats its two declarations rather than
+       sharing them — and a comment cannot dress anything. Sheets read for the
+       name in any selector and not for `.name {`, because a review beat that exact
+       string with `.field__control--held,` at the head of a list. */
     const wrote = globSync('src/**/*.{ts,tsx}')
       .filter((file) => !file.endsWith('.test.ts') && !file.endsWith('.test.tsx'))
       .filter((file) => !file.endsWith(`forms${SEP}held.ts`))
@@ -85,21 +77,28 @@ describe('what a held control wears', () => {
 
     expect(wrote, `${NAME} is written by hand outside forms/held.ts`).toEqual([])
 
-    const declared = globSync('src/**/*.css').filter((file) =>
-      readFileSync(join(process.cwd(), file), 'utf-8').includes(`.${NAME} {`),
-    )
+    const sheets = globSync('src/**/*.css').map((file) => ({
+      file,
+      times: named(bare(readFileSync(join(process.cwd(), file), 'utf-8'))),
+    }))
 
-    expect(declared, `${NAME} is declared somewhere other than FormRenderer.css`).toEqual([
-      join('src', 'forms', 'FormRenderer.css'),
-    ])
-  })
-
-  it('is the only rule in its own sheet that dresses it', () => {
-    /* And once inside that sheet, for the same reason: a second declaration lower
-       down needs no other file to undo the first. */
-    expect(SHEET.split(`.${NAME} {`).length - 1, 'the dress is declared twice here').toBe(1)
+    expect(
+      sheets.filter((one) => one.times > 0).map((one) => one.file),
+      `${NAME} is named in a sheet other than FormRenderer.css`,
+    ).toEqual([join('src', 'forms', 'FormRenderer.css')])
+    expect(
+      sheets.find((one) => one.times > 0)?.times,
+      `${NAME} is named more than once in its own sheet`,
+    ).toBe(1)
   })
 })
+
+/** How many times a sheet names the class in a selector, in any of the shapes a
+ *  selector may take: on its own, at the head or the tail of a list, or inside a
+ *  block. Anything but a longer class name that merely starts the same way. */
+function named(sheet: string): number {
+  return [...sheet.matchAll(new RegExp(String.raw`\.${NAME}(?![\w-])`, 'g'))].length
+}
 
 /** The sheet the rule lives in, read once. */
 const SHEET = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf-8')
