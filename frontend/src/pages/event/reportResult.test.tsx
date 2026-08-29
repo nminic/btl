@@ -25,7 +25,7 @@ function Sent() {
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
-import { formatDistance, formatNumber, formatShortDate } from '../../i18n/format'
+import { formatDistance, formatNumber } from '../../i18n/format'
 import { raceLabel } from '../../data/raceLabel'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -552,8 +552,8 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
 
   it('says its length even where its name is its event’s, which is most of them', async () => {
     /* The case the name alone got wrong, on the ordinary event rather than on the
-       one renamed race in the file: three quarters of events hold a single race,
-       and there the name is the event's name.
+       one renamed race in the file: 886 of the 1163 events that hold any race at
+       all hold exactly one, and there the name is the event's name.
 
        The two are asked for **together**, as the one string the label builds, and
        not one at a time. Measured by a review on 28.08.2026: asking for the name on
@@ -568,33 +568,52 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
   })
 
-  it('tells two races apart when only the rounding made them one', async () => {
-    /* `formatDistance` writes one decimal, so 8,68 km and 8,74 km are two numbers
-       and one label. Compared as they are stored they counted as different, no day
-       was added, and the reader met „BTL dezorijentiring, 8,7 km" twice in one list:
-       two links of one accessible name, which is what the label beside them exists
-       to prevent (WCAG 2.2 SC 2.4.4). Measured in Chrome on 28.08.2026 on
-       `/sr/kalendar/btl-dezorijentiring-2018`, twelve races of one name.
+  it('tells two races apart even where the day cannot, which is where it gave up', async () => {
+    /* `formatDistance` writes one decimal, so 8,68 km and 8,74 km are two races and
+       one label. BTL dezorijentiring 2018 runs twelve races of one name on one
+       morning and holds both of those and 9,06 and 9,07 besides, so neither the
+       name, nor the length as it is written, nor the day parts them: that page drew
+       twelve links under ten different names, which is two pairs of links that
+       sound the same and lead somewhere different (WCAG 2.2 SC 2.4.4).
+
+       Two rounds of review were spent on this before it was closed. The first
+       comparison used the stored number, so a pair that merely rounded together was
+       counted as different and never offered the day at all; the second compared
+       the written length, which offered them the day they already shared and made
+       the labels fourteen characters longer without making them differ. What
+       closes it is writing the length out exactly, and only there.
 
        Asked of the function rather than of a screen, because the pair that shows it
        is in one event of 1163 and the rule is about every event. */
     const races = await loadResource<Race[]>('races')
     const together = races.filter((one) => one.eventId === 'evt-btl-dezorijentiring-2018-12-23')
 
-    const rounded = together.filter(
-      (one) => formatDistance(one.distanceKm, 'sr-Latn') === formatDistance(8.68, 'sr-Latn'),
-    )
+    expect(together.length, 'the file no longer holds the event this is about').toBeGreaterThan(1)
 
-    expect(rounded.length, 'the file no longer holds the pair this is about').toBeGreaterThan(1)
+    const said = together.map((one) => raceLabel(one, together, 'sr-Latn'))
 
-    const said = rounded.map((one) => raceLabel(one, together, 'sr-Latn'))
+    expect(new Set(said).size, `two races read the same: ${said.join(' / ')}`).toBe(said.length)
+    /* And the exact length is what does it, written the way the table of races on
+       the same page already writes it. */
+    expect(said.some((one) => one.includes(formatNumber(8.68, 'sr-Latn', 2)))).toBe(true)
+  })
 
-    /* They share the day as well, so the day cannot part them and the labels stay
-       equal: that is the limit the function writes down. What is measured here is
-       that the rounding is no longer what decides, which is the half that was
-       wrong: the day is now offered to them, and it is their morning that refuses
-       it. */
-    expect(said[0]).toContain(formatShortDate(must(rounded[0], 'the first').date, 'sr-Latn'))
+  it('asks for no more than it needs, so an ordinary event reads as its lengths', async () => {
+    /* Each step only where the one before it left two races reading the same. Three
+       lengths on one morning under one name need neither the day nor the second
+       decimal, and a label that carries them anyway is a label nobody can scan.
+       Measured over the whole file on 28.08.2026: of 1612 races, 25 labels carry the
+       day and 4 the exact length, and no two races of one event read the same. */
+    const races = await loadResource<Race[]>('races')
+    const plain = races.filter((one) => one.eventId === 'evt-danube-maraton-2022-03-14')
+
+    expect(plain.length, 'the file no longer holds the event this is about').toBeGreaterThan(1)
+
+    const said = plain.map((one) => raceLabel(one, plain, 'sr-Latn'))
+
+    /* This one does need the day, because its four races share a length. What it
+       must not need is the second decimal. */
+    expect(said.every((one) => !one.includes(formatNumber(42.2, 'sr-Latn', 2)))).toBe(true)
   })
 
   it('files the result on the day the race was run, not the day the event began', async () => {
