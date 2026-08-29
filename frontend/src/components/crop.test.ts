@@ -1,5 +1,5 @@
 import { must } from '../test/at'
-import { bigEnough, closestIn, cropIn, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
+import { aimAt, bigEnough, closestIn, cropIn, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
 import type { CoverStyle, Crop, Frame, Shape } from './crop'
 
 /* Which square of a picture is the picture.
@@ -407,6 +407,97 @@ describe('the hole the shade is cut with', () => {
       across: '50%',
       down: '50%',
     })
+  })
+})
+
+describe('what a press at a spot would do, and the pointer that says so first', () => {
+  /* Owner, 29.08.2026: „Kad je miš unutar kruga, pointer se pretvara u ruku i
+     klikom i vučenjem se taj krug pomera po slici", and „Kad je miš na samoj
+     ivici kruga, pointer se pretvara u strelice za razvlačenje."
+
+     One function answers both, deliberately (ADL A31): the press already had to
+     decide this, and the cursor is that same decision said out loud a moment
+     earlier. That the press really does ask this one and not a second copy of it
+     is measured on the screen, in `cropChooser.test.tsx`; what is measured here
+     is the arithmetic the answer is made of. */
+
+  /** The circle over a square picture: middle of the box, half of it across. */
+  const wholeOf = (shape: Shape) => holeOf(frameOf(WHOLE, shape))
+
+  it('reads the middle of the circle as something to pick up', () => {
+    /* An open hand and not `move`: the picture does not move, the circle over it
+       does, and a member who takes hold of it is picking the circle up. */
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5, down: 0.5 })).toEqual({
+      doing: 'moving',
+      cursor: 'grab',
+    })
+  })
+
+  it('reads the rim as something to pull, and everywhere outside it as well', () => {
+    /* Outside is the rim too, and truthfully so: a press out there drags the
+       edge of the circle out to meet the pointer, which is a resize whatever it
+       looks like. */
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.95, down: 0.5 }).doing).toBe('sizing')
+    expect(aimAt(wholeOf(UNKNOWN), { across: 1.4, down: 0.5 }).doing).toBe('sizing')
+  })
+
+  it('puts the band at three quarters of the radius, and not at a half', () => {
+    /* The number itself, from both sides. A member who takes hold of the circle a
+       little inside its rim to shift it must not resize it instead, which is what
+       every press between a half and three quarters would do with the band moved
+       down; and the rim has to answer at all, which is what a band of nought or
+       of two takes away.
+
+       Six tenths of the way out is a move and nine tenths is a pull. Between them
+       lies the only number the band may be. */
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.6 * 0.5, down: 0.5 }).doing).toBe('moving')
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.9 * 0.5, down: 0.5 }).doing).toBe('sizing')
+  })
+
+  it('measures the distance in radii, so a tall picture is not read as an ellipse', () => {
+    /* A photograph is not square, so the circle is an ellipse once it is written
+       in shares of each edge. On a picture 400 by 800 the circle is half the box
+       across and a quarter of it down, so the same three tenths of the box is
+       well inside it sideways and well outside it downwards. Measured in shares
+       instead, the two would answer the same and the rim would be in the wrong
+       place in one of the two directions. */
+    const hole = wholeOf(portrait)
+
+    expect(aimAt(hole, { across: 0.8, down: 0.5 }).doing).toBe('moving')
+    expect(aimAt(hole, { across: 0.5, down: 0.8 }).doing).toBe('sizing')
+  })
+
+  it('points the arrows along the line through the middle, in eight directions', () => {
+    /* Eight eighths of a turn and four cursors, because an arrow and the arrow
+       opposite it are one picture: the pointer at the left of the circle and the
+       pointer at the right of it both pull sideways.
+
+       Rounded rather than floored, so each cursor covers a quarter turn centred
+       on its own direction: due east is the middle of the sideways arrows and not
+       the boundary between two of them. The four above the middle of the picture
+       are the ones the remainder has to be taken twice for, because the remainder
+       of a negative number is negative in this language. */
+    const hole = wholeOf(UNKNOWN)
+    const out = (across: number, down: number) =>
+      aimAt(hole, { across: 0.5 + across * 0.4, down: 0.5 + down * 0.4 }).cursor
+
+    expect(out(1, 0), 'east').toBe('ew-resize')
+    expect(out(-1, 0), 'west').toBe('ew-resize')
+    expect(out(1, 1), 'south-east').toBe('nwse-resize')
+    expect(out(-1, -1), 'north-west').toBe('nwse-resize')
+    expect(out(0, 1), 'south').toBe('ns-resize')
+    expect(out(0, -1), 'north').toBe('ns-resize')
+    expect(out(-1, 1), 'south-west').toBe('nesw-resize')
+    expect(out(1, -1), 'north-east').toBe('nesw-resize')
+  })
+
+  it('reads the angle in radii as well, or a tall picture wears the wrong arrows', () => {
+    /* The other half of the same correction. On the picture 400 by 800 a spot at
+       four fifths of a radius down and a whole radius across lies at 27 degrees
+       of the circle, which is the diagonal; written in shares of the picture the
+       same spot lies at 14 degrees, which is due east. The eye sees a circle, so
+       the arrows have to agree with the circle. */
+    expect(aimAt(wholeOf(portrait), { across: 0.9, down: 0.6 }).cursor).toBe('nwse-resize')
   })
 })
 

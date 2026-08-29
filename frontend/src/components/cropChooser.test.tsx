@@ -516,16 +516,31 @@ describe('a picture the portal cannot draw the circle from', () => {
 })
 
 describe('choosing with a finger or a mouse instead of the sliders', () => {
-  /** The picture as something to press on, and where it sits. */
-  const picture = () => must(document.querySelector('.crop__picture'), 'the picture')
-
-  /** A press, a drag and a release at shares of the drawn picture. jsdom lays
-   *  nothing out, so the box it would measure is handed over. */
-  function dragTo(from: { across: number; down: number }, to?: { across: number; down: number }) {
-    const box = picture()
+  /** The picture as something to press on, with the box a browser would have
+   *  measured. jsdom lays nothing out (ADL A18), so the box is handed over. */
+  function picture() {
+    const box = must(document.querySelector<HTMLElement>('.crop__picture'), 'the picture')
 
     box.getBoundingClientRect = () =>
       ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => '' })
+
+    return box
+  }
+
+  /** A pointer passing over the picture with nothing held, and what the picture
+   *  answers it with. Read off the element's own style, which is where the state
+   *  in `CropWindow.tsx` lands. */
+  function over(at: { across: number; down: number }) {
+    const box = picture()
+
+    fireEvent.pointerMove(box, { clientX: at.across * 200, clientY: at.down * 200, pointerId: 1 })
+
+    return box.style.cursor
+  }
+
+  /** A press, a drag and a release at shares of the drawn picture. */
+  function dragTo(from: { across: number; down: number }, to?: { across: number; down: number }) {
+    const box = picture()
 
     fireEvent.pointerDown(box, { clientX: from.across * 200, clientY: from.down * 200, pointerId: 1 })
 
@@ -645,14 +660,199 @@ describe('choosing with a finger or a mouse instead of the sliders', () => {
 
     const box = picture()
 
-    box.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => '' })
-
     fireEvent.pointerDown(box, { clientX: 100, clientY: 100, pointerId: 1 })
     fireEvent.pointerCancel(box, { pointerId: 1 })
     fireEvent.pointerMove(box, { clientX: 20, clientY: 20, pointerId: 1 })
 
     expect(group.getByLabelText('Pomeri levo i desno')).toHaveValue('0.5')
+  })
+
+  it('changes nothing at all while a pointer merely passes over the picture', async () => {
+    /* The one line that separates a picture answering a press from a picture
+       answering a mouse: with nothing held the move handler leaves the crop
+       exactly as it was and only redresses the pointer.
+
+       Measured at the middle of the circle, which is where losing that line shows
+       up worst: nothing is held, so the crop would be resized rather than moved,
+       and a circle pulled in to its own middle falls straight through to the
+       smallest the picture allows. Half the picture becomes 0,24 of it, without
+       anybody pressing anything. */
+    const group = await ready()
+
+    fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
+
+    const before = sent()
+
+    over({ across: 0.5, down: 0.5 })
+    over({ across: 0.9, down: 0.5 })
+
+    expect(sent(), 'the crop moved with nothing held').toBe(before)
+  })
+})
+
+describe('what the pointer says a press would do, before anybody presses', () => {
+  /* Owner, 29.08.2026: „Kad je miš unutar kruga, pointer se pretvara u ruku i
+     klikom i vučenjem se taj krug pomera po slici", and „Kad je miš na samoj
+     ivici kruga, pointer se pretvara u strelice za razvlačenje."
+
+     Read off the element's inline style, because that is where it is written:
+     which of the nine answers applies depends on where the pointer is and on how
+     big the circle is at that moment, so `Crop.css` says nothing about the cursor
+     at all (`cropStyle.test.ts` holds that absence).
+
+     The circle here is half the picture across, centred, so its rim is at 0,75 of
+     the box and its radius a quarter of it. */
+
+  function picture() {
+    const box = must(document.querySelector<HTMLElement>('.crop__picture'), 'the picture')
+
+    box.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => '' })
+
+    return box
+  }
+
+  const at = (spot: { across: number; down: number }) =>
+    ({ clientX: spot.across * 200, clientY: spot.down * 200, pointerId: 1 })
+
+  async function halved() {
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+
+    const group = await measured(1000, 1000)
+    const whole = must(document.querySelector('.crop__whole'), 'the picture drawn')
+
+    Object.defineProperty(whole, 'naturalWidth', { value: 1000, configurable: true })
+    Object.defineProperty(whole, 'naturalHeight', { value: 1000, configurable: true })
+    fireEvent.load(whole)
+    fireEvent.change(group.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
+
+    return group
+  }
+
+  it('turns into an open hand inside the circle', async () => {
+    /* „Pointer se pretvara u ruku", and an open hand rather than `move`: the
+       picture does not move, the circle over it does.
+
+       Measured six tenths of the way out from the middle, which is inside the
+       band and outside a half of it: at the very middle the distance is nought
+       and a band of nought would still answer „hand", so the middle measures the
+       word and not the number. */
+    await halved()
+
+    const box = picture()
+
+    fireEvent.pointerMove(box, at({ across: 0.65, down: 0.5 }))
+
+    expect(box.style.cursor).toBe('grab')
+  })
+
+  it('turns into arrows for pulling once the pointer reaches the rim', async () => {
+    /* „Kad je miš na samoj ivici kruga, pointer se pretvara u strelice za
+       razvlačenje." Nine tenths of the way out from the middle, which is past the
+       rim of the circle: a band of two would call this a hand and there would be
+       nowhere on the picture the arrows ever appeared. */
+    await halved()
+
+    const box = picture()
+
+    fireEvent.pointerMove(box, at({ across: 0.9, down: 0.5 }))
+
+    expect(box.style.cursor).toBe('ew-resize')
+  })
+
+  it('does with a press exactly what it promised with the pointer', async () => {
+    /* The whole reason the answer has one home (ADL A31). A cursor promising
+       „razvuci me" over a spot that moves the circle is worse than no cursor at
+       all: it is the portal saying one thing and doing another, and nothing but a
+       case that presses where the pointer pointed can tell the two apart.
+
+       So the same spot is asked twice, once of the pointer and once of a press,
+       and what the press did is read off the record rather than off a slider: a
+       resize about a middle that stands still changes the size and neither of the
+       two positions. */
+    await halved()
+
+    const box = picture()
+    const spot = { across: 0.9, down: 0.5 }
+
+    fireEvent.pointerMove(box, at(spot))
+
+    expect(box.style.cursor, 'the pointer did not promise a pull').toBe('ew-resize')
+
+    fireEvent.pointerDown(box, at(spot))
+
+    expect(sent()).toBe('{"size":0.8,"x":0.5,"y":0.5}')
+  })
+
+  it('closes the hand while the circle is being carried, and keeps it closed', async () => {
+    /* A press decides once and the pointer is locked to what it decided: without
+       that, a drag that carries the circle out from under the pointer would
+       flicker between a hand and the arrows as the rim overtook the finger.
+
+       Pressed in the middle and dragged out past the rim, which is exactly that
+       case. */
+    await halved()
+
+    const box = picture()
+
+    fireEvent.pointerDown(box, at({ across: 0.5, down: 0.5 }))
+
+    expect(box.style.cursor).toBe('grabbing')
+
+    fireEvent.pointerMove(box, at({ across: 0.95, down: 0.5 }))
+
+    expect(box.style.cursor, 'the hand opened in the middle of a drag').toBe('grabbing')
+  })
+
+  it('promises nothing once the pointer has left the picture', async () => {
+    /* Off the picture there is nothing to promise, and a cursor left behind would
+       be a promise about a picture the pointer is no longer over. */
+    await halved()
+
+    const box = picture()
+
+    fireEvent.pointerMove(box, at({ across: 0.9, down: 0.5 }))
+
+    expect(box.style.cursor).toBe('ew-resize')
+
+    fireEvent.pointerLeave(box)
+
+    expect(box.style.cursor).toBe('')
+  })
+
+  it('promises nothing after a gesture somebody else took away', async () => {
+    /* A press can be cancelled rather than released, by a telephone taking the
+       gesture for something of its own or by a window losing focus. Where the
+       pointer ended up is then not this picture's to say, so it says nothing and
+       waits for the next move over it. */
+    await halved()
+
+    const box = picture()
+
+    fireEvent.pointerDown(box, at({ across: 0.5, down: 0.5 }))
+    fireEvent.pointerCancel(box, { pointerId: 1 })
+
+    expect(box.style.cursor).toBe('')
+  })
+
+  it('goes back to promising the moment the press is let go', async () => {
+    /* Read off where the pointer was released and off the circle as it now is.
+       Waiting for the next move instead would leave a closed hand under a pointer
+       holding nothing, for as long as it stayed still. */
+    await halved()
+
+    const box = picture()
+
+    fireEvent.pointerDown(box, at({ across: 0.5, down: 0.5 }))
+    fireEvent.pointerUp(box, at({ across: 0.9, down: 0.5 }))
+
+    /* The circle followed the press to the middle it was pressed at, so it is
+       still half the picture centred on it, and 0,9 is outside its rim. */
+    expect(box.style.cursor).toBe('ew-resize')
   })
 })
 

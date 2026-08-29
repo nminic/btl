@@ -142,6 +142,102 @@ function held(value: number, least: number, most: number): number {
 }
 
 /**
+ * How far out a press has to land to be about the rim rather than about the
+ * circle, as a share of the circle's own radius.
+ *
+ * A band and not a line, because a finger is not a pixel, and a share and not a
+ * length, so a small circle keeps a rim somebody can actually hit.
+ *
+ * Three quarters, written by hand and measured: a review moved it to a half and
+ * nothing noticed, and at a half a member who takes hold of the circle a little
+ * inside its rim to shift it resizes it instead, on every press between the two.
+ * The case that holds the number presses at 0,65 of the radius, in
+ * `cropChooser.test.tsx`, „reads a press just inside the circle as a move".
+ */
+const EDGE_BAND = 0.75
+
+/** What a press at a spot would do, and the cursor that says so before it
+ *  happens. */
+export type Aim = { doing: 'moving' | 'sizing'; cursor: string }
+
+/**
+ * What the picture would do if it were pressed here.
+ *
+ * Owner, 29.08.2026: „Kad je miš unutar kruga, pointer se pretvara u ruku i
+ * klikom i vučenjem se taj krug pomera po slici", and „Kad je miš na samoj ivici
+ * kruga, pointer se pretvara u strelice za razvlačenje."
+ *
+ * **One function and not two, deliberately.** The press already had to decide
+ * this, and the cursor is that same decision said out loud a moment earlier.
+ * Written twice, the two would drift, and a cursor promising „razvuci me" over a
+ * spot that moves the circle is worse than no cursor at all: it is the portal
+ * lying about what a press will do. One fact, one home (ADL A31).
+ *
+ * Everything outside the circle is the rim as well, and truthfully so: a press
+ * out there drags the edge of the circle out to meet the pointer, which is a
+ * resize whatever it looks like.
+ *
+ * The direction is measured **in radii of the circle** rather than in shares of
+ * the picture. A photograph is not square, so the circle is an ellipse once it
+ * is written in shares of each edge; dividing by the radius in each direction
+ * puts it back into a circle, and only then does the angle agree with what the
+ * eye sees. Left out, a tall photograph would show the sideways arrows over a
+ * spot the eye reads as a corner.
+ */
+export function aimAt(hole: Hole, spot: Spot): Aim {
+  /* The pointer's place, counted from the middle of the circle outwards, with
+     one radius as the unit in each direction. */
+  const out = {
+    across: (spot.across - percent(hole.x) / 100) / (percent(hole.across) / 100),
+    down: (spot.down - percent(hole.y) / 100) / (percent(hole.down) / 100),
+  }
+
+  return Math.hypot(out.across, out.down) > EDGE_BAND
+    ? { doing: 'sizing', cursor: pulling(out) }
+    : /* An open hand: the circle is a thing to pick up, and the closed hand is
+         for while it is being carried (`CropWindow.tsx`). `grab` and not `move`,
+         because the picture does not move, the circle over it does. */
+      { doing: 'moving', cursor: 'grab' }
+}
+
+/**
+ * Which pair of arrows the rim wears at this direction.
+ *
+ * Eight eighths of a turn and four cursors, because an arrow and the arrow
+ * opposite it are one picture: the pointer at the left of the circle and the
+ * pointer at the right of it both pull sideways, and `ew-resize` is what both
+ * of them look like. So the eighth is taken modulo four, twice over, because an
+ * eighth above the middle of the picture is a negative number and the remainder
+ * of a negative number is negative in this language.
+ *
+ * Rounded rather than floored, so each cursor covers a quarter turn **centred**
+ * on its own direction: due east is the middle of the sideways arrows and not
+ * the boundary between two of them.
+ *
+ * The arrows point along the line through the middle of the circle rather than
+ * along the rim, which is why the south-east of the circle wears the north-west
+ * to south-east diagonal.
+ */
+function pulling(out: { across: number; down: number }): string {
+  const eighth = Math.round(Math.atan2(out.down, out.across) / (Math.PI / 4))
+  const quarter = ((eighth % 4) + 4) % 4
+
+  if (quarter === 0) {
+    return 'ew-resize'
+  }
+
+  if (quarter === 1) {
+    return 'nwse-resize'
+  }
+
+  if (quarter === 2) {
+    return 'ns-resize'
+  }
+
+  return 'nesw-resize'
+}
+
+/**
  * The same crop with its circle centred on a spot somebody is pointing at.
  *
  * Owner, 23.08.2026: „krug se pomera prstom na telefonu i tabletu, mišem na
