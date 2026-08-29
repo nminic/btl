@@ -198,13 +198,32 @@ export function MyResults() {
                             5,05 pixels shorter than its row, so the rule under
                             the row broke off short of the rest of it. */}
                         <div className="my-results__own">
-                          <Link
-                            className="button button--secondary"
-                            aria-label={t('myResults.changeNamed', { name: result.raceName })}
-                            to={`/${locale}/rezultat/novi?ispravka=${result.id}`}
-                          >
-                            {t('myResults.change')}
-                          </Link>
+                          {/* And only where no correction of this result is
+                              already waiting on somebody.
+                           *
+                              Since 28.08.2026 the result stays in the standing
+                              while a correction waits (owner), so the row goes on
+                              looking exactly as it did and this link stayed live.
+                              Measured by a review the same day: one counted result
+                              then took as many corrections as somebody cared to
+                              send, the queue grew a row for each, and one press of
+                              „Odobri sve" walked them newest first, so what ended
+                              up counted was the **oldest** of them. That is the
+                              same fault the portal already refuses for a waiting
+                              result: „two rows for one race, and the moderator
+                              reading the same morning twice" (owner, 06.08.2026).
+                           *
+                              The way on is not lost: the correction is in the list
+                              above, and it carries its own „Izmeni". */}
+                          {mine.every((one) => one.corrects?.id !== result.id) && (
+                            <Link
+                              className="button button--secondary"
+                              aria-label={t('myResults.changeNamed', { name: result.raceName })}
+                              to={`/${locale}/rezultat/novi?ispravka=${result.id}`}
+                            >
+                              {t('myResults.change')}
+                            </Link>
+                          )}
                           <DeleteRecord
                             name={result.raceName}
                             look="button button--secondary"

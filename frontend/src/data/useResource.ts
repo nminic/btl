@@ -286,5 +286,37 @@ export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id
  *  are read, rather than spelled out at the screen that deletes them. */
 export const RESULTS = 'results'
 
-export const useResults = () => useLive(useResource<Result[]>('results'), RESULTS, 'id')
+/**
+ * The counted results, as they stand at this moment of this visit.
+ *
+ * Two layers over the file, and both are the session's: what has been taken back
+ * (`useLive`), and what a moderator has agreed to change.
+ *
+ * The second arrived on 28.08.2026 with the owner's choice about a correction: the
+ * old result stays in the standing while the correction waits, and changes when
+ * somebody agrees with it (PDL, inkrement 132). Until then the result left the
+ * standing the moment the correction was sent, so a refusal lost the points for
+ * good.
+ *
+ * Here rather than on the screen that draws it, for the reason `useLive` gives
+ * about deletions: the standing, the profile, the boards and the league all read
+ * this one function, and a correction that reached one of them and not the others
+ * would be a portal disagreeing with itself about who ran what.
+ *
+ * By identity, so the corrected record takes the place of the one it replaces
+ * rather than standing beside it, and so a result corrected twice in one visit is
+ * still one result.
+ */
+export const useResults = (): ResourceState<Result[]> => {
+  const live = useLive(useResource<Result[]>('results'), RESULTS, 'id')
+  const { corrected } = useSession()
+
+  return useMemo(() => {
+    if (live.status !== 'ready' || Object.keys(corrected).length === 0) {
+      return live
+    }
+
+    return { status: 'ready', data: live.data.map((one) => corrected[one.id] ?? one) }
+  }, [live, corrected])
+}
 export const useTeams = () => useResource<Team[]>('teams')

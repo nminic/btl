@@ -8,7 +8,7 @@ import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import type { BtlEvent, Race, Result } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
-import { RESULTS, useEvents, useRaces, useResults } from '../../data/useResource'
+import { useEvents, useRaces, useResults } from '../../data/useResource'
 import { useToday } from '../../clock/useClock'
 import { btlPoints } from '../../data/scoring'
 import { formatDistance, formatNumericDate, formatPoints } from '../../i18n/format'
@@ -143,7 +143,7 @@ function seconds(values: FormValues): number {
 
 export function NewResult() {
   const { locale, t } = useI18n()
-  const { memberNumber, submissions, submit, resubmit, remove } = useSession()
+  const { memberNumber, submissions, submit, resubmit } = useSession()
   /**
    * What the last entry earned and whether it was a correction, once there has
    * been one.
@@ -201,7 +201,18 @@ export function NewResult() {
      Read through the overlay, so a result taken back a moment ago is not offered
      for changing. */
   const counted = results.status === 'ready' ? results.data : []
-  const fixingOne = counted.find((one) => one.id === fixing && one.memberNumber === memberNumber)
+  /* And not one that already has a correction waiting on somebody. The list offers
+     no way in then (`MyResults`), so the only way to try is to type the address,
+     which is exactly why the form and not only the list has to say no: a second
+     correction of one result puts two rows for one race in front of a moderator,
+     and „Odobri sve" walks them newest first, so what ends up counted is the
+     oldest. Measured by a review on 28.08.2026. */
+  const waiting = submissions.some(
+    (one) => one.memberNumber === memberNumber && one.status === 'pending' && one.corrects?.id === fixing,
+  )
+  const fixingOne = waiting
+    ? undefined
+    : counted.find((one) => one.id === fixing && one.memberNumber === memberNumber)
   /* Whichever of the two this is, when it is either: the race is read off the
      record on both roads in, and one name for that saves the next reader from
      having to notice that there are two. */
@@ -264,28 +275,66 @@ export function NewResult() {
       comment: String(values.comment),
     }
 
+    /* The counted record this correction will put in place of the one it
+       replaces, rebuilt from what is being sent now.
+     *
+       **Both roads build it**, and that is the whole of a critical fault measured
+       by a review on 28.08.2026. A correction of a counted result may itself be
+       corrected before anybody decides it, and that second correction goes down the
+       `resubmit` road, which keeps the submission's earlier fields. So the record
+       waiting to be counted stayed the first version: the moderator read 7:14:46,
+       pressed Odobri, and 9:14:46 went into the standing. That is exactly the fault
+       `resubmit` exists to prevent, in its own words, „a moderator who has already
+       read it would otherwise decide numbers they never saw".
+     *
+       Written once, above both roads, so neither can be the one that forgets. A
+       submission that is not a correction of anything carries `undefined`, which
+       also clears a stale one where a member is correcting an ordinary result. */
+    const replacing = fixingOne ?? correcting?.corrects
+    const corrects =
+      replacing === undefined
+        ? undefined
+        : {
+            ...replacing,
+            date: sent.date,
+            distanceKm: sent.distanceKm,
+            ascentM: sent.ascentM,
+            descentM: sent.descentM,
+            seconds: sent.seconds,
+            points: sent.points,
+            category: sent.category,
+          }
+
     /* The same result again where one is being corrected, and a new one
        otherwise. Sending the correction as a new result would leave the refused
        one standing beside it: two rows for one race, and the moderator reading
        the same morning twice (owner, 06.08.2026). */
     if (correcting !== undefined) {
-      resubmit(correcting.id, sent)
+      resubmit(correcting.id, { ...sent, corrects })
     } else if (fixingOne !== undefined) {
-      /* A counted result being changed leaves the standings and goes back into
-         the queue as something waiting on somebody (owner, 27.08.2026: „menja i
-         dostavlja dokaz za tu izmenu (ponovo)").
+      /* A counted result being changed goes back into the queue as something
+         waiting on somebody, and **stays in the standing until somebody agrees**.
        *
-         Both halves in one press, and the order matters only in that neither may
-         be left out: the old result is taken out of the reckoning and the new
-         values go in front of a moderator. Left in, a member would have their
-         old points counted while the new ones wait; taken out without the
-         second, the result would simply vanish.
+         Owner, 28.08.2026, choosing between four outcomes: the old result stays
+         where it is while the correction waits, and changes when a moderator
+         approves it. Until then this took the result out of the standing at once,
+         so a refusal lost the points for good: measured that day, a profile fell
+         from 180 races and 1.752,86 points to 179 and 1.744,60 with no way back,
+         because an approved submission produced no result. That contradicted the
+         portal's own rule that the standing is brought up to date **after**
+         verification (owner, 27.08.2026: „odmah se ažurira poredak nakon
+         verifikacije").
        *
-         And the points move only when somebody agrees again, which is the whole
-         reason this is not an edit in place: „odmah se ažurira poredak nakon
-         verifikacije" (owner, same day). */
-      remove(RESULTS, fixingOne.id)
-      submit({ memberNumber: me, ...sent })
+         The cost the owner accepted, written down rather than left to be
+         discovered: while the correction waits, the standing holds numbers the
+         member has themselves said are wrong. That lasts as long as the queue
+         does.
+       *
+         What travels with the submission is the whole corrected record, under the
+         identity of the one it replaces: a `Submission` does not know the event's
+         name or address and a `Result` needs both, and this is the one place where
+         both are in hand. Approving it swaps that record (`SessionProvider`). */
+      submit({ memberNumber: me, ...sent, corrects })
     } else {
       submit({ memberNumber: me, ...sent })
     }

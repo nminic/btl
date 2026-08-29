@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
-import type { EventComment, PendingItem } from '../data/types'
+import type { EventComment, PendingItem, Result } from '../data/types'
 import { nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
@@ -49,6 +49,10 @@ export function SessionProvider({
 }) {
   const [memberNumber, setMemberNumber] = useState<string | null>(initialMemberNumber)
   const [submissions, setSubmissions] = useState<Submission[]>([])
+  /* The counted results a moderator has agreed to change during this visit, by the
+     identity of the record each one replaces. Read by `useResults`, so the
+     standing, the profile, the boards and the league all see one answer. */
+  const [corrected, setCorrected] = useState<Record<string, Result>>({})
   const [messages, setMessages] = useState<Message[]>(FIRST_MESSAGES)
   const [edits, setEdits] = useState<Edits>({})
   const [creations, setCreations] = useState<Creations>({})
@@ -196,9 +200,33 @@ export function SessionProvider({
   }, [])
 
   const decide = useCallback((id: string, status: SubmissionStatus, note: string) => {
-    setSubmissions((current) =>
-      current.map((one) => (one.id === id ? { ...one, status, note } : one)),
-    )
+    setSubmissions((current) => {
+      const one = current.find((item) => item.id === id)
+
+      /* And where what was agreed to is a correction of a counted result, the
+         standing changes here and nowhere else.
+       *
+         Owner, 28.08.2026: the old result stays where it is while the correction
+         waits, and changes when somebody agrees with it. Until then the result
+         left the standing the moment the correction was sent, so a refusal lost
+         the points for good; the portal's own rule is that the standing is brought
+         up to date **after** verification (PDL P9), and this is where "after"
+         happens.
+       *
+         Only on approval, and nothing at all on a refusal: a member whose
+         correction is turned down is left exactly where they were, which is the
+         whole of what the owner chose.
+       *
+         Under the identity of the record it replaces, so the standing keeps one
+         result for one race rather than growing a second beside it. */
+      if (status === 'approved' && one?.corrects !== undefined) {
+        const put = one.corrects
+
+        setCorrected((so) => ({ ...so, [put.id]: put }))
+      }
+
+      return current.map((item) => (item.id === id ? { ...item, status, note } : item))
+    })
   }, [])
 
   const markRead = useCallback((id: string) => {
@@ -278,6 +306,7 @@ export function SessionProvider({
       signIn: setMemberNumber,
       signOut: () => setMemberNumber(null),
       submissions,
+      corrected,
       submit,
       resubmit,
       withdraw,
@@ -310,6 +339,7 @@ export function SessionProvider({
       going,
       setGoing,
       submissions,
+      corrected,
       submit,
       resubmit,
       withdraw,
