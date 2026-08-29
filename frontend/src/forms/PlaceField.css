@@ -109,14 +109,6 @@
   font-size: 0.9rem;
 }
 
-/* A country the town brought with it. Held rather than switched off
-   (PlaceField.tsx), so it looks answered and unavailable at once: the words are
-   as legible as any other answer, and the ground says it is not being asked. */
-.field__control--held {
-  background: var(--surface-hover);
-  cursor: default;
-}
-
 /* On a telephone the list of towns stands in the flow rather than over it.
  *
  * The two stack there, so a list floating out of the town covered the country
