@@ -334,6 +334,80 @@ export function sizedTo(crop: Crop, shape: Shape, spot: Spot, least: number): Cr
 }
 
 /**
+ * What a drag has done to the circle so far, measured from where it began.
+ *
+ * **The press itself changes nothing.** Owner, 29.08.2026: „Kad kliknem da
+ * resize-ujem krug... tim klikom se prvo krug malo resize-uje na neku vrednost sam
+ * od sebe, pa onda mogu da ja to radim manualno... krug ne mrdne dok ja ne počnem
+ * da ga resizeujem." Until this, the press was sent straight to `movedTo` or
+ * `sizedTo`, which put the middle or the edge **at the pointer**, so pressing
+ * anywhere but exactly on the middle or exactly on the rim jumped the circle
+ * before the hand had moved at all.
+ *
+ * So a gesture is read as a difference: `from` is where the press landed, `to` is
+ * where the pointer is now, and `start` is the circle as it was when the press
+ * landed. A drag of nothing is a change of nothing, whatever was pressed on.
+ *
+ * Both roads keep the arithmetic they already had, and each of them keeps its own
+ * limits: moving stops at the edges of the picture, and pulling stops at the
+ * floor and the ceiling `sizedTo` works out. What changes is only what they are
+ * asked for.
+ */
+export function draggedTo(
+  start: Crop,
+  shape: Shape,
+  doing: 'moving' | 'sizing',
+  from: Spot,
+  to: Spot,
+  least: number,
+): Crop {
+  const shorter = Math.min(shape.width, shape.height)
+  const { across, down } = sides(start, shape)
+  /* Where the middle stood when the press landed. Worked out rather than read,
+     for the reason written in `sizedTo`: `x` and `y` are shares of the room left
+     over, not the middle itself. */
+  const middle = {
+    across: start.x * (1 - across) + across / 2,
+    down: start.y * (1 - down) + down / 2,
+  }
+
+  if (doing === 'moving') {
+    /* The middle carried by as much as the pointer travelled, and `movedTo` puts
+       it there and keeps it inside the picture. */
+    return movedTo(start, shape, {
+      across: middle.across + (to.across - from.across),
+      down: middle.down + (to.down - from.down),
+    })
+  }
+
+  /* How far out the pointer is, in the shorter edge's own units, which is what
+     `size` is a share of. The same reading `sizedTo` takes, so the two cannot
+     drift. */
+  const reach = (spot: Spot) =>
+    Math.max(
+      Math.abs(spot.across - middle.across) * (shape.width / shorter),
+      Math.abs(spot.down - middle.down) * (shape.height / shorter),
+    )
+  /* The diameter grown by twice what the pointer moved outwards, because the
+     middle stands still and both sides of the circle answer the one hand. */
+  const wanted = start.size + 2 * (reach(to) - reach(from))
+
+  /* Asked of `sizedTo` as a spot on the way out, so the floor, the ceiling and
+     the middle put back are all worked out in the one place that knows them. The
+     spot is straight out along the width, so the other direction reads nought and
+     the wider of the two is this one. */
+  return sizedTo(
+    start,
+    shape,
+    {
+      across: middle.across + Math.max(wanted, 0) / 2 / (shape.width / shorter),
+      down: middle.down,
+    },
+    least,
+  )
+}
+
+/**
  * The same circle, written as a hole to cut out of a sheet of shade.
  *
  * The shade used to be a shadow spreading out of the frame itself, one element

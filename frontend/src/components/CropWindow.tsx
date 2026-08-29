@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { aimAt, closestIn, cropIn, frameOf, holeOf, movedTo, sizedTo, UNKNOWN } from './crop'
-import type { Crop, Shape } from './crop'
+import { aimAt, closestIn, cropIn, draggedTo, frameOf, holeOf, UNKNOWN } from './crop'
+import type { Crop, Shape, Spot } from './crop'
 import { useI18n } from '../i18n/useI18n'
 import './Crop.css'
 
@@ -77,6 +77,11 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
      that starts on the edge into a move the instant the circle catches up with
      the finger. */
   const doing = useRef<'moving' | 'sizing' | null>(null)
+  /* Where the press landed and what the circle was then, which together are what
+     every move of the gesture is measured against. Written on the press and read
+     until the release; nought before the first press, which no reader can reach,
+     because `doing` is nought then too. */
+  const began = useRef<{ from: Spot; start: Crop }>({ from: { across: 0, down: 0 }, start: cropIn(crop) })
   /**
    * What the pointer looks like over this picture, which is nine answers rather
    * than one and so cannot be a line in the stylesheet.
@@ -169,6 +174,12 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
                 const aim = aimAt(hole, spot)
 
                 doing.current = aim.doing
+                /* Where the gesture began, and the circle as it was when it did.
+                   Every move from here is measured against these two, so the
+                   press alone changes nothing: owner, 29.08.2026, „krug ne mrdne
+                   dok ja ne počnem da ga resizeujem". Held rather than read again
+                   from the crop, which is moving under the hand. */
+                began.current = { from: spot, start: held }
                 /* And the cursor is locked to it for the rest of the gesture: a
                    closed hand while the circle is carried, the arrows while it is
                    pulled. It stops answering where the pointer is, because from
@@ -185,11 +196,11 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
                 if (typeof event.currentTarget.setPointerCapture === 'function') {
                   event.currentTarget.setPointerCapture(event.pointerId)
                 }
-                onChange(
-                  aim.doing === 'moving'
-                    ? movedTo(held, shape, spot)
-                    : sizedTo(held, shape, spot, closestIn(shape)),
-                )
+                /* And nothing else. The crop is not touched here, which is the
+                   whole of the owner's first correction of 29.08.2026: a press was
+                   being sent straight on as though the pointer were already where
+                   it wanted the edge, so the circle jumped to meet it and only then
+                   began to follow the hand. */
               }
         }
         onPointerMove={
@@ -209,9 +220,14 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
                 }
 
                 onChange(
-                  doing.current === 'moving'
-                    ? movedTo(held, shape, spot)
-                    : sizedTo(held, shape, spot, closestIn(shape)),
+                  draggedTo(
+                    began.current.start,
+                    shape,
+                    doing.current,
+                    began.current.from,
+                    spot,
+                    closestIn(shape),
+                  ),
                 )
               }
         }
