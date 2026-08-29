@@ -25,7 +25,8 @@ function Sent() {
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
-import { formatDistance, formatNumber } from '../../i18n/format'
+import { formatDistance, formatNumber, formatShortDate } from '../../i18n/format'
+import { raceLabel } from '../../data/raceLabel'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { ReportResult } from './ReportResult'
@@ -458,10 +459,11 @@ describe('an event that runs over two mornings', () => {
 })
 
 describe('a race, which has a name of its own since 23.08.2026', () => {
-  /* There is no such field any more (owner, 11.08.2026): what a runner is shown
-     is the event and the measurements of the race they ran, „Beogradski maraton,
-     21,1 km". So every screen that writes a race writes its length, and a race
-     is told from the one beside it by that. */
+  /* It had none until 23.08.2026, when the owner gave it one, and a runner was
+     shown the event and the measurements instead: „Beogradski maraton, 21,1 km".
+     Since then every screen that writes a race writes its name and its length, and
+     the two together are what tells it from the one beside it
+     (`data/raceLabel.ts`). */
   /** The one race in the file whose name is not its event's, which is the only
    *  kind that can tell a name apart from a length. Every other race carries the
    *  event's name, so a case built on one of those passes whether the label is the
@@ -551,15 +553,48 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
   it('says its length even where its name is its event’s, which is most of them', async () => {
     /* The case the name alone got wrong, on the ordinary event rather than on the
        one renamed race in the file: three quarters of events hold a single race,
-       and there the name is the event's name. */
+       and there the name is the event's name.
+
+       The two are asked for **together**, as the one string the label builds, and
+       not one at a time. Measured by a review on 28.08.2026: asking for the name on
+       its own passes on such an event whatever the label returns, because the
+       sentence names the event beside it. */
     const { race, event } = await anyRace()
 
     renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-    const said = await screen.findByText(/Prijavljuješ rezultat/)
+    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
+      `${race.name}, ${formatDistance(race.distanceKm, 'sr-Latn')}`,
+    )
+  })
 
-    expect(said).toHaveTextContent(formatDistance(race.distanceKm, 'sr-Latn'))
-    expect(said).toHaveTextContent(race.name)
+  it('tells two races apart when only the rounding made them one', async () => {
+    /* `formatDistance` writes one decimal, so 8,68 km and 8,74 km are two numbers
+       and one label. Compared as they are stored they counted as different, no day
+       was added, and the reader met „BTL dezorijentiring, 8,7 km" twice in one list:
+       two links of one accessible name, which is what the label beside them exists
+       to prevent (WCAG 2.2 SC 2.4.4). Measured in Chrome on 28.08.2026 on
+       `/sr/kalendar/btl-dezorijentiring-2018`, twelve races of one name.
+
+       Asked of the function rather than of a screen, because the pair that shows it
+       is in one event of 1163 and the rule is about every event. */
+    const races = await loadResource<Race[]>('races')
+    const together = races.filter((one) => one.eventId === 'evt-btl-dezorijentiring-2018-12-23')
+
+    const rounded = together.filter(
+      (one) => formatDistance(one.distanceKm, 'sr-Latn') === formatDistance(8.68, 'sr-Latn'),
+    )
+
+    expect(rounded.length, 'the file no longer holds the pair this is about').toBeGreaterThan(1)
+
+    const said = rounded.map((one) => raceLabel(one, together, 'sr-Latn'))
+
+    /* They share the day as well, so the day cannot part them and the labels stay
+       equal: that is the limit the function writes down. What is measured here is
+       that the rounding is no longer what decides, which is the half that was
+       wrong: the day is now offered to them, and it is their morning that refuses
+       it. */
+    expect(said[0]).toContain(formatShortDate(must(rounded[0], 'the first').date, 'sr-Latn'))
   })
 
   it('files the result on the day the race was run, not the day the event began', async () => {

@@ -121,8 +121,8 @@ export type Competitor = {
    42.2 i 21.1, i obe će dobiti default naziv Beogradski maraton. Ali onda mogu
    izmeniti ovu drugu da se zove Beogradski polumaraton."
  *
-   So what tells one race from another is its name, and its length or its day
-   where two of them share the name (`data/raceLabel.ts`). The 11.08.2026 sentence
+   So what tells one race from another is its name and its length, always both,
+   and its day where two of them share those (`data/raceLabel.ts`). The 11.08.2026 sentence
    is kept here in its own words because it explains why every race in the
    generated file still carries its event's name: they were made before there was
    anything else to carry. */
