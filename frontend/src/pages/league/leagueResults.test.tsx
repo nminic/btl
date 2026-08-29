@@ -398,7 +398,8 @@ describe('a competition whose event runs over more than one morning', () => {
 
   it('says the name first, and keeps the whole label on the title', async () => {
     /* Measured by a review on 29.08.2026 in Chrome: the heading is turned on its
-       side and capped at 144 pixels on a 1280 screen and 104 on a 360, and all
+       side and capped (`League.css` writes the cap, and what it came to in pixels is
+       beside the markup in `LeagueResults.tsx`; no third copy of it here), and all
        fourteen headings of this competition were cut before the name began, so the
        one thing the change was made for was never seen. Put first, the name ate the
        measure instead: two columns of „Šidski novogodišnji maraton" read alike though

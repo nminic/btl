@@ -59,9 +59,20 @@ import { unremarked } from '../test/stylesheet'
  * uses all three; and it lays nothing out, so nothing about where the cut actually
  * falls can be asked at all. Both were measured in Chrome over the built sheet, and
  * the numbers are written beside the markup that produced them
- * (`pages/league/LeagueResults.tsx`). The blindness to `@media` is what makes the
- * cap below answerable: the value that shows up is the one from the base rule, which
- * is exactly the one the fourth fault took away.
+ * (`pages/league/LeagueResults.tsx`).
+ *
+ * **That blindness is a debt as well as a gift, and only the gift was written down
+ * here until 29.08.2026.** The gift is the cap below: what shows up on the element is
+ * the value of the base rule, which is exactly the one the fourth fault took away,
+ * and with that declaration deleted the property comes back `none`, measured. The
+ * debt is the other cap. The narrow query sets `max-inline-size: 6.5rem` on the same
+ * element, and **nothing in the gate holds it**: deleted, this file stays green, the
+ * screen's own tests stay green and so does the whole suite, 2300 tests over 132
+ * files, while Chrome at 360 grows the heading from 104px to 144px and the row of
+ * headings with it, from 121,36px to 161,36px. It was measured in the browser and it
+ * is measured nowhere else. That is the boundary of this file, said here rather than
+ * left to be worked out from „the value that shows up is the base one": what is
+ * weighed below is the cap of the wide screen, and no other.
  *
  * **What is left of reading the source, and why any of it is left.** One question a
  * text reader answers exactly and the cascade cannot: a rule in this sheet dressing
@@ -69,6 +80,20 @@ import { unremarked } from '../test/stylesheet'
  * computed style anywhere can report it, and it is the half of a rename that gets
  * left behind. That is the second case below, and it is the whole of what this file
  * still asks of the text.
+ *
+ * **The direction that used to stand beside it is gone, and this is what went with
+ * it.** It read the other way round, every class the screen writes being one the
+ * sheet names, and it failed saying „the screen writes X, which nothing in
+ * `League.css` dresses". The evidence under that sentence was only that the name does
+ * not occur in the text of the sheet, which is a weaker and different thing, and no
+ * text reader can close the gap between the two. What answers it instead is the case
+ * above, which names no class at all: it finds the heading and its two halves by what
+ * the screen draws and asks the cascade what each of them is wearing, so a class the
+ * screen writes and the sheet has forgotten arrives there as a property back at its
+ * default, in the sheet's own words. What is lost is reach and not strength. Every
+ * element this heading draws today is one the case above holds; a fifth one added
+ * tomorrow is not, and the sheet forgetting that one would be caught by nothing until
+ * somebody widens the case.
  *
  * **Kept as a file rather than folded into the screen's own tests**, which draw the
  * same standing and would have spared it an address and a query. What is in the way
@@ -105,8 +130,13 @@ function everySheetWorstCase(): string {
   const others = all.filter((file) => file !== OWN)
 
   /* The filter really found it. Written another way round, or run where a path is
-     spelt with the other slash, this would leave `League.css` in the tail as well
-     and the sheet meant to be standing at its worst would be standing last. */
+     spelt with the other slash, `League.css` would stand in the tail as well, and
+     nowhere near the end of it: measured, `globSync` comes back with this sheet
+     sixteen files in and twenty eight behind it, so the second copy would take back
+     every property the sixteen in front of it had won and lose only to the twenty
+     eight after. The sheet meant to be standing at its worst would be standing
+     better than it does on the screen, which is the direction that hides a fault
+     rather than inventing one. */
   expect(others.length, 'League.css is not among the sheets the portal has').toBe(all.length - 1)
 
   return [OWN, ...others]
@@ -133,30 +163,92 @@ describe('the heading of a race column', () => {
 
       expect(heads.length, 'the grid draws no race columns at all').toBeGreaterThan(0)
 
+      /* How wide the cap is, taken from the one other place the portal already
+         writes it down: the note beside the markup. Read once, because it is a fact
+         about the sheet and the screen's note rather than about one column.
+
+         Exactly one sentence may say it, or what follows would be holding the sheet
+         against one of two claims that are free to disagree with each other. */
+      const capped = [...SCREEN.matchAll(/capped\s+at\s+([\d.]+rem)\b/g)]
+
+      expect(
+        capped.length,
+        'the screen does not say in exactly one place what the heading is capped at',
+      ).toBe(1)
+
+      const cap = must(capped[0], 'what the screen says the cap is')[1] ?? ''
+
       for (const head of heads) {
         const box = within(head).getByTitle(/./)
         const halves = [...box.children]
 
         expect(halves.length, 'the heading is no longer two halves').toBe(2)
 
+        const cell = getComputedStyle(head)
         const heading = getComputedStyle(box)
         const gives = getComputedStyle(must(halves[0], 'the half that may be cut'))
         const holds = getComputedStyle(must(halves[1], 'the half that may not'))
+
+        /* The cell the turned heading stands in, and the one rule of this sheet that
+           has to win an argument before it reaches anything at all:
+           `.league__grid thead th.league__race` against the shared `.table th`. It is
+           the fourth of the four classes here, and until 29.08.2026 nothing asked
+           anything of it. Written `tbody` for `thead`, which is the shape of the
+           third fault in the note above, the rule reaches no element and the heading
+           falls back on the shared one: measured, `bottom` becomes `top`, `400`
+           becomes `700`, and `center` becomes `left` on the first race column and
+           `right` on the other thirteen. Those are three of the four symptoms the
+           note over that rule in `League.css` records from 13.08.2026.
+
+           The fourth of them is the padding, and it cannot be asked here: both rules
+           write it in custom properties, jsdom substitutes none of them, and the
+           property comes back `0` either way. Chrome has it going from `6px 2px` to
+           `10px 8px`, and Chrome is the only place that says so.
+
+           None of the three is what its property computes to with nothing declaring
+           it: bare, the cell is `middle`, `bold` and the empty string. So each of
+           them answers on its own when the rule stops arriving. */
+        expect(cell.verticalAlign, 'the heading is no longer read from the foot of its cell').toBe(
+          'bottom',
+        )
+        expect(cell.fontWeight, 'the turned heading is dressed as a heading again').toBe('400')
+        expect(cell.textAlign, 'the turned heading no longer stands in the middle of its column').toBe(
+          'center',
+        )
 
         /* The line itself: one flex row, capped, and clipping whatever overruns the
            cap. Without the row the two halves are two words and the precedence below
            decides nothing. */
         expect(heading.display, 'the heading is no longer a flex row').toBe('inline-flex')
-        /* That there is a cap, and not how wide it is. The width belongs to the
-           sheet alone and a number repeated here would be a second home for it; what
-           this asks is what the fourth fault in the note above took away. `none` is
-           what the property computes to with nothing declaring it, and `parseFloat`
-           of that is not a number. */
-        expect(
-          Number.parseFloat(heading.maxInlineSize),
-          'the heading is no longer capped',
-        ).toBeGreaterThan(0)
+        /* The cap at the width it is meant to be, which is not what stood here until
+           29.08.2026: „greater than nought" is walked straight through by writing
+           `9rem` as `90rem`, and that mutation kept the whole suite green while Chrome
+           at 1280 grew the heading from 144px to 243,11px and the name inside it to
+           155,86px, the very number the note above records as the fault itself.
+
+           The width is still not written in this file. It is read out of the screen's
+           own note, which is where it had been written down a second time and where
+           nothing was holding it against the sheet: from here the sheet, the cascade
+           and that note are one fact, and a cap changed in either home alone fails
+           rather than drifting. It answers the fourth fault too, since `none` is what
+           the property computes to with nothing declaring it. */
+        expect(heading.maxInlineSize, 'the heading is not capped where the screen says it is').toBe(
+          cap,
+        )
         expect(heading.overflow, 'the heading no longer clips what overruns it').toBe('hidden')
+        /* Which half a reader meets first, which the order of the two elements does
+           not decide: inside a flex row that is `flex-direction` and `order`, and the
+           case in `pages/league/leagueResults.test.tsx` that holds the order reads the
+           children of the box. `flex-direction: row-reverse` on this rule turned all
+           fourteen headings round against their own `title` with the suite green.
+
+           `row` and `0` are also what the two compute to with nothing declaring them,
+           so on their own they say nothing about a rule arriving; the properties above
+           and below say that. What these say is that nothing has turned the line
+           round, and that is the half the order of the elements cannot say. */
+        expect(heading.flexDirection, 'the two halves are served the other way round').toBe('row')
+        expect(gives.order, 'the name has been moved out of its place in the line').toBe('0')
+        expect(holds.order, 'the measure has been moved out of its place in the line').toBe('0')
 
         /* The half that gives way, and is allowed all the way down to nothing: a flex
            item will not shrink below its own content without that, and then the whole
@@ -200,17 +292,21 @@ describe('the heading of a race column', () => {
   })
 
   it('is named the same in the sheet and on the screen', () => {
-    /* Both ways round, and neither against a list written here. A class the screen
-       writes and the sheet has forgotten is a heading nothing dresses; a class the
-       sheet styles and the screen no longer writes is a rule reaching nothing, which
-       is the half of a rename that gets left behind and the one thing above this
-       cannot see.
+    /* One way round only, and not against a list written here. A class the sheet
+       styles and the screen no longer writes is a rule reaching nothing, which is the
+       half of a rename that gets left behind and the one thing the case above cannot
+       see: the rule dresses no element, so no computed style anywhere reports it.
+
+       The other way round used to stand here and was taken away on 29.08.2026,
+       because it failed with a sentence its evidence did not support. The note at the
+       top says what went with it and what answers it now.
 
        No third copy of the names, which is what this comment used to claim while the
        case under it held them against four strings. Measured: a rename carried
        properly through both homes, which is the one change that ought to pass, failed
        with „the screen no longer writes the two halves", saying the opposite of what
-       had happened. Two homes, asked whether they agree. */
+       had happened. Two homes, and the one question of the two that the text of a
+       sheet can actually answer. */
     const dressed = [
       ...new Set(
         [...unremarked(LEAGUE).matchAll(/\.(league__race[\w-]*)/g)].map((found) => found[1] ?? ''),
@@ -226,15 +322,17 @@ describe('the heading of a race column', () => {
       ),
     ]
 
-    /* A floor, because two empty sets agree perfectly. Loose rather than the count
-       there is today, which would be the list of names again in another shape and
-       would have to be told about every rename: what has to be caught here is a
-       reading that has stopped reading, and that one comes back with none or one. */
+    /* A floor on each side, because two empty sets agree perfectly. On the sheet
+       because the loop below runs over it and a reader that has stopped reading would
+       pass over nothing at all; on the screen because the same failure there would
+       fail the loop instead, which is a false alarm rather than a false pass and is
+       still worth naming where it happens. Loose rather than the count there is
+       today, which would be the list of names again in another shape and would have
+       to be told about every rename. */
+    expect(dressed.length, 'nothing in League.css is read as dressing these classes').toBeGreaterThan(
+      1,
+    )
     expect(written.length, 'the screen has stopped writing these classes').toBeGreaterThan(1)
-
-    for (const css of written) {
-      expect(dressed, `the screen writes ${css}, which nothing in League.css dresses`).toContain(css)
-    }
 
     for (const css of dressed) {
       expect(
