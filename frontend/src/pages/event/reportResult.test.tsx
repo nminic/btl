@@ -220,7 +220,8 @@ describe('a result reported this way', () => {
     const { races } = await racesOf(EVENT)
     const user = setupUser()
 
-    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+    const { router } = renderAt(reportAddress(EVENT, first(races)), 'superadmin', ME)
+
     await fillIn(user)
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
@@ -241,6 +242,22 @@ describe('a result reported this way', () => {
       formatPoints(earned ?? 0, 'sr-Latn'),
     )
     expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+
+    /* And the same figures reach the moderator, which is the half the member never
+       sees: what this screen says and what it sends are read from the record twice
+       over, so either could be right while the other is not. Measured on
+       30.08.2026, when the seconds and the points in the sent record could both be
+       set to nought and every case in this file went on passing. */
+    await router.navigate('/sr/administracija/verifikacija/rezultati')
+
+    const said = must(
+      within(await screen.findByRole('table', { name: 'Čeka proveru' })).getAllByRole('row')[1],
+      'the row that was just sent',
+    ).textContent
+
+    expect(said).toContain('3:41:12')
+    expect(said).toContain(formatPoints(earned ?? 0, 'sr-Latn'))
+    expect(said).toContain(formatNumber(mine.distanceKm, 'sr-Latn', 2))
   })
 
   it('sends the name of the race, not the name of the event it is run at', async () => {

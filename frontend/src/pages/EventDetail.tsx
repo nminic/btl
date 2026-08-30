@@ -19,6 +19,7 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
+import { raceKind } from '../data/raceKind'
 import { raceLabel } from '../data/raceLabel'
 import { outsideHost, outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
@@ -162,7 +163,11 @@ function RaceTable({ event }: { event: BtlEvent }) {
                           a name that repeats the year on every row, and both are
                           the owner's to choose. Nothing is lost today: no race in
                           the data fixes anything but a length. */}
-                      <td>{race.kind === 'length' ? formatNumber(race.distanceKm, locale, 2) : ''}</td>
+                      <td>
+                        {raceKind(race.kind) === 'length'
+                          ? formatNumber(race.distanceKm, locale, 2)
+                          : ''}
+                      </td>
                       <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
                       <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>
                       {options && (

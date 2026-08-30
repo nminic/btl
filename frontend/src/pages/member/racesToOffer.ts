@@ -1,6 +1,7 @@
 import type { BtlEvent, Race } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
 import { fieldDate } from '../../forms/dateField'
+import { raceKind } from '../../data/raceKind'
 import { raceMeasure } from '../../data/raceLabel'
 import { formatNumericDate } from '../../i18n/format'
 
@@ -85,7 +86,7 @@ export function racesToOffer(
      */
     fills: {
       date: fieldDate(race.date),
-      ...(race.kind === 'length'
+      ...(raceKind(race.kind) === 'length'
         ? {
             distanceKm: String(race.distanceKm),
             ascentM: String(race.ascentM),

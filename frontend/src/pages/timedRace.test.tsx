@@ -371,7 +371,7 @@ describe('a race that fixes no length', () => {
     globalThis.fetch = servingRaces(real, asTimed)
 
     try {
-      renderAt(await reportAddress(), 'competitor', '000001')
+      const { router } = renderAt(await reportAddress(), 'superadmin', '000001')
 
       const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
 
@@ -380,18 +380,41 @@ describe('a race that fixes no length', () => {
       )
       expect(screen.queryByLabelText(/^Sati/), 'a timed race is asking for a time').toBeNull()
 
+      /* Climb and fall differ, and neither is nought: with both the same a screen
+         that read one for the other would be measured as right, and with both
+         nought the formula could not tell them apart either. */
       await user.type(await screen.findByLabelText(/^Dužina/), '60')
-      await user.type(screen.getByLabelText(/^Uspon/), '0')
-      await user.type(screen.getByLabelText(/^Spust/), '0')
+      await user.type(screen.getByLabelText(/^Uspon/), '2000')
+      await user.type(screen.getByLabelText(/^Spust/), '500')
       await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
       await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
-      const earned = btlPoints(60, 0, 0, 86_400) ?? 0
+      const earned = btlPoints(60, 2_000, 500, 86_400) ?? 0
 
       expect(earned, 'the formula gave nothing, so the case would pass on anything').toBeGreaterThan(
         0,
       )
       expect(await screen.findByText(new RegExp(formatPoints(earned, 'sr-Latn')))).toBeVisible()
+
+      /* And what the moderator is sent, which is the half the screen never shows the
+         member. `reportedResult` is measured on its own, but nothing said that this
+         screen hands its answers on: every one of these could be replaced by a
+         figure off the race and the member would still be told the right number of
+         points, because that is read separately. Five of the six are drawn in this
+         row; the sixth, the category, is drawn nowhere and is asked of the function
+         that decides it. */
+      await router.navigate('/sr/administracija/verifikacija/rezultati')
+
+      const said = must(
+        within(await screen.findByRole('table', { name: 'Čeka proveru' })).getAllByRole('row')[1],
+        'the row that was just sent',
+      ).textContent
+
+      expect(said).toContain('60,00')
+      expect(said).toContain('2.000')
+      expect(said).toContain('500')
+      expect(said).toContain('24:00:00')
+      expect(said).toContain(formatPoints(earned, 'sr-Latn'))
     } finally {
       globalThis.fetch = real
     }
@@ -419,6 +442,48 @@ describe('a race that fixes no length', () => {
       expect(screen.getByLabelText(/^Uspon/)).toBeVisible()
       expect(screen.getByLabelText(/^Spust/)).toBeVisible()
       expect(screen.getByLabelText(/^Sati/), 'a free race is not asking for a time').toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
+
+  it('names a race of a kind it does not know the same way in the cell and in the link', async () => {
+    /* One word, three readers, and until 30.08.2026 two answers in one row: the cell
+       read the word itself and left the length out, while the link beside it named
+       the race „(21,1 km)" and the form behind that link took 21,1 km off the race.
+       A reader was told in one row both that the race has no length and what its
+       length is.
+
+       Read as a race of a length everywhere, which is what every race was before the
+       field existed. Both halves asked, because either alone is satisfied by a row
+       that says nothing at all. */
+    const real = globalThis.fetch
+
+    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'ludilo' }))
+
+    try {
+      renderAt(`/sr/kalendar/${EVENT}`, 'competitor', '000001')
+
+      const table = await screen.findByRole('table', { name: /^Trke/ })
+      const heads = within(table)
+        .getAllByRole('columnheader')
+        .map((one) => one.textContent)
+      const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
+      const cells = within(row).getAllByRole('cell')
+      const said = must(cells[heads.indexOf('Dužina')], 'the length of the first race').textContent
+
+      /* The cell writes two decimals and the name writes one, so the two are not
+         compared as strings; what is asked is that both of them say a length at all.
+         Either alone is satisfied by the row that was drawn before this was put
+         right: the cell empty and the link saying „(21,1 km)". */
+      expect(said, 'the cell says the race has no length').not.toBe('')
+      expect(
+        must(
+          within(row).getByRole('link', { name: /^Unesi rezultat/ }).getAttribute('aria-label'),
+          'the way into the form',
+        ),
+        'the link names no length, so it is not reading the race the same way',
+      ).toMatch(/\(\d+,\d km\)$/)
     } finally {
       globalThis.fetch = real
     }

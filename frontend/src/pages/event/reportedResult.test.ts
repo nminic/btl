@@ -27,7 +27,13 @@ const race = (over: Partial<Race> = {}): Race => ({
   distanceKm: 21.1,
   ascentM: 300,
   descentM: 250,
-  category: 'half',
+  /* Deliberately not what the length says. `categoryOf(21.1)` is „half", so a
+     fixture that carried it could not tell „off the race" from „worked out from
+     what was covered", and the case about the category would pass whichever way the
+     code read. The shape is one the administration really produces: a race whose
+     length is edited keeps the category it had (`admin/raceRows.ts`), and that is
+     the record the database phase inherits. */
+  category: 'marathon',
   ...over,
 })
 
@@ -59,7 +65,7 @@ describe('what a report says about the run', () => {
     expect(said.ascentM).toBe(300)
     expect(said.descentM).toBe(250)
     expect(said.seconds).toBe(TYPED_SECONDS)
-    expect(said.category).toBe('half')
+    expect(said.category).toBe('marathon')
     expect(said.points).toBe(btlPoints(21.1, 300, 250, TYPED_SECONDS))
   })
 
@@ -116,7 +122,7 @@ describe('what a report says about the run', () => {
       'ultra',
     )
     expect(reportedResult(race({ kind: 'free' }), typed()).category).toBe('ultra')
-    expect(reportedResult(race(), typed()).category).toBe('half')
+    expect(reportedResult(race(), typed()).category).toBe('marathon')
   })
 
   it('reads a kind it does not know as a race of a length', () => {
@@ -127,6 +133,6 @@ describe('what a report says about the run', () => {
 
     expect(said.distanceKm).toBe(21.1)
     expect(said.seconds).toBe(TYPED_SECONDS)
-    expect(said.category).toBe('half')
+    expect(said.category).toBe('marathon')
   })
 })
