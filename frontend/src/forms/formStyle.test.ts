@@ -157,8 +157,11 @@ describe('the calendar button that will not answer', () => {
        With the heavier rule added, seventeen properties differ and the colour goes
        to the accent, which is the live button's.
 
-       That script measures one control today and the portal now has two. What
-       covering both would take is recorded in `btl-produkt/PENDING.md`. */
+       It measured one control on the day that was written and it measures both since
+       29.08.2026: the markup and the set of properties a refusal may differ in are
+       written per control there, and this button is the second of them. The rule
+       named above is one of the mutations that was let loose to prove it, and the
+       script complains about it in the words of the state it breaks. */
     const refused = ruleFor(
       PICKER,
       ".datepicker__open[aria-disabled='true']:hover",
