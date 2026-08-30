@@ -284,6 +284,7 @@ function renderInbox(inbox: Message[]) {
     submissions: [],
     corrected: {},
     withdraw: vi.fn(),
+  amend: vi.fn(),
     submit: vi.fn(),
     resubmit: vi.fn(),
     decide: vi.fn(),

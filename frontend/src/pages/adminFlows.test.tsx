@@ -38,6 +38,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     signIn: vi.fn(),
     signOut: vi.fn(),
     withdraw: vi.fn(),
+  amend: vi.fn(),
     corrected: {},
     submissions: states.map((status, index) => ({
       id: `sub-${index}`,

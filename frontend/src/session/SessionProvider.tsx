@@ -14,6 +14,7 @@ import {
   type SessionValue,
   type Submission,
   type SubmissionStatus,
+  type Amendment,
 } from './context'
 
 /* Two messages to start with, so the inbox is not judged empty. They are the
@@ -199,6 +200,34 @@ export function SessionProvider({
     )
   }, [])
 
+  /**
+   * What the administration puts right on a submission before it decides it.
+   *
+   * A separate act from `decide`, and from `resubmit`, because it is a third
+   * thing. `resubmit` is the member's: it marks the item corrected, which is a
+   * word aimed at the moderator („samo labela", owner 27.08.2026), and it sends
+   * the item back to the front of the queue as new. Neither is true here. The
+   * moderator is already reading this item, is the one changing it, and the mark
+   * would tell them that somebody else had.
+   *
+   * What may be changed is what the owner named on 30.08.2026: the name of the
+   * event, the name of the race, the kind, and the time. The member's answer to
+   * the kind is a hint until this happens („Takmičar je mogao da izabere dužinska
+   * ili vremenska, kao nagoveštaj tipa"), and the time on a timed race is the
+   * race's limit rather than a run („ja ću lako promeniti njegovo vreme sa recimo
+   * 23:23:15 na 24:00:00").
+   *
+   * Nothing is said to the member per change: one standing sentence in Član 44
+   * covers it, which was the owner's own answer over a note beside each one.
+   *
+   * The item keeps its place. A moderator who has read the row is the one writing
+   * on it, so there is nobody to surprise, which is the whole reason `resubmit`
+   * moves an item and this does not.
+   */
+  const amend = useCallback((id: string, changes: Amendment) => {
+    setSubmissions((current) => current.map((one) => (one.id === id ? { ...one, ...changes } : one)))
+  }, [])
+
   const decide = useCallback((id: string, status: SubmissionStatus, note: string) => {
     setSubmissions((current) => {
       const one = current.find((item) => item.id === id)
@@ -309,6 +338,7 @@ export function SessionProvider({
       corrected,
       submit,
       resubmit,
+      amend,
       withdraw,
       decide,
       inbox,
@@ -342,6 +372,7 @@ export function SessionProvider({
       corrected,
       submit,
       resubmit,
+      amend,
       withdraw,
       decide,
       inbox,

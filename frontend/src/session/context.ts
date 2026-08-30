@@ -18,6 +18,14 @@ export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 
+/** The four things verification may put right, and no fifth. */
+export type Amendment = {
+  eventName?: string
+  raceName?: string
+  raceKind?: string
+  seconds?: number
+}
+
 export type Submission = {
   id: string
   memberNumber: string
@@ -279,6 +287,18 @@ export type SessionValue = {
    * (P9), so a withdrawn one would be a record of something nobody may read.
    */
   withdraw: (id: string) => void
+  /**
+   * What the administration may put right on a submission before deciding it
+   * (owner, 30.08.2026): the name of the event, the name of the race, the kind,
+   * and the time.
+   *
+   * A type of its own rather than a partial submission, because these four are a
+   * list somebody chose and the rest of a submission is not the administration's
+   * to rewrite: the member's proofs, their number, what they said about the race.
+   * Written as a partial, a later hand could put any of those in it and nothing
+   * would say so.
+   */
+  amend: (id: string, changes: Amendment) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
   /**

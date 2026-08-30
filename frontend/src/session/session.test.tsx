@@ -1,3 +1,4 @@
+import { must } from '../test/at'
 import { render, screen } from '@testing-library/react'
 import type { EventComment } from '../data/types'
 import { setupUser } from '../test/user'
@@ -5,11 +6,36 @@ import { SessionProvider } from './SessionProvider'
 import { useSession } from './useSession'
 
 function Probe() {
-  const { submissions, submit, decide, inbox, markRead, notify } = useSession()
+  const { submissions, submit, decide, amend, inbox, markRead, notify } = useSession()
 
   return (
     <>
       <span data-testid="statuses">{submissions.map((one) => one.status).join(',')}</span>
+      {/* What the administration may put right, and the order the items stand in,
+          which `amend` must leave alone: `resubmit` moves an item to the front
+          and this one does not, because the moderator writing on it is the one
+          already reading it. */}
+      <span data-testid="said">
+        {submissions
+          .map((one) => `${one.raceName}|${one.raceKind}|${one.seconds}|${String(one.corrected)}`)
+          .join(',')}
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          /* The second and not the first, so „the one named" cannot be mistaken
+             for „whichever is at the front": with the first amended, an
+             implementation that always writes over the head of the list passes
+             (measured 31.08.2026). */
+          const second = submissions[1]
+
+          if (second !== undefined) {
+            amend(second.id, { raceName: 'Prava trka', raceKind: 'time', seconds: 86_400 })
+          }
+        }}
+      >
+        ispravi drugi
+      </button>
       <span data-testid="unread">{inbox.filter((one) => !one.read).length}</span>
       <span data-testid="subjects">{inbox.map((one) => one.subject).join(',')}</span>
       <button
@@ -82,6 +108,38 @@ describe('the session store', () => {
     // Only the one named changes; the other stays where it was.
     expect(screen.getByTestId('statuses').textContent).toContain('approved')
     expect(screen.getByTestId('statuses').textContent).toContain('pending')
+  })
+
+  it('puts right what the administration may change, and nothing else about the item', async () => {
+    /* Owner, 30.08.2026: the administration may change the name of the event, the
+       name of the race, the kind and the time before it decides. What it must not
+       do is the two things the member's own correction does, and both are visible
+       here: the item keeps its place, and it is not marked corrected.
+
+       „Ispravljeno" is a word aimed at the moderator („samo labela", owner
+       27.08.2026), and this moderator is the one writing on the row; marked, it
+       would tell them somebody else had. Moved, it would leave the row they are
+       reading and go to the front as though it were new. */
+    const user = setupUser()
+    renderProbe()
+
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+
+    const before = screen.getByTestId('said').textContent
+
+    expect(before, 'the newest submission is first, as everything in this store is').toMatch(
+      /^Trka 2\|/,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'ispravi drugi' }))
+
+    const after = must(screen.getByTestId('said').textContent, 'what the store holds').split(',')
+
+    expect(after[1]).toBe('Prava trka|time|86400|false')
+    /* And the other one is untouched, which is the half that a change written
+       over the whole list, or over whichever item is at the front, would fail. */
+    expect(after[0]).toBe(must(before, 'what it held before').split(',')[0])
   })
 
   it('marks one message read and leaves the rest', async () => {
