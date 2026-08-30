@@ -201,11 +201,17 @@ export function ReportResult() {
                     not, and no second form for the case where they do.
 
                     Why it needed asking: a race's name starts out as its event's,
-                    and 886 of the 1163 events that hold any race at all hold
-                    exactly one, so on three quarters of them the sentence said the
-                    same name twice over. Measured in Chrome on 360 by 780 that day:
-                    five lines, 111,6 pixels of a screen where the form itself is
-                    what the member came for.
+                    and 886 of the 1163 events that hold any race at all hold exactly
+                    one, so on 885 of them the sentence said the same name twice over
+                    (Mrazijada is the one race in the file somebody renamed).
+
+                    What that cost, measured in Chrome on 360 by 780 over every one
+                    of the 1612 races rather than over the worst of them: the old
+                    sentence ran to four lines on 724 and to five on two, and the new
+                    one never passes three. So 763 races get a line back and 849 get
+                    nothing, which is the honest shape of the gain. An earlier
+                    version of this note gave the five-line reading as though it were
+                    the ordinary case; it is two races out of 1612.
 
                     What it costs, in his words as he took it: where a race is named
                     differently from its event, the member no longer sees from this

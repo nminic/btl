@@ -563,27 +563,25 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        green, and the only thing that had ever held the sentence's shape was a case
        asking that the race's own label is somewhere inside it.
 
-       On the one race in the file somebody renamed, so the two names really differ
-       and a sentence that named both would be caught by every word of it. */
+       On a race called something other than its event, so the two names really
+       differ. Found by the helper that asks exactly that (`renamedRace`) and not by
+       the `renamed` flag beside it: that flag says somebody typed the name by hand,
+       which `pages/admin/EventRaces.tsx` writes on every keystroke, so a name typed
+       back to the event's own would carry it and part the two facts. */
+    const { race, event } = await renamedRace()
     const races = await loadResource<Race[]>('races')
-    const events = await loadResource<BtlEvent[]>('events')
-    const race = must(
-      races.find((one) => one.renamed === 'yes'),
-      'the race somebody renamed',
-    )
-    const event = must(
-      events.find((one) => one.id === race.eventId),
-      'the event it belongs to',
-    )
-
-    expect(race.name, 'the renamed race is named after its event after all').not.toBe(event.name)
 
     renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
     const said = await screen.findByText(/Prijavljuješ rezultat/)
     const here = races.filter((one) => one.eventId === race.eventId)
 
-    expect(said).toHaveTextContent(
+    /* `textContent` and not `toHaveTextContent`, which asks whether the string is
+       **somewhere inside** the element. A review on 30.08.2026 put the clause back
+       as a sentence of its own at the end — „Trka je na događaju „X"." — and the
+       whole suite stayed green, which is the decision broken and the guard that
+       claims to hold it silent. */
+    expect(said.textContent).toBe(
       `Prijavljuješ rezultat sa trke ${raceLabel(race, here, 'sr-Latn')}. Dužinu, uspon i spust portal već zna sa same trke.`,
     )
   })
