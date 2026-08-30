@@ -46,6 +46,8 @@ const race = (
   eventId,
   name,
   renamed: 'no',
+  kind: 'length',
+  limitSeconds: 0,
   date,
   distanceKm,
   ascentM: 0,

@@ -1,9 +1,16 @@
 import type { Race } from './types'
-import { formatDistance, formatNumber, formatShortDate, formatYear } from '../i18n/format'
+import {
+  formatDistance,
+  formatLimit,
+  formatNumber,
+  formatShortDate,
+  formatYear,
+} from '../i18n/format'
 
-/** What this function needs of a race: no more than three things, so a column of a
- *  competition grid can be named by it as well as a row of an event. */
-export type Named = Pick<Race, 'name' | 'date' | 'distanceKm'>
+/** What this function needs of a race: its name, its day, and what it measures out
+ *  in advance, so a column of a competition grid can be named by it as well as a
+ *  row of an event. */
+export type Named = Pick<Race, 'name' | 'date' | 'kind' | 'limitSeconds' | 'distanceKm'>
 
 /**
  * What a race is called on a screen, among the races it is shown beside.
@@ -15,10 +22,20 @@ export type Named = Pick<Race, 'name' | 'date' | 'distanceKm'>
  *
  * **The brackets hold the measure of the race, which is not always a length.** PDL
  * has held three kinds since the specification was written — timed, by length, and
- * free — and says the kind is shown in brackets: „(6 h)", „(21,1 km)", „(S)". The
- * portal cannot yet record which kind a race is, so today the brackets always hold
- * the length, which is true of every race in the data; `measure` below is the one
- * place that will have to answer differently when it can.
+ * free. A race of a length is named by its length, „(21,1 km)"; a timed race by how
+ * long it lasts, „Šri Činmoj ultramaraton 2026. (24 h)", which is the owner's own
+ * example of 29.08.2026; and a free race by **nothing at all**, „BTL Round 'n'
+ * Around 2027.", which is his answer of 30.08.2026.
+ *
+ * **A free race is named without brackets, and that costs something he was told
+ * about.** PDL wrote „(S)" for it, but that mark was written for the calendar,
+ * where a tile is a seventh of the page wide; here the same mark would be read out
+ * as the letter S by anybody using a screen reader, and this function hands back a
+ * string, so there is nowhere to put the word the letter stands for. Empty brackets
+ * are worse than none, so a free race is named by its name and its day alone — and
+ * two free races of one name run on one morning cannot be told apart at all, which
+ * is the family described under „what no rung parts" below, entered by a second
+ * door.
  *
  * **Four rungs, and the first that stands alone is the one used.** The year and the
  * rough length; then the day in place of the year; then the year and the length
@@ -84,15 +101,29 @@ export function raceLabelParts(
   among: Named[],
   locale: string,
 ): { name: string; rest: string } {
-  /* What goes in the brackets. One home, because this is the answer that will stop
-     being „the length" the day a race can say it is timed or free. */
-  const measure = (one: Named, decimals: number) =>
-    decimals === 1
+  /* What goes in the brackets, and the one home for that answer. Empty is an
+     answer too, and the only one a free race has. */
+  const measure = (one: Named, decimals: number) => {
+    if (one.kind === 'free') {
+      return ''
+    }
+
+    if (one.kind === 'time') {
+      return formatLimit(one.limitSeconds)
+    }
+
+    return decimals === 1
       ? formatDistance(one.distanceKm, locale)
       : `${formatNumber(one.distanceKm, locale, decimals)} km`
+  }
 
-  const rest = (when: (one: Named) => string, decimals: number) => (one: Named) =>
-    `${when(one)} (${measure(one, decimals)})`
+  const rest = (when: (one: Named) => string, decimals: number) => (one: Named) => {
+    const said = measure(one, decimals)
+
+    /* Brackets only where there is something to put in them. „Round 'n' Around
+       2027. ()" would be a pair of empty brackets on every free race there is. */
+    return said === '' ? when(one) : `${when(one)} (${said})`
+  }
 
   const year = (one: Named) => formatYear(one.date, locale)
   const day = (one: Named) => formatShortDate(one.date, locale)

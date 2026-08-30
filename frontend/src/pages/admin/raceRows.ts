@@ -35,7 +35,17 @@ export type RaceRow = {
 }
 
 /** The rows an event opens with: its races, in the order they are run. */
-export function rowsOf(races: Race[], fieldDate: (iso: string) => string): RaceRow[] {
+/** What a row of the table is read off, and nothing besides: the table asks for a
+ *  length and knows nothing of the other two kinds, so a race handed here need not
+ *  say which one it is. Narrow on purpose, the way `data/raceLabel.ts` is: the day
+ *  this table asks for the kind as well, the field arrives here and its guard
+ *  arrives with it, rather than being carried through unread in the meantime. */
+export type RaceOfRow = Pick<
+  Race,
+  'id' | 'name' | 'renamed' | 'date' | 'distanceKm' | 'ascentM' | 'descentM'
+>
+
+export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): RaceRow[] {
   return [...races]
     /* By the day first and the distance inside it, which is the order they are
        run in: an event over two mornings reads as two mornings. */
@@ -175,6 +185,14 @@ export function storedRow(row: RaceRow, eventId: string): Record<string, string>
     name: row.name.trim(),
     renamed: row.renamed,
     date: isoDate(row.date),
+    /* A race entered through this table is a race of a length, because a length is
+       the only thing this table asks for. Written down rather than left out, so a
+       race made here has the same fields as one out of the file: what reads them
+       back (`admin/AdminEvents.tsx`) takes anything else for a race of a length, and
+       a record with the field missing would be told apart from one that carries it
+       only by that fallback. */
+    kind: 'length',
+    limitSeconds: '0',
     distanceKm: String(distanceKm),
     ascentM: String(Number(row.ascentM === '' ? 0 : row.ascentM)),
     descentM: String(Number(row.descentM === '' ? 0 : row.descentM)),

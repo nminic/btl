@@ -8,7 +8,7 @@ import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
 import countries from './countries.json'
 import { plainly } from './places'
-import { EVENT_KINDS, FEATURED, ITEM_KINDS } from './types'
+import { EVENT_KINDS, FEATURED, ITEM_KINDS, RACE_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
@@ -442,6 +442,29 @@ describe('the generated data', () => {
     expect(kinds).toContain('gathering')
     expect(kinds).toContain('race')
     expect(events.filter((one) => one.status !== undefined)).toEqual([])
+  })
+
+  it('writes on every race which of the three kinds it is, and a limit that agrees', async () => {
+    /* The same guard the events have over their own kind, and for the same reason:
+       nothing between the generator and the screen checks this, and a word the
+       portal does not know reaches `raceLabel` as a race of no kind at all.
+
+       Every race in the file is a race of a length and was before the field
+       existed, so what this measures today is that the field is on all of them and
+       says the one thing that is true. It goes on measuring something the day the
+       first timed race is entered, which is what the second half is for: a limit
+       belongs to a timed race and to no other kind, so a length race carrying one
+       and a timed race carrying none are both caught here rather than in the name
+       the race is drawn under. */
+    const races = await loadResource<{ kind: string; limitSeconds: number }[]>('races')
+    const kinds = [...new Set(races.map((one) => one.kind))].sort()
+
+    expect(races.length).toBeGreaterThan(0)
+    expect(kinds.every((one) => RACE_KINDS.some((known) => known === one))).toBe(true)
+    expect(races.filter((one) => one.kind === undefined)).toEqual([])
+    expect(
+      races.filter((one) => (one.kind === 'time') !== (one.limitSeconds > 0)),
+    ).toEqual([])
   })
 
   it('writes whether an event is featured as one of the two words the form offers', async () => {

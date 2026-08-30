@@ -18,10 +18,10 @@ import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { dogadjaj } from '../../forms/definitions'
 import type { FormDef, FormValues } from '../../forms/types'
-import type { Race } from '../../data/types'
+
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
-import { allFinished, rowsOf, storedRow, type RaceRow } from './raceRows'
+import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextNumber } from './raceIds'
 import { nextSeason } from './nextSeason'
 import { useOverlay } from './overlay'
@@ -53,8 +53,13 @@ const copyOfEvent: FormDef = {
  * need races. Read field by field rather than asserted into a `Race`, so a record
  * missing one of them comes out as a row that says so rather than as a race with
  * `undefined` inside it.
+ *
+ * What a row reads and no more (`RaceOfRow`), so the kind a race carries since
+ * 30.08.2026 is not read here to be thrown away one call later: this table asks
+ * for a length and for nothing else, and a field carried through unread is a field
+ * no guard can be written for.
  */
-function racesUnder(all: Record<string, unknown>[], event: string): Race[] {
+function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] {
   return all
     .filter((one) => String(one.eventId) === event)
     .map((one) => ({

@@ -148,6 +148,38 @@ export function formatCourseTime(totalSeconds: number): string {
   return `${hours} h ${String(minutes).padStart(2, '0')}' ${String(rest).padStart(2, '0')}''`
 }
 
+/**
+ * A timed race's own limit, for the brackets its name is written with: „24 h" for
+ * the twenty four hour ultra the owner named on 29.08.2026, „6 h" for the six.
+ *
+ * The same vocabulary `formatCourseTime` uses, because a limit is a quantity of
+ * time and not a clock reading, and the marks are what say so. What differs is
+ * that a limit is written as short as it can be written without leaving anything
+ * out: „24 h" and not „24 h 00' 00''", since a limit set in whole hours is what a
+ * timed race almost always has, and three parts of which two are zero is noise in
+ * a name that already carries a race and a year.
+ *
+ * **Only the ends are dropped, never a part in the middle.** An hour and thirty
+ * seconds is „1 h 00' 30''": dropping the empty minutes would leave „1 h 30''",
+ * which anybody skimming reads as an hour and a half. Nothing is rounded either,
+ * so no limit is ever written as a length of time it is not.
+ */
+export function formatLimit(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.round(totalSeconds))
+  const parts = [
+    `${Math.floor(seconds / 3600)} h`,
+    `${String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')}'`,
+    `${String(seconds % 60).padStart(2, '0')}''`,
+  ]
+  const held = [seconds >= 3600, seconds % 3600 >= 60, seconds % 60 > 0]
+  const first = held.indexOf(true)
+
+  /* Nothing at all is a limit of zero, which no timed race has and this still has
+     to answer for: a race whose limit was left empty reads „0 h" rather than as a
+     race with no brackets, which is what a free race is. */
+  return first === -1 ? '0 h' : parts.slice(first, held.lastIndexOf(true) + 1).join(' ')
+}
+
 export function formatDate(isoDate: string, locale: string): string {
   return dateFormat(locale, 'long').format(new Date(isoDate))
 }
