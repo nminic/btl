@@ -287,8 +287,11 @@ const PRICE_LIST = `
  *  **The box in front of the button is part of the fixture and not decoration.** It is
  *  the sibling `.datepicker .field__control` is written for, it is what Tab meets before
  *  the button, and it is where the difference between this control and the price list
- *  begins: it carries `aria-disabled` and `readonly` and no class of its own, which is
- *  what the portal draws today.
+ *  begins: it carries `aria-disabled`, `readonly`, and the portal's own dress for a held
+ *  control, `field__control--held` (`src/forms/held.ts`). Until 29.08.2026 it wore the
+ *  plain class instead, and this sentence went on saying so for one commit after that
+ *  stopped being true; what caught it is `src/forms/pickerFixture.test.ts`, which
+ *  compares this markup with the screen.
  *
  *  The live twin is a second date field of the same form rather than the same field
  *  twice: two fields is what a form draws, and the comparison needs a control the same

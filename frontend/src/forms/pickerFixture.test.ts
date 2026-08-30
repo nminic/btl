@@ -25,11 +25,16 @@ import { setupUser } from '../test/user'
  * its `value` is written by React as a property and only sometimes as an attribute, so
  * a comparison of attribute names would be a comparison of React's internals. Its
  * classes are compared, and that comparison has already earned its place: a date locked
- * by a chosen race carried `aria-disabled` and `readOnly` and **no class at all** while
- * this was written, the change that gives it the portal's dress landed on 30.08.2026,
- * and this case is what caught the fixture still wearing the old markup. That is the
- * whole of what it is for: the fixture is a copy of the screen, and a copy nobody
- * compares stops being one.
+ * by a chosen race carried `aria-disabled`, `readOnly` and **the plain class** while
+ * this was written, the dress the portal keeps for a held control reached it on
+ * 29.08.2026, and this case is what caught the fixture still wearing the old markup.
+ * That is the whole of what it is for: the fixture is a copy of the screen, and a copy
+ * nobody compares stops being one.
+ *
+ * **Both halves are compared, not one.** The live twin is the other half of the copy,
+ * and it went unmeasured until a review on 30.08.2026 pointed out that dressing it
+ * would have passed the whole suite: the script would then have shown Chrome a live
+ * control the portal does not draw.
  */
 const ME = '000007'
 /** A day inside the data, so the list of races is the same list every time this runs
@@ -77,6 +82,9 @@ describe('the calendar button a browser measures', () => {
        rule keyed on that class then painted the live button in the browser exactly the
        way the refused one is painted, with the script still saying both look refused. */
     const free = chainToShell(opener())
+    /* And what the box in front of it wears while nothing has locked it, read now
+       because a moment later this very form will lock it. */
+    const freeBox = classesOf(screen.getByLabelText(/^Datum/))
 
     await user.type(screen.getByLabelText(/^Naziv trke/), 'beogradski maraton')
     await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
@@ -115,12 +123,17 @@ describe('the calendar button a browser measures', () => {
     )
     expect(liveInFixture).toEqual(free)
 
-    /* The box in front of the button, by its classes: it is what `.datepicker
-       .field__control` is written for, and the dress of a held control is what it is
-       expected to gain. */
+    /* The box in front of the button, by its classes, on **both** halves of the copy: it
+       is what `.datepicker .field__control` is written for, and the dress of a held
+       control is what it is expected to gain. The live half went unmeasured until a
+       review on 30.08.2026 found that dressing it would have passed the whole suite,
+       which would have shown Chrome a live control the portal does not draw. */
     expect(
       classesOf(must(holder.querySelector('#date-held'), 'the held box in the fixture')),
     ).toBe(classesOf(screen.getByLabelText(/^Datum/)))
+    expect(
+      classesOf(must(holder.querySelector('#date-free'), 'the live box in the fixture')),
+    ).toBe(freeBox)
 
     /* Above the shell the two documents cannot agree and should not be asked to: under
        test the app is mounted in a container of the test library's own. What the fixture
