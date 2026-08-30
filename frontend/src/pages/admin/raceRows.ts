@@ -151,9 +151,17 @@ export const BOUNDS = {
  * the words of the refusal (`i18n`, `admin.form.racesRefused`). One sentence stands
  * for the whole table, so it cannot name what is wrong with one row, and until
  * 30.08.2026 it said every race must give a length, which stopped being true the
- * moment two of the three kinds stopped fixing one. It now says a length is asked
- * of a race that fixes one. That it does not say **which** row or **which** field
- * is a fault of its own, written down in PENDING since 23.08.2026.
+ * moment two of the three kinds stopped fixing one.
+ *
+ * It does not try to say it conditionally either, which was the next thing tried
+ * and worse: „a race that fixes a length" names a property this table does not
+ * draw, and the only thing on the screen that looks like it, the number in the
+ * length cell, points the other way. The exempt row shows „0" and the refused one
+ * shows nothing, so a reader following the words lands on the wrong row. The
+ * sentence now says what every race must have and sends the reader to the marked
+ * cells, which are marked one by one and correctly. That the sentence itself does
+ * not name the row is a fault of its own, written down in PENDING since
+ * 23.08.2026.
  *
  * The climb and the fall are not asked about here, because a course has both
  * whichever way it is run.

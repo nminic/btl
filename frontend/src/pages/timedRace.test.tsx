@@ -234,11 +234,32 @@ describe('a race that fixes no length', () => {
         first(lengths),
         'the first length is required, so these are not the served races',
       ).toHaveAttribute('aria-required', 'false')
-      /* And it no longer announces a floor it does not hold to. Asked beside the
-         two attributes above because all three are read off one answer, and a
-         control that says „at least 0,1" over a value of nought is announcing a
-         rule that was lifted from it. */
+      /* And it no longer announces bounds it does not hold to. Asked beside the two
+         attributes above because all of them are read off one answer, and a control
+         that says „at least 0,1" over a value of nought announces a rule that was
+         lifted from it.
+
+         Both ends, and both directions. „It has no floor" alone is satisfied by a
+         table that announces none anywhere, which is 1612 races of a length left
+         without the one they do hold to; the row that really is bounded is asked
+         for its own in the same breath. */
       expect(first(lengths), 'the length still announces a floor').not.toHaveAttribute('min')
+      expect(first(lengths), 'the length still announces a ceiling').not.toHaveAttribute('max')
+
+      const last = must(lengths[lengths.length - 1], 'the row just added')
+
+      expect(last, 'the row that is bounded lost its floor').toHaveAttribute('min', '0.1')
+      expect(last, 'the row that is bounded lost its ceiling').toHaveAttribute('max', '1000')
+
+      const climbs = screen.getAllByRole('spinbutton', { name: /^Uspon/ })
+
+      /* The climb is never required and always bounded, so it holds its own even on
+         the race the length was lifted from: the exemption is about one field and
+         not about the row. */
+      expect(first(climbs), 'the climb lost its bounds with the length').toHaveAttribute(
+        'min',
+        '0',
+      )
       expect(first(lengths), 'the length of a race that fixes none is marked wrong').toHaveAttribute(
         'aria-invalid',
         'false',

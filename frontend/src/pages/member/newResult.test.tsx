@@ -228,6 +228,13 @@ describe('the list of races under the name of an event', () => {
     expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
     expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
     expect(filled.map((one) => one?.descentM)).toEqual([undefined, undefined, '140'])
+    /* And the day, which is the one thing handed over on all three kinds and so the
+       one the two lists above cannot reach. It is locked like the rest, so a value
+       the form cannot read is a field nobody can mend: the box asks for
+       „dd/mm/gggg" (`forms/dateField.ts`) and a race carries „2026-09-19", which
+       `isoDate` reads back as nothing at all. A round of this measured only that the
+       value is not empty, and an ISO day is not empty. */
+    expect(filled.map((one) => one?.date)).toEqual(['19/09/2026', '19/09/2026', '19/09/2026'])
   })
 
   it('offers what has been run, newest first, and never what is still to come', async () => {
