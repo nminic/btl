@@ -308,7 +308,17 @@
      apart: with the ceiling saying `4 x --space-4` and this saying `--space-8`,
      five dots ask 76px of a ceiling of 60 and break into two lines, which is the
      outcome this rule exists to prevent. Measured in review, 30.08.2026, with the
-     whole suite green. Named once, the two cannot disagree at all. */
+     whole suite green.
+
+     Named once, **these two declarations** cannot disagree, which is narrower
+     than „cannot disagree at all" and is deliberately written so: a `gap` set for
+     this class in a media query, or in another sheet, wins over this one while
+     the ceiling stays where it is, and the row breaks into two lines again. That
+     was measured in a real browser on 30.08.2026, and it is why no test asserts
+     this: five drafts of one tried, and a cascade beat every one of them
+     (`styles/lengthDots.test.ts`). Whoever spaces this row from somewhere else
+     moves the ceiling with it, and measures the day at 360, 780, 1440 and 1560
+     pixels and at 200% text, as ADL A26 records. */
   --dot-gap: var(--space-4);
   gap: var(--dot-gap);
   /* Wrapping, and shrinking only as far as wrapping needs, since 30.08.2026.

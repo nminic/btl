@@ -30,11 +30,30 @@ import { DOTS } from '../data/types'
  * a browser does, so writing one twice was never the fault. The fault was
  * writing it into one theme and not another, and that is asked of each theme
  * here.
+ *
+ * **What is deliberately not here: the width of the row of dots.** A day may
+ * hold five dots and the gap before them and no more, the sixth broke that on
+ * 30.08.2026, and the row now wraps under a ceiling of five dots and four gaps
+ * (`pages/Calendar.css`). Five drafts of a check over that ceiling were written
+ * and every one of them was measured passing on the fault it was written for, or
+ * failing on a change with no effect at all: the sheet read whole, then a rule
+ * cut at the first brace, then the text of `gap`, then its last word, then the
+ * name it is declared under. The last of those failed when `--dot-gap` moved to
+ * `:root`, which a browser cannot tell apart to the hundredth of a pixel, and
+ * passed when a `gap` written in a media query broke the row into two lines.
+ *
+ * They were all the same mistake. A width is geometry, jsdom lays nothing out
+ * (ADL A33), and every reading of the sheet is a stand-in that a cascade beats:
+ * a longhand under a shorthand, a media query, another sheet. So there is no
+ * sixth stand-in. **Where it is measured instead:** in a real browser, at 360,
+ * 780, 1440 and 1560 pixels and at 100% and 200% text, with the numbers written
+ * where the rule is (`pages/Calendar.css`) and in ADL A26. **What holds it
+ * between those measurements is that the sheet names the gap once and counts
+ * four of that name**, which is a smaller promise than a check and an honest one.
  */
 
 const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
 const table = readFileSync(join(process.cwd(), 'src/styles/table.css'), 'utf-8')
-const calendar = readFileSync(join(process.cwd(), 'src/pages/Calendar.css'), 'utf-8')
 
 /** The three rules a colour is written in: the light theme, the dark one behind
  *  the media query, and the dark one behind the switch. */
@@ -93,68 +112,5 @@ describe('every dot a calendar tile can carry', () => {
         `var(--length-${one})`,
       )
     }
-  })
-
-  it('is drawn at a size the calendar writes its ceiling from', () => {
-    /* The row of dots on a day may be as wide as five dots and the four gaps
-       between them, and wraps past that: five is what the floor of a day was
-       measured to hold, and a sixth arrived on 30.08.2026 and pushed its day
-       12,78px past its own edge at 780/100% until this ceiling was written
-       (`pages/Calendar.css`, and that number is measured in a browser because
-       jsdom lays nothing out, ADL A33).
-
-       What is asked here is that the ceiling and the row it caps are written
-       from the same two tokens. Written apart, one could be moved and the
-       ceiling would go on describing the old row, which is silent: the row
-       would simply overflow, or wrap where it never used to, and no test that
-       runs here can see a width.
-
-       **Two tokens and not one, which is the correction of 30.08.2026.** The
-       ceiling is five dots **and four gaps**, and an earlier draft read only the
-       dot: `gap: var(--space-4)` changed to `var(--space-8)` left the formula
-       saying 60px where the row then wanted 76, and five dots that have always
-       stood in one line broke into two, which is the very outcome the sheet
-       records as measured and rejected, with the whole suite green.
-
-       The gap now has a name of its own in that rule and the ceiling counts four
-       of **that**, so the two cannot come apart at all. What is left here is three
-       readings of whether the names are still wired together, and nothing that
-       parses a value or works out a width.
-
-       **So `--dot-gap` moved to another value does not fall here, and should
-       not.** Moving it moves the spacing and the ceiling together, by the same
-       amount, and the row goes on describing itself: that was the whole point of
-       giving it a name. What falls is one of the three coming loose from that
-       name, which is the fault that was measured.
-
-       **What this does not see, since a note is owed where a guard stops (ADL
-       A33).** A `column-gap` written under the shorthand would win in a browser
-       and is invisible here: jsdom does not expand `gap` into its longhands,
-       measured, so a rule holding `gap` answers nothing at all for `column-gap`.
-       A draft of this took the last word of the shorthand to work around that,
-       and that is the fourth text reading in as many rounds to have its own
-       edge; the value is not parsed at all now, and the sheet writes the gap one
-       way, once. Nor is any width measured here. The row not outgrowing its day
-       is geometry, it was measured in a browser at four widths and two sizes of
-       letter, and the numbers live in `pages/Calendar.css` and in ADL A26. */
-    const size = ruleFor(tokens, ':root', 'tokens.css').getPropertyValue('--length-dot-size')
-    const dot = ruleFor(table, '.length-dot', 'table.css')
-    const row = ruleFor(calendar, '.chip__lengths', 'Calendar.css')
-
-    expect(size, 'the size has a home in the light theme, which every theme starts from').not.toBe(
-      '',
-    )
-    expect(dot.getPropertyValue('inline-size'), 'a dot is drawn from it').toBe(
-      'var(--length-dot-size)',
-    )
-    expect(row.getPropertyValue('max-inline-size'), 'the ceiling is written from the same one').toBe(
-      'calc(5 * var(--length-dot-size) + 4 * var(--dot-gap))',
-    )
-    expect(row.getPropertyValue('--dot-gap'), 'the gap it counts four of has a name here').not.toBe(
-      '',
-    )
-
-    expect(row.getPropertyValue('gap'), 'and the row is spaced by that name').toBe('var(--dot-gap)')
-    expect(row.getPropertyValue('flex-wrap'), 'and the row may wrap under it').toBe('wrap')
   })
 })
