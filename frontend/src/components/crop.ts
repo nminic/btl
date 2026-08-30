@@ -181,8 +181,22 @@ export type Aim = { doing: 'moving' | 'sizing'; cursor: string }
  * lying about what a press will do. One fact, one home (ADL A31).
  *
  * Everything outside the circle is the rim as well, and truthfully so: a press
- * out there drags the edge of the circle out to meet the pointer, which is a
- * resize whatever it looks like.
+ * out there takes hold of the edge, and the drag that follows carries it by as much
+ * as the hand's distance from the middle changes, which is a resize whatever it
+ * looks like. Its **distance** and not the road it took, and the distance is the
+ * larger of the two directions rather than the straight line (`sizedTo`), so a hand
+ * that goes into a corner changes the circle by as much as one that goes straight
+ * out: on a square picture, 0,95 across is a diameter of 0,6 and so is 0,95 across
+ * and 0,95 down.
+ *
+ * **Which also means the rim this reading follows is a square and not the circle
+ * that is drawn.** A finger led around the drawn circle from 0,9 across to
+ * forty-five degrees takes the diameter from 0,50 down to 0,27 and back up to 0,50,
+ * measured by a review on 30.08.2026; what leaves it alone is sliding along the line
+ * `across = 0,9`, which is the side of that square. An earlier version of this note
+ * had it the other way round, and said that a slide along the rim changes nothing. Until
+ * 29.08.2026 it did something stronger and wrong, dragging the edge out to meet
+ * the pointer the instant the press landed; `draggedTo` is where that was mended.
  *
  * The direction is measured **in radii of the circle** rather than in shares of
  * the picture. A photograph is not square, so the circle is an ellipse once it
@@ -252,10 +266,34 @@ function pulling(out: { across: number; down: number }): string {
  * ivice slike": moving stops at the edge, so a cut can never have an empty
  * corner.
  *
- * The centre follows the pointer rather than the pointer carrying the circle by
- * a remembered offset. A remembered offset has to be taken at the moment of the
- * press and kept correct through every resize and every re-render, and gets it
- * wrong exactly once, on the first press after something else moved.
+ * The centre goes where it is told, and `draggedTo` is what tells it: since
+ * 29.08.2026 the only caller works out where the middle should be from where the
+ * press landed and how far the hand has travelled since. This function is asked
+ * for an absolute place and knows nothing of the gesture.
+ *
+ * **What that costs, said out loud because this note once argued the other way.**
+ * A remembered gesture has to be taken at the moment of the press and stays right
+ * only while nothing else moves the crop under the hand. Measured by a review on
+ * 29.08.2026 in Chrome: with the button held on the rim and the size slider moved
+ * to 0,3 from elsewhere, the next move of the hand quietly undid it, back to 0,6
+ * reckoned from the 0,5 the press remembered.
+ *
+ * **And a telephone gives a person the second hand that a mouse does not.** A first
+ * review called it unreachable, on the ground that pressing the picture takes the
+ * focus off the sliders, and a second one measured that a second finger needs no
+ * focus: holding the rim with one finger and dragging the size slider with another
+ * leaves the slider at its new value, and the first finger's next move throws it
+ * away. Without any slider at all, a **second finger held down** in the middle while
+ * the first one moves sends the circle to the edge (`x` from 0,5 to 1), because
+ * nothing here reads `pointerId`. A tap — down and up — is not that: it ends the pull
+ * and moves nothing, and the first finger's next move then does nothing either. Both
+ * were measured on 30.08.2026, and an earlier version of this note ran them together.
+ *
+ * So it is a hole on the screen and not only in the reasoning, and it is written
+ * down here rather than mended because mending it is a question about what a
+ * second finger **should** do, which nobody has asked. What made the trade worth
+ * taking is the owner's own correction of that day: following the pointer
+ * absolutely meant the circle jumped to meet it on every press.
  *
  * Nothing to clamp against but 0 and 1, because `x` and `y` are shares of the
  * room left over rather than distances from an edge (see the head of this file).
@@ -396,6 +434,13 @@ export function draggedTo(
      the middle put back are all worked out in the one place that knows them. The
      spot is straight out along the width, so the other direction reads nought and
      the wider of the two is this one. */
+  /* Held at nought before it is turned back into a spot, because a spot is a place
+     and a place has no sign. A hand that goes further in than the circle's own
+     radius asks for a diameter below zero, and `sizedTo` measures the distance to
+     the spot, which would read that as a circle growing out the other side: the
+     floor would be missed and the circle would settle at 0,36 instead of the 0,24
+     the portal keeps. Measured by a review on 29.08.2026 with a press at 0,98 of a
+     square picture dragged in to 0,55. */
   return sizedTo(
     start,
     shape,
