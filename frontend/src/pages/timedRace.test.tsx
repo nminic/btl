@@ -1,6 +1,6 @@
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { SLOW } from '../test/slow'
-import { loadResource } from '../data/client'
+import { clearResourceCache, loadResource } from '../data/client'
 import { btlPoints } from '../data/scoring'
 import { formatPoints } from '../i18n/format'
 import type { Race } from '../data/types'
@@ -76,50 +76,63 @@ async function reportAddress() {
 }
 
 describe('a race that fixes no length', () => {
-  it('leaves the length column empty rather than saying it is nought kilometres', async () => {
-    /* The grid of a competition settled this shape already (PDL, 31.07.2026): a
-       race somebody did not run is an empty cell and not a nought, „jer nula tvrdi
-       da je trčao i osvojio nula". A nought under „Dužina" says the same untrue
-       thing about the course, that somebody measured it and it came to nothing.
+  it('says in the measure column what each kind is measured by, and nothing for a free race', async () => {
+    /* Owner, 30.08.2026, on two ways of closing a gap he was shown: the heading
+       stops saying „Dužina" and the cell carries whatever the race is measured by.
+       A race of a length says its length, a timed race says how long it lasts, and a
+       free race says nothing, because there is nothing to say until somebody has run
+       it. That last one keeps the shape the grid of a competition settled on
+       31.07.2026: an empty cell and not a nought, „jer nula tvrdi da je trčao i
+       osvojio nula".
 
-       „The cell is empty" cannot pass on a screen that never saw the served file,
-       because the races in the file all have lengths and this one would then read
-       „21,10"; that is how a round of this was caught reading the real file while
-       passing. The other two halves are asked all the same: the name in the same
-       row carries „24 h", which is the whole way from the served record through
-       `raceLabel` to the screen, and the first cell is not empty, so nothing here
-       can pass on a table that had stopped drawing rows.
+       All three walked, because the cell has one branch per kind and a case that
+       walked one of them would say nothing about the other two. Neither „24 h" nor
+       the empty cell can be true of the file as it really is, so neither can pass on
+       a screen the stub never reached.
 
        Opened as a member, because the column that names the race is the one that
        leads into the form and a visitor is offered no way in. */
     const real = globalThis.fetch
 
-    globalThis.fetch = servingRaces(real, asTimed)
+    async function measureCell(shaped: (one: Race) => Record<string, unknown>) {
+      /* The portal keeps the answer to a file it has already read, and that store is
+         emptied once per case and not once per render (`test/setup.ts`). Three
+         different files inside one case need it emptied between them, or the second
+         and third are drawn from the first. */
+      cleanup()
+      clearResourceCache()
+      globalThis.fetch = servingRaces(real, shaped)
 
-    try {
-      renderAt(`/sr/kalendar/${EVENT}`, 'competitor', '000001')
+      const table = await (async () => {
+        renderAt(`/sr/kalendar/${EVENT}`, 'competitor', '000001')
 
-      const table = await screen.findByRole('table', { name: /^Trke/ })
+        return screen.findByRole('table', { name: /^Trke/ })
+      })()
       const heads = within(table)
         .getAllByRole('columnheader')
         .map((one) => one.textContent)
-      const at = heads.indexOf('Dužina')
+      const at = heads.indexOf('Mera')
 
-      expect(at, 'the table no longer has a column of lengths').toBeGreaterThan(-1)
+      expect(at, 'the table no longer has a column of measures').toBeGreaterThan(-1)
 
       const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
       const cells = within(row).getAllByRole('cell')
 
-      expect(
-        within(row).getByRole('link', { name: /24 h/ }),
-        'the row is not naming a timed race, so the page did not read the served file',
-      ).toBeVisible()
-      expect(must(cells[at], 'the length of the first race').textContent).toBe('')
+      /* And the row is a row: the first cell holds the race's name, so nothing here
+         can pass on a table that had stopped drawing anything. */
       expect(first(cells).textContent).not.toBe('')
+
+      return must(cells[at], 'the measure of the first race').textContent
+    }
+
+    try {
+      expect(await measureCell(asTimed)).toBe('24 h')
+      expect(await measureCell((one) => ({ ...one, kind: 'free', distanceKm: 0 }))).toBe('')
+      expect(await measureCell((one) => ({ ...one, distanceKm: 33.3 }))).toBe('33,30 km')
     } finally {
       globalThis.fetch = real
     }
-  })
+  }, SLOW)
 
   it('reads a kind it does not know as a race of a length, and goes on asking for one', async () => {
     /* The one place a word this portal has never heard of can arrive: a file it did
@@ -481,13 +494,13 @@ describe('a race that fixes no length', () => {
         .map((one) => one.textContent)
       const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
       const cells = within(row).getAllByRole('cell')
-      const said = must(cells[heads.indexOf('Dužina')], 'the length of the first race').textContent
+      const said = must(cells[heads.indexOf('Mera')], 'the length of the first race').textContent
 
       /* The cell writes two decimals and the name writes one, so the two are not
          compared as strings; what is asked is that both of them say a length at all.
          Either alone is satisfied by the row that was drawn before this was put
          right: the cell empty and the link saying „(21,1 km)". */
-      expect(said, 'the cell is not reading the served races').toBe('33,30')
+      expect(said, 'the cell is not reading the served races').toBe('33,30 km')
       expect(
         must(
           within(row).getByRole('link', { name: /^Unesi rezultat/ }).getAttribute('aria-label'),

@@ -28,6 +28,51 @@ import { formatNumericDate } from '../../i18n/format'
  *  (`data/raceKind.ts`). */
 type Offered = Omit<Race, 'kind'> & { kind: string }
 
+/**
+ * The fields the race itself answers for, which are the ones it hands over and the
+ * ones the member may not change.
+ *
+ * The two are one list: the renderer locks by the **keys** of what a suggestion
+ * fills in, not by the values, so handing a field over and locking it are the same
+ * act. That is why this is the whole answer to „what does the member enter" on this
+ * form, and why it must say exactly what each kind fixes and nothing more.
+ *
+ * - **A race of a length** fixes the distance, the climb and the fall, and the
+ *   member gives the time.
+ * - **A timed race** fixes the time and nothing else, so it hands the time over,
+ *   already broken into the three boxes the form asks in. Owner, 29.08.2026: „Na
+ *   vremenskoj trci član unosi dužinu, uspon i spust. Vreme ne unosi, jer je zadato
+ *   trkom." Handed over rather than merely refused, because a box left empty and
+ *   locked is a form nobody can send (ADL A32), and because the limit is what the
+ *   formula scores such a race against: filled in here, the points come out right
+ *   without this form having to know which race the name belongs to.
+ * - **A free race** fixes neither, so it hands over nothing but the day.
+ *
+ * The day is fixed by every kind, so it is added by the caller rather than repeated
+ * three times here.
+ */
+function fieldsFixedBy(race: Offered): Record<string, string> {
+  const kind = raceKind(race.kind)
+
+  if (kind === 'length') {
+    return {
+      distanceKm: String(race.distanceKm),
+      ascentM: String(race.ascentM),
+      descentM: String(race.descentM),
+    }
+  }
+
+  if (kind === 'time') {
+    return {
+      hours: String(Math.floor(race.limitSeconds / 3600)),
+      minutes: String(Math.floor((race.limitSeconds % 3600) / 60)),
+      seconds: String(race.limitSeconds % 60),
+    }
+  }
+
+  return {}
+}
+
 export function racesToOffer(
   events: BtlEvent[],
   races: Offered[],
@@ -89,15 +134,6 @@ export function racesToOffer(
      * says what the reader may not change, so locking what the portal has not
      * filled in makes a dead end.
      */
-    fills: {
-      date: fieldDate(race.date),
-      ...(raceKind(race.kind) === 'length'
-        ? {
-            distanceKm: String(race.distanceKm),
-            ascentM: String(race.ascentM),
-            descentM: String(race.descentM),
-          }
-        : {}),
-    },
+    fills: { ...fieldsFixedBy(race), date: fieldDate(race.date) },
   }))
 }

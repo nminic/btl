@@ -203,7 +203,7 @@ describe('the list of races under the name of an event', () => {
     ])
   })
 
-  it('fills in a length only where the race fixes one', () => {
+  it('hands over exactly what each kind of race fixes, and locks exactly that', () => {
     /* Choosing a race fills the fields under the box. A timed race and a free one
        carry nought, and nought is not a length this form will take: the definition
        asks for at least 0,1 (`definitions/unos-rezultata.form.json`) and
@@ -215,10 +215,13 @@ describe('the list of races under the name of an event', () => {
        i spust." All three, because a course run in laps has a climb that depends on
        how many laps somebody ran, so the race cannot know any of them.
 
-       The other half of that sentence, „Vreme ne unosi, jer je zadato trkom", is
-       not done and is written down in PENDING as part of the increment about
-       entering and scoring: it is not a matter of what is filled in but of what the
-       form asks for, and the form asks for hours, minutes and seconds outright. */
+       And the other half of that sentence, „Vreme ne unosi, jer je zadato trkom", is
+       the same act read the other way: the renderer locks by the keys of what is
+       handed over, so a timed race hands its own limit into the three time boxes and
+       they are locked by that. Broken into hours, minutes and seconds because that
+       is how the form asks. It is also what makes the points come out right on this
+       form without it having to work out which race a typed name belongs to: the
+       formula is fed the limit because the limit is what is in the boxes. */
     const filled = racesToOffer(
       [held],
       [
@@ -244,13 +247,19 @@ describe('the list of races under the name of an event', () => {
        length race handing over „" for its climb passed the whole package, and that
        is the same dead end on all 1612 races in the file rather than on none. */
     expect(filled.map((one) => Object.keys(one ?? {}).sort())).toEqual([
-      ['date'],
+      ['date', 'hours', 'minutes', 'seconds'],
       ['date'],
       ['ascentM', 'date', 'descentM', 'distanceKm'],
     ])
     expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
     expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
     expect(filled.map((one) => one?.descentM)).toEqual([undefined, undefined, '140'])
+    /* Twenty four hours, in the three boxes the form asks in, and nought minutes and
+       nought seconds are said out loud: left off, they would be two fields the race
+       does not fix and the member cannot fill. */
+    expect(filled.map((one) => one?.hours)).toEqual(['24', undefined, undefined])
+    expect(filled.map((one) => one?.minutes)).toEqual(['0', undefined, undefined])
+    expect(filled.map((one) => one?.seconds)).toEqual(['0', undefined, undefined])
     /* And the day, which is the one thing handed over on all three kinds and so the
        one the two lists above cannot reach. It is locked like the rest, so a value
        the form cannot read is a field nobody can mend: the box asks for

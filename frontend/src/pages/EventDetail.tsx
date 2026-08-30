@@ -19,8 +19,7 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
-import { raceKind } from '../data/raceKind'
-import { raceLabel } from '../data/raceLabel'
+import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { outsideHost, outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
@@ -129,7 +128,19 @@ function RaceTable({ event }: { event: BtlEvent }) {
                       what the name is for. */}
                   <th scope="col">{t('event.raceName')}</th>
                   {overDays && <th scope="col">{t('event.raceDay')}</th>}
-                  <th scope="col">{t('event.distance')}</th>
+                  {/* „Mera" and not „Dužina" since 30.08.2026, on the owner's word:
+                      a race of a length is measured by its length, a timed race by
+                      how long it lasts, and a free race by nothing until somebody
+                      has run it, so a heading that says „Dužina" is untrue of two of
+                      the three kinds. He was offered the two ways of closing that
+                      and took this one; the other was for the first column to write
+                      the race's full name, which repeats the year on every row of a
+                      table already standing under one event.
+
+                      Only this table. The table of results below is a table of runs
+                      that happened, and every one of those has a length, so the word
+                      there stays what it was. */}
+                  <th scope="col">{t('event.measure')}</th>
                   <th scope="col" className="table__hide-phone">
                     {t('event.ascent')}
                   </th>
@@ -164,9 +175,7 @@ function RaceTable({ event }: { event: BtlEvent }) {
                           the owner's to choose. Nothing is lost today: no race in
                           the data fixes anything but a length. */}
                       <td>
-                        {raceKind(race.kind) === 'length'
-                          ? formatNumber(race.distanceKm, locale, 2)
-                          : ''}
+                        {raceMeasure(race, locale, 2)}
                       </td>
                       <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
                       <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>
