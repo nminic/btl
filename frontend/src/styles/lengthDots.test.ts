@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { bare } from '../test/sources'
 import { DOTS } from '../data/types'
 
 /* The dots a calendar tile carries, as colours.
@@ -19,6 +20,27 @@ import { DOTS } from '../data/types'
 const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
 const table = readFileSync(join(process.cwd(), 'src/styles/table.css'), 'utf-8')
 const calendar = readFileSync(join(process.cwd(), 'src/pages/Calendar.css'), 'utf-8')
+
+/**
+ * What one rule says, and nothing any other rule says.
+ *
+ * A sheet read whole answers for every rule in it at once, which is how the
+ * first draft of the check on wrapping passed on the fault it was written to
+ * catch: `flex-wrap: wrap` is written three times in `Calendar.css`, twice in
+ * the legend, so the row of dots could be told not to wrap and the sheet still
+ * held the words (found in review, 30.08.2026).
+ *
+ * Comments are blanked first, in the one place that does that (`test/sources`),
+ * because this portal explains itself at length inside its rules and a brace in
+ * a note would end the rule early.
+ */
+function rule(sheet: string, selector: string): string {
+  const opens = bare(sheet).indexOf(`${selector} {`)
+
+  expect(opens, `a rule for ${selector}`).toBeGreaterThan(-1)
+
+  return bare(sheet).slice(opens, bare(sheet).indexOf('}', opens))
+}
 
 /** The three places a colour is written: the light theme, the dark one behind
  *  the media query, and the dark one behind the switch. Cut by the selectors
@@ -59,22 +81,13 @@ describe('every dot a calendar tile can carry', () => {
        with the sixth dot painted `var(--length-ultra)`, every test in the
        portal passed, this one included, until it asked this question. */
     for (const one of DOTS) {
-      /* Found by cutting the text rather than by a pattern. A pattern here has
-         to escape a dot and a brace inside a template literal, and one written
-         with a single backslash quietly becomes „any character" and „the letter
-         s"; that draft matched nothing at all and said only that the rule was
-         missing (30.08.2026). */
-      const opens = table.indexOf(`.length-dot--${one} {`)
-
-      expect(opens, `a rule for ${one}`).toBeGreaterThan(-1)
-
-      const rule = table.slice(opens, table.indexOf('}', opens))
-
       /* Its own token and no other's, which is the whole question: a rule that
          reaches for a neighbour's gives two dots one colour, and a bookkeeping
          of who wears what would only ask the same thing twice, since a rule
          holding its own token cannot also be holding somebody else's. */
-      expect(rule, `${one} is painted its own token`).toContain(`var(--length-${one})`)
+      expect(rule(table, `.length-dot--${one}`), `${one} is painted its own token`).toContain(
+        `var(--length-${one})`,
+      )
     }
   })
 
@@ -91,11 +104,15 @@ describe('every dot a calendar tile can carry', () => {
        ceiling would go on describing the old one, which is silent: the row
        would simply overflow again, and no test that runs here can see a width.
        Both halves are named, so either one moved alone lands on this. */
+    const row = rule(calendar, '.chip__lengths')
+
     expect(tokens, 'the size has a home').toContain('--length-dot-size:')
-    expect(table, 'a dot is drawn from it').toContain('inline-size: var(--length-dot-size)')
-    expect(calendar, 'and the ceiling is written from the same one').toContain(
+    expect(rule(table, '.length-dot'), 'a dot is drawn from it').toContain(
+      'inline-size: var(--length-dot-size)',
+    )
+    expect(row, 'and the ceiling is written from the same one').toContain(
       'max-inline-size: calc(5 * var(--length-dot-size) + 4 * var(--space-4))',
     )
-    expect(calendar, 'and the row is allowed to wrap under it').toContain('flex-wrap: wrap')
+    expect(row, 'and the row is allowed to wrap under it').toContain('flex-wrap: wrap')
   })
 })

@@ -650,18 +650,22 @@ export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
   return counts
 }
 
+/** A race as it really arrives here: everything `Race` carries, except that the kind
+ *  is still only a word, which is what the file says and what `raceKind` reads. */
+type Dotted = Omit<Race, 'kind'> & { kind: string }
+
 /**
- * Which lengths an event holds, in the order the five are always named.
+ * Which dots an event carries, in the order `DOTS` names them.
  *
  * The coloured dots beside an event, on the front page and in the calendar
  * (owner, 31.07.2026): one dot per length that is actually run there, never one
  * per race, so an event with four half marathons carries one green dot rather
  * than four.
+ *
+ * Six and not five since 30.08.2026, and it was `categoriesAt` until then: a race
+ * that fixes no length has no length to be named by, and it gets a dot of its own
+ * (owner, on three offered answers: „šesta tačkica, bez zadate dužine").
  */
-/** A race as it really arrives here: everything `Race` carries, except that the kind
- *  is still only a word, which is what the file says and what `raceKind` reads. */
-type Dotted = Omit<Race, 'kind'> & { kind: string }
-
 export function dotsAt(event: BtlEvent, races: Dotted[]): Dot[] {
   /* Read off the race and not off a list the event carries. The list is written
      by the generator and by nothing else, so a race added in administration was

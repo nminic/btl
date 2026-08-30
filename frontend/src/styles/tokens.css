@@ -103,12 +103,26 @@
      five, which run cool to warm with the distance; violet belongs to no point on
      that line, which is the whole of what it says.
 
-     Measured before it was chosen: 7,38:1 against the surface in this theme and
-     6,43:1 in the dark one, where WCAG 2.2 SC 1.4.11 asks 3:1 of a thing that is not
-     text. And 1,27:1 from the nearest of the five, where the five sit between 1,03
-     and 1,18 from one another, so it is further from them than they are from each
-     other. Colour is never the only carrier all the same (ADL A7): every dot has its
-     word beside it, read out and unseen. */
+     Measured against what it is actually drawn on, which is the face of a tile and
+     never the surface of a day: 6,34:1 on a race, 5,05 on a training and 4,96 on a
+     gathering in this theme, and 6,01 / 4,59 / 5,16 in the dark one. WCAG 2.2
+     SC 1.4.11 asks 3:1 of a thing that is not text, so the narrowest of the six is
+     the number that counts and it is 4,59.
+
+     **[ISPRAVLJENO 30.08.2026, u recenziji]** Here stood „7,38:1 against the surface
+     in this theme and 6,43:1 in the dark one", which is this colour against the day
+     behind the tile. No dot is ever drawn there. The reading was not wrong, it
+     answered about the wrong pair of colours, and it read as a reserve of 7,38 where
+     the real one is 4,59.
+
+     **How far it stands from the five is a light-theme number and is written as
+     one.** 1,27:1 from the nearest of them there, where the five sit between 1,03
+     and 1,18 from one another. In the dark theme it is 1,04 from both the shortest
+     and the ultra while the five sit between 1,00 and 1,60, so there it is no
+     further from them than they are from each other, and the sentence that said
+     otherwise covered one theme and claimed both. What carries the difference is not
+     the colour anyway (ADL A7): every dot has its word beside it, read out and
+     unseen, and that is measured in `pages/calendar/eventChip.test.tsx`. */
   --length-unmeasured: #6b3fa0;
 
   /* How wide a dot is drawn, in one place, because the calendar's ceiling on a
