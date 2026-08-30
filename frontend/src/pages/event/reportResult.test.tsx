@@ -16,7 +16,13 @@ function Sent() {
   return (
     <ul aria-label="store">
       {submissions.map((one) => (
-        <li key={one.id}>{`${one.id} | ${one.raceName} | ${one.date}`}</li>
+        <li key={one.id}>
+          {`${one.id} | ${one.raceName} | ${one.date}`}
+          {/* The kind and the place, which nothing on the portal draws yet: they
+              are written for the parts that come after this one, and a value
+              nobody reads is a value nobody can see go wrong. */}
+          <span data-testid={`said-${one.id}`}>{`${one.raceKind} / ${one.city} / ${one.country}`}</span>
+        </li>
       ))}
     </ul>
   )
@@ -928,5 +934,34 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
 
     expect(stored[0]?.textContent).toContain(race.date)
     expect(stored[0]?.textContent).not.toContain(event.date)
+  })
+
+  it('says which kind of race it was and where, read off the race and its event', async () => {
+    /* The form away from the calendar asks the member both, because there is no
+       race behind it to ask. This road starts from a row of the calendar, so it
+       asks neither and reads both: the kind off the race, through the one home
+       for that reading (`data/raceKind.ts`), and the town and country off the
+       event the race belongs to.
+     *
+       Measured because nothing else measures it: no screen draws either value
+       yet, they are written for the parts that come after this one, and with
+       „free / Nigde / ZZ" written here in place of the three the whole portal
+       stayed green (review, 30.08.2026). */
+    const { race, event } = await secondMorning()
+    const user = setupUser()
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+
+    await screen.findByText(/Prijavljuješ rezultat/)
+    await user.type(await screen.findByLabelText(/Sati/), '3')
+    await user.type(screen.getByLabelText(/Minuta/), '30')
+    await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    const stored = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+    const said = within(must(stored[0], 'the submission')).getByTestId(/^said-/)
+
+    expect(said.textContent).toBe(`${race.kind} / ${event.city} / ${event.country}`)
   })
 })

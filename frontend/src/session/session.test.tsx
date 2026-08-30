@@ -18,6 +18,9 @@ function Probe() {
           submit({
             memberNumber: '000001',
             raceName: `Trka ${submissions.length + 1}`,
+            raceKind: 'length',
+            city: 'Niš',
+            country: 'RS',
             date: '2026-05-10',
             distanceKm: 10,
             ascentM: 0,

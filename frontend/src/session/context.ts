@@ -31,6 +31,22 @@ export type Submission = {
    * no name to lend.
    */
   raceName: string
+  /**
+   * Which of the three kinds of race the member says it was, and where it was run.
+   *
+   * Both travel with the submission because both are the member's answer and both
+   * have to come back into the form when a refused result is sent again: the second
+   * of the three writers of a submission is `filledFrom`, and a field it leaves out
+   * comes back empty and required, so the member is refused for not answering a
+   * question the form never asked them again (measured 30.08.2026).
+   *
+   * The kind is what the member says, not what the race is. It is a hint until the
+   * administration settles it at verification (owner, 30.08.2026); a race the
+   * calendar already holds answers for itself and is not asked here.
+   */
+  raceKind: string
+  city: string
+  country: string
   date: string
   distanceKm: number
   ascentM: number

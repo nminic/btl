@@ -211,6 +211,9 @@ function Sends({ link }: { link: string }) {
       session.submit({
         memberNumber: ME,
         raceName: 'Probna trka',
+        raceKind: 'length',
+        city: 'Niš',
+        country: 'RS',
         date: '2026-05-10',
         distanceKm: 21.1,
         ascentM: 540,

@@ -3,9 +3,11 @@ import { useFilterParams } from '../../app/useFilterParams'
 import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { unosRezultata } from '../../forms/definitions'
+
 import type { FormValues } from '../../forms/types'
 import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
+import { raceKind } from '../../data/raceKind'
 import type { Result } from '../../data/types'
 import { useEvents, useRaces, useResults } from '../../data/useResource'
 import { useToday } from '../../clock/useClock'
@@ -18,6 +20,23 @@ import type { Submission } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from './SignedOut'
 import './Member.css'
+
+/* The same form without the two questions a counted result does not ask.
+ *
+ * Correcting a result that has already been counted does not touch the kind of
+ * race (owner, 30.08.2026: „član može da traži izmenu nezaključanih polja; ako
+ * hoće više od toga, mora da se obrati mailom"), and by then the result has a
+ * race behind it, whose event answers for the place. Asking either would be
+ * asking the member to restate something the portal already knows, and leaving
+ * them empty and required would refuse the correction outright.
+ *
+ * Built once at module load rather than per render, the way the report form is
+ * built per kind (`pages/event/reportForm.ts`): this is handed to `FormRenderer`
+ * as a prop, and a fresh object every render is a changed prop every render. */
+const ISPRAVKA_PREBROJANOG = {
+  ...unosRezultata,
+  fields: unosRezultata.fields.filter((one) => one.name !== 'raceKind' && one.name !== 'city'),
+}
 
 /**
  * A refused result written back into the fields it was entered in.
@@ -54,6 +73,16 @@ function filledFrom(one: Submission): FormValues {
   return {
     raceName: one.raceName,
     date: fieldDate(one.date),
+    /* The kind and the place come back with everything else. Left out, they are
+       empty and required when the form reopens, and the member cannot send the
+       correction at all: measured 30.08.2026, the form answered „Prijava nije
+       poslata. Popravi ova polja: Vrsta trke, Mesto" on a correction that changed
+       nothing. This is the second of the three writers of a submission, and the
+       one this change missed first. The third, `filledFromCounted`, deliberately
+       does not carry them: that form does not ask either question. */
+    raceKind: one.raceKind,
+    city: one.city,
+    country: one.country,
     distanceKm: String(one.distanceKm),
     ascentM: String(one.ascentM),
     descentM: String(one.descentM),
@@ -148,6 +177,32 @@ export function NewResult() {
      record on both roads in, and one name for that saves the next reader from
      having to notice that there are two. */
   const named = correcting ?? fixingOne
+  /* Which kind of race a counted result was run at, and where, read off the race
+     and its event rather than asked.
+   *
+     A correction of a counted result is not asked either question: the kind is
+     not the member's to change (owner, 30.08.2026) and by then the result has a
+     race behind it whose event answers for the place. But the submission it makes
+     still carries both, because it is a submission like any other and the form
+     that reopens it does ask. Sent empty, a correction of a correction came back
+     to a form demanding a kind and a place the member was never shown. */
+  const behind = useMemo(() => {
+    if (fixingOne === undefined || races.status !== 'ready' || events.status !== 'ready') {
+      return undefined
+    }
+
+    const race = races.data.find((one) => one.id === fixingOne.raceId)
+    const event = race === undefined ? undefined : events.data.find((one) => one.id === race.eventId)
+
+    return race === undefined || event === undefined
+      ? undefined
+      : /* Through the one home for that reading (`data/raceKind.ts`), because
+           the file holds a word and not one of the three: read raw, a race whose
+           kind nobody ever set would put that word into the record, while the
+           very same race reported from the event page would put „length" there.
+           One fact, one answer. */
+        { kind: raceKind(race.kind), city: event.city, country: event.country }
+  }, [fixingOne, races, events])
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -164,6 +219,20 @@ export function NewResult() {
     const total = fromBoxes(values)
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
+    /* Which of the two answers this road gives, chosen by the road and not by
+       what happens to be in a box. `behind` is undefined only where the race a
+       counted result belongs to has left the calendar, which the administration
+       refuses to let happen while results point at it; the empty strings are a
+       floor under that, not a feature. */
+    const said =
+      fixingOne === undefined
+        ? {
+            raceKind: String(values.raceKind),
+            city: String(values.city),
+            country: String(values.country),
+          }
+        : { raceKind: behind?.kind ?? '', city: behind?.city ?? '', country: behind?.country ?? '' }
+
     const sent = {
       /* The race a correction keeps is the one the record already names, and not
          what the box holds. The box is locked (`fixed` below), so the two agree;
@@ -179,6 +248,18 @@ export function NewResult() {
          „Sasvim druga trka" waiting in the queue in place of the race the member
          actually ran. */
       raceName: named?.raceName ?? String(values.raceName),
+      /* What the member says the race was, and where, or what the race says when
+         there is one. A hint until the administration settles it at verification
+         (owner, 30.08.2026).
+       *
+         **Never read out of a value the form is not holding.** The form for
+         correcting a counted result has neither box, so `values.raceKind` there
+         is nothing at all, and `String(nothing)` is the word „undefined" written
+         into the record and back into the next form somebody opens. This portal
+         has paid for that once already, in `forms/FormRenderer.tsx`, which keeps
+         a filled copy of its values for the same reason. So the two roads are
+         separated here rather than joined by a fallback. */
+      ...said,
       /* Through `storedDate`, which reads the date or throws saying what was in
          the box. It was parsed here and the result called a Date without
          looking (ADL A14 bans that), and answering with an empty date instead
@@ -327,12 +408,27 @@ export function NewResult() {
       )}
 
       <FormRenderer
-        form={unosRezultata}
+        /* And the short form is the short form on both roads back to it. A
+           correction of a counted result is not asked its kind or its place, but
+           the submission it makes is a submission like any other: the member can
+           reopen it from the list of what they have sent, through `?ponovo=`, and
+           that road drew the full form with both boxes open. One click and the
+           kind the member was never asked for was theirs to set, on a correction
+           of a result that is already counted (measured in review, 30.08.2026).
+           What decides is what the submission is, not which address opened it. */
+        form={correcting?.corrects === undefined && fixingOne === undefined ? unosRezultata : ISPRAVKA_PREBROJANOG}
+        /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
+           here rather than in the definition because a field has no notion of a
+           value it starts from: `emptyValues` gives every field the empty string
+           and this prop is what the form already takes to start from something
+           else. A kind left empty would be a required select nobody filled, and
+           the member would be refused for not answering a question they were
+           never asked. */
         initial={
           correcting !== undefined
             ? filledFrom(correcting)
             : fixingOne === undefined
-              ? undefined
+              ? { raceKind: 'length' }
               : filledFromCounted(fixingOne)
         }
         /* Everything except which race it was (owner, 27.08.2026: „sve osim

@@ -165,6 +165,14 @@ export function ReportResult() {
 
             submit({
               memberNumber: mine,
+              /* Read off the race and its event, never asked. This road starts
+                 from a row of the calendar, so the portal already knows which of
+                 the three kinds the race is and where it is run; the form away
+                 from the calendar asks the member exactly because there is no
+                 race behind it to ask. */
+              raceKind: kind,
+              city: event.city,
+              country: event.country,
               /* The race, not the event it is run at. The field was renamed and the
                  value was left behind, so a race the administrator had called
                  „Beogradski polumaraton" reached the moderator as „Beogradski
