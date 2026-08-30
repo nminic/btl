@@ -136,7 +136,7 @@
       },
       {
         "heading": "10. Verifikacija rezultata",
-        "body": "### Član 43. Rezultat ulazi tek posle odobrenja\n\nNijedan rezultat ne ulazi u rang liste dok ga liga ne odobri. Neverifikovan rezultat se nigde ne prikazuje, pa u tabelama nema ni oznake „nepotvrđen\".\n\n### Član 44. Ispravke\n\nAdministracija sme da ispravi činjenične podatke verifikovanog rezultata: vreme, dužinu, uspon, spust, trku ili link."
+        "body": "### Član 43. Rezultat ulazi tek posle odobrenja\n\nNijedan rezultat ne ulazi u rang liste dok ga liga ne odobri. Neverifikovan rezultat se nigde javno ne prikazuje.\n\n### Član 44. Ispravke\n\nAdministracija sme da ispravi činjenične podatke rezultata, pri verifikaciji i posle nje: vreme, dužinu, uspon, spust, trku ili link. Takmičar koji smatra da je ispravka greška obraća se ligi."
       },
       {
         "heading": "11. Rang liste i plasman",
