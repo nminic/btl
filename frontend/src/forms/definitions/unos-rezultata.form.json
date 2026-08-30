@@ -18,6 +18,35 @@
       "required": true
     },
     {
+      "name": "raceKind",
+      "type": "select",
+      "labelKey": "newResult.raceKind",
+      "hintKey": "newResult.raceKindHint",
+      "required": true,
+      "options": [
+        {
+          "value": "length",
+          "labelKey": "race.kind.length"
+        },
+        {
+          "value": "time",
+          "labelKey": "race.kind.time"
+        },
+        {
+          "value": "free",
+          "labelKey": "race.kind.free"
+        }
+      ]
+    },
+    {
+      "name": "city",
+      "type": "place",
+      "labelKey": "newResult.city",
+      "hintKey": "newResult.cityHint",
+      "required": true,
+      "maxLength": 80
+    },
+    {
       "name": "distanceKm",
       "type": "number",
       "labelKey": "newResult.distanceKm",
