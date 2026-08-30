@@ -117,18 +117,6 @@ export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): 
     }))
 }
 
-/**
- * What a row is missing, or nothing where it is finished.
- *
- * The day and the length are what a race is; a race with no length is not one,
- * and a morning nothing runs on is not a morning. **The climb and the fall are
- * not asked for** (owner, 23.08.2026: „uspon i spust nisu obavezni, jer ako su
- * prazni tumače se kao 0/0"), which is also what the calendar already holds for
- * a flat road race.
- *
- * A length of nought is refused rather than kept: it passes „not empty" and is
- * not a distance, and the whole standing is worked out from it.
- */
 /** Every measure a row carries, in the order the table draws them. A list rather
  *  than the keys of `BOUNDS`, so it can be walked without an assertion and so a
  *  measure added there and forgotten here does not compile. */
@@ -153,7 +141,7 @@ export const BOUNDS: Record<(typeof MEASURES)[number], { least: number; most: nu
  * passes „not empty" and is not a distance. So without this an event holding a
  * timed or a free race could not be saved at all.
  *
- * One home and not four, because the answer is read in four places and they had
+ * One home and not five, because the answer is read in five places and they had
  * drifted: `whatIsMissing` decides whether the save happens, `isWrong` decides
  * which cell is marked, and the table decides which cell says it is required and
  * what its `min` is. A row that the save let through was at the same time drawn as
@@ -220,10 +208,11 @@ export function asksLimit(row: Pick<RaceRow, 'kind'>): boolean {
  * carries nought and nought is outside the bounds on purpose.
  *
  * Both questions have one home each, and every reader asks through them: the save
- * (`whatIsMissing`), the marking of a refused cell (`isWrong`), and what the control
- * itself announces, required and floor and ceiling (`EventRaces.tsx`). They were
- * three separate readings once and drifted; then a fourth was added and drifted
- * again, announcing a floor on a cell nothing checks.
+ * (`whatIsMissing`), the marking of a refused cell (`isWrong`), what the control
+ * itself announces, required and floor and ceiling (`EventRaces.tsx`), and what the
+ * record is written with (`storedRow`, which zeroes the measure the kind does not
+ * fix). They were three separate readings once and drifted; then a fourth was added
+ * and drifted again, announcing a floor on a cell nothing checks.
  */
 export function isBounded(row: Pick<RaceRow, 'kind'>, field: keyof typeof BOUNDS): boolean {
   return field === 'ascentM' || field === 'descentM' || asksFor(row, field)
@@ -262,10 +251,6 @@ export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'nam
     return isoDate(row.date) === ''
   }
 
-  /* Nothing is wrong with a length a race does not fix. Asked here as well as in
-     `whatIsMissing`, through the one function both read, because this is what
-     marks the cell: without it the length of a timed race was drawn as wrong the
-     moment any other row in the table was refused. */
   /* Nothing is wrong with a measure the race does not fix, whichever measure it is:
      it carries nought on purpose, and nought is outside the bounds on purpose. */
   if (!isBounded(row, field)) {
@@ -275,6 +260,18 @@ export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'nam
   return !withinBounds(row[field], field)
 }
 
+/**
+ * What a row is missing, or nothing where it is finished.
+ *
+ * The day and its measure are what a race is; a race with no measure the kind it is
+ * fixes is not one, and a morning nothing runs on is not a morning. **The climb and the fall are
+ * not asked for** (owner, 23.08.2026: „uspon i spust nisu obavezni, jer ako su
+ * prazni tumače se kao 0/0"), which is also what the calendar already holds for
+ * a flat road race.
+ *
+ * A length of nought is refused rather than kept: it passes „not empty" and is
+ * not a distance, and the whole standing is worked out from it.
+ */
 export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | 'name' | undefined {
   /* A race always has a name, and it cannot be emptied: it opens as the name of
      its event and may be changed, not taken away (owner, 23.08.2026). A row with

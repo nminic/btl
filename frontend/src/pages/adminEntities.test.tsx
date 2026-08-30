@@ -188,7 +188,25 @@ describe('the races of an event', () => {
       ).toBe(measures)
     }
 
+    /* And the kind, by the same reading. It has a rule of its own in the sheet and
+       nothing said the cell carries the class that rule looks for: measured on
+       30.08.2026, removing the class from both the heading and the cell left the
+       whole package green while the column lost the floor that holds its longest
+       word. */
+    const kindAt = named.indexOf('Vrsta')
+
+    expect(kindAt, 'the table has no column of kinds').toBeGreaterThan(-1)
+    expect(
+      must(heads[kindAt], 'the heading of the kind').classList.contains('races__kind'),
+      'the heading of the kind is not marked as one',
+    ).toBe(true)
+
     const cells = within(must(table.getAllByRole('row')[1], 'the first race')).getAllByRole('cell')
+
+    expect(
+      must(cells[kindAt], 'the kind of the first race').classList.contains('races__kind'),
+      'the cell of the kind is not marked as one',
+    ).toBe(true)
 
     /* And the cells under them, by the same reading: the row and the heading are
        marked in two places and either could be right while the other is not. */
@@ -236,6 +254,40 @@ describe('the races of an event', () => {
        wrote nothing. */
     expect(first(written)).toContain('kind=length')
     expect(first(written)).not.toContain('distanceKm=0 ')
+
+  }, SLOW)
+
+  it('writes no length on a race turned into a timed one', async () => {
+    /* The other way round, which is the half the case above promised and a round of
+       this did not write. A race that already has a length is what every one of the
+       1612 in the file is, so this is the way somebody actually walks: open one,
+       make it timed, give it a limit, save. The kilometres it used to have must not
+       go with it (`data/types.ts`: on a timed race the distance is what each runner
+       covered, and the race carries nought).
+
+       Its own case and not the second half of the one above, because saving takes
+       the screen back to the list and the row is no longer there to change. */
+    const user = await openFirstEvent(<Saved />)
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.selectOptions(selectElement(screen.getAllByLabelText(/^Vrsta,/)[0]), 'time')
+    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const written = within(await screen.findByRole('list', { name: 'session records' }))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '')
+      .filter((one) => one.includes('limitSeconds='))
+
+    expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    expect(first(written), 'a timed race was written carrying a length').toContain('distanceKm=0')
+    expect(first(written), 'and its category still reads off a length nobody ran').toContain(
+      'category=short',
+    )
+    expect(first(written)).toContain('kind=time')
+    expect(first(written), 'the limit that was typed did not reach the record').toContain(
+      'limitSeconds=86400',
+    )
   }, SLOW)
 
   it('lists them under the event, and asks nobody which event it is', async () => {

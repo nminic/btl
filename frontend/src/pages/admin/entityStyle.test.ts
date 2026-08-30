@@ -380,22 +380,28 @@ describe('the column a race is read by', () => {
   })
 
   it('gives the kind of a race room for the longest word it offers', () => {
-    /* Measured in Chrome on 30.08.2026: the select needs 108px for „Vremenska", and
-       at the width the measures take it was 72 and read „Dužins" with the arrow over
-       the rest. Asked here because jsdom lays nothing out (ADL A33), so what a case
-       can hold is the width the sheet gives, not the width the word needs.
+    /* Measured in Chrome on 30.08.2026: „Vremenska" is 77,36px in this font, Chrome's
+       own arrow takes about 16, and the control keeps 12px of padding a side, so it
+       needs about 119. Asked here because jsdom lays nothing out (ADL A33), so what
+       a case can hold is the floor the sheet gives, not the width the word needs.
 
-       Wider than a measure on purpose, and that is the half that says it: a rule
-       that gave it the same 5,5rem would pass a case asking only that it has a
-       width. */
+       Two rounds got this wrong in two different ways, and both are asked about: a
+       width on the cell does nothing at all, and seven rem left „Vremensk" with the
+       last letter cut. */
     expect(
-      ruleFor('.entity-races .table .races__kind').getPropertyValue('inline-size'),
+      ruleFor('.entity-races .table .races__kind .field__control').getPropertyValue(
+        'min-inline-size',
+      ),
       'the kind lost the room its longest word needs',
-    ).toBe('7rem')
+    ).toBe('8rem')
+    /* On the control and not on the cell, which is the half that matters: every
+       control here is told to fill its cell and to have no floor, so a width on the
+       cell is a suggestion the table is free to ignore, and it does. Measured in
+       Chrome: twenty rem on the cell left the column at 53,52px. */
     expect(
-      ruleFor('.entity-races .table .races__measure').getPropertyValue('inline-size'),
-      'the kind is no wider than a measure',
-    ).not.toBe('7rem')
+      unconditional().filter((rule) => oneLine(rule.selector).includes('.races__kind')),
+      'the kind is held open by a rule on the cell, which does nothing',
+    ).toHaveLength(1)
   })
 
   it('reads the length from the right, like the two measures beside it', () => {

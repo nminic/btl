@@ -169,7 +169,7 @@ export function EventRaces({
            nought announces a rule that was lifted from it. Both ends and not only
            the floor: a ceiling on a cell nothing checks is the same untruth the
            other way round, and it stood for one round saying the opposite of the
-           floor beside it. Asked of the same `asksLength` the refusal and the
+           floor beside it. Asked of the same `isBounded` the refusal and the
            marking ask, so these do not drift again. */
         min={bounded ? BOUNDS[field].least : undefined}
         max={bounded ? BOUNDS[field].most : undefined}

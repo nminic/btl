@@ -275,12 +275,27 @@
   inline-size: 5.5rem;
 }
 
-/* And the kind is wide enough for the word it holds. Measured in Chrome on
-   30.08.2026: the select needs 108px for „Vremenska", and at the 5,5rem the measures
-   take it was 72 and read „Dužins" with the arrow over the rest. Seven rem, which is
-   112px, is the first round figure that holds it. */
-.entity-races .table .races__kind {
-  inline-size: 7rem;
+/* And the kind is wide enough for the word it holds, said on the control and not on
+   the cell.
+ *
+ * On the cell it does nothing at all. Every control in this table is told to fill
+ * its cell and to have no floor of its own (`inline-size: 100%; min-inline-size: 0`,
+ * above), so a table laid out by what it holds has nothing to be held open by: a
+ * width of twenty rem on the cell was measured in Chrome on 30.08.2026 and the
+ * column stayed 53,52px.
+ *
+ * What that cost, measured the same day: the kind used to sit in the counted range
+ * that gave the measures a floor of 4,5rem, so it was 70px wide by accident. Moving
+ * the measures onto a class took that away, and the select fell to 36px of content
+ * with Chrome's own arrow taking about 16 of it. Nothing of the word was left, not
+ * one letter of „Dužinska".
+ *
+ * The number: „Vremenska" is 77,36px in this font, the arrow takes about 16, and the
+ * control keeps 12px of padding on each side and a pixel of border. That is 119,4px,
+ * so 8rem, 128px, is the first round figure with room to spare. Seven rem was tried
+ * and measured: 86px of content, and „Vremensk" with the last letter cut. */
+.entity-races .table .races__kind .field__control {
+  min-inline-size: 8rem;
 }
 
 /* And the room the column gives up comes out of the padding rather than out of the
