@@ -1,0 +1,200 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { screen, within } from '@testing-library/react'
+import { first, htmlElement, must } from '../test/at'
+import { chainToShell, controlsOf, markupOf, nameOf } from '../test/chain'
+import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
+
+/**
+ * The chain the calendar button really stands in, held against the one the browser
+ * check writes out by hand.
+ *
+ * `scripts/refused-control-appearance.mjs` measures whether a refused control still
+ * looks refused, and it measures it over markup of its own, because it cannot render
+ * the portal. That markup is a fact with two homes, and on the other control it drifted
+ * twice: a rule keyed on an ancestor the fixture is missing beats the refusal on
+ * specificity alone, and the measurement then says the refusal holds when what holds is
+ * a fixture nobody draws. `entityStyle.test.ts` has held that chain since; this holds
+ * the second one, which arrived on 29.08.2026 with the calendar button.
+ *
+ * The control held here is the second of the two that script measures.
+ *
+ * **What this does not hold.** Whether the refusal wins, which is the browser's
+ * question and is asked there. And every attribute of the box in front of the button:
+ * its `value` is written by React as a property and only sometimes as an attribute, so
+ * a comparison of attribute names would be a comparison of React's internals. Its
+ * classes are compared, and that comparison has already earned its place: a date locked
+ * by a chosen race carried `aria-disabled`, `readOnly` and **the plain class** while
+ * this was written, the dress the portal keeps for a held control reached it on
+ * 29.08.2026, and this case is what caught the fixture still wearing the old markup.
+ * That is the whole of what it is for: the fixture is a copy of the screen, and a copy
+ * nobody compares stops being one.
+ *
+ * **Both halves are compared, not one.** The live twin is the other half of the copy,
+ * and it went unmeasured until a review on 30.08.2026 pointed out that dressing it
+ * would have passed the whole suite: the script would then have shown Chrome a live
+ * control the portal does not draw.
+ */
+const ME = '000007'
+/** A day inside the data, so the list of races is the same list every time this runs
+ *  rather than the same list until the calendar catches up (`newResult.test.tsx`). */
+const TODAY = '2026-08-23'
+
+/** The classes of an element, in an order neither document chose. */
+function classesOf(one: Element): string {
+  return [...one.classList].sort().join(' ')
+}
+
+/** The calendar button of the date field, and not the one in the shell: the day the
+ *  portal is read as is switched from a date field of its own (`clock/DateSwitch.tsx`),
+ *  so „Otvori kalendar" names two controls on this screen and only one of them is ever
+ *  refused. */
+function opener(): HTMLElement {
+  const field = must(screen.getByLabelText(/^Datum/).closest('.field'), 'the date field')
+
+  return within(htmlElement(field)).getByRole('button', { name: 'Otvori kalendar' })
+}
+
+describe('the calendar button a browser measures', () => {
+  it('is measured over the chain the portal draws around it', async () => {
+    const script = readFileSync(
+      join(process.cwd(), 'scripts/refused-control-appearance.mjs'),
+      'utf-8',
+    )
+    const holder = document.createElement('div')
+
+    holder.innerHTML = markupOf(script, 'LOCKED_DATE')
+
+    const user = setupUser()
+
+    renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, TODAY)
+
+    /* The live one before the race is chosen and the refused one after, out of the same
+       screen: this form has one date field, and the fixture stands them side by side
+       because a difference needs two controls the same sheet reaches the same way. */
+    await screen.findByLabelText(/^Naziv trke/)
+
+    /* The whole chain of the live one and not its name alone. The walk below goes upward
+       from the **refused** control, so the two ancestors the fixture invents for the live
+       twin, `div.field` and `div.datepicker`, were held against nothing: a review gave
+       the live picker a class of its own in `DatePicker.tsx`, this stayed green, and a
+       rule keyed on that class then painted the live button in the browser exactly the
+       way the refused one is painted, with the script still saying both look refused. */
+    const free = chainToShell(opener())
+    /* And what the box in front of it wears while nothing has locked it, read now
+       because a moment later this very form will lock it. */
+    const freeBox = classesOf(screen.getByLabelText(/^Datum/))
+
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'beogradski maraton')
+    await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
+
+    const held = opener()
+
+    /* The screen this is read off is the one the fixture says it is. Without it a form
+       that stopped locking the date would be compared control for control and agree
+       about everything, having nothing refused in it at all. */
+    expect(held, 'the date this form filled in is not refused').toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    const inFixture = chainToShell(
+      must(holder.querySelector('#refused'), 'the refused control in the fixture'),
+    )
+    const onScreen = chainToShell(held)
+
+    /* Both have to get there, or two chains that stop early could agree about nothing. */
+    expect(inFixture.at(-1), 'the fixture does not reach the shell').toContain('div.shell')
+    expect(onScreen.at(-1), 'the screen does not reach the shell').toContain('div.shell')
+    expect(inFixture).toEqual(onScreen)
+
+    /* And the live twin, which the walk above never reaches because it walks upward from
+       the refused one. `DatePicker.tsx` writes no `aria-disabled` at all where the price
+       list writes `false`, and an attribute selector weighs as much as a class, so a
+       fixture that wrote one would be measuring a button the portal has not got. */
+    const liveInFixture = chainToShell(
+      must(holder.querySelector('#live'), 'the live control in the fixture'),
+    )
+
+    expect(liveInFixture.at(-1), 'the live twin does not reach the shell').toContain('div.shell')
+    expect(free.at(-1), 'the live control on the screen does not reach the shell').toContain(
+      'div.shell',
+    )
+    expect(liveInFixture).toEqual(free)
+
+    /* The box in front of the button, by its classes, on **both** halves of the copy: it
+       is what `.datepicker .field__control` is written for, and the dress of a held
+       control is what it is expected to gain. The live half went unmeasured until a
+       review on 30.08.2026 found that dressing it would have passed the whole suite,
+       which would have shown Chrome a live control the portal does not draw. */
+    expect(
+      classesOf(must(holder.querySelector('#date-held'), 'the held box in the fixture')),
+    ).toBe(classesOf(screen.getByLabelText(/^Datum/)))
+    expect(
+      classesOf(must(holder.querySelector('#date-free'), 'the live box in the fixture')),
+    ).toBe(freeBox)
+
+    /* Above the shell the two documents cannot agree and should not be asked to: under
+       test the app is mounted in a container of the test library's own. What the fixture
+       puts there is held against `index.html` by `entityStyle.test.ts`, for the other
+       fixture of this same script, so here the two fixtures are held against each other
+       and the mount point has one home for both. */
+    const above = (one: string) =>
+      nameOf(
+        must(
+          must(holder.querySelector('.shell'), `the shell in ${one}`).parentElement,
+          `what ${one} puts above the shell`,
+        ),
+        true,
+      )
+    const mine = above('this fixture')
+
+    holder.innerHTML = markupOf(script, 'PRICE_LIST')
+
+    expect(mine).toBe(above('the other fixture'))
+    expect(mine).toContain('#root')
+  })
+
+  it('is one of the controls that script measures, and the script is there to be run', () => {
+    /* The same shape `entityStyle.test.ts` keeps for the other control under „says out
+       loud what it does not guarantee": a header that sends the reader somewhere is held
+       to the place it sends them.
+
+       Here that place is a list and not only a file. The script reads its fixtures by
+       reference out of `CONTROLS` and this suite read them out by name, so nothing tied
+       the two together: a review deleted the second entry of `CONTROLS`, thirteen lines,
+       and the script measured one control while every test here stayed green over a
+       fixture nobody looked at any more. */
+    const whole = readFileSync(join(process.cwd(), 'src/forms/pickerFixture.test.ts'), 'utf-8')
+    /* The header alone, and not the whole file: read whole, this finds the sentence
+       written in its own assertion below and passes over a header rewritten to claim the
+       opposite. `entityStyle.test.ts` was measured doing exactly that. */
+    const header = whole.slice(0, whole.indexOf('const ME'))
+
+    expect(header).toContain('The control held here is the second of the two that script measures')
+
+    const asked = [...header.matchAll(/`(scripts\/[\w/-]+\.mjs)`/g)].map((found) => found[1])
+
+    expect(asked.length, 'the header names no script at all').toBeGreaterThan(0)
+
+    for (const one of asked) {
+      const where = join(process.cwd(), must(one, 'a script named in the header'))
+
+      expect(existsSync(where), `${one} is named in the header and is not there`).toBe(true)
+      expect(readFileSync(where, 'utf-8').length, `${one} is empty`).toBeGreaterThan(0)
+    }
+
+    /* And the list is exactly the fixtures this suite holds against the portal, in both
+       directions: `PRICE_LIST` is held by `entityStyle.test.ts` and `LOCKED_DATE` by the
+       case above, so a control taken out of the list is a fixture guarded for nothing, and
+       a control put into it is markup measured in a browser that no render was ever held
+       beside. */
+    expect(
+      controlsOf(
+        readFileSync(join(process.cwd(), 'scripts/refused-control-appearance.mjs'), 'utf-8'),
+      ),
+      'the script measures fixtures this suite does not hold against the portal',
+    ).toEqual(['PRICE_LIST', 'LOCKED_DATE'])
+  })
+})

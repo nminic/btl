@@ -1,5 +1,5 @@
 /**
- * Does the refused control still look refused, measured in a real browser.
+ * Do the refused controls still look refused, measured in a real browser.
  *
  * jsdom cannot answer this. Nine rounds of review on
  * `src/pages/admin/entityStyle.test.ts` proved it: every version tried to compute the
@@ -17,7 +17,19 @@
  * 9333 by default, and the browser this script talks to is the one it started, checked
  * by the address of the page rather than assumed.
  *
- * **Nothing here enumerates what could paint the control, and that is the whole design.**
+ * **Two controls, one set of questions.** The portal refuses two buttons and refuses
+ * them differently: the button that opens a record goes muted and grey and carries
+ * `not-allowed` (`pages/admin/Entity.css`), while the button that opens a calendar
+ * keeps its colours and changes its background and its cursor
+ * (`forms/DatePicker.css`). One of them was measured here and the other was not, and a
+ * review of PR 154 measured what that cost: the guard over the calendar button reads
+ * the declarations of one rule out of one file and never asks the cascade, so a
+ * heavier rule added later in the same sheet (`.datepicker .datepicker__open:hover`)
+ * puts the accent back on a refused button while the whole suite stays green. So the
+ * markup and the difference belong to the control rather than to this file, and every
+ * question below is asked of each of them in turn (`CONTROLS`).
+ *
+ * **Nothing here enumerates what could paint a control, and that is the whole design.**
  * Four rounds of review were lost to such a list: the cursor, then the background, then
  * the shadow, then the gradient behind `background`, then the border style, then the
  * colour of the ring. A list of ways to break something is never finished. So the
@@ -29,38 +41,55 @@
  * - **under the keyboard only the ring may change.** The same comparison, and the
  *   difference has to be the ring and nothing else.
  * - **beside the live control it must differ in exactly the refusal.** Every property,
- *   refused against live, and the difference has to be the named set below. Something
- *   new painting it shows up as a property nobody put in that set; the refusal going
- *   missing shows up as one of them absent.
+ *   refused against live, and the difference has to be the set that control names.
+ *   Something new painting it shows up as a property nobody put in that set; the
+ *   refusal going missing shows up as one of them absent.
  *
  * Those three carry most of it, and each of them is asked again of every pseudo-element
- * the specification gives this control, sideways against the same pseudo-element of the
- * live one. On top sit the values: every one of the eighteen has to hold the colour the
- * theme names, because a member of the set changing its value is as much a fault as a
- * member appearing, and a review proved it by drawing the label through
+ * the specification gives these controls, sideways against the same pseudo-element of
+ * the live one. On top sit the values: every member of a refusal has to hold the value
+ * the theme names, because a member changing its value is as much a fault as a member
+ * appearing, and a review proved it by drawing the label through
  * `-webkit-text-fill-color` while `color` stayed muted. And on top of those sit the
  * decisions this portal has already written down, `opacity` first among them.
  *
  * **What none of it sees, said plainly because the rule of this repo is that a guard may
  * claim only what the tool beneath it answers:** a change applied to the live control and
- * the refused one alike, in every state and at both widths, in a property nobody has
- * named here. And a width between the two, or beyond them.
+ * the refused one alike, in every state and on every screen, in a property nobody has
+ * named here. And a width a `@container` query tells apart: the bands below are cut by
+ * `@media` alone, because a container is as wide as whatever holds it and that is a
+ * layout this file does not draw. The portal has one such query today
+ * (`pages/TopBoards.css`) and neither of these controls stands under it.
  * `font-size: 0` on `.entity-open` empties both labels and every comparison above stays
- * quiet, because nothing differs from anything. Those classes of fault are not subtle on
- * a screen, and they are what looking at QA is still for. They are not caught here, and
- * this file does not pretend they are.
+ * quiet, because nothing differs from anything. And a rule reached only where two settings
+ * hold at once that the sheet never asks for together, since the screens below are the
+ * ones its preludes name and one setting is what a prelude names today. Those classes of
+ * fault are not subtle on a screen, and they are what looking at QA is still for. They are
+ * not caught here, and this file does not pretend they are.
  *
- * **What is measured:** the built stylesheet, over the ancestor chain the price list
- * gives this control, in both themes, at **two widths** (1280 and 360, the narrowest this
- * portal promises), in **four states** (at rest, under a real mouse, under a real press,
- * and under a real Tab), each of the last three checked to have actually landed.
+ * **What is measured:** the built stylesheet, over the ancestor chain each control is
+ * given by the screen it stands on, in both themes, at **one width inside every band the
+ * built sheet can tell apart** (`widthsOf`, from 360px up), on **every screen its preludes
+ * ask about** (`askedIn` and `screensOf`: the browser as it comes, and one pass with each
+ * setting the sheet names emulated, `prefers-reduced-motion: reduce` among them today), in
+ * **four states** (at rest, under a real mouse, under a real press, and under a real Tab),
+ * each of the last three checked to have actually landed.
+ *
+ * **Nothing the sheet asks for is passed over in silence.** A prelude this cannot take
+ * apart stops the run and says what it could not read, and so does a setting Chrome will
+ * not put it into. Both were measured as silence first: a second width condition beside a
+ * readable one left its band unvisited, and `@media (min-resolution: 2dppx)` took the
+ * refusal off every 2x screen with the run still green.
  *
  * **What is not measured:** the markup below is written here rather than drawn by the
  * portal, so it sees nothing a component puts on the element itself. An inline style is
  * the axis that beat the last jsdom guard, and it is answered where jsdom answers it
  * exactly: `entityStyle.test.ts` asserts the rendered button carries no `style`
- * attribute. That same test holds this fixture against the chain the portal renders,
- * because this chain is a fact with two homes and it drifted twice.
+ * attribute. That same test holds the first fixture against the chain the portal
+ * renders, because a chain is a fact with two homes and it drifted twice, and
+ * `forms/pickerFixture.test.ts` holds the second. Both of them read `CONTROLS` to get
+ * there, so a fixture this stops measuring is a fixture they stop guarding, and they say
+ * so rather than going quietly on.
  *
  * No new dependency. Chrome is driven over the DevTools Protocol with the WebSocket
  * built into Node.
@@ -75,27 +104,34 @@ import { pathToFileURL } from 'node:url'
 const CHROME =
   process.env.CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 const PORT = Number(process.env.BTL_CDP_PORT ?? 9333)
-/** The three widths this portal promises (`CLAUDE.md`, UI standards): desktop, tablet,
- *  and the narrowest of them.
- *  Measured at one width only, a refusal written away inside `@media (max-width: ...)`
- *  is not there on a telephone and nothing says so: the shared table sheet already
- *  branches at 699.98px, and a review took the refusal out below it. */
-const WIDTHS = [1280, 768, 360]
+/** The narrowest screen this portal promises (`CLAUDE.md`, UI standards). Nothing under
+ *  it is measured, because nothing under it is promised. */
+const NARROWEST = 360
+/** What `em` is worth to a media query: the initial font size, and never the one the
+ *  portal sets on its own root. It is not trusted, only used to choose which widths to
+ *  visit; at each of them the browser is asked what it makes of every condition of the
+ *  sheet and a disagreement stops the run (`asksFor`). */
+const EM = 16
 const TRANSPARENT = 'rgba(0, 0, 0, 0)'
 
-/** Set `BTL_APPEARANCE_DIFFS=1` to print the three differences instead of judging them.
- *  That is how the two sets below were written, and how they are rewritten on the day
- *  the portal's own styling of these buttons legitimately changes. */
+/** Set `BTL_APPEARANCE_DIFFS=1` to print the differences of every control instead of
+ *  judging them. That is how the sets below were written, and how they are rewritten on
+ *  the day the portal's own styling of these buttons legitimately changes. */
 const SHOW = process.env.BTL_APPEARANCE_DIFFS === '1'
 
-/** The refusal, said twice over: as the exact set of properties in which it differs
- *  from the live control standing beside it, and as the value each of them must have.
+/** A colour the theme names, resolved in the page rather than copied here: a value
+ *  written out as `rgb(163, 176, 196)` is right in one theme and a lie in the other. */
+const MUTED = 'var(--text-muted)'
+const BORDER = 'var(--border)'
+const HOVER = 'var(--surface-hover)'
+
+/** The properties Chrome draws letters with, and the properties it draws edges with.
  *
  *  Membership alone is not enough, and a review measured why: `-webkit-text-fill-color`
  *  is what Chrome actually draws letters with, so a rule setting it to the accent left
  *  the set of eighteen untouched, left `color` muted, and put a live-coloured word on a
- *  refused control. Every member now has to hold a named value, so a member changing is
- *  the same event as a member appearing. */
+ *  refused control. Every member of every refusal below holds a named value, so a member
+ *  changing is the same event as a member appearing. */
 const TEXT = [
   '-webkit-text-fill-color',
   '-webkit-text-stroke-color',
@@ -119,7 +155,45 @@ const EDGE = [
   'border-top-color',
 ]
 
-const REFUSAL = [...TEXT, ...EDGE, 'cursor'].sort()
+/** The refusal of the button that opens a record, said twice over: as the exact set of
+ *  properties in which it differs from the live control standing beside it, and as the
+ *  value each of them must have (`Entity.css`, `.entity-open[aria-disabled='true']`). */
+const OPEN_REFUSAL = {
+  ...Object.fromEntries(TEXT.map((name) => [name, MUTED])),
+  ...Object.fromEntries(EDGE.map((name) => [name, BORDER])),
+  cursor: 'not-allowed',
+}
+
+/** The same eighteen on a pseudo-element, and the borders among them are muted rather
+ *  than the border colour: a pseudo-element takes `currentColor` for every one of them,
+ *  and on this control that is the muted colour. It does not inherit the control's own
+ *  border colour, which was measured after this comparison was first written the other
+ *  way round. */
+const OPEN_PSEUDO = {
+  ...Object.fromEntries([...TEXT, ...EDGE].map((name) => [name, MUTED])),
+  cursor: 'not-allowed',
+}
+
+/** The refusal of the button that opens a calendar, which is not those eighteen but two
+ *  declarations: a background and a cursor (`DatePicker.css`,
+ *  `.datepicker__open[aria-disabled='true']`). Its colours are the ones it already had,
+ *  because the sheet holds them against the plain hover rather than changing them.
+ *
+ *  Written as the computed properties the two declarations come out as, since that is
+ *  what a browser compares: `background` is a shorthand and only its colour moves. */
+const CALENDAR_REFUSAL = {
+  'background-color': HOVER,
+  cursor: 'default',
+}
+
+/** And on a pseudo-element, only the cursor: `cursor` is inherited and a background is
+ *  not, so a `::before` of the refused button carries the refused cursor and the same
+ *  transparent background as its twin. Measured with `BTL_APPEARANCE_DIFFS=1`, not
+ *  reasoned out: an equality demanding the background back complains about a difference
+ *  that paints nothing. */
+const CALENDAR_PSEUDO = {
+  cursor: 'default',
+}
 
 /** What the focus ring may change, and nothing else. A subset rather than an equality:
  *  a ring declared at the width the resting state already has drops out of the
@@ -127,15 +201,20 @@ const REFUSAL = [...TEXT, ...EDGE, 'cursor'].sort()
  *  complaint that there was no ring at all. */
 const RING = ['outline-color', 'outline-offset', 'outline-style', 'outline-width']
 
-/** Decisions this portal has already written down about this control, which no
+/** Decisions this portal has already written down about these controls, which no
  *  comparison can carry: a fault that paints the live control the same way leaves no
  *  difference behind, and one that paints every state alike leaves none either.
  *
  *  `opacity` is the oldest of them. `Entity.css` says in its own words that the refusal
  *  is written in colours and never in `opacity`, because opacity dims the focus ring
- *  along with everything else and this control stays in the order of focus on purpose
+ *  along with everything else and these controls stay in the order of focus on purpose
  *  (WCAG 2.2 SC 1.4.11). A review set `opacity: .35` on `.entity-open` and watched a
- *  guard that reads only the ring's own properties call the ring visible. */
+ *  guard that reads only the ring's own properties call the ring visible.
+ *
+ *  The background is the one entry a control may hold a different opinion about, since
+ *  refusing with a background is what the calendar button does. It is named here for the
+ *  control that paints none, and the control that paints one leaves it out and names it
+ *  in its refusal instead. */
 const QUIET = {
   'backdrop-filter': 'none',
   'background-color': TRANSPARENT,
@@ -153,7 +232,7 @@ const QUIET = {
   visibility: 'visible',
 }
 
-/** The markup the price list gives this control, from EntityEditor and AdminPricing:
+/** The markup the price list gives its open button, from EntityEditor and AdminPricing:
  *  a refused open button in a table cell inside the member shell, beside a live one.
  *
  *  **The whole chain.** `#root` comes from `index.html`, `.shell` and
@@ -172,13 +251,8 @@ const QUIET = {
  *  keyed on `[aria-disabled='false']` turned every live button in the price list into a
  *  copy of the refusal, so there was no difference left to find, and nothing said a word. An attribute selector weighs the same as a class, so a
  *  rule keyed on one the fixture has not got is a rule this never sees: measured, and
- *  `entityStyle.test.ts` now holds the attribute names of the whole chain as well.
- *
- *  `data-theme` sits on `<html>` and not on `<body>`, because that is where the portal
- *  writes it (`ThemeProvider.tsx`, `index.html`) and where `tokens.css` reads it. */
-const FIXTURE = (styles) => `<!doctype html>
-<html lang="sr" data-theme="dark"><head><meta charset="utf-8">${styles}</head>
-<body>
+ *  `entityStyle.test.ts` now holds the attribute names of the whole chain as well. */
+const PRICE_LIST = `
   <button type="button" id="before">start</button>
   <div id="root"><div class="shell"><main id="content" class="shell__main" tabindex="-1">
     <div class="adminsection"><div class="adminsection__body">
@@ -195,29 +269,103 @@ const FIXTURE = (styles) => `<!doctype html>
       </div>
     </div></div>
   </main></div></div>
-</body></html>`
+`
 
-/** Whole computed styles rather than a handful of properties, for both controls and for
- *  the two pseudo-elements a rule can paint over the button with.
+/** The markup the form of a new result gives the calendar button, from `DatePicker.tsx`
+ *  and the field `FormRenderer.tsx` draws around it, on the one screen that refuses one:
+ *  a date filled in from a race chosen out of the list is not the reader's to change, so
+ *  the box is held and the calendar beside it is refused (`NewResult.tsx`, `led`).
  *
- *  The token probe hangs on `<html>`, so it reads what the theme says at the root. Hung
- *  on `<body>` it inherits whatever an ancestor redefined along with the button, and the
- *  comparison compares a fault with itself. */
+ *  **The whole chain, and it is a different one.** `#root`, `.shell` and
+ *  `main#content.shell__main` are shared with the price list above; below them stand
+ *  `.member` from `NewResult.tsx`, `form.form` from `FormRenderer.tsx` (`form--wide`
+ *  only where a table stands under the fields, which this screen has not got), `.field`
+ *  around the one field, and `.datepicker` around the box and its button. `.form__row`
+ *  is not among them because a row is written into the definition of a form and
+ *  `unos-rezultata` writes none.
+ *
+ *  **The box in front of the button is part of the fixture and not decoration.** It is
+ *  the sibling `.datepicker .field__control` is written for, it is what Tab meets before
+ *  the button, and it is where the difference between this control and the price list
+ *  begins: it carries `aria-disabled`, `readonly`, and the portal's own dress for a held
+ *  control, `field__control--held` (`src/forms/held.ts`). Until 29.08.2026 it wore the
+ *  plain class instead, and this sentence went on saying so for one commit after that
+ *  stopped being true; what caught it is `src/forms/pickerFixture.test.ts`, which
+ *  compares this markup with the screen.
+ *
+ *  The live twin is a second date field of the same form rather than the same field
+ *  twice: two fields is what a form draws, and the comparison needs a control the same
+ *  sheet reaches through the same chain. Its button carries no `aria-disabled` at all,
+ *  because `DatePicker.tsx` writes `undefined` where the price list writes `false`, and
+ *  an attribute selector weighs as much as a class. */
+const LOCKED_DATE = `
+  <button type="button" id="before">start</button>
+  <div id="root"><div class="shell"><main id="content" class="shell__main" tabindex="-1">
+    <div class="member">
+      <p class="member__note">Unesi rezultat</p>
+      <form class="form" aria-labelledby="form-name" novalidate>
+        <h1 class="form__title" id="form-name">Unos rezultata</h1>
+        <p class="form__legend">Polja sa zvezdicom su obavezna</p>
+        <div class="field">
+          <span class="field__head">
+            <label class="field__label" for="date-held" id="date-held-label">Datum</label>
+            <span class="field__required" aria-hidden="true">*</span>
+          </span>
+          <div class="datepicker">
+            <input id="date-held" name="date" class="field__control field__control--held" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/gggg" aria-required="true" aria-invalid="false" aria-disabled="true" readonly value="17/10/2026">
+            <button type="button" class="datepicker__open" aria-disabled="true" aria-expanded="false" aria-label="Otvori kalendar" id="refused"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field__head">
+            <label class="field__label" for="date-free" id="date-free-label">Datum</label>
+            <span class="field__required" aria-hidden="true">*</span>
+          </span>
+          <div class="datepicker">
+            <input id="date-free" name="date" class="field__control" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/gggg" aria-required="true" aria-invalid="false" value="">
+            <button type="button" class="datepicker__open" aria-expanded="false" aria-label="Otvori kalendar" id="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main></div></div>
+`
+
+/** Both refused controls of this portal, each with the page it stands on and the
+ *  difference it is allowed. Everything below runs once for each of them, on a page of
+ *  its own: two controls in one document would have to be told apart by two pairs of
+ *  ids, and the sentinel Tab starts from can stand before only one of them. */
+const CONTROLS = [
+  {
+    name: 'the button that opens a record',
+    markup: PRICE_LIST,
+    refusal: OPEN_REFUSAL,
+    pseudo: OPEN_PSEUDO,
+    quiet: QUIET,
+  },
+  {
+    name: 'the button that opens a calendar',
+    markup: LOCKED_DATE,
+    refusal: CALENDAR_REFUSAL,
+    pseudo: CALENDAR_PSEUDO,
+    /* Every quiet decision but one. This is the control that refuses **with** a
+       background, so the property `QUIET` pins to nothing for the other one is the very
+       property this one's refusal names, and it is asked once, where the control names
+       it, rather than twice in two different words. */
+    quiet: Object.fromEntries(
+      Object.entries(QUIET).filter(([name]) => !(name in CALENDAR_REFUSAL)),
+    ),
+  },
+]
+
+const FIXTURE = (styles, markup) => `<!doctype html>
+<html lang="sr" data-theme="dark"><head><meta charset="utf-8">${styles}</head>
+<body>${markup}</body></html>`
+
+/** Every pseudo-element the specification gives these controls, and not the two that were
+ *  thought of first: whole computed styles are compared on each of them, because a rule
+ *  can paint over a button through any of the six. */
 const PSEUDOS = ['::before', '::after', '::first-line', '::first-letter', '::selection', '::marker']
-
-/** What each pseudo-element of the refused control may differ from the same
- *  pseudo-element of the live one in: the refusal, and nothing else. Measured, not
- *  guessed, and rewritten the same way as the sets above with `BTL_APPEARANCE_DIFFS=1`.
- *
- *  A pseudo-element compared with its own element differs in some fifty browser defaults
- *  and in nothing anybody wrote, which is why the comparison is made sideways.
- *
- *  A subset rather than an equality, because Chrome computes `::selection` out of its own
- *  defaults until something makes it inherit, and then out of the control: measured, a
- *  custom property declared on the control flipped it from one to the other and turned an
- *  equality into forty-three complaints about a change that painted nothing. Subset says
- *  what is meant either way: it may differ in the refusal, and in nothing else. */
-const ALLOWED = Object.fromEntries(PSEUDOS.map((name) => [name, REFUSAL]))
 
 /** The one pseudo-element Chrome computes out of its own defaults until something makes
  *  it inherit, and out of the control after that: a custom property declared on the
@@ -225,8 +373,47 @@ const ALLOWED = Object.fromEntries(PSEUDOS.map((name) => [name, REFUSAL]))
  *  loosening the rest to suit it cost every value check they had. */
 const LOOSE = '::selection'
 
-const READ = `(() => {
+/** Every colour a control names, read where the theme puts it rather than written out
+ *  here, and the run stops if one of them is not declared at all: an unknown token
+ *  resolves to whatever the probe inherited, which is an expectation about nothing. */
+function tokensOf(control) {
+  return [
+    ...new Set(
+      [
+        ...Object.values(control.refusal),
+        ...Object.values(control.pseudo),
+        ...Object.values(control.quiet),
+      ].filter((value) => value.startsWith('var(')),
+    ),
+  ].sort()
+}
+
+/** What a named value comes out as in the page: a colour the theme resolved, or the
+ *  word itself where it is one. */
+function valueOf(named, theme) {
+  return named.startsWith('var(') ? theme[named] : named
+}
+
+/** Everything one measurement reads off the page: both controls whole, their
+ *  pseudo-elements, whether the state being measured actually landed, and what the theme
+ *  makes of every colour the control names.
+ *
+ *  **A probe of its own for each token, coloured before it is in the document and thrown
+ *  away after.** One probe recoloured on the page is a colour changing, and a colour
+ *  changing is a transition: `index.css` gives every element
+ *  `transition-duration: .01ms !important` under `prefers-reduced-motion: reduce`, so the
+ *  value read on the next line was the one it was leaving rather than the one it was going
+ *  to. Measured on that screen, the first time this run visited it: every token came back
+ *  as the inherited text colour, and the refusal of the calendar button was held against
+ *  that at every width in both themes. A first computed style is not a change, so a probe
+ *  that arrives already coloured has nothing to transition from.
+ *
+ *  The probe hangs on `<html>`, so it reads what the theme says at the root. Hung on
+ *  `<body>` it inherits whatever an ancestor redefined along with the button, and the
+ *  comparison compares a fault with itself. */
+const readFor = (tokens) => `(() => {
   const PSEUDOS = ${JSON.stringify(PSEUDOS)}
+  const TOKENS = ${JSON.stringify(tokens)}
   const one = document.getElementById('refused')
   const all = (element, pseudo) => {
     const style = getComputedStyle(element, pseudo)
@@ -236,17 +423,17 @@ const READ = `(() => {
     }
     return out
   }
-  const probe = document.createElement('span')
-  document.documentElement.append(probe)
-  const asColour = (token) => {
-    probe.style.color = 'var(' + token + ')'
-    return getComputedStyle(probe).color
+  const root = getComputedStyle(document.documentElement)
+  const missing = TOKENS.filter((token) => root.getPropertyValue(token.slice(4, -1).trim()) === '')
+  const theme = {}
+  for (const token of TOKENS) {
+    const probe = document.createElement('span')
+
+    probe.style.color = token
+    document.documentElement.append(probe)
+    theme[token] = getComputedStyle(probe).color
+    probe.remove()
   }
-  const theme = {
-    muted: asColour('--text-muted'),
-    border: asColour('--border'),
-  }
-  probe.remove()
   return JSON.stringify({
     refused: all(one, null),
     live: all(document.getElementById('live'), null),
@@ -255,6 +442,7 @@ const READ = `(() => {
     under: one.matches(':hover'),
     pressed: one.matches(':active'),
     ring: one.matches(':focus-visible'),
+    missing,
     theme,
   })
 })()`
@@ -270,7 +458,7 @@ const CENTRE = `(() => {
   })
 })()`
 
-/** Put the reader one step before the control, so the next Tab lands on it.
+/** Put the reader one step before the control, so Tab walks into it.
  *
  *  Not `blur()` for this: blurring empties `activeElement` but leaves the sequential
  *  focus navigation starting point where it was, so Tab walked past the control to the
@@ -279,6 +467,56 @@ const START = `(() => {
   document.getElementById('before').focus()
   return JSON.stringify(document.activeElement === null ? 'none' : document.activeElement.id)
 })()`
+
+/** Where the keyboard has got to. */
+const AT = `(() => JSON.stringify({
+  at: document.activeElement === null ? 'none' : document.activeElement.id,
+  ring: document.getElementById('refused').matches(':focus-visible'),
+}))()`
+
+/** How far the control stands from the sentinel in the order of focus, counted in the
+ *  fixture itself.
+ *
+ *  One Tab reaches the price list's button and two reach the calendar's, because a date
+ *  field is a box and then a button. Written per control as a number, that count is a
+ *  fact about markup kept away from the markup and it goes stale the first time a control
+ *  gains a neighbour; written as a bound of a few presses, it stops being a claim at all.
+ *  A review measured the second: with the walk allowed up to five stations, a heading
+ *  given `overflow: scroll` takes focus in Chrome, the walk simply took one step more,
+ *  and „the refused control is the next place focus lands" quietly became „it is
+ *  somewhere in the next five".
+ *
+ *  So the fixture is counted instead and then walked exactly that far. The elements below
+ *  are the ones markup makes focusable; a station something in the sheet made focusable
+ *  is not among them, which is the whole point of counting here rather than tabbing until
+ *  something turns up. */
+const STOPS = `(() => {
+  const walkable = [...document.querySelectorAll(
+    'a[href], area[href], button, input, select, textarea, iframe, [tabindex], [contenteditable]',
+  )].filter(
+    (one) => !one.hasAttribute('disabled') && one.tabIndex >= 0 && one.getClientRects().length > 0,
+  )
+
+  return JSON.stringify({
+    from: walkable.indexOf(document.getElementById('before')),
+    to: walkable.indexOf(document.getElementById('refused')),
+  })
+})()`
+
+/** Whether anything on the page is still moving.
+ *
+ *  The calendar button carries `transition: border-color var(--fast), color var(--fast)`
+ *  and `--fast` is 160ms, while every state below was read 120ms after it was asked for.
+ *  So the theme was switched, the colours set off towards the new theme, the resting
+ *  state was read while they were on their way, and the hovered state was read after
+ *  they had arrived: measured, seventeen properties differed between hovering and not
+ *  hovering in the light theme, on a control the sheet holds still under the pointer on
+ *  purpose. The price list's button carries no transition at all, which is why one
+ *  control could be measured for a fortnight without this.
+ *
+ *  Asked of the browser rather than waited out with a longer sleep, because a number of
+ *  milliseconds written here is right until somebody changes `--fast`. */
+const STILL = `(() => JSON.stringify(document.getAnimations().length))()`
 
 /** And hands off before the next theme is read. */
 const CLEAR = `(() => {
@@ -333,6 +571,56 @@ async function moveTo(socket, x, y) {
   await new Promise((resolve) => setTimeout(resolve, 120))
 }
 
+/** Nothing is read while anything is still moving. A state read mid-transition is a
+ *  state nobody ever sees, and it is compared with a state somebody does. */
+async function still(socket) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if ((await evaluate(socket, STILL)) === 0) {
+      return
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+
+  throw new Error('something on the page is still moving two seconds after it was asked to')
+}
+
+async function tab(socket) {
+  for (const type of ['rawKeyDown', 'keyUp']) {
+    await send(socket, 'Input.dispatchKeyEvent', {
+      type,
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    })
+  }
+  await new Promise((resolve) => setTimeout(resolve, 120))
+}
+
+/** The page a control is measured on, in the browser this script started. The first is
+ *  the one Chrome opened with; the rest are walked to, and the walk is checked rather
+ *  than waited out, because a measurement of the page before it is a measurement of the
+ *  control that was there a moment ago. */
+async function show(socket, address) {
+  await send(socket, 'Page.navigate', { url: address })
+
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const where = await evaluate(
+      socket,
+      '(() => JSON.stringify({ href: location.href, state: document.readyState }))()',
+    )
+
+    if (where.href === address && where.state === 'complete') {
+      return
+    }
+  }
+
+  throw new Error(`the browser would not show ${address}`)
+}
+
 /** Every property in which two computed styles disagree. */
 function differences(left, right) {
   /* The keys of both, not of the left one. A rule can give one control a custom property
@@ -343,12 +631,17 @@ function differences(left, right) {
     .sort()
 }
 
-/** One theme, three states. The theme is pinned twice, on the root the way the portal
- *  writes it and as the emulated media feature, so which theme gets measured is decided
- *  here and not by the settings of whoever runs this. */
-async function measure(socket, theme) {
+/** One control, one screen, one theme, four states. The theme is pinned twice, on the root
+ *  the way the portal writes it and as the emulated media feature, so which theme gets
+ *  measured is decided here and not by the settings of whoever runs this. The screen is
+ *  pinned in the same call, and not before it: `setEmulatedMedia` replaces the features it
+ *  is given rather than adding to them, so a screen set in one call and a theme in the
+ *  next is a screen that lasted until the next line. */
+async function measure(socket, theme, control, screen) {
+  const READ = readFor(tokensOf(control))
+
   await send(socket, 'Emulation.setEmulatedMedia', {
-    features: [{ name: 'prefers-color-scheme', value: theme }],
+    features: [{ name: 'prefers-color-scheme', value: theme }, ...screen.features],
   })
   await evaluate(
     socket,
@@ -360,9 +653,15 @@ async function measure(socket, theme) {
      state and a fault written for the light theme walked straight past: measured. */
   await moveTo(socket, 4, 4)
   await evaluate(socket, CLEAR)
+  await still(socket)
 
   const resting = await evaluate(socket, READ)
 
+  if (resting.missing.length > 0) {
+    throw new Error(
+      `${theme}: the theme declares no ${resting.missing.join(', ')}, so the refusal is held against nothing`,
+    )
+  }
   if (resting.under || resting.ring) {
     throw new Error(
       `${theme}: the control is still hovered or focused while the resting state is read`,
@@ -376,6 +675,7 @@ async function measure(socket, theme) {
   }
 
   await moveTo(socket, centre.x, centre.y)
+  await still(socket)
 
   const hovered = await evaluate(socket, READ)
 
@@ -400,6 +700,7 @@ async function measure(socket, theme) {
     clickCount: 1,
   })
   await new Promise((resolve) => setTimeout(resolve, 120))
+  await still(socket)
 
   const pressed = await evaluate(socket, READ)
 
@@ -416,10 +717,11 @@ async function measure(socket, theme) {
     throw new Error(`${theme}: the press did not reach the control, so nothing about :active was measured`)
   }
 
-  /* And under the keyboard, the state this refusal is built around: it is
-     `aria-disabled` and not `disabled`, so it stays in the order of focus on purpose,
-     and the ring is what a reader without a mouse has. Tab rather than `.focus()`,
-     because `:focus-visible` is the browser's own judgement about how focus arrived. */
+  /* And under the keyboard, the state these refusals are built around: it is
+     `aria-disabled` and not `disabled`, so the control stays in the order of focus on
+     purpose, and the ring is what a reader without a mouse has. Tab rather than
+     `.focus()`, because `:focus-visible` is the browser's own judgement about how focus
+     arrived. */
   await moveTo(socket, 4, 4)
 
   const from = await evaluate(socket, START)
@@ -428,16 +730,32 @@ async function measure(socket, theme) {
     throw new Error(`${theme}: the sentinel before the control would not take focus (${from})`)
   }
 
-  for (const type of ['rawKeyDown', 'keyUp']) {
-    await send(socket, 'Input.dispatchKeyEvent', {
-      type,
-      key: 'Tab',
-      code: 'Tab',
-      windowsVirtualKeyCode: 9,
-      nativeVirtualKeyCode: 9,
-    })
+  const stops = await evaluate(socket, STOPS)
+
+  if (stops.from === -1 || stops.to <= stops.from) {
+    throw new Error(
+      `${theme}: the sentinel does not stand in front of the control in the order of focus (${stops.from} and ${stops.to})`,
+    )
   }
-  await new Promise((resolve) => setTimeout(resolve, 120))
+
+  const walk = stops.to - stops.from
+
+  let landed = { at: 'before', ring: false }
+
+  /* Exactly as far as the fixture is long, so a station the fixture has not got is a walk
+     that ends somewhere else and says where. */
+  for (let step = 0; step < walk; step += 1) {
+    await tab(socket)
+    landed = await evaluate(socket, AT)
+  }
+
+  if (landed.at !== 'refused') {
+    throw new Error(
+      `${theme}: ${walk} Tab from the sentinel is where the control stands in this fixture, and it stopped on ${landed.at}`,
+    )
+  }
+
+  await still(socket)
 
   const focused = await evaluate(socket, READ)
 
@@ -450,10 +768,15 @@ async function measure(socket, theme) {
   return { resting, hovered, pressed, focused }
 }
 
-function complaintsFor(theme, { resting, hovered, pressed, focused }) {
+function complaintsFor(where, control, { resting, hovered, pressed, focused }) {
   const complaints = []
-  const say = (text) => complaints.push(`${theme}: ${text}`)
+  const say = (text) => complaints.push(`${where}: ${text}`)
   const list = (names) => (names.length === 0 ? 'nothing' : names.join(', '))
+  /* What this control is allowed to differ from its live twin in, and what each
+     pseudo-element of it is allowed to differ in. Both are sorted, because a difference
+     is. */
+  const REFUSAL = Object.keys(control.refusal).sort()
+  const ALLOWED = Object.keys(control.pseudo).sort()
 
   const states = [
     ['at rest', resting],
@@ -467,11 +790,11 @@ function complaintsFor(theme, { resting, hovered, pressed, focused }) {
   const refusal = differences(resting.refused, resting.live)
 
   if (SHOW) {
-    console.log(`${theme} hovered vs resting :`, list(lit))
-    console.log(`${theme} focused vs resting :`, list(ringed))
-    console.log(`${theme} refused vs live    :`, list(refusal))
+    console.log(`${where} hovered vs resting :`, list(lit))
+    console.log(`${where} focused vs resting :`, list(ringed))
+    console.log(`${where} refused vs live    :`, list(refusal))
     for (const name of PSEUDOS) {
-      console.log(`${theme} ${name.padEnd(15)} :`, list(differences(resting.pseudo[name], resting.pseudoLive[name])))
+      console.log(`${where} ${name.padEnd(15)} :`, list(differences(resting.pseudo[name], resting.pseudoLive[name])))
     }
 
     return []
@@ -502,34 +825,40 @@ function complaintsFor(theme, { resting, hovered, pressed, focused }) {
     say(`beside the live control it differs in ${list(refusal)}, and the refusal is ${list(REFUSAL)}`)
   }
 
-  for (const [where, state] of states) {
-    const one = state.refused
-    /* The ring is allowed to take the focus state off the muted colour, and only there. */
-    const spoken = where === 'under the keyboard' ? TEXT.filter((name) => !RING.includes(name)) : TEXT
+  for (const [state, one] of states) {
+    const seen = one.refused
 
-    for (const name of spoken) {
-      if (one[name] !== state.theme.muted) {
-        say(`${where} its ${name} is not the muted colour (${one[name]}, theme says ${state.theme.muted})`)
+    for (const [name, named] of Object.entries(control.refusal)) {
+      /* The ring is allowed to take the focus state off the refused colour, and only
+         there. */
+      if (state === 'under the keyboard' && RING.includes(name)) {
+        continue
       }
-    }
-    for (const name of EDGE) {
-      if (one[name] !== state.theme.border) {
-        say(`${where} its ${name} is not the border colour (${one[name]}, theme says ${state.theme.border})`)
-      }
-    }
-    if (one.cursor !== 'not-allowed') {
-      say(`${where} it does not carry not-allowed (${one.cursor})`)
-    }
 
-    for (const [name, expected] of Object.entries(QUIET)) {
-      if (one[name] !== expected) {
-        say(`${where} its ${name} is ${one[name]} rather than ${expected}`)
+      const expected = valueOf(named, one.theme)
+      /* And where the value came from a token, the token as well: `rgb(23, 36, 61)` is
+         a number nobody can look up, and `var(--surface-hover)` is the line in the
+         sheet that has to change if this complaint is the wrong one. */
+      const because = named === expected ? '' : `, which is what ${named} says`
+
+      if (seen[name] !== expected) {
+        say(`${state} its ${name} is ${seen[name]} rather than ${expected}${because}`)
       }
     }
 
+    for (const [name, named] of Object.entries(control.quiet)) {
+      const expected = valueOf(named, one.theme)
+
+      if (seen[name] !== expected) {
+        say(`${state} its ${name} is ${seen[name]} rather than ${expected}`)
+      }
+    }
+
+    /* Both controls are drawn with a border, and a refusal that quietly takes it away is
+       a refusal a reader meets as a missing control. */
     for (const side of ['top', 'right', 'bottom', 'left']) {
-      if (one[`border-${side}-style`] !== 'solid' || !(parseFloat(one[`border-${side}-width`]) > 0)) {
-        say(`${where} its ${side} border is gone (${one[`border-${side}-style`]} ${one[`border-${side}-width`]})`)
+      if (seen[`border-${side}-style`] !== 'solid' || !(parseFloat(seen[`border-${side}-width`]) > 0)) {
+        say(`${state} its ${side} border is gone (${seen[`border-${side}-style`]} ${seen[`border-${side}-width`]})`)
       }
     }
 
@@ -539,47 +868,47 @@ function complaintsFor(theme, { resting, hovered, pressed, focused }) {
        Each is held against the same pseudo-element of the live control rather than
        against the control itself, because a pseudo-element differs from its element in
        fifty browser defaults and in nothing anybody wrote. Beside its twin it differs in
-       the refusal and nothing else, which is the same closed question asked once more. */
+       the refusal and nothing else, which is the same closed question asked once more.
+       A subset rather than an equality for `::selection`, because Chrome computes it out
+       of its own defaults until something makes it inherit, and then out of the control:
+       measured, a custom property declared on the control flipped it from one to the
+       other and turned an equality into forty-three complaints about a change that
+       painted nothing. */
     for (const name of PSEUDOS) {
-      const own = differences(state.pseudo[name], state.pseudoLive[name])
+      const own = differences(one.pseudo[name], one.pseudoLive[name])
 
-      const apart = own.filter((property) => !ALLOWED[name].includes(property))
+      const apart = own.filter((property) => !ALLOWED.includes(property))
 
       if (apart.length > 0) {
-        say(`${where} its ${name} differs from the live one in ${list(apart)}, which is not the refusal`)
+        say(`${state} its ${name} differs from the live one in ${list(apart)}, which is not the refusal`)
       }
-      if (name !== LOOSE && list(own) !== list(ALLOWED[name])) {
-        say(`${where} its ${name} carries ${list(own)} of the refusal, and the refusal is ${list(ALLOWED[name])}`)
+      if (name !== LOOSE && list(own) !== list(ALLOWED)) {
+        say(`${state} its ${name} carries ${list(own)} of the refusal, and the refusal is ${list(ALLOWED)}`)
       }
 
-      /* And in the same values, not merely in the same property names. The set is the
-         same eighteen whether the pseudo-element inherits the refusal or is painted over
-         it: a review wrote `::first-line { color: var(--accent) }`, the names never
-         moved, and the label came out in the live colour.
-         A pseudo-element takes `currentColor` for every one of them, and on this control
-         that is the muted colour, borders included: it does not inherit the control's own
-         border colour, which was measured after this comparison was first written the
-         other way round. */
       /* And that it draws nothing at all. The sideways comparison cannot carry this:
          a `content` given to both controls alike leaves no difference between them.
          This check existed, was dropped when the comparison turned sideways, and a
          review put `.entity-open::before { content: "!! " }` over both. */
-      if ((name === '::before' || name === '::after') && state.pseudo[name].content !== 'none') {
-        say(`${where} a ${name} is drawn over it (content ${state.pseudo[name].content})`)
+      if ((name === '::before' || name === '::after') && one.pseudo[name].content !== 'none') {
+        say(`${state} a ${name} is drawn over it (content ${one.pseudo[name].content})`)
       }
 
-      /* The whole set, not only what still differs from the live control. Asked over the
+      /* And in the same values, not merely in the same property names. A review wrote
+         `::first-line { color: var(--accent) }`, the names never moved, and the label
+         came out in the live colour.
+         The whole set, not only what still differs from the live control. Asked over the
          difference, a rule that puts the live colour back on the refused label takes that
          property out of the difference and out of the checking with it: measured, and the
          label came out in the live colour with nothing said. Only `::selection` is asked
          over the difference, because it is the one that sometimes inherits nothing. */
-      const asked = name === LOOSE ? own.filter((taken) => ALLOWED[name].includes(taken)) : ALLOWED[name]
+      const asked = name === LOOSE ? own.filter((taken) => ALLOWED.includes(taken)) : ALLOWED
 
       for (const property of asked) {
-        const expected = property === 'cursor' ? 'not-allowed' : state.theme.muted
+        const expected = valueOf(control.pseudo[property], one.theme)
 
-        if (state.pseudo[name][property] !== expected) {
-          say(`${where} its ${name} takes a ${property} of its own (${state.pseudo[name][property]}, and the refusal is ${expected})`)
+        if (one.pseudo[name][property] !== expected) {
+          say(`${state} its ${name} takes a ${property} of its own (${one.pseudo[name][property]}, and the refusal is ${expected})`)
         }
       }
     }
@@ -612,6 +941,271 @@ function complaintsFor(theme, { resting, hovered, pressed, focused }) {
   return complaints
 }
 
+/** A width condition in the two spellings its two homes use: the portal writes
+ *  `@media (min-width: 35em)` and the build hands the browser `@media (width>=35em)`. */
+const RANGE = /^\(\s*width\s*(<=|>=|<|>)\s*([\d.]+)(px|em|rem)\s*\)$/
+const BOUND = /^\(\s*(min|max)-width\s*:\s*([\d.]+)(px|em|rem)\s*\)$/
+/** Any other feature, in the two spellings its two homes use as well: the portal writes
+ *  `@media (min-resolution: 2dppx)` and the build hands the browser
+ *  `@media (resolution>=2x)`. The prefix and the operator are read off and thrown away,
+ *  because what is done with either is the same thing: the browser is put on the value the
+ *  condition names, and then asked whether the condition holds. It answers for `>=` and
+ *  `<=` and it does not for `>` and `<`, and that is not reasoned about here either: a
+ *  setting the browser will not confirm stops the run a few lines into `main`. */
+const FEATURE = /^\(\s*(?:(?:min|max)-)?([a-z-]+)\s*:\s*([^()]+?)\s*\)$/
+const FEATURE_RANGE = /^\(\s*([a-z-]+)\s*(?:<=|>=|<|>|=)\s*([^()<>=]+?)\s*\)$/
+
+/** The themes every measurement is taken in. A prelude asking for one of them is a prelude
+ *  already visited from both sides, and not an axis of its own. */
+const THEMES = ['dark', 'light']
+
+const HOLDS = {
+  '<=': (width, at) => width <= at,
+  '>=': (width, at) => width >= at,
+  '<': (width, at) => width < at,
+  '>': (width, at) => width > at,
+}
+
+/** Everything the built sheet asks about the screen it is shown on, split into the two
+ *  kinds this file can do something with: the **widths** it visits, and the **settings**
+ *  it puts the browser into.
+ *
+ *  **Read out of the preludes of `@media`, and out of nothing else.** Scraped off the
+ *  whole text the way this once was, `@container (width<=45em)` reads as a media condition
+ *  and adds a band no media query cuts: a container is as wide as whatever holds it, and
+ *  that is a layout this file does not draw. The portal has one such query today
+ *  (`pages/TopBoards.css`).
+ *
+ *  **And every prelude has to come apart completely.** What is left of one when its
+ *  conditions are cut out must be the word `and`, or the run stops and says what it could
+ *  not read. Two faults measured, both silent before this:
+ *
+ *  - a prelude carrying a condition this reads beside one it does not,
+ *    `@media (width>=35em) and (600px<=width<=650px)`, used to pass because one half was
+ *    recognised. The band 600..650 was cut by nothing and the widths either side of it,
+ *    560 and 699, walked straight past.
+ *  - a prelude on an axis that is not width at all,
+ *    `@media (min-resolution: 2dppx)`, used not to be looked at, so a rule taking the
+ *    refusal off on every 2x screen, which is to say on nearly every telephone, left the
+ *    run green.
+ *
+ *  A media type (`screen`, `print`), a comma, a `not`: none of them is a condition this
+ *  can put a browser into, and each stops the run by name rather than being waved through
+ *  on the grounds that it looked harmless. */
+function askedIn(css) {
+  const widths = []
+  const settings = new Map()
+
+  for (const found of css.matchAll(/@media([^{]*)\{/g)) {
+    const prelude = found[1]
+    const conditions = [...prelude.matchAll(/\([^()]*\)/g)].map((one) => one[0])
+    const leftover = conditions
+      .reduce((text, one) => text.replace(one, ' '), prelude)
+      .replace(/\band\b/g, ' ')
+      .trim()
+
+    if (leftover !== '') {
+      throw new Error(
+        `a media prelude this cannot take apart, so what it paints would go unmeasured: @media${prelude.trim()} (left over: ${leftover})`,
+      )
+    }
+
+    const features = []
+
+    for (const one of conditions) {
+      const range = RANGE.exec(one)
+      const bound = BOUND.exec(one)
+
+      if (range !== null) {
+        widths.push({
+          text: one,
+          how: range[1],
+          px: Number(range[2]) * (range[3] === 'px' ? 1 : EM),
+        })
+        continue
+      }
+      if (bound !== null) {
+        widths.push({
+          text: one,
+          how: bound[1] === 'min' ? '>=' : '<=',
+          px: Number(bound[2]) * (bound[3] === 'px' ? 1 : EM),
+        })
+        continue
+      }
+
+      const feature = FEATURE.exec(one) ?? FEATURE_RANGE.exec(one)
+
+      if (feature === null) {
+        throw new Error(
+          `a condition this cannot read, so the screens behind it would go unmeasured: ${one}`,
+        )
+      }
+
+      const [, name, value] = feature
+
+      /* A width in a spelling the two above do not know is a band and not a setting, and
+         no browser is put on a width by `setEmulatedMedia`. Said here, where the name is
+         still in hand, rather than left to come out later as a setting that never lands. */
+      if (name === 'width') {
+        throw new Error(
+          `a width condition this cannot read, so the band behind it would go unmeasured: ${one}`,
+        )
+      }
+
+      /* The theme is pinned by hand in every measurement and both of them are visited, so
+         a prelude asking for one is already asked from both sides. A value neither of them
+         is, is a screen nobody here ever shows. */
+      if (name === 'prefers-color-scheme') {
+        if (!THEMES.includes(value)) {
+          throw new Error(
+            `the sheet paints a ${value} theme and only ${THEMES.join(' and ')} are measured`,
+          )
+        }
+        continue
+      }
+
+      features.push({ name, value, text: one })
+    }
+
+    if (features.length > 0) {
+      /* Named by the whole conjunction and not by each half, because a prelude naming two
+         settings is a rule reached only where both hold. */
+      settings.set(
+        features
+          .map((one) => one.text)
+          .sort()
+          .join(' and '),
+        features,
+      )
+    }
+  }
+
+  return {
+    conditions: widths.map((one) => ({
+      text: one.text,
+      px: one.px,
+      holds: (width) => HOLDS[one.how](width, one.px),
+    })),
+    settings: [...settings].map(([name, features]) => ({ name, features })),
+  }
+}
+
+/** What a `<resolution>` is worth as a device scale factor.
+ *
+ *  Chrome turns two different knobs for what CSS calls one thing: `setEmulatedMedia`
+ *  answers for `prefers-reduced-motion` and its like and **does not answer for
+ *  `resolution`**, while `setDeviceMetricsOverride` does. Measured, not read: at
+ *  `deviceScaleFactor: 1` both `(resolution>=2x)` and `(min-resolution: 2dppx)` are false
+ *  and at 2 both are true, and `setEmulatedMedia` with `resolution` moves neither. This is
+ *  not a list of ways to break a control, which this file has none of; it is which knob of
+ *  the protocol carries which feature, and a wrong guess about that is caught rather than
+ *  believed, because every screen is read back before anything is measured.
+ *
+ *  A unit not among these leaves the condition where it was, as a media feature Chrome
+ *  will not confirm, and the run stops naming it. */
+const SCALE = { x: 1, dppx: 1, dpi: 1 / 96 }
+
+function scaleOf(value) {
+  const found = /^([\d.]+)(x|dppx|dpi)$/.exec(value.trim())
+
+  return found === null ? null : Number(found[1]) * SCALE[found[2]]
+}
+
+/** The screens this run shows each control: the one the browser comes with, and one for
+ *  every setting the sheet asks about. Every width and both themes are visited on each of
+ *  them, because a prelude may name a setting and a width together and the rule inside it
+ *  is reached only where both hold.
+ *
+ *  One setting at a time and never two, which is what the preludes of the sheet name
+ *  today; a rule reached only where two settings the sheet never wrote together both hold
+ *  is not measured, and would need a prelude asking for both before this knew of it. */
+function screensOf(settings) {
+  return [
+    { name: 'as it comes', features: [], dpr: 1, asks: [] },
+    ...settings.map((one) => {
+      const turned = one.features.filter(
+        (feature) => feature.name === 'resolution' && scaleOf(feature.value) !== null,
+      )
+
+      return {
+        name: one.name,
+        features: one.features
+          .filter((feature) => !turned.includes(feature))
+          .map(({ name, value }) => ({ name, value })),
+        /* The widest of them where a prelude names more than one, which is what `>=`
+           wants; the run reads every one of them back either way, so a prelude this
+           chooses wrongly for stops rather than passing. */
+        dpr: turned.length === 0 ? 1 : Math.max(...turned.map((feature) => scaleOf(feature.value))),
+        asks: one.features.map((feature) => feature.text),
+      }
+    }),
+  ]
+}
+
+/** One width inside every band the built sheet can tell apart, from the narrowest screen
+ *  this portal promises upward.
+ *
+ *  Written out by hand instead, the list is a guess about a file that keeps changing, and
+ *  a review measured what the guess cost: three widths stood here, 1280, 768 and 360, and
+ *  not one of them fell between 560px and 699.98px, a band this portal writes eight rules
+ *  for. The refusal of both controls was taken out inside
+ *  `@media (min-width: 35em) and (max-width: 43.74875em)` and this said both were still
+ *  refused. Only the narrowest is chosen now, and it is chosen by `CLAUDE.md`; the rest
+ *  are wherever the sheet itself changes its mind.
+ *
+ *  One width per band and not two, because inside a band every condition of the sheet
+ *  answers the same for every width in it, which is what a band is. The edges are taken
+ *  from both sides of every number the sheet names, and then the ones that answer alike
+ *  are dropped. */
+function widthsOf(conditions) {
+  /* All four sides of every number the sheet names, in whole pixels because a window is
+     measured in whole pixels. Four and not three, because a whole number is a place where
+     two different pairs of conditions change their mind: `width<t` and `width>=t` change
+     between `ceil(t)-1` and `ceil(t)`, while `width<=t` and `width>t` change between
+     `floor(t)` and `floor(t)+1`, and for a whole `t` those are two different pairs of
+     pixels. Written with the first pair alone, a sheet naming `(max-width: 62.5em)`, which
+     is 1000px exactly, offered 999 and 1000 as candidates and both of them answer the same
+     way: everything wider than 1000px was a band with no width in it, which is to say
+     every ordinary desktop, and this said all was well. The portal writes whole numbers
+     both ways today (`Profile.css` has `(max-width: 38.75em)`, exactly 620px). On a number
+     that is not whole the four collapse back to two, which is the same two as before. */
+  const edges = conditions.flatMap((one) => [
+    Math.floor(one.px),
+    Math.floor(one.px) + 1,
+    Math.ceil(one.px) - 1,
+    Math.ceil(one.px),
+  ])
+  const answer = (width) => conditions.map((one) => (one.holds(width) ? '1' : '0')).join('')
+  const widths = []
+  let said = null
+
+  for (const width of [...new Set([NARROWEST, ...edges])]
+    .filter((width) => width >= NARROWEST)
+    .sort((left, right) => left - right)) {
+    const now = answer(width)
+
+    if (now !== said) {
+      widths.push(width)
+      said = now
+    }
+  }
+
+  return widths
+}
+
+/** What the browser makes of the conditions it is handed, on the screen it is on, held
+ *  against what this file made of the same conditions.
+ *
+ *  The bands above are arithmetic over numbers scraped out of a file, and arithmetic that
+ *  has drifted from the sheet chooses widths that are all in one band while reading like
+ *  a list of many. `em`, resolved here at 16px, is the likeliest way for it to drift. And
+ *  a setting is only a setting if the browser took it: Chrome emulates what it emulates
+ *  and announces it nowhere, so it is asked. */
+const asksFor = (texts) => `(() => JSON.stringify({
+  width: window.innerWidth,
+  holds: ${JSON.stringify(texts)}.map((one) => matchMedia(one).matches),
+}))()`
+
 async function main() {
   const dist = join(process.cwd(), 'dist', 'assets')
 
@@ -642,6 +1236,15 @@ async function main() {
     throw new Error('no built stylesheet; run `npm run build` first')
   }
 
+  /* And the widths and the screens out of the same sheets, in the same order, because a
+     band is cut by every condition the browser is going to read and not only by the ones
+     of the first file. */
+  const { conditions, settings } = askedIn(
+    sheets.map((name) => readFileSync(join(dist, name), 'utf-8')).join('\n'),
+  )
+  const widths = widthsOf(conditions)
+  const screens = screensOf(settings)
+
   /* Named for this run. A browser left behind by an earlier run that never reached its
      `finally` sits on the port showing a fixture at the very same path, so matching by
      address matched somebody else's page holding somebody else's CSSOM: measured, it
@@ -651,18 +1254,31 @@ async function main() {
     rmSync(join(dist, stale), { recursive: true, force: true })
   }
 
-  const page = join(dist, `refused-control-fixture-${process.pid}-${randomUUID()}.html`)
+  const styles = sheets.map((name) => `<link rel="stylesheet" href="${name}">`).join('')
+  const run = `${process.pid}-${randomUUID()}`
+  /* A page of its own for each control, all of them written before the browser starts:
+     the browser is opened on the first and walked to the rest, and a page that was never
+     written is a walk that ends on `about:blank` with every comparison quiet. */
+  const pages = CONTROLS.map((control, index) => {
+    const page = join(dist, `refused-control-fixture-${run}-${index}.html`)
 
-  writeFileSync(page, FIXTURE(sheets.map((name) => `<link rel="stylesheet" href="${name}">`).join('')))
+    writeFileSync(page, FIXTURE(styles, control.markup))
 
-  const address = pathToFileURL(page).href
+    return { control, page, address: pathToFileURL(page).href }
+  })
+  const [first] = pages
+
+  if (first === undefined) {
+    throw new Error('no control to measure')
+  }
+
   const profile = mkdtempSync(join(tmpdir(), 'btl-chrome-'))
   const chrome = spawn(CHROME, [
     '--headless=new',
     '--disable-gpu',
     `--remote-debugging-port=${PORT}`,
     `--user-data-dir=${profile}`,
-    address,
+    first.address,
   ])
 
   chrome.on('error', (problem) => {
@@ -679,7 +1295,7 @@ async function main() {
       try {
         const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()
 
-        target = list.find((one) => one.type === 'page' && one.url === address) ?? null
+        target = list.find((one) => one.type === 'page' && one.url === first.address) ?? null
       } catch {
         target = null
       }
@@ -687,7 +1303,7 @@ async function main() {
 
     if (target === null) {
       throw new Error(
-        `nothing on port ${PORT} is showing ${address}; a browser left over from an earlier run may be holding the port (set BTL_CDP_PORT or close it)`,
+        `nothing on port ${PORT} is showing ${first.address}; a browser left over from an earlier run may be holding the port (set BTL_CDP_PORT or close it)`,
       )
     }
 
@@ -698,20 +1314,102 @@ async function main() {
       socket.addEventListener('error', reject)
     })
 
+    /* Every setting the sheet asks about, read on every screen this run shows, before a
+       single control is measured. A setting the browser answers the same way on all of
+       them is a setting whose rules are either always on or never on, so the sheet's two
+       sides are not both visited and nothing behind it is measured. That is how an axis
+       Chrome will not put itself on arrives here: not as a wrong answer but as one answer.
+       Asked once here rather than trusted, because the alternative is a run that reads
+       „all clear" about screens it never showed. */
+    const everyAsk = [...new Set(screens.flatMap((one) => one.asks))]
+
+    if (everyAsk.length > 0) {
+      const seen = new Map(everyAsk.map((text) => [text, new Set()]))
+
+      for (const screen of screens) {
+        /* Both knobs, because a screen may be a scale rather than a feature, and a screen
+           read with half of it turned is not the screen the run goes on to measure. */
+        await send(socket, 'Emulation.setDeviceMetricsOverride', {
+          width: NARROWEST,
+          height: 800,
+          deviceScaleFactor: screen.dpr,
+          mobile: false,
+        })
+        await send(socket, 'Emulation.setEmulatedMedia', {
+          features: [{ name: 'prefers-color-scheme', value: THEMES[0] }, ...screen.features],
+        })
+
+        const said = await evaluate(socket, asksFor(everyAsk))
+
+        everyAsk.forEach((text, at) => seen.get(text).add(said.holds[at]))
+      }
+
+      const blind = everyAsk.filter((text) => seen.get(text).size < 2)
+
+      if (blind.length > 0) {
+        throw new Error(
+          `Chrome reads ${blind.join(', ')} the same way on every screen this run shows, so the rules behind it are either always on or never on and nothing about them is measured`,
+        )
+      }
+    }
+
     const complaints = []
 
-    for (const width of WIDTHS) {
-      /* A size of its own, so the control has a box and the mouse has somewhere to land
-         whatever window the browser happened to open with. */
-      await send(socket, 'Emulation.setDeviceMetricsOverride', {
-        width,
-        height: 800,
-        deviceScaleFactor: 1,
-        mobile: false,
-      })
+    for (const [index, one] of pages.entries()) {
+      /* The first is the page the browser opened with, and asking it to go where it
+         already is costs a reload and a second wait. */
+      if (index > 0) {
+        await show(socket, one.address)
+      }
 
-      for (const theme of ['dark', 'light']) {
-        complaints.push(...complaintsFor(`${theme} at ${width}px`, await measure(socket, theme)))
+      for (const screen of screens) {
+        for (const width of widths) {
+          /* A size of its own, so the control has a box and the mouse has somewhere to
+             land whatever window the browser happened to open with, and the scale this
+             screen is for, which is the knob a `resolution` query reads. */
+          await send(socket, 'Emulation.setDeviceMetricsOverride', {
+            width,
+            height: 800,
+            deviceScaleFactor: screen.dpr,
+            mobile: false,
+          })
+          /* And the screen of this pass, so what is read below is read on it. Set again
+             for each width because the size override is a good place for a browser to
+             forget things, and read back on the next line either way. */
+          await send(socket, 'Emulation.setEmulatedMedia', {
+            features: [{ name: 'prefers-color-scheme', value: THEMES[0] }, ...screen.features],
+          })
+
+          /* And the size landed, and the sheet reads here the way this file read it off
+             the file, and the screen is the screen this pass is for. Without the first,
+             every width above is the width the browser opened with and the list of bands
+             is one band measured over and over. */
+          const asked = [...conditions.map((condition) => condition.text), ...screen.asks]
+          const wanted = [...conditions.map((condition) => condition.holds(width)), ...screen.asks.map(() => true)]
+          const said = await evaluate(socket, asksFor(asked))
+
+          if (said.width !== width) {
+            throw new Error(`the browser was asked for ${width}px and gave ${said.width}px`)
+          }
+
+          const apart = asked.filter((text, at) => wanted[at] !== said.holds[at])
+
+          if (apart.length > 0) {
+            throw new Error(
+              `at ${width}px on ${screen.name} the browser reads ${apart.join(', ')} the other way round from this file, so the screens it visits are not the screens of the sheet`,
+            )
+          }
+
+          for (const theme of THEMES) {
+            complaints.push(
+              ...complaintsFor(
+                `${one.control.name}, ${theme} at ${width}px on ${screen.name}`,
+                one.control,
+                await measure(socket, theme, one.control, screen),
+              ),
+            )
+          }
+        }
       }
     }
 
@@ -722,20 +1420,27 @@ async function main() {
     }
 
     if (complaints.length > 0) {
-      console.error('the refused control does not look refused:')
+      console.error('a refused control does not look refused:')
       complaints.forEach((one) => console.error(`  - ${one}`))
       process.exitCode = 1
 
       return
     }
 
-    console.log('the refused control still looks refused in both themes, measured in Chrome')
+    /* Counted rather than said in a word: „both" was written here by hand while nothing
+       held the second control in `CONTROLS`, so taking it out left this sentence saying
+       both about one. */
+    console.log(
+      `all ${CONTROLS.length} refused controls still look refused in both themes, at ${widths.length} widths (${widths.join(', ')}) on ${screens.length} screens (${screens.map((one) => one.name).join('; ')}), measured in Chrome (${CONTROLS.map((one) => one.name).join('; ')})`,
+    )
   } finally {
     chrome.kill()
-    try {
-      rmSync(page, { force: true })
-    } catch {
-      console.log(`fixture left behind: ${page}`)
+    for (const one of pages) {
+      try {
+        rmSync(one.page, { force: true })
+      } catch {
+        console.log(`fixture left behind: ${one.page}`)
+      }
     }
     /* The profile is left to the system's temp folder if Windows refuses: Chrome holds
        its files for a moment after the kill, and a failed delete must not turn a

@@ -1,7 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { ruleFor } from '../test/stylesheet'
-import { bare } from '../test/sources'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
@@ -775,47 +771,6 @@ describe('a lock that arrives while the list of towns is standing', () => {
 
     expect(screen.queryByRole('listbox'), 'escape left the list standing').toBeNull()
     expect(outerSawEscape, 'the press went on to whatever stands around it').not.toHaveBeenCalled()
-  })
-})
-
-describe('what the portal’s dress for a held control actually says', () => {
-  it('is a rule with a home, and not only a name on an element', () => {
-    /* The case further up asks that the class is on the element, and the class
-       name is written by hand in both places. That is half a guard: measured by a
-       review on 28.08.2026 by renaming the rule in the stylesheet alone, all 2229
-       tests stayed green while a locked field went back to looking exactly like a
-       live one, down to the same background and the same text cursor.
-
-       So the rule itself is read. Two declarations and no more: what makes a held
-       control tell a reader it will not answer is that it is shaded and that the
-       pointer stops promising an answer over it. */
-    const held = ruleFor(
-      readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8'),
-      '.field__control--held',
-      'PlaceField.css',
-    )
-
-    expect(held.background).toBe('var(--surface-hover)')
-    expect(held.cursor).toBe('default')
-  })
-
-  it('reaches the fields a chosen race fills in, which is where they live', () => {
-    /* `PlaceField` is not one of them. No form on the portal locks it today, and
-       the fields a race really does lock are drawn by the renderer of forms from
-       one shared set of properties. Measured by a review on 28.08.2026 in Chrome
-       over the built stylesheet: the difference between the whole computed style
-       of a field locked there and a live one was the empty set.
-
-       **Three of the four**, and the fourth is written down rather than reached
-       across for: the date is drawn by `forms/DatePicker.tsx`, which writes its
-       own class and never sees this object, and that file is held by another
-       change (`btl-produkt/PENDING.md`).
-
-       Read off the renderer's source, because a screen that locks those fields is
-       a flow of its own and this file is about the place. */
-    const renderer = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.tsx'), 'utf-8')
-
-    expect(bare(renderer)).toContain("locked ? 'field__control field__control--held' : 'field__control'")
   })
 })
 

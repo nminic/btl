@@ -1,5 +1,5 @@
 import { must } from '../test/at'
-import { bigEnough, closestIn, cropIn, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
+import { aimAt, bigEnough, closestIn, cropIn, draggedTo, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
 import type { CoverStyle, Crop, Frame, Shape } from './crop'
 
 /* Which square of a picture is the picture.
@@ -410,6 +410,106 @@ describe('the hole the shade is cut with', () => {
   })
 })
 
+describe('what a press at a spot would do, and the pointer that says so first', () => {
+  /* Owner, 29.08.2026: „Kad je miš unutar kruga, pointer se pretvara u ruku i
+     klikom i vučenjem se taj krug pomera po slici", and „Kad je miš na samoj
+     ivici kruga, pointer se pretvara u strelice za razvlačenje."
+
+     One function answers both, deliberately (ADL A31): the press already had to
+     decide this, and the cursor is that same decision said out loud a moment
+     earlier. That the press really does ask this one and not a second copy of it
+     is measured on the screen, in `cropChooser.test.tsx`; what is measured here
+     is the arithmetic the answer is made of. */
+
+  /** The circle over a square picture: middle of the box, half of it across. */
+  const wholeOf = (shape: Shape) => holeOf(frameOf(WHOLE, shape))
+
+  it('reads the middle of the circle as something to pick up', () => {
+    /* An open hand and not `move`: the picture does not move, the circle over it
+       does, and a member who takes hold of it is picking the circle up. */
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5, down: 0.5 })).toEqual({
+      doing: 'moving',
+      cursor: 'grab',
+    })
+  })
+
+  it('reads the rim as something to pull, and everywhere outside it as well', () => {
+    /* Outside is the rim too, and truthfully so: a press out there drags the
+       edge of the circle out to meet the pointer, which is a resize whatever it
+       looks like. */
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.95, down: 0.5 }).doing).toBe('sizing')
+    expect(aimAt(wholeOf(UNKNOWN), { across: 1.4, down: 0.5 }).doing).toBe('sizing')
+  })
+
+  it('puts the band at three quarters of the radius and nowhere else', () => {
+    /* The number itself, from both sides and from close up. A member who takes
+       hold of the circle a little inside its rim to shift it must not resize it
+       instead, which is what a band below three quarters would do; and the rim
+       has to answer while the pointer is still on the circle, which is what a
+       band above it takes away.
+
+       Measured a hundredth of a radius either side, so the two together leave
+       room for one number and no other. Written wider, they measured very little:
+       six tenths and nine tenths, which is what stood here until 29.08.2026, let
+       the band be anything from 0,65 to 0,79, and a review moved it to 0,74, to
+       0,65 and to 0,79 in turn with the whole suite staying green. It took 0,89
+       before anything noticed.
+
+       That the press really asks this one function, rather than a second copy of
+       the arithmetic that could be moved on its own, is measured on the screen at
+       these very spots (`cropChooser.test.tsx`, „the band that tells a move from
+       a resize"). */
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.74 * 0.5, down: 0.5 }).doing).toBe('moving')
+    expect(aimAt(wholeOf(UNKNOWN), { across: 0.5 + 0.76 * 0.5, down: 0.5 }).doing).toBe('sizing')
+  })
+
+  it('measures the distance in radii, so a tall picture is not read as an ellipse', () => {
+    /* A photograph is not square, so the circle is an ellipse once it is written
+       in shares of each edge. On a picture 400 by 800 the circle is half the box
+       across and a quarter of it down, so the same three tenths of the box is
+       well inside it sideways and well outside it downwards. Measured in shares
+       instead, the two would answer the same and the rim would be in the wrong
+       place in one of the two directions. */
+    const hole = wholeOf(portrait)
+
+    expect(aimAt(hole, { across: 0.8, down: 0.5 }).doing).toBe('moving')
+    expect(aimAt(hole, { across: 0.5, down: 0.8 }).doing).toBe('sizing')
+  })
+
+  it('points the arrows along the line through the middle, in eight directions', () => {
+    /* Eight eighths of a turn and four cursors, because an arrow and the arrow
+       opposite it are one picture: the pointer at the left of the circle and the
+       pointer at the right of it both pull sideways.
+
+       Rounded rather than floored, so each cursor covers a quarter turn centred
+       on its own direction: due east is the middle of the sideways arrows and not
+       the boundary between two of them. The four above the middle of the picture
+       are the ones the remainder has to be taken twice for, because the remainder
+       of a negative number is negative in this language. */
+    const hole = wholeOf(UNKNOWN)
+    const out = (across: number, down: number) =>
+      aimAt(hole, { across: 0.5 + across * 0.4, down: 0.5 + down * 0.4 }).cursor
+
+    expect(out(1, 0), 'east').toBe('ew-resize')
+    expect(out(-1, 0), 'west').toBe('ew-resize')
+    expect(out(1, 1), 'south-east').toBe('nwse-resize')
+    expect(out(-1, -1), 'north-west').toBe('nwse-resize')
+    expect(out(0, 1), 'south').toBe('ns-resize')
+    expect(out(0, -1), 'north').toBe('ns-resize')
+    expect(out(-1, 1), 'south-west').toBe('nesw-resize')
+    expect(out(1, -1), 'north-east').toBe('nesw-resize')
+  })
+
+  it('reads the angle in radii as well, or a tall picture wears the wrong arrows', () => {
+    /* The other half of the same correction. On the picture 400 by 800 a spot at
+       four fifths of a radius down and a whole radius across lies at 27 degrees
+       of the circle, which is the diagonal; written in shares of the picture the
+       same spot lies at 14 degrees, which is due east. The eye sees a circle, so
+       the arrows have to agree with the circle. */
+    expect(aimAt(wholeOf(portrait), { across: 0.9, down: 0.6 }).cursor).toBe('nwse-resize')
+  })
+})
+
 describe('moving the circle with a finger or a mouse', () => {
   it('centres it on the spot being pointed at', () => {
     /* Owner, 23.08.2026: „krug se pomera prstom na telefonu i tabletu, mišem na
@@ -579,5 +679,106 @@ describe('the middle of the circle while it is being resized', () => {
 
     expect(least).toBeCloseTo(0.5, 5)
     expect(sizedTo(middle, small, { across: 0.5, down: 0.5 }, least).size).toBeCloseTo(least, 5)
+  })
+})
+
+describe('a gesture measured from where it began', () => {
+  const square = { width: 1000, height: 1000 }
+  const half: Crop = { x: 0.5, y: 0.5, size: 0.5 }
+
+  it('leaves the crop alone until the hand has actually moved', () => {
+    /* Owner, 29.08.2026: „krug ne mrdne dok ja ne počnem da ga resizeujem". A
+       gesture of no length is a change of nothing, and that has to hold wherever
+       the press landed: on the rim, well outside it, and inside the circle. */
+    for (const spot of [
+      { across: 0.75, down: 0.5 },
+      { across: 0.98, down: 0.5 },
+      { across: 0.55, down: 0.5 },
+    ]) {
+      for (const doing of ['moving', 'sizing'] as const) {
+        expect(draggedTo(half, square, doing, spot, spot, closestIn(square))).toEqual(half)
+      }
+    }
+  })
+
+  it('stops at the floor when the hand asks for a circle narrower than nothing', () => {
+    /* The one branch of this function with no other reader: a hand that travels far
+       enough inwards asks for a diameter below nought, and a spot is a place, which
+       has no sign. Without holding it at nought the distance is read back as a
+       circle growing out the other side, the floor is missed, and the circle
+       settles wider than the portal allows.
+
+       Measured by a review on 29.08.2026: pressed at 0,98 of a square picture and
+       dragged in to 0,55, the circle stopped at 0,36 instead of the floor.
+
+       **How far in is far enough, said in the one unit that is right.** The
+       diameter asked for is what it was less twice the distance the hand came in,
+       so the brake bites once the hand has come in by more than half the diameter,
+       which here is a quarter of the picture. Said as „further in than the circle is
+       wide" it would be wrong by a factor of two, and a review the same day showed
+       why that matters: the floor does **not** hold all the way in. Swept from 0,98
+       to 0,02, the answers are 0,34 at 0,9, the floor from 0,85 to 0,15, 0,34 again
+       at 0,1 and 0,5 at the far end, because the distance from the middle is a
+       distance and starts growing again once the hand passes the middle. The floor's
+       own ends were measured on 30.08.2026; an earlier version of this note put them
+       at 0,9 and 0,1, which are the last readings **outside** it. That is
+       `sizedTo`'s reading and older than this function; what is guarded here is only
+       that the diameter never goes below nought on the way. */
+    const floor = closestIn(square)
+    const pulled = draggedTo(
+      half,
+      square,
+      'sizing',
+      { across: 0.98, down: 0.5 },
+      { across: 0.55, down: 0.5 },
+      floor,
+    )
+
+    expect(floor).toBeCloseTo(0.24, 5)
+    expect(pulled.size).toBeCloseTo(floor, 5)
+  })
+
+  it('measures every move of one gesture from the press, not from the last answer', () => {
+    /* The whole of why the crop at the moment of the press is remembered. Measured
+       against a drag of two steps, because one step cannot tell the two apart: a
+       hand that goes 0,9 → 0,92 → 0,95 has travelled 0,05 in all, so the diameter
+       grows by 0,10. Reckoned from whatever the previous step produced, the second
+       step measures from a circle the first one already widened and the answer runs
+       away: 0,64 instead of 0,60, and on a real drag of dozens of steps the circle
+       escapes from under the finger. */
+    const first = draggedTo(
+      half,
+      square,
+      'sizing',
+      { across: 0.9, down: 0.5 },
+      { across: 0.92, down: 0.5 },
+      closestIn(square),
+    )
+    const second = draggedTo(
+      half,
+      square,
+      'sizing',
+      { across: 0.9, down: 0.5 },
+      { across: 0.95, down: 0.5 },
+      closestIn(square),
+    )
+
+    expect(first.size).toBeCloseTo(0.54, 5)
+    expect(second.size).toBeCloseTo(0.6, 5)
+    /* And the same second step reckoned against the circle the first step made,
+       which is exactly the shape the fault takes on the screen: the component
+       remembers where the press landed but hands over the **living** crop, so the
+       hand's whole travel is added to a circle that has already grown by part of
+       it. */
+    const runaway = draggedTo(
+      first,
+      square,
+      'sizing',
+      { across: 0.9, down: 0.5 },
+      { across: 0.95, down: 0.5 },
+      closestIn(square),
+    )
+
+    expect(runaway.size, 'the two ways of reckoning have stopped differing').toBeCloseTo(0.64, 5)
   })
 })
