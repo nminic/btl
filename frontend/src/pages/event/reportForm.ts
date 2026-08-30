@@ -7,7 +7,8 @@ import type { RaceKind } from '../../data/types'
  *  member filling both in should meet the same three in the same order. */
 const MEASURED = ['distanceKm', 'ascentM', 'descentM'] as const
 
-/** What a race of a length answers for, so the member is not asked. */
+/** The time, which a timed race answers for itself, so the member is not asked for
+ *  it there. Every other kind is asked. */
 const TIMED = ['hours', 'minutes', 'seconds'] as const
 
 /**

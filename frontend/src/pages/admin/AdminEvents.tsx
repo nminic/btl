@@ -21,7 +21,7 @@ import type { FormDef, FormValues } from '../../forms/types'
 
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
-import { RACE_KINDS } from '../../data/types'
+import { raceKind } from '../../data/raceKind'
 import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextNumber } from './raceIds'
 import { nextSeason } from './nextSeason'
@@ -82,7 +82,7 @@ function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] 
          the table into a state where it refuses a length that race has not got.
          The store keeps every value as text (`session/context.ts`), and a record
          written before this field existed carries none. */
-      kind: RACE_KINDS.find((known) => known === one.kind) ?? 'length',
+      kind: raceKind(String(one.kind)),
       limitSeconds: Number(one.limitSeconds) || 0,
       distanceKm: Number(one.distanceKm),
       ascentM: Number(one.ascentM),

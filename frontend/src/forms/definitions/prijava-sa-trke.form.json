@@ -9,7 +9,7 @@
       "labelKey": "newResult.hours",
       "required": true,
       "min": 0,
-      "max": 99
+      "max": 200
     },
     {
       "name": "minutes",

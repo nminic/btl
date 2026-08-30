@@ -42,16 +42,35 @@ describe('the form a result is reported on', () => {
     expect(asked('free')).toEqual(expect.arrayContaining([...MEASURED, ...TIME]))
   })
 
-  it('asks for the measurements exactly as the other form asks for them', () => {
+  it('asks for what it asks exactly as the other form asks for it', () => {
     /* One home for what a member is asked to measure (ADL A31). A member filling in
-       both forms meets the same three fields, in the same order, with the same
-       labels, hints and bounds; taken from the written definition rather than
-       written again, the two cannot drift. */
-    const mine = reportForm('time').fields.filter((one) => MEASURED.includes(one.name))
-    const theirs = unosRezultata.fields.filter((one) => MEASURED.includes(one.name))
+       both forms meets the same fields, in the same order, with the same labels,
+       hints and bounds; the three measurements are taken from the written
+       definition rather than written again, so those cannot drift.
 
-    expect(mine).toEqual(theirs)
-    expect(mine.map((one) => one.name)).toEqual(MEASURED)
+       The time is asked here as well, and it is the half that had: the two forms
+       allowed 99 hours and 200, so a free race run over five days would have been
+       refused on the one opened from the calendar and taken on the other. Both are
+       200 now, which is the looser of the two and the one an ultra needs. */
+    const same = (form: { fields: { name: string }[] }, wanted: readonly string[]) =>
+      form.fields.filter((one) => wanted.includes(one.name))
+
+    expect(same(reportForm('time'), MEASURED)).toEqual(same(unosRezultata, MEASURED))
+    expect(same(reportForm('time'), MEASURED).map((one) => one.name)).toEqual(MEASURED)
+    expect(same(reportForm('free'), TIME)).toEqual(same(unosRezultata, TIME))
+    expect(same(reportForm('length'), TIME)).toEqual(same(unosRezultata, TIME))
+  })
+
+  it('hands back the same form each time it is asked, for every kind', () => {
+    /* These are handed to `FormRenderer` as a prop, and a fresh object on every
+       render is a changed prop on every render, which ADL A2 records the cost of on
+       the race form. Asked of all three and not of the one where it is free: the
+       kind that returns the written definition untouched passes this however the
+       function is written, and the two the function actually builds are the two
+       that could be rebuilt on every call. */
+    for (const kind of RACE_KINDS) {
+      expect(reportForm(kind), kind).toBe(reportForm(kind))
+    }
   })
 
   it('keeps what every kind is asked, whichever kind it is', () => {

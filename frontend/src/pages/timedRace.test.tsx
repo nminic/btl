@@ -54,6 +54,26 @@ const asTimed = (race: Race) => ({ ...race, kind: 'time', limitSeconds: 86_400, 
 
 const EVENT = 'jagodinski-maraton-2017'
 
+/**
+ * The address of the form for reporting a result on the first race of that event.
+ *
+ * Asked after the stub is in place and never before it: the portal keeps the answer
+ * to a file it has already read, so a load taken first would cache the races as they
+ * really are and the screen would go on drawing those while the case passed anyway.
+ */
+async function reportAddress() {
+  const events = await loadResource<{ id: string; slug: string }[]>('events')
+  const held = must(
+    events.find((one) => one.slug === EVENT),
+    'the event these cases are written around',
+  )
+  const race = first(
+    (await loadResource<Race[]>('races')).filter((one) => one.eventId === held.id),
+  )
+
+  return `/sr/kalendar/${EVENT}/prijava?trka=${race.id}`
+}
+
 describe('a race that fixes no length', () => {
   it('leaves the length column empty rather than saying it is nought kilometres', async () => {
     /* The grid of a competition settled this shape already (PDL, 31.07.2026): a
@@ -351,23 +371,11 @@ describe('a race that fixes no length', () => {
     globalThis.fetch = servingRaces(real, asTimed)
 
     try {
-      /* Asked after the stub is in place and never before it: the portal keeps the
-         answer to a file it has already read, so a load taken first would cache the
-         races as they really are and the screen would draw those. */
-      const events = await loadResource<{ id: string; slug: string }[]>('events')
-      const held = must(
-        events.find((one) => one.slug === EVENT),
-        'the event this case is written around',
-      )
-      const race = first(
-        (await loadResource<Race[]>('races')).filter((one) => one.eventId === held.id),
-      )
-
-      renderAt(`/sr/kalendar/${EVENT}/prijava?trka=${race.id}`, 'competitor', '000001')
+      renderAt(await reportAddress(), 'competitor', '000001')
 
       const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
 
-      expect(note.textContent, 'the sentence is the one for a race of a length').toMatch(
+      expect(note.textContent, 'the sentence is not the one a timed race gets').toMatch(
         /Vreme portal već zna sa same trke/,
       )
       expect(screen.queryByLabelText(/^Sati/), 'a timed race is asking for a time').toBeNull()
@@ -384,6 +392,60 @@ describe('a race that fixes no length', () => {
         0,
       )
       expect(await screen.findByText(new RegExp(formatPoints(earned, 'sr-Latn')))).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
+
+  it('says of a free race that it fixes neither, and asks for all four', async () => {
+    /* The third kind, which fixes nothing: the member gives the length, the climb,
+       the fall and the time. Its sentence is its own because the sentence says what
+       the portal already knows, and on a free race that is nothing at all.
+
+       Asked on the screen and not only of the form, because the sentence and the
+       fields are chosen in two different places and a case about one of them says
+       nothing about the other. */
+    const real = globalThis.fetch
+
+    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'free', distanceKm: 0 }))
+
+    try {
+      renderAt(await reportAddress(), 'competitor', '000001')
+
+      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
+
+      expect(note.textContent).toMatch(/ne zadaje ni dužinu ni vreme/)
+      expect(await screen.findByLabelText(/^Dužina/)).toBeVisible()
+      expect(screen.getByLabelText(/^Uspon/)).toBeVisible()
+      expect(screen.getByLabelText(/^Spust/)).toBeVisible()
+      expect(screen.getByLabelText(/^Sati/), 'a free race is not asking for a time').toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
+
+  it('draws the form for a kind it does not know rather than falling over', async () => {
+    /* The type says one of three and the file says whatever it says. Both of the
+       things this screen chooses by the kind are written one per kind, a form and a
+       sentence, and a lookup with a word that is not there gives `undefined`:
+       handed to the translator or to the renderer, that takes the whole screen down
+       to the error boundary. Measured on 30.08.2026 on a screen that had drawn this
+       form perfectly well the day before.
+
+       Read as a race of a length, which is what every race was before the field
+       existed, so what the member meets is the form they would have met anyway. */
+    const real = globalThis.fetch
+
+    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'ludilo' }))
+
+    try {
+      renderAt(await reportAddress(), 'competitor', '000001')
+
+      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
+
+      expect(note.textContent).toMatch(/Dužinu, uspon i spust portal već zna sa same trke/)
+      expect(screen.getByLabelText(/^Sati/)).toBeVisible()
+      expect(screen.queryByLabelText(/^Dužina/), 'it is asking for what it knows').toBeNull()
     } finally {
       globalThis.fetch = real
     }

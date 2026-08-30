@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { btlPoints } from '../../data/scoring'
 import type { RaceKind } from '../../data/types'
 import { useFilterParams } from '../../app/useFilterParams'
 import { raceLabel } from '../../data/raceLabel'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
-import { categoryOf } from '../../data/raceCategory'
 import { reportForm } from './reportForm'
+import { reportedResult } from './reportedResult'
+import { raceKind } from '../../data/raceKind'
 import type { FormValues } from '../../forms/types'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -17,12 +17,6 @@ import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
 import { SignedOut } from '../member/SignedOut'
 import '../member/Member.css'
-
-/** Hours, minutes and seconds are all required by the definition, so there is
- *  nothing here to fall back to. */
-function seconds(values: FormValues): number {
-  return Number(values.hours) * 3600 + Number(values.minutes) * 60 + Number(values.seconds)
-}
 
 
 /**
@@ -47,8 +41,10 @@ function seconds(values: FormValues): number {
  */
 /* One sentence per kind, because the sentence says what the portal already knows
    and that is a different thing on each of the three. A record and not a branch, so
-   a kind added to `RACE_KINDS` and forgotten here does not compile, and the guard
-   over the words can walk it (`i18n/keys.test.ts`). */
+   a kind added to `RACE_KINDS` and forgotten here does not compile. What holds the
+   three keys to the dictionary is `i18n/said.test.ts`, which sweeps every key the
+   portal asks for; `keys.test.ts` walks lists written into it by hand and knows
+   nothing of these. */
 const NOTE = {
   length: 'report.note',
   time: 'report.noteTime',
@@ -154,28 +150,18 @@ export function ReportResult() {
           /* Narrowed once, for the same reason the event is: the handler below
              runs after the check above and the compiler cannot see that. */
           const race = chosen
+          /* Read through the one function that knows the three words, and not off
+             the record. The type says `RaceKind`, but the record comes out of a
+             file nothing checks, and both of the things chosen by it below are
+             written one per kind: a word that is not one of the three gives
+             `undefined` from either, and `undefined` handed to the translator or to
+             the renderer takes this screen down to the error boundary. Measured
+             30.08.2026, and the same reading is what the table of races in the
+             administration does (`admin/AdminEvents.tsx`). */
+          const kind = raceKind(race.kind)
 
           function onSubmit(values: FormValues) {
-            /* What was run, which the race answers for only where it fixes it. On a
-               timed and on a free race the length, the climb and the fall are what
-               the member covered, and the race carries nought (`data/types.ts`). */
-            const measured =
-              race.kind === 'length'
-                ? { distanceKm: race.distanceKm, ascentM: race.ascentM, descentM: race.descentM }
-                : {
-                    distanceKm: Number(values.distanceKm),
-                    ascentM: Number(values.ascentM),
-                    descentM: Number(values.descentM),
-                  }
-            /* And the time the formula scores against. On a timed race that is the
-               race's own limit and not what anybody spent: it is the same for
-               everyone who finished, and the owner turned down the other reading on
-               29.08.2026 because it rewards stopping, 60 km in 6 h beating the same
-               60 km run out over the full 24. The form does not ask for a time on
-               such a race at all (`reportForm.ts`), so there is nothing else this
-               could read. */
-            const total = race.kind === 'time' ? race.limitSeconds : seconds(values)
-            const earned = btlPoints(measured.distanceKm, measured.ascentM, measured.descentM, total) ?? 0
+            const run = reportedResult(race, values)
 
             submit({
               memberNumber: mine,
@@ -193,21 +179,16 @@ export function ReportResult() {
                  filed on the first: the race carries the day it is run on
                  (`data/types.ts`), and that is the day somebody ran. */
               date: race.date,
-              /* Off the race, not off the member. These are the official figures
-                 and a moderator corrects them on the race itself, where the
-                 correction reaches everybody who ran it. */
-              distanceKm: measured.distanceKm,
-              ascentM: measured.ascentM,
-              descentM: measured.descentM,
+              /* What was run, and which of those figures come from the race rather
+                 than from the member depends on what the race fixes
+                 (`reportedResult.ts`). */
+              distanceKm: run.distanceKm,
+              ascentM: run.ascentM,
+              descentM: run.descentM,
               photo: String(values.photo),
-              seconds: total,
-              points: earned,
-              /* Off the race where the race fixes a length, which leaves every one
-                 of the 1612 races in the file reading exactly as it did. Where it
-                 does not, the race carries the category of a length nobody ran, so
-                 it is read off what the member covered, through the one function
-                 that answers that (`data/raceCategory.ts`). */
-              category: race.kind === 'length' ? race.category : categoryOf(measured.distanceKm),
+              seconds: run.seconds,
+              points: run.points,
+              category: run.category,
               /* The address of the official results, asked for here since
                  23.08.2026 exactly as the form outside the calendar asks for it:
                  the owner had the foot of the two forms made the same, „Link ka
@@ -218,7 +199,7 @@ export function ReportResult() {
               comment: String(values.comment),
             })
 
-            setDone(earned)
+            setDone(run.points)
           }
 
           return (
@@ -252,7 +233,7 @@ export function ReportResult() {
                     differently from its event, the member no longer sees from this
                     sentence which event it belongs to. He sees it on the page he
                     came from, which is the event's own. */}
-                {t(NOTE[race.kind], {
+                {t(NOTE[kind], {
                   /* Among **all** the races of the event and not only the run
                      ones, because that is what the table on the event says
                      (EventDetail.tsx) and a race must not change its name between
@@ -264,7 +245,7 @@ export function ReportResult() {
                 })}
               </p>
 
-              <FormRenderer form={reportForm(race.kind)} onSubmit={onSubmit} />
+              <FormRenderer form={reportForm(kind)} onSubmit={onSubmit} />
             </>
           )
         }}
