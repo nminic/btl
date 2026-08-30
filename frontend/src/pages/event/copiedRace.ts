@@ -1,4 +1,5 @@
 import type { Race } from '../../data/types'
+import { categoryOf } from '../../data/raceCategory'
 import { shiftDate } from '../../forms/dateField'
 
 /**
@@ -33,5 +34,11 @@ export function copiedRace(race: Race, event: string, by: number): Record<string
     distanceKm: String(race.distanceKm),
     ascentM: String(race.ascentM),
     descentM: String(race.descentM),
+    /* Read off the length rather than carried, which is the same answer the table
+       of races writes (`admin/raceRows.ts`) and for the same reason: the category
+       is worked out from the length and is never given by hand
+       (`data/raceCategory.ts`), so the two writers of a race record now agree
+       field for field. */
+    category: categoryOf(race.distanceKm),
   }
 }

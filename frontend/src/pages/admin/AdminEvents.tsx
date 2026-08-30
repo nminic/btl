@@ -21,6 +21,7 @@ import type { FormDef, FormValues } from '../../forms/types'
 
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
+import { RACE_KINDS } from '../../data/types'
 import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextNumber } from './raceIds'
 import { nextSeason } from './nextSeason'
@@ -75,15 +76,14 @@ function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] 
          it comes back as the string „false", which is true. */
       renamed: one.renamed === 'yes' ? 'yes' : 'no',
       date: String(one.date),
-      /* Read straight and not against the list of kinds that exist, because nothing
-         on this path reads the word: it goes from the record into the row and back
-         into the record, and the one place that decides what it means is where the
-         race is named. A check here would be a decision nobody acts on, so no
-         mutation could fell it. What holds the word to the three that exist is the
-         guard over the file (`data/data.test.tsx`) and the two places that write
-         one: this table and the copying of an event. */
-      kind: String(one.kind),
-      limitSeconds: Number(one.limitSeconds),
+      /* Read against the list of kinds that exist, because the row does act on the
+         word: a race that does not fix its length is not asked for one
+         (`raceRows.whatIsMissing`), so a word this portal does not know would put
+         the table into a state where it refuses a length that race has not got.
+         The store keeps every value as text (`session/context.ts`), and a record
+         written before this field existed carries none. */
+      kind: RACE_KINDS.find((known) => known === one.kind) ?? 'length',
+      limitSeconds: Number(one.limitSeconds) || 0,
       distanceKm: Number(one.distanceKm),
       ascentM: Number(one.ascentM),
       descentM: Number(one.descentM),

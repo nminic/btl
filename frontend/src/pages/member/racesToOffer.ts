@@ -63,9 +63,17 @@ export function racesToOffer(
     said: [race.name, formatNumericDate(race.date), raceMeasure(race, locale)]
       .filter((one) => one !== '')
       .join(' – '),
+    /* What choosing the race fills in under the box. A length only where the race
+       fixes one: a timed race and a free one carry nought, and nought is not a
+       length the form will take (`definitions/unos-rezultata.form.json` asks for
+       at least 0,1, and `forms/validate.ts` holds it), so filling it in would hand
+       the member a row they cannot send. Left empty, the field is theirs to fill,
+       which is what the owner asked for on 29.08.2026: on a timed race the member
+       enters the length, the climb and the fall, because the race cannot know how
+       far each of them went. */
     fills: {
       date: fieldDate(race.date),
-      distanceKm: String(race.distanceKm),
+      distanceKm: race.kind === 'length' ? String(race.distanceKm) : '',
       ascentM: String(race.ascentM),
       descentM: String(race.descentM),
     },

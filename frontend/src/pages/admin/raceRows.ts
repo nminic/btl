@@ -1,6 +1,6 @@
 import { isoDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
-import type { Race } from '../../data/types'
+import type { Race, RaceKind } from '../../data/types'
 
 /**
  * One race of an event while it is being entered, before anything is saved.
@@ -38,20 +38,20 @@ export type RaceRow = {
    * because saving the event writes every row back over the race it came from
    * (`AdminEvents.tsx`, `editRecord(row.id, storedRow(row, written))`), and a
    * field the row does not carry is a field that save deletes. Measured on
-   * 30.08.2026: without them, opening an event and pressing save turned a twenty
-   * four hour race into a race of nought kilometres.
+   * 30.08.2026 on the record and not on the screen: without them, a race read into
+   * a row and written back out of it came back a race of a length with no limit.
    *
    * They become columns the day administration can set them, and the guard that
    * keeps them alive through a save is the same one either way.
    *
-   * Plain text and not `RaceKind`, because a row does not read this and must not
-   * be tempted to: it carries the word from the record to the record, and the one
-   * place that decides what a word means is where the race is named
-   * (`data/raceLabel.ts`). A carrier that narrowed the word would have to answer
-   * for one it does not know, and there is no answer it could give that anything
-   * would ever read.
+   * One of the three words and not plain text, because the row does read it: what
+   * a race must say about itself depends on which kind it is, and a race that does
+   * not fix its length cannot be made to give one (`whatIsMissing`). An earlier
+   * turn of this had it as text, on the reasoning that a row only carries the
+   * word; that was true of the save and false of the bounds, which is the half
+   * that refuses.
    */
-  kind: string
+  kind: RaceKind
   limitSeconds: string
   distanceKm: string
   ascentM: string
@@ -65,12 +65,35 @@ export type RaceRow = {
 export type RaceOfRow = Pick<
   Race,
   'id' | 'name' | 'renamed' | 'date' | 'distanceKm' | 'ascentM' | 'descentM'
-> & {
-  /* Carried, not read, for the reason `RaceRow.kind` gives. A race out of the file
-     hands its own `RaceKind` straight in, which is what `Race` is; the overlaid
-     list hands in whatever the store keeps, which is text. */
-  kind: string
-  limitSeconds: number
+> &
+  Pick<Race, 'kind' | 'limitSeconds'>
+
+/**
+ * A row for a race being entered, as the table opens it.
+ *
+ * Its own function and not an object written into the table, because the words it
+ * puts in `kind` are words `raceLabel` will read back and nothing between the two
+ * checks them: written where they were, `kind: 'ludilo'` passed the whole package
+ * (measured 30.08.2026). Here they are read by a case.
+ *
+ * A race entered by hand is a race of a length, because a length is the only thing
+ * this table asks for; the day it asks for the kind as well, this is where the
+ * answer comes from.
+ */
+export function newRaceRow(eventName: string, eventDate: string): RaceRow {
+  return {
+    id: '',
+    /* Named after the event it is entered under, which is what „po default-u naziv
+       događaja" means; it follows the event until somebody types into it. */
+    name: eventName,
+    renamed: 'no',
+    date: isoDate(eventDate) === '' ? '' : eventDate,
+    kind: 'length',
+    limitSeconds: '0',
+    distanceKm: '',
+    ascentM: '',
+    descentM: '',
+  }
 }
 
 export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): RaceRow[] {
@@ -164,9 +187,18 @@ export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | 'nam
      on the real screen: a climb of **minus five hundred** metres saved. `Le = L +
      (1.25×AP + 0.75×AN)/200` then works out a profile that was never run, and the
      whole standing is worked out from it. */
-  return (['distanceKm', 'ascentM', 'descentM'] as const).find(
-    (field) => !withinBounds(row[field], field),
-  )
+  /* A race that does not fix its length is not asked for one. A timed race and a
+     free race carry nought, which is outside the bounds on purpose, so without
+     this an event holding one of them could not be saved at all: `allFinished` is
+     what the screen asks before it writes anything, and the refusal it draws names
+     a field that race has not got. The climb and the fall are still asked for,
+     because a course has both whichever way it is run. */
+  const asked =
+    row.kind === 'length'
+      ? (['distanceKm', 'ascentM', 'descentM'] as const)
+      : (['ascentM', 'descentM'] as const)
+
+  return asked.find((field) => !withinBounds(row[field], field))
 }
 
 /**

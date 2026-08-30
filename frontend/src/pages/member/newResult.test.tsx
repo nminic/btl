@@ -42,6 +42,39 @@ function offered(): string[] {
 /** The four the calendar fills in, by the name each is asked under. */
 const FILLED = [/^Datum/, /^Dužina/, /^Uspon/, /^Spust/] as const
 
+/* One event and a way of shaping a race under it, for the cases that ask what a
+   race is offered by. Written here rather than inside one of them, because two
+   cases ask the same question of the same three races: what the row says, and
+   what choosing it fills in. */
+const held: BtlEvent = {
+  id: 'e1',
+  slug: 'dogadjaj-2026',
+  name: 'Događaj',
+  date: '2026-09-19',
+  city: 'Beograd',
+  country: 'RS',
+  kind: 'race',
+  featured: 'no',
+  description: '',
+  link: '',
+  copiedFrom: '',
+}
+const shaped = (over: Partial<Race>): Race => ({
+  id: 'r',
+  eventId: 'e1',
+  name: 'Trka',
+  renamed: 'no',
+  date: '2026-09-19',
+  kind: 'length',
+  limitSeconds: 0,
+  distanceKm: 0,
+  ascentM: 0,
+  descentM: 0,
+  category: 'short',
+  ...over,
+})
+
+
 describe('the list of races under the name of an event', () => {
   it('says nothing until two letters have been typed', async () => {
     /* Owner, 23.08.2026: „posle dva slova treba da krene autocomplete". Both
@@ -129,34 +162,6 @@ describe('the list of races under the name of an event', () => {
        point of the case is that this list reads it: a row built from the length
        alone would offer the twenty four hour race as „0,0 km" and the free one as
        „0,0 km" too, which is what it did until 30.08.2026. */
-    const held: BtlEvent = {
-      id: 'e1',
-      slug: 'dogadjaj-2026',
-      name: 'Događaj',
-      date: '2026-09-19',
-      city: 'Beograd',
-      country: 'RS',
-      kind: 'race',
-      featured: 'no',
-      description: '',
-      link: '',
-      copiedFrom: '',
-    }
-    const shaped = (over: Partial<Race>): Race => ({
-      id: 'r',
-      eventId: 'e1',
-      name: 'Trka',
-      renamed: 'no',
-      date: '2026-09-19',
-      kind: 'length',
-      limitSeconds: 0,
-      distanceKm: 0,
-      ascentM: 0,
-      descentM: 0,
-      category: 'short',
-      ...over,
-    })
-
     const said = racesToOffer(
       [held],
       [
@@ -173,6 +178,33 @@ describe('the list of races under the name of an event', () => {
       'Trka – 19.09.2026.',
       'Trka – 19.09.2026. – 21,1 km',
     ])
+  })
+
+  it('fills in a length only where the race fixes one', () => {
+    /* Choosing a race fills the fields under the box. A timed race and a free one
+       carry nought, and nought is not a length this form will take: the definition
+       asks for at least 0,1 (`definitions/unos-rezultata.form.json`) and
+       `forms/validate.ts` holds it, so a row offered with a nought in it is a row
+       the member cannot send.
+
+       Left empty, the field is theirs to fill, which is what the owner asked for on
+       29.08.2026: on a timed race the member enters the length, the climb and the
+       fall, because the race cannot know how far each of them went. The climb and
+       the fall are still filled in from the race, and that half is asked here too,
+       so the exemption cannot quietly widen. */
+    const filled = racesToOffer(
+      [held],
+      [
+        shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400, ascentM: 120 }),
+        shaped({ id: 'r2', kind: 'free', ascentM: 120 }),
+        shaped({ id: 'r3', distanceKm: 21.1, ascentM: 120 }),
+      ],
+      '2026-12-31',
+      'sr-Latn',
+    ).map((one) => one.fills)
+
+    expect(filled.map((one) => one?.distanceKm)).toEqual(['', '', '21.1'])
+    expect(filled.map((one) => one?.ascentM)).toEqual(['120', '120', '120'])
   })
 
   it('offers what has been run, newest first, and never what is still to come', async () => {

@@ -2,7 +2,7 @@ import { DatePicker } from '../../forms/DatePicker'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { BOUNDS, isWrong, type RaceRow } from './raceRows'
+import { BOUNDS, isWrong, newRaceRow, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -328,28 +328,7 @@ export function EventRaces({
       <button
         type="button"
         className="button button--secondary"
-        onClick={() =>
-          onRows([
-            ...rows,
-            {
-              id: '',
-              /* Named after the event it is entered under, which is what „po
-                 default-u naziv događaja" means; it follows the event until
-                 somebody types into it. */
-              name: eventName,
-              renamed: 'no',
-              date: isoDate(eventDate) === '' ? '' : eventDate,
-              /* A race entered here is a race of a length, because a length is the
-                 only thing this table asks for. Said rather than left out, since
-                 the row is what saving writes back (`admin/raceRows.ts`). */
-              kind: 'length',
-              limitSeconds: '0',
-              distanceKm: '',
-              ascentM: '',
-              descentM: '',
-            },
-          ])
-        }
+        onClick={() => onRows([...rows, newRaceRow(eventName, eventDate)])}
       >
         {t('admin.form.new.races')}
       </button>

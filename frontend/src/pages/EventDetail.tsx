@@ -143,7 +143,15 @@ function RaceTable({ event }: { event: BtlEvent }) {
                     <tr key={race.id}>
                       <td>{race.name}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
-                      <td>{formatNumber(race.distanceKm, locale, 2)}</td>
+                      {/* Empty where the race does not fix a length, rather than
+                          „0,00". The grid of a competition settled this shape
+                          already (PDL, 31.07.2026): a race somebody did not run is
+                          an empty cell and not a nought, „jer nula tvrdi da je
+                          trčao i osvojio nula". A nought here says the same untrue
+                          thing, that somebody measured this course and it came to
+                          nothing. What such a race is measured by is in its name,
+                          two columns over. */}
+                      <td>{race.kind === 'length' ? formatNumber(race.distanceKm, locale, 2) : ''}</td>
                       <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
                       <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>
                       {options && (

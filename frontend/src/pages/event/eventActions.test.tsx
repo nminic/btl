@@ -382,12 +382,14 @@ describe('a race carried into a copy of its event', () => {
        which would be a second place to keep up to date. */
     const copy = copiedRace(timed, 'e2', 0)
 
-    /* Every field a race has except two: the id, because a copy is a new race and
-       gets a number of its own, and the category, which is read off the length and
-       is never written by hand (`data/raceCategory.ts`). */
+    /* Every field a race has except the id, because a copy is a new race and gets a
+       number of its own. The category is among them: it is worked out from the
+       length rather than carried, which is what the other writer of a race record
+       does (`admin/raceRows.ts`), and until 30.08.2026 the two disagreed and this
+       case wrote the disagreement down as though it were a decision. */
     expect(Object.keys(copy).sort()).toEqual(
       Object.keys(timed)
-        .filter((one) => one !== 'id' && one !== 'category')
+        .filter((one) => one !== 'id')
         .sort(),
     )
   })
