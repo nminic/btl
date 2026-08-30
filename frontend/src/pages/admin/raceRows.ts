@@ -1,5 +1,6 @@
 import { isoDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
+import { raceKind } from '../../data/raceKind'
 import type { Race, RaceKind } from '../../data/types'
 
 /**
@@ -167,7 +168,12 @@ export const BOUNDS = {
  * whichever way it is run.
  */
 export function asksLength(row: Pick<RaceRow, 'kind'>): boolean {
-  return row.kind === 'length'
+  /* Through the one function that knows the three words, like every other reader of
+     a kind (`data/raceKind.ts`). The row's word is already read that way on the way
+     in, so nothing here can be anything else today; asked all the same, so that
+     which readers happen to be fed a checked word is not a thing anybody has to
+     work out. */
+  return raceKind(row.kind) === 'length'
 }
 
 /** Whether a measurement is inside what a race can be. An empty climb or fall is

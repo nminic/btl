@@ -23,11 +23,14 @@ function Sent() {
 }
 
 import { loadResource } from '../../data/client'
+import { btlPoints } from '../../data/scoring'
+import { formatPoints } from '../../i18n/format'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
 import { formatDistance, formatNumber, formatShortDate, formatYear } from '../../i18n/format'
 import { raceLabel } from '../../data/raceLabel'
 import { renderAt } from '../../test/render'
+import { Reported } from '../../test/saved'
 import { setupUser } from '../../test/user'
 import { ReportResult } from './ReportResult'
 
@@ -214,18 +217,66 @@ describe('a result reported this way', () => {
     await user.type(screen.getByLabelText(/Link ka zvaničnim/), said)
   }
 
-  it('says how many points it earned and that it is waiting', async () => {
-    const { races } = await racesOf(EVENT)
+  /** What `fillIn` types, in seconds. */
+  const TYPED_SECONDS = 3 * 3600 + 41 * 60 + 12
+
+  it('says how many points it earned, and sends the moderator the same figures', async () => {
+    /* Not the event the rest of this file uses: its races carry no climb and no
+       fall, so a screen that read one of them for the other, or read neither and
+       wrote nought, would have been measured as right. 195 of the file's 1612 races
+       have a climb and a fall that differ and neither is nought; this event holds
+       exactly one of them. */
+    const uphill = '100-milja-istre-2015'
+    const { races } = await racesOf(uphill)
+    const mine = must(
+      races.find((one) => one.ascentM !== one.descentM && one.ascentM > 0 && one.descentM > 0),
+      'a race whose climb and fall differ',
+    )
     const user = setupUser()
 
-    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+    renderAt(reportAddress(uphill, mine), 'competitor', ME, undefined, null, <Reported />)
+
     await fillIn(user)
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    /* The one thing the member came to find out (PDL P9). */
-    expect(screen.getByText(/BTL poena/)).toBeVisible()
+    /* The one thing the member came to find out (PDL P9), and the number and not
+       only the words. A race of a length answers for how far it is, so the formula
+       is fed the race's own figures and the time the member typed; measured here
+       because that is the half no case held, and every race in the file is one of
+       these. A round on 30.08.2026 measured it: with the length taken off the
+       member's own boxes instead, which a race of a length does not draw, the
+       formula was handed nothing at all and the member was told nought points,
+       on 1612 races out of 1612, and the whole package stayed green. */
+    const earned = btlPoints(mine.distanceKm, mine.ascentM, mine.descentM, TYPED_SECONDS)
+
+    expect(earned, 'the formula gave nothing, so the case would pass on anything').not.toBeNull()
+    expect(screen.getByText(/BTL poena/).textContent).toContain(
+      formatPoints(earned ?? 0, 'sr-Latn'),
+    )
     expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+
+    /* And the record that was sent, which is the half the member never sees: what
+       this screen says and what it sends are read twice over, so either could be
+       right while the other is not. Measured on 30.08.2026, when the seconds and the
+       points in the sent record could both be set to nought and every case in this
+       file went on passing.
+
+       All six, each under its own name and compared as one whole string. The
+       moderator's row draws five of them, but only as cells in a row whose text a
+       case can search: a number found there is a number found somewhere, and „500"
+       is as true of the fall as of the climb, so the two could be swapped and the
+       row would read the same. The sixth, the category, that row does not draw. */
+    expect(
+      must(
+        within(await screen.findByRole('list', { name: 'reported figures' })).getAllByRole(
+          'listitem',
+        )[0],
+        'the record that was just sent',
+      ).textContent,
+    ).toBe(
+      `km=${mine.distanceKm} up=${mine.ascentM} down=${mine.descentM} sec=${TYPED_SECONDS} pts=${earned ?? 0} cat=${mine.category}`,
+    )
   })
 
   it('sends the name of the race, not the name of the event it is run at', async () => {

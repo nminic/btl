@@ -99,6 +99,21 @@ describe('what a race is called', () => {
     expect(raceLabel(first, both, SR)).toBe('Trka 11. 4. 2027.')
   })
 
+  it('names a race of a kind it does not know by its length, and parts two of them', () => {
+    /* The type says one of three and the file says whatever it says. Read as a race
+       of a length, which is what every race was before the field existed, so the
+       ladder goes on working: read as anything else, the third and fourth rungs are
+       switched off and two races of one name on one morning at 8,68 and 8,74 km come
+       out under one and the same name, which is two links reading alike and leading
+       elsewhere (WCAG 2.2 SC 2.4.4). Measured by a review on 30.08.2026. */
+    const shorter = { ...race({ distanceKm: 8.68 }), kind: 'ludilo' }
+    const longer = { ...race({ distanceKm: 8.74 }), kind: 'ludilo' }
+    const both = [shorter, longer]
+
+    expect(raceLabel(shorter, both, SR)).toBe('Trka 2027. (8,68 km)')
+    expect(raceLabel(longer, both, SR)).toBe('Trka 2027. (8,74 km)')
+  })
+
   it('goes on parting two races of a length by the length written out exactly', () => {
     /* The rung that was there before any of this, asked again because the kind now
        decides what a rung writes and a mistake there would take this away without

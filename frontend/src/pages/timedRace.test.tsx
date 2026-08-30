@@ -1,7 +1,12 @@
 import { screen, within } from '@testing-library/react'
+import { SLOW } from '../test/slow'
+import { loadResource } from '../data/client'
+import { btlPoints } from '../data/scoring'
+import { formatPoints } from '../i18n/format'
 import type { Race } from '../data/types'
 import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
+import { Reported } from '../test/saved'
 import { setupUser } from '../test/user'
 
 /**
@@ -48,6 +53,28 @@ function servingRaces(
 /** Every race run to a limit of twenty four hours and no fixed length. */
 const asTimed = (race: Race) => ({ ...race, kind: 'time', limitSeconds: 86_400, distanceKm: 0 })
 
+const EVENT = 'jagodinski-maraton-2017'
+
+/**
+ * The address of the form for reporting a result on the first race of that event.
+ *
+ * Asked after the stub is in place and never before it: the portal keeps the answer
+ * to a file it has already read, so a load taken first would cache the races as they
+ * really are and the screen would go on drawing those while the case passed anyway.
+ */
+async function reportAddress() {
+  const events = await loadResource<{ id: string; slug: string }[]>('events')
+  const held = must(
+    events.find((one) => one.slug === EVENT),
+    'the event these cases are written around',
+  )
+  const race = first(
+    (await loadResource<Race[]>('races')).filter((one) => one.eventId === held.id),
+  )
+
+  return `/sr/kalendar/${EVENT}/prijava?trka=${race.id}`
+}
+
 describe('a race that fixes no length', () => {
   it('leaves the length column empty rather than saying it is nought kilometres', async () => {
     /* The grid of a competition settled this shape already (PDL, 31.07.2026): a
@@ -70,7 +97,7 @@ describe('a race that fixes no length', () => {
     globalThis.fetch = servingRaces(real, asTimed)
 
     try {
-      renderAt('/sr/kalendar/jagodinski-maraton-2017', 'competitor', '000001')
+      renderAt(`/sr/kalendar/${EVENT}`, 'competitor', '000001')
 
       const table = await screen.findByRole('table', { name: /^Trke/ })
       const heads = within(table)
@@ -325,4 +352,182 @@ describe('a race that fixes no length', () => {
       globalThis.fetch = real
     }
   })
+
+  it('scores a timed race against the limit of the race and not against a time nobody gave', async () => {
+    /* Owner, 29.08.2026, on four offered readings: the formula is unchanged and on a
+       timed race `Tsec` is the race's own limit, 24 h = 86400 s, the same for
+       everyone who finished. He turned down the reading where it is the time a
+       runner spent, because that one rewards stopping: 60 km in 6 h would beat the
+       same 60 km run out over the full 24.
+
+       Measured through the whole way in: the form for such a race asks for no time
+       at all (`reportForm.ts`), so a screen that went on reading a time off the
+       values would score the member at nought points and this would say so. The
+       number is worked out here from the same function the portal uses, since the
+       formula is the owner's and this case is about which time goes into it, not
+       about what it gives back. */
+    const real = globalThis.fetch
+    const user = setupUser()
+
+    globalThis.fetch = servingRaces(real, asTimed)
+
+    try {
+      renderAt(await reportAddress(), 'competitor', '000001', undefined, null, <Reported />)
+
+      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
+
+      expect(note.textContent, 'the sentence is not the one a timed race gets').toMatch(
+        /Vreme portal već zna sa same trke/,
+      )
+      expect(screen.queryByLabelText(/^Sati/), 'a timed race is asking for a time').toBeNull()
+
+      /* Climb and fall differ, and neither is nought: with both the same a screen
+         that read one for the other would be measured as right, and with both
+         nought the formula could not tell them apart either. */
+      await user.type(await screen.findByLabelText(/^Dužina/), '60')
+      await user.type(screen.getByLabelText(/^Uspon/), '2000')
+      await user.type(screen.getByLabelText(/^Spust/), '500')
+      await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      const earned = btlPoints(60, 2_000, 500, 86_400) ?? 0
+
+      expect(earned, 'the formula gave nothing, so the case would pass on anything').toBeGreaterThan(
+        0,
+      )
+      expect(await screen.findByText(new RegExp(formatPoints(earned, 'sr-Latn')))).toBeVisible()
+
+      /* And what is sent, which is the half the screen never shows the member.
+         `reportedResult` is measured on its own, but nothing said that this screen
+         hands its answers on: every one of these could be replaced by a figure off
+         the race and the member would still be told the right number of points,
+         because that is read separately.
+
+         All six as one string (`test/saved.tsx`), and not the moderator's row: that
+         row draws five of them as cells whose text a case can only search, so „500"
+         found in it is as true of the fall as of the climb, and the sixth, the
+         category, it does not draw at all. */
+      expect(
+        must(
+          within(await screen.findByRole('list', { name: 'reported figures' })).getAllByRole(
+            'listitem',
+          )[0],
+          'the record that was just sent',
+        ).textContent,
+      ).toBe(`km=60 up=2000 down=500 sec=86400 pts=${earned} cat=ultra`)
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
+
+  it('says of a free race that it fixes neither, and asks for all four', async () => {
+    /* The third kind, which fixes nothing: the member gives the length, the climb,
+       the fall and the time. Its sentence is its own because the sentence says what
+       the portal already knows, and on a free race that is nothing at all.
+
+       Asked on the screen and not only of the form, because the sentence and the
+       fields are chosen in two different places and a case about one of them says
+       nothing about the other. */
+    const real = globalThis.fetch
+
+    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'free', distanceKm: 0 }))
+
+    try {
+      renderAt(await reportAddress(), 'competitor', '000001')
+
+      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
+
+      expect(note.textContent).toMatch(/ne zadaje ni dužinu ni vreme/)
+      expect(await screen.findByLabelText(/^Dužina/)).toBeVisible()
+      expect(screen.getByLabelText(/^Uspon/)).toBeVisible()
+      expect(screen.getByLabelText(/^Spust/)).toBeVisible()
+      expect(screen.getByLabelText(/^Sati/), 'a free race is not asking for a time').toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
+
+  it('names a race of a kind it does not know the same way in the cell and in the link', async () => {
+    /* One word, three readers, and until 30.08.2026 two answers in one row: the cell
+       read the word itself and left the length out, while the link beside it named
+       the race „(21,1 km)" and the form behind that link took 21,1 km off the race.
+       A reader was told in one row both that the race has no length and what its
+       length is.
+
+       Read as a race of a length everywhere, which is what every race was before the
+       field existed. Both halves asked, because either alone is satisfied by a row
+       that says nothing at all. */
+    const real = globalThis.fetch
+
+    /* What this can and cannot say, since the two are easy to confuse. A word the
+       portal does not know is **meant** to be drawn exactly as a race of a length,
+       so no screen can tell the two apart and no served word can make this case fall
+       on its own: serving „length" here passes too, and that is the contract rather
+       than a hole. What falls is the code: reading the word off the record instead
+       of through `raceKind` empties the cell while the link beside it goes on naming
+       the length, and that is measured (mutation, 30.08.2026).
+
+       The served length is changed all the same, and it is the only thing here that
+       cannot be true of the real file, so the case cannot pass on a screen the stub
+       never reached. */
+    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'ludilo', distanceKm: 33.3 }))
+
+    try {
+      renderAt(`/sr/kalendar/${EVENT}`, 'competitor', '000001')
+
+      const table = await screen.findByRole('table', { name: /^Trke/ })
+      const heads = within(table)
+        .getAllByRole('columnheader')
+        .map((one) => one.textContent)
+      const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
+      const cells = within(row).getAllByRole('cell')
+      const said = must(cells[heads.indexOf('Dužina')], 'the length of the first race').textContent
+
+      /* The cell writes two decimals and the name writes one, so the two are not
+         compared as strings; what is asked is that both of them say a length at all.
+         Either alone is satisfied by the row that was drawn before this was put
+         right: the cell empty and the link saying „(21,1 km)". */
+      expect(said, 'the cell is not reading the served races').toBe('33,30')
+      expect(
+        must(
+          within(row).getByRole('link', { name: /^Unesi rezultat/ }).getAttribute('aria-label'),
+          'the way into the form',
+        ),
+        'the link names a different measure from the cell beside it',
+        /* „(33,3 km)" or „(33,30 km)": with every race of the event served at one
+           length the ladder climbs past the rough reading, and which rung it stops
+           on is `raceLabel`'s business and has its own cases. What is asked here is
+           that the link names that length at all. */
+      ).toContain('(33,3')
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
+
+  it('draws the form for a kind it does not know rather than falling over', async () => {
+    /* The type says one of three and the file says whatever it says. Both of the
+       things this screen chooses by the kind are written one per kind, a form and a
+       sentence, and a lookup with a word that is not there gives `undefined`:
+       handed to the translator or to the renderer, that takes the whole screen down
+       to the error boundary. Measured on 30.08.2026 on a screen that had drawn this
+       form perfectly well the day before.
+
+       Read as a race of a length, which is what every race was before the field
+       existed, so what the member meets is the form they would have met anyway. */
+    const real = globalThis.fetch
+
+    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'ludilo' }))
+
+    try {
+      renderAt(await reportAddress(), 'competitor', '000001')
+
+      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
+
+      expect(note.textContent).toMatch(/Dužinu, uspon i spust portal već zna sa same trke/)
+      expect(screen.getByLabelText(/^Sati/)).toBeVisible()
+      expect(screen.queryByLabelText(/^Dužina/), 'it is asking for what it knows').toBeNull()
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
 })

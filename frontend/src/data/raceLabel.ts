@@ -1,4 +1,5 @@
 import type { Race } from './types'
+import { raceKind } from './raceKind'
 import {
   formatDistance,
   formatLimit,
@@ -10,7 +11,13 @@ import {
 /** What this function needs of a race: its name, its day, and what it measures out
  *  in advance, so a column of a competition grid can be named by it as well as a
  *  row of an event. */
-export type Named = Pick<Race, 'name' | 'date' | 'kind' | 'limitSeconds' | 'distanceKm'>
+export type Named = Pick<Race, 'name' | 'date' | 'limitSeconds' | 'distanceKm'> & {
+  /* Whatever the record says, and not one of the three words: the type on `Race` is
+     a promise the file does not keep, and this is one of the places that reads it
+     (`data/raceKind.ts`). Said here rather than trusted, so a caller holding a
+     record straight off the disk is not made to lie about it first. */
+  kind: string
+}
 
 /**
  * What a race is called on a screen, among the races it is shown beside.
@@ -95,11 +102,17 @@ export type Named = Pick<Race, 'name' | 'date' | 'kind' | 'limitSeconds' | 'dist
  * every caller has to say what it does with nothing rather than print it.
  */
 export function raceMeasure(race: Named, locale: string): string {
-  if (race.kind === 'free') {
+  /* Read through the one function that knows the three words, and not off the
+     record. The type says `RaceKind`; the file says whatever it says, and a word
+     this portal has never heard of would otherwise fall past both branches below
+     and be named by neither its length nor its limit (`data/raceKind.ts`). */
+  const kind = raceKind(race.kind)
+
+  if (kind === 'free') {
     return ''
   }
 
-  return race.kind === 'time'
+  return kind === 'time'
     ? formatLimit(race.limitSeconds)
     : formatDistance(race.distanceKm, locale)
 }
@@ -128,7 +141,7 @@ export function raceLabelParts(
      is asked for here alone: only a race of a length has anything a decimal can
      sharpen, so the other two kinds give the same answer on every rung. */
   const measure = (one: Named, decimals: number) =>
-    decimals === 1 || one.kind !== 'length'
+    decimals === 1 || raceKind(one.kind) !== 'length'
       ? raceMeasure(one, locale)
       : `${formatNumber(one.distanceKm, locale, decimals)} km`
 

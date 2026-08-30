@@ -1,6 +1,7 @@
 import type { BtlEvent, Race } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
 import { fieldDate } from '../../forms/dateField'
+import { raceKind } from '../../data/raceKind'
 import { raceMeasure } from '../../data/raceLabel'
 import { formatNumericDate } from '../../i18n/format'
 
@@ -22,13 +23,18 @@ import { formatNumericDate } from '../../i18n/format'
  * data is eleven hundred events against sixteen hundred races and this is built
  * on every letter typed until it is memoised.
  */
+/** A race as it really arrives: everything `Race` carries, except that the kind is
+ *  still only a word, which is what the file says and what this reads
+ *  (`data/raceKind.ts`). */
+type Offered = Omit<Race, 'kind'> & { kind: string }
+
 export function racesToOffer(
   events: BtlEvent[],
-  races: Race[],
+  races: Offered[],
   today: string,
   locale: string,
 ): Suggestion[] {
-  const byEvent = new Map<string, Race[]>()
+  const byEvent = new Map<string, Offered[]>()
 
   for (const race of races) {
     byEvent.set(race.eventId, [...(byEvent.get(race.eventId) ?? []), race])
@@ -85,7 +91,7 @@ export function racesToOffer(
      */
     fills: {
       date: fieldDate(race.date),
-      ...(race.kind === 'length'
+      ...(raceKind(race.kind) === 'length'
         ? {
             distanceKm: String(race.distanceKm),
             ascentM: String(race.ascentM),
