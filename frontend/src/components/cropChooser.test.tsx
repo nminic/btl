@@ -860,10 +860,12 @@ describe('what the pointer says a press would do, before anybody presses', () =>
        way of reckoning from the other two. Carrying both the crop and the spot
        forward — each move measured from the last answer by the step just taken —
        agrees with reckoning from the press for as long as the hand goes one way
-       through open room: 0,54 then 0,60 either way. It parts company the moment the
-       hand turns back or crosses a limit, because the floor swallows what the
-       inward steps asked for and the outward steps then add to a circle that never
-       shrank. Measured by a review on 29.08.2026: pressed at 0,9, taken in to 0,6
+       through open room: 0,54 then 0,60 either way. It parts company when the hand
+       turns back **and** a limit has swallowed part of the way in: the floor keeps
+       what the inward steps asked for, and the steps back out then add to a circle
+       that never shrank. Neither alone is enough, measured on 30.08.2026: straight in
+       through the floor agrees step for step, and so does straight out through the
+       ceiling. Turning back is what a hand does, so the case does both. Measured by a review on 29.08.2026: pressed at 0,9, taken in to 0,6
        and back to 0,9, the third way answers 0,84 where the hand has ended exactly
        where it began. */
     fireEvent.pointerMove(box, at({ across: 0.6, down: 0.5 }))

@@ -717,9 +717,11 @@ describe('a gesture measured from where it began', () => {
        which here is a quarter of the picture. Said as „further in than the circle is
        wide" it would be wrong by a factor of two, and a review the same day showed
        why that matters: the floor does **not** hold all the way in. Swept from 0,98
-       to 0,02, the answers are 0,34 at 0,9 and again 0,34 at 0,1, with the floor in
-       between and 0,5 at the far end, because the distance from the middle is a
-       distance and starts growing again once the hand passes the middle. That is
+       to 0,02, the answers are 0,34 at 0,9, the floor from 0,85 to 0,15, 0,34 again
+       at 0,1 and 0,5 at the far end, because the distance from the middle is a
+       distance and starts growing again once the hand passes the middle. The floor's
+       own ends were measured on 30.08.2026; an earlier version of this note put them
+       at 0,9 and 0,1, which are the last readings **outside** it. That is
        `sizedTo`'s reading and older than this function; what is guarded here is only
        that the diameter never goes below nought on the way. */
     const floor = closestIn(square)

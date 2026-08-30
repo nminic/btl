@@ -183,10 +183,18 @@ export type Aim = { doing: 'moving' | 'sizing'; cursor: string }
  * Everything outside the circle is the rim as well, and truthfully so: a press
  * out there takes hold of the edge, and the drag that follows carries it by as much
  * as the hand's distance from the middle changes, which is a resize whatever it
- * looks like. Its **distance** and not the road it took: the reading is the larger
- * of the two directions (`sizedTo`), so a hand that slides sideways along the rim
- * travels a long way and changes nothing, and one that goes into a corner changes
- * as much as one that goes straight out. Until
+ * looks like. Its **distance** and not the road it took, and the distance is the
+ * larger of the two directions rather than the straight line (`sizedTo`), so a hand
+ * that goes into a corner changes the circle by as much as one that goes straight
+ * out: on a square picture, 0,95 across is a diameter of 0,6 and so is 0,95 across
+ * and 0,95 down.
+ *
+ * **Which also means the rim this reading follows is a square and not the circle
+ * that is drawn.** A finger led around the drawn circle from 0,9 across to
+ * forty-five degrees takes the diameter from 0,50 down to 0,27 and back up to 0,50,
+ * measured by a review on 30.08.2026; what leaves it alone is sliding along the line
+ * `across = 0,9`, which is the side of that square. An earlier version of this note
+ * had it the other way round, and said that a slide along the rim changes nothing. Until
  * 29.08.2026 it did something stronger and wrong, dragging the edge out to meet
  * the pointer the instant the press landed; `draggedTo` is where that was mended.
  *
@@ -275,8 +283,11 @@ function pulling(out: { across: number; down: number }): string {
  * focus off the sliders, and a second one measured that a second finger needs no
  * focus: holding the rim with one finger and dragging the size slider with another
  * leaves the slider at its new value, and the first finger's next move throws it
- * away. Without any slider at all, one finger on the rim and a tap in the middle
- * with another ends the pull and jumps the circle to the edge.
+ * away. Without any slider at all, a **second finger held down** in the middle while
+ * the first one moves sends the circle to the edge (`x` from 0,5 to 1), because
+ * nothing here reads `pointerId`. A tap — down and up — is not that: it ends the pull
+ * and moves nothing, and the first finger's next move then does nothing either. Both
+ * were measured on 30.08.2026, and an earlier version of this note ran them together.
  *
  * So it is a hole on the screen and not only in the reasoning, and it is written
  * down here rather than mended because mending it is a question about what a
