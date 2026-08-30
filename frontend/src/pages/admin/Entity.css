@@ -271,9 +271,16 @@
  * So the floor goes where the reading is, on the field, and the width above stays a
  * suggestion: the column is 5,5rem while what is typed fits in it, and as wide as it
  * must be when it does not. */
-.entity-races .table th:nth-child(n + 3):nth-child(-n + 5),
-.entity-races .table td:nth-child(n + 3):nth-child(-n + 5) {
+.entity-races .table .races__measure {
   inline-size: 5.5rem;
+}
+
+/* And the kind is wide enough for the word it holds. Measured in Chrome on
+   30.08.2026: the select needs 108px for „Vremenska", and at the 5,5rem the measures
+   take it was 72 and read „Dužins" with the arrow over the rest. Seven rem, which is
+   112px, is the first round figure that holds it. */
+.entity-races .table .races__kind {
+  inline-size: 7rem;
 }
 
 /* And the room the column gives up comes out of the padding rather than out of the
@@ -290,24 +297,28 @@
  * the border, hands 16px back to every value: measured after, nothing runs over at
  * 360, 700, 768 or 1280, „163.29" included. The other columns keep the padding the
  * portal uses everywhere, because words need the air and numbers do not. */
-.entity-races .table td:nth-child(n + 3):nth-child(-n + 5) .field__control {
+.entity-races .table td.races__measure .field__control {
   padding-inline: var(--space-4);
   min-inline-size: 4.5rem;
 }
 
-/* And the length reads from the right like the two measures beside it. The portal
+/* And every measure reads from the right, whichever column it sits in. The portal
    reads the first three columns of a table from the left, because in every other
-   table those three are words (`styles/table.css`). Here they were words too, until
-   the category came out from between the date and the length and the length moved
-   into third place: „Dužina" then stood against the left edge while „Uspon" and
-   „Spust" stood against the right, three columns of one kind read three ways.
+   table those three are words (`styles/table.css`); here the third has been a number
+   since the category came out from between the date and the length, and „Dužina"
+   stood against the left edge while „Uspon" and „Spust" stood against the right,
+   columns of one kind read two ways.
  *
- * Measured in Chrome on this screen: before, the heading of the length computed
- * `text-align: left` and the other two `right`; after, all three read `right`.
+ * By what the cell is and not by where it sits, which is the whole reason these
+ * rules stopped counting columns: two columns were added in the middle on 30.08.2026
+ * and the counted range moved off the measures and onto a word, leaving the climb
+ * and the fall 22 and 25 pixels wider than the room they had, so „506" showed as „5"
+ * and the fall showed nothing at all. Measured in Chrome, 1280 and 360, and nothing
+ * on the screen said a number was missing because the table fitted its box exactly.
  *
  * The heading and not the cell, because the cell holds a control rather than text:
- * measured on the same screen, all three fields compute `text-align: start` whatever
- * the cell around them says, so moving the cell would change nothing anybody sees. */
-.entity-races .table th:nth-child(3) {
+ * measured on the same screen, the fields compute `text-align: start` whatever the
+ * cell around them says, so moving the cell would change nothing anybody sees. */
+.entity-races .table th.races__measure {
   text-align: right;
 }

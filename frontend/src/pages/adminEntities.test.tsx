@@ -82,6 +82,13 @@ describe('the races of an event', () => {
       'aria-required',
       'false',
     )
+    expect(length(), 'the length of a race that fixes one announces no floor').toHaveAttribute(
+      'min',
+      '0.1',
+    )
+    expect(limit(), 'the limit announces a floor on a race that has none').not.toHaveAttribute(
+      'min',
+    )
 
     await user.selectOptions(kind, 'time')
 
@@ -91,6 +98,16 @@ describe('the races of an event', () => {
       'false',
     )
     expect(limit()).toHaveAttribute('aria-required', 'true')
+
+    /* And the floor and the ceiling swap with them, because a control that announces
+       a rule the save does not hold it to sends a reader to fix something that is
+       not wrong (WCAG 2.2 SC 3.3.1). Both cells and both ends, so a table that
+       announced none anywhere would fall as surely as one that announced them where
+       they do not hold. */
+    expect(limit(), 'the limit of a timed race announces no floor').toHaveAttribute('min', '0.1')
+    expect(limit()).toHaveAttribute('max', '200')
+    expect(length(), 'the length still announces a floor').not.toHaveAttribute('min')
+    expect(length()).not.toHaveAttribute('max')
   }, SLOW)
 
   it('will not save a timed race with no limit, and marks the cell that is missing', async () => {
@@ -135,10 +152,90 @@ describe('the races of an event', () => {
     const written = within(await screen.findByRole('list', { name: 'session records' }))
       .getAllByRole('listitem')
       .map((one) => one.textContent ?? '')
-      .filter((one) => one.includes('kind=time'))
+      .filter((one) => one.includes('limitSeconds='))
 
-    expect(written.length, 'no race was written as a timed one').toBeGreaterThan(0)
+    expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    expect(first(written), 'the race was not written as a timed one').toContain('kind=time')
     expect(first(written)).toContain('limitSeconds=86400')
+  }, SLOW)
+
+  it('marks every measuring cell as one, which is what the sheet lays out by', async () => {
+    /* The widths of this table were written against column numbers until 30.08.2026,
+       and two columns added in the middle moved every one of them off the thing it
+       was written for: the climb and the fall lost 22 and 25 pixels of room and
+       „506" showed as „5" while the fall showed nothing, with the table fitting its
+       box exactly so nothing said a number was missing. Measured in Chrome by a
+       review, at 1280 and at 360.
+
+       The sheet reads a class now (`Entity.css`, `.races__measure`), and this is the
+       half that says the cells carry it: a rule that finds nothing and a rule that
+       finds the wrong cells look the same from inside a stylesheet. jsdom lays
+       nothing out (ADL A33), so what is asked here is the marking, and the widths
+       themselves are asked of the sheet (`entityStyle.test.ts`). */
+    await openFirstEvent()
+
+    const table = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const heads = table.getAllByRole('columnheader')
+    const named = heads.map((one) => one.textContent)
+
+    /* Every heading that names a measure, and no other. */
+    for (const [at, said] of named.entries()) {
+      const measures = ['Dužina', 'Ograničenje (h)', 'Uspon', 'Spust'].includes(said ?? '')
+
+      expect(
+        must(heads[at], `heading ${String(at)}`).classList.contains('races__measure'),
+        `the heading „${said ?? ''}" is marked as a measure and is not one, or the other way round`,
+      ).toBe(measures)
+    }
+
+    const cells = within(must(table.getAllByRole('row')[1], 'the first race')).getAllByRole('cell')
+
+    /* And the cells under them, by the same reading: the row and the heading are
+       marked in two places and either could be right while the other is not. */
+    for (const [at] of named.entries()) {
+      expect(
+        must(cells[at], `cell ${String(at)}`).classList.contains('races__measure'),
+        `cell ${String(at)} does not answer to its own heading`,
+      ).toBe(must(heads[at], `heading ${String(at)}`).classList.contains('races__measure'))
+    }
+  }, SLOW)
+
+  it('writes only the measure the kind it was saved as fixes', async () => {
+    /* A reader may type a limit, change their mind about the kind and save. The cell
+       keeps what was typed and nothing on the screen says otherwise, so the record
+       would go out as a race of a length carrying a limit of twenty four hours,
+       which is the shape the guard over the file refuses (`data/data.test.tsx`) and
+       which the one screen that makes races would be writing.
+
+       Both ways round, because the fault is symmetric and a case about one says
+       nothing about the other. */
+    const user = await openFirstEvent(<Saved />)
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const kind = () => selectElement(screen.getAllByLabelText(/^Vrsta,/)[0])
+
+    await user.selectOptions(kind(), 'time')
+    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.selectOptions(kind(), 'length')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const written = within(await screen.findByRole('list', { name: 'session records' }))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '')
+      /* By a field only a race has: the event is written in the same list and its
+         own `kind` is „race", so filtering by `kind=` alone hands back the event and
+         a round of this measured it instead. */
+      .filter((one) => one.includes('limitSeconds='))
+
+    expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    expect(first(written), 'a race of a length was written carrying a limit').toContain(
+      'limitSeconds=0',
+    )
+    /* And it kept the length it always had, so this is not passing because the save
+       wrote nothing. */
+    expect(first(written)).toContain('kind=length')
+    expect(first(written)).not.toContain('distanceKm=0 ')
   }, SLOW)
 
   it('lists them under the event, and asks nobody which event it is', async () => {
