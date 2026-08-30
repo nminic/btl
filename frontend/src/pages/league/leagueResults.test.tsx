@@ -299,10 +299,47 @@ describe('a competition everybody in it fits on one page', () => {
 })
 
 describe('a competition whose event runs over more than one morning', () => {
-  /* A race carries no name of its own (data/types.ts), so a column is headed by
-     a length and a day. Two races of one length on two mornings therefore have
-     to differ by the day, and the day of a race is not the day of its event
-     (PDL P10). */
+  /* Two races of one length on two mornings of one year: the year cannot part them,
+     so the label falls to its second rung and writes the day in place of the year
+     (`data/raceLabel.ts`). The heading therefore does part them, and by the day,
+     which is what the first case below measures.
+
+     Two sentences used to stand here and both were untrue. The first said such a pair
+     reads alike in the heading; the ladder of rungs answers that, and the case below
+     proves it. The second said what still parts them is the `title`, which carries the
+     day: the title is the two visible halves joined back together
+     (`LeagueResults.tsx` writes it as the name, a space, and the rest), so it says
+     neither more nor less than the heading says.
+
+     **What the change really cost, written down rather than mended.** On `main` the
+     title was built here as `${column.event}, ${name}, ${day}`, so the day of every
+     race was on this screen whatever the heading carried. Now the day appears only
+     where a rung reaches for it, and an event running over several mornings whose
+     races differ in length is parted by the first rung already. Measured over the
+     file on 29.08.2026, one such event is in it: „Beogradski maraton" of the
+     runtrace-2027 competition runs 2,47 km on 3 April and 42,2 km on 4 April, and its
+     two columns read „Beogradski maraton 2027. (2,5 km)" and „... (42,2 km)", with
+     the day nowhere on the screen. A reader who wants the morning has to open the
+     event. That follows from the owner's decision of 29.08.2026 and is not this
+     file's to undo.
+
+     The pair below is built rather than found because no competition in the file
+     holds one: measured the same day, the three competitions have 23 columns between
+     them, no two races of one length on two mornings anywhere among them, and no two
+     labels alike. */
+
+  /** The morning after the given one, counted on the calendar and not in the string.
+   *
+   *  Adding one to the last two characters does not know how long a month is. A race
+   *  on the 28th of February would become „2019-02-29", which JS reads as the first
+   *  of March, so this case would stay green while measuring a day it does not name;
+   *  a race on the 31st would become „2019-01-32", which is not a date at all and
+   *  makes `Intl` throw a RangeError. Precedent for counting days: `data/derive.ts`. */
+  const morningAfter = (day: string): string =>
+    new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)) + 1))
+      .toISOString()
+      .slice(0, 10)
+
   async function overTwoMornings() {
     const real = globalThis.fetch
     const races: Race[] = await (await real('/mock/races.json')).json()
@@ -322,7 +359,7 @@ describe('a competition whose event runs over more than one morning', () => {
     const second: Race = {
       ...mine,
       id: `${mine.id}-drugo-jutro`,
-      date: `${mine.date.slice(0, 8)}${String(Number(mine.date.slice(8, 10)) + 1).padStart(2, '0')}`,
+      date: morningAfter(mine.date),
     }
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
@@ -333,20 +370,160 @@ describe('a competition whose event runs over more than one morning', () => {
     return { first: mine, second }
   }
 
-  it('heads the two columns with two different days', async () => {
+  it('parts two mornings by their day, where the year cannot', async () => {
+    /* A column is headed the way the whole portal names a race: its name, when it
+       was run, and its measure in brackets (`data/raceLabel.ts`, owner 29.08.2026).
+       Normally „when" is the year, and inside one competition the year is what tells
+       one season of a race from another.
+
+       Two races of one length on two mornings of one year is the case the year
+       cannot answer, and there the day takes its place, once for each morning. Left
+       to the year, those are two columns reading alike over two different races. */
     const { first, second } = await overTwoMornings()
 
-      renderAt(RUN)
+    renderAt(RUN)
 
-      const heads = (await grid()).getAllByRole('columnheader').map((one) => one.textContent ?? '')
-      const length = formatDistance(first.distanceKm, 'sr')
-      const mine = heads.filter((one) => one.startsWith(`${length},`))
+    const heads = await (await grid()).findAllByRole('columnheader')
+    const mine = heads.filter((one) => (one.textContent ?? '').startsWith(first.name))
 
-      expect(mine.length).toBeGreaterThanOrEqual(2)
-      /* Each morning said once, rather than one morning said twice. */
-      expect(mine.filter((one) => one.includes(formatShortDate(second.date, 'sr')))).toHaveLength(1)
-      expect(new Set(mine).size).toBe(mine.length)
+    expect(mine.length, 'the two mornings are no longer two columns').toBe(2)
+
+    const said = mine.map((one) => one.textContent)
+    const measure = `(${formatDistance(first.distanceKm, 'sr')})`
+
+    expect(new Set(said).size, 'two columns of one competition read alike').toBe(2)
+    expect(said).toContain(`${first.name} ${formatShortDate(first.date, 'sr')} ${measure}`)
+    expect(said).toContain(`${first.name} ${formatShortDate(second.date, 'sr')} ${measure}`)
   })
+
+  it('says the name first, and keeps the whole label on the title', async () => {
+    /* Measured by a review on 29.08.2026 in Chrome: the heading is turned on its
+       side and capped (`League.css` writes the cap, and what it came to in pixels is
+       beside the markup in `LeagueResults.tsx`; no third copy of it here), and all
+       fourteen headings of this competition were cut before the name began, so the
+       one thing the change was made for was never seen. Put first, the name ate the
+       measure instead: two columns of „Šidski novogodišnji maraton" read alike though
+       one is 32,4 km and the other 42,2.
+
+       So the two halves are two elements, drawn in that order, and the measure is the
+       one that never gives way. Asked of the drawn screen rather than of a copy of the
+       rule: the version of this that lived in `leagueTable.test.ts` wrote the rule out
+       again and passed with the screen putting the name last.
+
+       **What this cannot say, and who says it instead.** Where the cut falls at a
+       given width is a question for a browser; jsdom lays nothing out. It was measured
+       in Chrome over the built sheet, and the numbers are written beside the markup
+       (`LeagueResults.tsx`). That the sheet still gives the measure its place before
+       the name, under the class names this file reads, is weighed by
+       `styles/raceHeadingHalves.test.ts`.
+
+       **Why the two halves are found by class here** (`CLAUDE.md`: component tests use
+       role and label queries, not CSS selectors). Neither half is a control and neither
+       carries a name of its own: they are two spans inside one column heading, and the
+       heading's accessible name is both of them together, so there is no role or label
+       that reaches one and not the other. The class is the only handle, and the risk it
+       brings is exactly the one measured on 29.08.2026: renamed in `League.css` alone,
+       the sheet stopped reaching the markup and 2297 tests stayed green. That is the
+       hole `styles/raceHeadingHalves.test.ts` was written to close, and it is what
+       stands behind the two selectors below. */
+    renderAt(RUN)
+
+    const heads = (await (await grid()).findAllByRole('columnheader')).filter(
+      (head) => within(head).queryByTitle(/./) !== null,
+    )
+
+    expect(heads.length, 'the grid draws no race columns at all').toBe(14)
+
+    for (const head of heads) {
+      const box = within(head).getByTitle(/./)
+      const called = must(head.querySelector('.league__race-called'), 'the half that may be cut')
+      const measure = must(head.querySelector('.league__race-measure'), 'the half that may not')
+
+      /* The name first, read off the order the heading is drawn in. The two above are
+         found by their class and so say nothing about which of them a reader meets
+         first, and the name standing last is the fault of 29.08.2026 itself. */
+      expect([...box.children], 'the two halves are drawn the other way round').toEqual([
+        called,
+        measure,
+      ])
+
+      /* And the whole label on the title, which is the only place it survives once the
+         name has been cut: at 360 a long measure leaves the name nought pixels wide.
+         Held against the two halves rather than rebuilt out of the data here, so a
+         title that has stopped being the label is caught: written as the name alone it
+         left 2297 tests green. */
+      expect(box.getAttribute('title'), 'the title is no longer the whole label').toBe(
+        `${called.textContent}${measure.textContent}`,
+      )
+
+      /* When it was run and what it measured, in that order and in brackets. */
+      expect(measure.textContent).toMatch(/^ (\d{4}\.|\d{1,2}\. \d{1,2}\. \d{4}\.) \([\d.,]+ km\)$/)
+      expect((called.textContent ?? '').length, 'the name is empty').toBeGreaterThan(0)
+    }
+  })
+
+})
+
+describe('a competition holding one race in two seasons', () => {
+  /* The year is what a grid of a competition gains by carrying a date at all: inside
+     one event it is a constant, across seasons it is the whole difference. Two
+     mutations passed a whole round of review because nothing asked for values, only
+     for shape: a year pinned to a constant, and a length rounded to whole
+     kilometres.
+
+     A competition of the file cannot answer that on its own, because every race of
+     one holds one year, so the second season is built here the way the second
+     morning is above. The third mutation of that round, the year written in Serbian
+     on an English page, is **not** measured here and that is worth saying rather
+     than implying otherwise: the portal has one dictionary (`i18n/sr.json`), so
+     there is no English page to draw. What holds that claim is `i18n/format.test.ts`,
+     which asks `formatYear` for both languages. */
+  it('writes each race under its own year, and the length as it stands', async () => {
+    const real = globalThis.fetch
+    const races: Race[] = await (await real('/mock/races.json')).json()
+    const events: BtlEvent[] = await (await real('/mock/events.json')).json()
+    const leagues: League[] = await (await real('/mock/leagues.json')).json()
+    const league = must(
+      leagues.find((one) => one.slug === 'brdska-2019'),
+      'takmičenje brdska-2019',
+    )
+    const held = new Set(events.filter((one) => league.eventIds.includes(one.id)).map((one) => one.id))
+    const mine = must(
+      races.find((race) => held.has(race.eventId)),
+      'trka ovog takmičenja',
+    )
+    /* The same race a year earlier, which is what a competition looks like when it
+       has run before. */
+    const older: Race = {
+      ...mine,
+      id: `${mine.id}-ranija-sezona`,
+      date: `${Number(mine.date.slice(0, 4)) - 1}${mine.date.slice(4)}`,
+    }
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/races.json')
+        ? new Response(JSON.stringify([...races, older]), { status: 200 })
+        : real(input))
+
+    renderAt(RUN)
+
+    const said = (await (await grid()).findAllByRole('columnheader'))
+      .map((head) => head.textContent ?? '')
+      .filter((one) => one.startsWith(mine.name))
+
+    expect(said.length, 'the two seasons are no longer two columns').toBe(2)
+    expect(
+      new Set(said).size,
+      `a year that is not the race's own: ${said.join(' / ')}`,
+    ).toBe(2)
+    expect(said.some((one) => one.includes(`${mine.date.slice(0, 4)}.`)), said.join(' / ')).toBe(true)
+    expect(said.some((one) => one.includes(`${older.date.slice(0, 4)}.`)), said.join(' / ')).toBe(true)
+    /* And a length nobody rounded on the way. */
+    expect(
+      said.every((one) => one.endsWith(`(${formatDistance(mine.distanceKm, 'sr')})`)),
+      said.join(' / '),
+    ).toBe(true)
+  }, SLOW)
 })
 
 describe('the heading that names one block of the standing', () => {

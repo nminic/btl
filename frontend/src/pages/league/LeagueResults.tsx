@@ -6,9 +6,10 @@ import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { categoryLabel } from '../../data/categories'
 import { fieldFor } from '../../data/derive'
+import { raceLabelParts } from '../../data/raceLabel'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
-import { formatDistance, formatPoints, formatShortDate } from '../../i18n/format'
+import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueGroups, leagueTable } from './leagueTable'
 import './League.css'
@@ -117,24 +118,75 @@ function Grid({
               </th>
               {table.columns.map((column) => (
                 <th scope="col" key={column.raceId} className="league__race">
-                  {/* The race and the date first, the name of the event after
-                      them. A turned heading has to be cut somewhere, and the cut
-                      has to fall on the part that repeats: three races of one
-                      event on one day gave three columns all reading "BTL trening
-                      trek" with the length and the date beyond the edge, which is
-                      the one thing that told them apart. The whole of it is in the
-                      title for anyone who wants it. */}
-                  {/* The race by what it is known by, which is its length: it
-                      has no name of its own (data/types.ts). */}
+                  {/* The race said the way the whole portal says one: its name, when
+                      it was run, and its measure in brackets (`data/raceLabel.ts`;
+                      owner, 29.08.2026). „Mrazijada 2019. (6,4 km)".
+
+                      **Said by that helper and not built here.** What a race is
+                      called is one fact, and a grid that spelt it out itself would
+                      be a second home for it: the two drifted once already, when
+                      this heading carried the name of the **event** while every
+                      other screen had moved to the name of the race.
+
+                      **Among the races of this competition and not of one event,**
+                      which is the set a reader is comparing here. That is what makes
+                      the year worth having: two seasons of one race are two columns
+                      the year parts, where inside a single event it never could.
+
+                      **The measure has its place before the name, and the name is
+                      what gives way.** The heading is turned on its side and capped
+                      at 9rem (144px), and at 6.5rem (104px) under the narrow query
+                      (`League.css`). Each pixel figure is what the `rem` beside it
+                      comes to at the browser's default text size, which is the size
+                      the root leaves the reader (`index.css`, `font-size: 100%`).
+                      All four numbers are held against the sheet by
+                      `styles/raceHeadingHalves.test.ts`, which reads the caps out of
+                      this note and the conversion out of that root rule; what that
+                      file still holds nothing about is what the narrow cap **does**,
+                      and it says so in its own words. Standing last, the name was never seen
+                      at all: a review measured on 29.08.2026 that all fourteen
+                      headings of one competition were cut before it began. Standing
+                      first, it ate the measure instead, and two columns of „Šidski
+                      novogodišnji maraton" read alike though one is 32,4 km and the
+                      other 42,2. So the two halves are two elements, the measure
+                      refuses to shrink and the name agrees to (`League.css`, weighed
+                      by `styles/raceHeadingHalves.test.ts`).
+
+                      **That is precedence, and not a promise that the measure always
+                      fits.** Where the cap is narrower than the measure on its own,
+                      the name is gone altogether and the measure loses its own tail.
+                      Measured in Chrome over the built sheet on 29.08.2026, at 360
+                      where the cap is 6.5rem (104px), over four of these headings. Three
+                      of them have fallen to the rung that writes the day and the fourth
+                      still stands on the first rung, which writes the year
+                      (`data/raceLabel.ts`); that is what makes the last of the four
+                      short enough to leave the name anything at all:
+
+                        ` 15. 10. 2022. (42,2 km)`  wants 116,69px, name 0px, „m)" cut
+                        ` 12. 12. 2019. (100,0 km)` wants 122,89px, name 0px, „m)" cut
+                        ` 5. 8. 2022. (42,2 km)`    wants 104,27px, name 0px, nothing cut
+                        ` 2019. (21,1 km)`          wants  80,55px, name 23,45px
+
+                      At 1280 and at 768, where it is 9rem (144px), all four fit whole.
+                      At 200 per cent text the proportion is the same, because the cap
+                      and the letters are both written in `rem`, and every pixel figure
+                      given for the cap above is what it comes to at the default size.
+
+                      **What the order buys, measured the other way round.** With the
+                      measure allowed to give way as well (`flex: 0 1 auto` and
+                      `min-inline-size: 0` on it), the first of those four came back
+                      at 360 as 46,58px of measure beside 57,42px of name: of the
+                      116,69px that tells this column from its neighbour, 70,11 were
+                      taken away to make room for a name the two columns share. The
+                      name is the half a reader can afford to lose, because whatever
+                      shares it shares it whole. */}
                   {(() => {
-                    const name = formatDistance(column.distanceKm, locale)
-                    const day = formatShortDate(column.date, locale)
+                    const said = raceLabelParts(column, table.columns, locale)
 
                     return (
-                      <span className="league__race-name" title={`${column.event}, ${name}, ${day}`}>
-                        {column.ambiguous
-                          ? `${column.event}, ${name}, ${day}`
-                          : `${name}, ${day}, ${column.event}`}
+                      <span className="league__race-name" title={`${said.name} ${said.rest}`}>
+                        <span className="league__race-called">{said.name}</span>
+                        <span className="league__race-measure">{` ${said.rest}`}</span>
                       </span>
                     )
                   })()}

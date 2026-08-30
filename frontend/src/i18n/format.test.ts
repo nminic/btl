@@ -1,4 +1,5 @@
 import {
+  DATE_SHAPE_OPTIONS,
   formatDate,
   formatDistance,
   formatDuration,
@@ -11,6 +12,97 @@ import {
   wholePeriod,
 } from './format'
 import { intlTag } from './intlTag'
+
+/**
+ * A race is run on the fourteenth, not at an instant. The days arrive as
+ * „2019-01-05", which the browser reads as midnight UTC, and a formatter left on
+ * the reader's own zone writes whatever day that instant fell on there: west of
+ * Greenwich, the day before, every time and not on an edge.
+ *
+ * Measured by a review on 29.08.2026 in Chrome with the zone forced to
+ * `America/New_York`: the league grid wrote „2018." over races of 2019, all
+ * fourteen columns of one competition, while the same element's title said „4. 1.
+ * 2019." over a race run on the fifth.
+ *
+ * **Two cases, and the first of them is the one that measures anything.** This
+ * used to be asked of `DATE_SHAPE_OPTIONS` alone, on the reasoning that the output
+ * cannot answer it on a machine already in UTC. The reasoning was sound and the
+ * guard was not: it read the table of options rather than the formatter built out
+ * of it, so the production path could walk around the table it was checked
+ * against. A review measured exactly that on 29.08.2026: `dateFormat` written as
+ * `new Intl.DateTimeFormat(tag, { ...DATE_SHAPES[shape], timeZone: undefined })`
+ * left 2297 tests green while Chrome in `America/New_York` headed a race of
+ * 2019-01-05 „Mrazijada 2018. (6,4 km)".
+ *
+ * So the zone is moved instead, and the four writers are asked what they write
+ * from there.
+ */
+describe('what a date is on this portal', () => {
+  const ZONE = 'America/New_York'
+  /** What `TZ` said before any of this, so the variable is left as it was found. */
+  const SET = process.env.TZ
+  /** And the zone the machine is actually in, which is not the same question: on a
+   *  machine that never set `TZ` the variable is empty and the zone is still
+   *  something. Naming it is what makes the zone restorable at all. */
+  const HERE = SET ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  afterEach(() => {
+    /* Assigned rather than deleted, because only an assignment resets the zone Node
+       has cached: measured on 29.08.2026, `delete process.env.TZ` left the process in
+       `America/New_York` and eight cases further down this file then read July as
+       June. The variable is put back to nothing afterwards, which is safe for the
+       same reason: deleting it changes nothing. */
+    process.env.TZ = HERE
+
+    if (SET === undefined) {
+      delete process.env.TZ
+    }
+  })
+
+  it('is a calendar day, so a reader west of Greenwich is told the same one', async () => {
+    process.env.TZ = ZONE
+    /* That the zone really moved, measured and not assumed. Node resets its cached
+       zone when `TZ` is assigned, but a machine where it does not would let every
+       expectation below pass without measuring anything, and a guard that cannot
+       fail is worse than none. Asked of the calendar rather than of a formatted
+       string, so it answers the question and not the day ICU happens to zero-pad:
+       midnight UTC on the fifth is the evening of the fourth in New York. */
+    expect(
+      new Date('2019-01-05').getDate(),
+      'the zone did not move on this machine, so this case measures nothing',
+    ).toBe(4)
+
+    /* A fresh copy of the module, because the formatters are built once and kept
+       (`format.ts`), and one built before the zone moved would answer for the zone
+       it was built in. */
+    vi.resetModules()
+
+    const format = await import('./format')
+
+    /* All four shapes, each on a day where the reader's zone would change the
+       answer: the fifth becomes the fourth, and the first of January becomes the
+       thirty first of December, which moves the month and the year with it. */
+    expect(format.formatShortDate('2019-01-05', 'sr'), 'the short date').toBe('5. 1. 2019.')
+    expect(format.formatDate('2019-01-05', 'sr'), 'the long date').toBe('5. januar 2019.')
+    expect(format.formatMonth('2019-01', 'sr'), 'the month').toBe('januar 2019.')
+    expect(format.formatYear('2019-01-01', 'sr'), 'the year').toBe('2019.')
+  })
+
+  it('has four shapes, so a fifth cannot be added past the case above', () => {
+    /* What the case above cannot say: it names the four writers there are, so a
+       fifth shape added tomorrow would be measured by nobody. This one fails the
+       day the table grows, and whoever grows it has to give the new shape a case
+       of its own. The option is read here as well, because a shape with no writer
+       yet has nothing else to be read by. */
+    const shapes = Object.entries(DATE_SHAPE_OPTIONS)
+
+    expect(shapes.length, 'the portal no longer has four shapes of date').toBe(4)
+
+    for (const [name, options] of shapes) {
+      expect(options.timeZone, `the ${name} date reads in the browser's own zone`).toBe('UTC')
+    }
+  })
+})
 
 describe('format', () => {
   it('formats numbers in the Serbian locale', () => {

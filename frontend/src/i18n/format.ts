@@ -35,15 +35,35 @@ function kept<T>(cache: Map<string, T>, key: string, build: () => T): T {
  *  name and not a string, so a fifth one cannot be asked for by typo. */
 type DateShape = 'long' | 'short' | 'monthYear' | 'year'
 
+/**
+ * **Every one of them reads its date in UTC, and that is not a detail.**
+ *
+ * Everything this portal calls a date is a calendar day and not a moment: a race
+ * is run on the fourteenth, not at an instant. Those days arrive as „2019-01-05",
+ * which the browser reads as midnight UTC, and a formatter left on the reader's own
+ * zone then writes whatever day that instant fell on **there**. West of Greenwich
+ * that is the day before, every time and not on an edge.
+ *
+ * Measured by a review on 29.08.2026 in Chrome with the zone forced to
+ * `America/New_York`: the league grid wrote „2018." over races of 2019, all
+ * fourteen columns of one competition, while the same element's title said „4. 1.
+ * 2019." over a race run on the fifth. Pinned here rather than at each of the
+ * four, because it is one fact about what a date **is** on this portal and every
+ * shape reads the same instants.
+ */
 const DATE_SHAPES: Record<DateShape, Intl.DateTimeFormatOptions> = {
-  long: { day: 'numeric', month: 'long', year: 'numeric' },
-  short: { day: 'numeric', month: 'numeric', year: 'numeric' },
-  monthYear: { month: 'long', year: 'numeric' },
+  long: { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' },
+  short: { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' },
+  monthYear: { month: 'long', year: 'numeric', timeZone: 'UTC' },
   /* A year on its own is still a date rather than a number: Serbian writes
      "2027." with the full stop that makes it an ordinal, English writes "2027".
      Formatted rather than printed, so neither language has to be special. */
-  year: { year: 'numeric' },
+  year: { year: 'numeric', timeZone: 'UTC' },
 }
+
+/** What the four shapes are, for a guard that has to say every one of them still
+ *  reads its date the same way whoever is looking. */
+export const DATE_SHAPE_OPTIONS: Readonly<Record<string, Intl.DateTimeFormatOptions>> = DATE_SHAPES
 
 function numberFormat(locale: string, fractionDigits: number): Intl.NumberFormat {
   const tag = intlTag(locale)
@@ -167,6 +187,22 @@ export function formatNumericDate(isoDate: string): string {
   return `${isoDate.slice(8, 10)}.${isoDate.slice(5, 7)}.${isoDate.slice(0, 4)}.`
 }
 
+/**
+ * "2019." from "2019-01-05", the year of a day and nothing else.
+ *
+ * A year on its own is still a date rather than a number, which is why it goes
+ * through Intl like every other date whose words matter: Serbian writes the full
+ * stop that makes it an ordinal and English does not, and neither language has to
+ * be named here for that to come out right.
+ *
+ * Takes a whole day and not a year, because both of its readers hold a day and
+ * one of them would otherwise cut the year out of the string itself, which is the
+ * second home this exists to prevent.
+ */
+export function formatYear(isoDate: string, locale: string): string {
+  return dateFormat(locale, 'year').format(new Date(`${isoDate.slice(0, 4)}-01-01T00:00:00Z`))
+}
+
 /** "maj 2027." from "2027-05", for a calendar heading. */
 export function formatMonth(month: string, locale: string): string {
   return dateFormat(locale, 'monthYear').format(new Date(`${month}-01T00:00:00Z`))
@@ -215,7 +251,7 @@ export function wholePeriod(from: string, to: string, locale: string): string | 
   }
 
   if (from === `${year}-01-01` && to === `${year}-12-31`) {
-    return dateFormat(locale, 'year').format(new Date(`${year}-01-01T00:00:00Z`))
+    return formatYear(to, locale)
   }
 
   return null

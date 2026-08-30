@@ -32,10 +32,19 @@ const event = (id: string, date: string): BtlEvent => ({
   kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
 })
 
-const race = (id: string, eventId: string, distanceKm = 10, date = '2027-04-03'): Race => ({
+const race = (
+  id: string,
+  eventId: string,
+  distanceKm = 10,
+  date = '2027-04-03',
+  /* What the race is called. It starts out as its event's name, so a case that
+     does not care passes the same string every event carries; a case about the
+     name passes its own. */
+  name = 'Trka',
+): Race => ({
   id,
   eventId,
-  name: 'Trka',
+  name,
   renamed: 'no',
   date,
   distanceKm,
@@ -90,7 +99,22 @@ describe('the grid of a competition', () => {
        shorter race comes first, and it is the distance that says which is
        shorter: by name "10 km" would stand in front of "5 km". */
     expect(table.columns.map((one) => one.raceId)).toEqual(['r2', 'r4', 'r1'])
-    expect(first(table.columns).event).toBe('Događaj e2')
+    expect(first(table.columns).name).toBe('Trka')
+  })
+
+  it('calls a race what the race is called, not what its event is called', async () => {
+    /* Owner, 23.08.2026, in the same breath as giving a race a name: „u listi
+       rezultata treba da se prikazuju nazivi trka na kojima je čovek učestvovao, a
+       ne događaja." This grid carried the event's name until 29.08.2026, so a race
+       somebody had renamed stood here under the name it no longer had.
+
+       Nothing moved for the races in the file, and that is the point of the case:
+       a race's name starts out as its event's, so measuring on one of those proves
+       nothing. This one is renamed. */
+    const named = [race('r5', 'e1', 12, '2019-05-02', 'Polumaraton kroz grad')]
+    const table = leagueTable(league, events, named, [], [])
+
+    expect(first(table.columns).name).toBe('Polumaraton kroz grad')
   })
 
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {
@@ -167,61 +191,6 @@ describe('the grid of a competition', () => {
 
     expect(first(table.rows).points.get('r1')).toBe(17)
     expect(first(table.rows).total).toBe(17)
-  })
-})
-
-describe('a heading that has to be cut somewhere', () => {
-  it('puts the event first when the race and the date do not tell two columns apart', () => {
-    /* Twice in the main competition of 2027 two different events hold the same
-       length on the same day: "10.00 km, 4. 9. 2027." is both 10K Belgrade and
-       Beljanica trail. The turned heading is cut at its end, so what repeats has
-       to go last, and which part repeats is not the same every time. */
-    const table = leagueTable(
-      { ...league, eventIds: ['e1', 'e2'] },
-      [event('e1', '2019-05-01'), event('e2', '2019-05-01')],
-      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e2', 10, '2019-05-01')],
-      [],
-      [],
-    )
-
-    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
-  })
-
-  it('leaves the event last when the race and the date already tell them apart', () => {
-    const table = leagueTable(league, events, races, [], [])
-
-    expect(table.columns.every((one) => one.ambiguous)).toBe(false)
-  })
-
-  it('tells two nameless races of one event apart by their lengths', () => {
-    /* Which is the whole of what a nameless race has (PDL P6, 11.08.2026). Told
-       apart by name alone the two shared one empty key, both were marked as not
-       telling themselves apart, and the reader was given two columns headed
-       „Događaj e1, , 1. 5. 2019." over two different races. */
-    const table = leagueTable(
-      { ...league, eventIds: ['e1'] },
-      [event('e1', '2019-05-01')],
-      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 21.1, '2019-05-01')],
-      [],
-      [],
-    )
-
-    expect(table.columns.map((one) => one.ambiguous)).toEqual([false, false])
-  })
-
-  it('still says so when two nameless races are the same length on the same day', () => {
-    /* Then there is nothing left to tell them apart with, and the heading says
-       as much by carrying the event too. Better a heading that repeats than one
-       that claims a difference it cannot show. */
-    const table = leagueTable(
-      { ...league, eventIds: ['e1'] },
-      [event('e1', '2019-05-01')],
-      [race('r1', 'e1', 10, '2019-05-01'), race('r2', 'e1', 10, '2019-05-01')],
-      [],
-      [],
-    )
-
-    expect(table.columns.map((one) => one.ambiguous)).toEqual([true, true])
   })
 })
 
