@@ -23,6 +23,8 @@ function Sent() {
 }
 
 import { loadResource } from '../../data/client'
+import { btlPoints } from '../../data/scoring'
+import { formatPoints } from '../../i18n/format'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
 import { formatDistance, formatNumber, formatShortDate, formatYear } from '../../i18n/format'
@@ -223,8 +225,21 @@ describe('a result reported this way', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    /* The one thing the member came to find out (PDL P9). */
-    expect(screen.getByText(/BTL poena/)).toBeVisible()
+    /* The one thing the member came to find out (PDL P9), and the number and not
+       only the words. A race of a length answers for how far it is, so the formula
+       is fed the race's own figures and the time the member typed; measured here
+       because that is the half no case held, and every race in the file is one of
+       these. A round on 30.08.2026 measured it: with the length taken off the
+       member's own boxes instead, which a race of a length does not draw, the
+       formula was handed nothing at all and the member was told nought points,
+       on 1612 races out of 1612, and the whole package stayed green. */
+    const mine = first(races)
+    const earned = btlPoints(mine.distanceKm, mine.ascentM, mine.descentM, 3 * 3600 + 41 * 60 + 12)
+
+    expect(earned, 'the formula gave nothing, so the case would pass on anything').not.toBeNull()
+    expect(screen.getByText(/BTL poena/).textContent).toContain(
+      formatPoints(earned ?? 0, 'sr-Latn'),
+    )
     expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
   })
 

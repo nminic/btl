@@ -1342,6 +1342,8 @@
     "title": "Prijava rezultata",
     "submit": "Pošalji rezultat",
     "note": "Prijavljuješ rezultat sa trke {race}. Dužinu, uspon i spust portal već zna sa same trke.",
+      "noteTime": "Prijavljuješ rezultat sa trke {race}. Vreme portal već zna sa same trke i isto je za svakoga ko ju je završio; upiši koliko si prešao.",
+      "noteFree": "Prijavljuješ rezultat sa trke {race}. Ova trka ne zadaje ni dužinu ni vreme, pa upiši i jedno i drugo.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
     "backToEvent": "Nazad na događaj",
     "noRace": "Rezultat se unosi sa reda trke, na strani događaja."

@@ -1,4 +1,8 @@
 import { screen, within } from '@testing-library/react'
+import { SLOW } from '../test/slow'
+import { loadResource } from '../data/client'
+import { btlPoints } from '../data/scoring'
+import { formatPoints } from '../i18n/format'
 import type { Race } from '../data/types'
 import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
@@ -48,6 +52,8 @@ function servingRaces(
 /** Every race run to a limit of twenty four hours and no fixed length. */
 const asTimed = (race: Race) => ({ ...race, kind: 'time', limitSeconds: 86_400, distanceKm: 0 })
 
+const EVENT = 'jagodinski-maraton-2017'
+
 describe('a race that fixes no length', () => {
   it('leaves the length column empty rather than saying it is nought kilometres', async () => {
     /* The grid of a competition settled this shape already (PDL, 31.07.2026): a
@@ -70,7 +76,7 @@ describe('a race that fixes no length', () => {
     globalThis.fetch = servingRaces(real, asTimed)
 
     try {
-      renderAt('/sr/kalendar/jagodinski-maraton-2017', 'competitor', '000001')
+      renderAt(`/sr/kalendar/${EVENT}`, 'competitor', '000001')
 
       const table = await screen.findByRole('table', { name: /^Trke/ })
       const heads = within(table)
@@ -325,4 +331,61 @@ describe('a race that fixes no length', () => {
       globalThis.fetch = real
     }
   })
+
+  it('scores a timed race against the limit of the race and not against a time nobody gave', async () => {
+    /* Owner, 29.08.2026, on four offered readings: the formula is unchanged and on a
+       timed race `Tsec` is the race's own limit, 24 h = 86400 s, the same for
+       everyone who finished. He turned down the reading where it is the time a
+       runner spent, because that one rewards stopping: 60 km in 6 h would beat the
+       same 60 km run out over the full 24.
+
+       Measured through the whole way in: the form for such a race asks for no time
+       at all (`reportForm.ts`), so a screen that went on reading a time off the
+       values would score the member at nought points and this would say so. The
+       number is worked out here from the same function the portal uses, since the
+       formula is the owner's and this case is about which time goes into it, not
+       about what it gives back. */
+    const real = globalThis.fetch
+    const user = setupUser()
+
+    globalThis.fetch = servingRaces(real, asTimed)
+
+    try {
+      /* Asked after the stub is in place and never before it: the portal keeps the
+         answer to a file it has already read, so a load taken first would cache the
+         races as they really are and the screen would draw those. */
+      const events = await loadResource<{ id: string; slug: string }[]>('events')
+      const held = must(
+        events.find((one) => one.slug === EVENT),
+        'the event this case is written around',
+      )
+      const race = first(
+        (await loadResource<Race[]>('races')).filter((one) => one.eventId === held.id),
+      )
+
+      renderAt(`/sr/kalendar/${EVENT}/prijava?trka=${race.id}`, 'competitor', '000001')
+
+      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
+
+      expect(note.textContent, 'the sentence is the one for a race of a length').toMatch(
+        /Vreme portal već zna sa same trke/,
+      )
+      expect(screen.queryByLabelText(/^Sati/), 'a timed race is asking for a time').toBeNull()
+
+      await user.type(await screen.findByLabelText(/^Dužina/), '60')
+      await user.type(screen.getByLabelText(/^Uspon/), '0')
+      await user.type(screen.getByLabelText(/^Spust/), '0')
+      await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      const earned = btlPoints(60, 0, 0, 86_400) ?? 0
+
+      expect(earned, 'the formula gave nothing, so the case would pass on anything').toBeGreaterThan(
+        0,
+      )
+      expect(await screen.findByText(new RegExp(formatPoints(earned, 'sr-Latn')))).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
 })
