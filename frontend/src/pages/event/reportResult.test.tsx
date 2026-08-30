@@ -550,6 +550,44 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
   })
 
+  it('names the race and nothing else, whatever the event is called', async () => {
+    /* Owner, 29.08.2026, asked which of three forms this sentence should take:
+       „Nikad događaj, uvek trka." One form everywhere, whether the two names differ
+       or not.
+
+       Asked as the **whole sentence** and not as the absence of a word, because the
+       absence cannot be asked for here: a race's name starts out as its event's, so
+       on most events the event's name is inside the race's and „does not contain it"
+       is false while the sentence is right. Measured the day the event was taken
+       out: with the clause gone and no case written this way, the whole suite stayed
+       green, and the only thing that had ever held the sentence's shape was a case
+       asking that the race's own label is somewhere inside it.
+
+       On the one race in the file somebody renamed, so the two names really differ
+       and a sentence that named both would be caught by every word of it. */
+    const races = await loadResource<Race[]>('races')
+    const events = await loadResource<BtlEvent[]>('events')
+    const race = must(
+      races.find((one) => one.renamed === 'yes'),
+      'the race somebody renamed',
+    )
+    const event = must(
+      events.find((one) => one.id === race.eventId),
+      'the event it belongs to',
+    )
+
+    expect(race.name, 'the renamed race is named after its event after all').not.toBe(event.name)
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME)
+
+    const said = await screen.findByText(/Prijavljuješ rezultat/)
+    const here = races.filter((one) => one.eventId === race.eventId)
+
+    expect(said).toHaveTextContent(
+      `Prijavljuješ rezultat sa trke ${raceLabel(race, here, 'sr-Latn')}. Dužinu, uspon i spust portal već zna sa same trke.`,
+    )
+  })
+
   it('says its length even where its name is its event’s, which is most of them', async () => {
     /* The case the name alone got wrong, on the ordinary event rather than on the
        one renamed race in the file: 886 of the 1163 events that hold any race at

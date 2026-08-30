@@ -189,13 +189,29 @@ export function ReportResult() {
           return (
             <>
               <p className="member__note">
-                {/* The race said the way every screen on the portal says one:
-                    its name and its length, and its day where two of them share
-                    both (data/raceLabel.ts). It is the same sentence the chooser
-                    used to write into its own list, which is why the helper stays
-                    after the chooser has gone. */}
+                {/* The race said the way every screen on the portal says one: its
+                    name, when it was run, and its measure in brackets
+                    (`data/raceLabel.ts`). It is the same sentence the chooser used
+                    to write into its own list, which is why the helper stays after
+                    the chooser has gone.
+
+                    **And the race alone.** Owner, 29.08.2026, asked which of three
+                    forms this sentence should take and answered „Nikad događaj,
+                    uvek trka." One form everywhere, whether the two names differ or
+                    not, and no second form for the case where they do.
+
+                    Why it needed asking: a race's name starts out as its event's,
+                    and 886 of the 1163 events that hold any race at all hold
+                    exactly one, so on three quarters of them the sentence said the
+                    same name twice over. Measured in Chrome on 360 by 780 that day:
+                    five lines, 111,6 pixels of a screen where the form itself is
+                    what the member came for.
+
+                    What it costs, in his words as he took it: where a race is named
+                    differently from its event, the member no longer sees from this
+                    sentence which event it belongs to. He sees it on the page he
+                    came from, which is the event's own. */}
                 {t('report.note', {
-                  event: event.name,
                   /* Among **all** the races of the event and not only the run
                      ones, because that is what the table on the event says
                      (EventDetail.tsx) and a race must not change its name between
