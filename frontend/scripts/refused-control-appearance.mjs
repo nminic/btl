@@ -309,7 +309,7 @@ const LOCKED_DATE = `
             <span class="field__required" aria-hidden="true">*</span>
           </span>
           <div class="datepicker">
-            <input id="date-held" name="date" class="field__control" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/gggg" aria-required="true" aria-invalid="false" aria-disabled="true" readonly value="17/10/2026">
+            <input id="date-held" name="date" class="field__control field__control--held" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/gggg" aria-required="true" aria-invalid="false" aria-disabled="true" readonly value="17/10/2026">
             <button type="button" class="datepicker__open" aria-disabled="true" aria-expanded="false" aria-label="Otvori kalendar" id="refused"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></button>
           </div>
         </div>

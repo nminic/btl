@@ -24,9 +24,12 @@ import { setupUser } from '../test/user'
  * question and is asked there. And every attribute of the box in front of the button:
  * its `value` is written by React as a property and only sometimes as an attribute, so
  * a comparison of attribute names would be a comparison of React's internals. Its
- * classes are compared, because that is the drift the portal already has coming: a date
- * locked by a chosen race carries `aria-disabled` and `readOnly` and no class at all,
- * and `btl-produkt/PENDING.md` records the change that gives it one.
+ * classes are compared, and that comparison has already earned its place: a date locked
+ * by a chosen race carried `aria-disabled` and `readOnly` and **no class at all** while
+ * this was written, the change that gives it the portal's dress landed on 30.08.2026,
+ * and this case is what caught the fixture still wearing the old markup. That is the
+ * whole of what it is for: the fixture is a copy of the screen, and a copy nobody
+ * compares stops being one.
  */
 const ME = '000007'
 /** A day inside the data, so the list of races is the same list every time this runs
