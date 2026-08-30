@@ -1,13 +1,28 @@
-import type { FormValues } from './types'
+/**
+ * The three boxes, as narrow as the question is and as loose as its callers are.
+ *
+ * A form holds every value as text or as a tick, and reading one out of it may give
+ * nothing at all (`forms/types.ts`, and `noUncheckedIndexedAccess` in ADL A14); the
+ * calculator on the front page holds its own three strings and nothing else. Read
+ * through `String`, so both fit and neither has to be widened to suit the other,
+ * and so a box that is not there comes out as „undefined" and then as `NaN` rather
+ * than as a nought somebody never typed.
+ */
+type Said = string | boolean | undefined
+
+export type Boxes = { [named: string]: Said }
+
+/** And the three as they are written back into a form, which is always text. */
+export type WrittenBoxes = { hours: string; minutes: string; seconds: string }
 
 /**
  * A length of time as the three boxes a form asks for it in, and back again.
  *
  * Both directions in one place, because they are one fact read two ways and the
- * portal had them written five times over: a result being corrected, a submission
+ * portal had them written six times over: a result being corrected, a submission
  * being sent again and a timed race handing over its own limit all split the same
- * seconds into the same three boxes, and the two forms that add them up again did
- * that twice more (ADL A31).
+ * seconds into the same three boxes, and three screens added them up again, the
+ * calculator on the front page among them (ADL A31).
  *
  * **What that cost, measured 30.08.2026.** The splitting of a race's limit was
  * written a third time and its only guard used a limit of twenty four hours, where
@@ -19,18 +34,27 @@ import type { FormValues } from './types'
  * Strings, because that is what a form holds: every value in `FormValues` is text,
  * and a number written into one comes back as text anyway.
  */
-export function inBoxes(totalSeconds: number): { hours: string; minutes: string; seconds: string } {
-  const whole = Math.max(0, Math.round(totalSeconds))
-
+export function inBoxes(totalSeconds: number): WrittenBoxes {
+  /* Nothing is rounded and nothing is lifted to nought. Both were in a first draft
+     of this and neither was there before: the three places this replaced did the
+     plain arithmetic, so a result of 1:01:01,5 came back into its own correction as
+     „1.5" in the seconds box and went out again as the number it was. Rounded, it
+     would come back as 2 and the member would send a different result from the one
+     they are correcting, with different points. That the boxes take a decimal at all
+     is a fault of their own and older than this. */
   return {
-    hours: String(Math.floor(whole / 3600)),
-    minutes: String(Math.floor((whole % 3600) / 60)),
-    seconds: String(whole % 60),
+    hours: String(Math.floor(totalSeconds / 3600)),
+    minutes: String(Math.floor((totalSeconds % 3600) / 60)),
+    seconds: String(totalSeconds % 60),
   }
 }
 
 /** And the three boxes added up. Every form that asks for a time requires all
  *  three, so there is nothing here to fall back to. */
-export function fromBoxes(values: FormValues): number {
-  return Number(values.hours) * 3600 + Number(values.minutes) * 60 + Number(values.seconds)
+export function fromBoxes(values: Boxes): number {
+  return (
+    Number(String(values.hours)) * 3600 +
+    Number(String(values.minutes)) * 60 +
+    Number(String(values.seconds))
+  )
 }

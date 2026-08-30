@@ -7,6 +7,7 @@ import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
+import sr from '../../i18n/sr.json'
 
 /**
  * The form a result is entered on from a profile, away from the calendar.
@@ -74,6 +75,17 @@ const shaped = (over: Partial<Race>): Race => ({
   ...over,
 })
 
+
+/* The six fields a race may or may not fill in, read from the one place they are
+   named (`i18n/sr.json`, through the labels the form asks with) rather than written
+   out here. Written out, a label renamed leaves the guard measuring a word that is
+   no longer the name of a field, and it measures nothing at all.
+
+   The bracketed unit is dropped: „Dužina (km)" is the label, „dužina" is the word a
+   sentence would use. */
+const MEASURED_FIELDS = Object.entries(sr.newResult)
+  .filter(([name]) => ['distanceKm', 'ascentM', 'descentM', 'hours', 'minutes', 'seconds'].includes(name))
+  .map(([, said]) => said.replace(/\s*\(.*\)$/, ''))
 
 describe('the list of races under the name of an event', () => {
   it('says nothing until two letters have been typed', async () => {
@@ -223,20 +235,41 @@ describe('the list of races under the name of an event', () => {
 
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    const said = must((await screen.findByLabelText(/^Naziv trke/)).closest('.field'), 'the box')
+    const box = await screen.findByLabelText(/^Naziv trke/)
+    /* The explanation the box points a reader at, found the way a reader finds it
+       rather than by its words: pinned to a phrase, this guard fell on a rewrite in
+       better Serbian, which is the opposite of what it is for. */
+    const said = must(
+      document.getElementById(must(box.getAttribute('aria-describedby'), 'the description')),
+      'the sentence over the box',
+    )
 
-    expect(said.textContent).toContain('Kad izabereš jednu')
+    /* Not empty, and no threshold beyond that: how long the sentence is, is nobody's
+       rule, and a number here would be one no measurement stands behind. What is
+       actually forbidden is below. */
+    expect(said.textContent?.trim(), 'the box explains nothing at all').not.toBe('')
 
-    for (const field of ['Dužina', 'Uspon', 'Spust', 'Sati', 'Minuta', 'Sekundi']) {
+    /* Six, said out loud: the names are filtered out of the dictionary by key, and a
+       key renamed there would quietly leave fewer of them and a guard measuring
+       less than it says. */
+    expect(MEASURED_FIELDS, 'a field label has been renamed out from under this').toHaveLength(6)
+
+    for (const field of MEASURED_FIELDS) {
+      /* By the stem and not by the whole word, because Serbian declines: a sentence
+         that promises „datum i dužinu" names the same field as one that promises
+         „dužina", and a round of this asked for the nominative alone and let the
+         accusative through (measured 30.08.2026). Four letters is enough to part
+         these six from one another and short enough to survive every case ending
+         they have. */
       expect(
         said.textContent?.toLowerCase(),
         `the sentence names ${field}, which is filled in on some kinds of race and not on others`,
-      ).not.toContain(field.toLowerCase())
+      ).not.toContain(field.slice(0, 4).toLowerCase())
     }
 
     /* And the box is the one the sentence belongs to: typing into it offers races,
        so nothing here can pass on a screen that drew some other field. */
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
+    await user.type(box, 'beogradski maraton')
 
     expect(offered().length).toBeGreaterThan(0)
   })

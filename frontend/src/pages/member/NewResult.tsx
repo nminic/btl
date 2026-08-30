@@ -22,7 +22,7 @@ import './Member.css'
 /**
  * A refused result written back into the fields it was entered in.
  *
- * The other way round from `seconds` below: the form asks for hours, minutes and
+ * The other way round from `fromBoxes` (`forms/clock.ts`): the form asks for hours, minutes and
  * seconds and the record keeps one number, and a member correcting a link is not
  * to be made to type the whole race again (owner, 06.08.2026).
  */

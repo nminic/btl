@@ -118,9 +118,7 @@ export function raceMeasure(race: Named, locale: string, decimals = 1): string {
 
   return kind === 'time'
     ? formatLimit(race.limitSeconds)
-    : decimals === 1
-      ? formatDistance(race.distanceKm, locale)
-      : formatDistance(race.distanceKm, locale, decimals)
+    : formatDistance(race.distanceKm, locale, decimals)
 }
 
 export function raceLabel(race: Named, among: Named[], locale: string): string {
