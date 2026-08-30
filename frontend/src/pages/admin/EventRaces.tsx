@@ -2,7 +2,7 @@ import { DatePicker } from '../../forms/DatePicker'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { BOUNDS, isWrong, newRaceRow, type RaceRow } from './raceRows'
+import { asksLength, BOUNDS, isWrong, newRaceRow, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -298,7 +298,7 @@ export function EventRaces({
                         that day that a course can genuinely be run twice over the
                         same distance and the same climb, rarely but really, and
                         that the portal must not forbid it. */}
-                    {measure(row, at, 'distanceKm', true)}
+                    {measure(row, at, 'distanceKm', asksLength(row))}
                   </td>
                   <td>{measure(row, at, 'ascentM', false)}</td>
                   <td>{measure(row, at, 'descentM', false)}</td>

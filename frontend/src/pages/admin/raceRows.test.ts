@@ -189,8 +189,8 @@ describe('the races of an event while they are being entered', () => {
        it came back `kind: "length"` with a limit of nought, so its name would have
        gone from „24 h" to „0,0 km" and the limit the formula scores it against
        would be gone. The screen is measured by its own case
-       (`pages/adminEventKind.test.tsx`), because the two halves refuse in
-       different places and a sentence about one of them said the other. */
+       (`pages/timedRace.test.tsx`), because the two halves refuse in different
+       places and a sentence about one of them said the other. */
     const timed: Race = {
       ...race('r', '2026-09-19', 0),
       kind: 'time',

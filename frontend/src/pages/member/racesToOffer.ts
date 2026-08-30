@@ -63,19 +63,35 @@ export function racesToOffer(
     said: [race.name, formatNumericDate(race.date), raceMeasure(race, locale)]
       .filter((one) => one !== '')
       .join(' – '),
-    /* What choosing the race fills in under the box. A length only where the race
-       fixes one: a timed race and a free one carry nought, and nought is not a
-       length the form will take (`definitions/unos-rezultata.form.json` asks for
-       at least 0,1, and `forms/validate.ts` holds it), so filling it in would hand
-       the member a row they cannot send. Left empty, the field is theirs to fill,
-       which is what the owner asked for on 29.08.2026: on a timed race the member
-       enters the length, the climb and the fall, because the race cannot know how
-       far each of them went. */
+    /**
+     * What choosing the race fills in under the box, and what choosing it locks.
+     *
+     * The two are the same list: the renderer locks by the **keys** of this
+     * (`forms/FormRenderer.tsx`, `setLed(Object.keys(one.fills))`), not by the
+     * values. A key with an empty string is a field that is empty and cannot be
+     * typed into, which is a form nobody can send. A round of this filled the
+     * length with „" for a timed race and called it „theirs to fill"; it was
+     * neither filled nor theirs.
+     *
+     * So a race that does not fix its length hands over the day and nothing else.
+     * That is also what the owner asked for on 29.08.2026: „Na vremenskoj trci član
+     * unosi dužinu, uspon i spust", and on a free race the time as well. A course
+     * run in laps has a climb that depends on how many laps somebody ran, so the
+     * race cannot know it either.
+     *
+     * ADL A32 wrote this rule down after the same fault in another form: a lock
+     * says what the reader may not change, so locking what the portal has not
+     * filled in makes a dead end.
+     */
     fills: {
       date: fieldDate(race.date),
-      distanceKm: race.kind === 'length' ? String(race.distanceKm) : '',
-      ascentM: String(race.ascentM),
-      descentM: String(race.descentM),
+      ...(race.kind === 'length'
+        ? {
+            distanceKm: String(race.distanceKm),
+            ascentM: String(race.ascentM),
+            descentM: String(race.descentM),
+          }
+        : {}),
     },
   }))
 }

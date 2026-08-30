@@ -132,6 +132,28 @@ export const BOUNDS = {
   descentM: { least: 0, most: 30000 },
 }
 
+/**
+ * Whether this row has to give a length, which is the one home for that question.
+ *
+ * A race that does not fix its length carries nought, and nought is outside the
+ * bounds on purpose: it passes „not empty" and is not a distance, and the whole
+ * standing is worked out from it. So without this an event holding a timed or a
+ * free race could not be saved at all.
+ *
+ * One home and not three, because the answer is read in three places and they had
+ * drifted: `whatIsMissing` decides whether the save happens, `isWrong` decides
+ * which cell is marked, and the table decides which cell says it is required. A
+ * row that the save let through was at the same time drawn as required and marked
+ * wrong, which sends a screen reader into a cell it has nothing to fix with (WCAG
+ * 2.2 SC 3.3.1, and ADL A31 on a fact with more than one home).
+ *
+ * The climb and the fall are not asked about here, because a course has both
+ * whichever way it is run.
+ */
+export function asksLength(row: Pick<RaceRow, 'kind'>): boolean {
+  return row.kind === 'length'
+}
+
 /** Whether a measurement is inside what a race can be. An empty climb or fall is
  *  nought and is inside it; an empty length is not a length. */
 function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
@@ -165,6 +187,14 @@ export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'nam
     return isoDate(row.date) === ''
   }
 
+  /* Nothing is wrong with a length a race does not fix. Asked here as well as in
+     `whatIsMissing`, through the one function both read, because this is what
+     marks the cell: without it the length of a timed race was drawn as wrong the
+     moment any other row in the table was refused. */
+  if (field === 'distanceKm' && !asksLength(row)) {
+    return false
+  }
+
   return !withinBounds(row[field], field)
 }
 
@@ -187,16 +217,9 @@ export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | 'nam
      on the real screen: a climb of **minus five hundred** metres saved. `Le = L +
      (1.25×AP + 0.75×AN)/200` then works out a profile that was never run, and the
      whole standing is worked out from it. */
-  /* A race that does not fix its length is not asked for one. A timed race and a
-     free race carry nought, which is outside the bounds on purpose, so without
-     this an event holding one of them could not be saved at all: `allFinished` is
-     what the screen asks before it writes anything, and the refusal it draws names
-     a field that race has not got. The climb and the fall are still asked for,
-     because a course has both whichever way it is run. */
-  const asked =
-    row.kind === 'length'
-      ? (['distanceKm', 'ascentM', 'descentM'] as const)
-      : (['ascentM', 'descentM'] as const)
+  const asked = asksLength(row)
+    ? (['distanceKm', 'ascentM', 'descentM'] as const)
+    : (['ascentM', 'descentM'] as const)
 
   return asked.find((field) => !withinBounds(row[field], field))
 }

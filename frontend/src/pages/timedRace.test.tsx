@@ -171,6 +171,15 @@ describe('a race that fixes no length', () => {
         'the event has no races, so nothing here is being refused or allowed',
       ).toBeGreaterThan(1)
 
+      /* Tied to the served file before anything is pressed. „It saved" on its own
+         is green on a screen that never saw the stub at all, since an event of
+         ordinary races saves perfectly well; the cell of a race that fixes no
+         length is the one thing here that cannot be true of the real file. */
+      expect(
+        within(races).getAllByRole('spinbutton', { name: /^Dužina/ })[0],
+        'the first length is required, so these are not the served races',
+      ).toHaveAttribute('aria-required', 'false')
+
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(
@@ -178,6 +187,114 @@ describe('a race that fixes no length', () => {
         'the event is refused over a length its races do not fix',
       ).toBeNull()
       expect(await screen.findByText('Sačuvano')).toBeVisible()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('does not mark the length of such a race wrong when another row is refused', async () => {
+    /* Refusing a save marks every cell that is actually wrong, one by one, because
+       a row that says it is fine sends a reader looking somewhere else (WCAG 2.2
+       SC 3.3.1). A race that fixes no length has nothing wrong with its length, and
+       marking it wrong sends the reader into a cell they have nothing to fix with:
+       every value they could type would give a length to a race that has none.
+
+       The refusal is real and comes from the empty row added just before, so this
+       measures the marking rather than the absence of a refusal. */
+    const real = globalThis.fetch
+    const user = setupUser()
+
+    globalThis.fetch = servingRaces(real, asTimed)
+
+    try {
+      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
+        'row',
+      )
+
+      await user.click(
+        within(must(rows[1], 'the first event')).getByRole('button', { name: /^Otvori/ }),
+      )
+      await screen.findByRole('table', { name: /^Trke/ })
+      await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(
+        await screen.findByText(/Svaka trka mora da ima naziv, dan i dužinu/),
+        'nothing was refused, so there is no marking to measure',
+      ).toBeVisible()
+
+      const lengths = screen.getAllByRole('spinbutton', { name: /^Dužina/ })
+
+      /* Tied to the served file: with the races as they really are, the first row
+         is a race of a length and this reads „true", so the case cannot pass on a
+         screen the stub never reached. */
+      expect(
+        first(lengths),
+        'the first length is required, so these are not the served races',
+      ).toHaveAttribute('aria-required', 'false')
+      expect(first(lengths), 'the length of a race that fixes none is marked wrong').toHaveAttribute(
+        'aria-invalid',
+        'false',
+      )
+      /* And the row that really is missing one still says so, so the exemption
+         cannot widen to the whole column. */
+      expect(must(lengths[lengths.length - 1], 'the row just added')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      )
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('leaves the member the fields the race cannot answer for, unlocked and empty', async () => {
+    /* The owner, 29.08.2026: „Na vremenskoj trci član unosi dužinu, uspon i spust."
+       A course run in laps has a climb that depends on how many laps somebody ran,
+       so the race cannot know any of the three and the member has to.
+
+       The renderer locks by the keys of what a suggestion fills in, not by the
+       values (`forms/FormRenderer.tsx`, `setLed(Object.keys(one.fills))`), so
+       handing over an empty string is not the same as handing over nothing: a
+       round of this filled the length with „" and called the field theirs to fill,
+       and it was empty and locked at once, which is a form nobody can send. ADL A32
+       wrote that rule down after the same fault in another form.
+
+       Measured by typing, which is the only half that matters to a member: an
+       attribute can be right while the control still refuses the key. */
+    const real = globalThis.fetch
+    const user = setupUser()
+
+    globalThis.fetch = servingRaces(real, asTimed)
+
+    try {
+      renderAt('/sr/rezultat/novi', 'competitor', '000001')
+
+      await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
+
+      /* The suggestions are buttons in the list the box owns, not options: a round
+         of this asked for options, was handed the role switch in the header, chose
+         a role, and went on to measure a length field nothing had ever filled in.
+         The row is read before it is pressed, so the case cannot pass on a screen
+         the stub never reached. */
+      const suggested = within(screen.getByRole('list', { name: '' })).getAllByRole('button')
+
+      expect(
+        first(suggested).textContent,
+        'the row offered is not naming a timed race, so these are not the served races',
+      ).toMatch(/24 h$/)
+
+      await user.click(first(suggested))
+
+      const length = await screen.findByLabelText(/^Dužina/)
+
+      expect(length).not.toHaveAttribute('readonly')
+      expect(length).not.toHaveAttribute('aria-disabled', 'true')
+
+      await user.type(length, '42.2')
+
+      expect(length).toHaveValue(42.2)
     } finally {
       globalThis.fetch = real
     }

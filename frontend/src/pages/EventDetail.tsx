@@ -149,8 +149,19 @@ function RaceTable({ event }: { event: BtlEvent }) {
                           an empty cell and not a nought, „jer nula tvrdi da je
                           trčao i osvojio nula". A nought here says the same untrue
                           thing, that somebody measured this course and it came to
-                          nothing. What such a race is measured by is in its name,
-                          two columns over. */}
+                          nothing.
+
+                          What such a race **is** measured by this table does not
+                          say, and that is a gap rather than a decision: the name
+                          in the first cell is the race's own name and not the
+                          label the rest of the portal names a race by, so „24 h"
+                          reaches this page only through the link into the form,
+                          which a visitor is not offered. Written down in PENDING
+                          on 30.08.2026 rather than answered here, because the
+                          answer is either a heading that stops saying „Dužina" or
+                          a name that repeats the year on every row, and both are
+                          the owner's to choose. Nothing is lost today: no race in
+                          the data fixes anything but a length. */}
                       <td>{race.kind === 'length' ? formatNumber(race.distanceKm, locale, 2) : ''}</td>
                       <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
                       <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>

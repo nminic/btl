@@ -203,8 +203,18 @@ describe('the list of races under the name of an event', () => {
       'sr-Latn',
     ).map((one) => one.fills)
 
-    expect(filled.map((one) => one?.distanceKm)).toEqual(['', '', '21.1'])
-    expect(filled.map((one) => one?.ascentM)).toEqual(['120', '120', '120'])
+    /* Asked by the **keys** and not by the values, because the keys are what the
+       renderer locks by (`forms/FormRenderer.tsx`, `setLed(Object.keys(one.fills))`).
+       A round of this asked for the values, found „" where a length used to be, and
+       wrote down a form that could not be sent: the field was empty and locked at
+       the same time. Whether it can actually be typed into is asked on the screen
+       (`pages/timedRace.test.tsx`); this half is here because it is where the list
+       of keys is decided. */
+    expect(filled.map((one) => Object.keys(one ?? {}).sort())).toEqual([
+      ['date'],
+      ['date'],
+      ['ascentM', 'date', 'descentM', 'distanceKm'],
+    ])
   })
 
   it('offers what has been run, newest first, and never what is still to come', async () => {
