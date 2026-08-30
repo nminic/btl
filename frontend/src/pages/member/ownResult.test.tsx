@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import { SLOW } from '../../test/slow'
-import type { Result } from '../../data/types'
+import type { BtlEvent, Race, Result } from '../../data/types'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -37,6 +37,16 @@ const ME = '000007'
 const countedResults: Result[] = JSON.parse(
   readFileSync(join(process.cwd(), 'public/mock/results.json'), 'utf-8'),
 )
+/** The calendar as the files hold it, for the one case that asks what a
+ *  correction of a counted result wrote down: the answer has to come from the
+ *  race and its event, and nothing on a screen shows either. */
+const allRaces: Race[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/mock/races.json'), 'utf-8'),
+)
+const allEvents: BtlEvent[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/mock/events.json'), 'utf-8'),
+)
+
 const MINE = '/sr/moji-rezultati'
 const QUEUE = '/sr/administracija/verifikacija/rezultati'
 
@@ -114,7 +124,14 @@ function Sent() {
   return (
     <ul aria-label="store">
       {submissions.map((one) => (
-        <li key={one.id}>{`${one.id} | ${one.raceName} | ${one.status} | ${String(one.corrected)}`}</li>
+        <li key={one.id}>
+          {`${one.id} | ${one.raceName} | ${one.status} | ${String(one.corrected)}`}
+          {/* The kind and the place too, since nothing else on the portal draws
+              them: they are written for the parts that come after this one, and a
+              value nobody reads is a value nobody can see go wrong. Written apart
+              so a row can be asked about them without matching the whole line. */}
+          <span data-testid={`said-${one.id}`}>{`${one.raceKind} / ${one.city} / ${one.country}`}</span>
+        </li>
       ))}
     </ul>
   )
@@ -1081,6 +1098,69 @@ describe('a result that has been counted', () => {
     expect(await countedRows(), 'a refusal moved the standing').toEqual(before)
   }, SLOW)
 
+  it('says which kind of race it was and where, read off the race and its event', async () => {
+    /* The member is asked neither on this road: the kind is not theirs to change
+       (owner, 30.08.2026) and the race behind the result answers for the place.
+       So the submission has to carry what the race and its event say, and nothing
+       on any screen draws either value, which is why it is asked of the store.
+
+       Measured because it was not held at all: with „free / Nigde / ZZ" written
+       here in place of the three, the whole portal stayed green (review,
+       30.08.2026). */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23', <Sent />)
+
+    const row = await firstCounted()
+    const named = raceOf(row)
+    const race = must(allRaces.find((one) => one.name === named), `the race ${named}`)
+    const event = must(allEvents.find((one) => one.id === race.eventId), 'its event')
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+
+    const [written] = within(screen.getByRole('list', { name: 'store' })).getAllByRole('listitem')
+    const said = within(must(written, 'the correction')).getByTestId(/^said-/)
+
+    expect(said.textContent).toBe(`${race.kind} / ${event.city} / ${event.country}`)
+  }, SLOW)
+
+  it('is not asked either question on the way back in through the list of what was sent', async () => {
+    /* The short form is the short form on both roads to it. A correction of a
+       counted result is not asked its kind or its place, but the submission it
+       makes is a submission like any other: the member can reopen it from the
+       list of what they have sent, and that road drew the full form with both
+       boxes open and unlocked. One click and the kind the member was never asked
+       for was theirs to set, on a correction of a result already counted
+       (measured in review, 30.08.2026). */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    /* From the list of what was sent, which is where a waiting correction lives:
+       the counted table stops offering the way in while one waits. */
+    const sentList = within(must(document.querySelector('.submissions'), 'the list of what was sent'))
+
+    await user.click(await sentList.findByRole('link', { name: /^Izmeni rezultat: / }))
+
+    expect(await screen.findByText(/Menjaš rezultat koji/)).toBeVisible()
+    expect(screen.queryByLabelText(/^Vrsta trke/)).toBeNull()
+    expect(screen.queryByLabelText('Mesto')).toBeNull()
+  }, SLOW)
+
   it('is still sent when the race under it is gone from the calendar', async () => {
     /* A counted result reads its kind and its place off the race it belongs to
        and that race's event, because the form for correcting one does not ask
@@ -1100,7 +1180,7 @@ describe('a result that has been counted', () => {
     )
 
     try {
-      renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+      renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23', <Sent />)
 
       const row = await firstCounted()
 
@@ -1110,6 +1190,21 @@ describe('a result that has been counted', () => {
       await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
       expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+
+      /* And what it wrote, which is the half this case exists for. Empty, and
+         never the word „undefined": the form for correcting a counted result has
+         no box for either, so reading one out of its values gives nothing at all
+         and `String(nothing)` writes that word into the record and back into the
+         next form somebody opens (measured in review, 30.08.2026). */
+      const [written] = within(screen.getByRole('list', { name: 'store' })).getAllByRole('listitem')
+      const said = within(must(written, 'the correction')).getByTestId(/^said-/)
+
+      /* Three empty answers, and above all not the word „undefined": the form
+         for correcting a counted result has no box for either, so reading one
+         out of its values gives nothing at all, and `String(nothing)` writes that
+         word into the record and back into the next form somebody opens
+         (measured in review, 30.08.2026). */
+      expect(said.textContent).toBe(' /  / ')
     } finally {
       vi.unstubAllGlobals()
     }

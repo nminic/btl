@@ -4,6 +4,23 @@ import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { unosRezultata } from '../../forms/definitions'
 
+import type { FormValues } from '../../forms/types'
+import { fieldDate, storedDate } from '../../forms/dateField'
+import { categoryOf } from '../../data/raceCategory'
+import { raceKind } from '../../data/raceKind'
+import type { Result } from '../../data/types'
+import { useEvents, useRaces, useResults } from '../../data/useResource'
+import { useToday } from '../../clock/useClock'
+import { fromBoxes, inBoxes } from '../../forms/clock'
+import { racesToOffer } from './racesToOffer'
+import { btlPoints } from '../../data/scoring'
+import { formatPoints } from '../../i18n/format'
+import { useI18n } from '../../i18n/useI18n'
+import type { Submission } from '../../session/context'
+import { useSession } from '../../session/useSession'
+import { SignedOut } from './SignedOut'
+import './Member.css'
+
 /* The same form without the two questions a counted result does not ask.
  *
  * Correcting a result that has already been counted does not touch the kind of
@@ -20,21 +37,6 @@ const ISPRAVKA_PREBROJANOG = {
   ...unosRezultata,
   fields: unosRezultata.fields.filter((one) => one.name !== 'raceKind' && one.name !== 'city'),
 }
-import type { FormValues } from '../../forms/types'
-import { fieldDate, storedDate } from '../../forms/dateField'
-import { categoryOf } from '../../data/raceCategory'
-import type { Result } from '../../data/types'
-import { useEvents, useRaces, useResults } from '../../data/useResource'
-import { useToday } from '../../clock/useClock'
-import { fromBoxes, inBoxes } from '../../forms/clock'
-import { racesToOffer } from './racesToOffer'
-import { btlPoints } from '../../data/scoring'
-import { formatPoints } from '../../i18n/format'
-import { useI18n } from '../../i18n/useI18n'
-import type { Submission } from '../../session/context'
-import { useSession } from '../../session/useSession'
-import { SignedOut } from './SignedOut'
-import './Member.css'
 
 /**
  * A refused result written back into the fields it was entered in.
@@ -194,7 +196,12 @@ export function NewResult() {
 
     return race === undefined || event === undefined
       ? undefined
-      : { kind: race.kind, city: event.city, country: event.country }
+      : /* Through the one home for that reading (`data/raceKind.ts`), because
+           the file holds a word and not one of the three: read raw, a race whose
+           kind nobody ever set would put that word into the record, while the
+           very same race reported from the event page would put „length" there.
+           One fact, one answer. */
+        { kind: raceKind(race.kind), city: event.city, country: event.country }
   }, [fixingOne, races, events])
 
   if (memberNumber === null) {
@@ -212,6 +219,20 @@ export function NewResult() {
     const total = fromBoxes(values)
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
+    /* Which of the two answers this road gives, chosen by the road and not by
+       what happens to be in a box. `behind` is undefined only where the race a
+       counted result belongs to has left the calendar, which the administration
+       refuses to let happen while results point at it; the empty strings are a
+       floor under that, not a feature. */
+    const said =
+      fixingOne === undefined
+        ? {
+            raceKind: String(values.raceKind),
+            city: String(values.city),
+            country: String(values.country),
+          }
+        : { raceKind: behind?.kind ?? '', city: behind?.city ?? '', country: behind?.country ?? '' }
+
     const sent = {
       /* The race a correction keeps is the one the record already names, and not
          what the box holds. The box is locked (`fixed` below), so the two agree;
@@ -227,13 +248,18 @@ export function NewResult() {
          „Sasvim druga trka" waiting in the queue in place of the race the member
          actually ran. */
       raceName: named?.raceName ?? String(values.raceName),
-      /* What the member says the race was, and where. A hint until the
-         administration settles it at verification (owner, 30.08.2026), so it is
-         read off the boxes and not off anything the portal knows: on this form
-         the portal knows nothing, which is the whole reason the form exists. */
-      raceKind: behind?.kind ?? String(values.raceKind),
-      city: behind?.city ?? String(values.city),
-      country: behind?.country ?? String(values.country),
+      /* What the member says the race was, and where, or what the race says when
+         there is one. A hint until the administration settles it at verification
+         (owner, 30.08.2026).
+       *
+         **Never read out of a value the form is not holding.** The form for
+         correcting a counted result has neither box, so `values.raceKind` there
+         is nothing at all, and `String(nothing)` is the word „undefined" written
+         into the record and back into the next form somebody opens. This portal
+         has paid for that once already, in `forms/FormRenderer.tsx`, which keeps
+         a filled copy of its values for the same reason. So the two roads are
+         separated here rather than joined by a fallback. */
+      ...said,
       /* Through `storedDate`, which reads the date or throws saying what was in
          the box. It was parsed here and the result called a Date without
          looking (ADL A14 bans that), and answering with an empty date instead
@@ -382,7 +408,15 @@ export function NewResult() {
       )}
 
       <FormRenderer
-        form={fixingOne === undefined ? unosRezultata : ISPRAVKA_PREBROJANOG}
+        /* And the short form is the short form on both roads back to it. A
+           correction of a counted result is not asked its kind or its place, but
+           the submission it makes is a submission like any other: the member can
+           reopen it from the list of what they have sent, through `?ponovo=`, and
+           that road drew the full form with both boxes open. One click and the
+           kind the member was never asked for was theirs to set, on a correction
+           of a result that is already counted (measured in review, 30.08.2026).
+           What decides is what the submission is, not which address opened it. */
+        form={correcting?.corrects === undefined && fixingOne === undefined ? unosRezultata : ISPRAVKA_PREBROJANOG}
         /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
            here rather than in the definition because a field has no notion of a
            value it starts from: `emptyValues` gives every field the empty string
