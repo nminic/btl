@@ -3,6 +3,23 @@ import { useFilterParams } from '../../app/useFilterParams'
 import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { unosRezultata } from '../../forms/definitions'
+
+/* The same form without the two questions a counted result does not ask.
+ *
+ * Correcting a result that has already been counted does not touch the kind of
+ * race (owner, 30.08.2026: „član može da traži izmenu nezaključanih polja; ako
+ * hoće više od toga, mora da se obrati mailom"), and by then the result has a
+ * race behind it, whose event answers for the place. Asking either would be
+ * asking the member to restate something the portal already knows, and leaving
+ * them empty and required would refuse the correction outright.
+ *
+ * Built once at module load rather than per render, the way the report form is
+ * built per kind (`pages/event/reportForm.ts`): this is handed to `FormRenderer`
+ * as a prop, and a fresh object every render is a changed prop every render. */
+const ISPRAVKA_PREBROJANOG = {
+  ...unosRezultata,
+  fields: unosRezultata.fields.filter((one) => one.name !== 'raceKind' && one.name !== 'city'),
+}
 import type { FormValues } from '../../forms/types'
 import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
@@ -54,6 +71,16 @@ function filledFrom(one: Submission): FormValues {
   return {
     raceName: one.raceName,
     date: fieldDate(one.date),
+    /* The kind and the place come back with everything else. Left out, they are
+       empty and required when the form reopens, and the member cannot send the
+       correction at all: measured 30.08.2026, the form answered „Prijava nije
+       poslata. Popravi ova polja: Vrsta trke, Mesto" on a correction that changed
+       nothing. This is the second of the three writers of a submission, and the
+       one this change missed first. The third, `filledFromCounted`, deliberately
+       does not carry them: that form does not ask either question. */
+    raceKind: one.raceKind,
+    city: one.city,
+    country: one.country,
     distanceKm: String(one.distanceKm),
     ascentM: String(one.ascentM),
     descentM: String(one.descentM),
@@ -148,6 +175,27 @@ export function NewResult() {
      record on both roads in, and one name for that saves the next reader from
      having to notice that there are two. */
   const named = correcting ?? fixingOne
+  /* Which kind of race a counted result was run at, and where, read off the race
+     and its event rather than asked.
+   *
+     A correction of a counted result is not asked either question: the kind is
+     not the member's to change (owner, 30.08.2026) and by then the result has a
+     race behind it whose event answers for the place. But the submission it makes
+     still carries both, because it is a submission like any other and the form
+     that reopens it does ask. Sent empty, a correction of a correction came back
+     to a form demanding a kind and a place the member was never shown. */
+  const behind = useMemo(() => {
+    if (fixingOne === undefined || races.status !== 'ready' || events.status !== 'ready') {
+      return undefined
+    }
+
+    const race = races.data.find((one) => one.id === fixingOne.raceId)
+    const event = race === undefined ? undefined : events.data.find((one) => one.id === race.eventId)
+
+    return race === undefined || event === undefined
+      ? undefined
+      : { kind: race.kind, city: event.city, country: event.country }
+  }, [fixingOne, races, events])
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -179,6 +227,13 @@ export function NewResult() {
          „Sasvim druga trka" waiting in the queue in place of the race the member
          actually ran. */
       raceName: named?.raceName ?? String(values.raceName),
+      /* What the member says the race was, and where. A hint until the
+         administration settles it at verification (owner, 30.08.2026), so it is
+         read off the boxes and not off anything the portal knows: on this form
+         the portal knows nothing, which is the whole reason the form exists. */
+      raceKind: behind?.kind ?? String(values.raceKind),
+      city: behind?.city ?? String(values.city),
+      country: behind?.country ?? String(values.country),
       /* Through `storedDate`, which reads the date or throws saying what was in
          the box. It was parsed here and the result called a Date without
          looking (ADL A14 bans that), and answering with an empty date instead
@@ -327,7 +382,7 @@ export function NewResult() {
       )}
 
       <FormRenderer
-        form={unosRezultata}
+        form={fixingOne === undefined ? unosRezultata : ISPRAVKA_PREBROJANOG}
         /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
            here rather than in the definition because a field has no notion of a
            value it starts from: `emptyValues` gives every field the empty string

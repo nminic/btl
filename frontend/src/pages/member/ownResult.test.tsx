@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import { SLOW } from '../../test/slow'
 import type { Result } from '../../data/types'
 import { fireEvent, screen, within } from '@testing-library/react'
@@ -52,6 +53,9 @@ function Waiting({ whose, races }: { whose: string; races: string[] }) {
         session.submit({
           memberNumber: whose,
           raceName,
+          raceKind: 'length',
+          city: 'Niš',
+          country: 'RS',
           date: '2026-05-10',
           distanceKm: 21.1,
           ascentM: 540,
@@ -82,6 +86,9 @@ function SendOne({ whose, race }: { whose: string; race: string }) {
         session.submit({
           memberNumber: whose,
           raceName: race,
+          raceKind: 'length',
+          city: 'Niš',
+          country: 'RS',
           date: '2026-05-10',
           distanceKm: 21.1,
           ascentM: 540,
@@ -247,6 +254,9 @@ describe('the queue a corrected result comes back to', () => {
           done.current = true
           session.resubmit('sub-1', {
             raceName: 'Probna trka',
+            raceKind: 'length',
+            city: 'Niš',
+            country: 'RS',
             date: '2026-05-10',
             distanceKm: 21.1,
             ascentM: 540,
@@ -316,6 +326,9 @@ describe('the queue a corrected result comes back to', () => {
           done.current = true
           session.resubmit('sub-1', {
             raceName: 'Prva trka',
+            raceKind: 'length',
+            city: 'Niš',
+            country: 'RS',
             date: '2026-05-10',
             distanceKm: 21.1,
             ascentM: 540,
@@ -1016,6 +1029,9 @@ describe('a result that has been counted', () => {
           session.submit({
             memberNumber: '000001',
             raceName: mine.raceName,
+            raceKind: 'length',
+            city: 'Niš',
+            country: 'RS',
             date: '2026-05-10',
             distanceKm: 21.1,
             ascentM: 0,
@@ -1063,6 +1079,40 @@ describe('a result that has been counted', () => {
     await user.click(screen.getByRole('button', { name: 'odbij' }))
 
     expect(await countedRows(), 'a refusal moved the standing').toEqual(before)
+  }, SLOW)
+
+  it('is still sent when the race under it is gone from the calendar', async () => {
+    /* A counted result reads its kind and its place off the race it belongs to
+       and that race's event, because the form for correcting one does not ask
+       either (owner, 30.08.2026). A race can leave the calendar under a counted
+       result, which the administration measures and warns about elsewhere
+       (`adminEventKind.test.tsx`), and then there is nothing to read: what the
+       member typed is all there is, and the correction still has to go.
+
+       The calendar is emptied rather than a race deleted, since what is being
+       measured is the lookup coming back with nothing, and an empty answer is the
+       shortest way to that. */
+    const served = globalThis.fetch
+    const user = setupUser()
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('races') ? new Response('[]', { status: 200 }) : served(input, init),
+    )
+
+    try {
+      renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+      const row = await firstCounted()
+
+      await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+      await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+      await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+      expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   }, SLOW)
 })
 

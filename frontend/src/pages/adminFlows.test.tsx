@@ -43,6 +43,9 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       id: `sub-${index}`,
       memberNumber: '000007',
       raceName: 'Probna trka',
+      raceKind: 'length',
+      city: 'Niš',
+      country: 'RS',
       eventName: 'Probna trka',
       /* Nothing here was corrected; these are results a moderator is deciding
          for the first time. */
@@ -1368,6 +1371,7 @@ describe('verification', () => {
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')

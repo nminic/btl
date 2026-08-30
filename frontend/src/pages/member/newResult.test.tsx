@@ -1,3 +1,4 @@
+import { RACE_KINDS } from '../../data/types'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import { loadResource } from '../../data/client'
@@ -116,6 +117,35 @@ const MEASURED_FIELDS = [...new Set(
     return /[aeiou]$/i.test(said) ? said.slice(0, -1).toLowerCase() : said.toLowerCase()
   })
 
+
+describe('the kind of race the member says it was', () => {
+  it('starts on „Dužinska", and offers all three', async () => {
+    /* Owner, 30.08.2026, on both halves: the form opens on „Dužinska", and the
+       member is offered all three, „Slobodna" included, because the
+       administration settles it at verification anyway („a ja ću svakako
+       promeniti njegov izbor tokom verifikacije").
+
+       The starting value is measured because nothing else does: the field has no
+       notion of one, so it is seeded where the form is drawn, and a seed moved to
+       another kind is a member scored as though they had run to a time limit they
+       never had. Measured on this very change: with the seed moved to „time",
+       every test in the portal passed.
+
+       The three read off `RACE_KINDS` rather than written out, so a fourth kind
+       has to be answered here rather than quietly left out of the form. */
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    const kind = await screen.findByLabelText(/^Vrsta trke/)
+
+    expect(kind).toHaveValue('length')
+    /* Read through the role rather than off a cast list of options: this repo
+       refuses type assertions (`consistent-type-assertions`), and an option is a
+       thing with a role like any other. */
+    expect(within(kind).getAllByRole('option').map((one) => one.getAttribute('value'))).toEqual([
+      ...RACE_KINDS,
+    ])
+  })
+})
 
 describe('the list of races under the name of an event', () => {
   it('says nothing until two letters have been typed', async () => {
@@ -873,6 +903,9 @@ function Refused({ whose }: { whose: string }) {
       session.submit({
         memberNumber: whose,
         raceName: 'Tuđa trka',
+        raceKind: 'length',
+        city: 'Niš',
+        country: 'RS',
         date: '2026-05-10',
         distanceKm: 21.1,
         ascentM: 540,
