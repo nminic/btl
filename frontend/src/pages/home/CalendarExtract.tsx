@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { categoriesAt, upcomingSeries } from '../../data/derive'
+import { dotsAt, upcomingSeries } from '../../data/derive'
 import type { BtlEvent, Race } from '../../data/types'
 import { formatDayMonth } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -55,7 +55,7 @@ export function CalendarExtract({
       ) : (
         <ul className="extract">
           {series.map((entry) => {
-            const lengths = categoriesAt(entry.next, races)
+            const lengths = dotsAt(entry.next, races)
 
             return (
               <li key={entry.next.id} className="extract__row">

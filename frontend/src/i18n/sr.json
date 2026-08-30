@@ -638,7 +638,8 @@
     "long": "Duža trka",
     "half": "Polumaraton",
     "marathon": "Maraton",
-    "ultra": "Ultramaraton"
+    "ultra": "Ultramaraton",
+    "unmeasured": "Bez zadate dužine"
   },
   "competitors": {
     "title": "Takmičari",

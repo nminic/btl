@@ -1,5 +1,5 @@
 import {
-  categoriesAt,
+  dotsAt,
   CATEGORIES,
   boardOfTen,
   categoriesOf,
@@ -25,6 +25,7 @@ import {
 } from './derive'
 import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
+import { DOTS } from './types'
 import type { BtlEvent, Competitor, Race, RaceCategory, Result, Team } from './types'
 
 const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Competitor => ({
@@ -1157,7 +1158,7 @@ describe('boardOfTen', () => {
  * races were entered by hand carried no dots at all and one copied here carried
  * none either (ADL A7). One dot per length actually run, never one per race.
  */
-describe('categoriesAt', () => {
+describe('dotsAt', () => {
   const event = (id: string): BtlEvent => ({
     id,
     slug: id,
@@ -1191,8 +1192,8 @@ describe('categoriesAt', () => {
       race('c', 'two', 'ultra'),
     ]
 
-    expect(categoriesAt(event('one'), races)).toEqual(['short', 'marathon'])
-    expect(categoriesAt(event('two'), races)).toEqual(['ultra'])
+    expect(dotsAt(event('one'), races)).toEqual(['short', 'marathon'])
+    expect(dotsAt(event('two'), races)).toEqual(['ultra'])
   })
 
   it('says one length once, however many races are run at it', () => {
@@ -1202,11 +1203,50 @@ describe('categoriesAt', () => {
       race('c', 'one', 'half'),
     ]
 
-    expect(categoriesAt(event('one'), races)).toEqual(['half'])
+    expect(dotsAt(event('one'), races)).toEqual(['half'])
   })
 
   it('says nothing for an event whose races nobody has entered', () => {
-    expect(categoriesAt(event('one'), [])).toEqual([])
+    expect(dotsAt(event('one'), [])).toEqual([])
+  })
+
+  it('gives a race that fixes no length a dot of its own, not the one its category says', () => {
+    /* A category is read off a length (`data/raceCategory.ts`), and a race that fixes
+       none carries nought, so its category says „short": a twenty four hour ultra
+       would sit on the calendar beside the five kilometre races, on the one screen
+       somebody scans to find out what is on.
+
+       Both kinds that fix no length, because they arrive by different roads and the
+       reading has to be about the kind rather than about the limit. And the dot comes
+       last, after the five, because the list it is filtered from puts it there. */
+    const timed: Race = { ...race('a', 'one', 'short'), kind: 'time', limitSeconds: 86_400, distanceKm: 0 }
+    const free: Race = { ...race('b', 'one', 'short'), kind: 'free', distanceKm: 0 }
+
+    expect(dotsAt(event('one'), [timed])).toEqual(['unmeasured'])
+    expect(dotsAt(event('one'), [free])).toEqual(['unmeasured'])
+    expect(dotsAt(event('one'), [timed, race('c', 'one', 'marathon')])).toEqual([
+      'marathon',
+      'unmeasured',
+    ])
+  })
+
+  it('reads a kind it does not know as a race of a length, like every other screen', () => {
+    /* The type says one of three and the file says whatever it says. Read as a race
+       of a length, so an unknown word puts the dot its category asks for rather than
+       taking every race on the calendar out of the five. */
+    const strange = { ...race('a', 'one', 'marathon'), kind: 'ludilo' }
+
+    expect(dotsAt(event('one'), [strange])).toEqual(['marathon'])
+  })
+
+  it('offers exactly the five lengths and one more', () => {
+    /* The two lists live in two files and neither imports the other, so this is what
+       holds them together: the dots are the lengths in the same order, with the sixth
+       last. Written this way rather than as a spread, because `CATEGORIES` lives with
+       the deriving and `DOTS` with the types, and one importing the other would tie
+       a data file to a screen concern. */
+    expect(DOTS.slice(0, CATEGORIES.length)).toEqual(CATEGORIES)
+    expect(DOTS).toHaveLength(CATEGORIES.length + 1)
   })
 })
 

@@ -22,6 +22,25 @@ export type Crop = { x: number; y: number; size: number }
    where the order is decided and where a test holds it. */
 export type RaceCategory = 'short' | 'half' | 'long' | 'marathon' | 'ultra'
 
+/* What a coloured dot beside an event can say, which is the five lengths and one
+   thing besides: that the event holds a race which fixes no length at all.
+
+   **Not a sixth `RaceCategory`.** That list is read in thirteen places across seven
+   files and by five families of words: the ring on a profile, the filter of the
+   standings, the boards by length, the rotation on the front page. None of them has
+   anything to say about a race with no fixed length, because such a race belongs to
+   no board and has no ring segment; the owner asked for a colour **in the calendar**
+   on 30.08.2026, not for a sixth length in the whole portal. Measured before the
+   code was written, and it is what kept `CATEGORIES` at five.
+
+   A list rather than a union, so the guard over the words for these can be walked
+   (`i18n/keys.test`). Written out rather than spread from `CATEGORIES`, which lives
+   in `data/derive.ts` and would make this file depend on that one; a case holds the
+   two to each other instead (`derive.test.ts`). */
+export const DOTS = ['short', 'half', 'long', 'marathon', 'ultra', 'unmeasured'] as const
+
+export type Dot = (typeof DOTS)[number]
+
 /* What a race fixes before anybody runs it, and so what is left to the runner
    (PDL, from the specification on): a race of a **length** fixes the distance and
    the runner brings the time, a **timed** race fixes the time and the runner

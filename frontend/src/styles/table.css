@@ -126,12 +126,12 @@
 }
 
 /* One dot per race length, the same five colours the ring and the results table
-   use. Shared, because the calendar, the front page and a profile all draw
+   use, and a sixth for a race that fixes no length at all (`data/types.ts`, `DOTS`). Shared, because the calendar, the front page and a profile all draw
    them, and three copies of five colours is two too many (ADL A7). */
 .length-dot {
   display: inline-block;
-  inline-size: 0.55rem;
-  block-size: 0.55rem;
+  inline-size: var(--length-dot-size);
+  block-size: var(--length-dot-size);
   border-radius: 50%;
   flex: none;
 }
@@ -141,3 +141,4 @@
 .length-dot--half { background: var(--length-half); }
 .length-dot--marathon { background: var(--length-marathon); }
 .length-dot--ultra { background: var(--length-ultra); }
+.length-dot--unmeasured { background: var(--length-unmeasured); }

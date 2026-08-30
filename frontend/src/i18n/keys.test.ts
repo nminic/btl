@@ -3,7 +3,14 @@ import { join } from 'node:path'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import { registracija } from '../forms/definitions'
 import { CATEGORIES } from '../data/derive'
-import { EVENT_KINDS, ITEM_KINDS, PENDING_QUEUE_IDS, RACE_KINDS, RATING_MARKS } from '../data/types'
+import {
+  DOTS,
+  EVENT_KINDS,
+  ITEM_KINDS,
+  PENDING_QUEUE_IDS,
+  RACE_KINDS,
+  RATING_MARKS,
+} from '../data/types'
 import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
 import { LOCALES } from './config'
 import { ROLES } from '../roles/context'
@@ -165,7 +172,10 @@ describe('the names the portal composes out of a list', () => {
     { of: 'race.kind', each: RACE_KINDS },
     { of: 'profile.lengthsShort', each: ['all', ...CATEGORIES] },
     { of: 'profile.categoryWord', each: CATEGORIES },
-    { of: 'category', each: CATEGORIES },
+    /* The dots and not the five lengths: the calendar draws a sixth for a race that
+       fixes none, and it needs a word like the rest (`data/types.ts`, `DOTS`). The
+       five that name a result are a subset of these. */
+    { of: 'category', each: DOTS },
     { of: 'home.mostOf', each: CATEGORIES },
     { of: 'calendar.weekdays', each: ['1', '2', '3', '4', '5', '6', '7'] },
     { of: 'myProfile.notify', each: NOTIFICATION_KEYS },

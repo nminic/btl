@@ -1,5 +1,4 @@
-import { CATEGORIES } from '../../data/derive'
-import { EVENT_KINDS } from '../../data/types'
+import { DOTS, EVENT_KINDS } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 /* For the five colours of `.length-dot`, which live in the table sheet because
    the results table draws them too (styles/table.css). Asked for here rather
@@ -47,7 +46,7 @@ export function LengthLegend() {
             {t(`event.kind.${one}`)}
           </li>
         ))}
-        {CATEGORIES.map((one) => (
+        {DOTS.map((one) => (
           <li key={one} className="legend__item">
             <span className={`length-dot length-dot--${one}`} aria-hidden="true" />
             {t(`category.${one}`)}

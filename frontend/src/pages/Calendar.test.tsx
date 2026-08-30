@@ -200,15 +200,18 @@ describe('Calendar', () => {
     const dots = container.querySelectorAll('.chip .length-dot')
     expect(dots.length).toBeGreaterThan(0)
     expect([...dots].every((dot) => dot.getAttribute('aria-hidden') === 'true')).toBe(true)
-    /* Eight and not five since 24.08.2026: the three kinds of event stand over the
-       five lengths, because the colour of the whole tile says which kind it is and
-       the dots on it say which lengths it holds (owner: „Za Skup i Trening koristi
-       druge boje i objasni ih u legendi"). Written out rather than counted off the
-       two lists this reads from, since a count taken from them would be satisfied
-       by either list falling to nothing. */
+    /* Nine since 30.08.2026: the three kinds of event stand over the five lengths,
+       because the colour of the whole tile says which kind it is and the dots on it
+       say which lengths it holds (owner, 24.08.2026: „Za Skup i Trening koristi
+       druge boje i objasni ih u legendi"), and a sixth dot joined them for a race
+       that fixes no length at all, which is the one thing a length cannot say.
+
+       Written out rather than counted off the two lists this reads from, since a
+       count taken from them would be satisfied by either list falling to nothing. */
     const legend = within(screen.getByRole('list', { name: 'Legenda:' }))
 
-    expect(legend.getAllByRole('listitem')).toHaveLength(8)
+    expect(legend.getAllByRole('listitem')).toHaveLength(9)
+    expect(legend.getByText('Bez zadate dužine')).toBeVisible()
     expect(legend.getAllByRole('listitem').map((one) => one.textContent).slice(0, 3)).toEqual([
       'Trka',
       'Trening',

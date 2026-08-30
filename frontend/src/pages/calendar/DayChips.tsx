@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { categoriesAt } from '../../data/derive'
+import { dotsAt } from '../../data/derive'
 import type { BtlEvent, Race } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 /* For the five colours of `.length-dot`, which live in the table sheet because
@@ -31,7 +31,7 @@ import '../../styles/table.css'
  */
 export function EventChip({ event, races }: { event: BtlEvent; races: Race[] }) {
   const { locale, t } = useI18n()
-  const lengths = categoriesAt(event, races)
+  const lengths = dotsAt(event, races)
 
   return (
     <Link
