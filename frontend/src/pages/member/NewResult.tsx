@@ -6,12 +6,12 @@ import { unosRezultata } from '../../forms/definitions'
 import type { FormValues } from '../../forms/types'
 import { fieldDate, storedDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
-import type { BtlEvent, Race, Result } from '../../data/types'
-import type { Suggestion } from '../../forms/types'
+import type { Result } from '../../data/types'
 import { useEvents, useRaces, useResults } from '../../data/useResource'
 import { useToday } from '../../clock/useClock'
+import { racesToOffer } from './racesToOffer'
 import { btlPoints } from '../../data/scoring'
-import { formatDistance, formatNumericDate, formatPoints } from '../../i18n/format'
+import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { Submission } from '../../session/context'
 import { useSession } from '../../session/useSession'
@@ -73,66 +73,6 @@ function filledFrom(one: Submission): FormValues {
        written over (session/SessionProvider.tsx). */
     comment: one.comment,
   }
-}
-
-/**
- * The races the calendar already holds, offered while an event name is typed
- * (owner, 23.08.2026).
- *
- * Only what has been run, and newest first: „U autocomplete se navode samo
- * dogadjaji koji su u proslosti ili na taj dan, ne ubuduce", sorted „po datumu od
- * poslednje prema ranijim". A race still to come is not a result anybody can
- * enter (PDL P9 refuses a date in the future), so offering it would be offering a
- * row the form then refuses.
- *
- * One entry per race and not per event, because what is filled in is a race: an
- * event of five distances is five rows, told apart by the day and the length,
- * which is what the row says after the name.
- *
- * The races are grouped once rather than searched for each event, because the
- * data is eleven hundred events against sixteen hundred races and this is built
- * on every letter typed until it is memoised.
- */
-function racesToOffer(
-  events: BtlEvent[],
-  races: Race[],
-  today: string,
-  locale: string,
-): Suggestion[] {
-  const byEvent = new Map<string, Race[]>()
-
-  for (const race of races) {
-    byEvent.set(race.eventId, [...(byEvent.get(race.eventId) ?? []), race])
-  }
-
-  const pairs = events.flatMap((event) =>
-    (byEvent.get(event.id) ?? [])
-      .filter((race) => race.date <= today)
-      .map((race) => ({ event, race })),
-  )
-
-  pairs.sort((left, right) => right.race.date.localeCompare(left.race.date))
-
-  return pairs.map(({ race }) => ({
-    id: race.id,
-    /* The **race** is what is searched for and what goes into the box, since
-       23.08.2026: „sad je postalo logičnije da se pretražuje zapravo naziv trke sa
-       datumom i dužinom" (owner). Until that day a race had no name of its own and
-       the event's stood in for it.
-
-       Only the name goes into the box (owner: „u polje se upisuje samo naziv").
-       The day and the length are what one race of an event is told apart from
-       another by, and they go into the fields under it rather than into the
-       name. */
-    value: race.name,
-    said: `${race.name} – ${formatNumericDate(race.date)} – ${formatDistance(race.distanceKm, locale)}`,
-    fills: {
-      date: fieldDate(race.date),
-      distanceKm: String(race.distanceKm),
-      ascentM: String(race.ascentM),
-      descentM: String(race.descentM),
-    },
-  }))
 }
 
 /** Hours, minutes and seconds are all required by the form definition, so

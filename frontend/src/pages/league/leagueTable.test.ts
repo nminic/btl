@@ -119,6 +119,22 @@ describe('the grid of a competition', () => {
     expect(first(table.columns).name).toBe('Polumaraton kroz grad')
   })
 
+  it('carries the kind of that race, since the heading is written from it', () => {
+    /* A column is named by what its race is measured by (`data/raceLabel.ts`), and
+       this is the only path by which the kind reaches the heading. Measured by its
+       own values rather than by the label, because the label has its own guards and
+       a column that carried the wrong race's kind would satisfy them both.
+
+       A length of nought on purpose: a column that lost the kind would fall back to
+       naming the race „(0,0 km)", which is what the grid drew before the field was
+       carried at all. */
+    const timed = [race('r6', 'e1', 0, '2019-05-02')]
+    const table = leagueTable(league, events, [{ ...first(timed), kind: 'time', limitSeconds: 86_400 }], [], [])
+
+    expect(first(table.columns).kind).toBe('time')
+    expect(first(table.columns).limitSeconds).toBe(86_400)
+  })
+
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {
     const table = leagueTable(
       league,

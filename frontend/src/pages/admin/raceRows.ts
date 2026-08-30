@@ -29,21 +29,49 @@ export type RaceRow = {
    *  follows its event when the event is renamed (`data/types.ts`). */
   renamed: 'yes' | 'no'
   date: string
+  /**
+   * Which of the three kinds the race is, and its limit in seconds where it has
+   * one, carried through the row without being drawn in it.
+   *
+   * The table asks for a length and for nothing else, so neither of these is a
+   * column and neither can be typed here. They are on the row all the same,
+   * because saving the event writes every row back over the race it came from
+   * (`AdminEvents.tsx`, `editRecord(row.id, storedRow(row, written))`), and a
+   * field the row does not carry is a field that save deletes. Measured on
+   * 30.08.2026: without them, opening an event and pressing save turned a twenty
+   * four hour race into a race of nought kilometres.
+   *
+   * They become columns the day administration can set them, and the guard that
+   * keeps them alive through a save is the same one either way.
+   *
+   * Plain text and not `RaceKind`, because a row does not read this and must not
+   * be tempted to: it carries the word from the record to the record, and the one
+   * place that decides what a word means is where the race is named
+   * (`data/raceLabel.ts`). A carrier that narrowed the word would have to answer
+   * for one it does not know, and there is no answer it could give that anything
+   * would ever read.
+   */
+  kind: string
+  limitSeconds: string
   distanceKm: string
   ascentM: string
   descentM: string
 }
 
 /** The rows an event opens with: its races, in the order they are run. */
-/** What a row of the table is read off, and nothing besides: the table asks for a
- *  length and knows nothing of the other two kinds, so a race handed here need not
- *  say which one it is. Narrow on purpose, the way `data/raceLabel.ts` is: the day
- *  this table asks for the kind as well, the field arrives here and its guard
- *  arrives with it, rather than being carried through unread in the meantime. */
+/** What a row of the table is read off, and nothing besides. Narrow on purpose,
+ *  the way `data/raceLabel.ts` is: this is the shape a row needs, not the shape a
+ *  race has, and a race gains fields this table will never draw. */
 export type RaceOfRow = Pick<
   Race,
   'id' | 'name' | 'renamed' | 'date' | 'distanceKm' | 'ascentM' | 'descentM'
->
+> & {
+  /* Carried, not read, for the reason `RaceRow.kind` gives. A race out of the file
+     hands its own `RaceKind` straight in, which is what `Race` is; the overlaid
+     list hands in whatever the store keeps, which is text. */
+  kind: string
+  limitSeconds: number
+}
 
 export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): RaceRow[] {
   return [...races]
@@ -55,6 +83,8 @@ export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): 
       name: race.name,
       renamed: race.renamed,
       date: fieldDate(race.date),
+      kind: race.kind,
+      limitSeconds: String(race.limitSeconds),
       distanceKm: String(race.distanceKm),
       ascentM: String(race.ascentM),
       descentM: String(race.descentM),
@@ -185,14 +215,12 @@ export function storedRow(row: RaceRow, eventId: string): Record<string, string>
     name: row.name.trim(),
     renamed: row.renamed,
     date: isoDate(row.date),
-    /* A race entered through this table is a race of a length, because a length is
-       the only thing this table asks for. Written down rather than left out, so a
-       race made here has the same fields as one out of the file: what reads them
-       back (`admin/AdminEvents.tsx`) takes anything else for a race of a length, and
-       a record with the field missing would be told apart from one that carries it
-       only by that fallback. */
-    kind: 'length',
-    limitSeconds: '0',
+    /* Written back as the row carries it, not as a fixed word. A row entered here
+       opens as a race of a length, because a length is the only thing this table
+       asks for; a row read off a race that already exists carries whatever that
+       race is, and saving the event must hand it back unchanged. */
+    kind: row.kind,
+    limitSeconds: row.limitSeconds,
     distanceKm: String(distanceKm),
     ascentM: String(Number(row.ascentM === '' ? 0 : row.ascentM)),
     descentM: String(Number(row.descentM === '' ? 0 : row.descentM)),

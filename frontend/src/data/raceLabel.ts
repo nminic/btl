@@ -81,6 +81,29 @@ export type Named = Pick<Race, 'name' | 'date' | 'kind' | 'limitSeconds' | 'dist
  * so the family is real rather than theoretical: 8,649 km and 8,651 km are parted
  * by the rough length and joined by the exact one.
  */
+/**
+ * What a race is measured by, in one word or two: its length, how long it lasts,
+ * or nothing at all.
+ *
+ * The one home for that answer (ADL A31), because it is asked in two places and
+ * they must not drift. Here it fills the brackets of a name; on the member's form
+ * for a new result it is the last of the three things a race is offered by, „naziv
+ * trke sa datumom i dužinom" as the owner put it on 23.08.2026, where the third
+ * of them stopped being a length the day a race could say it is timed.
+ *
+ * Empty for a free race, which is the answer the owner chose on 30.08.2026, so
+ * every caller has to say what it does with nothing rather than print it.
+ */
+export function raceMeasure(race: Named, locale: string): string {
+  if (race.kind === 'free') {
+    return ''
+  }
+
+  return race.kind === 'time'
+    ? formatLimit(race.limitSeconds)
+    : formatDistance(race.distanceKm, locale)
+}
+
 export function raceLabel(race: Named, among: Named[], locale: string): string {
   const said = raceLabelParts(race, among, locale)
 
@@ -101,21 +124,13 @@ export function raceLabelParts(
   among: Named[],
   locale: string,
 ): { name: string; rest: string } {
-  /* What goes in the brackets, and the one home for that answer. Empty is an
-     answer too, and the only one a free race has. */
-  const measure = (one: Named, decimals: number) => {
-    if (one.kind === 'free') {
-      return ''
-    }
-
-    if (one.kind === 'time') {
-      return formatLimit(one.limitSeconds)
-    }
-
-    return decimals === 1
-      ? formatDistance(one.distanceKm, locale)
+  /* What goes in the brackets. `raceMeasure` answers it, and the second rounding
+     is asked for here alone: only a race of a length has anything a decimal can
+     sharpen, so the other two kinds give the same answer on every rung. */
+  const measure = (one: Named, decimals: number) =>
+    decimals === 1 || one.kind !== 'length'
+      ? raceMeasure(one, locale)
       : `${formatNumber(one.distanceKm, locale, decimals)} km`
-  }
 
   const rest = (when: (one: Named) => string, decimals: number) => (one: Named) => {
     const said = measure(one, decimals)

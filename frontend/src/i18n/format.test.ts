@@ -237,6 +237,15 @@ describe('a race limit written out', () => {
     expect(formatLimit(1_800)).toBe("30'")
   })
 
+  it('counts one whole minute as a minute, on the edge itself', () => {
+    /* The edge and not near it. „At least a minute" written as „more than a
+       minute" loses exactly these two: an hour and one minute would read „1 h",
+       and a limit of one minute would read „0 h", which is a length of time the
+       race has not got. Neither is caught by a case a second either side. */
+    expect(formatLimit(3_660)).toBe("1 h 01'")
+    expect(formatLimit(60)).toBe("01'")
+  })
+
   it('never drops a part between two that are kept', () => {
     /* An hour and thirty seconds. Dropping the empty minutes would leave „1 h
        30''", which anybody skimming reads as an hour and a half, so only the ends

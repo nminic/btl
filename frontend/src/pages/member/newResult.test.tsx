@@ -4,6 +4,7 @@ import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
+import { racesToOffer } from './racesToOffer'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
 
@@ -111,6 +112,67 @@ describe('the list of races under the name of an event', () => {
     }
 
     expect(offered().length).toBeGreaterThan(0)
+  })
+
+  it('offers a race by what it is measured by, which is not always a length', () => {
+    /* The third of the three things the owner named on 23.08.2026 („naziv trke sa
+       datumom i dužinom") stopped being a length on 29.08.2026, when he said a
+       timed race is shown by how long it lasts, and on 30.08.2026, when he chose
+       that a free race is shown by nothing at all.
+
+       Asked of the function rather than of the screen, because every race in
+       `public/mock/races.json` is a race of a length, so the screen can only ever
+       ask the one question. The same reason `data/raceLabel.test.ts` exists, and
+       the same reason `data/raceCategory.test.ts` asks its function directly.
+
+       `raceMeasure` is the one home for the answer (`data/raceLabel.ts`), and the
+       point of the case is that this list reads it: a row built from the length
+       alone would offer the twenty four hour race as „0,0 km" and the free one as
+       „0,0 km" too, which is what it did until 30.08.2026. */
+    const held: BtlEvent = {
+      id: 'e1',
+      slug: 'dogadjaj-2026',
+      name: 'Događaj',
+      date: '2026-09-19',
+      city: 'Beograd',
+      country: 'RS',
+      kind: 'race',
+      featured: 'no',
+      description: '',
+      link: '',
+      copiedFrom: '',
+    }
+    const shaped = (over: Partial<Race>): Race => ({
+      id: 'r',
+      eventId: 'e1',
+      name: 'Trka',
+      renamed: 'no',
+      date: '2026-09-19',
+      kind: 'length',
+      limitSeconds: 0,
+      distanceKm: 0,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+      ...over,
+    })
+
+    const said = racesToOffer(
+      [held],
+      [
+        shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400 }),
+        shaped({ id: 'r2', kind: 'free' }),
+        shaped({ id: 'r3', distanceKm: 21.1 }),
+      ],
+      '2026-12-31',
+      'sr-Latn',
+    ).map((one) => one.said)
+
+    expect(said).toEqual([
+      'Trka – 19.09.2026. – 24 h',
+      'Trka – 19.09.2026.',
+      'Trka – 19.09.2026. – 21,1 km',
+    ])
   })
 
   it('offers what has been run, newest first, and never what is still to come', async () => {

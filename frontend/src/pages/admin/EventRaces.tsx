@@ -339,6 +339,11 @@ export function EventRaces({
               name: eventName,
               renamed: 'no',
               date: isoDate(eventDate) === '' ? '' : eventDate,
+              /* A race entered here is a race of a length, because a length is the
+                 only thing this table asks for. Said rather than left out, since
+                 the row is what saving writes back (`admin/raceRows.ts`). */
+              kind: 'length',
+              limitSeconds: '0',
               distanceKm: '',
               ascentM: '',
               descentM: '',

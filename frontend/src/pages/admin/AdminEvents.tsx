@@ -54,10 +54,10 @@ const copyOfEvent: FormDef = {
  * missing one of them comes out as a row that says so rather than as a race with
  * `undefined` inside it.
  *
- * What a row reads and no more (`RaceOfRow`), so the kind a race carries since
- * 30.08.2026 is not read here to be thrown away one call later: this table asks
- * for a length and for nothing else, and a field carried through unread is a field
- * no guard can be written for.
+ * What a row reads and no more (`RaceOfRow`), which since 30.08.2026 includes the
+ * kind a race is and its limit. The table draws neither and cannot set either, but
+ * saving the event writes every row back over the race it came from, so a field
+ * left out here is a field that save deletes.
  */
 function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] {
   return all
@@ -75,6 +75,15 @@ function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] 
          it comes back as the string „false", which is true. */
       renamed: one.renamed === 'yes' ? 'yes' : 'no',
       date: String(one.date),
+      /* Read straight and not against the list of kinds that exist, because nothing
+         on this path reads the word: it goes from the record into the row and back
+         into the record, and the one place that decides what it means is where the
+         race is named. A check here would be a decision nobody acts on, so no
+         mutation could fell it. What holds the word to the three that exist is the
+         guard over the file (`data/data.test.tsx`) and the two places that write
+         one: this table and the copying of an event. */
+      kind: String(one.kind),
+      limitSeconds: Number(one.limitSeconds),
       distanceKm: Number(one.distanceKm),
       ascentM: Number(one.ascentM),
       descentM: Number(one.descentM),

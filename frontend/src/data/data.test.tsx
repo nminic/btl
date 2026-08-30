@@ -461,7 +461,12 @@ describe('the generated data', () => {
 
     expect(races.length).toBeGreaterThan(0)
     expect(kinds.every((one) => RACE_KINDS.some((known) => known === one))).toBe(true)
+    /* Both fields asked for by name. „The limit agrees with the kind" below is
+       `false !== false` where the field is absent altogether, so on its own it
+       would pass on a file that had stopped writing a limit on every race that is
+       not timed, and `Race.limitSeconds` is not optional. */
     expect(races.filter((one) => one.kind === undefined)).toEqual([])
+    expect(races.filter((one) => one.limitSeconds === undefined)).toEqual([])
     expect(
       races.filter((one) => (one.kind === 'time') !== (one.limitSeconds > 0)),
     ).toEqual([])

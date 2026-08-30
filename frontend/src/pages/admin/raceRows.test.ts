@@ -1,6 +1,7 @@
 import { allFinished, isWrong, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
 import { fieldDate } from '../../forms/dateField'
 import type { Race } from '../../data/types'
+import { first } from '../../test/at'
 
 /** A race as the store keeps one, with only what a row reads off it. */
 function race(id: string, date: string, distanceKm: number): Race {
@@ -24,6 +25,8 @@ const row = (over: Partial<RaceRow> = {}): RaceRow => ({
   name: 'Trka',
   renamed: 'no',
   date: '17/10/2026',
+  kind: 'length',
+  limitSeconds: '0',
   distanceKm: '10',
   ascentM: '',
   descentM: '',
@@ -129,6 +132,28 @@ describe('the races of an event while they are being entered', () => {
        three spaces and the cell that carried it reported itself fine. A round
        measured that, and this line is the reason it cannot come back. */
     expect(isWrong(row({ name: '   ' }), 'name')).toBe(true)
+  })
+
+  it('hands a timed race back as it found it, through the row and out again', () => {
+    /* Saving an event writes every row back over the race it came from
+       (`AdminEvents.tsx`: `editRecord(row.id, storedRow(row, written))`), and it
+       does that for races that already exist as well as for ones typed here. This
+       table asks for a length and knows nothing of the other two kinds, so the row
+       has to carry them or the save deletes them.
+
+       Measured on 30.08.2026 before the row carried them: opening an event and
+       pressing save with nothing changed turned a twenty four hour race into a
+       race of `kind: "length"` and nought seconds, so its name went from „24 h" to
+       „0,0 km" and the limit the formula scores it against was gone. */
+    const timed: Race = {
+      ...race('r', '2026-09-19', 0),
+      kind: 'time',
+      limitSeconds: 86_400,
+    }
+    const back = storedRow(first(rowsOf([timed], (iso) => iso)), 'evt')
+
+    expect(back.kind).toBe('time')
+    expect(back.limitSeconds).toBe('86400')
   })
 
   it('writes an empty climb and fall as nought', () => {

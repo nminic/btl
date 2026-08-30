@@ -5,9 +5,10 @@ import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
+import { copiedRace } from './copiedRace'
 import { copyOf } from './copyOf'
 import { nextNumber } from '../admin/raceIds'
-import { daysBetween, shiftDate } from '../../forms/dateField'
+import { daysBetween } from '../../forms/dateField'
 import { ran } from './ran'
 import { useMay } from '../admin/rights'
 
@@ -99,27 +100,11 @@ export function EventActions({
          `editRecord` is filed by id, so saving the third copy moved **both** onto
          it and the second copy was left with no races at all. Measured on
          „Maraton maratona 2015" on 23.08.2026: four rows became none. */
-      create(RACES.id, `${race.id}-kopija-${String(nextNumber(takenRaces, `${race.id}-kopija-`))}`, {
-        eventId: id,
-        /* Its name comes across with it, and so does whether it was given by hand:
-           a race renamed „Beogradski polumaraton" is still that next season, and one
-           that only ever carried its event's name goes on following it (owner,
-           23.08.2026). */
-        name: race.name,
-        renamed: race.renamed,
-        /* The day it was run on, kept as it was. The copy starts on the day the
-           event was on, so the races start on the days they were on, and moving
-           the event's date afterwards moves them all by the same number of days
-           (admin/AdminEvents.tsx): two races on the Saturday and one on the
-           Sunday stay two and one, a year on (owner, 10.08.2026). */
-        /* Moved with the event, by the same number of days: two races on the
-           Saturday and one on the Sunday stay two and one, a year on (owner,
-           10.08.2026). */
-        date: shiftDate(race.date, by),
-        distanceKm: String(race.distanceKm),
-        ascentM: String(race.ascentM),
-        descentM: String(race.descentM),
-      })
+      create(
+        RACES.id,
+        `${race.id}-kopija-${String(nextNumber(takenRaces, `${race.id}-kopija-`))}`,
+        copiedRace(race, id, by),
+      )
     }
 
     /* And the screen is told what it is doing, rather than left to work it out
