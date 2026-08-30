@@ -1,18 +1,6 @@
-/**
- * The three boxes, as narrow as the question is and as loose as its callers are.
- *
- * A form holds every value as text or as a tick, and reading one out of it may give
- * nothing at all (`forms/types.ts`, and `noUncheckedIndexedAccess` in ADL A14); the
- * calculator on the front page holds its own three strings and nothing else. Read
- * through `String`, so both fit and neither has to be widened to suit the other,
- * and so a box that is not there comes out as „undefined" and then as `NaN` rather
- * than as a nought somebody never typed.
- */
-type Said = string | boolean | undefined
+import type { FormValues } from './types'
 
-export type Boxes = { [named: string]: Said }
-
-/** And the three as they are written back into a form, which is always text. */
+/** The three as they are written back into a form, which is always text. */
 export type WrittenBoxes = { hours: string; minutes: string; seconds: string }
 
 /**
@@ -51,10 +39,6 @@ export function inBoxes(totalSeconds: number): WrittenBoxes {
 
 /** And the three boxes added up. Every form that asks for a time requires all
  *  three, so there is nothing here to fall back to. */
-export function fromBoxes(values: Boxes): number {
-  return (
-    Number(String(values.hours)) * 3600 +
-    Number(String(values.minutes)) * 60 +
-    Number(String(values.seconds))
-  )
+export function fromBoxes(values: FormValues): number {
+  return Number(values.hours) * 3600 + Number(values.minutes) * 60 + Number(values.seconds)
 }

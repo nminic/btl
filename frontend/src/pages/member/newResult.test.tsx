@@ -76,16 +76,46 @@ const shaped = (over: Partial<Race>): Race => ({
 })
 
 
-/* The six fields a race may or may not fill in, read from the one place they are
-   named (`i18n/sr.json`, through the labels the form asks with) rather than written
-   out here. Written out, a label renamed leaves the guard measuring a word that is
-   no longer the name of a field, and it measures nothing at all.
+/**
+ * Every field a race may fill in when it is chosen, by the word a sentence would use
+ * for it.
+ *
+ * Read from the two places that own the answer rather than written out: which fields
+ * are filled comes from `racesToOffer` itself, asked for all three kinds, and what
+ * each is called comes from the dictionary. Written out here, a kind that begins
+ * filling in a seventh field would leave the guard silent about it, and a label
+ * renamed would leave it measuring a word that is nobody's field.
+ *
+ * Cut to the stem, because Serbian declines: „dužina" and „dužinu" are one field.
+ * A label ending in a vowel loses it („Dužina" → „dužin", „Sati" → „sat"); one
+ * ending in a consonant is its own stem („Uspon", „Spust"). Not a fixed number of
+ * letters: four was tried and „Sati" is four long with a stem of three, so „sate"
+ * slipped through while „obrisati" was accused of naming it.
+ */
+const MEASURED_FIELDS = [...new Set(
+  ['length', 'time', 'free'].flatMap((kind) =>
+    Object.keys(
+      first(
+        racesToOffer(
+          [held],
+          [{ ...shaped({ id: 'r1', limitSeconds: 3_600 }), kind }],
+          '2026-12-31',
+          'sr-Latn',
+        ),
+      ).fills,
+    ),
+  ),
+)]
+  .filter((name) => name !== 'date')
+  .map((name) => {
+    const said = must(
+      Object.entries(sr.newResult).find(([key]) => key === name),
+      `the label of ${name}`,
+    )[1].replace(/\s*\(.*\)$/, '')
 
-   The bracketed unit is dropped: „Dužina (km)" is the label, „dužina" is the word a
-   sentence would use. */
-const MEASURED_FIELDS = Object.entries(sr.newResult)
-  .filter(([name]) => ['distanceKm', 'ascentM', 'descentM', 'hours', 'minutes', 'seconds'].includes(name))
-  .map(([, said]) => said.replace(/\s*\(.*\)$/, ''))
+    return /[aeiou]$/i.test(said) ? said.slice(0, -1).toLowerCase() : said.toLowerCase()
+  })
+
 
 describe('the list of races under the name of an event', () => {
   it('says nothing until two letters have been typed', async () => {
@@ -249,22 +279,21 @@ describe('the list of races under the name of an event', () => {
        actually forbidden is below. */
     expect(said.textContent?.trim(), 'the box explains nothing at all').not.toBe('')
 
-    /* Six, said out loud: the names are filtered out of the dictionary by key, and a
-       key renamed there would quietly leave fewer of them and a guard measuring
-       less than it says. */
-    expect(MEASURED_FIELDS, 'a field label has been renamed out from under this').toHaveLength(6)
+    /* Six, said out loud: the list is worked out from what the three kinds fill in,
+       and a kind that stopped filling one in would quietly leave fewer of them and a
+       guard measuring less than it says. */
+    expect(MEASURED_FIELDS, 'a field is no longer filled in by any kind of race').toHaveLength(6)
+
+    /* Whole words, because a stem inside a longer word is not a mention of the field:
+       „sat" lives in „obrisati" and in „upisati", and a round of this accused an
+       innocent verb of naming the clock while „sate" walked past it. */
+    const words = (said.textContent ?? '').toLowerCase().split(/[^a-zà-ÿčćđšž]+/i)
 
     for (const field of MEASURED_FIELDS) {
-      /* By the stem and not by the whole word, because Serbian declines: a sentence
-         that promises „datum i dužinu" names the same field as one that promises
-         „dužina", and a round of this asked for the nominative alone and let the
-         accusative through (measured 30.08.2026). Four letters is enough to part
-         these six from one another and short enough to survive every case ending
-         they have. */
       expect(
-        said.textContent?.toLowerCase(),
+        words.filter((word) => word.startsWith(field)),
         `the sentence names ${field}, which is filled in on some kinds of race and not on others`,
-      ).not.toContain(field.slice(0, 4).toLowerCase())
+      ).toEqual([])
     }
 
     /* And the box is the one the sentence belongs to: typing into it offers races,
