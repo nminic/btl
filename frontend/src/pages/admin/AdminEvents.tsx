@@ -18,10 +18,11 @@ import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
 import { dogadjaj } from '../../forms/definitions'
 import type { FormDef, FormValues } from '../../forms/types'
-import type { Race } from '../../data/types'
+
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
-import { allFinished, rowsOf, storedRow, type RaceRow } from './raceRows'
+import { RACE_KINDS } from '../../data/types'
+import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextNumber } from './raceIds'
 import { nextSeason } from './nextSeason'
 import { useOverlay } from './overlay'
@@ -53,8 +54,13 @@ const copyOfEvent: FormDef = {
  * need races. Read field by field rather than asserted into a `Race`, so a record
  * missing one of them comes out as a row that says so rather than as a race with
  * `undefined` inside it.
+ *
+ * What a row reads and no more (`RaceOfRow`), which since 30.08.2026 includes the
+ * kind a race is and its limit. The table draws neither and cannot set either, but
+ * saving the event writes every row back over the race it came from, so a field
+ * left out here is a field that save deletes.
  */
-function racesUnder(all: Record<string, unknown>[], event: string): Race[] {
+function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] {
   return all
     .filter((one) => String(one.eventId) === event)
     .map((one) => ({
@@ -70,6 +76,14 @@ function racesUnder(all: Record<string, unknown>[], event: string): Race[] {
          it comes back as the string „false", which is true. */
       renamed: one.renamed === 'yes' ? 'yes' : 'no',
       date: String(one.date),
+      /* Read against the list of kinds that exist, because the row does act on the
+         word: a race that does not fix its length is not asked for one
+         (`raceRows.whatIsMissing`), so a word this portal does not know would put
+         the table into a state where it refuses a length that race has not got.
+         The store keeps every value as text (`session/context.ts`), and a record
+         written before this field existed carries none. */
+      kind: RACE_KINDS.find((known) => known === one.kind) ?? 'length',
+      limitSeconds: Number(one.limitSeconds) || 0,
       distanceKm: Number(one.distanceKm),
       ascentM: Number(one.ascentM),
       descentM: Number(one.descentM),

@@ -1173,6 +1173,8 @@ describe('categoriesAt', () => {
     eventId,
     name: 'Trka',
     renamed: 'no',
+    kind: 'length',
+    limitSeconds: 0,
     date: '2027-04-03',
     distanceKm: 10,
     ascentM: 0,

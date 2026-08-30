@@ -1,6 +1,6 @@
 import { isoDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
-import type { Race } from '../../data/types'
+import type { Race, RaceKind } from '../../data/types'
 
 /**
  * One race of an event while it is being entered, before anything is saved.
@@ -29,13 +29,74 @@ export type RaceRow = {
    *  follows its event when the event is renamed (`data/types.ts`). */
   renamed: 'yes' | 'no'
   date: string
+  /**
+   * Which of the three kinds the race is, and its limit in seconds where it has
+   * one, carried through the row without being drawn in it.
+   *
+   * The table asks for a length and for nothing else, so neither of these is a
+   * column and neither can be typed here. They are on the row all the same,
+   * because saving the event writes every row back over the race it came from
+   * (`AdminEvents.tsx`, `editRecord(row.id, storedRow(row, written))`), and a
+   * field the row does not carry is a field that save deletes. Measured on
+   * 30.08.2026 on the record and not on the screen: without them, a race read into
+   * a row and written back out of it came back a race of a length with no limit.
+   *
+   * They become columns the day administration can set them, and the guard that
+   * keeps them alive through a save is the same one either way.
+   *
+   * One of the three words and not plain text, because the row does read it: what
+   * a race must say about itself depends on which kind it is, and a race that does
+   * not fix its length cannot be made to give one (`whatIsMissing`). An earlier
+   * turn of this had it as text, on the reasoning that a row only carries the
+   * word; that was true of the save and false of the bounds, which is the half
+   * that refuses.
+   */
+  kind: RaceKind
+  limitSeconds: string
   distanceKm: string
   ascentM: string
   descentM: string
 }
 
 /** The rows an event opens with: its races, in the order they are run. */
-export function rowsOf(races: Race[], fieldDate: (iso: string) => string): RaceRow[] {
+/** What a row of the table is read off, and nothing besides. Narrow on purpose,
+ *  the way `data/raceLabel.ts` is: this is the shape a row needs, not the shape a
+ *  race has, and a race gains fields this table will never draw. */
+export type RaceOfRow = Pick<
+  Race,
+  'id' | 'name' | 'renamed' | 'date' | 'distanceKm' | 'ascentM' | 'descentM'
+> &
+  Pick<Race, 'kind' | 'limitSeconds'>
+
+/**
+ * A row for a race being entered, as the table opens it.
+ *
+ * Its own function and not an object written into the table, because the words it
+ * puts in `kind` are words `raceLabel` will read back and nothing between the two
+ * checks them: written where they were, `kind: 'ludilo'` passed the whole package
+ * (measured 30.08.2026). Here they are read by a case.
+ *
+ * A race entered by hand is a race of a length, because a length is the only thing
+ * this table asks for; the day it asks for the kind as well, this is where the
+ * answer comes from.
+ */
+export function newRaceRow(eventName: string, eventDate: string): RaceRow {
+  return {
+    id: '',
+    /* Named after the event it is entered under, which is what „po default-u naziv
+       događaja" means; it follows the event until somebody types into it. */
+    name: eventName,
+    renamed: 'no',
+    date: isoDate(eventDate) === '' ? '' : eventDate,
+    kind: 'length',
+    limitSeconds: '0',
+    distanceKm: '',
+    ascentM: '',
+    descentM: '',
+  }
+}
+
+export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): RaceRow[] {
   return [...races]
     /* By the day first and the distance inside it, which is the order they are
        run in: an event over two mornings reads as two mornings. */
@@ -45,6 +106,8 @@ export function rowsOf(races: Race[], fieldDate: (iso: string) => string): RaceR
       name: race.name,
       renamed: race.renamed,
       date: fieldDate(race.date),
+      kind: race.kind,
+      limitSeconds: String(race.limitSeconds),
       distanceKm: String(race.distanceKm),
       ascentM: String(race.ascentM),
       descentM: String(race.descentM),
@@ -67,6 +130,44 @@ export const BOUNDS = {
   distanceKm: { least: 0.1, most: 1000 },
   ascentM: { least: 0, most: 30000 },
   descentM: { least: 0, most: 30000 },
+}
+
+/**
+ * Whether this row has to give a length, which is the one home for that question.
+ *
+ * A race that does not fix its length carries nought, and nought is outside the
+ * bounds on purpose: it passes „not empty" and is not a distance, and the whole
+ * standing is worked out from it. So without this an event holding a timed or a
+ * free race could not be saved at all.
+ *
+ * One home and not three, because the answer is read in three places and they had
+ * drifted: `whatIsMissing` decides whether the save happens, `isWrong` decides
+ * which cell is marked, and the table decides which cell says it is required and
+ * what its `min` is. A row that the save let through was at the same time drawn as
+ * required and marked wrong, which sends a screen reader into a cell it has nothing
+ * to fix with (WCAG 2.2 SC 3.3.1, and ADL A31 on a fact with more than one home).
+ *
+ * There is a fourth reader that cannot be one of these, and it is written by hand:
+ * the words of the refusal (`i18n`, `admin.form.racesRefused`). One sentence stands
+ * for the whole table, so it cannot name what is wrong with one row, and until
+ * 30.08.2026 it said every race must give a length, which stopped being true the
+ * moment two of the three kinds stopped fixing one.
+ *
+ * It does not try to say it conditionally either, which was the next thing tried
+ * and worse: „a race that fixes a length" names a property this table does not
+ * draw, and the only thing on the screen that looks like it, the number in the
+ * length cell, points the other way. The exempt row shows „0" and the refused one
+ * shows nothing, so a reader following the words lands on the wrong row. The
+ * sentence now says what every race must have and sends the reader to the marked
+ * cells, which are marked one by one and correctly. That the sentence itself does
+ * not name the row is a fault of its own, written down in PENDING since
+ * 23.08.2026.
+ *
+ * The climb and the fall are not asked about here, because a course has both
+ * whichever way it is run.
+ */
+export function asksLength(row: Pick<RaceRow, 'kind'>): boolean {
+  return row.kind === 'length'
 }
 
 /** Whether a measurement is inside what a race can be. An empty climb or fall is
@@ -102,6 +203,14 @@ export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'nam
     return isoDate(row.date) === ''
   }
 
+  /* Nothing is wrong with a length a race does not fix. Asked here as well as in
+     `whatIsMissing`, through the one function both read, because this is what
+     marks the cell: without it the length of a timed race was drawn as wrong the
+     moment any other row in the table was refused. */
+  if (field === 'distanceKm' && !asksLength(row)) {
+    return false
+  }
+
   return !withinBounds(row[field], field)
 }
 
@@ -124,9 +233,11 @@ export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | 'nam
      on the real screen: a climb of **minus five hundred** metres saved. `Le = L +
      (1.25×AP + 0.75×AN)/200` then works out a profile that was never run, and the
      whole standing is worked out from it. */
-  return (['distanceKm', 'ascentM', 'descentM'] as const).find(
-    (field) => !withinBounds(row[field], field),
-  )
+  const asked = asksLength(row)
+    ? (['distanceKm', 'ascentM', 'descentM'] as const)
+    : (['ascentM', 'descentM'] as const)
+
+  return asked.find((field) => !withinBounds(row[field], field))
 }
 
 /**
@@ -175,6 +286,12 @@ export function storedRow(row: RaceRow, eventId: string): Record<string, string>
     name: row.name.trim(),
     renamed: row.renamed,
     date: isoDate(row.date),
+    /* Written back as the row carries it, not as a fixed word. A row entered here
+       opens as a race of a length, because a length is the only thing this table
+       asks for; a row read off a race that already exists carries whatever that
+       race is, and saving the event must hand it back unchanged. */
+    kind: row.kind,
+    limitSeconds: row.limitSeconds,
     distanceKm: String(distanceKm),
     ascentM: String(Number(row.ascentM === '' ? 0 : row.ascentM)),
     descentM: String(Number(row.descentM === '' ? 0 : row.descentM)),

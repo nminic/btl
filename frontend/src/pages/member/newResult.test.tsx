@@ -4,6 +4,7 @@ import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
+import { racesToOffer } from './racesToOffer'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
 
@@ -40,6 +41,39 @@ function offered(): string[] {
 
 /** The four the calendar fills in, by the name each is asked under. */
 const FILLED = [/^Datum/, /^Dužina/, /^Uspon/, /^Spust/] as const
+
+/* One event and a way of shaping a race under it, for the cases that ask what a
+   race is offered by. Written here rather than inside one of them, because two
+   cases ask the same question of the same three races: what the row says, and
+   what choosing it fills in. */
+const held: BtlEvent = {
+  id: 'e1',
+  slug: 'dogadjaj-2026',
+  name: 'Događaj',
+  date: '2026-09-19',
+  city: 'Beograd',
+  country: 'RS',
+  kind: 'race',
+  featured: 'no',
+  description: '',
+  link: '',
+  copiedFrom: '',
+}
+const shaped = (over: Partial<Race>): Race => ({
+  id: 'r',
+  eventId: 'e1',
+  name: 'Trka',
+  renamed: 'no',
+  date: '2026-09-19',
+  kind: 'length',
+  limitSeconds: 0,
+  distanceKm: 0,
+  ascentM: 0,
+  descentM: 0,
+  category: 'short',
+  ...over,
+})
+
 
 describe('the list of races under the name of an event', () => {
   it('says nothing until two letters have been typed', async () => {
@@ -111,6 +145,96 @@ describe('the list of races under the name of an event', () => {
     }
 
     expect(offered().length).toBeGreaterThan(0)
+  })
+
+  it('offers a race by what it is measured by, which is not always a length', () => {
+    /* The third of the three things the owner named on 23.08.2026 („naziv trke sa
+       datumom i dužinom") stopped being a length on 29.08.2026, when he said a
+       timed race is shown by how long it lasts, and on 30.08.2026, when he chose
+       that a free race is shown by nothing at all.
+
+       Asked of the function rather than of the screen, because every race in
+       `public/mock/races.json` is a race of a length, so the screen can only ever
+       ask the one question. The same reason `data/raceLabel.test.ts` exists, and
+       the same reason `data/raceCategory.test.ts` asks its function directly.
+
+       `raceMeasure` is the one home for the answer (`data/raceLabel.ts`), and the
+       point of the case is that this list reads it: a row built from the length
+       alone would offer the twenty four hour race as „0,0 km" and the free one as
+       „0,0 km" too, which is what it did until 30.08.2026. */
+    const said = racesToOffer(
+      [held],
+      [
+        shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400 }),
+        shaped({ id: 'r2', kind: 'free' }),
+        shaped({ id: 'r3', distanceKm: 21.1 }),
+      ],
+      '2026-12-31',
+      'sr-Latn',
+    ).map((one) => one.said)
+
+    expect(said).toEqual([
+      'Trka – 19.09.2026. – 24 h',
+      'Trka – 19.09.2026.',
+      'Trka – 19.09.2026. – 21,1 km',
+    ])
+  })
+
+  it('fills in a length only where the race fixes one', () => {
+    /* Choosing a race fills the fields under the box. A timed race and a free one
+       carry nought, and nought is not a length this form will take: the definition
+       asks for at least 0,1 (`definitions/unos-rezultata.form.json`) and
+       `forms/validate.ts` holds it, so a row offered with a nought in it is a row
+       the member cannot send.
+
+       Not handed over at all, rather than handed over empty, which is what the
+       owner asked for on 29.08.2026: „Na vremenskoj trci član unosi dužinu, uspon
+       i spust." All three, because a course run in laps has a climb that depends on
+       how many laps somebody ran, so the race cannot know any of them.
+
+       The other half of that sentence, „Vreme ne unosi, jer je zadato trkom", is
+       not done and is written down in PENDING as part of the increment about
+       entering and scoring: it is not a matter of what is filled in but of what the
+       form asks for, and the form asks for hours, minutes and seconds outright. */
+    const filled = racesToOffer(
+      [held],
+      [
+        shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400, ascentM: 120 }),
+        shaped({ id: 'r2', kind: 'free', ascentM: 120 }),
+        shaped({ id: 'r3', distanceKm: 21.1, ascentM: 120, descentM: 140 }),
+      ],
+      '2026-12-31',
+      'sr-Latn',
+    ).map((one) => one.fills)
+
+    /* Both the keys and what they carry, because the two faults are different and
+       either one on its own leaves the other unguarded.
+
+       The keys are what the renderer locks by (`forms/FormRenderer.tsx`,
+       `setLed(Object.keys(one.fills))`), so a key handed over with an empty string
+       is a field that is empty and locked at once, which is a form nobody can send.
+       A round of this asked for the values alone and wrote that dead end down as
+       though it were the answer.
+
+       The values are what the member is then left with, and the round that
+       corrected the keys asked for nothing else: with only the keys measured, a
+       length race handing over „" for its climb passed the whole package, and that
+       is the same dead end on all 1612 races in the file rather than on none. */
+    expect(filled.map((one) => Object.keys(one ?? {}).sort())).toEqual([
+      ['date'],
+      ['date'],
+      ['ascentM', 'date', 'descentM', 'distanceKm'],
+    ])
+    expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
+    expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
+    expect(filled.map((one) => one?.descentM)).toEqual([undefined, undefined, '140'])
+    /* And the day, which is the one thing handed over on all three kinds and so the
+       one the two lists above cannot reach. It is locked like the rest, so a value
+       the form cannot read is a field nobody can mend: the box asks for
+       „dd/mm/gggg" (`forms/dateField.ts`) and a race carries „2026-09-19", which
+       `isoDate` reads back as nothing at all. A round of this measured only that the
+       value is not empty, and an ISO day is not empty. */
+    expect(filled.map((one) => one?.date)).toEqual(['19/09/2026', '19/09/2026', '19/09/2026'])
   })
 
   it('offers what has been run, newest first, and never what is still to come', async () => {

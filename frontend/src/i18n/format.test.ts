@@ -4,6 +4,7 @@ import {
   formatDistance,
   formatDuration,
   formatElevation,
+  formatLimit,
   formatMonth,
   formatNumber,
   formatPoints,
@@ -211,5 +212,58 @@ describe('wholePeriod', () => {
     expect(wholePeriod('2027-07-01', '2027-07-31', 'en')).toBe('July 2027')
     // A year is a date rather than a number: Serbian writes the full stop.
     expect(wholePeriod('2027-01-01', '2027-12-31', 'en')).toBe('2027')
+  })
+})
+
+/* How long a timed race lasts, which is what its name is written with since the
+   owner's word of 29.08.2026: „kad je trka vremenska, prikazuje se trajanje u
+   zagradi. Npr. Šri Činmoj ultramaraton 2026. (24 h)".
+
+   Asked here rather than through `raceLabel`, which reads it: the label has one
+   case per kind and would carry one limit through, so the shape of every other
+   limit would be unguarded. */
+describe('a race limit written out', () => {
+  it('writes whole hours as hours and nothing else', () => {
+    /* His own example, and the one PDL wrote before it („(6 h)"). This is what a
+       timed race almost always is, and it is the whole reason the empty parts are
+       dropped: „24 h 00' 00''" in the name of a race is three parts of which two
+       say nothing. */
+    expect(formatLimit(86_400)).toBe('24 h')
+    expect(formatLimit(21_600)).toBe('6 h')
+  })
+
+  it('keeps the minutes where there are any, on either side of the hours', () => {
+    expect(formatLimit(23_400)).toBe("6 h 30'")
+    expect(formatLimit(1_800)).toBe("30'")
+  })
+
+  it('counts one whole minute as a minute, on the edge itself', () => {
+    /* The edge and not near it. „At least a minute" written as „more than a
+       minute" loses exactly these two: an hour and one minute would read „1 h",
+       and a limit of one minute would read „0 h", which is a length of time the
+       race has not got. Neither is caught by a case a second either side. */
+    expect(formatLimit(3_660)).toBe("1 h 01'")
+    expect(formatLimit(60)).toBe("01'")
+  })
+
+  it('never drops a part between two that are kept', () => {
+    /* An hour and thirty seconds. Dropping the empty minutes would leave „1 h
+       30''", which anybody skimming reads as an hour and a half, so only the ends
+       are dropped and never the middle. */
+    expect(formatLimit(3_630)).toBe("1 h 00' 30''")
+  })
+
+  it('rounds nothing away, so no limit is written as a length of time it is not', () => {
+    /* Ninety seconds is a minute and a half and says so. A limit written to the
+       nearest minute would call this „2'". */
+    expect(formatLimit(90)).toBe("01' 30''")
+  })
+
+  it('answers for a limit of nothing rather than writing an empty name', () => {
+    /* No timed race has one, since a race that lasts no time is not a race. It is
+       still answered, because a limit left empty in administration reaches this,
+       and „0 h" says the limit is missing where „" would make the race read as a
+       free one, which is the kind that carries no brackets. */
+    expect(formatLimit(0)).toBe('0 h')
   })
 })

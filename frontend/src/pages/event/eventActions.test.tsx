@@ -6,7 +6,8 @@ import { at, first, inputElement, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
-import type { BtlEvent } from '../../data/types'
+import type { BtlEvent, Race } from '../../data/types'
+import { copiedRace } from './copiedRace'
 import { fieldDate, shiftDate } from '../../forms/dateField'
 import { nextSeason } from '../admin/nextSeason'
 
@@ -341,6 +342,56 @@ describe('reporting a result from the event', () => {
     /* The form opens on it: the time is asked for, the race is not. */
     expect(await screen.findByLabelText(/Sati/)).toBeVisible()
     expect(screen.queryByLabelText(/^Trka/)).toBeNull()
+  })
+})
+
+describe('a race carried into a copy of its event', () => {
+  /* The record itself and not the screen, because the copy is the third place a
+     race is written and only here can it be asked with a race the data has not
+     got: every race in `public/mock/races.json` is a race of a length, so a copy
+     measured through the table can only ever say what it says about a length.
+
+     What this catches is a field left out. Nothing downstream can tell a race that
+     never carried a kind from one that has none, so the copy would quietly become
+     a race of a length the first time somebody saved it. */
+  const timed: Race = {
+    id: 'r1',
+    eventId: 'e1',
+    name: 'Šri Činmoj ultramaraton',
+    renamed: 'yes',
+    date: '2026-09-19',
+    kind: 'time',
+    limitSeconds: 86_400,
+    distanceKm: 0,
+    ascentM: 0,
+    descentM: 0,
+    category: 'short',
+  }
+
+  it('is the same kind of race it was, and keeps the limit it was run to', () => {
+    const copy = copiedRace(timed, 'e2', 365)
+
+    expect(copy.kind).toBe('time')
+    expect(copy.limitSeconds).toBe('86400')
+  })
+
+  it('names every field a race record has, so none is dropped on the way', () => {
+    /* Both halves. „It has a kind" alone would pass on a record that had lost the
+       length instead, and the whole point of the copy is that a race comes across
+       entire. Compared against the race itself rather than a list written out here,
+       which would be a second place to keep up to date. */
+    const copy = copiedRace(timed, 'e2', 0)
+
+    /* Every field a race has except the id, because a copy is a new race and gets a
+       number of its own. The category is among them: it is worked out from the
+       length rather than carried, which is what the other writer of a race record
+       does (`admin/raceRows.ts`), and until 30.08.2026 the two disagreed and this
+       case wrote the disagreement down as though it were a decision. */
+    expect(Object.keys(copy).sort()).toEqual(
+      Object.keys(timed)
+        .filter((one) => one !== 'id')
+        .sort(),
+    )
   })
 })
 

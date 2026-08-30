@@ -1,6 +1,15 @@
-import { allFinished, isWrong, rowsOf, storedRow, whatIsMissing, type RaceRow } from './raceRows'
+import {
+  allFinished,
+  isWrong,
+  newRaceRow,
+  rowsOf,
+  storedRow,
+  whatIsMissing,
+  type RaceRow,
+} from './raceRows'
 import { fieldDate } from '../../forms/dateField'
-import type { Race } from '../../data/types'
+import { RACE_KINDS, type Race } from '../../data/types'
+import { first } from '../../test/at'
 
 /** A race as the store keeps one, with only what a row reads off it. */
 function race(id: string, date: string, distanceKm: number): Race {
@@ -10,6 +19,8 @@ function race(id: string, date: string, distanceKm: number): Race {
     name: 'Trka',
     renamed: 'no' as const,
     date,
+    kind: 'length' as const,
+    limitSeconds: 0,
     distanceKm,
     ascentM: 120,
     descentM: 140,
@@ -22,6 +33,8 @@ const row = (over: Partial<RaceRow> = {}): RaceRow => ({
   name: 'Trka',
   renamed: 'no',
   date: '17/10/2026',
+  kind: 'length',
+  limitSeconds: '0',
   distanceKm: '10',
   ascentM: '',
   descentM: '',
@@ -129,12 +142,74 @@ describe('the races of an event while they are being entered', () => {
     expect(isWrong(row({ name: '   ' }), 'name')).toBe(true)
   })
 
+  it('opens a new row as a race of a length, in a word the portal knows', () => {
+    /* The words this row carries are words `data/raceLabel.ts` reads back, and
+       nothing between the two checks them. Written into the table where it used to
+       be, `kind: 'ludilo'` passed the whole package (measured 30.08.2026), so it
+       lives here where a case reads it.
+
+       Both halves. „It is one of the three" alone would pass on a row that opened
+       as a timed race, and a table with no column for a limit would then refuse
+       to save a race whose limit nobody can set. */
+    const fresh = newRaceRow('Događaj', '17/10/2026')
+
+    expect(RACE_KINDS).toContain(fresh.kind)
+    expect(fresh.kind).toBe('length')
+    expect(fresh.limitSeconds).toBe('0')
+  })
+
+  it('asks a length only of a race that fixes one', () => {
+    /* A timed race and a free race carry nought, which is outside the bounds on
+       purpose. Without this the table would refuse a length neither of them has,
+       and the event holding one could not be saved at all: `allFinished` is what
+       `AdminEvents` asks before it writes anything.
+
+       The climb and the fall are still asked for, because a course has both
+       whichever way it is run, and that half is asked here too so the exemption
+       cannot quietly widen to every measurement on the row. */
+    const timed = row({ kind: 'time', limitSeconds: '86400', distanceKm: '0' })
+
+    expect(whatIsMissing(timed)).toBeUndefined()
+    expect(allFinished([timed])).toBe(true)
+    expect(whatIsMissing({ ...timed, ascentM: '-5' })).toBe('ascentM')
+
+    /* And a race of a length is asked for one exactly as before. */
+    expect(whatIsMissing(row({ distanceKm: '0' }))).toBe('distanceKm')
+  })
+
+  it('hands a timed race back as it found it, through the row and out again', () => {
+    /* Saving an event writes every row back over the race it came from
+       (`AdminEvents.tsx`: `editRecord(row.id, storedRow(row, written))`), and it
+       does that for races that already exist as well as for ones typed here. This
+       table asks for a length and knows nothing of the other two kinds, so the row
+       has to carry them or the save deletes them.
+
+       Measured on 30.08.2026 before the row carried them, and on the record
+       rather than on the screen: a race read into a row and written back out of
+       it came back `kind: "length"` with a limit of nought, so its name would have
+       gone from „24 h" to „0,0 km" and the limit the formula scores it against
+       would be gone. The screen is measured by its own case
+       (`pages/timedRace.test.tsx`), because the two halves refuse in different
+       places and a sentence about one of them said the other. */
+    const timed: Race = {
+      ...race('r', '2026-09-19', 0),
+      kind: 'time',
+      limitSeconds: 86_400,
+    }
+    const back = storedRow(first(rowsOf([timed], (iso) => iso)), 'evt')
+
+    expect(back.kind).toBe('time')
+    expect(back.limitSeconds).toBe('86400')
+  })
+
   it('writes an empty climb and fall as nought', () => {
     expect(storedRow(row(), 'evt')).toEqual({
       eventId: 'evt',
       name: 'Trka',
       renamed: 'no' as const,
       date: '2026-10-17',
+      kind: 'length',
+      limitSeconds: '0',
       distanceKm: '10',
       ascentM: '0',
       descentM: '0',

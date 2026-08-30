@@ -22,6 +22,21 @@ export type Crop = { x: number; y: number; size: number }
    where the order is decided and where a test holds it. */
 export type RaceCategory = 'short' | 'half' | 'long' | 'marathon' | 'ultra'
 
+/* What a race fixes before anybody runs it, and so what is left to the runner
+   (PDL, from the specification on): a race of a **length** fixes the distance and
+   the runner brings the time, a **timed** race fixes the time and the runner
+   brings the distance, and a **free** race fixes neither and is run until its own
+   goal is met, the way Round 'n' Around is.
+
+   First in the list is what a race is unless somebody says otherwise, so the order
+   is not cosmetic. That is the same reason `EVENT_KINDS` is ordered as it is, and
+   this list is that one's shape on purpose: a list rather than a union, so a guard
+   over the words for these can be walked (i18n/keys.test) and so the data can be
+   held to them (data.test). A union is gone by the time anything runs. */
+export const RACE_KINDS = ['length', 'time', 'free'] as const
+
+export type RaceKind = (typeof RACE_KINDS)[number]
+
 /* What is being put on: a race, a training session, or a gathering (owner,
    10.08.2026). The calendar has always carried things that are not races; this
    is the first field that says which is which. First in the list is what a new
@@ -167,6 +182,34 @@ export type Race = {
    * runs later carries the day it runs on.
    */
   date: string
+  /**
+   * Which of the three kinds this race is.
+   *
+   * Every race in the data is `length` and was before this field existed, because
+   * until it existed there was nothing else a race could be. It is written on all
+   * 1612 of them rather than left out and read as a default, which is how
+   * `EVENT_KINDS` was carried into the events when it arrived: a field written on
+   * every record can be held to the list of words that exist (`data.test`), and a
+   * default cannot, since a misspelt kind and an absent one read alike.
+   */
+  kind: RaceKind
+  /**
+   * How long a timed race lasts, in seconds. Zero on every other kind.
+   *
+   * This is the race's own limit and not anybody's time: on a timed race it is the
+   * same for everyone who finished, and it is what the formula scores against
+   * (owner, 29.08.2026, `Tsec` = 24 h = 86400 s). He turned down the other reading,
+   * in which `Tsec` is the time a runner actually spent, because that one rewards
+   * stopping: 60 km in 6 h would beat the same 60 km run out over the full 24.
+   */
+  limitSeconds: number
+  /**
+   * How far this race is, in kilometres.
+   *
+   * Fixed by the race only where `kind` is `length`. On a timed and on a free race
+   * the distance is what each runner covered, so it is carried by their result and
+   * not by the race, and this is zero.
+   */
   distanceKm: number
   ascentM: number
   descentM: number

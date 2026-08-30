@@ -1,6 +1,6 @@
 import { genderMark } from '../../data/categories'
 import { categoryOfMember } from '../../data/derive'
-import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
+import type { BtlEvent, Competitor, League, Race, RaceKind, Result } from '../../data/types'
 
 /**
  * A competition as one grid: everybody who ran it down the side, every race of
@@ -30,8 +30,17 @@ export type LeagueColumn = {
    */
   name: string
   date: string
+  /**
+   * Which of the three kinds the race is, and how long it lasts where that is what
+   * it fixes. Carried because the heading is written from them: a race of a length
+   * is named by its length and a timed one by its limit (`data/raceLabel.ts`).
+   */
+  kind: RaceKind
+  limitSeconds: number
   /** Only for the ordering. Within one day the shorter race comes first, and
-   *  by name "10 km" would come before "5 km". */
+   *  by name "10 km" would come before "5 km". A timed and a free race carry no
+   *  length, so within one day they come before every race that does; nothing
+   *  else orders them, and they keep the order the races arrived in. */
   distanceKm: number
 }
 
@@ -95,6 +104,8 @@ export function leagueTable(
                  date as well as a length, so both columns read the same and
                  neither said which morning it was. */
               date: race.date,
+              kind: race.kind,
+              limitSeconds: race.limitSeconds,
               distanceKm: race.distanceKm,
             },
           ]

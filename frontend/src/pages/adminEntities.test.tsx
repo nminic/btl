@@ -602,7 +602,17 @@ describe('the races of an event', () => {
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByText(/Svaka trka mora da ima naziv, dan i dužinu/)).toBeVisible()
+    /* The whole sentence and not a piece of it. One sentence stands for the whole
+       table, so what it says is all a reader gets; asked by a fragment, a round of
+       this let the half about the length be taken away without a word, and let an
+       earlier half that named a length every race must have stand while two of the
+       three kinds had stopped fixing one. Both directions fall here. */
+    expect(
+      must(await screen.findByText(/Svaka trka mora da ima naziv i dan/), 'the refusal')
+        .textContent,
+    ).toBe(
+      'Svaka trka mora da ima naziv i dan; obeležena polja pokazuju šta još nedostaje. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.',
+    )
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
     await fill(user, lastRow(), { km: '12' })

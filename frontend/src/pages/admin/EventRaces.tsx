@@ -2,7 +2,7 @@ import { DatePicker } from '../../forms/DatePicker'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { BOUNDS, isWrong, type RaceRow } from './raceRows'
+import { asksLength, BOUNDS, isWrong, newRaceRow, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -148,14 +148,28 @@ export function EventRaces({
        that says it is fine sends a reader looking somewhere else
        (WCAG 2.2 SC 3.3.1). */
     const wrong = refused && isWrong(row, field)
+    /* Whether this cell refuses anything at all, which is not the same as whether
+       it is required: the climb and the fall are never required and are always
+       bounded, and the length of a race that fixes none is neither. Read off the
+       one home the refusal and the marking read (`raceRows.asksLength`), so the
+       control cannot announce a rule the save does not hold it to. */
+    const bounded = field !== 'distanceKm' || asksLength(row)
 
     return (
       <input
         className="field__control"
         type="number"
         inputMode="decimal"
-        min={BOUNDS[field].least}
-        max={BOUNDS[field].most}
+        /* The bounds this cell refuses outside of, and only where it refuses
+           anything. A race that does not fix a length carries nought, and a
+           control announcing „at least a tenth of a kilometre" over a value of
+           nought announces a rule that was lifted from it. Both ends and not only
+           the floor: a ceiling on a cell nothing checks is the same untruth the
+           other way round, and it stood for one round saying the opposite of the
+           floor beside it. Asked of the same `asksLength` the refusal and the
+           marking ask, so these do not drift again. */
+        min={bounded ? BOUNDS[field].least : undefined}
+        max={bounded ? BOUNDS[field].most : undefined}
         step="any"
         value={row[field]}
         /* Named by its row as well as its column. „Dužina" twenty times over is
@@ -298,7 +312,7 @@ export function EventRaces({
                         that day that a course can genuinely be run twice over the
                         same distance and the same climb, rarely but really, and
                         that the portal must not forbid it. */}
-                    {measure(row, at, 'distanceKm', true)}
+                    {measure(row, at, 'distanceKm', asksLength(row))}
                   </td>
                   <td>{measure(row, at, 'ascentM', false)}</td>
                   <td>{measure(row, at, 'descentM', false)}</td>
@@ -328,23 +342,7 @@ export function EventRaces({
       <button
         type="button"
         className="button button--secondary"
-        onClick={() =>
-          onRows([
-            ...rows,
-            {
-              id: '',
-              /* Named after the event it is entered under, which is what „po
-                 default-u naziv događaja" means; it follows the event until
-                 somebody types into it. */
-              name: eventName,
-              renamed: 'no',
-              date: isoDate(eventDate) === '' ? '' : eventDate,
-              distanceKm: '',
-              ascentM: '',
-              descentM: '',
-            },
-          ])
-        }
+        onClick={() => onRows([...rows, newRaceRow(eventName, eventDate)])}
       >
         {t('admin.form.new.races')}
       </button>
