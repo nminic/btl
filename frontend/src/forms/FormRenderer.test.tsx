@@ -1006,7 +1006,170 @@ const fillsEverything: FormDef = {
   ],
 }
 
+/* The same shape, with an ordinary box among the filled fields: `fillsEverything`
+ * above holds the two kinds of control that do **not** come from the renderer's
+ * shared set, and this one holds the kind that does. */
+const fillsABox: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'trka', type: 'text', labelKey: 'proba.trka' },
+    { name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' },
+    /* The other kind that is handed the shared object across a component boundary
+       rather than spread onto an element here. No form on the portal locks a long
+       box today, and that is the point: what holds a branch is a case, not the
+       absence of a caller. */
+    { name: 'prica', type: 'textarea', labelKey: 'proba.prica' },
+  ],
+}
+
+describe('a box the portal filled in from a list', () => {
+  it('looks held as well as being held, and only once it is', async () => {
+    /* On `unos-rezultata` a chosen race locks four boxes: the day, the length, the
+       climb and the fall. Three of them come from here, out of one shared set of
+       properties, and those three have worn the portal's dress for a held control
+       since 28.08.2026. The fourth, the day, is drawn by `DatePicker.tsx` from its
+       own class and wore nothing until 29.08.2026, which is the fault that made
+       this whole change: measured in Chrome over the built stylesheet, the locked
+       date differed from a live date in nothing while the locked number beside it
+       differed in its ground and its cursor.
+
+       Written here and not only over the class name, because a sweep that says
+       „nobody writes this class by hand" cannot say „this control asks for it": a
+       control drawn with a bare `field__control` passes such a sweep in silence,
+       which is exactly what `DatePicker.tsx` did. Found by a review on 29.08.2026,
+       which pointed out that deleting the old guard had left these three boxes with
+       none at all in either direction.
+
+       Both directions, in one case, because they are the same fault told two ways:
+       a dress that never arrives leaves a held box looking live, and a dress that
+       is always there makes every live box on the portal look held. */
+    const user = setupUser()
+
+    renderWithI18n(
+      <FormRenderer
+        form={fillsABox}
+        suggests={{
+          trka: [
+            {
+              id: 'jedna',
+              value: 'Probna trka',
+              said: 'Probna trka – 19.04.2026. – 42,2 km',
+              fills: { dopisano: '42,2' },
+            },
+          ],
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    const box = () => screen.getByLabelText(/proba.dopisano/)
+    /* Every kind this form draws, because the dress reaches each of them by a
+       different road: `trka` through `Suggesting` and `prica` through `LongBox`,
+       which carry the shared object across a component boundary, and `dopisano`
+       spread onto its element here.
+
+       Three of the ten roads the dress travels. The other seven are asked in
+       `held.test.tsx`, over a form that draws every one of them at once: the select,
+       the country, the picture and the confirmation, which take the shared object
+       where it is spread here, and the date, the town and the country beside the
+       town, which are drawn by components of their own that write the class
+       themselves. `choice` travels none of them, which is why it is not there
+       either: a group of radio buttons wears no `field__control` at all and is held
+       by `aria-disabled` alone, and that is asked over `fillsEverything` below. */
+    const all = () => [
+      screen.getByLabelText(/proba.trka/),
+      box(),
+      screen.getByLabelText(/proba.prica/),
+    ]
+
+    for (const one of all()) {
+      expect(one, `${one.tagName} nobody has filled in is dressed as a held one`).not.toHaveClass(
+        'field__control--held',
+      )
+    }
+
+    await user.type(screen.getByLabelText(/proba.trka/), 'pr')
+    await user.click(screen.getByRole('button', { name: /Probna trka/ }))
+
+    expect(box(), 'the box the portal filled in still looks live').toHaveClass(
+      'field__control',
+      'field__control--held',
+    )
+    /* And held rather than switched off, which is the reason the dress has to exist
+       at all: `disabled` would have said this by taking the box out of the
+       keyboard's path. */
+    expect(box()).toHaveAttribute('aria-disabled', 'true')
+    expect(box()).not.toBeDisabled()
+  })
+})
+
 describe('a field filled from a list', () => {
+  it('dresses a held box that is drawn through its own list of suggestions', async () => {
+    /* `shared` reaches seven kinds of control, and a case that asks one of them
+       says nothing about the other six. Found by a review on 29.08.2026: with
+       `Suggesting` handed a bare `field__control` instead of the shared set, the
+       whole suite stayed green, and this is not a shape nobody draws — on
+       `unos-rezultata` a member correcting a result has `raceName` held (owner,
+       27.08.2026: „sve osim trke"), and `raceName` is the one field on the portal
+       with a list, so it is drawn here and nowhere else.
+
+       Two branches hand the object across a component boundary rather than
+       spreading it onto an element, and both are asked here: `Suggesting` for the
+       race, `LongBox` for the long one. A review on 29.08.2026 found the second, and
+       found the sentence that had claimed there was only one.
+
+       The branches that spread the object themselves are **not** held by that: a
+       review the same day wrote `className` after the spread on the select and
+       watched the whole suite stay green. There are **five** of them, and all five
+       are asked in `held.test.tsx` — the select, the country, the confirmation, the
+       picture, and the plain `<input type={field.type}>` that draws `text`, `email`,
+       `password` and `number` alike. The picture was left out until 29.08.2026, when
+       a review wrote `className="field__control"` after the spread on it and the
+       whole suite stayed green; the plain box was miscounted as four branches
+       instead of five in this very sentence, and was measured held for the first
+       time later the same day. So are the three drawn by components of their own,
+       which never see the object at all: the date, the town and the country beside
+       the town. */
+    renderWithI18n(
+      <FormRenderer
+        form={fillsABox}
+        fixed={['trka', 'prica']}
+        suggests={{
+          trka: [
+            {
+              id: 'jedna',
+              value: 'Probna trka',
+              said: 'Probna trka – 19.04.2026. – 42,2 km',
+              fills: { dopisano: '42,2' },
+            },
+          ],
+        }}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    for (const one of [screen.getByLabelText(/proba.trka/), screen.getByLabelText(/proba.prica/)]) {
+      expect(one, `a held ${one.tagName} is dressed as a live one`).toHaveClass(
+        'field__control',
+        'field__control--held',
+      )
+      expect(one).toHaveAttribute('aria-disabled', 'true')
+      expect(one).not.toBeDisabled()
+    }
+
+    /* And the box beside them, which nothing locked, is not wearing it. Both ways in
+       one case, because a dress that is always there is the same fault backwards:
+       every live box on the portal would read as an answer somebody else wrote.
+       Found by a review on 29.08.2026, which mutated one of these branches to dress
+       everything and watched all 2291 cases stay green. */
+    expect(
+      screen.getByLabelText(/proba.dopisano/),
+      'a box nothing locked is dressed as a held one',
+    ).not.toHaveClass('field__control--held')
+  })
+
   it('is locked whatever kind of control it is drawn as', async () => {
     const user = setupUser()
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AskedLabel } from './AskedLabel'
+import { heldControl } from './held'
 import { outsideOf } from '../components/outsideOf'
 import { CountryOptions } from './CountryOptions'
 import { countryName } from '../data/countryName'
@@ -322,7 +323,7 @@ export function PlaceField({
            four locked fields wore nothing at all: measured by comparing computed
            styles, the one visible difference `disabled` used to make (the cursor)
            went when `disabled` did, and nothing took its place. */
-        className={locked === true ? 'field__control field__control--held' : 'field__control'}
+        className={heldControl(locked === true)}
         type="text"
         role="combobox"
         aria-disabled={locked ? true : undefined}
@@ -430,11 +431,12 @@ export function PlaceField({
           /* An id of its own, because it is a control of its own: the summary of
              errors leads here when the country is what is unanswered. */
           id={`${id}-country`}
-          className={
-            known === undefined && locked !== true
-              ? 'field__control'
-              : 'field__control field__control--held'
-          }
+          /* Held by either of two rules, which is why the question is asked
+             here and the answer is dressed in one place (`forms/held.ts`): a
+             country the codebook brought with the town, or a form the chosen race
+             locked. Both are answers rather than questions, and they look alike
+             even though only one of them is switched off. */
+          className={heldControl(known !== undefined || locked === true)}
           value={country}
           /* Locked on a town the codebook knows, for the reason written where
              `known` is worked out. Held rather than switched off: `disabled`

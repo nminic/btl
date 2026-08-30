@@ -180,6 +180,27 @@
   align-self: flex-start;
 }
 
+/* A control the portal is holding: an answer it filled in, or a country the town
+   brought with it. Held rather than switched off (`forms/held.ts` says why), so it
+   looks answered and unavailable at once: the words are as legible as any other
+   answer, and the ground says it is not being asked.
+
+   Beside the plain control and not in the sheet of whichever component happened to
+   need it first, which is where it lived until 29.08.2026: four controls in three
+   files wear this, and a rule of the same weight as the one it overrides is only
+   ever as reliable as the order the sheets happen to load in.
+
+   Its neighbour below says what is wrong with a field rather than that it is held,
+   and the two touch nothing in common: this one sets the ground and the cursor,
+   that one the colour of the border. So a held field that is also wrong wears both,
+   whichever of them is written first, and a review measured that in Chrome over the
+   built sheet with the two swapped: no difference over twelve controls, three
+   widths and both themes. */
+.field__control--held {
+  background: var(--surface-hover);
+  cursor: default;
+}
+
 .field__control[aria-invalid='true'] {
   border-color: var(--down);
 }

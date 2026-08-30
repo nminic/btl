@@ -142,6 +142,109 @@ function held(value: number, least: number, most: number): number {
 }
 
 /**
+ * How far out a press has to land to be about the rim rather than about the
+ * circle, as a share of the circle's own radius.
+ *
+ * A band and not a line, because a finger is not a pixel, and a share and not a
+ * length, so a small circle keeps a rim somebody can actually hit.
+ *
+ * Three quarters, written by hand and measured: a review moved it to a half and
+ * nothing noticed, and at a half a member who takes hold of the circle a little
+ * inside its rim to shift it resizes it instead, on every press between the two.
+ *
+ * Held from both sides and a hundredth of a radius from the number, because
+ * anything wider held almost nothing: a review on 29.08.2026 moved this to 0,74,
+ * to 0,65 and to 0,79 with the whole suite green, and only 0,89 broke a case.
+ * `crop.test.ts` („puts the band at three quarters of the radius and nowhere
+ * else") holds the arithmetic, and `cropChooser.test.tsx` („the band that tells a
+ * move from a resize") presses at the same two spots on a real screen, so a
+ * second copy of this comparison written into `CropWindow.tsx` and moved on its
+ * own is a press that does the opposite of what the pointer promised.
+ */
+const EDGE_BAND = 0.75
+
+/** What a press at a spot would do, and the cursor that says so before it
+ *  happens. */
+export type Aim = { doing: 'moving' | 'sizing'; cursor: string }
+
+/**
+ * What the picture would do if it were pressed here.
+ *
+ * Owner, 29.08.2026: „Kad je miš unutar kruga, pointer se pretvara u ruku i
+ * klikom i vučenjem se taj krug pomera po slici", and „Kad je miš na samoj ivici
+ * kruga, pointer se pretvara u strelice za razvlačenje."
+ *
+ * **One function and not two, deliberately.** The press already had to decide
+ * this, and the cursor is that same decision said out loud a moment earlier.
+ * Written twice, the two would drift, and a cursor promising „razvuci me" over a
+ * spot that moves the circle is worse than no cursor at all: it is the portal
+ * lying about what a press will do. One fact, one home (ADL A31).
+ *
+ * Everything outside the circle is the rim as well, and truthfully so: a press
+ * out there drags the edge of the circle out to meet the pointer, which is a
+ * resize whatever it looks like.
+ *
+ * The direction is measured **in radii of the circle** rather than in shares of
+ * the picture. A photograph is not square, so the circle is an ellipse once it
+ * is written in shares of each edge; dividing by the radius in each direction
+ * puts it back into a circle, and only then does the angle agree with what the
+ * eye sees. Left out, a tall photograph would show the sideways arrows over a
+ * spot the eye reads as a corner.
+ */
+export function aimAt(hole: Hole, spot: Spot): Aim {
+  /* The pointer's place, counted from the middle of the circle outwards, with
+     one radius as the unit in each direction. */
+  const out = {
+    across: (spot.across - percent(hole.x) / 100) / (percent(hole.across) / 100),
+    down: (spot.down - percent(hole.y) / 100) / (percent(hole.down) / 100),
+  }
+
+  return Math.hypot(out.across, out.down) > EDGE_BAND
+    ? { doing: 'sizing', cursor: pulling(out) }
+    : /* An open hand: the circle is a thing to pick up, and the closed hand is
+         for while it is being carried (`CropWindow.tsx`). `grab` and not `move`,
+         because the picture does not move, the circle over it does. */
+      { doing: 'moving', cursor: 'grab' }
+}
+
+/**
+ * Which pair of arrows the rim wears at this direction.
+ *
+ * Eight eighths of a turn and four cursors, because an arrow and the arrow
+ * opposite it are one picture: the pointer at the left of the circle and the
+ * pointer at the right of it both pull sideways, and `ew-resize` is what both
+ * of them look like. So the eighth is taken modulo four, twice over, because an
+ * eighth above the middle of the picture is a negative number and the remainder
+ * of a negative number is negative in this language.
+ *
+ * Rounded rather than floored, so each cursor covers a quarter turn **centred**
+ * on its own direction: due east is the middle of the sideways arrows and not
+ * the boundary between two of them.
+ *
+ * The arrows point along the line through the middle of the circle rather than
+ * along the rim, which is why the south-east of the circle wears the north-west
+ * to south-east diagonal.
+ */
+function pulling(out: { across: number; down: number }): string {
+  const eighth = Math.round(Math.atan2(out.down, out.across) / (Math.PI / 4))
+  const quarter = ((eighth % 4) + 4) % 4
+
+  if (quarter === 0) {
+    return 'ew-resize'
+  }
+
+  if (quarter === 1) {
+    return 'nwse-resize'
+  }
+
+  if (quarter === 2) {
+    return 'ns-resize'
+  }
+
+  return 'nesw-resize'
+}
+
+/**
  * The same crop with its circle centred on a spot somebody is pointing at.
  *
  * Owner, 23.08.2026: „krug se pomera prstom na telefonu i tabletu, mišem na
@@ -228,6 +331,80 @@ export function sizedTo(crop: Crop, shape: Shape, spot: Spot, least: number): Cr
     x: grown.across >= 1 ? 0.5 : held((middleAcross - grown.across / 2) / (1 - grown.across), 0, 1),
     y: grown.down >= 1 ? 0.5 : held((middleDown - grown.down / 2) / (1 - grown.down), 0, 1),
   }
+}
+
+/**
+ * What a drag has done to the circle so far, measured from where it began.
+ *
+ * **The press itself changes nothing.** Owner, 29.08.2026: „Kad kliknem da
+ * resize-ujem krug... tim klikom se prvo krug malo resize-uje na neku vrednost sam
+ * od sebe, pa onda mogu da ja to radim manualno... krug ne mrdne dok ja ne počnem
+ * da ga resizeujem." Until this, the press was sent straight to `movedTo` or
+ * `sizedTo`, which put the middle or the edge **at the pointer**, so pressing
+ * anywhere but exactly on the middle or exactly on the rim jumped the circle
+ * before the hand had moved at all.
+ *
+ * So a gesture is read as a difference: `from` is where the press landed, `to` is
+ * where the pointer is now, and `start` is the circle as it was when the press
+ * landed. A drag of nothing is a change of nothing, whatever was pressed on.
+ *
+ * Both roads keep the arithmetic they already had, and each of them keeps its own
+ * limits: moving stops at the edges of the picture, and pulling stops at the
+ * floor and the ceiling `sizedTo` works out. What changes is only what they are
+ * asked for.
+ */
+export function draggedTo(
+  start: Crop,
+  shape: Shape,
+  doing: 'moving' | 'sizing',
+  from: Spot,
+  to: Spot,
+  least: number,
+): Crop {
+  const shorter = Math.min(shape.width, shape.height)
+  const { across, down } = sides(start, shape)
+  /* Where the middle stood when the press landed. Worked out rather than read,
+     for the reason written in `sizedTo`: `x` and `y` are shares of the room left
+     over, not the middle itself. */
+  const middle = {
+    across: start.x * (1 - across) + across / 2,
+    down: start.y * (1 - down) + down / 2,
+  }
+
+  if (doing === 'moving') {
+    /* The middle carried by as much as the pointer travelled, and `movedTo` puts
+       it there and keeps it inside the picture. */
+    return movedTo(start, shape, {
+      across: middle.across + (to.across - from.across),
+      down: middle.down + (to.down - from.down),
+    })
+  }
+
+  /* How far out the pointer is, in the shorter edge's own units, which is what
+     `size` is a share of. The same reading `sizedTo` takes, so the two cannot
+     drift. */
+  const reach = (spot: Spot) =>
+    Math.max(
+      Math.abs(spot.across - middle.across) * (shape.width / shorter),
+      Math.abs(spot.down - middle.down) * (shape.height / shorter),
+    )
+  /* The diameter grown by twice what the pointer moved outwards, because the
+     middle stands still and both sides of the circle answer the one hand. */
+  const wanted = start.size + 2 * (reach(to) - reach(from))
+
+  /* Asked of `sizedTo` as a spot on the way out, so the floor, the ceiling and
+     the middle put back are all worked out in the one place that knows them. The
+     spot is straight out along the width, so the other direction reads nought and
+     the wider of the two is this one. */
+  return sizedTo(
+    start,
+    shape,
+    {
+      across: middle.across + Math.max(wanted, 0) / 2 / (shape.width / shorter),
+      down: middle.down,
+    },
+    least,
+  )
 }
 
 /**

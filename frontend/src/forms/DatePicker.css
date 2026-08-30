@@ -37,13 +37,14 @@
    button and the live one shared their colour, their background and their cursor,
    so whoever was looking rather than listening was shown a live control and told
    nothing. The same two declarations the portal keeps for a held control
-   (`.field__control--held`, PlaceField.css).
+   (`.field__control--held`, FormRenderer.css).
 
-   The field beside this button does not wear them yet, and that is worth saying
-   rather than implying otherwise: measured by a review on 28.08.2026, a date
-   locked by a chosen race carries `aria-disabled` and `readOnly` and no class at
-   all, so the button goes grey beside a field that does not. That is a separate
-   change, on the renderer that draws those fields.
+   Said twice and not shared, because the two are not the same kind of thing: that
+   rule dresses a `.field__control`, and this is a button beside one. What was
+   worth closing was the field, and it is closed: until 29.08.2026 a date locked by
+   a chosen race carried `aria-disabled` and `readOnly` and no class at all, so
+   this button went grey beside a field that did not. The field now reads its dress
+   from `forms/held.ts` like the three drawn by the renderer.
 
    Written against `[aria-disabled='true']` and never against a bare
    `[aria-disabled]`, because a control that is not held must carry no such

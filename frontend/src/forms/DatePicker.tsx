@@ -3,6 +3,7 @@ import { outsideOf } from '../components/outsideOf'
 import { useToday } from '../clock/useClock'
 import { monthGrid, monthNumbers, shiftMonth } from '../data/derive'
 import { formatMonth } from '../i18n/format'
+import { heldControl } from './held'
 import { useI18n } from '../i18n/useI18n'
 import { maskDate, parseDate } from './dateField'
 import './DatePicker.css'
@@ -262,7 +263,11 @@ export function DatePicker({
       <input
         id={id}
         name={name}
-        className="field__control"
+        /* And it looks held as well as being held, which it did not until
+           29.08.2026: this box is drawn here rather than from the renderer's
+           shared set, so it missed the one dress the portal has for a control it
+           is holding while three fields beside it wore it (`forms/held.ts`). */
+        className={heldControl(locked)}
         type="text"
         inputMode="numeric"
         autoComplete="off"

@@ -117,6 +117,51 @@
   margin: 0;
 }
 
+/* And off the screen, until somebody is actually in them.
+
+   Owner, 29.08.2026: „Horizontalne skalice ispod ne treba da postoje / da budu
+   vidljive", and „Vidi se samo slika sa kružnim prozorom kroz koji se jasno
+   vidi." What he is choosing is a circle over a photograph, and three grey bars
+   under it are three more things to read before he can see whether the face is
+   in the circle. The picture answers a pointer now, in both of the ways he
+   described, so there is nothing on the screen the sliders are needed for.
+
+   **Off the screen and not removed.** They carry the whole of the keyboard: a
+   range control takes arrows, Home and End, announces its own value and is a
+   first class thing to a screen reader, while a picture dragged with a pointer
+   is none of those (WCAG 2.2 SC 2.1.1 and 4.1.2, and the rule about full
+   keyboard navigation in CLAUDE.md). Taken out, the cropper would be reachable
+   with a mouse and with nothing else. „Da budu vidljive" is the half of his
+   sentence that can be honoured, and this is it.
+
+   The recipe is `visually-hidden` in index.css, written out here rather than put
+   on the elements, because what is being switched is **whether** it applies and
+   a class cannot be put on an element by a selector. `TopBoards.css` writes it
+   out for the same reason, and says so in the same words.
+
+   And back on the screen the moment focus reaches one of them, which is not a
+   convenience but the other half of the rule. `visually-hidden` clips a control
+   to a pixel and clips its own focus ring away with it, so a reader tabbing into
+   something wearing it has no visible focus at all (WCAG 2.2 SC 2.4.7).
+   `Stars.css` answers that by drawing the ring on the star beside the radio;
+   here there is nothing beside a slider to draw it on, so the sliders themselves
+   come back and wear their own ring.
+
+   All three of them and not the one in focus. Tabbing between them would
+   otherwise grow and shrink the strip under the reader, and the two they are not
+   in would be a value they cannot see while they are setting the third. */
+.crop:not(:focus-within) .crop__slider {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .crop__slider input {
   /* The full width of the panel: a slider is dragged, and a short one on a
      phone is a target a thumb covers entirely. */
@@ -148,9 +193,30 @@
    way they were partly because of that (`CropChooser.tsx`), so dragging has to
    answer for itself rather than reintroduce the problem they avoid.
 
-   `grab` and not `move`: the whole picture is not being moved, the circle over it
-   is, and the cursor says which of the two a press will pick up. */
+   And nothing at all about the cursor, since 29.08.2026. It used to say `cursor:
+   grab` here, which was true of the middle of the circle and false everywhere
+   else: on the rim a press resizes, and the owner asked that day for „strelice za
+   razvlačenje" there. The answer depends on where in the picture the pointer is,
+   on how large the circle is at that moment and on which quarter of the rim it is
+   over, so it is decided in `CropWindow.tsx` and written on the element. A `grab`
+   left standing here would be a second home for that answer, and the one of the
+   two that knows least (ADL A31). */
 .crop__picture--dragged {
   touch-action: none;
-  cursor: grab;
+  /* And a drag over it is a drag of the circle, never a sweep that takes the
+     photograph with it.
+   *
+     Owner, 29.08.2026: „Ponekad u nekim pokretima, dođe do selekcije čitave slike,
+     iako sam krenuo da povlačim kursor u obliku ruke ili u obliku pomenutih
+     strelica... sliku je nemoguće selektovati kao objekat osim ako nisam vukao
+     mišem preko nje a počev van nje." That is what this says and no more: a
+     selection **begun on this box** never starts, and one begun outside still
+     sweeps across it, which is the exception he asked for.
+
+     Beside `touch-action` rather than on the photograph itself, because both are
+     about the same thing: while there is something to drag here, the browser's own
+     gestures give way to it. On the screen where the crop is only looked at there
+     is nothing to drag, and neither rule is drawn. */
+  -webkit-user-select: none;
+  user-select: none;
 }
