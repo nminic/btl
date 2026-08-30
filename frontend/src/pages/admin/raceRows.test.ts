@@ -34,7 +34,7 @@ const row = (over: Partial<RaceRow> = {}): RaceRow => ({
   renamed: 'no',
   date: '17/10/2026',
   kind: 'length',
-  limitSeconds: '0',
+  limitHours: '',
   distanceKm: '10',
   ascentM: '',
   descentM: '',
@@ -155,7 +155,7 @@ describe('the races of an event while they are being entered', () => {
 
     expect(RACE_KINDS).toContain(fresh.kind)
     expect(fresh.kind).toBe('length')
-    expect(fresh.limitSeconds).toBe('0')
+    expect(fresh.limitHours).toBe('')
   })
 
   it('asks a length only of a race that fixes one', () => {
@@ -167,7 +167,7 @@ describe('the races of an event while they are being entered', () => {
        The climb and the fall are still asked for, because a course has both
        whichever way it is run, and that half is asked here too so the exemption
        cannot quietly widen to every measurement on the row. */
-    const timed = row({ kind: 'time', limitSeconds: '86400', distanceKm: '0' })
+    const timed = row({ kind: 'time', limitHours: '24', distanceKm: '0' })
 
     expect(whatIsMissing(timed)).toBeUndefined()
     expect(allFinished([timed])).toBe(true)

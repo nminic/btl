@@ -2,7 +2,9 @@ import { DatePicker } from '../../forms/DatePicker'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { useI18n } from '../../i18n/useI18n'
-import { asksLength, BOUNDS, isWrong, newRaceRow, type RaceRow } from './raceRows'
+import { RACE_KINDS } from '../../data/types'
+import { raceKind } from '../../data/raceKind'
+import { asksLength, asksLimit, BOUNDS, isWrong, newRaceRow, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -140,7 +142,7 @@ export function EventRaces({
   const measure = (
     row: RaceRow,
     at: number,
-    field: 'distanceKm' | 'ascentM' | 'descentM',
+    field: keyof typeof BOUNDS,
     asked: boolean,
   ) => {
     /* This cell and not „the first thing wrong in the row": a climb of minus five
@@ -260,7 +262,21 @@ export function EventRaces({
                 {/* The day, because an event may run over more than one (owner,
                     10.08.2026). */}
                 <th scope="col">{t('admin.field.raceDate')}</th>
+                {/* Which of the three kinds the race is, and how long a timed one
+                    lasts. Two columns and not one: the length and the limit are two
+                    different questions in two different units, and a single cell
+                    that changed unit under the reader would carry a number typed as
+                    kilometres into a race measured in hours. Both are hidden on a
+                    phone, like the climb and the fall beside them, because a table
+                    of seven columns in a screen of 360 pixels is a table nobody can
+                    read (ADL A26). */}
+                <th scope="col" className="table__hide-phone">
+                  {t('event.raceKind')}
+                </th>
                 <th scope="col">{t('event.distance')}</th>
+                <th scope="col" className="table__hide-phone">
+                  {t('event.raceLimit')}
+                </th>
                 <th scope="col">{t('event.ascent')}</th>
                 <th scope="col">{t('event.descent')}</th>
                 <th scope="col">{t('admin.form.record')}</th>
@@ -306,6 +322,29 @@ export function EventRaces({
                       onChange={(next) => change(at, { date: next })}
                     />
                   </td>
+                  <td className="table__hide-phone">
+                    <select
+                      className="field__control"
+                      value={row.kind}
+                      /* Named by its row as well as its column, like every other
+                         control in this table: „Vrsta" twenty times over is twenty
+                         controls a screen reader cannot tell apart. */
+                      aria-label={`${t('event.raceKind')}, ${t('admin.form.raceNumber', {
+                        which: String(at + 1),
+                      })}`}
+                      /* Read through the one function that knows the three words,
+                         like every other reader of a kind (`data/raceKind.ts`): a
+                         select can only offer what is drawn above, but nothing in
+                         the type of a change event says so. */
+                      onChange={(event) => change(at, { kind: raceKind(event.target.value) })}
+                    >
+                      {RACE_KINDS.map((one) => (
+                        <option key={one} value={one}>
+                          {t(`race.kind.${one}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td>
                     {/* And nothing about the row above it. Two races of one length
                         on one morning were refused until 23.08.2026; the owner said
@@ -313,6 +352,9 @@ export function EventRaces({
                         same distance and the same climb, rarely but really, and
                         that the portal must not forbid it. */}
                     {measure(row, at, 'distanceKm', asksLength(row))}
+                  </td>
+                  <td className="table__hide-phone">
+                    {measure(row, at, 'limitHours', asksLimit(row))}
                   </td>
                   <td>{measure(row, at, 'ascentM', false)}</td>
                   <td>{measure(row, at, 'descentM', false)}</td>

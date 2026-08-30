@@ -53,7 +53,13 @@ export type RaceRow = {
    * that refuses.
    */
   kind: RaceKind
-  limitSeconds: string
+  /**
+   * How long a timed race lasts, **in hours**, which is the unit the table asks in
+   * and the owner's own („24 h", „6 h"). The record keeps seconds
+   * (`data/types.ts`), so the unit is in the name on both sides and `storedRow`
+   * does the one conversion there is.
+   */
+  limitHours: string
   distanceKm: string
   ascentM: string
   descentM: string
@@ -90,7 +96,7 @@ export function newRaceRow(eventName: string, eventDate: string): RaceRow {
     renamed: 'no',
     date: isoDate(eventDate) === '' ? '' : eventDate,
     kind: 'length',
-    limitSeconds: '0',
+    limitHours: '',
     distanceKm: '',
     ascentM: '',
     descentM: '',
@@ -107,8 +113,8 @@ export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): 
       name: race.name,
       renamed: race.renamed,
       date: fieldDate(race.date),
-      kind: race.kind,
-      limitSeconds: String(race.limitSeconds),
+        kind: race.kind,
+      limitHours: race.limitSeconds === 0 ? '' : String(race.limitSeconds / 3600),
       distanceKm: String(race.distanceKm),
       ascentM: String(race.ascentM),
       descentM: String(race.descentM),
@@ -129,6 +135,10 @@ export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): 
  */
 export const BOUNDS = {
   distanceKm: { least: 0.1, most: 1000 },
+  /* A limit of nought is not a limit, and two hundred hours is the ceiling the two
+     forms that ask a member for a time already agree on
+     (`definitions/unos-rezultata.form.json`). */
+  limitHours: { least: 0.1, most: 200 },
   ascentM: { least: 0, most: 30000 },
   descentM: { least: 0, most: 30000 },
 }
@@ -167,6 +177,10 @@ export const BOUNDS = {
  * The climb and the fall are not asked about here, because a course has both
  * whichever way it is run.
  */
+export function asksLimit(row: Pick<RaceRow, 'kind'>): boolean {
+  return raceKind(row.kind) === 'time'
+}
+
 export function asksLength(row: Pick<RaceRow, 'kind'>): boolean {
   /* Through the one function that knows the three words, like every other reader of
      a kind (`data/raceKind.ts`). The row's word is already read that way on the way
@@ -217,6 +231,12 @@ export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'nam
     return false
   }
 
+  /* And nothing is wrong with a limit on a race that does not run to one, for the
+     same reason and through the same pair of questions. */
+  if (field === 'limitHours' && !asksLimit(row)) {
+    return false
+  }
+
   return !withinBounds(row[field], field)
 }
 
@@ -239,9 +259,12 @@ export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | 'nam
      on the real screen: a climb of **minus five hundred** metres saved. `Le = L +
      (1.25×AP + 0.75×AN)/200` then works out a profile that was never run, and the
      whole standing is worked out from it. */
-  const asked = asksLength(row)
-    ? (['distanceKm', 'ascentM', 'descentM'] as const)
-    : (['ascentM', 'descentM'] as const)
+  const asked = [
+    ...(asksLength(row) ? (['distanceKm'] as const) : []),
+    ...(asksLimit(row) ? (['limitHours'] as const) : []),
+    'ascentM',
+    'descentM',
+  ] as const
 
   return asked.find((field) => !withinBounds(row[field], field))
 }
@@ -297,7 +320,10 @@ export function storedRow(row: RaceRow, eventId: string): Record<string, string>
        asks for; a row read off a race that already exists carries whatever that
        race is, and saving the event must hand it back unchanged. */
     kind: row.kind,
-    limitSeconds: row.limitSeconds,
+    /* Hours in the table, seconds on the record. Rounded because a tenth of an hour
+       is 360 seconds exactly but a third is not, and a limit is a whole number of
+       seconds or it is not a length of time anybody can be held to. */
+    limitSeconds: String(Math.round(Number(row.limitHours || 0) * 3600)),
     distanceKm: String(distanceKm),
     ascentM: String(Number(row.ascentM === '' ? 0 : row.ascentM)),
     descentM: String(Number(row.descentM === '' ? 0 : row.descentM)),
