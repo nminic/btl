@@ -1045,7 +1045,7 @@
       "raceNumber": "{which}. trka",
       "nextSeason": "Isto mesto u kalendaru naredne godine",
       "nextWeek": "Tačno sedam dana posle kopiranog događaja",
-      "racesRefused": "Svaka trka mora da ima naziv, dan i dužinu. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
+      "racesRefused": "Svaka trka mora da ima naziv i dan, a trka sa zadatom dužinom i dužinu. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
       "deleteNamed": "Obriši: {name}",
       "deleteSure": "Sigurno?",
       "deleteSureNamed": "Potvrdi brisanje: {name}",

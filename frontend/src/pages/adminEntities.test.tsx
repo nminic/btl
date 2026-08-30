@@ -602,7 +602,7 @@ describe('the races of an event', () => {
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByText(/Svaka trka mora da ima naziv, dan i dužinu/)).toBeVisible()
+    expect(await screen.findByText(/Svaka trka mora da ima naziv i dan/)).toBeVisible()
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
     await fill(user, lastRow(), { km: '12' })

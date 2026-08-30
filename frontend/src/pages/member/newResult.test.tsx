@@ -187,34 +187,47 @@ describe('the list of races under the name of an event', () => {
        `forms/validate.ts` holds it, so a row offered with a nought in it is a row
        the member cannot send.
 
-       Left empty, the field is theirs to fill, which is what the owner asked for on
-       29.08.2026: on a timed race the member enters the length, the climb and the
-       fall, because the race cannot know how far each of them went. The climb and
-       the fall are still filled in from the race, and that half is asked here too,
-       so the exemption cannot quietly widen. */
+       Not handed over at all, rather than handed over empty, which is what the
+       owner asked for on 29.08.2026: „Na vremenskoj trci član unosi dužinu, uspon
+       i spust." All three, because a course run in laps has a climb that depends on
+       how many laps somebody ran, so the race cannot know any of them.
+
+       The other half of that sentence, „Vreme ne unosi, jer je zadato trkom", is
+       not done and is written down in PENDING as part of the increment about
+       entering and scoring: it is not a matter of what is filled in but of what the
+       form asks for, and the form asks for hours, minutes and seconds outright. */
     const filled = racesToOffer(
       [held],
       [
         shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400, ascentM: 120 }),
         shaped({ id: 'r2', kind: 'free', ascentM: 120 }),
-        shaped({ id: 'r3', distanceKm: 21.1, ascentM: 120 }),
+        shaped({ id: 'r3', distanceKm: 21.1, ascentM: 120, descentM: 140 }),
       ],
       '2026-12-31',
       'sr-Latn',
     ).map((one) => one.fills)
 
-    /* Asked by the **keys** and not by the values, because the keys are what the
-       renderer locks by (`forms/FormRenderer.tsx`, `setLed(Object.keys(one.fills))`).
-       A round of this asked for the values, found „" where a length used to be, and
-       wrote down a form that could not be sent: the field was empty and locked at
-       the same time. Whether it can actually be typed into is asked on the screen
-       (`pages/timedRace.test.tsx`); this half is here because it is where the list
-       of keys is decided. */
+    /* Both the keys and what they carry, because the two faults are different and
+       either one on its own leaves the other unguarded.
+
+       The keys are what the renderer locks by (`forms/FormRenderer.tsx`,
+       `setLed(Object.keys(one.fills))`), so a key handed over with an empty string
+       is a field that is empty and locked at once, which is a form nobody can send.
+       A round of this asked for the values alone and wrote that dead end down as
+       though it were the answer.
+
+       The values are what the member is then left with, and the round that
+       corrected the keys asked for nothing else: with only the keys measured, a
+       length race handing over „" for its climb passed the whole package, and that
+       is the same dead end on all 1612 races in the file rather than on none. */
     expect(filled.map((one) => Object.keys(one ?? {}).sort())).toEqual([
       ['date'],
       ['date'],
       ['ascentM', 'date', 'descentM', 'distanceKm'],
     ])
+    expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
+    expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
+    expect(filled.map((one) => one?.descentM)).toEqual([undefined, undefined, '140'])
   })
 
   it('offers what has been run, newest first, and never what is still to come', async () => {

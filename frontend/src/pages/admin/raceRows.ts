@@ -142,10 +142,18 @@ export const BOUNDS = {
  *
  * One home and not three, because the answer is read in three places and they had
  * drifted: `whatIsMissing` decides whether the save happens, `isWrong` decides
- * which cell is marked, and the table decides which cell says it is required. A
- * row that the save let through was at the same time drawn as required and marked
- * wrong, which sends a screen reader into a cell it has nothing to fix with (WCAG
- * 2.2 SC 3.3.1, and ADL A31 on a fact with more than one home).
+ * which cell is marked, and the table decides which cell says it is required and
+ * what its `min` is. A row that the save let through was at the same time drawn as
+ * required and marked wrong, which sends a screen reader into a cell it has nothing
+ * to fix with (WCAG 2.2 SC 3.3.1, and ADL A31 on a fact with more than one home).
+ *
+ * There is a fourth reader that cannot be one of these, and it is written by hand:
+ * the words of the refusal (`i18n`, `admin.form.racesRefused`). One sentence stands
+ * for the whole table, so it cannot name what is wrong with one row, and until
+ * 30.08.2026 it said every race must give a length, which stopped being true the
+ * moment two of the three kinds stopped fixing one. It now says a length is asked
+ * of a race that fixes one. That it does not say **which** row or **which** field
+ * is a fault of its own, written down in PENDING since 23.08.2026.
  *
  * The climb and the fall are not asked about here, because a course has both
  * whichever way it is run.

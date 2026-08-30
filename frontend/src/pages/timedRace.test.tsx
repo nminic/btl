@@ -123,7 +123,7 @@ describe('a race that fixes no length', () => {
       await screen.findByRole('table', { name: /^Trke/ })
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(await screen.findByText(/Svaka trka mora da ima naziv, dan i dužinu/)).toBeVisible()
+      expect(await screen.findByText(/Svaka trka mora da ima naziv i dan/)).toBeVisible()
     } finally {
       globalThis.fetch = real
     }
@@ -183,7 +183,7 @@ describe('a race that fixes no length', () => {
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(
-        screen.queryByText(/Svaka trka mora da ima naziv, dan i dužinu/),
+        screen.queryByText(/Svaka trka mora da ima naziv i dan/),
         'the event is refused over a length its races do not fix',
       ).toBeNull()
       expect(await screen.findByText('Sačuvano')).toBeVisible()
@@ -221,7 +221,7 @@ describe('a race that fixes no length', () => {
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(
-        await screen.findByText(/Svaka trka mora da ima naziv, dan i dužinu/),
+        await screen.findByText(/Svaka trka mora da ima naziv i dan/),
         'nothing was refused, so there is no marking to measure',
       ).toBeVisible()
 
@@ -234,6 +234,11 @@ describe('a race that fixes no length', () => {
         first(lengths),
         'the first length is required, so these are not the served races',
       ).toHaveAttribute('aria-required', 'false')
+      /* And it no longer announces a floor it does not hold to. Asked beside the
+         two attributes above because all three are read off one answer, and a
+         control that says „at least 0,1" over a value of nought is announcing a
+         rule that was lifted from it. */
+      expect(first(lengths), 'the length still announces a floor').not.toHaveAttribute('min')
       expect(first(lengths), 'the length of a race that fixes none is marked wrong').toHaveAttribute(
         'aria-invalid',
         'false',

@@ -154,7 +154,13 @@ export function EventRaces({
         className="field__control"
         type="number"
         inputMode="decimal"
-        min={BOUNDS[field].least}
+        /* The floor this cell refuses below, and only where it refuses anything:
+           a race that does not fix a length carries nought, and a control that
+           says its least value is a tenth of a kilometre over a value of nought
+           is a control announcing a rule that no longer applies to it. Asked of
+           the same `asksLength` the refusal and the marking ask, so the four do
+           not drift again. */
+        min={field === 'distanceKm' && !asked ? undefined : BOUNDS[field].least}
         max={BOUNDS[field].most}
         step="any"
         value={row[field]}
