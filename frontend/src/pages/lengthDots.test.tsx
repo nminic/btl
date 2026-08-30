@@ -34,6 +34,15 @@ import { CalendarExtract } from './home/CalendarExtract'
  * papered over: **a screen added to the portal is added to `SCREENS` by whoever
  * writes it, and nothing here will say so if they forget.**
  *
+ * That is a real thing given up and not only a lie removed, which the first
+ * telling of this left out. A third screen written the plain way, calling
+ * `dotsAt(event, races)` as both of these do, was the one case the sweep did
+ * catch, and it is the likeliest of the four; measured in review by adding
+ * exactly such a call, where the sweep failed and nothing here does. It was still
+ * the wrong trade to keep, because the sweep was false about the tree it stood in
+ * and loud on a change that is not a fault, and a guard that cries on the
+ * innocent is turned off by the next person rather than read.
+ *
  * Rendered directly rather than through a screen, because both take their events
  * and races as arguments while a screen takes what the store holds, and the store
  * holds no race that fixes a time or nothing at all: all 1612 of them are run to a

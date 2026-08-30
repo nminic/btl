@@ -303,7 +303,14 @@
 
 .chip__lengths {
   display: flex;
-  gap: var(--space-4);
+  /* The gap has a name of its own here because the ceiling below counts four of
+     them, and a number counted from a token written twice is a number that comes
+     apart: with the ceiling saying `4 x --space-4` and this saying `--space-8`,
+     five dots ask 76px of a ceiling of 60 and break into two lines, which is the
+     outcome this rule exists to prevent. Measured in review, 30.08.2026, with the
+     whole suite green. Named once, the two cannot disagree at all. */
+  --dot-gap: var(--space-4);
+  gap: var(--dot-gap);
   /* Wrapping, and shrinking only as far as wrapping needs, since 30.08.2026.
      A day could hold five dots and no more, and the floor of a day above is
      measured for exactly that: five dots and the gap before them. A race that
@@ -348,7 +355,7 @@
      nothing moves, since it is the last thing in a tile whose name takes all
      the room there is. */
   flex-wrap: wrap;
-  max-inline-size: calc(5 * var(--length-dot-size) + 4 * var(--space-4));
+  max-inline-size: calc(5 * var(--length-dot-size) + 4 * var(--dot-gap));
   flex-shrink: 0;
 }
 

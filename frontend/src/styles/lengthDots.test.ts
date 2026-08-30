@@ -110,12 +110,33 @@ describe('every dot a calendar tile can carry', () => {
        runs here can see a width.
 
        **Two tokens and not one, which is the correction of 30.08.2026.** The
-       ceiling is five dots **and four gaps**, and the gap has its own home three
-       lines above it in the same rule. An earlier draft read only the dot, so
-       `gap: var(--space-4)` changed to `var(--space-8)` left the formula saying
-       60px where the row then wanted 76, and five dots that have always stood in
-       one line broke into two, which is the very outcome the sheet records as
-       measured and rejected. The whole suite stayed green (found in review). */
+       ceiling is five dots **and four gaps**, and an earlier draft read only the
+       dot: `gap: var(--space-4)` changed to `var(--space-8)` left the formula
+       saying 60px where the row then wanted 76, and five dots that have always
+       stood in one line broke into two, which is the very outcome the sheet
+       records as measured and rejected, with the whole suite green.
+
+       The gap now has a name of its own in that rule and the ceiling counts four
+       of **that**, so the two cannot come apart at all. What is left here is three
+       readings of whether the names are still wired together, and nothing that
+       parses a value or works out a width.
+
+       **So `--dot-gap` moved to another value does not fall here, and should
+       not.** Moving it moves the spacing and the ceiling together, by the same
+       amount, and the row goes on describing itself: that was the whole point of
+       giving it a name. What falls is one of the three coming loose from that
+       name, which is the fault that was measured.
+
+       **What this does not see, since a note is owed where a guard stops (ADL
+       A33).** A `column-gap` written under the shorthand would win in a browser
+       and is invisible here: jsdom does not expand `gap` into its longhands,
+       measured, so a rule holding `gap` answers nothing at all for `column-gap`.
+       A draft of this took the last word of the shorthand to work around that,
+       and that is the fourth text reading in as many rounds to have its own
+       edge; the value is not parsed at all now, and the sheet writes the gap one
+       way, once. Nor is any width measured here. The row not outgrowing its day
+       is geometry, it was measured in a browser at four widths and two sizes of
+       letter, and the numbers live in `pages/Calendar.css` and in ADL A26. */
     const size = ruleFor(tokens, ':root', 'tokens.css').getPropertyValue('--length-dot-size')
     const dot = ruleFor(table, '.length-dot', 'table.css')
     const row = ruleFor(calendar, '.chip__lengths', 'Calendar.css')
@@ -127,11 +148,13 @@ describe('every dot a calendar tile can carry', () => {
       'var(--length-dot-size)',
     )
     expect(row.getPropertyValue('max-inline-size'), 'the ceiling is written from the same one').toBe(
-      'calc(5 * var(--length-dot-size) + 4 * var(--space-4))',
+      'calc(5 * var(--length-dot-size) + 4 * var(--dot-gap))',
     )
-    expect(row.getPropertyValue('gap'), 'and the gap the ceiling counts four of').toBe(
-      'var(--space-4)',
+    expect(row.getPropertyValue('--dot-gap'), 'the gap it counts four of has a name here').not.toBe(
+      '',
     )
+
+    expect(row.getPropertyValue('gap'), 'and the row is spaced by that name').toBe('var(--dot-gap)')
     expect(row.getPropertyValue('flex-wrap'), 'and the row may wrap under it').toBe('wrap')
   })
 })

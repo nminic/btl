@@ -108,9 +108,10 @@
      gathering in this theme, and 6,01 / 4,59 / 5,16 in the dark one. On the front
      page it stands on the card, which is the surface: 7,38 and 6,43. In the legend
      under the calendar it stands on the page itself, since neither the legend nor
-     the calendar paints a ground: 6,83 and 7,29. Twelve readings, and WCAG 2.2
-     SC 1.4.11 asks 3:1 of a thing that is not text, so what counts is the
-     narrowest: **4,59**, a dot on a training in the dark theme.
+     the calendar paints a ground: 6,83 and 7,29. Ten readings, which is the count
+     of the ten written out on these four lines, and WCAG 2.2 SC 1.4.11 asks 3:1 of
+     a thing that is not text, so what counts is the narrowest: **4,59**, a dot on
+     a training in the dark theme.
 
      **[ISPRAVLJENO TRI PUTA, 30.08.2026, i to je the point.]** First it said
      „7,38:1 against the surface", one ground given as the only one, and the widest.
@@ -121,7 +122,13 @@
      about the colours it measured and wrong about how many places to look, which
      is the same fault three times over, not three faults. A number in a note is a
      claim about the whole portal and is counted the way any other reader of a fact
-     is counted, by search rather than by memory. */
+     is counted, by search rather than by memory.
+
+     **And the count of the readings was wrong in that same correction**, which
+     said twelve where ten are written: three faces by two themes is six, plus two
+     and two. Found in the next round, which is the point twice over — the
+     sentence about counting by search was itself written with a number counted in
+     the head. */
   --length-unmeasured: #6b3fa0;
 
   /* How wide a dot is drawn, in one place, because the calendar's ceiling on a
