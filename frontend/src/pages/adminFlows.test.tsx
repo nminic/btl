@@ -38,7 +38,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     signIn: vi.fn(),
     signOut: vi.fn(),
     withdraw: vi.fn(),
-  amend: vi.fn(),
+    amend: vi.fn(),
     corrected: {},
     submissions: states.map((status, index) => ({
       id: `sub-${index}`,
@@ -1207,6 +1207,89 @@ describe('the queue of results', () => {
       'rejected',
       'Vreme se ne poklapa sa zvaničnom listom.',
     )
+  })
+
+  it('puts right the race, the kind and the time before it decides', async () => {
+    /* Owner, 30.08.2026: the administration settles at verification what the
+       member could only hint at. „Takmičar je mogao da izabere dužinska ili
+       vremenska, kao nagoveštaj tipa", and „ja ću lako promeniti njegovo vreme sa
+       recimo 23:23:15 na 24:00:00", which on a timed race is the race's own limit
+       and the same for everybody who finished. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    /* Opened on what the submission holds, not on empty boxes: a moderator
+       correcting one thing must not have to retype the other two. */
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
+    expect(screen.getByLabelText(/^Vrsta trke/)).toHaveValue('length')
+    expect(screen.getByLabelText(/^Sati/)).toHaveValue('0')
+    expect(screen.getByLabelText(/^Minuta/)).toHaveValue('45')
+
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'time')
+    await user.clear(screen.getByLabelText(/^Sati/))
+    await user.type(screen.getByLabelText(/^Sati/), '24')
+    await user.clear(screen.getByLabelText(/^Minuta/))
+    await user.type(screen.getByLabelText(/^Minuta/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+    expect(session.amend).toHaveBeenCalledWith('sub-0', {
+      raceName: 'Ultra 24h',
+      raceKind: 'time',
+      seconds: 86_400,
+    })
+  })
+
+  it('refuses to save a time with a box left empty, and keeps what was typed', async () => {
+    /* Three boxes added up with one of them empty give `NaN`, which would go into
+       the record as a time nobody can read and would score nothing. The member's
+       own form refuses it for the same reason (`forms/clock.ts`); this is the
+       other side of the same rule.
+
+       The panel stays open over what was typed, rather than closing and losing
+       the name the moderator has already corrected. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    await user.clear(screen.getByLabelText(/^Sati/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+    expect(session.amend).not.toHaveBeenCalled()
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Ultra 24h')
+  })
+
+  it('closes without writing anything when the correction is given up', async () => {
+    /* The way out that changes nothing. Without it a moderator who opened the
+       panel to read what the member sent has only one way to close it, which is
+       to save, and saving is the one act this panel is for. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    await user.click(screen.getByRole('button', { name: 'Odustani' }))
+
+    expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+    expect(session.amend).not.toHaveBeenCalled()
+  })
+
+  it('never stands open beside the box that refuses one', async () => {
+    /* Both panels are drawn below the table, so two open at once would leave the
+       moderator reading a correction of one item over a refusal of another. */
+    const { user } = openWith(['pending', 'pending'])
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+    expect(screen.getByRole('group', { name: 'Ispravka pre odluke' })).toBeVisible()
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+    expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+    expect(screen.queryByRole('group', { name: 'Odbij' })).toBeNull()
   })
 
   it('has the one decision for the whole queue, like every other queue', async () => {

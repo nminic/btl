@@ -18,9 +18,18 @@ export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 
-/** The four things verification may put right, and no fifth. */
+/**
+ * What verification may put right on a submission, and no fifth thing.
+ *
+ * Three and not the four the owner named on 30.08.2026. He said the name of the
+ * event as well as the name of the race, and a submission holds **one** name: the
+ * race's, which is what a member types and what the queue draws (owner,
+ * 23.08.2026, „sad je postalo logičnije da se pretražuje zapravo naziv trke").
+ * There is no event on a submission to rename until one is made, and making it is
+ * the part after this one. Written here as three, so nothing writes a key that
+ * nobody reads; the fourth arrives with the event it belongs to.
+ */
 export type Amendment = {
-  eventName?: string
   raceName?: string
   raceKind?: string
   seconds?: number
@@ -289,8 +298,9 @@ export type SessionValue = {
   withdraw: (id: string) => void
   /**
    * What the administration may put right on a submission before deciding it
-   * (owner, 30.08.2026): the name of the event, the name of the race, the kind,
-   * and the time.
+   * (owner, 30.08.2026): the name of the race, the kind, and the time. The name
+   * of the event is the fourth he named and it has nowhere to live yet, since a
+   * submission carries no event until verification makes one.
    *
    * A type of its own rather than a partial submission, because these four are a
    * list somebody chose and the rest of a submission is not the administration's

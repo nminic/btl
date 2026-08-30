@@ -8,6 +8,9 @@ import { QueueMeta } from './QueueMeta'
 import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { inBoxes, fromBoxes, type WrittenBoxes } from '../../forms/clock'
+import { raceKind } from '../../data/raceKind'
+import { RACE_KINDS, type RaceKind } from '../../data/types'
 import '../../styles/outsideLink.css'
 import '../member/Member.css'
 /* For `.pending__bar`, the row that carries the heading and the one decision
@@ -32,7 +35,7 @@ import './Verification.css'
  */
 export function ReviewQueue() {
   const { locale, t } = useI18n()
-  const { submissions, decide, notify } = useSession()
+  const { submissions, decide, notify, amend } = useSession()
   const today = useToday()
   /* Which result the reason box is open on: the id the decision is written
      under, and the member the refusal is written to. Both taken when the box is
@@ -40,6 +43,17 @@ export function ReviewQueue() {
      nothing left to look up and no case where the lookup fails. */
   const [open, setOpen] = useState<{ id: string; memberNumber: string } | null>(null)
   const [note, setNote] = useState('')
+  /**
+   * The submission being put right, with the boxes as they stand.
+   *
+   * Its own state and not the one above, because the two panels answer different
+   * questions and both may be reached from the same row: the reason box refuses,
+   * this one corrects before deciding. Held as text, since that is what a box
+   * holds, and turned back into a number only when it is saved.
+   */
+  const [fixing, setFixing] = useState<
+    { id: string; raceName: string; raceKind: RaceKind } & WrittenBoxes | null
+  >(null)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
 
@@ -250,11 +264,34 @@ export function ReviewQueue() {
                         type="button"
                         className="button button--secondary"
                         onClick={() => {
+                          /* The other panel closes, because both stand below the
+                             table and two open at once would leave the moderator
+                             looking at a correction of one item over a refusal of
+                             another. */
+                          setFixing(null)
                           setOpen({ id: one.id, memberNumber: one.memberNumber })
                           setNote('')
                         }}
                       >
                         {t('review.sendBack')}
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => {
+                          setOpen(null)
+                          setFixing({
+                            id: one.id,
+                            raceName: one.raceName,
+                            /* Through the one home for that reading: the member
+                               chose one of three, but a submission holds a word
+                               and this control offers three (`data/raceKind.ts`). */
+                            raceKind: raceKind(one.raceKind),
+                            ...inBoxes(one.seconds),
+                          })
+                        }}
+                      >
+                        {t('review.amend')}
                       </button>
                     </div>
                   </td>
@@ -262,6 +299,101 @@ export function ReviewQueue() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {fixing !== null && (
+        <div className="review__reason" role="group" aria-label={t('review.amendTitle')}>
+          {/* What this panel is for, said before the boxes rather than after: the
+              kind the member chose is a hint (owner, 30.08.2026, „kao nagoveštaj
+              tipa"), and the time on a timed race is the race's own limit, the
+              same for everybody who finished, not a run. A moderator who does not
+              know that writes the runner's time into a box that decides points
+              for everyone. */}
+          <p className="profile__empty">{t('review.amendNote')}</p>
+
+          <div className="rankings__field rankings__field--wide">
+            <AskedLabel id="amend-name">{t('newResult.raceName')}</AskedLabel>
+            <input
+              id="amend-name"
+              type="text"
+              value={fixing.raceName}
+              onChange={(event) => setFixing({ ...fixing, raceName: event.target.value })}
+            />
+          </div>
+
+          <div className="rankings__field">
+            <AskedLabel id="amend-kind">{t('newResult.raceKind')}</AskedLabel>
+            <select
+              id="amend-kind"
+              value={fixing.raceKind}
+              onChange={(event) => setFixing({ ...fixing, raceKind: raceKind(event.target.value) })}
+            >
+              {RACE_KINDS.map((one) => (
+                <option key={one} value={one}>
+                  {t(`race.kind.${one}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* The three boxes a time is asked in everywhere on this portal, split
+              and added up by the one place that answers both ways
+              (`forms/clock.ts`), so a limit written here is the same number the
+              form on the other side writes. */}
+          {(['hours', 'minutes', 'seconds'] as const).map((box) => (
+            <div className="rankings__field" key={box}>
+              <AskedLabel id={`amend-${box}`}>{t(`newResult.${box}`)}</AskedLabel>
+              <input
+                id={`amend-${box}`}
+                type="text"
+                inputMode="numeric"
+                value={fixing[box]}
+                onChange={(event) => setFixing({ ...fixing, [box]: event.target.value })}
+              />
+            </div>
+          ))}
+
+          <div className="member__links">
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => {
+                /* Every box has to hold a number, and **empty is not one**, which
+                   is the correction of 31.08.2026: `fromBoxes` gives `NaN` only
+                   where a box is missing altogether, and an empty box is not
+                   missing, it is the empty string, which `Number` reads as nought.
+                   So a moderator who cleared the hours and pressed save wrote a
+                   race of forty five minutes as one of nought hours and saved it
+                   silently. Measured on the very case written for this.
+
+                   Refused rather than saved, and the panel stays open over what
+                   was typed, so a name already corrected is not lost with it. */
+                const written = [fixing.hours, fixing.minutes, fixing.seconds]
+                const seconds = fromBoxes(fixing)
+
+                if (written.some((one) => one.trim() === '') || Number.isNaN(seconds)) {
+                  return
+                }
+
+                amend(fixing.id, {
+                  raceName: fixing.raceName,
+                  raceKind: fixing.raceKind,
+                  seconds,
+                })
+                setFixing(null)
+              }}
+            >
+              {t('review.amendSave')}
+            </button>
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => setFixing(null)}
+            >
+              {t('review.amendCancel')}
+            </button>
+          </div>
         </div>
       )}
 
