@@ -328,11 +328,18 @@ export function NewResult() {
 
       <FormRenderer
         form={unosRezultata}
+        /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
+           here rather than in the definition because a field has no notion of a
+           value it starts from: `emptyValues` gives every field the empty string
+           and this prop is what the form already takes to start from something
+           else. A kind left empty would be a required select nobody filled, and
+           the member would be refused for not answering a question they were
+           never asked. */
         initial={
           correcting !== undefined
             ? filledFrom(correcting)
             : fixingOne === undefined
-              ? undefined
+              ? { raceKind: 'length' }
               : filledFromCounted(fixingOne)
         }
         /* Everything except which race it was (owner, 27.08.2026: „sve osim

@@ -771,6 +771,7 @@ describe('a result from entry to decision', () => {
   async function enterResult(user: ReturnType<typeof setupUser>) {
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
     await user.type(screen.getByLabelText(/Uspon/), '540')
     await user.type(screen.getByLabelText(/Spust/), '540')
@@ -870,6 +871,7 @@ describe('a result from entry to decision', () => {
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka sa pričom')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')
@@ -891,6 +893,7 @@ describe('a result from entry to decision', () => {
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka bez vremena')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')
@@ -934,6 +937,7 @@ describe('a result from entry to decision', () => {
     await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
     await user.type(screen.getByLabelText(/Datum trke/), '11052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')

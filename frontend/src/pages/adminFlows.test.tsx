@@ -1367,6 +1367,7 @@ describe('verification', () => {
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.type(screen.getByLabelText(/Dužina/), '10')
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')
