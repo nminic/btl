@@ -304,6 +304,51 @@
 .chip__lengths {
   display: flex;
   gap: var(--space-4);
+  /* Wrapping, and shrinking only as far as wrapping needs, since 30.08.2026.
+     A day could hold five dots and no more, and the floor of a day above is
+     measured for exactly that: five dots and the gap before them. A race that
+     fixes no length brought a sixth, and a day carrying all six pushed 12,78px
+     past its own edge at 780/100% (measured in a browser, since jsdom lays
+     nothing out, ADL A33).
+
+     Raising the floor is the answer this looks like and it is the wrong one:
+     `5.5rem` was measured on 23.08.2026 and it removed the overflow by bringing
+     back the sideways scroll of the whole page, 38px at 1560px on 200% text.
+     The width of a day is spoken for; its height is not.
+
+     **A ceiling and not a shrink.** `flex-shrink: 1` also makes the wrap
+     reachable and it reaches too far: the row then yields whenever the line is
+     tight, and five dots that had always stood in one line broke into two at
+     780px on 200% text (measured 30.08.2026, against this same page with the
+     rule as it was). `flex-shrink: 0` stays for the reason it was there, and
+     the wrap is reached by a ceiling, which binds only where it is met.
+
+     **And the ceiling is five dots, not a share of the box.** Both of the
+     obvious ceilings were measured and both were wrong. Plain `100%` is the
+     tile's content box and is too tight by the tile's own padding. At 780/200%
+     five dots ask 119,95px of a content box of 102, so they have always stood
+     out over that padding and ended level with the edge of the day, which is
+     the razor fit the floor above describes, and `100%` broke them into two
+     lines. `100% + 2 x --space-8` gives them their line back and lets the row's
+     box out 5px past the day at 780/100%, since where the row starts is not the
+     tile's content edge once it is overflowing.
+
+     What a day was measured to hold is five dots and the four gaps between
+     them, so that is what is written: an absolute width, in the token the dots
+     are drawn from, owing nothing to where the row happens to begin. Five dots
+     meet it exactly and keep the single line they have always had; a sixth
+     cannot fit under it at any size of letter and wraps. The day is therefore
+     asked for no more room than it was asked for before this existed.
+
+     Packed from the start of the row and not from its end. `flex-end` is what
+     it looks like it should be, the dots sitting against the right edge as they
+     do now, and it moved the fullest day from 0,03px inside its own edge to
+     0,97 outside it: a row wider than its box is pushed by the whole of that
+     difference when it is aligned to the end. Where the row is not overflowing
+     nothing moves, since it is the last thing in a tile whose name takes all
+     the room there is. */
+  flex-wrap: wrap;
+  max-inline-size: calc(5 * var(--length-dot-size) + 4 * var(--space-4));
   flex-shrink: 0;
 }
 

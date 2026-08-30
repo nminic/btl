@@ -1,6 +1,8 @@
 import { categoryCodeFor } from './categories'
 import { FIRST_SEASON } from './season'
-import type { BtlEvent, Competitor, Gender, Race, RaceCategory, Result, Team } from './types'
+import { raceKind } from './raceKind'
+import { DOTS } from './types'
+import type { BtlEvent, Competitor, Dot, Gender, Race, RaceCategory, Result, Team } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
  * rules can be tested without a screen, and so the same rule is not written
@@ -656,17 +658,29 @@ export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
  * per race, so an event with four half marathons carries one green dot rather
  * than four.
  */
-export function categoriesAt(event: BtlEvent, races: Race[]): RaceCategory[] {
+/** A race as it really arrives here: everything `Race` carries, except that the kind
+ *  is still only a word, which is what the file says and what `raceKind` reads. */
+type Dotted = Omit<Race, 'kind'> & { kind: string }
+
+export function dotsAt(event: BtlEvent, races: Dotted[]): Dot[] {
   /* Read off the race and not off a list the event carries. The list is written
      by the generator and by nothing else, so a race added in administration was
      run by nobody as far as this was concerned: its event lost the dot for that
      length, and the league beside it counted one race fewer. A race says which
-     event it belongs to, and that is the one place it is written down (ADL A7). */
+     event it belongs to, and that is the one place it is written down (ADL A7).
+
+     A race that fixes no length gets a dot of its own rather than the one its
+     category says. Category is read off the length (`data/raceCategory.ts`) and such
+     a race carries nought, so it would come out „short": a twenty four hour ultra
+     shown beside the five kilometre races, on the one screen somebody scans to find
+     out what is on. */
   const held = new Set(
-    races.filter((race) => race.eventId === event.id).map((race) => race.category),
+    races
+      .filter((race) => race.eventId === event.id)
+      .map((race) => (raceKind(race.kind) === 'length' ? race.category : 'unmeasured')),
   )
 
-  return CATEGORIES.filter((one) => held.has(one))
+  return DOTS.filter((one) => held.has(one))
 }
 
 /** How many places a front page board keeps, whatever the league can fill. */

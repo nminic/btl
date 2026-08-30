@@ -99,6 +99,24 @@
   --length-long: #8a6a08;
   --length-marathon: #b8531a;
   --length-ultra: #c0362b;
+  /* And one colour for a race that fixes no length, since 30.08.2026. Free of the
+     five, which run cool to warm with the distance; violet belongs to no point on
+     that line, which is the whole of what it says.
+
+     Measured before it was chosen: 7,38:1 against the surface in this theme and
+     6,43:1 in the dark one, where WCAG 2.2 SC 1.4.11 asks 3:1 of a thing that is not
+     text. And 1,27:1 from the nearest of the five, where the five sit between 1,03
+     and 1,18 from one another, so it is further from them than they are from each
+     other. Colour is never the only carrier all the same (ADL A7): every dot has its
+     word beside it, read out and unseen. */
+  --length-unmeasured: #6b3fa0;
+
+  /* How wide a dot is drawn, in one place, because the calendar's ceiling on a
+     row of them is written from it: a row may be as wide as five dots and the
+     four gaps between them and no wider, which is what a day was measured to
+     hold (`pages/Calendar.css`). Written twice, the two would part company and
+     the ceiling would stop describing anything. */
+  --length-dot-size: 0.55rem;
 
   /* An event that is not a race, on the tile it gets in the calendar.
    *
@@ -302,6 +320,7 @@
     --length-long: #e3c04a;
     --length-marathon: #f0904a;
     --length-ultra: #f4726a;
+    --length-unmeasured: #b98ae0;
     /* On a near black card the tint becomes the deep end of the same hue and the
        word the light end. The race tile flips here as well, so the calendar sheet
        says only which of the three a tile takes and the theme is decided once. */
@@ -347,6 +366,7 @@
   --length-long: #e3c04a;
   --length-marathon: #f0904a;
   --length-ultra: #f4726a;
+  --length-unmeasured: #b98ae0;
   /* On a near black card the tint becomes the deep end of the same hue and the
      word the light end. The race tile flips here as well, so the calendar sheet
      says only which of the three a tile takes and the theme is decided once. */

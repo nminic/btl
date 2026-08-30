@@ -261,19 +261,12 @@ describe('the length, as one row of six', () => {
 })
 
 describe('the five lengths, as five colours', () => {
-  it('carries a value for each of them in both themes', () => {
-    /* Blue, green, yellow, orange, red, shortest to longest (owner,
-       31.07.2026). Per theme, because a colour that reads on a white card
-       disappears on a dark one. jsdom computes no custom properties, so the
-       tokens are read as text, the way the ducat art is tested (ADL A7). */
-    const css = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
-
-    for (const name of ['short', 'half', 'long', 'marathon', 'ultra']) {
-      // Once for the light theme and twice for the dark one, which is written
-      // out for the media query and for the switch.
-      expect(css.match(new RegExp(`--length-${name}:`, 'g'))).toHaveLength(3)
-    }
-  })
+  /* That each length has a colour of its own in each of the three theme blocks
+     moved to `styles/lengthDots.test.ts` on 30.08.2026, where it is asked of
+     `DOTS` rather than of five names written out here. The ring on this page
+     draws one slice per length and stays at five; the calendar carries a sixth
+     dot for a race that fixes no length, and a list written by hand had nothing
+     to say about it. */
 
   it('turns the slices and not the figures in the middle of them', () => {
     const css = readFileSync(join(process.cwd(), 'src/components/CategoryDonut.css'), 'utf-8')
