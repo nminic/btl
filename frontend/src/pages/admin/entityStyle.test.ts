@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen } from '@testing-library/react'
 import { must } from '../../test/at'
+import { chainToShell, markupOf, nameOf } from '../../test/chain'
 import { renderAt } from '../../test/render'
 
 /**
@@ -28,8 +29,9 @@ import { renderAt } from '../../test/render'
  *
  * **Who wins is a question for a browser, and it is not asked here.** It is asked by
  * `scripts/refused-control-appearance.mjs`, which measures the built sheet in headless
- * Chrome in both themes, at the three widths this portal promises, and in four states:
- * at rest, under a real mouse, under a real press, and under a real Tab. It is the only
+ * Chrome in both themes, at one width inside every band that sheet can tell apart from
+ * 360px up, on every screen its `@media` preludes ask about, and in four states: at rest,
+ * under a real mouse, under a real press, and under a real Tab. It is the only
  * oracle that is not another reimplementation of the cascade. That script
  * is run by hand and it writes no markup of the portal's own, so two things it cannot
  * see are answered below, where jsdom answers them exactly: what a component puts on the
@@ -91,53 +93,6 @@ function ruleFor(selector: string): CSSStyleDeclaration {
   expect(found.length, `${selector} is not an unconditional rule of Entity.css`).toBe(1)
 
   return must(found[0], `the rule ${selector}`).style
-}
-
-/** Every ancestor from the control up to the outermost shell, named the same way
- *  whichever document it is walked in. Classes are sorted, because two homes for one
- *  chain must not disagree over the order somebody wrote them in. The control's own id
- *  is left out of its name: the fixture needs one to find the button by and the portal
- *  has none, while the classes of that same button are exactly what has to agree.
- *
- *  The cut is at the outermost `.shell`, not the first one met walking up. Cut at the
- *  first, a second `.shell` wrapped around the app leaves everything above it
- *  uncompared: a review wrapped one and watched the guard stay green. */
-function chainToShell(from: Element): string[] {
-  const walk: Element[] = []
-  let step: Element | null = from
-
-  while (step !== null) {
-    walk.push(step)
-    step = step.parentElement
-  }
-
-  const shell = walk.map((one) => one.classList.contains('shell')).lastIndexOf(true)
-
-  return walk.slice(0, shell + 1).map((one, index) => nameOf(one, index > 0))
-}
-
-/** An element said the same way in either document: its tag, its id where that is a fact
- *  both documents share, and its classes in a fixed order. */
-function nameOf(one: Element, withId: boolean): string {
-  const named = one.id === '' || !withId ? '' : `#${one.id}`
-  const classes = [...one.classList]
-    .sort()
-    .map((cls) => `.${cls}`)
-    .join('')
-  /* The names of its attributes as well, because a rule can be keyed on any of them and
-     an attribute selector weighs exactly as much as a class. The fixture had drifted
-     already: the portal writes `aria-describedby` on this button and `aria-labelledby`
-     on the panel, the fixture wrote neither, and a review keyed a rule on the first and
-     watched the refusal lose in a browser while both guards stayed green.
-     Names and not values: the values are Serbian labels and generated ids, which differ
-     for good reasons. `id` and `class` are left out because they are said above. */
-  const attributes = [...one.attributes]
-    .map((attribute) => attribute.name)
-    .filter((attribute) => attribute !== 'id' && attribute !== 'class')
-    .sort()
-    .join(' ')
-
-  return `${one.tagName.toLowerCase()}${named}${classes}[${attributes}]`
 }
 
 describe('a record that may no longer be opened', () => {
@@ -249,22 +204,12 @@ describe('a record that may no longer be opened', () => {
       join(process.cwd(), 'scripts/refused-control-appearance.mjs'),
       'utf-8',
     )
-    /* From the fixture, not from the first `<body>` in the file: the sentence above it
-       says the word too, and a boundary that lands in prose is one nobody notices until
-       it moves. */
-    const starts = script.indexOf('const FIXTURE')
-
-    expect(starts, 'the script has no fixture').toBeGreaterThan(-1)
-
-    const opens = script.indexOf('<body>', starts)
-    const closes = script.indexOf('</body>', starts)
-
-    expect(opens, 'the fixture has no body').toBeGreaterThan(-1)
-    expect(closes, 'the fixture body is never closed').toBeGreaterThan(opens)
-
+    /* The markup of this one control, named where the script names it: the script
+       carries a fixture for each control the portal refuses, and the `<body>` it puts
+       them into belongs to none of them. */
     const holder = document.createElement('div')
 
-    holder.innerHTML = script.slice(opens + '<body>'.length, closes)
+    holder.innerHTML = markupOf(script, 'PRICE_LIST')
 
     const written = must(holder.querySelector('#refused'), 'the refused control in the fixture')
 

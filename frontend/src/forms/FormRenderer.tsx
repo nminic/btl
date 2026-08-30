@@ -11,6 +11,7 @@ import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import { RequiredMark, RequiredNote } from './AskedLabel'
 import { FieldHint } from './FieldHint'
+import { heldControl } from './held'
 import { plainWords, worded } from './worded'
 import { LongBox } from './LongBox'
 import type {
@@ -312,18 +313,18 @@ const Field = memo(function Field({
        **Three and not four**, which a review counted on 28.08.2026 after this was
        written claiming all of them: the date is not drawn from here at all but by
        `forms/DatePicker.tsx`, which writes its own class and never sees this
-       object. So the length, the climb and the fall go grey and the date beside
-       them still looks like a box somebody may type into, while carrying
-       `aria-disabled` and `readOnly` like the rest. That is one line in a file a
-       separate change is holding, and it is written down in
-       `btl-produkt/PENDING.md` rather than reached across for. Measured by a review that day in Chrome over the built
+       object, and the date beside them is drawn by `DatePicker.tsx`, which never
+       saw this set: three fields went grey and the fourth still looked like a box
+       somebody may type into, while carrying `aria-disabled` and `readOnly` like
+       the rest. Measured by a review that day in Chrome over the built
        stylesheet: the difference between the whole computed style of a locked
-       field and a live one was the empty set, down to the same background and the
+       date and a live one was the empty set, down to the same background and the
        same text cursor. `disabled` had made exactly one visible difference and
        the move to `aria-disabled` took it away without putting anything in its
-       place. The rule is in `PlaceField.css`, beside the control that first
-       needed it. */
-    className: locked ? 'field__control field__control--held' : 'field__control',
+       place. Closed on 29.08.2026 by giving the class one home (`forms/held.ts`)
+       and the rule one home (`FormRenderer.css`), so a fifth control cannot be
+       drawn without one. */
+    className: heldControl(locked === true),
     autoFocus: open,
     /* Held, not switched off (PDL: „Odbijeno, ne ugaseno", and the same argument
        is written out in `PlaceField.tsx` beside the country).

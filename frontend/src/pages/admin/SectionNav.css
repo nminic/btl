@@ -121,10 +121,13 @@
   color: var(--accent-contrast);
 }
 
-/* Beside the numbers, because a number that is quietly short is worse than an
-   error: seven noughts read as work already done. */
+/* Above the numbers, because a number that is quietly short is worse than an
+   error: six noughts read as work already done. Room on both sides of it: the
+   sector's own name is over it and the list of queues is under it, and it used
+   to be the last thing in the sector, where one top margin was the whole of what
+   it needed. */
 .adminsection__alarm {
-  margin: var(--space-10) 0 0;
+  margin: var(--space-10) 0;
   padding: var(--space-8) var(--space-10);
   border-radius: var(--radius-8);
   border: 1px solid var(--border);
