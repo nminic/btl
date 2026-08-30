@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { fromBoxes } from '../../forms/clock'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -28,10 +29,6 @@ const NOTHING: Values = {
 type Held = { values: Values; written: boolean }
 
 const EMPTY: Held = { values: NOTHING, written: false }
-
-function onCourse({ hours, minutes, seconds }: Values): number {
-  return Number(hours || 0) * 3600 + Number(minutes || 0) * 60 + Number(seconds || 0)
-}
 
 /**
  * Whether a box has anything in it, which is not the same question as what it is
@@ -111,7 +108,7 @@ export function Calculator() {
     Number(values.length || 0),
     Number(values.ascent || 0),
     Number(values.descent || 0),
-    onCourse(values),
+    fromBoxes(values),
   )
 
   /* The one listener, and `heldBy` above says why it is a listener of ours rather

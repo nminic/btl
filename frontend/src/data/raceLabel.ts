@@ -3,7 +3,6 @@ import { raceKind } from './raceKind'
 import {
   formatDistance,
   formatLimit,
-  formatNumber,
   formatShortDate,
   formatYear,
 } from '../i18n/format'
@@ -100,8 +99,13 @@ export type Named = Pick<Race, 'name' | 'date' | 'limitSeconds' | 'distanceKm'> 
  *
  * Empty for a free race, which is the answer the owner chose on 30.08.2026, so
  * every caller has to say what it does with nothing rather than print it.
+ *
+ * **How finely a length is written is the caller's, and only a length has it.** The
+ * name of a race writes one decimal until two races need parting, and the table of
+ * races on an event writes two, which is what `raceLabel` leans on when it parts a
+ * pair by the finer reading. A limit and an empty answer do not change with it.
  */
-export function raceMeasure(race: Named, locale: string): string {
+export function raceMeasure(race: Named, locale: string, decimals = 1): string {
   /* Read through the one function that knows the three words, and not off the
      record. The type says `RaceKind`; the file says whatever it says, and a word
      this portal has never heard of would otherwise fall past both branches below
@@ -114,7 +118,7 @@ export function raceMeasure(race: Named, locale: string): string {
 
   return kind === 'time'
     ? formatLimit(race.limitSeconds)
-    : formatDistance(race.distanceKm, locale)
+    : formatDistance(race.distanceKm, locale, decimals)
 }
 
 export function raceLabel(race: Named, among: Named[], locale: string): string {
@@ -137,13 +141,10 @@ export function raceLabelParts(
   among: Named[],
   locale: string,
 ): { name: string; rest: string } {
-  /* What goes in the brackets. `raceMeasure` answers it, and the second rounding
-     is asked for here alone: only a race of a length has anything a decimal can
-     sharpen, so the other two kinds give the same answer on every rung. */
-  const measure = (one: Named, decimals: number) =>
-    decimals === 1 || raceKind(one.kind) !== 'length'
-      ? raceMeasure(one, locale)
-      : `${formatNumber(one.distanceKm, locale, decimals)} km`
+  /* What goes in the brackets, from the one place that answers it. Only a race of a
+     length has anything the second decimal can sharpen, and `raceMeasure` knows
+     that: the other two kinds give the same answer on every rung. */
+  const measure = (one: Named, decimals: number) => raceMeasure(one, locale, decimals)
 
   const rest = (when: (one: Named) => string, decimals: number) => (one: Named) => {
     const said = measure(one, decimals)

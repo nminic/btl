@@ -567,15 +567,20 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     /* The table of races under an event carries the name, the day and the
        numbers. It carried no name until 23.08.2026, when the owner gave a race
        one; the row has said it since, and this case is about the numbers beside
-       it. */
+       it.
+
+       The measure carries its unit since 30.08.2026, when the heading stopped
+       saying „Dužina": a column that may hold „24 h" cannot leave „km" to the word
+       above it. */
     const { race, event } = await anyRace()
 
     renderAt(`/sr/kalendar/${event.slug}`)
 
     const table = await screen.findByRole('table', { name: 'Trke' })
 
-    expect(within(table).getAllByText(formatNumber(race.distanceKm, 'sr-Latn', 2)).length)
-      .toBeGreaterThan(0)
+    expect(
+      within(table).getAllByText(`${formatNumber(race.distanceKm, 'sr-Latn', 2)} km`).length,
+    ).toBeGreaterThan(0)
   })
 
   it('is named by its own name on the form that reports a result', async () => {

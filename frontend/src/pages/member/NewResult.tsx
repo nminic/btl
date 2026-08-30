@@ -9,6 +9,7 @@ import { categoryOf } from '../../data/raceCategory'
 import type { Result } from '../../data/types'
 import { useEvents, useRaces, useResults } from '../../data/useResource'
 import { useToday } from '../../clock/useClock'
+import { fromBoxes, inBoxes } from '../../forms/clock'
 import { racesToOffer } from './racesToOffer'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
@@ -21,7 +22,7 @@ import './Member.css'
 /**
  * A refused result written back into the fields it was entered in.
  *
- * The other way round from `seconds` below: the form asks for hours, minutes and
+ * The other way round from `fromBoxes` (`forms/clock.ts`): the form asks for hours, minutes and
  * seconds and the record keeps one number, and a member correcting a link is not
  * to be made to type the whole race again (owner, 06.08.2026).
  */
@@ -42,9 +43,7 @@ function filledFromCounted(one: Result): FormValues {
     distanceKm: String(one.distanceKm),
     ascentM: String(one.ascentM),
     descentM: String(one.descentM),
-    hours: String(Math.floor(one.seconds / 3600)),
-    minutes: String(Math.floor((one.seconds % 3600) / 60)),
-    seconds: String(one.seconds % 60),
+    ...inBoxes(one.seconds),
     link: '',
     photo: '',
     comment: '',
@@ -58,9 +57,7 @@ function filledFrom(one: Submission): FormValues {
     distanceKm: String(one.distanceKm),
     ascentM: String(one.ascentM),
     descentM: String(one.descentM),
-    hours: String(Math.floor(one.seconds / 3600)),
-    minutes: String(Math.floor((one.seconds % 3600) / 60)),
-    seconds: String(one.seconds % 60),
+    ...inBoxes(one.seconds),
     link: one.link,
     photo: one.photo,
     /* And what they said about the race, which this left out while returning the
@@ -73,12 +70,6 @@ function filledFrom(one: Submission): FormValues {
        written over (session/SessionProvider.tsx). */
     comment: one.comment,
   }
-}
-
-/** Hours, minutes and seconds are all required by the form definition, so
- *  there is nothing here to fall back to. */
-function seconds(values: FormValues): number {
-  return Number(values.hours) * 3600 + Number(values.minutes) * 60 + Number(values.seconds)
 }
 
 export function NewResult() {
@@ -170,7 +161,7 @@ export function NewResult() {
     const distanceKm = Number(values.distanceKm)
     const ascentM = Number(values.ascentM)
     const descentM = Number(values.descentM)
-    const total = seconds(values)
+    const total = fromBoxes(values)
     const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
 
     const sent = {

@@ -7,6 +7,7 @@ import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
+import sr from '../../i18n/sr.json'
 
 /**
  * The form a result is entered on from a profile, away from the calendar.
@@ -73,6 +74,47 @@ const shaped = (over: Partial<Race>): Race => ({
   category: 'short',
   ...over,
 })
+
+
+/**
+ * Every field a race may fill in when it is chosen, by the word a sentence would use
+ * for it.
+ *
+ * Read from the two places that own the answer rather than written out: which fields
+ * are filled comes from `racesToOffer` itself, asked for all three kinds, and what
+ * each is called comes from the dictionary. Written out here, a kind that begins
+ * filling in a seventh field would leave the guard silent about it, and a label
+ * renamed would leave it measuring a word that is nobody's field.
+ *
+ * Cut to the stem, because Serbian declines: „dužina" and „dužinu" are one field.
+ * A label ending in a vowel loses it („Dužina" → „dužin", „Sati" → „sat"); one
+ * ending in a consonant is its own stem („Uspon", „Spust"). Not a fixed number of
+ * letters: four was tried and „Sati" is four long with a stem of three, so „sate"
+ * slipped through while „obrisati" was accused of naming it.
+ */
+const MEASURED_FIELDS = [...new Set(
+  ['length', 'time', 'free'].flatMap((kind) =>
+    Object.keys(
+      first(
+        racesToOffer(
+          [held],
+          [{ ...shaped({ id: 'r1', limitSeconds: 3_600 }), kind }],
+          '2026-12-31',
+          'sr-Latn',
+        ),
+      ).fills,
+    ),
+  ),
+)]
+  .filter((name) => name !== 'date')
+  .map((name) => {
+    const said = must(
+      Object.entries(sr.newResult).find(([key]) => key === name),
+      `the label of ${name}`,
+    )[1].replace(/\s*\(.*\)$/, '')
+
+    return /[aeiou]$/i.test(said) ? said.slice(0, -1).toLowerCase() : said.toLowerCase()
+  })
 
 
 describe('the list of races under the name of an event', () => {
@@ -203,7 +245,65 @@ describe('the list of races under the name of an event', () => {
     ])
   })
 
-  it('fills in a length only where the race fixes one', () => {
+  it('tells the member what choosing a race does without naming a single field', async () => {
+    /* The sentence over the box is the second home of „what gets filled in when you
+       pick a race", and the member reads that one rather than the code. It is drawn
+       before any race is chosen, so it cannot know the kind, and each kind fills in
+       different fields: a race of a length hands over the distance, the climb and
+       the fall, a timed race hands over the time and locks it, a free race hands
+       over nothing but the day.
+
+       So it must not name a field at all. Measured on 30.08.2026, when it went on
+       promising „datum, dužina, uspon i spust" while a timed race left the distance
+       empty for the member and locked three time boxes the sentence never mentioned:
+       every one of those words was a claim that is false for two kinds out of three.
+
+       Asked by the words a field is labelled with, not by the sentence itself, so
+       rewriting the sentence in better Serbian does not fail and naming a field
+       does. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    const box = await screen.findByLabelText(/^Naziv trke/)
+    /* The explanation the box points a reader at, found the way a reader finds it
+       rather than by its words: pinned to a phrase, this guard fell on a rewrite in
+       better Serbian, which is the opposite of what it is for. */
+    const said = must(
+      document.getElementById(must(box.getAttribute('aria-describedby'), 'the description')),
+      'the sentence over the box',
+    )
+
+    /* Not empty, and no threshold beyond that: how long the sentence is, is nobody's
+       rule, and a number here would be one no measurement stands behind. What is
+       actually forbidden is below. */
+    expect(said.textContent?.trim(), 'the box explains nothing at all').not.toBe('')
+
+    /* Six, said out loud: the list is worked out from what the three kinds fill in,
+       and a kind that stopped filling one in would quietly leave fewer of them and a
+       guard measuring less than it says. */
+    expect(MEASURED_FIELDS, 'a field is no longer filled in by any kind of race').toHaveLength(6)
+
+    /* Whole words, because a stem inside a longer word is not a mention of the field:
+       „sat" lives in „obrisati" and in „upisati", and a round of this accused an
+       innocent verb of naming the clock while „sate" walked past it. */
+    const words = (said.textContent ?? '').toLowerCase().split(/[^a-zà-ÿčćđšž]+/i)
+
+    for (const field of MEASURED_FIELDS) {
+      expect(
+        words.filter((word) => word.startsWith(field)),
+        `the sentence names ${field}, which is filled in on some kinds of race and not on others`,
+      ).toEqual([])
+    }
+
+    /* And the box is the one the sentence belongs to: typing into it offers races,
+       so nothing here can pass on a screen that drew some other field. */
+    await user.type(box, 'beogradski maraton')
+
+    expect(offered().length).toBeGreaterThan(0)
+  })
+
+  it('hands over exactly what each kind of race fixes, and locks exactly that', () => {
     /* Choosing a race fills the fields under the box. A timed race and a free one
        carry nought, and nought is not a length this form will take: the definition
        asks for at least 0,1 (`definitions/unos-rezultata.form.json`) and
@@ -215,14 +315,22 @@ describe('the list of races under the name of an event', () => {
        i spust." All three, because a course run in laps has a climb that depends on
        how many laps somebody ran, so the race cannot know any of them.
 
-       The other half of that sentence, „Vreme ne unosi, jer je zadato trkom", is
-       not done and is written down in PENDING as part of the increment about
-       entering and scoring: it is not a matter of what is filled in but of what the
-       form asks for, and the form asks for hours, minutes and seconds outright. */
+       And the other half of that sentence, „Vreme ne unosi, jer je zadato trkom", is
+       the same act read the other way: the renderer locks by the keys of what is
+       handed over, so a timed race hands its own limit into the three time boxes and
+       they are locked by that. Broken into hours, minutes and seconds because that
+       is how the form asks. It is also what makes the points come out right on this
+       form without it having to work out which race a typed name belongs to: the
+       formula is fed the limit because the limit is what is in the boxes. */
     const filled = racesToOffer(
       [held],
       [
-        shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400, ascentM: 120 }),
+        /* Six hours, thirty minutes and forty five seconds, and all three numbers
+           different from each other. A round twenty four hours leaves the minutes
+           and the seconds both nought, and 6:30:30 leaves them equal; in either the
+           two expressions that split a limit into boxes cannot be told apart, and
+           both were measured passing a swap (30.08.2026). */
+        shaped({ id: 'r1', kind: 'time', limitSeconds: 23_445, ascentM: 120 }),
         shaped({ id: 'r2', kind: 'free', ascentM: 120 }),
         shaped({ id: 'r3', distanceKm: 21.1, ascentM: 120, descentM: 140 }),
       ],
@@ -244,13 +352,18 @@ describe('the list of races under the name of an event', () => {
        length race handing over „" for its climb passed the whole package, and that
        is the same dead end on all 1612 races in the file rather than on none. */
     expect(filled.map((one) => Object.keys(one ?? {}).sort())).toEqual([
-      ['date'],
+      ['date', 'hours', 'minutes', 'seconds'],
       ['date'],
       ['ascentM', 'date', 'descentM', 'distanceKm'],
     ])
     expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
     expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
     expect(filled.map((one) => one?.descentM)).toEqual([undefined, undefined, '140'])
+    /* Each in its own box and each a different number, so no two of the three can be
+       read for one another. */
+    expect(filled.map((one) => one?.hours)).toEqual(['6', undefined, undefined])
+    expect(filled.map((one) => one?.minutes)).toEqual(['30', undefined, undefined])
+    expect(filled.map((one) => one?.seconds)).toEqual(['45', undefined, undefined])
     /* And the day, which is the one thing handed over on all three kinds and so the
        one the two lists above cannot reach. It is locked like the rest, so a value
        the form cannot read is a field nobody can mend: the box asks for

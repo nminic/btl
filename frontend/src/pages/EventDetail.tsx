@@ -19,8 +19,7 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
-import { raceKind } from '../data/raceKind'
-import { raceLabel } from '../data/raceLabel'
+import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { outsideHost, outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
@@ -129,7 +128,19 @@ function RaceTable({ event }: { event: BtlEvent }) {
                       what the name is for. */}
                   <th scope="col">{t('event.raceName')}</th>
                   {overDays && <th scope="col">{t('event.raceDay')}</th>}
-                  <th scope="col">{t('event.distance')}</th>
+                  {/* „Mera" and not „Dužina" since 30.08.2026, on the owner's word:
+                      a race of a length is measured by its length, a timed race by
+                      how long it lasts, and a free race by nothing until somebody
+                      has run it, so a heading that says „Dužina" is untrue of two of
+                      the three kinds. He was offered the two ways of closing that
+                      and took this one; the other was for the first column to write
+                      the race's full name, which repeats the year on every row of a
+                      table already standing under one event.
+
+                      Only this table. The table of results below is a table of runs
+                      that happened, and every one of those has a length, so the word
+                      there stays what it was. */}
+                  <th scope="col">{t('event.measure')}</th>
                   <th scope="col" className="table__hide-phone">
                     {t('event.ascent')}
                   </th>
@@ -144,29 +155,23 @@ function RaceTable({ event }: { event: BtlEvent }) {
                     <tr key={race.id}>
                       <td>{race.name}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
-                      {/* Empty where the race does not fix a length, rather than
-                          „0,00". The grid of a competition settled this shape
-                          already (PDL, 31.07.2026): a race somebody did not run is
-                          an empty cell and not a nought, „jer nula tvrdi da je
-                          trčao i osvojio nula". A nought here says the same untrue
-                          thing, that somebody measured this course and it came to
-                          nothing.
+                      {/* What the race is measured by, from the one place that
+                          answers that (`data/raceLabel.ts`): its length, how long
+                          it lasts, or nothing at all.
 
-                          What such a race **is** measured by this table does not
-                          say, and that is a gap rather than a decision: the name
-                          in the first cell is the race's own name and not the
-                          label the rest of the portal names a race by, so „24 h"
-                          reaches this page only through the link into the form,
-                          which a visitor is not offered. Written down in PENDING
-                          on 30.08.2026 rather than answered here, because the
-                          answer is either a heading that stops saying „Dužina" or
-                          a name that repeats the year on every row, and both are
-                          the owner's to choose. Nothing is lost today: no race in
-                          the data fixes anything but a length. */}
+                          Empty for a free race and not „0,00". The grid of a
+                          competition settled that shape on 31.07.2026: a race
+                          somebody did not run is an empty cell and not a nought,
+                          „jer nula tvrdi da je trčao i osvojio nula". A nought here
+                          says the same untrue thing, that somebody measured this
+                          course and it came to nothing.
+
+                          Two decimals, which is finer than the name of a race
+                          writes. That difference is not decoration: `raceLabel`
+                          parts two races of one name on one morning by the finer
+                          reading and says so, and it says so about this table. */}
                       <td>
-                        {raceKind(race.kind) === 'length'
-                          ? formatNumber(race.distanceKm, locale, 2)
-                          : ''}
+                        {raceMeasure(race, locale, 2)}
                       </td>
                       <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
                       <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>

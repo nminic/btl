@@ -1,5 +1,6 @@
 import type { BtlEvent, Race } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
+import { inBoxes } from '../../forms/clock'
 import { fieldDate } from '../../forms/dateField'
 import { raceKind } from '../../data/raceKind'
 import { raceMeasure } from '../../data/raceLabel'
@@ -27,6 +28,47 @@ import { formatNumericDate } from '../../i18n/format'
  *  still only a word, which is what the file says and what this reads
  *  (`data/raceKind.ts`). */
 type Offered = Omit<Race, 'kind'> & { kind: string }
+
+/**
+ * The fields the race itself answers for, which are the ones it hands over and the
+ * ones the member may not change.
+ *
+ * The two are one list: the renderer locks by the **keys** of what a suggestion
+ * fills in, not by the values, so handing a field over and locking it are the same
+ * act. That is why this is the whole answer to „what does the member enter" on this
+ * form, and why it must say exactly what each kind fixes and nothing more.
+ *
+ * - **A race of a length** fixes the distance, the climb and the fall, and the
+ *   member gives the time.
+ * - **A timed race** fixes the time and nothing else, so it hands the time over,
+ *   already broken into the three boxes the form asks in. Owner, 29.08.2026: „Na
+ *   vremenskoj trci član unosi dužinu, uspon i spust. Vreme ne unosi, jer je zadato
+ *   trkom." Handed over rather than merely refused, because a box left empty and
+ *   locked is a form nobody can send (ADL A32), and because the limit is what the
+ *   formula scores such a race against: filled in here, the points come out right
+ *   without this form having to know which race the name belongs to.
+ * - **A free race** fixes neither, so it hands over nothing but the day.
+ *
+ * The day is fixed by every kind, so it is added by the caller rather than repeated
+ * three times here.
+ */
+function fieldsFixedBy(race: Offered): Record<string, string> {
+  const kind = raceKind(race.kind)
+
+  if (kind === 'length') {
+    return {
+      distanceKm: String(race.distanceKm),
+      ascentM: String(race.ascentM),
+      descentM: String(race.descentM),
+    }
+  }
+
+  if (kind === 'time') {
+    return inBoxes(race.limitSeconds)
+  }
+
+  return {}
+}
 
 export function racesToOffer(
   events: BtlEvent[],
@@ -79,25 +121,17 @@ export function racesToOffer(
      * length with „" for a timed race and called it „theirs to fill"; it was
      * neither filled nor theirs.
      *
-     * So a race that does not fix its length hands over the day and nothing else.
+     * So each kind hands over exactly what it fixes and nothing more
+     * (`fieldsFixedBy` above), which for a free race is the day alone.
      * That is also what the owner asked for on 29.08.2026: „Na vremenskoj trci član
-     * unosi dužinu, uspon i spust", and on a free race the time as well. A course
-     * run in laps has a climb that depends on how many laps somebody ran, so the
-     * race cannot know it either.
+     * unosi dužinu, uspon i spust. Vreme ne unosi, jer je zadato trkom", and on a
+     * free race all four are the member's. A course run in laps has a climb that
+     * depends on how many laps somebody ran, so the race cannot know it either.
      *
      * ADL A32 wrote this rule down after the same fault in another form: a lock
      * says what the reader may not change, so locking what the portal has not
      * filled in makes a dead end.
      */
-    fills: {
-      date: fieldDate(race.date),
-      ...(raceKind(race.kind) === 'length'
-        ? {
-            distanceKm: String(race.distanceKm),
-            ascentM: String(race.ascentM),
-            descentM: String(race.descentM),
-          }
-        : {}),
-    },
+    fills: { ...fieldsFixedBy(race), date: fieldDate(race.date) },
   }))
 }
