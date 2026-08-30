@@ -350,31 +350,23 @@ describe('the column a race is read by', () => {
     ).toBe('11rem')
 
     expect(
-      ruleFor(
-        '.entity-races .table th:nth-child(n + 3):nth-child(-n + 5), ' +
-          '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5)',
-      ).getPropertyValue('inline-size'),
-      'the three measures lost their width',
+      ruleFor('.entity-races .table .races__measure').getPropertyValue('inline-size'),
+      'the measures lost their width',
     ).toBe('5.5rem')
 
     /* And a width it is, not a ceiling. Asked by name because the two read the same
        in a diff and behave differently on the screen: a ceiling cut „42.2" down to
        „42." at 768px while every test stayed green. */
     expect(
-      ruleFor(
-        '.entity-races .table th:nth-child(n + 3):nth-child(-n + 5), ' +
-          '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5)',
-      ).getPropertyValue('max-inline-size'),
-      'the three measures were walled in again',
+      ruleFor('.entity-races .table .races__measure').getPropertyValue('max-inline-size'),
+      'the measures were walled in again',
     ).toBe('')
 
     /* And the room comes out of the padding, with a floor under the field so the
        column cannot fall below what it holds when the table is at its smallest. Both
        are asked here because the width above is only a suggestion, and a suggestion
        without these two is what let „59.27" lose a digit with every test green. */
-    const field = ruleFor(
-      '.entity-races .table td:nth-child(n + 3):nth-child(-n + 5) .field__control',
-    )
+    const field = ruleFor('.entity-races .table td.races__measure .field__control')
 
     expect(
       field.getPropertyValue('padding-inline'),
@@ -387,6 +379,31 @@ describe('the column a race is read by', () => {
     ).toBe('4.5rem')
   })
 
+  it('gives the kind of a race room for the longest word it offers', () => {
+    /* Measured in Chrome on 30.08.2026: „Vremenska" is 77,36px in this font, Chrome's
+       own arrow takes about 16, and the control keeps 12px of padding a side, so it
+       needs about 119. Asked here because jsdom lays nothing out (ADL A33), so what
+       a case can hold is the floor the sheet gives, not the width the word needs.
+
+       Two rounds got this wrong in two different ways, and both are asked about: a
+       width on the cell does nothing at all, and seven rem left „Vremensk" with the
+       last letter cut. */
+    expect(
+      ruleFor('.entity-races .table .races__kind .field__control').getPropertyValue(
+        'min-inline-size',
+      ),
+      'the kind lost the room its longest word needs',
+    ).toBe('8rem')
+    /* On the control and not on the cell, which is the half that matters: every
+       control here is told to fill its cell and to have no floor, so a width on the
+       cell is a suggestion the table is free to ignore, and it does. Measured in
+       Chrome: twenty rem on the cell left the column at 53,52px. */
+    expect(
+      unconditional().filter((rule) => oneLine(rule.selector).includes('.races__kind')),
+      'the kind is held open by a rule on the cell, which does nothing',
+    ).toHaveLength(1)
+  })
+
   it('reads the length from the right, like the two measures beside it', () => {
     /* The portal reads the first three columns of a table from the left, because in
        every other table those three are words (`styles/table.css`). Here they were
@@ -396,10 +413,14 @@ describe('the column a race is read by', () => {
 
        Measured in Chrome on the screen of an event: before, the heading of the length
        computed `text-align: left` and the other two `right`; after, all three read
-       `right`, and 2158 tests were green either way. */
+       `right`, and 2158 tests were green either way.
+
+       Asked by what the cell is and not by where it sits, since 30.08.2026: two
+       columns were added in the middle and every rule that counted columns moved off
+       the thing it was written for. */
     expect(
-      ruleFor('.entity-races .table th:nth-child(3)').getPropertyValue('text-align'),
-      'the length reads from the left again, alone among the three measures',
+      ruleFor('.entity-races .table th.races__measure').getPropertyValue('text-align'),
+      'a measure reads from the left again',
     ).toBe('right')
   })
 })

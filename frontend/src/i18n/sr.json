@@ -544,6 +544,13 @@
     "weekend": "Vikend",
     "addOnDay": "Nov događaj {date}"
   },
+  "race": {
+    "kind": {
+      "length": "Dužinska",
+      "time": "Vremenska",
+      "free": "Slobodna"
+    }
+  },
   "event": {
     "raceDay": "Dan",
     "place": "Mesto",
@@ -571,6 +578,8 @@
     "competitor": "Takmičar",
     "distance": "Dužina",
     "measure": "Mera",
+    "raceKind": "Vrsta",
+    "raceLimit": "Ograničenje (h)",
     "ascent": "Uspon",
     "descent": "Spust",
     "category": "Kategorija",
@@ -1068,6 +1077,7 @@
       "raceDate": "Datum",
       "raceName": "Trka",
       "distanceKm": "Dužina (km)",
+      "limitHours": "Ograničenje (h)",
       "ascentM": "Uspon (m)",
       "descentM": "Spust (m)",
       "category": "Kategorija",

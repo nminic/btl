@@ -1,5 +1,6 @@
 import { SLOW } from '../test/slow'
 import { render, screen, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -7,7 +8,7 @@ import { RoleProvider } from '../roles/RoleProvider'
 import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
-import { at, inputElement, must, selectElement } from '../test/at'
+import { at, first, inputElement, must, selectElement } from '../test/at'
 import { Deleted, Saved } from '../test/saved'
 import { loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
@@ -31,16 +32,16 @@ describe('the races of an event', () => {
      at (owner, 06.08.2026). It had a screen of its own, where finding the event
      meant searching a list of eleven hundred, and a race made there could be
      saved against the wrong one. */
-  async function openList() {
+  async function openList(probe?: ReactNode) {
     const user = setupUser()
 
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, probe)
 
     return user
   }
 
-  async function openFirstEvent() {
-    const user = await openList()
+  async function openFirstEvent(probe?: ReactNode) {
+    const user = await openList(probe)
 
     const rows = await table('Događaji')
     const first = at(rows.getAllByRole('row'), 1)
@@ -49,6 +50,245 @@ describe('the races of an event', () => {
 
     return user
   }
+
+  it('offers the three kinds a race can be, and asks each for what it fixes', async () => {
+    /* Owner, 29.08.2026: three kinds, and each fixes a different thing. Until now
+       the table could only make a race of a length, so the other two existed on the
+       record and nowhere a person could reach them.
+
+       What is asked follows the kind, and all three of the readers that decide that
+       are asked here (`raceRows.asksLength`, `asksLimit`): whether the save goes
+       through, whether the cell says it is required, and whether the cell is marked
+       when a save is refused. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const kind = selectElement(screen.getAllByLabelText(/^Vrsta,/)[0])
+
+    expect([...kind.options].map((one) => one.textContent)).toEqual([
+      'Dužinska',
+      'Vremenska',
+      'Slobodna',
+    ])
+    expect(kind.value, 'a race in the file is one of a length').toBe('length')
+
+    const length = () => inputElement(screen.getAllByLabelText(/^Dužina \(km\),/)[0])
+    const limit = () =>
+      inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0])
+
+    expect(length()).toHaveAttribute('aria-required', 'true')
+    expect(limit(), 'a race of a length is asked for a limit').toHaveAttribute(
+      'aria-required',
+      'false',
+    )
+    expect(length(), 'the length of a race that fixes one announces no floor').toHaveAttribute(
+      'min',
+      '0.1',
+    )
+    expect(limit(), 'the limit announces a floor on a race that has none').not.toHaveAttribute(
+      'min',
+    )
+
+    await user.selectOptions(kind, 'time')
+
+    /* And the two swap over: the length is no longer asked for and the limit is. */
+    expect(length(), 'a timed race is still asked for a length').toHaveAttribute(
+      'aria-required',
+      'false',
+    )
+    expect(limit()).toHaveAttribute('aria-required', 'true')
+
+    /* And the floor and the ceiling swap with them, because a control that announces
+       a rule the save does not hold it to sends a reader to fix something that is
+       not wrong (WCAG 2.2 SC 3.3.1). Both cells and both ends, so a table that
+       announced none anywhere would fall as surely as one that announced them where
+       they do not hold. */
+    expect(limit(), 'the limit of a timed race announces no floor').toHaveAttribute('min', '0.1')
+    expect(limit()).toHaveAttribute('max', '200')
+    expect(length(), 'the length still announces a floor').not.toHaveAttribute('min')
+    expect(length()).not.toHaveAttribute('max')
+  }, SLOW)
+
+  it('will not save a timed race with no limit, and marks the cell that is missing', async () => {
+    /* The other half of the same answer: what the save refuses and what it marks.
+       Measured on a race that already exists rather than on a new row, because a new
+       row is missing a length too and either could be the reason it is refused. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.selectOptions(
+      selectElement(screen.getAllByLabelText(/^Vrsta,/)[0]),
+      'time',
+    )
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(/Svaka trka mora da ima naziv i dan/)).toBeVisible()
+    expect(
+      inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]),
+      'the limit of a timed race is not marked as the thing that is missing',
+    ).toHaveAttribute('aria-invalid', 'true')
+    expect(
+      inputElement(screen.getAllByLabelText(/^Dužina \(km\),/)[0]),
+      'the length is marked wrong on a race that does not fix one',
+    ).toHaveAttribute('aria-invalid', 'false')
+  }, SLOW)
+
+  it('writes the limit in seconds, whatever the table asks it in', async () => {
+    /* The table asks in hours, because that is the unit the owner used („24 h") and
+       the one an organiser thinks in; the record keeps seconds, because that is what
+       the formula scores against. One conversion, in `storedRow`, and this is the
+       case that says which way round it goes. */
+    const user = await openFirstEvent(<Saved />)
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.selectOptions(
+      selectElement(screen.getAllByLabelText(/^Vrsta,/)[0]),
+      'time',
+    )
+    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const written = within(await screen.findByRole('list', { name: 'session records' }))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '')
+      .filter((one) => one.includes('limitSeconds='))
+
+    expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    expect(first(written), 'the race was not written as a timed one').toContain('kind=time')
+    expect(first(written)).toContain('limitSeconds=86400')
+  }, SLOW)
+
+  it('marks every measuring cell as one, which is what the sheet lays out by', async () => {
+    /* The widths of this table were written against column numbers until 30.08.2026,
+       and two columns added in the middle moved every one of them off the thing it
+       was written for: the climb and the fall lost 22 and 25 pixels of room and
+       „506" showed as „5" while the fall showed nothing, with the table fitting its
+       box exactly so nothing said a number was missing. Measured in Chrome by a
+       review, at 1280 and at 360.
+
+       The sheet reads a class now (`Entity.css`, `.races__measure`), and this is the
+       half that says the cells carry it: a rule that finds nothing and a rule that
+       finds the wrong cells look the same from inside a stylesheet. jsdom lays
+       nothing out (ADL A33), so what is asked here is the marking, and the widths
+       themselves are asked of the sheet (`entityStyle.test.ts`). */
+    await openFirstEvent()
+
+    const table = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const heads = table.getAllByRole('columnheader')
+    const named = heads.map((one) => one.textContent)
+
+    /* Every heading that names a measure, and no other. */
+    for (const [at, said] of named.entries()) {
+      const measures = ['Dužina', 'Ograničenje (h)', 'Uspon', 'Spust'].includes(said ?? '')
+
+      expect(
+        must(heads[at], `heading ${String(at)}`).classList.contains('races__measure'),
+        `the heading „${said ?? ''}" is marked as a measure and is not one, or the other way round`,
+      ).toBe(measures)
+    }
+
+    /* And the kind, by the same reading. It has a rule of its own in the sheet and
+       nothing said the cell carries the class that rule looks for: measured on
+       30.08.2026, removing the class from both the heading and the cell left the
+       whole package green while the column lost the floor that holds its longest
+       word. */
+    const kindAt = named.indexOf('Vrsta')
+
+    expect(kindAt, 'the table has no column of kinds').toBeGreaterThan(-1)
+    expect(
+      must(heads[kindAt], 'the heading of the kind').classList.contains('races__kind'),
+      'the heading of the kind is not marked as one',
+    ).toBe(true)
+
+    const cells = within(must(table.getAllByRole('row')[1], 'the first race')).getAllByRole('cell')
+
+    expect(
+      must(cells[kindAt], 'the kind of the first race').classList.contains('races__kind'),
+      'the cell of the kind is not marked as one',
+    ).toBe(true)
+
+    /* And the cells under them, by the same reading: the row and the heading are
+       marked in two places and either could be right while the other is not. */
+    for (const [at] of named.entries()) {
+      expect(
+        must(cells[at], `cell ${String(at)}`).classList.contains('races__measure'),
+        `cell ${String(at)} does not answer to its own heading`,
+      ).toBe(must(heads[at], `heading ${String(at)}`).classList.contains('races__measure'))
+    }
+  }, SLOW)
+
+  it('writes only the measure the kind it was saved as fixes', async () => {
+    /* A reader may type a limit, change their mind about the kind and save. The cell
+       keeps what was typed and nothing on the screen says otherwise, so the record
+       would go out as a race of a length carrying a limit of twenty four hours,
+       which is the shape the guard over the file refuses (`data/data.test.tsx`) and
+       which the one screen that makes races would be writing.
+
+       Both ways round, because the fault is symmetric and a case about one says
+       nothing about the other. */
+    const user = await openFirstEvent(<Saved />)
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const kind = () => selectElement(screen.getAllByLabelText(/^Vrsta,/)[0])
+
+    await user.selectOptions(kind(), 'time')
+    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.selectOptions(kind(), 'length')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const written = within(await screen.findByRole('list', { name: 'session records' }))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '')
+      /* By a field only a race has: the event is written in the same list and its
+         own `kind` is „race", so filtering by `kind=` alone hands back the event and
+         a round of this measured it instead. */
+      .filter((one) => one.includes('limitSeconds='))
+
+    expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    expect(first(written), 'a race of a length was written carrying a limit').toContain(
+      'limitSeconds=0',
+    )
+    /* And it kept the length it always had, so this is not passing because the save
+       wrote nothing. */
+    expect(first(written)).toContain('kind=length')
+    expect(first(written)).not.toContain('distanceKm=0 ')
+
+  }, SLOW)
+
+  it('writes no length on a race turned into a timed one', async () => {
+    /* The other way round, which is the half the case above promised and a round of
+       this did not write. A race that already has a length is what every one of the
+       1612 in the file is, so this is the way somebody actually walks: open one,
+       make it timed, give it a limit, save. The kilometres it used to have must not
+       go with it (`data/types.ts`: on a timed race the distance is what each runner
+       covered, and the race carries nought).
+
+       Its own case and not the second half of the one above, because saving takes
+       the screen back to the list and the row is no longer there to change. */
+    const user = await openFirstEvent(<Saved />)
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.selectOptions(selectElement(screen.getAllByLabelText(/^Vrsta,/)[0]), 'time')
+    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const written = within(await screen.findByRole('list', { name: 'session records' }))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '')
+      .filter((one) => one.includes('limitSeconds='))
+
+    expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    expect(first(written), 'a timed race was written carrying a length').toContain('distanceKm=0')
+    expect(first(written), 'and its category still reads off a length nobody ran').toContain(
+      'category=short',
+    )
+    expect(first(written)).toContain('kind=time')
+    expect(first(written), 'the limit that was typed did not reach the record').toContain(
+      'limitSeconds=86400',
+    )
+  }, SLOW)
 
   it('lists them under the event, and asks nobody which event it is', async () => {
     await openFirstEvent()
@@ -480,7 +720,9 @@ describe('the races of an event', () => {
     expect(table.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
       'Trka',
       'Datum',
+      'Vrsta',
       'Dužina',
+      'Ograničenje (h)',
       'Uspon',
       'Spust',
       'Zapis',
@@ -501,7 +743,7 @@ describe('the races of an event', () => {
        stayed green while a screen reader read „Dužina: 17/10/2026" (WCAG 2.2 SC
        1.3.1). The same shape is already used for the tables of the portal in
        `styles/tableWidths.test.ts`. */
-    expect(cells.length, 'the row and the heading are not the same width').toBe(6)
+    expect(cells.length, 'the row and the heading are not the same width').toBe(8)
 
     /* Every one of the six, not five of them: the last was left out as „has no control
        of its own", and a round measured what that cost — swapping a read-only cell and
@@ -511,11 +753,13 @@ describe('the races of an event', () => {
     const named = [
       /^Trka,/,
       /^Datum,/,
+      /^Vrsta,/,
       /^Dužina \(km\),/,
+      /^Ograničenje \(h\),/,
       /^Uspon \(m\),/,
       /^Spust \(m\),/,
     ] as const
-    const at = [0, 1, 2, 3, 4] as const
+    const at = [0, 1, 2, 3, 4, 5, 6] as const
 
     for (const [which, asked] of named.entries()) {
       const where = at[which] ?? 0
@@ -528,7 +772,7 @@ describe('the races of an event', () => {
 
     /* The last cell is the one button of the row. */
     expect(
-      within(must(cells[5], 'the record')).queryByRole('button', { name: /^Obriši/ }),
+      within(must(cells[7], 'the record')).queryByRole('button', { name: /^Obriši/ }),
       'the last cell is not the one that removes the row',
     ).not.toBeNull()
 

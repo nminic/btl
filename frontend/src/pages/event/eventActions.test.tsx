@@ -665,7 +665,10 @@ describe('copying an event', () => {
     /* The three it keeps are not put in question. */
     expect(screen.queryByLabelText(/^Mesto/), 'the copy is asked for its town').toBeNull()
     expect(screen.queryByLabelText(/^Država/), 'the copy is asked for its country').toBeNull()
-    expect(screen.queryByLabelText(/^Vrsta/), 'the copy is asked what kind it is').toBeNull()
+    /* By the whole label and not by „Vrsta" alone: since 30.08.2026 every race in
+       the table below carries a „Vrsta" of its own, and asking for the prefix finds
+       those instead of finding nothing. */
+    expect(screen.queryByLabelText(/^Vrsta događaja/), 'the copy is asked what kind it is').toBeNull()
     /* And the one that does change from season to season stays. */
     expect(screen.getByLabelText(/^Istaknuto/)).toBeVisible()
 

@@ -56,9 +56,9 @@ const copyOfEvent: FormDef = {
  * `undefined` inside it.
  *
  * What a row reads and no more (`RaceOfRow`), which since 30.08.2026 includes the
- * kind a race is and its limit. The table draws neither and cannot set either, but
- * saving the event writes every row back over the race it came from, so a field
- * left out here is a field that save deletes.
+ * kind a race is and its limit. The table draws and sets both, and saving the event
+ * writes every row back over the race it came from, so a field left out here is a
+ * field that save deletes even where nobody typed into it.
  */
 function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] {
   return all
