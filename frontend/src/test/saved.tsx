@@ -34,6 +34,36 @@ export function Saved() {
 }
 
 /**
+ * And what a member's report says about the run, for the same reason.
+ *
+ * The moderator's queue draws five of the six figures a report carries, but only
+ * as cells of a row whose text a test can search: a number found there is a number
+ * found somewhere, and „500" is as true of the fall as of the climb, so the two
+ * could be swapped and the row would read the same. The sixth, the category, that
+ * queue does not draw at all, and it is what decides the ring on a profile, the
+ * board a result lands on and the award it counts towards.
+ *
+ * Which of the six come from the race and which from the member depends on what the
+ * race fixes (`pages/event/reportedResult.ts`), so what is worked out and what is
+ * sent are two different readings and either can be right while the other is not.
+ * One line per report, each figure under its own name, so a test says which one it
+ * means.
+ */
+export function Reported() {
+  const { submissions } = useSession()
+
+  return (
+    <ul aria-label="reported figures">
+      {submissions.map((one) => (
+        <li key={one.id}>
+          {`km=${one.distanceKm} up=${one.ascentM} down=${one.descentM} sec=${one.seconds} pts=${one.points} cat=${one.category}`}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
  * And what the session was told to remove, for the same reason.
  *
  * A deletion that follows another deletion is the case with no screen of its

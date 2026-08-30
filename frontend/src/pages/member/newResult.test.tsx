@@ -180,6 +180,29 @@ describe('the list of races under the name of an event', () => {
     ])
   })
 
+  it('offers a race of a kind it does not know as a race of a length', () => {
+    /* One word, and every other screen reads it through the one function that knows
+       the three (`data/raceKind.ts`). Read here without it, a race carrying a word
+       this portal has never heard of would be offered with the day alone filled in
+       and the three measurements left empty and locked, while the event's own page,
+       the name of the race and the form behind it all read the very same race as a
+       race of a length and take those three off it. Two answers for one race. */
+    const filled = racesToOffer(
+      [held],
+      [{ ...shaped({ id: 'r1', distanceKm: 21.1 }), kind: 'ludilo' }],
+      '2026-12-31',
+      'sr-Latn',
+    )
+
+    expect(first(filled).said).toBe('Trka – 19.09.2026. – 21,1 km')
+    expect(Object.keys(first(filled).fills).sort()).toEqual([
+      'ascentM',
+      'date',
+      'descentM',
+      'distanceKm',
+    ])
+  })
+
   it('fills in a length only where the race fixes one', () => {
     /* Choosing a race fills the fields under the box. A timed race and a free one
        carry nought, and nought is not a length this form will take: the definition

@@ -28,11 +28,16 @@ const race = (over: Partial<Race> = {}): Race => ({
   ascentM: 300,
   descentM: 250,
   /* Deliberately not what the length says. `categoryOf(21.1)` is „half", so a
-     fixture that carried it could not tell „off the race" from „worked out from
-     what was covered", and the case about the category would pass whichever way the
-     code read. The shape is one the administration really produces: a race whose
-     length is edited keeps the category it had (`admin/raceRows.ts`), and that is
-     the record the database phase inherits. */
+     fixture that carried it could not tell „off the race" from „worked out from what
+     was covered", and the case about the category would pass whichever way the code
+     read.
+
+     Where such a record comes from is not the administration: `storedRow` works the
+     category out from the length every time it writes, and every existing row goes
+     through it on a save, so the two agree in all 1612 races in the file. It comes
+     from outside, which is the same door the kinds come through: a backend, an
+     import, a file somebody edited. What this fixture says is that the two readings
+     are different readings, not that the portal produces the difference. */
   category: 'marathon',
   ...over,
 })

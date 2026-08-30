@@ -6,6 +6,7 @@ import { formatPoints } from '../i18n/format'
 import type { Race } from '../data/types'
 import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
+import { Reported } from '../test/saved'
 import { setupUser } from '../test/user'
 
 /**
@@ -371,7 +372,7 @@ describe('a race that fixes no length', () => {
     globalThis.fetch = servingRaces(real, asTimed)
 
     try {
-      const { router } = renderAt(await reportAddress(), 'superadmin', '000001')
+      renderAt(await reportAddress(), 'competitor', '000001', undefined, null, <Reported />)
 
       const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
 
@@ -396,25 +397,24 @@ describe('a race that fixes no length', () => {
       )
       expect(await screen.findByText(new RegExp(formatPoints(earned, 'sr-Latn')))).toBeVisible()
 
-      /* And what the moderator is sent, which is the half the screen never shows the
-         member. `reportedResult` is measured on its own, but nothing said that this
-         screen hands its answers on: every one of these could be replaced by a
-         figure off the race and the member would still be told the right number of
-         points, because that is read separately. Five of the six are drawn in this
-         row; the sixth, the category, is drawn nowhere and is asked of the function
-         that decides it. */
-      await router.navigate('/sr/administracija/verifikacija/rezultati')
+      /* And what is sent, which is the half the screen never shows the member.
+         `reportedResult` is measured on its own, but nothing said that this screen
+         hands its answers on: every one of these could be replaced by a figure off
+         the race and the member would still be told the right number of points,
+         because that is read separately.
 
-      const said = must(
-        within(await screen.findByRole('table', { name: 'Čeka proveru' })).getAllByRole('row')[1],
-        'the row that was just sent',
-      ).textContent
-
-      expect(said).toContain('60,00')
-      expect(said).toContain('2.000')
-      expect(said).toContain('500')
-      expect(said).toContain('24:00:00')
-      expect(said).toContain(formatPoints(earned, 'sr-Latn'))
+         All six as one string (`test/saved.tsx`), and not the moderator's row: that
+         row draws five of them as cells whose text a case can only search, so „500"
+         found in it is as true of the fall as of the climb, and the sixth, the
+         category, it does not draw at all. */
+      expect(
+        must(
+          within(await screen.findByRole('list', { name: 'reported figures' })).getAllByRole(
+            'listitem',
+          )[0],
+          'the record that was just sent',
+        ).textContent,
+      ).toBe(`km=60 up=2000 down=500 sec=86400 pts=${earned} cat=ultra`)
     } finally {
       globalThis.fetch = real
     }
@@ -459,7 +459,18 @@ describe('a race that fixes no length', () => {
        that says nothing at all. */
     const real = globalThis.fetch
 
-    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'ludilo' }))
+    /* What this can and cannot say, since the two are easy to confuse. A word the
+       portal does not know is **meant** to be drawn exactly as a race of a length,
+       so no screen can tell the two apart and no served word can make this case fall
+       on its own: serving „length" here passes too, and that is the contract rather
+       than a hole. What falls is the code: reading the word off the record instead
+       of through `raceKind` empties the cell while the link beside it goes on naming
+       the length, and that is measured (mutation, 30.08.2026).
+
+       The served length is changed all the same, and it is the only thing here that
+       cannot be true of the real file, so the case cannot pass on a screen the stub
+       never reached. */
+    globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'ludilo', distanceKm: 33.3 }))
 
     try {
       renderAt(`/sr/kalendar/${EVENT}`, 'competitor', '000001')
@@ -476,14 +487,18 @@ describe('a race that fixes no length', () => {
          compared as strings; what is asked is that both of them say a length at all.
          Either alone is satisfied by the row that was drawn before this was put
          right: the cell empty and the link saying „(21,1 km)". */
-      expect(said, 'the cell says the race has no length').not.toBe('')
+      expect(said, 'the cell is not reading the served races').toBe('33,30')
       expect(
         must(
           within(row).getByRole('link', { name: /^Unesi rezultat/ }).getAttribute('aria-label'),
           'the way into the form',
         ),
-        'the link names no length, so it is not reading the race the same way',
-      ).toMatch(/\(\d+,\d km\)$/)
+        'the link names a different measure from the cell beside it',
+        /* „(33,3 km)" or „(33,30 km)": with every race of the event served at one
+           length the ladder climbs past the rough reading, and which rung it stops
+           on is `raceLabel`'s business and has its own cases. What is asked here is
+           that the link names that length at all. */
+      ).toContain('(33,3')
     } finally {
       globalThis.fetch = real
     }
