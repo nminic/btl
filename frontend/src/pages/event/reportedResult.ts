@@ -1,6 +1,7 @@
 import { categoryOf } from '../../data/raceCategory'
 import { btlPoints } from '../../data/scoring'
 import type { Race, RaceCategory } from '../../data/types'
+import { fromBoxes } from '../../forms/clock'
 import type { FormValues } from '../../forms/types'
 import { raceKind } from '../../data/raceKind'
 
@@ -54,7 +55,7 @@ export function reportedResult(race: Reporting, values: FormValues): Reported {
   const seconds =
     kind === 'time'
       ? race.limitSeconds
-      : Number(values.hours) * 3600 + Number(values.minutes) * 60 + Number(values.seconds)
+      : fromBoxes(values)
 
   return {
     ...measured,

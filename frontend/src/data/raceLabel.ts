@@ -1,8 +1,8 @@
 import type { Race } from './types'
 import { raceKind } from './raceKind'
 import {
+  formatDistance,
   formatLimit,
-  formatNumber,
   formatShortDate,
   formatYear,
 } from '../i18n/format'
@@ -118,7 +118,9 @@ export function raceMeasure(race: Named, locale: string, decimals = 1): string {
 
   return kind === 'time'
     ? formatLimit(race.limitSeconds)
-    : `${formatNumber(race.distanceKm, locale, decimals)} km`
+    : decimals === 1
+      ? formatDistance(race.distanceKm, locale)
+      : formatDistance(race.distanceKm, locale, decimals)
 }
 
 export function raceLabel(race: Named, among: Named[], locale: string): string {

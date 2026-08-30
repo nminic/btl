@@ -155,25 +155,21 @@ function RaceTable({ event }: { event: BtlEvent }) {
                     <tr key={race.id}>
                       <td>{race.name}</td>
                       {overDays && <td>{formatShortDate(race.date, locale)}</td>}
-                      {/* Empty where the race does not fix a length, rather than
-                          „0,00". The grid of a competition settled this shape
-                          already (PDL, 31.07.2026): a race somebody did not run is
-                          an empty cell and not a nought, „jer nula tvrdi da je
-                          trčao i osvojio nula". A nought here says the same untrue
-                          thing, that somebody measured this course and it came to
-                          nothing.
+                      {/* What the race is measured by, from the one place that
+                          answers that (`data/raceLabel.ts`): its length, how long
+                          it lasts, or nothing at all.
 
-                          What such a race **is** measured by this table does not
-                          say, and that is a gap rather than a decision: the name
-                          in the first cell is the race's own name and not the
-                          label the rest of the portal names a race by, so „24 h"
-                          reaches this page only through the link into the form,
-                          which a visitor is not offered. Written down in PENDING
-                          on 30.08.2026 rather than answered here, because the
-                          answer is either a heading that stops saying „Dužina" or
-                          a name that repeats the year on every row, and both are
-                          the owner's to choose. Nothing is lost today: no race in
-                          the data fixes anything but a length. */}
+                          Empty for a free race and not „0,00". The grid of a
+                          competition settled that shape on 31.07.2026: a race
+                          somebody did not run is an empty cell and not a nought,
+                          „jer nula tvrdi da je trčao i osvojio nula". A nought here
+                          says the same untrue thing, that somebody measured this
+                          course and it came to nothing.
+
+                          Two decimals, which is finer than the name of a race
+                          writes. That difference is not decoration: `raceLabel`
+                          parts two races of one name on one morning by the finer
+                          reading and says so, and it says so about this table. */}
                       <td>
                         {raceMeasure(race, locale, 2)}
                       </td>

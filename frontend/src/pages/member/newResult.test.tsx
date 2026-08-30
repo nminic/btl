@@ -203,6 +203,44 @@ describe('the list of races under the name of an event', () => {
     ])
   })
 
+  it('tells the member what choosing a race does without naming a single field', async () => {
+    /* The sentence over the box is the second home of „what gets filled in when you
+       pick a race", and the member reads that one rather than the code. It is drawn
+       before any race is chosen, so it cannot know the kind, and each kind fills in
+       different fields: a race of a length hands over the distance, the climb and
+       the fall, a timed race hands over the time and locks it, a free race hands
+       over nothing but the day.
+
+       So it must not name a field at all. Measured on 30.08.2026, when it went on
+       promising „datum, dužina, uspon i spust" while a timed race left the distance
+       empty for the member and locked three time boxes the sentence never mentioned:
+       every one of those words was a claim that is false for two kinds out of three.
+
+       Asked by the words a field is labelled with, not by the sentence itself, so
+       rewriting the sentence in better Serbian does not fail and naming a field
+       does. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    const said = must((await screen.findByLabelText(/^Naziv trke/)).closest('.field'), 'the box')
+
+    expect(said.textContent).toContain('Kad izabereš jednu')
+
+    for (const field of ['Dužina', 'Uspon', 'Spust', 'Sati', 'Minuta', 'Sekundi']) {
+      expect(
+        said.textContent?.toLowerCase(),
+        `the sentence names ${field}, which is filled in on some kinds of race and not on others`,
+      ).not.toContain(field.toLowerCase())
+    }
+
+    /* And the box is the one the sentence belongs to: typing into it offers races,
+       so nothing here can pass on a screen that drew some other field. */
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
+
+    expect(offered().length).toBeGreaterThan(0)
+  })
+
   it('hands over exactly what each kind of race fixes, and locks exactly that', () => {
     /* Choosing a race fills the fields under the box. A timed race and a free one
        carry nought, and nought is not a length this form will take: the definition
@@ -225,7 +263,12 @@ describe('the list of races under the name of an event', () => {
     const filled = racesToOffer(
       [held],
       [
-        shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400, ascentM: 120 }),
+        /* Six hours, thirty minutes and forty five seconds, and all three numbers
+           different from each other. A round twenty four hours leaves the minutes
+           and the seconds both nought, and 6:30:30 leaves them equal; in either the
+           two expressions that split a limit into boxes cannot be told apart, and
+           both were measured passing a swap (30.08.2026). */
+        shaped({ id: 'r1', kind: 'time', limitSeconds: 23_445, ascentM: 120 }),
         shaped({ id: 'r2', kind: 'free', ascentM: 120 }),
         shaped({ id: 'r3', distanceKm: 21.1, ascentM: 120, descentM: 140 }),
       ],
@@ -254,12 +297,11 @@ describe('the list of races under the name of an event', () => {
     expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
     expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
     expect(filled.map((one) => one?.descentM)).toEqual([undefined, undefined, '140'])
-    /* Twenty four hours, in the three boxes the form asks in, and nought minutes and
-       nought seconds are said out loud: left off, they would be two fields the race
-       does not fix and the member cannot fill. */
-    expect(filled.map((one) => one?.hours)).toEqual(['24', undefined, undefined])
-    expect(filled.map((one) => one?.minutes)).toEqual(['0', undefined, undefined])
-    expect(filled.map((one) => one?.seconds)).toEqual(['0', undefined, undefined])
+    /* Each in its own box and each a different number, so no two of the three can be
+       read for one another. */
+    expect(filled.map((one) => one?.hours)).toEqual(['6', undefined, undefined])
+    expect(filled.map((one) => one?.minutes)).toEqual(['30', undefined, undefined])
+    expect(filled.map((one) => one?.seconds)).toEqual(['45', undefined, undefined])
     /* And the day, which is the one thing handed over on all three kinds and so the
        one the two lists above cannot reach. It is locked like the rest, so a value
        the form cannot read is a field nobody can mend: the box asks for

@@ -1,5 +1,6 @@
 import type { BtlEvent, Race } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
+import { inBoxes } from '../../forms/clock'
 import { fieldDate } from '../../forms/dateField'
 import { raceKind } from '../../data/raceKind'
 import { raceMeasure } from '../../data/raceLabel'
@@ -63,11 +64,7 @@ function fieldsFixedBy(race: Offered): Record<string, string> {
   }
 
   if (kind === 'time') {
-    return {
-      hours: String(Math.floor(race.limitSeconds / 3600)),
-      minutes: String(Math.floor((race.limitSeconds % 3600) / 60)),
-      seconds: String(race.limitSeconds % 60),
-    }
+    return inBoxes(race.limitSeconds)
   }
 
   return {}
@@ -124,11 +121,12 @@ export function racesToOffer(
      * length with „" for a timed race and called it „theirs to fill"; it was
      * neither filled nor theirs.
      *
-     * So a race that does not fix its length hands over the day and nothing else.
+     * So each kind hands over exactly what it fixes and nothing more
+     * (`fieldsFixedBy` above), which for a free race is the day alone.
      * That is also what the owner asked for on 29.08.2026: „Na vremenskoj trci član
-     * unosi dužinu, uspon i spust", and on a free race the time as well. A course
-     * run in laps has a climb that depends on how many laps somebody ran, so the
-     * race cannot know it either.
+     * unosi dužinu, uspon i spust. Vreme ne unosi, jer je zadato trkom", and on a
+     * free race all four are the member's. A course run in laps has a climb that
+     * depends on how many laps somebody ran, so the race cannot know it either.
      *
      * ADL A32 wrote this rule down after the same fault in another form: a lock
      * says what the reader may not change, so locking what the portal has not

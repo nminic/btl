@@ -494,7 +494,7 @@ describe('a race that fixes no length', () => {
         .map((one) => one.textContent)
       const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
       const cells = within(row).getAllByRole('cell')
-      const said = must(cells[heads.indexOf('Mera')], 'the length of the first race').textContent
+      const said = must(cells[heads.indexOf('Mera')], 'the measure of the first race').textContent
 
       /* The cell writes two decimals and the name writes one, so the two are not
          compared as strings; what is asked is that both of them say a length at all.

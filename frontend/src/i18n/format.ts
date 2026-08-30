@@ -113,8 +113,17 @@ export function formatPoints(value: number, locale: string): string {
   return formatNumber(value, locale, 2)
 }
 
-export function formatDistance(kilometers: number, locale: string): string {
-  return `${formatNumber(kilometers, locale, 1)} km`
+/**
+ * A length as the portal writes one: the number and the unit.
+ *
+ * One decimal unless the caller asks for more, which is the rough reading a name of
+ * a race uses. The table of races on an event asks the same question at two
+ * (`data/raceLabel.ts`, `raceMeasure`), and it is that difference `raceLabel` leans
+ * on when it parts two races of one name by the finer reading, so the two had to be
+ * one answer asked twice rather than two.
+ */
+export function formatDistance(kilometers: number, locale: string, decimals = 1): string {
+  return `${formatNumber(kilometers, locale, decimals)} km`
 }
 
 export function formatElevation(meters: number, locale: string): string {
