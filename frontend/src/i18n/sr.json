@@ -1341,7 +1341,7 @@
   "report": {
     "title": "Prijava rezultata",
     "submit": "Pošalji rezultat",
-    "note": "Prijavljuješ rezultat sa trke {race} na događaju „{event}\". Dužinu, uspon i spust portal već zna sa same trke.",
+    "note": "Prijavljuješ rezultat sa trke {race}. Dužinu, uspon i spust portal već zna sa same trke.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
     "backToEvent": "Nazad na događaj",
     "noRace": "Rezultat se unosi sa reda trke, na strani događaja."

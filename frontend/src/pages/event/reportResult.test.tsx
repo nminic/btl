@@ -550,6 +550,42 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
   })
 
+  it('names the race and nothing else, whatever the event is called', async () => {
+    /* Owner, 29.08.2026, asked which of three forms this sentence should take:
+       „Nikad događaj, uvek trka." One form everywhere, whether the two names differ
+       or not.
+
+       Asked as the **whole sentence** and not as the absence of a word, because the
+       absence cannot be asked for here: a race's name starts out as its event's, so
+       on most events the event's name is inside the race's and „does not contain it"
+       is false while the sentence is right. Measured the day the event was taken
+       out: with the clause gone and no case written this way, the whole suite stayed
+       green, and the only thing that had ever held the sentence's shape was a case
+       asking that the race's own label is somewhere inside it.
+
+       On a race called something other than its event, so the two names really
+       differ. Found by the helper that asks exactly that (`renamedRace`) and not by
+       the `renamed` flag beside it: that flag says somebody typed the name by hand,
+       which `pages/admin/EventRaces.tsx` writes on every keystroke, so a name typed
+       back to the event's own would carry it and part the two facts. */
+    const { race, event } = await renamedRace()
+    const races = await loadResource<Race[]>('races')
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME)
+
+    const said = await screen.findByText(/Prijavljuješ rezultat/)
+    const here = races.filter((one) => one.eventId === race.eventId)
+
+    /* `textContent` and not `toHaveTextContent`, which asks whether the string is
+       **somewhere inside** the element. A review on 30.08.2026 put the clause back
+       as a sentence of its own at the end — „Trka je na događaju „X"." — and the
+       whole suite stayed green, which is the decision broken and the guard that
+       claims to hold it silent. */
+    expect(said.textContent).toBe(
+      `Prijavljuješ rezultat sa trke ${raceLabel(race, here, 'sr-Latn')}. Dužinu, uspon i spust portal već zna sa same trke.`,
+    )
+  })
+
   it('says its length even where its name is its event’s, which is most of them', async () => {
     /* The case the name alone got wrong, on the ordinary event rather than on the
        one renamed race in the file: 886 of the 1163 events that hold any race at
