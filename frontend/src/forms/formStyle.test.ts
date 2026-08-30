@@ -123,13 +123,15 @@ describe('the calendar button that will not answer', () => {
        The same two declarations the portal keeps for a held control
        (`.field__control--held`).
 
-       The fields beside this button do not wear them yet, and the same sentence
-       was corrected in `DatePicker.css` while this one was left saying otherwise:
-       one fact, two homes, one of them fixed. `field__control--held` is written
-       only by `PlaceField`, and a date locked by a chosen race carries
-       `aria-disabled` and `readOnly` and no class at all, so the button goes grey
-       beside a field that does not. That is a separate change, recorded in
-       `btl-produkt/PENDING.md`. */
+       Said twice and not shared, because the two are not the same kind of thing:
+       that rule dresses a `.field__control`, and this is a button beside one.
+
+       The field beside this button wore nothing until 29.08.2026, and the sentence
+       here outlived that by a commit: it was corrected in `DatePicker.css` and left
+       standing here, which is one fact with two homes and one of them fixed, found
+       by a review the same day. The field now reads its dress from `forms/held.ts`
+       along with the three the renderer draws, and the rule it names lives in
+       `FormRenderer.css`. */
     const refused = ruleFor(PICKER, ".datepicker__open[aria-disabled='true']", 'DatePicker.css')
 
     expect(refused.background).toBe('var(--surface-hover)')

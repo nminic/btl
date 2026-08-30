@@ -1,5 +1,5 @@
 import { htmlElement, must } from '../test/at'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { useState } from 'react'
 import { setupUser } from '../test/user'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -54,6 +54,28 @@ describe('a day the box offers beside its calendar', () => {
 
     return onChange
   }
+
+  it('looks held, and not only says so, when the box is held', () => {
+    /* The whole of the fault that was recorded on 28.08.2026 and closed on the
+       29th. Choosing a race on `unos-rezultata` locks four fields; three of them
+       are drawn from the renderer's shared set and wore the portal's one dress for
+       a held control, and this one is drawn here and wore nothing. Measured in
+       Chrome over the built stylesheet: the difference between the whole computed
+       style of the locked date and a live date was the empty set, while the locked
+       number beside it differed in its background and its cursor. So three fields
+       went grey and the fourth looked like a box somebody may type into.
+
+       Asked of both, because a class that is always there dresses a live field as
+       a held one, which is the same fault told backwards. */
+    renderWithSteps(true)
+
+    expect(screen.getByRole('textbox')).toHaveClass('field__control--held')
+
+    cleanup()
+    renderWithSteps(false)
+
+    expect(screen.getByRole('textbox')).not.toHaveClass('field__control--held')
+  })
 
   it('writes its day when the box is open to it', async () => {
     const user = setupUser()
