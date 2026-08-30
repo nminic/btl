@@ -1,7 +1,6 @@
 import { MemoryRouter } from 'react-router'
 import { screen } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
-import { bare, sources } from '../test/sources'
 import type { BtlEvent, Race, RaceCategory, RaceKind } from '../data/types'
 import { EventChip } from './calendar/DayChips'
 import { CalendarExtract } from './home/CalendarExtract'
@@ -19,7 +18,21 @@ import { CalendarExtract } from './home/CalendarExtract'
  * function, where it falls, and not against a screen, where it did not; and when
  * the tile was answered, the front page was left, because the readers were
  * counted once and the count was not used. Hence one file for both, walked from
- * a list, and a check below that the list is still all of them.
+ * one list.
+ *
+ * **And that list is kept by hand, which is what this file does not measure.** A
+ * check that swept the portal for the words `dotsAt(` stood here for one round
+ * and was removed rather than tightened, because it answered a different question
+ * from the one it was titled with. It said „and on no others" while
+ * `calendar/LengthLegend.tsx` draws these very dots without calling the function
+ * at all, reading `DOTS` straight; a third screen written `import { dotsAt as
+ * dots }` was invisible to it, and merely renaming the import in a screen that
+ * draws every dot correctly made it fail. False in the tree, silent on the case
+ * it existed for, and loud on one that is not a fault (all three measured in
+ * review, 30.08.2026). A sweep of text says which files hold a word, never which
+ * screens draw a dot, and ADL A33 asks for that to be written down rather than
+ * papered over: **a screen added to the portal is added to `SCREENS` by whoever
+ * writes it, and nothing here will say so if they forget.**
  *
  * Rendered directly rather than through a screen, because both take their events
  * and races as arguments while a screen takes what the store holds, and the store
@@ -86,22 +99,6 @@ function drawn(races: Race[], draw: (races: Race[]) => React.ReactNode) {
 }
 
 describe('the dots a screen draws beside an event', () => {
-  it('are drawn on both of the screens that draw them, and on no others', () => {
-    /* The list above is the whole of what this file measures, so a third screen
-       reading `dotsAt` would be measured by nothing at all. Counting the readers
-       is the step that failed twice in this change; here it is done by the file
-       rather than by hand. */
-    const readers = sources()
-      /* Comments blanked first, through the one home that does that: this file
-         names the function in its own note above, and so does the one that
-         defines it. What is being counted is a call, not a mention. */
-      .filter(({ code }) => bare(code).includes('dotsAt('))
-      .map(({ path }) => path)
-      .filter((path) => !path.endsWith('derive.ts'))
-
-    expect(readers).toHaveLength(SCREENS.length)
-  })
-
   it('give a race that fixes no length a dot of its own, for either kind', () => {
     /* Both kinds that fix no length, since „a race that fixes none" is two
        things and a screen could be written to catch one of them. */

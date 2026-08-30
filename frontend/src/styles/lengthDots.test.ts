@@ -73,14 +73,19 @@ describe('every dot a calendar tile can carry', () => {
   })
 
   it('is drawn in a colour of its own', () => {
-    /* The colour is what a reader sees, so a rule that reaches for the wrong
-       token gives two lengths one colour and nothing else says so. Measured:
-       with the sixth dot painted `var(--length-ultra)`, every test in the
-       portal passed, this one included, until it asked this question.
+    /* Which token each dot is **written** with, in the sheet that draws them.
+       Measured: with the sixth dot written `var(--length-ultra)` there, every
+       test in the portal passed until this asked.
 
-       Its own token and no other's, which is the whole question: a bookkeeping
-       of who wears what would only ask the same thing twice, since a rule
-       holding its own token cannot also be holding somebody else's. */
+       **And that is the whole of what this measures, which is narrower than it
+       first read.** It said „nothing else says so", and a declaration read out of
+       one sheet says nothing about which rule wins: a rule in another sheet,
+       `.chip__lengths .length-dot--unmeasured { background: var(--length-ultra) }`
+       in `Calendar.css`, paints the sixth dot in the ultra colour on the calendar
+       and passes this untouched (measured in review, 30.08.2026). ADL A33 says
+       the cascade goes to a browser and that a guard over text writes down what
+       it does not measure rather than pretending. So: this holds where the colour
+       is written, and nothing here holds what wins over it. */
     for (const one of DOTS) {
       const dot = ruleFor(table, `.length-dot--${one}`, 'table.css')
 
@@ -98,10 +103,19 @@ describe('every dot a calendar tile can carry', () => {
        (`pages/Calendar.css`, and that number is measured in a browser because
        jsdom lays nothing out, ADL A33).
 
-       What is asked here is that the ceiling and the dot are the same fact, in
-       one place. Written apart, the dot could be made wider and the ceiling
-       would go on describing the old one, which is silent: the row would simply
-       overflow again, and no test that runs here can see a width. */
+       What is asked here is that the ceiling and the row it caps are written
+       from the same two tokens. Written apart, one could be moved and the
+       ceiling would go on describing the old row, which is silent: the row
+       would simply overflow, or wrap where it never used to, and no test that
+       runs here can see a width.
+
+       **Two tokens and not one, which is the correction of 30.08.2026.** The
+       ceiling is five dots **and four gaps**, and the gap has its own home three
+       lines above it in the same rule. An earlier draft read only the dot, so
+       `gap: var(--space-4)` changed to `var(--space-8)` left the formula saying
+       60px where the row then wanted 76, and five dots that have always stood in
+       one line broke into two, which is the very outcome the sheet records as
+       measured and rejected. The whole suite stayed green (found in review). */
     const size = ruleFor(tokens, ':root', 'tokens.css').getPropertyValue('--length-dot-size')
     const dot = ruleFor(table, '.length-dot', 'table.css')
     const row = ruleFor(calendar, '.chip__lengths', 'Calendar.css')
@@ -114,6 +128,9 @@ describe('every dot a calendar tile can carry', () => {
     )
     expect(row.getPropertyValue('max-inline-size'), 'the ceiling is written from the same one').toBe(
       'calc(5 * var(--length-dot-size) + 4 * var(--space-4))',
+    )
+    expect(row.getPropertyValue('gap'), 'and the gap the ceiling counts four of').toBe(
+      'var(--space-4)',
     )
     expect(row.getPropertyValue('flex-wrap'), 'and the row may wrap under it').toBe('wrap')
   })
