@@ -236,12 +236,20 @@ export function SessionProvider({
           return one
         }
 
-        /* The points are not worked out here. They are awarded at verification
-           and nowhere else (owner, 31.08.2026: „bodovi treba da se dodele tek
-           NAKON verifikacije"), so what a submission carries until then is the
-           estimate its own form showed the member, and the form says as much. A
-           correction made here would otherwise leave the row showing a time from
-           one sum beside points from another. */
+        /* The points are not worked out here. They are awarded at verification and
+           nowhere else (owner, 31.08.2026: „bodovi treba da se dodele tek NAKON
+           verifikacije").
+         *
+           **What that costs, said plainly rather than talked around.** Between a
+           correction and the decision the row does show the new time beside the
+           points the member arrived with: correct 1:52:10 to 3:00:00 and the queue
+           draws 3:00:00 and 23,55 until „Odobri" is pressed, when both become the
+           numbers of 3:00:00. That is the owner's rule and not a fault, and the
+           screens say so where they announce a number: the form that sends a
+           result tells the member the count is not final and is settled at
+           verification. An earlier note here claimed this shape prevented the two
+           halves from disagreeing; it does not, it moves the moment they agree to
+           the decision, which is where he put it. */
         return { ...one, ...changes }
       }),
     )

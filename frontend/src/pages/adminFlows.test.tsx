@@ -1241,7 +1241,10 @@ describe('the queue of results', () => {
     expect(screen.getByLabelText(/^Minuta/)).toHaveValue('45')
 
     await user.clear(screen.getByLabelText(/^Naziv doga/))
-    await user.type(screen.getByLabelText(/^Naziv doga/), 'Ultra vikend')
+    /* With spaces around it, because what is saved is trimmed the way every form
+       on this portal trims what it is given (`forms/validate.ts`): a name typed
+       with spaces around it is the same name. */
+    await user.type(screen.getByLabelText(/^Naziv doga/), '  Ultra vikend  ')
     await user.clear(screen.getByLabelText(/^Naziv trke/))
     await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
     await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'time')
@@ -1305,6 +1308,36 @@ describe('the queue of results', () => {
 
     expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Beogradski maraton')
     expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
+  })
+
+  it('says its fields are required, in both the ways a field says it', async () => {
+    /* The star for the eye and `aria-required` for a reader, and a legend saying
+       what the star means (owner, 12.08.2026: „na svim formama za unos i
+       verifikaciju"). The refusal box beside this one was measured missing exactly
+       this, and the whole of it went unheld here for a round: removing the legend
+       and all four attributes left the suite green (review, 31.08.2026).
+
+       And the button that will not go says so where a reader can hear it, rather
+       than sitting dead. */
+    const { user } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    const panel = within(screen.getByRole('group', { name: 'Ispravka pre odluke' }))
+
+    expect(panel.getByText(/Polja sa zvezdicom/)).toBeVisible()
+    for (const label of [/^Naziv doga/, /^Naziv trke/, /^Vrsta trke/, /^Sati/, /^Minuta/, /^Sekundi/]) {
+      expect(panel.getByLabelText(label), String(label)).toHaveAttribute('aria-required', 'true')
+    }
+
+    const save = panel.getByRole('button', { name: 'Sačuvaj ispravku' })
+
+    expect(save).not.toHaveAttribute('aria-disabled', 'true')
+
+    await user.clear(panel.getByLabelText(/^Naziv trke/))
+
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    expect(save).toHaveAttribute('aria-describedby', 'amend-waits')
   })
 
   it('closes when the item under it is decided, by the row or by the sweep', async () => {
@@ -1371,7 +1404,7 @@ describe('the queue of results', () => {
 
       expect(session.amend, `${box} = ${written}`).not.toHaveBeenCalled()
       /* And it says why, rather than leaving a dead button. */
-      expect(screen.getByText(/Ispravka čeka/)).toBeVisible()
+      expect(screen.getByText(/u dozvoljenim granicama/)).toBeVisible()
 
       await user.clear(control)
       await user.type(control, box === 'Sati' ? '0' : '45')
@@ -1388,6 +1421,23 @@ describe('the queue of results', () => {
     await user.clear(screen.getByLabelText(/^Naziv trke/))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
     expect(session.amend, 'a race with no name').toHaveBeenCalledTimes(1)
+
+    /* And each of the three things says which of them is wrong, rather than one
+       sentence for all: written as one it told a moderator who had left 0:0:0
+       standing that the numbers must be within their bounds, and nought is within
+       its bounds. */
+    expect(screen.getByText(/Naziv događaja i naziv trke/)).toBeVisible()
+
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    for (const box of ['Sati', 'Minuta', 'Sekundi'] as const) {
+      await user.clear(screen.getByLabelText(new RegExp(`^${box}`)))
+      await user.type(screen.getByLabelText(new RegExp(`^${box}`)), '0')
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+    expect(session.amend, 'nought hours, minutes and seconds').toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/ne mogu svi biti nula/)).toBeVisible()
   })
 
   it('never stands open beside the box that refuses one', async () => {

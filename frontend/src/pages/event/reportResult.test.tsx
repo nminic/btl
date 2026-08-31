@@ -398,26 +398,6 @@ describe('a result reported this way', () => {
     expect(within(table).getAllByText(/Maraton maratona/).length).toBeGreaterThan(0)
   })
 
-  it('scores a time of nothing at nothing, rather than falling over', async () => {
-    /* The three boxes take a nought each, so a member can send in 0:00:00 by
-       mistyping or by pressing through. The formula has no answer for a time of
-       nothing and says so by returning nothing; the screen then has to say
-       something, and nought points is the truthful thing to say. */
-    const { races } = await racesOf(EVENT)
-    const user = setupUser()
-
-    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
-
-    await user.type(await screen.findByLabelText(/Sati/), '0')
-    await user.type(screen.getByLabelText(/Minuta/), '0')
-    await user.type(screen.getByLabelText(/Sekundi/), '0')
-    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/r')
-    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
-
-    expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    expect(screen.getByText(/0,00 BTL poena/)).toBeVisible()
-  })
-
   it('refuses a form that was never filled in', async () => {
     /* Four boxes and not three since 23.08.2026: the address of the official
        results is asked for here exactly as it is asked for on the form outside
@@ -934,6 +914,39 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
 
     expect(stored[0]?.textContent).toContain(race.date)
     expect(stored[0]?.textContent).not.toContain(event.date)
+  })
+
+  it('refuses a result run in no time at all', async () => {
+    /* The third road a time reaches a submission by. The form away from the
+       calendar and the panel in the verification queue both turned 0:0:0 away and
+       this one did not, so the rule held on two of three roads and the queue got a
+       race run in no time anyway (measured in review, 31.08.2026).
+
+       No single box can refuse it: each of the three is right to take nought on
+       its own, since a race of forty five minutes has nought hours. */
+    const { race, event } = await secondMorning()
+    const user = setupUser()
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+
+    await screen.findByText(/Prijavljuješ rezultat/)
+    await user.type(await screen.findByLabelText(/Sati/), '0')
+    await user.type(screen.getByLabelText(/Minuta/), '0')
+    await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(screen.getByText(/ne mogu svi biti nula/)).toBeVisible()
+    expect(within(screen.getByRole('list', { name: 'store' })).queryAllByRole('listitem')).toHaveLength(0)
+
+    /* And one of the three above nought is enough to send it. */
+    await user.clear(screen.getByLabelText(/Minuta/))
+    await user.type(screen.getByLabelText(/Minuta/), '45')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem'),
+    ).toHaveLength(1)
   })
 
   it('says which kind of race it was and where, read off the race and its event', async () => {

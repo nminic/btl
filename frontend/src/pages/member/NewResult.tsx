@@ -363,6 +363,13 @@ export function NewResult() {
       <div className="member" role="status">
         <h1>{t('newResult.doneTitle')}</h1>
         <p>{t('newResult.donePoints', { points: formatPoints(done.points, locale) })}</p>
+        {/* And that the number is not the last word (PDL, 30.08.2026, point 8).
+            The administration settles the kind and the time at verification, and
+            on a timed race the time is the race's own limit, so a result sent as
+            1:52:10 may be counted as 3:00:00 and be worth a third of what this
+            line said. Until 31.08.2026 nothing on the way said so, and the member
+            met the smaller number for the first time in their own list. */}
+        <p>{t('newResult.pointsNotFinal')}</p>
         <p>{done.again ? t('newResult.againDone') : t('newResult.doneWaiting')}</p>
         <p className="member__actions">
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>

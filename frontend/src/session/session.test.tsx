@@ -45,7 +45,7 @@ function Probe() {
         onClick={() => {
           /* By the very name the button beside it approves, so the two speak
              about the same item whichever order the list is in. */
-          amend('sub-1', { raceName: 'Ne sme', raceKind: 'free', seconds: 1 })
+          amend('sub-1', { raceName: 'Ispravljeno', raceKind: 'time', seconds: 86_400 })
         }}
       >
         ispravi odluceni
@@ -76,8 +76,50 @@ function Probe() {
       >
         posalji
       </button>
+      <button
+        type="button"
+        onClick={() =>
+          submit({
+            memberNumber: '000001',
+            raceName: 'Ispravka',
+            raceKind: 'length',
+            city: 'Niš',
+            country: 'RS',
+            date: '2026-05-10',
+            distanceKm: 21.1,
+            ascentM: 0,
+            descentM: 0,
+            seconds: 6730,
+            points: 23.55,
+            category: 'half',
+            photo: '',
+            link: 'https://primer.rs/r',
+            comment: '',
+            corrects: {
+              id: 'res-1',
+              memberNumber: '000001',
+              raceName: 'Ispravka',
+              date: '2026-05-10',
+              distanceKm: 21.1,
+              ascentM: 0,
+              descentM: 0,
+              seconds: 6730,
+              points: 23.55,
+              category: 'half',
+              raceId: 'trka-1',
+              eventName: 'Probni događaj',
+              eventSlug: 'probni-dogadjaj',
+            },
+          })
+        }
+      >
+        posalji ispravku
+      </button>
       <button type="button" onClick={() => amend('sub-1', { seconds: 0 })}>
         ponisti vreme
+      </button>
+      <button type="button" onClick={() => decide('sub-1', 'rejected', 'ne valja')}>
+        odbij prvi
       </button>
       <button type="button" onClick={() => decide('sub-1', 'approved', '')}>
         odobri prvi
@@ -198,6 +240,27 @@ describe('the session store', () => {
     expect(after?.[4], 'and now the points belong to the time beside them').not.toBe(before?.[4])
   })
 
+  it('leaves the points alone on a refusal', async () => {
+    /* „Nothing at all on a refusal beyond the answer itself": a member who is
+       turned down is left exactly where they were, and the number they sent with
+       is the number their own list goes on showing them. Held because the branch
+       that awards them sits three lines away and would have been easy to write for
+       both. */
+    const user = setupUser()
+    renderProbe()
+
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+
+    const before = must(screen.getByTestId('said').textContent, 'before').split('|')[4]
+
+    await user.click(screen.getByRole('button', { name: 'odbij prvi' }))
+
+    const after = must(screen.getByTestId('said').textContent, 'after').split('|')
+
+    expect(after[5], 'refused').toBe('rejected')
+    expect(after[4], 'and the points are the ones it came with').toBe(before)
+  })
+
   it('awards nothing where the numbers are not a race', async () => {
     /* Reachable, and by the very panel this part adds: each of the three boxes
        accepts nought on its own, so a moderator may leave 0:0:0 standing, and a
@@ -215,6 +278,33 @@ describe('the session store', () => {
 
     expect(row?.[5], 'decided').toBe('approved')
     expect(row?.[4], 'and worth nothing').toBe('0')
+  })
+
+  it('puts the time and the points it decided on into the standing, not the ones it was sent', async () => {
+    /* A correction of a counted result carries the record it will replace. `decide`
+       copies that record on approval and nothing recomputes it afterwards, so a
+       time settled at verification and not carried across is a time the standing
+       never sees: the item above would say 3:00:00 and the standing 1:52:10.
+
+       Held apart from the item's own numbers, because the two are written in two
+       places and one of them was measured passing while the other was right
+       (review, 31.08.2026). */
+    const user = setupUser()
+    renderProbe()
+
+    await user.click(screen.getByRole('button', { name: 'posalji ispravku' }))
+
+    /* The correction is the only thing in the store, so it is what „the second"
+       and „the first" both name here: `amend` and `decide` are pointed at the same
+       submission by its id. */
+    await user.click(screen.getByRole('button', { name: 'ispravi odluceni' }))
+    await user.click(screen.getByRole('button', { name: 'odobri prvi' }))
+
+    const row = must(screen.getByTestId('said').textContent, 'the store').split(',')[0]?.split('|')
+
+    expect(row?.[2], 'the time it was given').toBe('86400')
+    expect(row?.[6], 'and the record for the standing carries it too').toBe('86400')
+    expect(row?.[7], 'with the points that belong to it').toBe(row?.[4])
   })
 
   it('leaves a submission alone once somebody has decided it', async () => {

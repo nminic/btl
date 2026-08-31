@@ -9,7 +9,7 @@ import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { inBoxes, fromBoxes, noTime, type WrittenBoxes } from '../../forms/clock'
-import { unosRezultata } from '../../forms/definitions'
+import { dogadjaj, unosRezultata } from '../../forms/definitions'
 import { validateField } from '../../forms/validate'
 import type { FieldDef } from '../../forms/types'
 import { raceKind } from '../../data/raceKind'
@@ -36,15 +36,24 @@ import './Verification.css'
  * climb does not: those are set from the official data, which is announced in
  * the terms rather than argued case by case.
  */
-/** The four fields this panel writes, as the form away from the calendar defines
+/** The fields this panel checks what is written into, each by the definition that
+ *  owns it: the race, the three boxes of a time and the event. The kind is not
+ *  among them, because a list of three offered values cannot hold a fourth.
  *  them: the same labels, the same bounds, the same rule about being filled in.
  *  Taken from the definition rather than restated, the way the queue of teams
  *  reads its own limit (`pages/admin/PendingQueue.tsx`). */
-const ASKED = new Map<string, FieldDef>(
-  unosRezultata.fields
+const ASKED = new Map<string, FieldDef>([
+  ...unosRezultata.fields
     .filter((one) => ['raceName', 'hours', 'minutes', 'seconds'].includes(one.name))
-    .map((one) => [one.name, one]),
-)
+    .map((one): [string, FieldDef] => [one.name, one]),
+  /* And the event by its own definition, not by the race's. The two happen to
+     agree today, so the difference is invisible until one of them moves: raising
+     the event's own limit left this panel still refusing a name of 130 characters
+     that the administration would take (measured in review, 31.08.2026). */
+  ...dogadjaj.fields
+    .filter((one) => one.name === 'name')
+    .map((one): [string, FieldDef] => ['eventName', one]),
+])
 
 export function ReviewQueue() {
   const { locale, t } = useI18n()
@@ -348,7 +357,7 @@ export function ReviewQueue() {
         /* Asked of the same rule the member's own form is held to, field by
            field, rather than of a bound written out here. */
         const amendWaits =
-          wrongBox('raceName', fixing.eventName) ||
+          wrongBox('eventName', fixing.eventName) ||
           wrongBox('raceName', fixing.raceName) ||
           wrongBox('hours', fixing.hours) ||
           wrongBox('minutes', fixing.minutes) ||
@@ -356,6 +365,25 @@ export function ReviewQueue() {
           /* And not all three at nought, which no single box can refuse
              (`forms/clock.ts`). */
           noTime(fixing)
+
+        /* Which of the three things is wrong, rather than one sentence for all of
+           them. Written as one, it told a moderator who had left 0:0:0 standing
+           that „the numbers must be within their bounds", and nought is within its
+           bounds; and it never mentioned the event at all (measured in review,
+           31.08.2026). WCAG 2.2 SC 3.3.1 asks for the error to be named, and the
+           member's own form names this very one. */
+        const amendSays =
+          wrongBox('eventName', fixing.eventName) || wrongBox('raceName', fixing.raceName)
+            ? 'review.amendNeedsName'
+            : /* Bounds before the sum, because a box that is out of its own bounds
+                 is a fault of that box: read the other way round, minus five hours
+                 adds up to less than nought and would be reported as „all three at
+                 nought", which is not what the moderator did. */
+              wrongBox('hours', fixing.hours) ||
+                wrongBox('minutes', fixing.minutes) ||
+                wrongBox('seconds', fixing.seconds)
+              ? 'review.amendWaits'
+              : 'newResult.needsTime'
 
         return (
         <div className="review__reason" role="group" aria-label={t('review.amendTitle')}>
@@ -367,7 +395,7 @@ export function ReviewQueue() {
               for everyone. */}
           <p className="profile__empty">{t('review.amendNote')}</p>
 
-          {/* Five fields carry a star, so the star is explained and each control
+          {/* Six fields carry a star, so the star is explained and each control
               says the same thing to a reader who cannot see it (owner, 12.08.2026,
               „na svim formama za unos i verifikaciju"). It is the very thing the
               refusal box below was measured missing: without it the button simply
@@ -474,7 +502,7 @@ export function ReviewQueue() {
               the button out of the tab order and takes this line with it. */}
           {amendWaits && (
             <p className="field__error" id="amend-waits">
-              {t('review.amendWaits')}
+              {t(amendSays)}
             </p>
           )}
           </div>

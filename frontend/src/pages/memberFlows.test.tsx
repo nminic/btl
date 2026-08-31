@@ -889,6 +889,33 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText('Sat mi je stao na petom kilometru.')).toBeVisible()
   })
 
+  it('says the count is not final, where it says the count', async () => {
+    /* PDL, 30.08.2026, point 8: the form shows what the result is worth **and
+       says the number is not final**, because verification settles the kind and
+       the time. On a timed race the time is the race's own limit, so a result sent
+       as 1:52:10 may be counted as 3:00:00 and be worth a third of what the screen
+       said. Until 31.08.2026 nothing on the way said so, and the member met the
+       smaller number for the first time in their own list (measured in review). */
+    const user = setupUser()
+    renderAt('/sr/rezultat/novi', 'competitor', '000007')
+
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/Dužina/), '21.1')
+    await user.type(screen.getByLabelText(/Uspon/), '0')
+    await user.type(screen.getByLabelText(/Spust/), '0')
+    await user.type(screen.getByLabelText('Sati'), '1')
+    await user.type(screen.getByLabelText('Minuta'), '52')
+    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    expect(await screen.findByText(/BTL poena/)).toBeVisible()
+    expect(screen.getByText(/Račun nije konačan/)).toBeVisible()
+  })
+
   it('refuses a result run in no time at all', async () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
