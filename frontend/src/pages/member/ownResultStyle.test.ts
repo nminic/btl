@@ -113,5 +113,17 @@ describe('the cell holding what a member may do with a counted result', () => {
 
     expect(mark.getPropertyValue('display')).toBe('block')
     expect(mark.getPropertyValue('color')).not.toBe('')
+
+    /* **And the name the queue really writes**, which is the half this asked
+       nothing about for one round: renamed in the markup alone the rule stops
+       reaching anything, the mark falls back to `inline` with no colour, and the
+       cell reads „NOVOProbna trka" again with the whole suite green (measured
+       31.08.2026). The mirror of this hole was found on 28.08.2026 fifty lines
+       above and closed the same way.
+
+       Comments blanked, so a note naming the class is not read as using it. */
+    expect(bare(readFileSync(join(process.cwd(), 'src/pages/admin/ReviewQueue.tsx'), 'utf-8'))).toContain(
+      'className="review__new"',
+    )
   })
 })

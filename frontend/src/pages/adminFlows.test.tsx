@@ -1556,10 +1556,35 @@ describe('the queue of results', () => {
       expect(session.decide).not.toHaveBeenCalledWith('sub-1', 'approved', '')
       expect(session.create).not.toHaveBeenCalled()
 
-      /* In the grammar the portal already uses for a count on this very screen:
-         written as one flat string it said „Ostalo je 1 prijava" beside „Rešene su
-         2 stavke", and this test froze that (review, 31.08.2026). */
-      expect(screen.getByText(/^Ostalo je 1 prijava sa trka/)).toBeVisible()
+      /* In the grammar the portal already uses for a count on this very screen,
+         one line above this one: written as one flat string it read „Ostalo je 1
+         prijava" beside „Rešena je 1 stavka" (review, 31.08.2026). Both halves of
+         the agreement are asked for, because correcting the noun and leaving the
+         verb is what the first correction did: **„Ostala je"**, feminine and
+         singular, and **„prijava"** rather than „prijave". The precedent is
+         `verification.approveAllDone`, whose three forms all agree. */
+      expect(screen.getByText(/^Ostala je 1 prijava sa trka/)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('counts what is left in the plural the number really takes', async () => {
+    /* The other form of the same line, and the reason it is its own case: the
+       correction above changed two strings and only one of them had anything
+       measuring it, so „Ostalo je 2 prijave" passed the whole suite (measured
+       31.08.2026). Serbian takes three forms here and the portal already writes
+       all three next door in `verification.approveAllDone`; two were changed, so
+       two are asked for. The third, five and upward, was already right and is left
+       to the shape it shares with its neighbour. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending', 'pending', 'pending'], {}, [1, 2])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.getByText(/^Ostale su 2 prijave sa trka/)).toBeVisible()
     } finally {
       confirm.mockRestore()
     }
@@ -1740,7 +1765,7 @@ describe('the queue of results', () => {
     }
   })
 
-  it('offers no sweep where every waiting result asks for a race to be made', async () => {
+  it('offers no sweep where every waiting result asks for a race to be made', () => {
     /* Which is the ordinary state after any sweep, since those are the ones it
        leaves. Offered anyway, it asked „Odobriti 0 stavki? Ovo se ne može opozvati"
        and then said „Rešeno je 0 stavki" (measured in review, 31.08.2026): what it

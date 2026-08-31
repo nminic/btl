@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { screen, within } from '@testing-library/react'
-import { must } from '../../test/at'
+import { first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
@@ -68,7 +68,9 @@ function Held() {
         <li key={one.id}>{`${one.status} | ${String(one.raceId)}`}</li>
       ))}
       {Object.entries(creations).map(([entity, made]) => (
-        <li key={entity}>{`${entity}: ${made.map((each) => each.id).join(',')}`}</li>
+        <li key={entity}>
+          {`${entity}: ${made.map((each) => `${each.id} < ${String(each.values.eventId ?? '')}`).join(',')}`}
+        </li>
       ))}
     </ul>
   )
@@ -95,12 +97,21 @@ describe('a result approved for a race the calendar does not hold', () => {
       'the race that was made',
     )
 
-    expect(said.some((one) => one.startsWith('events: '))).toBe(true)
-    expect(race).not.toBe('')
+    const event = must(
+      said.find((one) => one.startsWith('events: '))?.slice('events: '.length),
+      'the event that was made',
+    )
+
+    /* The race is under **that** event, which is the half the name of this case
+       claims and the store is the only thing that can say. Its own id is not
+       asked for: what an event answers on is worked out from its name and its date
+       when the record is read (`entityForms.ts`), so freezing it here would be a
+       second home for that arithmetic. */
+    expect(race.split(' < ')[1]).toBe(event.split(' < ')[0])
 
     /* The submission itself, out of the store: approved **and** pointing at the
        race that was made for it. A double would have said the call was made; only
        the store says whether it took. */
-    expect(said[0]).toBe(`approved | ${race}`)
+    expect(first(said)).toBe(`approved | ${race.split(' < ')[0]}`)
   }, SLOW)
 })
