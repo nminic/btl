@@ -239,6 +239,18 @@
 
    Wrapping, because three buttons do not fit beside a name on a telephone. Each
    label keeps to one line; the row of them breaks instead. */
+.review__decide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.review__decide .button {
+  padding: var(--space-6) var(--space-12);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
 /* That the calendar does not hold this race, in the corner of the row it is about
    (owner, 31.08.2026: „posebna naznaka NOVO negde u ćošku").
  *
@@ -254,18 +266,6 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--danger);
-}
-
-.review__decide {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6);
-}
-
-.review__decide .button {
-  padding: var(--space-6) var(--space-12);
-  font-size: 0.82rem;
-  white-space: nowrap;
 }
 
 .review__reason {

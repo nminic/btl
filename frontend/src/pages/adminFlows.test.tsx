@@ -1543,6 +1543,9 @@ describe('the queue of results', () => {
       const { user, session } = openWith(['pending', 'pending', 'pending'], {}, [1])
 
       expect(screen.getAllByText('NOVO')).toHaveLength(1)
+      /* And what it means, in words rather than in a `title` a keyboard never
+         reaches and most readers never speak. */
+      expect(screen.getByText(/Ove trke nema u kalendaru/)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
@@ -1556,7 +1559,7 @@ describe('the queue of results', () => {
       /* In the grammar the portal already uses for a count on this very screen:
          written as one flat string it said „Ostalo je 1 prijava" beside „Rešene su
          2 stavke", and this test froze that (review, 31.08.2026). */
-      expect(screen.getByText(/^Ostala je 1 prijava/)).toBeVisible()
+      expect(screen.getByText(/^Ostalo je 1 prijava sa trka/)).toBeVisible()
     } finally {
       confirm.mockRestore()
     }
@@ -1716,6 +1719,37 @@ describe('the queue of results', () => {
     } finally {
       confirm.mockRestore()
     }
+  })
+
+  it('leaves a reason standing over a row the sweep did not decide', async () => {
+    /* The other panel, changed by the same edit and for the same reason, and the
+       one that was left unmeasured: a reason typed over a „NOVO" row vanished
+       because of a sweep that deliberately did not touch that row. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'], {}, [0])
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      await user.type(screen.getByLabelText(/^Razlog/), 'Vreme se ne poklapa.')
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.getByLabelText(/^Razlog/)).toHaveValue('Vreme se ne poklapa.')
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('offers no sweep where every waiting result asks for a race to be made', async () => {
+    /* Which is the ordinary state after any sweep, since those are the ones it
+       leaves. Offered anyway, it asked „Odobriti 0 stavki? Ovo se ne može opozvati"
+       and then said „Rešeno je 0 stavki" (measured in review, 31.08.2026): what it
+       sweeps is what says whether it is there at all. */
+    openWith(['pending', 'pending'], {}, [0, 1])
+
+    expect(screen.queryByRole('button', { name: 'Odobri sve' })).toBeNull()
+    /* And the rows themselves are still there to be decided one at a time. */
+    expect(screen.getAllByRole('button', { name: 'Odobri' })).toHaveLength(2)
   })
 
   it('asks about the number it will really settle', async () => {

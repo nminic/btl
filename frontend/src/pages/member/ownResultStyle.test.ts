@@ -100,4 +100,18 @@ describe('the cell holding what a member may do with a counted result', () => {
     expect(button.fontSize).toBe(queue.fontSize)
     expect(button.whiteSpace).toBe('nowrap')
   })
+
+  it('gives the mark on a race the calendar does not hold a rule of its own', () => {
+    /* The name was invented rather than read from a sheet, so the cell drew „NOVO"
+       in the same letters as the race beside it and read „NOVOProbna trka" (review,
+       31.08.2026). What holds it is that the two homes of the name agree: the
+       markup writes it and this sheet paints it.
+
+       On its own line, which is what makes it a mark rather than a word running
+       into the name, and that is the part the owner asked for („negde u ćošku"). */
+    const mark = ruleFor(MEMBER, '.review__new', 'Member.css')
+
+    expect(mark.getPropertyValue('display')).toBe('block')
+    expect(mark.getPropertyValue('color')).not.toBe('')
+  })
 })

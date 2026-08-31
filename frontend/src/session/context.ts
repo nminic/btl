@@ -19,10 +19,11 @@ export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 
 /**
- * What verification may put right on a submission, and no fifth thing.
+ * What verification writes on a submission, and no sixth thing.
  *
- * Four, and the fourth arrived on 31.08.2026 with the rule that gives it a
- * reader. A member types one name, the race's; the moderator is shown a field for
+ * Four of the five are the administration putting right what the member could only
+ * hint at; the fifth, the race, is the portal finishing a sentence the member could
+ * not, and it arrived with the part that makes one. A member types one name, the race's; the moderator is shown a field for
  * the event above it, carrying that same name, and may leave it, shorten it, or
  * change either (owner: „administratoru se iznad polja trke prvo prikazuje polje
  * Događaj koji ima isti sadržaj kao naziv trke... može ostaviti isto, ili skratiti

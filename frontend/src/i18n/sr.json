@@ -953,8 +953,8 @@
     "newRace": "NOVO",
     "newRaceTitle": "Ove trke nema u kalendaru. Odobravanjem se prave događaj i trka.",
     "sweptLeft": {
-      "one": "Ostala je {count} prijava sa trke koje nema u kalendaru. Ona se odobrava posebno, jer se time pravi događaj i trka.",
-      "few": "Ostale su {count} prijave sa trka kojih nema u kalendaru. Svaka se odobrava posebno, jer se time pravi događaj i trka.",
+      "one": "Ostalo je {count} prijava sa trka kojih nema u kalendaru. Takva prijava se odobrava posebno, jer se time pravi događaj i trka.",
+      "few": "Ostalo je {count} prijave sa trka kojih nema u kalendaru. Svaka se odobrava posebno, jer se time pravi događaj i trka.",
       "other": "Ostalo je {count} prijava sa trka kojih nema u kalendaru. Svaka se odobrava posebno, jer se time pravi događaj i trka."
     },
     "amend": "Ispravi",

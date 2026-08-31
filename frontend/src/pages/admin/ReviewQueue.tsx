@@ -72,11 +72,13 @@ export function ReviewQueue() {
    * the terms of use have promised the answer to it since before the portal could
    * give it — „administrator će uz vaš rezultat napraviti i događaj i trku".
    *
-   * Made before it is decided, and all of it in one press. The order of the three
-   * calls is not what makes that true — React commits them together — but reading
-   * them in the order they happen is how the next person checks that nothing is
-   * missing, and what has to be there is all three: the event, the race, and the
-   * result tied to it.
+   * **The order of the three carries the whole of it, and it is not a matter of
+   * taste.** `amend` refuses a submission that is no longer waiting, which is right
+   * and was decided for its own reasons; so `decide` moved ahead of it loses the
+   * race silently, leaving exactly what this part exists to prevent: an event and a
+   * race in the calendar, a result approved, and nothing joining them. Measured in
+   * review, 31.08.2026, with the whole suite green, which is why it is now measured
+   * against the store itself rather than against a double that records calls.
    *
    * The shape is `pages/event/EventActions.tsx`, which makes an event and its races
    * in one go, and its hard-won part is the counting: a number in use is in use
@@ -162,7 +164,12 @@ export function ReviewQueue() {
 
             Nothing is written down on an approval here, the same as pressing
             the button in every row: a reason belongs to a refusal. */}
-        {waiting.length > 0 && (
+        {/* Offered only where there is something for it to do. Asked of `waiting`
+            it stood over a queue holding nothing but submissions it steps over,
+            and pressing it asked „Odobriti 0 stavki? Ovo se ne može opozvati" and
+            then said „Rešeno je 0 stavki" (measured in review, 31.08.2026). One
+            fact, one home: what it sweeps is what says whether it is there. */}
+        {waiting.some((one) => one.raceId !== undefined) && (
           <button
             type="button"
             className="button button--secondary"
