@@ -2507,16 +2507,47 @@ Na formi sa profila portal vam pomaže da nađete istu trku: kad počnete da kuc
 
     expect(article).toContain(REACHING)
 
-    /* And no list of what the race hands over, anywhere else in the article. Holding
-       the two paragraphs whole says nothing about the rest of it, and the sentence
-       „Sa te trke portal uzima naziv, datum, dužinu, uspon i spust" put in beside them
-       is the untruth this passage was corrected for, one paragraph further along
-       (review, 31.08.2026). Freezing and refusing answer different questions and both
-       are needed: the frozen text says these paragraphs are the owner's words, and
-       this says the list he took out is nowhere in the article. */
-    expect(article, 'Član 37 lists the fields nowhere').not.toMatch(
-      /(?:naziv|datum|dužinu|uspon|spust)(?:,? ?i? ?(?:naziv|datum|dužinu|uspon|spust)){2,}/,
-    )
+    /* And no list of what the race hands over, in this section at all. Holding the
+       two paragraphs whole says nothing about the rest of the article, and the
+       sentence „Sa te trke portal uzima naziv, datum, dužinu, uspon i spust" put in
+       beside them is the untruth this passage was corrected for. Freezing and
+       refusing answer different questions and both are needed.
+
+       **The whole section, and every case form.** Two drafts of this were too narrow
+       in exactly the ways a Serbian sentence bends: one asked for commas, so the same
+       list joined by „i" walked past; the next named only the accusative „dužinu", so
+       „naziv, datum, **dužina**, uspon i spust" broke the chain and passed, and the
+       same list put into Član 41 — whose whole subject is which of those the race
+       hands over — was outside the slice this looked at (all measured in review,
+       31.08.2026).
+
+       **What is refused is a list of three or more of those five things, however
+       written, and only where the race is what hands them over.** The article names
+       them one per line in its own opening list, which is what the member types in,
+       and that must stay: the pairing with „sa trke", „iz nje" or „preuzima" is what
+       separates the two. */
+    for (const sentence of sectionOf('pravilnik', /### Član 37\./).split(/(?<=\.)\s+|\n+/)) {
+      /* Which sentences are about the race handing something over. „sa same trke"
+         and „sa te trke" are the same claim with a word between, and the first draft
+         asked for „sa (te )?trke", so the one with „same" in it was never looked at
+         (review, 31.08.2026). */
+      if (!/sa\s+(?:\S+\s+)?trke|iz nje|preuzim|uzima|dolaz\w*\s+sa/i.test(sentence)) {
+        continue
+      }
+
+      const measures = ['dužin', 'uspon', 'spust'].filter((one) => new RegExp(one, 'i').test(sentence))
+
+      /* A sentence saying the race hands over the three measures is true only with
+         the condition on it: it hands them over **when it fixes them**, which a race
+         with a length does and a timed or a free one does not. Član 41 says exactly
+         that and carries „zadaje", so it stands; the sentence the owner had removed
+         said the same without the condition, and that is the whole difference between
+         them. Counting how many things are named refused Član 41 as well (review,
+         31.08.2026), which is how a guard ends up switched off. */
+      if (measures.length === 3) {
+        expect(sentence, 'the race hands over the measures with no condition on it').toMatch(/zadaje/i)
+      }
+    }
 
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,

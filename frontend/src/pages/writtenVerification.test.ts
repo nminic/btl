@@ -117,27 +117,48 @@ describe('what the written pages say about entering and verifying a result', () 
     expect(section('pravilnik', '10. Verifikacija rezultata')).toBe(RULEBOOK)
   })
 
-  it('makes none of the deleted promises on any written page', () => {
-    /* Five sentences the owner had deleted, held wherever they might be put rather
-       than only where they stood. This is what freezing cannot do, and what went out
-       with the first freeze until a review put it back: a promise moved to a
-       neighbouring page, or to the head of the same section, is a promise still made.
+  it('makes none of the deleted promises about a result, on any written page', () => {
+    /* Five sentences the owner had deleted, held wherever they might be put. This is
+       what freezing cannot do, and what went out with the first freeze until a review
+       put it back: a promise moved to a neighbouring page, or to the head of the same
+       section, is a promise still made.
 
-       Refused by the words each one was made in, which is enough for a sentence
-       coming **back**: what a pattern cannot do is catch a promise invented in new
-       words, and that is what the frozen sections above are for. The two together
-       leave nothing between them. */
+       **Asked of a sentence, and only of one that is about a result.** Written over a
+       whole page instead, the same words refused three things nobody had decided
+       anything about: „Nepotvrđen nalog brišemo posle 12 meseci", „Uz svaki tim stoji
+       ime administratora tima", and a line in the privacy policy about deleting an
+       account. None of those is a promise about a result, and none of them should
+       cost a round (all three measured in review, 31.08.2026). The subject is what
+       tells them apart, so the subject is asked for.
+
+       **The one about deleting is refused as a pairing, not as a wording.** Its false
+       form and its true form are the same words with the polarity swapped — „posle
+       toga ne" against „i posle verifikacije" — so no pattern can keep one and refuse
+       the other. Split into two narrower patterns it fell out of both and the deleted
+       sentence came back in the words it was written in (review, 31.08.2026). What is
+       asked instead is that no page says anything at all about deleting a result
+       outside the frozen sections: no sentence pairs the two subjects. None does
+       today. If the owner ever wants that rule written, it belongs in the section
+       about results, and putting it there is a deliberate act that comes here too —
+       the same cost the freezing carries, applied for the same reason. */
+    const RESULT = /rezultat/i
+
     for (const { slug, heading, body } of BODIES) {
-      const where = `${slug}: ${heading}`
+      for (const sentence of body.split(/(?<=\.)\s+|\n+/)) {
+        const where = `${slug}: ${heading}: ${sentence.slice(0, 60)}`
 
-      expect(body, where).not.toMatch(/[Nn]epotvrđen/)
-      expect(body, where).not.toMatch(/(?:star|prethodn)\w*\s+vredno/i)
-      expect(body, where).not.toMatch(/vredno[sš]\w*\s+pre izmene/i)
-      expect(body, where).not.toMatch(/datum poslednje izmene/)
-      expect(body, where).not.toMatch(/ime(?:nom)? administratora/i)
-      expect(body, where).not.toMatch(/[Tt]uđi rezultat možete prijaviti/)
-      expect(body, where).not.toMatch(/verifikovan[^.]*ne možete (?:ga )?obrisati/i)
-      expect(body, where).not.toMatch(/obrisati[^.]*posle verifikacije/i)
+        if (!RESULT.test(sentence)) {
+          continue
+        }
+
+        expect(sentence, where).not.toMatch(/nepotvrđen/i)
+        expect(sentence, where).not.toMatch(/(?:star|prethodn)\w*\s+vredno/i)
+        expect(sentence, where).not.toMatch(/vredno\w*\s+pre izmene/i)
+        expect(sentence, where).not.toMatch(/datum poslednje izmene/i)
+        expect(sentence, where).not.toMatch(/ime(?:nom)? administratora/i)
+        expect(sentence, where).not.toMatch(/tuđi rezultat/i)
+        expect(sentence, where).not.toMatch(/obris|obriš/i)
+      }
     }
   })
 })
