@@ -2225,26 +2225,40 @@ describe('Leagues', () => {
     /* **And the written pages, which are the fifth home and the last one found.**
        Član 57 said „Podela na kategorije zadaje se na nivou svake Lige" — the
        overturned rule itself, in the prose a member accepts on joining, standing
-       while the field was gone from the model and the code. The owner had it
-       deleted (31.08.2026); this is what keeps it deleted.
+       while the field was gone from the model and the code. The owner had it deleted
+       (31.08.2026).
 
-       Matched as a category and a league standing in one sentence, since the
-       article said it without ever saying „grupiše" and the first draft of this
-       refused two wordings of it: „Svaka Liga sama zadaje svoju podelu na
-       kategorije" is the same rule with the words in another order and walked past
-       both (review, 31.08.2026). What the pages may not say is that a competition
-       has a category split of its own, however that is put.
+       **Held as the article stands, not as a pattern over it.** Two drafts tried to
+       word a refusal and both were wrong in both directions at once: the first named
+       two phrasings, so the same rule with the words in another order walked past;
+       the second asked for a category and a league in one sentence, which refused a
+       legitimate line about the category a **competitor** is in, and still let the
+       deleted rule back in because the rulebook writes „lige" in lower case in
+       thirty-five of the forty-six sentences that mention one, and the pattern asked
+       for a capital (both measured in review, 31.08.2026).
 
-       Categories themselves are not refused: the rulebook is full of them, and they
-       are what a **competitor** is in. What is refused is a category and a league
-       named together as one thing. */
+       Prose says a thing in unboundedly many ways, so a pattern over it is a guess
+       about wording. The article is what the league promises, and it is held whole,
+       the same way the passage about verifying a result is held in
+       `writtenVerification.test.ts`. The cost is the same and is the point: changing
+       these words is a deliberate act that comes here too. */
+    const ARTICLE_57 = `### Član 57. Liga kao pojam
+
+Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spiskom događaja koji tokom godine ulaze u njih. Spisak događaja sme da se menja tokom godine.
+
+- Svaka Liga boduje se istim BTL bodovima. Posebnog sistema bodovanja nema.
+- Svi članovi su u Ligi automatski, bez prijave.
+- Svaka Liga ima svoju stranu i tabelu.
+
+Šta se u pojedinoj Ligi osvaja određuje njen organizator i to nije predmet ovog pravilnika.`
+
     const written = Object.values(pages).flatMap((page) => page.sections.map((one) => one.body))
-    const sentences = written.flatMap((body) => body.split(/(?<=\.)\s+|\n+/))
 
     expect(
-      sentences.filter((one) => /kategorij/i.test(one) && /\bLig/.test(one)),
-      'a category and a league in one sentence',
-    ).toEqual([])
+      written.filter((one) => one.includes('### Član 57.')),
+      'Član 57 stands in exactly one section',
+    ).toHaveLength(1)
+    expect(written.find((one) => one.includes('### Član 57.'))).toContain(ARTICLE_57)
   })
 })
 
