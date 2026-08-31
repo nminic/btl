@@ -25,10 +25,21 @@ import settled from '../test/writtenPages.snapshot.json'
  * outside the range that was frozen, and each round the range grew by one level while
  * the escape moved one level further. So the range is the whole of it.
  *
- * **Every section of every written page is held as it stands**, against a snapshot in
- * `test/writtenPages.snapshot.json`. Nothing can be added, removed, reworded, moved to
- * a neighbouring section or to another page, said with a pronoun or with a prefix, and
- * no wording is left for anything to slip past.
+ * **The written pages are held whole**, against a snapshot in
+ * `test/writtenPages.snapshot.json` which is a copy of the record itself. Nothing can
+ * be added, removed, reworded, moved to a neighbouring section or to another page,
+ * said with a pronoun or with a prefix, and no wording is left for anything to slip
+ * past.
+ *
+ * **The record, and not a map of headings.** The first draft compared heading against
+ * body, and a map keyed by heading loses whatever it collides with: a second section
+ * called „6. Vaša prava" put in front of the first was invisible to it, while the page
+ * drew both and the false sentence stood on the screen. That shape was also blind to
+ * the order of the sections, so a numbered legal document could run 1, 2, 4, 3, and to
+ * `includes`, the field that draws another page's sections above a page's own — the
+ * president's address could be made to open the privacy policy without a word of
+ * either changing (all three measured in review, 31.08.2026). Comparing the record
+ * against a copy of itself has none of those shapes to be blind to.
  *
  * **What it costs, said plainly.** Every deliberate change to any written page has to
  * be made in the snapshot too. These are four documents the owner dictates sentence by
@@ -61,24 +72,19 @@ const ABOUT_CORRECTING = BODIES.filter(({ body }) => /sme da ispravi/i.test(body
  *  still said the two pages it expected. */
 const placesOf = (found: typeof BODIES) => found.map((one) => `${one.slug}: ${one.heading}`).sort()
 
-/** What the pages say now, in the shape the snapshot holds. */
-const asWritten: Record<string, Record<string, string>> = Object.fromEntries(
-  Object.entries(pages).map(([slug, page]) => [
-    slug,
-    Object.fromEntries(page.sections.map((section) => [section.heading, section.body])),
-  ]),
-)
-
 describe('the written pages', () => {
-  it('say exactly what the owner settled, section by section', () => {
+  it('say exactly what the owner settled, page by page', () => {
     /* Asked page by page rather than all at once, so a failure names the page before
        it prints anything: four documents in one comparison is a diff nobody reads. */
-    for (const [slug, sections] of Object.entries(settled)) {
-      expect(asWritten[slug], slug).toEqual(sections)
+    const held: Record<string, unknown> = settled
+    const now: Record<string, unknown> = pages
+
+    for (const slug of Object.keys(held)) {
+      expect(now[slug], slug).toEqual(held[slug])
     }
 
     /* And no page has appeared or gone. */
-    expect(Object.keys(asWritten).sort()).toEqual(Object.keys(settled).sort())
+    expect(Object.keys(now).sort()).toEqual(Object.keys(held).sort())
   })
 
   it('carry the rules about a waiting result in exactly the two places they belong', () => {
