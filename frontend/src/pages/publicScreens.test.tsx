@@ -2295,20 +2295,40 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
 
        Nothing has ever escaped from inside a text held as it stands. Every escape was
        outside the range. So the range is every word the dictionary says about a
-       competition — the lead above the list, the parts of a competition's own page,
-       and the four descriptions a search engine shows — and the rule cannot be put
-       back into any of them under any wording.
+       competition and every description the portal writes about itself, and the rule
+       cannot be put back into any of them under any wording.
+
+       **What this still cannot hold is a sentence written straight into a component.**
+       The portal has no guard anywhere that keeps Serbian prose out of a `.tsx` file,
+       and writing one is a rule about the whole portal rather than about this change;
+       it is written down in `btl-produkt/PENDING.md` instead of being invented here.
 
        The cost is the same as everywhere this is done: a deliberate change to any of
        these words is made here too. The lead sentence alone has carried this rule
        twice and been corrected twice, which is what that cost buys. */
     expect(sr.leagues).toEqual(words.leagues)
 
+    /* **The whole of `seo`, not the four names about competitions.** Held as four, the
+       rule went into `seo.rulebook.description`, which is the sentence a search engine
+       shows for the rulebook and still under the hundred and sixty characters that
+       description is allowed (review, 31.08.2026). Every description the portal writes
+       is one place a rule can be put, so every one of them is held.
+
+       The floor is here because the loop walks the **snapshot**: emptied, it would make
+       no assertion at all and look exactly like a green check, which is the likeliest
+       thing for somebody to do who cannot see why it failed. `leagues` needs no floor,
+       since `toEqual` is symmetric and a missing key falls on its own. */
+    expect(Object.keys(words.seo).length, 'the snapshot of seo is not empty').toBeGreaterThan(20)
+    expect(Object.keys(words.seo)).toContain('rulebook')
+
     const seo: Record<string, unknown> = sr.seo
 
     for (const [key, said] of Object.entries(words.seo)) {
       expect(seo[key], `seo.${key}`).toEqual(said)
     }
+
+    /* And no description has appeared that the snapshot does not know. */
+    expect(Object.keys(seo).sort()).toEqual(Object.keys(words.seo).sort())
   })
 })
 

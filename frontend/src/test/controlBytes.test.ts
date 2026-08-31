@@ -42,6 +42,23 @@ import { inside, sources } from './sources'
  * here rather than left to be found.
  */
 
+/** What is built rather than written: everything at the root of the frontend and in
+ *  the folders beside `src`, minus what is installed or produced. Read by extension,
+ *  which is what tells a text file from a font or a picture. */
+function everyRootFile(here: string): string[] {
+  return readdirSync(here, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(here, entry.name)
+
+    if (entry.isDirectory()) {
+      return ['node_modules', 'dist', 'coverage', 'src', 'public', '.vite'].includes(entry.name)
+        ? []
+        : everyRootFile(path)
+    }
+
+    return /\.(ts|tsx|js|mjs|cjs|css|json|html|conf|yml|yaml|md)$/.test(entry.name) ? [path] : []
+  })
+}
+
 /** Every file the portal is written in: code, stylesheets and dictionaries under
  *  `src`, and the pages it publishes under `public/mock`. */
 function everySource(dir: string): string[] {
@@ -91,13 +108,16 @@ describe('the source of the portal', () => {
     const files = [
       ...everySource(join(here, 'src')),
       ...everySource(join(here, 'public', 'mock')),
-      /* And the files at the root that decide how everything above is built. The same
-         shell replacement that put the byte into a test would put it into any of
-         these, and no guard in the portal reads above `src` (measured in review,
-         31.08.2026: a zero-width space in `vite.config.ts` passed the whole suite). */
-      ...readdirSync(here, { withFileTypes: true })
-        .filter((entry) => entry.isFile() && /\.(ts|tsx|css|json|mjs|html)$/.test(entry.name))
-        .map((entry) => join(here, entry.name)),
+      /* And everything else the portal is built and served by. The same shell
+         replacement that put the byte into a test puts it as easily into any of these:
+         a zero-width space in `vite.config.ts` passed the whole suite, and so did one
+         in `nginx.conf` — inside a `Cache-Control` header, where the server starts and
+         the header is quietly wrong — and one in the only script the repo runs
+         (measured in review, 31.08.2026).
+
+         Three guards do read `index.html` from the root (`app/pageMeta.test.tsx`,
+         `app/theme.test.tsx`, `data/contract.test.ts`); none of them is about this. */
+      ...everyRootFile(here),
     ]
 
     /* The floor, and it asks for **containment** rather than for a count. Written as
@@ -129,6 +149,8 @@ describe('the source of the portal', () => {
       inside('mock', 'pages.json'),
       'vite.config.ts',
       'index.html',
+      'nginx.conf',
+      inside('scripts', 'refused-control-appearance.mjs'),
     ]) {
       expect(files.some((path) => path.endsWith(kind)), kind).toBe(true)
     }
