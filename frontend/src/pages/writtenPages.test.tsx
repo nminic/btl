@@ -2482,43 +2482,31 @@ describe('what the written pages say the fee buys', () => {
       /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
     )
 
-    /* And it says so of both ways in, since 23.08.2026. The article described the
-       form on the event as a different thing for three weeks: „birate trku iz
-       spiska", „link nije zasebno polje: ako ga imate, ide u komentar". The owner
-       had that form given the same foot as the one on a profile, the rulebook was
-       left as it was, and nothing here read it, because this guard knew one form.
-       A member who did what Član 37 told them, and put the address into the
-       comment, met „Ovo polje je obavezno." */
-    /* The address is asked for on **that** road, not merely somewhere in the
-       article: the sentence two above already carries those words, so a claim about
-       them here could not fail whatever the paragraph said, and the paragraph could
-       have stopped asking for the address entirely while Član 39 says „Obavezan je
-       na obe prijave" (measured in review, 31.08.2026). */
-    expect(article).toMatch(/ostalo, uz link ka zvaničnim rezultatima/)
+    /* **The two paragraphs about how a result reaches the portal are frozen whole.**
+       They went stale twice and each time the guard over them was a pattern that
+       guessed at wording. First the article described the form on an event as a
+       different thing entirely — „birate trku iz spiska", „link nije zasebno polje:
+       ako ga imate, ide u komentar" — and nothing here read it, so a member who did
+       what Član 37 told them and put the address into the comment met „Ovo polje je
+       obavezno." Then it listed what the race hands over, „naziv, datum, dužinu,
+       uspon i spust", which is true of a race with a length and backwards for the
+       other two: a timed race is not asked for a time at all and **is** asked what
+       it covered, and a free one is asked everything (`pages/event/reportForm.ts`).
 
-    /* **And it stopped naming the fields, on the owner's word of 31.08.2026.** It
-       named them twice and was wrong twice: first „sve ostalo unosite isto kao sa
-       profila", which promised the name of the event and the date that this form
-       never asks for; then „naziv, datum, dužinu, uspon i spust portal uzima iz
-       nje", which was true only of a race with a length. A timed race is not asked
-       for a time at all and **is** asked what it covered, and a free one is asked
-       everything (`pages/event/reportForm.ts`), so the list was backwards for two
-       of the three kinds a race can be.
+       The refusal written for that second fault named a shape of list, and the same
+       untrue sentence came back joined by „i" instead of commas and walked past it
+       (review, 31.08.2026). A pattern over prose is a guess about wording; what is
+       guarded here is what the article tells a member to expect.
 
        Offered the choice between listing it per kind and saying it once for all
-       three, he chose the second: „Pišem kraće, bez nabrajanja po vrstama." So what
-       is held here is the shape of the rule rather than a list that goes stale each
-       time a kind is added — the race gives what the race fixes, and the member
-       fills in the rest. */
-    expect(article).toMatch(/portal preuzima sa nje ono što ta trka zadaje/)
+       three, the owner chose the second: „Pišem kraće, bez nabrajanja po vrstama."
+       So these are his words, and changing them costs a deliberate act here. */
+    const REACHING = `Rezultat sa trke koja je u kalendaru prijavljujete i sa strane samog događaja, dugmetom „Unesi rezultat" u redu te trke. Trka je time već poznata, pa portal preuzima sa nje ono što ta trka zadaje, a vi unosite ostalo, uz link ka zvaničnim rezultatima i po želji sliku i komentar, sa istim pravilom obaveznosti kao sa profila.
 
-    /* And no list of fields beside it, asked as **any** such list rather than as the
-       one order it came in: refusing „naziv, datum, dužinu, uspon i spust" let the
-       same untrue list back with two words swapped (review, 31.08.2026). What the
-       article may not do is enumerate what the race hands over, in any order. */
-    expect(article, 'Član 37 no longer lists the fields by name').not.toMatch(
-      /(?:naziv|datum|dužinu|uspon|spust)(?:, ?(?:naziv|datum|dužinu|uspon|spust)){2,}/,
-    )
+Na formi sa profila portal vam pomaže da nađete istu trku: kad počnete da kucate naziv trke, posle dva slova nudi trke iz kalendara, od poslednje ka ranijim. Ako izaberete jednu, portal popunjava i zaključava ono što ta trka zadaje. Izmenite li naziv posle toga, veza se prekida, ta polja se prazne i unosite ih sami.`
+
+    expect(article).toContain(REACHING)
+
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,
     )
