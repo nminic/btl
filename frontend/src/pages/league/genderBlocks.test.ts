@@ -93,65 +93,69 @@ describe('the name of a block of the standing', () => {
 
   it('keeps the order the table settled, and settles nothing of its own inside a block', () => {
     /* The blocks are slices of an order `leagueTable` already fixed, by the total and
-       then by the smaller member number. Anything sorted here again is a second
-       ranking nobody asked for, and by age it would be the extra rule the owner
+       then by the smaller member number. Anything sorted here again is a second ranking
+       nobody asked for, and by age or by races it would be the extra rule the owner
        refused („Ne želim dodatna pravila", 31.08.2026).
 
-       **Four people, and not two.** With a pair there are only two possible answers,
-       so any second order either agrees with arrival or reverses it, and a tie broken
-       by year of birth agreed — it passed the first draft of this case. With four, one
-       clear of the rest and three level with each other, every field they differ in
-       points somewhere else than arrival does (all measured in review, 31.08.2026):
+       **Asked as the property, not as a list of orderings that must not happen.** Four
+       drafts of this case chose people so that arrival differed from member number,
+       from year of birth, from the beginner flag, from the number of races, from the
+       season somebody joined in, and from the best single score. A review then
+       enumerated eighty-four orderings a tie could be broken by and found three the
+       fixture still could not tell from arrival — an age threshold at forty, one at
+       forty-five, and the sum of the scores (measured 31.08.2026). Chasing them one at
+       a time is the same walk that took nine rounds on the written pages: there is
+       always another comparison.
 
-         arrival          000007, 000005, 000001, 000003
-         member number    000007, 000001, 000003, 000005
-         born, oldest     000007, 000001, 000005, 000003
-         born, youngest   000007, 000003, 000005, 000001
-         beginner first   000007, 000001, 000005, 000003
-         fewest races     000007, 000001, 000005, 000003
-         joined earliest  000007, 000001, 000003, 000005
-         best single      000007, 000001, 000003, 000005
+       What is true of **every** one of them is that it moves a row past another row of
+       its own block. So that is what is measured: each block, read in the order it
+       comes back, must visit the input in increasing order. No ordering rule of any
+       kind can hold while that does, and the fixture no longer has to be clever — it
+       only has to have rows that could be moved, which means a tie.
 
-       What the mocks beside this hold is narrower and worth saying exactly: the five
-       functions named there are refused, and a comparison written straight on a field
-       of the competitor reaches none of them. This case is what holds that, and it
-       holds more than `birthYear`. Each field the rows differ in was added because
-       sorting on it had passed: the flag for a first season, which is a category by
-       another name; the number of races, which is the likeliest extra rule a running
-       league would reach for; and the season somebody joined in, which shares half a
-       name with the flag and is a different column entirely. */
+       **A tie, and rows a rule would actually move.** An ordering that happens to
+       return the arrival order changes nothing and is nothing to catch, so the three
+       level rows are chosen with the youngest first: any threshold on age, on the
+       beginner flag, on races, on the season somebody joined or on the best score puts
+       somebody in front of somebody they arrived behind. The sum of the scores cannot
+       be such a rule at all, because the total **is** that sum here, as it is on the
+       portal. */
     const rows = [
-      /* One clear of the rest, so a rule about ranking by the total has something to
-         get wrong: with every row on nought, sorting the block by the total the wrong
-         way round could not fail here, while the name of this case promised it could. */
-      { ...person('000007', 'M'), birthYear: 1985, firstSeason2027: false, firstSeason: 2019, races: 1, best: 50, total: 50 },
-      /* And three level with each other, so a tie-break has something to break: with
-         every total different there is no tie at all, and a tie-break added to the
-         code never fires. Both of those were true of two earlier drafts of this
-         fixture, one after the other (review, 31.08.2026). */
-      { ...person('000005', 'M'), birthYear: 1980, firstSeason2027: false, firstSeason: 2022, races: 3, best: 9, total: 20 },
-      { ...person('000001', 'M'), birthYear: 1970, firstSeason2027: true, firstSeason: 2020, races: 2, best: 14, total: 20 },
-      { ...person('000003', 'M'), birthYear: 1990, firstSeason2027: false, firstSeason: 2021, races: 4, best: 11, total: 20 },
-    ].map(({ total, races, best, ...competitor }) => ({
+      { ...person('000007', 'M'), birthYear: 1985, firstSeason2027: false, scores: [50] },
+      /* Three level with each other, so there is something a tie-break could move: with
+         every total different there is no tie at all and a tie-break never fires, which
+         was true of one earlier draft of this fixture. */
+      { ...person('000005', 'M'), birthYear: 1995, firstSeason: 2022, firstSeason2027: false, scores: [9, 8, 3] },
+      { ...person('000001', 'M'), birthYear: 1970, firstSeason: 2020, firstSeason2027: true, scores: [14, 6] },
+      { ...person('000003', 'M'), birthYear: 1985, firstSeason: 2021, firstSeason2027: false, scores: [7, 6, 5, 2] },
+      /* And a woman, so the blocks are two and the reading below has to cross one. */
+      { ...person('000009', 'F'), birthYear: 1992, firstSeason2027: false, scores: [30] },
+      { ...person('000002', 'F'), birthYear: 1988, firstSeason2027: false, scores: [12, 8] },
+    ].map(({ scores, ...competitor }) => ({
       competitor,
-      /* As many races as the row is given, so „fewer races first" is an order of its
-         own here: every row carried an empty map until 31.08.2026 and that ordering,
-         the likeliest one for a running league, changed nothing and passed. */
-      /* Each race worth a different number of points, and the best of them somewhere
-         else than the arrival order: every race was worth exactly one until 31.08.2026,
-         so „the better single result first" — an ordering read off the values rather
-         than the count — changed nothing here and passed. */
-      points: new Map(Array.from({ length: races }, (_, at) => [`race-${String(at)}`, best - at])),
-      total,
+      points: new Map(scores.map((score, at) => [`race-${String(at)}`, score])),
+      /* The total is the sum of what is shown and nothing else, which is what
+         `leagueTable` means by it: a row whose total is not its own sum is a row the
+         portal cannot produce, and an earlier draft of this fixture carried three of
+         them (review, 31.08.2026). */
+      total: scores.reduce((sum, score) => sum + score, 0),
     }))
+
     const groups = leagueGroups(rows)
 
-    expect(groups.map((one) => one.code)).toEqual(['PRVI'])
-    expect(groups[0]?.rows.map((one) => one.competitor.memberNumber)).toEqual([
-      '000007',
-      '000005',
-      '000001',
-      '000003',
-    ])
+    expect(groups.map((one) => one.code)).toEqual(['DRUGI', 'PRVI'])
+
+    /* Every block reads the input forwards. A tie moved by age, by races, by the season
+       somebody joined in, by the best score or by anything else makes one of these
+       sequences go backwards. */
+    for (const group of groups) {
+      const seen = group.rows.map((row) => rows.indexOf(row))
+
+      expect(seen, group.code).toEqual([...seen].sort((left, right) => left - right))
+    }
+
+    /* And the blocks between them hold everybody, so „keeps the order" is not kept by
+       dropping somebody. */
+    expect(groups.flatMap((group) => group.rows).length).toBe(rows.length)
   })
 })

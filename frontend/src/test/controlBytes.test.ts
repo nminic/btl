@@ -55,7 +55,15 @@ function everyRootFile(here: string): string[] {
         : everyRootFile(path)
     }
 
-    return /\.(ts|tsx|js|mjs|cjs|css|json|html|conf|yml|yaml|md)$/.test(entry.name) ? [path] : []
+    /* By extension, and **also by having none**: `Dockerfile` and `.dockerignore` carry
+       no extension at all and both build and serve the portal. A byte in the second is
+       the quieter of the two — the line that keeps `node_modules` out stops matching,
+       and the image is built over the modules from the host (review, 31.08.2026).
+       Anything binary is skipped by name rather than guessed at, since nothing binary
+       sits beside these. */
+    const named = /\.(ts|tsx|js|mjs|cjs|css|json|html|conf|yml|yaml|md)$/.test(entry.name)
+
+    return named || !entry.name.slice(1).includes('.') ? [path] : []
   })
 }
 
@@ -115,8 +123,10 @@ describe('the source of the portal', () => {
          the header is quietly wrong — and one in the only script the repo runs
          (measured in review, 31.08.2026).
 
-         Three guards do read `index.html` from the root (`app/pageMeta.test.tsx`,
-         `app/theme.test.tsx`, `data/contract.test.ts`); none of them is about this. */
+         Other guards do read files above `src` — several read `index.html`, one reads
+         the script beside it — but none of them is about this. The count is left out
+         on purpose: written as „three" it was wrong within a round, and a number in a
+         comment is a number nobody re-counts. */
       ...everyRootFile(here),
     ]
 
@@ -150,6 +160,8 @@ describe('the source of the portal', () => {
       'vite.config.ts',
       'index.html',
       'nginx.conf',
+      'Dockerfile',
+      '.dockerignore',
       inside('scripts', 'refused-control-appearance.mjs'),
     ]) {
       expect(files.some((path) => path.endsWith(kind)), kind).toBe(true)

@@ -2202,6 +2202,25 @@ describe('Leagues', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
     expect(screen.queryAllByText(/grupi[sš]/i)).toEqual([])
 
+    /* **And nothing on the drawn page says a competition settles its own categories,
+       whatever key it came from.** The snapshot below holds two of the dictionary's
+       forty-eight branches; the rule was put into `rankings.leagueGrouping` and drawn
+       here by one line in the component, and the stem „grupiš" did not appear in it
+       because the owner's own wording does not use that verb (review, 31.08.2026).
+
+       What the member reads is finite, so it is read: a category and a league doing the
+       settling, in one sentence, on the page itself. That reaches any key, any branch
+       and any component. */
+    const onScreen = must(document.body.textContent, 'what the page draws')
+    const SETS_ITS_OWN =
+      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|odre[dđ]uje|podešava|bira|propisuje|definiše)|(?:svoju|sopstvenu)\s+podelu/i
+
+    for (const sentence of onScreen.split(/(?<=\.)\s+/)) {
+      if (/kategorij/i.test(sentence)) {
+        expect(sentence, 'the page says a competition settles its own categories').not.toMatch(SETS_ITS_OWN)
+      }
+    }
+
     const said = (branch: unknown): string[] => {
       if (typeof branch === 'string') {
         return [branch]
@@ -2314,13 +2333,10 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        description is allowed (review, 31.08.2026). Every description the portal writes
        is one place a rule can be put, so every one of them is held.
 
-       The floor is here because the loop walks the **snapshot**: emptied, it would make
-       no assertion at all and look exactly like a green check, which is the likeliest
-       thing for somebody to do who cannot see why it failed. `leagues` needs no floor,
-       since `toEqual` is symmetric and a missing key falls on its own. */
-    expect(Object.keys(words.seo).length, 'the snapshot of seo is not empty').toBeGreaterThan(20)
-    expect(Object.keys(words.seo)).toContain('rulebook')
-
+       The loop walks the **snapshot**, so an emptied snapshot would make no assertion
+       at all — but the comparison of key sets below catches that on its own, and a
+       floor beside it was a rule with nothing left to do (review, 31.08.2026). It is
+       the key sets that keep this from being a check over nothing. */
     const seo: Record<string, unknown> = sr.seo
 
     for (const [key, said] of Object.entries(words.seo)) {
