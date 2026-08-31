@@ -6,6 +6,7 @@ import { loadResource } from '../data/client'
 import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
+import pages from '../../public/mock/pages.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
@@ -2220,6 +2221,21 @@ describe('Leagues', () => {
        along in the object the walk was already in. Nothing else under `seo` says
        the word, so reading all of it costs nothing. */
     expect(said(sr.seo).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
+
+    /* **And the written pages, which are the fifth home and the last one found.**
+       Član 57 said „Podela na kategorije zadaje se na nivou svake Lige" — the
+       overturned rule itself, in the prose a member accepts on joining, standing
+       while the field was gone from the model and the code. The owner had it
+       deleted (31.08.2026); this is what keeps it deleted.
+
+       Matched on the rule rather than on the verb, since the article said it
+       without ever saying „grupiše": what it claimed is that the split is settled
+       per league, and „na nivou svake Lige" is how a rule about a league is worded
+       on those pages. */
+    const written = Object.values(pages).flatMap((page) => page.sections.map((one) => one.body))
+
+    expect(written.filter((one) => /[Pp]odela na kategorije/.test(one))).toEqual([])
+    expect(written.filter((one) => /kategorij\w* .{0,20}nivou svake/i.test(one))).toEqual([])
   })
 })
 
