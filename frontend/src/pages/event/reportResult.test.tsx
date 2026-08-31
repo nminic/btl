@@ -916,6 +916,26 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     expect(stored[0]?.textContent).not.toContain(event.date)
   })
 
+  it('says the count is not final, where it says the count', async () => {
+    /* Both roads that announce a number say it, and only one of them was held: the
+       line was removed from this screen and the whole suite stayed green (review,
+       31.08.2026). Verification settles the kind and the time, so what is
+       announced here may be counted as something else (PDL, 30.08.2026, point 8). */
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+
+    renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+
+    await user.type(await screen.findByLabelText(/Sati/), '3')
+    await user.type(screen.getByLabelText(/Minuta/), '30')
+    await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(await screen.findByText(/BTL poena/)).toBeVisible()
+    expect(screen.getByText(/Račun nije konačan/)).toBeVisible()
+  })
+
   it('refuses a result run in no time at all', async () => {
     /* The third road a time reaches a submission by. The form away from the
        calendar and the panel in the verification queue both turned 0:0:0 away and

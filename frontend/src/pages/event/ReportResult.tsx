@@ -267,13 +267,17 @@ export function ReportResult() {
                    queue while the form away from the calendar and the panel in it
                    both turned it away.
                  *
-                   On a timed race there is nothing to refuse: the race hands its
-                   own limit over and locks the three boxes, so what is in them is
-                   the race's and not the member's. */
+                   **On a timed race there is nothing to ask, because there are no
+                   boxes.** This form drops the three of them for that kind
+                   (`reportForm.ts`), since the race answers for the time itself, so
+                   `fromBoxes` reads nothing at all and `noTime` is true of every
+                   such report. Without this half, no result from a timed race
+                   could be sent at all. The locking of filled boxes is the other
+                   form, the one away from the calendar (`racesToOffer.ts`); it is
+                   named here because an earlier note put it on this screen, where
+                   it does not happen. */
                 alsoRefuses={(values) =>
-                  raceKind(race.kind) === 'time' || !noTime(values)
-                    ? undefined
-                    : 'newResult.needsTime'
+                  kind === 'time' || !noTime(values) ? undefined : 'newResult.needsTime'
                 }
                 onSubmit={onSubmit}
               />

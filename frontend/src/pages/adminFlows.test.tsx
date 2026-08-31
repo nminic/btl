@@ -1385,10 +1385,10 @@ describe('the queue of results', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ispravi' }))
 
-    for (const [box, written] of [
-      ['Sati', '-5'],
-      ['Sati', 'Infinity'],
-      ['Minuta', '999'],
+    for (const [box, written, says] of [
+      ['Sati', '-5', /Najmanja dozvoljena vrednost/],
+      ['Sati', 'Infinity', /Unesi broj/],
+      ['Minuta', '999', /Najveća dozvoljena vrednost/],
       /* Not one and a half hours. The member's own form takes it, since the field
          carries no rule about whole numbers, and `forms/clock.ts` records that the
          boxes take a decimal as a fault of their own and older than any of this.
@@ -1404,7 +1404,7 @@ describe('the queue of results', () => {
 
       expect(session.amend, `${box} = ${written}`).not.toHaveBeenCalled()
       /* And it says why, rather than leaving a dead button. */
-      expect(screen.getByText(/u dozvoljenim granicama/)).toBeVisible()
+      expect(screen.getByText(says)).toBeVisible()
 
       await user.clear(control)
       await user.type(control, box === 'Sati' ? '0' : '45')
@@ -1426,7 +1426,11 @@ describe('the queue of results', () => {
        sentence for all: written as one it told a moderator who had left 0:0:0
        standing that the numbers must be within their bounds, and nought is within
        its bounds. */
-    expect(screen.getByText(/Naziv događaja i naziv trke/)).toBeVisible()
+    /* And in the words the member's own form uses, from the one place that holds
+       them: written here by hand, the sentence said „the names must be filled in"
+       over a name that was filled in and one character too long (review,
+       31.08.2026). */
+    expect(screen.getByText(/Ovo polje je obavezno/)).toBeVisible()
 
     await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
     for (const box of ['Sati', 'Minuta', 'Sekundi'] as const) {
@@ -1438,6 +1442,15 @@ describe('the queue of results', () => {
 
     expect(session.amend, 'nought hours, minutes and seconds').toHaveBeenCalledTimes(1)
     expect(screen.getByText(/ne mogu svi biti nula/)).toBeVisible()
+
+    /* A name that is filled in and too long says so, rather than saying it is
+       missing: that was a high finding of its own, and the difference is the whole
+       reason the sentence comes from the form's own rule. */
+    const tooLong = 'x'.repeat(130)
+
+    fireEvent.change(screen.getByLabelText(/^Naziv doga/), { target: { value: tooLong } })
+
+    expect(screen.getByText(/Najviše 120 znakova/)).toBeVisible()
   })
 
   it('never stands open beside the box that refuses one', async () => {

@@ -57,6 +57,15 @@ export function MyResults() {
                   {' · '}
                   {formatPoints(one.points, locale)} BTL points
                 </p>
+                {/* And on the one screen a member meets the number more than once,
+                    the same caveat the form gave them when they sent it: the count
+                    is settled at verification, and until then it is what their own
+                    entry worked out (PDL, 30.08.2026, point 8). Only while it
+                    waits: once it is decided, the number is the decided one and
+                    there is nothing left to warn about. */}
+                {one.status === 'pending' && (
+                  <p className="submissions__note">{t('newResult.pointsNotFinal')}</p>
+                )}
                 {one.note !== '' && <p className="submissions__note">{one.note}</p>}
 
                 {/* What a member may do with a result that is still theirs to
