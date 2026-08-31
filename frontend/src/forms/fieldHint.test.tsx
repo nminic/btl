@@ -3,13 +3,31 @@ import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { registracija, FORMS } from './definitions'
-import { bare, sources } from '../test/sources'
+import { bare, inside, sources, WHOLE_PORTAL } from '../test/sources'
 
 /** Every form the portal defines, as its own registry lists them. */
 const ALL_FORMS = Object.values(FORMS)
 import { FormRenderer } from './FormRenderer'
 import { must } from '../test/at'
 import { setupUser } from '../test/user'
+
+/** The seven rules the owner kept on the whole portal on 31.08.2026, written out
+ *  once and read by two cases: the one that counts what forms carry, and the one
+ *  that refuses to see any of them written into a screen by hand. Two lists would
+ *  drift, and the drift would show as a guard quietly holding six. */
+const KEPT = [
+  'newResult.linkHint',
+  'newResult.photoHint',
+  'newResult.raceKindHint',
+  'registration.bioHint',
+  'registration.fatherNameHint',
+  'registration.idNumberHint',
+  'registration.parentConsentHint',
+]
+
+/** A name as it stands inside a regular expression, where its dots are dots and
+ *  not "any character at all". */
+const asWritten = (name: string) => name.replaceAll('.', String.raw`\.`)
 
 /**
  * The rule a field carries, asked for rather than printed under it.
@@ -53,20 +71,58 @@ describe('the rules that were kept', () => {
       ),
     ]
 
-    expect([...new Set(carried)].sort()).toEqual([
-      'newResult.linkHint',
-      'newResult.photoHint',
-      'newResult.raceKindHint',
-      'registration.bioHint',
-      'registration.fatherNameHint',
-      'registration.idNumberHint',
-      'registration.parentConsentHint',
-    ])
+    expect([...new Set(carried)].sort()).toEqual(KEPT)
 
     /* Nine fields and seven rules, because two of them are asked for on two forms:
        the link and the picture stand on both roads a result is reported by, so one
        wording answers for both. */
     expect(carried).toHaveLength(9)
+  })
+
+  it('are never written into a screen by hand, whatever they are named', () => {
+    /* Which is the half the sweep above could not see, and the reason three rules
+       outlived the fifty four. It counts `hintKey`, and a rule written straight
+       into a screen carries no such thing: the box for a biography had one in a
+       `<p>` of its own, and the chooser for a picture took one as a prop, so both
+       stood on the portal while a test said seven and meant seven **of one kind**.
+       The owner had all three deleted on 31.08.2026, and this is what stops a
+       fourth being written the same way tomorrow.
+
+       **Two names are asked for, not one.** The first draft asked only for names
+       ending in `rule`, and a review answered it by hand-writing `registration.
+       bioHint` into a second screen: one of the seven, drawn beside a field no form
+       asks it for, and the sweep said nothing. The seven do not have to be guessed
+       at, they are listed ten lines above, so both are held: **the three that were
+       deleted must not come back under their old names, and the seven that stay
+       must reach a field only through the form that asks for it.**
+
+       **Only the opening of the call is read**, which is the shape `i18n/said.test.ts`
+       already uses and the shape the first draft got wrong: it asked for the closing
+       `')` too, so `t('bio.rule', { count: 360 })` was invisible and the whole rule
+       could come back with the suite green (measured in review, 31.08.2026). The
+       word boundary is there for the same reason from the other side, so that
+       `format('x.rule')` is not read as a call to `t`.
+
+       **What this does not catch**, said plainly rather than left to be found: a
+       rule invented under a wholly new name, `t('picture.explanation')` and the
+       like. Holding every paragraph on the portal would mean deciding which of them
+       counts as a rule beside a field, and that is a question about the word rather
+       than a defect in the code. Comments blanked, so a note naming a key is not
+       read as using one. */
+    const swept = sources()
+
+    /* The floor and the witness, because a sweep that finds nothing agrees with
+       everything: emptied, this passed while the rule stood on the screen. Held
+       the way `app/filterParams.test.ts` holds its own. */
+    expect(swept.length).toBeGreaterThan(WHOLE_PORTAL)
+    expect(swept.some(({ path }) => path.endsWith(inside('member', 'ProfileBio.tsx')))).toBe(true)
+
+    const banned = new RegExp(`\\bt\\(\\s*'([A-Za-z0-9_.]*[Rr]ule|${KEPT.map(asWritten).join('|')})'`, 'g')
+    const byHand = swept.flatMap(({ path, code }) =>
+      [...bare(code).matchAll(banned)].map((one) => `${path}: ${String(one[1])}`),
+    )
+
+    expect(byHand).toEqual([])
   })
 })
 

@@ -31,7 +31,6 @@ function Choosing({ asked = true }: { asked?: boolean }) {
       <CropChooser
         id="proba"
         label="Izaberi sliku"
-        rule="Slika lica."
         alt="Slika koju si izabrao"
         asked={asked}
         chosen={chosen}

@@ -118,21 +118,21 @@ export function ProfileBio({ me }: { me: Competitor }) {
               value={written}
               maxLength={limitOf(registracija, 'bio')}
               leftId="settings-bio-left"
-              /* The rule and the count, both read on the way into the box rather
-                 than found by hitting the end of it. `LongBox` draws the count
-                 `aria-hidden` and says so in its own comment: pointing at it is
-                 the caller's business, and the caller that forgets it leaves a
-                 member who cannot see the screen with a limit they meet only as
-                 a wall (WCAG 2.2 SC 3.3.2, and SC 1.3.1 for the rule that is on
-                 screen but tied to nothing). Written the same way as the comment
-                 box on an event, which is the other hand-made `LongBox` on the
-                 portal (pages/event/RateEvent.tsx). */
-              aria-describedby="settings-bio-rule settings-bio-left"
+              /* The count, read on the way into the box rather than found by
+                 hitting the end of it. `LongBox` draws it `aria-hidden` and says
+                 so in its own comment: pointing at it is the caller's business,
+                 and the caller that forgets it leaves a member who cannot see the
+                 screen with a limit they meet only as a wall (WCAG 2.2 SC 3.3.2).
+                 Written the same way as the comment box on an event, which is the
+                 other hand-made `LongBox` on the portal (pages/event/RateEvent.tsx).
+
+                 The rule that stood beside it went out on 31.08.2026 with the last
+                 three of its kind, and its id went out of this list with it: a
+                 description pointing at an element that is not there is read as
+                 nothing at all, silently, and no test that reads text can see it. */
+              aria-describedby="settings-bio-left"
               onChange={setWritten}
             />
-            <p className="member__note" id="settings-bio-rule">
-              {t('bio.rule')}
-            </p>
           </div>
 
           <p className="member__actions">

@@ -31,15 +31,19 @@ import './Crop.css'
  * The two positions are the same two numbers a crop is made of, so nothing is
  * converted between what a member drags and what a record keeps.
  */
-export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChange }: {
+export function CropChooser({ id, label, alt, asked = true, chosen, onChange }: {
   /** What the file field is called on this screen, so two of these can stand on
    *  one page without their labels pointing at each other. */
   id: string
-  /** The words asking for the picture, and the words explaining what sort of
-   *  picture, both from the screen rather than from here: a face and a team
-   *  logo are asked for differently. */
+  /** The words asking for the picture, from the screen rather than from here: a
+   *  face and a team logo are asked for differently.
+   *
+   *  There was a second string beside it saying what sort of picture, and both
+   *  callers gave it one of the last three rules on the portal. The owner had
+   *  them deleted on 31.08.2026, and with no caller left to give it a value the
+   *  prop went out rather than taking an empty string: an empty `<p>` is a gap
+   *  that shows and a stop that a reader passes with nothing in it. */
   label: string
-  rule: string
   alt: string
   /** False where the picture may be left out. A team may be proposed without a
    *  logo and a member's profile may not be changed without a photograph, and
@@ -124,10 +128,8 @@ export function CropChooser({ id, label, rule, alt, asked = true, chosen, onChan
             take(event.target.files?.[0], onChange)
           }}
         />
-        <p className="member__note">{rule}</p>
-
-        {/* And why a file was turned away, said where the rule about files is
-            said. `role="alert"` because it appears in answer to a press and
+        {/* Why a file was turned away, said under the field it was chosen in.
+            `role="alert"` because it appears in answer to a press and
             nothing else on the screen changes: without it a member reading by
             ear chooses a picture and hears nothing at all.
 
