@@ -2174,7 +2174,7 @@ describe('Leagues', () => {
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })
 
-  it('says nowhere, on any screen that shows a competition, that it settles its own categories', async () => {
+  it('says nowhere in its own voice that a competition settles its own categories', async () => {
     /* The line under each competition went in the first round of this change and
        the sentence introducing all of them did not: „Bodovanje je uvek isto, menja
        se samo koji događaji ulaze **i kako se poredak grupiše**", printed above the
@@ -2202,73 +2202,29 @@ describe('Leagues', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
     expect(screen.queryAllByText(/grupi[sš]/i)).toEqual([])
 
-    /* **And no screen that shows a competition says it settles its own categories,
-       whatever key the words came from and wherever on the screen they are.** The
-       snapshot below holds two of the dictionary's forty-eight branches; the rule was
-       put into `rankings.leagueGrouping` and drawn by one line in a component, past
-       both. Three drafts of this were then measured too narrow in turn: one read the
-       list of competitions while the rule was drawn on a competition's own page; the
-       next read a page before it had drawn anything; and the third read only the text,
-       so an `aria-label` and the title of the tab went past it, and only the public
-       routes, so the administration went past it too (all measured 31.08.2026).
+    /* **What the portal says about a competition is held; what somebody types into one
+       is not, and that is on purpose.**
 
-       So: every route that shows a competition, the administration among them; the
-       markup rather than the text, which is what carries an attribute; the title of the
-       tab beside it; and each page waited for by something only that page draws, since
-       a page read before it has drawn is a page read as empty.
+       Six drafts of a guard over the drawn page were each measured wrong, and the last
+       round measured why: the page shows the competition's own „Propozicije", which its
+       administrator writes in a free text box, and a guard reading the page reads that
+       too. It then has to be right about prose somebody else is still writing. It was
+       not: „na nivou svake **pojedinačne** Lige" went past it — one branch could not
+       match a Serbian word at all, since `\w` outside `/u` stops at „č" — and so did
+       „Kategorije zavise od toga u kojoj se ligi takmičite" and three more; while it
+       refused „Bodovi se sabiraju na nivou cele lige, bez obzira na kategoriju", which
+       says the opposite of the overturned rule, and „Kategorija takmičara u ligi je
+       M40-54", which is a competitor's own category and public by PDL P7.
 
-       The standing of a competition is read on `brdska-2019`, which is the one with
-       results in it: on a competition with none the table never reaches the page at
-       all, and waiting for the word „Rezultati" waits for a tab label the shell draws
-       either way (measured 31.08.2026). */
-    /* **Refused by what is being settled, not by the verb.** Two drafts tried it the
-       other way and were wrong in both directions at once: with „određuje" among the
-       verbs it refused „Poredak u ligi određuje se samo po polu", which is the decision
-       itself; without it, „Svaka Liga sama određuje svoje kategorije" walked past. And
-       naming verbs at all let „Kategorije se određuju posebno za svaku Ligu" and
-       „Kategorije nisu iste u svim ligama" through, while refusing „Svaka Liga sama bira
-       svoje događaje", which is true and which the dictionary already says (all measured
-       01.09.2026).
+       A rule about what a member may type is moderation, not a test, and it is written
+       down for the owner rather than invented here (`btl-produkt/PENDING.md`).
 
-       What is false is a category belonging to a competition rather than to the league:
-       a category **of** a league, **per** league, or differing **between** leagues. That
-       is what is asked, and it does not care which verb carries it. What it cannot do is
-       tell a sentence that says this in wholly other words; that is the same limit every
-       guard over prose has, and it is why the snapshot below stands beside it. */
-    const SETS_ITS_OWN =
-      /kategorij\w*[^.]{0,40}?\b(?:svak\w+|svim|pojedina\w*)\s+lig|kategorij\w*\s+(?:\S+\s+){0,3}?(?:svake?\s+)?lig|(?:svak\w*|pojedina\S*|po)\s+lig\w*\s+(?:\S+\s+){0,3}?kategorij|na nivou\s+\S*\s*lig|(?:svoju|sopstvenu)\s+podelu|lig\w*\s+(?:\S+\s+){0,2}?(?:svoje|svoju)\s+(?:takmi\S+\s+)?kategorij/i
-
-    for (const [route, drawnWhenReady, as] of [
-      ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
-      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'visitor'],
-      ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
-      ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
-    ] as const) {
-      cleanup()
-      renderAt(route, as)
-
-      /* Waited for by something only this page draws once its own record has arrived.
-         Two tab labels went in here first and neither waits for anything: „Rezultati"
-         and „Propozicije" are both written by the shell on the change of route, before
-         the record is there, so a page that drew nothing at all passed as if it had
-         (measured 31.08. and 01.09.2026). The name of the competition and a block
-         heading are drawn only from the record itself. */
-      await screen.findByText(new RegExp(drawnWhenReady))
-
-      /* The markup, not the text: an `aria-label` says as much to somebody reading by
-         ear as a paragraph does, and it never enters `textContent`. The title of the
-         tab is read beside it, since it comes from the same dictionary and is not in
-         the document body either. */
-      const drawn = `${document.body.innerHTML} ${document.title}`
-
-      expect(drawn, `${route} says a competition settles its own categories`).not.toMatch(
-        SETS_ITS_OWN,
-      )
-    }
-
-    cleanup()
-    renderAt('/sr/lige')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
+       What **is** held is everything the portal says in its own voice: the written pages
+       whole (`writtenVerification.test.ts`), every word the dictionary says about a
+       competition and every description it writes about itself (below), the words behind
+       the labels of the form a competition is entered on (`admin/entityForms.test.tsx`),
+       and the fields that form may ask for at all. Between them there is no key, no
+       branch and no component through which the portal can say it again. */
 
     const said = (branch: unknown): string[] => {
       if (typeof branch === 'string') {

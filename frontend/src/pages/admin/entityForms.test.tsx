@@ -581,12 +581,31 @@ describe('the words the seven forms need', () => {
        Lige" and the whole gate stayed green, because the screen guards read routes and
        this form is drawn on a press (review, 01.09.2026). The way in through `hintKey` is
        closed in `forms/fieldHint.test.tsx`; this is the same door with another handle. */
-    expect(LEAGUES.form.fields.map((one) => one.labelKey)).toEqual([
+    const labels = LEAGUES.form.fields.map((one) => one.labelKey)
+
+    expect(labels).toEqual([
       'admin.field.leagueName',
       'admin.address',
       'rankings.season',
       'leagues.rules',
       'leagues.prizes',
+    ])
+
+    /* **And the words behind those names**, which the names alone do not hold: the value
+       of `admin.field.leagueName` was made to read „Naziv lige. Podela na kategorije
+       zadaje se na nivou svake Lige." and the whole gate stayed green, because two of
+       these five live in branches no snapshot holds and the only case that reads this
+       one anchors on the start of the label (review, 01.09.2026).
+
+       Held here rather than by widening a snapshot over the whole dictionary: these five
+       are the words a competition is entered under, and they are the ones that can carry
+       a rule about a competition. */
+    expect(labels.map((key) => translate(sr, 'sr', must(key, 'a label'), {}))).toEqual([
+      'Naziv lige',
+      'Adresa',
+      'Sezona',
+      'Propozicije',
+      'Nagrade',
     ])
   })
 
