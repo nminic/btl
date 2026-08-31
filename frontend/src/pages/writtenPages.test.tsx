@@ -2489,12 +2489,26 @@ describe('what the written pages say the fee buys', () => {
        left as it was, and nothing here read it, because this guard knew one form.
        A member who did what Član 37 told them, and put the address into the
        comment, met „Ovo polje je obavezno." */
-    expect(article).toMatch(/Vi unosite vreme, link ka zvaničnim rezultatima/)
-    /* And it names what that form does **not** ask for, which the sentence before
-       this one got wrong on the first try: „sve ostalo unosite isto kao sa profila"
-       promised the name of the event and the date as well, and the form on the
-       event asks for neither. */
-    expect(article).toMatch(/naziv, datum, dužinu, uspon i spust portal uzima iz nje/)
+    expect(article).toMatch(/link ka zvaničnim rezultatima/)
+
+    /* **And it stopped naming the fields, on the owner's word of 31.08.2026.** It
+       named them twice and was wrong twice: first „sve ostalo unosite isto kao sa
+       profila", which promised the name of the event and the date that this form
+       never asks for; then „naziv, datum, dužinu, uspon i spust portal uzima iz
+       nje", which was true only of a race with a length. A timed race is not asked
+       for a time at all and **is** asked what it covered, and a free one is asked
+       everything (`pages/event/reportForm.ts`), so the list was backwards for two
+       of the three kinds a race can be.
+
+       Offered the choice between listing it per kind and saying it once for all
+       three, he chose the second: „Pišem kraće, bez nabrajanja po vrstama." So what
+       is held here is the shape of the rule rather than a list that goes stale each
+       time a kind is added — the race gives what the race fixes, and the member
+       fills in the rest. */
+    expect(article).toMatch(/portal preuzima sa nje ono što ta trka zadaje/)
+    expect(article, 'Član 37 no longer lists the fields by name').not.toMatch(
+      /naziv, datum, dužinu, uspon i spust/,
+    )
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,
     )

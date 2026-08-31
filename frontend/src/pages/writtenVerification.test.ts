@@ -1,4 +1,5 @@
 import pages from '../../public/mock/pages.json'
+import { must } from '../test/at'
 
 /* Where the written pages speak about a result that has not been approved yet,
  * and what they promise about it.
@@ -97,7 +98,7 @@ describe('what the written pages say about a result that is waiting', () => {
     }
   })
 
-  it('no longer promises on any written page how the tables look', () => {
+  it('no longer promises on any written page a mark in the tables for a waiting result', () => {
     /* The tail of Član 43 went out on the owner's instruction, 30.08.2026: „, pa
        u tabelama nema ni oznake „nepotvrđen"". It was a consequence rather than a
        rule, and a promise about how a screen looks, which ages faster than a rule
@@ -108,7 +109,13 @@ describe('what the written pages say about a result that is waiting', () => {
        Asked of every written page and not only of the two that carry this rule:
        the sentence was a promise about a table, and a table is drawn on more pages
        than these. Nothing else says the word today, so refusing it everywhere costs
-       nothing and catches it wherever it is put back. */
+       nothing and catches it wherever it is put back.
+
+       **The name of this case used to promise a class and hold a word.** „How the
+       tables look" would cover „u tabelama nema ni oznake za rezultat koji čeka
+       proveru", the same promise retold, which walks past a guard on one word
+       (review, 31.08.2026). Rather than chase every retelling, the name now says
+       what is held: the two words the sentence was struck for. */
     for (const { slug, heading, body } of BODIES) {
       expect(body, `${slug}: ${heading}`).not.toMatch(/[Nn]epotvrđen/)
     }
@@ -130,12 +137,21 @@ describe('what the written pages say about a result that is waiting', () => {
        and settled by the owner the same day: the text says what the portal does, and
        correcting an approved result is written down as work he may order.
 
-       So both halves are asked. „posle nje" refused as well as „pri verifikaciji"
-       required, because a rule that grows a second moment back is the same promise
-       returning, and it would return in exactly those words. */
+       So both halves are asked: „pri verifikaciji" required, and a second moment
+       refused. The refusal names the moment rather than the phrase it came in — the
+       first draft listed „posle nje" and one other wording, and „pri verifikaciji i
+       **posle verifikacije**" walked past both, one word away from the sentence the
+       owner had just removed (review, 31.08.2026). What is refused now is the word
+       „posle" anywhere in the same sentence, which is the only way this promise can
+       be made at all: it is a promise about a later moment. */
     for (const { slug, heading, body } of ABOUT_CORRECTING) {
       expect(body, `${slug}: ${heading}`).toMatch(/pri verifikaciji/)
-      expect(body, `${slug}: ${heading}`).not.toMatch(/posle nje|posle verifikacije sme/)
+
+      for (const sentence of body.split(/(?<=\.)\s+/)) {
+        if (/sme da ispravi/.test(sentence)) {
+          expect(sentence, `${slug}: ${heading}`).not.toMatch(/\bposle\b/)
+        }
+      }
     }
   })
 
@@ -151,7 +167,21 @@ describe('what the written pages say about a result that is waiting', () => {
        the **one warning given in advance**, in place of a note per correction. A
        warning that does not name what is corrected is not one. */
     for (const { slug, heading, body } of ABOUT_CORRECTING) {
-      expect(body, `${slug}: ${heading}`).toMatch(/naziv događaja, naziv trke, vrstu trke i vreme/)
+      const sentence = must(
+        body.split(/(?<=\.)\s+/).find((one) => /sme da ispravi/.test(one)),
+        `the sentence about correcting, in ${slug}`,
+      )
+
+      expect(sentence, `${slug}: ${heading}`).toMatch(/naziv događaja, naziv trke, vrstu trke i vreme/)
+
+      /* And nothing beyond them. Held as an absence because the fault this case
+         exists for is a list that is **too long**: written as a substring alone it
+         let „…i vreme, kao i dužinu, uspon, spust i link" through, which is the very
+         list that was removed, appended to the one that replaced it (review,
+         31.08.2026). The four the panel writes are the four that may be named. */
+      for (const field of ['dužinu', 'uspon', 'spust', 'link']) {
+        expect(sentence, `${slug}: ${field}`).not.toContain(field)
+      }
     }
   })
 
