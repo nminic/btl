@@ -113,21 +113,26 @@ describe('the name of a block of the standing', () => {
        kind can hold while that does, and the fixture no longer has to be clever — it
        only has to have rows that could be moved, which means a tie.
 
-       **A tie, and rows a rule would actually move.** An ordering that happens to
-       return the arrival order changes nothing and is nothing to catch, so the three
-       level rows are chosen with the youngest first: any threshold on age, on the
-       beginner flag, on races, on the season somebody joined or on the best score puts
-       somebody in front of somebody they arrived behind. The sum of the scores cannot
-       be such a rule at all, because the total **is** that sum here, as it is on the
+       **A tie, and rows a rule would actually move.** An ordering that returns the
+       arrival order changes nothing and is nothing to catch. A first draft had three
+       level rows with the youngest first, and a threshold at forty then split them
+       exactly where they already stood, so that rule passed (review, 31.08.2026). Five
+       level rows now, aged 42, 32, 57, 47 and 38 in the year they are read: **no cut
+       through that list, in either direction, leaves it as it arrived**, so a threshold
+       anywhere moves somebody, and so does the beginner flag, the number of races, the
+       season somebody joined and the best single score. The sum of the scores cannot be
+       such a rule at all, because the total **is** that sum here, as it is on the
        portal. */
     const rows = [
       { ...person('000007', 'M'), birthYear: 1985, firstSeason2027: false, scores: [50] },
       /* Three level with each other, so there is something a tie-break could move: with
          every total different there is no tie at all and a tie-break never fires, which
          was true of one earlier draft of this fixture. */
-      { ...person('000005', 'M'), birthYear: 1995, firstSeason: 2022, firstSeason2027: false, scores: [9, 8, 3] },
-      { ...person('000001', 'M'), birthYear: 1970, firstSeason: 2020, firstSeason2027: true, scores: [14, 6] },
-      { ...person('000003', 'M'), birthYear: 1985, firstSeason: 2021, firstSeason2027: false, scores: [7, 6, 5, 2] },
+      { ...person('000005', 'M'), birthYear: 1985, firstSeason: 2022, firstSeason2027: false, scores: [9, 8, 3] },
+      { ...person('000001', 'M'), birthYear: 1995, firstSeason: 2020, firstSeason2027: true, scores: [14, 6] },
+      { ...person('000003', 'M'), birthYear: 1970, firstSeason: 2021, firstSeason2027: false, scores: [7, 6, 5, 2] },
+      { ...person('000004', 'M'), birthYear: 1980, firstSeason: 2018, firstSeason2027: false, scores: [11, 6, 3] },
+      { ...person('000006', 'M'), birthYear: 1989, firstSeason: 2023, firstSeason2027: false, scores: [10, 5, 4, 1] },
       /* And a woman, so the blocks are two and the reading below has to cross one. */
       { ...person('000009', 'F'), birthYear: 1992, firstSeason2027: false, scores: [30] },
       { ...person('000002', 'F'), birthYear: 1988, firstSeason2027: false, scores: [12, 8] },
@@ -148,9 +153,17 @@ describe('the name of a block of the standing', () => {
     /* Every block reads the input forwards. A tie moved by age, by races, by the season
        somebody joined in, by the best score or by anything else makes one of these
        sequences go backwards. */
-    for (const group of groups) {
-      const seen = group.rows.map((row) => rows.indexOf(row))
+    const arrived = rows.map((row) => row.competitor.memberNumber)
 
+    for (const group of groups) {
+      /* Found by who the row is, not by which object it is: a `leagueGroups` that hands
+         back copies — which is what happens the moment somebody gives a block its own
+         numbering — made `indexOf` answer minus one for every row, and a list of minus
+         ones is sorted, so the check passed over a real reordering (review,
+         31.08.2026). */
+      const seen = group.rows.map((row) => arrived.indexOf(row.competitor.memberNumber))
+
+      expect(seen, group.code).not.toContain(-1)
       expect(seen, group.code).toEqual([...seen].sort((left, right) => left - right))
     }
 

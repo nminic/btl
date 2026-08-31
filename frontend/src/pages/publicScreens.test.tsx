@@ -2202,24 +2202,49 @@ describe('Leagues', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
     expect(screen.queryAllByText(/grupi[sš]/i)).toEqual([])
 
-    /* **And nothing on the drawn page says a competition settles its own categories,
-       whatever key it came from.** The snapshot below holds two of the dictionary's
-       forty-eight branches; the rule was put into `rankings.leagueGrouping` and drawn
-       here by one line in the component, and the stem „grupiš" did not appear in it
-       because the owner's own wording does not use that verb (review, 31.08.2026).
+    /* **And no screen that shows a competition says it settles its own categories,
+       whatever key the words came from.** The snapshot below holds two of the
+       dictionary's forty-eight branches; the rule was put into `rankings.leagueGrouping`
+       and drawn by one line in a component, past both — and past a first draft of this,
+       which read only the list of competitions while the rule was drawn on a
+       competition's own page (both measured in review, 31.08.2026).
 
-       What the member reads is finite, so it is read: a category and a league doing the
-       settling, in one sentence, on the page itself. That reaches any key, any branch
-       and any component. */
-    const onScreen = must(document.body.textContent, 'what the page draws')
+       So every route that shows one is read, and the page is read **whole** rather than
+       sentence by sentence: split across two sentences, „Svaka Liga sama zadaje svoju
+       podelu." and „Kategorije zato nisu iste u svim ligama.", neither half carries both
+       halves of the claim and a sentence-by-sentence reading let it through.
+
+       What is refused is a category and a league doing the settling. „određuje" is not
+       among the verbs, because „Poredak u ligi određuje se samo po polu" is the decision
+       itself and a guard that refuses it is a guard somebody switches off. */
     const SETS_ITS_OWN =
-      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|odre[dđ]uje|podešava|bira|propisuje|definiše)|(?:svoju|sopstvenu)\s+podelu/i
+      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|podešava|bira|propisuje|definiše)|(?:svoju|sopstvenu)\s+podelu/i
 
-    for (const sentence of onScreen.split(/(?<=\.)\s+/)) {
-      if (/kategorij/i.test(sentence)) {
-        expect(sentence, 'the page says a competition settles its own categories').not.toMatch(SETS_ITS_OWN)
-      }
+    for (const [route, drawnWhenReady] of [
+      ['/sr/lige', 'RunTrace liga 2027'],
+      ['/sr/liga/runtrace-2027', 'Propozicije'],
+      ['/sr/liga/runtrace-2027/rezultati', 'Rezultati'],
+    ]) {
+      cleanup()
+      renderAt(must(route, 'a route'))
+
+      /* Waited for, not read straight after rendering: a competition's own page loads
+         what it draws, so the body is still empty when `renderAt` returns and reading
+         it then is reading nothing. The first draft did that and the rule drawn on that
+         page passed (review, 31.08.2026). */
+      await screen.findByText(new RegExp(must(drawnWhenReady, 'what says it is ready')))
+
+      const drawn = must(document.body.textContent, `what ${String(route)} draws`)
+
+      expect(drawn, `${String(route)} draws something`).toMatch(/kategorij|Liga|liga/i)
+      expect(drawn, `${String(route)} says a competition settles its own categories`).not.toMatch(
+        SETS_ITS_OWN,
+      )
     }
+
+    cleanup()
+    renderAt('/sr/lige')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
 
     const said = (branch: unknown): string[] => {
       if (typeof branch === 'string') {

@@ -123,10 +123,11 @@ describe('the source of the portal', () => {
          the header is quietly wrong — and one in the only script the repo runs
          (measured in review, 31.08.2026).
 
-         Other guards do read files above `src` — several read `index.html`, one reads
-         the script beside it — but none of them is about this. The count is left out
-         on purpose: written as „three" it was wrong within a round, and a number in a
-         comment is a number nobody re-counts. */
+         Other guards do read files above `src` — `index.html` and the script beside it
+         both have readers — but none of them is about this. How many is left out on
+         purpose, and twice over: written as „three" it was wrong within a round, and
+         the sentence that removed it said „one" about the script and was wrong again. A
+         number in a comment is a number nobody re-counts. */
       ...everyRootFile(here),
     ]
 
