@@ -26,12 +26,14 @@ import pages from '../../public/mock/pages.json'
  * where there are two. Both are found by the part that does not change with the
  * voice.
  *
- * **The wording is asked only of the rulebook**, which is the page whose words
- * the owner settled on 30.08.2026. The terms are the second home of both rules
- * and still carry the older sentences; they are recorded in `PENDING.md` as a
- * question rather than corrected here, because their published text is derived
- * from a draft the owner closed on 21.08.2026 and correcting one without the
- * other puts the old sentence back at the next publication.
+ * **The wording is asked of both pages, and that took until 31.08.2026.** It was
+ * asked only of the rulebook while the terms still carried the older sentences:
+ * they were written down as a question rather than corrected, because the
+ * published text is derived from a draft the owner closed on 21.08.2026, and
+ * correcting one home without the other puts the old sentence back at the next
+ * publication. He read the four sentences and gave the instruction, so both homes
+ * were corrected in one go and both are now asked the same questions. Asking only
+ * one of them again would leave exactly the hole this file exists to close.
  */
 
 const BODIES = Object.entries(pages).flatMap(([slug, page]) =>
@@ -51,9 +53,6 @@ const ABOUT_CORRECTING = BODIES.filter(({ body }) => /sme da ispravi/i.test(body
 /** Which pages a list of passages falls in, each named once. */
 const pagesOf = (found: typeof BODIES) => [...new Set(found.map((one) => one.slug))].sort()
 
-/** The passages of one page, since the wording below is asked only of the page
- *  whose wording the owner has settled. */
-const inRulebook = (found: typeof BODIES) => found.filter((one) => one.slug === 'pravilnik')
 
 describe('what the written pages say about a result that is waiting', () => {
   it('is written in exactly the two pages that carry these rules', () => {
@@ -73,7 +72,7 @@ describe('what the written pages say about a result that is waiting', () => {
     expect(pagesOf(ABOUT_CORRECTING)).toEqual(['pravilnik', 'uslovi-koriscenja'])
   })
 
-  it('says in the rulebook that it is not shown publicly', () => {
+  it('says in both of them that it is not shown publicly', () => {
     /* „Neverifikovan rezultat se nigde ne prikazuje" was not true and stood there
        until 30.08.2026: a member sees their own waiting result in „Moji
        rezultati", marked „Čeka proveru", and that screen is where they delete it
@@ -92,40 +91,63 @@ describe('what the written pages say about a result that is waiting', () => {
        title said „only" for one round and this is the correction. Holding „and
        nothing else" over prose means listing what may be said, which is a rule
        nobody could keep. */
-    for (const { heading, body } of inRulebook(ABOUT_WAITING)) {
-      expect(body, heading).toMatch(/nigde javno|javno nigde/)
+    for (const { slug, heading, body } of ABOUT_WAITING) {
+      expect(body, `${slug}: ${heading}`).toMatch(/nigde javno|javno nigde/)
     }
   })
 
-  it('no longer promises in the rulebook how the tables look', () => {
+  it('no longer promises in either of them how the tables look', () => {
     /* The tail of Član 43 went out on the owner's instruction, 30.08.2026: „, pa
        u tabelama nema ni oznake „nepotvrđen"". It was a consequence rather than a
        rule, and a promise about how a screen looks, which ages faster than a rule
        does. Held as a sentence that must not come back, the way the five struck
        on 21.08.2026 are held (`writtenPages.test.tsx`), because a deletion with
        nothing holding it is a deletion somebody restores while tidying. */
-    for (const { heading, body } of BODIES.filter((one) => one.slug === 'pravilnik')) {
-      expect(body, heading).not.toMatch(/[Nn]epotvrđen/)
+    for (const { slug, heading, body } of BODIES) {
+      expect(body, `${slug}: ${heading}`).not.toMatch(/[Nn]epotvrđen/)
     }
   })
 
-  it('says in the rulebook that a result may be corrected while it is being verified', () => {
+  it('says in both of them that a result may be corrected while it is being verified', () => {
     /* The article spoke of „verifikovanog rezultata", a result already verified,
        while the correction the owner described happens **at** verification, on
        one that is not verified yet (owner, 30.08.2026: „ja ću lako promeniti
        njegovo vreme sa recimo 23:23:15 na 24:00:00"). A rule that covers only the
        later moment does not cover the ordinary one. */
-    for (const { heading, body } of inRulebook(ABOUT_CORRECTING)) {
-      expect(body, heading).toMatch(/pri verifikaciji (i|kao i) posle nje/)
+    for (const { slug, heading, body } of ABOUT_CORRECTING) {
+      expect(body, `${slug}: ${heading}`).toMatch(/pri verifikaciji (i|kao i) posle nje/)
     }
   })
 
-  it('tells the competitor, in the rulebook, what to do when they think a correction is wrong', () => {
+  it('promises in neither of them a notice carrying the old value, or a name beside a result', () => {
+    /* Two promises the terms carried alone, deleted on the owner's instruction of
+       31.08.2026 after he read the passage („Obriši rečenice iz nalaza 3 i 4 kako
+       si predložio").
+
+       Neither was true. „O svakoj izmeni vašeg rezultata dobijate obaveštenje i ono
+       sadrži staru vrednost" is the opposite of the decision of 30.08.2026, which
+       settled on one warning given in advance instead of a note per submission; and
+       „Uz svaki rezultat stoji datum poslednje izmene i ime administratora" is what
+       Član 44 lost on 22.08.2026, leaving the terms the only document promising it
+       and the portal showing neither.
+
+       Held as sentences that must not come back, the same way the tail of Član 43
+       is held below: a deletion with nothing holding it is a deletion somebody
+       restores while tidying. Asked of every written page rather than of the one
+       that carried them, because a promise moved to a neighbouring page is a
+       promise still made. */
+    for (const { slug, heading, body } of BODIES) {
+      expect(body, `${slug}: ${heading}`).not.toMatch(/staru vrednost|stara vrednost/)
+      expect(body, `${slug}: ${heading}`).not.toMatch(/datum poslednje izmene/)
+    }
+  })
+
+  it('tells the competitor, in both of them, what to do when they think a correction is wrong', () => {
     /* The other half of the owner's own wording, and the half a rule about the
        administration's rights does not carry by itself: „ukoliko takmičar
        proceni da se radi o grešci da može da kontaktira". */
-    for (const { heading, body } of inRulebook(ABOUT_CORRECTING)) {
-      expect(body, heading).toMatch(/obraća se ligi/)
+    for (const { slug, heading, body } of ABOUT_CORRECTING) {
+      expect(body, `${slug}: ${heading}`).toMatch(/obraća se ligi/)
     }
   })
 })
