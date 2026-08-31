@@ -77,12 +77,19 @@ describe('the words a member wrote about themselves, changed later', () => {
        an event does it (pages/event/RateEvent.tsx); this panel did not.
      *
        The rule beside the box said the number in words and it went out on
-       31.08.2026 with the last three of its kind, so what carries the limit now is
-       the count alone: „Još 360 znakova" before a key is pressed. That is still the
-       number said on the way in rather than met as a wall (WCAG 2.2 SC 3.3.2), and
-       it is the whole of what the description may say — a second id in this list
-       would point at an element that no longer exists, which is read as nothing at
-       all and which no assertion about text can see. */
+       31.08.2026 with the last three of its kind, so what carries it now is the
+       count alone. **And the count says what is left, not what the whole is**,
+       which is the same thing only for an empty box: somebody with a biography
+       already written hears „Još 123 znaka" and hears 360 nowhere on this screen.
+       That is still an instruction on the way in rather than a wall met in silence
+       (WCAG 2.2 SC 3.3.2, and the wall itself is named by `registration.bioFull`),
+       but it is less than the rule said, so it is measured both ways rather than
+       described from the empty one. A first draft of this comment claimed the
+       number was still said, and only the empty box was drawn (review, 31.08.2026).
+
+       One id, and it is the whole of what the description may say: a second one
+       here would point at an element that no longer exists, which is read as
+       nothing at all and which no assertion about text can see. */
     renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
     const field = await box()
@@ -95,6 +102,20 @@ describe('the words a member wrote about themselves, changed later', () => {
     for (const id of must(field.getAttribute('aria-describedby'), 'what describes the box').split(' ')) {
       expect(document.getElementById(id), id).not.toBeNull()
     }
+  })
+
+  it('says what is left of the limit to somebody who has already written', async () => {
+    /* The other half of the sentence above, and the half that changed: what this
+       member used to hear was the rule, which carried 360 whatever they had
+       written. Now the description carries the remainder and nothing else, and
+       that is what this freezes so the difference is a decision rather than a
+       thing nobody wrote down. */
+    renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+
+    const field = await box()
+
+    expect(field).toHaveAccessibleDescription(/Još \d+ znak/)
+    expect(field).not.toHaveAccessibleDescription(/360/)
   })
 
   it('asks somebody with nothing on their profile to write rather than to change', async () => {
