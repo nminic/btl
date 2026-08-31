@@ -72,13 +72,13 @@ export function ReviewQueue() {
    * the terms of use have promised the answer to it since before the portal could
    * give it — „administrator će uz vaš rezultat napraviti i događaj i trku".
    *
-   * **`amend` goes before `decide`, and that pair is not a matter of taste** — the
-   * two `create` calls beside it are, since the store is indifferent to which of
-   * two different records is written first. `amend` refuses a submission that is
-   * no longer waiting, which is right and was decided for its own reasons; so
-   * `decide` moved ahead of it loses the
-   * race silently, leaving exactly what this part exists to prevent: an event and a
-   * race in the calendar, a result approved, and nothing joining them. Measured in
+   * **All four are written in the order they have to be, and none of it is taste.**
+   * The event goes before the race that names it, held by „an event first" in
+   * `adminFlows.test.tsx`. And `amend` goes before `decide` because `amend` refuses
+   * a submission that is no longer waiting, which is right and was decided for its
+   * own reasons; so `decide` moved ahead of it loses the race silently, leaving
+   * exactly what this part exists to prevent: an event and a race in the calendar,
+   * a result approved, and nothing joining them. Measured in
    * review, 31.08.2026, with the whole suite green, which is why it is now measured
    * against the store itself rather than against a double that records calls.
    *
@@ -172,10 +172,13 @@ export function ReviewQueue() {
             then said „Rešeno je 0 stavki" (measured in review, 31.08.2026). What
             it sweeps is what says whether it is there at all.
 
-            The predicate is written by hand here and again where the sweep filters,
-            and its mirror twice more below. Both directions are measured, so the
-            four cannot drift apart in silence; one home for it would be better, and
-            is not worth a helper read four times in one file. */}
+            The predicate and its mirror are written by hand **six** times in this
+            file, and the count said four for one round while one of the six had no
+            case at all in either direction: the gate under the sweep, whose mirror
+            turned round put „Ostalo je 0 prijava" back on the screen. All six are
+            measured now. One home for it would be better and is not worth a helper
+            read six times in one file, so what holds them together is that each one
+            falls on its own. */}
         {waiting.some((one) => one.raceId !== undefined) && (
           <button
             type="button"

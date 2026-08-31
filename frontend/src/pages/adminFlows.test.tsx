@@ -1580,11 +1580,33 @@ describe('the queue of results', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     try {
-      const { user } = openWith(['pending', 'pending', 'pending', 'pending'], {}, [1, 2])
+      /* Five, of which the sweep settles three and leaves two: the same number on
+         both sides could not tell which of the two the line is counting, and the
+         gate below reads the other one. */
+      const { user } = openWith(['pending', 'pending', 'pending', 'pending', 'pending'], {}, [1, 2])
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
       expect(screen.getByText(/^Ostale su 2 prijave sa trka/)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('says nothing about what is left when the sweep left nothing', async () => {
+    /* The gate on that line, which had no case in either direction: its mirror
+       turned round it read „Ostalo je 0 prijava sa trka kojih nema u kalendaru"
+       under a sweep that emptied the queue (measured in review, 31.08.2026), which
+       is the very „0" the line above exists to keep off the screen. The predicate
+       is written by hand six times in that file and this is the sixth. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.queryByText(/^Ostal/)).toBeNull()
     } finally {
       confirm.mockRestore()
     }

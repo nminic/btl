@@ -103,7 +103,9 @@ describe('a result approved for a race the calendar does not hold', () => {
     )
 
     /* The race is under **that** event, which is the half the name of this case
-       claims and the store is the only thing that can say. Its own id is not
+       claims and nothing here measured for one round. The double in
+       `adminFlows.test.tsx` says it too, and falls on the same mutation; what this
+       adds is that the store agrees, not that it is the only witness. Its own id is not
        asked for: what an event answers on is worked out from its name and its date
        when the record is read (`entityForms.ts`), so freezing it here would be a
        second home for that arithmetic. */
