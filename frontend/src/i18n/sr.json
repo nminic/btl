@@ -474,7 +474,8 @@
       "one": "{count} takmičarka",
       "few": "{count} takmičarke",
       "other": "{count} takmičarki"
-    }
+    },
+    "leagueGrouping": "Podela na kategorije zadaje se na nivou svake Lige."
   },
   "topBoards": {
     "title": "Top liste",

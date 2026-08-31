@@ -117,10 +117,11 @@ describe('the name of a block of the standing', () => {
        arrival order changes nothing and is nothing to catch. A first draft had three
        level rows with the youngest first, and a threshold at forty then split them
        exactly where they already stood, so that rule passed (review, 31.08.2026). Five
-       level rows now, aged 42, 32, 57, 47 and 38 in the year they are read: **no cut
-       through that list, in either direction, leaves it as it arrived**, so a threshold
-       anywhere moves somebody, and so does the beginner flag, the number of races, the
-       season somebody joined and the best single score. The sum of the scores cannot be
+       level rows now, born in 1985, 1995, 1970, 1980 and 1989, which is an order no cut
+       by year of birth reproduces: **no threshold on age, in either direction, leaves
+       the list as it arrived**, and neither does the beginner flag, the number of races,
+       the season somebody joined or the best single score. Years rather than ages,
+       because an age is a year minus a season and no season is fixed here. The sum of the scores cannot be
        such a rule at all, because the total **is** that sum here, as it is on the
        portal. */
     const rows = [
@@ -170,5 +171,20 @@ describe('the name of a block of the standing', () => {
     /* And the blocks between them hold everybody, so „keeps the order" is not kept by
        dropping somebody. */
     expect(groups.flatMap((group) => group.rows).length).toBe(rows.length)
+
+    /* **And each block holds exactly the people of one gender.** Order inside a block
+       is only half the question: a rule that sends somebody to the **other** block moves
+       nobody within either one, so all three assertions above passed while a man stood
+       among the women — measured with beginners grouped with the women (review,
+       31.08.2026). What a block is called and who is in it are one fact, and they are
+       asked together. */
+    for (const group of groups) {
+      const mark = group.code === 'PRVI' ? 'M' : 'F'
+
+      expect(
+        group.rows.map((row) => row.competitor.gender),
+        `everybody in ${group.code} is ${mark}`,
+      ).toEqual(group.rows.map(() => mark))
+    }
   })
 })

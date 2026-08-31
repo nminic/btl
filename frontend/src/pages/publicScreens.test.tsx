@@ -2203,41 +2203,48 @@ describe('Leagues', () => {
     expect(screen.queryAllByText(/grupi[sš]/i)).toEqual([])
 
     /* **And no screen that shows a competition says it settles its own categories,
-       whatever key the words came from.** The snapshot below holds two of the
-       dictionary's forty-eight branches; the rule was put into `rankings.leagueGrouping`
-       and drawn by one line in a component, past both — and past a first draft of this,
-       which read only the list of competitions while the rule was drawn on a
-       competition's own page (both measured in review, 31.08.2026).
+       whatever key the words came from and wherever on the screen they are.** The
+       snapshot below holds two of the dictionary's forty-eight branches; the rule was
+       put into `rankings.leagueGrouping` and drawn by one line in a component, past
+       both. Three drafts of this were then measured too narrow in turn: one read the
+       list of competitions while the rule was drawn on a competition's own page; the
+       next read a page before it had drawn anything; and the third read only the text,
+       so an `aria-label` and the title of the tab went past it, and only the public
+       routes, so the administration went past it too (all measured 31.08.2026).
 
-       So every route that shows one is read, and the page is read **whole** rather than
-       sentence by sentence: split across two sentences, „Svaka Liga sama zadaje svoju
-       podelu." and „Kategorije zato nisu iste u svim ligama.", neither half carries both
-       halves of the claim and a sentence-by-sentence reading let it through.
+       So: every route that shows a competition, the administration among them; the
+       markup rather than the text, which is what carries an attribute; the title of the
+       tab beside it; and each page waited for by something only that page draws, since
+       a page read before it has drawn is a page read as empty.
 
-       What is refused is a category and a league doing the settling. „određuje" is not
-       among the verbs, because „Poredak u ligi određuje se samo po polu" is the decision
-       itself and a guard that refuses it is a guard somebody switches off. */
+       The standing of a competition is read on `brdska-2019`, which is the one with
+       results in it: on a competition with none the table never reaches the page at
+       all, and waiting for the word „Rezultati" waits for a tab label the shell draws
+       either way (measured 31.08.2026). */
     const SETS_ITS_OWN =
-      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|podešava|bira|propisuje|definiše)|(?:svoju|sopstvenu)\s+podelu/i
+      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|podešava|bira|propisuje|definiše)|lig\w*\s+sama\s+odre[dđ]uje|odre[dđ]uje\s+(?:svoju|svoje|sopstven)|(?:svoju|sopstvenu)\s+podelu/i
 
-    for (const [route, drawnWhenReady] of [
-      ['/sr/lige', 'RunTrace liga 2027'],
-      ['/sr/liga/runtrace-2027', 'Propozicije'],
-      ['/sr/liga/runtrace-2027/rezultati', 'Rezultati'],
-    ]) {
+    for (const [route, drawnWhenReady, as] of [
+      ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
+      ['/sr/liga/brdska-2019', 'Propozicije', 'visitor'],
+      ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
+      ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
+    ] as const) {
       cleanup()
-      renderAt(must(route, 'a route'))
+      renderAt(route, as)
 
-      /* Waited for, not read straight after rendering: a competition's own page loads
-         what it draws, so the body is still empty when `renderAt` returns and reading
-         it then is reading nothing. The first draft did that and the rule drawn on that
-         page passed (review, 31.08.2026). */
-      await screen.findByText(new RegExp(must(drawnWhenReady, 'what says it is ready')))
+      /* Waited for by something only this page draws. „Rezultati" is a tab label the
+         shell writes whether the standing has loaded or not, so a block heading is
+         waited for instead. */
+      await screen.findByText(new RegExp(drawnWhenReady))
 
-      const drawn = must(document.body.textContent, `what ${String(route)} draws`)
+      /* The markup, not the text: an `aria-label` says as much to somebody reading by
+         ear as a paragraph does, and it never enters `textContent`. The title of the
+         tab is read beside it, since it comes from the same dictionary and is not in
+         the document body either. */
+      const drawn = `${document.body.innerHTML} ${document.title}`
 
-      expect(drawn, `${String(route)} draws something`).toMatch(/kategorij|Liga|liga/i)
-      expect(drawn, `${String(route)} says a competition settles its own categories`).not.toMatch(
+      expect(drawn, `${route} says a competition settles its own categories`).not.toMatch(
         SETS_ITS_OWN,
       )
     }
