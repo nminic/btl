@@ -239,6 +239,23 @@
 
    Wrapping, because three buttons do not fit beside a name on a telephone. Each
    label keeps to one line; the row of them breaks instead. */
+/* That the calendar does not hold this race, in the corner of the row it is about
+   (owner, 31.08.2026: „posebna naznaka NOVO negde u ćošku").
+ *
+   Its own line above the name rather than beside it. Written as a plain span it
+   ran into the name and the cell read „NOVOProbna trka", which is neither a mark
+   nor a corner; a mark that is not told where to stand is a mark somebody has to
+   read twice. The colour is the one the portal already uses for a thing that needs
+   attention, and it is never the only carrier: the word itself says what it is
+   (ADL A7). */
+.review__new {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--danger);
+}
+
 .review__decide {
   display: flex;
   flex-wrap: wrap;

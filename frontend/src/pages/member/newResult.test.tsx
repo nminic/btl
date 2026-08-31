@@ -127,6 +127,46 @@ describe('a race chosen from the list', () => {
     expect(said).not.toMatch(/\| undefined$/)
     expect(said.split('|')[1]?.trim().length ?? 0).toBeGreaterThan(0)
   }, SLOW)
+
+  it('is gone the moment the name is typed over, and the submission carries none', async () => {
+    /* The link breaks when the name is edited (owner, 23.08.2026), and the race
+       goes with the measures. What the submission must then carry is **nothing** and
+       not an empty one: the queue asks whether the race is absent, so a submission
+       holding „" is not marked „NOVO", the sweep takes it, and no event and no race
+       are ever made for the very member the promise was written for (measured in
+       review, 31.08.2026). */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY, <Sent />)
+
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+
+    const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
+
+    await user.click(must(offered[0], 'the first race offered'))
+    await user.type(screen.getByLabelText(/^Naziv trke/), ' po svome')
+
+    /* The measures were emptied with it, which is the rule this follows. A number
+       box that has been cleared reads as nothing at all rather than as an empty
+       string, which is what jsdom answers for a numeric input with no value. */
+    expect(inputElement(screen.getByLabelText(/^Dužina/)).value).toBe('')
+
+    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/^Dužina/), '21.1')
+    await user.type(screen.getByLabelText(/Uspon/), '0')
+    await user.type(screen.getByLabelText(/Spust/), '0')
+    await user.type(screen.getByLabelText('Sati'), '1')
+    await user.type(screen.getByLabelText('Minuta'), '52')
+    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    const sent = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(must(sent[0], 'what was sent').textContent).toMatch(/\| undefined$/)
+  }, SLOW)
 })
 
 describe('the kind of race the member says it was', () => {

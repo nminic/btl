@@ -22,6 +22,7 @@ function Sent() {
               are written for the parts that come after this one, and a value
               nobody reads is a value nobody can see go wrong. */}
           <span data-testid={`said-${one.id}`}>{`${one.raceKind} / ${one.city} / ${one.country}`}</span>
+          <span>{` | ${String(one.raceId)}`}</span>
         </li>
       ))}
     </ul>
@@ -967,6 +968,29 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     expect(
       within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem'),
     ).toHaveLength(1)
+  })
+
+  it('says which race in the calendar it was run in', async () => {
+    /* The one thing that tells verification there is nothing to make. Without it
+       every result reported from a row of the calendar arrives marked „NOVO", the
+       sweep steps over it, and approving one makes a second event and a second race
+       for a race the calendar already holds (measured in review, 31.08.2026: the
+       line removed, the whole suite green). */
+    const { race, event } = await secondMorning()
+    const user = setupUser()
+
+    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+
+    await screen.findByText(/Prijavljuješ rezultat/)
+    await user.type(await screen.findByLabelText(/Sati/), '3')
+    await user.type(screen.getByLabelText(/Minuta/), '30')
+    await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    const stored = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(must(stored[0], 'the submission').textContent).toContain(race.id)
   })
 
   it('says which kind of race it was and where, read off the race and its event', async () => {

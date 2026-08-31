@@ -1,7 +1,6 @@
 import type { Submission } from '../../session/context'
 import { categoryOf } from '../../data/raceCategory'
 import { raceKind } from '../../data/raceKind'
-import { eventSlug } from './entityForms'
 
 /**
  * The event and the race a submission asks verification to make, when the member
@@ -44,12 +43,11 @@ export function eventFrom(one: Submission): Record<string, string> & { date: str
   }
 }
 
-/** The address that event answers on, made the way every other event's is
- *  (`entityForms.addressOfEvent`). */
-export function addressFrom(one: Submission): string {
-  return eventSlug(one.eventName ?? one.raceName, one.date)
-}
-
+/* The address an event answers on was built here for one round and never reached
+   anything: `idFor` reads the values it is handed only where an entity names
+   itself, and an event does not; what an event answers on is worked out from its
+   name and its date when the record is read (`entityForms.ts`, `EVENTS.derived`).
+   Removed rather than left with a comment claiming a role it never had. */
 /** The race itself, under the event above. */
 export function raceFrom(one: Submission, eventId: string): Record<string, string> {
   return {

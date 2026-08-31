@@ -34,6 +34,18 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
  * wording gone. It is read by the event that part D makes out of it.
  */
 export type Amendment = {
+  /**
+   * The race this submission belongs to, written when verification makes one for
+   * it.
+   *
+   * Not the administration correcting the member, which is what the other three
+   * are: this is the portal finishing a sentence the member could not. A member
+   * who typed a name the calendar does not hold sends no race, verification makes
+   * one, and without this the result stays pointing at nothing while the race it
+   * asked for stands empty (PDL, 30.08.2026, point 6: „Rezultat prvog člana se
+   * veže za trku koja je tim upisom nastala").
+   */
+  raceId?: string
   eventName?: string
   raceName?: string
   raceKind?: string
