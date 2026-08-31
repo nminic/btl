@@ -2171,6 +2171,43 @@ describe('Leagues', () => {
     // The league the portal exists for is implied, not listed.
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })
+
+  it('does not tell the reader, in the words above the list, that grouping is a thing that varies', async () => {
+    /* The line under each competition went in the first round of this change and
+       the sentence introducing all of them did not: „Bodovanje je uvek isto, menja
+       se samo koji događaji ulaze **i kako se poredak grupiše**", printed above the
+       list and, in its own wording, into the description a search engine shows.
+       Found in review on 31.08.2026, and worse than the comments found beside it,
+       because a member reads this one.
+
+       Asked of what the screen really draws, since the claim can be worded any
+       number of ways and the stem is what survives every wording: „grupis" is shared
+       by „grupiše" and „grupišu" and carried by no other word on this screen.
+
+       **And of the dictionary too, which the screen cannot answer for.** The second
+       home said the same thing in its own words and went into the description a
+       search engine shows rather than into the page, so a screen test looked
+       straight past it: reworded there, the whole suite stayed green (measured
+       31.08.2026). Both subtrees are read, so a third place to say it is caught
+       before it is drawn anywhere. */
+    renderAt('/sr/lige')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
+    expect(screen.queryAllByText(/grupi[sš]/i)).toEqual([])
+
+    const said = (branch: unknown): string[] => {
+      if (typeof branch === 'string') {
+        return [branch]
+      }
+
+      /* One of these carries the three forms of a plural rather than a sentence,
+         so the walk goes down rather than stopping at the first object. */
+      return branch !== null && typeof branch === 'object' ? Object.values(branch).flatMap(said) : []
+    }
+
+    expect(said(sr.leagues).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
+    expect(said(sr.seo.leagues).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
+  })
 })
 
 describe('a member whose fee has run out, in the tables', () => {

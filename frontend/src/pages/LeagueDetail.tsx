@@ -13,8 +13,8 @@ import { useI18n } from '../i18n/useI18n'
 import { LeagueResults } from './league/LeagueResults'
 import './Profile.css'
 
-/* A league is a subset of events and a way of grouping the field, never a
- * different scoring formula. Its own page is therefore mostly the list of
+/* A league is a subset of events, never a different scoring formula and, since
+ * 31.08.2026, never its own way of grouping the field either. Its own page is therefore mostly the list of
  * events that count towards it, plus the rules and prizes that are written for
  * it. Both of those hide themselves while nobody has written them. */
 function EditableText({

@@ -35,7 +35,7 @@
     },
     "leagues": {
       "title": "BTL lige",
-      "description": "Lige koje teku uporedo sa glavnom: koji događaji ulaze u njih i kako se grupišu takmičari."
+      "description": "Lige koje teku uporedo sa glavnom, i koji događaji ulaze u njih."
     },
     "calendar": {
       "title": "BTL kalendar",
@@ -781,7 +781,7 @@
     "prizes": "Nagrade",
     "countingEvents": "Događaji koji ulaze u ligu",
     "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
-    "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze i kako se poredak grupiše.",
+    "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze.",
     "none": "Trenutno nema nijednog dodatnog takmičenja.",
     "parts": {
       "label": "Delovi takmičenja",

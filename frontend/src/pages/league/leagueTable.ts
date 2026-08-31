@@ -168,7 +168,7 @@ export type LeagueGroup = {
 }
 
 /**
- * The rows of a competition, split the way that competition ranks.
+ * The rows of a competition, split by gender.
  *
  * By gender, in every competition there is. Owner, 31.08.2026: „Lige treba da
  * imaju poredak samo po polu. Ne želim dodatna pravila." Said as a rule about
@@ -195,8 +195,8 @@ export type LeagueGroup = {
  * themselves go in the order the codes sort in.
  *
  * A block nobody is in never arises, because the map is built out of the rows
- * themselves rather than out of the list of categories a league could have: a
- * competition of five people has as many blocks as those five fall into. What
+ * themselves rather than out of the two marks a gender can be: a competition of
+ * five men has one block and not two. What
  * still has to be dropped is a block with nobody on the **page** being drawn,
  * and that belongs to the screen, which is where the paging is.
  */

@@ -259,12 +259,24 @@ describe('the way a competition splits its ranking', () => {
        measured two ways — `genderMark` made to answer „MUSKI" left this green,
        and so did the mark written out as a ternary in `leagueGroups`).
 
-       The other half is that nothing here reads a category any more. Comments
-       blanked, so a note naming either function is not read as calling one. */
+       Matched without the name of the loop variable, which is not part of the
+       claim: written with `row` in it, renaming the loop to the `one` this file uses
+       everywhere else broke the guard while the behaviour was identical (review,
+       31.08.2026).
+
+       The other half is that nothing here works a category out any more, and it is
+       asked of the **family** rather than of one name: forbidding `categoryOfMember`
+       alone let the same reading back in through `categoryCodeFor`, measured with the
+       whole gate green (review, 31.08.2026). Four names carry it — `categoryOfMember`,
+       `categoryCodeFor`, `categoriesOf` and `ageBandFor` — so what is refused is any
+       call whose name begins that way. A **call**, not the word: this file imports
+       `genderMark` from `data/categories`, and banning the word would ban the import
+       that makes the first half true. Comments blanked, so a note naming any of them
+       is not read as calling one. */
     const code = bare(readFileSync(join(process.cwd(), 'src/pages/league/leagueTable.ts'), 'utf-8'))
 
-    expect(code).toContain('genderMark(row.competitor.gender)')
-    expect(code).not.toContain('categoryOfMember')
+    expect(code).toMatch(/genderMark\(\w+\.competitor\.gender\)/)
+    expect(code).not.toMatch(/(?:categor|ageBand)\w*\s*\(/i)
   })
 
   it('draws no block for a gender nobody in the competition is', () => {
