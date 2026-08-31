@@ -28,10 +28,13 @@ import { inside, sources } from './sources'
  * and let through `U+3164` and its Hangul kin, which draw as nothing and are not
  * format characters at all (both measured in review, 31.08.2026).
  *
- * What names the fault in one word is `Default_Ignorable_Code_Point`: Unicode's own
- * list of what a renderer should draw as nothing, and it carries the format family,
- * the variation selectors and the fillers together. Beside it stand the controls, the
- * separators, and every space that is not the space.
+ * What names most of the fault in one word is `Default_Ignorable_Code_Point`:
+ * Unicode's own list of what a renderer should draw as nothing, and it carries the
+ * zero-width family, the bidirectional overrides, the variation selectors and the
+ * fillers together. It does **not** carry all of `Cf`: thirty-two format characters
+ * stand outside it, and replacing one class with the other quietly dropped them
+ * (measured in review, 31.08.2026), so both are asked for. Beside them stand the
+ * controls, the separators, and every space that is not the space.
  *
  * What is **not** held: a character that is visible but wrong, a Cyrillic „а" among
  * Latin ones. That is a different fault, it needs a different guard, and it is said
@@ -78,7 +81,7 @@ function canBeSeen(one: string): boolean {
     return false
   }
 
-  return !/[\p{Cc}\p{Zl}\p{Zp}\p{Zs}\p{Default_Ignorable_Code_Point}]/u.test(one)
+  return !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}\p{Default_Ignorable_Code_Point}]/u.test(one)
 }
 
 describe('the source of the portal', () => {
@@ -102,6 +105,11 @@ describe('the source of the portal', () => {
        31.08.2026). Each kind that could be dropped on its own is named. */
     for (const kind of [
       inside('test', 'controlBytes.test.ts'),
+      /* A folder is an axis of its own, and `styles` is the one that hides: it holds
+         twelve guards and four stylesheets and not a single file the portal ships, so
+         containment against the portal's sweep says nothing about it and no other
+         witness lives there (review, 31.08.2026). */
+      inside('styles', 'circle.test.ts'),
       inside('pages', 'publicScreens.test.tsx'),
       inside('data', 'derive.ts'),
       inside('pages', 'Leagues.tsx'),

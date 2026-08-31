@@ -19,7 +19,7 @@ import type { Competitor } from '../../data/types'
  * standing calls otherwise: `data/categories.ts`, `genderMark`.
  */
 
-/** What the four functions that turn a person into a category do when this table
+/** What the five functions that turn a person into a category do when this table
  *  reaches for one: nothing at all, loudly. The owner settled on 31.08.2026 that a
  *  competition ranks by gender and by nothing else — „Ne želim dodatna pravila" —
  *  so a category read here is the rule coming back, whether it names the blocks or
@@ -104,23 +104,36 @@ describe('the name of a block of the standing', () => {
        year of birth in either direction are four different answers, and only arrival
        gives this one:
 
-         arrival        000005, 000001, 000003
-         member number  000001, 000003, 000005
-         born, oldest   000001, 000005, 000003
-         born, youngest 000003, 000005, 000001
+         arrival         000007, 000005, 000001, 000003
+         member number   000007, 000001, 000003, 000005
+         born, oldest    000007, 000001, 000005, 000003
+         born, youngest  000007, 000003, 000005, 000001
+         first season    000007, 000001, 000005, 000003
 
        What the mocks beside this hold is narrower and worth saying exactly: the five
-       functions named there are refused, and a comparison written straight on
-       `birthYear` reaches none of them. This case is what holds that. */
-    const rows = rowsOf([
-      { ...person('000005', 'M'), birthYear: 1980 },
-      { ...person('000001', 'M'), birthYear: 1970 },
-      { ...person('000003', 'M'), birthYear: 1990 },
-    ])
+       functions named there are refused, and a comparison written straight on a field
+       of the competitor reaches none of them. This case is what holds that, and it
+       holds more than `birthYear`: the flag for a first season is a category by
+       another name, and sorting on it passed while only years were varied (review,
+       31.08.2026), so the three differ in that too. */
+    const rows = [
+      /* One clear of the rest, so a rule about ranking by the total has something to
+         get wrong: with every row on nought, sorting the block by the total the wrong
+         way round could not fail here, while the name of this case promised it could. */
+      { ...person('000007', 'M'), birthYear: 1985, firstSeason2027: false, total: 50 },
+      /* And three level with each other, so a tie-break has something to break: with
+         every total different there is no tie at all, and a tie-break added to the
+         code never fires. Both of those were true of two earlier drafts of this
+         fixture, one after the other (review, 31.08.2026). */
+      { ...person('000005', 'M'), birthYear: 1980, firstSeason2027: false, total: 20 },
+      { ...person('000001', 'M'), birthYear: 1970, firstSeason2027: true, total: 20 },
+      { ...person('000003', 'M'), birthYear: 1990, firstSeason2027: false, total: 20 },
+    ].map(({ total, ...competitor }) => ({ competitor, points: new Map<string, number>(), total }))
     const groups = leagueGroups(rows)
 
     expect(groups.map((one) => one.code)).toEqual(['PRVI'])
     expect(groups[0]?.rows.map((one) => one.competitor.memberNumber)).toEqual([
+      '000007',
       '000005',
       '000001',
       '000003',

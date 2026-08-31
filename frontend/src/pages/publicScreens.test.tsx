@@ -2276,6 +2276,35 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
 
     expect(held, 'the section that carries Član 57 stands once').toHaveLength(1)
     expect(held[0]?.body).toBe(SECTION_13)
+
+    /* **And the rule itself, refused on every page.** Freezing holds a place, not a
+       claim: moved to „8. Takmičarske kategorije", the section that defines
+       categories and is the likeliest home for it, the deleted rule passed with the
+       whole gate green (review, 31.08.2026). The unit of the freeze had gone from an
+       article to a section and the edge had gone with it, which is the third time the
+       edge moved rather than closed.
+
+       The two answer different questions and both are needed: the frozen text says
+       section 13 is the owner's words, and this says that **no page anywhere** has a
+       league settling its own split of categories, however it is put.
+
+       Refused as a pairing, not as a wording: a category, and a league doing the
+       settling. That is what separates it from the two sentences that legitimately
+       carry both words today — „Ko je nov u ligi takmiči se u početničkoj kategoriji"
+       and the opening of the rulebook — and from a line about the category a
+       competitor is in, which an earlier draft of this refused. */
+    const SETS_ITS_OWN =
+      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|odre[dđ]uje|podešava|bira|propisuje)|(?:svoju|sopstvenu)\s+podelu/i
+
+    for (const { slug, heading, body } of written) {
+      for (const sentence of body.split(/(?<=\.)\s+|\n+/)) {
+        if (!/kategorij/i.test(sentence)) {
+          continue
+        }
+
+        expect(sentence, `${slug}: ${heading}`).not.toMatch(SETS_ITS_OWN)
+      }
+    }
   })
 })
 
