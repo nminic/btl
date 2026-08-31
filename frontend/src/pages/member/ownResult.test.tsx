@@ -1125,9 +1125,20 @@ describe('a result that has been counted', () => {
 
     expect(await sent.findByText(/Račun nije konačan/)).toBeVisible()
 
-    /* And exactly once: the counted results above it are decided, so nothing there
-       says it. */
+    /* Once, on the one that waits, and once only.
+
+       **The other half of the rule is measured elsewhere and deliberately.** That
+       a decided result carries no caveat cannot be shown here: the list holds a
+       single waiting item, so „one" is the answer with the condition and without
+       it (review, 31.08.2026). It is measured where a decided result really
+       exists, at the end of the walk in `memberFlows.test.tsx` where a moderator
+       turns one down. */
     expect(screen.getAllByText(/Račun nije konačan/)).toHaveLength(1)
+
+    const rows = () => within(must(document.querySelector('.submissions'), 'what was sent'))
+    const waiting = must(rows().getAllByRole('listitem')[0], 'the waiting one')
+
+    expect(within(waiting).getByText(/Račun nije konačan/)).toBeVisible()
   }, SLOW)
 
   it('says which kind of race it was and where, read off the race and its event', async () => {

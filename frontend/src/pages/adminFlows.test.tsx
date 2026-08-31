@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { dogadjaj } from '../forms/definitions'
+import { limitOf } from '../forms/records'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -27,6 +29,7 @@ import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
 import { canSendBack, countFor, QUEUE, QUEUES, returned } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
+import { ASKED } from './admin/amendFields'
 import {
   ipsPayload,
   methodsFor,
@@ -1310,6 +1313,28 @@ describe('the queue of results', () => {
     expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
   })
 
+  it('holds every box it writes to a rule, and would notice one that stopped being paired', () => {
+    /* The panel pairs each box with the definition that owns it by filtering, so a
+       field renamed in a definition quietly leaves the list and its box stops being
+       checked at all. Measured: with `seconds` dropped from the pairing, the panel
+       took 999 seconds and the whole suite stayed green (review, 31.08.2026).
+       Counted here rather than trusted, since the code itself has nowhere to put a
+       complaint that no case could reach. */
+    expect(ASKED.map((one) => one.name).sort()).toEqual([
+      'eventName',
+      'hours',
+      'minutes',
+      'raceName',
+      'seconds',
+    ])
+
+    /* And the event by the definition that owns **it**, not the race's. The two
+       agree today, so nothing on the screen tells them apart until one moves. */
+    expect(ASKED.find((one) => one.name === 'eventName')?.field).toBe(
+      dogadjaj.fields.find((one) => one.name === 'name'),
+    )
+  })
+
   it('says its fields are required, in both the ways a field says it', async () => {
     /* The star for the eye and `aria-required` for a reader, and a legend saying
        what the star means (owner, 12.08.2026: „na svim formama za unos i
@@ -1445,12 +1470,33 @@ describe('the queue of results', () => {
 
     /* A name that is filled in and too long says so, rather than saying it is
        missing: that was a high finding of its own, and the difference is the whole
-       reason the sentence comes from the form's own rule. */
-    const tooLong = 'x'.repeat(130)
+       reason the sentence comes from the form's own rule. Read from the definition
+       that owns the limit rather than written out, so raising it there does not
+       leave this case asking for a sentence nobody prints. */
+    const most = limitOf(dogadjaj, 'name')
 
-    fireEvent.change(screen.getByLabelText(/^Naziv doga/), { target: { value: tooLong } })
+    fireEvent.change(screen.getByLabelText(/^Naziv doga/), {
+      target: { value: 'x'.repeat(most + 10) },
+    })
 
-    expect(screen.getByText(/Najviše 120 znakova/)).toBeVisible()
+    expect(screen.getByText(new RegExp(`Najviše ${most} znakova`))).toBeVisible()
+
+    /* And which box it is about, said twice over: the sentence names it, and the
+       control itself says it is the wrong one. A form writes its messages without
+       the name of the field because it draws each under its own field; drawn once
+       under the buttons, „Najveća dozvoljena vrednost je 59." over two boxes of 99
+       says nothing about which (review, 31.08.2026). */
+    expect(screen.getByText(/^Naziv događaja: Najviše/)).toBeVisible()
+    expect(screen.getByLabelText(/^Naziv doga/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('aria-invalid', 'false')
+
+    fireEvent.change(screen.getByLabelText(/^Naziv doga/), { target: { value: 'Ultra vikend' } })
+    fireEvent.change(screen.getByLabelText(/^Minuta/), { target: { value: '99' } })
+    fireEvent.change(screen.getByLabelText(/^Sekundi/), { target: { value: '99' } })
+
+    expect(screen.getByText(/^Minuta: Najveća/)).toBeVisible()
+    expect(screen.getByLabelText(/^Minuta/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^Sekundi/)).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('never stands open beside the box that refuses one', async () => {

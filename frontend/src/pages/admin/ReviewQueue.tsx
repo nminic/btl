@@ -9,7 +9,7 @@ import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { inBoxes, fromBoxes, noTime, type WrittenBoxes } from '../../forms/clock'
-import { dogadjaj, unosRezultata } from '../../forms/definitions'
+import { ASKED } from './amendFields'
 import { validateField } from '../../forms/validate'
 import { raceKind } from '../../data/raceKind'
 import { RACE_KINDS, type RaceKind } from '../../data/types'
@@ -35,31 +35,6 @@ import './Verification.css'
  * climb does not: those are set from the official data, which is announced in
  * the terms rather than argued case by case.
  */
-/** The fields this panel checks what is written into, each by the definition that
- *  owns it: the race, the three boxes of a time and the event. The kind is not
- *  among them, because a list of three offered values cannot hold a fourth.
- *  Taken from the definition rather than restated, the way the queue of teams
- *  reads its own limit (`pages/admin/PendingQueue.tsx`). */
-/** What this panel writes into, paired with the definition that owns each: the
- *  race and the three boxes of a time from the form away from the calendar, the
- *  event from the form that makes one. Taken from the definitions rather than
- *  restated, the way the queue of teams reads its own limit
- *  (`pages/admin/PendingQueue.tsx`), so a bound moved in one place moves here.
- *
- *  A list of pairs and not a lookup by name: a lookup answers „or nothing" for a
- *  name that is always there, and the nothing is a branch no case can reach. */
-const TIMED = ['raceName', 'hours', 'minutes', 'seconds']
-
-const ASKED = [
-  ...unosRezultata.fields
-    .filter((one) => TIMED.includes(one.name))
-    .map((field) => ({ name: field.name, field })),
-  ...dogadjaj.fields
-    .filter((one) => one.name === 'name')
-    .map((field) => ({ name: 'eventName', field })),
-]
-
-
 export function ReviewQueue() {
   const { locale, t } = useI18n()
   const { submissions, decide, notify, amend } = useSession()
@@ -371,29 +346,31 @@ export function ReviewQueue() {
       {fixing !== null && (() => {
         /* Asked of the same rule the member's own form is held to, field by
            field, rather than of a bound written out here. */
-        /* Box by box, in the order they are drawn, so what is said is about the
-           first thing the moderator would come to. */
-        const wrong =
-          wrongBox('eventName', fixing.eventName) ??
-          wrongBox('raceName', fixing.raceName) ??
-          wrongBox('hours', fixing.hours) ??
-          wrongBox('minutes', fixing.minutes) ??
-          wrongBox('seconds', fixing.seconds)
+        /* Box by box, in the order they are drawn, and **kept per box**: the
+           messages a form gives are written without the name of the field,
+           because a form draws each one under the field it belongs to. Drawn once
+           under the buttons instead, „Najveća dozvoljena vrednost je 59." over two
+           boxes of 99 says nothing about which of them is meant (measured in
+           review, 31.08.2026). So each control says of itself that it is wrong,
+           which is what the table of races beside this one already does and for
+           the same reason (`raceRows.isWrong`, measured 23.08.2026), and the
+           sentence is named after the box it came from. */
+        const errors = new Map(
+          [
+            { name: 'eventName', label: 'review.amendEvent', written: fixing.eventName },
+            { name: 'raceName', label: 'newResult.raceName', written: fixing.raceName },
+            { name: 'hours', label: 'newResult.hours', written: fixing.hours },
+            { name: 'minutes', label: 'newResult.minutes', written: fixing.minutes },
+            { name: 'seconds', label: 'newResult.seconds', written: fixing.seconds },
+          ].flatMap(({ name, label, written }) => {
+            const said = wrongBox(name, written)
 
-        /* And not all three at nought, which no single box can refuse, since each
-           of them is right to take nought on its own (`forms/clock.ts`). Asked
-           after the boxes, because a box outside its own bounds is a fault of that
-           box: read the other way round, minus five hours adds up to less than
-           nought and would be reported as „all three at nought", which is not what
-           the moderator did. */
+            return said === null ? [] : [[name, { label, said }] as const]
+          }),
+        )
+        const wrong = [...errors.values()][0] ?? null
+
         const amendWaits = wrong !== null || noTime(fixing)
-
-        /* Which of the three things is wrong, rather than one sentence for all of
-           them. Written as one, it told a moderator who had left 0:0:0 standing
-           that „the numbers must be within their bounds", and nought is within its
-           bounds; and it never mentioned the event at all (measured in review,
-           31.08.2026). WCAG 2.2 SC 3.3.1 asks for the error to be named, and the
-           member's own form names this very one. */
 
         return (
         <div className="review__reason" role="group" aria-label={t('review.amendTitle')}>
@@ -421,6 +398,7 @@ export function ReviewQueue() {
               id="amend-event"
               type="text"
               aria-required="true"
+              aria-invalid={errors.has('eventName')}
               value={fixing.eventName}
               onChange={(event) => setFixing({ ...fixing, eventName: event.target.value })}
             />
@@ -432,6 +410,7 @@ export function ReviewQueue() {
               id="amend-name"
               type="text"
               aria-required="true"
+              aria-invalid={errors.has('raceName')}
               value={fixing.raceName}
               onChange={(event) => setFixing({ ...fixing, raceName: event.target.value })}
             />
@@ -465,6 +444,7 @@ export function ReviewQueue() {
                 type="text"
                 inputMode="numeric"
                 aria-required="true"
+                aria-invalid={errors.has(box)}
                 value={fixing[box]}
                 onChange={(event) => setFixing({ ...fixing, [box]: event.target.value })}
               />
@@ -512,7 +492,9 @@ export function ReviewQueue() {
               the button out of the tab order and takes this line with it. */}
           {amendWaits && (
             <p className="field__error" id="amend-waits">
-              {wrong === null ? t('newResult.needsTime') : t(wrong.key, wrong.params)}
+              {wrong === null
+                ? t('newResult.needsTime')
+                : `${t(wrong.label)}: ${t(wrong.said.key, wrong.said.params)}`}
             </p>
           )}
           </div>

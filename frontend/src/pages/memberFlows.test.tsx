@@ -1119,6 +1119,13 @@ describe('a result from entry to decision', () => {
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
     expect(await screen.findByText('Odbijeno')).toBeVisible()
     expect(screen.getByText('Link ne otvara rezultate.')).toBeVisible()
+
+    /* And the caveat about the count is gone with the waiting: it is there while
+       verification may still change the number, and a refused result has no number
+       coming. Held here rather than beside the waiting half, because that screen
+       has one row and „one caveat" is the same answer with the rule and without it
+       (review, 31.08.2026). */
+    expect(screen.queryByText(/Račun nije konačan/)).toBeNull()
   }, SLOW)
 })
 

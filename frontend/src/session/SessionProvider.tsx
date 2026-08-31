@@ -242,9 +242,12 @@ export function SessionProvider({
          *
            **What that costs, said plainly rather than talked around.** Between a
            correction and the decision the row does show the new time beside the
-           points the member arrived with: correct 1:52:10 to 3:00:00 on a race of
-           21,1 km and the queue draws 3:00:00 beside the 11,21 points of 1:52:10
-           until „Odobri" is pressed, when both become the 4,08 of 3:00:00. That is the owner's rule and not a fault, and the
+           points the member arrived with: correct 1:52:10 to 3:00:00 on the
+           21,1 km with 540 of climb and 540 of fall that the tests walk, and the
+           queue draws 3:00:00 beside the 23,55 points of 1:52:10 until „Odobri" is
+           pressed, when both become the 8,57 of 3:00:00. The climb is named
+           because the formula reads it: flat, the same two times are worth 11,21
+           and 4,08. That is the owner's rule and not a fault, and the
            screens say so where they announce a number: the form that sends a
            result tells the member the count is not final and is settled at
            verification. An earlier note here claimed this shape prevented the two
