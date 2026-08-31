@@ -2482,19 +2482,23 @@ describe('what the written pages say the fee buys', () => {
       /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
     )
 
-    /* And it says so of both ways in, since 23.08.2026. The article described the
-       form on the event as a different thing for three weeks: „birate trku iz
-       spiska", „link nije zasebno polje: ako ga imate, ide u komentar". The owner
-       had that form given the same foot as the one on a profile, the rulebook was
-       left as it was, and nothing here read it, because this guard knew one form.
-       A member who did what Član 37 told them, and put the address into the
-       comment, met „Ovo polje je obavezno." */
-    expect(article).toMatch(/Vi unosite vreme, link ka zvaničnim rezultatima/)
-    /* And it names what that form does **not** ask for, which the sentence before
-       this one got wrong on the first try: „sve ostalo unosite isto kao sa profila"
-       promised the name of the event and the date as well, and the form on the
-       event asks for neither. */
-    expect(article).toMatch(/naziv, datum, dužinu, uspon i spust portal uzima iz nje/)
+    /* **What Član 37 says about how a result reaches the portal is held in the
+       snapshot now, with the rest of the written pages** (`writtenVerification.test.ts`,
+       `test/writtenPages.snapshot.json`). The patterns that used to stand here were
+       measured wrong five times over: a list joined by „i" instead of commas, a case
+       ending („dužina" for „dužinu"), three of five things named where all five were
+       required, „dolaze iz te trke" past a filter that knew „iz nje" and „dolaze sa",
+       and a sentence carrying the word „zadaje" while denying the condition it names.
+       Each fix produced the next hole, and none of them ever caught anything a frozen
+       text does not.
+
+       What is left here is what a snapshot cannot say: that this article, and not some
+       other, is where the rule about the two roads lives, and that the address is
+       still asked for on the road through an event — Član 39 says „Obavezan je na obe
+       prijave", and this is the half of that claim which lives in Član 37. */
+    expect(article).toMatch(/ostalo, uz link ka zvaničnim rezultatima/)
+    expect(article).toMatch(/portal preuzima sa nje ono što ta trka zadaje/)
+
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,
     )
