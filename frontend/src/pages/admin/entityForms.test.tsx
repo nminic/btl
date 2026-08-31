@@ -593,13 +593,21 @@ describe('the words the seven forms need', () => {
 
     /* **And the words behind those names**, which the names alone do not hold: the value
        of `admin.field.leagueName` was made to read „Naziv lige. Podela na kategorije
-       zadaje se na nivou svake Lige." and the whole gate stayed green, because two of
-       these five live in branches no snapshot holds and the only case that reads this
-       one anchors on the start of the label (review, 01.09.2026).
+       zadaje se na nivou svake Lige." and the whole gate stayed green, because **three**
+       of these five — `admin.field.leagueName`, `admin.address` and `rankings.season` —
+       live in branches no snapshot holds, and the only case that reads the first anchors
+       on the start of the label (review, 01.09.2026). Of the three only the first was
+       loose: the other two are held by screens that ask for them by their exact word,
+       and by nothing that says why.
 
        Held here rather than by widening a snapshot over the whole dictionary: these five
        are the words a competition is entered under, and they are the ones that can carry
-       a rule about a competition. */
+       a rule about a competition.
+
+       **What it costs, said plainly:** `admin.address` is also the address on the form a
+       static page is written on, so renaming it for a reason that has nothing to do with
+       competitions fails here, under a name that points at leagues. That is the price of
+       holding a shared word, and it is paid knowingly. */
     expect(labels.map((key) => translate(sr, 'sr', must(key, 'a label'), {}))).toEqual([
       'Naziv lige',
       'Adresa',

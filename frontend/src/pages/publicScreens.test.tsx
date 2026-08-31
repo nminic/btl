@@ -1,13 +1,14 @@
 import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
 import pages from '../../public/mock/pages.json'
 import words from '../test/leagueWords.snapshot.json'
+import screens from '../test/leagueScreens.snapshot.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
@@ -24,6 +25,27 @@ import type { Competitor, Result } from '../data/types'
  * has moved, and left to itself it would arrive as a nought or a NaN and turn
  * "sorted by points" into an assertion about a list of noughts.
  */
+/**
+ * Every word a screen puts in front of a reader: the text it draws, the title of
+ * the tab, and every label that is read out rather than shown.
+ *
+ * The markup itself is deliberately not read. An `aria-label` says as much to
+ * somebody reading by ear as a paragraph does and never enters `textContent`, so
+ * it is collected; a class name is not something the portal says, and holding it
+ * would turn every change of style into a change of words.
+ */
+function wordsDrawn(): { text: string; title: string; labels: string[] } {
+  const spoken = [...document.body.querySelectorAll('[aria-label], [alt], [title]')]
+    .flatMap((one) => ['aria-label', 'alt', 'title'].map((name) => one.getAttribute(name) ?? ''))
+    .filter((one) => one.trim() !== '')
+
+  return {
+    text: must(document.body.textContent, 'the words a screen draws').replace(/\s+/g, ' ').trim(),
+    title: document.title,
+    labels: [...new Set(spoken)].sort(),
+  }
+}
+
 function lastNumberIn(row: HTMLElement): number {
   const text = last(within(row).getAllByRole('cell')).textContent
   const figure =
@@ -2202,29 +2224,65 @@ describe('Leagues', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
     expect(screen.queryAllByText(/grupi[sš]/i)).toEqual([])
 
-    /* **What the portal says about a competition is held; what somebody types into one
-       is not, and that is on purpose.**
+    /* **Every word these four screens draw, held as it stands**
+       (`test/leagueScreens.snapshot.json`).
 
-       Six drafts of a guard over the drawn page were each measured wrong, and the last
-       round measured why: the page shows the competition's own „Propozicije", which its
-       administrator writes in a free text box, and a guard reading the page reads that
-       too. It then has to be right about prose somebody else is still writing. It was
-       not: „na nivou svake **pojedinačne** Lige" went past it — one branch could not
-       match a Serbian word at all, since `\w` outside `/u` stops at „č" — and so did
-       „Kategorije zavise od toga u kojoj se ligi takmičite" and three more; while it
-       refused „Bodovi se sabiraju na nivou cele lige, bez obzira na kategoriju", which
-       says the opposite of the overturned rule, and „Kategorija takmičara u ligi je
-       M40-54", which is a competitor's own category and public by PDL P7.
+       Six drafts of a refusal over the drawn page were each measured wrong, and each
+       failed in both directions at once: „na nivou svake **pojedinačne** Lige" and
+       „Kategorije zavise od toga u kojoj se ligi takmičite" walked past, while „Bodovi
+       se sabiraju na nivou cele lige, bez obzira na kategoriju", which says the
+       opposite of the overturned rule, was refused. A refusal has to be right about
+       sentences nobody has written yet, and none of them could be.
 
-       A rule about what a member may type is moderation, not a test, and it is written
-       down for the owner rather than invented here (`btl-produkt/PENDING.md`).
+       Nothing has ever escaped from a text held as it stands, so that is what this is:
+       the words each screen draws, its title, and every label read out to somebody
+       working by ear. It judges nothing, so it cannot be wrong about a sentence; it
+       only notices that the words changed, which is the question worth asking. It
+       holds what no other guard here reaches: a sentence written straight into a
+       component, and a key from a branch no snapshot covers. Both were measured to
+       pass the whole gate while this was missing (review, 01.09.2026).
 
-       What **is** held is everything the portal says in its own voice: the written pages
-       whole (`writtenVerification.test.ts`), every word the dictionary says about a
-       competition and every description it writes about itself (below), the words behind
-       the labels of the form a competition is entered on (`admin/entityForms.test.tsx`),
-       and the fields that form may ask for at all. Between them there is no key, no
-       branch and no component through which the portal can say it again. */
+       **What it costs, said plainly:** changing anything these four screens say is a
+       deliberate act that comes here too, mock data included. That is the same cost
+       the written pages already pay, and it is the point.
+
+       The day is pinned, because a screen that changes with the date would otherwise
+       hold today rather than what the portal says. */
+    const SCREENS = [
+      ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
+      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'visitor'],
+      ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
+      ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
+    ] as const
+
+    const drawn: Record<string, unknown> = screens
+
+    for (const [route, ready, as] of SCREENS) {
+      cleanup()
+      renderAt(route, as, null, undefined, '2026-09-01')
+
+      /* Waited for by something only this page draws once its own record has arrived.
+         Two tab labels went in here first and neither waits for anything: „Rezultati"
+         and „Propozicije" are both written by the shell on the change of route, before
+         the record is there, so a page that drew nothing at all passed as if it had
+         (measured 31.08. and 01.09.2026). */
+      await screen.findByText(new RegExp(ready))
+
+      /* Waited on rather than read once. The line a reader working by ear hears on
+         arriving is written in two steps: the name of the competition first, then what
+         the screen is. Read between the two, the same screen answers twice and the
+         held words are whichever step the reading landed on (measured 01.09.2026). */
+      await waitFor(() => {
+        expect(wordsDrawn(), route).toEqual(drawn[route])
+      })
+    }
+
+    /* The held file cannot carry a screen this loop never opens. */
+    expect(Object.keys(drawn).sort()).toEqual(SCREENS.map(([route]) => route).sort())
+
+    cleanup()
+    renderAt('/sr/lige')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
 
     const said = (branch: unknown): string[] => {
       if (typeof branch === 'string') {
@@ -2322,10 +2380,12 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        competition and every description the portal writes about itself, and the rule
        cannot be put back into any of them under any wording.
 
-       **What this still cannot hold is a sentence written straight into a component.**
-       The portal has no guard anywhere that keeps Serbian prose out of a `.tsx` file,
-       and writing one is a rule about the whole portal rather than about this change;
-       it is written down in `btl-produkt/PENDING.md` instead of being invented here.
+       **A sentence written straight into a component is not held here**, and does not
+       need to be on these screens: the snapshot above draws them and would see it. What
+       stays open is the rest of the portal, where nothing keeps Serbian prose out of a
+       `.tsx` file. That is a rule about the whole portal rather than about this change,
+       and it is written down in `btl-produkt/PENDING.md` instead of being invented
+       here.
 
        The cost is the same as everywhere this is done: a deliberate change to any of
        these words is made here too. The lead sentence alone has carried this rule
