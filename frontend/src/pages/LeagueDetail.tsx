@@ -150,10 +150,10 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
                 </p>
                 <h1>{league.name}</h1>
                 {/* Nothing under the name (owner, 31.07.2026). The season is in
-                    the name of every competition already, and how the field is
-                    grouped is a rule of the competition, so it belongs in its
-                    terms rather than in a label. The parts follow straight
-                    after. */}
+                    the name of every competition already, and the field is
+                    grouped by gender in every one of them since 31.08.2026, so
+                    there is nothing here for a label to say. The parts follow
+                    straight after. */}
               </header>
 
               <PartsNav

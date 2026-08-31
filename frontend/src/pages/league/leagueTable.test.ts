@@ -261,8 +261,17 @@ describe('the way a competition splits its ranking', () => {
 
        Matched without the name of the loop variable, which is not part of the
        claim: written with `row` in it, renaming the loop to the `one` this file uses
-       everywhere else broke the guard while the behaviour was identical (review,
-       31.08.2026).
+       everywhere else broke the guard while the behaviour was identical. And matched
+       on the **assignment**, because asking whether the call appears anywhere in the
+       file let the code be spelled out by hand with the call left standing beside it
+       for another reason — measured with the whole gate green.
+
+       **The refusal below carries a `\b` and it has to be typed, not generated.**
+       Written once by a shell replacement, the escape became a real backspace byte:
+       the expression then asked for a control character no source file holds, so it
+       could not fail, and `categoryCodeFor` came back with 2447 tests green. It was
+       the only control byte in the whole tree and the diff did not show it (all
+       three measured in review, 31.08.2026).
 
        The other half is that nothing here works a category out any more, and it is
        asked of the **family** rather than of one name: forbidding `categoryOfMember`
@@ -275,8 +284,8 @@ describe('the way a competition splits its ranking', () => {
        is not read as calling one. */
     const code = bare(readFileSync(join(process.cwd(), 'src/pages/league/leagueTable.ts'), 'utf-8'))
 
-    expect(code).toMatch(/genderMark\(\w+\.competitor\.gender\)/)
-    expect(code).not.toMatch(/(?:categor|ageBand)\w*\s*\(/i)
+    expect(code).toMatch(/const code = genderMark\(\w+\.competitor\.gender\)/)
+    expect(code).not.toMatch(/\b(?:categor|ageBand)\w*\s*\(/i)
   })
 
   it('draws no block for a gender nobody in the competition is', () => {

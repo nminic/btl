@@ -2180,9 +2180,14 @@ describe('Leagues', () => {
        Found in review on 31.08.2026, and worse than the comments found beside it,
        because a member reads this one.
 
-       Asked of what the screen really draws, since the claim can be worded any
-       number of ways and the stem is what survives every wording: „grupis" is shared
-       by „grupiše" and „grupišu" and carried by no other word on this screen.
+       Asked of what the screen really draws, on the stem „grupis", which „grupiše"
+       and „grupišu" share and which no other word on this screen carries.
+
+       **It holds the verb, not the idea.** „...i kako se u njima dele takmičari" says
+       the same thing and walks past (measured in review, 31.08.2026). Holding the idea
+       would mean listing every way of saying it, which is a guard nobody can keep;
+       what this catches is this sentence coming back, and it is the wording it has
+       come back in twice.
 
        **And of the dictionary too, which the screen cannot answer for.** The second
        home said the same thing in its own words and went into the description a
@@ -2200,13 +2205,21 @@ describe('Leagues', () => {
         return [branch]
       }
 
-      /* One of these carries the three forms of a plural rather than a sentence,
-         so the walk goes down rather than stopping at the first object. */
+      /* `leagues.parts` is an object of three names rather than a sentence, so the
+         walk goes down rather than stopping at the first one it meets. Measured: a
+         grouping written into `leagues.parts.rules` is caught. */
       return branch !== null && typeof branch === 'object' ? Object.values(branch).flatMap(said) : []
     }
 
     expect(said(sr.leagues).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
-    expect(said(sr.seo.leagues).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
+
+    /* The **whole** of `seo`, not the one branch named after this page. Asked of
+       `seo.leagues` alone it passed while `seo.adminLeagues` next to it said the
+       same thing in its own words and put it into the description of the screen in
+       the administration (review, 31.08.2026): the third home, one step further
+       along in the object the walk was already in. Nothing else under `seo` says
+       the word, so reading all of it costs nothing. */
+    expect(said(sr.seo).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
   })
 })
 

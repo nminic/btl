@@ -109,7 +109,7 @@
     },
     "adminLeagues": {
       "title": "Lige (administracija)",
-      "description": "Koji događaji ulaze u koje takmičenje i kako se u njemu grupišu takmičari."
+      "description": "Koji događaji ulaze u koje takmičenje, i pod kojim propozicijama."
     },
     "adminPricing": {
       "title": "Cenovnik (administracija)",
