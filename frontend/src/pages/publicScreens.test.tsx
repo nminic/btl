@@ -2228,14 +2228,23 @@ describe('Leagues', () => {
        while the field was gone from the model and the code. The owner had it
        deleted (31.08.2026); this is what keeps it deleted.
 
-       Matched on the rule rather than on the verb, since the article said it
-       without ever saying „grupiše": what it claimed is that the split is settled
-       per league, and „na nivou svake Lige" is how a rule about a league is worded
-       on those pages. */
-    const written = Object.values(pages).flatMap((page) => page.sections.map((one) => one.body))
+       Matched as a category and a league standing in one sentence, since the
+       article said it without ever saying „grupiše" and the first draft of this
+       refused two wordings of it: „Svaka Liga sama zadaje svoju podelu na
+       kategorije" is the same rule with the words in another order and walked past
+       both (review, 31.08.2026). What the pages may not say is that a competition
+       has a category split of its own, however that is put.
 
-    expect(written.filter((one) => /[Pp]odela na kategorije/.test(one))).toEqual([])
-    expect(written.filter((one) => /kategorij\w* .{0,20}nivou svake/i.test(one))).toEqual([])
+       Categories themselves are not refused: the rulebook is full of them, and they
+       are what a **competitor** is in. What is refused is a category and a league
+       named together as one thing. */
+    const written = Object.values(pages).flatMap((page) => page.sections.map((one) => one.body))
+    const sentences = written.flatMap((body) => body.split(/(?<=\.)\s+|\n+/))
+
+    expect(
+      sentences.filter((one) => /kategorij/i.test(one) && /\bLig/.test(one)),
+      'a category and a league in one sentence',
+    ).toEqual([])
   })
 })
 
