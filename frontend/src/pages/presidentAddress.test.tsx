@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { sectionsOf } from '../data/pages'
@@ -112,11 +112,19 @@ describe('the address of the president', () => {
 
     /* And the same sentence exists nowhere in the application. A text in the
        dictionary or in a component would look identical on screen and could not
-       be corrected by the person whose text it is. */
+       be corrected by the person whose text it is.
+
+       **In the application**, which is what the reason above is about: `src/test/`
+       holds fixtures and helpers, nothing there ships, and the portal's own sweep
+       leaves that folder out for the same reason (`test/sources.ts`). Since
+       31.08.2026 one of those fixtures is a snapshot of every written page, held so
+       that a sentence the owner settled cannot drift; a copy that only a test reads
+       cannot reach a screen and cannot stop him correcting his own words. Measured
+       both ways: the sentence written into a file that ships still falls here. */
     const needle = 'pod popularnim imenom Balkanska trkačka liga'
-    const inCode = sourceFiles(join(process.cwd(), 'src')).filter((path) =>
-      readFileSync(path, 'utf-8').includes(needle),
-    )
+    const inCode = sourceFiles(join(process.cwd(), 'src'))
+      .filter((path) => !path.includes(`${sep}test${sep}`))
+      .filter((path) => readFileSync(path, 'utf-8').includes(needle))
 
     expect(text).toContain(needle)
     expect(inCode).toEqual([])

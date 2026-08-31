@@ -2482,72 +2482,22 @@ describe('what the written pages say the fee buys', () => {
       /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
     )
 
-    /* **The two paragraphs about how a result reaches the portal are frozen whole.**
-       They went stale twice and each time the guard over them was a pattern that
-       guessed at wording. First the article described the form on an event as a
-       different thing entirely — „birate trku iz spiska", „link nije zasebno polje:
-       ako ga imate, ide u komentar" — and nothing here read it, so a member who did
-       what Član 37 told them and put the address into the comment met „Ovo polje je
-       obavezno." Then it listed what the race hands over, „naziv, datum, dužinu,
-       uspon i spust", which is true of a race with a length and backwards for the
-       other two: a timed race is not asked for a time at all and **is** asked what
-       it covered, and a free one is asked everything (`pages/event/reportForm.ts`).
+    /* **What Član 37 says about how a result reaches the portal is held in the
+       snapshot now, with the rest of the written pages** (`writtenVerification.test.ts`,
+       `test/writtenPages.snapshot.json`). The patterns that used to stand here were
+       measured wrong five times over: a list joined by „i" instead of commas, a case
+       ending („dužina" for „dužinu"), three of five things named where all five were
+       required, „dolaze iz te trke" past a filter that knew „iz nje" and „dolaze sa",
+       and a sentence carrying the word „zadaje" while denying the condition it names.
+       Each fix produced the next hole, and none of them ever caught anything a frozen
+       text does not.
 
-       The refusal written for that second fault named a shape of list, and the same
-       untrue sentence came back joined by „i" instead of commas and walked past it
-       (review, 31.08.2026). A pattern over prose is a guess about wording; what is
-       guarded here is what the article tells a member to expect.
-
-       Offered the choice between listing it per kind and saying it once for all
-       three, the owner chose the second: „Pišem kraće, bez nabrajanja po vrstama."
-       So these are his words, and changing them costs a deliberate act here. */
-    const REACHING = `Rezultat sa trke koja je u kalendaru prijavljujete i sa strane samog događaja, dugmetom „Unesi rezultat" u redu te trke. Trka je time već poznata, pa portal preuzima sa nje ono što ta trka zadaje, a vi unosite ostalo, uz link ka zvaničnim rezultatima i po želji sliku i komentar, sa istim pravilom obaveznosti kao sa profila.
-
-Na formi sa profila portal vam pomaže da nađete istu trku: kad počnete da kucate naziv trke, posle dva slova nudi trke iz kalendara, od poslednje ka ranijim. Ako izaberete jednu, portal popunjava i zaključava ono što ta trka zadaje. Izmenite li naziv posle toga, veza se prekida, ta polja se prazne i unosite ih sami.`
-
-    expect(article).toContain(REACHING)
-
-    /* And no list of what the race hands over, in this section at all. Holding the
-       two paragraphs whole says nothing about the rest of the article, and the
-       sentence „Sa te trke portal uzima naziv, datum, dužinu, uspon i spust" put in
-       beside them is the untruth this passage was corrected for. Freezing and
-       refusing answer different questions and both are needed.
-
-       **The whole section, and every case form.** Two drafts of this were too narrow
-       in exactly the ways a Serbian sentence bends: one asked for commas, so the same
-       list joined by „i" walked past; the next named only the accusative „dužinu", so
-       „naziv, datum, **dužina**, uspon i spust" broke the chain and passed, and the
-       same list put into Član 41 — whose whole subject is which of those the race
-       hands over — was outside the slice this looked at (all measured in review,
-       31.08.2026).
-
-       **What is refused is a list of three or more of those five things, however
-       written, and only where the race is what hands them over.** The article names
-       them one per line in its own opening list, which is what the member types in,
-       and that must stay: the pairing with „sa trke", „iz nje" or „preuzima" is what
-       separates the two. */
-    for (const sentence of sectionOf('pravilnik', /### Član 37\./).split(/(?<=\.)\s+|\n+/)) {
-      /* Which sentences are about the race handing something over. „sa same trke"
-         and „sa te trke" are the same claim with a word between, and the first draft
-         asked for „sa (te )?trke", so the one with „same" in it was never looked at
-         (review, 31.08.2026). */
-      if (!/sa\s+(?:\S+\s+)?trke|iz nje|preuzim|uzima|dolaz\w*\s+sa/i.test(sentence)) {
-        continue
-      }
-
-      const measures = ['dužin', 'uspon', 'spust'].filter((one) => new RegExp(one, 'i').test(sentence))
-
-      /* A sentence saying the race hands over the three measures is true only with
-         the condition on it: it hands them over **when it fixes them**, which a race
-         with a length does and a timed or a free one does not. Član 41 says exactly
-         that and carries „zadaje", so it stands; the sentence the owner had removed
-         said the same without the condition, and that is the whole difference between
-         them. Counting how many things are named refused Član 41 as well (review,
-         31.08.2026), which is how a guard ends up switched off. */
-      if (measures.length === 3) {
-        expect(sentence, 'the race hands over the measures with no condition on it').toMatch(/zadaje/i)
-      }
-    }
+       What is left here is what a snapshot cannot say: that this article, and not some
+       other, is where the rule about the two roads lives, and that the address is
+       still asked for on the road through an event — Član 39 says „Obavezan je na obe
+       prijave", and this is the half of that claim which lives in Član 37. */
+    expect(article).toMatch(/ostalo, uz link ka zvaničnim rezultatima/)
+    expect(article).toMatch(/portal preuzima sa nje ono što ta trka zadaje/)
 
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,
