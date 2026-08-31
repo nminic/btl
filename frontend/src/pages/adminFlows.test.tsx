@@ -11,7 +11,12 @@ import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/translate'
 import { RoleProvider } from '../roles/RoleProvider'
-import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
+import {
+  SessionContext,
+  type SessionValue,
+  type Submission,
+  type SubmissionStatus,
+} from '../session/context'
 import { Decided, Inbox } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
@@ -47,7 +52,9 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       raceKind: 'length',
       city: 'Niš',
       country: 'RS',
-      eventName: 'Probna trka',
+      /* No event on it, which is every submission a member sends: they are asked
+         one name and it is the race's. The one case about an event the
+         administration has already settled patches it in. */
       /* Nothing here was corrected; these are results a moderator is deciding
          for the first time. */
       corrected: false,
@@ -1049,9 +1056,13 @@ describe('an empty queue', () => {
 const DAY = '2026-08-16'
 
 describe('the queue of results', () => {
-  const openWith = (states: SubmissionStatus[]) => {
+  /** `patch` is applied to the submissions before anything is drawn, for the one
+   *  case that needs a submission the administration has already written on. */
+  const openWith = (states: SubmissionStatus[], patch: Partial<Submission> = {}) => {
     const user = setupUser()
     const session = sessionWith(states)
+
+    session.submissions = session.submissions.map((one) => ({ ...one, ...patch }))
 
     render(
       /* The day the refusal is dated with, from the one clock the whole portal
@@ -1221,11 +1232,16 @@ describe('the queue of results', () => {
 
     /* Opened on what the submission holds, not on empty boxes: a moderator
        correcting one thing must not have to retype the other two. */
+    /* The event above the race, carrying the same name, because a member is asked
+       one and the moderator is offered it for both (owner, 31.08.2026). */
+    expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Probna trka')
     expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
     expect(screen.getByLabelText(/^Vrsta trke/)).toHaveValue('length')
     expect(screen.getByLabelText(/^Sati/)).toHaveValue('0')
     expect(screen.getByLabelText(/^Minuta/)).toHaveValue('45')
 
+    await user.clear(screen.getByLabelText(/^Naziv doga/))
+    await user.type(screen.getByLabelText(/^Naziv doga/), 'Ultra vikend')
     await user.clear(screen.getByLabelText(/^Naziv trke/))
     await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
     await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'time')
@@ -1236,6 +1252,7 @@ describe('the queue of results', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
 
     expect(session.amend).toHaveBeenCalledWith('sub-0', {
+      eventName: 'Ultra vikend',
       raceName: 'Ultra 24h',
       raceKind: 'time',
       seconds: 86_400,
@@ -1275,6 +1292,102 @@ describe('the queue of results', () => {
 
     expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
     expect(session.amend).not.toHaveBeenCalled()
+  })
+
+  it('shows the event the administration already settled, not the race name again', async () => {
+    /* The field is seeded from the race only while the submission carries no event
+       of its own. Once a moderator has shortened „Beogradski maraton kroz Adu" to
+       „Beogradski maraton" and saved, opening the panel again has to show their
+       wording; seeded a second time it would quietly undo them. */
+    const { user } = openWith(['pending'], { eventName: 'Beogradski maraton' })
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Beogradski maraton')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
+  })
+
+  it('closes when the item under it is decided, by the row or by the sweep', async () => {
+    /* Both panels stand below the table, and the row they were opened over leaves
+       it the moment it is decided. Left open, „Sačuvaj ispravku" is a live button
+       over a submission nobody may rewrite any more, and after „Odobri sve" the
+       screen says „nothing is waiting" while holding open a correction of one of
+       the things that just stopped waiting. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'])
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+
+      expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('takes only what the member’s own form would have taken, and says so when it will not', async () => {
+    /* What may stand in these boxes is a fact the form away from the calendar
+       already holds, and this panel asks the same rule field by field rather than
+       writing bounds of its own. Written by hand it was narrower than the form and
+       let through what the form refuses (measured in review, 31.08.2026):
+
+       - minus five hours, which the table then drew as `00:00`, so it could not
+         be told from nought;
+       - a thousand minutes, out of a box the form bounds at 59;
+       - `Infinity`, which `Number.isNaN` does not catch and `Number.isFinite`
+         does;
+       - a race with no name at all, out of a field that carries a star.
+
+       And the cost lands on the member: a result refused after such a correction
+       comes back to them with `-5` in a box they never touched, and their own form
+       turns it down. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    for (const [box, written] of [
+      ['Sati', '-5'],
+      ['Sati', 'Infinity'],
+      ['Minuta', '999'],
+      /* Not one and a half hours. The member's own form takes it, since the field
+         carries no rule about whole numbers, and `forms/clock.ts` records that the
+         boxes take a decimal as a fault of their own and older than any of this.
+         The rule here is „exactly as strict as the form", not „stricter", so a
+         value the form accepts is accepted here and the fault is one thing in one
+         place rather than two rules that disagree. */
+    ] as const) {
+      const control = screen.getByLabelText(new RegExp(`^${box}`))
+
+      await user.clear(control)
+      await user.type(control, written)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+      expect(session.amend, `${box} = ${written}`).not.toHaveBeenCalled()
+      /* And it says why, rather than leaving a dead button. */
+      expect(screen.getByText(/Ispravka čeka/)).toBeVisible()
+
+      await user.clear(control)
+      await user.type(control, box === 'Sati' ? '0' : '45')
+    }
+
+    /* And a decimal the form would take is taken here too, which is the other
+       direction of the same rule. */
+    await user.clear(screen.getByLabelText(/^Sati/))
+    await user.type(screen.getByLabelText(/^Sati/), '1.5')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+    expect(session.amend, 'a decimal the form allows').toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+    expect(session.amend, 'a race with no name').toHaveBeenCalledTimes(1)
   })
 
   it('never stands open beside the box that refuses one', async () => {

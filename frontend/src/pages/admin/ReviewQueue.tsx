@@ -8,7 +8,10 @@ import { QueueMeta } from './QueueMeta'
 import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
-import { inBoxes, fromBoxes, type WrittenBoxes } from '../../forms/clock'
+import { inBoxes, fromBoxes, noTime, type WrittenBoxes } from '../../forms/clock'
+import { unosRezultata } from '../../forms/definitions'
+import { validateField } from '../../forms/validate'
+import type { FieldDef } from '../../forms/types'
 import { raceKind } from '../../data/raceKind'
 import { RACE_KINDS, type RaceKind } from '../../data/types'
 import '../../styles/outsideLink.css'
@@ -33,6 +36,16 @@ import './Verification.css'
  * climb does not: those are set from the official data, which is announced in
  * the terms rather than argued case by case.
  */
+/** The four fields this panel writes, as the form away from the calendar defines
+ *  them: the same labels, the same bounds, the same rule about being filled in.
+ *  Taken from the definition rather than restated, the way the queue of teams
+ *  reads its own limit (`pages/admin/PendingQueue.tsx`). */
+const ASKED = new Map<string, FieldDef>(
+  unosRezultata.fields
+    .filter((one) => ['raceName', 'hours', 'minutes', 'seconds'].includes(one.name))
+    .map((one) => [one.name, one]),
+)
+
 export function ReviewQueue() {
   const { locale, t } = useI18n()
   const { submissions, decide, notify, amend } = useSession()
@@ -52,12 +65,28 @@ export function ReviewQueue() {
    * holds, and turned back into a number only when it is saved.
    */
   const [fixing, setFixing] = useState<
-    { id: string; raceName: string; raceKind: RaceKind } & WrittenBoxes | null
+    { id: string; eventName: string; raceName: string; raceKind: RaceKind } & WrittenBoxes | null
   >(null)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
 
   const waiting = submissions.filter((one) => one.status === 'pending')
+
+  /* What this panel writes goes into the very fields the member's own form asks
+     for, so what may stand in them is the same question, asked of the same place.
+     Written by hand it was narrower than the form and let through what the form
+     refuses: minus five hours (which the table then drew as 00:00), a thousand
+     minutes, one and a half hours, `Infinity`, and a race with no name at all.
+     Worse than wrong on this screen: a result refused after such a correction
+     came back to the member with `-5` in a box they never touched, and their own
+     form turned it down (measured in review, 31.08.2026). */
+  const wrongBox = (name: string, written: string) => {
+    const field = ASKED.get(name)
+
+    /* A name this file asks for that the form does not define is a mistake in
+       this file, and it refuses rather than letting the value through unchecked. */
+    return field === undefined || validateField(field, written) !== null
+  }
 
   return (
     <div className="member">
@@ -100,6 +129,9 @@ export function ReviewQueue() {
                  the sweep has just approved, confirming it would refuse what
                  was approved a moment ago and say nothing about it. */
               setOpen(null)
+              /* And the correction with it: the sweep decides every waiting item,
+                 so whatever the panel was opened over is decided too. */
+              setFixing(null)
               setSwept(waiting.length)
             }}
           >
@@ -251,11 +283,14 @@ export function ReviewQueue() {
                         className="button button--primary"
                         onClick={() => {
                           decide(one.id, 'approved', '')
-                          /* The reason box stands below the table, so approving
-                             from the row would leave it open over a result that
-                             is already decided, and confirming it would refuse
-                             what was just approved without saying so. */
+                          /* Both panels stand below the table, so approving from
+                             the row would leave one of them open over a result
+                             that is already decided: confirming the refusal would
+                             turn down what was just approved without saying so,
+                             and saving the correction would write on a submission
+                             nobody may rewrite any more. */
                           setOpen((current) => (current?.id === one.id ? null : current))
+                          setFixing((current) => (current?.id === one.id ? null : current))
                         }}
                       >
                         {t('review.approve')}
@@ -282,6 +317,13 @@ export function ReviewQueue() {
                           setOpen(null)
                           setFixing({
                             id: one.id,
+                            /* Seeded from the race where the submission carries no
+                               event of its own, which is every submission a member
+                               types: they are asked one name and the moderator is
+                               offered it for both (owner, 31.08.2026). Once the
+                               moderator has settled it, the submission keeps it and
+                               this reads what they wrote rather than seeding again. */
+                            eventName: one.eventName ?? one.raceName,
                             raceName: one.raceName,
                             /* Through the one home for that reading: the member
                                chose one of three, but a submission holds a word
@@ -302,7 +344,20 @@ export function ReviewQueue() {
         </div>
       )}
 
-      {fixing !== null && (
+      {fixing !== null && (() => {
+        /* Asked of the same rule the member's own form is held to, field by
+           field, rather than of a bound written out here. */
+        const amendWaits =
+          wrongBox('raceName', fixing.eventName) ||
+          wrongBox('raceName', fixing.raceName) ||
+          wrongBox('hours', fixing.hours) ||
+          wrongBox('minutes', fixing.minutes) ||
+          wrongBox('seconds', fixing.seconds) ||
+          /* And not all three at nought, which no single box can refuse
+             (`forms/clock.ts`). */
+          noTime(fixing)
+
+        return (
         <div className="review__reason" role="group" aria-label={t('review.amendTitle')}>
           {/* What this panel is for, said before the boxes rather than after: the
               kind the member chose is a hint (owner, 30.08.2026, „kao nagoveštaj
@@ -312,11 +367,33 @@ export function ReviewQueue() {
               for everyone. */}
           <p className="profile__empty">{t('review.amendNote')}</p>
 
+          {/* Five fields carry a star, so the star is explained and each control
+              says the same thing to a reader who cannot see it (owner, 12.08.2026,
+              „na svim formama za unos i verifikaciju"). It is the very thing the
+              refusal box below was measured missing: without it the button simply
+              stayed dead and nothing said why. */}
+          <RequiredNote />
+
+          {/* The event above the race, in that order, because that is the order
+              the moderator is asked to think in: what was run, and then which of
+              its races this is. */}
+          <div className="rankings__field rankings__field--wide">
+            <AskedLabel id="amend-event">{t('review.amendEvent')}</AskedLabel>
+            <input
+              id="amend-event"
+              type="text"
+              aria-required="true"
+              value={fixing.eventName}
+              onChange={(event) => setFixing({ ...fixing, eventName: event.target.value })}
+            />
+          </div>
+
           <div className="rankings__field rankings__field--wide">
             <AskedLabel id="amend-name">{t('newResult.raceName')}</AskedLabel>
             <input
               id="amend-name"
               type="text"
+              aria-required="true"
               value={fixing.raceName}
               onChange={(event) => setFixing({ ...fixing, raceName: event.target.value })}
             />
@@ -326,6 +403,7 @@ export function ReviewQueue() {
             <AskedLabel id="amend-kind">{t('newResult.raceKind')}</AskedLabel>
             <select
               id="amend-kind"
+              aria-required="true"
               value={fixing.raceKind}
               onChange={(event) => setFixing({ ...fixing, raceKind: raceKind(event.target.value) })}
             >
@@ -348,6 +426,7 @@ export function ReviewQueue() {
                 id={`amend-${box}`}
                 type="text"
                 inputMode="numeric"
+                aria-required="true"
                 value={fixing[box]}
                 onChange={(event) => setFixing({ ...fixing, [box]: event.target.value })}
               />
@@ -358,28 +437,23 @@ export function ReviewQueue() {
             <button
               type="button"
               className="button button--primary"
+              aria-disabled={amendWaits}
+              aria-describedby={amendWaits ? 'amend-waits' : undefined}
               onClick={() => {
-                /* Every box has to hold a number, and **empty is not one**, which
-                   is the correction of 31.08.2026: `fromBoxes` gives `NaN` only
-                   where a box is missing altogether, and an empty box is not
-                   missing, it is the empty string, which `Number` reads as nought.
-                   So a moderator who cleared the hours and pressed save wrote a
-                   race of forty five minutes as one of nought hours and saved it
-                   silently. Measured on the very case written for this.
-
-                   Refused rather than saved, and the panel stays open over what
-                   was typed, so a name already corrected is not lost with it. */
-                const written = [fixing.hours, fixing.minutes, fixing.seconds]
-                const seconds = fromBoxes(fixing)
-
-                if (written.some((one) => one.trim() === '') || Number.isNaN(seconds)) {
+                /* Reachable means pressable, as everywhere else on this portal, so
+                   the refusal lives here as well as on the attribute above. */
+                if (amendWaits) {
                   return
                 }
 
                 amend(fixing.id, {
-                  raceName: fixing.raceName,
+                  eventName: fixing.eventName.trim(),
+                  raceName: fixing.raceName.trim(),
                   raceKind: fixing.raceKind,
-                  seconds,
+                  /* Added up by the one place that answers both ways, so a limit
+                     written here is the same number the form on the other side
+                     writes, for every value that form would accept. */
+                  seconds: fromBoxes(fixing),
                 })
                 setFixing(null)
               }}
@@ -394,8 +468,18 @@ export function ReviewQueue() {
               {t('review.amendCancel')}
             </button>
           </div>
-        </div>
-      )}
+
+          {/* And why it will not go, said rather than left to be guessed. Told off
+              rather than switched off, as everywhere else here: `disabled` takes
+              the button out of the tab order and takes this line with it. */}
+          {amendWaits && (
+            <p className="field__error" id="amend-waits">
+              {t('review.amendWaits')}
+            </p>
+          )}
+          </div>
+        )
+      })()}
 
       {open !== null && (
         <div className="review__reason" role="group" aria-label={t('review.sendBack')}>

@@ -17,7 +17,11 @@ function Probe() {
           already reading it. */}
       <span data-testid="said">
         {submissions
-          .map((one) => `${one.raceName}|${one.raceKind}|${one.seconds}|${String(one.corrected)}`)
+          .map(
+            (one) =>
+              `${one.raceName}|${one.raceKind}|${one.seconds}|${String(one.corrected)}` +
+              `|${one.points}|${one.status}|${String(one.corrects?.seconds)}|${String(one.corrects?.points)}`,
+          )
           .join(',')}
       </span>
       <button
@@ -35,6 +39,16 @@ function Probe() {
         }}
       >
         ispravi drugi
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          /* By the very name the button beside it approves, so the two speak
+             about the same item whichever order the list is in. */
+          amend('sub-1', { raceName: 'Ne sme', raceKind: 'free', seconds: 1 })
+        }}
+      >
+        ispravi odluceni
       </button>
       <span data-testid="unread">{inbox.filter((one) => !one.read).length}</span>
       <span data-testid="subjects">{inbox.map((one) => one.subject).join(',')}</span>
@@ -61,6 +75,9 @@ function Probe() {
         }
       >
         posalji
+      </button>
+      <button type="button" onClick={() => amend('sub-1', { seconds: 0 })}>
+        ponisti vreme
       </button>
       <button type="button" onClick={() => decide('sub-1', 'approved', '')}>
         odobri prvi
@@ -136,10 +153,91 @@ describe('the session store', () => {
 
     const after = must(screen.getByTestId('said').textContent, 'what the store holds').split(',')
 
-    expect(after[1]).toBe('Prava trka|time|86400|false')
+    expect(after[1]).toMatch(/^Prava trka\|time\|86400\|false\|/)
     /* And the other one is untouched, which is the half that a change written
        over the whole list, or over whichever item is at the front, would fail. */
     expect(after[0]).toBe(must(before, 'what it held before').split(',')[0])
+  })
+
+  it('awards the points at the decision, from what the item holds by then', async () => {
+    /* Owner, 31.08.2026: „bodovi treba da se dodele tek NAKON verifikacije." So
+       what an item carries until then is the estimate its own form showed the
+       member, and the number that counts is worked out at the decision, from what
+       the item holds by then.
+
+       Which is what makes a correction safe. Between the sending and the decision
+       the administration may settle the kind and the time, and on a timed race the
+       time is the race's own limit rather than a run (owner's own case: 23:23:15
+       becoming 24:00:00). Awarded earlier, the row would show the new time beside
+       the points of the old one, and the portal has already paid once for two
+       halves of a row coming from different sums (`pages/member/NewResult.tsx`,
+       28.08.2026). */
+    const user = setupUser()
+    renderProbe()
+
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+
+    const before = must(screen.getByTestId('said').textContent, 'before').split(',')[1]?.split('|')
+
+    await user.click(screen.getByRole('button', { name: 'ispravi drugi' }))
+
+    const fixed = must(screen.getByTestId('said').textContent, 'fixed').split(',')[1]?.split('|')
+
+    expect(fixed?.[2], 'the time it was given').toBe('86400')
+    /* And the points have **not** moved yet, because nobody has decided it. */
+    expect(fixed?.[4], 'still the estimate it came with').toBe(before?.[4])
+
+    /* The very item that was just corrected, which is the one 'ispravi drugi'
+       names. */
+    await user.click(screen.getByRole('button', { name: 'odobri prvi' }))
+
+    const after = must(screen.getByTestId('said').textContent, 'after').split(',')[1]?.split('|')
+
+    expect(after?.[5], 'decided').toBe('approved')
+    expect(after?.[4], 'and now the points belong to the time beside them').not.toBe(before?.[4])
+  })
+
+  it('awards nothing where the numbers are not a race', async () => {
+    /* Reachable, and by the very panel this part adds: each of the three boxes
+       accepts nought on its own, so a moderator may leave 0:0:0 standing, and a
+       race run in no time is not a race (`data/scoring.ts` answers `null` for it).
+       Nought points rather than a hole, which is how every other caller of the
+       formula writes it. */
+    const user = setupUser()
+    renderProbe()
+
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+    await user.click(screen.getByRole('button', { name: 'ponisti vreme' }))
+    await user.click(screen.getByRole('button', { name: 'odobri prvi' }))
+
+    const row = must(screen.getByTestId('said').textContent, 'the store').split(',')[0]?.split('|')
+
+    expect(row?.[5], 'decided').toBe('approved')
+    expect(row?.[4], 'and worth nothing').toBe('0')
+  })
+
+  it('leaves a submission alone once somebody has decided it', async () => {
+    /* A panel left open over a row that has just been decided still has a live
+       button, and a decided result is not the administration's to rewrite: what it
+       holds is what somebody agreed to. Held here rather than only on the screen,
+       because the screen is one caller and this is the fact. */
+    const user = setupUser()
+    renderProbe()
+
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+    await user.click(screen.getByRole('button', { name: 'posalji' }))
+    await user.click(screen.getByRole('button', { name: 'odobri prvi' }))
+
+    const rows = () => must(screen.getByTestId('said').textContent, 'the store').split(',')
+    const approved = must(
+      rows().find((one) => one.includes('|approved|')),
+      'the one that was decided',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'ispravi odluceni' }))
+
+    expect(rows().find((one) => one.includes('|approved|'))).toBe(approved)
   })
 
   it('marks one message read and leaves the rest', async () => {

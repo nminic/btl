@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fromBoxes, inBoxes } from './clock'
+import { fromBoxes, inBoxes, noTime } from './clock'
 
 /* A length of time and the three boxes a form asks for it in, asked of the one place
    that answers both ways.
@@ -48,6 +48,21 @@ describe('a length of time in the boxes a form asks for it in', () => {
     expect(inBoxes(3_661.5).seconds).toBe('1.5')
     expect(fromBoxes(inBoxes(3_661.5))).toBe(3_661.5)
     expect(inBoxes(0.5)).toEqual({ hours: '0', minutes: '0', seconds: '0.5' })
+  })
+
+  it('says that all three at nought is no time at all, and that one of them is not', () => {
+    /* Owner, 31.08.2026: „Ne sme da se popuni 0:0:0!" Each box is right to take
+       nought on its own, since a race of forty five minutes has nought hours, so
+       the rule is about the three together and no field definition can hold it.
+
+       Written as „not above nought" rather than „equals nought", so the same
+       sentence refuses a missing box and a negative one: every comparison against
+       `NaN` is false, and a draft written the other way let both through. */
+    expect(noTime({ hours: '0', minutes: '0', seconds: '0' })).toBe(true)
+    expect(noTime({ hours: '0', minutes: '45', seconds: '0' })).toBe(false)
+    expect(noTime({ hours: '0', minutes: '0', seconds: '1' })).toBe(false)
+    expect(noTime({})).toBe(true)
+    expect(noTime({ hours: '-1', minutes: '0', seconds: '0' })).toBe(true)
   })
 
   it('reads a box that is not there as no number at all, rather than as nought', () => {

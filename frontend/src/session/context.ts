@@ -21,15 +21,20 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 /**
  * What verification may put right on a submission, and no fifth thing.
  *
- * Three and not the four the owner named on 30.08.2026. He said the name of the
- * event as well as the name of the race, and a submission holds **one** name: the
- * race's, which is what a member types and what the queue draws (owner,
- * 23.08.2026, „sad je postalo logičnije da se pretražuje zapravo naziv trke").
- * There is no event on a submission to rename until one is made, and making it is
- * the part after this one. Written here as three, so nothing writes a key that
- * nobody reads; the fourth arrives with the event it belongs to.
+ * Four, and the fourth arrived on 31.08.2026 with the rule that gives it a
+ * reader. A member types one name, the race's; the moderator is shown a field for
+ * the event above it, carrying that same name, and may leave it, shorten it, or
+ * change either (owner: „administratoru se iznad polja trke prvo prikazuje polje
+ * Događaj koji ima isti sadržaj kao naziv trke... može ostaviti isto, ili skratiti
+ * / promeniti naziv događaja, trke ili oba").
+ *
+ * It is kept on the submission rather than worked out again each time the panel
+ * opens, because otherwise a moderator who shortens „Beogradski maraton kroz
+ * Adu" to „Beogradski maraton", saves, and opens the panel again finds their own
+ * wording gone. It is read by the event that part D makes out of it.
  */
 export type Amendment = {
+  eventName?: string
   raceName?: string
   raceKind?: string
   seconds?: number
@@ -48,6 +53,16 @@ export type Submission = {
    * no name to lend.
    */
   raceName: string
+  /**
+   * The event this race was run at, as the administration settled it.
+   *
+   * Absent on everything a member sends, because they are asked one name and it is
+   * the race's. The moderator is shown a field for the event above it, carrying
+   * that same name, and may leave it or change it (owner, 31.08.2026); what they
+   * settle is kept here, so opening the panel a second time shows their wording
+   * rather than seeding from the race again.
+   */
+  eventName?: string
   /**
    * Which of the three kinds of race the member says it was, and where it was run.
    *
@@ -298,9 +313,8 @@ export type SessionValue = {
   withdraw: (id: string) => void
   /**
    * What the administration may put right on a submission before deciding it
-   * (owner, 30.08.2026): the name of the race, the kind, and the time. The name
-   * of the event is the fourth he named and it has nowhere to live yet, since a
-   * submission carries no event until verification makes one.
+   * (owner, 30.08.2026): the name of the event, the name of the race, the kind,
+   * and the time.
    *
    * A type of its own rather than a partial submission, because these four are a
    * list somebody chose and the rest of a submission is not the administration's

@@ -889,7 +889,7 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText('Sat mi je stao na petom kilometru.')).toBeVisible()
   })
 
-  it('scores nothing when the time entered is zero', async () => {
+  it('refuses a result run in no time at all', async () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
@@ -906,13 +906,23 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    // No time is no race, so it carries no points rather than an error, and the
-    // confirmation says so straight away.
-    expect(await screen.findByText(/0,00 BTL poena/)).toBeVisible()
+    /* **Refused since 31.08.2026** (owner: „Ne sme da se popuni 0:0:0!"). It used
+       to go through and be worth nothing: the confirmation said „0,00 BTL poena"
+       and the queue got a result nobody could score. No single box can refuse it,
+       since each of the three is right to take nought on its own, so the rule
+       lives with the boxes themselves (`forms/clock.ts`) and this form and the
+       panel in the verification queue ask the same one.
 
-    // And the way back to an empty form, for the second race of a weekend.
-    await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
-    expect(screen.getByRole('button', { name: 'Pošalji na proveru' })).toBeVisible()
+       Told what is wrong, not merely stopped: the sentence names the three boxes,
+       because a member looking at a form where every field is filled in has no
+       other way to know which one the portal means. */
+    expect(await screen.findByText(/Sati, minuti i sekunde ne mogu svi biti nula/)).toBeVisible()
+    expect(screen.queryByText(/BTL poena/)).toBeNull()
+
+    /* And one of the three above nought is enough to send it. */
+    await user.type(screen.getByLabelText('Minuta'), '45')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    expect(await screen.findByText(/BTL poena/)).toBeVisible()
   })
 
   /* Its own limit, because it really does walk the whole way: a member enters a
