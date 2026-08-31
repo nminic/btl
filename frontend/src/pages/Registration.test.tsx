@@ -399,22 +399,20 @@ describe('the biography, at the moment of joining', () => {
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
 
-  it('says what happens to it, beside the field, refusal and all', async () => {
-    /* Both halves. It said only that a moderator reads it, which was the whole
-       story while a biography was published as the moderator left it; since
-       15.08.2026 it can come back (PDL P22), and the field beside which a member
-       writes is where they should learn that. The picture has said as much all
-       along, so the two now tell the same story. */
+  it('says how long it may be, and nothing about what happens to it', async () => {
+    /* It used to say three things beside the field: that a moderator reads it,
+       that a refusal comes with a reason, and where to write a new one. It gained
+       the last two on 15.08.2026, when a biography began to come back (PDL P22).
+
+       All three went on 31.08.2026. The owner read the numbered list of all sixty
+       one rules the portal drew beside its fields, kept seven, and wrote this
+       one's words himself; asked what became of the three promises, he answered
+       „Neka se gube, ne treba mi". What stays is the length, which is the thing a
+       member has to know while they are typing. */
     renderForm()
 
-    expect(screen.getByText(/Moderator ih pregleda/)).toBeVisible()
-    expect(screen.getByText(/dobijaš razlog u poruci/)).toBeVisible()
-    /* And it goes on to the second half, which the portal did not have until
-       16.08.2026: a refused biography reached the member with a reason they had
-       nowhere to act on. The panel in Podešavanja is where they act on it now
-       (owner, 15.08.2026: „Panel u Podešavanjima, kao za sliku"), so the sentence
-       beside the field says so. */
-    expect(screen.getByText(/pišeš nov tekst u Podešavanjima/)).toBeVisible()
+    expect(screen.getByText(/Nekoliko rečenica o sebi/)).toBeVisible()
+    expect(screen.queryByText(/Moderator ih pregleda/)).toBeNull()
   })
 
   it('promises only what the portal does, and no more than one sentence of it', () => {
@@ -446,9 +444,7 @@ describe('the biography, at the moment of joining', () => {
        the words. Neither is a wall. Together they are a net with two holes rather
        than one with all of them, and a hole named in a comment is a hole somebody
        can step over. */
-    expect(sr.registration.bioHint).toBe(
-      'Nekoliko rečenica o sebi, najviše 360 znakova. Moderator ih pregleda; ako ih vrati, dobijaš razlog u poruci i pišeš nov tekst u Podešavanjima.',
-    )
+    expect(sr.registration.bioHint).toBe('Nekoliko rečenica o sebi, najviše 360 znakova.')
 
     /* And the net now names the one screen there is, rather than none.
      *
@@ -646,14 +642,15 @@ describe('an empty form', () => {
     expect(document.getElementById(at.replace('#', ''))).toBe(country)
     expect(summary.queryByRole('link', { name: 'Mesto' })).toBeNull()
 
-    /* And the town keeps saying how it works while somebody else's error is
-       being shown: the rule and the error arrive as one string, so dropping the
-       error dropped the rule with it. */
+    /* And the town says nothing at all while somebody else's error is shown. It
+       used to keep its own rule beside it, because the rule and the error arrived
+       as one string and dropping the error dropped the rule with it; since
+       31.08.2026 the town carries no rule (the owner kept seven on the whole
+       portal), so what is held is that the error of another control does not
+       attach itself here. */
     const town = screen.getByLabelText(/^Mesto$/)
-    const said = must(town.getAttribute('aria-describedby'), 'what describes the town')
 
-    expect(said).toContain('field-city-hint')
-    expect(said).not.toContain('field-city-error')
+    expect(town.getAttribute('aria-describedby')).toBeNull()
 
     /* And the country carries what is wrong with it, and not the rule that
        belongs to the town: given the whole of that, it was read out as „Država,

@@ -8,7 +8,6 @@ import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
-import sr from '../../i18n/sr.json'
 
 /**
  * The form a result is entered on from a profile, away from the calendar.
@@ -77,45 +76,11 @@ const shaped = (over: Partial<Race>): Race => ({
 })
 
 
-/**
- * Every field a race may fill in when it is chosen, by the word a sentence would use
- * for it.
- *
- * Read from the two places that own the answer rather than written out: which fields
- * are filled comes from `racesToOffer` itself, asked for all three kinds, and what
- * each is called comes from the dictionary. Written out here, a kind that begins
- * filling in a seventh field would leave the guard silent about it, and a label
- * renamed would leave it measuring a word that is nobody's field.
- *
- * Cut to the stem, because Serbian declines: „dužina" and „dužinu" are one field.
- * A label ending in a vowel loses it („Dužina" → „dužin", „Sati" → „sat"); one
- * ending in a consonant is its own stem („Uspon", „Spust"). Not a fixed number of
- * letters: four was tried and „Sati" is four long with a stem of three, so „sate"
- * slipped through while „obrisati" was accused of naming it.
- */
-const MEASURED_FIELDS = [...new Set(
-  ['length', 'time', 'free'].flatMap((kind) =>
-    Object.keys(
-      first(
-        racesToOffer(
-          [held],
-          [{ ...shaped({ id: 'r1', limitSeconds: 3_600 }), kind }],
-          '2026-12-31',
-          'sr-Latn',
-        ),
-      ).fills,
-    ),
-  ),
-)]
-  .filter((name) => name !== 'date')
-  .map((name) => {
-    const said = must(
-      Object.entries(sr.newResult).find(([key]) => key === name),
-      `the label of ${name}`,
-    )[1].replace(/\s*\(.*\)$/, '')
-
-    return /[aeiou]$/i.test(said) ? said.slice(0, -1).toLowerCase() : said.toLowerCase()
-  })
+/* Every field a race fills in for the member was worked out here, to hold the
+   sentence over the name box to naming none of them. The sentence went out on
+   31.08.2026 with the other fifty four rules the owner did not keep, so the list
+   had nothing left to protect and went with it; what the three kinds fill in is
+   still measured where it decides something, in `member/racesToOffer.ts`. */
 
 
 describe('the kind of race the member says it was', () => {
@@ -275,64 +240,22 @@ describe('the list of races under the name of an event', () => {
     ])
   })
 
-  it('tells the member what choosing a race does without naming a single field', async () => {
-    /* The sentence over the box is the second home of „what gets filled in when you
-       pick a race", and the member reads that one rather than the code. It is drawn
-       before any race is chosen, so it cannot know the kind, and each kind fills in
-       different fields: a race of a length hands over the distance, the climb and
-       the fall, a timed race hands over the time and locks it, a free race hands
-       over nothing but the day.
+  it('promises nothing over the box about what choosing a race fills in', async () => {
+    /* There was a sentence over this box until 31.08.2026, and holding it was a
+       round of work: drawn before any race is chosen it cannot know the kind, and
+       the three kinds fill in different fields, so every field it named was a
+       claim false for two kinds out of three (measured 30.08.2026).
 
-       So it must not name a field at all. Measured on 30.08.2026, when it went on
-       promising „datum, dužina, uspon i spust" while a timed race left the distance
-       empty for the member and locked three time boxes the sentence never mentioned:
-       every one of those words was a claim that is false for two kinds out of three.
-
-       Asked by the words a field is labelled with, not by the sentence itself, so
-       rewriting the sentence in better Serbian does not fail and naming a field
-       does. */
-    const user = setupUser()
-
+       The owner read the whole list of sixty one explanations and kept seven; this
+       is not one of them. What is held now is that the box promises nothing at
+       all, which is the only thing that is true before a race is picked. */
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
     const box = await screen.findByLabelText(/^Naziv trke/)
-    /* The explanation the box points a reader at, found the way a reader finds it
-       rather than by its words: pinned to a phrase, this guard fell on a rewrite in
-       better Serbian, which is the opposite of what it is for. */
-    const said = must(
-      document.getElementById(must(box.getAttribute('aria-describedby'), 'the description')),
-      'the sentence over the box',
-    )
 
-    /* Not empty, and no threshold beyond that: how long the sentence is, is nobody's
-       rule, and a number here would be one no measurement stands behind. What is
-       actually forbidden is below. */
-    expect(said.textContent?.trim(), 'the box explains nothing at all').not.toBe('')
+    expect(box.getAttribute('aria-describedby')).toBeNull()
 
-    /* Six, said out loud: the list is worked out from what the three kinds fill in,
-       and a kind that stopped filling one in would quietly leave fewer of them and a
-       guard measuring less than it says. */
-    expect(MEASURED_FIELDS, 'a field is no longer filled in by any kind of race').toHaveLength(6)
-
-    /* Whole words, because a stem inside a longer word is not a mention of the field:
-       „sat" lives in „obrisati" and in „upisati", and a round of this accused an
-       innocent verb of naming the clock while „sate" walked past it. */
-    const words = (said.textContent ?? '').toLowerCase().split(/[^a-zà-ÿčćđšž]+/i)
-
-    for (const field of MEASURED_FIELDS) {
-      expect(
-        words.filter((word) => word.startsWith(field)),
-        `the sentence names ${field}, which is filled in on some kinds of race and not on others`,
-      ).toEqual([])
-    }
-
-    /* And the box is the one the sentence belongs to: typing into it offers races,
-       so nothing here can pass on a screen that drew some other field. */
-    await user.type(box, 'beogradski maraton')
-
-    expect(offered().length).toBeGreaterThan(0)
   })
-
   it('hands over exactly what each kind of race fixes, and locks exactly that', () => {
     /* Choosing a race fills the fields under the box. A timed race and a free one
        carry nought, and nought is not a length this form will take: the definition

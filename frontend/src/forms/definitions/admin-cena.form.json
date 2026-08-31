@@ -7,7 +7,6 @@
       "name": "label",
       "type": "text",
       "labelKey": "admin.field.rowLabel",
-      "hintKey": "admin.hint.rowLabel",
       "required": true,
       "maxLength": 80
     },
@@ -23,7 +22,6 @@
       "name": "rsd",
       "type": "number",
       "labelKey": "admin.field.rsd",
-      "hintKey": "admin.hint.rsd",
       "required": true,
       "min": 0,
       "max": 200000

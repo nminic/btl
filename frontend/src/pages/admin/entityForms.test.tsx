@@ -522,16 +522,11 @@ describe('the words the seven forms need', () => {
     expect(missing).toEqual([])
   })
 
-  it('put every rule beside the field it belongs to, and not in a help page', () => {
-    // Every field whose filling in has a rule carries the rule next to it
-    // (PDL P8). These are the ones where the rule is not the field type.
-    const withRule = ENTITY_FORMS.flatMap((entity) =>
-      entity.form.fields.filter((field) => field.pattern !== undefined),
-    )
-
-    expect(withRule.length).toBeGreaterThan(0)
-    expect(withRule.filter((field) => field.hintKey === undefined)).toEqual([])
-  })
+  /* „Every field whose filling in has a rule carries the rule next to it" stood
+     here until 31.08.2026, and it stopped being true by decision: the owner read
+     the whole list of sixty one and kept seven, none of them on these forms
+     („Sve ostalo treba obrisati"). What a field with a pattern promises is now
+     held by the pattern alone, and what it refuses is said when it refuses. */
 
   it('offer an event the three kinds it can be, and asks for no state', () => {
     /* An event has no state at all (owner, 10.08.2026): one on the portal is
@@ -711,76 +706,10 @@ describe('which field of a form carries the address', () => {
   })
 })
 
-describe('the explanation of what a race is called', () => {
-  it('reaches the boxes it was written for, which it never did', async () => {
-    /* The sentence was written on 23.08.2026 („Podrazumevano je naziv događaja.
-       Promeni ga ako se trka zove drugačije…") and has sat in the dictionary ever
-       since without reaching a screen: hints are drawn by the renderer of forms,
-       and this table draws its own controls, so `admin.hint.raceName` was a string
-       nobody could read.
-
-       Asked as what a reader is told rather than as which element exists: a hint
-       that is drawn and pointed at by nothing is the same as no hint at all.
-
-       **More than one row**, and that is not a nicety: the first event on the list
-       holds a single race, so a case built on it walks exactly one box. Measured by
-       a review on 28.08.2026 with the description put on the first row alone: every
-       row after it went silent to a screen reader and all 2.257 tests stayed green,
-       which is the very fault this case is named after („six races or sixty"). A
-       row is added the way the rest of this file adds one. */
-    const user = setupUser()
-
-    await openFirstEvent(user)
-    await user.click(screen.getByRole('button', { name: t('admin.form.new.races') }))
-
-    const table = within(screen.getByRole('table', { name: /^Trke na doga\u0111aju/ }))
-    /* Named „Trka, 1. trka" and so on, by the column and by the row: that is how
-       every control of this table names itself. */
-    const boxes = table.getAllByRole('textbox', { name: /^Trka, / })
-
-    expect(boxes.length, 'the walk is built on a single row after all').toBeGreaterThan(1)
-
-    for (const box of boxes) {
-      expect(box).toHaveAccessibleDescription(t('admin.hint.raceName'))
-    }
-  })
-
-  it('is said once above the table, and nothing of it is inside the table', async () => {
-    /* The sentence is about the column, and the portal's usual mark for such a
-       sentence lives inside the label it explains. The label of a column is a
-       `th`, and a button and a sentence inside a header cell are read out with the
-       column every time a reader moves into it, six races or sixty. So it is said
-       once above the table instead, and the boxes point at it.
-
-       Both halves, because the second is what makes the first a decision rather
-       than an accident: nothing of the explanation may be inside the table. */
-    const user = setupUser()
-
-    await openFirstEvent(user)
-
-    const table = screen.getByRole('table', { name: /^Trke na događaju/ })
-
-    expect(screen.getAllByText(t('admin.hint.raceName'))).toHaveLength(1)
-    expect(within(table).queryByText(t('admin.hint.raceName'))).toBeNull()
-    expect(within(table).queryByRole('button', { name: t('form.explain') })).toBeNull()
-  })
-})
-
-describe('the explanation on an event that has no races yet', () => {
-  it('is not said at all, because there is no column to explain', async () => {
-    /* An event entered a fortnight before its distances are known is the ordinary
-       state of a new one, and the table is not drawn then. The sentence explained a
-       column nobody could see and nothing pointed at it. Measured by a review on
-       28.08.2026 on „Novi događaj" at 360px: the section read the heading, then the
-       sentence, then „Ovaj događaj još nema nijednu trku." */
-    const user = setupUser()
-
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    await user.click(await screen.findByRole('button', { name: t('admin.form.new.events') }))
-    await screen.findByRole('heading', { name: /^Trke na događaju/ })
-
-    expect(screen.getByText(t('admin.noRaces'))).toBeVisible()
-    expect(screen.queryByText(t('admin.hint.raceName'))).toBeNull()
-  })
-})
+/* „The explanation of what a race is called" was measured here until 31.08.2026,
+   when the owner kept seven rules on the whole portal and this was not one of them.
+   The case that survived asked the dictionary for the key it had just deleted, and
+   `translate` answers an unknown key with the key itself, so it was looking for the
+   literal words „admin.hint.raceName" on the screen, which nothing has ever drawn.
+   A guard that cannot fail is worse than none, since it reads as cover; it is gone
+   rather than rewritten, because the thing it covered is gone. */

@@ -10,7 +10,6 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "hintKey": "registration.firstNameHint",
       "policyRow": "Ime i prezime",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -21,7 +20,6 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "hintKey": "registration.lastNameHint",
       "policyRow": "Ime i prezime",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -40,7 +38,6 @@
       "name": "birthDate",
       "type": "date",
       "labelKey": "registration.birthDate",
-      "hintKey": "registration.birthDateHint",
       "required": true,
       "row": 2,
       "policyRow": "Datum rođenja",
@@ -50,7 +47,6 @@
       "name": "gender",
       "type": "choice",
       "labelKey": "registration.gender",
-      "hintKey": "registration.genderHint",
       "required": true,
       "row": 2,
       "options": [
@@ -70,7 +66,6 @@
       "name": "firstSeason2027",
       "type": "choice",
       "labelKey": "registration.category",
-      "hintKey": "registration.categoryHint",
       "required": true,
       "row": 2,
       "options": [
@@ -90,7 +85,6 @@
       "name": "email",
       "type": "email",
       "labelKey": "registration.email",
-      "hintKey": "registration.emailHint",
       "required": true,
       "row": 3,
       "policyRow": "Adresa elektronske pošte",
@@ -100,7 +94,6 @@
       "name": "password",
       "type": "password",
       "labelKey": "registration.password",
-      "hintKey": "registration.passwordHint",
       "required": true,
       "minLength": 10,
       "row": 3,
@@ -114,7 +107,6 @@
       "required": true,
       "matches": "password",
       "row": 3,
-      "hintKey": "registration.passwordRepeatHint",
       "policyRow": "Lozinka",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -122,7 +114,6 @@
       "name": "address",
       "type": "text",
       "labelKey": "registration.address",
-      "hintKey": "registration.addressHint",
       "required": true,
       "maxLength": 120,
       "row": 4,
@@ -133,7 +124,6 @@
       "name": "city",
       "type": "place",
       "labelKey": "registration.city",
-      "hintKey": "registration.cityHint",
       "required": true,
       "maxLength": 80,
       "row": 4,
@@ -159,7 +149,6 @@
       "name": "phone",
       "type": "text",
       "labelKey": "registration.phone",
-      "hintKey": "registration.phoneHint",
       "maxLength": 30,
       "row": 5,
       "policyRow": "Telefon, neobavezno",
@@ -169,7 +158,6 @@
       "name": "shirtSize",
       "type": "select",
       "labelKey": "registration.shirtSize",
-      "hintKey": "registration.shirtSizeHint",
       "required": true,
       "row": 5,
       "options": [
@@ -209,7 +197,6 @@
       "name": "photo",
       "type": "photo",
       "labelKey": "registration.photo",
-      "hintKey": "registration.photoHint",
       "required": true,
       "row": 6,
       "policyRow": "Profilna fotografija",
@@ -232,7 +219,6 @@
       "linkKey": "registration.healthStatementLink",
       "linkTo": "pravilnik",
       "required": true,
-      "hintKey": "registration.healthStatementHint",
       "policyRow": "Izjava da ste upoznati sa pravilnikom i zdravstveno sposobni",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -254,7 +240,6 @@
       "name": "parentRelation",
       "type": "select",
       "labelKey": "registration.parentRelation",
-      "hintKey": "registration.parentRelationHint",
       "required": true,
       "options": [
         {

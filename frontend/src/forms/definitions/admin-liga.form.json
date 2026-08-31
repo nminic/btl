@@ -14,7 +14,6 @@
       "name": "slug",
       "type": "text",
       "labelKey": "admin.address",
-      "hintKey": "admin.hint.leagueSlug",
       "required": true,
       "maxLength": 60,
       "pattern": "^[a-z0-9-]+$"
@@ -23,7 +22,6 @@
       "name": "season",
       "type": "number",
       "labelKey": "rankings.season",
-      "hintKey": "admin.hint.season",
       "required": true,
       "min": 2014,
       "max": 2100
@@ -31,14 +29,12 @@
     {
       "name": "groupsByCategory",
       "type": "checkbox",
-      "labelKey": "admin.byCategory",
-      "hintKey": "admin.hint.groupsByCategory"
+      "labelKey": "admin.byCategory"
     },
     {
       "name": "rules",
       "type": "textarea",
       "labelKey": "leagues.rules",
-      "hintKey": "admin.hint.rules",
       "maxLength": 4000
     },
     {

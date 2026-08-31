@@ -7,7 +7,6 @@
       "name": "slug",
       "type": "text",
       "labelKey": "admin.address",
-      "hintKey": "admin.hint.slug",
       "required": true,
       "maxLength": 60,
       "pattern": "^[a-z0-9-]+$"
@@ -29,7 +28,6 @@
       "name": "body",
       "type": "textarea",
       "labelKey": "admin.field.sectionBody",
-      "hintKey": "admin.hint.sectionBody",
       "maxLength": 8000
     }
   ]

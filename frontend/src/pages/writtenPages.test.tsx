@@ -723,14 +723,10 @@ describe('one written section, drawn on its own', () => {
     expect(container.textContent ?? '').not.toContain(PLACE)
   })
 
-  it('says the same word to the moderator who types it', () => {
-    /* The mark has three homes: the code, the content, and the sentence under
-       the box a moderator writes a page in. The first two are held together by
-       the test above; without this the third would go on naming a mark the
-       portal had stopped reading, and what the moderator typed would be printed
-       to the reader as words. */
-    expect(translate(dictionary, 'sr', 'admin.hint.sectionBody')).toContain(PLACE)
-  })
+  /* The mark had a third home until 31.08.2026: the sentence under the box a
+     moderator writes a page in. The owner kept seven rules on the whole portal and
+     that was not one of them, so the mark lives in the code and in the content
+     alone, and those two are held together by the test above. */
 })
 
 describe('the privacy policy', () => {
@@ -786,13 +782,12 @@ describe('the privacy policy', () => {
 
     for (const field of ruled) {
       const years = String(must(field.optionalWhenYoungerThan, `${field.name} rule`).years)
-      const hint = translate(dictionary, 'sr', String(field.hintKey))
-      /* As a number and not as a piece of text. `toContain` finds `6` inside `16`, so a
-         rule mistyped from sixteen to six left both texts still saying sixteen while the
-         portal demanded a document of every seven year old: measured. */
+      /* **Two homes now and not three.** The rule beside the field said the number
+         too until 31.08.2026, when the owner kept seven rules on the whole portal
+         and gave this one words that do not name an age. What is left to hold
+         together is the rule in the form and the row of the policy. */
       const saysIt = new RegExp(`(^|\\D)${years}(\\D|$)`)
 
-      expect(saysIt.test(hint), `the hint under ${field.name} does not say ${years}`).toBe(true)
 
       /* By the cell, like the guard below, so a table reflowed by hand does not read as a
          policy that lost a row. */

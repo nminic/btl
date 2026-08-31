@@ -63,8 +63,6 @@ function Statement() {
       <h2 className="profile__section" id="statement-heading">
         {t('review.statement.title')}
       </h2>
-      <p className="member__note">{t('review.statement.hint')}</p>
-
       <label className="statement__pick">
         <span className="button button--secondary">{t('review.statement.choose')}</span>
         <input

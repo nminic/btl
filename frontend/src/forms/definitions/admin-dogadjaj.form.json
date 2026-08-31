@@ -7,7 +7,6 @@
       "name": "name",
       "type": "text",
       "labelKey": "admin.field.eventName",
-      "hintKey": "admin.hint.eventName",
       "required": true,
       "maxLength": 120
     },
@@ -15,14 +14,12 @@
       "name": "date",
       "type": "date",
       "labelKey": "admin.field.date",
-      "hintKey": "admin.hint.date",
       "required": true
     },
     {
       "name": "city",
       "type": "place",
       "labelKey": "admin.field.city",
-      "hintKey": "admin.hint.city",
       "required": true,
       "maxLength": 80
     },
@@ -30,7 +27,6 @@
       "name": "kind",
       "type": "select",
       "labelKey": "admin.field.kind",
-      "hintKey": "admin.hint.kind",
       "required": true,
       "options": [
         {
@@ -51,7 +47,6 @@
       "name": "featured",
       "type": "select",
       "labelKey": "admin.field.featured",
-      "hintKey": "admin.hint.featured",
       "required": true,
       "options": [
         {
@@ -68,14 +63,12 @@
       "name": "description",
       "type": "textarea",
       "labelKey": "admin.field.eventDescription",
-      "hintKey": "admin.hint.eventDescription",
       "maxLength": 600
     },
     {
       "name": "link",
       "type": "text",
       "labelKey": "admin.field.eventLink",
-      "hintKey": "admin.hint.eventLink",
       "pattern": "^https?:\\/\\/[^\\s]+$",
       "maxLength": 500
     }

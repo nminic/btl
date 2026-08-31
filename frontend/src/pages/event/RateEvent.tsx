@@ -203,12 +203,9 @@ function RateOne() {
                     value={comment}
                     maxLength={limitOf(prijava, 'comment')}
                     leftId="comment-left"
-                    aria-describedby="comment-hint comment-left"
+                    aria-describedby="comment-left"
                     onChange={setComment}
                   />
-                  <p id="comment-hint" className="rate__hint">
-                    {t('event.commentHint')}
-                  </p>
                 </div>
               </div>
 

@@ -49,7 +49,6 @@
       "name": "comment",
       "type": "textarea",
       "labelKey": "newResult.comment",
-      "hintKey": "newResult.commentHint",
       "maxLength": 600,
       "requiredWhenFilled": {
         "field": "photo"

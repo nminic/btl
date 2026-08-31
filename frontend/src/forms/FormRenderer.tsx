@@ -281,6 +281,10 @@ const Field = memo(function Field({
      them. It is last of the three, because the count is the detail and the rule
      is what the field is for. */
   const describedBy = [
+    /* Only where one is drawn, which is what `hintKey` already answers: a field
+       answered by buttons or by a tick carries no rule since 31.08.2026, so there
+       is none of them to name. Written as a second condition it would be a test
+       nothing can fail. */
     field.hintKey ? hintId : '',
     error ? errorId : '',
     field.type === 'textarea' && field.maxLength !== undefined ? leftId : '',
@@ -388,9 +392,13 @@ const Field = memo(function Field({
             </label>
             {field.required === true && <RequiredMark />}
 
-            {field.hintKey !== undefined && (
-              <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
-            )}
+            {/* And no rule beside a box that is ticked. It was drawn here, in a
+                head of its own for the same reason the group of buttons has one;
+                on 31.08.2026 the owner kept seven rules on the whole portal and
+                none of them belongs to a field of this kind, so what was left was
+                the ability to draw one that nothing asks for. Taken out with the
+                rules themselves, the way the group's was, and the reason the head
+                exists is written above so it is not learned again. */}
           </span>
         </div>
 
@@ -417,9 +425,14 @@ const Field = memo(function Field({
           </span>
           {field.required === true && <RequiredMark />}
 
-          {field.hintKey !== undefined && (
-            <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
-          )}
+          {/* And no rule beside the name of a group. It used to be drawn here,
+              deliberately out of a `<legend>` so that the three fields answered by
+              buttons would not be laid out unlike the other eight (11.08.2026);
+              on 31.08.2026 the owner kept seven rules on the whole portal and none
+              of them belongs to a group, so what is left is the ability to draw
+              one that nothing asks for. Taken out with the rules themselves: if a
+              group is ever to carry one again, it is written again, and the reason
+              a `<legend>` was refused is recorded here. */}
         </span>
 
         {/* Buttons to look at and radio buttons to work: nothing is chosen to
@@ -1089,7 +1102,6 @@ export function FormRenderer({
         <p className="field field--derived" key={one.name}>
           <span className="field__label">{t(one.labelKey)}</span>
           <strong className="field__derived">{t(one.shownKey)}</strong>
-          <span className="field__hint">{t(one.hintKey)}</span>
         </p>
       ))}
 

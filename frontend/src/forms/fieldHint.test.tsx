@@ -2,7 +2,11 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { registracija } from './definitions'
+import { registracija, FORMS } from './definitions'
+import { bare, sources } from '../test/sources'
+
+/** Every form the portal defines, as its own registry lists them. */
+const ALL_FORMS = Object.values(FORMS)
 import { FormRenderer } from './FormRenderer'
 import { must } from '../test/at'
 import { setupUser } from '../test/user'
@@ -24,18 +28,89 @@ function renderForm() {
   )
 }
 
+/**
+ * Seven rules on the whole portal, and these are they.
+ *
+ * The owner read a numbered list of all sixty one on 31.08.2026 and named the ones
+ * to keep, with the words for six of them; „sve ostalo treba obrisati". Counted
+ * here rather than left to whoever adds a field: a rule added quietly is the state
+ * this began in, a dozen paragraphs on one form, and a rule taken away quietly is
+ * how the ones he kept would leave.
+ */
+describe('the rules that were kept', () => {
+  it('are the seven he named, beside those fields and no others', () => {
+    /* **Both homes of the fact, not one.** Fifty nine of the sixty one stood in the
+       JSON definitions and two were built in code, in `pages/admin/entityForms.ts`;
+       a check that read only the definitions was green while one of those two was
+       still on the screen (review, 31.08.2026). So the sweep reads the sources, the
+       way the portal's other sweeps do, and a rule added anywhere lands here. */
+    const carried = [
+      ...ALL_FORMS.flatMap((form) =>
+        form.fields.filter((field) => field.hintKey !== undefined).map((field) => field.hintKey),
+      ),
+      ...sources().flatMap(({ code }) =>
+        [...bare(code).matchAll(/hintKey:\s*'([^']+)'/g)].map((one) => one[1]),
+      ),
+    ]
+
+    expect([...new Set(carried)].sort()).toEqual([
+      'newResult.linkHint',
+      'newResult.photoHint',
+      'newResult.raceKindHint',
+      'registration.bioHint',
+      'registration.fatherNameHint',
+      'registration.idNumberHint',
+      'registration.parentConsentHint',
+    ])
+
+    /* Nine fields and seven rules, because two of them are asked for on two forms:
+       the link and the picture stand on both roads a result is reported by, so one
+       wording answers for both. */
+    expect(carried).toHaveLength(9)
+  })
+})
+
+describe('an answer chosen from buttons', () => {
+  it('says what is wrong with it, on the group and on every button in it', async () => {
+    /* The rule beside such a group went out on 31.08.2026 with the other fifty
+       four, and the case that measured it went with it. **This half did not go**:
+       a description is read for whatever holds the focus, and what holds it is a
+       button, so the complaint has to be on the group for whoever arrives at the
+       group and on each button for whoever tabs into one (WCAG 2.2 SC 3.3.1).
+
+       Left with the deleted case, both were measured passing with the attribute
+       taken off (review, 31.08.2026). */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const group = await screen.findByRole('radiogroup', { name: 'Pol' })
+    const said = must(group.getAttribute('aria-describedby'), 'what describes the group')
+
+    expect(said).toContain('field-gender-error')
+    expect(document.getElementById(said)).not.toBeNull()
+
+    for (const one of within(group).getAllByRole('radio')) {
+      expect(one.getAttribute('aria-describedby'), one.getAttribute('value') ?? '').toContain(
+        'field-gender-error',
+      )
+    }
+  })
+})
+
 describe('the rule beside a field', () => {
   it('is not printed on the page, and is still what the field is described by', () => {
     renderForm()
 
-    const address = screen.getByLabelText(/^Adresa za slanje$/)
-    const said = address.getAttribute('aria-describedby')
+    const father = screen.getByLabelText(/^Ime oca$/)
+    const said = father.getAttribute('aria-describedby')
 
-    expect(said).toBe('field-address-hint')
+    expect(said).toBe('field-fatherName-hint')
 
-    const rule = document.getElementById('field-address-hint')
+    const rule = document.getElementById('field-fatherName-hint')
 
-    expect(rule).toHaveTextContent(/Ulica i broj/)
+    expect(rule).toHaveTextContent(/po zakonu/)
     /* In the document and out of sight: `clip-path` rather than `display: none`,
        which would take it out of the accessibility tree and with it the rule.
        jsdom applies no stylesheet, so what is held here is the shape that makes
@@ -62,10 +137,10 @@ describe('the rule beside a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Mesto$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
-      'the rule beside the town',
+      'the rule beside the father’s name',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
     const words = must(hint.querySelector<HTMLElement>('.hint__text'), 'the words')
@@ -91,10 +166,10 @@ describe('the rule beside a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Mesto$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
-      'the rule beside the town',
+      'the rule beside the father’s name',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
 
@@ -118,10 +193,10 @@ describe('the rule beside a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Mesto$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
-      'the rule beside the town',
+      'the rule beside the father’s name',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
 
@@ -149,10 +224,10 @@ describe('the rule beside a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Mesto$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
-      'the rule beside the town',
+      'the rule beside the father’s name',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
 
@@ -172,7 +247,7 @@ describe('the rule beside a field', () => {
     renderForm()
 
     const asked = within(
-      screen.getByLabelText(/^Adresa za slanje$/).closest('.field') ?? document.body,
+      screen.getByLabelText(/^Ime oca$/).closest('.field') ?? document.body,
     ).getByRole('button', { name: 'Objašnjenje' })
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
@@ -210,8 +285,8 @@ describe('the rule beside a field', () => {
 
     const asked = within(
       must(
-        screen.getByLabelText(/^Adresa za slanje$/).closest<HTMLElement>('.field'),
-        'the field of the address',
+        screen.getByLabelText(/^Ime oca$/).closest<HTMLElement>('.field'),
+        'the field of the father’s name',
       ),
     ).getByRole('button', { name: 'Objašnjenje' })
 
@@ -234,7 +309,7 @@ describe('the rule beside a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Adresa za slanje$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
       'the rule beside the address',
@@ -248,11 +323,11 @@ describe('the rule beside a field', () => {
     /* And the words themselves hold it open, so they can be read to the end and
        taken: the pointer travels from the letter into them without the box
        closing under it (WCAG 2.2 SC 1.4.13, hoverable). */
-    await user.hover(within(hint).getByText(/Ulica i broj/))
+    await user.hover(within(hint).getByText(/po zakonu/))
 
     expect(asked).toHaveAttribute('aria-expanded', 'true')
 
-    await user.unhover(within(hint).getByText(/Ulica i broj/))
+    await user.unhover(within(hint).getByText(/po zakonu/))
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
@@ -263,11 +338,11 @@ describe('the rule beside a field', () => {
     renderForm()
 
     const asked = within(
-      screen.getByLabelText(/^Adresa za slanje$/).closest('.field') ?? document.body,
+      screen.getByLabelText(/^Ime oca$/).closest('.field') ?? document.body,
     ).getByRole('button', { name: 'Objašnjenje' })
 
-    expect(asked).toHaveAttribute('aria-describedby', 'field-address-label')
-    expect(document.getElementById('field-address-label')).toHaveTextContent('Adresa za slanje')
+    expect(asked).toHaveAttribute('aria-describedby', 'field-fatherName-label')
+    expect(document.getElementById('field-fatherName-label')).toHaveTextContent('Ime oca')
   })
 })
 
@@ -280,8 +355,8 @@ describe('the rule of a field, once it is open', () => {
 
     const asked = within(
       must(
-        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
-        'the field of the town',
+        screen.getByLabelText(/^Ime oca$/).closest<HTMLElement>('.field'),
+        'the field of the father’s name',
       ),
     ).getByRole('button', { name: 'Objašnjenje' })
 
@@ -302,8 +377,8 @@ describe('the rule of a field, once it is open', () => {
 
     const asked = within(
       must(
-        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
-        'the field of the town',
+        screen.getByLabelText(/^Ime oca$/).closest<HTMLElement>('.field'),
+        'the field of the father’s name',
       ),
     ).getByRole('button', { name: 'Objašnjenje' })
 
@@ -363,8 +438,8 @@ describe('Escape while a rule is open', () => {
 
     const letter = within(
       must(
-        screen.getByLabelText(/^Adresa za slanje$/).closest<HTMLElement>('.field'),
-        'the field of the address',
+        screen.getByLabelText(/^Ime oca$/).closest<HTMLElement>('.field'),
+        'the field of the father’s name',
       ),
     ).getByRole('button', { name: 'Objašnjenje' })
 
@@ -411,8 +486,8 @@ describe('what nothing else was holding', () => {
 
     const asked = within(
       must(
-        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
-        'the field of the town',
+        screen.getByLabelText(/^Ime oca$/).closest<HTMLElement>('.field'),
+        'the field of the father’s name',
       ),
     ).getByRole('button', { name: 'Objašnjenje' })
 
@@ -428,8 +503,8 @@ describe('what nothing else was holding', () => {
 
     const asked = within(
       must(
-        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
-        'the field of the town',
+        screen.getByLabelText(/^Ime oca$/).closest<HTMLElement>('.field'),
+        'the field of the father’s name',
       ),
     ).getByRole('button', { name: 'Objašnjenje' })
 
@@ -447,7 +522,7 @@ describe('what nothing else was holding', () => {
 
 describe('two rules standing side by side', () => {
   it('does not leave one open when the pointer sweeps into the other', () => {
-    /* Two fields do stand next to each other in a row: „Adresa elektronske
+    /* Two fields do stand next to each other in a row: „Ime oca" and „Broj
        pošte" and „Lozinka" are sixteen pixels apart, and a pointer sweeping from
        the open words of one into the letter of the other is one sample of
        movement. Asked whether it was still in „a hint" rather than in this one,
@@ -462,18 +537,18 @@ describe('two rules standing side by side', () => {
         ),
       ).getByRole('button', { name: 'Objašnjenje' })
 
-    const mail = letterOf(/^Adresa elektronske pošte$/)
-    const password = letterOf(/^Lozinka$/)
+    const father = letterOf(/^Ime oca$/)
+    const document_ = letterOf(/^Broj ličnog dokumenta$/)
 
-    fireEvent.mouseOver(mail)
+    fireEvent.mouseOver(father)
 
-    expect(mail).toHaveAttribute('aria-expanded', 'true')
+    expect(father).toHaveAttribute('aria-expanded', 'true')
 
-    fireEvent.mouseOut(mail, { relatedTarget: password })
-    fireEvent.mouseOver(password, { relatedTarget: mail })
+    fireEvent.mouseOut(father, { relatedTarget: document_ })
+    fireEvent.mouseOver(document_, { relatedTarget: father })
 
-    expect(mail).toHaveAttribute('aria-expanded', 'false')
-    expect(password).toHaveAttribute('aria-expanded', 'true')
+    expect(father).toHaveAttribute('aria-expanded', 'false')
+    expect(document_).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('is put away by one Escape, however many are open', () => {
@@ -489,19 +564,19 @@ describe('two rules standing side by side', () => {
         ),
       ).getByRole('button', { name: 'Objašnjenje' })
 
-    const mail = letterOf(/^Adresa elektronske pošte$/)
-    const password = letterOf(/^Lozinka$/)
+    const father = letterOf(/^Ime oca$/)
+    const document_ = letterOf(/^Broj ličnog dokumenta$/)
 
-    fireEvent.mouseOver(mail)
-    fireEvent.focus(password)
+    fireEvent.mouseOver(father)
+    fireEvent.focus(document_)
 
-    expect(mail).toHaveAttribute('aria-expanded', 'true')
-    expect(password).toHaveAttribute('aria-expanded', 'true')
+    expect(father).toHaveAttribute('aria-expanded', 'true')
+    expect(document_).toHaveAttribute('aria-expanded', 'true')
 
     fireEvent.keyDown(document, { key: 'Escape' })
 
-    expect(mail).toHaveAttribute('aria-expanded', 'false')
-    expect(password).toHaveAttribute('aria-expanded', 'false')
+    expect(father).toHaveAttribute('aria-expanded', 'false')
+    expect(document_).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('stays put away while the pointer only stirs inside the same letter', () => {
@@ -512,8 +587,8 @@ describe('two rules standing side by side', () => {
 
     const asked = within(
       must(
-        screen.getByLabelText(/^Mesto$/).closest<HTMLElement>('.field'),
-        'the field of the town',
+        screen.getByLabelText(/^Ime oca$/).closest<HTMLElement>('.field'),
+        'the field of the father’s name',
       ),
     ).getByRole('button', { name: 'Objašnjenje' })
     const drawn = must(asked.querySelector('span'), 'the letter drawn in it')
@@ -539,10 +614,10 @@ describe('the pointer leaving the rule of a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Mesto$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
-      'the rule beside the town',
+      'the rule beside the father’s name',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
 
@@ -560,15 +635,15 @@ describe('the pointer leaving the rule of a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Mesto$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
-      'the rule beside the town',
+      'the rule beside the father’s name',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
 
     fireEvent.mouseOver(asked)
-    fireEvent.mouseOut(asked, { relatedTarget: screen.getByLabelText(/^Mesto$/) })
+    fireEvent.mouseOut(asked, { relatedTarget: screen.getByLabelText(/^Ime oca$/) })
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
@@ -580,10 +655,10 @@ describe('the pointer leaving the rule of a field', () => {
 
     const hint = must(
       screen
-        .getByLabelText(/^Mesto$/)
+        .getByLabelText(/^Ime oca$/)
         .closest('.field')
         ?.querySelector<HTMLElement>('.hint'),
-      'the rule beside the town',
+      'the rule beside the father’s name',
     )
     const asked = within(hint).getByRole('button', { name: 'Objašnjenje' })
     const words = must(hint.querySelector<HTMLElement>('.hint__text'), 'the words of the rule')
@@ -669,58 +744,6 @@ describe('an answer chosen from buttons', () => {
 
     expect(male).toBeChecked()
     expect(female).not.toBeChecked()
-  })
-
-  it('is a group with a name of its own, and its rule stands beside that name', () => {
-    /* Not a `<fieldset>`: a `<legend>` is laid out by rules no grid can touch,
-       so the letter that explains the group fell to a line of its own and three
-       of the eleven fields were built unlike the other eight. Two things are
-       held here, because the role alone would not have said which: a fieldset is
-       a plain `group` and would fail the query, and where the letter sits is
-       what the change was for. */
-    renderForm()
-
-    const group = screen.getByRole('radiogroup', { name: 'Pol' })
-    const field = must(group.closest<HTMLElement>('.field'), 'the field it stands in')
-    const head = must(field.querySelector<HTMLElement>('.field__head'), 'the head of the field')
-
-    expect(within(head).getByRole('button', { name: 'Objašnjenje' })).toBeInTheDocument()
-    expect(within(head).getByText('Pol')).toBeInTheDocument()
-    /* And the group itself holds the buttons and nothing else: a radiogroup may
-       hold radios, and around the whole field it held the letter and the line of
-       the error too. */
-    expect(within(group).getAllByRole('radio')).toHaveLength(2)
-    expect(within(group).queryByRole('button')).toBeNull()
-    /* The rule is described on each button, because a description is read for
-       whatever holds the focus and what holds it is a button: on the group it
-       was said only to somebody who arrived at the group itself. */
-    for (const one of within(group).getAllByRole('radio')) {
-      expect(one).toHaveAttribute('aria-describedby', 'field-gender-hint')
-    }
-  })
-
-  it('says what is wrong with it, on the group and on the buttons alike', async () => {
-    /* `aria-describedby` is not inherited, and the two are two places somebody
-       can be: the summary of errors puts the cursor on the group, and walking
-       the form with the keyboard puts it on a button. Said in only one of them,
-       whoever arrived the other way never heard what was wrong. */
-    const user = setupUser()
-    renderForm()
-
-    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
-
-    const group = screen.getByRole('radiogroup', { name: 'Pol' })
-    const said = must(group.getAttribute('aria-describedby'), 'what describes the group')
-
-    expect(document.getElementById(said)).toHaveTextContent('Ovo polje je obavezno.')
-
-    /* And each button says it too, since that is where the keyboard lands. */
-    for (const one of within(group).getAllByRole('radio')) {
-      const byButton = must(one.getAttribute('aria-describedby'), 'what describes a button')
-
-      expect(byButton.split(' ')).toContain('field-gender-error')
-      expect(byButton.split(' ')).toContain('field-gender-hint')
-    }
   })
 
   it('carries the words of a confirmation and its letter in one head', () => {
