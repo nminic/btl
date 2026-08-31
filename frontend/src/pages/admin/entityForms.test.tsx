@@ -574,6 +574,20 @@ describe('the words the seven forms need', () => {
       'rules',
       'prizes',
     ])
+
+    /* And the words each of them is asked under. A field carries its label by a name in
+       the dictionary, and a name is a place the overturned rule can be put: the label of
+       „prizes" pointed at a key holding „Podela na kategorije zadaje se na nivou svake
+       Lige" and the whole gate stayed green, because the screen guards read routes and
+       this form is drawn on a press (review, 01.09.2026). The way in through `hintKey` is
+       closed in `forms/fieldHint.test.tsx`; this is the same door with another handle. */
+    expect(LEAGUES.form.fields.map((one) => one.labelKey)).toEqual([
+      'admin.field.leagueName',
+      'admin.address',
+      'rankings.season',
+      'leagues.rules',
+      'leagues.prizes',
+    ])
   })
 
   it('file an event in the country its town came with, which is not a field', () => {

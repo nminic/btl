@@ -2174,7 +2174,7 @@ describe('Leagues', () => {
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })
 
-  it('does not tell the reader, in the words above the list, that grouping is a thing that varies', async () => {
+  it('says nowhere, on any screen that shows a competition, that it settles its own categories', async () => {
     /* The line under each competition went in the first round of this change and
        the sentence introducing all of them did not: „Bodovanje je uvek isto, menja
        se samo koji događaji ulaze **i kako se poredak grupiše**", printed above the
@@ -2221,21 +2221,38 @@ describe('Leagues', () => {
        results in it: on a competition with none the table never reaches the page at
        all, and waiting for the word „Rezultati" waits for a tab label the shell draws
        either way (measured 31.08.2026). */
+    /* **Refused by what is being settled, not by the verb.** Two drafts tried it the
+       other way and were wrong in both directions at once: with „određuje" among the
+       verbs it refused „Poredak u ligi određuje se samo po polu", which is the decision
+       itself; without it, „Svaka Liga sama određuje svoje kategorije" walked past. And
+       naming verbs at all let „Kategorije se određuju posebno za svaku Ligu" and
+       „Kategorije nisu iste u svim ligama" through, while refusing „Svaka Liga sama bira
+       svoje događaje", which is true and which the dictionary already says (all measured
+       01.09.2026).
+
+       What is false is a category belonging to a competition rather than to the league:
+       a category **of** a league, **per** league, or differing **between** leagues. That
+       is what is asked, and it does not care which verb carries it. What it cannot do is
+       tell a sentence that says this in wholly other words; that is the same limit every
+       guard over prose has, and it is why the snapshot below stands beside it. */
     const SETS_ITS_OWN =
-      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|podešava|bira|propisuje|definiše)|lig\w*\s+sama\s+odre[dđ]uje|odre[dđ]uje\s+(?:svoju|svoje|sopstven)|(?:svoju|sopstvenu)\s+podelu/i
+      /kategorij\w*[^.]{0,40}?\b(?:svak\w+|svim|pojedina\w*)\s+lig|kategorij\w*\s+(?:\S+\s+){0,3}?(?:svake?\s+)?lig|(?:svak\w*|pojedina\S*|po)\s+lig\w*\s+(?:\S+\s+){0,3}?kategorij|na nivou\s+\S*\s*lig|(?:svoju|sopstvenu)\s+podelu|lig\w*\s+(?:\S+\s+){0,2}?(?:svoje|svoju)\s+(?:takmi\S+\s+)?kategorij/i
 
     for (const [route, drawnWhenReady, as] of [
       ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
-      ['/sr/liga/brdska-2019', 'Propozicije', 'visitor'],
+      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'visitor'],
       ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
       ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
     ] as const) {
       cleanup()
       renderAt(route, as)
 
-      /* Waited for by something only this page draws. „Rezultati" is a tab label the
-         shell writes whether the standing has loaded or not, so a block heading is
-         waited for instead. */
+      /* Waited for by something only this page draws once its own record has arrived.
+         Two tab labels went in here first and neither waits for anything: „Rezultati"
+         and „Propozicije" are both written by the shell on the change of route, before
+         the record is there, so a page that drew nothing at all passed as if it had
+         (measured 31.08. and 01.09.2026). The name of the competition and a block
+         heading are drawn only from the record itself. */
       await screen.findByText(new RegExp(drawnWhenReady))
 
       /* The markup, not the text: an `aria-label` says as much to somebody reading by
@@ -2377,7 +2394,7 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
 
     /* And no description has appeared that the snapshot does not know. */
     expect(Object.keys(seo).sort()).toEqual(Object.keys(words.seo).sort())
-  })
+  }, SLOW)
 })
 
 describe('a member whose fee has run out, in the tables', () => {
