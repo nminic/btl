@@ -37,6 +37,23 @@ export function inBoxes(totalSeconds: number): WrittenBoxes {
   }
 }
 
+/**
+ * Whether what stands in the three boxes is no time at all.
+ *
+ * Each box takes nought on its own and is right to: a race of forty five minutes
+ * has nought hours. What no form may take is all three at once (owner,
+ * 31.08.2026: „Ne sme da se popuni 0:0:0!"), and no field can hold that rule
+ * because it is about the three together.
+ *
+ * Nought, and everything under it, and a box that is not a number at all: written
+ * as „not above nought" rather than „equals nought" so that `NaN` and a negative
+ * are refused by the same sentence, since a comparison against `NaN` is false
+ * whichever way it is written.
+ */
+export function noTime(values: FormValues): boolean {
+  return !(fromBoxes(values) > 0)
+}
+
 /** And the three boxes added up. Every form that asks for a time requires all
  *  three, so there is nothing here to fall back to. */
 export function fromBoxes(values: FormValues): number {

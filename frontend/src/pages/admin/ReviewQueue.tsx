@@ -8,6 +8,11 @@ import { QueueMeta } from './QueueMeta'
 import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { inBoxes, fromBoxes, noTime, type WrittenBoxes } from '../../forms/clock'
+import { ASKED } from './amendFields'
+import { validateField } from '../../forms/validate'
+import { raceKind } from '../../data/raceKind'
+import { RACE_KINDS, type RaceKind } from '../../data/types'
 import '../../styles/outsideLink.css'
 import '../member/Member.css'
 /* For `.pending__bar`, the row that carries the heading and the one decision
@@ -32,7 +37,7 @@ import './Verification.css'
  */
 export function ReviewQueue() {
   const { locale, t } = useI18n()
-  const { submissions, decide, notify } = useSession()
+  const { submissions, decide, notify, amend } = useSession()
   const today = useToday()
   /* Which result the reason box is open on: the id the decision is written
      under, and the member the refusal is written to. Both taken when the box is
@@ -40,10 +45,47 @@ export function ReviewQueue() {
      nothing left to look up and no case where the lookup fails. */
   const [open, setOpen] = useState<{ id: string; memberNumber: string } | null>(null)
   const [note, setNote] = useState('')
+  /**
+   * The submission being put right, with the boxes as they stand.
+   *
+   * Its own state and not the one above, because the two panels answer different
+   * questions and both may be reached from the same row: the reason box refuses,
+   * this one corrects before deciding. Held as text, since that is what a box
+   * holds, and turned back into a number only when it is saved.
+   */
+  const [fixing, setFixing] = useState<
+    { id: string; eventName: string; raceName: string; raceKind: RaceKind } & WrittenBoxes | null
+  >(null)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
 
   const waiting = submissions.filter((one) => one.status === 'pending')
+
+  /* What this panel writes goes into the very fields the member's own form asks
+     for, so what may stand in them is the same question, asked of the same place.
+     Written by hand it was narrower than the form and let through what the form
+     refuses: minus five hours (which the table then drew as 00:00), a thousand
+     minutes, one and a half hours, `Infinity`, and a race with no name at all.
+     Worse than wrong on this screen: a result refused after such a correction
+     came back to the member with `-5` in a box they never touched, and their own
+     form turned it down (measured in review, 31.08.2026). */
+  /**
+   * What is wrong with one box, in the words the member's own form would use.
+   *
+   * The sentence and not only the verdict, which is the correction of 31.08.2026:
+   * three sentences written here said „the names must be filled in" over a name
+   * that was filled in and one character too long, and „the numbers must be within
+   * their bounds" over three noughts that are. A rule and a message written apart
+   * drift the moment either moves, so both come from the one place that holds
+   * them (`forms/validate.ts` and the form's own definition).
+   *
+   * A name this file asks for that the form does not define is a mistake in this
+   * file, and it refuses rather than letting the value through unchecked.
+   */
+  const wrongBox = (name: string, written: string) =>
+    ASKED.flatMap((one) => (one.name === name ? [validateField(one.field, written)] : [])).find(
+      (one) => one !== null,
+    ) ?? null
 
   return (
     <div className="member">
@@ -86,6 +128,9 @@ export function ReviewQueue() {
                  the sweep has just approved, confirming it would refuse what
                  was approved a moment ago and say nothing about it. */
               setOpen(null)
+              /* And the correction with it: the sweep decides every waiting item,
+                 so whatever the panel was opened over is decided too. */
+              setFixing(null)
               setSwept(waiting.length)
             }}
           >
@@ -237,11 +282,14 @@ export function ReviewQueue() {
                         className="button button--primary"
                         onClick={() => {
                           decide(one.id, 'approved', '')
-                          /* The reason box stands below the table, so approving
-                             from the row would leave it open over a result that
-                             is already decided, and confirming it would refuse
-                             what was just approved without saying so. */
+                          /* Both panels stand below the table, so approving from
+                             the row would leave one of them open over a result
+                             that is already decided: confirming the refusal would
+                             turn down what was just approved without saying so,
+                             and saving the correction would write on a submission
+                             nobody may rewrite any more. */
                           setOpen((current) => (current?.id === one.id ? null : current))
+                          setFixing((current) => (current?.id === one.id ? null : current))
                         }}
                       >
                         {t('review.approve')}
@@ -250,11 +298,41 @@ export function ReviewQueue() {
                         type="button"
                         className="button button--secondary"
                         onClick={() => {
+                          /* The other panel closes, because both stand below the
+                             table and two open at once would leave the moderator
+                             looking at a correction of one item over a refusal of
+                             another. */
+                          setFixing(null)
                           setOpen({ id: one.id, memberNumber: one.memberNumber })
                           setNote('')
                         }}
                       >
                         {t('review.sendBack')}
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => {
+                          setOpen(null)
+                          setFixing({
+                            id: one.id,
+                            /* Seeded from the race where the submission carries no
+                               event of its own, which is every submission a member
+                               types: they are asked one name and the moderator is
+                               offered it for both (owner, 31.08.2026). Once the
+                               moderator has settled it, the submission keeps it and
+                               this reads what they wrote rather than seeding again. */
+                            eventName: one.eventName ?? one.raceName,
+                            raceName: one.raceName,
+                            /* Through the one home for that reading: the member
+                               chose one of three, but a submission holds a word
+                               and this control offers three (`data/raceKind.ts`). */
+                            raceKind: raceKind(one.raceKind),
+                            ...inBoxes(one.seconds),
+                          })
+                        }}
+                      >
+                        {t('review.amend')}
                       </button>
                     </div>
                   </td>
@@ -264,6 +342,164 @@ export function ReviewQueue() {
           </table>
         </div>
       )}
+
+      {fixing !== null && (() => {
+        /* Asked of the same rule the member's own form is held to, field by
+           field, rather than of a bound written out here. */
+        /* Box by box, in the order they are drawn, and **kept per box**: the
+           messages a form gives are written without the name of the field,
+           because a form draws each one under the field it belongs to. Drawn once
+           under the buttons instead, „Najveća dozvoljena vrednost je 59." over two
+           boxes of 99 says nothing about which of them is meant (measured in
+           review, 31.08.2026). So each control says of itself that it is wrong,
+           which is what the table of races beside this one already does and for
+           the same reason (`raceRows.isWrong`, measured 23.08.2026), and the
+           sentence is named after the box it came from. */
+        const errors = new Map(
+          [
+            { name: 'eventName', label: 'review.amendEvent', written: fixing.eventName },
+            { name: 'raceName', label: 'newResult.raceName', written: fixing.raceName },
+            { name: 'hours', label: 'newResult.hours', written: fixing.hours },
+            { name: 'minutes', label: 'newResult.minutes', written: fixing.minutes },
+            { name: 'seconds', label: 'newResult.seconds', written: fixing.seconds },
+          ].flatMap(({ name, label, written }) => {
+            const said = wrongBox(name, written)
+
+            return said === null ? [] : [[name, { label, said }] as const]
+          }),
+        )
+        const wrong = [...errors.values()][0] ?? null
+
+        const amendWaits = wrong !== null || noTime(fixing)
+
+        return (
+        <div className="review__reason" role="group" aria-label={t('review.amendTitle')}>
+          {/* What this panel is for, said before the boxes rather than after: the
+              kind the member chose is a hint (owner, 30.08.2026, „kao nagoveštaj
+              tipa"), and the time on a timed race is the race's own limit, the
+              same for everybody who finished, not a run. A moderator who does not
+              know that writes the runner's time into a box that decides points
+              for everyone. */}
+          <p className="profile__empty">{t('review.amendNote')}</p>
+
+          {/* Six fields carry a star, so the star is explained and each control
+              says the same thing to a reader who cannot see it (owner, 12.08.2026,
+              „na svim formama za unos i verifikaciju"). It is the very thing the
+              refusal box below was measured missing: without it the button simply
+              stayed dead and nothing said why. */}
+          <RequiredNote />
+
+          {/* The event above the race, in that order, because that is the order
+              the moderator is asked to think in: what was run, and then which of
+              its races this is. */}
+          <div className="rankings__field rankings__field--wide">
+            <AskedLabel id="amend-event">{t('review.amendEvent')}</AskedLabel>
+            <input
+              id="amend-event"
+              type="text"
+              aria-required="true"
+              aria-invalid={errors.has('eventName')}
+              value={fixing.eventName}
+              onChange={(event) => setFixing({ ...fixing, eventName: event.target.value })}
+            />
+          </div>
+
+          <div className="rankings__field rankings__field--wide">
+            <AskedLabel id="amend-name">{t('newResult.raceName')}</AskedLabel>
+            <input
+              id="amend-name"
+              type="text"
+              aria-required="true"
+              aria-invalid={errors.has('raceName')}
+              value={fixing.raceName}
+              onChange={(event) => setFixing({ ...fixing, raceName: event.target.value })}
+            />
+          </div>
+
+          <div className="rankings__field">
+            <AskedLabel id="amend-kind">{t('newResult.raceKind')}</AskedLabel>
+            <select
+              id="amend-kind"
+              aria-required="true"
+              value={fixing.raceKind}
+              onChange={(event) => setFixing({ ...fixing, raceKind: raceKind(event.target.value) })}
+            >
+              {RACE_KINDS.map((one) => (
+                <option key={one} value={one}>
+                  {t(`race.kind.${one}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* The three boxes a time is asked in everywhere on this portal, split
+              and added up by the one place that answers both ways
+              (`forms/clock.ts`), so a limit written here is the same number the
+              form on the other side writes. */}
+          {(['hours', 'minutes', 'seconds'] as const).map((box) => (
+            <div className="rankings__field" key={box}>
+              <AskedLabel id={`amend-${box}`}>{t(`newResult.${box}`)}</AskedLabel>
+              <input
+                id={`amend-${box}`}
+                type="text"
+                inputMode="numeric"
+                aria-required="true"
+                aria-invalid={errors.has(box)}
+                value={fixing[box]}
+                onChange={(event) => setFixing({ ...fixing, [box]: event.target.value })}
+              />
+            </div>
+          ))}
+
+          <div className="member__links">
+            <button
+              type="button"
+              className="button button--primary"
+              aria-disabled={amendWaits}
+              aria-describedby={amendWaits ? 'amend-waits' : undefined}
+              onClick={() => {
+                /* Reachable means pressable, as everywhere else on this portal, so
+                   the refusal lives here as well as on the attribute above. */
+                if (amendWaits) {
+                  return
+                }
+
+                amend(fixing.id, {
+                  eventName: fixing.eventName.trim(),
+                  raceName: fixing.raceName.trim(),
+                  raceKind: fixing.raceKind,
+                  /* Added up by the one place that answers both ways, so a limit
+                     written here is the same number the form on the other side
+                     writes, for every value that form would accept. */
+                  seconds: fromBoxes(fixing),
+                })
+                setFixing(null)
+              }}
+            >
+              {t('review.amendSave')}
+            </button>
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => setFixing(null)}
+            >
+              {t('review.amendCancel')}
+            </button>
+          </div>
+
+          {/* And why it will not go, said rather than left to be guessed. Told off
+              rather than switched off, as everywhere else here: `disabled` takes
+              the button out of the tab order and takes this line with it. */}
+          {amendWaits && (
+            <p className="field__error" id="amend-waits">
+              {wrong === null
+                ? t('newResult.needsTime')
+                : `${t(wrong.label)}: ${t(wrong.said.key, wrong.said.params)}`}
+            </p>
+          )}
+          </div>
+        )
+      })()}
 
       {open !== null && (
         <div className="review__reason" role="group" aria-label={t('review.sendBack')}>

@@ -1,3 +1,4 @@
+import { pointsOf } from '../data/scoring'
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { EventComment, PendingItem, Result } from '../data/types'
 import { nextNumber } from '../pages/admin/raceIds'
@@ -14,6 +15,7 @@ import {
   type SessionValue,
   type Submission,
   type SubmissionStatus,
+  type Amendment,
 } from './context'
 
 /* Two messages to start with, so the inbox is not judged empty. They are the
@@ -199,34 +201,117 @@ export function SessionProvider({
     )
   }, [])
 
-  const decide = useCallback((id: string, status: SubmissionStatus, note: string) => {
-    setSubmissions((current) => {
-      const one = current.find((item) => item.id === id)
+  /**
+   * What the administration puts right on a submission before it decides it.
+   *
+   * A separate act from `decide`, and from `resubmit`, because it is a third
+   * thing. `resubmit` is the member's: it marks the item corrected, which is a
+   * word aimed at the moderator („samo labela", owner 27.08.2026), and it sends
+   * the item back to the front of the queue as new. Neither is true here. The
+   * moderator is already reading this item, is the one changing it, and the mark
+   * would tell them that somebody else had.
+   *
+   * What may be changed is what the owner named on 30.08.2026: the name of the
+   * event, the name of the race, the kind, and the time. The member's answer to
+   * the kind is a hint until this happens („Takmičar je mogao da izabere dužinska
+   * ili vremenska, kao nagoveštaj tipa"), and the time on a timed race is the
+   * race's limit rather than a run („ja ću lako promeniti njegovo vreme sa recimo
+   * 23:23:15 na 24:00:00").
+   *
+   * Nothing is said to the member per change: one standing sentence in Član 44
+   * covers it, which was the owner's own answer over a note beside each one.
+   *
+   * The item keeps its place. A moderator who has read the row is the one writing
+   * on it, so there is nobody to surprise, which is the whole reason `resubmit`
+   * moves an item and this does not.
+   */
+  const amend = useCallback((id: string, changes: Amendment) => {
+    setSubmissions((current) =>
+      current.map((one) => {
+        /* Only the one named, and only while it is still waiting. A panel left
+           open over a row that has just been decided still has a live button, and
+           a decided result is not the administration's to rewrite: what it holds
+           is what somebody agreed to. */
+        if (one.id !== id || one.status !== 'pending') {
+          return one
+        }
 
-      /* And where what was agreed to is a correction of a counted result, the
-         standing changes here and nowhere else.
-       *
-         Owner, 28.08.2026: the old result stays where it is while the correction
-         waits, and changes when somebody agrees with it. Until then the result
-         left the standing the moment the correction was sent, so a refusal lost
-         the points for good; the portal's own rule is that the standing is brought
-         up to date **after** verification (PDL P9), and this is where "after"
-         happens.
-       *
-         Only on approval, and nothing at all on a refusal: a member whose
-         correction is turned down is left exactly where they were, which is the
-         whole of what the owner chose.
-       *
-         Under the identity of the record it replaces, so the standing keeps one
-         result for one race rather than growing a second beside it. */
-      if (status === 'approved' && one?.corrects !== undefined) {
-        const put = one.corrects
+        /* The points are not worked out here. They are awarded at verification and
+           nowhere else (owner, 31.08.2026: „bodovi treba da se dodele tek NAKON
+           verifikacije").
+         *
+           **What that costs, said plainly rather than talked around.** Between a
+           correction and the decision the row does show the new time beside the
+           points the member arrived with: correct 1:52:10 to 3:00:00 on the
+           21,1 km with 540 of climb and 540 of fall that the tests walk, and the
+           queue draws 3:00:00 beside the 23,55 points of 1:52:10 until „Odobri" is
+           pressed, when both become the 8,57 of 3:00:00. The climb is named
+           because the formula reads it: flat, the same two times are worth 11,21
+           and 4,08. That is the owner's rule and not a fault, and the
+           screens say so where they announce a number: the form that sends a
+           result tells the member the count is not final and is settled at
+           verification. An earlier note here claimed this shape prevented the two
+           halves from disagreeing; it does not, it moves the moment they agree to
+           the decision, which is where he put it. */
+        return { ...one, ...changes }
+      }),
+    )
+  }, [])
+
+  const decide = useCallback((id: string, status: SubmissionStatus, note: string) => {
+    setSubmissions((current) =>
+      current.map((item) => {
+        if (item.id !== id) {
+          return item
+        }
+
+        /* Nothing at all on a refusal beyond the answer itself: a member who is
+           turned down is left exactly where they were, which is the whole of what
+           the owner chose. */
+        if (status !== 'approved') {
+          return { ...item, status, note }
+        }
+
+        /* **The points are awarded here, and only here** (owner, 31.08.2026:
+           „bodovi treba da se dodele tek NAKON verifikacije"). Until this moment
+           what the item carries is the estimate the member's own form showed them,
+           worked out from what they typed; between then and now the administration
+           may have settled the kind and the time, and on a timed race the time is
+           the race's own limit rather than a run.
+
+           Worked out from what the item holds at this moment, so the number that
+           enters the standing belongs to the numbers beside it. Left to the older
+           way, a time corrected from 23:23:15 to 24:00:00 was approved with the
+           points of 23:23:15, and the portal has already paid once for two halves
+           of a row coming from different sums (`pages/member/NewResult.tsx`,
+           28.08.2026). */
+        const points = pointsOf(item.distanceKm, item.ascentM, item.descentM, item.seconds)
+
+        /* And where what was agreed to is a correction of a counted result, the
+           standing changes here and nowhere else.
+
+           Owner, 28.08.2026: the old result stays where it is while the correction
+           waits, and changes when somebody agrees with it. Until then the result
+           left the standing the moment the correction was sent, so a refusal lost
+           the points for good; the portal's own rule is that the standing is
+           brought up to date **after** verification (PDL P9), and this is where
+           „after" happens.
+
+           Under the identity of the record it replaces, so the standing keeps one
+           result for one race rather than growing a second beside it, and carrying
+           the same time and points as the item above, so the two cannot part
+           company. */
+        if (item.corrects === undefined) {
+          return { ...item, status, note, points }
+        }
+
+        const put = { ...item.corrects, seconds: item.seconds, points }
 
         setCorrected((so) => ({ ...so, [put.id]: put }))
-      }
 
-      return current.map((item) => (item.id === id ? { ...item, status, note } : item))
-    })
+        return { ...item, status, note, points, corrects: put }
+      }),
+    )
   }, [])
 
   const markRead = useCallback((id: string) => {
@@ -309,6 +394,7 @@ export function SessionProvider({
       corrected,
       submit,
       resubmit,
+      amend,
       withdraw,
       decide,
       inbox,
@@ -342,6 +428,7 @@ export function SessionProvider({
       corrected,
       submit,
       resubmit,
+      amend,
       withdraw,
       decide,
       inbox,

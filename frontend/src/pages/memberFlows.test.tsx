@@ -889,7 +889,34 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText('Sat mi je stao na petom kilometru.')).toBeVisible()
   })
 
-  it('scores nothing when the time entered is zero', async () => {
+  it('says the count is not final, where it says the count', async () => {
+    /* PDL, 30.08.2026, point 8: the form shows what the result is worth **and
+       says the number is not final**, because verification settles the kind and
+       the time. On a timed race the time is the race's own limit, so a result sent
+       as 1:52:10 may be counted as 3:00:00 and be worth a third of what the screen
+       said. Until 31.08.2026 nothing on the way said so, and the member met the
+       smaller number for the first time in their own list (measured in review). */
+    const user = setupUser()
+    renderAt('/sr/rezultat/novi', 'competitor', '000007')
+
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/Dužina/), '21.1')
+    await user.type(screen.getByLabelText(/Uspon/), '0')
+    await user.type(screen.getByLabelText(/Spust/), '0')
+    await user.type(screen.getByLabelText('Sati'), '1')
+    await user.type(screen.getByLabelText('Minuta'), '52')
+    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    expect(await screen.findByText(/BTL poena/)).toBeVisible()
+    expect(screen.getByText(/Račun nije konačan/)).toBeVisible()
+  })
+
+  it('refuses a result run in no time at all', async () => {
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
@@ -906,13 +933,23 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    // No time is no race, so it carries no points rather than an error, and the
-    // confirmation says so straight away.
-    expect(await screen.findByText(/0,00 BTL poena/)).toBeVisible()
+    /* **Refused since 31.08.2026** (owner: „Ne sme da se popuni 0:0:0!"). It used
+       to go through and be worth nothing: the confirmation said „0,00 BTL poena"
+       and the queue got a result nobody could score. No single box can refuse it,
+       since each of the three is right to take nought on its own, so the rule
+       lives with the boxes themselves (`forms/clock.ts`) and this form and the
+       panel in the verification queue ask the same one.
 
-    // And the way back to an empty form, for the second race of a weekend.
-    await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
-    expect(screen.getByRole('button', { name: 'Pošalji na proveru' })).toBeVisible()
+       Told what is wrong, not merely stopped: the sentence names the three boxes,
+       because a member looking at a form where every field is filled in has no
+       other way to know which one the portal means. */
+    expect(await screen.findByText(/Sati, minuti i sekunde ne mogu svi biti nula/)).toBeVisible()
+    expect(screen.queryByText(/BTL poena/)).toBeNull()
+
+    /* And one of the three above nought is enough to send it. */
+    await user.type(screen.getByLabelText('Minuta'), '45')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    expect(await screen.findByText(/BTL poena/)).toBeVisible()
   })
 
   /* Its own limit, because it really does walk the whole way: a member enters a
@@ -1082,6 +1119,13 @@ describe('a result from entry to decision', () => {
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
     expect(await screen.findByText('Odbijeno')).toBeVisible()
     expect(screen.getByText('Link ne otvara rezultate.')).toBeVisible()
+
+    /* And the caveat about the count is gone with the waiting: it is there while
+       verification may still change the number, and a refused result has no number
+       coming. Held here rather than beside the waiting half, because that screen
+       has one row and „one caveat" is the same answer with the rule and without it
+       (review, 31.08.2026). */
+    expect(screen.queryByText(/Račun nije konačan/)).toBeNull()
   }, SLOW)
 })
 

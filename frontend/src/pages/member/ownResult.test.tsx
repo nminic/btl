@@ -1098,6 +1098,49 @@ describe('a result that has been counted', () => {
     expect(await countedRows(), 'a refusal moved the standing').toEqual(before)
   }, SLOW)
 
+  it('carries the caveat about the count while the result is still waiting, and not after', async () => {
+    /* The one screen a member meets the number on more than once. The form said
+       the count was not final when they sent it; here they see it again, and after
+       verification they may see a different one, since the administration settles
+       the kind and the time (PDL, 30.08.2026, point 8).
+
+       And not on a decided result: the number is then the decided one and there is
+       nothing left to warn about. The store starts with nothing waiting, so one is
+       made the way a member makes one, by correcting a counted result. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    const sent = within(must(document.querySelector('.submissions'), 'what was sent'))
+
+    expect(await sent.findByText(/Račun nije konačan/)).toBeVisible()
+
+    /* Once, on the one that waits, and once only.
+
+       **The other half of the rule is measured elsewhere and deliberately.** That
+       a decided result carries no caveat cannot be shown here: the list holds a
+       single waiting item, so „one" is the answer with the condition and without
+       it (review, 31.08.2026). It is measured where a decided result really
+       exists, at the end of the walk in `memberFlows.test.tsx` where a moderator
+       turns one down. */
+    expect(screen.getAllByText(/Račun nije konačan/)).toHaveLength(1)
+
+    const rows = () => within(must(document.querySelector('.submissions'), 'what was sent'))
+    const waiting = must(rows().getAllByRole('listitem')[0], 'the waiting one')
+
+    expect(within(waiting).getByText(/Račun nije konačan/)).toBeVisible()
+  }, SLOW)
+
   it('says which kind of race it was and where, read off the race and its event', async () => {
     /* The member is asked neither on this road: the kind is not theirs to change
        (owner, 30.08.2026) and the race behind the result answers for the place.

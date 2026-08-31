@@ -1,5 +1,5 @@
 import { categoryOf } from '../../data/raceCategory'
-import { btlPoints } from '../../data/scoring'
+import { pointsOf } from '../../data/scoring'
 import type { Race, RaceCategory } from '../../data/types'
 import { fromBoxes } from '../../forms/clock'
 import type { FormValues } from '../../forms/types'
@@ -60,7 +60,7 @@ export function reportedResult(race: Reporting, values: FormValues): Reported {
   return {
     ...measured,
     seconds,
-    points: btlPoints(measured.distanceKm, measured.ascentM, measured.descentM, seconds) ?? 0,
+    points: pointsOf(measured.distanceKm, measured.ascentM, measured.descentM, seconds),
     /* Off the race where the race fixes a length, which leaves every one of the 1612
        races in the file reading exactly as it did. Where it does not, the race
        carries the category of a length nobody ran, so it is read off what the member

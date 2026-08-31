@@ -18,6 +18,28 @@ export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 
+/**
+ * What verification may put right on a submission, and no fifth thing.
+ *
+ * Four, and the fourth arrived on 31.08.2026 with the rule that gives it a
+ * reader. A member types one name, the race's; the moderator is shown a field for
+ * the event above it, carrying that same name, and may leave it, shorten it, or
+ * change either (owner: „administratoru se iznad polja trke prvo prikazuje polje
+ * Događaj koji ima isti sadržaj kao naziv trke... može ostaviti isto, ili skratiti
+ * / promeniti naziv događaja, trke ili oba").
+ *
+ * It is kept on the submission rather than worked out again each time the panel
+ * opens, because otherwise a moderator who shortens „Beogradski maraton kroz
+ * Adu" to „Beogradski maraton", saves, and opens the panel again finds their own
+ * wording gone. It is read by the event that part D makes out of it.
+ */
+export type Amendment = {
+  eventName?: string
+  raceName?: string
+  raceKind?: string
+  seconds?: number
+}
+
 export type Submission = {
   id: string
   memberNumber: string
@@ -31,6 +53,16 @@ export type Submission = {
    * no name to lend.
    */
   raceName: string
+  /**
+   * The event this race was run at, as the administration settled it.
+   *
+   * Absent on everything a member sends, because they are asked one name and it is
+   * the race's. The moderator is shown a field for the event above it, carrying
+   * that same name, and may leave it or change it (owner, 31.08.2026); what they
+   * settle is kept here, so opening the panel a second time shows their wording
+   * rather than seeding from the race again.
+   */
+  eventName?: string
   /**
    * Which of the three kinds of race the member says it was, and where it was run.
    *
@@ -279,6 +311,18 @@ export type SessionValue = {
    * (P9), so a withdrawn one would be a record of something nobody may read.
    */
   withdraw: (id: string) => void
+  /**
+   * What the administration may put right on a submission before deciding it
+   * (owner, 30.08.2026): the name of the event, the name of the race, the kind,
+   * and the time.
+   *
+   * A type of its own rather than a partial submission, because these four are a
+   * list somebody chose and the rest of a submission is not the administration's
+   * to rewrite: the member's proofs, their number, what they said about the race.
+   * Written as a partial, a later hand could put any of those in it and nothing
+   * would say so.
+   */
+  amend: (id: string, changes: Amendment) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
   /**
