@@ -2489,7 +2489,12 @@ describe('what the written pages say the fee buys', () => {
        left as it was, and nothing here read it, because this guard knew one form.
        A member who did what Član 37 told them, and put the address into the
        comment, met „Ovo polje je obavezno." */
-    expect(article).toMatch(/link ka zvaničnim rezultatima/)
+    /* The address is asked for on **that** road, not merely somewhere in the
+       article: the sentence two above already carries those words, so a claim about
+       them here could not fail whatever the paragraph said, and the paragraph could
+       have stopped asking for the address entirely while Član 39 says „Obavezan je
+       na obe prijave" (measured in review, 31.08.2026). */
+    expect(article).toMatch(/ostalo, uz link ka zvaničnim rezultatima/)
 
     /* **And it stopped naming the fields, on the owner's word of 31.08.2026.** It
        named them twice and was wrong twice: first „sve ostalo unosite isto kao sa
@@ -2506,8 +2511,13 @@ describe('what the written pages say the fee buys', () => {
        time a kind is added — the race gives what the race fixes, and the member
        fills in the rest. */
     expect(article).toMatch(/portal preuzima sa nje ono što ta trka zadaje/)
+
+    /* And no list of fields beside it, asked as **any** such list rather than as the
+       one order it came in: refusing „naziv, datum, dužinu, uspon i spust" let the
+       same untrue list back with two words swapped (review, 31.08.2026). What the
+       article may not do is enumerate what the race hands over, in any order. */
     expect(article, 'Član 37 no longer lists the fields by name').not.toMatch(
-      /naziv, datum, dužinu, uspon i spust/,
+      /(?:naziv|datum|dužinu|uspon|spust)(?:, ?(?:naziv|datum|dužinu|uspon|spust)){2,}/,
     )
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,

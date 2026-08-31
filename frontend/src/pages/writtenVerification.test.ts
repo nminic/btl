@@ -121,67 +121,54 @@ describe('what the written pages say about a result that is waiting', () => {
     }
   })
 
-  it('says in both of them that a result is corrected while it is being verified, and not after', () => {
-    /* Two corrections, a day apart, and the second undid half of the first.
+  it('carries, in both of them, exactly the sentence the owner settled about correcting', () => {
+    /* One assertion in place of five, and the reason is worth writing down: the five
+       were **bans on words**, and a ban on a word is wrong in both directions at once.
 
-       The article spoke of „verifikovanog rezultata", a result already verified,
-       while the correction the owner described happens **at** verification, on one
-       that is not verified yet (owner, 30.08.2026: „ja ću lako promeniti njegovo
-       vreme sa recimo 23:23:15 na 24:00:00"). A rule covering only the later moment
-       does not cover the ordinary one, so „pri verifikaciji i posle nje" was written.
+       It refuses what is true — „…i vreme, a ne i posle nje" says exactly the rule the
+       owner settled and was refused by a ban on „posle", and „…ali ne i dužinu, uspon
+       ni spust" was refused by a ban on „dužinu". And it misses what is false, because
+       there is always another wording: „pri verifikaciji i posle verifikacije" walked
+       past a ban naming „posle nje", and „…i vreme, kao i mesto trke i osvojene bodove"
+       walked past a ban naming four other fields. Four rounds of this file went that
+       way, one wording at a time (measured in review, 30. and 31.08.2026).
 
-       **The second half of that was not true and is gone.** The portal cannot touch
-       a decided result at all: `SessionProvider` returns the record unchanged for
-       anything that is not `pending`, the queue draws only what waits, and the
-       administration has no result among its records. Found in review on 31.08.2026
-       and settled by the owner the same day: the text says what the portal does, and
-       correcting an approved result is written down as work he may order.
+       The sentence itself is the fact. It was settled word by word: the moment it
+       covers (owner, 31.08.2026, „Tekst kaže istinu sad"), the four things the panel
+       really writes (`Amendment` allows `eventName`, `raceName`, `raceKind`, `seconds`
+       and nothing else), and the competitor's recourse. Frozen whole, a second moment
+       cannot be added, the list cannot grow or be reordered, and a rewrite has to be a
+       deliberate act that comes here as well — which is what a sentence the owner
+       dictated should cost.
 
-       So both halves are asked: „pri verifikaciji" required, and a second moment
-       refused. The refusal names the moment rather than the phrase it came in — the
-       first draft listed „posle nje" and one other wording, and „pri verifikaciji i
-       **posle verifikacije**" walked past both, one word away from the sentence the
-       owner had just removed (review, 31.08.2026). What is refused now is the word
-       „posle" anywhere in the same sentence, which is the only way this promise can
-       be made at all: it is a promise about a later moment. */
+       The same in both pages, because it is one rule, and the pair of them drifting
+       apart is why this file exists at all. */
+    const SETTLED =
+      'Administracija sme da ispravi činjenične podatke rezultata pri verifikaciji: ' +
+      'naziv događaja, naziv trke, vrstu trke i vreme.'
+
     for (const { slug, heading, body } of ABOUT_CORRECTING) {
-      expect(body, `${slug}: ${heading}`).toMatch(/pri verifikaciji/)
-
-      for (const sentence of body.split(/(?<=\.)\s+/)) {
-        if (/sme da ispravi/.test(sentence)) {
-          expect(sentence, `${slug}: ${heading}`).not.toMatch(/\bposle\b/)
-        }
-      }
-    }
-  })
-
-  it('names, in both of them, the four things verification really changes', () => {
-    /* The list was „vreme, dužinu, uspon, spust, trku ili link", and four of those
-       six are fields no screen offers: the panel writes `eventName`, `raceName`,
-       `raceKind` and `seconds` and the `Amendment` type allows nothing else. So it
-       promised corrections that cannot be made and left out the two that are made
-       most often — the name of the event and the kind of the race, which is the very
-       thing the member only hints at (PDL, 30.08.2026, point 4).
-
-       That matters more than a wrong list usually would: point 16 makes this sentence
-       the **one warning given in advance**, in place of a note per correction. A
-       warning that does not name what is corrected is not one. */
-    for (const { slug, heading, body } of ABOUT_CORRECTING) {
+      /* Split on the line first and on the full stop after it: the rulebook keeps
+         the title of the article on the line above, and it is not part of the rule. */
       const sentence = must(
-        body.split(/(?<=\.)\s+/).find((one) => /sme da ispravi/.test(one)),
+        body
+          .split(/\n+/)
+          .flatMap((line) => line.split(/(?<=\.)\s+/))
+          .find((one) => /sme da ispravi/.test(one)),
         `the sentence about correcting, in ${slug}`,
       )
 
-      expect(sentence, `${slug}: ${heading}`).toMatch(/naziv događaja, naziv trke, vrstu trke i vreme/)
+      expect(sentence, `${slug}: ${heading}`).toBe(SETTLED)
+    }
+  })
 
-      /* And nothing beyond them. Held as an absence because the fault this case
-         exists for is a list that is **too long**: written as a substring alone it
-         let „…i vreme, kao i dužinu, uspon, spust i link" through, which is the very
-         list that was removed, appended to the one that replaced it (review,
-         31.08.2026). The four the panel writes are the four that may be named. */
-      for (const field of ['dužinu', 'uspon', 'spust', 'link']) {
-        expect(sentence, `${slug}: ${field}`).not.toContain(field)
-      }
+  it('sends the competitor to the league, in both of them, when they think it is wrong', () => {
+    /* The other half of the owner's own wording, and the half a rule about the
+       administration's rights does not carry by itself: „ukoliko takmičar proceni da
+       se radi o grešci da može da kontaktira" (30.08.2026). It follows the sentence
+       above rather than standing inside it, so it is asked for separately. */
+    for (const { slug, heading, body } of ABOUT_CORRECTING) {
+      expect(body, `${slug}: ${heading}`).toMatch(/[Tt]akmičar koji smatra da je ispravka greška obraća se ligi/)
     }
   })
 
@@ -223,15 +210,17 @@ describe('what the written pages say about a result that is waiting', () => {
          rezultat možete prijaviti; prijava ide tiho". No control on the portal does
          it and no article describes it, so the owner had it go. */
       expect(body, `${slug}: ${heading}`).not.toMatch(/[Tt]uđi rezultat možete prijaviti/)
+
+      /* And a fourth, which the owner had deleted the same way („Može li jednostavno
+         da se obriše rečenica?"): that a result may be taken back before verification
+         and not after. His own P9 says the opposite — „Član sme da obriše svoj
+         rezultat i posle verifikacije" — and every counted row carries a delete.
+
+         Refused as the claim rather than as its wording, since what is false is the
+         limit and not the words it came in: a sentence that says when deleting stops
+         being possible. */
+      expect(body, `${slug}: ${heading}`).not.toMatch(/obrisati[^.]*posle|posle[^.]*ne možete obrisati/i)
     }
   })
 
-  it('tells the competitor, in both of them, what to do when they think a correction is wrong', () => {
-    /* The other half of the owner's own wording, and the half a rule about the
-       administration's rights does not carry by itself: „ukoliko takmičar
-       proceni da se radi o grešci da može da kontaktira". */
-    for (const { slug, heading, body } of ABOUT_CORRECTING) {
-      expect(body, `${slug}: ${heading}`).toMatch(/obraća se ligi/)
-    }
-  })
 })
