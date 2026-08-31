@@ -136,7 +136,6 @@ export function ProfilePicture({ me }: { me: Competitor }) {
           <CropChooser
             id="picture-file"
             label={t('picture.choose')}
-            rule={t('picture.rule')}
             alt={t('picture.chosenAlt')}
             chosen={chosen}
             onChange={setChosen}

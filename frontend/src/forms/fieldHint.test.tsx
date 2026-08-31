@@ -68,6 +68,32 @@ describe('the rules that were kept', () => {
        wording answers for both. */
     expect(carried).toHaveLength(9)
   })
+
+  it('reach a field only through the form that asks for it, never written by hand', () => {
+    /* Which is the half the sweep above could not see, and the reason three rules
+       outlived the fifty four. It counts `hintKey`, and a rule written straight
+       into a screen carries no such thing: the box for a biography had one in a
+       `<p>` of its own, and the chooser for a picture took one as a prop, so both
+       stood on the portal while a test said seven and meant seven **of one kind**.
+       The owner had all three deleted on 31.08.2026, and this is what stops a
+       fourth being written the same way tomorrow.
+
+       Asked of the names rather than of the wording, because a rule may be worded
+       any way at all: what the seven have in common is that they end in `Hint` and
+       are reached through a form, and every one of them is listed above.
+
+       **What this does not catch**, said plainly rather than left to be found: a
+       hand-written rule under some other name, `t('picture.explanation')` and the
+       like. Holding every paragraph on the portal would mean deciding which of
+       them counts as a rule beside a field, and that is a question about the word
+       rather than a defect in the code. This catches the shape that actually got
+       through. Comments blanked, so a note naming a key is not read as using one. */
+    const byHand = sources().flatMap(({ path, code }) =>
+      [...bare(code).matchAll(/t\('([A-Za-z0-9_.]*[Rr]ule)'\)/g)].map((one) => `${path}: ${one[1]}`),
+    )
+
+    expect(byHand).toEqual([])
+  })
 })
 
 describe('an answer chosen from buttons', () => {

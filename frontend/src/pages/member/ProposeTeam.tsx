@@ -154,7 +154,6 @@ export function ProposeTeam() {
               <CropChooser
                 id="team-logo"
                 label={t('teams.proposeLogo')}
-                rule={t('teams.proposeLogoRule')}
                 alt={t('teams.proposeLogoAlt')}
                 /* A team may be proposed without a logo, and most are: the
                    league has four teams and one logo between them. */

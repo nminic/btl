@@ -76,16 +76,25 @@ describe('the words a member wrote about themselves, changed later', () => {
        count is the caller's business (forms/LongBox.tsx), and the comment box on
        an event does it (pages/event/RateEvent.tsx); this panel did not.
      *
-       Both are read on the way in now: the rule, which carries the number in
-       words, and the count, which carries what is left of it. WCAG 2.2 SC 3.3.2,
-       and SC 1.3.1 for a rule that is on the screen and tied to nothing. */
+       The rule beside the box said the number in words and it went out on
+       31.08.2026 with the last three of its kind, so what carries the limit now is
+       the count alone: „Još 360 znakova" before a key is pressed. That is still the
+       number said on the way in rather than met as a wall (WCAG 2.2 SC 3.3.2), and
+       it is the whole of what the description may say — a second id in this list
+       would point at an element that no longer exists, which is read as nothing at
+       all and which no assertion about text can see. */
     renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
     const field = await box()
 
-    expect(field).toHaveAttribute('aria-describedby', 'settings-bio-rule settings-bio-left')
-    expect(field).toHaveAccessibleDescription(/najviše 360 znakova/)
+    expect(field).toHaveAttribute('aria-describedby', 'settings-bio-left')
     expect(field).toHaveAccessibleDescription(/Još 360 znak/)
+
+    /* Every id in the list points at something. Asked of the document rather than
+       of the attribute, because an attribute naming a ghost reads the same. */
+    for (const id of must(field.getAttribute('aria-describedby'), 'what describes the box').split(' ')) {
+      expect(document.getElementById(id), id).not.toBeNull()
+    }
   })
 
   it('asks somebody with nothing on their profile to write rather than to change', async () => {
