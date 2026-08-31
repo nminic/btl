@@ -86,7 +86,7 @@ function Grid({
      nobody left on this page is not drawn, which is also what keeps a competition
      of five people from showing eight empty tables. */
   const from = (page - 1) * PER_PAGE
-  const groups = leagueGroups(league, table.rows)
+  const groups = leagueGroups(table.rows)
   let above = 0
   const shown = groups
     .map((group) => {

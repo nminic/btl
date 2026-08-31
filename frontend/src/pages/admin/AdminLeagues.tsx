@@ -69,7 +69,6 @@ export function AdminLeagues() {
                       <th scope="col">{t('admin.address')}</th>
                       <th scope="col">{t('rankings.season')}</th>
                       <th scope="col">{t('event.races')}</th>
-                      <th scope="col">{t('admin.byCategory')}</th>
                       <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
@@ -100,7 +99,6 @@ export function AdminLeagues() {
                             formatNumber(league.eventIds.length, locale)
                           )}
                         </td>
-                        <td>{t(league.groupsByCategory ? 'admin.yes' : 'admin.no')}</td>
                         <td>
                           <RowActions
                             entity={LEAGUES}

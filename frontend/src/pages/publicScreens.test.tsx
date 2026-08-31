@@ -2161,8 +2161,13 @@ describe('Leagues', () => {
     renderAt('/sr/lige')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
-    // Two of them group by gender alone now, so the list is asked for both.
-    expect(screen.getAllByText('Grupisanje samo po polu').length).toBeGreaterThan(0)
+    /* And it says nothing about how any of them groups. It said „Grupisanje samo
+       po polu" or „Grupisanje po kategorijama" under each until 31.08.2026, when
+       the owner settled that there is one ranking and it is by gender („nego
+       globalno! Lige treba da imaju poredak samo po polu"): a line printed under
+       every competition to say the one thing true of all of them is a line that
+       tells a reader there is something to choose between. */
+    expect(screen.queryAllByText(/^Grupisanje/)).toEqual([])
     // The league the portal exists for is implied, not listed.
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })

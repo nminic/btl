@@ -353,7 +353,6 @@ describe('LeagueDetail', () => {
                 slug: 'btl-2027',
                 name: 'RunTrace liga 2027',
                 season: 2027,
-                groupsByCategory: true,
                 rules: '',
                 prizes: '',
                 eventIds: [],

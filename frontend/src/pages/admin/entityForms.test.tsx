@@ -551,6 +551,31 @@ describe('the words the seven forms need', () => {
     expect(EVENTS.start).toEqual({ kind: 'race', featured: 'no', country: 'RS' })
   })
 
+  it('ask about a league only what a league still has', () => {
+    /* One of these five used to be six. `groupsByCategory` asked which way the
+       competition ranks, and on 31.08.2026 the owner settled that there is one
+       way and it is by gender: „Lige treba da imaju poredak samo po polu. Ne
+       želim dodatna pravila", said of every league („nego globalno!") and not of
+       the one the portal was built for.
+
+       Named here rather than left to the record, because the two are not held
+       together by anything: a field on the form the record has no room for is
+       written into the record all the same, under a name nothing reads. That is
+       what would happen the moment somebody puts this one back — the answer would
+       be saved on every league and change nothing at all, which is worse than a
+       setting that works.
+
+       The other five are named too, so the guard fails on a field going missing
+       as well as on one coming back. */
+    expect(LEAGUES.form.fields.map((one) => one.name)).toEqual([
+      'name',
+      'slug',
+      'season',
+      'rules',
+      'prizes',
+    ])
+  })
+
   it('file an event in the country its town came with, which is not a field', () => {
     /* The place field writes two values and only one of them is a field
        (forms/types.ts), so the record is built out of a loop that cannot see

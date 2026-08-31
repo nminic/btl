@@ -30,10 +30,6 @@
   font-size: 0.9rem;
 }
 
-.leagues__grouping {
-  margin-top: var(--space-4);
-}
-
 @media (min-width: 43.75em) {
   .leagues__list {
     grid-template-columns: 1fr 1fr;

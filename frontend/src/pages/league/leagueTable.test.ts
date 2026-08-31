@@ -1,6 +1,6 @@
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { at, first } from '../../test/at'
-import { categoryOfMember } from '../../data/derive'
+import { genderMark } from '../../data/categories'
 import { leagueGroups, leagueTable } from './leagueTable'
 
 const person = (memberNumber: string): Competitor => ({
@@ -76,7 +76,6 @@ const league: League = {
   slug: 'l1',
   name: 'Proba',
   season: 2019,
-  groupsByCategory: false,
   eventIds: ['e1', 'e2'],
   rules: '',
   prizes: '',
@@ -232,44 +231,40 @@ describe('the way a competition splits its ranking', () => {
   const rowsOf = (people: Competitor[]) =>
     people.map((competitor) => ({ competitor, points: new Map<string, number>(), total: 0 }))
 
-  it('splits into two where the competition ranks by gender alone', () => {
+  it('splits into two, in every competition there is', () => {
     /* „Samo po polu" is not „no grouping"; it is grouping into two, and that is
        the half that is easy to lose. A competition ranking by gender that draws
-       one list places a woman behind men she was never competing against. */
-    const groups = leagueGroups({ ...league, groupsByCategory: false }, rowsOf(field))
+       one list places a woman behind men she was never competing against.
+
+       „In every competition" is the part that changed on 31.08.2026: this used to
+       be one of two ways a competition could rank, chosen on the record, and the
+       owner said there is one („Lige treba da imaju poredak samo po polu. Ne želim
+       dodatna pravila", and „nego globalno!"). The case that measured the other way
+       went with the setting rather than being kept as a description of something
+       nothing can ask for. */
+    const groups = leagueGroups(rowsOf(field))
 
     expect(groups.map((one) => one.code)).toEqual(['M', 'Ž'])
     expect(groups.map((one) => one.rows.length)).toEqual([2, 2])
   })
 
-  it('splits by age as well where the competition ranks by category', () => {
-    /* The same four people, four blocks: the age band is part of the code, so
-       two women of different bands are two blocks and not one. */
-    const groups = leagueGroups({ ...league, groupsByCategory: true }, rowsOf(field))
-
-    expect(groups.map((one) => one.code)).toEqual(['M25-39', 'M55+', 'Ž25-39', 'Ž55+'])
-    expect(groups.every((one) => one.rows.length === 1)).toBe(true)
-  })
-
   it('names its blocks the way the rest of the portal names them', () => {
-    /* Read off `categoryOfMember` rather than written here, so a block on this
-       screen is never called something the standing calls otherwise. The season
-       is the competition's own, which is what makes the band right: the same
-       person is in a different band in a different season. */
-    const older = { ...person('000009'), gender: 'M' as const, birthYear: 1955 }
-
-    expect(first(leagueGroups({ ...league, groupsByCategory: true }, rowsOf([older]))).code).toBe(
-      categoryOfMember(older, league.season),
+    /* Read off `genderMark` rather than written here, so a block on this screen is
+       never called something the standing calls otherwise. Four people of two
+       genders and four different age bands: the bands make no difference at all,
+       which is what says the split is by gender and by nothing else. */
+    expect(leagueGroups(rowsOf(field)).map((one) => one.code)).toEqual(
+      [...new Set(field.map((one) => genderMark(one.gender)))].sort(),
     )
   })
 
-  it('draws no block for a category nobody in the competition is in', () => {
-    /* A competition of one would otherwise show eight empty tables, one per
-       category the league has, seven of them saying nothing except that the
-       portal knows the categories exist. */
-    const groups = leagueGroups({ ...league, groupsByCategory: true }, rowsOf([at(field, 0)]))
+  it('draws no block for a gender nobody in the competition is', () => {
+    /* A competition of one man would otherwise show an empty table for women,
+       saying nothing except that the portal knows women exist. */
+    const groups = leagueGroups(rowsOf([at(field, 0)]))
 
     expect(groups.length).toBe(1)
+    expect(first(groups).code).toBe(genderMark(at(field, 0).gender))
   })
 
   it('keeps the order the table already settled inside each block', () => {
@@ -277,7 +272,7 @@ describe('the way a competition splits its ranking', () => {
        number. Splitting must not reorder anything: a block is a slice of that
        order, and a sort here would be a second ranking nobody asked for. */
     const two = rowsOf([at(field, 0), { ...person('000000'), gender: 'M' as const, birthYear: 1985 }])
-    const groups = leagueGroups({ ...league, groupsByCategory: false }, two)
+    const groups = leagueGroups(two)
 
     expect(first(groups).rows.map((one) => one.competitor.memberNumber)).toEqual([
       '000001',

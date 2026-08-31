@@ -4,7 +4,6 @@
     "slug": "runtrace-2027",
     "name": "RunTrace liga 2027",
     "season": 2027,
-    "groupsByCategory": false,
     "rules": "Boduju se svi rezultati sa dogadjaja koji ulaze u ligu. Plasman je zbir svih trka, ne najboljih N. Pune propozicije objavljuju se uz pravilnik za sezonu.",
     "prizes": "Medalje za prva tri mesta, po polu. Priznanja za najvise kilometara i najduze na stazi. Sve se dodeljuje na kraju sezone.",
     "eventIds": [
@@ -23,7 +22,6 @@
     "slug": "planinska-2027",
     "name": "Planinska liga 2027",
     "season": 2027,
-    "groupsByCategory": true,
     "rules": "",
     "prizes": "",
     "eventIds": []
@@ -33,7 +31,6 @@
     "slug": "brdska-2019",
     "name": "Brdska liga 2019",
     "season": 2019,
-    "groupsByCategory": false,
     "rules": "Boduju se samo dogadjaji sa spiska ispod. Plasman je zbir BTL bodova sa svih trka lige, bez odbacivanja najlosijeg rezultata. Ko je istrcao bar jednu trku, na tabeli je.",
     "prizes": "Pehari za prva tri mesta, bez podele po kategorijama. Dodeljuju se na zavrsnoj trci sezone.",
     "eventIds": [
