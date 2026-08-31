@@ -2507,6 +2507,17 @@ Na formi sa profila portal vam pomaže da nađete istu trku: kad počnete da kuc
 
     expect(article).toContain(REACHING)
 
+    /* And no list of what the race hands over, anywhere else in the article. Holding
+       the two paragraphs whole says nothing about the rest of it, and the sentence
+       „Sa te trke portal uzima naziv, datum, dužinu, uspon i spust" put in beside them
+       is the untruth this passage was corrected for, one paragraph further along
+       (review, 31.08.2026). Freezing and refusing answer different questions and both
+       are needed: the frozen text says these paragraphs are the owner's words, and
+       this says the list he took out is nowhere in the article. */
+    expect(article, 'Član 37 lists the fields nowhere').not.toMatch(
+      /(?:naziv|datum|dužinu|uspon|spust)(?:,? ?i? ?(?:naziv|datum|dužinu|uspon|spust)){2,}/,
+    )
+
     expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,
     )
