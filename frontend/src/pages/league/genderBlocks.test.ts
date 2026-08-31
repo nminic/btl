@@ -97,38 +97,48 @@ describe('the name of a block of the standing', () => {
        ranking nobody asked for, and by age it would be the extra rule the owner
        refused („Ne želim dodatna pravila", 31.08.2026).
 
-       **Three people, because two cannot tell three orders apart.** With a pair there
-       are only two possible answers, so any second order either agrees with arrival or
-       reverses it, and a tie broken by year of birth agreed — it passed the first
-       draft of this case (review, 31.08.2026). With three, arrival, member number and
-       year of birth in either direction are four different answers, and only arrival
-       gives this one:
+       **Four people, and not two.** With a pair there are only two possible answers,
+       so any second order either agrees with arrival or reverses it, and a tie broken
+       by year of birth agreed — it passed the first draft of this case. With four, one
+       clear of the rest and three level with each other, every field they differ in
+       points somewhere else than arrival does (all measured in review, 31.08.2026):
 
-         arrival         000007, 000005, 000001, 000003
-         member number   000007, 000001, 000003, 000005
-         born, oldest    000007, 000001, 000005, 000003
-         born, youngest  000007, 000003, 000005, 000001
-         first season    000007, 000001, 000005, 000003
+         arrival          000007, 000005, 000001, 000003
+         member number    000007, 000001, 000003, 000005
+         born, oldest     000007, 000001, 000005, 000003
+         born, youngest   000007, 000003, 000005, 000001
+         beginner first   000007, 000001, 000005, 000003
+         fewest races     000007, 000001, 000005, 000003
+         joined earliest  000007, 000001, 000003, 000005
 
        What the mocks beside this hold is narrower and worth saying exactly: the five
        functions named there are refused, and a comparison written straight on a field
        of the competitor reaches none of them. This case is what holds that, and it
-       holds more than `birthYear`: the flag for a first season is a category by
-       another name, and sorting on it passed while only years were varied (review,
-       31.08.2026), so the three differ in that too. */
+       holds more than `birthYear`. Each field the rows differ in was added because
+       sorting on it had passed: the flag for a first season, which is a category by
+       another name; the number of races, which is the likeliest extra rule a running
+       league would reach for; and the season somebody joined in, which shares half a
+       name with the flag and is a different column entirely. */
     const rows = [
       /* One clear of the rest, so a rule about ranking by the total has something to
          get wrong: with every row on nought, sorting the block by the total the wrong
          way round could not fail here, while the name of this case promised it could. */
-      { ...person('000007', 'M'), birthYear: 1985, firstSeason2027: false, total: 50 },
+      { ...person('000007', 'M'), birthYear: 1985, firstSeason2027: false, firstSeason: 2019, races: 1, total: 50 },
       /* And three level with each other, so a tie-break has something to break: with
          every total different there is no tie at all, and a tie-break added to the
          code never fires. Both of those were true of two earlier drafts of this
          fixture, one after the other (review, 31.08.2026). */
-      { ...person('000005', 'M'), birthYear: 1980, firstSeason2027: false, total: 20 },
-      { ...person('000001', 'M'), birthYear: 1970, firstSeason2027: true, total: 20 },
-      { ...person('000003', 'M'), birthYear: 1990, firstSeason2027: false, total: 20 },
-    ].map(({ total, ...competitor }) => ({ competitor, points: new Map<string, number>(), total }))
+      { ...person('000005', 'M'), birthYear: 1980, firstSeason2027: false, firstSeason: 2022, races: 3, total: 20 },
+      { ...person('000001', 'M'), birthYear: 1970, firstSeason2027: true, firstSeason: 2020, races: 2, total: 20 },
+      { ...person('000003', 'M'), birthYear: 1990, firstSeason2027: false, firstSeason: 2021, races: 4, total: 20 },
+    ].map(({ total, races, ...competitor }) => ({
+      competitor,
+      /* As many races as the row is given, so „fewer races first" is an order of its
+         own here: every row carried an empty map until 31.08.2026 and that ordering,
+         the likeliest one for a running league, changed nothing and passed. */
+      points: new Map(Array.from({ length: races }, (_, at) => [`race-${String(at)}`, 1])),
+      total,
+    }))
     const groups = leagueGroups(rows)
 
     expect(groups.map((one) => one.code)).toEqual(['PRVI'])

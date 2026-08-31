@@ -7,6 +7,7 @@ import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/deriv
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
 import pages from '../../public/mock/pages.json'
+import words from '../test/leagueWords.snapshot.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
@@ -2277,33 +2278,36 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
     expect(held, 'the section that carries Član 57 stands once').toHaveLength(1)
     expect(held[0]?.body).toBe(SECTION_13)
 
-    /* **And the rule itself, refused on every page.** Freezing holds a place, not a
-       claim: moved to „8. Takmičarske kategorije", the section that defines
-       categories and is the likeliest home for it, the deleted rule passed with the
-       whole gate green (review, 31.08.2026). The unit of the freeze had gone from an
-       article to a section and the edge had gone with it, which is the third time the
-       edge moved rather than closed.
+    /* **And the words the portal says about a competition, held as they stand**
+       (`test/leagueWords.snapshot.json`).
 
-       The two answer different questions and both are needed: the frozen text says
-       section 13 is the owner's words, and this says that **no page anywhere** has a
-       league settling its own split of categories, however it is put.
+       Four drafts tried to refuse the overturned rule by pattern and each was
+       measured wrong. The first named two phrasings, so the words in another order
+       walked past. The second asked for a category and a league in one sentence,
+       which refused a legitimate line about the category a competitor is in and still
+       let the rule back in lower case. The third froze the article and the rule went
+       one line below it; the fourth froze the section and it went into the next
+       section along. The fifth asked for a pairing and let through „na nivou svake
+       **pojedinačne** Lige", „Podelu na kategorije zadaje svaka Liga", „Svaka Liga
+       **definiše** svoje takmičarske kategorije", and the rule split across two
+       sentences — while refusing „Bodovi se sabiraju na nivou cele lige, bez obzira
+       na kategoriju", which says the opposite (all measured in review, 31.08.2026).
 
-       Refused as a pairing, not as a wording: a category, and a league doing the
-       settling. That is what separates it from the two sentences that legitimately
-       carry both words today — „Ko je nov u ligi takmiči se u početničkoj kategoriji"
-       and the opening of the rulebook — and from a line about the category a
-       competitor is in, which an earlier draft of this refused. */
-    const SETS_ITS_OWN =
-      /na nivou\s+\S*\s*lig|lig\w*\s+(?:sama\s+)?(?:zadaje|odre[dđ]uje|podešava|bira|propisuje)|(?:svoju|sopstvenu)\s+podelu/i
+       Nothing has ever escaped from inside a text held as it stands. Every escape was
+       outside the range. So the range is every word the dictionary says about a
+       competition — the lead above the list, the parts of a competition's own page,
+       and the four descriptions a search engine shows — and the rule cannot be put
+       back into any of them under any wording.
 
-    for (const { slug, heading, body } of written) {
-      for (const sentence of body.split(/(?<=\.)\s+|\n+/)) {
-        if (!/kategorij/i.test(sentence)) {
-          continue
-        }
+       The cost is the same as everywhere this is done: a deliberate change to any of
+       these words is made here too. The lead sentence alone has carried this rule
+       twice and been corrected twice, which is what that cost buys. */
+    expect(sr.leagues).toEqual(words.leagues)
 
-        expect(sentence, `${slug}: ${heading}`).not.toMatch(SETS_ITS_OWN)
-      }
+    const seo: Record<string, unknown> = sr.seo
+
+    for (const [key, said] of Object.entries(words.seo)) {
+      expect(seo[key], `seo.${key}`).toEqual(said)
     }
   })
 })

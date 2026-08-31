@@ -1,0 +1,47 @@
+{
+  "leagues": {
+    "racesUnknown": "nepoznato",
+    "title": "Lige",
+    "season": "Sezona {season}.",
+    "events": "Događaja",
+    "backToLeagues": "Nazad na lige",
+    "notFound": "Ove lige nema.",
+    "rules": "Propozicije",
+    "prizes": "Nagrade",
+    "countingEvents": "Događaji koji ulaze u ligu",
+    "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
+    "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze.",
+    "none": "Trenutno nema nijednog dodatnog takmičenja.",
+    "parts": {
+      "label": "Delovi takmičenja",
+      "results": "Rezultati",
+      "rules": "Propozicije"
+    },
+    "standing": "Poredak takmičenja",
+    "noResults": "Na ovom takmičenju još nema nijednog rezultata.",
+    "notWritten": "Još nije napisano.",
+    "name": "Liga"
+  },
+  "seo": {
+    "leagues": {
+      "title": "BTL lige",
+      "description": "Lige koje teku uporedo sa glavnom, i koji događaji ulaze u njih."
+    },
+    "adminLeagues": {
+      "title": "Lige (administracija)",
+      "description": "Koji događaji ulaze u koje takmičenje, i pod kojim propozicijama."
+    },
+    "league": {
+      "title": "Propozicije takmičenja",
+      "description": "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
+      "recordTitle": "{name}",
+      "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
+    },
+    "leagueResults": {
+      "title": "Poredak takmičenja",
+      "description": "Poredak jednog takmičenja uz glavnu ligu: ko je trčao koju trku i sa koliko bodova.",
+      "recordTitle": "{name}, poredak",
+      "recordDescription": "{name}, poredak u sezoni {season}: ko je trčao koju trku i sa koliko bodova."
+    }
+  }
+}

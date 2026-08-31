@@ -13,7 +13,8 @@ import { inside, sources } from './sources'
  * tests green. The diff showed nothing at all, because the character prints as
  * nothing.
  *
- * **Every file the portal is written in, and the pages it publishes.** The portal's
+ * **Every file the portal is written in, the pages it publishes, and the files that
+ * build it.** The portal's
  * own sweep (`test/sources.ts`) drops anything with `.test.` in its name, because it
  * answers questions about what the portal ships; this one is about what is written,
  * and the byte was written in a test. Stylesheets and dictionaries are read by
@@ -87,7 +88,17 @@ function canBeSeen(one: string): boolean {
 describe('the source of the portal', () => {
   it('carries no character that cannot be seen', () => {
     const here = process.cwd()
-    const files = [...everySource(join(here, 'src')), ...everySource(join(here, 'public', 'mock'))]
+    const files = [
+      ...everySource(join(here, 'src')),
+      ...everySource(join(here, 'public', 'mock')),
+      /* And the files at the root that decide how everything above is built. The same
+         shell replacement that put the byte into a test would put it into any of
+         these, and no guard in the portal reads above `src` (measured in review,
+         31.08.2026: a zero-width space in `vite.config.ts` passed the whole suite). */
+      ...readdirSync(here, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && /\.(ts|tsx|css|json|mjs|html)$/.test(entry.name))
+        .map((entry) => join(here, entry.name)),
+    ]
 
     /* The floor, and it asks for **containment** rather than for a count. Written as
        „more files than the portal's own sweep" it left two hundred of them spare:
@@ -116,6 +127,8 @@ describe('the source of the portal', () => {
       inside('pages', 'league', 'League.css'),
       inside('i18n', 'sr.json'),
       inside('mock', 'pages.json'),
+      'vite.config.ts',
+      'index.html',
     ]) {
       expect(files.some((path) => path.endsWith(kind)), kind).toBe(true)
     }
