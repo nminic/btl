@@ -100,4 +100,30 @@ describe('the cell holding what a member may do with a counted result', () => {
     expect(button.fontSize).toBe(queue.fontSize)
     expect(button.whiteSpace).toBe('nowrap')
   })
+
+  it('gives the mark on a race the calendar does not hold a rule of its own', () => {
+    /* The name was invented rather than read from a sheet, so the cell drew „NOVO"
+       in the same letters as the race beside it and read „NOVOProbna trka" (review,
+       31.08.2026). What holds it is that the two homes of the name agree: the
+       markup writes it and this sheet paints it.
+
+       On its own line, which is what makes it a mark rather than a word running
+       into the name, and that is the part the owner asked for („negde u ćošku"). */
+    const mark = ruleFor(MEMBER, '.review__new', 'Member.css')
+
+    expect(mark.getPropertyValue('display')).toBe('block')
+    expect(mark.getPropertyValue('color')).not.toBe('')
+
+    /* **And the name the queue really writes**, which is the half this asked
+       nothing about for one round: renamed in the markup alone the rule stops
+       reaching anything, the mark falls back to `inline` with no colour, and the
+       cell reads „NOVOProbna trka" again with the whole suite green (measured
+       31.08.2026). The mirror of this hole was found on 28.08.2026 fifty lines
+       above and closed the same way.
+
+       Comments blanked, so a note naming the class is not read as using it. */
+    expect(bare(readFileSync(join(process.cwd(), 'src/pages/admin/ReviewQueue.tsx'), 'utf-8'))).toContain(
+      'className="review__new"',
+    )
+  })
 })

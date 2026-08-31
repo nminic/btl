@@ -19,10 +19,13 @@ export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
 
 /**
- * What verification may put right on a submission, and no fifth thing.
+ * What verification writes on a submission, and no sixth thing.
  *
- * Four, and the fourth arrived on 31.08.2026 with the rule that gives it a
- * reader. A member types one name, the race's; the moderator is shown a field for
+ * Four of the five are the administration putting right what the member could only
+ * hint at; the fifth, the race, is the portal finishing a sentence the member could
+ * not, and it arrived with the part that makes one.
+ *
+ * A member types one name, the race's; the moderator is shown a field for
  * the event above it, carrying that same name, and may leave it, shorten it, or
  * change either (owner: „administratoru se iznad polja trke prvo prikazuje polje
  * Događaj koji ima isti sadržaj kao naziv trke... može ostaviti isto, ili skratiti
@@ -34,6 +37,18 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
  * wording gone. It is read by the event that part D makes out of it.
  */
 export type Amendment = {
+  /**
+   * The race this submission belongs to, written when verification makes one for
+   * it.
+   *
+   * Not the administration correcting the member, which is what the other three
+   * are: this is the portal finishing a sentence the member could not. A member
+   * who typed a name the calendar does not hold sends no race, verification makes
+   * one, and without this the result stays pointing at nothing while the race it
+   * asked for stands empty (PDL, 30.08.2026, point 6: „Rezultat prvog člana se
+   * veže za trku koja je tim upisom nastala").
+   */
+  raceId?: string
   eventName?: string
   raceName?: string
   raceKind?: string
@@ -53,6 +68,19 @@ export type Submission = {
    * no name to lend.
    */
   raceName: string
+  /**
+   * The race in the calendar this result belongs to, where there is one.
+   *
+   * Absent on exactly one road: a member who typed a name the calendar does not
+   * hold. Every other way in knows it — the button in a row of the event page is
+   * that row's race, a name chosen from the list is the race chosen, and a
+   * correction of a counted result keeps the race the record already names.
+   *
+   * That absence is what verification reads to know it has to make the event and
+   * the race before it can approve (owner, 31.08.2026), and it is why the queue
+   * marks such a row „NOVO" and why sweeping the queue steps over it.
+   */
+  raceId?: string
   /**
    * The event this race was run at, as the administration settled it.
    *

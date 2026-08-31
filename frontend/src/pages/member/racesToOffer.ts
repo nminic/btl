@@ -132,6 +132,21 @@ export function racesToOffer(
      * says what the reader may not change, so locking what the portal has not
      * filled in makes a dead end.
      */
-    fills: { ...fieldsFixedBy(race), date: fieldDate(race.date) },
+    fills: {
+      ...fieldsFixedBy(race),
+      date: fieldDate(race.date),
+      /* And which race was chosen, which no box draws.
+       *
+         It rides here rather than beside here because what `fills` holds is
+         exactly what the link consists of: chosen, it is written down; typed over,
+         it is emptied with the rest (`FormRenderer.tsx`, `onType`), which is the
+         rule the owner set on 23.08.2026 for the measures and is no less true of
+         the race itself. Verification reads its absence to know it has to make the
+         race before it can approve.
+       *
+         No field carries this name, so nothing is drawn for it and nothing is
+         locked; what a name in `fills` locks is a control, and there is none. */
+      raceId: race.id,
+    },
   }))
 }

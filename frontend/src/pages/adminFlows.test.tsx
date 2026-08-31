@@ -18,6 +18,7 @@ import {
   type SessionValue,
   type Submission,
   type SubmissionStatus,
+  type Creations,
 } from '../session/context'
 import { Decided, Inbox } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
@@ -40,7 +41,7 @@ import {
 } from '../data/paymentQr'
 
 /** A session holding results in the states the queue has to tell apart. */
-function sessionWith(states: SubmissionStatus[]): SessionValue {
+function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionValue {
   return {
     memberNumber: '000007',
     signIn: vi.fn(),
@@ -52,6 +53,10 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       id: `sub-${index}`,
       memberNumber: '000007',
       raceName: 'Probna trka',
+      /* The race the calendar holds for it, on every road but one: a member who
+         typed a name the calendar does not hold sends none, and `loose` names
+         which of these stand for that. */
+      ...(loose.includes(index) ? {} : { raceId: 'trka-1' }),
       raceKind: 'length',
       city: 'Niš',
       country: 'RS',
@@ -68,7 +73,9 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       seconds: 2700,
       points: 12,
       photo: '',
-      category: 'short' as const,
+      /* Not what `categoryOf(10)` gives, so a record that copies this instead of
+         working it out can be told from one that does. */
+      category: 'marathon' as const,
       link: 'https://primer.rs/r',
       comment: '',
       status,
@@ -1061,9 +1068,16 @@ const DAY = '2026-08-16'
 describe('the queue of results', () => {
   /** `patch` is applied to the submissions before anything is drawn, for the one
    *  case that needs a submission the administration has already written on. */
-  const openWith = (states: SubmissionStatus[], patch: Partial<Submission> = {}) => {
+  const openWith = (
+    states: SubmissionStatus[],
+    patch: Partial<Submission> = {},
+    loose: number[] = [],
+    /* What the session has already made, handed over before anything is drawn: set
+       afterwards it never reaches the screen, since the value is read at render. */
+    creations: Creations = {},
+  ) => {
     const user = setupUser()
-    const session = sessionWith(states)
+    const session = { ...sessionWith(states, loose), creations }
 
     session.submissions = session.submissions.map((one) => ({ ...one, ...patch }))
 
@@ -1512,6 +1526,307 @@ describe('the queue of results', () => {
 
     await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
     expect(screen.queryByRole('group', { name: 'Odbij' })).toBeNull()
+  })
+
+  it('marks a race the calendar does not hold, and steps over it when sweeping', async () => {
+    /* Owner, 31.08.2026: „te trke treba da imaju posebnu naznaku NOVO negde u
+       ćošku i da znam o čemu se radi", and „Odobri sve treba da ih preskoči".
+
+       The two halves belong together. A sweep that quietly left rows behind would
+       read as a queue that will not empty, so the mark says which rows and why, and
+       the line after the sweep says how many are left. Approving one of them writes
+       an event and a race into the calendar, which is why it is not something a
+       sweep does. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user, session } = openWith(['pending', 'pending', 'pending'], {}, [1])
+
+      expect(screen.getAllByText('NOVO')).toHaveLength(1)
+      /* And what it means, in words rather than in a `title` a keyboard never
+         reaches and most readers never speak. */
+      expect(screen.getByText(/Ove trke nema u kalendaru/)).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      /* Two of the three, and the one that asks for a race is untouched. */
+      expect(session.decide).toHaveBeenCalledTimes(2)
+      expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
+      expect(session.decide).toHaveBeenCalledWith('sub-2', 'approved', '')
+      expect(session.decide).not.toHaveBeenCalledWith('sub-1', 'approved', '')
+      expect(session.create).not.toHaveBeenCalled()
+
+      /* In the grammar the portal already uses for a count on this very screen,
+         one line above this one: written as one flat string it read „Ostalo je 1
+         prijava" beside „Rešena je 1 stavka" (review, 31.08.2026). Both halves of
+         the agreement are asked for, because correcting the noun and leaving the
+         verb is what the first correction did: **„Ostala je"**, feminine and
+         singular, and **„prijava"** rather than „prijave". The precedent is
+         `verification.approveAllDone`, whose three forms all agree. */
+      expect(screen.getByText(/^Ostala je 1 prijava sa trka/)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('counts what is left in the plural the number really takes', async () => {
+    /* The other form of the same line, and the reason it is its own case: the
+       correction above changed two strings and only one of them had anything
+       measuring it, so „Ostalo je 2 prijave" passed the whole suite (measured
+       31.08.2026). Serbian takes three forms here and the portal already writes
+       all three next door in `verification.approveAllDone`; two were changed, so
+       two are asked for. The third, five and upward, was already right and is left
+       to the shape it shares with its neighbour. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      /* Five, of which the sweep settles three and leaves two: the same number on
+         both sides could not tell which of the two the line is counting, and the
+         gate below reads the other one. */
+      const { user } = openWith(['pending', 'pending', 'pending', 'pending', 'pending'], {}, [1, 2])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.getByText(/^Ostale su 2 prijave sa trka/)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('says nothing about what is left when the sweep left nothing', async () => {
+    /* The gate on that line, which had no case in either direction: its mirror
+       turned round it read „Ostalo je 0 prijava sa trka kojih nema u kalendaru"
+       under a sweep that emptied the queue (measured in review, 31.08.2026), which
+       is the very „0" the line above exists to keep off the screen. The predicate
+       is written by hand six times in that file and this is the sixth. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.queryByText(/^Ostal/)).toBeNull()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('makes the event and the race before it approves one the calendar does not hold', async () => {
+    /* The promise the terms of use have carried since before the portal could keep
+       it: „Ako trke nema u kalendaru, prijavite je svejedno; administrator će uz
+       vaš rezultat napraviti i događaj i trku."
+
+       Made before the decision and by one press, because `decide` is what puts the
+       result into the standing: a race made after it would leave the standing
+       pointing at nothing for as long as the two calls are apart. */
+    const { user, session } = openWith(['pending'], {}, [0])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    expect(session.create).toHaveBeenCalledTimes(2)
+
+    const made = vi.mocked(session.create)
+    const [event, race] = made.mock.calls
+
+    expect(event?.[0], 'an event first').toBe('events')
+    expect(event?.[2]).toMatchObject({
+      name: 'Probna trka',
+      date: '2026-05-10',
+      city: 'Niš',
+      country: 'RS',
+      kind: 'race',
+    })
+
+    /* Every field, and not the three that happen to be interesting. The file that
+       builds these says „Every field named, none left to a spread", on the ground
+       that a field nobody measures is a field that goes quietly wrong; six of them
+       were measured wrong and passing (review, 31.08.2026). */
+    expect(event?.[2]).toEqual({
+      name: 'Probna trka',
+      date: '2026-05-10',
+      city: 'Niš',
+      country: 'RS',
+      kind: 'race',
+      featured: 'no',
+      description: '',
+      link: '',
+      /* „Ne, događaj je događaj" (owner, 31.08.2026): nothing on the record says it
+         grew out of a submission. */
+      copiedFrom: '',
+    })
+
+    expect(race?.[0], 'and its race under it').toBe('races')
+    expect(race?.[2]).toEqual({
+      eventId: event?.[1],
+      name: 'Probna trka',
+      /* Given by hand, whatever it started as, so renaming the event later leaves
+         it alone. */
+      renamed: 'yes',
+      date: '2026-05-10',
+      kind: 'length',
+      /* Nought on a race run to a distance: the limit belongs to a timed one. */
+      limitSeconds: '0',
+      distanceKm: '10',
+      ascentM: '0',
+      descentM: '0',
+      /* Worked out from the length rather than carried over, as everywhere else.
+         Measured against a submission whose own category says something different,
+         since the two agree on 10 km and the check could not tell them apart. */
+      category: 'short',
+    })
+
+    expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
+  })
+
+  it('makes a timed race run to the time the administration settled', async () => {
+    /* The other kind, and the reason the number means something different on it: on
+       a timed race the three boxes hold the race's own limit rather than a run
+       (owner, 30.08.2026), so what the result carries is what the race is run to.
+       A length race is run to a distance and its limit is nought. */
+    const { user, session } = openWith(['pending'], { raceKind: 'time', seconds: 86_400 }, [0])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    const [, race] = vi.mocked(session.create).mock.calls
+
+    expect(race?.[2]).toMatchObject({ kind: 'time', limitSeconds: '86400' })
+  })
+
+  it('counts a free number over what has already been made, not over the file alone', async () => {
+    /* The hard part of making a record, and the one `pages/event/EventActions.tsx`
+       paid for on 23.08.2026: a number in use is in use whichever way the record
+       came to be. Two submissions approved one after another must not be handed the
+       same id, and neither must one approved beside a copy somebody made a minute
+       ago.
+
+       Measured with one already there, since a queue whose session has made nothing
+       cannot tell counting from reading. */
+    const { user, session } = openWith(['pending'], {}, [0], {
+      events: [{ id: 'events-nov-1', values: {} }],
+      races: [{ id: 'events-nov-1-trka-1', values: {} }],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    const made = vi.mocked(session.create)
+    const [event, race] = made.mock.calls
+
+    expect(event?.[1], 'the next event, not the one that is there').not.toBe('events-nov-1')
+    expect(race?.[1], 'and its race numbered under it').toBe(`${String(event?.[1])}-trka-1`)
+  })
+
+  it('ties the result to the race it has just made', async () => {
+    /* The half that makes the other half worth doing (PDL, 30.08.2026, point 6):
+       without it a race stands in the calendar with nothing run on it and a result
+       is counted that points at no race. Measured missing in review, 31.08.2026,
+       with the event and the race made and the submission left as it was. */
+    const { user, session } = openWith(['pending'], {}, [0])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    const [, race] = vi.mocked(session.create).mock.calls
+
+    expect(session.amend).toHaveBeenCalledWith('sub-0', { raceId: race?.[1] })
+  })
+
+  it('makes the event under the name the administration settled, not the race’s', async () => {
+    /* The moderator is shown the event above the race and may shorten it (part C,
+       owner 31.08.2026); what they settle is what the calendar gets. Measured
+       against a submission whose two names differ, since with them equal a record
+       that throws the settled one away cannot be told from one that keeps it. */
+    const { user, session } = openWith(['pending'], { eventName: 'Skraćeni naziv' }, [0])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    const [event, race] = vi.mocked(session.create).mock.calls
+
+    expect(event?.[2]).toMatchObject({ name: 'Skraćeni naziv' })
+    /* And the race keeps its own, which is the whole reason there are two. */
+    expect(race?.[2]).toMatchObject({ name: 'Probna trka' })
+  })
+
+  it('leaves a correction standing over a row the sweep did not decide', async () => {
+    /* The sweep steps over a submission that asks for a race to be made, so it has
+       no business closing a panel opened over one: closed outright, what the
+       moderator had typed was thrown away while the row itself stayed in the table
+       (measured in review, 31.08.2026). */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'], {}, [0])
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+      await user.clear(screen.getByLabelText(/^Naziv doga/))
+      await user.type(screen.getByLabelText(/^Naziv doga/), 'Skraćeni naziv')
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.getByRole('group', { name: 'Ispravka pre odluke' })).toBeVisible()
+      expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Skraćeni naziv')
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('leaves a reason standing over a row the sweep did not decide', async () => {
+    /* The other panel, changed by the same edit and for the same reason, and the
+       one that was left unmeasured: a reason typed over a „NOVO" row vanished
+       because of a sweep that deliberately did not touch that row. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'], {}, [0])
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+      await user.type(screen.getByLabelText(/^Razlog/), 'Vreme se ne poklapa.')
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.getByLabelText(/^Razlog/)).toHaveValue('Vreme se ne poklapa.')
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('offers no sweep where every waiting result asks for a race to be made', () => {
+    /* Which is the ordinary state after any sweep, since those are the ones it
+       leaves. Offered anyway, it asked „Odobriti 0 stavki? Ovo se ne može opozvati"
+       and then said „Rešeno je 0 stavki" (measured in review, 31.08.2026): what it
+       sweeps is what says whether it is there at all. */
+    openWith(['pending', 'pending'], {}, [0, 1])
+
+    expect(screen.queryByRole('button', { name: 'Odobri sve' })).toBeNull()
+    /* And the rows themselves are still there to be decided one at a time. */
+    expect(screen.getAllByRole('button', { name: 'Odobri' })).toHaveLength(2)
+  })
+
+  it('asks about the number it will really settle', async () => {
+    /* Four waiting and two of them asking for a race: the sweep decides two, so it
+       asks about two. „Odobriti 4 stavke? Ovo se ne može opozvati" over an act that
+       settles two is a number on the wrong thing (review, 31.08.2026). */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending', 'pending', 'pending'], {}, [1, 2])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(String(first(confirm.mock.calls)?.[0])).toContain('2')
+      expect(String(first(confirm.mock.calls)?.[0])).not.toContain('4')
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('makes nothing when the race is already in the calendar', async () => {
+    /* The other direction, and the one that matters most: three quarters of the
+       queue is this, and a portal that made an event for every approval would fill
+       the calendar with copies of races it already holds. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    expect(session.create).not.toHaveBeenCalled()
+    expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
   })
 
   it('has the one decision for the whole queue, like every other queue', async () => {

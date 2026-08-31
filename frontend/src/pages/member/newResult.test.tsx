@@ -7,6 +7,7 @@ import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { setupUser } from '../../test/user'
+import { SLOW } from '../../test/slow'
 import { useSession } from '../../session/useSession'
 
 /**
@@ -82,6 +83,91 @@ const shaped = (over: Partial<Race>): Race => ({
    had nothing left to protect and went with it; what the three kinds fill in is
    still measured where it decides something, in `member/racesToOffer.ts`. */
 
+
+describe('a race chosen from the list', () => {
+  it('travels with the submission, so verification knows there is nothing to make', async () => {
+    /* The one thing that tells a submission from a submission: a member who chose
+       a race sends its id, and a member who typed a name the calendar does not hold
+       sends none. Verification reads that absence to know it has to make the event
+       and the race first (owner, 31.08.2026), and the queue marks such a row.
+
+       Chosen through the screen and not through `racesToOffer`, because what is
+       measured is that the value survives the choosing and reaches the store: the
+       list hands it over in `fills`, the renderer writes `fills` into the values,
+       and the page reads the values when it sends. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY, <Sent />)
+
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+
+    const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
+
+    await user.click(must(offered[0], 'the first race offered'))
+
+    /* The race answered for its own measures, which is what choosing one does. */
+    expect(screen.getByLabelText(/^Dužina/)).not.toHaveValue('')
+
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText('Sati'), '3')
+    await user.type(screen.getByLabelText('Minuta'), '30')
+    await user.type(screen.getByLabelText('Sekundi'), '0')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    const sent = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    /* A real id, and not the word „undefined": the page leaves the field off the
+       submission where the value is empty, and a check that only asked for
+       something after the bar took that word for an answer (measured 31.08.2026,
+       with the list handing over an empty id). */
+    const said = must(sent[0], 'what was sent').textContent ?? ''
+
+    expect(said).not.toMatch(/\| undefined$/)
+    expect(said.split('|')[1]?.trim().length ?? 0).toBeGreaterThan(0)
+  }, SLOW)
+
+  it('is gone the moment the name is typed over, and the submission carries none', async () => {
+    /* The link breaks when the name is edited (owner, 23.08.2026), and the race
+       goes with the measures. What the submission must then carry is **nothing** and
+       not an empty one: the queue asks whether the race is absent, so a submission
+       holding „" is not marked „NOVO", the sweep takes it, and no event and no race
+       are ever made for the very member the promise was written for (measured in
+       review, 31.08.2026). */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY, <Sent />)
+
+    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+
+    const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
+
+    await user.click(must(offered[0], 'the first race offered'))
+    await user.type(screen.getByLabelText(/^Naziv trke/), ' po svome')
+
+    /* The measures were emptied with it, which is the rule this follows. A number
+       box that has been cleared reads as nothing at all rather than as an empty
+       string, which is what jsdom answers for a numeric input with no value. */
+    expect(inputElement(screen.getByLabelText(/^Dužina/)).value).toBe('')
+
+    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/^Dužina/), '21.1')
+    await user.type(screen.getByLabelText(/Uspon/), '0')
+    await user.type(screen.getByLabelText(/Spust/), '0')
+    await user.type(screen.getByLabelText('Sati'), '1')
+    await user.type(screen.getByLabelText('Minuta'), '52')
+    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+    const sent = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+
+    expect(must(sent[0], 'what was sent').textContent).toMatch(/\| undefined$/)
+  }, SLOW)
+})
 
 describe('the kind of race the member says it was', () => {
   it('starts on „Dužinska", and offers all three', async () => {
@@ -237,6 +323,7 @@ describe('the list of races under the name of an event', () => {
       'date',
       'descentM',
       'distanceKm',
+      'raceId',
     ])
   })
 
@@ -304,10 +391,14 @@ describe('the list of races under the name of an event', () => {
        corrected the keys asked for nothing else: with only the keys measured, a
        length race handing over „" for its climb passed the whole package, and that
        is the same dead end on all 1612 races in the file rather than on none. */
+    /* `raceId` is handed over by all three since 31.08.2026, and no box draws it:
+       it rides with the rest because what it says is exactly what the link is, so
+       typing over the name empties it with the measures (`racesToOffer.ts`). What
+       it locks is a control, and there is none of that name. */
     expect(filled.map((one) => Object.keys(one ?? {}).sort())).toEqual([
-      ['date', 'hours', 'minutes', 'seconds'],
-      ['date'],
-      ['ascentM', 'date', 'descentM', 'distanceKm'],
+      ['date', 'hours', 'minutes', 'raceId', 'seconds'],
+      ['date', 'raceId'],
+      ['ascentM', 'date', 'descentM', 'distanceKm', 'raceId'],
     ])
     expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
     expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
@@ -816,6 +907,20 @@ describe('the foot of the form', () => {
  * Written straight into the session, because the walk through the form and the
  * queue is a different test's subject and this one is about who may open what.
  */
+/** What the store holds, for the one case that asks whether the race a member
+ *  chose travelled with the submission: no screen draws it. */
+function Sent() {
+  const { submissions } = useSession()
+
+  return (
+    <ul aria-label="store">
+      {submissions.map((one) => (
+        <li key={one.id}>{`${one.raceName} | ${String(one.raceId)}`}</li>
+      ))}
+    </ul>
+  )
+}
+
 function Refused({ whose }: { whose: string }) {
   const session = useSession()
   const done = useRef(false)

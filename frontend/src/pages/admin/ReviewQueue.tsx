@@ -12,6 +12,9 @@ import { inBoxes, fromBoxes, noTime, type WrittenBoxes } from '../../forms/clock
 import { ASKED } from './amendFields'
 import { validateField } from '../../forms/validate'
 import { raceKind } from '../../data/raceKind'
+import { eventFrom, raceFrom } from './madeFromResult'
+import { EVENTS, idFor, RACES } from './entityForms'
+import { nextNumber } from './raceIds'
 import { RACE_KINDS, type RaceKind } from '../../data/types'
 import '../../styles/outsideLink.css'
 import '../member/Member.css'
@@ -37,7 +40,7 @@ import './Verification.css'
  */
 export function ReviewQueue() {
   const { locale, t } = useI18n()
-  const { submissions, decide, notify, amend } = useSession()
+  const { submissions, decide, notify, amend, create, creations } = useSession()
   const today = useToday()
   /* Which result the reason box is open on: the id the decision is written
      under, and the member the refusal is written to. Both taken when the box is
@@ -60,6 +63,58 @@ export function ReviewQueue() {
   const [swept, setSwept] = useState<number | null>(null)
 
   const waiting = submissions.filter((one) => one.status === 'pending')
+
+  /**
+   * Approving one, and making its event and its race first where there is none.
+   *
+   * A submission carries the race it belongs to on every road but one: a member who
+   * typed a name the calendar does not hold. That absence is the whole signal, and
+   * the terms of use have promised the answer to it since before the portal could
+   * give it — „administrator će uz vaš rezultat napraviti i događaj i trku".
+   *
+   * **All four are written in the order they have to be, and none of it is taste.**
+   * The event goes before the race that names it, held by „an event first" in
+   * `adminFlows.test.tsx`. And `amend` goes before `decide` because `amend` refuses
+   * a submission that is no longer waiting, which is right and was decided for its
+   * own reasons; so `decide` moved ahead of it loses the race silently, leaving
+   * exactly what this part exists to prevent: an event and a race in the calendar,
+   * a result approved, and nothing joining them. Measured in
+   * review, 31.08.2026, with the whole suite green, which is why it is now measured
+   * against the store itself rather than against a double that records calls.
+   *
+   * The shape is `pages/event/EventActions.tsx`, which makes an event and its races
+   * in one go, and its hard-won part is the counting: a number in use is in use
+   * whichever way the race came to be, out of the file or out of a creation, and
+   * counting the list instead of reading its highest number handed two copies the
+   * same ids (measured 23.08.2026).
+   */
+  const approve = (one: (typeof waiting)[number]) => {
+    if (one.raceId === undefined) {
+      const made = (creations[EVENTS.id] ?? []).map((each) => each.id)
+      /* The identity, counted the way every other new record of this entity is
+         (`entityForms.idFor`). No values are handed over: an event does not name
+         itself, so `idFor` reads none, and the address it answers on is worked out
+         from the name and the date when the record is read (`EVENTS.derived`). An
+         earlier draft passed a slug in here and it went nowhere at all. */
+      const event = idFor(EVENTS, {}, made, [])
+
+      create(EVENTS.id, event, eventFrom(one))
+
+      const taken = (creations[RACES.id] ?? []).map((each) => each.id)
+
+      const race = `${event}-trka-${String(nextNumber(taken, `${event}-trka-`))}`
+
+      create(RACES.id, race, raceFrom(one, event))
+
+      /* And the result is tied to it. Without this the two halves of one act come
+         apart: a race stands in the calendar with nothing run on it, and a result
+         is counted that points at no race (PDL, 30.08.2026, point 6, and the cost
+         the owner accepted when he chose it). */
+      amend(one.id, { raceId: race })
+    }
+
+    decide(one.id, 'approved', '')
+  }
 
   /* What this panel writes goes into the very fields the member's own form asks
      for, so what may stand in them is the same question, asked of the same place.
@@ -111,27 +166,57 @@ export function ReviewQueue() {
 
             Nothing is written down on an approval here, the same as pressing
             the button in every row: a reason belongs to a refusal. */}
-        {waiting.length > 0 && (
+        {/* Offered only where there is something for it to do. Asked of `waiting`
+            it stood over a queue holding nothing but submissions it steps over,
+            and pressing it asked „Odobriti 0 stavki? Ovo se ne može opozvati" and
+            then said „Rešeno je 0 stavki" (measured in review, 31.08.2026). What
+            it sweeps is what says whether it is there at all.
+
+            The predicate and its mirror are written by hand **six** times in this
+            file, and the count said four for one round while one of the six had no
+            case at all in either direction: the gate under the sweep, whose mirror
+            turned round put „Ostalo je 0 prijava" back on the screen. All six are
+            measured now. One home for it would be better and is not worth a helper
+            read six times in one file, so what holds them together is that each one
+            falls on its own. */}
+        {waiting.some((one) => one.raceId !== undefined) && (
           <button
             type="button"
             className="button button--secondary"
             onClick={() => {
-              if (!window.confirm(t('verification.approveAllAsk', { count: waiting.length }))) {
+              /* The number the sweep will really decide, not the number waiting: a
+                 submission asking for a race to be made is stepped over, and asking
+                 „approve 4?" before deciding 2 puts a number on an act that cannot
+                 be undone which is not the number of the act. */
+              const sweeping = waiting.filter((each) => each.raceId !== undefined)
+
+              if (!window.confirm(t('verification.approveAllAsk', { count: sweeping.length }))) {
                 return
               }
 
-              for (const one of waiting) {
+              /* Only the ones the calendar already holds a race for. A submission
+                 that asks for a race to be made is a submission somebody has to
+                 read: approving it writes an event and a race into the calendar
+                 under a name the member typed (owner, 31.08.2026, choosing this
+                 over making them in a sweep). They stay in the queue, and the
+                 count below says how many. */
+              for (const one of sweeping) {
                 decide(one.id, 'approved', '')
               }
 
               /* The box stands below the table. Left open over a result that
                  the sweep has just approved, confirming it would refuse what
                  was approved a moment ago and say nothing about it. */
-              setOpen(null)
-              /* And the correction with it: the sweep decides every waiting item,
-                 so whatever the panel was opened over is decided too. */
-              setFixing(null)
-              setSwept(waiting.length)
+              /* Both panels close, but only over a row the sweep has actually
+                 decided. Closed outright, a correction typed over a „NOVO" row was
+                 thrown away while the row itself stayed in the table, which is a
+                 sweep taking something from a submission it deliberately did not
+                 touch (measured in review, 31.08.2026). */
+              const settled = new Set(sweeping.map((each) => each.id))
+
+              setOpen((current) => (current !== null && settled.has(current.id) ? null : current))
+              setFixing((current) => (current !== null && settled.has(current.id) ? null : current))
+              setSwept(sweeping.length)
             }}
           >
             {t('verification.approveAll')}
@@ -139,6 +224,18 @@ export function ReviewQueue() {
         )}
 
         <Swept count={swept} />
+
+        {/* And how many the sweep stepped over, said where it says what it did.
+            Without it the queue simply does not empty and nothing explains why
+            (owner, 31.08.2026). Only after a sweep, since before one there is
+            nothing to explain. */}
+        {swept !== null && waiting.some((each) => each.raceId === undefined) && (
+          <p className="profile__empty">
+            {t('review.sweptLeft', {
+              count: waiting.filter((each) => each.raceId === undefined).length,
+            })}
+          </p>
+        )}
       </div>
 
       {waiting.length === 0 ? (
@@ -190,6 +287,25 @@ export function ReviewQueue() {
                         included. Words in an `href` would be an address made of
                         somebody's sentence, and that is what this screen drew
                         before the field existed. */}
+                    {/* That the calendar does not hold this race, said in the
+                        corner of the row (owner, 31.08.2026: „te trke treba da
+                        imaju posebnu naznaku NOVO negde u ćošku i da znam o čemu se
+                        radi"). It is why approving this one makes an event and a
+                        race, and why sweeping the queue steps over it.
+                     *
+                        Beside the name and outside the two ways it is drawn, since
+                        it is a fact about the row and not about whether the link
+                        can be opened; written inside one of them it appeared only
+                        on submissions whose address the portal refuses. */}
+                    {one.raceId === undefined && (
+                      <span className="review__new">
+                        {t('review.newRace')}
+                        {/* And what it means, for whoever cannot see a corner. It
+                            was in `title` alone, which a keyboard never reaches, a
+                            finger never opens and most readers never speak. */}
+                        <span className="visually-hidden">{t('review.newRaceTitle')}</span>
+                      </span>
+                    )}
                     {outsideLink(one.link) === undefined ? (
                       <>
                         {one.raceName}
@@ -281,7 +397,7 @@ export function ReviewQueue() {
                         type="button"
                         className="button button--primary"
                         onClick={() => {
-                          decide(one.id, 'approved', '')
+                          approve(one)
                           /* Both panels stand below the table, so approving from
                              the row would leave one of them open over a result
                              that is already decided: confirming the refusal would
