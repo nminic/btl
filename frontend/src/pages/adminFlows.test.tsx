@@ -18,6 +18,7 @@ import {
   type SessionValue,
   type Submission,
   type SubmissionStatus,
+  type Creations,
 } from '../session/context'
 import { Decided, Inbox } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
@@ -40,7 +41,7 @@ import {
 } from '../data/paymentQr'
 
 /** A session holding results in the states the queue has to tell apart. */
-function sessionWith(states: SubmissionStatus[]): SessionValue {
+function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionValue {
   return {
     memberNumber: '000007',
     signIn: vi.fn(),
@@ -52,6 +53,10 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       id: `sub-${index}`,
       memberNumber: '000007',
       raceName: 'Probna trka',
+      /* The race the calendar holds for it, on every road but one: a member who
+         typed a name the calendar does not hold sends none, and `loose` names
+         which of these stand for that. */
+      ...(loose.includes(index) ? {} : { raceId: 'trka-1' }),
       raceKind: 'length',
       city: 'Niš',
       country: 'RS',
@@ -1061,9 +1066,16 @@ const DAY = '2026-08-16'
 describe('the queue of results', () => {
   /** `patch` is applied to the submissions before anything is drawn, for the one
    *  case that needs a submission the administration has already written on. */
-  const openWith = (states: SubmissionStatus[], patch: Partial<Submission> = {}) => {
+  const openWith = (
+    states: SubmissionStatus[],
+    patch: Partial<Submission> = {},
+    loose: number[] = [],
+    /* What the session has already made, handed over before anything is drawn: set
+       afterwards it never reaches the screen, since the value is read at render. */
+    creations: Creations = {},
+  ) => {
     const user = setupUser()
-    const session = sessionWith(states)
+    const session = { ...sessionWith(states, loose), creations }
 
     session.submissions = session.submissions.map((one) => ({ ...one, ...patch }))
 
@@ -1512,6 +1524,125 @@ describe('the queue of results', () => {
 
     await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
     expect(screen.queryByRole('group', { name: 'Odbij' })).toBeNull()
+  })
+
+  it('marks a race the calendar does not hold, and steps over it when sweeping', async () => {
+    /* Owner, 31.08.2026: „te trke treba da imaju posebnu naznaku NOVO negde u
+       ćošku i da znam o čemu se radi", and „Odobri sve treba da ih preskoči".
+
+       The two halves belong together. A sweep that quietly left rows behind would
+       read as a queue that will not empty, so the mark says which rows and why, and
+       the line after the sweep says how many are left. Approving one of them writes
+       an event and a race into the calendar, which is why it is not something a
+       sweep does. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user, session } = openWith(['pending', 'pending', 'pending'], {}, [1])
+
+      expect(screen.getAllByText('NOVO')).toHaveLength(1)
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      /* Two of the three, and the one that asks for a race is untouched. */
+      expect(session.decide).toHaveBeenCalledTimes(2)
+      expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
+      expect(session.decide).toHaveBeenCalledWith('sub-2', 'approved', '')
+      expect(session.decide).not.toHaveBeenCalledWith('sub-1', 'approved', '')
+      expect(session.create).not.toHaveBeenCalled()
+
+      expect(screen.getByText(/Ostalo je 1 prijava/)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('makes the event and the race before it approves one the calendar does not hold', async () => {
+    /* The promise the terms of use have carried since before the portal could keep
+       it: „Ako trke nema u kalendaru, prijavite je svejedno; administrator će uz
+       vaš rezultat napraviti i događaj i trku."
+
+       Made before the decision and by one press, because `decide` is what puts the
+       result into the standing: a race made after it would leave the standing
+       pointing at nothing for as long as the two calls are apart. */
+    const { user, session } = openWith(['pending'], {}, [0])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    expect(session.create).toHaveBeenCalledTimes(2)
+
+    const made = vi.mocked(session.create)
+    const [event, race] = made.mock.calls
+
+    expect(event?.[0], 'an event first').toBe('events')
+    expect(event?.[2]).toMatchObject({
+      name: 'Probna trka',
+      date: '2026-05-10',
+      city: 'Niš',
+      country: 'RS',
+      kind: 'race',
+    })
+
+    expect(race?.[0], 'and its race under it').toBe('races')
+    expect(race?.[2]).toMatchObject({
+      eventId: event?.[1],
+      name: 'Probna trka',
+      kind: 'length',
+      distanceKm: '10',
+      /* Worked out from the length rather than carried over, as everywhere else. */
+      category: 'short',
+    })
+
+    expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
+  })
+
+  it('makes a timed race run to the time the administration settled', async () => {
+    /* The other kind, and the reason the number means something different on it: on
+       a timed race the three boxes hold the race's own limit rather than a run
+       (owner, 30.08.2026), so what the result carries is what the race is run to.
+       A length race is run to a distance and its limit is nought. */
+    const { user, session } = openWith(['pending'], { raceKind: 'time', seconds: 86_400 }, [0])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    const [, race] = vi.mocked(session.create).mock.calls
+
+    expect(race?.[2]).toMatchObject({ kind: 'time', limitSeconds: '86400' })
+  })
+
+  it('counts a free number over what has already been made, not over the file alone', async () => {
+    /* The hard part of making a record, and the one `pages/event/EventActions.tsx`
+       paid for on 23.08.2026: a number in use is in use whichever way the record
+       came to be. Two submissions approved one after another must not be handed the
+       same id, and neither must one approved beside a copy somebody made a minute
+       ago.
+
+       Measured with one already there, since a queue whose session has made nothing
+       cannot tell counting from reading. */
+    const { user, session } = openWith(['pending'], {}, [0], {
+      events: [{ id: 'events-nov-1', values: {} }],
+      races: [{ id: 'events-nov-1-trka-1', values: {} }],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    const made = vi.mocked(session.create)
+    const [event, race] = made.mock.calls
+
+    expect(event?.[1], 'the next event, not the one that is there').not.toBe('events-nov-1')
+    expect(race?.[1], 'and its race numbered under it').toBe(`${String(event?.[1])}-trka-1`)
+  })
+
+  it('makes nothing when the race is already in the calendar', async () => {
+    /* The other direction, and the one that matters most: three quarters of the
+       queue is this, and a portal that made an event for every approval would fill
+       the calendar with copies of races it already holds. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Odobri' }))
+
+    expect(session.create).not.toHaveBeenCalled()
+    expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
   })
 
   it('has the one decision for the whole queue, like every other queue', async () => {

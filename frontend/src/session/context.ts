@@ -54,6 +54,19 @@ export type Submission = {
    */
   raceName: string
   /**
+   * The race in the calendar this result belongs to, where there is one.
+   *
+   * Absent on exactly one road: a member who typed a name the calendar does not
+   * hold. Every other way in knows it — the button in a row of the event page is
+   * that row's race, a name chosen from the list is the race chosen, and a
+   * correction of a counted result keeps the race the record already names.
+   *
+   * That absence is what verification reads to know it has to make the event and
+   * the race before it can approve (owner, 31.08.2026), and it is why the queue
+   * marks such a row „NOVO" and why sweeping the queue steps over it.
+   */
+  raceId?: string
+  /**
    * The event this race was run at, as the administration settled it.
    *
    * Absent on everything a member sends, because they are asked one name and it is

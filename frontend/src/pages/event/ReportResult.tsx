@@ -175,6 +175,10 @@ export function ReportResult() {
                  from the calendar asks the member exactly because there is no
                  race behind it to ask. */
               raceKind: kind,
+              /* And which race, since this road starts from its row. Verification
+                 reads the absence of this to know it has to make a race first
+                 (owner, 31.08.2026); present, there is nothing to make. */
+              raceId: race.id,
               city: event.city,
               country: event.country,
               /* The race, not the event it is run at. The field was renamed and the

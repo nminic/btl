@@ -230,8 +230,23 @@ export function NewResult() {
             raceKind: String(values.raceKind),
             city: String(values.city),
             country: String(values.country),
+            /* Written only where the member chose a race from the list, which is
+               the one thing that puts it in the values (`racesToOffer.ts`). Typed
+               freely, there is none, and that absence is what verification reads
+               to know it has to make the race. */
+            ...(values.raceId === undefined || values.raceId === ''
+              ? {}
+              : { raceId: String(values.raceId) }),
           }
-        : { raceKind: behind?.kind ?? '', city: behind?.city ?? '', country: behind?.country ?? '' }
+        : {
+            raceKind: behind?.kind ?? '',
+            city: behind?.city ?? '',
+            country: behind?.country ?? '',
+            /* The race the counted result already names, kept rather than looked
+               up again: a correction is of that result and of no other, and
+               verification reads this to know there is nothing to make. */
+            raceId: fixingOne.raceId,
+          }
 
     const sent = {
       /* The race a correction keeps is the one the record already names, and not
