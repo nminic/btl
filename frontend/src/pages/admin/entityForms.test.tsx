@@ -706,21 +706,10 @@ describe('which field of a form carries the address', () => {
   })
 })
 
-describe('the explanation of what a race is called', () => {
-  it('is not said at all, because there is no column to explain', async () => {
-    /* An event entered a fortnight before its distances are known is the ordinary
-       state of a new one, and the table is not drawn then. The sentence explained a
-       column nobody could see and nothing pointed at it. Measured by a review on
-       28.08.2026 on „Novi događaj" at 360px: the section read the heading, then the
-       sentence, then „Ovaj događaj još nema nijednu trku." */
-    const user = setupUser()
-
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    await user.click(await screen.findByRole('button', { name: t('admin.form.new.events') }))
-    await screen.findByRole('heading', { name: /^Trke na događaju/ })
-
-    expect(screen.getByText(t('admin.noRaces'))).toBeVisible()
-    expect(screen.queryByText(t('admin.hint.raceName'))).toBeNull()
-  })
-})
+/* „The explanation of what a race is called" was measured here until 31.08.2026,
+   when the owner kept seven rules on the whole portal and this was not one of them.
+   The case that survived asked the dictionary for the key it had just deleted, and
+   `translate` answers an unknown key with the key itself, so it was looking for the
+   literal words „admin.hint.raceName" on the screen, which nothing has ever drawn.
+   A guard that cannot fail is worse than none, since it reads as cover; it is gone
+   rather than rewritten, because the thing it covered is gone. */

@@ -21,9 +21,6 @@ import './Entity.css'
  * whole thing one question rather than two: an event and the mornings it runs on
  * are entered together and refused together.
  */
-/** The one explanation this table has. Named once, because the note above the
- *  table and every box in the column have to agree on it, and two copies of a
- *  string is two chances to disagree. */
 
 export function EventRaces({
   eventName,

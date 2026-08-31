@@ -116,27 +116,6 @@
   letter-spacing: normal;
 }
 
-/* The confirmation is the one field whose head is more than one line high, and
-   both of its ends have to be answered separately.
- *
-   Sideways: the letter stands at the end of a sentence that takes the whole
-   width of the form, so the rule opens at that end rather than at the far left
-   where the sentence begins. Both ends are inside the page; what matters is that
-   the letter stands over the box, or the pointer has nowhere to walk down.
-
-   Downward: everywhere else the head is one line and the letter sits on it, so
-   hanging the box under the head hangs it under the letter. Here the sentence
-   runs to three lines on a telephone and the letter is at the top of them
-   (`align-items: start` in FormRenderer.css), so under the head is sixty pixels
-   under the letter and the way down crosses all of it. Hung under the letter
-   instead: `1.5rem` is the letter itself (`.hint__ask` above), and the gap after
-   it is the same one every other field has. The words then lie over the rest of
-   the sentence, which is what a box laid over the page is for. */
-.field__head--confirm .hint--open .hint__text {
-  inset-block-start: calc(1.5rem + var(--space-4));
-  inset-inline-start: auto;
-  inset-inline-end: 0;
-}
 
 /* The way down, which is nothing to look at and everything to walk on.
  *

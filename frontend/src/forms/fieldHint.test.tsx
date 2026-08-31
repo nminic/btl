@@ -3,6 +3,7 @@ import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { registracija, FORMS } from './definitions'
+import { bare, sources } from '../test/sources'
 
 /** Every form the portal defines, as its own registry lists them. */
 const ALL_FORMS = Object.values(FORMS)
@@ -38,9 +39,19 @@ function renderForm() {
  */
 describe('the rules that were kept', () => {
   it('are the seven he named, beside those fields and no others', () => {
-    const carried = ALL_FORMS.flatMap((form) =>
-      form.fields.filter((field) => field.hintKey !== undefined).map((field) => field.hintKey),
-    )
+    /* **Both homes of the fact, not one.** Fifty nine of the sixty one stood in the
+       JSON definitions and two were built in code, in `pages/admin/entityForms.ts`;
+       a check that read only the definitions was green while one of those two was
+       still on the screen (review, 31.08.2026). So the sweep reads the sources, the
+       way the portal's other sweeps do, and a rule added anywhere lands here. */
+    const carried = [
+      ...ALL_FORMS.flatMap((form) =>
+        form.fields.filter((field) => field.hintKey !== undefined).map((field) => field.hintKey),
+      ),
+      ...sources().flatMap(({ code }) =>
+        [...bare(code).matchAll(/hintKey:\s*'([^']+)'/g)].map((one) => one[1]),
+      ),
+    ]
 
     expect([...new Set(carried)].sort()).toEqual([
       'newResult.linkHint',
@@ -52,10 +63,39 @@ describe('the rules that were kept', () => {
       'registration.parentConsentHint',
     ])
 
-    /* Nine fields and seven rules, because three of them are asked for on two
-       forms: the link and the picture stand on both roads a result is reported by,
-       so one wording answers for both. */
+    /* Nine fields and seven rules, because two of them are asked for on two forms:
+       the link and the picture stand on both roads a result is reported by, so one
+       wording answers for both. */
     expect(carried).toHaveLength(9)
+  })
+})
+
+describe('an answer chosen from buttons', () => {
+  it('says what is wrong with it, on the group and on every button in it', async () => {
+    /* The rule beside such a group went out on 31.08.2026 with the other fifty
+       four, and the case that measured it went with it. **This half did not go**:
+       a description is read for whatever holds the focus, and what holds it is a
+       button, so the complaint has to be on the group for whoever arrives at the
+       group and on each button for whoever tabs into one (WCAG 2.2 SC 3.3.1).
+
+       Left with the deleted case, both were measured passing with the attribute
+       taken off (review, 31.08.2026). */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const group = await screen.findByRole('radiogroup', { name: 'Pol' })
+    const said = must(group.getAttribute('aria-describedby'), 'what describes the group')
+
+    expect(said).toContain('field-gender-error')
+    expect(document.getElementById(said)).not.toBeNull()
+
+    for (const one of within(group).getAllByRole('radio')) {
+      expect(one.getAttribute('aria-describedby'), one.getAttribute('value') ?? '').toContain(
+        'field-gender-error',
+      )
+    }
   })
 })
 

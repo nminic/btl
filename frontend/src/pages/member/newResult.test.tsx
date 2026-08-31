@@ -8,7 +8,6 @@ import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
-import sr from '../../i18n/sr.json'
 
 /**
  * The form a result is entered on from a profile, away from the calendar.
@@ -77,45 +76,11 @@ const shaped = (over: Partial<Race>): Race => ({
 })
 
 
-/**
- * Every field a race may fill in when it is chosen, by the word a sentence would use
- * for it.
- *
- * Read from the two places that own the answer rather than written out: which fields
- * are filled comes from `racesToOffer` itself, asked for all three kinds, and what
- * each is called comes from the dictionary. Written out here, a kind that begins
- * filling in a seventh field would leave the guard silent about it, and a label
- * renamed would leave it measuring a word that is nobody's field.
- *
- * Cut to the stem, because Serbian declines: „dužina" and „dužinu" are one field.
- * A label ending in a vowel loses it („Dužina" → „dužin", „Sati" → „sat"); one
- * ending in a consonant is its own stem („Uspon", „Spust"). Not a fixed number of
- * letters: four was tried and „Sati" is four long with a stem of three, so „sate"
- * slipped through while „obrisati" was accused of naming it.
- */
-const MEASURED_FIELDS = [...new Set(
-  ['length', 'time', 'free'].flatMap((kind) =>
-    Object.keys(
-      first(
-        racesToOffer(
-          [held],
-          [{ ...shaped({ id: 'r1', limitSeconds: 3_600 }), kind }],
-          '2026-12-31',
-          'sr-Latn',
-        ),
-      ).fills,
-    ),
-  ),
-)]
-  .filter((name) => name !== 'date')
-  .map((name) => {
-    const said = must(
-      Object.entries(sr.newResult).find(([key]) => key === name),
-      `the label of ${name}`,
-    )[1].replace(/\s*\(.*\)$/, '')
-
-    return /[aeiou]$/i.test(said) ? said.slice(0, -1).toLowerCase() : said.toLowerCase()
-  })
+/* Every field a race fills in for the member was worked out here, to hold the
+   sentence over the name box to naming none of them. The sentence went out on
+   31.08.2026 with the other fifty four rules the owner did not keep, so the list
+   had nothing left to protect and went with it; what the three kinds fill in is
+   still measured where it decides something, in `member/racesToOffer.ts`. */
 
 
 describe('the kind of race the member says it was', () => {
@@ -290,9 +255,6 @@ describe('the list of races under the name of an event', () => {
 
     expect(box.getAttribute('aria-describedby')).toBeNull()
 
-    /* Six, said out loud: the list is worked out from what the three kinds fill in,
-       and a kind that stopped filling one in would quietly leave fewer of them. */
-    expect(MEASURED_FIELDS, 'a field is no longer filled in by any kind of race').toHaveLength(6)
   })
   it('hands over exactly what each kind of race fixes, and locks exactly that', () => {
     /* Choosing a race fills the fields under the box. A timed race and a free one

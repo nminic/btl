@@ -281,6 +281,10 @@ const Field = memo(function Field({
      them. It is last of the three, because the count is the detail and the rule
      is what the field is for. */
   const describedBy = [
+    /* Only where one is drawn, which is what `hintKey` already answers: a field
+       answered by buttons or by a tick carries no rule since 31.08.2026, so there
+       is none of them to name. Written as a second condition it would be a test
+       nothing can fail. */
     field.hintKey ? hintId : '',
     error ? errorId : '',
     field.type === 'textarea' && field.maxLength !== undefined ? leftId : '',
@@ -1098,7 +1102,6 @@ export function FormRenderer({
         <p className="field field--derived" key={one.name}>
           <span className="field__label">{t(one.labelKey)}</span>
           <strong className="field__derived">{t(one.shownKey)}</strong>
-          <span className="field__hint">{t(one.hintKey)}</span>
         </p>
       ))}
 

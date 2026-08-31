@@ -1089,10 +1089,6 @@
       "eventLink": "Link ka strani organizatora",
       "rowLabel": "Naziv"
     },
-    "hint": {
-      "eventSlug": "Portal je pravi sam, od naziva i godine. Ne unosi se i ne menja.",
-      "teamSlug": "Portal je pravi sam, od naziva. Ne unosi se i ne menja."
-    },
     "value": {
       "genderM": "Muški",
       "genderF": "Ženski"

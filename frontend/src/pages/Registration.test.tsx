@@ -399,21 +399,18 @@ describe('the biography, at the moment of joining', () => {
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
 
-  it('says what happens to it, beside the field, refusal and all', async () => {
-    /* Both halves. It said only that a moderator reads it, which was the whole
-       story while a biography was published as the moderator left it; since
-       15.08.2026 it can come back (PDL P22), and the field beside which a member
-       writes is where they should learn that. The picture has said as much all
-       along, so the two now tell the same story. */
+  it('says how long it may be, and nothing about what happens to it', async () => {
+    /* It used to say three things beside the field: that a moderator reads it,
+       that a refusal comes with a reason, and where to write a new one. It gained
+       the last two on 15.08.2026, when a biography began to come back (PDL P22).
+
+       All three went on 31.08.2026. The owner read the numbered list of all sixty
+       one rules the portal drew beside its fields, kept seven, and wrote this
+       one's words himself; asked what became of the three promises, he answered
+       „Neka se gube, ne treba mi". What stays is the length, which is the thing a
+       member has to know while they are typing. */
     renderForm()
 
-    /* **What it says now, and no more than that.** Until 31.08.2026 it went on to
-       say that a moderator reads it, that a refusal comes with a reason, and where
-       to write a new one. The owner kept seven rules on the whole portal and gave
-       this one its words himself, and those three sentences are not in them: „the
-       member finds out about the moderation when it comes back" was his answer
-       when the cost was put to him. What stays is the length, which is the thing
-       the member has to know while they are typing. */
     expect(screen.getByText(/Nekoliko rečenica o sebi/)).toBeVisible()
     expect(screen.queryByText(/Moderator ih pregleda/)).toBeNull()
   })

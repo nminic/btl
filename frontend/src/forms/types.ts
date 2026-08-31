@@ -221,9 +221,13 @@ export type DerivedField = {
   /** The field on the record it fills. */
   name: string
   labelKey: string
-  /** Where the value comes from, in words. A value nobody can change has to say
-   *  who decided it, or it reads as a fault. */
-  hintKey: string
+  /* Where the value comes from used to be said here, in words, on the ground that
+     a value nobody can change has to say who decided it or it reads as a fault.
+     Both of the two the portal has, the address of an event and the address of a
+     team, were on the numbered list of sixty one the owner read on 31.08.2026, and
+     neither is among the seven he kept: „Sve ostalo treba obrisati." The property
+     goes with them rather than staying as a shape nothing fills, and the reason it
+     existed is written here so it is not learned again. */
   /** The words shown for it: a dictionary key where there is one, and the value
    *  itself where there is not, which is what translate() does with a key it
    *  does not know. */

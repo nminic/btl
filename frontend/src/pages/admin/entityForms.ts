@@ -181,7 +181,6 @@ export const EVENTS: EntityDef = {
       {
         name: 'slug',
         labelKey: 'admin.field.eventSlug',
-        hintKey: 'admin.hint.eventSlug',
         value: address,
         shownKey: address,
         /* Not on the form any more (owner, 11.08.2026). It is made from the
@@ -350,7 +349,6 @@ export const TEAMS: EntityDef = {
     {
       name: 'slug',
       labelKey: 'admin.field.teamSlug',
-      hintKey: 'admin.hint.teamSlug',
       value: slugify(String(values.name)),
       shownKey: slugify(String(values.name)),
     },
