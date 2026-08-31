@@ -7,7 +7,6 @@
       "name": "raceName",
       "type": "text",
       "labelKey": "newResult.raceName",
-      "hintKey": "newResult.raceNameHint",
       "required": true,
       "maxLength": 120
     },
@@ -42,7 +41,6 @@
       "name": "city",
       "type": "place",
       "labelKey": "newResult.city",
-      "hintKey": "newResult.cityHint",
       "required": true,
       "maxLength": 80
     },
@@ -50,7 +48,6 @@
       "name": "distanceKm",
       "type": "number",
       "labelKey": "newResult.distanceKm",
-      "hintKey": "newResult.distanceHint",
       "required": true,
       "min": 0.1,
       "max": 1000
@@ -59,7 +56,6 @@
       "name": "ascentM",
       "type": "number",
       "labelKey": "newResult.ascentM",
-      "hintKey": "newResult.climbHint",
       "required": true,
       "min": 0,
       "max": 30000
@@ -118,7 +114,6 @@
       "name": "comment",
       "type": "textarea",
       "labelKey": "newResult.comment",
-      "hintKey": "newResult.commentHint",
       "maxLength": 600,
       "requiredWhenFilled": {
         "field": "photo"

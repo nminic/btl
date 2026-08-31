@@ -417,9 +417,14 @@ const Field = memo(function Field({
           </span>
           {field.required === true && <RequiredMark />}
 
-          {field.hintKey !== undefined && (
-            <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
-          )}
+          {/* And no rule beside the name of a group. It used to be drawn here,
+              deliberately out of a `<legend>` so that the three fields answered by
+              buttons would not be laid out unlike the other eight (11.08.2026);
+              on 31.08.2026 the owner kept seven rules on the whole portal and none
+              of them belongs to a group, so what is left is the ability to draw
+              one that nothing asks for. Taken out with the rules themselves: if a
+              group is ever to carry one again, it is written again, and the reason
+              a `<legend>` was refused is recorded here. */}
         </span>
 
         {/* Buttons to look at and radio buttons to work: nothing is chosen to

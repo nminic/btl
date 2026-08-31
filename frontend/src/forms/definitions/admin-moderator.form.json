@@ -21,7 +21,6 @@
       "name": "email",
       "type": "email",
       "labelKey": "admin.field.email",
-      "hintKey": "admin.hint.moderatorEmail",
       "required": true,
       "maxLength": 120
     }

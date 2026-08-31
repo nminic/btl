@@ -21,18 +21,22 @@
       "name": "gender",
       "type": "select",
       "labelKey": "admin.field.gender",
-      "hintKey": "admin.hint.gender",
       "required": true,
       "options": [
-        { "value": "M", "labelKey": "admin.value.genderM" },
-        { "value": "F", "labelKey": "admin.value.genderF" }
+        {
+          "value": "M",
+          "labelKey": "admin.value.genderM"
+        },
+        {
+          "value": "F",
+          "labelKey": "admin.value.genderF"
+        }
       ]
     },
     {
       "name": "birthYear",
       "type": "number",
       "labelKey": "admin.field.birthYear",
-      "hintKey": "admin.hint.birthYear",
       "required": true,
       "min": 1900,
       "max": 2027
@@ -54,7 +58,6 @@
       "name": "firstSeason",
       "type": "number",
       "labelKey": "admin.field.firstSeason",
-      "hintKey": "admin.hint.firstSeason",
       "required": true,
       "min": 2014,
       "max": 2027
@@ -62,18 +65,22 @@
     {
       "name": "firstSeason2027",
       "type": "checkbox",
-      "labelKey": "admin.field.firstSeason2027",
-      "hintKey": "admin.hint.firstSeason2027"
+      "labelKey": "admin.field.firstSeason2027"
     },
     {
       "name": "membershipBasis",
       "type": "select",
       "labelKey": "admin.basis",
-      "hintKey": "admin.hint.membershipBasis",
       "required": true,
       "options": [
-        { "value": "payment", "labelKey": "admin.basisValue.payment" },
-        { "value": "feeExempt", "labelKey": "admin.basisValue.feeExempt" }
+        {
+          "value": "payment",
+          "labelKey": "admin.basisValue.payment"
+        },
+        {
+          "value": "feeExempt",
+          "labelKey": "admin.basisValue.feeExempt"
+        }
       ]
     }
   ]

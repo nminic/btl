@@ -24,7 +24,6 @@ import './Entity.css'
 /** The one explanation this table has. Named once, because the note above the
  *  table and every box in the column have to agree on it, and two copies of a
  *  string is two chances to disagree. */
-const NAME_HINT = 'race-name-hint'
 
 export function EventRaces({
   eventName,
@@ -201,40 +200,6 @@ export function EventRaces({
         {t('admin.racesOf', { event: eventName })}
       </h2>
 
-      {/* What the name is for, said once above the table.
-       *
-          The sentence was written on 23.08.2026 („Podrazumevano je naziv
-          događaja…“) and until 28.08.2026 it reached nobody: hints on this portal
-          are drawn by the renderer of forms, and this table draws its own
-          controls, so `admin.hint.raceName` was a string in the dictionary that no
-          screen could show.
-       *
-          Above the table rather than as the portal's usual mark beside the field,
-          and that is a decision rather than a shortcut. The mark lives inside the
-          label it explains, and the label of a column is a `th`: a button and a
-          sentence inside a header cell are read out with the column every time a
-          reader moves into it, six races or sixty, and the button itself is then a
-          control inside a header cell, which is a thing to walk past on the way to
-          every box.
-       *
-          **It is still said once per box**, through `aria-describedby`, and the
-          first version of this note claimed otherwise. What is bought is not fewer
-          repetitions of the sentence but no control inside the heading and no
-          sentence in the column's own name; the repetition is what a description
-          is, and the alternative, saying it nowhere, is what this change is
-          undoing. Two screens of the portal already do exactly this
-          (`admin/AdminPricing.tsx`, `admin/PendingQueue.tsx`). */}
-      {/* And only where there is a column to explain. An event with no races yet is
-          the ordinary state of one entered a fortnight before its distances are
-          known, and the sentence then explains a column nobody can see and nothing
-          points at it. Measured by a review on 28.08.2026 on „Novi događaj" at
-          360px: the section read the heading, then this sentence, then „Ovaj
-          događaj još nema nijednu trku." */}
-      {rows.length > 0 && (
-        <p className="member__note" id={NAME_HINT}>
-          {t('admin.hint.raceName')}
-        </p>
-      )}
 
       {rows.length === 0 ? (
         /* Said rather than left as an empty table. An event with no races yet is
@@ -312,7 +277,6 @@ export function EventRaces({
                          it: a heading is not read out with the control on every
                          reader, and a hint nobody is pointed at is a hint nobody
                          hears. */
-                      aria-describedby={NAME_HINT}
                       /* Changed by hand, so this race stops following its event:
                          renaming the event afterwards leaves it alone
                          (owner, 23.08.2026). */

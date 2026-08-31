@@ -78,7 +78,6 @@ export function Settings() {
               </label>
             </div>
           ))}
-          <p className="member__note">{t('settings.themeHint')}</p>
         </fieldset>
       </section>
 

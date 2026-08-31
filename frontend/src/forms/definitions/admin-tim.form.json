@@ -7,7 +7,6 @@
       "name": "name",
       "type": "text",
       "labelKey": "admin.field.teamName",
-      "hintKey": "admin.hint.teamName",
       "required": true,
       "maxLength": 60
     },
@@ -28,7 +27,6 @@
       "name": "organizerMemberNumber",
       "type": "select",
       "labelKey": "admin.field.teamOrganizer",
-      "hintKey": "admin.hint.teamOrganizer",
       "required": true
     }
   ]
