@@ -389,9 +389,8 @@ describe('LeagueDetail', () => {
  * The rows of the competition grid that are people, out of a table that also
  * carries a row per block.
  *
- * The standing is split into blocks since 27.08.2026 (PDL P15): a competition
- * ranks by category or by gender alone, and each block is introduced by one
- * heading across the whole width. Those rows are not placings. `slice(1)` was
+ * The standing is split into blocks since 27.08.2026: a competition ranks by
+ * gender, and each block is introduced by one heading across the whole width. Those rows are not placings. `slice(1)` was
  * enough while the only row that was not a person stood at the top.
  *
  * Told apart by role and not by position: a placing carries a heading of its own
@@ -431,8 +430,8 @@ describe('a competition, in two parts', () => {
   it('orders each block by that second column, highest first', async () => {
     /* Highest first **inside a block**, and that is the whole of what splitting
        the standing means. Read across the table the numbers now go up again at
-       every boundary, and they should: a competition that ranks by category
-       ranks nobody against somebody in another one.
+       every boundary, and they should: a competition ranks nobody against
+       somebody in another block.
 
        Until 27.08.2026 this asked the question of the whole table, which was the
        right question while there was one block; asked of the whole table now it

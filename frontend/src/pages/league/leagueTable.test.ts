@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
+import { bare } from '../../test/sources'
 import { at, first } from '../../test/at'
 import { genderMark } from '../../data/categories'
 import { leagueGroups, leagueTable } from './leagueTable'
@@ -212,15 +215,15 @@ describe('the grid of a competition', () => {
 })
 
 describe('the way a competition splits its ranking', () => {
-  /* Owner, in P15: „Podela na kategorije se podešava na nivou svake Lige.
-     RunTrace liga ima podelu samo po polu, bez uzrasnih kategorija." The flag
-     was on the record, on the admin form and printed on the list of
-     competitions, and the table read none of it: measured on 27.08.2026, the
-     word „category" appeared nowhere in `leagueTable.ts` or in the screen, so
-     both settings drew one undivided table. */
+  /* Owner, 31.08.2026: „Lige treba da imaju poredak samo po polu. Ne želim
+     dodatna pravila", said of every competition and not of one („nego
+     globalno!"). It overturned P15, under which each competition set its own
+     split, and the setting went out of the model rather than being left switched
+     off; the case that measured the other way went with it. */
 
-  /** Four people the two settings have to tell apart: two women and two men,
-   *  and within each pair two different age bands for the season 2019. */
+  /** Four people: two women and two men, and within each pair two different age
+   *  bands for the season 2019. The bands are still here on purpose, because they
+   *  are what says the split is by gender and by nothing else. */
   const field = [
     { ...person('000001'), gender: 'M' as const, birthYear: 1985 },
     { ...person('000002'), gender: 'M' as const, birthYear: 1955 },
@@ -248,14 +251,20 @@ describe('the way a competition splits its ranking', () => {
     expect(groups.map((one) => one.rows.length)).toEqual([2, 2])
   })
 
-  it('names its blocks the way the rest of the portal names them', () => {
-    /* Read off `genderMark` rather than written here, so a block on this screen is
-       never called something the standing calls otherwise. Four people of two
-       genders and four different age bands: the bands make no difference at all,
-       which is what says the split is by gender and by nothing else. */
-    expect(leagueGroups(rowsOf(field)).map((one) => one.code)).toEqual(
-      [...new Set(field.map((one) => genderMark(one.gender)))].sort(),
-    )
+  it('names its blocks off `genderMark`, and does not spell them out itself', () => {
+    /* Which is a claim about where the string comes from, so it is asked of the
+       file rather than of the output: the first draft of this case worked the
+       expected value out with the very function the code calls, so both sides
+       moved together and a name written by hand passed (review, 31.08.2026,
+       measured two ways — `genderMark` made to answer „MUSKI" left this green,
+       and so did the mark written out as a ternary in `leagueGroups`).
+
+       The other half is that nothing here reads a category any more. Comments
+       blanked, so a note naming either function is not read as calling one. */
+    const code = bare(readFileSync(join(process.cwd(), 'src/pages/league/leagueTable.ts'), 'utf-8'))
+
+    expect(code).toContain('genderMark(row.competitor.gender)')
+    expect(code).not.toContain('categoryOfMember')
   })
 
   it('draws no block for a gender nobody in the competition is', () => {

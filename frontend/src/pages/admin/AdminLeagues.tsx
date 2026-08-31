@@ -12,7 +12,7 @@ import '../member/Member.css'
 
 /* Leagues, with the number of events each one carries. A league with no events
  * is the one to notice: it is announced, it appears in the navigation, and it
- * has nothing to rank (PDL P15). */
+ * has nothing to rank. */
 export function AdminLeagues() {
   const { locale, t } = useI18n()
   const overlay = useOverlay()

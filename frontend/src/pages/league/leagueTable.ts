@@ -157,10 +157,10 @@ export function leagueTable(
  * ranked.
  *
  * `code` is what the block is called, and it is the same string the rest of the
- * portal calls it by: a category code where the competition ranks by category,
- * and the mark of a gender where it ranks by gender alone. Read off
- * `categoryOfMember` and `genderMark` rather than written here, so a block on
- * this screen is never called something the standing calls otherwise.
+ * portal calls it by: the mark of a gender, read off `genderMark` rather than
+ * written here, so a block on this screen is never called something the standing
+ * calls otherwise. It could be a category code until 31.08.2026, when the owner
+ * settled that a competition ranks one way and it is by gender.
  */
 export type LeagueGroup = {
   code: string

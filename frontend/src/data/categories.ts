@@ -93,7 +93,8 @@ export function firstSeasonAllowed(points: number): boolean {
  */
 export function categoryLabel(code: string, t: (key: string) => string): string {
   /* A mark of a gender on its own is not a category code at all: it is what a
-     competition that ranks by gender alone groups by (PDL P15), and the standing
+     competition groups by, which since 31.08.2026 is every competition there is
+     (owner: „Lige treba da imaju poredak samo po polu"), and the standing
      has always called those two groups „Muškarci" and „Žene" (`Rankings.tsx`).
      Written here rather than beside the competition, because this is the one
      place that turns a code into words and two places would be two names for one

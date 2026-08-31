@@ -71,15 +71,15 @@ function Grid({
      columns whatever this does, so they go on scrolling inside their own box. */
   const page = pageFrom(params.get('strana'), table.rows.length)
 
-  /* Split the way this competition says it ranks, and paged over the split
-     rather than beside it.
+  /* Split by gender, and paged over the split rather than beside it.
 
-     Owner, in P15: „Podela na kategorije se podešava na nivou svake Lige.
-     RunTrace liga ima podelu samo po polu, bez uzrasnih kategorija." Half of
-     that decision was carried: the setting is on the record, on the admin form
-     and printed on the list of competitions, and this table read none of it, so
-     both settings drew one undivided grid. Measured 27.08.2026: the word
-     „category" appeared nowhere in this file.
+     Owner, 31.08.2026: „Lige treba da imaju poredak samo po polu. Ne želim
+     dodatna pravila", said of every competition („nego globalno!"). That
+     overturned P15, under which each one set its own split, and the setting went
+     with it rather than being left switched off. What P15 got right and is worth
+     keeping in mind here: „samo po polu" is not „no grouping", and a table that
+     draws one undivided grid places a woman behind men she was never competing
+     against, which is what this screen did until 27.08.2026.
 
      The blocks are cut out of one ordered list rather than paged one by one, so
      the page is still fifty rows wherever the boundaries fall. A block that has
