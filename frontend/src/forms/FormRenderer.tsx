@@ -388,9 +388,13 @@ const Field = memo(function Field({
             </label>
             {field.required === true && <RequiredMark />}
 
-            {field.hintKey !== undefined && (
-              <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
-            )}
+            {/* And no rule beside a box that is ticked. It was drawn here, in a
+                head of its own for the same reason the group of buttons has one;
+                on 31.08.2026 the owner kept seven rules on the whole portal and
+                none of them belongs to a field of this kind, so what was left was
+                the ability to draw one that nothing asks for. Taken out with the
+                rules themselves, the way the group's was, and the reason the head
+                exists is written above so it is not learned again. */}
           </span>
         </div>
 

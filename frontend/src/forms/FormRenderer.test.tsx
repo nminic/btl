@@ -580,11 +580,9 @@ describe('FormRenderer', () => {
     /* The town, which carries the country beside it: the form used to ask for
        the two separately (owner, 11.08.2026). */
     expect(screen.getByRole('combobox', { name: /Država/i })).toBeInTheDocument()
-    /* And the rule the address carries, in the document and out of sight until
-       it is asked for (FieldHint.tsx). */
-    expect(
-      screen.getByText(/Ulica i broj, na koje ti stižu majica i finišerska medalja/),
-    ).toBeInTheDocument()
+    /* The address carries no rule since 31.08.2026: the owner kept seven of the
+       sixty one and this is not one of them. What a rule looks like where one
+       remains is measured in `forms/fieldHint.test.tsx`, on „Ime oca". */
     expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeInTheDocument()
   })
 })

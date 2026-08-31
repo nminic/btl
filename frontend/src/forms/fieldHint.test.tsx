@@ -2,7 +2,10 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { registracija } from './definitions'
+import { registracija, FORMS } from './definitions'
+
+/** Every form the portal defines, as its own registry lists them. */
+const ALL_FORMS = Object.values(FORMS)
 import { FormRenderer } from './FormRenderer'
 import { must } from '../test/at'
 import { setupUser } from '../test/user'
@@ -23,6 +26,38 @@ function renderForm() {
     </ClockProvider>,
   )
 }
+
+/**
+ * Seven rules on the whole portal, and these are they.
+ *
+ * The owner read a numbered list of all sixty one on 31.08.2026 and named the ones
+ * to keep, with the words for six of them; „sve ostalo treba obrisati". Counted
+ * here rather than left to whoever adds a field: a rule added quietly is the state
+ * this began in, a dozen paragraphs on one form, and a rule taken away quietly is
+ * how the ones he kept would leave.
+ */
+describe('the rules that were kept', () => {
+  it('are the seven he named, beside those fields and no others', () => {
+    const carried = ALL_FORMS.flatMap((form) =>
+      form.fields.filter((field) => field.hintKey !== undefined).map((field) => field.hintKey),
+    )
+
+    expect([...new Set(carried)].sort()).toEqual([
+      'newResult.linkHint',
+      'newResult.photoHint',
+      'newResult.raceKindHint',
+      'registration.bioHint',
+      'registration.fatherNameHint',
+      'registration.idNumberHint',
+      'registration.parentConsentHint',
+    ])
+
+    /* Nine fields and seven rules, because three of them are asked for on two
+       forms: the link and the picture stand on both roads a result is reported by,
+       so one wording answers for both. */
+    expect(carried).toHaveLength(9)
+  })
+})
 
 describe('the rule beside a field', () => {
   it('is not printed on the page, and is still what the field is described by', () => {

@@ -220,14 +220,12 @@ describe('rating an event', () => {
 
     /* Read on the way into the field rather than left to whoever can see it: the
        box points at the count, so a screen reader says it on arrival. */
-    /* Both halves: the rule the field is for and the room it has left, each
-       read on the way in. Without the first, the one sentence saying the comment
-       may be left out reaches nobody who cannot see it (WCAG 2.2 SC 3.3.2). */
+    /* The room it has left, read on the way in. The sentence that stood beside it
+       went out on 31.08.2026 with the rest of the explanations the owner did not
+       keep, so what is described now is the counter alone. */
     expect((box.getAttribute('aria-describedby') ?? '').split(' ').sort()).toEqual([
-      'comment-hint',
       'comment-left',
     ])
-    expect(screen.getByText(/^Neobavezno\./)).toHaveAttribute('id', 'comment-hint')
     expect(screen.getByText(new RegExp(`^Još ${limit} znak`))).toBeVisible()
 
     await user.type(box, 'Kratko.')
