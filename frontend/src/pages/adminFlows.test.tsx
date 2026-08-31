@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { dogadjaj } from '../forms/definitions'
+import { limitOf } from '../forms/records'
 import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -11,7 +13,12 @@ import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/translate'
 import { RoleProvider } from '../roles/RoleProvider'
-import { SessionContext, type SessionValue, type SubmissionStatus } from '../session/context'
+import {
+  SessionContext,
+  type SessionValue,
+  type Submission,
+  type SubmissionStatus,
+} from '../session/context'
 import { Decided, Inbox } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
@@ -22,6 +29,7 @@ import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
 import { canSendBack, countFor, QUEUE, QUEUES, returned } from './admin/queues'
 import { ReviewQueue } from './admin/ReviewQueue'
+import { ASKED } from './admin/amendFields'
 import {
   ipsPayload,
   methodsFor,
@@ -38,6 +46,7 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
     signIn: vi.fn(),
     signOut: vi.fn(),
     withdraw: vi.fn(),
+    amend: vi.fn(),
     corrected: {},
     submissions: states.map((status, index) => ({
       id: `sub-${index}`,
@@ -46,7 +55,9 @@ function sessionWith(states: SubmissionStatus[]): SessionValue {
       raceKind: 'length',
       city: 'Niš',
       country: 'RS',
-      eventName: 'Probna trka',
+      /* No event on it, which is every submission a member sends: they are asked
+         one name and it is the race's. The one case about an event the
+         administration has already settled patches it in. */
       /* Nothing here was corrected; these are results a moderator is deciding
          for the first time. */
       corrected: false,
@@ -1048,9 +1059,13 @@ describe('an empty queue', () => {
 const DAY = '2026-08-16'
 
 describe('the queue of results', () => {
-  const openWith = (states: SubmissionStatus[]) => {
+  /** `patch` is applied to the submissions before anything is drawn, for the one
+   *  case that needs a submission the administration has already written on. */
+  const openWith = (states: SubmissionStatus[], patch: Partial<Submission> = {}) => {
     const user = setupUser()
     const session = sessionWith(states)
+
+    session.submissions = session.submissions.map((one) => ({ ...one, ...patch }))
 
     render(
       /* The day the refusal is dated with, from the one clock the whole portal
@@ -1206,6 +1221,297 @@ describe('the queue of results', () => {
       'rejected',
       'Vreme se ne poklapa sa zvaničnom listom.',
     )
+  })
+
+  it('puts right the race, the kind and the time before it decides', async () => {
+    /* Owner, 30.08.2026: the administration settles at verification what the
+       member could only hint at. „Takmičar je mogao da izabere dužinska ili
+       vremenska, kao nagoveštaj tipa", and „ja ću lako promeniti njegovo vreme sa
+       recimo 23:23:15 na 24:00:00", which on a timed race is the race's own limit
+       and the same for everybody who finished. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    /* Opened on what the submission holds, not on empty boxes: a moderator
+       correcting one thing must not have to retype the other two. */
+    /* The event above the race, carrying the same name, because a member is asked
+       one and the moderator is offered it for both (owner, 31.08.2026). */
+    expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Probna trka')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
+    expect(screen.getByLabelText(/^Vrsta trke/)).toHaveValue('length')
+    expect(screen.getByLabelText(/^Sati/)).toHaveValue('0')
+    expect(screen.getByLabelText(/^Minuta/)).toHaveValue('45')
+
+    await user.clear(screen.getByLabelText(/^Naziv doga/))
+    /* With spaces around it, because what is saved is trimmed the way every form
+       on this portal trims what it is given (`forms/validate.ts`): a name typed
+       with spaces around it is the same name. */
+    await user.type(screen.getByLabelText(/^Naziv doga/), '  Ultra vikend  ')
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'time')
+    await user.clear(screen.getByLabelText(/^Sati/))
+    await user.type(screen.getByLabelText(/^Sati/), '24')
+    await user.clear(screen.getByLabelText(/^Minuta/))
+    await user.type(screen.getByLabelText(/^Minuta/), '0')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+    expect(session.amend).toHaveBeenCalledWith('sub-0', {
+      eventName: 'Ultra vikend',
+      raceName: 'Ultra 24h',
+      raceKind: 'time',
+      seconds: 86_400,
+    })
+  })
+
+  it('refuses to save a time with a box left empty, and keeps what was typed', async () => {
+    /* Three boxes added up with one of them empty give `NaN`, which would go into
+       the record as a time nobody can read and would score nothing. The member's
+       own form refuses it for the same reason (`forms/clock.ts`); this is the
+       other side of the same rule.
+
+       The panel stays open over what was typed, rather than closing and losing
+       the name the moderator has already corrected. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    await user.clear(screen.getByLabelText(/^Sati/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+    expect(session.amend).not.toHaveBeenCalled()
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Ultra 24h')
+  })
+
+  it('closes without writing anything when the correction is given up', async () => {
+    /* The way out that changes nothing. Without it a moderator who opened the
+       panel to read what the member sent has only one way to close it, which is
+       to save, and saving is the one act this panel is for. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    await user.click(screen.getByRole('button', { name: 'Odustani' }))
+
+    expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+    expect(session.amend).not.toHaveBeenCalled()
+  })
+
+  it('shows the event the administration already settled, not the race name again', async () => {
+    /* The field is seeded from the race only while the submission carries no event
+       of its own. Once a moderator has shortened „Beogradski maraton kroz Adu" to
+       „Beogradski maraton" and saved, opening the panel again has to show their
+       wording; seeded a second time it would quietly undo them. */
+    const { user } = openWith(['pending'], { eventName: 'Beogradski maraton' })
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Beogradski maraton')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
+  })
+
+  it('holds every box it writes to a rule, and would notice one that stopped being paired', () => {
+    /* The panel pairs each box with the definition that owns it by filtering, so a
+       field renamed in a definition quietly leaves the list and its box stops being
+       checked at all. Measured: with `seconds` dropped from the pairing, the panel
+       took 999 seconds and the whole suite stayed green (review, 31.08.2026).
+       Counted here rather than trusted, since the code itself has nowhere to put a
+       complaint that no case could reach. */
+    expect(ASKED.map((one) => one.name).sort()).toEqual([
+      'eventName',
+      'hours',
+      'minutes',
+      'raceName',
+      'seconds',
+    ])
+
+    /* And the event by the definition that owns **it**, not the race's. The two
+       agree today, so nothing on the screen tells them apart until one moves. */
+    expect(ASKED.find((one) => one.name === 'eventName')?.field).toBe(
+      dogadjaj.fields.find((one) => one.name === 'name'),
+    )
+  })
+
+  it('says its fields are required, in both the ways a field says it', async () => {
+    /* The star for the eye and `aria-required` for a reader, and a legend saying
+       what the star means (owner, 12.08.2026: „na svim formama za unos i
+       verifikaciju"). The refusal box beside this one was measured missing exactly
+       this, and the whole of it went unheld here for a round: removing the legend
+       and all four attributes left the suite green (review, 31.08.2026).
+
+       And the button that will not go says so where a reader can hear it, rather
+       than sitting dead. */
+    const { user } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    const panel = within(screen.getByRole('group', { name: 'Ispravka pre odluke' }))
+
+    expect(panel.getByText(/Polja sa zvezdicom/)).toBeVisible()
+    for (const label of [/^Naziv doga/, /^Naziv trke/, /^Vrsta trke/, /^Sati/, /^Minuta/, /^Sekundi/]) {
+      expect(panel.getByLabelText(label), String(label)).toHaveAttribute('aria-required', 'true')
+    }
+
+    const save = panel.getByRole('button', { name: 'Sačuvaj ispravku' })
+
+    expect(save).not.toHaveAttribute('aria-disabled', 'true')
+
+    await user.clear(panel.getByLabelText(/^Naziv trke/))
+
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    expect(save).toHaveAttribute('aria-describedby', 'amend-waits')
+  })
+
+  it('closes when the item under it is decided, by the row or by the sweep', async () => {
+    /* Both panels stand below the table, and the row they were opened over leaves
+       it the moment it is decided. Left open, „Sačuvaj ispravku" is a live button
+       over a submission nobody may rewrite any more, and after „Odobri sve" the
+       screen says „nothing is waiting" while holding open a correction of one of
+       the things that just stopped waiting. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const { user } = openWith(['pending', 'pending'])
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+
+      expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+
+      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
+  it('takes only what the member’s own form would have taken, and says so when it will not', async () => {
+    /* What may stand in these boxes is a fact the form away from the calendar
+       already holds, and this panel asks the same rule field by field rather than
+       writing bounds of its own. Written by hand it was narrower than the form and
+       let through what the form refuses (measured in review, 31.08.2026):
+
+       - minus five hours, which the table then drew as `00:00`, so it could not
+         be told from nought;
+       - a thousand minutes, out of a box the form bounds at 59;
+       - `Infinity`, which `Number.isNaN` does not catch and `Number.isFinite`
+         does;
+       - a race with no name at all, out of a field that carries a star.
+
+       And the cost lands on the member: a result refused after such a correction
+       comes back to them with `-5` in a box they never touched, and their own form
+       turns it down. */
+    const { user, session } = openWith(['pending'])
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+
+    for (const [box, written, says] of [
+      ['Sati', '-5', /Najmanja dozvoljena vrednost/],
+      ['Sati', 'Infinity', /Unesi broj/],
+      ['Minuta', '999', /Najveća dozvoljena vrednost/],
+      /* Not one and a half hours. The member's own form takes it, since the field
+         carries no rule about whole numbers, and `forms/clock.ts` records that the
+         boxes take a decimal as a fault of their own and older than any of this.
+         The rule here is „exactly as strict as the form", not „stricter", so a
+         value the form accepts is accepted here and the fault is one thing in one
+         place rather than two rules that disagree. */
+    ] as const) {
+      const control = screen.getByLabelText(new RegExp(`^${box}`))
+
+      await user.clear(control)
+      await user.type(control, written)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+      expect(session.amend, `${box} = ${written}`).not.toHaveBeenCalled()
+      /* And it says why, rather than leaving a dead button. */
+      expect(screen.getByText(says)).toBeVisible()
+
+      await user.clear(control)
+      await user.type(control, box === 'Sati' ? '0' : '45')
+    }
+
+    /* And a decimal the form would take is taken here too, which is the other
+       direction of the same rule. */
+    await user.clear(screen.getByLabelText(/^Sati/))
+    await user.type(screen.getByLabelText(/^Sati/), '1.5')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+    expect(session.amend, 'a decimal the form allows').toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
+    await user.clear(screen.getByLabelText(/^Naziv trke/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+    expect(session.amend, 'a race with no name').toHaveBeenCalledTimes(1)
+
+    /* And each of the three things says which of them is wrong, rather than one
+       sentence for all: written as one it told a moderator who had left 0:0:0
+       standing that the numbers must be within their bounds, and nought is within
+       its bounds. */
+    /* And in the words the member's own form uses, from the one place that holds
+       them: written here by hand, the sentence said „the names must be filled in"
+       over a name that was filled in and one character too long (review,
+       31.08.2026). */
+    expect(screen.getByText(/Ovo polje je obavezno/)).toBeVisible()
+
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
+    for (const box of ['Sati', 'Minuta', 'Sekundi'] as const) {
+      await user.clear(screen.getByLabelText(new RegExp(`^${box}`)))
+      await user.type(screen.getByLabelText(new RegExp(`^${box}`)), '0')
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
+
+    expect(session.amend, 'nought hours, minutes and seconds').toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/ne mogu svi biti nula/)).toBeVisible()
+
+    /* A name that is filled in and too long says so, rather than saying it is
+       missing: that was a high finding of its own, and the difference is the whole
+       reason the sentence comes from the form's own rule. Read from the definition
+       that owns the limit rather than written out, so raising it there does not
+       leave this case asking for a sentence nobody prints. */
+    const most = limitOf(dogadjaj, 'name')
+
+    fireEvent.change(screen.getByLabelText(/^Naziv doga/), {
+      target: { value: 'x'.repeat(most + 10) },
+    })
+
+    expect(screen.getByText(new RegExp(`Najviše ${most} znakova`))).toBeVisible()
+
+    /* And which box it is about, said twice over: the sentence names it, and the
+       control itself says it is the wrong one. A form writes its messages without
+       the name of the field because it draws each under its own field; drawn once
+       under the buttons, „Najveća dozvoljena vrednost je 59." over two boxes of 99
+       says nothing about which (review, 31.08.2026). */
+    expect(screen.getByText(/^Naziv događaja: Najviše/)).toBeVisible()
+    expect(screen.getByLabelText(/^Naziv doga/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('aria-invalid', 'false')
+
+    fireEvent.change(screen.getByLabelText(/^Naziv doga/), { target: { value: 'Ultra vikend' } })
+    fireEvent.change(screen.getByLabelText(/^Minuta/), { target: { value: '99' } })
+    fireEvent.change(screen.getByLabelText(/^Sekundi/), { target: { value: '99' } })
+
+    expect(screen.getByText(/^Minuta: Najveća/)).toBeVisible()
+    expect(screen.getByLabelText(/^Minuta/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^Sekundi/)).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('never stands open beside the box that refuses one', async () => {
+    /* Both panels are drawn below the table, so two open at once would leave the
+       moderator reading a correction of one item over a refusal of another. */
+    const { user } = openWith(['pending', 'pending'])
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+    expect(screen.getByRole('group', { name: 'Ispravka pre odluke' })).toBeVisible()
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+    expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
+
+    await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
+    expect(screen.queryByRole('group', { name: 'Odbij' })).toBeNull()
   })
 
   it('has the one decision for the whole queue, like every other queue', async () => {

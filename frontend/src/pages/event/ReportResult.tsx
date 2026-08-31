@@ -7,6 +7,7 @@ import { useFilterParams } from '../../app/useFilterParams'
 import { raceLabel } from '../../data/raceLabel'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
+import { noTime } from '../../forms/clock'
 import { reportForm } from './reportForm'
 import { reportedResult } from './reportedResult'
 import { raceKind } from '../../data/raceKind'
@@ -75,6 +76,9 @@ export function ReportResult() {
       <div className="member" role="status">
         <h1>{t('newResult.doneTitle')}</h1>
         <p>{t('newResult.donePoints', { points: formatPoints(done, locale) })}</p>
+        {/* The same sentence on this road, since the same thing may happen to it:
+            the administration settles the time at verification. */}
+        <p>{t('newResult.pointsNotFinal')}</p>
         <p>{t('newResult.doneWaiting')}</p>
         <p className="member__actions">
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
@@ -253,7 +257,30 @@ export function ReportResult() {
                 })}
               </p>
 
-              <FormRenderer form={reportForm(kind)} onSubmit={onSubmit} />
+              <FormRenderer
+                form={reportForm(kind)}
+                /* The third road a time reaches a submission by, and the one that
+                   was left out when the rule was written: a race run in no time is
+                   not a result (owner, 31.08.2026), and no single box can refuse
+                   it because each of the three is right to take nought on its own.
+                   Measured in review: 0 / 0 / 0 went through here and reached the
+                   queue while the form away from the calendar and the panel in it
+                   both turned it away.
+                 *
+                   **On a timed race there is nothing to ask, because there are no
+                   boxes.** This form drops the three of them for that kind
+                   (`reportForm.ts`), since the race answers for the time itself, so
+                   `fromBoxes` reads nothing at all and `noTime` is true of every
+                   such report. Without this half, no result from a timed race
+                   could be sent at all. The locking of filled boxes is the other
+                   form, the one away from the calendar (`racesToOffer.ts`); it is
+                   named here because an earlier note put it on this screen, where
+                   it does not happen. */
+                alsoRefuses={(values) =>
+                  kind === 'time' || !noTime(values) ? undefined : 'newResult.needsTime'
+                }
+                onSubmit={onSubmit}
+              />
             </>
           )
         }}

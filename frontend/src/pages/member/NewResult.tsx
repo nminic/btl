@@ -11,9 +11,9 @@ import { raceKind } from '../../data/raceKind'
 import type { Result } from '../../data/types'
 import { useEvents, useRaces, useResults } from '../../data/useResource'
 import { useToday } from '../../clock/useClock'
-import { fromBoxes, inBoxes } from '../../forms/clock'
+import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
 import { racesToOffer } from './racesToOffer'
-import { btlPoints } from '../../data/scoring'
+import { pointsOf } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { Submission } from '../../session/context'
@@ -217,7 +217,7 @@ export function NewResult() {
     const ascentM = Number(values.ascentM)
     const descentM = Number(values.descentM)
     const total = fromBoxes(values)
-    const earned = btlPoints(distanceKm, ascentM, descentM, total) ?? 0
+    const earned = pointsOf(distanceKm, ascentM, descentM, total)
 
     /* Which of the two answers this road gives, chosen by the road and not by
        what happens to be in a box. `behind` is undefined only where the race a
@@ -363,6 +363,13 @@ export function NewResult() {
       <div className="member" role="status">
         <h1>{t('newResult.doneTitle')}</h1>
         <p>{t('newResult.donePoints', { points: formatPoints(done.points, locale) })}</p>
+        {/* And that the number is not the last word (PDL, 30.08.2026, point 8).
+            The administration settles the kind and the time at verification, and
+            on a timed race the time is the race's own limit, so a result sent as
+            1:52:10 may be counted as 3:00:00 and be worth a third of what this
+            line said. Until 31.08.2026 nothing on the way said so, and the member
+            met the smaller number for the first time in their own list. */}
+        <p>{t('newResult.pointsNotFinal')}</p>
         <p>{done.again ? t('newResult.againDone') : t('newResult.doneWaiting')}</p>
         <p className="member__actions">
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
@@ -460,7 +467,15 @@ export function NewResult() {
           String(values.link).trim() === '' &&
           String(values.photo).trim() === ''
             ? 'newResult.needsProof'
-            : undefined
+            : /* And a result run in no time at all, which no single box can refuse
+                 because each of the three is right to take nought on its own: a
+                 race of forty five minutes has nought hours (owner, 31.08.2026:
+                 „Ne sme da se popuni 0:0:0!"). Asked of the one place that holds
+                 that rule, so this form and the panel in the verification queue
+                 refuse the same thing. */
+              noTime(values)
+              ? 'newResult.needsTime'
+              : undefined
         }
         suggests={{ raceName: offered }}
         onSubmit={onSubmit}
