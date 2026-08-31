@@ -27,7 +27,7 @@ import type { Competitor } from '../../data/types'
  *  this until the guard above replaced it, and deleting it with the text left the
  *  tie-break unmeasured for a round (review, 31.08.2026).
  *
- *  **These four, and not „every category function":** a comparison written straight
+ *  **These five, and not „every category function":** a comparison written straight
  *  on `birthYear` reaches none of them, and a claim that no category can come back
  *  at all would be wider than this holds. What holds that is the case below, where
  *  three orders disagree so only the one the table settled can produce the answer. */
@@ -97,21 +97,33 @@ describe('the name of a block of the standing', () => {
        ranking nobody asked for, and by age it would be the extra rule the owner
        refused („Ne želim dodatna pravila", 31.08.2026).
 
-       **Three orders that disagree**, which is the whole of this case: they arrive
-       000003 then 000001, the member numbers run the other way, and the years of
-       birth run the other way again. Only the arrival order can produce this answer.
-       The first draft used two people whose arrival happened to match both of the
-       others, so a tie broken by year of birth passed it, and the mocks beside it did
-       not catch that either: a comparison on `birthYear` asks no category function at
-       all (review, 31.08.2026).
+       **Three people, because two cannot tell three orders apart.** With a pair there
+       are only two possible answers, so any second order either agrees with arrival or
+       reverses it, and a tie broken by year of birth agreed — it passed the first
+       draft of this case (review, 31.08.2026). With three, arrival, member number and
+       year of birth in either direction are four different answers, and only arrival
+       gives this one:
 
-       What the mocks hold is narrower and worth saying exactly: the four functions
-       named there are the four that turn a person into a category, and none of them
-       may be called while these blocks are made. */
-    const older = { ...person('000003', 'M'), birthYear: 1966 }
-    const groups = leagueGroups(rowsOf([older, person('000001', 'M')]))
+         arrival        000005, 000001, 000003
+         member number  000001, 000003, 000005
+         born, oldest   000001, 000005, 000003
+         born, youngest 000003, 000005, 000001
+
+       What the mocks beside this hold is narrower and worth saying exactly: the five
+       functions named there are refused, and a comparison written straight on
+       `birthYear` reaches none of them. This case is what holds that. */
+    const rows = rowsOf([
+      { ...person('000005', 'M'), birthYear: 1980 },
+      { ...person('000001', 'M'), birthYear: 1970 },
+      { ...person('000003', 'M'), birthYear: 1990 },
+    ])
+    const groups = leagueGroups(rows)
 
     expect(groups.map((one) => one.code)).toEqual(['PRVI'])
-    expect(groups[0]?.rows.map((one) => one.competitor.memberNumber)).toEqual(['000003', '000001'])
+    expect(groups[0]?.rows.map((one) => one.competitor.memberNumber)).toEqual([
+      '000005',
+      '000001',
+      '000003',
+    ])
   })
 })

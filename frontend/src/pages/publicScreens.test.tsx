@@ -2224,25 +2224,26 @@ describe('Leagues', () => {
 
     /* **And the written pages, which are the fifth home and the last one found.**
        Član 57 said „Podela na kategorije zadaje se na nivou svake Lige" — the
-       overturned rule itself, in the prose a member accepts on joining, standing
-       while the field was gone from the model and the code. The owner had it deleted
+       overturned rule itself, in the prose a member accepts on joining, standing while
+       the field was gone from the model and the code. The owner had it deleted
        (31.08.2026).
 
-       **Held as the article stands, not as a pattern over it.** Two drafts tried to
-       word a refusal and both were wrong in both directions at once: the first named
-       two phrasings, so the same rule with the words in another order walked past;
-       the second asked for a category and a league in one sentence, which refused a
-       legitimate line about the category a **competitor** is in, and still let the
-       deleted rule back in because the rulebook writes „lige" in lower case in
-       thirty-five of the forty-six sentences that mention one, and the pattern asked
-       for a capital (both measured in review, 31.08.2026).
+       **Held as the whole section stands.** Three drafts before this one were wrong.
+       Two were patterns: the first named two phrasings, so the same rule with the
+       words in another order walked past; the second asked for a category and a league
+       in one sentence, which refused a legitimate line about the category a
+       **competitor** is in, and still let the rule back because the rulebook writes
+       „lige" in lower case in thirty-five of the forty-six sentences that mention one.
+       The third froze the article and stopped at its last sentence, so the same rule
+       put one line further down — still under Član 57, before Član 58 — passed with
+       the whole gate green (all three measured in review, 31.08.2026).
 
-       Prose says a thing in unboundedly many ways, so a pattern over it is a guess
-       about wording. The article is what the league promises, and it is held whole,
-       the same way the passage about verifying a result is held in
-       `writtenVerification.test.ts`. The cost is the same and is the point: changing
-       these words is a deliberate act that comes here too. */
-    const ARTICLE_57 = `### Član 57. Liga kao pojam
+       So the unit is the section, which is what a reader meets as one piece, and there
+       is no edge left inside it. This is the first passage in this repo held word for
+       word; the neighbouring guards read prose with patterns, and that is exactly why
+       they kept missing this. The cost is the point: changing any of these four
+       articles is a deliberate act that comes here too. */
+    const SECTION_13 = `### Član 57. Liga kao pojam
 
 Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spiskom događaja koji tokom godine ulaze u njih. Spisak događaja sme da se menja tokom godine.
 
@@ -2250,15 +2251,31 @@ Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spis
 - Svi članovi su u Ligi automatski, bez prijave.
 - Svaka Liga ima svoju stranu i tabelu.
 
-Šta se u pojedinoj Ligi osvaja određuje njen organizator i to nije predmet ovog pravilnika.`
+Šta se u pojedinoj Ligi osvaja određuje njen organizator i to nije predmet ovog pravilnika.
 
-    const written = Object.values(pages).flatMap((page) => page.sections.map((one) => one.body))
+### Član 58. BTL Round 'n' Around
 
-    expect(
-      written.filter((one) => one.includes('### Član 57.')),
-      'Član 57 stands in exactly one section',
-    ).toHaveLength(1)
-    expect(written.find((one) => one.includes('### Član 57.'))).toContain(ARTICLE_57)
+Ultramaraton u obliku slobodne trke: prati se ukupna kilometraža i ukupno vreme. Posebnog prikaza za višestruke polumaratone i maratone nema.
+
+Trka može trajati nekoliko minuta ili nekoliko dana, a broj BTL bodova koji se na njoj skupi nije ničim ograničen. Daje sjajnu šansu svima da izvuku iz sebe svoj realan maksimum, i pobednik možda neće biti onaj ko pretrči najviše ili bude najbrži.
+
+Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
+
+### Član 59. BTL dezorijentiring
+
+Nije cilj stići prvi, cilj je tokom sat vremena sakupiti što više BTL bodova. Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
+
+### Član 60. BTL sreda
+
+Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tabelu.`
+
+    const written = Object.entries(pages).flatMap(([slug, page]) =>
+      page.sections.map((one) => ({ slug, heading: one.heading, body: one.body })),
+    )
+    const held = written.filter((one) => one.slug === 'pravilnik' && one.heading === "13. Prateća takmičenja i lige")
+
+    expect(held, 'the section that carries Član 57 stands once').toHaveLength(1)
+    expect(held[0]?.body).toBe(SECTION_13)
   })
 })
 
