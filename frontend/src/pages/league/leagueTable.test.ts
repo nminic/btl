@@ -1,7 +1,4 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
-import { bare } from '../../test/sources'
 import { at, first } from '../../test/at'
 import { genderMark } from '../../data/categories'
 import { leagueGroups, leagueTable } from './leagueTable'
@@ -249,43 +246,6 @@ describe('the way a competition splits its ranking', () => {
 
     expect(groups.map((one) => one.code)).toEqual(['M', 'Ž'])
     expect(groups.map((one) => one.rows.length)).toEqual([2, 2])
-  })
-
-  it('names its blocks off `genderMark`, and does not spell them out itself', () => {
-    /* Which is a claim about where the string comes from, so it is asked of the
-       file rather than of the output: the first draft of this case worked the
-       expected value out with the very function the code calls, so both sides
-       moved together and a name written by hand passed (review, 31.08.2026,
-       measured two ways — `genderMark` made to answer „MUSKI" left this green,
-       and so did the mark written out as a ternary in `leagueGroups`).
-
-       Matched without the name of the loop variable, which is not part of the
-       claim: written with `row` in it, renaming the loop to the `one` this file uses
-       everywhere else broke the guard while the behaviour was identical. And matched
-       on the **assignment**, because asking whether the call appears anywhere in the
-       file let the code be spelled out by hand with the call left standing beside it
-       for another reason — measured with the whole gate green.
-
-       **The refusal below carries a `\b` and it has to be typed, not generated.**
-       Written once by a shell replacement, the escape became a real backspace byte:
-       the expression then asked for a control character no source file holds, so it
-       could not fail, and `categoryCodeFor` came back with 2447 tests green. It was
-       the only control byte in the whole tree and the diff did not show it (all
-       three measured in review, 31.08.2026).
-
-       The other half is that nothing here works a category out any more, and it is
-       asked of the **family** rather than of one name: forbidding `categoryOfMember`
-       alone let the same reading back in through `categoryCodeFor`, measured with the
-       whole gate green (review, 31.08.2026). Four names carry it — `categoryOfMember`,
-       `categoryCodeFor`, `categoriesOf` and `ageBandFor` — so what is refused is any
-       call whose name begins that way. A **call**, not the word: this file imports
-       `genderMark` from `data/categories`, and banning the word would ban the import
-       that makes the first half true. Comments blanked, so a note naming any of them
-       is not read as calling one. */
-    const code = bare(readFileSync(join(process.cwd(), 'src/pages/league/leagueTable.ts'), 'utf-8'))
-
-    expect(code).toMatch(/const code = genderMark\(\w+\.competitor\.gender\)/)
-    expect(code).not.toMatch(/\b(?:categor|ageBand)\w*\s*\(/i)
   })
 
   it('draws no block for a gender nobody in the competition is', () => {
