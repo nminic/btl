@@ -2439,14 +2439,20 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        competition and every description the portal writes about itself, and the rule
        cannot be put back into any of them under any wording.
 
-       **A sentence written straight into a component is held on the screens the snapshot
-       opens, and only there.** Every branch those components take for a competition is
-       opened: full and empty, present and missing, seen by a visitor and by somebody who
-       may change it. What it does not open is the state a competition's rules are edited
-       in, which is reached by a press, and the rest of the portal, where nothing keeps
-       Serbian prose out of a `.tsx` file at all. That last one is a rule about the whole
-       portal rather than about this change, and both are written down in
-       `btl-produkt/PENDING.md` instead of being invented here.
+       **A sentence written straight into a component is not held here, and is not meant
+       to be.** This holds only the branches its seats happen to take, and three rounds of
+       review each found another branch it did not: no events, no rows, nothing written,
+       no competitions at all, the cell that counts races while its file is on the way and
+       again when it never arrives, the state a competition is edited in. Each was closed
+       by opening one more seat, and the next round found the next branch. That is a class
+       and it is swept in one place, by reading the source of the four components rather
+       than by contriving the state each branch needs
+       (`pages/league/componentWords.test.ts`).
+
+       What stays open is the rest of the portal, where nothing keeps Serbian prose out of
+       a `.tsx` file at all. That is a rule about the whole portal rather than about this
+       change, and it is written down in `btl-produkt/PENDING.md` instead of being
+       invented here.
 
        The cost is the same as everywhere this is done: a deliberate change to any of
        these words is made here too. The lead sentence alone has carried this rule
