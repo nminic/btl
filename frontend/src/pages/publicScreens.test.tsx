@@ -2275,6 +2275,22 @@ describe('Leagues', () => {
          by no guard at all (review, 01.09.2026). */
       ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'superadmin'],
       ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
+      /* A second competition, because five seats over one record see only the branches
+         that one record takes. `planinska-2027` is public, reachable from the list, and
+         empty in every way `brdska-2019` is full: no events, no standing, and nothing
+         written in its rules or its prizes. A sentence put into any of those four
+         branches is drawn to a visitor and passed the whole gate while only the full
+         competition was opened (review, 01.09.2026). */
+      ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'visitor'],
+      /* And the empty competition through the eyes of somebody who may fill it in. A
+         field with nothing written in it is drawn to **nobody else**: `EditableText`
+         returns nothing at all when the value is empty and the reader cannot edit, so
+         the sentence „Još nije napisano." and anything put beside it is invisible to a
+         visitor and passed the whole gate (measured 01.09.2026). */
+      ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'superadmin'],
+      ['/sr/liga/planinska-2027/rezultati', 'Planinska liga 2027', 'visitor'],
+      /* And the competition that is not there, which is its own screen. */
+      ['/sr/liga/ne-postoji', 'Ove lige nema.', 'visitor'],
       ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
     ] as const
 
@@ -2423,12 +2439,14 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        competition and every description the portal writes about itself, and the rule
        cannot be put back into any of them under any wording.
 
-       **A sentence written straight into a component is not held here**, and does not
-       need to be on these screens: the snapshot above draws them and would see it. What
-       stays open is the rest of the portal, where nothing keeps Serbian prose out of a
-       `.tsx` file. That is a rule about the whole portal rather than about this change,
-       and it is written down in `btl-produkt/PENDING.md` instead of being invented
-       here.
+       **A sentence written straight into a component is held on the screens the snapshot
+       opens, and only there.** Every branch those components take for a competition is
+       opened: full and empty, present and missing, seen by a visitor and by somebody who
+       may change it. What it does not open is the state a competition's rules are edited
+       in, which is reached by a press, and the rest of the portal, where nothing keeps
+       Serbian prose out of a `.tsx` file at all. That last one is a rule about the whole
+       portal rather than about this change, and both are written down in
+       `btl-produkt/PENDING.md` instead of being invented here.
 
        The cost is the same as everywhere this is done: a deliberate change to any of
        these words is made here too. The lead sentence alone has carried this rule
