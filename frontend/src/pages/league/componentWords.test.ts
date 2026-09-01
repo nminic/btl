@@ -83,6 +83,21 @@ function wordsIn(path: string): string[] {
  * with anything but a literal; those are held instead by the screens themselves, which
  * draw whatever the pieces come to.
  */
+/**
+ * The frame drawn around every screen, which is a root of its own.
+ *
+ * Following imports downward from the four screens can never reach it: the frame
+ * imports the screen through `Outlet`, not the other way round, so nothing it says
+ * could enter the set. The nine seats pin it, but all nine are a signed-out visitor
+ * with the menus closed and nothing broken, so what it says to a signed-in member and
+ * what it says when a screen throws went past everything (review, 01.09.2026).
+ *
+ * It is safe as a root because it draws the screen through `Outlet` rather than
+ * importing it: the walk stops at the frame's own parts and does not spill into the
+ * whole portal.
+ */
+const FRAME = 'src/app/Shell.tsx'
+
 function keysReached(): string[] {
   const seen = new Set<string>()
   const keys = new Set<string>()
@@ -153,31 +168,35 @@ function keysReached(): string[] {
     walk(source)
   }
 
-  for (const path of FILES) {
+  for (const path of [...FILES, FRAME]) {
     visit(join(process.cwd(), path))
   }
 
   return [...keys].sort()
 }
 
-/** One step down a dictionary, kept in the two shapes a dictionary is made of. */
-function own(step: unknown): Record<string, unknown> | string | null {
-  if (typeof step === 'string') {
-    return step
-  }
-
-  return step !== null && typeof step === 'object' ? { ...step } : null
+/** Whether a step down the dictionary can be stepped into. */
+function branching(step: unknown): step is Record<string, unknown> {
+  return step !== null && typeof step === 'object'
 }
 
-/** The words behind a key, or nothing when the key names no sentence. */
-function saidBy(key: string): string | null {
-  let step: Record<string, unknown> | string | null = sr
+/**
+ * Whatever a key names: a sentence, a set of them counted by number, or nothing.
+ *
+ * The count is kept whole rather than dropped. Asked only for sentences, this let
+ * every plural key out silently — four of them today, all from the counter under the
+ * two long boxes of a competition's own form — and a plural key added tomorrow would
+ * have entered the dictionary with no guard and no sign, while a plain one would have
+ * failed (review, 01.09.2026).
+ */
+function saidBy(key: string): unknown {
+  let step: unknown = sr
 
   for (const part of key.split('.')) {
-    step = step !== null && typeof step !== 'string' && part in step ? own(step[part]) : null
+    step = branching(step) && part in step ? step[part] : null
   }
 
-  return typeof step === 'string' ? step : null
+  return step
 }
 
 describe('the words the competition screens are written with', () => {
@@ -207,18 +226,19 @@ describe('the words the competition screens are written with', () => {
   it('says nothing a competition could be ranked by, through any key those screens ask for', () => {
     const words: Record<string, unknown> = spoken
     const asked = keysReached()
-      .map((key) => [key, saidBy(key)] as const)
-      .filter(([, said]) => said !== null)
 
     expect(asked.length, 'a competition screen still asks the dictionary for something')
       .toBeGreaterThan(0)
 
-    for (const [key, said] of asked) {
-      expect(said, key).toEqual(words[key])
+    /* Every key, and whatever it names. Nothing is dropped on the way: a key that names
+       a set counted by number is held as that set, and a key that names nothing at all
+       is held as nothing, so it fails the day it starts naming a sentence. */
+    for (const key of asked) {
+      expect(saidBy(key), key).toEqual(words[key])
     }
 
     /* And no key has appeared that the held list does not know, nor left it while a
        competition screen still asks for it. */
-    expect(asked.map(([key]) => key)).toEqual(Object.keys(words).sort())
+    expect(asked).toEqual(Object.keys(words).sort())
   })
 })
