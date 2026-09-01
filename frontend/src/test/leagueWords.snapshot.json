@@ -210,5 +210,11 @@
     "previous": "Prethodna",
     "next": "Sledeća",
     "leagueStanding": "Strane poretka takmičenja"
+  },
+  "data": {
+    "loading": "Učitavanje",
+    "loadingPart": "Učitavanje: {part}",
+    "error": "Podaci se ne mogu učitati.",
+    "empty": "Ovde još nema ničega."
   }
 }

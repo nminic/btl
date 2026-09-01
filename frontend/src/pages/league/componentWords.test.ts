@@ -75,12 +75,14 @@ describe('the words the competition screens are written with', () => {
        snapshot, the two only agreed with each other: `LeagueResults.tsx` taken out of both
        left the standing of a competition drawn by a component no guard reads, and the
        whole gate stayed green (review, 01.09.2026). It is now every component of the
-       portal named after a competition, so a new one joins the moment it is written, and
-       an old one leaves only by being named in an exclusion written here.
+       portal named after a competition, so a new one joins the moment it is written.
 
        **It does not claim more than that.** A guard cannot hold against being edited
-       away, and this one is no exception; what changed is that dropping a competition
-       from it is now a line that says which competition is being dropped. */
+       away, and narrowing the name this line looks for drops files without naming any of
+       them: `/league/i` written as `/leagues/i` quietly stops reading both the page of a
+       competition and its standing (review, 01.09.2026). What is bought here is the one
+       direction that matters for a portal still being written — a component added
+       tomorrow is read without anybody remembering to add it. */
     expect(FILES.length, 'the portal still draws a competition').toBeGreaterThan(0)
     expect(Object.keys(kept).sort()).toEqual([...FILES].sort())
   })

@@ -2469,6 +2469,15 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        costs nothing. */
     expect(sr.pager).toEqual(words.pager)
 
+    /* **And what the portal says when the record does not arrive.** `Resource` draws
+       `data.error` in place of the whole screen, competition screens included, so the
+       sentence a visitor reads when `leagues.json` fails is the portal speaking about a
+       competition as much as anything else on the page. No seat above is in that state,
+       and the one case that draws it matches by substring, so the overturned rule
+       appended to `data.error` passed the whole gate (review, 01.09.2026). Four words,
+       held whole. */
+    expect(sr.data).toEqual(words.data)
+
     /* **The whole of `seo`, not the four names about competitions.** Held as four, the
        rule went into `seo.rulebook.description`, which is the sentence a search engine
        shows for the rulebook and still under the hundred and sixty characters that
