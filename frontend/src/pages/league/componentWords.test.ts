@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs'
-import { join, sep } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve, sep } from 'node:path'
 import ts from 'typescript'
+import sr from '../../i18n/sr.json'
 import { sources } from '../../test/sources'
 import held from '../../test/leagueComponentWords.snapshot.json'
+import spoken from '../../test/leagueSpokenKeys.snapshot.json'
 
 /**
  * Every word the components that draw a competition can put on a screen,
@@ -63,6 +65,121 @@ function wordsIn(path: string): string[] {
   return [...new Set(found.map((one) => one.trim()).filter((one) => one !== ''))].sort()
 }
 
+/**
+ * Every word the dictionary is asked for from a competition screen, held as it stands.
+ *
+ * **Why computed and not chosen.** Four rounds of review in a row found the same thing:
+ * a key drawn on one of these screens that no held branch covered. `rankings`, then
+ * `pager.leagueStanding`, then `data.error` — each was closed by adding the branch it
+ * happened to be in, and the next round found the next branch. Choosing branches is
+ * guessing, and the guess was wrong four times.
+ *
+ * So the set is not chosen. Every file a competition screen reaches is followed through
+ * its imports, every key those files ask `t` for is collected, and the words behind those
+ * keys are held. A key that reaches one of these screens cannot be outside it, because
+ * reaching the screen is what puts it in.
+ *
+ * A key built out of pieces at run time is not seen here, and neither is one asked for
+ * with anything but a literal; those are held instead by the screens themselves, which
+ * draw whatever the pieces come to.
+ */
+function keysReached(): string[] {
+  const seen = new Set<string>()
+  const keys = new Set<string>()
+
+  const found = (from: string, spec: string): string | null => {
+    if (!spec.startsWith('.')) {
+      return null
+    }
+
+    const base = resolve(dirname(from), spec)
+
+    return (
+      ['.tsx', '.ts', '/index.tsx', '/index.ts']
+        .map((ending) => base + ending)
+        .find((path) => existsSync(path)) ?? null
+    )
+  }
+
+  const visit = (path: string): void => {
+    if (seen.has(path)) {
+      return
+    }
+
+    seen.add(path)
+
+    const source = ts.createSourceFile(
+      path,
+      readFileSync(path, 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    )
+
+    const asked = (node: ts.Node): void => {
+      if (ts.isStringLiteral(node)) {
+        keys.add(node.text)
+      } else if (ts.isConditionalExpression(node)) {
+        asked(node.whenTrue)
+        asked(node.whenFalse)
+      }
+    }
+
+    const walk = (node: ts.Node): void => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === 't' &&
+        node.arguments[0] !== undefined
+      ) {
+        asked(node.arguments[0])
+      }
+
+      if (
+        (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+        node.moduleSpecifier !== undefined &&
+        ts.isStringLiteral(node.moduleSpecifier)
+      ) {
+        const next = found(path, node.moduleSpecifier.text)
+
+        if (next !== null && next.startsWith(join(process.cwd(), 'src'))) {
+          visit(next)
+        }
+      }
+
+      ts.forEachChild(node, walk)
+    }
+
+    walk(source)
+  }
+
+  for (const path of FILES) {
+    visit(join(process.cwd(), path))
+  }
+
+  return [...keys].sort()
+}
+
+/** One step down a dictionary, kept in the two shapes a dictionary is made of. */
+function own(step: unknown): Record<string, unknown> | string | null {
+  if (typeof step === 'string') {
+    return step
+  }
+
+  return step !== null && typeof step === 'object' ? { ...step } : null
+}
+
+/** The words behind a key, or nothing when the key names no sentence. */
+function saidBy(key: string): string | null {
+  let step: Record<string, unknown> | string | null = sr
+
+  for (const part of key.split('.')) {
+    step = step !== null && typeof step !== 'string' && part in step ? own(step[part]) : null
+  }
+
+  return typeof step === 'string' ? step : null
+}
+
 describe('the words the competition screens are written with', () => {
   it('says nothing a competition could be ranked by, in any branch drawn or not', () => {
     const kept: Record<string, unknown> = held
@@ -85,5 +202,23 @@ describe('the words the competition screens are written with', () => {
        tomorrow is read without anybody remembering to add it. */
     expect(FILES.length, 'the portal still draws a competition').toBeGreaterThan(0)
     expect(Object.keys(kept).sort()).toEqual([...FILES].sort())
+  })
+
+  it('says nothing a competition could be ranked by, through any key those screens ask for', () => {
+    const words: Record<string, unknown> = spoken
+    const asked = keysReached()
+      .map((key) => [key, saidBy(key)] as const)
+      .filter(([, said]) => said !== null)
+
+    expect(asked.length, 'a competition screen still asks the dictionary for something')
+      .toBeGreaterThan(0)
+
+    for (const [key, said] of asked) {
+      expect(said, key).toEqual(words[key])
+    }
+
+    /* And no key has appeared that the held list does not know, nor left it while a
+       competition screen still asks for it. */
+    expect(asked.map(([key]) => key)).toEqual(Object.keys(words).sort())
   })
 })
