@@ -84,19 +84,28 @@ function wordsIn(path: string): string[] {
  * draw whatever the pieces come to.
  */
 /**
- * The frame drawn around every screen, which is a root of its own.
+ * The one place that says what the portal draws.
  *
- * Following imports downward from the four screens can never reach it: the frame
- * imports the screen through `Outlet`, not the other way round, so nothing it says
- * could enter the set. The nine seats pin it, but all nine are a signed-out visitor
- * with the menus closed and nothing broken, so what it says to a signed-in member and
- * what it says when a screen throws went past everything (review, 01.09.2026).
+ * Walking imports downward from the four screens misses everything drawn **around**
+ * them, because a frame takes the screen as a child and never imports it. Two frames
+ * were found that way, one per round: the shell, whose words to a signed-in member and
+ * whose message when a screen throws went past everything; and the administration's
+ * own navigation, whose alarm when a queue cannot be counted is drawn on the screen a
+ * competition is edited on (reviews, 01.09.2026).
  *
- * It is safe as a root because it draws the screen through `Outlet` rather than
- * importing it: the walk stops at the frame's own parts and does not spill into the
- * whole portal.
+ * Both were closed by writing the frame's name down, and the second review said the
+ * true thing about the first fix: a written list agrees only with itself, in the very
+ * file whose other list is found rather than written.
+ *
+ * So there is no list of frames. The route table is the root, because it is where the
+ * portal says what is drawn and what is drawn around it, and every word reachable from
+ * it is held. There is no frame left to forget, and no branch left to guess.
+ *
+ * **What it costs, said plainly:** every sentence the portal can say is held here, so
+ * changing any of them is a change in two files. That is the price of never having to
+ * ask again which screen reaches which word.
  */
-const FRAME = 'src/app/Shell.tsx'
+const ROOT = 'src/app/routeObjects.tsx'
 
 function keysReached(): string[] {
   const seen = new Set<string>()
@@ -168,9 +177,7 @@ function keysReached(): string[] {
     walk(source)
   }
 
-  for (const path of [...FILES, FRAME]) {
-    visit(join(process.cwd(), path))
-  }
+  visit(join(process.cwd(), ROOT))
 
   return [...keys].sort()
 }
@@ -223,12 +230,11 @@ describe('the words the competition screens are written with', () => {
     expect(Object.keys(kept).sort()).toEqual([...FILES].sort())
   })
 
-  it('says nothing a competition could be ranked by, through any key those screens ask for', () => {
+  it('says nothing a competition could be ranked by, through any key the portal asks for', () => {
     const words: Record<string, unknown> = spoken
     const asked = keysReached()
 
-    expect(asked.length, 'a competition screen still asks the dictionary for something')
-      .toBeGreaterThan(0)
+    expect(asked.length, 'the portal still asks the dictionary for something').toBeGreaterThan(0)
 
     /* Every key, and whatever it names. Nothing is dropped on the way: a key that names
        a set counted by number is held as that set, and a key that names nothing at all
