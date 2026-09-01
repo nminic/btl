@@ -34,15 +34,25 @@ import type { Competitor, Result } from '../data/types'
  * it is collected; a class name is not something the portal says, and holding it
  * would turn every change of style into a change of words.
  */
-function wordsDrawn(): { text: string; title: string; labels: string[] } {
+function wordsDrawn(): { text: string; title: string; labels: string[]; head: string[] } {
   const spoken = [...document.body.querySelectorAll('[aria-label], [alt], [title]')]
     .flatMap((one) => ['aria-label', 'alt', 'title'].map((name) => one.getAttribute(name) ?? ''))
+    .filter((one) => one.trim() !== '')
+
+  /* The head is read with the body. What a search engine is told is the portal
+     speaking in its own voice as much as a paragraph is, and it is drawn by an
+     effect rather than by the tree, so nothing in `document.body` can see it: a
+     rule written into the description of a competition passed the whole gate while
+     only the body was read (review, 01.09.2026). */
+  const told = [...document.head.querySelectorAll('meta')]
+    .map((one) => one.getAttribute('content') ?? '')
     .filter((one) => one.trim() !== '')
 
   return {
     text: must(document.body.textContent, 'the words a screen draws').replace(/\s+/g, ' ').trim(),
     title: document.title,
     labels: [...new Set(spoken)].sort(),
+    head: [...new Set(told)].sort(),
   }
 }
 
@@ -2242,6 +2252,14 @@ describe('Leagues', () => {
        component, and a key from a branch no snapshot covers. Both were measured to
        pass the whole gate while this was missing (review, 01.09.2026).
 
+       **Read on three sides, because the first draft read one.** The body is where a
+       sentence is seen; the head is what a search engine is told, drawn by an effect
+       no query over the body reaches; and a screen is opened once as a visitor and
+       once as somebody who may change it, since everything behind `canEdit` is
+       invisible to the first. A rule was put through each of the three in turn and
+       each passed the whole gate while only the body of a visitor's screen was held
+       (review, 01.09.2026).
+
        **What it costs, said plainly:** changing anything these four screens say is a
        deliberate act that comes here too, mock data included. That is the same cost
        the written pages already pay, and it is the point.
@@ -2251,6 +2269,11 @@ describe('Leagues', () => {
     const SCREENS = [
       ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
       ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'visitor'],
+      /* The same page under somebody who may change it. Everything drawn behind
+         `canEdit` is invisible to a visitor, so a rule put beside the button that
+         edits the rules of a competition is read by the one person acting on it and
+         by no guard at all (review, 01.09.2026). */
+      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'superadmin'],
       ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
       ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
     ] as const
@@ -2258,6 +2281,8 @@ describe('Leagues', () => {
     const drawn: Record<string, unknown> = screens
 
     for (const [route, ready, as] of SCREENS) {
+      const seat = `${route} · ${as}`
+
       cleanup()
       renderAt(route, as, null, undefined, '2026-09-01')
 
@@ -2266,19 +2291,37 @@ describe('Leagues', () => {
          and „Propozicije" are both written by the shell on the change of route, before
          the record is there, so a page that drew nothing at all passed as if it had
          (measured 31.08. and 01.09.2026). */
-      await screen.findByText(new RegExp(ready))
+      /* All of them, not one. The name of a competition stands both in its heading and
+         in the line read out on arriving, and `findByText` throws on a second match
+         (measured 01.09.2026). */
+      await screen.findAllByText(new RegExp(ready))
 
-      /* Waited on rather than read once. The line a reader working by ear hears on
-         arriving is written in two steps: the name of the competition first, then what
-         the screen is. Read between the two, the same screen answers twice and the
-         held words are whichever step the reading landed on (measured 01.09.2026). */
-      await waitFor(() => {
-        expect(wordsDrawn(), route).toEqual(drawn[route])
-      })
+      /* Waited on rather than read once, and on a shorter clock than the case itself.
+         A screen arrives in two steps: `useRouteChrome` computes the title, the line
+         read out on arriving takes it at once, and `applyHead` writes it into the tab
+         one cycle later. Read between the two, the same screen answers twice, and the
+         first draft of this file held one step in `text` and the other in `title` —
+         two different moments of one screen, which is why it failed twice in thirteen
+         runs on an untouched tree (review, 01.09.2026).
+
+         The clock matters as much as the wait. Given the same twenty seconds as the
+         case, a real change in the words never reports a difference: the case dies of
+         its own timeout at the same instant, and vitest prints a bare „Test timed out"
+         with no route and no diff, which reads exactly like the flake above. On a
+         shorter clock the assertion loses first and says what changed (review,
+         01.09.2026). */
+      await waitFor(
+        () => {
+          expect(wordsDrawn(), seat).toEqual(drawn[seat])
+        },
+        { timeout: SLOW / 4 },
+      )
     }
 
     /* The held file cannot carry a screen this loop never opens. */
-    expect(Object.keys(drawn).sort()).toEqual(SCREENS.map(([route]) => route).sort())
+    expect(Object.keys(drawn).sort()).toEqual(
+      SCREENS.map(([route, , as]) => `${route} · ${as}`).sort(),
+    )
 
     cleanup()
     renderAt('/sr/lige')
