@@ -1,10 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve, sep } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join, sep } from 'node:path'
 import ts from 'typescript'
 import sr from '../../i18n/sr.json'
 import { sources } from '../../test/sources'
 import held from '../../test/leagueComponentWords.snapshot.json'
-import spoken from '../../test/leagueSpokenKeys.snapshot.json'
+import dictionary from '../../test/dictionary.snapshot.json'
 
 /**
  * Every word the components that draw a competition can put on a screen,
@@ -83,103 +83,6 @@ function wordsIn(path: string): string[] {
  * with anything but a literal; those are held instead by the screens themselves, which
  * draw whatever the pieces come to.
  */
-function keysReached(): string[] {
-  const seen = new Set<string>()
-  const keys = new Set<string>()
-
-  const found = (from: string, spec: string): string | null => {
-    if (!spec.startsWith('.')) {
-      return null
-    }
-
-    const base = resolve(dirname(from), spec)
-
-    return (
-      ['.tsx', '.ts', '/index.tsx', '/index.ts']
-        .map((ending) => base + ending)
-        .find((path) => existsSync(path)) ?? null
-    )
-  }
-
-  const visit = (path: string): void => {
-    if (seen.has(path)) {
-      return
-    }
-
-    seen.add(path)
-
-    const source = ts.createSourceFile(
-      path,
-      readFileSync(path, 'utf8'),
-      ts.ScriptTarget.Latest,
-      true,
-      ts.ScriptKind.TSX,
-    )
-
-    const asked = (node: ts.Node): void => {
-      if (ts.isStringLiteral(node)) {
-        keys.add(node.text)
-      } else if (ts.isConditionalExpression(node)) {
-        asked(node.whenTrue)
-        asked(node.whenFalse)
-      }
-    }
-
-    const walk = (node: ts.Node): void => {
-      if (
-        ts.isCallExpression(node) &&
-        ts.isIdentifier(node.expression) &&
-        node.expression.text === 't' &&
-        node.arguments[0] !== undefined
-      ) {
-        asked(node.arguments[0])
-      }
-
-      if (
-        (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-        node.moduleSpecifier !== undefined &&
-        ts.isStringLiteral(node.moduleSpecifier)
-      ) {
-        const next = found(path, node.moduleSpecifier.text)
-
-        if (next !== null && next.startsWith(join(process.cwd(), 'src'))) {
-          visit(next)
-        }
-      }
-
-      ts.forEachChild(node, walk)
-    }
-
-    walk(source)
-  }
-
-  for (const path of FILES) {
-    visit(join(process.cwd(), path))
-  }
-
-  return [...keys].sort()
-}
-
-/** One step down a dictionary, kept in the two shapes a dictionary is made of. */
-function own(step: unknown): Record<string, unknown> | string | null {
-  if (typeof step === 'string') {
-    return step
-  }
-
-  return step !== null && typeof step === 'object' ? { ...step } : null
-}
-
-/** The words behind a key, or nothing when the key names no sentence. */
-function saidBy(key: string): string | null {
-  let step: Record<string, unknown> | string | null = sr
-
-  for (const part of key.split('.')) {
-    step = step !== null && typeof step !== 'string' && part in step ? own(step[part]) : null
-  }
-
-  return typeof step === 'string' ? step : null
-}
-
 describe('the words the competition screens are written with', () => {
   it('says nothing a competition could be ranked by, in any branch drawn or not', () => {
     const kept: Record<string, unknown> = held
@@ -204,21 +107,26 @@ describe('the words the competition screens are written with', () => {
     expect(Object.keys(kept).sort()).toEqual([...FILES].sort())
   })
 
-  it('says nothing a competition could be ranked by, through any key those screens ask for', () => {
-    const words: Record<string, unknown> = spoken
-    const asked = keysReached()
-      .map((key) => [key, saidBy(key)] as const)
-      .filter(([, said]) => said !== null)
+  it('says nothing a competition could be ranked by, through any word it knows', () => {
+    /* **The whole dictionary, held as it stands.**
 
-    expect(asked.length, 'a competition screen still asks the dictionary for something')
-      .toBeGreaterThan(0)
+       Five rounds of review each found the same shape: a word the portal says that the
+       guard did not hold. First a branch nobody had chosen (`rankings`, then `pager`,
+       then `data`); then a frame that draws around a screen and so is never imported by
+       it (the shell, then the administration's own navigation); then a key that lives as
+       **data** rather than as a call — `labelKey` and `hintKey` in the form definitions,
+       `headingKey` in the rights, and the title of an editor, which is built as
+       `admin.form.edit.${entity.id}` and cannot be read off a call site at all. Ninety-
+       seven of the hundred and seventeen keys the forms declare were outside the set
+       (review, 01.09.2026).
 
-    for (const [key, said] of asked) {
-      expect(said, key).toEqual(words[key])
-    }
+       Every one of those was closed by collecting a little more, and the next round found
+       what the collecting still missed. Collecting is the mistake. What the portal can
+       say is not a set to be computed; it is a file, and the file is held.
 
-    /* And no key has appeared that the held list does not know, nor left it while a
-       competition screen still asks for it. */
-    expect(asked.map(([key]) => key)).toEqual(Object.keys(words).sort())
+       **What it costs, said plainly:** changing any sentence in the portal is a change in
+       two files. That is the whole cost, it is paid at the moment of writing, and it buys
+       the end of the question. */
+    expect(sr).toEqual(dictionary)
   })
 })
