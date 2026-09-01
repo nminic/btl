@@ -38,9 +38,6 @@ export function Leagues() {
                   {': '}
                   {league.eventIds.length}
                 </p>
-                <p className="leagues__grouping">
-                  {league.groupsByCategory ? t('leagues.byCategory') : t('leagues.byGenderOnly')}
-                </p>
               </li>
             ))}
           </ul>

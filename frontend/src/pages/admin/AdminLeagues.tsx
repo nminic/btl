@@ -12,7 +12,7 @@ import '../member/Member.css'
 
 /* Leagues, with the number of events each one carries. A league with no events
  * is the one to notice: it is announced, it appears in the navigation, and it
- * has nothing to rank (PDL P15). */
+ * has nothing to rank. */
 export function AdminLeagues() {
   const { locale, t } = useI18n()
   const overlay = useOverlay()
@@ -69,7 +69,6 @@ export function AdminLeagues() {
                       <th scope="col">{t('admin.address')}</th>
                       <th scope="col">{t('rankings.season')}</th>
                       <th scope="col">{t('event.races')}</th>
-                      <th scope="col">{t('admin.byCategory')}</th>
                       <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
@@ -100,7 +99,6 @@ export function AdminLeagues() {
                             formatNumber(league.eventIds.length, locale)
                           )}
                         </td>
-                        <td>{t(league.groupsByCategory ? 'admin.yes' : 'admin.no')}</td>
                         <td>
                           <RowActions
                             entity={LEAGUES}

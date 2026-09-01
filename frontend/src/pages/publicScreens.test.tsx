@@ -1,11 +1,14 @@
 import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
+import pages from '../../public/mock/pages.json'
+import words from '../test/leagueWords.snapshot.json'
+import screens from '../test/leagueScreens.snapshot.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
@@ -22,6 +25,37 @@ import type { Competitor, Result } from '../data/types'
  * has moved, and left to itself it would arrive as a nought or a NaN and turn
  * "sorted by points" into an assertion about a list of noughts.
  */
+/**
+ * Every word a screen puts in front of a reader: the text it draws, the title of
+ * the tab, and every label that is read out rather than shown.
+ *
+ * The markup itself is deliberately not read. An `aria-label` says as much to
+ * somebody reading by ear as a paragraph does and never enters `textContent`, so
+ * it is collected; a class name is not something the portal says, and holding it
+ * would turn every change of style into a change of words.
+ */
+function wordsDrawn(): { text: string; title: string; labels: string[]; head: string[] } {
+  const spoken = [...document.body.querySelectorAll('[aria-label], [alt], [title]')]
+    .flatMap((one) => ['aria-label', 'alt', 'title'].map((name) => one.getAttribute(name) ?? ''))
+    .filter((one) => one.trim() !== '')
+
+  /* The head is read with the body. What a search engine is told is the portal
+     speaking in its own voice as much as a paragraph is, and it is drawn by an
+     effect rather than by the tree, so nothing in `document.body` can see it: a
+     rule written into the description of a competition passed the whole gate while
+     only the body was read (review, 01.09.2026). */
+  const told = [...document.head.querySelectorAll('meta')]
+    .map((one) => one.getAttribute('content') ?? '')
+    .filter((one) => one.trim() !== '')
+
+  return {
+    text: must(document.body.textContent, 'the words a screen draws').replace(/\s+/g, ' ').trim(),
+    title: document.title,
+    labels: [...new Set(spoken)].sort(),
+    head: [...new Set(told)].sort(),
+  }
+}
+
 function lastNumberIn(row: HTMLElement): number {
   const text = last(within(row).getAllByRole('cell')).textContent
   const figure =
@@ -2161,11 +2195,308 @@ describe('Leagues', () => {
     renderAt('/sr/lige')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
-    // Two of them group by gender alone now, so the list is asked for both.
-    expect(screen.getAllByText('Grupisanje samo po polu').length).toBeGreaterThan(0)
+    /* And it says nothing about how any of them groups. It said „Grupisanje samo
+       po polu" or „Grupisanje po kategorijama" under each until 31.08.2026, when
+       the owner settled that there is one ranking and it is by gender („nego
+       globalno! Lige treba da imaju poredak samo po polu"): a line printed under
+       every competition to say the one thing true of all of them is a line that
+       tells a reader there is something to choose between. */
+    expect(screen.queryAllByText(/^Grupisanje/)).toEqual([])
     // The league the portal exists for is implied, not listed.
     expect(screen.queryByRole('link', { name: /Balkanska trkačka liga 2027/ })).not.toBeInTheDocument()
   })
+
+  it('says nowhere in its own voice that a competition settles its own categories', async () => {
+    /* The line under each competition went in the first round of this change and
+       the sentence introducing all of them did not: „Bodovanje je uvek isto, menja
+       se samo koji događaji ulaze **i kako se poredak grupiše**", printed above the
+       list and, in its own wording, into the description a search engine shows.
+       Found in review on 31.08.2026, and worse than the comments found beside it,
+       because a member reads this one.
+
+       Asked of what the screen really draws, on the stem „grupis", which „grupiše"
+       and „grupišu" share and which no other word on this screen carries.
+
+       **It holds the verb, not the idea.** „...i kako se u njima dele takmičari" says
+       the same thing and walks past (measured in review, 31.08.2026). Holding the idea
+       would mean listing every way of saying it, which is a guard nobody can keep;
+       what this catches is this sentence coming back, and it is the wording it has
+       come back in twice.
+
+       **And of the dictionary too, which the screen cannot answer for.** The second
+       home said the same thing in its own words and went into the description a
+       search engine shows rather than into the page, so a screen test looked
+       straight past it: reworded there, the whole suite stayed green (measured
+       31.08.2026). Both subtrees are read, so a third place to say it is caught
+       before it is drawn anywhere. */
+    renderAt('/sr/lige')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
+    expect(screen.queryAllByText(/grupi[sš]/i)).toEqual([])
+
+    /* **Every word these four screens draw, held as it stands**
+       (`test/leagueScreens.snapshot.json`).
+
+       Six drafts of a refusal over the drawn page were each measured wrong, and each
+       failed in both directions at once: „na nivou svake **pojedinačne** Lige" and
+       „Kategorije zavise od toga u kojoj se ligi takmičite" walked past, while „Bodovi
+       se sabiraju na nivou cele lige, bez obzira na kategoriju", which says the
+       opposite of the overturned rule, was refused. A refusal has to be right about
+       sentences nobody has written yet, and none of them could be.
+
+       Nothing has ever escaped from a text held as it stands, so that is what this is:
+       the words each screen draws, its title, and every label read out to somebody
+       working by ear. It judges nothing, so it cannot be wrong about a sentence; it
+       only notices that the words changed, which is the question worth asking. It
+       holds what no other guard here reaches: a sentence written straight into a
+       component, and a key from a branch no snapshot covers. Both were measured to
+       pass the whole gate while this was missing (review, 01.09.2026).
+
+       **Read on three sides, because the first draft read one.** The body is where a
+       sentence is seen; the head is what a search engine is told, drawn by an effect
+       no query over the body reaches; and a screen is opened once as a visitor and
+       once as somebody who may change it, since everything behind `canEdit` is
+       invisible to the first. A rule was put through each of the three in turn and
+       each passed the whole gate while only the body of a visitor's screen was held
+       (review, 01.09.2026).
+
+       **What it costs, said plainly:** changing anything these four screens say is a
+       deliberate act that comes here too, mock data included. That is the same cost
+       the written pages already pay, and it is the point.
+
+       The day is pinned, because a screen that changes with the date would otherwise
+       hold today rather than what the portal says. */
+    const SCREENS = [
+      ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
+      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'visitor'],
+      /* The same page under somebody who may change it. Everything drawn behind
+         `canEdit` is invisible to a visitor, so a rule put beside the button that
+         edits the rules of a competition is read by the one person acting on it and
+         by no guard at all (review, 01.09.2026). */
+      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'superadmin'],
+      ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
+      /* A second competition, because five seats over one record see only the branches
+         that one record takes. `planinska-2027` is public, reachable from the list, and
+         empty in every way `brdska-2019` is full: no events, no standing, and nothing
+         written in its rules or its prizes. A sentence put into any of those four
+         branches is drawn to a visitor and passed the whole gate while only the full
+         competition was opened (review, 01.09.2026). */
+      ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'visitor'],
+      /* And the empty competition through the eyes of somebody who may fill it in. A
+         field with nothing written in it is drawn to **nobody else**: `EditableText`
+         returns nothing at all when the value is empty and the reader cannot edit, so
+         the sentence „Još nije napisano." and anything put beside it is invisible to a
+         visitor and passed the whole gate (measured 01.09.2026). */
+      ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'superadmin'],
+      ['/sr/liga/planinska-2027/rezultati', 'Planinska liga 2027', 'visitor'],
+      /* And the competition that is not there, which is its own screen. */
+      ['/sr/liga/ne-postoji', 'Ove lige nema.', 'visitor'],
+      ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
+    ] as const
+
+    const drawn: Record<string, unknown> = screens
+
+    for (const [route, ready, as] of SCREENS) {
+      const seat = `${route} · ${as}`
+
+      cleanup()
+      renderAt(route, as, null, undefined, '2026-09-01')
+
+      /* Waited for by something only this page draws once its own record has arrived.
+         Two tab labels went in here first and neither waits for anything: „Rezultati"
+         and „Propozicije" are both written by the shell on the change of route, before
+         the record is there, so a page that drew nothing at all passed as if it had
+         (measured 31.08. and 01.09.2026). */
+      /* All of them, not one. The name of a competition stands both in its heading and
+         in the line read out on arriving, and `findByText` throws on a second match
+         (measured 01.09.2026). */
+      await screen.findAllByText(new RegExp(ready))
+
+      /* Waited on rather than read once, and on a shorter clock than the case itself.
+         A screen arrives in two steps: `useRouteChrome` computes the title, the line
+         read out on arriving takes it at once, and `applyHead` writes it into the tab
+         one cycle later. Read between the two, the same screen answers twice, and the
+         first draft of this file held one step in `text` and the other in `title` —
+         two different moments of one screen, which is why it failed twice in thirteen
+         runs on an untouched tree (review, 01.09.2026).
+
+         The clock matters as much as the wait. Given the same twenty seconds as the
+         case, a real change in the words never reports a difference: the case dies of
+         its own timeout at the same instant, and vitest prints a bare „Test timed out"
+         with no route and no diff, which reads exactly like the flake above. On a
+         shorter clock the assertion loses first and says what changed (review,
+         01.09.2026). */
+      await waitFor(
+        () => {
+          expect(wordsDrawn(), seat).toEqual(drawn[seat])
+        },
+        { timeout: SLOW / 4 },
+      )
+    }
+
+    /* The held file cannot carry a screen this loop never opens. */
+    expect(Object.keys(drawn).sort()).toEqual(
+      SCREENS.map(([route, , as]) => `${route} · ${as}`).sort(),
+    )
+
+    cleanup()
+    renderAt('/sr/lige')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lige' })).toBeVisible()
+
+    const said = (branch: unknown): string[] => {
+      if (typeof branch === 'string') {
+        return [branch]
+      }
+
+      /* `leagues.parts` is an object of three names rather than a sentence, so the
+         walk goes down rather than stopping at the first one it meets. Measured: a
+         grouping written into `leagues.parts.rules` is caught. */
+      return branch !== null && typeof branch === 'object' ? Object.values(branch).flatMap(said) : []
+    }
+
+    expect(said(sr.leagues).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
+
+    /* The **whole** of `seo`, not the one branch named after this page. Asked of
+       `seo.leagues` alone it passed while `seo.adminLeagues` next to it said the
+       same thing in its own words and put it into the description of the screen in
+       the administration (review, 31.08.2026): the third home, one step further
+       along in the object the walk was already in. Nothing else under `seo` says
+       the word, so reading all of it costs nothing. */
+    expect(said(sr.seo).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
+
+    /* **And the written pages, which are the fifth home and the last one found.**
+       Član 57 said „Podela na kategorije zadaje se na nivou svake Lige" — the
+       overturned rule itself, in the prose a member accepts on joining, standing while
+       the field was gone from the model and the code. The owner had it deleted
+       (31.08.2026).
+
+       **Held as the whole section stands.** Three drafts before this one were wrong.
+       Two were patterns: the first named two phrasings, so the same rule with the
+       words in another order walked past; the second asked for a category and a league
+       in one sentence, which refused a legitimate line about the category a
+       **competitor** is in, and still let the rule back because the rulebook writes
+       „lige" in lower case in thirty-five of the forty-six sentences that mention one.
+       The third froze the article and stopped at its last sentence, so the same rule
+       put one line further down — still under Član 57, before Član 58 — passed with
+       the whole gate green (all three measured in review, 31.08.2026).
+
+       So the unit is the section, which is what a reader meets as one piece, and there
+       is no edge left inside it. This is the first passage in this repo held word for
+       word; the neighbouring guards read prose with patterns, and that is exactly why
+       they kept missing this. The cost is the point: changing any of these four
+       articles is a deliberate act that comes here too. */
+    const SECTION_13 = `### Član 57. Liga kao pojam
+
+Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spiskom događaja koji tokom godine ulaze u njih. Spisak događaja sme da se menja tokom godine.
+
+- Svaka Liga boduje se istim BTL bodovima. Posebnog sistema bodovanja nema.
+- Svi članovi su u Ligi automatski, bez prijave.
+- Svaka Liga ima svoju stranu i tabelu.
+
+Šta se u pojedinoj Ligi osvaja određuje njen organizator i to nije predmet ovog pravilnika.
+
+### Član 58. BTL Round 'n' Around
+
+Ultramaraton u obliku slobodne trke: prati se ukupna kilometraža i ukupno vreme. Posebnog prikaza za višestruke polumaratone i maratone nema.
+
+Trka može trajati nekoliko minuta ili nekoliko dana, a broj BTL bodova koji se na njoj skupi nije ničim ograničen. Daje sjajnu šansu svima da izvuku iz sebe svoj realan maksimum, i pobednik možda neće biti onaj ko pretrči najviše ili bude najbrži.
+
+Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
+
+### Član 59. BTL dezorijentiring
+
+Nije cilj stići prvi, cilj je tokom sat vremena sakupiti što više BTL bodova. Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
+
+### Član 60. BTL sreda
+
+Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tabelu.`
+
+    const written = Object.entries(pages).flatMap(([slug, page]) =>
+      page.sections.map((one) => ({ slug, heading: one.heading, body: one.body })),
+    )
+    const held = written.filter((one) => one.slug === 'pravilnik' && one.heading === "13. Prateća takmičenja i lige")
+
+    expect(held, 'the section that carries Član 57 stands once').toHaveLength(1)
+    expect(held[0]?.body).toBe(SECTION_13)
+
+    /* **And the words the portal says about a competition, held as they stand**
+       (`test/leagueWords.snapshot.json`).
+
+       Four drafts tried to refuse the overturned rule by pattern and each was
+       measured wrong. The first named two phrasings, so the words in another order
+       walked past. The second asked for a category and a league in one sentence,
+       which refused a legitimate line about the category a competitor is in and still
+       let the rule back in lower case. The third froze the article and the rule went
+       one line below it; the fourth froze the section and it went into the next
+       section along. The fifth asked for a pairing and let through „na nivou svake
+       **pojedinačne** Lige", „Podelu na kategorije zadaje svaka Liga", „Svaka Liga
+       **definiše** svoje takmičarske kategorije", and the rule split across two
+       sentences — while refusing „Bodovi se sabiraju na nivou cele lige, bez obzira
+       na kategoriju", which says the opposite (all measured in review, 31.08.2026).
+
+       Nothing has ever escaped from inside a text held as it stands. Every escape was
+       outside the range. So the range is every word the dictionary says about a
+       competition and every description the portal writes about itself, and the rule
+       cannot be put back into any of them under any wording.
+
+       **A sentence written straight into a component is not held here, and is not meant
+       to be.** This holds only the branches its seats happen to take, and three rounds of
+       review each found another branch it did not: no events, no rows, nothing written,
+       no competitions at all, the cell that counts races while its file is on the way and
+       again when it never arrives, the state a competition is edited in. Each was closed
+       by opening one more seat, and the next round found the next branch. That is a class
+       and it is swept in one place, by reading the source of the four components rather
+       than by contriving the state each branch needs
+       (`pages/league/componentWords.test.ts`).
+
+       What stays open is the rest of the portal, where nothing keeps Serbian prose out of
+       a `.tsx` file at all. That is a rule about the whole portal rather than about this
+       change, and it is written down in `btl-produkt/PENDING.md` instead of being
+       invented here.
+
+       The cost is the same as everywhere this is done: a deliberate change to any of
+       these words is made here too. The lead sentence alone has carried this rule
+       twice and been corrected twice, which is what that cost buys. */
+    expect(sr.leagues).toEqual(words.leagues)
+
+    /* **And what the portal says about the pages of a standing**, which is neither under
+       `leagues` nor under `seo` and so was held by nothing. `pager.leagueStanding` is the
+       name a reader working by ear hears for the pages of a competition's standing; it is
+       drawn only once a competition has more placed than fit on one page, which no seat
+       above has, and the one case that names it reads its text out of the dictionary and
+       so cannot fall. The overturned rule was appended to it and the whole gate stayed
+       green (review, 01.09.2026). The branch is five words long, so holding all of it
+       costs nothing. */
+    expect(sr.pager).toEqual(words.pager)
+
+    /* **And what the portal says when the record does not arrive.** `Resource` draws
+       `data.error` in place of the whole screen, competition screens included, so the
+       sentence a visitor reads when `leagues.json` fails is the portal speaking about a
+       competition as much as anything else on the page. No seat above is in that state,
+       and the one case that draws it matches by substring, so the overturned rule
+       appended to `data.error` passed the whole gate (review, 01.09.2026). Four words,
+       held whole. */
+    expect(sr.data).toEqual(words.data)
+
+    /* **The whole of `seo`, not the four names about competitions.** Held as four, the
+       rule went into `seo.rulebook.description`, which is the sentence a search engine
+       shows for the rulebook and still under the hundred and sixty characters that
+       description is allowed (review, 31.08.2026). Every description the portal writes
+       is one place a rule can be put, so every one of them is held.
+
+       The loop walks the **snapshot**, so an emptied snapshot would make no assertion
+       at all — but the comparison of key sets below catches that on its own, and a
+       floor beside it was a rule with nothing left to do (review, 31.08.2026). It is
+       the key sets that keep this from being a check over nothing. */
+    const seo: Record<string, unknown> = sr.seo
+
+    for (const [key, said] of Object.entries(words.seo)) {
+      expect(seo[key], `seo.${key}`).toEqual(said)
+    }
+
+    /* And no description has appeared that the snapshot does not know. */
+    expect(Object.keys(seo).sort()).toEqual(Object.keys(words.seo).sort())
+  }, SLOW)
 })
 
 describe('a member whose fee has run out, in the tables', () => {

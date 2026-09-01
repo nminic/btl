@@ -551,6 +551,72 @@ describe('the words the seven forms need', () => {
     expect(EVENTS.start).toEqual({ kind: 'race', featured: 'no', country: 'RS' })
   })
 
+  it('ask about a league only what a league still has', () => {
+    /* One of these five used to be six. `groupsByCategory` asked which way the
+       competition ranks, and on 31.08.2026 the owner settled that there is one
+       way and it is by gender: „Lige treba da imaju poredak samo po polu. Ne
+       želim dodatna pravila", said of every league („nego globalno!") and not of
+       the one the portal was built for.
+
+       Named here rather than left to the record, because the two are not held
+       together by anything: a field on the form the record has no room for is
+       written into the record all the same, under a name nothing reads. That is
+       what would happen the moment somebody puts this one back — the answer would
+       be saved on every league and change nothing at all, which is worse than a
+       setting that works.
+
+       The other five are named too, so the guard fails on a field going missing
+       as well as on one coming back. */
+    expect(LEAGUES.form.fields.map((one) => one.name)).toEqual([
+      'name',
+      'slug',
+      'season',
+      'rules',
+      'prizes',
+    ])
+
+    /* And the words each of them is asked under. A field carries its label by a name in
+       the dictionary, and a name is a place the overturned rule can be put: the label of
+       „prizes" pointed at a key holding „Podela na kategorije zadaje se na nivou svake
+       Lige" and the whole gate stayed green, because the screen guards read routes and
+       this form is drawn on a press (review, 01.09.2026). The way in through `hintKey` is
+       closed in `forms/fieldHint.test.tsx`; this is the same door with another handle. */
+    const labels = LEAGUES.form.fields.map((one) => one.labelKey)
+
+    expect(labels).toEqual([
+      'admin.field.leagueName',
+      'admin.address',
+      'rankings.season',
+      'leagues.rules',
+      'leagues.prizes',
+    ])
+
+    /* **And the words behind those names**, which the names alone do not hold: the value
+       of `admin.field.leagueName` was made to read „Naziv lige. Podela na kategorije
+       zadaje se na nivou svake Lige." and the whole gate stayed green, because **three**
+       of these five — `admin.field.leagueName`, `admin.address` and `rankings.season` —
+       live in branches no snapshot holds, and the only case that reads the first anchors
+       on the start of the label (review, 01.09.2026). Of the three only the first was
+       loose: the other two are held by screens that ask for them by their exact word,
+       and by nothing that says why.
+
+       Held here rather than by widening a snapshot over the whole dictionary: these five
+       are the words a competition is entered under, and they are the ones that can carry
+       a rule about a competition.
+
+       **What it costs, said plainly:** `admin.address` is also the address on the form a
+       static page is written on, so renaming it for a reason that has nothing to do with
+       competitions fails here, under a name that points at leagues. That is the price of
+       holding a shared word, and it is paid knowingly. */
+    expect(labels.map((key) => translate(sr, 'sr', must(key, 'a label'), {}))).toEqual([
+      'Naziv lige',
+      'Adresa',
+      'Sezona',
+      'Propozicije',
+      'Nagrade',
+    ])
+  })
+
   it('file an event in the country its town came with, which is not a field', () => {
     /* The place field writes two values and only one of them is a field
        (forms/types.ts), so the record is built out of a loop that cannot see

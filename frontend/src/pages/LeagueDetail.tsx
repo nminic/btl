@@ -13,8 +13,8 @@ import { useI18n } from '../i18n/useI18n'
 import { LeagueResults } from './league/LeagueResults'
 import './Profile.css'
 
-/* A league is a subset of events and a way of grouping the field, never a
- * different scoring formula. Its own page is therefore mostly the list of
+/* A league is a subset of events, never a different scoring formula and, since
+ * 31.08.2026, never its own way of grouping the field either. Its own page is therefore mostly the list of
  * events that count towards it, plus the rules and prizes that are written for
  * it. Both of those hide themselves while nobody has written them. */
 function EditableText({
@@ -150,10 +150,10 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
                 </p>
                 <h1>{league.name}</h1>
                 {/* Nothing under the name (owner, 31.07.2026). The season is in
-                    the name of every competition already, and how the field is
-                    grouped is a rule of the competition, so it belongs in its
-                    terms rather than in a label. The parts follow straight
-                    after. */}
+                    the name of every competition already, and the field is
+                    grouped by gender in every one of them since 31.08.2026, so
+                    there is nothing here for a label to say. The parts follow
+                    straight after. */}
               </header>
 
               <PartsNav

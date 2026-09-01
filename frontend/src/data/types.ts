@@ -373,8 +373,6 @@ export type League = {
   slug: string
   name: string
   season: number
-  /** RunTrace league groups by gender only, so this is per league. */
-  groupsByCategory: boolean
   eventIds: string[]
   /** Written for this league; empty until somebody writes it, and then the
    *  section does not appear at all. */

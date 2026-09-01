@@ -167,7 +167,7 @@ const grid = async () => within(await screen.findByRole('table', { name: 'Poreda
  * The rows that are people, out of a table that also has rows that are names of
  * blocks.
  *
- * The standing has been split into blocks since 27.08.2026 (PDL P15), and each
+ * The standing has been split into blocks since 27.08.2026, and each
  * block is introduced by a row carrying one heading across the whole width. Those
  * rows are not placings and must not be counted as any: `slice(1)` used to be
  * enough because the only row that was not a person was the one at the top.

@@ -27,11 +27,6 @@
       "max": 2100
     },
     {
-      "name": "groupsByCategory",
-      "type": "checkbox",
-      "labelKey": "admin.byCategory"
-    },
-    {
       "name": "rules",
       "type": "textarea",
       "labelKey": "leagues.rules",

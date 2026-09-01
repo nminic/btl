@@ -1478,7 +1478,6 @@ describe('Balkanska trkačka liga among the leagues', () => {
                 slug: 'btl-2027',
                 name: 'Balkanska trkačka liga 2027',
                 season: 2027,
-                groupsByCategory: true,
                 rules: '',
                 prizes: '',
                 eventIds: [],
@@ -1488,7 +1487,6 @@ describe('Balkanska trkačka liga among the leagues', () => {
                 slug: 'druga-2027',
                 name: 'Druga liga 2027',
                 season: 2027,
-                groupsByCategory: false,
                 rules: '',
                 prizes: '',
                 eventIds: [],
@@ -1937,11 +1935,21 @@ describe('leagues', () => {
     expect(rows.getAllByText('Bez događaja').length).toBeGreaterThan(0)
   })
 
-  it('says whether a league groups by category', async () => {
+  it('no longer asks whether a league groups by category', async () => {
+    /* It did until 31.08.2026, when the owner settled that there is one ranking
+       and it is by gender („Lige treba da imaju poredak samo po polu. Ne želim
+       dodatna pravila", said „globalno!"). A column offering a yes and a no is a
+       question, and a question with one answer is a way to write the wrong one.
+
+       Held as a column that must not come back, because a setting deleted with
+       nothing holding it is a setting somebody restores while tidying: the record
+       lost the field, so the way back is to add it, and then this fails first. */
     renderAt('/sr/administracija/lige', 'superadmin')
 
     const rows = await table('Lige')
-    expect(rows.getAllByText(/^Da$|^Ne$/).length).toBeGreaterThan(0)
+
+    expect(rows.queryAllByText(/^Da$|^Ne$/)).toEqual([])
+    expect(rows.queryByText('Po kategorijama')).toBeNull()
   })
 
   it('is closed to a competitor', async () => {

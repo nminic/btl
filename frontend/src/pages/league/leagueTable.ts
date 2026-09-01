@@ -1,5 +1,4 @@
 import { genderMark } from '../../data/categories'
-import { categoryOfMember } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, RaceKind, Result } from '../../data/types'
 
 /**
@@ -158,10 +157,10 @@ export function leagueTable(
  * ranked.
  *
  * `code` is what the block is called, and it is the same string the rest of the
- * portal calls it by: a category code where the competition ranks by category,
- * and the mark of a gender where it ranks by gender alone. Read off
- * `categoryOfMember` and `genderMark` rather than written here, so a block on
- * this screen is never called something the standing calls otherwise.
+ * portal calls it by: the mark of a gender, read off `genderMark` rather than
+ * written here, so a block on this screen is never called something the standing
+ * calls otherwise. It could be a category code until 31.08.2026, when the owner
+ * settled that a competition ranks one way and it is by gender.
  */
 export type LeagueGroup = {
   code: string
@@ -169,41 +168,43 @@ export type LeagueGroup = {
 }
 
 /**
- * The rows of a competition, split the way that competition ranks.
+ * The rows of a competition, split by gender.
  *
- * Owner, in P15: „Podela na kategorije se podešava **na nivou svake Lige**.
- * RunTrace liga ima podelu samo po polu, bez uzrasnih kategorija." That decision
- * was carried half way and stopped: `groupsByCategory` is on the record, on the
- * admin form, and printed on the list of competitions as „Grupisanje po
- * kategorijama" or „Grupisanje samo po polu". The table of results read none of
- * it. Measured 27.08.2026: the word „category" appeared nowhere in this file or
- * in the screen that draws it, so both settings produced one undivided table and
- * the difference between them existed only in the sentence describing it.
+ * By gender, in every competition there is. Owner, 31.08.2026: „Lige treba da
+ * imaju poredak samo po polu. Ne želim dodatna pravila." Said as a rule about
+ * every league rather than about one („nego globalno!"), and it overturned the
+ * older P15, under which each competition set its own split.
  *
- * Both halves are a split, which is the part that is easy to miss. „Samo po
+ * What went with that decision is the setting: a record that could be asked which
+ * way it ranks is a record two answers can be given to, and the second answer has
+ * no screen, no wording and nobody to give it. It is gone from the record, from
+ * the form in the administration, from the list of competitions and from here,
+ * rather than left switched off everywhere.
+ *
+ * The competition itself is no longer asked for, because nothing here has anything
+ * to ask it: a parameter nobody reads says the answer depends on something it does
+ * not, and the next reader spends a minute finding out that it does not.
+ *
+ * **This is still a split, which is the part that is easy to miss.** „Samo po
  * polu" is not „no grouping"; it is grouping into two. A competition that ranks
  * by gender and shows one list has a woman placed behind men she was never
  * competing against.
  *
  * The order inside a block is the order it arrived in, which `leagueTable`
  * already settled: by the total, and a tie to the smaller member number. Blocks
- * themselves go in the order the codes sort in, which is the order the standing
- * uses (`categoriesOf`), so the two screens name and order the same things the
- * same way.
+ * themselves go in the order the codes sort in.
  *
  * A block nobody is in never arises, because the map is built out of the rows
- * themselves rather than out of the list of categories a league could have: a
- * competition of five people has as many blocks as those five fall into. What
+ * themselves rather than out of the two marks a gender can be: a competition of
+ * five men has one block and not two. What
  * still has to be dropped is a block with nobody on the **page** being drawn,
  * and that belongs to the screen, which is where the paging is.
  */
-export function leagueGroups(league: League, rows: LeagueRow[]): LeagueGroup[] {
+export function leagueGroups(rows: LeagueRow[]): LeagueGroup[] {
   const held = new Map<string, LeagueRow[]>()
 
   for (const row of rows) {
-    const code = league.groupsByCategory
-      ? categoryOfMember(row.competitor, league.season)
-      : genderMark(row.competitor.gender)
+    const code = genderMark(row.competitor.gender)
 
     held.set(code, [...(held.get(code) ?? []), row])
   }
