@@ -1,10 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve, sep } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join, sep } from 'node:path'
 import ts from 'typescript'
 import sr from '../../i18n/sr.json'
 import { sources } from '../../test/sources'
 import held from '../../test/leagueComponentWords.snapshot.json'
-import spoken from '../../test/leagueSpokenKeys.snapshot.json'
+import dictionary from '../../test/dictionary.snapshot.json'
 
 /**
  * Every word the components that draw a competition can put on a screen,
@@ -83,129 +83,6 @@ function wordsIn(path: string): string[] {
  * with anything but a literal; those are held instead by the screens themselves, which
  * draw whatever the pieces come to.
  */
-/**
- * The one place that says what the portal draws.
- *
- * Walking imports downward from the four screens misses everything drawn **around**
- * them, because a frame takes the screen as a child and never imports it. Two frames
- * were found that way, one per round: the shell, whose words to a signed-in member and
- * whose message when a screen throws went past everything; and the administration's
- * own navigation, whose alarm when a queue cannot be counted is drawn on the screen a
- * competition is edited on (reviews, 01.09.2026).
- *
- * Both were closed by writing the frame's name down, and the second review said the
- * true thing about the first fix: a written list agrees only with itself, in the very
- * file whose other list is found rather than written.
- *
- * So there is no list of frames. The route table is the root, because it is where the
- * portal says what is drawn and what is drawn around it, and every word reachable from
- * it is held. There is no frame left to forget, and no branch left to guess.
- *
- * **What it costs, said plainly:** every sentence the portal can say is held here, so
- * changing any of them is a change in two files. That is the price of never having to
- * ask again which screen reaches which word.
- */
-const ROOT = 'src/app/routeObjects.tsx'
-
-function keysReached(): string[] {
-  const seen = new Set<string>()
-  const keys = new Set<string>()
-
-  const found = (from: string, spec: string): string | null => {
-    if (!spec.startsWith('.')) {
-      return null
-    }
-
-    const base = resolve(dirname(from), spec)
-
-    return (
-      ['.tsx', '.ts', '/index.tsx', '/index.ts']
-        .map((ending) => base + ending)
-        .find((path) => existsSync(path)) ?? null
-    )
-  }
-
-  const visit = (path: string): void => {
-    if (seen.has(path)) {
-      return
-    }
-
-    seen.add(path)
-
-    const source = ts.createSourceFile(
-      path,
-      readFileSync(path, 'utf8'),
-      ts.ScriptTarget.Latest,
-      true,
-      ts.ScriptKind.TSX,
-    )
-
-    const asked = (node: ts.Node): void => {
-      if (ts.isStringLiteral(node)) {
-        keys.add(node.text)
-      } else if (ts.isConditionalExpression(node)) {
-        asked(node.whenTrue)
-        asked(node.whenFalse)
-      }
-    }
-
-    const walk = (node: ts.Node): void => {
-      if (
-        ts.isCallExpression(node) &&
-        ts.isIdentifier(node.expression) &&
-        node.expression.text === 't' &&
-        node.arguments[0] !== undefined
-      ) {
-        asked(node.arguments[0])
-      }
-
-      if (
-        (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-        node.moduleSpecifier !== undefined &&
-        ts.isStringLiteral(node.moduleSpecifier)
-      ) {
-        const next = found(path, node.moduleSpecifier.text)
-
-        if (next !== null && next.startsWith(join(process.cwd(), 'src'))) {
-          visit(next)
-        }
-      }
-
-      ts.forEachChild(node, walk)
-    }
-
-    walk(source)
-  }
-
-  visit(join(process.cwd(), ROOT))
-
-  return [...keys].sort()
-}
-
-/** Whether a step down the dictionary can be stepped into. */
-function branching(step: unknown): step is Record<string, unknown> {
-  return step !== null && typeof step === 'object'
-}
-
-/**
- * Whatever a key names: a sentence, a set of them counted by number, or nothing.
- *
- * The count is kept whole rather than dropped. Asked only for sentences, this let
- * every plural key out silently — four of them today, all from the counter under the
- * two long boxes of a competition's own form — and a plural key added tomorrow would
- * have entered the dictionary with no guard and no sign, while a plain one would have
- * failed (review, 01.09.2026).
- */
-function saidBy(key: string): unknown {
-  let step: unknown = sr
-
-  for (const part of key.split('.')) {
-    step = branching(step) && part in step ? step[part] : null
-  }
-
-  return step
-}
-
 describe('the words the competition screens are written with', () => {
   it('says nothing a competition could be ranked by, in any branch drawn or not', () => {
     const kept: Record<string, unknown> = held
@@ -230,21 +107,26 @@ describe('the words the competition screens are written with', () => {
     expect(Object.keys(kept).sort()).toEqual([...FILES].sort())
   })
 
-  it('says nothing a competition could be ranked by, through any key the portal asks for', () => {
-    const words: Record<string, unknown> = spoken
-    const asked = keysReached()
+  it('says nothing a competition could be ranked by, through any word it knows', () => {
+    /* **The whole dictionary, held as it stands.**
 
-    expect(asked.length, 'the portal still asks the dictionary for something').toBeGreaterThan(0)
+       Five rounds of review each found the same shape: a word the portal says that the
+       guard did not hold. First a branch nobody had chosen (`rankings`, then `pager`,
+       then `data`); then a frame that draws around a screen and so is never imported by
+       it (the shell, then the administration's own navigation); then a key that lives as
+       **data** rather than as a call — `labelKey` and `hintKey` in the form definitions,
+       `headingKey` in the rights, and the title of an editor, which is built as
+       `admin.form.edit.${entity.id}` and cannot be read off a call site at all. Ninety-
+       seven of the hundred and seventeen keys the forms declare were outside the set
+       (review, 01.09.2026).
 
-    /* Every key, and whatever it names. Nothing is dropped on the way: a key that names
-       a set counted by number is held as that set, and a key that names nothing at all
-       is held as nothing, so it fails the day it starts naming a sentence. */
-    for (const key of asked) {
-      expect(saidBy(key), key).toEqual(words[key])
-    }
+       Every one of those was closed by collecting a little more, and the next round found
+       what the collecting still missed. Collecting is the mistake. What the portal can
+       say is not a set to be computed; it is a file, and the file is held.
 
-    /* And no key has appeared that the held list does not know, nor left it while a
-       competition screen still asks for it. */
-    expect(asked).toEqual(Object.keys(words).sort())
+       **What it costs, said plainly:** changing any sentence in the portal is a change in
+       two files. That is the whole cost, it is paid at the moment of writing, and it buys
+       the end of the question. */
+    expect(sr).toEqual(dictionary)
   })
 })
