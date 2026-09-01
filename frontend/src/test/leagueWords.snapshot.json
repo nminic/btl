@@ -203,5 +203,12 @@
       "title": "Ocena događaja",
       "description": "Oceni organizaciju, vrednost za novac i ambijent, i ostavi komentar drugim članovima. Moderator odobrava svaku ocenu pre objave."
     }
+  },
+  "pager": {
+    "showing": "Prikazano {first} do {last} od {rows}",
+    "page": "Strana {page} od {pages}",
+    "previous": "Prethodna",
+    "next": "Sledeća",
+    "leagueStanding": "Strane poretka takmičenja"
   }
 }

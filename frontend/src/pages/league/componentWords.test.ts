@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import ts from 'typescript'
+import { sources } from '../../test/sources'
 import held from '../../test/leagueComponentWords.snapshot.json'
 
 /**
- * Every word the four components that draw a competition can put on a screen,
+ * Every word the components that draw a competition can put on a screen,
  * held as it stands.
  *
  * **Why this is here and not another screen.** The snapshot of the drawn screens
@@ -30,12 +31,10 @@ import held from '../../test/leagueComponentWords.snapshot.json'
  * these four files fails here until it is written down below. There are twenty-odd of
  * them and they change rarely, which is the whole reason this is affordable.
  */
-const FILES = [
-  'src/pages/Leagues.tsx',
-  'src/pages/LeagueDetail.tsx',
-  'src/pages/league/LeagueResults.tsx',
-  'src/pages/admin/AdminLeagues.tsx',
-] as const
+const FILES = sources()
+  .map((one) => one.path.slice(process.cwd().length + 1).split(sep).join('/'))
+  .filter((path) => path.endsWith('.tsx') && /league/i.test(path.split('/').at(-1) ?? ''))
+  .sort()
 
 function wordsIn(path: string): string[] {
   const source = ts.createSourceFile(
@@ -72,8 +71,17 @@ describe('the words the competition screens are written with', () => {
       expect(wordsIn(path), path).toEqual(kept[path])
     }
 
-    /* And no file has been added to the held list that this case never reads, nor
-       removed from it while it still draws a competition. */
+    /* **The list of files is found, not written down.** Written out beside a written
+       snapshot, the two only agreed with each other: `LeagueResults.tsx` taken out of both
+       left the standing of a competition drawn by a component no guard reads, and the
+       whole gate stayed green (review, 01.09.2026). It is now every component of the
+       portal named after a competition, so a new one joins the moment it is written, and
+       an old one leaves only by being named in an exclusion written here.
+
+       **It does not claim more than that.** A guard cannot hold against being edited
+       away, and this one is no exception; what changed is that dropping a competition
+       from it is now a line that says which competition is being dropped. */
+    expect(FILES.length, 'the portal still draws a competition').toBeGreaterThan(0)
     expect(Object.keys(kept).sort()).toEqual([...FILES].sort())
   })
 })

@@ -2459,6 +2459,16 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        twice and been corrected twice, which is what that cost buys. */
     expect(sr.leagues).toEqual(words.leagues)
 
+    /* **And what the portal says about the pages of a standing**, which is neither under
+       `leagues` nor under `seo` and so was held by nothing. `pager.leagueStanding` is the
+       name a reader working by ear hears for the pages of a competition's standing; it is
+       drawn only once a competition has more placed than fit on one page, which no seat
+       above has, and the one case that names it reads its text out of the dictionary and
+       so cannot fall. The overturned rule was appended to it and the whole gate stayed
+       green (review, 01.09.2026). The branch is five words long, so holding all of it
+       costs nothing. */
+    expect(sr.pager).toEqual(words.pager)
+
     /* **The whole of `seo`, not the four names about competitions.** Held as four, the
        rule went into `seo.rulebook.description`, which is the sentence a search engine
        shows for the rulebook and still under the hundred and sixty characters that
