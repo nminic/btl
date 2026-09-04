@@ -17,8 +17,8 @@ import { renderAt } from '../../test/render'
  * shape is the same on both and closing one of two leaves the other open.
  */
 const SCREENS = [
-  ['/sr/novi-tim', 'Predlog tima'],
-  ['/sr/rezultat/novi', 'Unos rezultata'],
+  ['/sr/novi-tim', 'Predlog tima', /Tim postoji tek kad ga odobri/],
+  ['/sr/rezultat/novi', 'Unos rezultata', /Rezultat ulazi u rang liste tek kad/],
 ] as const
 
 /**
@@ -51,17 +51,22 @@ describe('the screens a member writes on', () => {
   it('say what they explain under that heading, not above it', async () => {
     /* The note is still there and still first among the words: what moved is
        whether it stands over the heading or under it. Without this, the heading
-       could be made first by deleting everything that used to precede it. */
-    cleanup()
-    renderAt('/sr/novi-tim', 'competitor', '000007')
+       could be made first by deleting everything that used to precede it, and the
+       first draft of this file measured exactly that: the note taken off the
+       screen for a competition's result passed, because a page that says nothing
+       begins with its heading too (measured 04.09.2026). */
+    for (const [route, name, note] of SCREENS) {
+      cleanup()
+      renderAt(route, 'competitor', '000007')
 
-    const main = screen.getByRole('main')
-    const note = await within(main).findByText(/Tim postoji tek kad ga odobri/)
-    const heading = screen.getByRole('heading', { level: 1, name: 'Predlog tima' })
+      const main = screen.getByRole('main')
+      const said = await within(main).findByText(note)
+      const heading = screen.getByRole('heading', { level: 1, name })
 
-    expect(
-      heading.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
-      'the note stands under the heading',
-    ).toBeGreaterThan(0)
+      expect(
+        heading.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `${route} says what it explains under its heading`,
+      ).toBeGreaterThan(0)
+    }
   })
 })
