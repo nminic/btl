@@ -379,4 +379,28 @@ describe('the row the month is chosen in', () => {
     /* And the row is the shared one beside the heading, not a row of its own. */
     expect(bar.className).toContain('rankings__head-tool')
   })
+
+  it('leads back to the whole calendar from a single day', async () => {
+    /* The way out of the day, and it is held here because nothing else holds it.
+       The link stood above the heading until 04.09.2026, and putting it under the
+       heading was measured by the sweep of every address; but the sweep only asks
+       where a page begins, so a day with **no** way back at all begins with its
+       heading too and passed. The three other screens that carry one are held by
+       accident elsewhere: „Nazad na timove" by `app/pageMeta`, „Sve poruke" by
+       `memberFlows`, „Nazad na lige" by the snapshot of the words a competition is
+       written with. The day of the calendar had nobody, and deleting its link left
+       the whole gate green (review, 04.09.2026).
+
+       Written as a walk rather than as a mark in the markup: a draft that put a class
+       on all four and read it back was itself the source of two rounds of findings,
+       so this asks what a member can do instead of what the markup carries. Same
+       shape as „leads back to the whole inbox" in `memberFlows`. */
+    const user = setupUser()
+    renderAt('/sr/kalendar/dan/2027-05-08')
+
+    await screen.findByRole('heading', { level: 1, name: /8\. maj 2027/ })
+    await user.click(within(screen.getByRole('main')).getByRole('link', { name: 'Kalendar' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
+  })
 })
