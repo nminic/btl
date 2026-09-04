@@ -102,6 +102,34 @@ export function ProposeTeam() {
           const me = competitors.find((one) => one.memberNumber === mine)
           const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
 
+          /* And the same condition the way in carries, said here as well (owner,
+             04.09.2026: the button is for „ULOGOVANOG ČLANA KOJI TRENUTNO NEMA TIM
+             U KOJEM SE NALAZI"). A hidden button is not a rule: this address is in
+             a member's history and in their bookmarks, and reached from either the
+             form used to send a proposal that, once approved, made the member the
+             organiser of a second team — against PDL P13, „član sme da bude samo u
+             jednom timu istovremeno".
+
+             Read off `teamId` and not off the season, deliberately. A member who has
+             joined a team for next season is not in one today (`inTeamIn`), and the
+             standing of the teams counts them out; but founding a team now would
+             leave them in two of them on 1 January, which is the very thing P13
+             forbids. The question the door asks is „do you have a team", not „were
+             you in one this season". */
+          if (me?.teamId != null) {
+            return (
+              <>
+                <h1>{t('teams.proposeTitle')}</h1>
+                <p className="member__note">{t('teams.proposeHasTeam')}</p>
+                <p className="member__actions">
+                  <Link className="button button--secondary" to={`/${locale}/timovi`}>
+                    {t('teams.proposeBack')}
+                  </Link>
+                </p>
+              </>
+            )
+          }
+
           function onSubmit(values: FormValues) {
             const name = String(values.name)
 

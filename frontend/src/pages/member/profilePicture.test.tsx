@@ -171,7 +171,7 @@ describe('the picture on a profile, changed later', () => {
        queue without asking which sort would leave somebody unable to change
        their photograph because they once proposed a team. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'competitor', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000002')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')

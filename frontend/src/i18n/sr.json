@@ -767,6 +767,7 @@
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
     "proposeBack": "Nazad na timove",
+    "proposeHasTeam": "Već ste u timu, pa ne možete da osnujete nov. Član sme da bude samo u jednom timu.",
     "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
     "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru."
   },
