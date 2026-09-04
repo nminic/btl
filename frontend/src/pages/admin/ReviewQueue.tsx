@@ -173,12 +173,18 @@ export function ReviewQueue() {
             it sweeps is what says whether it is there at all.
 
             The predicate and its mirror are written by hand **six** times in this
-            file, and the count said four for one round while one of the six had no
-            case at all in either direction: the gate under the sweep, whose mirror
-            turned round put „Ostalo je 0 prijava" back on the screen. All six are
-            measured now. One home for it would be better and is not worth a helper
-            read six times in one file, so what holds them together is that each one
-            falls on its own. */}
+            file, and the count said four for one round. The gate under the sweep is
+            the one that was measured through: **both halves and both directions**, on
+            04.09.2026. Its mirror turned round put „Ostalo je 0 prijava" on a screen
+            nobody had swept anything on; `swept !== null` taken out explained a sweep
+            before any press; and `some` written as `every` fails two older cases.
+            Three cases in `adminFlows` hold it, each falling on its own.
+
+            **What is not claimed here**, because it is not measured: that the other
+            five do the same. This sentence read „All six are measured now" until
+            04.09.2026, which is a closed gate promised rather than shown. One home for
+            the predicate would be better and is not worth a helper read six times in
+            one file. */}
         {waiting.some((one) => one.raceId !== undefined) && (
           <button
             type="button"
