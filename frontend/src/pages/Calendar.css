@@ -311,14 +311,22 @@
      whole suite green.
 
      Named once, **these two declarations** cannot disagree, which is narrower
-     than „cannot disagree at all" and is deliberately written so: a `gap` set for
-     this class in a media query, or in another sheet, wins over this one while
-     the ceiling stays where it is, and the row breaks into two lines again. That
+     than „cannot disagree at all" and is deliberately written so: a `column-gap`
+     written under this `gap` in this very rule, a `gap` set for this class in a
+     media query, or one in another sheet, each wins over this one while the
+     ceiling stays where it is, and the row breaks into two lines again. The first
+     of the three is the one that lives exactly where somebody would write the
+     change (review, 31.08.2026); the full three are named in
+     `styles/lengthDots.test.ts`, which is where the drafts of a check over them
+     were measured. That
      was measured in a real browser on 30.08.2026, and it is why no test asserts
      this: five drafts of one tried, and a cascade beat every one of them
      (`styles/lengthDots.test.ts`). Whoever spaces this row from somewhere else
      moves the ceiling with it, and measures the day at 360, 780, 1440 and 1560
-     pixels and at 200% text, as ADL A26 records. */
+     pixels and at **100% and 200%** text, as ADL A26 and the header of
+     `styles/lengthDots.test.ts` both record. Not 200% alone: the overflow of
+     12,78px this rule exists for was measured at 780/**100%**, eight lines below
+     in this same file (review, 31.08.2026). */
   --dot-gap: var(--space-4);
   gap: var(--dot-gap);
   /* Wrapping, and shrinking only as far as wrapping needs, since 30.08.2026.
