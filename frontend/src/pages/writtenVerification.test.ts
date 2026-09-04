@@ -92,8 +92,12 @@ describe('the written pages', () => {
       expect(now[slug], slug).toEqual(held[slug])
     }
 
-    /* And no page has appeared or gone. */
-    expect(Object.keys(now).sort()).toEqual(Object.keys(held).sort())
+    /* And no page has appeared or gone — **in the order they are written in**, not
+       merely as a set. `toEqual` reads an object as a bag of keys, so reversing the
+       record left every page equal to itself and moved the rows of the administration's
+       list of written pages, which draws them in the order the record holds
+       (review, 31.08.2026). Sorted, this line was blind to the same thing twice over. */
+    expect(Object.keys(now)).toEqual(Object.keys(held))
   })
 
   it('carry the rules about a waiting result in exactly the two places they belong', () => {
