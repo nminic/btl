@@ -44,15 +44,26 @@ export function MessageDetail() {
 
   return (
     <div className="member">
-      <Link className="member__back" to={`/${locale}/poruke`}>
-        {t('shell.allMessages')}
-      </Link>
-
       <h1>{message.subject}</h1>
+
       <p className="messages__from">
         {message.from} · {formatShortDate(message.date, locale)}
       </p>
       <p className="messages__body">{message.body}</p>
+
+      {/* The way back, under the heading and not over it: the page began with a
+          link rather than with its own heading, so a reader listing the headings met
+          a control before learning which page they were on (WCAG 2.2, 1.3.1 and
+          2.4.6; owner, 04.09.2026). Kept a link and not dressed as a button, because
+          it is a way out and not an action.
+
+          Under the message and not straight under the subject: who is telling the
+          member and when belongs to the subject, and `adminFlows.test.tsx:3536` reads
+          it as the element after the heading. A way out standing between the two would
+          have separated a line from the thing it names (measured 04.09.2026). */}
+      <Link className="member__back" to={`/${locale}/poruke`}>
+        {t('shell.allMessages')}
+      </Link>
     </div>
   )
 }

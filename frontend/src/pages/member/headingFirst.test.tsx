@@ -1,20 +1,27 @@
 import { cleanup, screen, within } from '@testing-library/react'
 import { first } from '../../test/at'
+import { beginsWith, metSaid } from '../../test/met'
 import { renderAt } from '../../test/render'
 
 /**
  * A page begins with its own heading, and the screens a member writes on did not.
  *
- * Both drew what explains the form **above** the form, and the heading belongs to
- * the form, so the heading arrived after it: on the proposal of a team, after a
- * note and a field for choosing a file; on the reporting of a result, after a
- * note. A reader working by ear who lists the headings of a page found the first
- * one only after meeting a control, so the page had no heading at its start at all
- * (WCAG 2.2, 1.3.1 and 2.4.6). Measured 31.08.2026, decided by the owner
+ * They drew what explains the form **above** the form, and the heading belongs to the
+ * form, so the heading arrived after it: after a note and a field for choosing a file,
+ * or after a note alone. A reader working by ear who lists the headings of a page
+ * found the first one only after meeting a control, so the page had no heading at its
+ * start at all (WCAG 2.2, 1.3.1 and 2.4.6). Measured 31.08.2026, decided by the owner
  * 01.09.2026: the heading goes first.
  *
- * Held here for both screens rather than for the one it was found on, because the
- * shape is the same on both and closing one of two leaves the other open.
+ * **How many screens is not written down here.** The first version of this line said
+ * „both", and a third screen of the same shape was found the next round while the
+ * word „both" stood over a list of three (review, 04.09.2026). The list below is the
+ * count; the rule is that every screen a member writes on is in it.
+ *
+ * **And it is not the only place this is held.** Every address outside administration
+ * is swept for the same thing in `pages/publicData.test.tsx`, which already opens all
+ * of them twice and so costs nothing more. This file stays for what that sweep cannot
+ * say: that what explains a form stands between the heading and the first field.
  */
 const SCREENS = [
   ['/sr/novi-tim', 'Predlog tima', /Tim postoji tek kad ga odobri/],
@@ -31,26 +38,6 @@ const SCREENS = [
   ],
 ] as const
 
-/**
- * Everything on the page a reader meets, in the order they meet it.
- *
- * Headings and controls and prose together, because what went wrong was their
- * order relative to each other: asking only for headings would pass a page whose
- * heading is first among headings and third among things.
- */
-function metInOrder(): Element[] {
-  const main = screen.getByRole('main')
-
-  /* Links among them, and images, and list items. The first draft asked only for
-     headings, prose and form controls, so a link drawn over the heading passed:
-     „Nazad na timove" put above the form left the page beginning with a link and
-     the guard said nothing, which is the very fault this file exists for
-     (review, 04.09.2026). */
-  return [
-    ...main.querySelectorAll('h1, h2, h3, h4, p, a, img, li, table, input, textarea, select, button'),
-  ]
-}
-
 describe('the screens a member writes on', () => {
   it('begin with their own heading, before anything the reader can meet', async () => {
     for (const [route, name] of SCREENS) {
@@ -58,10 +45,9 @@ describe('the screens a member writes on', () => {
       renderAt(route, 'competitor', '000007')
 
       const heading = await screen.findByRole('heading', { level: 1, name })
-      const met = metInOrder()
-
-      expect(met.length, `${route} draws something`).toBeGreaterThan(1)
-      expect(first(met), `${route} begins with its heading`).toBe(heading)
+      expect(beginsWith(heading), `${route} begins with its heading, met ${metSaid()}`).toBe(
+        true,
+      )
     }
   })
 
