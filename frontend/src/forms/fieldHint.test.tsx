@@ -62,11 +62,23 @@ describe('the rules that were kept', () => {
        a check that read only the definitions was green while one of those two was
        still on the screen (review, 31.08.2026). So the sweep reads the sources, the
        way the portal's other sweeps do, and a rule added anywhere lands here. */
+    const swept = sources()
+
+    /* **The floor and the witness, the same two the case below carries.** They were
+       added there and not here in the same round, and the asymmetry is the whole of
+       this: the definitions alone answer with the seven, so a sweep that reached
+       nothing would leave this green while a rule built in code stood on a screen —
+       which is the one case this half exists for. The witness names
+       `pages/admin/entityForms.ts` rather than any file, because that is the file
+       whose two rules the definitions could not see (review, 31.08.2026). */
+    expect(swept.length).toBeGreaterThan(WHOLE_PORTAL)
+    expect(swept.some(({ path }) => path.endsWith(inside('admin', 'entityForms.ts')))).toBe(true)
+
     const carried = [
       ...ALL_FORMS.flatMap((form) =>
         form.fields.filter((field) => field.hintKey !== undefined).map((field) => field.hintKey),
       ),
-      ...sources().flatMap(({ code }) =>
+      ...swept.flatMap(({ code }) =>
         [...bare(code).matchAll(/hintKey:\s*'([^']+)'/g)].map((one) => one[1]),
       ),
     ]
@@ -79,7 +91,7 @@ describe('the rules that were kept', () => {
     expect(carried).toHaveLength(9)
   })
 
-  it('are never written into a screen by hand, whatever they are named', () => {
+  it('are never written into a screen by hand, under any name they have had', () => {
     /* Which is the half the sweep above could not see, and the reason three rules
        outlived it.
 
@@ -113,7 +125,10 @@ describe('the rules that were kept', () => {
 
        **What this does not catch**, said plainly rather than left to be found: a
        rule invented under a wholly new name, `t('picture.explanation')` and the
-       like. Holding every paragraph on the portal would mean deciding which of them
+       like. The name of this case said „whatever they are named" until 31.08.2026 and
+       promised exactly that; it now says „under any name they have had", which is the
+       two the expression really reads: a name ending in `rule`, and the seven listed
+       above. Holding every paragraph on the portal would mean deciding which of them
        counts as a rule beside a field, and that is a question about the word rather
        than a defect in the code. Comments blanked, so a note naming a key is not
        read as using one. */

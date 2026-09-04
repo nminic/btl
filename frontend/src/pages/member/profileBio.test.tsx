@@ -107,9 +107,15 @@ describe('the words a member wrote about themselves, changed later', () => {
   it('says what is left of the limit to somebody who has already written', async () => {
     /* The other half of the sentence above, and the half that changed: what this
        member used to hear was the rule, which carried 360 whatever they had
-       written. Now the description carries the remainder and nothing else, and
-       that is what this freezes so the difference is a decision rather than a
-       thing nobody wrote down. */
+       written. Now the description carries the remainder **and no longer carries the
+       rule**, and that is what this freezes so the difference is a decision rather
+       than a thing nobody wrote down.
+
+       Two things, not one. „The remainder and nothing else" is what an earlier
+       version of this line promised, and it is not what the two assertions below say:
+       they say the remainder is there and that 360 is not. Whether anything else
+       stands beside them is unmeasured, and saying so is cheaper than a sentence that
+       has to be believed (review, 31.08.2026). */
     renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
 
     const field = await box()
