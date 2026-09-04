@@ -87,6 +87,12 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
   ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 5'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
+  /* „Predlog tima" is the heading of two screens at this one address since
+     05.09.2026: the form, and the refusal a member who already has a team reads
+     instead. `ME` has a team, so this row reads the second. **What the first one's
+     title is held by is `member/headingFirst.test.tsx`**, which signs in as a member
+     with no team; measured 05.09.2026 by moving `titleKey` in the definition, which
+     fails there and not here. */
   ['/sr/novi-tim', 'Za ovo treba prijava', 'Predlog tima'],
   ['/sr/tabela', 'BTL tabele', 'BTL tabele'],
   ['/sr/top-liste', 'Top liste', 'Top liste'],

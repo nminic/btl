@@ -121,10 +121,14 @@ export function ProposeTeam() {
               <>
                 <h1>{t('teams.proposeTitle')}</h1>
                 <p className="member__note">{t('teams.proposeHasTeam')}</p>
-                <p className="member__actions">
-                  <Link className="button button--secondary" to={`/${locale}/timovi`}>
-                    {t('teams.proposeBack')}
-                  </Link>
+                {/* A plain link and not a button, unlike the screen two blocks
+                    above: that one is the end of something the member did, and this
+                    is a page that offers them nothing to do. A control dressed as a
+                    button on such a page reads as an action there is none of (PDL,
+                    increment 133; the same reasoning that kept the ways back on the
+                    team, the competition and the day of the calendar as links). */}
+                <p className="member__note">
+                  <Link to={`/${locale}/timovi`}>{t('teams.proposeBack')}</Link>
                 </p>
               </>
             )

@@ -74,6 +74,20 @@ describe('the way to propose a team', () => {
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
   })
 
+  it('refuses them on a day two seasons before their team begins, too', async () => {
+    /* The same member read a year earlier, and this is what pins the decision rather
+       than merely stating it. Read as a season, the door has to choose **which**
+       season, and „the season after this one" answers the case above exactly as the
+       record does: 2027 is not after 2026. It parts company here — on a day in 2025
+       the next season is 2026, that member is not in a team by that reading, and the
+       form would open. Measured: `inTeamIn(me, thisYear + 1)` passes every other case
+       in this file and fails only this one (review, 05.09.2026). */
+    renderAt('/sr/novi-tim', 'competitor', '000031', undefined, '2025-09-05')
+
+    expect(await screen.findByText(/samo u jednom timu/)).toBeVisible()
+    expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
+  })
+
   it('asks whoever reaches the address without signing in to sign in', async () => {
     renderAt('/sr/novi-tim')
 
