@@ -134,13 +134,29 @@ export function ReviewQueue() {
    * drift the moment either moves, so both come from the one place that holds
    * them (`forms/validate.ts` and the form's own definition).
    *
-   * A name this file asks for that the form does not define is a mistake in this
-   * file, and it refuses rather than letting the value through unchecked.
+   * **And the name of the box with it**, off the same pairing. It was written out
+   * beside every call until 05.09.2026, so „Sati" had two homes: `ASKED[].field`
+   * and a hand-written label. Measured then: `label: 'newResult.hours'` swapped for
+   * `newResult.seconds` passed the whole gate, and the panel named the wrong box in
+   * a message about a real fault.
+   *
+   * **What it answers to a name the pairing does not know is nothing**, which is the
+   * same thing it answers about a box with nothing wrong in it. A sentence here said
+   * such a name „is a mistake in this file, and it refuses rather than letting the
+   * value through unchecked": it does not refuse, and it never did (review,
+   * 31.08.2026). What keeps a name from going unpaired is the case that counts the
+   * pairing (`adminFlows.test.tsx`, „holds every box it writes to a rule"), not this
+   * line.
    */
-  const wrongBox = (name: string, written: string) =>
-    ASKED.flatMap((one) => (one.name === name ? [validateField(one.field, written)] : [])).find(
-      (one) => one !== null,
-    ) ?? null
+  const wrongBox = (name: string, written: string) => {
+    const found = ASKED.flatMap((one) => {
+      const said = one.name === name ? validateField(one.field, written) : null
+
+      return said === null ? [] : [{ label: one.field.labelKey, said }]
+    })
+
+    return found[0] ?? null
+  }
 
   return (
     <div className="member">
@@ -481,15 +497,15 @@ export function ReviewQueue() {
            sentence is named after the box it came from. */
         const errors = new Map(
           [
-            { name: 'eventName', label: 'review.amendEvent', written: fixing.eventName },
-            { name: 'raceName', label: 'newResult.raceName', written: fixing.raceName },
-            { name: 'hours', label: 'newResult.hours', written: fixing.hours },
-            { name: 'minutes', label: 'newResult.minutes', written: fixing.minutes },
-            { name: 'seconds', label: 'newResult.seconds', written: fixing.seconds },
-          ].flatMap(({ name, label, written }) => {
-            const said = wrongBox(name, written)
+            { name: 'eventName', written: fixing.eventName },
+            { name: 'raceName', written: fixing.raceName },
+            { name: 'hours', written: fixing.hours },
+            { name: 'minutes', written: fixing.minutes },
+            { name: 'seconds', written: fixing.seconds },
+          ].flatMap(({ name, written }) => {
+            const wrong = wrongBox(name, written)
 
-            return said === null ? [] : [[name, { label, said }] as const]
+            return wrong === null ? [] : [[name, wrong] as const]
           }),
         )
         const wrong = [...errors.values()][0] ?? null

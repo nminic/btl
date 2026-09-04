@@ -1434,6 +1434,10 @@ describe('the queue of results', () => {
       ['Sati', '-5', /Najmanja dozvoljena vrednost/],
       ['Sati', 'Infinity', /Unesi broj/],
       ['Minuta', '999', /Najveća dozvoljena vrednost/],
+      /* And a fourth box, because until 05.09.2026 the name in the message was
+         written out beside the call rather than read off the pairing, and only two
+         of the five boxes were ever named by a case. */
+      ['Sekundi', '99', /Najveća dozvoljena vrednost/],
       /* Not one and a half hours. The member's own form takes it, since the field
          carries no rule about whole numbers, and `forms/clock.ts` records that the
          boxes take a decimal as a fault of their own and older than any of this.
@@ -1448,8 +1452,12 @@ describe('the queue of results', () => {
       await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
 
       expect(session.amend, `${box} = ${written}`).not.toHaveBeenCalled()
-      /* And it says why, rather than leaving a dead button. */
-      expect(screen.getByText(says)).toBeVisible()
+      /* And it says why, rather than leaving a dead button — **named by the box it
+         is about**. The name comes off the same pairing that holds the rule
+         (`admin/amendFields.ts`); written out beside the call, „Sati" could be
+         swapped for „Sekundi" and the whole gate stayed green, so the panel named
+         the wrong box in a message about a real fault (review, 31.08.2026). */
+      expect(screen.getByText(new RegExp(`^${box}: `)), box).toHaveTextContent(says)
 
       await user.clear(control)
       await user.type(control, box === 'Sati' ? '0' : '45')
