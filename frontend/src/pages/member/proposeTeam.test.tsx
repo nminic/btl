@@ -13,10 +13,24 @@ import { setupUser } from '../../test/user'
  */
 
 describe('the way to propose a team', () => {
-  it('is offered to a member on the standing of the teams', async () => {
-    renderAt('/sr/timovi', 'competitor', '000007')
+  it('is offered to a member who is in no team, on the standing of the teams', async () => {
+    /* Member 000002 runs alone: `teamId` is null on their record. Somebody with
+       a team has nothing to do with this button, and what they can do is on their
+       own team's page (owner, 04.09.2026). */
+    renderAt('/sr/timovi', 'competitor', '000002')
 
     expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+  })
+
+  it('is not offered to a member who already has one', async () => {
+    /* The half of the same decision that takes something away: 000007 is in Dunav,
+       and until 04.09.2026 every signed-in member saw this. Named by the member and
+       not by the count of teams, because a member joins and leaves a team through
+       the season and the button has to follow that, not the table. */
+    renderAt('/sr/timovi', 'competitor', '000007')
+
+    await screen.findByRole('table', { name: 'Timovi' })
+    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
   })
 
   it('is not offered to somebody who is not signed in', async () => {

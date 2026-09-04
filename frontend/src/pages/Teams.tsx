@@ -65,7 +65,20 @@ export function Teams() {
                     Beside the season rather than under the table: it is
                     something to do with this screen, and the foot of a standing
                     of forty is not where anybody looks for it. */}
-                {memberNumber !== null && (
+                {/* And only to a member who is not in a team today (owner,
+                    04.09.2026: „samo na strani Timovi ULOGOVANOG ČLANA KOJI
+                    TRENUTNO NEMA TIM U KOJEM SE NALAZI"). Until then every
+                    signed-in member saw it, so this takes it away from half of
+                    them rather than only adding a condition: a member of Dunav
+                    has a team, and what they can do with it is on that team's
+                    own page.
+
+                    `myTeam` is read off the member's own record just above,
+                    which is also what marks their row, so the button and the
+                    mark cannot disagree. Nothing at all there — a signed-in
+                    person with no competitor record — is also not in a team,
+                    and reads the same way. */}
+                {memberNumber !== null && (myTeam ?? null) === null && (
                   <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
                     {t('teams.propose')}
                   </Link>
