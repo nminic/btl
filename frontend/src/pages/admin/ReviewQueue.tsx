@@ -175,10 +175,12 @@ export function ReviewQueue() {
             The predicate and its mirror are written by hand **six** times in this
             file, and the count said four for one round. The gate under the sweep is
             the one that was measured through: **both halves and both directions**, on
-            04.09.2026. Its mirror turned round put „Ostalo je 0 prijava" on a screen
-            nobody had swept anything on; `swept !== null` taken out explained a sweep
-            before any press; and `some` written as `every` fails two older cases.
-            Three cases in `adminFlows` hold it, each falling on its own.
+            04.09.2026. Its mirror turned round said „Ostalo je 0 prijava" after a
+            sweep that had emptied the queue, which is the very nought the line exists
+            to keep off the screen; `swept !== null` taken out explained a sweep to
+            somebody who had pressed nothing; and `some` written as `every` fails two
+            older cases. Four cases in `adminFlows` fall on those three mutations, each
+            on its own.
 
             **What is not claimed here**, because it is not measured: that the other
             five do the same. This sentence read „All six are measured now" until

@@ -45,10 +45,11 @@ import { DOTS } from '../data/types'
  * tell apart to the hundredth of a pixel, and passed when a `gap` written in a
  * media query broke the row into two lines.
  *
- * An earlier version of this paragraph counted **five** and named „its last word",
- * a reading of the shorthand's final token that no commit carries. The count and
- * that item came from memory rather than from the history, and the history is what
- * is written here now (review, 31.08.2026).
+ * An earlier version of this paragraph named „its last word", a reading of the
+ * shorthand's final token that no commit carries, and it also missed the reading that
+ * asked jsdom's own parser and never looked at the gap. **The count of five was right
+ * and stayed five**; two of the five items were wrong, and what is written above is
+ * now read off the commits rather than out of memory (review, 31.08. and 04.09.2026).
  *
  * They were all the same mistake. A width is geometry, jsdom lays nothing out
  * (ADL A33), and every reading of the sheet is a stand-in that a cascade beats:
