@@ -52,6 +52,21 @@ type Props = {
    */
   beneath?: (values: FormValues) => ReactNode
   /**
+   * What the screen draws between the heading and the first field.
+   *
+   * Handed in for one reason only: a page has one first level heading and it has
+   * to be the first thing on the page. Drawn by the screen instead, whatever the
+   * screen puts above the form stands above that heading, so a reader working by
+   * ear meets a file field before learning which page they are on, and the page
+   * has no heading at its start at all (WCAG 2.2, 1.3.1 and 2.4.6; owner,
+   * 01.09.2026). Two screens did that: the proposal of a team and the reporting
+   * of a result.
+   *
+   * Not a function of the values, unlike `beneath`: what stands here explains the
+   * form rather than answering it.
+   */
+  above?: ReactNode
+  /**
    * A refusal that belongs to the screen rather than to any field of the form.
    *
    * Answers with what to say, or nothing where there is nothing to refuse. What
@@ -731,6 +746,7 @@ export function FormRenderer({
   was,
   openAt,
   beneath,
+  above,
   alsoRefuses,
   steps,
 }: Props) {
@@ -1003,6 +1019,8 @@ export function FormRenderer({
           {title}
         </h2>
       )}
+
+      {above}
 
       {/* What the star beside a name means, said once over the form rather than
           spelled out on every field (owner, 12.08.2026). Only where there is a

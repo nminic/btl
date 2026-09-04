@@ -86,9 +86,6 @@ export function TeamDetail() {
 
             <div className="profile">
               <header className="profile__head">
-                <p className="profile__meta">
-                  <Link to={`/${locale}/timovi`}>{t('teams.backToTeams')}</Link>
-                </p>
                 {/* The same row a competitor's profile has, and the same named
                     control (owner, 05.08.2026: one shape everywhere). It carried
                     a row of its own until then and was left without one when the
@@ -103,6 +100,16 @@ export function TeamDetail() {
                   {team.city}
                   {' · '}
                   {t('units.memberCount', { count: everMembers.length })}
+                </p>
+                {/* The way back, under the name and not over it. It stood first and the page
+                    then began with a link rather than with its own heading, so a reader
+                    listing the headings of a page met a control before learning which page
+                    they were on (WCAG 2.2, 1.3.1 and 2.4.6; owner, 04.09.2026, who chose to
+                    keep it a link rather than dress it as a button: it is a way out, not an
+                    action). `EventDetail` has always had its heading first inside this same
+                    header, so this is that shape and not a new one. */}
+                <p className="profile__meta">
+                  <Link to={`/${locale}/timovi`}>{t('teams.backToTeams')}</Link>
                 </p>
               </header>
 

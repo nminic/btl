@@ -220,49 +220,55 @@ export function ReportResult() {
 
           return (
             <>
-              <p className="member__note">
-                {/* The race said the way every screen on the portal says one: its
-                    name, when it was run, and its measure in brackets
-                    (`data/raceLabel.ts`). It is the same sentence the chooser used
-                    to write into its own list, which is why the helper stays after
-                    the chooser has gone.
-
-                    **And the race alone.** Owner, 29.08.2026, asked which of three
-                    forms this sentence should take and answered „Nikad događaj,
-                    uvek trka." One form everywhere, whether the two names differ or
-                    not, and no second form for the case where they do.
-
-                    Why it needed asking: a race's name starts out as its event's,
-                    and 886 of the 1163 events that hold any race at all hold exactly
-                    one, so on 885 of them the sentence said the same name twice over
-                    (Mrazijada is the one race in the file somebody renamed).
-
-                    What that cost, measured in Chrome on 360 by 780 over every one
-                    of the 1612 races rather than over the worst of them: the old
-                    sentence ran to four lines on 724 and to five on two, and the new
-                    one never passes three. So 763 races get a line back and 849 get
-                    nothing, which is the honest shape of the gain. An earlier
-                    version of this note gave the five-line reading as though it were
-                    the ordinary case; it is two races out of 1612.
-
-                    What it costs, in his words as he took it: where a race is named
-                    differently from its event, the member no longer sees from this
-                    sentence which event it belongs to. He sees it on the page he
-                    came from, which is the event's own. */}
-                {t(NOTE[kind], {
-                  /* Among **all** the races of the event and not only the run
-                     ones, because that is what the table on the event says
-                     (EventDetail.tsx) and a race must not change its name between
-                     the row somebody pressed and the form it opened. Measured on
-                     23.08.2026: the row read „42,2 km, 14. 3. 2022." and the form
-                     said „42,2 km", which is two names for one race in two steps
-                     of one flow. */
-                  race: raceLabel(race, here, locale),
-                })}
-              </p>
-
               <FormRenderer
                 form={reportForm(kind)}
+                /* Above the fields and under the heading, so the heading is the
+                   first thing on the page. Drawn before the form, this note stood
+                   ahead of it and the page began without a heading at all (owner,
+                   01.09.2026; the third screen of the same shape, found in review
+                   04.09.2026 after the first two were closed). */
+                above={
+                  <p className="member__note">
+                    {/* The race said the way every screen on the portal says one: its
+                        name, when it was run, and its measure in brackets
+                        (`data/raceLabel.ts`). It is the same sentence the chooser used
+                        to write into its own list, which is why the helper stays after
+                        the chooser has gone.
+
+                        **And the race alone.** Owner, 29.08.2026, asked which of three
+                        forms this sentence should take and answered „Nikad događaj,
+                        uvek trka." One form everywhere, whether the two names differ or
+                        not, and no second form for the case where they do.
+
+                        Why it needed asking: a race's name starts out as its event's,
+                        and 886 of the 1163 events that hold any race at all hold exactly
+                        one, so on 885 of them the sentence said the same name twice over
+                        (Mrazijada is the one race in the file somebody renamed).
+
+                        What that cost, measured in Chrome on 360 by 780 over every one
+                        of the 1612 races rather than over the worst of them: the old
+                        sentence ran to four lines on 724 and to five on two, and the new
+                        one never passes three. So 763 races get a line back and 849 get
+                        nothing, which is the honest shape of the gain. An earlier
+                        version of this note gave the five-line reading as though it were
+                        the ordinary case; it is two races out of 1612.
+
+                        What it costs, in his words as he took it: where a race is named
+                        differently from its event, the member no longer sees from this
+                        sentence which event it belongs to. He sees it on the page he
+                        came from, which is the event's own. */}
+                    {t(NOTE[kind], {
+                      /* Among **all** the races of the event and not only the run
+                         ones, because that is what the table on the event says
+                         (EventDetail.tsx) and a race must not change its name between
+                         the row somebody pressed and the form it opened. Measured on
+                         23.08.2026: the row read „42,2 km, 14. 3. 2022." and the form
+                         said „42,2 km", which is two names for one race in two steps
+                         of one flow. */
+                      race: raceLabel(race, here, locale),
+                    })}
+                  </p>
+                }
                 /* The third road a time reaches a submission by, and the one that
                    was left out when the rule was written: a race run in no time is
                    not a result (owner, 31.08.2026), and no single box can refuse

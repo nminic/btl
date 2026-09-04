@@ -150,19 +150,27 @@ export function ProposeTeam() {
 
           return (
             <>
-              <p className="member__note">{t('teams.proposeNote2')}</p>
-              <CropChooser
-                id="team-logo"
-                label={t('teams.proposeLogo')}
-                alt={t('teams.proposeLogoAlt')}
-                /* A team may be proposed without a logo, and most are: the
-                   league has four teams and one logo between them. */
-                asked={false}
-                chosen={logo}
-                onChange={setLogo}
-              />
               <FormRenderer
                 form={predlogTima}
+                /* Above the fields and under the heading, so the heading is the
+                   first thing on the page. Drawn here before, the file field
+                   stood ahead of it and the page began without a heading at all
+                   (owner, 01.09.2026). */
+                above={
+                  <>
+                    <p className="member__note">{t('teams.proposeNote2')}</p>
+                    <CropChooser
+                      id="team-logo"
+                      label={t('teams.proposeLogo')}
+                      alt={t('teams.proposeLogoAlt')}
+                      /* A team may be proposed without a logo, and most are: the
+                         league has four teams and one logo between them. */
+                      asked={false}
+                      chosen={logo}
+                      onChange={setLogo}
+                    />
+                  </>
+                }
                 /* By the address the name makes, which is what has to be
                    unique and is what the queue compares (teamProposal.ts).
                    Comparing names let "Dunavski Trkaci" through to sit in the

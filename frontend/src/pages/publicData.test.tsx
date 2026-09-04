@@ -1,5 +1,6 @@
 import { act, cleanup, screen } from '@testing-library/react'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
+import { beginsWith, metSaid } from '../test/met'
 import { renderAt } from '../test/render'
 
 /**
@@ -252,7 +253,21 @@ describe('what a browser downloads outside administration', () => {
        that stopped matching the data would send the portal to the front page
        and the sweep would go on passing, having swept the front page three
        times over. */
-    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+    const named = await screen.findByRole('heading', { level: 1, name: heading })
+
+    expect(named).toBeVisible()
+
+    /* **And the page begins with it.** Held here rather than in a sweep of its own,
+       because this one already opens every address outside administration twice and
+       waits for it to settle, so the question costs nothing more than the asking.
+
+       It is asked because a guard over three chosen screens was not enough: two rounds
+       of review found first a third screen of the same shape and then four more pages
+       that began with „Nazad na…" before their own heading (04.09.2026). Chosen screens
+       are a list somebody keeps; this row is every address the route table has, and the
+       case above refuses to let one in without a row here. */
+    expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
+
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
@@ -273,7 +288,16 @@ describe('what a browser downloads outside administration', () => {
 
     await quiet(asked)
 
-    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+    const named = await screen.findByRole('heading', { level: 1, name: heading })
+
+    expect(named).toBeVisible()
+
+    /* Signed in as well as out, because half of these screens draw something else
+       entirely to a visitor: measured, a member's own screens answer `SignedOut` to a
+       stranger, which begins with a heading of its own and would have said nothing
+       about the screen behind it (review, 04.09.2026). */
+    expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
+
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })

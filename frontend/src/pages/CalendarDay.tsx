@@ -66,17 +66,22 @@ export function CalendarDay() {
       {/* The way back and the heading need no data, so they are outside the
           Resource and stay on screen while the events travel. Every other screen
           in the portal keeps its heading outside for the same reason. */}
-      <p className="calendar__back">
-        <Link to={month === null ? `/${locale}/kalendar` : `/${locale}/kalendar?mesec=${month}`}>
-          {t('calendar.title')}
-        </Link>
-      </p>
-
       <h1>
         {asked === null
           ? t('calendar.title')
           : t('calendar.dayTitle', { date: formatDate(asked, locale) })}
       </h1>
+
+      {/* The way back, under the heading and not over it: the page began with a
+          link rather than with its own heading, so a reader listing the headings met
+          a control before learning which page they were on (WCAG 2.2, 1.3.1 and
+          2.4.6; owner, 04.09.2026). Kept a link and not dressed as a button, because
+          it is a way out and not an action. */}
+      <p className="calendar__back">
+        <Link to={month === null ? `/${locale}/kalendar` : `/${locale}/kalendar?mesec=${month}`}>
+          {t('calendar.title')}
+        </Link>
+      </p>
 
       <Resource state={state}>
         {([events, races]) => {

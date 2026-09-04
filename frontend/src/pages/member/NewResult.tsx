@@ -404,32 +404,37 @@ export function NewResult() {
 
   return (
     <div className="member">
-      {correcting === undefined && fixingOne === undefined ? (
-        <p className="member__note">{t('newResult.note')}</p>
-      ) : correcting === undefined ? (
-        /* The third state, and it says the two things this road does that the
-           others do not: the result leaves the standing until somebody agrees
-           again, and it will not be taken without new proof. */
-        <p className="member__note">{t('newResult.fixingCounted')}</p>
-      ) : (
-        /* Why the form is full, and of what. A member who pressed „Pošalji
-           ponovo" is looking at their own words back, and the reason they are
-           looking at them is the sentence the moderator wrote.
-
-           Two sentences and not one since 27.08.2026, because there are now two
-           ways in: a result that was sent back carries a reason and a result
-           that is still waiting carries none. Said with the words of a refusal,
-           the second told a member that something had been refused when nobody
-           had decided anything, and printed „Razlog je bio:" with nothing after
-           it. */
-        <p className="member__note">
-          {correcting.status === 'rejected'
-            ? t('newResult.again', { reason: correcting.note })
-            : t('newResult.changing')}
-        </p>
-      )}
-
       <FormRenderer
+        /* Above the fields and under the heading, so the heading is the first
+           thing on the page. Drawn before the form, these notes stood ahead of
+           it and the page began without a heading at all (owner, 01.09.2026;
+           same shape as the proposal of a team). */
+        above={
+          correcting === undefined && fixingOne === undefined ? (
+          <p className="member__note">{t('newResult.note')}</p>
+        ) : correcting === undefined ? (
+          /* The third state, and it says the two things this road does that the
+             others do not: the result leaves the standing until somebody agrees
+             again, and it will not be taken without new proof. */
+          <p className="member__note">{t('newResult.fixingCounted')}</p>
+        ) : (
+          /* Why the form is full, and of what. A member who pressed „Pošalji
+             ponovo" is looking at their own words back, and the reason they are
+             looking at them is the sentence the moderator wrote.
+
+             Two sentences and not one since 27.08.2026, because there are now two
+             ways in: a result that was sent back carries a reason and a result
+             that is still waiting carries none. Said with the words of a refusal,
+             the second told a member that something had been refused when nobody
+             had decided anything, and printed „Razlog je bio:" with nothing after
+             it. */
+          <p className="member__note">
+            {correcting.status === 'rejected'
+              ? t('newResult.again', { reason: correcting.note })
+              : t('newResult.changing')}
+          </p>
+          )
+        }
         /* And the short form is the short form on both roads back to it. A
            correction of a counted result is not asked its kind or its place, but
            the submission it makes is a submission like any other: the member can

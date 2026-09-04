@@ -145,10 +145,17 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
 
             <div className="profile">
               <header className="profile__head">
+                <h1>{league.name}</h1>
+                {/* The way back, under the name and not over it. It stood first and the page
+                    then began with a link rather than with its own heading, so a reader
+                    listing the headings of a page met a control before learning which page
+                    they were on (WCAG 2.2, 1.3.1 and 2.4.6; owner, 04.09.2026, who chose to
+                    keep it a link rather than dress it as a button: it is a way out, not an
+                    action). `EventDetail` has always had its heading first inside this same
+                    header, so this is that shape and not a new one. */}
                 <p className="profile__meta">
                   <Link to={`/${locale}/lige`}>{t('leagues.backToLeagues')}</Link>
                 </p>
-                <h1>{league.name}</h1>
                 {/* Nothing under the name (owner, 31.07.2026). The season is in
                     the name of every competition already, and the field is
                     grouped by gender in every one of them since 31.08.2026, so
