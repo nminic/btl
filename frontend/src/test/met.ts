@@ -23,7 +23,7 @@ const REACHED = 'a[href], button, input, select, textarea, [tabindex]'
  * assistive technology is skipped, which is how the monogram over a profile name
  * stays out of it (owner, 23.08.2026).
  */
-export function firstMet(): Node | null {
+export function firstMet(heading?: Element): Node | null {
   const main = screen.getByRole('main')
   const walk = document.createTreeWalker(main, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
 
@@ -31,6 +31,18 @@ export function firstMet(): Node | null {
     const holder = node instanceof Element ? node : node.parentElement
 
     if (holder === null || holder.closest('[aria-hidden="true"], [hidden]') !== null) {
+      continue
+    }
+
+    /* A wrapper stands **around** the heading, not in front of it, so it is walked
+       through rather than counted. Counted instead, it ended the walk at the first
+       named box and never looked inside: a `section` given a name through
+       `aria-labelledby` is a shape this portal uses on seven screens, and with it
+       the whole question could be turned off by naming the box that holds the
+       heading. Worse, it was already off: `FormRenderer` names the `form` that way,
+       so on all three screens this was written for the walk stopped at the form and
+       proved only that the form came first (review, 04.09.2026). */
+    if (heading !== undefined && node instanceof Element && node.contains(heading)) {
       continue
     }
 
@@ -52,19 +64,46 @@ export function firstMet(): Node | null {
 /**
  * Whether the page begins with the heading it was opened for.
  *
- * **Inside the heading, or holding it.** A wrapper that carries a name of its own is
- * met before the heading in document order but stands around it, not in front of it:
- * a form is named through `aria-labelledby`, and reading that as „something before
- * the heading" failed every screen at once (measured 04.09.2026). What is in front of
- * the heading is what the heading neither contains nor sits inside.
+ * Everything that holds the heading is walked through; the first thing that does not
+ * hold it has to be the heading itself or something inside it.
  */
 export function beginsWith(heading: Element): boolean {
-  const met = firstMet()
+  const met = firstMet(heading)
 
-  return met !== null && (heading.contains(met) || met.contains(heading))
+  return met !== null && heading.contains(met)
 }
 
 /** What was met, in a few words, for the message of a failing assertion. */
-export function metSaid(): string {
-  return firstMet()?.textContent?.trim().slice(0, 40) ?? '(ništa)'
+export function metSaid(heading?: Element): string {
+  return firstMet(heading)?.textContent?.trim().slice(0, 40) ?? '(ništa)'
+}
+
+/**
+ * Where the way out of a screen stands: under the heading, and over the content.
+ *
+ * **One marker for four links that were four different things.** „Nazad na timove",
+ * „Nazad na lige", „Kalendar" and „Sve poruke" were written in three shapes under
+ * three class names, and „under the heading" was carried out in three different places
+ * because nothing said they were the same thing. `page__back` says it, and this reads
+ * it, so the rule is measured wherever the marker is rather than on a list of pages.
+ *
+ * **Over the content, and that half is not decoration.** Put under the message
+ * instead, the way back left a member on a telephone scrolling a long letter to reach
+ * it, where it had been the first thing on the screen (review, 04.09.2026). Being last
+ * is the failure; something the reader can meet has to follow it.
+ */
+export function wayBackIsPlaced(heading: Element): string[] {
+  const main = screen.getByRole('main')
+
+  return [...main.querySelectorAll('.page__back')].flatMap((back) => {
+    const after = heading.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING
+    const followed = [...main.querySelectorAll('p, li, table, a[href], button, input, img')].some(
+      (one) => (back.compareDocumentPosition(one) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    )
+
+    return [
+      ...(after === 0 ? ['stoji iznad naslova'] : []),
+      ...(followed ? [] : ['stoji ispod svega, pa se do njega mora proskrolovati']),
+    ]
+  })
 }

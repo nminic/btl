@@ -49,7 +49,6 @@ export function MessageDetail() {
       <p className="messages__from">
         {message.from} · {formatShortDate(message.date, locale)}
       </p>
-      <p className="messages__body">{message.body}</p>
 
       {/* The way back, under the heading and not over it: the page began with a
           link rather than with its own heading, so a reader listing the headings met
@@ -57,13 +56,19 @@ export function MessageDetail() {
           2.4.6; owner, 04.09.2026). Kept a link and not dressed as a button, because
           it is a way out and not an action.
 
-          Under the message and not straight under the subject: who is telling the
-          member and when belongs to the subject, and `adminFlows.test.tsx:3536` reads
-          it as the element after the heading. A way out standing between the two would
-          have separated a line from the thing it names (measured 04.09.2026). */}
-      <Link className="member__back" to={`/${locale}/poruke`}>
+          **After the line of provenance, not between it and the subject, and not
+          under the message.** Who is telling the member and when belongs to the
+          subject, and `adminFlows.test.tsx:3536` reads it as the element after the
+          heading, so nothing may stand between those two. Put under the message
+          instead, it left a member on a telephone scrolling a long letter to get back
+          to the pigeonhole, where the way out had been the first thing on the screen
+          (review, 04.09.2026). So it follows the heading and the line that belongs to
+          it, and precedes what the member came to read. */}
+      <Link className="member__back page__back" to={`/${locale}/poruke`}>
         {t('shell.allMessages')}
       </Link>
+
+      <p className="messages__body">{message.body}</p>
     </div>
   )
 }

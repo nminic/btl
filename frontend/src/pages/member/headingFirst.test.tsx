@@ -45,7 +45,7 @@ describe('the screens a member writes on', () => {
       renderAt(route, 'competitor', '000007')
 
       const heading = await screen.findByRole('heading', { level: 1, name })
-      expect(beginsWith(heading), `${route} begins with its heading, met ${metSaid()}`).toBe(
+      expect(beginsWith(heading), `${route} begins with its heading, met ${metSaid(heading)}`).toBe(
         true,
       )
     }
