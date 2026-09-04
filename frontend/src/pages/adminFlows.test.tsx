@@ -1330,10 +1330,16 @@ describe('the queue of results', () => {
   it('holds every box it writes to a rule, and would notice one that stopped being paired', () => {
     /* The panel pairs each box with the definition that owns it by filtering, so a
        field renamed in a definition quietly leaves the list and its box stops being
-       checked at all. Measured: with `seconds` dropped from the pairing, the panel
-       took 999 seconds and the whole suite stayed green (review, 31.08.2026).
-       Counted here rather than trusted, since the code itself has nowhere to put a
-       complaint that no case could reach. */
+       checked at all. That was measured with nothing at all holding it: `seconds`
+       dropped from the pairing, the panel took 999 seconds, and the suite stayed
+       green (review, 31.08.2026).
+
+       **It does not stay green now, and this case is no longer the only reason.**
+       The same commit that wrote this one gave the panel a case of its own („takes
+       only what the member's own form would have taken"), and that case reaches the
+       screen: the same mutation fails both, 2 of 2449 (measured 04.09.2026). What
+       this one still buys is the name of the fault — a count that says which box
+       left the list, instead of a refusal that stopped arriving. */
     expect(ASKED.map((one) => one.name).sort()).toEqual([
       'eventName',
       'hours',

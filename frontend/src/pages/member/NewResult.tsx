@@ -220,10 +220,19 @@ export function NewResult() {
     const earned = pointsOf(distanceKm, ascentM, descentM, total)
 
     /* Which of the two answers this road gives, chosen by the road and not by
-       what happens to be in a box. `behind` is undefined only where the race a
-       counted result belongs to has left the calendar, which the administration
-       refuses to let happen while results point at it; the empty strings are a
-       floor under that, not a feature. */
+       what happens to be in a box. `behind` is undefined where the race a counted
+       result belongs to has left the calendar, and that is a state the ordinary
+       administration can reach: deleting an event takes its races along, and takes
+       its results along **only where the address belongs to that event alone**
+       (`admin/AdminEvents.tsx`). Two events on one slug is the window in which the
+       races go and the results stay, and it is deliberate — deleting them then
+       would take the other event's results with them.
+
+       So the empty strings are what a member is shown in that window, not a floor
+       under something that cannot happen. An earlier sentence here said the
+       administration refuses to delete a race while results point at it; nothing
+       in the portal does that, and the cascade above is the opposite of it
+       (review, 31.08.2026). */
     const said =
       fixingOne === undefined
         ? {

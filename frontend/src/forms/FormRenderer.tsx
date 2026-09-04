@@ -1112,8 +1112,13 @@ export function FormRenderer({
 
       {/* What the record carries without being asked: shown, so nobody wonders
           where it went, and read only, so it cannot contradict what it is read
-          off. It says where it comes from, or a value nobody can change reads
-          as a fault rather than as a rule. */}
+          off. **A label and the value, and nothing else.** Where the value comes
+          from used to be said here in a sentence of its own; both sentences the
+          portal had were on the numbered list the owner read on 31.08.2026 and
+          neither was among the seven he kept, so they went with the rest and the
+          property that carried them went with them (`types.ts`, `DerivedField`,
+          which records that in the past tense this line kept promising in the
+          present until 04.09.2026). */}
       {(derived?.(filled, was) ?? [])
         .filter((one) => one.hidden !== true)
         .map((one) => (
