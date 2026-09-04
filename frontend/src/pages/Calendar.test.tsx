@@ -396,11 +396,23 @@ describe('the row the month is chosen in', () => {
        so this asks what a member can do instead of what the markup carries. Same
        shape as „leads back to the whole inbox" in `memberFlows`. */
     const user = setupUser()
-    renderAt('/sr/kalendar/dan/2027-05-08')
+    const { router } = renderAt('/sr/kalendar/dan/2027-05-08')
 
     await screen.findByRole('heading', { level: 1, name: /8\. maj 2027/ })
     await user.click(within(screen.getByRole('main')).getByRole('link', { name: 'Kalendar' }))
 
+    /* **By the address, and then by the heading.** „A level one heading saying
+       Kalendar" holds nothing on its own: the day is titled with that same word
+       whenever it cannot read its own date (`CalendarDay.tsx`), which is the state
+       `/sr/kalendar/dan/nije-datum` is in four cases above. So a link written to
+       `kalendar/dan/${month}` — one word away from the address the calendar itself
+       writes on a chip — landed on a dead day and the whole gate stayed green
+       (review, 04.09.2026). The address is read off the router the way „leads from
+       a chip to the event" reads it, and for the same reason it was written that
+       way there. */
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr/kalendar')
+    })
     expect(await screen.findByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
   })
 })
