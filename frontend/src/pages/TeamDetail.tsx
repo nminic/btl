@@ -20,6 +20,8 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
+import { teamAdminOf } from '../data/teamAdmin'
+import { useSession } from '../session/useSession'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
 
@@ -39,6 +41,7 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
+  const { memberNumber } = useSession()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
   return (
@@ -93,6 +96,25 @@ export function TeamDetail() {
                 <div className="profile__title rankings--tooled">
                   <h1 className="profile__name">{team.name}</h1>
                   <div className="rankings__head-tool">
+                    {/* The way into the team's own data, and only for whoever
+                        administers it (owner, 04.09.2026: „na strani tog tima za
+                        administratora tima treba da postoje dugmići Izmeni i
+                        Obriši"). Who that is is worked out from the roster rather
+                        than stored, so it follows a founder who leaves
+                        (`data/teamAdmin.ts`).
+
+                        Written against a member number that is really there:
+                        `admin` is null for a team nobody is in, and comparing it
+                        with a visitor's own null would put the button in front of
+                        everybody who is not signed in. */}
+                    {memberNumber !== null && teamAdminOf(team, competitors) === memberNumber && (
+                      <Link
+                        className="button button--secondary"
+                        to={`/${locale}/tim/${team.slug}/izmena`}
+                      >
+                        {t('teams.edit')}
+                      </Link>
+                    )}
                     <SeasonPicker seasons={seasons} season={season} fallback={running} />
                   </div>
                 </div>

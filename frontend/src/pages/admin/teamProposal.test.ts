@@ -117,6 +117,11 @@ describe('why a proposal cannot be taken', () => {
        this list and the second is refused by it (review, 05.09.2026). */
     expect(refusal(whole, [], item(), ['000007'])).toBe('verification.teamMemberHasTeam')
     expect(refusal(whole, [], item(), ['000009'])).toBeNull()
+
+    /* And not of a change: that is sent by the team's own administrator, who has a
+       team by definition — the one being changed. Read over a change, this rule
+       refuses every change there will ever be. */
+    expect(refusal(whole, [], item({ kind: 'teamEdit' }), ['000007'])).toBeNull()
   })
 
   it('is the missing member, where nobody sent it', () => {

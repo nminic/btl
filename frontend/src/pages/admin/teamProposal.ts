@@ -115,7 +115,11 @@ export function refusal(
     return 'verification.teamNoMember'
   }
 
-  if (withTeam.includes(item.memberNumber)) {
+  /* And only of a **new** team. A change is sent by the team's own administrator, who
+     has a team by definition — the one being changed — so this rule read over a change
+     refuses every change there will ever be. Measured 05.09.2026, the moment the two
+     rules first stood in one file. */
+  if (!isChange(item) && withTeam.includes(item.memberNumber)) {
     return 'verification.teamMemberHasTeam'
   }
 
@@ -154,4 +158,32 @@ export function organisers(members: { memberNumber: string; teamId: string | nul
     ...members.flatMap((one) => (one.teamId === null ? [] : [one.memberNumber])),
     ...teams.map((one) => one.organizerMemberNumber),
   ]
+}
+
+/**
+ * Whether a waiting item is a change of a team that already exists.
+ *
+ * The mark rather than the id, because the id answers a different question: an
+ * item filed under a team that has since been deleted still arrived as a change,
+ * and reading `subjectId` would quietly turn it into a proposal for a new team
+ * with the same name (owner, 04.09.2026, one queue and a mark on the item).
+ */
+export function isChange(item: PendingItem): boolean {
+  return item.kind === 'teamEdit'
+}
+
+/**
+ * The addresses a waiting item has to be free of, which is every address but the
+ * one belonging to the team it is about.
+ *
+ * A change that leaves the name alone would otherwise be refused for clashing
+ * with itself, and a moderator would be told the name is taken by the very team
+ * on the card. A proposal is about no team yet, so nothing is taken out of the
+ * list for it, and a change filed under a team nobody can find is read the same
+ * way: it clashes with everything a new team would clash with.
+ */
+export function addressesAgainst(item: PendingItem, teams: Team[], addresses: string[]): string[] {
+  const own = teams.find((one) => one.id === item.subjectId)
+
+  return own === undefined ? addresses : addresses.filter((one) => one !== addressOf(own.name))
 }

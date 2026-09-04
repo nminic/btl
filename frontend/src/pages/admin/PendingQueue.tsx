@@ -27,7 +27,16 @@ import { moveEvent } from './moveEvent'
 import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
 import { EVENTS, idFor, MEMBERS, RACES, recordsOf, TEAMS } from './entityForms'
-import { addressesIn, addressOf, organisers, proposed, refusal, teamFrom } from './teamProposal'
+import {
+  addressesAgainst,
+  addressesIn,
+  addressOf,
+  isChange,
+  organisers,
+  proposed,
+  refusal,
+  teamFrom,
+} from './teamProposal'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
@@ -338,7 +347,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     for (const one of items) {
       const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
-      if (made !== null && refusal(made, addresses, one, inATeam) !== null) {
+      if (
+        made !== null &&
+        refusal(made, addressesAgainst(one, teams, addresses), one, inATeam) !== null
+      ) {
         continue
       }
 
@@ -386,6 +398,30 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       }
 
       if (made === null) {
+        continue
+      }
+
+      /* A change writes into the team it is about; only a proposal makes one
+         (owner, 04.09.2026). The address goes with the name, because that is what
+         the team entity itself derives it from (`entityForms.ts`, TEAMS), so a
+         team renamed here answers where the administration's own form would leave
+         it rather than at the address of its old name.
+
+         What is not written is who administers it: that is worked out from the
+         roster (`data/teamAdmin.ts`), and a change is the administrator's own act
+         so there is nothing to move. */
+      if (isChange(one)) {
+        addresses.push(addressOf(made.name))
+        editRecord(one.subjectId, { ...made, slug: addressOf(made.name) })
+
+        notify({
+          from: t('app.name'),
+          to: one.memberNumber,
+          subject: t('verification.teamChangeAccepted', { name: made.name }),
+          body: t('verification.teamChangeAcceptedBody', { name: made.name }),
+          date: today,
+        })
+
         continue
       }
 
@@ -476,7 +512,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
             queue.id === 'teams'
               ? refusal(
                   teamFrom(one, edits),
-                  addresses,
+                  addressesAgainst(one, teams, addresses),
                   one,
                   organisers(allMembers, teams),
                 )
@@ -606,6 +642,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           <h3 className="pending__subject">
                             {queue.id === 'teams' ? teamFrom(one, edits).name : one.subject}
                           </h3>
+                          {/* And which of the two decisions this is, said on the
+                              card rather than left to be worked out from the name
+                              (owner, 04.09.2026: „uz oznaku šta je šta"). A new
+                              team carries no mark, because a queue called „Novi
+                              timovi" is what it is by default. */}
+                          {isChange(one) && (
+                            <span className="submissions__meta">{t('verification.teamChange')}</span>
+                          )}
                           <span className="submissions__meta">
                             {formatShortDate(one.date, locale)}
                           </span>

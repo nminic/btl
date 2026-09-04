@@ -150,6 +150,9 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: 'kalendar/:slug/prijava', seoKey: 'reportResult' },
   { path: 'kalendar/:slug/ocena', seoKey: 'rateEvent' },
   { path: 'kalendar/:slug', seoKey: 'event' },
+  /* Before the team's own address, as the report of a result stands before the
+     event's: the longer address is the more particular one. */
+  { path: 'tim/:slug/izmena', seoKey: 'editTeam' },
   { path: 'tim/:slug', seoKey: 'team' },
   { path: 'liga/:slug', seoKey: 'league' },
   { path: 'liga/:slug/rezultati', seoKey: 'leagueResults' },
