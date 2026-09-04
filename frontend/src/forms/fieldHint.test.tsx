@@ -81,7 +81,15 @@ describe('the rules that were kept', () => {
 
   it('are never written into a screen by hand, whatever they are named', () => {
     /* Which is the half the sweep above could not see, and the reason three rules
-       outlived the fifty four. It counts `hintKey`, and a rule written straight
+       outlived it.
+
+       **Without a number**, because the one that stood here, „fifty four", matched no
+       reading of the list: by occurrences it was fifty two and by distinct keys fifty,
+       and today, with the definitions grown, it is neither of those either (review,
+       31.08.2026). A count written into prose is a fact with a second home that nobody
+       updates; the sweep above counts, and this says what it cannot see.
+
+       It counts `hintKey`, and a rule written straight
        into a screen carries no such thing: the box for a biography had one in a
        `<p>` of its own, and the chooser for a picture took one as a prop, so both
        stood on the portal while a test said seven and meant seven **of one kind**.
