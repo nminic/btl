@@ -97,10 +97,27 @@ export function wayBackIsPlaced(heading: Element): string[] {
 
   return [...main.querySelectorAll('.page__back')].flatMap((back) => {
     const after = heading.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING
+
+    /* Its own children do not count as what follows it. `compareDocumentPosition`
+       sets `FOLLOWING` for a descendant as well as for a sibling, so a `p` carrying
+       the mark and holding the link answered „something follows me" with the link
+       inside it. The half of this that measures „over the content" was then satisfied
+       by itself on three of the four pages, which is the same shape as the wrapper
+       that satisfied the heading question a round earlier (review, 04.09.2026). */
     const followed = [...main.querySelectorAll('p, li, table, a[href], button, input, img')].some(
-      (one) => (back.compareDocumentPosition(one) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      (one) =>
+        !back.contains(one) &&
+        (back.compareDocumentPosition(one) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
     )
 
+    /* **What this cannot say: whether the link sits in the row of the heading.** The
+       decision of 04.09.2026 forbids that („ne ide u red naslova… među dugmadima za
+       radnje se čita pogrešno"), and a draft of this asked for it by refusing a link
+       inside the heading's own parent. Measured, that refused the pages it was written
+       to protect: the parent of a heading is a row of controls on one screen and the
+       whole block of the page on three others, and the two cannot be told apart from
+       the tree. A row is geometry, jsdom lays nothing out (ADL A33), so this is
+       measured in a real browser and written down there, not guessed here. */
     return [
       ...(after === 0 ? ['stoji iznad naslova'] : []),
       ...(followed ? [] : ['stoji ispod svega, pa se do njega mora proskrolovati']),
