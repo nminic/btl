@@ -140,7 +140,16 @@ describe('the rules that were kept', () => {
     expect(swept.length).toBeGreaterThan(WHOLE_PORTAL)
     expect(swept.some(({ path }) => path.endsWith(inside('member', 'ProfileBio.tsx')))).toBe(true)
 
-    const banned = new RegExp(`\\bt\\(\\s*'([A-Za-z0-9_.]*[Rr]ule|${KEPT.map(asWritten).join('|')})'`, 'g')
+    /* Either quotation mark, because nothing in the repository imposes one. The
+       first draft read only single quotes, and the sentence above promised „under
+       any name they have had“ while a rule written `t("registration.bioHint")` was
+       invisible to it (review, 31.08.2026). oxlint's `quotes` rule is not switched on
+       here, so the habit of the codebase is the only thing keeping the other mark out,
+       and a habit is not a gate. */
+    const banned = new RegExp(
+      `\\bt\\(\\s*['"]([A-Za-z0-9_.]*[Rr]ule|${KEPT.map(asWritten).join('|')})['"]`,
+      'g',
+    )
     const byHand = swept.flatMap(({ path, code }) =>
       [...bare(code).matchAll(banned)].map((one) => `${path}: ${String(one[1])}`),
     )

@@ -148,12 +148,6 @@
   font-size: 0.85rem;
 }
 
-.field__hint {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
 /* How much room is left in a box that has a limit. Under the box and at its
    right, where the eye already is when the typing stops. */
 .field__left {
