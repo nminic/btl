@@ -77,7 +77,7 @@ export function CalendarDay() {
           a control before learning which page they were on (WCAG 2.2, 1.3.1 and
           2.4.6; owner, 04.09.2026). Kept a link and not dressed as a button, because
           it is a way out and not an action. */}
-      <p className="calendar__back page__back">
+      <p className="calendar__back">
         <Link to={month === null ? `/${locale}/kalendar` : `/${locale}/kalendar?mesec=${month}`}>
           {t('calendar.title')}
         </Link>

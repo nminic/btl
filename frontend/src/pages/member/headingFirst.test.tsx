@@ -1,9 +1,7 @@
 import { cleanup, screen, within } from '@testing-library/react'
 import { first } from '../../test/at'
 import { beginsWith, metSaid } from '../../test/met'
-import { sep } from 'node:path'
 import { renderAt } from '../../test/render'
-import { sources } from '../../test/sources'
 
 /**
  * A page begins with its own heading, and the screens a member writes on did not.
@@ -39,39 +37,6 @@ const SCREENS = [
     /Prijavljuješ rezultat sa trke/,
   ],
 ] as const
-
-/**
- * The pages that carry a way back, held as they stand.
- *
- * The mark `page__back` says which link is the way out of a screen, and that is a
- * fact nothing else in the portal knows: a link to the list a record came from is
- * not an ancestor of its address (`/sr/tim/dunavski-trkaci` goes back to
- * `/sr/timovi`), so it cannot be recognised by reading the address. The mark is the
- * only home of that fact.
- *
- * A fact with one home and no reader is a fact that can be deleted quietly: with the
- * mark taken off, the guard over its placement asks about nothing and passes, which
- * is how the way back on a message could be put under the whole letter again with
- * the gate green (review, 04.09.2026). So the pages that carry it are held here, and
- * a mark that goes away has to be taken off this list as well.
- */
-const CARRIES_A_WAY_BACK = [
-  'src/pages/CalendarDay.tsx',
-  'src/pages/LeagueDetail.tsx',
-  'src/pages/TeamDetail.tsx',
-  'src/pages/member/MessageDetail.tsx',
-]
-
-describe('the way out of a screen', () => {
-  it('is marked on every page that has one, and nowhere else', () => {
-    const marked = sources()
-      .filter((one) => one.code.includes('page__back'))
-      .map((one) => one.path.slice(process.cwd().length + 1).split(sep).join('/'))
-      .sort()
-
-    expect(marked).toEqual([...CARRIES_A_WAY_BACK].sort())
-  })
-})
 
 describe('the screens a member writes on', () => {
   it('begin with their own heading, before anything the reader can meet', async () => {

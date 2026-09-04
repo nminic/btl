@@ -45,7 +45,7 @@
     "profile__count",
     "profile__empty",
     "profile__head",
-    "profile__meta page__back",
+    "profile__meta",
     "profile__section",
     "profile__text",
     "react",

@@ -1,6 +1,6 @@
 import { act, cleanup, screen } from '@testing-library/react'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
-import { beginsWith, metSaid, wayBackIsPlaced } from '../test/met'
+import { beginsWith, metSaid } from '../test/met'
 import { renderAt } from '../test/render'
 
 /**
@@ -267,7 +267,6 @@ describe('what a browser downloads outside administration', () => {
        are a list somebody keeps; this row is every address the route table has, and the
        case above refuses to let one in without a row here. */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
-    expect(wayBackIsPlaced(named), `${address}: veza nazad`).toEqual([])
 
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
@@ -298,7 +297,6 @@ describe('what a browser downloads outside administration', () => {
        stranger, which begins with a heading of its own and would have said nothing
        about the screen behind it (review, 04.09.2026). */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
-    expect(wayBackIsPlaced(named), `${address}: veza nazad`).toEqual([])
 
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])

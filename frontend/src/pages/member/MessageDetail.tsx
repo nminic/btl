@@ -64,7 +64,7 @@ export function MessageDetail() {
           to the pigeonhole, where the way out had been the first thing on the screen
           (review, 04.09.2026). So it follows the heading and the line that belongs to
           it, and precedes what the member came to read. */}
-      <Link className="member__back page__back" to={`/${locale}/poruke`}>
+      <Link className="member__back" to={`/${locale}/poruke`}>
         {t('shell.allMessages')}
       </Link>
 

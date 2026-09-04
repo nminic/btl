@@ -153,7 +153,7 @@ export function LeagueDetail({ part = 'rules' }: { part?: 'results' | 'rules' } 
                     keep it a link rather than dress it as a button: it is a way out, not an
                     action). `EventDetail` has always had its heading first inside this same
                     header, so this is that shape and not a new one. */}
-                <p className="profile__meta page__back">
+                <p className="profile__meta">
                   <Link to={`/${locale}/lige`}>{t('leagues.backToLeagues')}</Link>
                 </p>
                 {/* Nothing under the name (owner, 31.07.2026). The season is in
