@@ -115,9 +115,13 @@ describe('the address of the president', () => {
        be corrected by the person whose text it is.
 
        **In the application**, which is what the reason above is about: a folder called
-       `test` under `src` holds fixtures and helpers, nothing there ships, and the
-       portal's own sweep leaves such a folder out for the same reason
-       (`test/sources.ts`). Since
+       `test` under `src` holds fixtures and helpers, **nothing there ships today**, and
+       the portal's own sweep leaves such a folder out for the same reason
+       (`test/sources.ts`). „Today" is not a hedge: that sweep writes down the same cost
+       in its own words, that a production screen at `pages/test/Something.tsx` would be
+       outside every sweep built on this, and that nothing sits in such a folder now. A
+       sentence of this file that read it as a rule dropped exactly that half (review,
+       31.08.2026). Since
        31.08.2026 one of those fixtures is a snapshot of every written page, held so
        that a sentence the owner settled cannot drift; a copy that only a test reads
        cannot reach a screen and cannot stop him correcting his own words. Measured
@@ -128,8 +132,10 @@ describe('the address of the president', () => {
       /* Asked of the path **below** `src`, not of the whole of it: written over the
          absolute path, a checkout into any folder that happens to be called `test`
          emptied the sweep and this passed over nothing at all (review, 31.08.2026).
-         The portal's own sweep learned the same thing on 28.08.2026 and its comment
-         says so. */
+         The portal's own sweep carries the same lesson, in the paragraph „Tests are
+         excluded by folder and by suffix, never by the whole path"; that paragraph is
+         undated, and the date this line used to carry, 28.08.2026, belongs to the one
+         above it, about a folder at any depth (review, 31.08.2026). */
       .filter((path) => !path.slice(src.length).split(sep).includes('test'))
       .filter((path) => readFileSync(path, 'utf-8').includes(needle))
 

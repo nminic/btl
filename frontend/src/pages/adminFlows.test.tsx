@@ -1330,10 +1330,16 @@ describe('the queue of results', () => {
   it('holds every box it writes to a rule, and would notice one that stopped being paired', () => {
     /* The panel pairs each box with the definition that owns it by filtering, so a
        field renamed in a definition quietly leaves the list and its box stops being
-       checked at all. Measured: with `seconds` dropped from the pairing, the panel
-       took 999 seconds and the whole suite stayed green (review, 31.08.2026).
-       Counted here rather than trusted, since the code itself has nowhere to put a
-       complaint that no case could reach. */
+       checked at all. That was measured with nothing at all holding it: `seconds`
+       dropped from the pairing, the panel took 999 seconds, and the suite stayed
+       green (review, 31.08.2026).
+
+       **It does not stay green now, and this case is no longer the only reason.**
+       The same commit that wrote this one gave the panel a case of its own („takes
+       only what the member's own form would have taken"), and that case reaches the
+       screen: the same mutation fails both, 2 of 2449 (measured 04.09.2026). What
+       this one still buys is the name of the fault — a count that says which box
+       left the list, instead of a refusal that stopped arriving. */
     expect(ASKED.map((one) => one.name).sort()).toEqual([
       'eventName',
       'hours',
@@ -1581,8 +1587,10 @@ describe('the queue of results', () => {
 
     try {
       /* Five, of which the sweep settles three and leaves two: the same number on
-         both sides could not tell which of the two the line is counting, and the
-         gate below reads the other one. */
+         both sides could not tell which of the two the line is counting. The other
+         one is read by „says what it did, with the number it really settled", which
+         asks for „Rešen… 3 stavk" further down this file — named rather than
+         pointed at, so „below" does not have to stay true as cases move. */
       const { user } = openWith(['pending', 'pending', 'pending', 'pending', 'pending'], {}, [1, 2])
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
@@ -1594,11 +1602,17 @@ describe('the queue of results', () => {
   })
 
   it('says nothing about what is left when the sweep left nothing', async () => {
-    /* The gate on that line, which had no case in either direction: its mirror
-       turned round it read „Ostalo je 0 prijava sa trka kojih nema u kalendaru"
-       under a sweep that emptied the queue (measured in review, 31.08.2026), which
-       is the very „0" the line above exists to keep off the screen. The predicate
-       is written by hand six times in that file and this is the sixth. */
+    /* The gate on that line, in the one direction nothing was holding. Tightened,
+       it already had two cases: `some` written as `every` fails „marks a race the
+       calendar does not hold" and the case just above this one. Loosened — the
+       mirror turned round — it had none, and read „Ostalo je 0 prijava sa trka
+       kojih nema u kalendaru" under a sweep that emptied the queue, which is the
+       very „0" the line above exists to keep off the screen. Both halves measured
+       by mutation, 04.09.2026; the sentence here said „no case in either
+       direction" until then and the tightening half of that was untrue.
+
+       The predicate is written by hand six times in that file and this is the
+       sixth. */
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     try {
@@ -1610,6 +1624,23 @@ describe('the queue of results', () => {
     } finally {
       confirm.mockRestore()
     }
+  })
+
+  it('explains nothing about a sweep before anybody has swept', () => {
+    /* The other half of that gate, `swept !== null`, which had no case of its own:
+       taken out, the queue says „Ostala je 1 prijava sa trka kojih nema u kalendaru"
+       to somebody who has not pressed anything, explaining a sweep that never
+       happened, and the whole suite stayed green (review, 31.08.2026).
+
+       Two submissions and one of them asking for a race, so the count the line would
+       print is 1 and not 0: with nothing to leave behind, the other half of the gate
+       would hide it anyway and this would pass with both halves gone. */
+    openWith(['pending', 'pending'], {}, [1])
+
+    expect(screen.queryByText(/^Ostal/)).toBeNull()
+    /* And the sweep is offered, so what is absent is the explanation and not the
+       whole row of controls. */
+    expect(screen.getByRole('button', { name: 'Odobri sve' })).toBeVisible()
   })
 
   it('makes the event and the race before it approves one the calendar does not hold', async () => {

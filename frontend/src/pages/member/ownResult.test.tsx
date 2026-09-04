@@ -1234,19 +1234,14 @@ describe('a result that has been counted', () => {
 
       expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
 
-      /* And what it wrote, which is the half this case exists for. Empty, and
-         never the word „undefined": the form for correcting a counted result has
-         no box for either, so reading one out of its values gives nothing at all
-         and `String(nothing)` writes that word into the record and back into the
-         next form somebody opens (measured in review, 30.08.2026). */
+      /* And what it wrote, which is the half this case exists for: three empty
+         answers, and above all never the word „undefined". The form for correcting a
+         counted result has no box for either, so reading one out of its values gives
+         nothing at all, and `String(nothing)` writes that word into the record and
+         back into the next form somebody opens (measured in review, 30.08.2026). */
       const [written] = within(screen.getByRole('list', { name: 'store' })).getAllByRole('listitem')
       const said = within(must(written, 'the correction')).getByTestId(/^said-/)
 
-      /* Three empty answers, and above all not the word „undefined": the form
-         for correcting a counted result has no box for either, so reading one
-         out of its values gives nothing at all, and `String(nothing)` writes that
-         word into the record and back into the next form somebody opens
-         (measured in review, 30.08.2026). */
       expect(said.textContent).toBe(' /  / ')
     } finally {
       vi.unstubAllGlobals()

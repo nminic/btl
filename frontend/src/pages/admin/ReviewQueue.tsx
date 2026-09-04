@@ -173,12 +173,20 @@ export function ReviewQueue() {
             it sweeps is what says whether it is there at all.
 
             The predicate and its mirror are written by hand **six** times in this
-            file, and the count said four for one round while one of the six had no
-            case at all in either direction: the gate under the sweep, whose mirror
-            turned round put „Ostalo je 0 prijava" back on the screen. All six are
-            measured now. One home for it would be better and is not worth a helper
-            read six times in one file, so what holds them together is that each one
-            falls on its own. */}
+            file, and the count said four for one round. The gate under the sweep is
+            the one that was measured through: **both halves and both directions**, on
+            04.09.2026. Its mirror turned round said „Ostalo je 0 prijava" after a
+            sweep that had emptied the queue, which is the very nought the line exists
+            to keep off the screen; `swept !== null` taken out explained a sweep to
+            somebody who had pressed nothing; and `some` written as `every` fails two
+            older cases. Four cases in `adminFlows` fall on those three mutations, each
+            on its own.
+
+            **What is not claimed here**, because it is not measured: that the other
+            five do the same. This sentence read „All six are measured now" until
+            04.09.2026, which is a closed gate promised rather than shown. One home for
+            the predicate would be better and is not worth a helper read six times in
+            one file. */}
         {waiting.some((one) => one.raceId !== undefined) && (
           <button
             type="button"
@@ -605,7 +613,19 @@ export function ReviewQueue() {
 
           {/* And why it will not go, said rather than left to be guessed. Told off
               rather than switched off, as everywhere else here: `disabled` takes
-              the button out of the tab order and takes this line with it. */}
+              the button out of the tab order and takes this line with it.
+
+              **The box before the sum, and that order is the point.** `noTime` asks
+              whether the three boxes come to more than nought, so a box holding a
+              minus or a word answers it exactly as three empty boxes do — the sum
+              is negative or `NaN`, and neither is greater than nought. „Unesite
+              vreme" over a box saying `-5` therefore names a problem nobody has and
+              hides the one they do. The box
+              error says which box and in the words the member's own form uses; the
+              sum is what is left when every box is answerable. This paragraph is
+              the only record of that order and was deleted once with the sentence
+              it stood beside (review, 31.08.2026), which is how a later reader
+              comes to swap the two. */}
           {amendWaits && (
             <p className="field__error" id="amend-waits">
               {wrong === null

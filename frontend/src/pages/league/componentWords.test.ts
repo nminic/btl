@@ -66,22 +66,24 @@ function wordsIn(path: string): string[] {
 }
 
 /**
- * Every word the dictionary is asked for from a competition screen, held as it stands.
+ * Every word the dictionary knows, held as it stands.
  *
- * **Why computed and not chosen.** Four rounds of review in a row found the same thing:
- * a key drawn on one of these screens that no held branch covered. `rankings`, then
- * `pager.leagueStanding`, then `data.error` — each was closed by adding the branch it
- * happened to be in, and the next round found the next branch. Choosing branches is
- * guessing, and the guess was wrong four times.
+ * **Why the whole file and not a chosen set.** Five rounds of review in a row found the
+ * same thing: a word the portal says that the guard did not hold. First a branch nobody
+ * had chosen (`rankings`, then `pager`, then `data`); then a frame that draws around a
+ * screen and so is never imported by it; then a key that lives as **data** rather than
+ * as a call, in the form definitions and in the rights, and the title of an editor,
+ * which is built out of pieces and cannot be read off a call site at all.
  *
- * So the set is not chosen. Every file a competition screen reaches is followed through
- * its imports, every key those files ask `t` for is collected, and the words behind those
- * keys are held. A key that reaches one of these screens cannot be outside it, because
- * reaching the screen is what puts it in.
+ * Every one of those was closed by collecting a little more, and the next round found
+ * what the collecting still missed. **Collecting was the mistake.** What the portal can
+ * say is not a set to be computed; it is a file, and the file is held.
  *
- * A key built out of pieces at run time is not seen here, and neither is one asked for
- * with anything but a literal; those are held instead by the screens themselves, which
- * draw whatever the pieces come to.
+ * An earlier version of this paragraph described the collecting — following imports and
+ * gathering the keys those files ask `t` for — and that machinery was deleted in the
+ * same commit that wrote the comparison below (review, 01.09.2026). A comment that
+ * describes a mechanism the file no longer has is a reader's instruction to look for
+ * something that is not there.
  */
 describe('the words the competition screens are written with', () => {
   it('says nothing a competition could be ranked by, in any branch drawn or not', () => {

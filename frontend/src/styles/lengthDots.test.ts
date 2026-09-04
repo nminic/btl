@@ -34,13 +34,22 @@ import { DOTS } from '../data/types'
  * **What is deliberately not here: the width of the row of dots.** A day may
  * hold five dots and the gap before them and no more, the sixth broke that on
  * 30.08.2026, and the row now wraps under a ceiling of five dots and four gaps
- * (`pages/Calendar.css`). Five drafts of a check over that ceiling were written
- * and every one of them was measured passing on the fault it was written for, or
- * failing on a change with no effect at all: the sheet read whole, then a rule
- * cut at the first brace, then the text of `gap`, then its last word, then the
- * name it is declared under. The last of those failed when `--dot-gap` moved to
- * `:root`, which a browser cannot tell apart to the hundredth of a pixel, and
- * passed when a `gap` written in a media query broke the row into two lines.
+ * (`pages/Calendar.css`). Draft after draft of a check over that ceiling was
+ * written, and every one was measured passing on the fault it was written for or
+ * failing on a change with no effect at all. **What the commits show them reading,
+ * in order:** the sheet whole, with the value worked out by hand; a rule cut at the
+ * first brace (`bfbb2c9`); jsdom's own parser, without reading the gap at all
+ * (`d8a3665`); the gap counted out of two tokens (`aeb820e`); and the name the gap
+ * is declared under (`2a560a6`). The check went altogether at `3f30613`. The last
+ * of the readings failed when `--dot-gap` moved to `:root`, which a browser cannot
+ * tell apart to the hundredth of a pixel, and passed when a `gap` written in a
+ * media query broke the row into two lines.
+ *
+ * An earlier version of this paragraph named „its last word", a reading of the
+ * shorthand's final token that no commit carries, and it also missed the reading that
+ * asked jsdom's own parser and never looked at the gap. **The count of five was right
+ * and stayed five**; two of the five items were wrong, and what is written above is
+ * now read off the commits rather than out of memory (review, 31.08. and 04.09.2026).
  *
  * They were all the same mistake. A width is geometry, jsdom lays nothing out
  * (ADL A33), and every reading of the sheet is a stand-in that a cascade beats:

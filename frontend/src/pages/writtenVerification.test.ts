@@ -63,8 +63,17 @@ const ABOUT_WAITING = BODIES.filter(({ body }) => /neverifikovan/i.test(body))
 /** Every passage where somebody in the league corrects one. Both pages say
  *  „Administracija sme da ispravi"; until 31.08.2026 the terms said „Administrator",
  *  one rule in two voices, and a filter written on the whole phrase saw one home where
- *  there are two. Matched on the part that does not change with the voice. */
-const ABOUT_CORRECTING = BODIES.filter(({ body }) => /sme da ispravi/i.test(body))
+ *  there are two.
+ *
+ *  **Matched on what is being corrected, not on the verb.** „Sme" is itself a word
+ *  these sentences have been rewritten around: a third home saying „može da ispravi"
+ *  would be invisible, and the privacy policy's „sme da ispravi netačne podatke o
+ *  sebi" is a member correcting their own record, which is another rule entirely and
+ *  would have been counted here (review, 30.08.2026). Both are absent from today's
+ *  text, so this changes nothing that can be measured now; it changes what the filter
+ *  will do to the next sentence somebody writes. The precedent is `writtenAges.test.ts`,
+ *  which filters by the subject of a rule for the same reason. */
+const ABOUT_CORRECTING = BODIES.filter(({ body }) => /da ispravi činjenične podatke/i.test(body))
 
 /** Where a list of passages stands, page and section both. Counted by page alone until
  *  31.08.2026, and a second passage on a page already counted was then nobody's
