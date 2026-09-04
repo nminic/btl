@@ -19,6 +19,16 @@ import { renderAt } from '../../test/render'
 const SCREENS = [
   ['/sr/novi-tim', 'Predlog tima', /Tim postoji tek kad ga odobri/],
   ['/sr/rezultat/novi', 'Unos rezultata', /Rezultat ulazi u rang liste tek kad/],
+  /* The third screen of the same shape, and the one this file first claimed did not
+     exist. Found in review 04.09.2026, after the other two were closed: the note
+     naming the race stood over the heading „Prijava rezultata" exactly as the other
+     two had. Counting the screens by reading them, rather than by remembering which
+     ones were reported, is what this row costs. */
+  [
+    '/sr/kalendar/maraton-maratona-2015/prijava?trka=evt-maraton-maratona-2015-03-14-4400',
+    'Prijava rezultata',
+    /Prijavljuješ rezultat sa trke/,
+  ],
 ] as const
 
 /**
@@ -31,7 +41,14 @@ const SCREENS = [
 function metInOrder(): Element[] {
   const main = screen.getByRole('main')
 
-  return [...main.querySelectorAll('h1, h2, h3, p, input, textarea, select, button')]
+  /* Links among them, and images, and list items. The first draft asked only for
+     headings, prose and form controls, so a link drawn over the heading passed:
+     „Nazad na timove" put above the form left the page beginning with a link and
+     the guard said nothing, which is the very fault this file exists for
+     (review, 04.09.2026). */
+  return [
+    ...main.querySelectorAll('h1, h2, h3, h4, p, a, img, li, table, input, textarea, select, button'),
+  ]
 }
 
 describe('the screens a member writes on', () => {
@@ -48,13 +65,15 @@ describe('the screens a member writes on', () => {
     }
   })
 
-  it('say what they explain under that heading, not above it', async () => {
-    /* The note is still there and still first among the words: what moved is
-       whether it stands over the heading or under it. Without this, the heading
-       could be made first by deleting everything that used to precede it, and the
-       first draft of this file measured exactly that: the note taken off the
-       screen for a competition's result passed, because a page that says nothing
-       begins with its heading too (measured 04.09.2026). */
+  it('say what they explain between that heading and the first field', async () => {
+    /* Under the heading **and over the fields**, which is two edges and not one.
+
+       Measured against the first draft of this file, which asked only for the first
+       edge: the note taken off the screen entirely passed, because a page that says
+       nothing begins with its heading too (04.09.2026); and the note moved into
+       `beneath` passed as well, though it then stood at the very bottom, over the
+       button and under every field, so a member read what happens to their result
+       only after filling the whole form in (review, 04.09.2026). */
     for (const [route, name, note] of SCREENS) {
       cleanup()
       renderAt(route, 'competitor', '000007')
@@ -62,10 +81,15 @@ describe('the screens a member writes on', () => {
       const main = screen.getByRole('main')
       const said = await within(main).findByText(note)
       const heading = screen.getByRole('heading', { level: 1, name })
+      const field = first([...main.querySelectorAll('input, textarea, select')])
 
       expect(
         heading.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING,
         `${route} says what it explains under its heading`,
+      ).toBeGreaterThan(0)
+      expect(
+        said.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `${route} says it before the first field, not after the last`,
       ).toBeGreaterThan(0)
     }
   })
