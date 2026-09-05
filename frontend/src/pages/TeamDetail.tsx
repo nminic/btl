@@ -1,5 +1,5 @@
 import { categoryLabel } from '../data/categories'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
@@ -22,6 +22,7 @@ import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
+import { DeleteRecord } from './admin/EntityEditor'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import './Profile.css'
@@ -43,7 +44,8 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  const { memberNumber } = useSession()
+  const { memberNumber, remove, editRecord } = useSession()
+  const navigate = useNavigate()
   const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
@@ -124,12 +126,44 @@ export function TeamDetail() {
                         with a visitor's own null would put the button in front of
                         everybody who is not signed in. */}
                     {memberNumber !== null && teamAdminOf(team, listedMembers) === memberNumber && (
-                      <Link
-                        className="button button--secondary"
-                        to={`/${locale}/tim/${team.slug}/izmena`}
-                      >
-                        {t('teams.edit')}
-                      </Link>
+                      <>
+                        <Link
+                          className="button button--secondary"
+                          to={`/${locale}/tim/${team.slug}/izmena`}
+                        >
+                          {t('teams.edit')}
+                        </Link>
+                        {/* Asked twice before it happens, and asked by the portal's one
+                            way of asking about something nothing brings back
+                            (`DeleteRecord`), dressed as the button beside it. Not a
+                            dialog written here: all three of its controls carry the name
+                            of what is being deleted, so a reader who arrives at the
+                            question „delete what" is answered without going back up the
+                            page, and that was got right once already. */}
+                        <DeleteRecord
+                          name={team.name}
+                          look="button button--secondary"
+                          onDelete={() => {
+                            /* The team goes, and with it its points in the standing:
+                               there is no standing without a record, so the owner's „pa
+                               se tim briše kao i bodovi iz tabele za tu sezonu" is one
+                               act and not two. The frozen seasons are untouched, because
+                               nothing here writes a result (PDL, 04.09.2026).
+
+                               And the people in it are left without a team rather than
+                               left pointing at one that is gone. Written as an empty
+                               string because the session keeps values as text and cannot
+                               hold a `null`; `teamOf` is the one reading that knows the
+                               two mean the same thing. */
+                            for (const one of everMembers) {
+                              editRecord(one.memberNumber, { teamId: '' })
+                            }
+
+                            remove(TEAMS.id, team.id)
+                            void navigate(`/${locale}/timovi`)
+                          }}
+                        />
+                      </>
                     )}
                     <SeasonPicker seasons={seasons} season={season} fallback={running} />
                   </div>

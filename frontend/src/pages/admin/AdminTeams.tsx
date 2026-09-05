@@ -7,8 +7,9 @@ import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { addressesIn, nameError } from './teamProposal'
 import { EditableCell } from './EditableCell'
+import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { recordsOf, TEAMS, type Editing } from './entityForms'
+import { MEMBERS, recordsOf, TEAMS, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
@@ -18,15 +19,31 @@ import '../member/Member.css'
 
 /** Who can run a team: any registered member, which makes this a closed list
  *  whose contents are data rather than a fixed set (PDL P13). */
-function organizerOptions(competitors: Competitor[]): FieldOption[] {
-  return competitors.map((one) => ({
+function organizerOptions(competitors: Competitor[], held: string): FieldOption[] {
+  const offered = competitors.map((one) => ({
     value: one.memberNumber,
     labelKey: `${one.firstName} ${one.lastName} (${one.memberNumber})`,
   }))
+
+  /**
+   * And whoever the record already names, even when they are no longer among them.
+   *
+   * **A control cannot hold a value it does not offer.** A `<select>` whose value names
+   * no option leaves the first one showing, so a team whose organiser administration had
+   * deleted drew somebody who had never run it, while the record went on holding the
+   * number that was there and saving it back. One screen said three things about one
+   * fact, and the middle one was the only one nobody could see was wrong (review,
+   * 05.09.2026). Kept here rather than mended in the renderer, because what a record may
+   * still name is a fact about this screen's data.
+   */
+  return offered.some((one) => one.value === held) || held === ''
+    ? offered
+    : [...offered, { value: held, labelKey: held }]
 }
 
 export function AdminTeams() {
   const { locale, t } = useI18n()
+  const { editRecord } = useSession()
   const overlay = useOverlay()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = combinePair(useTeams(), useCompetitors())
@@ -41,13 +58,31 @@ export function AdminTeams() {
       <Resource state={state}>
         {([teams, competitors]) => {
           const rows = recordsOf(TEAMS, teams, overlay)
+          /* **Through the same layer as the teams beside them**, because who is in a
+             team is written into the session by an approval and nowhere else until a
+             database exists (`PendingQueue.tsx`). Read from the file, the deletion below
+             took an empty roster with it and left the founder of a team approved this
+             visit holding an address that answers nothing: the portal went on refusing
+             them a new team while their profile showed no club (review, 05.09.2026).
+             `AdminEvents.tsx` has read its races this way since the day it learned to
+             take them along. */
+          const listed = recordsOf(MEMBERS, competitors, overlay)
 
           if (editing !== null) {
             return (
               <EntityEditor
                 entity={TEAMS}
                 editing={editing}
-                options={{ organizerMemberNumber: organizerOptions(competitors) }}
+                /* Off the same list the rows beside it read, and never without the one
+                   the record already names. Left on the file while the row moved to the
+                   session, one screen said two things about one fact; moved to the
+                   session alone, it said three (review, 05.09.2026, twice). */
+                options={{
+                  organizerMemberNumber: organizerOptions(
+                    listed,
+                    editing.mode === 'one' ? String(editing.record.organizerMemberNumber) : '',
+                  ),
+                }}
                 /* A name already taken is refused (PDL P13), and refused by the
                    address it makes rather than by the letters: the address is
                    read off the name (entityForms.ts) and `slugify` is not one
@@ -98,8 +133,8 @@ export function AdminTeams() {
                   </thead>
                   <tbody>
                     {rows.map((team) => {
-                      const members = competitors.filter((one) => one.teamId === team.id)
-                      const organizer = competitors.find(
+                      const members = listed.filter((one) => one.teamId === team.id)
+                      const organizer = listed.find(
                         (one) => one.memberNumber === team.organizerMemberNumber,
                       )
 
@@ -133,6 +168,22 @@ export function AdminTeams() {
                               record={team}
                               name={team.name}
                               onOpen={() => setEditing({ mode: 'one', record: team })}
+                              /* What goes with the team: the people in it, who are
+                                 left without one rather than pointing at a record
+                                 that is gone. Two buttons that delete one thing
+                                 must not delete two different amounts of it, and
+                                 the button a member has on the team's own page has
+                                 done this since 05.09.2026. Left undone here, a
+                                 member kept a team nobody could open: the portal
+                                 went on refusing them a new one and their profile
+                                 showed no club, because `teams.find` answered
+                                 nothing while `teamId` still named a team (review,
+                                 05.09.2026). */
+                              alsoRemove={() => {
+                                for (const one of members) {
+                                  editRecord(one.memberNumber, { teamId: '' })
+                                }
+                              }}
                             />
                           </td>
                         </tr>

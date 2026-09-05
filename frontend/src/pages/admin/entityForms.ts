@@ -344,9 +344,11 @@ export const TEAMS: EntityDef = {
    * approved today was not on `/tim/…` whatever its address said (PENDING, R7). The
    * team's own page reads it now, because the two things it draws — who administers
    * the team and who is in it — are one fact and were being read from two places at
-   * once (review, 05.09.2026). The standing of the teams still reads the file, so a
-   * team approved today is on its own page and not yet in the table; that half is
-   * still R7 and goes with the database.
+   * once (review, 05.09.2026). **And the standing of the teams reads it too**, since
+   * the day „Obriši tim" was written: the owner asked that deleting a team take its
+   * points out of the table, and a table reading the file went on drawing the deleted
+   * team with them. R7 is what it says about the other public screens, which do still
+   * read the file and go with the database.
    */
   derived: (values) => [
     {
