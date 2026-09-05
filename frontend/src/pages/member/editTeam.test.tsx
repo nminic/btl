@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 
 /* A team changed by the member who administers it, and decided on like a new one.
@@ -22,6 +23,37 @@ describe('the way to change a team', () => {
     expect(change).toBeVisible()
     expect(change).toHaveAttribute('href', '/sr/tim/dunavski-trkaci/izmena')
   })
+
+  it('follows the administrator a moderator names, and leaves the one they replaced', async () => {
+    /* PDL, 04.09.2026: „Moderator ili administrator sme da dodeli drugog" kad je to
+       mesto prazno, i to je upis u `organizerMemberNumber` na samom timu. Taj upis
+       živi u sloju sesije, kao i sve što administracija promeni; pročitan sa fajla,
+       ekran je i dalje davao „Izmeni" članu koga je moderator upravo zamenio, a
+       njegova odobrena izmena se upisivala u zapis tima (review, 05.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/timovi', 'superadmin', '000001')
+
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      listed.getAllByRole('row').find((one) => /Dunavski trkači/.test(one.textContent ?? '')),
+      'the row of the team being handed over',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
+    await user.selectOptions(await screen.findByLabelText(/Organizator tima/), '000007')
+    await user.click(screen.getByRole('button', { name: /Sačuvaj/ }))
+
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })
+
+    expect(screen.queryByRole('link', { name: 'Izmeni' })).toBeNull()
+
+    await router.navigate('/sr/tim/dunavski-trkaci/izmena')
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+  }, SLOW)
 
   it('is not offered to another member of the same team', async () => {
     /* 000007 runs for Dunav and did not found it. The button is about who may
@@ -163,7 +195,11 @@ describe('a change waiting on the queue of teams', () => {
     const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
     const card = within(must(heading.closest('li'), 'the card the heading stands in'))
 
-    expect(card.getByText('Izmena postojećeg tima')).toBeVisible()
+    /* And **which** team, by the name it carries now. „Izmena postojećeg tima" alone
+       left the moderator to guess: a change of name puts the new one in the heading
+       and the old one nowhere on the card, so the decision was taken blind (review,
+       05.09.2026). */
+    expect(card.getByText('Izmena tima „Dunavski trkači“')).toBeVisible()
     /* And the reason a moderator reads carries the new town, which is the thing
        being decided about. */
     expect(card.getByText(/Sremski Karlovci/)).toBeVisible()
@@ -194,6 +230,66 @@ describe('a change waiting on the queue of teams', () => {
       'true',
     )
   })
+
+  it('reaches the member as a change turned down, not as a proposal turned down', async () => {
+    /* Refused under the queue's one heading, the administrator of a team whose change
+       was turned down read „Predlog tima je vraćen" about a team they never proposed.
+       The same fault `queues.ts` was written to stop, one queue further along
+       (review, 05.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await user.clear(await screen.findByLabelText(/^Mesto/))
+    await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+    await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+    await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    await user.click(card.getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Mesto se ne poklapa sa prijavom.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+
+    expect(screen.getByRole('link', { name: /Izmena tima je vraćena/ })).toBeVisible()
+    expect(screen.queryByRole('link', { name: /Predlog tima je vraćen/ })).toBeNull()
+  }, SLOW)
+
+  it('cannot be approved once the team it names has been deleted', async () => {
+    /* Approved anyway it wrote into an identity nothing answers to, settled the item,
+       and told the member their team had been changed (review, 05.09.2026). The card
+       says so instead, and the control that would take the decision is dead. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await user.clear(await screen.findByLabelText(/^Mesto/))
+    await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+    await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+    await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+    await router.navigate('/sr/administracija/timovi')
+
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      listed.getAllByRole('row').find((one) => /Dunavski trkači/.test(one.textContent ?? '')),
+      'the row of the team being deleted',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Obriši/ }))
+    await user.click(within(row).getByRole('button', { name: /^Potvrdi brisanje/ }))
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    expect(card.getByText(/je u međuvremenu obrisan/)).toBeVisible()
+    expect(card.getByRole('button', { name: 'Odobri' })).toHaveAttribute('aria-disabled', 'true')
+  }, SLOW)
 
   it('writes into the team it is about when it is approved, rather than making a second one', async () => {
     /* The whole walk, because the two halves passed apart: a change that reaches

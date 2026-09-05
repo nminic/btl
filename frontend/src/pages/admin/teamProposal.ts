@@ -94,6 +94,12 @@ export function refusal(
    *  proposals from one member waiting together are the case this exists for, and the
    *  first approval is what puts them on the list for the second (review, 05.09.2026). */
   withTeam: string[],
+  /** Every team there is, read through the overlay by the caller. A change is filed
+   *  under the team it is about, and that team can be gone by the time anybody
+   *  decides: deleting it and then approving the change wrote into an identity
+   *  nothing answers to, settled the item as approved, and told the member their team
+   *  had been changed (review, 05.09.2026). */
+  teams: Team[],
 ): string | null {
   if ([made.name, made.city, made.country].some((value) => value.trim() === '')) {
     return 'verification.teamIncomplete'
@@ -113,6 +119,10 @@ export function refusal(
      control on this queue that has to ask. */
   if (item.memberNumber === '') {
     return 'verification.teamNoMember'
+  }
+
+  if (isChange(item) && !teams.some((one) => one.id === item.subjectId)) {
+    return 'verification.teamGone'
   }
 
   /* And only of a **new** team. A change is sent by the team's own administrator, who

@@ -1,4 +1,4 @@
-import type { PendingItem } from '../../data/types'
+import type { PendingItem, Team } from '../../data/types'
 import { NO_RATING } from '../../data/types'
 import { addressOf, nameError, nameFault, refusal, teamFrom, type Proposed } from './teamProposal'
 
@@ -26,6 +26,23 @@ const item = (over: Partial<PendingItem> = {}): PendingItem => ({
   country: 'RS',
   ...over,
 })
+
+/** The teams the league has while these are decided. Written out rather than empty,
+ *  because a change is filed under one of them and „the team is gone" is one of the
+ *  answers this function gives. */
+const TEAMS: Team[] = [
+  {
+    id: 'team-dunav',
+    slug: 'dunavski-trkaci',
+    name: 'Dunavski trkači',
+    city: 'Novi Sad',
+    country: 'RS',
+    organizerMemberNumber: '000001',
+    bio: '',
+    logo: null,
+    crop: { x: 0.5, y: 0.5, size: 1 },
+  },
+]
 
 const whole: Proposed = { name: 'Trkači Morave', city: 'Čačak', country: 'RS' }
 
@@ -93,21 +110,21 @@ describe('what a team would be made of', () => {
 
 describe('why a proposal cannot be taken', () => {
   it('is nothing, where it can', () => {
-    expect(refusal(whole, [], item(), [])).toBeNull()
+    expect(refusal(whole, [], item(), [], TEAMS)).toBeNull()
   })
 
   it('is the missing field, where one is empty', () => {
     for (const gap of [{ name: '' }, { city: '' }, { country: '' }, { city: '   ' }]) {
-      expect(refusal({ ...whole, ...gap }, [], item(), [])).toBe('verification.teamIncomplete')
+      expect(refusal({ ...whole, ...gap }, [], item(), [], TEAMS)).toBe('verification.teamIncomplete')
     }
   })
 
   it('is the address, where a team already answers at it', () => {
-    expect(refusal(whole, [addressOf('trkaci morave')], item(), [])).toBe('verification.teamTaken')
+    expect(refusal(whole, [addressOf('trkaci morave')], item(), [], TEAMS)).toBe('verification.teamTaken')
   })
 
   it('is the address again, where the name makes none', () => {
-    expect(refusal({ ...whole, name: '???' }, [], item(), [])).toBe('verification.teamNoAddress')
+    expect(refusal({ ...whole, name: '???' }, [], item(), [], TEAMS)).toBe('verification.teamNoAddress')
   })
 
   it("is the member's own team, where the one who sent it already has one", () => {
@@ -115,13 +132,26 @@ describe('why a proposal cannot be taken', () => {
        the proposal the organiser of the team it makes. Two proposals from one member
        waiting together are the case this exists for: the first approval puts them on
        this list and the second is refused by it (review, 05.09.2026). */
-    expect(refusal(whole, [], item(), ['000007'])).toBe('verification.teamMemberHasTeam')
-    expect(refusal(whole, [], item(), ['000009'])).toBeNull()
+    expect(refusal(whole, [], item(), ['000007'], TEAMS)).toBe('verification.teamMemberHasTeam')
+    expect(refusal(whole, [], item(), ['000009'], TEAMS)).toBeNull()
 
     /* And not of a change: that is sent by the team's own administrator, who has a
        team by definition — the one being changed. Read over a change, this rule
        refuses every change there will ever be. */
-    expect(refusal(whole, [], item({ kind: 'teamEdit' }), ['000007'])).toBeNull()
+    expect(
+      refusal(whole, [], item({ kind: 'teamEdit', subjectId: 'team-dunav' }), ['000007'], TEAMS),
+    ).toBeNull()
+  })
+
+  it('is the team itself, where a change names one that has been deleted', () => {
+    /* A change is filed under the team it is about, and that team can be gone by the
+       time anybody decides. Approved anyway it wrote into an identity nothing answers
+       to, settled the item, and told the member their team had been changed (review,
+       05.09.2026). A proposal names no team, so this cannot touch one. */
+    expect(refusal(whole, [], item({ kind: 'teamEdit', subjectId: 'team-nema' }), [], TEAMS)).toBe(
+      'verification.teamGone',
+    )
+    expect(refusal(whole, [], item(), [], TEAMS)).toBeNull()
   })
 
   it('is the missing member, where nobody sent it', () => {
@@ -130,10 +160,10 @@ describe('why a proposal cannot be taken', () => {
        leave the team without an organiser. Not reachable from the screen today,
        and guarded because the shape of the data allows it: the way back on the
        same card is guarded for the same reason. */
-    expect(refusal(whole, [], item({ memberNumber: '' }), [])).toBe('verification.teamNoMember')
+    expect(refusal(whole, [], item({ memberNumber: '' }), [], TEAMS)).toBe('verification.teamNoMember')
   })
 
   it('answers the emptiness before the collision, because that is the one to fix first', () => {
-    expect(refusal({ ...whole, name: '' }, [''], item(), [])).toBe('verification.teamIncomplete')
+    expect(refusal({ ...whole, name: '' }, [''], item(), [], TEAMS)).toBe('verification.teamIncomplete')
   })
 })

@@ -349,7 +349,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       if (
         made !== null &&
-        refusal(made, addressesAgainst(one, teams, addresses), one, inATeam) !== null
+        refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams) !== null
       ) {
         continue
       }
@@ -508,6 +508,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           /* The addresses once for the screen rather than once per card, and the
              reason for one card off them. */
           const addresses = addressesIn(teams)
+          /** The team an item is about, as the list has it now. Nothing for a
+           *  proposal, which is about no team yet and carries no id, and nothing for a
+           *  change whose team has been deleted since it was sent. Asked of the id
+           *  alone: a proposal carries none, so there is no sort to test for and no
+           *  branch here that nothing can reach. */
+          const teamOf = (one: PendingItem) => teams.find((each) => each.id === one.subjectId)
+
           const refusedFor = (one: PendingItem) =>
             queue.id === 'teams'
               ? refusal(
@@ -515,6 +522,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   addressesAgainst(one, teams, addresses),
                   one,
                   organisers(allMembers, teams),
+                  teams,
                 )
               : null
           const waiting = waitingIn(items, decisions, queue.id)
@@ -631,6 +639,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     /* Worked out once for the card, rather than by the button,
                        by what the button points at, and by the line itself. */
                     const why = refusedFor(one)
+                    /* The team this card is about, where it is about one, so the two
+                       places that ask do not ask twice. */
+                    const about = teamOf(one)
 
                     return (
                       <li key={one.id} className="submissions__item">
@@ -648,7 +659,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               team carries no mark, because a queue called „Novi
                               timovi" is what it is by default. */}
                           {isChange(one) && (
-                            <span className="submissions__meta">{t('verification.teamChange')}</span>
+                            <span className="submissions__meta">
+                              {/* **Which team**, by the name it carries now. „Izmena
+                                  postojećeg tima" said that this is a change and left
+                                  the moderator to guess which one: a change of name
+                                  put the new name in the heading and the old one
+                                  nowhere on the card, so the decision was taken blind
+                                  (review, 05.09.2026). Where the team is gone the
+                                  card says so instead, and the decision is refused
+                                  above for the same reason. */}
+                              {about === undefined
+                                ? t('verification.teamChange')
+                                : t('verification.teamChangeOf', { name: about.name })}
+                            </span>
                           )}
                           <span className="submissions__meta">
                             {formatShortDate(one.date, locale)}

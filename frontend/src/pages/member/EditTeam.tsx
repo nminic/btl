@@ -11,7 +11,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import { predlogTima } from '../../forms/definitions'
 import type { FieldError, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
-import { recordsOf, TEAMS } from '../admin/entityForms'
+import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, addressOf, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
@@ -73,7 +73,27 @@ export function EditTeam() {
     <div className="member">
       <Resource state={state}>
         {([competitors, teams]) => {
-          const team = teams.find((one) => one.slug === slug)
+          /* **Through the overlay, both of them.** Who administers a team is read off
+             the team's own record and off the roster, and a moderator naming somebody
+             else writes into the overlay that stands in for a database — the file on
+             the disc knows nothing of it. Read from the file alone, the member the
+             moderator had just replaced went on reaching this form and the one they
+             had named was sent away, and the replaced member's change was written
+             into the record when it was approved (review, 05.09.2026). The same
+             reading the ways into founding a team already use, for the same reason.
+
+             **Of the two, only the team half is measured**, and that is said out loud
+             rather than left to be found: the naming a moderator does writes into the
+             team, so reading the teams from the file fails the walk below. The roster
+             half changes nothing reachable today, because the only thing that writes
+             `teamId` on a member is the approval that writes `organizerMemberNumber`
+             on the same team, and the first of those two answers first. It is read
+             the same way so that one answer is not half read off the disc and half
+             off the session; the day a moderator can move a member between teams, it
+             is already right. */
+          const listed = recordsOf(TEAMS, teams, overlay)
+          const members = recordsOf(MEMBERS, competitors, overlay)
+          const team = listed.find((one) => one.slug === slug)
 
           if (team === undefined) {
             return <h1>{t('teams.notFound')}</h1>
@@ -93,9 +113,7 @@ export function EditTeam() {
              answer is two things here: whether this reader may be on the page at all,
              and the name the queue shows beside what they send. A team nobody is in
              answers nobody, and then this address is not a page for anyone. */
-          const admin = competitors.find(
-            (one) => one.memberNumber === teamAdminOf(team, competitors),
-          )
+          const admin = members.find((one) => one.memberNumber === teamAdminOf(team, members))
 
           if (admin === undefined || admin.memberNumber !== mine) {
             return <Navigate to={`/${locale}`} replace />
@@ -172,9 +190,7 @@ export function EditTeam() {
               check={(values): Record<string, FieldError> =>
                 nameError(
                   String(values.name),
-                  addressesIn(recordsOf(TEAMS, teams, overlay)).filter(
-                    (one) => one !== addressOf(team.name),
-                  ),
+                  addressesIn(listed).filter((one) => one !== addressOf(team.name)),
                 )
               }
               onSubmit={onSubmit}

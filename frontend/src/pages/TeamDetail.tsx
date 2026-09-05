@@ -22,6 +22,8 @@ import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
+import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
+import { useOverlay } from './admin/overlay'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
 
@@ -42,12 +44,19 @@ export function TeamDetail() {
   const running = today.slice(0, 4)
   const asked = useSeason(running)
   const { memberNumber } = useSession()
+  const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
   return (
     <Resource state={state}>
       {([teams, competitors, results]) => {
-        const team = teams.find((one) => one.slug === slug)
+        /* Through the overlay, because a moderator naming another administrator
+           writes there and not into the file on the disc; read from the file alone,
+           the button stayed with the member they had just replaced (review,
+           05.09.2026). The ways into founding a team read the same records for the
+           same reason. */
+        const listedMembers = recordsOf(MEMBERS, competitors, overlay)
+        const team = recordsOf(TEAMS, teams, overlay).find((one) => one.slug === slug)
 
         if (team === undefined) {
           return <h1>{t('teams.notFound')}</h1>
@@ -107,7 +116,7 @@ export function TeamDetail() {
                         `admin` is null for a team nobody is in, and comparing it
                         with a visitor's own null would put the button in front of
                         everybody who is not signed in. */}
-                    {memberNumber !== null && teamAdminOf(team, competitors) === memberNumber && (
+                    {memberNumber !== null && teamAdminOf(team, listedMembers) === memberNumber && (
                       <Link
                         className="button button--secondary"
                         to={`/${locale}/tim/${team.slug}/izmena`}
