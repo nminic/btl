@@ -247,6 +247,15 @@ export function returned(queue: Queue, item: { kind: ItemKind }): string | null 
     return item.kind === 'bio' ? 'verification.bioReturned' : 'verification.photoReturned'
   }
 
+  /* The teams hold two sorts as well since 05.09.2026: a new team put forward, and a
+     change to one that exists. Refused under one heading, the administrator of a team
+     whose change was turned down read „Predlog tima je vraćen" about a team they never
+     proposed (review, 05.09.2026). The same fault this function was written to stop,
+     one queue further along. */
+  if (queue.id === 'teams' && item.kind === 'teamEdit') {
+    return 'verification.teamChangeReturned'
+  }
+
   /* The comments are deleted rather than returned, and nothing is sent
      (PDL P22): a comment is not work to be improved. */
   return queue.returnedKey ?? null

@@ -1,4 +1,5 @@
-import type { PendingItem, Team } from '../../data/types'
+import type { Competitor, PendingItem, Team } from '../../data/types'
+import { teamAdminOf } from '../../data/teamAdmin'
 import type { FieldError } from '../../forms/types'
 import type { Edits } from '../../session/context'
 import { slugify } from '../rulebookToc'
@@ -94,6 +95,15 @@ export function refusal(
    *  proposals from one member waiting together are the case this exists for, and the
    *  first approval is what puts them on the list for the second (review, 05.09.2026). */
   withTeam: string[],
+  /** Every team there is, read through the overlay by the caller. A change is filed
+   *  under the team it is about, and that team can be gone by the time anybody
+   *  decides: deleting it and then approving the change wrote into an identity
+   *  nothing answers to, settled the item as approved, and told the member their team
+   *  had been changed (review, 05.09.2026). */
+  teams: Team[],
+  /** The members, read through the overlay by the caller, so „who administers this
+   *  team" is the same answer here as on the screens that draw the way in. */
+  members: Competitor[],
 ): string | null {
   if ([made.name, made.city, made.country].some((value) => value.trim() === '')) {
     return 'verification.teamIncomplete'
@@ -115,7 +125,28 @@ export function refusal(
     return 'verification.teamNoMember'
   }
 
-  if (withTeam.includes(item.memberNumber)) {
+  const about = teams.find((one) => one.id === item.subjectId)
+
+  if (isChange(item) && about === undefined) {
+    return 'verification.teamGone'
+  }
+
+  /* **And sent by whoever administers that team today.** A change is the
+     administrator's act (PDL, 04.09.2026), and the seat can be handed to somebody
+     else while the change waits: approved then, the portal writes into a team on the
+     word of a member who no longer runs it, and tells them it was done. Read at the
+     moment of the decision rather than at the moment it was sent, because that is
+     when the writing happens (izvedeno 05.09.2026 iz odluke o administratoru; nije
+     vlasnikova rečenica nego ono što iz nje sledi). */
+  if (about !== undefined && isChange(item) && teamAdminOf(about, members) !== item.memberNumber) {
+    return 'verification.teamNotYours'
+  }
+
+  /* And only of a **new** team. A change is sent by the team's own administrator, who
+     has a team by definition — the one being changed — so this rule read over a change
+     refuses every change there will ever be. Measured 05.09.2026, the moment the two
+     rules first stood in one file. */
+  if (!isChange(item) && withTeam.includes(item.memberNumber)) {
     return 'verification.teamMemberHasTeam'
   }
 
@@ -154,4 +185,32 @@ export function organisers(members: { memberNumber: string; teamId: string | nul
     ...members.flatMap((one) => (one.teamId === null ? [] : [one.memberNumber])),
     ...teams.map((one) => one.organizerMemberNumber),
   ]
+}
+
+/**
+ * Whether a waiting item is a change of a team that already exists.
+ *
+ * The mark rather than the id, because the id answers a different question: an
+ * item filed under a team that has since been deleted still arrived as a change,
+ * and reading `subjectId` would quietly turn it into a proposal for a new team
+ * with the same name (owner, 04.09.2026, one queue and a mark on the item).
+ */
+export function isChange(item: PendingItem): boolean {
+  return item.kind === 'teamEdit'
+}
+
+/**
+ * The addresses a waiting item has to be free of, which is every address but the
+ * one belonging to the team it is about.
+ *
+ * A change that leaves the name alone would otherwise be refused for clashing
+ * with itself, and a moderator would be told the name is taken by the very team
+ * on the card. A proposal is about no team yet, so nothing is taken out of the
+ * list for it, and a change filed under a team nobody can find is read the same
+ * way: it clashes with everything a new team would clash with.
+ */
+export function addressesAgainst(item: PendingItem, teams: Team[], addresses: string[]): string[] {
+  const own = teams.find((one) => one.id === item.subjectId)
+
+  return own === undefined ? addresses : addresses.filter((one) => one !== addressOf(own.name))
 }

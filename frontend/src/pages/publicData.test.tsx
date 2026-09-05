@@ -87,12 +87,6 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
   ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 5'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
-  /* „Predlog tima" is the heading of two screens at this one address since
-     05.09.2026: the form, and the refusal a member who already has a team reads
-     instead. `ME` has a team, so this row reads the second. **What the first one's
-     title is held by is `member/headingFirst.test.tsx`**, which signs in as a member
-     with no team; measured 05.09.2026 by moving `titleKey` in the definition, which
-     fails there and not here. */
   /* The front page, to a member, and that is the screen this address answers with
      for them: `ME` has a team and `DAY` is outside the transfer window, and either
      one alone sends them to the front (PDL, increment 133, 05.09.2026) — sent away,
@@ -105,6 +99,11 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
      here. What this row is worth is the other half of this file's question: even the
      redirect must not ask the server for anything a member may not have. */
   ['/sr/novi-tim', 'Za ovo treba prijava', 'Balkanska trkačka liga'],
+  /* And the same rule on the way into a team's own data: `ME` does not administer
+     Dunav, so the address is not a page for them either and answers with the front.
+     The form's own heading is read by `member/editTeam.test.tsx`, which signs in as
+     the member who does administer it. */
+  ['/sr/tim/dunavski-trkaci/izmena', 'Za ovo treba prijava', 'Balkanska trkačka liga'],
   ['/sr/tabela', 'BTL tabele', 'BTL tabele'],
   ['/sr/top-liste', 'Top liste', 'Top liste'],
   ['/sr/lige', 'Lige', 'Lige'],

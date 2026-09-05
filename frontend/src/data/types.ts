@@ -532,8 +532,15 @@ export const NO_RATING = Object.freeze<EventRating>({
 })
 
 /* What sorts of thing a queue may hold. The empty one is every queue that holds
-   only one sort, which is all of them but the racing profile. */
-export const ITEM_KINDS = ['', 'bio', 'photo'] as const
+   only one sort, which is all of them but the racing profile and the teams.
+
+   `teamEdit` is a team that already exists, put forward again by its
+   administrator with something about it changed (owner, 04.09.2026: „Izmena tima
+   ide u isti red za verifikaciju kao i predlog novog tima, uz oznaku šta je
+   šta"). One queue and a mark on the item, rather than a queue of its own: a
+   moderator looks at one place to decide about teams, and the two decisions
+   differ only in what an approval writes. */
+export const ITEM_KINDS = ['', 'bio', 'photo', 'teamEdit'] as const
 
 export type ItemKind = (typeof ITEM_KINDS)[number]
 

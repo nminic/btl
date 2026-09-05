@@ -123,6 +123,10 @@
       "title": "Moderatori (administracija)",
       "description": "Ko moderira portal i koja mu je prava Superadmin dodelio, po entitetu i po redu."
     },
+    "editTeam": {
+      "title": "Izmena tima",
+      "description": "Naziv, mesto i država tima, za izmenu koja ide na proveru."
+    },
     "newResult": {
       "title": "Novi rezultat sa trke",
       "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."
@@ -768,6 +772,13 @@
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
     "proposeBack": "Nazad na timove",
     "proposeShut": "Tim se osniva u prelaznom roku, od 1. oktobra do 31. decembra.",
+    "edit": "Izmeni",
+    "editTitle": "Izmena tima",
+    "editSubmit": "Pošalji izmenu",
+    "editNote": "Izmena ponovo prolazi verifikaciju. Dok čeka odluku moderatora, na portalu stoje postojeći podaci tima.",
+    "editDoneTitle": "Izmena je poslata",
+    "editDone": "Izmena tima „{name}“ čeka odluku moderatora. Dok čeka, na portalu stoje postojeći podaci.",
+    "editBack": "Nazad na tim",
     "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
     "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru."
   },
@@ -1214,6 +1225,8 @@
     "waitingForMembers": "Odluka čeka spisak članova, da bi se znalo da li podnosilac već ima tim.",
     "membersFailed": "Odluka nije moguća: spisak članova se ne može učitati, a bez njega se ne zna da li podnosilac već ima tim.",
     "teamMemberHasTeam": "Podnosilac je već u timu, pa ovaj predlog ne može da se odobri. Član sme da bude samo u jednom timu.",
+    "teamGone": "Tim na koji se ova izmena odnosi je u međuvremenu obrisan, pa nema šta da se izmeni. Odbij izmenu uz objašnjenje.",
+    "teamNotYours": "Ovu izmenu je poslao član koji više ne administrira taj tim, pa ne može da se odobri. Odbij izmenu uz objašnjenje.",
     "openCard": "Prikaži",
     "openCardNamed": "Prikaži: {name}",
     "foldCard": "Sakrij",
@@ -1233,6 +1246,10 @@
       "other": "U redu čeka {count} stavki. Odobriti sve što se može odobriti? Ovo se ne može opozvati."
     },
     "subject": "Predmet",
+    "teamChange": "Izmena postojećeg tima",
+    "teamChangeOf": "Izmena tima „{name}“",
+    "teamChangeAccepted": "Izmena tima „{name}“ je prihvaćena",
+    "teamChangeAcceptedBody": "Podaci tima „{name}“ su izmenjeni. Moderator sme da ispravi ono što ste poslali pre nego što prihvati, pa pogledajte stranu tima.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
     "currentDate": "Datum u kalendaru",
@@ -1244,6 +1261,7 @@
       "teams": "Obrazloženje",
       "bio": "Tekst biografije",
       "photo": "Datoteka",
+      "teamEdit": "Obrazloženje",
       "comments": "Komentar",
       "schedule": "Šta je prijavljeno"
     },
@@ -1269,6 +1287,7 @@
     "resultReturned": "Rezultat je vraćen",
     "paymentReturned": "Prijava je vraćena",
     "teamReturned": "Predlog tima je vraćen",
+    "teamChangeReturned": "Izmena tima je vraćena",
     "scheduleReturned": "Prijava promene termina je vraćena",
     "bioReturned": "Tekst o sebi je vraćen",
     "photoReturned": "Profilna slika je vraćena",

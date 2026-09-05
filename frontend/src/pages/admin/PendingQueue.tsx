@@ -27,7 +27,16 @@ import { moveEvent } from './moveEvent'
 import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
 import { EVENTS, idFor, MEMBERS, RACES, recordsOf, TEAMS } from './entityForms'
-import { addressesIn, addressOf, organisers, proposed, refusal, teamFrom } from './teamProposal'
+import {
+  addressesAgainst,
+  addressesIn,
+  addressOf,
+  isChange,
+  organisers,
+  proposed,
+  refusal,
+  teamFrom,
+} from './teamProposal'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
@@ -338,7 +347,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     for (const one of items) {
       const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
-      if (made !== null && refusal(made, addresses, one, inATeam) !== null) {
+      if (
+        made !== null &&
+        refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams, allMembers) !==
+          null
+      ) {
         continue
       }
 
@@ -386,6 +399,30 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       }
 
       if (made === null) {
+        continue
+      }
+
+      /* A change writes into the team it is about; only a proposal makes one
+         (owner, 04.09.2026). The address goes with the name, because that is what
+         the team entity itself derives it from (`entityForms.ts`, TEAMS), so a
+         team renamed here answers where the administration's own form would leave
+         it rather than at the address of its old name.
+
+         What is not written is who administers it: that is worked out from the
+         roster (`data/teamAdmin.ts`), and a change is the administrator's own act
+         so there is nothing to move. */
+      if (isChange(one)) {
+        addresses.push(addressOf(made.name))
+        editRecord(one.subjectId, { ...made, slug: addressOf(made.name) })
+
+        notify({
+          from: t('app.name'),
+          to: one.memberNumber,
+          subject: t('verification.teamChangeAccepted', { name: made.name }),
+          body: t('verification.teamChangeAcceptedBody', { name: made.name }),
+          date: today,
+        })
+
         continue
       }
 
@@ -472,13 +509,22 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           /* The addresses once for the screen rather than once per card, and the
              reason for one card off them. */
           const addresses = addressesIn(teams)
+          /** The team an item is about, as the list has it now. Nothing for a
+           *  proposal, which is about no team yet and carries no id, and nothing for a
+           *  change whose team has been deleted since it was sent. Asked of the id
+           *  alone: a proposal carries none, so there is no sort to test for and no
+           *  branch here that nothing can reach. */
+          const teamOf = (one: PendingItem) => teams.find((each) => each.id === one.subjectId)
+
           const refusedFor = (one: PendingItem) =>
             queue.id === 'teams'
               ? refusal(
                   teamFrom(one, edits),
-                  addresses,
+                  addressesAgainst(one, teams, addresses),
                   one,
                   organisers(allMembers, teams),
+                  teams,
+                  allMembers,
                 )
               : null
           const waiting = waitingIn(items, decisions, queue.id)
@@ -595,6 +641,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     /* Worked out once for the card, rather than by the button,
                        by what the button points at, and by the line itself. */
                     const why = refusedFor(one)
+                    /* The team this card is about, where it is about one, so the two
+                       places that ask do not ask twice. */
+                    const about = teamOf(one)
 
                     return (
                       <li key={one.id} className="submissions__item">
@@ -606,6 +655,26 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           <h3 className="pending__subject">
                             {queue.id === 'teams' ? teamFrom(one, edits).name : one.subject}
                           </h3>
+                          {/* And which of the two decisions this is, said on the
+                              card rather than left to be worked out from the name
+                              (owner, 04.09.2026: „uz oznaku šta je šta"). A new
+                              team carries no mark, because a queue called „Novi
+                              timovi" is what it is by default. */}
+                          {isChange(one) && (
+                            <span className="submissions__meta">
+                              {/* **Which team**, by the name it carries now. „Izmena
+                                  postojećeg tima" said that this is a change and left
+                                  the moderator to guess which one: a change of name
+                                  put the new name in the heading and the old one
+                                  nowhere on the card, so the decision was taken blind
+                                  (review, 05.09.2026). Where the team is gone the
+                                  card says so instead, and the decision is refused
+                                  above for the same reason. */}
+                              {about === undefined
+                                ? t('verification.teamChange')
+                                : t('verification.teamChangeOf', { name: about.name })}
+                            </span>
+                          )}
                           <span className="submissions__meta">
                             {formatShortDate(one.date, locale)}
                           </span>

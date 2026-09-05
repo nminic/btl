@@ -528,6 +528,50 @@ describe('the queue of teams without the members', () => {
   }, SLOW)
 })
 
+describe('a team the moment it is approved', () => {
+  it('draws its own page with its founder in it, and says so in the count', async () => {
+    /* PDL, 05.09.2026: the founder „je od tog trenutka prvi i jedini član i vidi se u
+       sastavu tima". Read from two places at once, the page said both things: „Izmeni"
+       for the founder, because that half read the session, and „0 članova" under it,
+       because the roster read the file (review, 05.09.2026). */
+    /* On a day inside the transfer window, like every other signed-in reading here.
+       Read on the real day, the walk approves a team on a day the portal does not take
+       one at all, and `seasonOnSale` then writes the **current** season into the
+       founder's record, so the new team's page draws them in this season's standing
+       with four races behind them. Both states pass these three assertions, so the
+       day has to be pinned or the walk quietly changes what it measures on 1 October
+       (review, 05.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/timovi',
+      'superadmin',
+      '000004',
+      undefined,
+      DAY,
+    )
+
+    const heading = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/tim/timocka-trkacka-druzina')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Timočka trkačka družina' }),
+    ).toBeVisible()
+    expect(screen.getByText(/1 član/)).toBeVisible()
+    expect(screen.queryByText(/0 članova/)).toBeNull()
+    /* And in **this** season the team has nobody, because a team founded in the
+       window scores from 1 January: the count above is who is in the team, the table
+       below is who was in it that season, and the two are different questions. */
+    expect(screen.getByText(/te sezone nije imao članova/)).toBeVisible()
+    /* And the founder is the one who may change it, which is the other half of the
+       same answer and the reason the two must be read off one list. */
+    expect(screen.getByRole('link', { name: 'Izmeni' })).toBeVisible()
+  }, SLOW)
+})
+
 describe('who the queue of new teams says decides', () => {
   it('names both, because both may (PDL P13, P21)', () => {
     /* This is the text the queue's own page carries into its description, and it

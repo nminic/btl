@@ -44,13 +44,23 @@ const SCREENS = [
     'Prijava rezultata',
     /Prijavljuješ rezultat sa trke/,
   ],
+  /* The fourth, added with the screen itself on 05.09.2026 and found missing by the
+     round after: the form a team is changed on explains itself the same way and the
+     rule is the same. It is read as the member who administers Dunav, because nobody
+     else reaches it at all. */
+  [
+    '/sr/tim/dunavski-trkaci/izmena',
+    'Izmena tima',
+    /Izmena ponovo prolazi verifikaciju/,
+    '000001',
+  ],
 ] as const
 
 describe('the screens a member writes on', () => {
   it('begin with their own heading, before anything the reader can meet', async () => {
-    for (const [route, name] of SCREENS) {
+    for (const [route, name, , who] of SCREENS) {
       cleanup()
-      renderAt(route, 'competitor', '000002', undefined, DAY)
+      renderAt(route, 'competitor', who ?? '000002', undefined, DAY)
 
       const heading = await screen.findByRole('heading', { level: 1, name })
       expect(beginsWith(heading), `${route} begins with its heading, met ${metSaid(heading)}`).toBe(
@@ -68,9 +78,9 @@ describe('the screens a member writes on', () => {
        `beneath` passed as well, though it then stood at the very bottom, over the
        button and under every field, so a member read what happens to their result
        only after filling the whole form in (review, 04.09.2026). */
-    for (const [route, name, note] of SCREENS) {
+    for (const [route, name, note, who] of SCREENS) {
       cleanup()
-      renderAt(route, 'competitor', '000002', undefined, DAY)
+      renderAt(route, 'competitor', who ?? '000002', undefined, DAY)
 
       const main = screen.getByRole('main')
       const said = await within(main).findByText(note)
