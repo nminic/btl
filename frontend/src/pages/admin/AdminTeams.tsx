@@ -19,11 +19,26 @@ import '../member/Member.css'
 
 /** Who can run a team: any registered member, which makes this a closed list
  *  whose contents are data rather than a fixed set (PDL P13). */
-function organizerOptions(competitors: Competitor[]): FieldOption[] {
-  return competitors.map((one) => ({
+function organizerOptions(competitors: Competitor[], held: string): FieldOption[] {
+  const offered = competitors.map((one) => ({
     value: one.memberNumber,
     labelKey: `${one.firstName} ${one.lastName} (${one.memberNumber})`,
   }))
+
+  /**
+   * And whoever the record already names, even when they are no longer among them.
+   *
+   * **A control cannot hold a value it does not offer.** A `<select>` whose value names
+   * no option leaves the first one showing, so a team whose organiser administration had
+   * deleted drew somebody who had never run it, while the record went on holding the
+   * number that was there and saving it back. One screen said three things about one
+   * fact, and the middle one was the only one nobody could see was wrong (review,
+   * 05.09.2026). Kept here rather than mended in the renderer, because what a record may
+   * still name is a fact about this screen's data.
+   */
+  return offered.some((one) => one.value === held) || held === ''
+    ? offered
+    : [...offered, { value: held, labelKey: held }]
 }
 
 export function AdminTeams() {
@@ -58,12 +73,16 @@ export function AdminTeams() {
               <EntityEditor
                 entity={TEAMS}
                 editing={editing}
-                /* Off the same list the rows beside it read. Left on the file while
-                   the row moved to the session, one screen said two things about one
-                   fact: the row said „Nema organizatora" for a member administration
-                   had just deleted, while the form went on offering that same member
-                   as a choice (review, 05.09.2026). */
-                options={{ organizerMemberNumber: organizerOptions(listed) }}
+                /* Off the same list the rows beside it read, and never without the one
+                   the record already names. Left on the file while the row moved to the
+                   session, one screen said two things about one fact; moved to the
+                   session alone, it said three (review, 05.09.2026, twice). */
+                options={{
+                  organizerMemberNumber: organizerOptions(
+                    listed,
+                    editing.mode === 'one' ? String(editing.record.organizerMemberNumber) : '',
+                  ),
+                }}
                 /* A name already taken is refused (PDL P13), and refused by the
                    address it makes rather than by the letters: the address is
                    read off the name (entityForms.ts) and `slugify` is not one
