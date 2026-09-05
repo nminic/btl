@@ -38,14 +38,58 @@ import { sources } from '../test/sources'
  * its file rather than its own line, so several such calls in one file share an entry.
  * Both are written down rather than left to be found.
  */
-/** Whether a call is one of the dictionary's sentences being made, by its first word. */
-function spoken(callee: ts.Node, said: Set<string>, first: ts.Node | undefined): boolean {
-  return (
-    first !== undefined &&
-    ts.isStringLiteral(first) &&
-    said.has(first.text) &&
-    !ts.isPropertyAccessExpression(callee)
-  )
+/**
+ * Which sentences a first word can name, by the shape of it and not by its letters.
+ *
+ * A choice contributes its two answers and never its question: read for words instead,
+ * the word a sentence is chosen by went in as though it were a sentence of the dictionary
+ * (review, 05.09.2026). Anything else names nothing, and `unknown` stands in for it.
+ *
+ * **One reading, because two of them disagreed.** For a while the question „is this a
+ * sentence at all" read only a plain word while the question „which sentence" read all
+ * four shapes, so a call through a renamed maker whose key was a choice of two real names
+ * was neither counted nor marked: it vanished (review, 05.09.2026).
+ */
+/**
+ * Whether a call is one of the dictionary's sentences being made.
+ *
+ * **The dictionary answers it, not a name.** A call whose first word names one of
+ * `sr.json`'s own sentences is that sentence being made, whatever the thing making it is
+ * called: `t` is handed to helpers as a value at twenty five places and one of them
+ * renames it on the way in (`components/PriceTable.tsx`, where it arrives as `say`), so a
+ * reading tied to the name had a live hole (review, 05.09.2026). A choice of two names
+ * counts if either of them is one, which is the same reading `keysOf` gives.
+ *
+ * The name is still asked, and only where the first word names nothing: there is no
+ * sentence to look up in those, so nothing but the name can say they are sentences at
+ * all, and they end up as „?" with their file.
+ */
+function spoken(call: ts.CallExpression, said: Set<string>): boolean {
+  const first = call.arguments[0]
+
+  if (first !== undefined && !ts.isPropertyAccessExpression(call.expression)) {
+    if (keysOf(first, '').some((one) => said.has(one))) {
+      return true
+    }
+  }
+
+  return ts.isIdentifier(call.expression) && call.expression.text === 't'
+}
+
+function keysOf(node: ts.Node, unknown: string): string[] {
+  if (ts.isStringLiteral(node)) {
+    return [node.text]
+  }
+
+  if (ts.isConditionalExpression(node)) {
+    return [...keysOf(node.whenTrue, unknown), ...keysOf(node.whenFalse, unknown)]
+  }
+
+  if (ts.isParenthesizedExpression(node)) {
+    return keysOf(node.expression, unknown)
+  }
+
+  return [unknown]
 }
 
 export function sentencesIn(path: string, code: string, said: Set<string>): string[] {
@@ -74,22 +118,6 @@ export function sentencesIn(path: string, code: string, said: Set<string>): stri
      dictionary (review, 05.09.2026). */
   const unknown = `? (${path.split(/[/\\]/).slice(-1).join('')})`
 
-  const keysOf = (node: ts.Node): string[] => {
-    if (ts.isStringLiteral(node)) {
-      return [node.text]
-    }
-
-    if (ts.isConditionalExpression(node)) {
-      return [...keysOf(node.whenTrue), ...keysOf(node.whenFalse)]
-    }
-
-    if (ts.isParenthesizedExpression(node)) {
-      return keysOf(node.expression)
-    }
-
-    return [unknown]
-  }
-
   const found: string[] = []
 
   const walk = (node: ts.Node): void => {
@@ -106,8 +134,7 @@ export function sentencesIn(path: string, code: string, said: Set<string>): stri
     if (
       ts.isCallExpression(node) &&
       node.arguments.length > 1 &&
-      (spoken(node.expression, said, node.arguments[0]) ||
-        (ts.isIdentifier(node.expression) && node.expression.text === 't'))
+      spoken(node, said)
     ) {
       const [named, ...rest] = node.arguments
 
@@ -125,7 +152,7 @@ export function sentencesIn(path: string, code: string, said: Set<string>): stri
 
         const said = used.size > 0 ? ` <- ${[...used].sort().join(', ')}` : ''
 
-        for (const key of keysOf(named)) {
+        for (const key of keysOf(named, unknown)) {
           found.push(`${key}${said}`)
         }
       }
@@ -379,13 +406,21 @@ describe('a sentence with a value put into it', () => {
       'pricing.ranking',
     ])
 
-    /* What is still asked of the name, and only there: a call whose key is not written
-       out has no key to look up, so nothing but the name can say it is a sentence. */
-    expect(read('proba.tsx', 'const a = t(someKey, { name: n })')).toEqual(['? (proba.tsx)'])
+    /* What is still asked of the name, and only there: a call whose first word names
+       nothing has no sentence to look up, so only the name can say it is one. */
     expect(read('proba.tsx', 'const a = say(someKey, { name: n })')).toEqual([])
 
+    /* And a choice of two real names through a maker with another name, which is where
+       the two readings used to disagree: „is this a sentence" read one shape while „which
+       sentence" read four, so this was neither counted nor marked and vanished (review,
+       05.09.2026). */
+    expect(read('proba.tsx', "const a = say(x ? 'x.a' : 'x.b', { count: 1 })")).toEqual([
+      'x.a',
+      'x.b',
+    ])
     /* And a word that is not one of the dictionary's names is not a sentence, whatever is
-       called with it. */
-    expect(read('proba.tsx', "const a = mineIn(['team-dunav'], mine, locale)")).toEqual([])
+       called with it. Written as a word rather than as a list, because a list is not a
+       word and this would pass without the dictionary being asked at all. */
+    expect(read('proba.tsx', "const a = mineIn('team-dunav', mine, locale)")).toEqual([])
   })
 })
