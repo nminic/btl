@@ -1,4 +1,5 @@
 import ts from 'typescript'
+import sr from './sr.json'
 import { sources } from '../test/sources'
 
 /**
@@ -37,7 +38,17 @@ import { sources } from '../test/sources'
  * its file rather than its own line, so several such calls in one file share an entry.
  * Both are written down rather than left to be found.
  */
-export function sentencesIn(path: string, code: string): string[] {
+/** Whether a call is one of the dictionary's sentences being made, by its first word. */
+function spoken(callee: ts.Node, said: Set<string>, first: ts.Node | undefined): boolean {
+  return (
+    first !== undefined &&
+    ts.isStringLiteral(first) &&
+    said.has(first.text) &&
+    !ts.isPropertyAccessExpression(callee)
+  )
+}
+
+export function sentencesIn(path: string, code: string, said: Set<string>): string[] {
   const source = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const imported = new Set<string>()
 
@@ -82,11 +93,21 @@ export function sentencesIn(path: string, code: string): string[] {
   const found: string[] = []
 
   const walk = (node: ts.Node): void => {
+    /* **Which call is a sentence being made, and it is not answered by a name.** The
+       dictionary answers it: a call whose first word is a key of `sr.json` is that
+       sentence being made, whatever the thing doing the making is called. `t` is handed
+       to helpers as a value at twenty five places and one of them renames it on the way
+       in (`components/PriceTable.tsx`, where it arrives as `say`), so a reading tied to
+       the name had a live hole (review, 05.09.2026).
+
+       The name is still asked, and only for the calls whose key is not written out: there
+       is no key to look up in those, so nothing but the name can say they are sentences
+       at all. */
     if (
       ts.isCallExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === 't' &&
-      node.arguments.length > 1
+      node.arguments.length > 1 &&
+      (spoken(node.expression, said, node.arguments[0]) ||
+        (ts.isIdentifier(node.expression) && node.expression.text === 't'))
     ) {
       const [named, ...rest] = node.arguments
 
@@ -118,9 +139,28 @@ export function sentencesIn(path: string, code: string): string[] {
   return found
 }
 
+/**
+ * Every name the dictionary answers to, branches and leaves alike, which is what says a
+ * call is one of its sentences being made. Read off the dictionary itself rather than
+ * listed, so it cannot be behind.
+ */
+function namesOf(node: object, stem: string): string[] {
+  return Object.entries(node).flatMap(([key, value]) => {
+    const full = stem === '' ? key : `${stem}.${key}`
+
+    return typeof value === 'object' && value !== null
+      ? [full, ...namesOf(value, full)]
+      : [full]
+  })
+}
+
+const SAID = new Set(namesOf(sr, ''))
+
 describe('a sentence with a value put into it', () => {
   it('is one of exactly these, and nothing arrives among them unasked', () => {
-    const said = [...new Set(sources().flatMap(({ path, code }) => sentencesIn(path, code)))].sort()
+    const said = [
+      ...new Set(sources().flatMap(({ path, code }) => sentencesIn(path, code, SAID))),
+    ].sort()
 
     expect(said).toEqual([
       /* The ones whose key is not written out: a template, or a name held in a variable.
@@ -265,8 +305,31 @@ describe('a sentence with a value put into it', () => {
     ])
   })
 
+  it('knows the dictionary by its own names, and the frozen list cannot say so', () => {
+    /* **Written because nothing else could fail for it.** Every call that makes a
+       sentence is named `t` today, so the whole of the list above is held by the name
+       alone and emptying this set changes nothing there — measured, and the whole guard
+       stayed green (05.09.2026). What the set is for is the call whose maker is **not**
+       named `t`, and the portal has no such call yet. So it is asked here directly.
+
+       Branches as well as leaves, because a plural key is a branch (`one`, `few`,
+       `other`) and is called by the name of the branch. */
+    expect(SAID.has('teams.title')).toBe(true)
+    expect(SAID.has('units.raceCount')).toBe(true)
+    expect(SAID.has('units.raceCount.one')).toBe(true)
+    expect(SAID.has('teams')).toBe(true)
+    /* And nothing it does not say. */
+    expect(SAID.has('nema.ovoga')).toBe(false)
+    expect(SAID.has('')).toBe(false)
+    /* A floor under the whole of it, so a reading that answers a handful cannot pass. */
+    expect(SAID.size).toBeGreaterThan(1000)
+  })
+
   it('is read by the shape of the call, which is all it ever asks', () => {
-    const read = (path: string, code: string) => sentencesIn(path, code)
+    /* A dictionary of its own, so the reading is measured against names written here
+       rather than against whatever the portal happens to say today. */
+    const KNOWN = new Set(['x.y', 'x.a', 'x.b', 'pricing.ranking'])
+    const read = (path: string, code: string) => sentencesIn(path, code, KNOWN)
     const brought = "import { formatDate } from '../i18n/format'\n"
 
     /* A sentence with a value in it, whatever the value is. */
@@ -307,9 +370,22 @@ describe('a sentence with a value put into it', () => {
       ['x.y'],
     )
 
-    /* The one shape it cannot see at all, and the portal writes none of it. */
-    expect(read('proba.tsx', "const { t: say } = useI18n()\nconst a = say('x.y', { name: n })")).toEqual(
-      [],
-    )
+    /* And the name does not matter, which is the whole of why the dictionary answers
+       this and not a name. `t` is handed to helpers as a value at twenty five places and
+       one of them renames it on the way in, so a reading tied to the name had a live hole
+       (review, 05.09.2026, `components/PriceTable.tsx`). */
+    expect(read('proba.tsx', "const a = say('x.y', { name: n })")).toEqual(['x.y'])
+    expect(read('proba.tsx', "const a = reci('pricing.ranking', { count: 1 })")).toEqual([
+      'pricing.ranking',
+    ])
+
+    /* What is still asked of the name, and only there: a call whose key is not written
+       out has no key to look up, so nothing but the name can say it is a sentence. */
+    expect(read('proba.tsx', 'const a = t(someKey, { name: n })')).toEqual(['? (proba.tsx)'])
+    expect(read('proba.tsx', 'const a = say(someKey, { name: n })')).toEqual([])
+
+    /* And a word that is not one of the dictionary's names is not a sentence, whatever is
+       called with it. */
+    expect(read('proba.tsx', "const a = mineIn(['team-dunav'], mine, locale)")).toEqual([])
   })
 })
