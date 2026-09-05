@@ -339,11 +339,14 @@ export const TEAMS: EntityDef = {
    * or approved out of the queue sat in the list carrying no address at all. A
    * team's name has no day to go with it, because a team is not run once a year.
    *
-   * What this fixes is the record, not yet the sight of it. No public screen
-   * reads the overlay this prototype keeps its changes in, so a team approved
-   * today is not on `/tim/…` whatever its address says (PENDING, R7). The
-   * address is right in the record from the moment it is made, which is what
-   * the database will be handed.
+   * What this fixes is the record. **[ISPRAVLJENO 05.09.2026]** Until that day no
+   * public screen read the overlay this prototype keeps its changes in, so a team
+   * approved today was not on `/tim/…` whatever its address said (PENDING, R7). The
+   * team's own page reads it now, because the two things it draws — who administers
+   * the team and who is in it — are one fact and were being read from two places at
+   * once (review, 05.09.2026). The standing of the teams still reads the file, so a
+   * team approved today is on its own page and not yet in the table; that half is
+   * still R7 and goes with the database.
    */
   derived: (values) => [
     {

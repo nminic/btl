@@ -349,7 +349,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       if (
         made !== null &&
-        refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams) !== null
+        refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams, allMembers) !==
+          null
       ) {
         continue
       }
@@ -523,6 +524,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   one,
                   organisers(allMembers, teams),
                   teams,
+                  allMembers,
                 )
               : null
           const waiting = waitingIn(items, decisions, queue.id)

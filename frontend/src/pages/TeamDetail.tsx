@@ -64,8 +64,15 @@ export function TeamDetail() {
 
         /* Everybody in the team today, for the control alone: which seasons
            this team can be asked about must not move when one of them is
-           chosen. */
-        const everMembers = competitors.filter((one) => one.teamId === team.id)
+           chosen.
+
+           **Off the same list the button above is read from.** Read from the file
+           while the button read the session, one screen answered twice about one
+           fact: a team approved a minute ago drew „Izmeni" for its founder and „0
+           članova" under it, because the founder's team is written into the session
+           and nowhere else (review, 05.09.2026). PDL, 05.09.2026: the founder „je od
+           tog trenutka prvi i jedini član i vidi se u sastavu tima". */
+        const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
            the default and a control cannot open on an option it does not have.

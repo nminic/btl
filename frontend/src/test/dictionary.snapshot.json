@@ -1226,6 +1226,7 @@
     "membersFailed": "Odluka nije moguća: spisak članova se ne može učitati, a bez njega se ne zna da li podnosilac već ima tim.",
     "teamMemberHasTeam": "Podnosilac je već u timu, pa ovaj predlog ne može da se odobri. Član sme da bude samo u jednom timu.",
     "teamGone": "Tim na koji se ova izmena odnosi je u međuvremenu obrisan, pa nema šta da se izmeni. Odbij izmenu uz objašnjenje.",
+    "teamNotYours": "Ovu izmenu je poslao član koji više ne administrira taj tim, pa ne može da se odobri. Odbij izmenu uz objašnjenje.",
     "openCard": "Prikaži",
     "openCardNamed": "Prikaži: {name}",
     "foldCard": "Sakrij",

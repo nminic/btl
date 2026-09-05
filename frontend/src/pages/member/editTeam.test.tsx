@@ -185,14 +185,20 @@ describe('a change waiting on the queue of teams', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
 
-    await user.clear(await screen.findByLabelText(/^Mesto/))
+    /* **A change of name**, because that is the case the mark exists for: with the
+       town changed and the name left alone, the team's own name and the name on the
+       card are the same string and nothing tells which of the two is being read
+       (review, 05.09.2026). */
+    await user.clear(await screen.findByLabelText(/Naziv tima/))
+    await user.type(screen.getByLabelText(/Naziv tima/), 'Dunavska družina')
+    await user.clear(screen.getByLabelText(/^Mesto/))
     await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
     await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
     await screen.findByRole('heading', { name: 'Izmena je poslata' })
 
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
-    const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+    const heading = await screen.findByRole('heading', { name: 'Dunavska družina' })
     const card = within(must(heading.closest('li'), 'the card the heading stands in'))
 
     /* And **which** team, by the name it carries now. „Izmena postojećeg tima" alone
@@ -257,6 +263,33 @@ describe('a change waiting on the queue of teams', () => {
 
     expect(screen.getByRole('link', { name: /Izmena tima je vraćena/ })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Predlog tima je vraćen/ })).toBeNull()
+  }, SLOW)
+
+  it('reaches the member as a change accepted, not as a proposal accepted', async () => {
+    /* The fourth of the four outcomes this queue can send, and the only one nothing
+       held: approved under the proposal's words, the administrator of a team whose
+       change was taken read „Tvoj predlog tima je prihvaćen. Ti si njegov
+       organizator." about a team they had run for years (review, 05.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await user.clear(await screen.findByLabelText(/^Mesto/))
+    await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+    await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+    await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+
+    expect(
+      screen.getByRole('link', { name: /Izmena tima „Dunavski trkači“ je prihvaćena/ }),
+    ).toBeVisible()
+    expect(screen.queryByRole('link', { name: /predlog tima/i })).toBeNull()
   }, SLOW)
 
   it('cannot be approved once the team it names has been deleted', async () => {

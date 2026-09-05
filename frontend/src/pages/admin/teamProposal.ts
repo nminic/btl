@@ -1,4 +1,5 @@
-import type { PendingItem, Team } from '../../data/types'
+import type { Competitor, PendingItem, Team } from '../../data/types'
+import { teamAdminOf } from '../../data/teamAdmin'
 import type { FieldError } from '../../forms/types'
 import type { Edits } from '../../session/context'
 import { slugify } from '../rulebookToc'
@@ -100,6 +101,9 @@ export function refusal(
    *  nothing answers to, settled the item as approved, and told the member their team
    *  had been changed (review, 05.09.2026). */
   teams: Team[],
+  /** The members, read through the overlay by the caller, so „who administers this
+   *  team" is the same answer here as on the screens that draw the way in. */
+  members: Competitor[],
 ): string | null {
   if ([made.name, made.city, made.country].some((value) => value.trim() === '')) {
     return 'verification.teamIncomplete'
@@ -121,8 +125,21 @@ export function refusal(
     return 'verification.teamNoMember'
   }
 
-  if (isChange(item) && !teams.some((one) => one.id === item.subjectId)) {
+  const about = teams.find((one) => one.id === item.subjectId)
+
+  if (isChange(item) && about === undefined) {
     return 'verification.teamGone'
+  }
+
+  /* **And sent by whoever administers that team today.** A change is the
+     administrator's act (PDL, 04.09.2026), and the seat can be handed to somebody
+     else while the change waits: approved then, the portal writes into a team on the
+     word of a member who no longer runs it, and tells them it was done. Read at the
+     moment of the decision rather than at the moment it was sent, because that is
+     when the writing happens (izvedeno 05.09.2026 iz odluke o administratoru; nije
+     vlasnikova rečenica nego ono što iz nje sledi). */
+  if (about !== undefined && isChange(item) && teamAdminOf(about, members) !== item.memberNumber) {
+    return 'verification.teamNotYours'
   }
 
   /* And only of a **new** team. A change is sent by the team's own administrator, who
