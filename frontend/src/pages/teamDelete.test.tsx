@@ -102,6 +102,40 @@ describe('a team its administrator takes down', () => {
        Asked here as well it would be the same measurement twice, once cheaply and
        once through a screen. */
     expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+
+    /* And the address answers the same way, which is where the rule really lives: a
+       hidden control is not a rule, and that was a finding once already (04.09.2026).
+       Two of the three doors read `teamOf` and neither had a case: put back on their own
+       comparison, the whole gate stayed green (review, 05.09.2026). */
+    await router.navigate('/sr/novi-tim')
+
+    expect(await screen.findByLabelText(/Naziv tima/)).toBeVisible()
+  }, SLOW)
+
+  it('takes the roster with it from the other place a team can be deleted too', async () => {
+    /* Two buttons that delete one thing must not delete two different amounts of it.
+       Administration has always been able to delete a team, and it left the people in it
+       pointing at a record that was gone: the portal went on refusing them a new team,
+       because `teamId` still named one, while their profile showed no club, because
+       `teams.find` answered nothing. Found by measurement, not by a screen (review,
+       05.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/timovi', 'superadmin', '000001', undefined, DAY)
+
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      listed.getAllByRole('row').find((one) => /Dunavski trkači/.test(one.textContent ?? '')),
+      'the row of the team being deleted',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Obriši: Dunavski trkači/ }))
+    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
+
+    await router.navigate('/sr/timovi')
+
+    /* The same answer the team's own page gives: nobody is left in a team that is gone,
+       so the way to found one opens again. */
+    expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
   }, SLOW)
 
   it('is not offered to a member of the team who does not administer it', async () => {
@@ -116,15 +150,19 @@ describe('a team its administrator takes down', () => {
     expect(screen.queryByRole('link', { name: 'Izmeni' })).toBeNull()
   })
 
-  it('is not offered to somebody who is not signed in at all', async () => {
-    /* The administrator of a team nobody is in is nobody, and a visitor's own „nobody"
-       must not match it. That comparison has been got wrong once already on the way in
-       to changing a team. */
-    renderAt('/sr/tim/dunavski-trkaci')
+  it('is not offered to a visitor, on the team whose administrator is nobody', async () => {
+    /* **Asked of the team that has no administrator, which is the only place it can be
+       asked.** `teamAdminOf` answers `null` for a team nobody is in, and a visitor's own
+       member number is `null` too, so the two match unless something says otherwise.
+       Asked of a team that does have an administrator, this passes whether that
+       something is there or not, and it did: taking it out left the whole gate green
+       (review, 05.09.2026). Novoosnovani tim has no members and no organiser. */
+    renderAt('/sr/tim/novoosnovani-tim')
 
-    await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })
+    await screen.findByRole('heading', { level: 1, name: 'Novoosnovani tim' })
 
     expect(screen.queryByRole('button', { name: /^Obriši/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Izmeni' })).toBeNull()
   })
 
   it('does not touch anybody outside it, which is what taking one team down means', async () => {
@@ -143,13 +181,9 @@ describe('a team its administrator takes down', () => {
 
     await router.navigate('/sr/tim/nisavski-maraton-klub')
 
-    const said = must(
-      (await screen.findByRole('heading', { level: 1, name: 'Nišavski maraton klub' })).closest(
-        '.profile',
-      ),
-      'the page of the team that was not deleted',
-    )
-
-    expect(within(said).queryByText(/0 članova/)).toBeNull()
+    /* The count itself and not „not empty": emptying one member of another team would
+       pass a reading that only refuses nought, and that member loses their team while
+       their team loses their points (review, 05.09.2026). Nišavski has five. */
+    expect(await screen.findByText('Niš · 5 članova')).toBeVisible()
   }, SLOW)
 })

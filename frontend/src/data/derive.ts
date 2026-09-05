@@ -396,23 +396,6 @@ const BY_TEAM = byLadder<TeamRow>([
  * has since joined.
  */
 /**
- * Whether somebody was in their team in a given season.
- *
- * A team is a thing of one season (PDL P13), so a figure headed by a year has to
- * be that year's team and not today's. `teamSince` is what the data knows, and
- * it answers both cases that arise: somebody still in a team counts from the
- * season they joined, and somebody who has left contributes nothing, which is
- * what the exit rule orders anyway (PDL P13, 31.07.2026: leaving mid-season
- * deletes the whole contribution to that team for that season).
- *
- * It also keeps out the member who has paid for next season and joined a team
- * for it, who is a member today and deliberately not in this season's tables.
- *
- * What it cannot express is the member who left cleanly on 1 January and keeps
- * their earlier contribution. Nothing in the data names that person's old team,
- * so no rule here can restore them.
- */
-/**
  * The team somebody is in, or nothing at all, in the one reading the whole portal uses.
  *
  * **Why this is not `competitor.teamId` read straight.** There is no database here: what
@@ -440,6 +423,23 @@ export function teamOf(competitor: { teamId: string | null } | undefined): strin
   return competitor.teamId
 }
 
+/**
+ * Whether somebody was in their team in a given season.
+ *
+ * A team is a thing of one season (PDL P13), so a figure headed by a year has to
+ * be that year's team and not today's. `teamSince` is what the data knows, and
+ * it answers both cases that arise: somebody still in a team counts from the
+ * season they joined, and somebody who has left contributes nothing, which is
+ * what the exit rule orders anyway (PDL P13, 31.07.2026: leaving mid-season
+ * deletes the whole contribution to that team for that season).
+ *
+ * It also keeps out the member who has paid for next season and joined a team
+ * for it, who is a member today and deliberately not in this season's tables.
+ *
+ * What it cannot express is the member who left cleanly on 1 January and keeps
+ * their earlier contribution. Nothing in the data names that person's old team,
+ * so no rule here can restore them.
+ */
 export function inTeamIn(competitor: Competitor, season: number): boolean {
   return competitor.teamSince !== null && competitor.teamSince <= season
 }
