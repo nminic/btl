@@ -59,23 +59,24 @@ describe('a day of the month', () => {
        declaration would fail the next time anybody reformats it. What must not
        disappear is that each of the four is read. */
     const day = ruleFor(calendar, '.day', 'Calendar.css')
-    const floor = day.getPropertyValue('min-inline-size')
+    const row = ruleFor(calendar, '.chip__lengths', 'Calendar.css')
 
-    for (const token of ['--length-dots-row', '--space-6', '--space-8']) {
-      expect(floor, token).toContain(`var(${token})`)
-    }
+    /* **Asked as the whole declaration, not as pieces of its text.** Every check
+       written over parts of it let a wrong floor through: `4px` asked for as a term
+       is satisfied by `4px * 6`, a ban on units written beside it is blind to
+       `+ 4px + 14px` once the four are taken out of the string, and neither a
+       multiplier nor a sign is a piece of text at all — measured, those four give a
+       day of 106, 100, 94 and 42 pixels with the check green (review, 05.09.2026).
+       A day of 42px is below anything this floor was ever measured for, and without
+       a floor the page scrolls sideways on 266 of 480 measured combinations
+       (ADL A26), which is what it exists to prevent.
 
-    /* And the four pixels of borders, which are not letters and do not grow with
-       them, asked for as their own term rather than as a piece of text: `toContain`
-       is satisfied by any number ending in those characters, and `+ 24px` made the
-       day twenty pixels wider than anything measured, with this green (review,
-       05.09.2026). */
-    expect(floor).toMatch(/(^|[+\s(])4px\b/)
-    /* And no length written out beside them, in any unit. The whole fault was a size
-       nothing kept in step with the tokens it copied, and `rem` was only the unit it
-       happened to be written in. The four pixels above are the one exception, and
-       they are asked for by name. */
-    expect(floor.replaceAll('4px', '')).not.toMatch(/[\d.]+(rem|em|px|ch|%)/)
+       The cost is that a deliberate reformatting of this line is a change here too.
+       That is the same cost every snapshot in this portal pays, and it is paid at
+       the moment of writing. */
+    expect(day.getPropertyValue('min-inline-size')).toBe(
+      'calc(var(--length-dots-row) + var(--space-6) + 2 * var(--space-8) + 4px)',
+    )
 
     /* **The row of dots is one name, and the ceiling over it reads the same one.**
        Two rules are that width and they are not in one subtree, so the name lives in
@@ -84,11 +85,18 @@ describe('a day of the month', () => {
        (measured in a browser, 05.09.2026). Written out in both, „five dots and four
        gaps" was one fact in two hands and the two could come apart with the gate
        green (review, 05.09.2026). */
+    expect(row.getPropertyValue('max-inline-size')).toBe('var(--length-dots-row)')
+
+    /* And the row **spaces itself from that same gap**, which is a different fact
+       from „the gap is not named here" and the one that matters: written
+       `gap: var(--space-4)`, nothing is declared on this rule either, and the row is
+       spaced out of one name while the ceiling counts it out of another. Raising the
+       shared token then widens the gaps without widening the ceiling, and five dots
+       break into two lines, which is the very thing this rule exists to prevent
+       (review, 05.09.2026). */
+    expect(row.getPropertyValue('gap')).toBe('var(--dot-gap)')
     expect(
-      ruleFor(calendar, '.chip__lengths', 'Calendar.css').getPropertyValue('max-inline-size'),
-    ).toBe('var(--length-dots-row)')
-    expect(
-      ruleFor(calendar, '.chip__lengths', 'Calendar.css').getPropertyValue('--dot-gap'),
+      row.getPropertyValue('--dot-gap'),
       'the gap is named in tokens.css, not on the row',
     ).toBe('')
   })
