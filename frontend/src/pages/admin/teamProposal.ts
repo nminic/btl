@@ -132,3 +132,26 @@ export function teamFrom(item: PendingItem, edits: Edits): Proposed {
     country: String(edits[item.id]?.country ?? said.country),
   }
 }
+
+/**
+ * Every member who already has a team, by number, read from **both** places that
+ * say so.
+ *
+ * A member's own record says it (`teamId`, written by an approval), and so does the
+ * team that approval made (`organizerMemberNumber`). Read off the record alone, the
+ * two came apart the moment the record was not there to write to: a member deleted
+ * from the list, or simply absent from it, left the team standing with their number
+ * on it and nothing anywhere saying they had one, so a second proposal of theirs went
+ * through on the next press (review, 05.09.2026). The sweep survived it only because
+ * it carries its own list along the walk; „Odobri" pressed twice had no memory at all.
+ *
+ * The same shape the addresses beside it already have: `addressesIn` reads the teams
+ * through the overlay, so a team made this visit counts. This reads the same list for
+ * the same reason.
+ */
+export function organisers(members: { memberNumber: string; teamId: string | null }[], teams: Team[]): string[] {
+  return [
+    ...members.flatMap((one) => (one.teamId === null ? [] : [one.memberNumber])),
+    ...teams.map((one) => one.organizerMemberNumber),
+  ]
+}

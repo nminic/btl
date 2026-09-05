@@ -27,7 +27,7 @@ import { moveEvent } from './moveEvent'
 import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
 import { EVENTS, idFor, MEMBERS, RACES, recordsOf, TEAMS } from './entityForms'
-import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamProposal'
+import { addressesIn, addressOf, organisers, proposed, refusal, teamFrom } from './teamProposal'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
@@ -332,7 +332,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
        makes. Read once and carried, for the same reason the identities and the
        addresses are: the session does not change while a loop runs, so two proposals
        from one member approved in one press would both go through. */
-    const inATeam = allMembers.flatMap((one) => (one.teamId === null ? [] : [one.memberNumber]))
+    const inATeam = organisers(allMembers, teams)
     let done = 0
 
     for (const one of items) {
@@ -478,7 +478,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   teamFrom(one, edits),
                   addresses,
                   one,
-                  allMembers.flatMap((each) => (each.teamId === null ? [] : [each.memberNumber])),
+                  organisers(allMembers, teams),
                 )
               : null
           const waiting = waitingIn(items, decisions, queue.id)

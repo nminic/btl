@@ -157,17 +157,21 @@ describe('the way to propose a team', () => {
 
     const seasons = screen.getByLabelText(/Sezona/)
 
-    expect([...seasons.querySelectorAll('option')].map((one) => one.textContent)).toContain('2027')
+    expect(within(seasons).getAllByRole('option').map((one) => one.textContent)).toContain('2027')
     /* And it opens on the season now running, never on the one that has not begun. */
     expect(seasons).toHaveValue('2026')
 
     await user.selectOptions(seasons, '2027')
 
     const table = within(await screen.findByRole('table', { name: 'Timovi' }))
+    /* Read by role and by the place in the row rather than by a class name: the
+       points are the last cell of a team's row, and `.table__points` is a name eight
+       screens share (btl/CLAUDE.md, UI standards: role and label queries, not CSS
+       selectors). */
     const points = table
       .getAllByRole('row')
       .slice(1)
-      .map((row) => row.querySelector('.table__points')?.textContent)
+      .map((row) => within(row).getAllByRole('cell').at(-1)?.textContent)
 
     expect(points.length).toBeGreaterThan(0)
     expect([...new Set(points)]).toEqual(['0,00'])
@@ -428,17 +432,72 @@ describe('the queue of teams without the members', () => {
      something that will never come, a moderator is refused the decision for good and
      reads a sentence that is not true. The queue of dates does the same over its own
      two files, and `AdminEvents` over the results. */
-  const withMembers = async (answer: (input: RequestInfo | URL) => Promise<Response>) => {
+  const withMembers = async (
+    /* Handed the real reader, because the stub is `globalThis.fetch` by the time this
+       runs and a case that asks for it again asks itself. */
+    answer: (input: RequestInfo | URL, served: typeof globalThis.fetch) => Promise<Response>,
+  ) => {
     const served = globalThis.fetch
 
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('competitors') ? answer(input) : served(input, init),
+      String(input).includes('competitors') ? answer(input, served) : served(input, init),
     )
 
     return () => {
       vi.stubGlobal('fetch', served)
     }
   }
+
+  it('refuses the second one even when the member record is gone', async () => {
+    /* The other home of „this member already has a team": the team itself carries the
+       number that made it (`organizerMemberNumber`). Read off the member's record
+       alone, the two came apart the moment the record was not there to write to — a
+       member deleted from the list, or simply absent from it — and „Odobri" pressed
+       twice made two teams for one number, while the sweep survived only because it
+       carries its own list along the walk (review, 05.09.2026).
+
+       Served without that member rather than deleted through the administration: the
+       state under test is „the record is not there", and the shorter road to it says
+       so more plainly. */
+    const back = await withMembers(async (input, served) => {
+      const answer = await served(input)
+      const members: { memberNumber: string }[] = await answer.json()
+
+      return new Response(JSON.stringify(members.filter((one) => one.memberNumber !== '000004')), {
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      const user = setupUser()
+      const { router } = renderAt(
+        '/sr/administracija/verifikacija/timovi',
+        'superadmin',
+        '000002',
+        undefined,
+        DAY,
+      )
+
+      for (const name of ['Timočka trkačka družina', 'Moravski maratonci']) {
+        const heading = await screen.findByRole('heading', { name })
+        const card = within(must(heading.closest('li'), `the card of ${name}`))
+        const decide = card.getByRole('button', { name: 'Odobri' })
+
+        if (decide.getAttribute('aria-disabled') !== 'true') {
+          await user.click(decide)
+        }
+      }
+
+      await router.navigate('/sr/administracija/timovi')
+
+      const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+      expect(listed.getByText('Timočka trkačka družina')).toBeVisible()
+      expect(listed.queryByText('Moravski maratonci')).toBeNull()
+    } finally {
+      back()
+    }
+  }, SLOW)
 
   it('says it is waiting for them while they are still coming', async () => {
     const back = await withMembers(async () => new Promise<Response>(() => undefined))
@@ -454,7 +513,7 @@ describe('the queue of teams without the members', () => {
     } finally {
       back()
     }
-  })
+  }, SLOW)
 
   it('says the decision cannot be taken at all when they will not come', async () => {
     const back = await withMembers(async () => new Response('', { status: 500 }))
@@ -466,7 +525,7 @@ describe('the queue of teams without the members', () => {
     } finally {
       back()
     }
-  })
+  }, SLOW)
 })
 
 describe('who the queue of new teams says decides', () => {
