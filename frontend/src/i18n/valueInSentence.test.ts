@@ -418,6 +418,25 @@ describe('a sentence with a value put into it', () => {
       'x.a',
       'x.b',
     ])
+    /* A choice named on one side only is named on one side only: the half nobody wrote
+       out takes its values under „?", which breaks the list. Filtered away instead, that
+       half is a sentence the list no longer holds and nobody is asked about; through a
+       maker with another name the whole call disappears (review, 05.09.2026). */
+    expect(read('proba.tsx', "const a = t(x ? 'x.a' : other, { name: n })")).toEqual([
+      'x.a',
+      '? (proba.tsx)',
+    ])
+    expect(read('proba.tsx', "const a = say(x ? 'x.a' : other, { name: n })")).toEqual([
+      'x.a',
+      '? (proba.tsx)',
+    ])
+
+    /* And a sentence is made by something called, not by something reached through
+       another thing: `obj.say('x.y', …)` is a method of somebody else's object that
+       happens to share a word with the dictionary. The portal writes none, and the
+       condition that says so had nothing holding it. */
+    expect(read('proba.tsx', "const a = obj.say('x.y', { name: n })")).toEqual([])
+
     /* And a word that is not one of the dictionary's names is not a sentence, whatever is
        called with it. Written as a word rather than as a list, because a list is not a
        word and this would pass without the dictionary being asked at all. */
