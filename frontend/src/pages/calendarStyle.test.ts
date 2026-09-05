@@ -61,15 +61,35 @@ describe('a day of the month', () => {
     const day = ruleFor(calendar, '.day', 'Calendar.css')
     const floor = day.getPropertyValue('min-inline-size')
 
-    for (const token of ['--length-dot-size', '--dot-gap', '--space-6', '--space-8']) {
+    for (const token of ['--length-dots-row', '--space-6', '--space-8']) {
       expect(floor, token).toContain(`var(${token})`)
     }
 
     /* And the four pixels of borders, which are not letters and do not grow with
-       them. Written as a number because that is what they are. */
-    expect(floor).toContain('4px')
-    /* And no number of letters written out beside them: the whole fault was a size
-       in `rem` that nothing kept in step with the tokens it copied. */
-    expect(floor).not.toMatch(/[\d.]+rem/)
+       them, asked for as their own term rather than as a piece of text: `toContain`
+       is satisfied by any number ending in those characters, and `+ 24px` made the
+       day twenty pixels wider than anything measured, with this green (review,
+       05.09.2026). */
+    expect(floor).toMatch(/(^|[+\s(])4px\b/)
+    /* And no length written out beside them, in any unit. The whole fault was a size
+       nothing kept in step with the tokens it copied, and `rem` was only the unit it
+       happened to be written in. The four pixels above are the one exception, and
+       they are asked for by name. */
+    expect(floor.replaceAll('4px', '')).not.toMatch(/[\d.]+(rem|em|px|ch|%)/)
+
+    /* **The row of dots is one name, and the ceiling over it reads the same one.**
+       Two rules are that width and they are not in one subtree, so the name lives in
+       the token file: read from the row's own rule, it is undefined where the floor
+       reads it, the whole declaration is invalid, and the day has no floor at all
+       (measured in a browser, 05.09.2026). Written out in both, „five dots and four
+       gaps" was one fact in two hands and the two could come apart with the gate
+       green (review, 05.09.2026). */
+    expect(
+      ruleFor(calendar, '.chip__lengths', 'Calendar.css').getPropertyValue('max-inline-size'),
+    ).toBe('var(--length-dots-row)')
+    expect(
+      ruleFor(calendar, '.chip__lengths', 'Calendar.css').getPropertyValue('--dot-gap'),
+      'the gap is named in tokens.css, not on the row',
+    ).toBe('')
   })
 })

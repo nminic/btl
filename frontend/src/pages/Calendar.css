@@ -150,9 +150,7 @@
      whole suite green (review, 30.08.2026). The arithmetic is the same to the
      hundredth at today's values, which is what makes this a rewrite and not a
      change: 5 × 0,55 + 4 × 0,25 + 0,375 + 2 × 0,5 = 5,125rem. */
-  min-inline-size: calc(
-    5 * var(--length-dot-size) + 4 * var(--dot-gap) + var(--space-6) + 2 * var(--space-8) + 4px
-  );
+  min-inline-size: calc(var(--length-dots-row) + var(--space-6) + 2 * var(--space-8) + 4px);
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   padding: var(--space-8);
@@ -314,9 +312,17 @@
 
 .chip__lengths {
   display: flex;
-  /* The gap has a name of its own here because the ceiling below counts four of
-     them, and a number counted from a token written twice is a number that comes
-     apart: with the ceiling saying `4 x --space-4` and this saying `--space-8`,
+  /* **[ISPRAVLJENO 05.09.2026] The gap is named in `styles/tokens.css`, not here.**
+     Two rules are the width of a full row: the ceiling below and the floor under the
+     day this row is drawn in, and they are not in one subtree, so the name has to be
+     above both. Put back on this rule, `--dot-gap` is undefined where the floor reads
+     it, the whole `min-inline-size` is invalid, and the day has no floor at all —
+     measured in a browser on 05.09.2026, `auto` instead of 86px, with the whole gate
+     green. This paragraph said the opposite until then.
+
+     Why the name exists at all: a number counted from a token written twice is a
+     number that comes apart. With the ceiling saying `4 x --space-4` and this saying
+     `--space-8`,
      five dots ask 76px of a ceiling of 60 and break into two lines, which is the
      outcome this rule exists to prevent. Measured in review, 30.08.2026, with the
      whole suite green.
@@ -383,7 +389,7 @@
      nothing moves, since it is the last thing in a tile whose name takes all
      the room there is. */
   flex-wrap: wrap;
-  max-inline-size: calc(5 * var(--length-dot-size) + 4 * var(--dot-gap));
+  max-inline-size: var(--length-dots-row);
   flex-shrink: 0;
 }
 

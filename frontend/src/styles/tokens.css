@@ -145,6 +145,14 @@
      two would be one fact in two homes: measured 05.09.2026, raising the dot alone
      took the row out of the day it is drawn in. */
   --dot-gap: var(--space-4);
+  /* How wide a full row of them is: five dots and the four gaps between them. Five,
+     because that is what a day of the calendar holds and what the floor under a day
+     is measured for; a sixth wraps (`pages/Calendar.css`). Here rather than in that
+     sheet because **two** rules are that width: the ceiling over the row itself and
+     the floor under the day it is drawn in. Written out in both, „five and four" was
+     one fact in two hands, and a review measured the two coming apart with the whole
+     gate green (05.09.2026). */
+  --length-dots-row: calc(5 * var(--length-dot-size) + 4 * var(--dot-gap));
 
   /* An event that is not a race, on the tile it gets in the calendar.
    *
