@@ -18,11 +18,29 @@ import { sources } from '../test/sources'
  * date formatters were named, the sweep read only `.tsx` while ten `.ts` files build
  * sentences too, and a value bound to a constant first was invisible, which is the very
  * shape that same commit had just written in `data/seedMessages.ts`. So what is read is
- * the import: whatever a file takes from `i18n/format`, under whatever name, counts, and
- * a constant made from one of them counts as that one.
+ * the import: whatever a file takes from `i18n/format` counts, and a constant made from
+ * one of them counts as that one.
  *
- * What stays written by hand is the answer, because it is a judgement about language and
- * not about code.
+ * **Where that reading stops, measured rather than assumed** (review, 05.09.2026). Four
+ * shapes are outside it, and the portal writes none of them today: a star import
+ * (`import * as fmt`, nought of them anywhere in `src`), `t` destructured under another
+ * name (nought of a hundred and thirty three), a key built from a template, and a key held
+ * in a variable (thirty and eight of those, all of them handed raw values). A fifth,
+ * importing a formatter under an alias, is seen but reported under the alias, so it fails
+ * the list loudly rather than passing quietly. The day the portal writes one of the four,
+ * this stops seeing it, and that is the line to look at.
+ *
+ * **What each line below answers, and what it does not.** It answers the case: which form
+ * of the word the sentence around it takes. It does not answer the language. Whether a
+ * formatted value follows the language of the address or the language of the words is one
+ * question for the whole portal, it has a live guard pointing at the address
+ * (`pages/event/rateEvent.test.tsx`), and it is open with the owner
+ * (`btl-produkt/PENDING.md`). The single exception already made is
+ * `formatDayInSentence`, which has to follow the words because its rule for the genitive
+ * is Serbian and would make „Octobera" of „October".
+ *
+ * What stays written by hand is the answer about the case, because that is a judgement
+ * about language and not about code.
  */
 export function datesIn(path: string, code: string): string[] {
   const source = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
@@ -196,5 +214,36 @@ describe('a formatted value handed to a sentence', () => {
     expect(read('proba.tsx', "const a = t('x.y', { date: formatDate(d, locale) })")).toEqual([])
     /* And the formatter named as the key itself, which would satisfy this by itself. */
     expect(read('proba.tsx', `${brought}const a = t('formatDate', { name: n })`)).toEqual([])
+  })
+
+  it('says where it stops seeing, in the four shapes the portal does not write', () => {
+    /* The limits of the reading, measured rather than described. None of these four is
+       written anywhere in `src` today — nought star imports of this module, nought of a
+       hundred and thirty three `useI18n()` bindings renaming `t`, and every template or
+       variable key handed raw values — so each is a boundary and not a fault. They are
+       here so that the boundary is a measured thing somebody can move, rather than a
+       sentence in a comment that nothing holds to (review, 05.09.2026). */
+    const read = (code: string) => datesIn('proba.tsx', code)
+
+    expect(
+      read("import * as fmt from '../i18n/format'\nconst a = t('x.y', { date: fmt.formatDate(d, l) })"),
+    ).toEqual([])
+    expect(
+      read(
+        "import { formatDate } from '../i18n/format'\nconst { t: say } = useI18n()\nconst a = say('x.y', { date: formatDate(d, l) })",
+      ),
+    ).toEqual([])
+    expect(
+      read("import { formatDate } from '../i18n/format'\nconst a = t(`x.${z}`, { date: formatDate(d, l) })"),
+    ).toEqual([])
+    expect(
+      read("import { formatDate } from '../i18n/format'\nconst a = t(someKey, { date: formatDate(d, l) })"),
+    ).toEqual([])
+
+    /* And the fifth, which is seen but under the name it was brought in as, so it breaks
+       the list above rather than slipping past it. That is the safe way to be wrong. */
+    expect(
+      read("import { formatDate as danKad } from '../i18n/format'\nconst a = t('x.y', { date: danKad(d, l) })"),
+    ).toEqual(['x.y <- danKad'])
   })
 })
