@@ -135,7 +135,6 @@ describe('the way to report a result', () => {
 
     expect(await screen.findByText(/Rezultat se unosi sa reda trke/)).toBeVisible()
     expect(screen.queryByLabelText(/Sati/)).toBeNull()
-    expect(screen.getByRole('link', { name: 'Nazad na događaj' })).toBeVisible()
   })
 
   it('refuses an address that names no race at all', async () => {
@@ -211,7 +210,6 @@ describe('an event with no races on it', () => {
     expect(await screen.findByText(/nema nijednu trku/)).toBeVisible()
     expect(screen.queryByLabelText(/Sati/)).toBeNull()
     /* And the way back is the event it came from. */
-    expect(screen.getByRole('link', { name: 'Nazad na događaj' })).toBeVisible()
   })
 })
 

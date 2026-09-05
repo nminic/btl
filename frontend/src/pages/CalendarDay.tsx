@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { Resource } from '../components/Resource'
 import { combinePair, useEvents, useRaces } from '../data/useResource'
@@ -50,8 +50,6 @@ export function CalendarDay() {
   const state = combinePair(useEvents(), useRaces())
   const asked = dayFrom(date)
 
-  const month = asked === null ? null : asked.slice(0, 7)
-
   return (
     <div className="calendar">
       {asked !== null && (
@@ -77,11 +75,6 @@ export function CalendarDay() {
           a control before learning which page they were on (WCAG 2.2, 1.3.1 and
           2.4.6; owner, 04.09.2026). Kept a link and not dressed as a button, because
           it is a way out and not an action. */}
-      <p className="calendar__back">
-        <Link to={month === null ? `/${locale}/kalendar` : `/${locale}/kalendar?mesec=${month}`}>
-          {t('calendar.title')}
-        </Link>
-      </p>
 
       <Resource state={state}>
         {([events, races]) => {

@@ -303,15 +303,6 @@ describe('rating an event', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Organizacija' })).toBeNull()
   })
 
-  it('leads back to the event from that refusal, which is what they wanted anyway', async () => {
-    renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', '999999')
-
-    expect(await screen.findByRole('link', { name: 'Nazad na događaj' })).toHaveAttribute(
-      'href',
-      `/sr/kalendar/${EVENT}`,
-    )
-  })
-
   it('starts empty on the next event, rather than carrying the last one over', async () => {
     /* The router keeps one element across a change of the address's own parts,
        so the marks, the words and "it has been sent" all survived a step from
@@ -1084,7 +1075,6 @@ describe('what an event nobody has run yet offers', () => {
     expect(await screen.findByRole('heading', { name: 'Ovaj događaj još nije održan' }))
       .toBeVisible()
     expect(screen.queryByRole('radiogroup', { name: /Organizacija/ })).toBeNull()
-    expect(screen.getByRole('link', { name: 'Nazad na događaj' })).toBeVisible()
   })
 
   it('refuses the report of a result at its own address', async () => {

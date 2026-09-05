@@ -1,9 +1,10 @@
 import { countryName } from '../../data/countryName'
 import { useState } from 'react'
-import { Link, Navigate } from 'react-router'
+import { Navigate } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { teamOf } from '../../data/derive'
 import { inYearlyWindow } from '../../data/season'
+import { useSend, useSent } from '../sent'
 import { CropChooser } from '../../components/CropChooser'
 import type { Chosen } from '../../components/CropChooser'
 import { WHOLE } from '../../components/crop'
@@ -65,7 +66,11 @@ export function ProposeTeam() {
      a fortnight later by a refusal has to start again. */
   const state = combinePair(useCompetitors(), useTeams())
   /** The name of the team once it has been sent, so the screen can say which. */
-  const [sent, setSent] = useState<string | null>(null)
+  /* Held by the address rather than by the screen, so the way back from this
+     confirmation is the list of teams and not the form already sent (PDL, 05.09.2026). */
+  const said = useSent()
+  const sent = typeof said === 'string' ? said : null
+  const confirm = useSend()
   /** The logo, if the member has one to hand. Held here and not in the form
    *  definition: a form field is a value typed into a box, and this is a file
    *  read off a disc with three sliders over it. */
@@ -85,11 +90,6 @@ export function ProposeTeam() {
       <div className="member" role="status">
         <h1>{t('teams.proposeDoneTitle')}</h1>
         <p>{t('teams.proposeDone', { name: sent })}</p>
-        <p className="member__actions">
-          <Link className="button button--primary" to={`/${locale}/timovi`}>
-            {t('teams.proposeBack')}
-          </Link>
-        </p>
       </div>
     )
   }
@@ -177,7 +177,7 @@ export function ProposeTeam() {
               crop: logo === null ? WHOLE : logo.crop,
             })
 
-            setSent(name)
+            confirm(`/${locale}/timovi`, name)
           }
 
           return (

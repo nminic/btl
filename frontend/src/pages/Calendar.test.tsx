@@ -395,11 +395,17 @@ describe('the row the month is chosen in', () => {
        on all four and read it back was itself the source of two rounds of findings,
        so this asks what a member can do instead of what the markup carries. Same
        shape as „leads back to the whole inbox" in `memberFlows`. */
-    const user = setupUser()
-    const { router } = renderAt('/sr/kalendar/dan/2027-05-08')
+    const { router } = renderAt('/sr/kalendar')
 
+    /* **Through the calendar and back, because the way back is the browser's own.** The
+       day carried a link to the calendar under its heading until 05.09.2026, when the
+       owner took every such link off the portal („Default Back akcija mi je OK"). What is
+       left to hold is that a day opened from the calendar leaves the calendar underneath
+       it, which is what the browser then returns to. */
+    await screen.findByRole('heading', { level: 1, name: 'Kalendar' })
+    await router.navigate('/sr/kalendar/dan/2027-05-08')
     await screen.findByRole('heading', { level: 1, name: /8\. maj 2027/ })
-    await user.click(within(screen.getByRole('main')).getByRole('link', { name: 'Kalendar' }))
+    await router.navigate(-1)
 
     /* **By the address, and then by the heading.** „A level one heading saying
        Kalendar" holds nothing on its own: the day is titled with that same word
