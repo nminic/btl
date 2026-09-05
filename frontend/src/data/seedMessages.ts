@@ -1,4 +1,6 @@
 import type { Message } from '../session/context'
+import { DEFAULT_LOCALE } from '../i18n/config'
+import { formatDate } from '../i18n/format'
 import { priceOn, REGISTRATION_OPENS } from './pricing'
 
 /**
@@ -17,7 +19,7 @@ import { priceOn, REGISTRATION_OPENS } from './pricing'
    name it would need an „or nothing" for a row that is always there, and that is a
    branch no case can reach. */
 const FEE = priceOn(REGISTRATION_OPENS).eur
-const OPENS = `${Number(REGISTRATION_OPENS.slice(8, 10))}. oktobra`
+const OPENS = formatDate(REGISTRATION_OPENS, DEFAULT_LOCALE)
 
 /**
  * Two messages the inbox starts with, so it is not judged empty.

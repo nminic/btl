@@ -55,7 +55,7 @@ export function MyResults() {
                   {' · '}
                   {formatDuration(one.seconds)}
                   {' · '}
-                  {t('units.points', { value: formatPoints(one.points, locale) })}
+                  {t('units.btlPoints', { value: formatPoints(one.points, locale) })}
                 </p>
                 {/* And on the one screen a member meets the number more than once,
                     the same caveat the form gave them when they sent it: the count

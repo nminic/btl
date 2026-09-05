@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { first } from '../test/at'
+import { DEFAULT_LOCALE } from '../i18n/config'
+import { formatDate } from '../i18n/format'
 import { priceOn, REGISTRATION_OPENS } from './pricing'
 import { FIRST_MESSAGES } from './seedMessages'
 
@@ -18,7 +20,11 @@ describe('the messages the inbox starts with', () => {
     const said = first(FIRST_MESSAGES).body
 
     expect(said).toContain(`${priceOn(REGISTRATION_OPENS).eur} EUR`)
-    expect(said).toContain(`${Number(REGISTRATION_OPENS.slice(8, 10))}. oktobra`)
+    /* The day as the portal writes a day, month and all: written out here as „1.
+       oktobra", the month was a hand-written word in two places at once, and a price
+       list moved to September went on announcing October with this green (review,
+       05.09.2026). */
+    expect(said).toContain(formatDate(REGISTRATION_OPENS, DEFAULT_LOCALE))
   })
 
   it('are the league talking to everybody, which is what an empty recipient means', () => {
