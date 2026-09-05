@@ -13,10 +13,24 @@ import { setupUser } from '../../test/user'
  */
 
 describe('the way to propose a team', () => {
-  it('is offered to a member on the standing of the teams', async () => {
-    renderAt('/sr/timovi', 'competitor', '000007')
+  it('is offered to a member who is in no team, on the standing of the teams', async () => {
+    /* Member 000002 runs alone: `teamId` is null on their record. Somebody with
+       a team has nothing to do with this button, and what they can do is on their
+       own team's page (owner, 04.09.2026). */
+    renderAt('/sr/timovi', 'competitor', '000002')
 
     expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+  })
+
+  it('is not offered to a member who already has one', async () => {
+    /* The half of the same decision that takes something away: 000007 is in Dunav,
+       and until 04.09.2026 every signed-in member saw this. Named by the member and
+       not by the count of teams, because a member joins and leaves a team through
+       the season and the button has to follow that, not the table. */
+    renderAt('/sr/timovi', 'competitor', '000007')
+
+    await screen.findByRole('table', { name: 'Timovi' })
+    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
   })
 
   it('is not offered to somebody who is not signed in', async () => {
@@ -24,6 +38,54 @@ describe('the way to propose a team', () => {
 
     await screen.findByRole('table', { name: 'Timovi' })
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+  })
+
+  it('refuses a member who already has a team, at the address and not only on the button', async () => {
+    /* A hidden button is not a rule. This address is in a member's history and in
+       their bookmarks, and reached from either the form used to send a proposal
+       that, approved, made them the organiser of a second team — against PDL P13,
+       „član sme da bude samo u jednom timu istovremeno" (review, 04.09.2026). */
+    renderAt('/sr/novi-tim', 'competitor', '000007')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Predlog tima' })).toBeVisible()
+    expect(screen.getByText(/samo u jednom timu/)).toBeVisible()
+    expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
+  })
+
+  it('refuses a member whose team starts next season, and the standing agrees they are not in one yet', async () => {
+    /* The boundary, in both directions and in one case. 000031 joined Dunav for
+       2027 (`teamSince`), so on a day in 2026 the portal counts them out of the
+       team: `inTeamIn` is what the member count and the roster read, and neither
+       names them. The door still refuses them, because founding a team now would
+       leave them in two of them on 1 January, which is what P13 forbids.
+
+       So the two readings of „is in a team" are both right and answer different
+       questions: the standing asks about a season, the door asks whether there is a
+       team on the record at all. Measured here rather than argued, because a review
+       measured that the portal can be made to say both (04.09.2026). */
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000031', undefined, '2026-09-05')
+
+    expect(await screen.findByText(/samo u jednom timu/)).toBeVisible()
+    expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
+
+    await router.navigate('/sr/timovi')
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+  })
+
+  it('refuses them on a day two seasons before their team begins, too', async () => {
+    /* The same member read a year earlier, and this is what pins the decision rather
+       than merely stating it. Read as a season, the door has to choose **which**
+       season, and „the season after this one" answers the case above exactly as the
+       record does: 2027 is not after 2026. It parts company here — on a day in 2025
+       the next season is 2026, that member is not in a team by that reading, and the
+       form would open. Measured: `inTeamIn(me, thisYear + 1)` passes every other case
+       in this file and fails only this one (review, 05.09.2026). */
+    renderAt('/sr/novi-tim', 'competitor', '000031', undefined, '2025-09-05')
+
+    expect(await screen.findByText(/samo u jednom timu/)).toBeVisible()
+    expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
   })
 
   it('asks whoever reaches the address without signing in to sign in', async () => {
@@ -45,7 +107,7 @@ describe('a proposal a member sends', () => {
 
   it('says it is waiting on a moderator rather than that the team exists', async () => {
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000007')
+    renderAt('/sr/novi-tim', 'competitor', '000002')
 
     await fill(user, 'Trkači Morave')
 
@@ -65,7 +127,7 @@ describe('a proposal a member sends', () => {
     const user = setupUser()
     /* Signed in as somebody who may also decide, because this walks both
        ends of the flow and the administration is shut to a competitor. */
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
 
     await user.upload(
       await screen.findByLabelText(/Znak tima/),
@@ -108,7 +170,7 @@ describe('a proposal a member sends', () => {
 
   it('refuses to send without the three things it asks for', async () => {
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000007')
+    renderAt('/sr/novi-tim', 'competitor', '000002')
 
     await user.click(await screen.findByRole('button', { name: 'Pošalji predlog' }))
 
@@ -139,7 +201,7 @@ describe('what the screen promises a member', () => {
        Checked by counting the inbox rather than by matching the old sentence,
        which any other wording of the same promise would have slipped past. */
     const user = setupUser()
-    const { router } = renderAt('/sr/poruke', 'competitor', '000007')
+    const { router } = renderAt('/sr/poruke', 'competitor', '000002')
 
     const before = within(await screen.findByRole('list')).getAllByRole('listitem').length
 
@@ -159,7 +221,7 @@ describe('what the screen promises a member', () => {
     /* A proposal lives in the session and is read in the administration alone,
        so "only you can see it" would have been the same kind of promise. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'competitor', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000002')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
@@ -180,7 +242,7 @@ describe('a name a team in the league already answers to', () => {
        at the door can change it; a member told a fortnight later by a refusal
        has to start again. */
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000007')
+    renderAt('/sr/novi-tim', 'competitor', '000002')
 
     /* In another case and without the diacritics, which is what the league
        already holds as "Dunavski trkači": the check is on the address the name
@@ -202,7 +264,7 @@ describe('a name a team in the league already answers to', () => {
        already has and not a second one. Before the address knew any Cyrillic
        this went through, and the team it made answered at `/tim/`. */
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000007')
+    renderAt('/sr/novi-tim', 'competitor', '000002')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Дунавски тркачи')
     await user.type(screen.getByLabelText(/^Mesto/), 'Novi Sad')
@@ -220,7 +282,7 @@ describe('a name that makes no address at all', () => {
        first such team would answer at `/tim/`, and the next proposal would be
        refused as a name already taken though the two share nothing. */
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000007')
+    renderAt('/sr/novi-tim', 'competitor', '000002')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), '???')
     await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
@@ -265,7 +327,7 @@ describe('the queue of new teams', () => {
        which of two waiting teams came from a file and which from a member,
        because once there is a database there is no such difference. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
@@ -296,7 +358,7 @@ describe('the queue of new teams', () => {
        Slovenia rather than Serbia on purpose: every other flow here picks RS,
        which the five happened to hold, so all of them passed either way. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
     await user.type(screen.getByLabelText(/^Mesto/), 'Kranj')
@@ -319,7 +381,7 @@ describe('the queue of new teams', () => {
        told nothing is waiting, on a screen about to show them something, stops
        believing the number. */
     const user = setupUser()
-    const { router } = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000007')
+    const { router } = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002')
 
     const named = () =>
       must(
@@ -363,7 +425,7 @@ describe('a proposal a moderator accepts', () => {
     /* Not a message on a screen nobody is looking at: the decision may come
        days later. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
 
     await propose(user, 'Trkači Morave')
 
@@ -386,7 +448,7 @@ describe('a proposal a moderator accepts', () => {
 
   it('makes the team, with the member who proposed it as its organiser', async () => {
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
 
     await propose(user, 'Trkači Morave')
 
@@ -417,7 +479,7 @@ describe('a proposal a moderator accepts', () => {
     /* The other half. A refusal makes no team and writes to nobody: the reason
        is written down, and this queue hands nothing back to a member. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000007')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
 
     await propose(user, 'Trkači Morave')
 
@@ -447,7 +509,7 @@ describe('what a moderator may do before accepting a proposal', () => {
      told (PDL P13, 03.08.2026). The name, the town and the country arrive as the
      member typed them and the team carries them from then on. */
   const open = async () => {
-    const rendered = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000007')
+    const rendered = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002')
     await screen.findByRole('list', { name: /Čeka/ })
 
     return rendered

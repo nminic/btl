@@ -3,6 +3,10 @@ import { first } from '../../test/at'
 import { beginsWith, metSaid } from '../../test/met'
 import { renderAt } from '../../test/render'
 
+/* Signed in as a member with no team of their own: since 05.09.2026 the way to
+ * propose one is shut to a member who already has one, at the address and not only
+ * on the button (PDL, increment 133), and a screen that refuses draws no form. */
+
 /**
  * A page begins with its own heading, and the screens a member writes on did not.
  *
@@ -42,7 +46,7 @@ describe('the screens a member writes on', () => {
   it('begin with their own heading, before anything the reader can meet', async () => {
     for (const [route, name] of SCREENS) {
       cleanup()
-      renderAt(route, 'competitor', '000007')
+      renderAt(route, 'competitor', '000002')
 
       const heading = await screen.findByRole('heading', { level: 1, name })
       expect(beginsWith(heading), `${route} begins with its heading, met ${metSaid(heading)}`).toBe(
@@ -62,7 +66,7 @@ describe('the screens a member writes on', () => {
        only after filling the whole form in (review, 04.09.2026). */
     for (const [route, name, note] of SCREENS) {
       cleanup()
-      renderAt(route, 'competitor', '000007')
+      renderAt(route, 'competitor', '000002')
 
       const main = screen.getByRole('main')
       const said = await within(main).findByText(note)
