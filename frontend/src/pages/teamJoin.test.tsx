@@ -143,6 +143,22 @@ describe('the way a member asks to be let into a team', () => {
   })
 })
 
+/** A member who has taken a team during this same visit, written the way an approval in
+ *  the queue writes it: into the session and nowhere else. */
+function Joined({ who, team }: { who: string; team: string }) {
+  const { editRecord } = useSession()
+  const done = useRef(false)
+
+  useEffect(() => {
+    if (!done.current) {
+      done.current = true
+      editRecord(who, { teamId: team, teamSince: '2027' })
+    }
+  }, [editRecord, who, team])
+
+  return null
+}
+
 describe('the answer the administrator of the team gives', () => {
   it('lets the member in, and from the next season, which is when a team scores', async () => {
     /* PDL, 05.09.2026: „obračun poena tima počinje tek od 1.1. naredne sezone." So the
@@ -243,6 +259,56 @@ describe('the answer the administrator of the team gives', () => {
     expect(await screen.findByText('Ovog tima više nema, pa se prijava ne može primiti.')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
+  }, SLOW)
+
+  it('says why, when the member took a team during this same visit', async () => {
+    /* **This is what says the members are read through the session and not off the file.**
+       Who is in a team is written into the session by an approval and nowhere else until
+       there is a database, so read from the file the answer went on saying „they have no
+       team" and pulled them out of the one they had just been given (review, 05.09.2026).
+       Both readings pass every other case in this file, which is why this one exists. */
+    const { router } = renderAt(
+      '/sr/poruke',
+      'competitor',
+      '000001',
+      undefined,
+      DAY,
+      <>
+        <Sent from="000002" team="Dunavski trkači" name="Relja Momčilović" />
+        <Joined who="000002" team="team-vardar" />
+      </>,
+    )
+
+    await opened(router)
+
+    expect(await screen.findByText('Ovaj član je u međuvremenu ušao u drugi tim.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+  }, SLOW)
+
+  it('says why, when the administrator deleted the team while the letter waited', async () => {
+    /* And this is what says the teams are read the same way: the team goes during this
+       visit and nowhere else, so read off the file it is still there and the answer wrote
+       an identity nothing answers to. Deleting is free until the end of the year (owner,
+       05.09.2026), so this is a walk a member really takes. */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/tim/dunavski-trkaci',
+      'competitor',
+      '000001',
+      undefined,
+      DAY,
+      <Sent from="000002" team="Dunavski trkači" name="Relja Momčilović" />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: /^Obriši: Dunavski trkači/ }))
+    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
+
+    await router.navigate(APPLICATION)
+
+    expect(
+      await screen.findByText('Ovog tima više nema, pa se prijava ne može primiti.'),
+    ).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
   }, SLOW)
 
   it('is not offered on a message that only tells', async () => {

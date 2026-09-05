@@ -121,12 +121,17 @@ export function MessageDetail() {
 
           Answered once. The answer is a `Decision` under this message's own id, the same
           way everything else on this portal that somebody decides is kept, so „has this
-          been answered" has one home and cannot be asked twice. */}
+          been answered" has one home and cannot be asked twice.
+
+          **The wait is inline**, because the message itself is already drawn above it: a
+          loader without that lies over the whole page, dims what is there and lets nothing
+          be pressed, which is meant for a page that has nothing on it yet (`Loader.css`,
+          and the eight other places that hold part of a screen). */}
       {asks !== undefined &&
         (decisions[said] !== undefined ? (
           <p className="messages__answer">{t('teams.joinSettled')}</p>
         ) : (
-          <Resource state={state}>
+          <Resource state={state} inline>
             {([teams, competitors]) => {
               /* **Asked here and not when the letter was written.** Between the asking
                  and the answering the portal can change underneath the question: the

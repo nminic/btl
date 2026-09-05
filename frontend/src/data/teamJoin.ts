@@ -39,11 +39,30 @@ export function joinRefusal(
     return 'teams.joinTeamGone'
   }
 
-  if (teamAdminOf(team, members) !== deciding) {
+  const runs = teamAdminOf(team, members)
+
+  /* A team can be left by everybody while a letter about it waits, and then nobody runs
+     it. Said in its own words rather than through „this is not yours", which would tell
+     the reader that somebody else decides when nobody does (review, 05.09.2026). */
+  if (runs === null) {
+    return 'teams.joinNobodyRuns'
+  }
+
+  if (runs !== deciding) {
     return 'teams.joinNotYours'
   }
 
-  if (teamOf(members.find((one) => one.memberNumber === ask.memberNumber)) !== null) {
+  const asking = members.find((one) => one.memberNumber === ask.memberNumber)
+
+  /* And whether there is anybody left to let in. Administration may delete a member, and
+     the letter goes on waiting; taken then, the answer wrote a team onto a record that is
+     gone, brought back the very edits the deletion had thrown away, and told an
+     administrator a thing had been done that had not (review, 05.09.2026). */
+  if (asking === undefined) {
+    return 'teams.joinMemberGone'
+  }
+
+  if (teamOf(asking) !== null) {
     return 'teams.joinHasTeam'
   }
 
