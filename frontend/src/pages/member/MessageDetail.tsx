@@ -75,6 +75,26 @@ export function MessageDetail() {
     })
   }
 
+  /**
+   * Ends an application nobody can answer, which is not the same as refusing one.
+   *
+   * **The team has said nothing, so the member must not be told it refused them.** The
+   * control that ends this stands under a sentence which says the reader may not decide,
+   * or that nobody can, and writing „the team did not accept you" there put words in the
+   * mouth of a team that had never seen the application (review, 06.09.2026). What is
+   * true is that it could not be answered, and that they may ask again.
+   */
+  const close = (ask: Ask): void => {
+    settle(said, { status: 'rejected', note: '', basis: '', memberNumber: '' })
+    notify({
+      from: t('app.name'),
+      to: ask.memberNumber,
+      subject: t('teams.joinClosedSubject', { team: ask.teamName }),
+      body: t('teams.joinClosedBody'),
+      date: today,
+    })
+  }
+
   const refuse = (ask: Ask): void => {
     settle(said, { status: 'rejected', note: '', basis: '', memberNumber: '' })
     notify({
@@ -174,21 +194,27 @@ export function MessageDetail() {
               ) : (
                 <p className="messages__answer">
                   {t(why)}{' '}
+                  {/* **And nothing to press where the reason passes by itself.** The window
+                      opens again on 1 October and the application is answered then; a
+                      control that ended it here would turn nine weeks of waiting into a
+                      refusal nobody meant (review, 06.09.2026). */}
                   {/* **And a way to end it, because a question with no answer never
                       ends.** „Waiting" is read off the decisions, so an application that
                       cannot be taken went on counting for ever, and the member who sent it
                       was refused the way in on every team on the portal (review,
                       05.09.2026). Closing it is a refusal like any other: the member is
                       told, and is free to ask again. */}
-                  <button
-                    type="button"
-                    className="button button--secondary"
-                    onClick={() => {
-                      refuse(asks)
-                    }}
-                  >
-                    {t('teams.joinClose')}
-                  </button>
+                  {why !== 'teams.joinShut' && (
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      onClick={() => {
+                        close(asks)
+                      }}
+                    >
+                      {t('teams.joinClose')}
+                    </button>
+                  )}
                 </p>
               )
             }}

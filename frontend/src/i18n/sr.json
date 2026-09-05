@@ -799,7 +799,9 @@
     "joinShut": "Prelazni rok je zatvoren, pa se prijava ne može primiti do 1. oktobra.",
     "joinMemberGone": "Ovog člana više nema u ligi, pa se prijava ne može primiti.",
     "joinNobodyRuns": "Ovaj tim trenutno niko ne vodi, pa o prijavi nema ko da odluči.",
-    "joinClose": "Zatvori prijavu"
+    "joinClose": "Zatvori prijavu",
+    "joinClosedSubject": "Prijava u tim „{team}\" je zatvorena",
+    "joinClosedBody": "O prijavi nije imao ko da odluči, pa je zatvorena. Možeš da se prijaviš ponovo."
   },
   "leagues": {
     "racesUnknown": "nepoznato",

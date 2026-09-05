@@ -37,6 +37,13 @@ async function opened(router: { navigate: (to: string) => Promise<void> }) {
   await router.navigate(APPLICATION)
 }
 
+/** The teams these walks are about, by the name the letter carries. Anything else is an
+ *  identity nothing answers to, which is its own case. */
+const TEAMS: Record<string, string> = {
+  'Dunavski trkači': 'team-dunav',
+  'Novoosnovani tim': 'team-novi',
+}
+
 /** An application already sent, written by the portal's own road rather than by a click,
  *  so the answering side can be measured without two members in one visit. */
 function Sent({ from, team, name }: { from: string; team: string; name: string }) {
@@ -54,7 +61,7 @@ function Sent({ from, team, name }: { from: string; team: string; name: string }
         date: DAY,
         asks: {
           kind: 'teamJoin',
-          teamId: team === 'Dunavski trkači' ? 'team-dunav' : 'team-nema',
+          teamId: TEAMS[team] ?? 'team-nema',
           teamName: team,
           memberNumber: from,
         },
@@ -157,6 +164,18 @@ function Joined({ who, team }: { who: string; team: string }) {
   }, [editRecord, who, team])
 
   return null
+}
+
+/** A way to become somebody else inside one visit, for the cases that measure what the
+ *  other side of a letter receives. */
+function Become({ who }: { who: string }) {
+  const { signIn } = useSession()
+
+  return (
+    <button type="button" onClick={() => { signIn(who) }}>
+      postani {who}
+    </button>
+  )
 }
 
 describe('the answer the administrator of the team gives', () => {
@@ -359,6 +378,7 @@ describe('the answer the administrator of the team gives', () => {
       <>
         <Sent from="000002" team="Dunavski trkači" name="Relja Momčilović" />
         <Joined who="000002" team="team-vardar" />
+        <Become who="000002" />
       </>,
     )
 
@@ -367,6 +387,71 @@ describe('the answer the administrator of the team gives', () => {
 
     expect(await screen.findByText('Odgovoreno.')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Zatvori prijavu' })).toBeNull()
+
+    /* **And the member is told, in words the team did not say.** The team never saw this
+       application, so „nije prihvatio tvoju prijavu" would put a refusal in its mouth; what
+       is true is that nobody could answer it (review, 06.09.2026). Read from the other side
+       of the letter, which is the only place it can be read. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    /* The letter is in the panel of the header the moment it is theirs, which is where a
+       member meets one; the words of it are on its own page. */
+    expect(await screen.findAllByText(/Prijava u tim .* je zatvorena/)).not.toHaveLength(0)
+
+    await router.navigate('/sr/poruke/msg-4')
+
+    expect(await screen.findByText(/nije imao ko da odluči/)).toBeVisible()
+  }, SLOW)
+
+  it('is not offered while the reason is only that the window has shut', async () => {
+    /* The window opens again on 1 October and the application is answered then. A control
+       that ended it here would turn nine weeks of waiting into a refusal nobody meant. */
+    const { router } = renderAt(
+      '/sr/poruke',
+      'competitor',
+      '000001',
+      undefined,
+      SHUT,
+      <Sent from="000002" team="Dunavski trkači" name="Relja Momčilović" />,
+    )
+
+    await opened(router)
+
+    expect(await screen.findByText(/Prelazni rok je zatvoren/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Zatvori prijavu' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+  }, SLOW)
+
+  it('lets the member ask again once the application has been closed', async () => {
+    /* The whole point of an ending: „waiting" is read off the decisions, so an application
+       that could not be answered kept the member out of every team on the portal until it
+       was settled. Measured on the screen the member actually presses. */
+    /* **Asked of a member who still has no team**, or nothing would be measured: with a
+       team of their own the way in is not drawn for that reason and the sentence about a
+       waiting application never appears either. So the application here is one nobody can
+       answer for another reason: it is addressed about a team nobody is in. */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/poruke',
+      'competitor',
+      '000001',
+      undefined,
+      DAY,
+      <>
+        <Sent from="000002" team="Novoosnovani tim" name="Relja Momčilović" />
+        <Become who="000002" />
+      </>,
+    )
+
+    await opened(router)
+    await user.click(await screen.findByRole('button', { name: 'Zatvori prijavu' }))
+    await screen.findByText('Odgovoreno.')
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    await router.navigate('/sr/tim/dunavski-trkaci')
+
+    expect(await screen.findByRole('button', { name: 'Prijavi se u tim' })).toBeVisible()
+    expect(screen.queryByText('Prijava je poslata')).toBeNull()
   }, SLOW)
 
   it('is not offered on a message that only tells', async () => {

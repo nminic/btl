@@ -318,6 +318,8 @@ describe('a sentence with a value put into it', () => {
          written a team's name since `teams.proposeDone`. Nothing in them is governed by a
          verb or a preposition that would ask for another case. */
       'teams.joinBody',
+      /* The team's name inside quotation marks, as everywhere else it is written. */
+      'teams.joinClosedSubject',
       'teams.joinDoneBody',
       'teams.joinDoneSubject',
       'teams.joinNoBody',
