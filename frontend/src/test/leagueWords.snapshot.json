@@ -141,6 +141,10 @@
       "title": "Moderatori (administracija)",
       "description": "Ko moderira portal i koja mu je prava Superadmin dodelio, po entitetu i po redu."
     },
+    "editTeam": {
+      "title": "Izmena tima",
+      "description": "Naziv, mesto i država tima, za izmenu koja ide na proveru."
+    },
     "newResult": {
       "title": "Novi rezultat sa trke",
       "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."

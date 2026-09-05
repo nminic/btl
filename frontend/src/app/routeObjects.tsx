@@ -11,6 +11,7 @@ import { RateEvent } from '../pages/event/RateEvent'
 import { ReportResult } from '../pages/event/ReportResult'
 import { LeagueDetail } from '../pages/LeagueDetail'
 import { TeamDetail } from '../pages/TeamDetail'
+import { EditTeam } from '../pages/member/EditTeam'
 import { Home } from '../pages/Home'
 import { Leagues } from '../pages/Leagues'
 import { Rankings } from '../pages/Rankings'
@@ -138,6 +139,10 @@ const DETAILS: RouteObject[] = [
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
+  /* Changing a team is the team's own address plus a word, the way reporting a
+     result sits under the event it was run at: it is about that team, and the way
+     back leads there (owner, 04.09.2026). */
+  { path: 'tim/:slug/izmena', element: <EditTeam /> },
   { path: 'liga/:slug', element: <LeagueDetail /> },
   { path: 'liga/:slug/rezultati', element: <LeagueDetail part="results" /> },
   { path: 'rezultat/novi', element: <NewResult /> },

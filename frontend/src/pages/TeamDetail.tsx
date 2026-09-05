@@ -20,6 +20,10 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
+import { teamAdminOf } from '../data/teamAdmin'
+import { useSession } from '../session/useSession'
+import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
+import { useOverlay } from './admin/overlay'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
 
@@ -39,12 +43,20 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
+  const { memberNumber } = useSession()
+  const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
   return (
     <Resource state={state}>
       {([teams, competitors, results]) => {
-        const team = teams.find((one) => one.slug === slug)
+        /* Through the overlay, because a moderator naming another administrator
+           writes there and not into the file on the disc; read from the file alone,
+           the button stayed with the member they had just replaced (review,
+           05.09.2026). The ways into founding a team read the same records for the
+           same reason. */
+        const listedMembers = recordsOf(MEMBERS, competitors, overlay)
+        const team = recordsOf(TEAMS, teams, overlay).find((one) => one.slug === slug)
 
         if (team === undefined) {
           return <h1>{t('teams.notFound')}</h1>
@@ -52,8 +64,15 @@ export function TeamDetail() {
 
         /* Everybody in the team today, for the control alone: which seasons
            this team can be asked about must not move when one of them is
-           chosen. */
-        const everMembers = competitors.filter((one) => one.teamId === team.id)
+           chosen.
+
+           **Off the same list the button above is read from.** Read from the file
+           while the button read the session, one screen answered twice about one
+           fact: a team approved a minute ago drew „Izmeni" for its founder and „0
+           članova" under it, because the founder's team is written into the session
+           and nowhere else (review, 05.09.2026). PDL, 05.09.2026: the founder „je od
+           tog trenutka prvi i jedini član i vidi se u sastavu tima". */
+        const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
            the default and a control cannot open on an option it does not have.
@@ -93,6 +112,25 @@ export function TeamDetail() {
                 <div className="profile__title rankings--tooled">
                   <h1 className="profile__name">{team.name}</h1>
                   <div className="rankings__head-tool">
+                    {/* The way into the team's own data, and only for whoever
+                        administers it (owner, 04.09.2026: „na strani tog tima za
+                        administratora tima treba da postoje dugmići Izmeni i
+                        Obriši"). Who that is is worked out from the roster rather
+                        than stored, so it follows a founder who leaves
+                        (`data/teamAdmin.ts`).
+
+                        Written against a member number that is really there:
+                        `admin` is null for a team nobody is in, and comparing it
+                        with a visitor's own null would put the button in front of
+                        everybody who is not signed in. */}
+                    {memberNumber !== null && teamAdminOf(team, listedMembers) === memberNumber && (
+                      <Link
+                        className="button button--secondary"
+                        to={`/${locale}/tim/${team.slug}/izmena`}
+                      >
+                        {t('teams.edit')}
+                      </Link>
+                    )}
                     <SeasonPicker seasons={seasons} season={season} fallback={running} />
                   </div>
                 </div>
