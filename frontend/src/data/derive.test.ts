@@ -23,6 +23,7 @@ import {
   withPlaces,
   monthFrom,
 } from './derive'
+import { teamOf } from './derive'
 import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
 import { DOTS } from './types'
@@ -63,6 +64,34 @@ const result = (memberNumber: string, date: string, points: number, extra: Parti
   points,
   category: 'short',
   ...extra,
+})
+
+describe('the team somebody is in', () => {
+  /* Three doors ask this question and they must not answer it differently: the button
+     on the standing, the address that founds a team, and the queue that decides one.
+     Asked here rather than through each of the three, because it is one fact.
+
+     **The empty string is the whole reason this exists.** There is no database in this
+     prototype: what changes during a visit is kept in the session, and the session keeps
+     every value as text (`session/context.ts`), so taking somebody out of a team is
+     writing an empty string over `teamId` and `null` cannot be written at all. Read as a
+     team, that empty string would refuse the founder of a team they had just deleted the
+     new one the owner allowed them (05.09.2026: „ne brani mu se da napravi novi tim"). */
+  it('is nothing at all for an empty string, exactly as for nothing written', () => {
+    expect(teamOf({ teamId: '' })).toBe(null)
+    expect(teamOf({ teamId: null })).toBe(null)
+    /* And for nobody at all: a signed-in person with no competitor record is not in a
+       team either, and the doors read that the same way. */
+    expect(teamOf(undefined)).toBe(null)
+  })
+
+  it('is the team itself when there is one, which is what the other six readers compare', () => {
+    expect(teamOf({ teamId: 'team-dunav' })).toBe('team-dunav')
+    /* Whitespace is a value somebody wrote, not an empty field, so it is left alone
+       rather than guessed at: nothing in this portal writes one, and a reading that
+       trimmed would be deciding something no owner has decided. */
+    expect(teamOf({ teamId: ' ' })).toBe(' ')
+  })
 })
 
 describe('totals', () => {

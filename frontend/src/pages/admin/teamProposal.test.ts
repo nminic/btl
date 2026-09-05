@@ -1,6 +1,15 @@
+import { first } from '../../test/at'
 import type { Competitor, PendingItem, Team } from '../../data/types'
 import { NO_RATING } from '../../data/types'
-import { addressOf, nameError, nameFault, refusal, teamFrom, type Proposed } from './teamProposal'
+import {
+  addressOf,
+  nameError,
+  nameFault,
+  organisers,
+  refusal,
+  teamFrom,
+  type Proposed,
+} from './teamProposal'
 
 /* Turning a proposal into a team, as decisions rather than as a screen. One of
  * them has a case the screen cannot reach, which is why they are out here.
@@ -128,6 +137,36 @@ describe('what a team would be made of', () => {
     expect(
       teamFrom(item(), { 'prop-1': { name: 'Trkači Zapadne Morave', city: 'Kraljevo' } }),
     ).toEqual({ name: 'Trkači Zapadne Morave', city: 'Kraljevo', country: 'RS' })
+  })
+})
+
+describe('who the league counts as running a team', () => {
+  /* The third of the three doors that ask „does this member have a team", and the one a
+     member never sees: it is what refuses a second proposal in the queue. All three read
+     `teamOf` since 05.09.2026, and this one had no case of its own — put back on its own
+     comparison, the whole gate stayed green (review, 05.09.2026).
+
+     **The empty string is the whole of it.** Taking somebody out of a team is written as
+     an empty string over `teamId`, because the session keeps values as text and cannot
+     hold a `null`. Counted as a team, the founder of a team they had just deleted would
+     have their next proposal refused with `verification.teamMemberHasTeam`, which is
+     exactly what the owner allowed on 05.09.2026: „ne brani mu se da napravi novi tim." */
+  it('does not count somebody whose team was written away as an empty string', () => {
+    const gone: Competitor[] = [{ ...first(MEMBERS), teamId: '' }]
+
+    expect(organisers(gone, [])).toEqual([])
+    /* And the same for nothing written at all, which is what a member who has never been
+       in a team carries. */
+    const never: Competitor[] = [{ ...first(MEMBERS), teamId: null }]
+
+    expect(organisers(never, [])).toEqual([])
+  })
+
+  it('counts somebody who really is in a team, and whoever a team names as its organiser', () => {
+    /* The other direction, so the reading above cannot be satisfied by answering nothing
+       to everything. */
+    expect(organisers(MEMBERS, [])).toEqual(['000001'])
+    expect(organisers([], TEAMS)).toEqual(['000001'])
   })
 })
 

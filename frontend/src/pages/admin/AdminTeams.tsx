@@ -7,6 +7,7 @@ import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { addressesIn, nameError } from './teamProposal'
 import { EditableCell } from './EditableCell'
+import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { recordsOf, TEAMS, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
@@ -27,6 +28,7 @@ function organizerOptions(competitors: Competitor[]): FieldOption[] {
 
 export function AdminTeams() {
   const { locale, t } = useI18n()
+  const { editRecord } = useSession()
   const overlay = useOverlay()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = combinePair(useTeams(), useCompetitors())
@@ -133,6 +135,22 @@ export function AdminTeams() {
                               record={team}
                               name={team.name}
                               onOpen={() => setEditing({ mode: 'one', record: team })}
+                              /* What goes with the team: the people in it, who are
+                                 left without one rather than pointing at a record
+                                 that is gone. Two buttons that delete one thing
+                                 must not delete two different amounts of it, and
+                                 the button a member has on the team's own page has
+                                 done this since 05.09.2026. Left undone here, a
+                                 member kept a team nobody could open: the portal
+                                 went on refusing them a new one and their profile
+                                 showed no club, because `teams.find` answered
+                                 nothing while `teamId` still named a team (review,
+                                 05.09.2026). */
+                              alsoRemove={() => {
+                                for (const one of members) {
+                                  editRecord(one.memberNumber, { teamId: '' })
+                                }
+                              }}
                             />
                           </td>
                         </tr>

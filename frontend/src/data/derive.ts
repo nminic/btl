@@ -396,6 +396,34 @@ const BY_TEAM = byLadder<TeamRow>([
  * has since joined.
  */
 /**
+ * The team somebody is in, or nothing at all, in the one reading the whole portal uses.
+ *
+ * **Why this is not `competitor.teamId` read straight.** There is no database here: what
+ * an administrator or a member changes during a visit is kept in the session, and the
+ * session keeps every value as text (`session/context.ts`, `editRecord`). So the way to
+ * take somebody out of a team is to write an empty string over their `teamId`, and `null`
+ * cannot be written through that road at all. Measured before „Obriši tim" was written:
+ * three places asked `teamId` whether there was a team, and all three would have read the
+ * empty string as „yes, a team", which is exactly backwards. The founder of a team they
+ * had just deleted would have been refused a new one, refused the address as well, and
+ * still counted as somebody who runs a team.
+ *
+ * The other six readers compare `teamId` with a real identity (`=== team.id`,
+ * `teams.find(…)`) and an empty string matches none of them, so they are right either
+ * way and are left alone.
+ *
+ * The owner's rule this serves, 05.09.2026: „svako brisanje tima do kraja godine je OK i
+ * besplatno, ne brani mu se da napravi novi tim."
+ */
+export function teamOf(competitor: { teamId: string | null } | undefined): string | null {
+  if (competitor === undefined || competitor.teamId === null || competitor.teamId === '') {
+    return null
+  }
+
+  return competitor.teamId
+}
+
+/**
  * Whether somebody was in their team in a given season.
  *
  * A team is a thing of one season (PDL P13), so a figure headed by a year has to
