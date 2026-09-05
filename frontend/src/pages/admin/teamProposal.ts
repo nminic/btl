@@ -83,7 +83,18 @@ export function nameError(name: string, addresses: string[]): Record<string, Fie
  * the second through to collide with the first. A name that makes no address at
  * all is refused here as well, and by the same function the two forms use.
  */
-export function refusal(made: Proposed, addresses: string[], item: PendingItem): string | null {
+export function refusal(
+  made: Proposed,
+  addresses: string[],
+  item: PendingItem,
+  /** The members who are in a team already, by number. A proposal from one of them
+   *  cannot be approved: a member is in one team at a time (PDL P13), and approving
+   *  makes the sender the organiser of the team it makes. Read through the overlay by
+   *  the caller, so a team somebody got a minute ago in this same visit counts; two
+   *  proposals from one member waiting together are the case this exists for, and the
+   *  first approval is what puts them on the list for the second (review, 05.09.2026). */
+  withTeam: string[],
+): string | null {
   if ([made.name, made.city, made.country].some((value) => value.trim() === '')) {
     return 'verification.teamIncomplete'
   }
@@ -104,6 +115,10 @@ export function refusal(made: Proposed, addresses: string[], item: PendingItem):
     return 'verification.teamNoMember'
   }
 
+  if (withTeam.includes(item.memberNumber)) {
+    return 'verification.teamMemberHasTeam'
+  }
+
   return null
 }
 
@@ -116,4 +131,27 @@ export function teamFrom(item: PendingItem, edits: Edits): Proposed {
     city: String(edits[item.id]?.city ?? said.city),
     country: String(edits[item.id]?.country ?? said.country),
   }
+}
+
+/**
+ * Every member who already has a team, by number, read from **both** places that
+ * say so.
+ *
+ * A member's own record says it (`teamId`, written by an approval), and so does the
+ * team that approval made (`organizerMemberNumber`). Read off the record alone, the
+ * two came apart the moment the record was not there to write to: a member deleted
+ * from the list, or simply absent from it, left the team standing with their number
+ * on it and nothing anywhere saying they had one, so a second proposal of theirs went
+ * through on the next press (review, 05.09.2026). The sweep survived it only because
+ * it carries its own list along the walk; „Odobri" pressed twice had no memory at all.
+ *
+ * The same shape the addresses beside it already have: `addressesIn` reads the teams
+ * through the overlay, so a team made this visit counts. This reads the same list for
+ * the same reason.
+ */
+export function organisers(members: { memberNumber: string; teamId: string | null }[], teams: Team[]): string[] {
+  return [
+    ...members.flatMap((one) => (one.teamId === null ? [] : [one.memberNumber])),
+    ...teams.map((one) => one.organizerMemberNumber),
+  ]
 }

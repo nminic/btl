@@ -1,7 +1,8 @@
 import { countryName } from '../../data/countryName'
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, Navigate } from 'react-router'
 import { useToday } from '../../clock/useClock'
+import { inYearlyWindow } from '../../data/season'
 import { CropChooser } from '../../components/CropChooser'
 import type { Chosen } from '../../components/CropChooser'
 import { WHOLE } from '../../components/crop'
@@ -12,7 +13,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import { predlogTima } from '../../forms/definitions'
 import type { FieldError, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
-import { recordsOf, TEAMS } from '../admin/entityForms'
+import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
@@ -99,39 +100,35 @@ export function ProposeTeam() {
           /* Who is proposing, by the name the rest of the portal knows them by.
              The queue shows a name beside every waiting item, and a member
              number on its own tells a moderator nothing about who to ask. */
-          const me = competitors.find((one) => one.memberNumber === mine)
+          /* Through the overlay, and that is the whole of whether this door shuts:
+             approving a proposal writes the team onto the member's record in the
+             session (`admin/PendingQueue.tsx`), and the file on the disc knows
+             nothing of it. Read straight from the file, the door let the founder of
+             a team walk back in and found a second one the same minute — measured in
+             review, 05.09.2026, two teams and one organiser. `Membership.tsx` reads
+             a member the same way for the same reason. */
+          const me = recordsOf(MEMBERS, competitors, overlay).find(
+            (one) => one.memberNumber === mine,
+          )
           const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
 
-          /* And the same condition the way in carries, said here as well (owner,
-             04.09.2026: the button is for „ULOGOVANOG ČLANA KOJI TRENUTNO NEMA TIM
-             U KOJEM SE NALAZI"). A hidden button is not a rule: this address is in
-             a member's history and in their bookmarks, and reached from either the
-             form used to send a proposal that, once approved, made the member the
-             organiser of a second team — against PDL P13, „član sme da bude samo u
-             jednom timu istovremeno".
+          /* **An address that is not for this member is not a page, it is a
+             redirect.** Owner, 05.09.2026: „Ukoliko neko već ima tim, dugme za
+             dodavanje tima ne treba da se prikazuje! Ako neko proba deeplink za
+             pravljenje tima iako ima tim, treba da se preusmeri na homepage." A
+             screen explaining the refusal stood here for one day and is gone with
+             the sentence it drew.
 
-             Read off `teamId` and not off the season, deliberately. A member who has
-             joined a team for next season is not in one today (`inTeamIn`), and the
-             standing of the teams counts them out; but founding a team now would
-             leave them in two of them on 1 January, which is the very thing P13
-             forbids. The question the door asks is „do you have a team", not „were
-             you in one this season". */
-          if (me?.teamId != null) {
-            return (
-              <>
-                <h1>{t('teams.proposeTitle')}</h1>
-                <p className="member__note">{t('teams.proposeHasTeam')}</p>
-                {/* A plain link and not a button, unlike the screen two blocks
-                    above: that one is the end of something the member did, and this
-                    is a page that offers them nothing to do. A control dressed as a
-                    button on such a page reads as an action there is none of (PDL,
-                    increment 133; the same reasoning that kept the ways back on the
-                    team, the competition and the day of the calendar as links). */}
-                <p className="member__note">
-                  <Link to={`/${locale}/timovi`}>{t('teams.proposeBack')}</Link>
-                </p>
-              </>
-            )
+             Two reasons to send them away, and they are the same rule read twice.
+             **A team already** (`teamId`): founding a second one is what PDL P13
+             forbids, and the reading is off the record rather than off the season,
+             because a member who joined a team for next season is not in one today
+             but would be in two on 1 January. **Outside the transfer window**: a
+             team is founded from 1 October to 31 December (owner, 05.09.2026), the
+             same window in which every other change of team is asked for and the
+             same one the membership screen already speaks of. */
+          if (me?.teamId != null || !inYearlyWindow(today)) {
+            return <Navigate to={`/${locale}`} replace />
           }
 
           function onSubmit(values: FormValues) {

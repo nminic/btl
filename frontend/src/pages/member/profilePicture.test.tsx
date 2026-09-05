@@ -171,7 +171,10 @@ describe('the picture on a profile, changed later', () => {
        queue without asking which sort would leave somebody unable to change
        their photograph because they once proposed a team. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'competitor', '000002')
+    /* On a day inside the transfer window, because a team is founded only from 1
+       October to 31 December (PDL, increment 133) and outside it this address is a
+       redirect. The picture this case is about does not care about the day. */
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000002', undefined, '2026-10-15')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')

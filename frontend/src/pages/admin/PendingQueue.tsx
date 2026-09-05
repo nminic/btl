@@ -3,10 +3,19 @@ import { tim } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { combinePair, dataOr, failed, useEvents, useRaces, useTeams } from '../../data/useResource'
+import {
+  combinePair,
+  dataOr,
+  failed,
+  useCompetitors,
+  useEvents,
+  useRaces,
+  useTeams,
+} from '../../data/useResource'
 import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
+import { seasonOnSale } from '../../data/season'
 import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -17,8 +26,8 @@ import { useSession } from '../../session/useSession'
 import { moveEvent } from './moveEvent'
 import { usePending, waitingIn } from './pending'
 import type { PendingItem, Team } from '../../data/types'
-import { EVENTS, idFor, RACES, recordsOf, TEAMS } from './entityForms'
-import { addressesIn, addressOf, proposed, refusal, teamFrom } from './teamProposal'
+import { EVENTS, idFor, MEMBERS, RACES, recordsOf, TEAMS } from './entityForms'
+import { addressesIn, addressOf, organisers, proposed, refusal, teamFrom } from './teamProposal'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
@@ -247,6 +256,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const allRaces = recordsOf(RACES, dataOr(racesState, []), overlay)
   const eventsState = useEvents()
   const allEvents = recordsOf(EVENTS, dataOr(eventsState, []), overlay)
+  /* And the members, for the one rule a team proposal cannot be decided without:
+     a member is in one team at a time (PDL P13), so a proposal from somebody who
+     already has one cannot be approved. Read through the overlay like everything
+     else, because the team a member got a minute ago in this same visit is in
+     there and nowhere else. */
+  const membersState = useCompetitors()
+  const allMembers = recordsOf(MEMBERS, dataOr(membersState, []), overlay)
 
   /** The event a reported change is about, as the list has it now: the decision
    *  waits for the events, so by the time one is taken this is there. */
@@ -269,12 +285,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * reason).
    */
   const whyNoDecision =
-    queue.id !== 'schedule' ||
-    (racesState.status === 'ready' && eventsState.status === 'ready')
-      ? null
-      : failed(racesState, eventsState)
+    queue.id === 'schedule' && !(racesState.status === 'ready' && eventsState.status === 'ready')
+      ? failed(racesState, eventsState)
         ? t('verification.racesFailed')
         : t('verification.waitingForRaces')
+      : /* And the same three states for the members on the queue of teams, for the
+           same reason: approving without them would make a second team for somebody
+           who already has one, and nothing brings that back either. */
+        queue.id === 'teams' && membersState.status !== 'ready'
+        ? failed(membersState)
+          ? t('verification.membersFailed')
+          : t('verification.waitingForMembers')
+        : null
   const racesUnknown = whyNoDecision !== null
 
   /* Both dates of a reported change, so the difference is the thing on screen
@@ -306,12 +328,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     /* Everything already spoken for, growing as the walk hands more out. */
     const identities = (creations[TEAMS.id] ?? []).map((row) => row.id)
     const addresses = addressesIn(teams)
+    /* Who is in a team already, growing as the walk puts people into the ones it
+       makes. Read once and carried, for the same reason the identities and the
+       addresses are: the session does not change while a loop runs, so two proposals
+       from one member approved in one press would both go through. */
+    const inATeam = organisers(allMembers, teams)
     let done = 0
 
     for (const one of items) {
       const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
-      if (made !== null && refusal(made, addresses, one) !== null) {
+      if (made !== null && refusal(made, addresses, one, inATeam) !== null) {
         continue
       }
 
@@ -386,6 +413,29 @@ export function PendingQueue({ queue }: { queue: Queue }) {
            (12.08.2026). Written down in PENDING. */
       })
 
+      /* **And the member who asked for it is in it.** Owner, 05.09.2026: „Odmah
+         ulazi u tim... on ce biti prvi i jedini clan u tom trenutku." Until then an
+         approval wrote the organiser onto the team and nothing onto the member, so
+         the founder was in no team at all and could found a second one the same
+         minute; that was a high finding of the review of PR 186.
+
+         **From the next season**, because a team founded during the transfer window
+         scores nothing until 1 January (owner, same day). `teamSince` is what every
+         reader of „was this member in the team that season" asks (`data/derive.ts`,
+         `inTeamIn`), so writing next season is what keeps the new team out of this
+         season's standing without a second rule to remember.
+
+         Written as text, like everything else in the overlay that stands in for a
+         database (session/context.ts). A record read back through the overlay
+         carries the season as the digits rather than as a number, which every
+         comparison in the portal reads the same way and the database will type
+         properly; written down rather than papered over. */
+      inATeam.push(one.memberNumber)
+      editRecord(one.memberNumber, {
+        teamId: id,
+        teamSince: String(seasonOnSale(today)),
+      })
+
       notify({
         from: t('app.name'),
         to: one.memberNumber,
@@ -423,7 +473,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
              reason for one card off them. */
           const addresses = addressesIn(teams)
           const refusedFor = (one: PendingItem) =>
-            queue.id === 'teams' ? refusal(teamFrom(one, edits), addresses, one) : null
+            queue.id === 'teams'
+              ? refusal(
+                  teamFrom(one, edits),
+                  addresses,
+                  one,
+                  organisers(allMembers, teams),
+                )
+              : null
           const waiting = waitingIn(items, decisions, queue.id)
 
           /* Whether a star is on this screen at all, which is what decides the

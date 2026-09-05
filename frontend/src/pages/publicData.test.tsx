@@ -93,7 +93,18 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
      title is held by is `member/headingFirst.test.tsx`**, which signs in as a member
      with no team; measured 05.09.2026 by moving `titleKey` in the definition, which
      fails there and not here. */
-  ['/sr/novi-tim', 'Za ovo treba prijava', 'Predlog tima'],
+  /* The front page, to a member, and that is the screen this address answers with
+     for them: `ME` has a team and `DAY` is outside the transfer window, and either
+     one alone sends them to the front (PDL, increment 133, 05.09.2026) — sent away,
+     not told why, which is the owner's own words. A visitor still meets the sign-in,
+     because that is asked before anything else.
+
+     **The form's own heading is held elsewhere**, by `member/headingFirst.test.tsx`,
+     which signs in as a member with no team on a day inside the window; measured
+     05.09.2026 by moving `titleKey` in the definition, which fails there and not
+     here. What this row is worth is the other half of this file's question: even the
+     redirect must not ask the server for anything a member may not have. */
+  ['/sr/novi-tim', 'Za ovo treba prijava', 'Balkanska trkačka liga'],
   ['/sr/tabela', 'BTL tabele', 'BTL tabele'],
   ['/sr/top-liste', 'Top liste', 'Top liste'],
   ['/sr/lige', 'Lige', 'Lige'],

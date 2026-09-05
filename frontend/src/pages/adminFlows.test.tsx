@@ -289,7 +289,7 @@ describe('the panel', () => {
 
     const said = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })
 
-    expect(said).toHaveAccessibleName('Administracija, 16 na čekanju')
+    expect(said).toHaveAccessibleName('Administracija, 17 na čekanju')
   })
 })
 
@@ -2671,7 +2671,7 @@ describe('the six queues read from the file', () => {
   const sectionNav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
   const QUEUES: [PendingQueueId, string, number][] = [
-    ['teams', 'Novi timovi', 2],
+    ['teams', 'Novi timovi', 3],
     ['schedule', 'Prijave promene termina', 3],
   ]
 
@@ -3255,7 +3255,7 @@ describe('the six queues read from the file', () => {
      vraćena". The headings of the screens were measured; the headings of the
      messages were not, and those are the ones a member reads. */
   const WRITES_TO = [
-    { queue: QUEUE.teams, who: 'Strahinja Vukićević', member: '000007', heading: 'Predlog tima je vraćen' },
+    { queue: QUEUE.teams, who: 'Časlav Radenković', member: '000004', heading: 'Predlog tima je vraćen' },
     {
       queue: QUEUE.schedule,
       who: 'Borivoje Jovanović',
@@ -3542,13 +3542,13 @@ describe('the six queues read from the file', () => {
        anywhere was the list of queues, which meant walking back to it. */
     const user = await open('teams', 'Novi timovi')
 
-    expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('2'))
+    expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('3'))
       .toBeVisible()
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
-    expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('1'))
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('2'))
       .toBeVisible()
   })
 
@@ -3564,7 +3564,7 @@ describe('the six queues read from the file', () => {
     const user = setupUser()
     const day = '2026-08-15'
 
-    renderAt(`/sr/${QUEUE.teams.path}`, 'superadmin', '000007', undefined, day)
+    renderAt(`/sr/${QUEUE.teams.path}`, 'superadmin', '000004', undefined, day)
     await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
 
     const card = within(
@@ -3751,11 +3751,15 @@ describe('the six queues read from the file', () => {
       expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-      /* The sweep leaves the one proposal it cannot take, so it is refused by
-         hand to empty the queue. */
-      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Naziv je već zauzet.')
-      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      /* The sweep leaves the proposals it cannot take, so they are refused by hand
+         to empty the queue. Two of them since 05.09.2026: one whose name is already a
+         team's, and one from a member the first approval has just put into a team. */
+      for (const why of ['Naziv je već zauzet.', 'Član je već u timu.']) {
+        await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
+        await user.type(screen.getByLabelText('Razlog odbijanja'), why)
+        await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+      }
     } finally {
       asked.mockRestore()
     }
@@ -3806,12 +3810,12 @@ describe('the six queues read from the file', () => {
        why it will not go is reachable with it. */
     expect(confirm).toHaveAttribute('aria-disabled', 'true')
     expect(confirm).not.toBeDisabled()
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Naziv je već zauzet.')
     await user.click(confirm)
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
     expect(
       within(screen.getByRole('list', { name: 'session decisions' })).getByText(
         /Naziv je već zauzet\./,
