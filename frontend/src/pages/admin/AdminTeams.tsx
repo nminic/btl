@@ -58,7 +58,12 @@ export function AdminTeams() {
               <EntityEditor
                 entity={TEAMS}
                 editing={editing}
-                options={{ organizerMemberNumber: organizerOptions(competitors) }}
+                /* Off the same list the rows beside it read. Left on the file while
+                   the row moved to the session, one screen said two things about one
+                   fact: the row said „Nema organizatora" for a member administration
+                   had just deleted, while the form went on offering that same member
+                   as a choice (review, 05.09.2026). */
+                options={{ organizerMemberNumber: organizerOptions(listed) }}
                 /* A name already taken is refused (PDL P13), and refused by the
                    address it makes rather than by the letters: the address is
                    read off the name (entityForms.ts) and `slugify` is not one

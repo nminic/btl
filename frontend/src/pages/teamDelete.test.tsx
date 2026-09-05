@@ -167,8 +167,27 @@ describe('a team its administrator takes down', () => {
       'the row of the team just approved',
     )
 
+    /* **The state before the deletion, said out loud, because the founder is free at the
+       start of this walk too.** 000004 has no team in the file, so „Predloži tim" is
+       offered from the first moment and the assertion at the end would hold without
+       anything here happening at all (review, 05.09.2026). What says the approval landed
+       is the roster this screen counts: one member, and it is counted through the same
+       layer the deletion reads. */
+    expect(within(row).getByText('1')).toBeVisible()
+
     await user.click(within(row).getByRole('button', { name: /^Obriši: Timočka/ }))
     await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Timočka/ }))
+
+    /* And nobody else lost their team with it: emptying every member rather than this
+       team's would pass everything below. Dunav keeps its six. */
+    const dunav = must(
+      within(await screen.findByRole('table', { name: 'Timovi' }))
+        .getAllByRole('row')
+        .find((one) => /Dunavski trkači/.test(one.textContent ?? '')),
+      'the row of the team nobody deleted',
+    )
+
+    expect(within(dunav).getByText('6')).toBeVisible()
 
     await router.navigate('/sr/timovi')
 
