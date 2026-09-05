@@ -138,6 +138,45 @@ describe('a team its administrator takes down', () => {
     expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
   }, SLOW)
 
+  it('takes the roster with it even when that roster exists only in this visit', async () => {
+    /* **The half the case above cannot see.** Dunav's roster lives in the file, so a
+       deletion that read the file took it along all the same. Who is in a team approved
+       during this visit is written by `PendingQueue` into the session and nowhere else,
+       and read from the file that roster is empty: the deletion took nothing along and
+       left the founder holding an address that answers nothing — refused a new team,
+       and shown no club on their own profile (review, 05.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/timovi',
+      'superadmin',
+      '000004',
+      undefined,
+      DAY,
+    )
+
+    const waiting = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
+    const card = within(must(waiting.closest('li'), 'the card the team stands on'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/administracija/timovi')
+
+    const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      listed.getAllByRole('row').find((one) => /Timočka trkačka družina/.test(one.textContent ?? '')),
+      'the row of the team just approved',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Obriši: Timočka/ }))
+    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Timočka/ }))
+
+    await router.navigate('/sr/timovi')
+
+    /* The founder is free again, which is the whole of what the roster being taken along
+       means to the person it happened to. */
+    expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+  }, SLOW)
+
   it('is not offered to a member of the team who does not administer it', async () => {
     /* 000007 runs for Dunav and did not found it. Taking the team down is about who
        may change the record, not about who belongs to it, and it is the same boundary

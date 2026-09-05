@@ -9,7 +9,7 @@ import { addressesIn, nameError } from './teamProposal'
 import { EditableCell } from './EditableCell'
 import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { recordsOf, TEAMS, type Editing } from './entityForms'
+import { MEMBERS, recordsOf, TEAMS, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
@@ -43,6 +43,15 @@ export function AdminTeams() {
       <Resource state={state}>
         {([teams, competitors]) => {
           const rows = recordsOf(TEAMS, teams, overlay)
+          /* **Through the same layer as the teams beside them**, because who is in a
+             team is written into the session by an approval and nowhere else until a
+             database exists (`PendingQueue.tsx`). Read from the file, the deletion below
+             took an empty roster with it and left the founder of a team approved this
+             visit holding an address that answers nothing: the portal went on refusing
+             them a new team while their profile showed no club (review, 05.09.2026).
+             `AdminEvents.tsx` has read its races this way since the day it learned to
+             take them along. */
+          const listed = recordsOf(MEMBERS, competitors, overlay)
 
           if (editing !== null) {
             return (
@@ -100,8 +109,8 @@ export function AdminTeams() {
                   </thead>
                   <tbody>
                     {rows.map((team) => {
-                      const members = competitors.filter((one) => one.teamId === team.id)
-                      const organizer = competitors.find(
+                      const members = listed.filter((one) => one.teamId === team.id)
+                      const organizer = listed.find(
                         (one) => one.memberNumber === team.organizerMemberNumber,
                       )
 
