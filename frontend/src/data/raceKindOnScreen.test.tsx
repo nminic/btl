@@ -49,10 +49,27 @@ async function withOddKind(served: typeof globalThis.fetch, input: RequestInfo |
   const answer = await served(input)
   const races: { id: string; kind: string }[] = await answer.json()
 
-  return new Response(
-    JSON.stringify(races.map((one) => (one.id === RACE ? { ...one, kind: 'ludilo' } : one))),
-    { headers: { 'content-type': 'application/json' } },
-  )
+  const odd = races.map((one) => (one.id === RACE ? { ...one, kind: 'ludilo' } : one))
+
+  /* **That the substitution reached something, said here.** Everything this file
+     claims rests on one race carrying a word from nowhere, and every one of those
+     claims is also true of a race of a length left alone: the whole point is that the
+     two look identical on screen. So a fixture that hit nothing — the id renamed, the
+     field renamed, the address no longer matching — would leave both cases green over
+     untouched data, which is the very blindness this file exists to end, moved one
+     level up into its own fixture (review, 05.09.2026).
+
+     Counted rather than merely found, because two races of that id would mean the
+     generated file has changed under this in a way that makes „the one race" a
+     sentence about nothing. */
+  expect(
+    odd.filter((one) => one.kind === 'ludilo'),
+    'the race this file serves with a kind from nowhere',
+  ).toHaveLength(1)
+
+  return new Response(JSON.stringify(odd), {
+    headers: { 'content-type': 'application/json' },
+  })
 }
 
 describe('a race whose kind is a word the portal does not know', () => {
