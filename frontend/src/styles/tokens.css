@@ -137,6 +137,14 @@
      hold (`pages/Calendar.css`). Written twice, the two would part company and
      the ceiling would stop describing anything. */
   --length-dot-size: 0.55rem;
+  /* What stands between two of those dots. Here rather than on the row that draws
+     them, because two rules read it and they are not in one subtree: the row itself
+     (`.chip__lengths`, in the grid of the calendar and on the page of a single day)
+     and the floor under a day of the grid, which is five dots and four of these
+     wide. Declared on the row, the floor could only read `--space-4` again, and the
+     two would be one fact in two homes: measured 05.09.2026, raising the dot alone
+     took the row out of the day it is drawn in. */
+  --dot-gap: var(--space-4);
 
   /* An event that is not a race, on the tile it gets in the calendar.
    *

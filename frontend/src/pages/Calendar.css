@@ -141,7 +141,18 @@
      of against that box. With `calc(5.125rem + 4px)` neither fault appears: zero
      page scroll and zero overflow across all 216 months at 1560/200%, and across 72
      further combinations of width, zoom and month. */
-  min-inline-size: calc(5.125rem + 4px);
+  /* **[ISPRAVLJENO 05.09.2026] Read off the tokens it describes, not written out.**
+     The number was `calc(5.125rem + 4px)` and the paragraph above says what it is
+     made of: five dots, four gaps between them, the gap inside the tile and the
+     day's own padding on both sides, plus four pixels of borders. None of those four
+     tokens was read from here, so raising `--length-dot-size` to `0.9rem` left the
+     floor where it was and pushed the row of dots some 12px out of its day, with the
+     whole suite green (review, 30.08.2026). The arithmetic is the same to the
+     hundredth at today's values, which is what makes this a rewrite and not a
+     change: 5 × 0,55 + 4 × 0,25 + 0,375 + 2 × 0,5 = 5,125rem. */
+  min-inline-size: calc(
+    5 * var(--length-dot-size) + 4 * var(--dot-gap) + var(--space-6) + 2 * var(--space-8) + 4px
+  );
   border: 1px solid var(--border);
   border-radius: var(--radius-8);
   padding: var(--space-8);
@@ -327,7 +338,6 @@
      `styles/lengthDots.test.ts` both record. Not 200% alone: the overflow of
      12,78px this rule exists for was measured at 780/**100%**, eight lines below
      in this same file (review, 31.08.2026). */
-  --dot-gap: var(--space-4);
   gap: var(--dot-gap);
   /* Wrapping, and shrinking only as far as wrapping needs, since 30.08.2026.
      A day could hold five dots and no more, and the floor of a day above is

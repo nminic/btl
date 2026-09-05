@@ -44,11 +44,32 @@ describe('a day of the month', () => {
        painted inside the tile instead, so the tile keeps its width and four goes on
        describing it.
 
-       Asked as the string the parser gives back, which puts the pixels first: jsdom
-       normalises `calc()` and reorders its terms, so what is written in the sheet
-       and what is read out of it are not the same characters. */
-    const day = ruleFor(calendar, '.day', 'Calendar.css')
+       **[ISPRAVLJENO 05.09.2026] The number is gone and the tokens are here.** The
+       floor read `calc(4px + 5.125rem)`, and this line held those characters, so the
+       four tokens the paragraph above describes were a fact with no reader: raising
+       `--length-dot-size` moved the row of dots and left the floor where it was, and
+       the whole suite stayed green (review, 30.08.2026). Measured in a real browser
+       on 05.09.2026: with the floor written out, the dot raised to `0.9rem` left the
+       day at 86px; read off the tokens, the same day answers 114px. The arithmetic is
+       unchanged at today's values — 5 × 0,55 + 4 × 0,25 + 0,375 + 2 × 0,5 = 5,125rem,
+       and the browser says 86px either way.
 
-    expect(day.getPropertyValue('min-inline-size')).toBe('calc(4px + 5.125rem)')
+       Asked as the four names rather than as one string: jsdom hands back whatever
+       the sheet wrote, whitespace and all, so a comparison against the whole
+       declaration would fail the next time anybody reformats it. What must not
+       disappear is that each of the four is read. */
+    const day = ruleFor(calendar, '.day', 'Calendar.css')
+    const floor = day.getPropertyValue('min-inline-size')
+
+    for (const token of ['--length-dot-size', '--dot-gap', '--space-6', '--space-8']) {
+      expect(floor, token).toContain(`var(${token})`)
+    }
+
+    /* And the four pixels of borders, which are not letters and do not grow with
+       them. Written as a number because that is what they are. */
+    expect(floor).toContain('4px')
+    /* And no number of letters written out beside them: the whole fault was a size
+       in `rem` that nothing kept in step with the tokens it copied. */
+    expect(floor).not.toMatch(/[\d.]+rem/)
   })
 })
