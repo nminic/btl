@@ -56,9 +56,16 @@ import { DOTS } from '../data/types'
  * a longhand under a shorthand, a media query, another sheet. So there is no
  * sixth stand-in. **Where it is measured instead:** in a real browser, at 360,
  * 780, 1440 and 1560 pixels and at 100% and 200% text, with the numbers written
- * where the rule is (`pages/Calendar.css`) and in ADL A26. **What holds it
- * between those measurements is that the sheet names the gap once and counts
- * four of that name**, which is a smaller promise than a check and an honest one.
+ * where the rule is (`pages/Calendar.css`) and in ADL A26. **What holds it between
+ * those measurements is that the row of dots has one name**, `--length-dots-row` in
+ * `styles/tokens.css`, read by the ceiling over the row and by the floor under the
+ * day it is drawn in. That is a smaller promise than a check and an honest one.
+ *
+ * It used to be „the sheet names the gap once and counts four of that name", with the
+ * name on the row's own rule. Two rules are that width and they are not in one
+ * subtree: named there, the gap is undefined where the floor reads it, the whole
+ * declaration is invalid, and the day has no floor at all (measured in a browser,
+ * 05.09.2026).
  */
 
 const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
