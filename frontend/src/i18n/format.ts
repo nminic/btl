@@ -193,6 +193,35 @@ export function formatDate(isoDate: string, locale: string): string {
   return dateFormat(locale, 'long').format(new Date(isoDate))
 }
 
+/**
+ * The same day, written the way a Serbian sentence takes it: „1. oktobra 2026."
+ *
+ * **Why this exists at all.** `formatDate` answers „1. oktobar 2026.", which is the
+ * nominative. That is right where a date stands as a value — „Trke, 1. oktobar 2026." —
+ * and wrong the moment a verb governs it: „Učlanjenje se otvara 1. oktobar 2026." is not
+ * Serbian. Measured 05.09.2026, twice on live screens: the registration screen said it to
+ * everybody between 15 and 30 September, and the inbox said it in the message every member
+ * starts with. `Intl` has no option that gives the other case, so it is made here.
+ *
+ * **Made by rule and not by a list of twelve.** Serbian writes the genitive of every month
+ * name one of two ways: the four that end in „bar" become „bra" (septembar → septembra),
+ * and the other eight simply take an „a" (mart → marta). Written as a rule over the very
+ * string `formatDate` returns, so the two cannot drift apart and there is no table of
+ * month names to keep in step with the formatter. All twelve are measured in
+ * `format.test.ts`.
+ *
+ * **Serbian only, said out loud rather than left to be found.** Both routes of this portal
+ * draw Serbian words — `/en` shows the Serbian dictionary until an English one exists
+ * (`i18n/config.ts`, ADL A2) — so there is no second language for this to be wrong in and
+ * nothing here to branch on. The day an English dictionary arrives, this is one of the
+ * places that needs a second answer; the rule above would make „Octobera" of „October".
+ */
+export function formatDayInSentence(isoDate: string, locale: string): string {
+  return formatDate(isoDate, locale).replace(/\p{L}+/u, (month) =>
+    month.endsWith('bar') ? `${month.slice(0, -3)}bra` : `${month}a`,
+  )
+}
+
 export function formatShortDate(isoDate: string, locale: string): string {
   return dateFormat(locale, 'short').format(new Date(isoDate))
 }

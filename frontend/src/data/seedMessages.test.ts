@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { first } from '../test/at'
+import { DEFAULT_LOCALE } from '../i18n/config'
+import { formatDayInSentence } from '../i18n/format'
 import { priceOn, REGISTRATION_OPENS } from './pricing'
 import { FIRST_MESSAGES } from './seedMessages'
 
@@ -23,16 +25,17 @@ describe('the messages the inbox starts with', () => {
        and the two mutations were run to see it — 35 by hand with the list at 35 passes,
        35 by hand with the list at 44 fails (05.09.2026). Drift is the fault ADL A12 is
        about; a hand-written number that agrees with the list is the same sentence. */
-    /* And the day, which cannot be read off the list the way the fee can: Serbian
-       writes it in the genitive inside a sentence, and `formatDate` answers „1. oktobar
-       2026.", the nominative. Read off the list, the message said that to every member
-       for the length of one commit (review, 05.09.2026).
+    /* And the day, in the case a sentence takes. Read through `formatDate`, which
+       answers the nominative „1. oktobar 2026.", this message told every member
+       „učlanjenje kreće 1. oktobar 2026." for the length of one commit (review,
+       05.09.2026, ADL A35).
 
-       So the sentence writes the day out and this holds the two together from the other
-       end: the day the price list opens on is still the first of October. Move it to
-       September and this fails, which is the whole of what the reading gave. */
-    expect(said).toContain('1. oktobra')
-    expect(REGISTRATION_OPENS.slice(5)).toBe('10-01')
+       **With the space in front of it, which is the whole of what binds the left end.**
+       Written as `toContain('1. oktobra')` the message could say „21. oktobra" and pass,
+       because nothing bound it (review, 05.09.2026); written with the formatter's whole
+       answer and no space, „21. oktobra 2026." still passes, because it ends with „1.
+       oktobra 2026." (measured here, same day, by putting that day in the message). */
+    expect(said).toContain(` ${formatDayInSentence(REGISTRATION_OPENS, DEFAULT_LOCALE)}`)
   })
 
   it('are the league talking to everybody, which is what an empty recipient means', () => {
