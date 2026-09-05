@@ -4,6 +4,7 @@ import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
 import { rankTeams, seasonOf, seasonsWithResults } from '../data/derive'
+import { inYearlyWindow } from '../data/season'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { TeamMark } from '../components/TeamMark'
@@ -44,9 +45,15 @@ export function Teams() {
           /* The seasons anybody has raced in, and the running one, which is the
              default and a control cannot open on an option it does not have.
              Worked out before the choice, because the choice is held against it. */
-          const seasons = [...new Set([Number(running), ...seasonsWithResults(results)])].sort(
-            (left, right) => right - left,
-          )
+          /* The running season, every season anybody has raced in, **and the one
+             that has not begun**. A team founded during the transfer window scores
+             nothing until 1 January (owner, 05.09.2026), so the season it belongs to
+             is the next one; without it on offer a member could found a team and
+             then find it nowhere. Every team stands there on nought, because in that
+             season nobody has run yet. */
+          const seasons = [
+            ...new Set([Number(running) + 1, Number(running), ...seasonsWithResults(results)]),
+          ].sort((left, right) => right - left)
           const season = offeredSeason(asked, seasons, running)
           const inSeason = results.filter((one) => seasonOf(one) === Number(season))
           const rows = rankTeams(teams, competitors, inSeason, Number(season))
@@ -78,11 +85,20 @@ export function Teams() {
                     mark cannot disagree. Nothing at all there — a signed-in
                     person with no competitor record — is also not in a team,
                     and reads the same way. */}
-                {memberNumber !== null && (myTeam ?? null) === null && (
-                  <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
-                    {t('teams.propose')}
-                  </Link>
-                )}
+                {memberNumber !== null &&
+                  (myTeam ?? null) === null &&
+                  (inYearlyWindow(today) ? (
+                    <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
+                      {t('teams.propose')}
+                    </Link>
+                  ) : (
+                    /* Outside the window there is nothing to press and a sentence
+                       saying when there will be. A team is founded from 1 October to
+                       31 December (owner, 05.09.2026), the same window every other
+                       change of team is asked in, and the membership screen already
+                       speaks of it in those words. */
+                    <p className="rankings__empty">{t('teams.proposeShut')}</p>
+                  ))}
                 <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 

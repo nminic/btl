@@ -1,8 +1,9 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
+import { Saved } from '../../test/saved'
 import { setupUser } from '../../test/user'
 
 /* A team put forward by a member, and the queue that has been waiting for one.
@@ -12,12 +13,18 @@ import { setupUser } from '../../test/user'
  * administrator (owner, 03.08.2026).
  */
 
+/** A day inside the transfer window, 1 October to 31 December, which is when a team
+ *  may be founded at all (PDL, increment 133, 05.09.2026). Every signed-in reading in
+ *  this file is on it, so what each case measures is its own subject rather than the
+ *  day it happened to run on. */
+const DAY = '2026-10-15'
+
 describe('the way to propose a team', () => {
   it('is offered to a member who is in no team, on the standing of the teams', async () => {
     /* Member 000002 runs alone: `teamId` is null on their record. Somebody with
        a team has nothing to do with this button, and what they can do is on their
        own team's page (owner, 04.09.2026). */
-    renderAt('/sr/timovi', 'competitor', '000002')
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, DAY)
 
     expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
   })
@@ -27,7 +34,7 @@ describe('the way to propose a team', () => {
        and until 04.09.2026 every signed-in member saw this. Named by the member and
        not by the count of teams, because a member joins and leaves a team through
        the season and the button has to follow that, not the table. */
-    renderAt('/sr/timovi', 'competitor', '000007')
+    renderAt('/sr/timovi', 'competitor', '000007', undefined, DAY)
 
     await screen.findByRole('table', { name: 'Timovi' })
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
@@ -40,15 +47,22 @@ describe('the way to propose a team', () => {
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
   })
 
-  it('refuses a member who already has a team, at the address and not only on the button', async () => {
+  it('sends a member who already has a team to the front page', async () => {
     /* A hidden button is not a rule. This address is in a member's history and in
        their bookmarks, and reached from either the form used to send a proposal
        that, approved, made them the organiser of a second team — against PDL P13,
-       „član sme da bude samo u jednom timu istovremeno" (review, 04.09.2026). */
-    renderAt('/sr/novi-tim', 'competitor', '000007')
+       „član sme da bude samo u jednom timu istovremeno" (review, 04.09.2026).
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Predlog tima' })).toBeVisible()
-    expect(screen.getByText(/samo u jednom timu/)).toBeVisible()
+       **Away rather than explained.** Owner, 05.09.2026: „Ako neko proba deeplink za
+       pravljenje tima iako ima tim, treba da se preusmeri na homepage." A screen
+       explaining the refusal stood here for one day. Asked of the address the router
+       ends on and not only of what is drawn: the front page has a heading like every
+       other page, so a heading alone would pass over a screen that never redirected. */
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000007', undefined, DAY)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
     expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
   })
 
@@ -63,9 +77,11 @@ describe('the way to propose a team', () => {
        questions: the standing asks about a season, the door asks whether there is a
        team on the record at all. Measured here rather than argued, because a review
        measured that the portal can be made to say both (04.09.2026). */
-    const { router } = renderAt('/sr/novi-tim', 'competitor', '000031', undefined, '2026-09-05')
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000031', undefined, DAY)
 
-    expect(await screen.findByText(/samo u jednom timu/)).toBeVisible()
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
     expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
 
     await router.navigate('/sr/timovi')
@@ -82,9 +98,33 @@ describe('the way to propose a team', () => {
        the next season is 2026, that member is not in a team by that reading, and the
        form would open. Measured: `inTeamIn(me, thisYear + 1)` passes every other case
        in this file and fails only this one (review, 05.09.2026). */
-    renderAt('/sr/novi-tim', 'competitor', '000031', undefined, '2025-09-05')
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000031', undefined, '2025-10-15')
 
-    expect(await screen.findByText(/samo u jednom timu/)).toBeVisible()
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+    expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
+  })
+
+  it('is not offered outside the transfer window, and the address is not a page then either', async () => {
+    /* A team is founded from 1 October to 31 December (owner, 05.09.2026), the same
+       window every other change of team is asked in. Read on a day in September: the
+       standing says when the window opens instead of offering the button, and the
+       address itself sends the member to the front page, exactly as it does to a
+       member who already has a team. Two halves of one rule, so neither can be the
+       only thing holding it. */
+    const { router } = renderAt('/sr/timovi', 'competitor', '000002', undefined, '2026-09-05')
+
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.getByText(/od 1. oktobra do 31. decembra/)).toBeVisible()
+
+    await router.navigate('/sr/novi-tim')
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
     expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
   })
 
@@ -107,7 +147,7 @@ describe('a proposal a member sends', () => {
 
   it('says it is waiting on a moderator rather than that the team exists', async () => {
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000002')
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await fill(user, 'Trkači Morave')
 
@@ -127,7 +167,7 @@ describe('a proposal a member sends', () => {
     const user = setupUser()
     /* Signed in as somebody who may also decide, because this walks both
        ends of the flow and the administration is shut to a competitor. */
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await user.upload(
       await screen.findByLabelText(/Znak tima/),
@@ -170,12 +210,63 @@ describe('a proposal a member sends', () => {
 
   it('refuses to send without the three things it asks for', async () => {
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000002')
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.click(await screen.findByRole('button', { name: 'Pošalji predlog' }))
 
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
     expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(3)
+  })
+})
+
+describe('a member who founds a team', () => {
+  it('is in it from the next season the moment the proposal is approved', async () => {
+    /* The high finding of the review of PR 186: an approval wrote the organiser onto
+       the team and nothing onto the member, so the founder was in no team at all and
+       could found a second one the same minute. Owner, 05.09.2026: „Odmah ulazi u
+       tim... on ce biti prvi i jedini clan u tom trenutku", and the team scores from
+       1 January, so the season written is the next one.
+
+       Read off what the session was told rather than off a screen: no public screen
+       reads the overlay this prototype keeps its changes in (`admin/entityForms.ts`),
+       so the roster of a team made today is a thing the database will draw. What can
+       be held now is that the record is written, and written with both fields. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY, <Saved />)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    const saved = within(screen.getByRole('list', { name: 'session records' }))
+    const written = must(
+      saved
+        .getAllByRole('listitem')
+        .map((one) => one.textContent ?? '')
+        .find((one) => one.startsWith('edit 000002 |')),
+      'what the session was told about the member who founded it',
+    )
+
+    /* The team it names is the one that was just made, not a word from the file. */
+    const made = must(
+      saved
+        .getAllByRole('listitem')
+        .map((one) => /^new teams (\S+) \|/.exec(one.textContent ?? ''))
+        .find((one) => one !== null),
+      'the team the approval made',
+    )
+
+    expect(written).toContain(`teamId=${made[1]}`)
+    expect(written).toContain('teamSince=2027')
   })
 })
 
@@ -201,7 +292,7 @@ describe('what the screen promises a member', () => {
        Checked by counting the inbox rather than by matching the old sentence,
        which any other wording of the same promise would have slipped past. */
     const user = setupUser()
-    const { router } = renderAt('/sr/poruke', 'competitor', '000002')
+    const { router } = renderAt('/sr/poruke', 'competitor', '000002', undefined, DAY)
 
     const before = within(await screen.findByRole('list')).getAllByRole('listitem').length
 
@@ -221,7 +312,7 @@ describe('what the screen promises a member', () => {
     /* A proposal lives in the session and is read in the administration alone,
        so "only you can see it" would have been the same kind of promise. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'competitor', '000002')
+    const { router } = renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
@@ -242,7 +333,7 @@ describe('a name a team in the league already answers to', () => {
        at the door can change it; a member told a fortnight later by a refusal
        has to start again. */
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000002')
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     /* In another case and without the diacritics, which is what the league
        already holds as "Dunavski trkači": the check is on the address the name
@@ -264,7 +355,7 @@ describe('a name a team in the league already answers to', () => {
        already has and not a second one. Before the address knew any Cyrillic
        this went through, and the team it made answered at `/tim/`. */
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000002')
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Дунавски тркачи')
     await user.type(screen.getByLabelText(/^Mesto/), 'Novi Sad')
@@ -282,7 +373,7 @@ describe('a name that makes no address at all', () => {
        first such team would answer at `/tim/`, and the next proposal would be
        refused as a name already taken though the two share nothing. */
     const user = setupUser()
-    renderAt('/sr/novi-tim', 'competitor', '000002')
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), '???')
     await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
@@ -304,7 +395,7 @@ describe('a proposal from somebody the member list does not hold', () => {
     const user = setupUser()
     /* Signed in as the superadmin, so the queue can be opened at the end of it,
        but under a number the member list does not hold. */
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '999999')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '999999', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
@@ -327,7 +418,7 @@ describe('the queue of new teams', () => {
        which of two waiting teams came from a file and which from a member,
        because once there is a database there is no such difference. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
@@ -358,7 +449,7 @@ describe('the queue of new teams', () => {
        Slovenia rather than Serbia on purpose: every other flow here picks RS,
        which the five happened to hold, so all of them passed either way. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
     await user.type(screen.getByLabelText(/^Mesto/), 'Kranj')
@@ -381,7 +472,7 @@ describe('the queue of new teams', () => {
        told nothing is waiting, on a screen about to show them something, stops
        believing the number. */
     const user = setupUser()
-    const { router } = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002')
+    const { router } = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002', undefined, DAY)
 
     const named = () =>
       must(
@@ -425,7 +516,7 @@ describe('a proposal a moderator accepts', () => {
     /* Not a message on a screen nobody is looking at: the decision may come
        days later. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await propose(user, 'Trkači Morave')
 
@@ -448,7 +539,7 @@ describe('a proposal a moderator accepts', () => {
 
   it('makes the team, with the member who proposed it as its organiser', async () => {
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await propose(user, 'Trkači Morave')
 
@@ -479,7 +570,7 @@ describe('a proposal a moderator accepts', () => {
     /* The other half. A refusal makes no team and writes to nobody: the reason
        is written down, and this queue hands nothing back to a member. */
     const user = setupUser()
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002')
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await propose(user, 'Trkači Morave')
 
@@ -509,7 +600,7 @@ describe('what a moderator may do before accepting a proposal', () => {
      told (PDL P13, 03.08.2026). The name, the town and the country arrive as the
      member typed them and the team carries them from then on. */
   const open = async () => {
-    const rendered = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002')
+    const rendered = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002', undefined, DAY)
     await screen.findByRole('list', { name: /Čeka/ })
 
     return rendered

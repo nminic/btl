@@ -7,6 +7,7 @@ import { combinePair, dataOr, failed, useEvents, useRaces, useTeams } from '../.
 import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
+import { seasonOnSale } from '../../data/season'
 import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -384,6 +385,28 @@ export function PendingQueue({ queue }: { queue: Queue }) {
            rather than half done. The moderator still judges the square the
            member chose, on the card above, which is what the owner asked for
            (12.08.2026). Written down in PENDING. */
+      })
+
+      /* **And the member who asked for it is in it.** Owner, 05.09.2026: „Odmah
+         ulazi u tim... on ce biti prvi i jedini clan u tom trenutku." Until then an
+         approval wrote the organiser onto the team and nothing onto the member, so
+         the founder was in no team at all and could found a second one the same
+         minute; that was a high finding of the review of PR 186.
+
+         **From the next season**, because a team founded during the transfer window
+         scores nothing until 1 January (owner, same day). `teamSince` is what every
+         reader of „was this member in the team that season" asks (`data/derive.ts`,
+         `inTeamIn`), so writing next season is what keeps the new team out of this
+         season's standing without a second rule to remember.
+
+         Written as text, like everything else in the overlay that stands in for a
+         database (session/context.ts). A record read back through the overlay
+         carries the season as the digits rather than as a number, which every
+         comparison in the portal reads the same way and the database will type
+         properly; written down rather than papered over. */
+      editRecord(one.memberNumber, {
+        teamId: id,
+        teamSince: String(seasonOnSale(today)),
       })
 
       notify({

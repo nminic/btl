@@ -3,9 +3,13 @@ import { first } from '../../test/at'
 import { beginsWith, metSaid } from '../../test/met'
 import { renderAt } from '../../test/render'
 
-/* Signed in as a member with no team of their own: since 05.09.2026 the way to
- * propose one is shut to a member who already has one, at the address and not only
- * on the button (PDL, increment 133), and a screen that refuses draws no form. */
+/* Read as a member with no team of their own, on a day inside the transfer window.
+ * Both are conditions of one of these three screens: a team is founded from 1 October
+ * to 31 December and only by a member who has none (PDL, increment 133), and outside
+ * either the address is not a page at all but a redirect to the front. The other two
+ * screens do not care about the day; one fixed day for all three keeps this file
+ * from asking a different question of each. */
+const DAY = '2026-10-15'
 
 /**
  * A page begins with its own heading, and the screens a member writes on did not.
@@ -46,7 +50,7 @@ describe('the screens a member writes on', () => {
   it('begin with their own heading, before anything the reader can meet', async () => {
     for (const [route, name] of SCREENS) {
       cleanup()
-      renderAt(route, 'competitor', '000002')
+      renderAt(route, 'competitor', '000002', undefined, DAY)
 
       const heading = await screen.findByRole('heading', { level: 1, name })
       expect(beginsWith(heading), `${route} begins with its heading, met ${metSaid(heading)}`).toBe(
@@ -66,7 +70,7 @@ describe('the screens a member writes on', () => {
        only after filling the whole form in (review, 04.09.2026). */
     for (const [route, name, note] of SCREENS) {
       cleanup()
-      renderAt(route, 'competitor', '000002')
+      renderAt(route, 'competitor', '000002', undefined, DAY)
 
       const main = screen.getByRole('main')
       const said = await within(main).findByText(note)
