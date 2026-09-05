@@ -17,30 +17,7 @@ import {
   type SubmissionStatus,
   type Amendment,
 } from './context'
-
-/* Two messages to start with, so the inbox is not judged empty. They are the
- * kind the portal actually sends: one about a result, one about the season. Both
- * are the league talking to everybody, which is what an empty `to` means. */
-const FIRST_MESSAGES: Message[] = [
-  {
-    id: 'msg-1',
-    from: 'Balkanska trkačka liga',
-    to: '',
-    subject: 'Dobro došao u pripremu sezone 2027',
-    body: 'Portal je otvoren za razgledanje. Kalendar se puni, a učlanjenje kreće 1. oktobra po ceni od 35 EUR.',
-    date: '2026-07-20',
-    read: false,
-  },
-  {
-    id: 'msg-2',
-    from: 'Balkanska trkačka liga',
-    to: '',
-    subject: 'Rezultat je odobren',
-    body: 'Tvoj rezultat sa Jadovničkog ultramaratona je proveren i ušao je u rang listu.',
-    date: '2026-07-12',
-    read: true,
-  },
-]
+import { FIRST_MESSAGES } from '../data/seedMessages'
 
 export function SessionProvider({
   initialMemberNumber = null,
