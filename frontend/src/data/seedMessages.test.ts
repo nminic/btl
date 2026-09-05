@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { first } from '../test/at'
-import { DEFAULT_LOCALE } from '../i18n/config'
-import { formatDate } from '../i18n/format'
 import { priceOn, REGISTRATION_OPENS } from './pricing'
 import { FIRST_MESSAGES } from './seedMessages'
 
@@ -20,11 +18,21 @@ describe('the messages the inbox starts with', () => {
     const said = first(FIRST_MESSAGES).body
 
     expect(said).toContain(`${priceOn(REGISTRATION_OPENS).eur} EUR`)
-    /* The day as the portal writes a day, month and all: written out here as „1.
-       oktobra", the month was a hand-written word in two places at once, and a price
-       list moved to September went on announcing October with this green (review,
-       05.09.2026). */
-    expect(said).toContain(formatDate(REGISTRATION_OPENS, DEFAULT_LOCALE))
+    /* What that catches, said exactly, because it is narrower than it looks: a fee
+       written out by hand **that has drifted**. Written out and still right, it passes,
+       and the two mutations were run to see it — 35 by hand with the list at 35 passes,
+       35 by hand with the list at 44 fails (05.09.2026). Drift is the fault ADL A12 is
+       about; a hand-written number that agrees with the list is the same sentence. */
+    /* And the day, which cannot be read off the list the way the fee can: Serbian
+       writes it in the genitive inside a sentence, and `formatDate` answers „1. oktobar
+       2026.", the nominative. Read off the list, the message said that to every member
+       for the length of one commit (review, 05.09.2026).
+
+       So the sentence writes the day out and this holds the two together from the other
+       end: the day the price list opens on is still the first of October. Move it to
+       September and this fails, which is the whole of what the reading gave. */
+    expect(said).toContain('1. oktobra')
+    expect(REGISTRATION_OPENS.slice(5)).toBe('10-01')
   })
 
   it('are the league talking to everybody, which is what an empty recipient means', () => {

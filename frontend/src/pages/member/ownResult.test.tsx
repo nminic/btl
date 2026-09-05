@@ -157,6 +157,20 @@ describe('a result of one’s own that is still waiting', () => {
     expect(row.queryByRole('link', { name: /^Pošalji ponovo/ })).toBeNull()
   })
 
+  it('says the number is BTL points, which are not the „bodovi" of a ranking', async () => {
+    /* Two different numbers wear the word „bodovi" on this portal, and this row shows
+       the one that is not it: what a single result is worth is BTL points, while
+       „bodovi" is what a member has in a standing. The screen read `units.points`
+       („{value} bodova") until 05.09.2026 and nothing here noticed the difference, so
+       the change that fixed it had no reader either (review, 05.09.2026). */
+    renderAt(MINE, 'competitor', ME, undefined, null, <Waiting whose={ME} races={['Probna trka']} />)
+
+    const row = within(must(sent()[0], 'the result just sent'))
+
+    expect(row.getByText(/BTL poena$/)).toBeVisible()
+    expect(row.queryByText(/bodova$/)).toBeNull()
+  })
+
   it('asks twice before it is gone, and then it is gone', async () => {
     /* The portal's one way of asking about something nothing brings back, taken
        from the rows of the administration rather than written a second time

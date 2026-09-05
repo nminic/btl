@@ -429,7 +429,6 @@
   "units": {
     "kilometers": "{value} km",
     "meters": "{value} m",
-    "points": "{value} bodova",
     "btlPoints": "{value} BTL poena",
     "raceCount": {
       "one": "{count} trka",

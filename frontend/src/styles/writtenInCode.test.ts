@@ -92,10 +92,16 @@ const SPOKEN = ['title', 'alt', 'aria-label', 'aria-description', 'aria-valuetex
 /**
  * The value an attribute is written with, when it is written out and not computed.
  *
- * **Both spellings.** JSX writes a value as alt="a" or as alt={'a'}, and this portal
- * writes the second: of the sixteen hundred and eighty five non-empty values its
- * components carry, not one on an attribute a reader meets is in quotes, so a rule
- * that read only quotes had no living place to fire (review, 05.09.2026).
+ * **Both spellings, and the second has no living example.** JSX writes a value as
+ * alt="a" or as alt={'a'}, and counted with this same parser the portal writes the
+ * first for all sixteen hundred and eighty five of them, the second for none. So the
+ * reading of `{'a'}` and of a template literal cannot be held by the floor below, which
+ * would freeze the same sixty names with either one removed; it is held by the three
+ * cases at the bottom of this file and by nothing else (review, 05.09.2026).
+ *
+ * It is read all the same, because the fault it stops is a live one: `alt={'Znak tima'}`
+ * is a Serbian sentence with none of the five letters the third rule looks for, so with
+ * this half gone it would reach a reader through the whole guard.
  *
  * An empty value is the right way to say a picture is decoration (WCAG 2.2 SC 1.1.1)
  * and the portal writes three of those, so an empty value is not a value here.
@@ -202,10 +208,12 @@ describe('what a screen says in its own voice', () => {
        list the case above walks.
 
        **The corners are written out and held against the sweep.** A hand-written list
-       is safe exactly when it is compared with the source of truth: drop `admin` from
-       the reading and a corner goes missing here, keep every corner and drop half the
-       files in one and the count below falls. Both were measured on the day this was
-       written. */
+       is safe exactly when it is compared with the source of truth: drop `forms` from
+       the reading and a corner goes missing here. What this list does **not** catch is
+       a narrowing inside a corner: `pages/admin` is not a corner of its own, and with
+       the whole of it dropped the corners are unchanged while the count below falls to
+       99 and the names below fall to 59. Both measured, the second by a review on
+       05.09.2026, which is why the count and the names are not decoration. */
     const corners = [...new Set(DRAWN.map(({ path }) => cornerOf(path)))].sort()
 
     expect(corners).toEqual([
@@ -329,6 +337,10 @@ describe('what a screen says in its own voice', () => {
     /* And a sentence with none of the five letters, which the third rule would miss
        and the first one catches all the same. */
     expect(read('const a = <p>Ovo polje je obavezno.</p>')).toHaveLength(1)
+    /* And two words that do not stand beside each other, which is the whole of why
+       `WORDS` counts rather than pairs: every word here but two is one letter long, and
+       a rule asking for two long words in a row walked straight past it. */
+    expect(read('const a = <p>Ime i prezime</p>')).toHaveLength(1)
     /* And what one word in the markup costs, which is what the rule is priced at:
        units and symbols pass, because they are the same in every language. */
     expect(read('const a = <p>{n} km</p>')).toEqual([])
@@ -337,6 +349,12 @@ describe('what a screen says in its own voice', () => {
     expect(read('const a = <img alt="Znak tima" />')).toHaveLength(1)
     /* And an empty one is how a decorative picture says it has nothing to say. */
     expect(read('const a = <img alt="" />')).toEqual([])
+    /* And the other two spellings of a written value, which nothing in the portal uses
+       today and which therefore have no other place to be measured. Both carry the
+       fault whole: a Serbian sentence with none of the five letters, on an attribute a
+       reader hears. */
+    expect(read("const a = <img alt={'Znak tima'} />")).toHaveLength(1)
+    expect(read('const a = <img alt={`Znak tima`} />')).toHaveLength(1)
     /* And what an unknown name gets: nothing, which is exactly the hole the case above
        closes. This reading is blind to `aria-roledescription`, and the moment a component
        writes one out it is the list of names that stops matching, not this. */
