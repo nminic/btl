@@ -21,14 +21,21 @@ import { sources } from '../test/sources'
  * the import: whatever a file takes from `i18n/format` counts, and a constant made from
  * one of them counts as that one.
  *
- * **Where that reading stops, measured rather than assumed** (review, 05.09.2026). Four
- * shapes are outside it, and the portal writes none of them today: a star import
- * (`import * as fmt`, nought of them anywhere in `src`), `t` destructured under another
- * name (nought of a hundred and thirty three), a key built from a template, and a key held
- * in a variable (thirty and eight of those, all of them handed raw values). A fifth,
- * importing a formatter under an alias, is seen but reported under the alias, so it fails
- * the list loudly rather than passing quietly. The day the portal writes one of the four,
- * this stops seeing it, and that is the line to look at.
+ * **The key is read as well, and that took two rounds.** A sentence can be chosen between
+ * two (`t(part === 'results' ? 'a' : 'b', …)`, written twelve times here), so every name
+ * written out inside the key counts and a choice names both halves. A key with no name
+ * written out in it — a template, or a name held in a variable — is recorded as „?" and by
+ * its file, so it breaks the list rather than passing quietly. Sixteen calls have a key
+ * that is not written out and takes values; not one of them takes anything from this
+ * module today, which is why the frozen list below is unchanged by any of this (review,
+ * 05.09.2026).
+ *
+ * **Where the reading does stop, measured rather than assumed.** Two shapes, both about
+ * how a name reaches the call: a star import (`import * as fmt` — there is not one of
+ * anything in `src`), and `t` bound under another name (nought of the hundred and thirty
+ * two `useI18n()` bindings). A third, importing a formatter under an alias, is seen but
+ * reported under the alias, so it too fails the list loudly. The day the portal writes one
+ * of the two, this stops seeing it, and that is the line to look at.
  *
  * **What each line below answers, and what it does not.** It answers the case: which form
  * of the word the sentence around it takes. It does not answer the language. Whether a
@@ -108,7 +115,7 @@ export function datesIn(path: string, code: string): string[] {
     ) {
       const [named, ...rest] = node.arguments
 
-      if (named !== undefined && ts.isStringLiteral(named)) {
+      if (named !== undefined) {
         const used = new Set<string>()
         const scan = (one: ts.Node): void => {
           if (ts.isIdentifier(one)) {
@@ -124,8 +131,34 @@ export function datesIn(path: string, code: string): string[] {
 
         rest.forEach(scan)
 
+        /* **Which sentence, when the key is not written out.** A key can be a choice
+           between two (`t(part === 'results' ? 'a' : 'b', …)`, which this portal writes
+           twelve times), or a name that says nothing here at all. Read as a plain literal
+           only, a value handed to the first of those was invisible: measured on
+           `pages/LeagueDetail.tsx`, where a formatted value put into a sentence chosen by
+           a ternary passed the whole guard (review, 05.09.2026).
+
+           So every name written out inside the key counts, and both halves of a choice
+           are named. A key with nothing written out in it is recorded as „?" and by its
+           file, which fails the list loudly rather than passing quietly; there are none
+           today. */
+        const said: string[] = []
+        const names = (one: ts.Node): void => {
+          if (ts.isStringLiteral(one)) {
+            said.push(one.text)
+          }
+
+          ts.forEachChild(one, names)
+        }
+
+        names(named)
+
+        const asked = said.length > 0 ? said : [`? (${path.split(/[/\\]/).slice(-1).join('')})`]
+
         for (const one of [...used].sort()) {
-          found.push(`${named.text} <- ${one}`)
+          for (const key of asked) {
+            found.push(`${key} <- ${one}`)
+          }
         }
       }
     }
@@ -216,13 +249,38 @@ describe('a formatted value handed to a sentence', () => {
     expect(read('proba.tsx', `${brought}const a = t('formatDate', { name: n })`)).toEqual([])
   })
 
-  it('says where it stops seeing, in the four shapes the portal does not write', () => {
-    /* The limits of the reading, measured rather than described. None of these four is
-       written anywhere in `src` today — nought star imports of this module, nought of a
-       hundred and thirty three `useI18n()` bindings renaming `t`, and every template or
-       variable key handed raw values — so each is a boundary and not a fault. They are
-       here so that the boundary is a measured thing somebody can move, rather than a
-       sentence in a comment that nothing holds to (review, 05.09.2026). */
+  it('names a sentence chosen between two, and shouts about one it cannot name', () => {
+    const read = (code: string) => datesIn('proba.tsx', code)
+    const brought = "import { formatDate } from '../i18n/format'\n"
+
+    /* A choice between two sentences, which this portal writes twelve times. Both halves
+       are named, because either can be the one that is drawn. Read as a plain literal
+       only, this was invisible, and a formatted value put through it passed the whole
+       guard (review, 05.09.2026, `pages/LeagueDetail.tsx`). */
+    expect(
+      read(`${brought}const a = t(x ? 'seo.a.one' : 'seo.a.two', { date: formatDate(d, l) })`),
+    ).toEqual(['seo.a.one <- formatDate', 'seo.a.two <- formatDate'])
+
+    /* And a key with nothing written out in it: a template, or a name that says nothing
+       here. There is nowhere to look up which sentence that is, so the reading says so
+       out loud and by the file it stands in, which breaks the list above. The portal
+       writes none of these with a formatted value today. */
+    expect(read(`${brought}const a = t(\`x.\${z}\`, { date: formatDate(d, l) })`)).toEqual([
+      '? (proba.tsx) <- formatDate',
+    ])
+    expect(read(`${brought}const a = t(someKey, { date: formatDate(d, l) })`)).toEqual([
+      '? (proba.tsx) <- formatDate',
+    ])
+  })
+
+  it('says where it stops seeing, in the two shapes the portal does not write', () => {
+    /* The limits of the reading, measured rather than described, and both of them are
+       about how a name reaches the call rather than about the key. Neither is written
+       anywhere in `src` today: there is not one `import * as` of anything, and not one of
+       the hundred and thirty two `useI18n()` bindings renames `t` — every one of them is
+       `{ t }`, `{ locale, t }`, `{ t, locale }` or `{ locale }`. So each is a boundary
+       and not a fault, and each is a case here so that the boundary is a measured thing
+       somebody can move rather than a sentence nothing holds to (review, 05.09.2026). */
     const read = (code: string) => datesIn('proba.tsx', code)
 
     expect(
@@ -233,15 +291,9 @@ describe('a formatted value handed to a sentence', () => {
         "import { formatDate } from '../i18n/format'\nconst { t: say } = useI18n()\nconst a = say('x.y', { date: formatDate(d, l) })",
       ),
     ).toEqual([])
-    expect(
-      read("import { formatDate } from '../i18n/format'\nconst a = t(`x.${z}`, { date: formatDate(d, l) })"),
-    ).toEqual([])
-    expect(
-      read("import { formatDate } from '../i18n/format'\nconst a = t(someKey, { date: formatDate(d, l) })"),
-    ).toEqual([])
 
-    /* And the fifth, which is seen but under the name it was brought in as, so it breaks
-       the list above rather than slipping past it. That is the safe way to be wrong. */
+    /* And the one that is seen but under the name it was brought in as, so it breaks the
+       frozen list rather than slipping past it. That is the safe way to be wrong. */
     expect(
       read("import { formatDate as danKad } from '../i18n/format'\nconst a = t('x.y', { date: danKad(d, l) })"),
     ).toEqual(['x.y <- danKad'])
