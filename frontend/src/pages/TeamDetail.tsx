@@ -20,6 +20,8 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
+import { teamOf } from '../data/derive'
+import { inYearlyWindow } from '../data/season'
 import { teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
@@ -44,7 +46,7 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  const { memberNumber, remove, editRecord } = useSession()
+  const { memberNumber, remove, editRecord, notify, asked: pendingAsks } = useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
@@ -74,6 +76,11 @@ export function TeamDetail() {
            članova" under it, because the founder's team is written into the session
            and nowhere else (review, 05.09.2026). PDL, 05.09.2026: the founder „je od
            tog trenutka prvi i jedini član i vidi se u sastavu tima". */
+        /* Whoever is reading, off the same list as everything else on this screen, and
+           what they are called, because an application says who is asking. */
+        const me = listedMembers.find((one) => one.memberNumber === memberNumber)
+        const myName = me === undefined ? '' : `${me.firstName} ${me.lastName}`
+        const runs = teamAdminOf(team, listedMembers)
         const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
@@ -125,7 +132,48 @@ export function TeamDetail() {
                         `admin` is null for a team nobody is in, and comparing it
                         with a visitor's own null would put the button in front of
                         everybody who is not signed in. */}
-                    {memberNumber !== null && teamAdminOf(team, listedMembers) === memberNumber && (
+                    {/* And the way in, for somebody who has no team to leave. Only inside
+                        the transfer window, because that is the one door through which a
+                        team changes (owner, 05.09.2026), and only where there is somebody
+                        to answer: a team nobody is in has no administrator, so an
+                        application to it would be a letter to nobody.
+
+                        Asked once. The application lives as a question in the
+                        administrator's inbox, and the member who sent it cannot see that
+                        inbox, so without this the same application would be sent again on
+                        every press. */}
+                    {memberNumber !== null &&
+                      runs !== null &&
+                      teamOf(me) === null &&
+                      inYearlyWindow(today) &&
+                      (pendingAsks.some(
+                        (one) => one.teamId === team.id && one.memberNumber === memberNumber,
+                      ) ? (
+                        <p className="rankings__empty">{t('teams.joinAsked')}</p>
+                      ) : (
+                        <button
+                          type="button"
+                          className="button button--secondary"
+                          onClick={() => {
+                            notify({
+                              from: t('app.name'),
+                              to: runs,
+                              subject: t('teams.joinSubject', { name: myName }),
+                              body: t('teams.joinBody', { name: myName, team: team.name }),
+                              date: today,
+                              asks: {
+                                kind: 'teamJoin',
+                                teamId: team.id,
+                                teamName: team.name,
+                                memberNumber,
+                              },
+                            })
+                          }}
+                        >
+                          {t('teams.join')}
+                        </button>
+                      ))}
+                    {memberNumber !== null && runs === memberNumber && (
                       <>
                         <Link
                           className="button button--secondary"

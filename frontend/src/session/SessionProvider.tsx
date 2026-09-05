@@ -355,6 +355,18 @@ export function SessionProvider({
     setEdits(({ [id]: _gone, ...rest }) => rest)
   }, [])
 
+  /* The questions still waiting for an answer, without the messages that carry them.
+   * A screen that offers to ask has to know what has already been asked, or a member
+   * presses twice and the administrator gets the same application twice; and that much
+   * is not private the way the words of a message are (`context.ts`). */
+  const asked = useMemo(
+    () =>
+      messages.flatMap((one) =>
+        one.asks !== undefined && decisions[one.id] === undefined ? [one.asks] : [],
+      ),
+    [messages, decisions],
+  )
+
   /* What the person at the keyboard is allowed to see: what was written to them,
    * and what was written to the whole league. The store holds everybody's. */
   const inbox = useMemo(
@@ -375,6 +387,7 @@ export function SessionProvider({
       withdraw,
       decide,
       inbox,
+      asked,
       going,
       setGoing,
       markRead,
@@ -409,6 +422,7 @@ export function SessionProvider({
       withdraw,
       decide,
       inbox,
+      asked,
       markRead,
       notify,
       notifications,

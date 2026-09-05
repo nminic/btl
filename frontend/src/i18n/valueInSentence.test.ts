@@ -311,6 +311,18 @@ describe('a sentence with a value put into it', () => {
       'shell.unread',
       'shell.waiting',
       'teams.editDone',
+      /* The six an application to a team is made of, and one answer covers all of them:
+         every value in them is a name, and a name here stands in the nominative because
+         it is either the subject of the sentence („{name} se prijavljuje") or a proper
+         name inside quotation marks („u tim „{team}""), which is how this portal has
+         written a team's name since `teams.proposeDone`. Nothing in them is governed by a
+         verb or a preposition that would ask for another case. */
+      'teams.joinBody',
+      'teams.joinDoneBody',
+      'teams.joinDoneSubject',
+      'teams.joinNoBody',
+      'teams.joinNoSubject',
+      'teams.joinSubject',
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',

@@ -85,6 +85,7 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
     resubmit: vi.fn(),
     decide: vi.fn(),
     inbox: [],
+    asked: [],
     going: {},
     setGoing: vi.fn(),
     markRead: vi.fn(),

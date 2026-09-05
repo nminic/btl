@@ -1,4 +1,7 @@
 import { useEffect } from 'react'
+import { useToday } from '../../clock/useClock'
+import { seasonOnSale } from '../../data/season'
+import type { Ask } from '../../session/context'
 import { Link, useParams } from 'react-router'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -21,7 +24,8 @@ import './Member.css'
 export function MessageDetail() {
   const { locale, t } = useI18n()
   const { id } = useParams()
-  const { memberNumber, inbox, markRead } = useSession()
+  const { memberNumber, inbox, markRead, decisions, settle, editRecord, notify } = useSession()
+  const today = useToday()
   /* Out of the inbox rather than out of the store, so an address that names
    * somebody else's message answers with the not found page instead of showing
    * it (Message.to). */
@@ -40,6 +44,38 @@ export function MessageDetail() {
 
   if (message === undefined) {
     return <NotFound />
+  }
+
+  /* Taken off the message once, so the two controls below and the question they answer are
+     about the same thing rather than about three reads of it. */
+  const { asks } = message
+  const said = message.id
+
+  /* Taking somebody in writes what an approval in the moderator's queue writes, because it
+     is the same fact arriving by another road: the team on the member's record, and the
+     season from which they run for it, which is the next one (PDL, 05.09.2026: „obračun
+     poena tima počinje tek od 1.1. naredne sezone"). */
+  const take = (ask: Ask): void => {
+    editRecord(ask.memberNumber, { teamId: ask.teamId, teamSince: String(seasonOnSale(today)) })
+    settle(said, { status: 'approved', note: '', basis: '', memberNumber: '' })
+    notify({
+      from: t('app.name'),
+      to: ask.memberNumber,
+      subject: t('teams.joinDoneSubject', { team: ask.teamName }),
+      body: t('teams.joinDoneBody', { team: ask.teamName }),
+      date: today,
+    })
+  }
+
+  const refuse = (ask: Ask): void => {
+    settle(said, { status: 'rejected', note: '', basis: '', memberNumber: '' })
+    notify({
+      from: t('app.name'),
+      to: ask.memberNumber,
+      subject: t('teams.joinNoSubject', { team: ask.teamName }),
+      body: t('teams.joinNoBody', { team: ask.teamName }),
+      date: today,
+    })
   }
 
   return (
@@ -69,6 +105,40 @@ export function MessageDetail() {
       </Link>
 
       <p className="messages__body">{message.body}</p>
+
+      {/* And the answer, on the one kind of message that asks for one. Most messages tell;
+          an application to a team is decided by whoever runs that team and by nobody else
+          (owner, 05.09.2026: the moderator's queue is for what the league decides, and who
+          is in whose team is not that).
+
+          Answered once. The answer is a `Decision` under this message's own id, the same
+          way everything else on this portal that somebody decides is kept, so „has this
+          been answered" has one home and cannot be asked twice. */}
+      {asks !== undefined &&
+        (decisions[said] === undefined ? (
+          <p className="messages__answer">
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => {
+                take(asks)
+              }}
+            >
+              {t('teams.joinTaken')}
+            </button>
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => {
+                refuse(asks)
+              }}
+            >
+              {t('teams.joinRefused')}
+            </button>
+          </p>
+        ) : (
+          <p className="messages__answer">{t('teams.joinSettled')}</p>
+        ))}
     </div>
   )
 }
