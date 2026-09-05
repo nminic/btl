@@ -1,81 +1,176 @@
-import { bare, inside, sources, WHOLE_PORTAL } from '../test/sources'
+import ts from 'typescript'
+import { inside, sources, WHOLE_PORTAL } from '../test/sources'
 
 /**
- * No screen says anything in Serbian in its own voice.
+ * No screen says a word in its own voice: every word a reader sees comes from the
+ * dictionary.
  *
  * **Why this exists.** A sentence written straight into a component reaches the
  * portal and cannot be corrected by whoever the words belong to: not by the owner,
  * who dictates them, and not by an administrator, who maintains the written pages.
- * It is also invisible to every guard the portal has over its words — the snapshot
- * of the dictionary holds keys, the snapshot of the drawn screens holds the seats it
- * happens to take, and the sweep of the words a competition is written with reads
- * only the components named after one.
+ * It is also invisible to every guard the portal has over its words — the snapshot of
+ * the dictionary holds keys, the snapshot of the drawn screens holds the seats it
+ * happens to take, and the sweep of the words a competition is written with reads only
+ * the components named after one. Measured: a sentence appended to the branch
+ * `components/Resource.tsx` draws when a file does not arrive passed the whole gate,
+ * all 2448 tests green (review, 03.09.2026).
  *
- * Measured, and it is why this is a high finding rather than a tidy-up: a sentence
- * appended to the branch `components/Resource.tsx` draws when a file does not arrive
- * passed the whole gate, all 2448 tests green (review, 03.09.2026). Nothing there
- * said it, and nothing anywhere would have.
+ * **Read with the parser, not with a pattern.** The first draft looked for text
+ * between `>` and `<` on one line, and this repository writes a text child on its own
+ * line — `Resource.tsx` itself does. A sentence written the way the code around it is
+ * written was therefore invisible to it (review, 05.09.2026). The parser answers where
+ * a text node is regardless of how it is broken across lines, and it tells a comment
+ * from a string without blanking anything.
  *
- * **What it reads.** Every `.tsx` the portal ships, comments blanked, looking for the
- * letters that only Serbian writes: č, ć, ž, š, đ. That is a narrower question than
- * „is this a sentence", and it is the one that can be answered without deciding what
- * counts as prose. A name written in the Latin alphabet the two languages share —
- * „Dunav", „Novi Sad" — is not caught, and that is the honest limit of it: what is
- * caught is every sentence anybody would actually write for a Serbian reader, because
- * a sentence of any length carries one of those five letters.
+ * **Three rules, and the first two need no guess about language.**
  *
- * **What it does not read**, said plainly: `.ts` files, which draw nothing, and the
- * records that stand in for a database (`data/seedMessages.ts`, `public/mock`), which
- * are rows somebody will replace rather than words a screen says. The one component
- * that carried such records had them moved out on 05.09.2026 rather than excused, so
- * this has no exception at all.
+ * 1. **No words standing in the markup.** A text node that is not whitespace is a
+ *    word a screen says. Everything the portal draws comes through `{t(…)}`, so there
+ *    is nothing for such a node to be.
+ * 2. **No words handed to an attribute a reader meets.** `title`, `alt`,
+ *    `aria-label`, `aria-description` and `placeholder` are read out or shown, and a
+ *    literal there is the same fault wearing another shape.
+ * 3. **And no Serbian letters anywhere else in a literal**, which catches a sentence
+ *    on its way to a screen through some third road. This half is a guess and its
+ *    limit is written down: a sentence with none of č, ć, ž, š, đ passes it, and the
+ *    portal has plenty — „Ovo polje je obavezno." is one. It is the weakest of the
+ *    three and it is here because it costs nothing, not because it is complete
+ *    (review, 05.09.2026).
+ *
+ * **What it does not read**, said plainly: `.ts` files, which draw nothing on their
+ * own, and the records that stand in for a database (`data/seedMessages.ts`,
+ * `public/mock`), which are rows somebody will replace rather than words a screen
+ * says.
  */
 const DRAWN = sources().filter(({ path }) => path.endsWith('.tsx'))
+
+/**
+ * Two words standing beside each other, which is what a sentence is made of and a
+ * unit is not.
+ *
+ * Measured before it was written: the markup of this portal carries thirteen text
+ * nodes today and twelve of them are a bracket, a comma, a colon, a middle dot, a
+ * slash, `%`, `km`, `EUR` or `RSD` — symbols and units, which are the same in every
+ * language and are deliberately not in the dictionary. The thirteenth was „BTL
+ * points", two English words on a Serbian screen, and it went into the dictionary
+ * with this rule (05.09.2026). So the limit is one word: a single word written into
+ * the markup passes, and that is the price of a rule that does not argue about units.
+ */
+const WORDS = /\p{L}{2,}\s+\p{L}{2,}/u
 
 /** The five letters no other language on this portal writes. */
 const SERBIAN = /[čćžšđČĆŽŠĐ]/
 
-/** Where a text stands in the source, near enough to point at. */
-function saidIn(code: string): string[] {
-  const blanked = bare(code)
+/** Attributes a reader meets, by the name they are written under. */
+const SPOKEN = ['title', 'alt', 'aria-label', 'aria-description', 'placeholder']
 
-  return [
-    /* A quoted string of any kind, and the words standing directly in the markup.
-       Asked of the opening of each rather than of a balanced pair, because a sentence
-       is what is being looked for and a sentence is inside one of these three. */
-    ...[...blanked.matchAll(/'[^'\n]{2,}'|"[^"\n]{2,}"|`[^`\n]{2,}`/g)].map((one) => one[0]),
-    ...[...blanked.matchAll(/>[^<>{}\n]{2,}</g)].map((one) => one[0]),
-  ].filter((one) => SERBIAN.test(one))
+/** Every word a screen would say out of its own source, with the shape it takes. */
+export function saidIn(path: string, code: string): string[] {
+  const source = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const found: string[] = []
+
+  const walk = (node: ts.Node): void => {
+    if (ts.isJsxText(node) && WORDS.test(node.text)) {
+      found.push(`markup: ${node.text.trim()}`)
+    }
+
+    if (
+      ts.isJsxAttribute(node) &&
+      SPOKEN.includes(node.name.getText(source)) &&
+      node.initializer !== undefined &&
+      ts.isStringLiteral(node.initializer) &&
+      /* An empty one is the right way to say „this picture is decoration" (WCAG 2.2
+         SC 1.1.1), and the portal writes three of those. There is nothing in it for a
+         reader to be told in the wrong language. */
+      node.initializer.text.trim() !== ''
+    ) {
+      found.push(`${node.name.getText(source)}: ${node.initializer.text}`)
+    }
+
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      SERBIAN.test(node.text)
+    ) {
+      found.push(`said: ${node.text}`)
+    }
+
+    if (
+      (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) &&
+      SERBIAN.test(node.text)
+    ) {
+      found.push(`said: ${node.text}`)
+    }
+
+    ts.forEachChild(node, walk)
+  }
+
+  walk(source)
+
+  return found
 }
 
 describe('what a screen says in its own voice', () => {
   it('is nothing at all, in every component the portal ships', () => {
     const said = DRAWN.flatMap(({ path, code }) =>
-      saidIn(code).map((one) => `${path}: ${one.slice(0, 60)}`),
+      saidIn(path, code).map((one) => `${path}: ${one.slice(0, 60)}`),
     )
 
     expect(said).toEqual([])
   })
 
-  it('is asked of the whole portal, and of a file that is really there', () => {
-    /* The floor and the witness, because a sweep that finds nothing agrees with
-       everything: the list emptied, the case above passes while a sentence stands on
-       a screen. Held the way `forms/fieldHint.test.tsx` holds its own. */
-    expect(DRAWN.length).toBeGreaterThan(WHOLE_PORTAL / 2)
-    expect(DRAWN.some(({ path }) => path.endsWith(inside('components', 'Resource.tsx')))).toBe(true)
+  it('is asked of the whole portal, and of every corner of it', () => {
+    /* The floor and the witnesses, because a sweep that finds nothing agrees with
+       everything. **Not half the portal**, which is what the first draft asked for:
+       one folder holds seventy one of the hundred and twenty one components, so a
+       sweep narrowed to two folders cleared a floor of half and left a sentence
+       standing in a third (review, 05.09.2026). The whole sweep is compared against
+       the same number every other reader of it compares against, and a witness is
+       named in each corner a component lives in. */
+    expect(sources().length).toBeGreaterThan(WHOLE_PORTAL)
+
+    for (const one of [
+      inside('components', 'Resource.tsx'),
+      inside('app', 'ErrorBoundary.tsx'),
+      inside('forms', 'FormRenderer.tsx'),
+      inside('session', 'SessionProvider.tsx'),
+      inside('pages', 'Teams.tsx'),
+    ]) {
+      expect(DRAWN.some(({ path }) => path.endsWith(one)), one).toBe(true)
+    }
   })
 
-  it('reads the letters and not the length', () => {
-    /* The expression itself, asked of text rather than of the portal: a check over
-       source is only as good as what it recognises, and this one is deliberately
-       narrow. Both halves are named so the next reader knows what it does not catch.
-     */
-    expect(saidIn("const one = 'Predlog tima je vraćen'")).toHaveLength(1)
-    expect(saidIn('<p>Ovo je rečenica</p>')).toHaveLength(1)
-    expect(saidIn('const one = `Tim „${name}“ čeka odluku`')).toHaveLength(1)
-    /* And what it lets through, which is the limit written down rather than found:
-       words the two alphabets share, and anything a comment says. */
-    expect(saidIn("const one = 'Dunav Novi Sad'")).toEqual([])
-    expect(saidIn("/* Član 44 kaže ovako */ const one = 'plain'")).toEqual([])
+  it('reads a word wherever it stands, and says what it cannot read', () => {
+    /* The reading itself, asked of text rather than of the portal. The first two
+       rules are exact; the third is a guess and both halves of it are named. */
+    const read = (code: string) => saidIn('proba.tsx', code)
+
+    /* Markup, on one line and broken over three, which is how this repository writes
+       a text child and what the first draft could not see. */
+    expect(read('const a = <p>Nema podataka za ovaj period.</p>')).toHaveLength(1)
+    expect(
+      read('const a = (\n  <p>\n    Nema podataka za ovaj period.\n  </p>\n)'),
+    ).toHaveLength(1)
+    /* And a sentence with none of the five letters, which the third rule would miss
+       and the first one catches all the same. */
+    expect(read('const a = <p>Ovo polje je obavezno.</p>')).toHaveLength(1)
+    /* And what one word in the markup costs, which is what the rule is priced at:
+       units and symbols pass, because they are the same in every language. */
+    expect(read('const a = <p>{n} km</p>')).toEqual([])
+    expect(read('const a = <p>{n} EUR</p>')).toEqual([])
+    /* An attribute a reader meets. */
+    expect(read('const a = <img alt="Znak tima" />')).toHaveLength(1)
+    /* And an empty one is how a decorative picture says it has nothing to say. */
+    expect(read('const a = <img alt="" />')).toEqual([])
+    /* And a literal anywhere else, by its letters. */
+    expect(read("const a = 'Predlog tima je vraćen'")).toHaveLength(1)
+    expect(read('const a = `Tim „${name}“ čeka odluku`')).toHaveLength(1)
+
+    /* What it lets through, written down rather than found later: whitespace between
+       elements, a word the two alphabets share, an attribute nobody reads out, and
+       anything a comment says. */
+    expect(read("const a = (\n  <p>\n    {t('data.error')}\n  </p>\n)")).toEqual([])
+    expect(read("const a = 'Dunav Novi Sad'")).toEqual([])
+    expect(read('const a = <p className="resource-state" />')).toEqual([])
+    expect(read('/* Član 44 kaže ovako */ const a = 1')).toEqual([])
   })
 })

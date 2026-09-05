@@ -317,6 +317,7 @@
   "form": {
     "required": "Obavezno polje",
     "optional": "neobavezno",
+    "dateShape": "dd/mm/gggg",
     "submit": "Sačuvaj",
     "errors": {
       "required": "Ovo polje je obavezno.",

@@ -1,4 +1,23 @@
 import type { Message } from '../session/context'
+import { priceOn, REGISTRATION_OPENS } from './pricing'
+
+/**
+ * What the first message says the fee is, and when it starts, read off the price list
+ * rather than written out.
+ *
+ * ADL A12 says an amount is never a number written into code, and the price list
+ * exists so that „the screen that sets prices and the page that publishes them" cannot
+ * say different things. This message publishes both, so it reads both: the fee of the
+ * first period and the day registration opens. Written out, the two moved in
+ * `pricing.ts` and the inbox went on announcing the old ones, with the whole gate
+ * green (review, 05.09.2026).
+ */
+/* Asked as „what does it cost on the day it opens", which is the question the
+   sentence answers and the one `priceOn` is written for. Looked up in the list by
+   name it would need an „or nothing" for a row that is always there, and that is a
+   branch no case can reach. */
+const FEE = priceOn(REGISTRATION_OPENS).eur
+const OPENS = `${Number(REGISTRATION_OPENS.slice(8, 10))}. oktobra`
 
 /**
  * Two messages the inbox starts with, so it is not judged empty.
@@ -23,7 +42,7 @@ export const FIRST_MESSAGES: Message[] = [
     from: 'Balkanska trkačka liga',
     to: '',
     subject: 'Dobro došao u pripremu sezone 2027',
-    body: 'Portal je otvoren za razgledanje. Kalendar se puni, a učlanjenje kreće 1. oktobra po ceni od 35 EUR.',
+    body: `Portal je otvoren za razgledanje. Kalendar se puni, a učlanjenje kreće ${OPENS} po ceni od ${FEE} EUR.`,
     date: '2026-07-20',
     read: false,
   },
