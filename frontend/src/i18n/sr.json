@@ -321,6 +321,7 @@
   "form": {
     "required": "Obavezno polje",
     "optional": "neobavezno",
+    "dateShape": "dd/mm/gggg",
     "submit": "Sačuvaj",
     "errors": {
       "required": "Ovo polje je obavezno.",
@@ -432,7 +433,7 @@
   "units": {
     "kilometers": "{value} km",
     "meters": "{value} m",
-    "points": "{value} bodova",
+    "btlPoints": "{value} BTL poena",
     "raceCount": {
       "one": "{count} trka",
       "few": "{count} trke",

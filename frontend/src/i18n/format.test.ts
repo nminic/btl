@@ -1,6 +1,7 @@
 import {
   DATE_SHAPE_OPTIONS,
   formatDate,
+  formatDayInSentence,
   formatDistance,
   formatDuration,
   formatElevation,
@@ -12,6 +13,7 @@ import {
   formatShortDate,
   wholePeriod,
 } from './format'
+import { DEFAULT_LOCALE } from './config'
 import { intlTag } from './intlTag'
 
 /**
@@ -162,6 +164,57 @@ describe('format', () => {
 /* The rule the owner gave on 30.07.2026 (PDL P28a, "Ispis vremenskog opsega").
  * A range that describes a whole period is written as that period, and only what
  * describes none is read out from one end to the other. */
+describe('a day inside a sentence', () => {
+  /* All twelve, because the genitive is made by a rule over two endings rather than read
+     off a list, and a rule has to be right about every month rather than about the one
+     the portal happens to need. Four end in „bar" and become „bra"; the other eight take
+     an „a". Written out here, so the day somebody rewrites the rule this says which
+     answers it has to keep. */
+  it('is the same day in the case a Serbian sentence takes', () => {
+    const said = (month: string) => formatDayInSentence(`2026-${month}-01`, DEFAULT_LOCALE)
+
+    expect(said('01')).toBe('1. januara 2026.')
+    expect(said('02')).toBe('1. februara 2026.')
+    expect(said('03')).toBe('1. marta 2026.')
+    expect(said('04')).toBe('1. aprila 2026.')
+    expect(said('05')).toBe('1. maja 2026.')
+    expect(said('06')).toBe('1. juna 2026.')
+    expect(said('07')).toBe('1. jula 2026.')
+    expect(said('08')).toBe('1. avgusta 2026.')
+    expect(said('09')).toBe('1. septembra 2026.')
+    expect(said('10')).toBe('1. oktobra 2026.')
+    expect(said('11')).toBe('1. novembra 2026.')
+    expect(said('12')).toBe('1. decembra 2026.')
+  })
+
+  it('differs from the day standing on its own by the case of the month and nothing else', () => {
+    /* The two are the same string but for the one word, which is what makes the rule
+       safe to write over the formatted date: the day, the full stops and the year all
+       come from the formatter both times, and only the month is touched. */
+    expect(formatDate('2026-10-01', DEFAULT_LOCALE)).toBe('1. oktobar 2026.')
+    expect(formatDayInSentence('2026-10-01', DEFAULT_LOCALE)).toBe('1. oktobra 2026.')
+    /* And a two-digit day keeps its two digits, which a rule written over the wrong part
+       of the string would lose. */
+    expect(formatDayInSentence('2026-09-15', DEFAULT_LOCALE)).toBe('15. septembra 2026.')
+  })
+
+  it('follows the language of the words, not the language of the address', () => {
+    /* `/en` is a live route with a switch pointing at it, and it draws the Serbian
+       dictionary until an English one exists (`config.ts`, ADL A2). So a sentence there
+       is Serbian, and a date in it has to be Serbian too. Asked with the address's
+       language, `formatDate` answers „October 1, 2026" and the rule made „Octobera 1,
+       2026" of it, a word in no language at all (review, 05.09.2026).
+
+       This is the case that fails the moment somebody takes `dictionaryLocale` back out
+       of it. */
+    expect(formatDayInSentence('2026-10-01', 'en')).toBe('1. oktobra 2026.')
+    expect(formatDayInSentence('2026-10-01', 'sr')).toBe('1. oktobra 2026.')
+    /* And the day standing on its own still follows the address, which is what the
+       screens that show a date as a value ask for and what this does not change. */
+    expect(formatDate('2026-10-01', 'en')).toBe('October 1, 2026')
+  })
+})
+
 describe('formatDayMonth', () => {
   /* The shape the owner asked for by name for the narrow column on the front
      page: day, month, full stop, and no year at any time of year. */

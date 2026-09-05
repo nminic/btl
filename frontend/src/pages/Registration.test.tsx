@@ -85,7 +85,13 @@ describe('Registration while it is shut', () => {
 
     expect(screen.getByRole('heading', { name: 'Registracija još nije otvorena' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
-    expect(screen.getByText(/Učlanjenje se otvara .*, za 11 dana\./)).toBeVisible()
+    /* The whole sentence and not a wildcard where the date stands. Written as
+       „otvara .*, za 11 dana", it swallowed the date, and the screen said „otvara 1.
+       oktobar 2026." — the nominative under a verb — with this green (review,
+       05.09.2026, ADL A35). */
+    expect(
+      screen.getByText('Učlanjenje se otvara 1. oktobra 2026., za 11 dana.'),
+    ).toBeVisible()
   })
 
   it('is shut on the route today, since October has not come', async () => {

@@ -5,7 +5,7 @@ import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
 import type { FormValues } from '../forms/types'
 import { REFERRAL_CODE, REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
-import { formatDate } from '../i18n/format'
+import { formatDayInSentence } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 
 /* The form itself is the JSON definition; this screen only decides what happens
@@ -46,7 +46,10 @@ export function Registration() {
         <p>{t('registration.closedText')}</p>
         <p>
           {t('registration.opensIn', {
-            date: formatDate(REGISTRATION_OPENS, locale),
+            /* The day under a verb, so the genitive and not the nominative that
+               `formatDate` gives: a screen said „Učlanjenje se otvara 1. oktobar 2026."
+               to everybody between 15 and 30 September (ADL A35, review 05.09.2026). */
+            date: formatDayInSentence(REGISTRATION_OPENS, locale),
             count: daysBetween(today, REGISTRATION_OPENS),
           })}
         </p>

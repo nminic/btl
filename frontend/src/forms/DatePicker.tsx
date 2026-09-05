@@ -271,7 +271,7 @@ export function DatePicker({
         type="text"
         inputMode="numeric"
         autoComplete="off"
-        placeholder="dd/mm/gggg"
+        placeholder={t('form.dateShape')}
         aria-label={label}
         aria-required={required}
         aria-invalid={invalid}

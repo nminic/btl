@@ -1,3 +1,4 @@
+import { dictionaryLocale, type Locale } from './config'
 import { intlTag } from './intlTag'
 
 /* Formatting of the numbers this portal is made of: race times, distances,
@@ -191,6 +192,41 @@ export function formatLimit(totalSeconds: number): string {
 
 export function formatDate(isoDate: string, locale: string): string {
   return dateFormat(locale, 'long').format(new Date(isoDate))
+}
+
+/**
+ * The same day, written the way a Serbian sentence takes it: „1. oktobra 2026."
+ *
+ * **Why this exists at all.** `formatDate` answers „1. oktobar 2026.", which is the
+ * nominative. That is right where a date stands as a value — „Trke, 1. oktobar 2026." —
+ * and wrong the moment a verb governs it: „Učlanjenje se otvara 1. oktobar 2026." is not
+ * Serbian. Measured 05.09.2026, twice on live screens: the registration screen said it to
+ * everybody between 15 and 30 September, and the inbox said it in the message every member
+ * starts with. `Intl` has no option that gives the other case, so it is made here.
+ *
+ * **Made by rule and not by a list of twelve.** Serbian writes the genitive of every month
+ * name one of two ways: the four that end in „bar" become „bra" (septembar → septembra),
+ * and the other eight simply take an „a" (mart → marta). Written as a rule over the very
+ * string `formatDate` returns, so the two cannot drift apart and there is no table of
+ * month names to keep in step with the formatter. All twelve are measured in
+ * `format.test.ts`.
+ *
+ * **It reads the language of the sentence, not the language of the address**, and that
+ * distinction is the whole of what this function has to get right. `/en` is a live route
+ * with a language switch pointing at it, and it draws the **Serbian** dictionary until an
+ * English one exists (`i18n/config.ts`, ADL A2) — so a sentence there is Serbian while
+ * `formatDate(d, 'en')` answers „October 1, 2026". Written with the address's language,
+ * the rule below made „Octobera 1, 2026" of it, a word in no language at all (review,
+ * 05.09.2026). `dictionaryLocale` is the portal's own name for that difference and this
+ * asks it, so the date is in the same language as the words around it.
+ *
+ * The day an English dictionary arrives, this is the place that needs a second answer:
+ * the rule below is Serbian and would make „Octobera" of „October" again.
+ */
+export function formatDayInSentence(isoDate: string, locale: Locale): string {
+  return formatDate(isoDate, dictionaryLocale(locale)).replace(/\p{L}+/u, (month) =>
+    month.endsWith('bar') ? `${month.slice(0, -3)}bra` : `${month}a`,
+  )
 }
 
 export function formatShortDate(isoDate: string, locale: string): string {
