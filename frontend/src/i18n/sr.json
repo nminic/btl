@@ -794,11 +794,12 @@
     "joinNoBody": "Tim „{team}\" nije prihvatio tvoju prijavu.",
     "joinSettled": "Odgovoreno.",
     "joinTeamGone": "Ovog tima više nema, pa se prijava ne može primiti.",
-    "joinNotYours": "Ovaj tim više ne vodiš ti, pa o prijavi odlučuje onaj ko ga vodi.",
+    "joinNotYours": "Ovaj tim više ne vodiš ti, pa o prijavi ne možeš da odlučiš.",
     "joinHasTeam": "Ovaj član je u međuvremenu ušao u drugi tim.",
     "joinShut": "Prelazni rok je zatvoren, pa se prijava ne može primiti do 1. oktobra.",
     "joinMemberGone": "Ovog člana više nema u ligi, pa se prijava ne može primiti.",
-    "joinNobodyRuns": "Ovaj tim trenutno niko ne vodi, pa o prijavi nema ko da odluči."
+    "joinNobodyRuns": "Ovaj tim trenutno niko ne vodi, pa o prijavi nema ko da odluči.",
+    "joinClose": "Zatvori prijavu"
   },
   "leagues": {
     "racesUnknown": "nepoznato",

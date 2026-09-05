@@ -311,6 +311,64 @@ describe('the answer the administrator of the team gives', () => {
     expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
   }, SLOW)
 
+  it('keeps the letter readable while the teams it asks about are on their way', async () => {
+    /* The letter is drawn above the two sources this screen reads to know whether the
+       question may still be answered. Written without `inline`, the loader is a sheet over
+       the whole page: it dims the letter a reader is already reading and lets nothing be
+       pressed, which is meant for a page with nothing on it yet (review, 06.09.2026). The
+       same measurement three other screens carry (`resourceScope.test.tsx`). */
+    const real = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL) =>
+      String(input).endsWith('/competitors.json')
+        ? new Promise<Response>(() => {})
+        : real(input)
+
+    try {
+      const { router } = renderAt(
+        '/sr/poruke',
+        'competitor',
+        '000001',
+        undefined,
+        DAY,
+        <Sent from="000002" team="Dunavski trkači" name="Relja Momčilović" />,
+      )
+
+      await opened(router)
+
+      expect(await screen.findByRole('heading', { level: 1, name: /se prijavljuje/ })).toBeVisible()
+      expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+    } finally {
+      globalThis.fetch = real
+    }
+  }, SLOW)
+
+  it('can be closed when it can no longer be taken, so nobody stays locked out', async () => {
+    /* **A question with no answer never ends.** „Waiting" is read off the decisions, and an
+       application that cannot be taken had no road to one: it counted for ever, and the
+       member who sent it was refused the way in on every team on the portal (review,
+       06.09.2026). Closing it is a refusal like any other, and the member is free to ask
+       again. */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/poruke',
+      'competitor',
+      '000001',
+      undefined,
+      DAY,
+      <>
+        <Sent from="000002" team="Dunavski trkači" name="Relja Momčilović" />
+        <Joined who="000002" team="team-vardar" />
+      </>,
+    )
+
+    await opened(router)
+    await user.click(await screen.findByRole('button', { name: 'Zatvori prijavu' }))
+
+    expect(await screen.findByText('Odgovoreno.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Zatvori prijavu' })).toBeNull()
+  }, SLOW)
+
   it('is not offered on a message that only tells', async () => {
     /* Most messages tell. The two the inbox starts with carry no question, so nothing on
        them may be pressed, and the words that answer one must not appear. */

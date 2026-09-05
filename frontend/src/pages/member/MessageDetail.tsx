@@ -172,7 +172,24 @@ export function MessageDetail() {
                   </button>
                 </p>
               ) : (
-                <p className="messages__answer">{t(why)}</p>
+                <p className="messages__answer">
+                  {t(why)}{' '}
+                  {/* **And a way to end it, because a question with no answer never
+                      ends.** „Waiting" is read off the decisions, so an application that
+                      cannot be taken went on counting for ever, and the member who sent it
+                      was refused the way in on every team on the portal (review,
+                      05.09.2026). Closing it is a refusal like any other: the member is
+                      told, and is free to ask again. */}
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => {
+                      refuse(asks)
+                    }}
+                  >
+                    {t('teams.joinClose')}
+                  </button>
+                </p>
               )
             }}
           </Resource>
