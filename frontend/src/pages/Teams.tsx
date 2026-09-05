@@ -3,14 +3,14 @@ import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
-import { rankTeams, seasonOf, seasonsWithResults } from '../data/derive'
+import { rankTeams, seasonOf, seasonsWithResults, teamOf } from '../data/derive'
 import { inYearlyWindow } from '../data/season'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { TeamMark } from '../components/TeamMark'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
-import { MEMBERS, recordsOf } from './admin/entityForms'
+import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { mineIn, rowClass } from '../components/mine'
 import './Rankings.css'
@@ -54,12 +54,23 @@ export function Teams() {
              is the next one; without it on offer a member could found a team and
              then find it nowhere. Every team stands there on nought, because in that
              season nobody has run yet. */
+          const members = recordsOf(MEMBERS, competitors, overlay)
           const seasons = [
             ...new Set([Number(running) + 1, Number(running), ...seasonsWithResults(results)]),
           ].sort((left, right) => right - left)
           const season = offeredSeason(asked, seasons, running)
           const inSeason = results.filter((one) => seasonOf(one) === Number(season))
-          const rows = rankTeams(teams, competitors, inSeason, Number(season))
+          /* **The standing reads what the session holds, not the file alone.** Both
+             halves of it: a team put forward and approved during this visit exists
+             only in the session, and a team deleted during this visit exists only in
+             the file. Read from the file, the second was the one that mattered: the
+             owner asked that deleting a team take „i bodovi iz tabele za tu sezonu"
+             with it, and a table reading the file went on drawing the deleted team
+             with its points (measured 05.09.2026, before „Obriši tim" was written).
+             The team's own page has read this way since PR 192; this is the other
+             half of the same fact, and the two must not disagree. */
+          const listed = recordsOf(TEAMS, teams, overlay)
+          const rows = rankTeams(listed, members, inSeason, Number(season))
           /* The team of whoever is reading, so its row is marked (owner,
              05.08.2026). Read off the member rather than held in the session,
              because a member can be moved between teams by a moderator and the
@@ -69,9 +80,7 @@ export function Teams() {
              this visit has it written on their record in the session and nowhere
              else, and read from the file alone the button above went on offering
              them a second one (review). */
-          const myTeam = recordsOf(MEMBERS, competitors, overlay).find(
-            (one) => one.memberNumber === memberNumber,
-          )?.teamId
+          const myTeam = teamOf(members.find((one) => one.memberNumber === memberNumber))
 
           return (
             <>
@@ -96,7 +105,7 @@ export function Teams() {
                     person with no competitor record — is also not in a team,
                     and reads the same way. */}
                 {memberNumber !== null &&
-                  (myTeam ?? null) === null &&
+                  myTeam === null &&
                   (inYearlyWindow(today) ? (
                     <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
                       {t('teams.propose')}
@@ -141,7 +150,7 @@ export function Teams() {
                            sort happened to leave there. */
                         className={rowClass(
                           row.position === 1 && row.totals.points > 0 ? 'podium' : undefined,
-                          myTeam === undefined ? undefined : mineIn([row.team.id], myTeam),
+                          mineIn([row.team.id], myTeam),
                         )}
                       >
                         {/* The place, not the row number: the numbering is done
@@ -149,8 +158,7 @@ export function Teams() {
                             drawn here may be narrowed. */}
                         <td className="table__position">
                           {row.position}
-                          {myTeam === undefined ||
-                          mineIn([row.team.id], myTeam) === undefined ? null : (
+                          {mineIn([row.team.id], myTeam) === undefined ? null : (
                             <span className="visually-hidden"> {t('teams.myTeam')}</span>
                           )}
                         </td>

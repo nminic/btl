@@ -1,4 +1,5 @@
 import type { Competitor, PendingItem, Team } from '../../data/types'
+import { teamOf } from '../../data/derive'
 import { teamAdminOf } from '../../data/teamAdmin'
 import type { FieldError } from '../../forms/types'
 import type { Edits } from '../../session/context'
@@ -182,7 +183,7 @@ export function teamFrom(item: PendingItem, edits: Edits): Proposed {
  */
 export function organisers(members: { memberNumber: string; teamId: string | null }[], teams: Team[]): string[] {
   return [
-    ...members.flatMap((one) => (one.teamId === null ? [] : [one.memberNumber])),
+    ...members.flatMap((one) => (teamOf(one) === null ? [] : [one.memberNumber])),
     ...teams.map((one) => one.organizerMemberNumber),
   ]
 }
