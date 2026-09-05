@@ -792,7 +792,11 @@
     "joinDoneBody": "Od naredne sezone trčiš za tim „{team}\".",
     "joinNoSubject": "Prijava u tim „{team}\" nije prihvaćena",
     "joinNoBody": "Tim „{team}\" nije prihvatio tvoju prijavu.",
-    "joinSettled": "Odgovoreno."
+    "joinSettled": "Odgovoreno.",
+    "joinTeamGone": "Ovog tima više nema, pa se prijava ne može primiti.",
+    "joinNotYours": "Ovaj tim više ne vodiš ti, pa o prijavi odlučuje onaj ko ga vodi.",
+    "joinHasTeam": "Ovaj član je u međuvremenu ušao u drugi tim.",
+    "joinShut": "Prelazni rok je zatvoren, pa se prijava ne može primiti do 1. oktobra."
   },
   "leagues": {
     "racesUnknown": "nepoznato",

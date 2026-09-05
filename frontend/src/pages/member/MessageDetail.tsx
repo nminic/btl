@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
 import { useToday } from '../../clock/useClock'
+import { Resource } from '../../components/Resource'
+import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
+import { joinRefusal } from '../../data/teamJoin'
+import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
+import { useOverlay } from '../admin/overlay'
 import { seasonOnSale } from '../../data/season'
 import type { Ask } from '../../session/context'
 import { Link, useParams } from 'react-router'
@@ -26,6 +31,8 @@ export function MessageDetail() {
   const { id } = useParams()
   const { memberNumber, inbox, markRead, decisions, settle, editRecord, notify } = useSession()
   const today = useToday()
+  const overlay = useOverlay()
+  const state = combinePair(useTeams(), useCompetitors())
   /* Out of the inbox rather than out of the store, so an address that names
    * somebody else's message answers with the not found page instead of showing
    * it (Message.to). */
@@ -50,6 +57,7 @@ export function MessageDetail() {
      about the same thing rather than about three reads of it. */
   const { asks } = message
   const said = message.id
+  const mine = memberNumber
 
   /* Taking somebody in writes what an approval in the moderator's queue writes, because it
      is the same fact arriving by another road: the team on the member's record, and the
@@ -115,29 +123,54 @@ export function MessageDetail() {
           way everything else on this portal that somebody decides is kept, so „has this
           been answered" has one home and cannot be asked twice. */}
       {asks !== undefined &&
-        (decisions[said] === undefined ? (
-          <p className="messages__answer">
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => {
-                take(asks)
-              }}
-            >
-              {t('teams.joinTaken')}
-            </button>
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => {
-                refuse(asks)
-              }}
-            >
-              {t('teams.joinRefused')}
-            </button>
-          </p>
-        ) : (
+        (decisions[said] !== undefined ? (
           <p className="messages__answer">{t('teams.joinSettled')}</p>
+        ) : (
+          <Resource state={state}>
+            {([teams, competitors]) => {
+              /* **Asked here and not when the letter was written.** Between the asking
+                 and the answering the portal can change underneath the question: the
+                 team can be deleted, whoever answers can stop administering it, the
+                 member can join another team, and the window can close. All four were
+                 live before this was written, and the worst of them pulled a member out
+                 of a team that had never been asked (review, 05.09.2026). The queue of
+                 the moderators asks the same four in the same place, at the moment it
+                 writes (`admin/teamProposal.ts`). */
+              const listed = recordsOf(MEMBERS, competitors, overlay)
+              const why = joinRefusal(
+                asks,
+                recordsOf(TEAMS, teams, overlay),
+                listed,
+                mine,
+                today,
+              )
+
+              return why === null ? (
+                <p className="messages__answer">
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => {
+                      take(asks)
+                    }}
+                  >
+                    {t('teams.joinTaken')}
+                  </button>{' '}
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => {
+                      refuse(asks)
+                    }}
+                  >
+                    {t('teams.joinRefused')}
+                  </button>
+                </p>
+              ) : (
+                <p className="messages__answer">{t(why)}</p>
+              )
+            }}
+          </Resource>
         ))}
     </div>
   )

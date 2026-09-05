@@ -138,17 +138,19 @@ export function TeamDetail() {
                         to answer: a team nobody is in has no administrator, so an
                         application to it would be a letter to nobody.
 
-                        Asked once. The application lives as a question in the
-                        administrator's inbox, and the member who sent it cannot see that
-                        inbox, so without this the same application would be sent again on
-                        every press. */}
+                        **One application at a time, and about the member rather than
+                        about this team.** The application lives as a question in an
+                        administrator's inbox, which the member who sent it cannot see, so
+                        without this the same letter goes again on every press. Counted per
+                        team instead, one member could stand in two inboxes at once and two
+                        administrators would each answer without knowing of the other; the
+                        second answer then pulled the member out of the team the first had
+                        just put them in (review, 05.09.2026). */}
                     {memberNumber !== null &&
                       runs !== null &&
                       teamOf(me) === null &&
                       inYearlyWindow(today) &&
-                      (pendingAsks.some(
-                        (one) => one.teamId === team.id && one.memberNumber === memberNumber,
-                      ) ? (
+                      (pendingAsks.some((one) => one.memberNumber === memberNumber) ? (
                         <p className="rankings__empty">{t('teams.joinAsked')}</p>
                       ) : (
                         <button

@@ -52,7 +52,12 @@ function Sent({ from, team, name }: { from: string; team: string; name: string }
         subject: `${name} se prijavljuje u tim`,
         body: `${name} traži da uđe u tim „${team}".`,
         date: DAY,
-        asks: { kind: 'teamJoin', teamId: team === 'Dunavski trkači' ? 'team-dunav' : '', teamName: team, memberNumber: from },
+        asks: {
+          kind: 'teamJoin',
+          teamId: team === 'Dunavski trkači' ? 'team-dunav' : 'team-nema',
+          teamName: team,
+          memberNumber: from,
+        },
       })
     }
   }, [notify, from, team, name])
@@ -75,6 +80,24 @@ describe('the way a member asks to be let into a team', () => {
     /* And once, which is the whole of why the screen knows what has been asked: the
        application waits in somebody else's inbox, which the member who sent it cannot
        see, so without that the same letter would go again on every press. */
+    expect(screen.queryByRole('button', { name: 'Prijavi se u tim' })).toBeNull()
+    expect(screen.getByText('Prijava je poslata')).toBeVisible()
+  }, SLOW)
+
+  it('is not offered on a second team once one application is waiting', async () => {
+    /* **One application at a time, and about the member rather than about the team.**
+       Counted per team, one member stood in two inboxes at once and two administrators
+       each answered without knowing of the other: the second answer pulled the member out
+       of the team the first had just put them into, and neither team had been asked
+       (review, 05.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci', 'competitor', '000002', undefined, DAY)
+
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await router.navigate('/sr/tim/vardarski-krug')
+
+    await screen.findByRole('heading', { level: 1, name: 'Vardarski krug' })
+
     expect(screen.queryByRole('button', { name: 'Prijavi se u tim' })).toBeNull()
     expect(screen.getByText('Prijava je poslata')).toBeVisible()
   }, SLOW)
@@ -198,6 +221,28 @@ describe('the answer the administrator of the team gives', () => {
     const written = within(screen.getByRole('list', { name: 'session records' }))
 
     expect(written.queryByText(/team-dunav/)).toBeNull()
+  }, SLOW)
+
+  it('says why instead of offering an answer, when the team is gone', async () => {
+    /* The application waits in an inbox and the portal moves underneath it: deleting a
+       team is free until the end of the year (owner, 05.09.2026), so an administrator can
+       delete theirs and then open an application to it. Answered all the same, that put a
+       member into an identity nothing answers to, and left them unable to join any team or
+       found one (review, 05.09.2026). */
+    const { router } = renderAt(
+      '/sr/poruke',
+      'competitor',
+      '000001',
+      undefined,
+      DAY,
+      <Sent from="000002" team="Tim kog nema" name="Relja Momčilović" />,
+    )
+
+    await opened(router)
+
+    expect(await screen.findByText('Ovog tima više nema, pa se prijava ne može primiti.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
   }, SLOW)
 
   it('is not offered on a message that only tells', async () => {
