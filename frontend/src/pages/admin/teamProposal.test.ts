@@ -93,21 +93,30 @@ describe('what a team would be made of', () => {
 
 describe('why a proposal cannot be taken', () => {
   it('is nothing, where it can', () => {
-    expect(refusal(whole, [], item())).toBeNull()
+    expect(refusal(whole, [], item(), [])).toBeNull()
   })
 
   it('is the missing field, where one is empty', () => {
     for (const gap of [{ name: '' }, { city: '' }, { country: '' }, { city: '   ' }]) {
-      expect(refusal({ ...whole, ...gap }, [], item())).toBe('verification.teamIncomplete')
+      expect(refusal({ ...whole, ...gap }, [], item(), [])).toBe('verification.teamIncomplete')
     }
   })
 
   it('is the address, where a team already answers at it', () => {
-    expect(refusal(whole, [addressOf('trkaci morave')], item())).toBe('verification.teamTaken')
+    expect(refusal(whole, [addressOf('trkaci morave')], item(), [])).toBe('verification.teamTaken')
   })
 
   it('is the address again, where the name makes none', () => {
-    expect(refusal({ ...whole, name: '???' }, [], item())).toBe('verification.teamNoAddress')
+    expect(refusal({ ...whole, name: '???' }, [], item(), [])).toBe('verification.teamNoAddress')
+  })
+
+  it("is the member's own team, where the one who sent it already has one", () => {
+    /* A member is in one team at a time (PDL P13), and approving makes whoever sent
+       the proposal the organiser of the team it makes. Two proposals from one member
+       waiting together are the case this exists for: the first approval puts them on
+       this list and the second is refused by it (review, 05.09.2026). */
+    expect(refusal(whole, [], item(), ['000007'])).toBe('verification.teamMemberHasTeam')
+    expect(refusal(whole, [], item(), ['000009'])).toBeNull()
   })
 
   it('is the missing member, where nobody sent it', () => {
@@ -116,10 +125,10 @@ describe('why a proposal cannot be taken', () => {
        leave the team without an organiser. Not reachable from the screen today,
        and guarded because the shape of the data allows it: the way back on the
        same card is guarded for the same reason. */
-    expect(refusal(whole, [], item({ memberNumber: '' }))).toBe('verification.teamNoMember')
+    expect(refusal(whole, [], item({ memberNumber: '' }), [])).toBe('verification.teamNoMember')
   })
 
   it('answers the emptiness before the collision, because that is the one to fix first', () => {
-    expect(refusal({ ...whole, name: '' }, [''], item())).toBe('verification.teamIncomplete')
+    expect(refusal({ ...whole, name: '' }, [''], item(), [])).toBe('verification.teamIncomplete')
   })
 })

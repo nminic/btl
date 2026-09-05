@@ -10,6 +10,8 @@ import { formatNumber, formatPoints } from '../i18n/format'
 import { TeamMark } from '../components/TeamMark'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
+import { MEMBERS, recordsOf } from './admin/entityForms'
+import { useOverlay } from './admin/overlay'
 import { mineIn, rowClass } from '../components/mine'
 import './Rankings.css'
 
@@ -32,6 +34,7 @@ export function Teams() {
   const { locale, t } = useI18n()
   const today = useToday()
   const { memberNumber } = useSession()
+  const overlay = useOverlay()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
   const state = combineResources(useTeams(), useCompetitors(), useResults())
@@ -60,8 +63,15 @@ export function Teams() {
           /* The team of whoever is reading, so its row is marked (owner,
              05.08.2026). Read off the member rather than held in the session,
              because a member can be moved between teams by a moderator and the
-             session would then be marking the row they used to be in. */
-          const myTeam = competitors.find((one) => one.memberNumber === memberNumber)?.teamId
+             session would then be marking the row they used to be in.
+
+             **Through the overlay**, since 05.09.2026: a member who founded a team
+             this visit has it written on their record in the session and nowhere
+             else, and read from the file alone the button above went on offering
+             them a second one (review). */
+          const myTeam = recordsOf(MEMBERS, competitors, overlay).find(
+            (one) => one.memberNumber === memberNumber,
+          )?.teamId
 
           return (
             <>

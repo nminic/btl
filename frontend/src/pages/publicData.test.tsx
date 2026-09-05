@@ -95,8 +95,9 @@ const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: stri
      fails there and not here. */
   /* The front page, to a member, and that is the screen this address answers with
      for them: `ME` has a team and `DAY` is outside the transfer window, and either
-     one alone sends them to the front (PDL, increment 133, 05.09.2026). A visitor
-     still meets the sign-in, because that is asked before anything else.
+     one alone sends them to the front (PDL, increment 133, 05.09.2026) — sent away,
+     not told why, which is the owner's own words. A visitor still meets the sign-in,
+     because that is asked before anything else.
 
      **The form's own heading is held elsewhere**, by `member/headingFirst.test.tsx`,
      which signs in as a member with no team on a day inside the window; measured

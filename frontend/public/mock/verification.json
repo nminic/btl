@@ -84,14 +84,41 @@
     "id": "ver-tim-1",
     "queue": "teams",
     "date": "2026-07-24",
-    "memberNumber": "000007",
-    "who": "Strahinja Vukićević",
+    "memberNumber": "000004",
+    "who": "Časlav Radenković",
     "subject": "Timočka trkačka družina",
     "body": "Devet ljudi iz Zaječara i Knjaževca, trče zajedno od 2019.",
     "currentDate": "",
     "proposedDate": "",
     "email": "",
     "city": "Zaječar",
+    "country": "RS",
+    "subjectId": "",
+    "rating": {
+      "organisation": 0,
+      "value": 0,
+      "ambience": 0
+    },
+    "kind": "",
+    "picture": "",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    }
+  },
+  {
+    "id": "ver-tim-3",
+    "queue": "teams",
+    "date": "2026-07-24",
+    "memberNumber": "000004",
+    "who": "Časlav Radenković",
+    "subject": "Moravski maratonci",
+    "body": "Ćuprija, Srbija. Drugi predlog istog člana, za red koji o tome odlučuje.",
+    "currentDate": "",
+    "proposedDate": "",
+    "email": "",
+    "city": "Ćuprija",
     "country": "RS",
     "subjectId": "",
     "rating": {

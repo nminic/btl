@@ -1211,6 +1211,9 @@
   "verification": {
     "waitingForRaces": "Odluka čeka događaj i njegove trke, da bi se pomerili zajedno.",
     "racesFailed": "Odluka nije moguća: podaci o događaju i njegovim trkama se ne mogu učitati, a pomeraju se zajedno.",
+    "waitingForMembers": "Odluka čeka spisak članova, da bi se znalo da li podnosilac već ima tim.",
+    "membersFailed": "Odluka nije moguća: spisak članova se ne može učitati, a bez njega se ne zna da li podnosilac već ima tim.",
+    "teamMemberHasTeam": "Podnosilac je već u timu, pa ovaj predlog ne može da se odobri. Član sme da bude samo u jednom timu.",
     "openCard": "Prikaži",
     "openCardNamed": "Prikaži: {name}",
     "foldCard": "Sakrij",

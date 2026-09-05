@@ -13,7 +13,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import { predlogTima } from '../../forms/definitions'
 import type { FieldError, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
-import { recordsOf, TEAMS } from '../admin/entityForms'
+import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
@@ -100,7 +100,16 @@ export function ProposeTeam() {
           /* Who is proposing, by the name the rest of the portal knows them by.
              The queue shows a name beside every waiting item, and a member
              number on its own tells a moderator nothing about who to ask. */
-          const me = competitors.find((one) => one.memberNumber === mine)
+          /* Through the overlay, and that is the whole of whether this door shuts:
+             approving a proposal writes the team onto the member's record in the
+             session (`admin/PendingQueue.tsx`), and the file on the disc knows
+             nothing of it. Read straight from the file, the door let the founder of
+             a team walk back in and found a second one the same minute — measured in
+             review, 05.09.2026, two teams and one organiser. `Membership.tsx` reads
+             a member the same way for the same reason. */
+          const me = recordsOf(MEMBERS, competitors, overlay).find(
+            (one) => one.memberNumber === mine,
+          )
           const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
 
           /* **An address that is not for this member is not a page, it is a

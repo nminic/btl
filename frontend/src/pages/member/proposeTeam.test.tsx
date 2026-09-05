@@ -3,6 +3,7 @@ import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
+import { SLOW } from '../../test/slow'
 import { Saved } from '../../test/saved'
 import { setupUser } from '../../test/user'
 
@@ -126,6 +127,50 @@ describe('the way to propose a team', () => {
       expect(router.state.location.pathname).toBe('/sr')
     })
     expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
+  })
+
+  it('says nothing about the window to a member who has a team', async () => {
+    /* The sentence is where the button would be, so it is for the same reader: a
+       member who could found a team once the window opens. Told to a member of Dunav
+       it promises them something they can never do. Nothing held that until
+       05.09.2026: regrouping the condition so both read the same test left the whole
+       suite green (review). */
+    renderAt('/sr/timovi', 'competitor', '000007', undefined, '2026-09-05')
+
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    expect(screen.queryByText(/od 1. oktobra do 31. decembra/)).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+  })
+
+  it('offers the season that has not begun, where every team stands on nought', async () => {
+    /* Owner, 05.09.2026: the standing of the teams is asked for the next year as well,
+       „gde se već prijavljuju", and there every team has nought because nobody has run
+       in it yet. Without it a member could found a team and then find it nowhere.
+       Nothing held it: taking the next season back out of the list left the whole
+       suite green (review, 05.09.2026). */
+    const user = setupUser()
+
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, DAY)
+
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    const seasons = screen.getByLabelText(/Sezona/)
+
+    expect([...seasons.querySelectorAll('option')].map((one) => one.textContent)).toContain('2027')
+    /* And it opens on the season now running, never on the one that has not begun. */
+    expect(seasons).toHaveValue('2026')
+
+    await user.selectOptions(seasons, '2027')
+
+    const table = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const points = table
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.querySelector('.table__points')?.textContent)
+
+    expect(points.length).toBeGreaterThan(0)
+    expect([...new Set(points)]).toEqual(['0,00'])
   })
 
   it('asks whoever reaches the address without signing in to sign in', async () => {
@@ -267,6 +312,160 @@ describe('a member who founds a team', () => {
 
     expect(written).toContain(`teamId=${made[1]}`)
     expect(written).toContain('teamSince=2027')
+  })
+})
+
+describe('a member who has founded one team', () => {
+  const found = async (user: ReturnType<typeof setupUser>, name: string) => {
+    await user.type(await screen.findByLabelText(/Naziv tima/), name)
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+  }
+
+  const approve = async (user: ReturnType<typeof setupUser>, name: string) => {
+    const heading = await screen.findByRole('heading', { name })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+  }
+
+  it('cannot found a second one, by the button or by the address', async () => {
+    /* Walked the whole way, because the two halves passed apart: the approval writes
+       the team onto the member's record in the session, and the door read the file on
+       the disc, which knows nothing of it. Read that way the founder walked back in
+       and founded a second team the same minute — two teams, one organiser, measured
+       in review on 05.09.2026. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
+
+    await found(user, 'Trkači Morave')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+    await approve(user, 'Trkači Morave')
+
+    await router.navigate('/sr/timovi')
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+
+    await router.navigate('/sr/novi-tim')
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+  }, SLOW)
+
+  it('cannot have a second one approved out of the queue either', async () => {
+    /* The other road to the same place, and it survives the fix above: at the moment
+       a second proposal is sent the member may really have no team, because the first
+       is only waiting, so the door lets them through. What must refuse is the
+       decision, and until 05.09.2026 nothing between two waiting proposals and two
+       approved teams asked whose they were (review).
+
+       Two proposals from one member wait in the file, so this is one press and not a
+       second walk through the form: the sweep is where the answer has to be carried,
+       since the session does not change while a loop runs. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/timovi',
+      'superadmin',
+      '000002',
+      undefined,
+      DAY,
+    )
+
+    try {
+      await screen.findByRole('list', { name: /Čeka/ })
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      await router.navigate('/sr/administracija/timovi')
+
+      const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+      /* One of the two, not both: the first one settled puts its member into a team,
+         and the second is refused by the same rule the door keeps. */
+      expect(listed.getByText('Timočka trkačka družina')).toBeVisible()
+      expect(listed.queryByText('Moravski maratonci')).toBeNull()
+    } finally {
+      confirm.mockRestore()
+    }
+  }, SLOW)
+
+  it('is told why the second one cannot be taken', async () => {
+    /* Said rather than merely done, which is the shape this queue already keeps for
+       every other reason a proposal cannot be approved (`teamProposal.ts`). */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/timovi',
+      'superadmin',
+      '000002',
+      undefined,
+      DAY,
+    )
+
+    try {
+      await screen.findByRole('list', { name: /Čeka/ })
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      await router.navigate('/sr/administracija/verifikacija/timovi')
+
+      const heading = await screen.findByRole('heading', { name: 'Moravski maratonci' })
+      const card = within(must(heading.closest('li'), 'the card of the second proposal'))
+
+      expect(card.getByText(/već u timu/)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+    }
+  }, SLOW)
+})
+
+describe('the queue of teams without the members', () => {
+  /* The decision needs to know whether whoever sent a proposal already has a team,
+     and that is read off the member list. Two states and not one, because `dataOr`
+     answers the same for a file on its way and one that failed: told to wait for
+     something that will never come, a moderator is refused the decision for good and
+     reads a sentence that is not true. The queue of dates does the same over its own
+     two files, and `AdminEvents` over the results. */
+  const withMembers = async (answer: (input: RequestInfo | URL) => Promise<Response>) => {
+    const served = globalThis.fetch
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('competitors') ? answer(input) : served(input, init),
+    )
+
+    return () => {
+      vi.stubGlobal('fetch', served)
+    }
+  }
+
+  it('says it is waiting for them while they are still coming', async () => {
+    const back = await withMembers(async () => new Promise<Response>(() => undefined))
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002', undefined, DAY)
+
+      expect(await screen.findByText(/čeka spisak članova/)).toBeVisible()
+      expect(screen.getAllByRole('button', { name: 'Odobri' })[0]).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    } finally {
+      back()
+    }
+  })
+
+  it('says the decision cannot be taken at all when they will not come', async () => {
+    const back = await withMembers(async () => new Response('', { status: 500 }))
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002', undefined, DAY)
+
+      expect(await screen.findByText(/ne može učitati/)).toBeVisible()
+    } finally {
+      back()
+    }
   })
 })
 
@@ -727,8 +926,11 @@ describe('what a moderator may do before accepting a proposal', () => {
     )
 
     /* The member who sent that proposal in, by the name the portal knows them
-       by, and not "Nema organizatora". */
-    expect(within(row).getByText('Strahinja Vukićević')).toBeVisible()
+       by, and not "Nema organizatora". The seeded proposal comes from a member with
+       no team of their own since 05.09.2026: a proposal from somebody who already has
+       one cannot be approved at all, which is the rule this walk would otherwise be
+       measuring around. */
+    expect(within(row).getByText('Časlav Radenković')).toBeVisible()
   })
 
   it('writes to the member who proposed it and to nobody else', async () => {
