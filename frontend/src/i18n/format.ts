@@ -1,3 +1,4 @@
+import { dictionaryLocale, type Locale } from './config'
 import { intlTag } from './intlTag'
 
 /* Formatting of the numbers this portal is made of: race times, distances,
@@ -210,14 +211,20 @@ export function formatDate(isoDate: string, locale: string): string {
  * month names to keep in step with the formatter. All twelve are measured in
  * `format.test.ts`.
  *
- * **Serbian only, said out loud rather than left to be found.** Both routes of this portal
- * draw Serbian words — `/en` shows the Serbian dictionary until an English one exists
- * (`i18n/config.ts`, ADL A2) — so there is no second language for this to be wrong in and
- * nothing here to branch on. The day an English dictionary arrives, this is one of the
- * places that needs a second answer; the rule above would make „Octobera" of „October".
+ * **It reads the language of the sentence, not the language of the address**, and that
+ * distinction is the whole of what this function has to get right. `/en` is a live route
+ * with a language switch pointing at it, and it draws the **Serbian** dictionary until an
+ * English one exists (`i18n/config.ts`, ADL A2) — so a sentence there is Serbian while
+ * `formatDate(d, 'en')` answers „October 1, 2026". Written with the address's language,
+ * the rule below made „Octobera 1, 2026" of it, a word in no language at all (review,
+ * 05.09.2026). `dictionaryLocale` is the portal's own name for that difference and this
+ * asks it, so the date is in the same language as the words around it.
+ *
+ * The day an English dictionary arrives, this is the place that needs a second answer:
+ * the rule below is Serbian and would make „Octobera" of „October" again.
  */
-export function formatDayInSentence(isoDate: string, locale: string): string {
-  return formatDate(isoDate, locale).replace(/\p{L}+/u, (month) =>
+export function formatDayInSentence(isoDate: string, locale: Locale): string {
+  return formatDate(isoDate, dictionaryLocale(locale)).replace(/\p{L}+/u, (month) =>
     month.endsWith('bar') ? `${month.slice(0, -3)}bra` : `${month}a`,
   )
 }

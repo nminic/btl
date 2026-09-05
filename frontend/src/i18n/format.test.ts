@@ -197,6 +197,22 @@ describe('a day inside a sentence', () => {
        of the string would lose. */
     expect(formatDayInSentence('2026-09-15', DEFAULT_LOCALE)).toBe('15. septembra 2026.')
   })
+
+  it('follows the language of the words, not the language of the address', () => {
+    /* `/en` is a live route with a switch pointing at it, and it draws the Serbian
+       dictionary until an English one exists (`config.ts`, ADL A2). So a sentence there
+       is Serbian, and a date in it has to be Serbian too. Asked with the address's
+       language, `formatDate` answers „October 1, 2026" and the rule made „Octobera 1,
+       2026" of it, a word in no language at all (review, 05.09.2026).
+
+       This is the case that fails the moment somebody takes `dictionaryLocale` back out
+       of it. */
+    expect(formatDayInSentence('2026-10-01', 'en')).toBe('1. oktobra 2026.')
+    expect(formatDayInSentence('2026-10-01', 'sr')).toBe('1. oktobra 2026.')
+    /* And the day standing on its own still follows the address, which is what the
+       screens that show a date as a value ask for and what this does not change. */
+    expect(formatDate('2026-10-01', 'en')).toBe('October 1, 2026')
+  })
 })
 
 describe('formatDayMonth', () => {
