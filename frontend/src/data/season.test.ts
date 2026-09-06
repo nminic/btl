@@ -34,10 +34,13 @@ describe('the yearly window', () => {
    * 06.09.2026). It is the one number this rule is about, and nothing else.
    *
    * **Where it stops, said rather than guessed at, and measured on 06.09.2026.** A year written
-   * inside a sentence is a string and no parser can tell it from prose, so this cannot see one;
-   * the two that were live are gone, both derived now (`data/seedMessages.ts` and the sentence a
-   * member freed of the fee reads), and each is held by a case that makes the season answer
-   * differently rather than by this sweep. Nor does it open `.json`: the form definitions carry
+   * inside a sentence is a string and no parser can tell it from prose, so this cannot see one.
+   * Three were found this way and all three are gone — the greeting, the sentence a member freed
+   * of the fee reads, and the label on the beginner category — each held by a case rather than by
+   * this sweep. **How many remain is not something this can answer**, and saying „that was the
+   * last" has been wrong twice; what closes the class is that every sentence with a value in it
+   * is frozen in `i18n/valueInSentence.test.ts`, where a year arriving as a value has to be
+   * written down by somebody. Nor does it open `.json`: the form definitions carry
    * `"max": 2027` twice, which is a live boundary of its own and is written down as such rather
    * than folded in here.
    */

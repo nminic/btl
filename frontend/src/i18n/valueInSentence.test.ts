@@ -1,6 +1,6 @@
 import ts from 'typescript'
 import sr from './sr.json'
-import { sources } from '../test/sources'
+import { sources, WHOLE_PORTAL } from '../test/sources'
 
 /**
  * Every sentence of the dictionary that has a value put into it, and — where the value is
@@ -181,9 +181,51 @@ function namesOf(node: object, stem: string): string[] {
   })
 }
 
+/** Every sentence the dictionary holds, with the name it is looked up by. `namesOf` above walks
+ *  the same tree for the names alone; this one keeps the words, which is what a rule about what a
+ *  sentence carries has to read. */
+function wordsOf(node: object, stem: string): { key: string; text: string }[] {
+  return Object.entries(node).flatMap(([key, value]) => {
+    const full = stem === '' ? key : `${stem}.${key}`
+
+    return typeof value === 'object' && value !== null
+      ? wordsOf(value, full)
+      : [{ key: full, text: String(value) }]
+  })
+}
+
 const SAID = new Set(namesOf(sr, ''))
 
 describe('a sentence with a value put into it', () => {
+  /**
+   * No sentence the portal says carries a year of its own.
+   *
+   * **Three were found this way in one day, and each was a lie waiting for a date** (review,
+   * 06.09.2026): the letter every member is greeted with named the season being prepared, the
+   * line a member freed of the fee reads named the season they were freed of, and the label on
+   * the beginner category named the season it applies to. All three were right while the year
+   * they carried happened to be the current one, and all three would have started lying on a day
+   * that can be named. Two of them were found only because a review read the dictionary by hand.
+   *
+   * **Derived, and with no list.** Every sentence in the dictionary, and the question is asked of
+   * the sentence rather than of the screen that says it: a year that belongs in a sentence
+   * arrives as a value, and `valueInSentence` above is where somebody then has to write it down.
+   *
+   * A year that is genuinely part of the words — the name of a rulebook, a season in a title —
+   * would fall here and ask the question once, which is the point. There is none today.
+   */
+  it('carries no year of its own', () => {
+    const every = wordsOf(sr, '')
+
+    /* The floor is the sweep, not the finding: an empty answer to „which sentences carry a year"
+       is the right answer and also what a walk over nothing gives. */
+    expect(every.length, 'the dictionary still has sentences in it').toBeGreaterThan(WHOLE_PORTAL)
+
+    const carried = every.filter(({ text }) => /(?<!\d)(19|20)\d\d(?!\d)/.test(text))
+
+    expect(carried.map(({ key, text }) => `${key}: ${text}`)).toEqual([])
+  })
+
   it('is one of exactly these, and nothing arrives among them unasked', () => {
     const said = [
       ...new Set(sources().flatMap(({ path, code }) => sentencesIn(path, code, SAID))),

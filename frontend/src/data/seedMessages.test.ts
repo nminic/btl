@@ -70,11 +70,16 @@ describe('the season the portal greets its members with', () => {
       return { ...real, SEASON: 9999 }
     })
 
-    const { FIRST_MESSAGES } = await import('./seedMessages')
+    /* Put back in `finally`, because a mock left standing by a failed assertion is a mock the
+       next case inherits: the portal has already had one such escape reach a commit
+       (`CLAUDE.md`, 01.09.2026). */
+    try {
+      const { FIRST_MESSAGES } = await import('./seedMessages')
 
-    expect(FIRST_MESSAGES[0]?.subject).toContain('9999')
-
-    vi.doUnmock('./pricing')
-    vi.resetModules()
+      expect(FIRST_MESSAGES[0]?.subject).toContain('9999')
+    } finally {
+      vi.doUnmock('./pricing')
+      vi.resetModules()
+    }
   })
 })

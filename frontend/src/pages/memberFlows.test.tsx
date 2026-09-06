@@ -322,13 +322,41 @@ describe('membership', () => {
      level below it (PDL P28a puts the slip inside renewal). As third level
      headings they read as four more sections of the renewal, which they are
      not. */
-  it('names the season a member is freed of, a year on', async () => {
-    /* The other half of the case below, and the only half that can tell a season read from the
-       clock apart from a year written into the sentence. */
-    renderMembershipOn('2027-11-01', '000001')
+  it('names the season a member is in, not the one being sold', async () => {
+    /* **Two readings on one screen, which is the only way to tell them apart.** „Stanje" says
+       what is true of a member now; the panel under it is about renewal. Fed the renewal season
+       the line named 2028 through the whole of 2027, while the season the member was actually
+       running had no mention anywhere on the page (review, 06.09.2026).
+     *
+       Counted rather than guessed: the two answers differ on **every** day from 1 January 2027
+       on, and agree through the whole of 2026, when nothing is running yet and the one being
+       prepared is the only one there is. So the walk takes one day from each of the three
+       states. */
+    const inSeason = renderMembershipOn('2027-06-15', '000001')
+
+    expect(
+      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
+    ).toBeVisible()
+    /* And the renewal panel on the same screen says the other year, which is what makes this a
+       reading and not a coincidence. */
+    expect(screen.getByText(/Obnova članarine za 2028/)).toBeVisible()
+
+    inSeason.unmount()
+
+    const later = renderMembershipOn('2028-03-01', '000001')
 
     expect(
       await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2028, odlukom/),
+    ).toBeVisible()
+
+    later.unmount()
+
+    /* And before the league has a season at all, the one being prepared is the answer: that is
+       the whole of 2026, where the sentence carried a typed 2027 and was right. */
+    renderMembershipOn('2026-11-01', '000001')
+
+    expect(
+      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
     ).toBeVisible()
   })
 
