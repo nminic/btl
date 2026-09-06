@@ -1,9 +1,10 @@
 import { genderMark } from '../../data/categories'
-import type { BtlEvent, Competitor, League, Race, RaceKind, Result } from '../../data/types'
+import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 
 /**
- * A competition as one grid: everybody who ran it down the side, every race of
- * it across the top, and the points where the two meet (owner, 31.07.2026).
+ * A competition as one grid: everybody who ran it down the side, every event of
+ * it across the top, and the points where the two meet (owner, 31.07.2026, and
+ * 07.09.2026 for the event in place of the race).
  *
  * Worked out here rather than in the screen for the usual reason, and for one
  * more: a grid has two orderings and a total, and each of the three is easy to
@@ -11,42 +12,44 @@ import type { BtlEvent, Competitor, League, Race, RaceKind, Result } from '../..
  */
 
 export type LeagueColumn = {
-  raceId: string
   /**
-   * What the race is called.
+   * One event of the competition, which is what a column of this grid is.
    *
-   * The event's name until 29.08.2026, because a race had none of its own; the
-   * owner gave it one on 23.08.2026 and said in the same breath where it belongs:
-   * „u listi rezultata treba da se prikazuju nazivi trka na kojima je čovek
-   * učestvovao, a ne događaja." A renamed race stood in this grid under its
-   * event's name until this was changed.
+   * **A race until 07.09.2026, and an event since.** The owner, asked what two columns of one
+   * event should look like now that the heading is only a day: „Datum i kaze se dogadjaj samo. U
+   * teoriji neko moze imati rezultate na dve trke u istom dogadjaju i onda ce dole u njegovu
+   * celiju biti upisan zbir bodova sa obe trke."
    *
-   * It is still what tells two columns apart where the length and the day cannot:
-   * two events can both hold a „10 km" on one morning, and their races carry their
-   * names. Measured on 29.08.2026 over the three competitions in the file: 23
-   * columns, 2 of them sharing a length and a day, and in neither case do the two
-   * races share a name.
+   * So there is nothing left for two columns of one event to tell apart, because there are no
+   * longer two of them. A member who ran the marathon and the half of one morning has one cell,
+   * holding what both brought him, which is also what his total already said.
+   *
+   * **What that costs, written down rather than discovered.** A reader can no longer see which
+   * race inside an event a score came from, and a cell of 84,20 may be one race or two. The
+   * event's own page lists its races and their results, which is where that question is answered
+   * and where this heading now leads.
    */
-  name: string
+  eventId: string
+  /**
+   * The day the event is held, which is the whole of the heading.
+   *
+   * The event's day and no longer the race's. One event may run over several mornings (PDL P10),
+   * and while a column was a race that difference was the only thing telling two of its races
+   * apart; a column that **is** the event has one day by definition, and it is the day the
+   * calendar and the event's own page call it by.
+   */
   date: string
-  /**
-   * Which of the three kinds the race is, and how long it lasts where that is what
-   * it fixes. Carried because the heading is written from them: a race of a length
-   * is named by its length and a timed one by its limit (`data/raceLabel.ts`).
-   */
-  kind: RaceKind
-  limitSeconds: number
-  /** Only for the ordering. Within one day the shorter race comes first, and
-   *  by name "10 km" would come before "5 km". A timed and a free race carry no
-   *  length, so within one day they come before every race that does; nothing
-   *  else orders them, and they keep the order the races arrived in. */
-  distanceKm: number
+  /** What the pointer is told and what names the link out loud. */
+  name: string
+  /** Where the press lands: the event's own page. */
+  slug: string
 }
 
 export type LeagueRow = {
   competitor: Competitor
-  /** Points per race, by race id. A race the person did not run is absent, which
-   *  is not the same as nought and must not be drawn as one. */
+  /** Points per event, by event id, and everything they scored inside one event added up. An
+   *  event the person did not race is absent, which is not the same as nought and must not be
+   *  drawn as one. */
   points: Map<string, number>
   total: number
 }
@@ -59,10 +62,9 @@ export type LeagueTable = {
 /**
  * Builds the grid.
  *
- * Columns are every race of every event in the competition, oldest first and, on
- * one day, shortest first: that is the order a season is run in, and the order
- * the calendar already shows. Shortest by the distance and not by the name, or
- * "10 km" would stand in front of "5 km".
+ * Columns are the events of the competition that have a race, oldest first: that is the order a
+ * season is run in, and the order the calendar already shows. Two on one day keep the order their
+ * names sort in, so the table does not shuffle between renders.
  *
  * Rows are everyone with at least one result in it. Ordered by the total, which
  * is the second column and the only ordering the owner asked for; a tie goes to
@@ -83,55 +85,47 @@ export function leagueTable(
     events.filter((one) => league.eventIds.includes(one.id)).map((one) => [one.id, one]),
   )
 
-  const columns: LeagueColumn[] = races
-    .flatMap((race) => {
-      const event = inLeague.get(race.eventId)
+  /* The events of this competition that actually have a race, oldest first.
+   *
+   * Held against the races and not taken off the league itself, because an event with no race is
+   * an empty column of a table whose width is its whole difficulty: forty six columns is already
+   * more than a screen holds, and a forty seventh that can never carry a number is width spent on
+   * nothing. An event entered a fortnight before its distances are known (owner, 23.08.2026) is
+   * exactly such an event, and it appears here the day its first race does.
+   *
+   * Two events on one day are two columns reading the same date, and that is the owner's answer
+   * of 07.09.2026 taken as it was given: what tells them apart is the name on the pointer and the
+   * page the press opens. Ordered by the name after the day, so the pair keeps one order between
+   * renders rather than the order the file happens to be written in. */
+  const withRaces = new Set(races.flatMap((race) => (inLeague.has(race.eventId) ? [race.eventId] : [])))
 
-      return event === undefined
-        ? []
-        : [
-            {
-              raceId: race.id,
-              /* The race's own name, which starts out as its event's and stops
-                 being it the moment somebody renames the race (owner,
-                 23.08.2026). `event` is still read above, to know whether the race
-                 belongs to this competition at all. */
-              name: race.name,
-              /* The day this race is run on, which is not always the day of its
-                 event: one event may run over several mornings (PDL P10). Read
-                 off the event, two races of one length on two mornings shared a
-                 date as well as a length, so both columns read the same and
-                 neither said which morning it was. */
-              date: race.date,
-              kind: race.kind,
-              limitSeconds: race.limitSeconds,
-              distanceKm: race.distanceKm,
-            },
-          ]
-    })
-    .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
+  const columns: LeagueColumn[] = [...inLeague.values()]
+    .filter((event) => withRaces.has(event.id))
+    .map((event) => ({ eventId: event.id, date: event.date, name: event.name, slug: event.slug }))
+    .sort((left, right) => left.date.localeCompare(right.date) || left.name.localeCompare(right.name))
 
-  /* Whether two columns could be told apart used to be worked out here, so that a
-     heading could put the name first only where it had to. The owner decided on
-     29.08.2026 that the name goes first in every column and the day shrinks to its
-     year, so there is nothing left for that answer to decide and it is gone rather
-     than kept for a reader who might want it: a fact nobody reads is a fact nobody
-     keeps true. What it used to buy, and what the decision costs instead, is
-     written where the heading is drawn (`LeagueResults.tsx`). */
-  const counts = new Set(columns.map((one) => one.raceId))
+  /* Which event a result belongs to, for the results that belong to this competition at all.
+     Built out of the races, because a result names a race and a column names an event. */
+  const eventOf = new Map(
+    races.flatMap((race) => (inLeague.has(race.eventId) ? [[race.id, race.eventId] as const] : [])),
+  )
   const byMember = new Map<string, Map<string, number>>()
 
   for (const result of results) {
-    if (!counts.has(result.raceId)) {
+    const eventId = eventOf.get(result.raceId)
+
+    if (eventId === undefined) {
       continue
     }
 
     const mine = byMember.get(result.memberNumber) ?? new Map<string, number>()
 
-    /* Added rather than set. One person with two results on one race is not
-       something the portal should produce, but a grid that silently kept the
-       last of them would hide it rather than show it. */
-    mine.set(result.raceId, (mine.get(result.raceId) ?? 0) + result.points)
+    /* Added rather than set, and since 07.09.2026 that is a rule of the screen and not only a
+       guard against bad data. A member who ran two races of one event has both in this one cell
+       (owner: „onda ce dole u njegovu celiju biti upisan zbir bodova sa obe trke"), and one person
+       with two results on one race, which the portal should not produce, is shown rather than
+       quietly reduced to the last of them. */
+    mine.set(eventId, (mine.get(eventId) ?? 0) + result.points)
     byMember.set(result.memberNumber, mine)
   }
 

@@ -165,8 +165,6 @@ const ALLOWED: Record<string, string[]> = {
      twice and a render that does not draw the allowed link leaves the allowance unspent: on
      `/ocena` a visitor meets `SignedOut`, so a real way back added there was let through for
      free, one for one (review, 06.09.2026). Each render now says exactly what it may hold. */
-  'competitor /sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
-  'visitor /sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
   /* „Odustani" beside „Pošalji" on the screen that rates an event. Only to a member: a
      visitor is shown `SignedOut` and there is no form to close.
      **Not covered by the owner's sentence, and said so rather than dressed up.** What he kept on

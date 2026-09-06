@@ -163,12 +163,6 @@
       "recordTitle": "{name}",
       "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
     },
-    "leagueResults": {
-      "title": "Poredak takmičenja",
-      "description": "Poredak jednog takmičenja uz glavnu ligu: ko je trčao koju trku i sa koliko bodova.",
-      "recordTitle": "{name}, poredak",
-      "recordDescription": "{name}, poredak u sezoni {season}: ko je trčao koju trku i sa koliko bodova."
-    },
     "message": {
       "title": "Poruka",
       "description": "Jedna poruka iz internog sanduka portala Balkanske trkačke lige."
@@ -806,23 +800,17 @@
     "inviteMissedBody": "{name} je u međuvremenu ušao/la u tim „{team}\", pa vaš poziv više ne stoji."
   },
   "leagues": {
-    "racesUnknown": "nepoznato",
     "title": "Lige",
     "season": "Sezona {season}.",
     "events": "Događaja",
+    "entrants": "Učesnika",
     "notFound": "Ove lige nema.",
     "rules": "Propozicije",
     "prizes": "Nagrade",
-    "countingEvents": "Događaji koji ulaze u ligu",
-    "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
     "none": "Trenutno nema nijednog dodatnog takmičenja.",
-    "parts": {
-      "label": "Delovi takmičenja",
-      "results": "Rezultati",
-      "rules": "Propozicije"
-    },
     "standing": "Poredak takmičenja",
     "noResults": "Na ovom takmičenju još nema nijednog rezultata.",
+    "noneOfThese": "U ovom takmičenju nema nijednog rezultata u izabranoj konkurenciji.",
     "notWritten": "Još nije napisano.",
     "name": "Liga"
   },

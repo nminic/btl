@@ -2274,29 +2274,32 @@ describe('Leagues', () => {
 
        The day is pinned, because a screen that changes with the date would otherwise
        hold today rather than what the portal says. */
+    /* **The seats moved with the screens on 07.09.2026**, and the reason each one is
+       here moved with them. What the owner took off the page of one competition — the
+       terms, the prizes and the events that count — is read on the list of them, so the
+       branches that used to be reached one screen in are reached on the list now. */
     const SCREENS = [
       ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
+      /* The list through the eyes of somebody who may fill it in, which is where the
+         terms and the prizes are now written („Ceo tekst, uređuje se tu"). A field with
+         nothing written in it is drawn to **nobody else**: `EditableText` returns
+         nothing at all when the value is empty and the reader cannot edit, so the
+         sentence „Još nije napisano." and anything put beside it is invisible to a
+         visitor and passed the whole gate (measured 01.09.2026). Both competitions of
+         2027 stand on this one screen, one written and one empty. */
+      ['/sr/lige', 'RunTrace liga 2027', 'superadmin'],
+      /* The other season, which is the whole of what the control beside the heading
+         does. Read without it, a competition of 2019 is on no seat at all. */
+      ['/sr/lige?sezona=2019', 'Brdska liga 2019', 'visitor'],
       ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'visitor'],
-      /* The same page under somebody who may change it. Everything drawn behind
-         `canEdit` is invisible to a visitor, so a rule put beside the button that
-         edits the rules of a competition is read by the one person acting on it and
-         by no guard at all (review, 01.09.2026). */
-      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'superadmin'],
-      ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
-      /* A second competition, because five seats over one record see only the branches
-         that one record takes. `planinska-2027` is public, reachable from the list, and
-         empty in every way `brdska-2019` is full: no events, no standing, and nothing
-         written in its rules or its prizes. A sentence put into any of those four
-         branches is drawn to a visitor and passed the whole gate while only the full
-         competition was opened (review, 01.09.2026). */
+      /* The other half of the field, which is the other branch of the one control this
+         screen has. Read only as it opens, everything the women's standing draws is
+         outside every guard here. */
+      ['/sr/liga/brdska-2019?pol=z', 'Brdska liga 2019', 'visitor'],
+      /* A second competition, because seats over one record see only the branches that
+         one record takes. `planinska-2027` is public, reachable from the list, and empty
+         in every way `brdska-2019` is full: no events and no standing. */
       ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'visitor'],
-      /* And the empty competition through the eyes of somebody who may fill it in. A
-         field with nothing written in it is drawn to **nobody else**: `EditableText`
-         returns nothing at all when the value is empty and the reader cannot edit, so
-         the sentence „Još nije napisano." and anything put beside it is invisible to a
-         visitor and passed the whole gate (measured 01.09.2026). */
-      ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'superadmin'],
-      ['/sr/liga/planinska-2027/rezultati', 'Planinska liga 2027', 'visitor'],
       /* And the competition that is not there, which is its own screen. */
       ['/sr/liga/ne-postoji', 'Ove lige nema.', 'visitor'],
       ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
@@ -2356,9 +2359,11 @@ describe('Leagues', () => {
         return [branch]
       }
 
-      /* `leagues.parts` is an object of three names rather than a sentence, so the
-         walk goes down rather than stopping at the first one it meets. Measured: a
-         grouping written into `leagues.parts.rules` is caught. */
+      /* A branch of the dictionary may hold an object of names rather than a sentence,
+         so the walk goes down rather than stopping at the first thing it meets. It was
+         written for `leagues.parts`, three names of the two tabs a competition had until
+         07.09.2026; those are gone with the tabs, and the walk stays, because the next
+         branch of names would otherwise be read as nothing at all. */
       return branch !== null && typeof branch === 'object' ? Object.values(branch).flatMap(said) : []
     }
 

@@ -85,18 +85,6 @@ describe('a part of a screen waits without covering the page', () => {
     expect(said).toContain('Učitavanje: Rezultati članova')
   })
 
-  it('leaves the count of races empty while they are on their way, not "nepoznato"', async () => {
-    /* The word means the answer will not come. While the file is on its way it
-       is coming, so the word is the same lie as a nought would be, in the other
-       direction. Said only where the file failed (the case below). */
-    restore = stallResource('races')
-    renderAt('/sr/liga/runtrace-2027')
-
-    const table = within(await screen.findByRole('table', { name: /Događaji/ }))
-
-    expect(table.queryByText('nepoznato')).toBeNull()
-  })
-
   it('keeps the front page readable while the president is still on his way', async () => {
     restore = stallResource('pages')
     renderAt('/sr')
@@ -129,22 +117,22 @@ describe('a screen waits only on the data it shows', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('draws a league when the races cannot be loaded', async () => {
+  it('names a competition when the races cannot be loaded', async () => {
+    /* The page of a competition is its name, the control and the standing since 07.09.2026, and
+       the standing is the part that needs the races. Waited for, a races file that failed would
+       replace the whole page with an error, so a reader could not so much as read which
+       competition they had opened, nor choose the other half of the field.
+
+       What used to stand here was the column counting each event's races, and the word „nepoznato"
+       it printed when the file failed. That table went with the owner's sentence of 07.09.2026
+       („pa ni događaji koji ulaze u ligu"), and the two cases about that word went with it: there
+       is no cell left that could say it, and the key is gone from the dictionary rather than left
+       for somebody to find and put back. */
     restore = breakResource('races')
     renderAt('/sr/liga/runtrace-2027')
 
     expect(await screen.findByRole('heading', { level: 1, name: /RunTrace liga/ })).toBeVisible()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-
-    /* And the column that needed them says so rather than saying nought. A
-       count of none where the file did not arrive is the table telling a lie,
-       and the word for it has to be a word: it was written into the wrong branch
-       of the dictionary and the cell read `leagues.racesUnknown` to every
-       visitor whose connection was slow. */
-    const table = within(await screen.findByRole('table', { name: /Događaji/ }))
-
-    expect(table.getAllByText('nepoznato').length).toBeGreaterThan(0)
-    expect(table.queryByText('leagues.racesUnknown')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Žene' })).toBeVisible()
   })
 
   it('draws the events of administration when the results cannot be loaded', async () => {

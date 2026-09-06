@@ -6,7 +6,7 @@ import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { PER_PAGE } from '../../components/pageOf'
 import { SLOW } from '../../test/slow'
-import { formatDistance, formatShortDate } from '../../i18n/format'
+import { formatDayMonth } from '../../i18n/format'
 
 /* Fifty placed to a page (owner, 03.08.2026, PDL P24).
  *
@@ -18,7 +18,7 @@ import { formatDistance, formatShortDate } from '../../i18n/format'
  * rows to page through, the way the other tests of this screen answer them.
  */
 
-const RUN = '/sr/liga/brdska-2019/rezultati'
+const RUN = '/sr/liga/brdska-2019'
 /** Comfortably more than one page, and not a round multiple of it, so the last
  *  page is a remainder rather than a full page. */
 const MANY = 137
@@ -76,19 +76,15 @@ async function withCompetitors(count: number, mixed = false) {
             firstName: 'Takmičar',
             lastName: `Broj ${index + 1}`,
             active: true,
-            /* Both genders, in turn, where a case asks for it. Copied from one
-               record, everybody in this field is otherwise the same person with a
-               different number, so the standing they build is **one block** and
-               the arithmetic that cuts a page across blocks is never run over
-               more than one. That is what let a page of a hundred through, and it
-               is why this switch exists.
+            /* **Written out and never inherited, in both shapes.** The record copied
+               from is whoever stands first in the file, and the screen draws one half
+               of the field at a time, opening on the men (`LeagueResults.tsx`). Left to
+               the file, the day somebody reorders it every case here draws an empty
+               competition and says nothing about the paging it exists to measure.
 
-               Both written out rather than only the women: the record copied from
-               is whoever stands first in the file, and if that happens to be a
-               woman then setting every other one to a woman leaves one block
-               again, which is how the first attempt at this case measured
-               nothing. */
-            ...(mixed ? { gender: index % 2 === 0 ? ('M' as const) : ('F' as const) } : {}),
+               Mixed where a case asks for it, and then it is a field the boundary
+               between the halves really falls inside. */
+            gender: mixed && index % 2 === 1 ? ('F' as const) : ('M' as const),
           })),
         ),
         { status: 200 },
@@ -139,10 +135,8 @@ async function withCompetitors(count: number, mixed = false) {
  * case runs to its end and worse than useless when one times out: Vitest calls such
  * a case failed and does **not** stop its body, so the `finally` runs later, in the
  * middle of the next case, and takes that one's `fetch` away with it. Measured on
- * 28.08.2026: with one case timing out, `is drawn whole, with no way from one page
- * to another` failed with „expected <nav class="pager"> to be null" and `reaches
- * across every column` with „the standing is drawn as one block", neither of which
- * has a stub of its own and one of which never asks for one. Both had been handed
+ * 28.08.2026: with one case timing out, two other cases failed, neither of which has
+ * a stub of its own and one of which never asks for one. Both had been handed
  * somebody else's field of 137 competitors.
  *
  * One slow case then reads as three broken screens, and every message points at
@@ -164,19 +158,13 @@ afterEach(() => {
 const grid = async () => within(await screen.findByRole('table', { name: 'Poredak takmičenja' }))
 
 /**
- * The rows that are people, out of a table that also has rows that are names of
- * blocks.
+ * The rows that are people.
  *
- * The standing has been split into blocks since 27.08.2026, and each
- * block is introduced by a row carrying one heading across the whole width. Those
- * rows are not placings and must not be counted as any: `slice(1)` used to be
- * enough because the only row that was not a person was the one at the top.
- *
- * Both carry a heading of their own row: the runner's name on a placing, and the
- * name of the block on the row that opens one, since a heading over a `<tbody>`
- * is a row group heading and not a column one. What tells them apart is what
- * follows the heading: a placing has cells, and a block heading is alone in its
- * row.
+ * Every row of the body is a placing since 07.09.2026, when the two blocks became
+ * one chosen half and the heading that used to open each block went with them. The
+ * head of the table is still a row and is still not a placing, and what tells them
+ * apart is what follows the heading of the row: a placing has cells, the head of
+ * the table has none.
  */
 const placings = (table: ReturnType<typeof within>): HTMLElement[] =>
   table
@@ -187,102 +175,137 @@ const placings = (table: ReturnType<typeof within>): HTMLElement[] =>
         within(row).queryAllByRole('cell').length > 0,
     )
 
+/** The name of every placing on the screen, in the order they are drawn. */
+const named = (table: ReturnType<typeof within>): (string | null | undefined)[] =>
+  placings(table).map((row) => within(row).getAllByRole('rowheader')[0]?.textContent)
+
 describe('a competition with more placed than fit on one page', () => {
   it('draws fifty of them and no more', async () => {
     await withCompetitors(MANY)
 
-      renderAt(RUN)
+    renderAt(RUN)
 
-      /* Counted as placings and not as every heading of a row: the row that
-         opens a block carries one too, and it is not a placing. */
-      expect(placings(await grid())).toHaveLength(PER_PAGE)
+    expect(placings(await grid())).toHaveLength(PER_PAGE)
   }, SLOW)
 
   it('says which rows are on the screen and offers the way on', async () => {
     await withCompetitors(MANY)
 
-      renderAt(RUN)
-      await grid()
+    renderAt(RUN)
+    await grid()
 
-      /* Named from the dictionary, so renaming the key is caught here rather
-         than by nobody: `translate` hands back the key itself when there is no
-         such entry, and the landmark would quietly be called
-         "pager.leagueStanding". */
-      expect(screen.getByRole('navigation', { name: sr.pager.leagueStanding })).toBeVisible()
-      expect(screen.getByText(`Prikazano 1 do 50 od ${MANY}`)).toBeVisible()
-      /* Read off `aria-disabled`, which is what this pager says: `toBeEnabled`
-         looks at the `disabled` attribute alone, and the pager never sets one,
-         so it passed over a step that was shut on every page. */
-      expect(screen.getByRole('button', { name: 'Sledeća' })).toHaveAttribute(
-        'aria-disabled',
-        'false',
-      )
+    /* Named from the dictionary, so renaming the key is caught here rather
+       than by nobody: `translate` hands back the key itself when there is no
+       such entry, and the landmark would quietly be called
+       "pager.leagueStanding". */
+    expect(screen.getByRole('navigation', { name: sr.pager.leagueStanding })).toBeVisible()
+    expect(screen.getByText(`Prikazano 1 do 50 od ${MANY}`)).toBeVisible()
+    /* Read off `aria-disabled`, which is what this pager says: `toBeEnabled`
+       looks at the `disabled` attribute alone, and the pager never sets one,
+       so it passed over a step that was shut on every page. */
+    expect(screen.getByRole('button', { name: 'Sledeća' })).toHaveAttribute('aria-disabled', 'false')
   })
+
+  it('counts the pages of the half being read, not of the whole field', async () => {
+    /* **Two sources of one number, separated** (mutation, 07.09.2026). Every other case in this
+       describe answers with a field of one gender, so the rows of the half and the rows of the
+       whole competition are the same list, and the pager reads the same however it is written:
+       `rows.length` and `table.rows.length` both say 137. A mutation that paged over the whole
+       field passed every one of them.
+
+       Here the field is mixed, so the three numbers are three: 137 in the competition, 69 men,
+       68 women. The pager is of the men, and no other reading of it gives 69. */
+    await withCompetitors(MANY, true)
+
+    renderAt(RUN)
+    await grid()
+
+    const men = Math.ceil(MANY / 2)
+
+    expect(screen.getByText(`Prikazano 1 do ${PER_PAGE} od ${men}`)).toBeVisible()
+    expect(screen.queryByText(new RegExp(`od ${MANY}$`))).toBeNull()
+  }, SLOW)
+
+  it('stops at the last page of the half, not of the whole field', async () => {
+    /* **The other half of the same pair of sources** (mutation, 07.09.2026). The number of rows is
+       read twice on this screen: once to bound the page asked for in the address, and once to say
+       how many there are. The case above measures the second; nothing measured the first, and a
+       page bounded by the whole field passed it, because on page one the two bounds agree.
+
+       They part on a page that exists for one and not for the other. Of 137 placings the men are
+       69, so the men have two pages and the competition would have three: asked for the third, a
+       reader bounded by the competition lands on a page with nobody on it. */
+    await withCompetitors(MANY, true)
+
+    renderAt(`${RUN}?strana=3`)
+
+    const men = Math.ceil(MANY / 2)
+
+    expect(placings(await grid()).length, 'the third page of the men is empty').toBeGreaterThan(0)
+    expect(screen.getByText(`Prikazano ${PER_PAGE + 1} do ${men} od ${men}`)).toBeVisible()
+  }, SLOW)
 
   it('shows the next fifty on the next page, and the rest on the last', async () => {
     await withCompetitors(MANY)
 
-      const user = setupUser()
-      const { router } = renderAt(RUN)
+    const user = setupUser()
+    const { router } = renderAt(RUN)
 
-      const before = placings(await grid()).map((row) => within(row).getAllByRole('rowheader')[0]?.textContent)
+    const before = named(await grid())
 
-      await user.click(screen.getByRole('button', { name: 'Sledeća' }))
+    await user.click(screen.getByRole('button', { name: 'Sledeća' }))
 
-      const second = placings(await grid()).map((row) => within(row).getAllByRole('rowheader')[0]?.textContent)
+    const second = named(await grid())
 
-      expect(router.state.location.search).toContain('strana=2')
-      expect(second).toHaveLength(PER_PAGE)
-      /* A different fifty, not the same fifty again: that is the whole of what
-         the slice does, and a slice that ignored the page would pass everything
-         above this line. */
-      expect(second).not.toEqual(before)
-      expect(second.filter((name) => before.includes(name))).toEqual([])
+    expect(router.state.location.search).toContain('strana=2')
+    expect(second).toHaveLength(PER_PAGE)
+    /* A different fifty, not the same fifty again: that is the whole of what
+       the slice does, and a slice that ignored the page would pass everything
+       above this line. */
+    expect(second).not.toEqual(before)
+    expect(second.filter((name) => before.includes(name))).toEqual([])
 
-      await user.click(screen.getByRole('button', { name: 'Sledeća' }))
+    await user.click(screen.getByRole('button', { name: 'Sledeća' }))
 
-      expect(placings(await grid())).toHaveLength(MANY - 2 * PER_PAGE)
-      /* Said with `aria-disabled` rather than by switching the button off, so
-         the keyboard is not thrown back to the top of the document by the last
-         press somebody makes (Pager.tsx). */
-      expect(screen.getByRole('button', { name: 'Sledeća' })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      )
+    expect(placings(await grid())).toHaveLength(MANY - 2 * PER_PAGE)
+    /* Said with `aria-disabled` rather than by switching the button off, so
+       the keyboard is not thrown back to the top of the document by the last
+       press somebody makes (Pager.tsx). */
+    expect(screen.getByRole('button', { name: 'Sledeća' })).toHaveAttribute('aria-disabled', 'true')
   }, SLOW)
 
   it('opens on the page the address names', async () => {
     /* A page somebody is reading is a page they can send to somebody else. */
     await withCompetitors(MANY)
 
-      renderAt(`${RUN}?strana=3`)
-      await grid()
+    renderAt(`${RUN}?strana=3`)
+    await grid()
 
-      expect(screen.getByText(`Prikazano 101 do ${MANY} od ${MANY}`)).toBeVisible()
+    expect(screen.getByText(`Prikazano 101 do ${MANY} od ${MANY}`)).toBeVisible()
   })
 
   it('keeps the order across the pages, so the fiftieth is above the fifty first', async () => {
     await withCompetitors(MANY)
 
-      const user = setupUser()
-      renderAt(RUN)
+    const user = setupUser()
+    renderAt(RUN)
 
-      /* The first cell of a row is the total, written the Serbian way, so the
-         comma has to come out before it is a number again. */
-      const total = (row: HTMLElement) =>
-        Number((at(within(row).getAllByRole('cell'), 0).textContent ?? '').replace(',', '.'))
+    /* The first cell of a row is the total, written the Serbian way, so the
+       comma has to come out before it is a number again. */
+    const total = (row: HTMLElement) =>
+      Number((at(within(row).getAllByRole('cell'), 0).textContent ?? '').replace(',', '.'))
 
-      const firstPage = placings(await grid())
-      const lastOfFirst = total(at(firstPage, PER_PAGE - 1))
+    const firstPage = placings(await grid())
+    const lastOfFirst = total(at(firstPage, PER_PAGE - 1))
 
-      await user.click(screen.getByRole('button', { name: 'Sledeća' }))
+    await user.click(screen.getByRole('button', { name: 'Sledeća' }))
 
-      const secondPage = placings(await grid())
-      const firstOfSecond = total(first(secondPage))
+    const secondPage = placings(await grid())
+    const firstOfSecond = total(first(secondPage))
 
-      expect(lastOfFirst).not.toBeNaN()
+    expect(lastOfFirst).not.toBeNaN()
 
-      expect(firstOfSecond).toBeLessThanOrEqual(lastOfFirst)
+    expect(firstOfSecond).toBeLessThanOrEqual(lastOfFirst)
   }, SLOW)
 })
 
@@ -290,7 +313,7 @@ describe('a competition everybody in it fits on one page', () => {
   it('is drawn whole, with no way from one page to another', async () => {
     renderAt(RUN)
 
-    const rows = placings(await grid()).map((row) => must(within(row).getAllByRole('rowheader')[0], 'the name of the placing'))
+    const rows = named(await grid())
 
     expect(rows.length).toBeGreaterThan(0)
     expect(rows.length).toBeLessThanOrEqual(PER_PAGE)
@@ -298,354 +321,203 @@ describe('a competition everybody in it fits on one page', () => {
   })
 })
 
-describe('a competition whose event runs over more than one morning', () => {
-  /* Two races of one length on two mornings of one year: the year cannot part them,
-     so the label falls to its second rung and writes the day in place of the year
-     (`data/raceLabel.ts`). The heading therefore does part them, and by the day,
-     which is what the first case below measures.
+describe('the head of a race column', () => {
+  /* **The day, written across, and the event behind it** (owner, 07.09.2026): „treba da stoje
+     datumi trka samo u redu u kojem su sad uspravni nazivi (normalno ispisani horizontalno, format
+     dd.mm.) i da ti datumi na mouseover daju samo naziv događaja, a da klik vodi na stranu događaja
+     u novom prozoru."
 
-     Two sentences used to stand here and both were untrue. The first said such a pair
-     reads alike in the heading; the ladder of rungs answers that, and the case below
-     proves it. The second said what still parts them is the `title`, which carries the
-     day: the title is the two visible halves joined back together
-     (`LeagueResults.tsx` writes it as the name, a space, and the rest), so it says
-     neither more nor less than the heading says.
+     It carried the name of the race turned on its side until then, capped and cut in two halves so
+     that the name could give way and the measure never did. All of that is gone with the turning,
+     and so is the guard that held the two halves against the sheet. */
 
-     **What the change really cost, written down rather than mended.** On `main` the
-     title was built here as `${column.event}, ${name}, ${day}`, so the day of every
-     race was on this screen whatever the heading carried. Now the day appears only
-     where a rung reaches for it, and an event running over several mornings whose
-     races differ in length is parted by the first rung already. Measured over the
-     file on 29.08.2026, one such event is in it: „Beogradski maraton" of the
-     runtrace-2027 competition runs 2,47 km on 3 April and 42,2 km on 4 April, and its
-     two columns read „Beogradski maraton 2027. (2,5 km)" and „... (42,2 km)", with
-     the day nowhere on the screen. A reader who wants the morning has to open the
-     event. That follows from the owner's decision of 29.08.2026 and is not this
-     file's to undo.
-
-     The pair below is built rather than found because no competition in the file
-     holds one: measured the same day, the three competitions have 23 columns between
-     them, no two races of one length on two mornings anywhere among them, and no two
-     labels alike. */
-
-  /** The morning after the given one, counted on the calendar and not in the string.
-   *
-   *  Adding one to the last two characters does not know how long a month is. A race
-   *  on the 28th of February would become „2019-02-29", which JS reads as the first
-   *  of March, so this case would stay green while measuring a day it does not name;
-   *  a race on the 31st would become „2019-01-32", which is not a date at all and
-   *  makes `Intl` throw a RangeError. Precedent for counting days: `data/derive.ts`. */
-  const morningAfter = (day: string): string =>
-    new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)) + 1))
-      .toISOString()
-      .slice(0, 10)
-
-  async function overTwoMornings() {
+  /** The events this competition is really made of, read off the same files the screen reads, so
+   *  the numbers below are not a second copy of the data. An event with no race is not a column. */
+  async function eventsOfIt(): Promise<BtlEvent[]> {
     const real = globalThis.fetch
-    const races: Race[] = await (await real('/mock/races.json')).json()
     const events: BtlEvent[] = await (await real('/mock/events.json')).json()
+    const races: Race[] = await (await real('/mock/races.json')).json()
     const leagues: League[] = await (await real('/mock/leagues.json')).json()
     const league = must(
       leagues.find((one) => one.slug === 'brdska-2019'),
       'takmičenje brdska-2019',
     )
-    const held = new Set(events.filter((one) => league.eventIds.includes(one.id)).map((one) => one.id))
-    const mine = must(
-      races.find((race) => held.has(race.eventId)),
-      'trka ovog takmičenja',
+    const raced = new Set(races.map((race) => race.eventId))
+
+    return events.filter((one) => league.eventIds.includes(one.id) && raced.has(one.id))
+  }
+
+  it('is one column per event, and the day it was held', async () => {
+    const held = await eventsOfIt()
+
+    renderAt(RUN)
+
+    const heads = (await (await grid()).findAllByRole('columnheader')).slice(2)
+
+    /* Ten events and fourteen races: four of them share an event with another, which is exactly
+       the case the owner settled on 07.09.2026 („U teoriji neko moze imati rezultate na dve trke u
+       istom dogadjaju"). Counted off the files rather than written down here, or this would be a
+       second home for the size of the competition. */
+    expect(heads).toHaveLength(held.length)
+    expect(heads.map((one) => one.textContent)).toEqual(
+      [...held]
+        .sort((left, right) => left.date.localeCompare(right.date) || left.name.localeCompare(right.name))
+        .map((one) => formatDayMonth(one.date)),
     )
-    /* The same length as it already is, one day later: two columns that only the
-       day can tell apart. */
-    const second: Race = {
-      ...mine,
-      id: `${mine.id}-drugo-jutro`,
-      date: morningAfter(mine.date),
+  }, SLOW)
+
+  it('tells the pointer the event, and opens its page in a new window', async () => {
+    const held = await eventsOfIt()
+
+    renderAt(RUN)
+
+    const heads = (await (await grid()).findAllByRole('columnheader')).slice(2)
+
+    for (const head of heads) {
+      const way = must(within(head).getByRole('link'), 'the way to the event')
+      const event = must(
+        held.find((one) => way.getAttribute('title') === one.name),
+        `the event named ${String(way.getAttribute('title'))}`,
+      )
+
+      /* **The name on the pointer, and the same name out loud.** A `title` reaches a pointer and
+         almost nothing else, and this heading is what a screen reader says over every number in
+         the column under it; „12.09." on its own says nothing about which event that is. The day
+         stays inside the spoken name as well, which is what SC 2.5.3 asks of a control whose
+         visible words are part of it. */
+      expect(way).toHaveAccessibleName(`${event.name} ${formatDayMonth(event.date)}`)
+      expect(way).toHaveTextContent(formatDayMonth(event.date))
+
+      /* **A new window, which is what was asked.** A reader is inside a standing they have
+         scrolled sideways, and following a link in place would cost them that place. */
+      expect(way).toHaveAttribute('href', `/sr/kalendar/${event.slug}`)
+      expect(way).toHaveAttribute('target', '_blank')
+      expect(way).toHaveAttribute('rel', expect.stringContaining('noreferrer'))
     }
+  }, SLOW)
+
+  it('draws two events of one day as two columns of one date, told apart by the event', async () => {
+    /* Owner, 07.09.2026: „ako dva dogadjaja imaju isti datum i neko stigne da ih istrci obe,
+       svakako neka bude opcija 2", and option two was the day and nothing else. This competition
+       already holds such a pair, so nothing is contrived here: what is measured is that the pair
+       is two columns rather than one, and that the two do not say the same thing to a reader. */
+    const held = await eventsOfIt()
+    const days = held.map((one) => one.date)
+    const shared = must(
+      days.find((day, index) => days.indexOf(day) !== index),
+      'dva događaja istog dana u ovom takmičenju',
+    )
+    const pair = held.filter((one) => one.date === shared)
+
+    renderAt(RUN)
+
+    const heads = (await (await grid()).findAllByRole('columnheader')).slice(2)
+    const theirs = heads.filter((one) => one.textContent === formatDayMonth(shared))
+
+    expect(theirs).toHaveLength(pair.length)
+    expect(
+      new Set(theirs.map((one) => within(one).getByRole('link').getAttribute('href'))).size,
+      'two events of one day open one page',
+    ).toBe(pair.length)
+  }, SLOW)
+
+  it('gives an event that ran over two mornings one column, on the day of the event', async () => {
+    /* A race carries its own day, because one event may run over several mornings (PDL P10), and
+       while a column was a race that was the only thing telling two races of one event apart. A
+       column that **is** the event has one day by definition, and it is the event's.
+
+       Built rather than found: no event in the file holds two races on two mornings. */
+    const real = globalThis.fetch
+    const races: Race[] = await (await real('/mock/races.json')).json()
+    const held = await eventsOfIt()
+    const event = first(held)
+    const mine = must(
+      races.find((race) => race.eventId === event.id),
+      'trka tog događaja',
+    )
+    const second: Race = { ...mine, id: `${mine.id}-drugo-jutro`, date: '2019-12-31' }
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/races.json')
         ? new Response(JSON.stringify([...races, second]), { status: 200 })
         : real(input))
 
-    return { first: mine, second }
-  }
-
-  it('parts two mornings by their day, where the year cannot', async () => {
-    /* A column is headed the way the whole portal names a race: its name, when it
-       was run, and its measure in brackets (`data/raceLabel.ts`, owner 29.08.2026).
-       Normally „when" is the year, and inside one competition the year is what tells
-       one season of a race from another.
-
-       Two races of one length on two mornings of one year is the case the year
-       cannot answer, and there the day takes its place, once for each morning. Left
-       to the year, those are two columns reading alike over two different races. */
-    const { first, second } = await overTwoMornings()
-
     renderAt(RUN)
 
-    const heads = await (await grid()).findAllByRole('columnheader')
-    const mine = heads.filter((one) => (one.textContent ?? '').startsWith(first.name))
+    const heads = (await (await grid()).findAllByRole('columnheader')).slice(2)
 
-    expect(mine.length, 'the two mornings are no longer two columns').toBe(2)
-
-    const said = mine.map((one) => one.textContent)
-    const measure = `(${formatDistance(first.distanceKm, 'sr')})`
-
-    expect(new Set(said).size, 'two columns of one competition read alike').toBe(2)
-    expect(said).toContain(`${first.name} ${formatShortDate(first.date, 'sr')} ${measure}`)
-    expect(said).toContain(`${first.name} ${formatShortDate(second.date, 'sr')} ${measure}`)
-  })
-
-  it('says the name first, and keeps the whole label on the title', async () => {
-    /* Measured by a review on 29.08.2026 in Chrome: the heading is turned on its
-       side and capped (`League.css` writes the cap, and what it came to in pixels is
-       beside the markup in `LeagueResults.tsx`; no third copy of it here), and all
-       fourteen headings of this competition were cut before the name began, so the
-       one thing the change was made for was never seen. Put first, the name ate the
-       measure instead: two columns of „Šidski novogodišnji maraton" read alike though
-       one is 32,4 km and the other 42,2.
-
-       So the two halves are two elements, drawn in that order, and the measure is the
-       one that never gives way. Asked of the drawn screen rather than of a copy of the
-       rule: the version of this that lived in `leagueTable.test.ts` wrote the rule out
-       again and passed with the screen putting the name last.
-
-       **What this cannot say, and who says it instead.** Where the cut falls at a
-       given width is a question for a browser; jsdom lays nothing out. It was measured
-       in Chrome over the built sheet, and the numbers are written beside the markup
-       (`LeagueResults.tsx`). That the sheet still gives the measure its place before
-       the name, under the class names this file reads, is weighed by
-       `styles/raceHeadingHalves.test.ts`.
-
-       **Why the two halves are found by class here** (`CLAUDE.md`: component tests use
-       role and label queries, not CSS selectors). Neither half is a control and neither
-       carries a name of its own: they are two spans inside one column heading, and the
-       heading's accessible name is both of them together, so there is no role or label
-       that reaches one and not the other. The class is the only handle, and the risk it
-       brings is exactly the one measured on 29.08.2026: renamed in `League.css` alone,
-       the sheet stopped reaching the markup and 2297 tests stayed green. That is the
-       hole `styles/raceHeadingHalves.test.ts` was written to close, and it is what
-       stands behind the two selectors below. */
-    renderAt(RUN)
-
-    const heads = (await (await grid()).findAllByRole('columnheader')).filter(
-      (head) => within(head).queryByTitle(/./) !== null,
-    )
-
-    expect(heads.length, 'the grid draws no race columns at all').toBe(14)
-
-    for (const head of heads) {
-      const box = within(head).getByTitle(/./)
-      const called = must(head.querySelector('.league__race-called'), 'the half that may be cut')
-      const measure = must(head.querySelector('.league__race-measure'), 'the half that may not')
-
-      /* The name first, read off the order the heading is drawn in. The two above are
-         found by their class and so say nothing about which of them a reader meets
-         first, and the name standing last is the fault of 29.08.2026 itself. */
-      expect([...box.children], 'the two halves are drawn the other way round').toEqual([
-        called,
-        measure,
-      ])
-
-      /* And the whole label on the title, which is the only place it survives once the
-         name has been cut: at 360 a long measure leaves the name nought pixels wide.
-         Held against the two halves rather than rebuilt out of the data here, so a
-         title that has stopped being the label is caught: written as the name alone it
-         left 2297 tests green. */
-      expect(box.getAttribute('title'), 'the title is no longer the whole label').toBe(
-        `${called.textContent}${measure.textContent}`,
-      )
-
-      /* When it was run and what it measured, in that order and in brackets. */
-      expect(measure.textContent).toMatch(/^ (\d{4}\.|\d{1,2}\. \d{1,2}\. \d{4}\.) \([\d.,]+ km\)$/)
-      expect((called.textContent ?? '').length, 'the name is empty').toBeGreaterThan(0)
-    }
-  })
-
-})
-
-describe('a competition holding one race in two seasons', () => {
-  /* The year is what a grid of a competition gains by carrying a date at all: inside
-     one event it is a constant, across seasons it is the whole difference. Two
-     mutations passed a whole round of review because nothing asked for values, only
-     for shape: a year pinned to a constant, and a length rounded to whole
-     kilometres.
-
-     A competition of the file cannot answer that on its own, because every race of
-     one holds one year, so the second season is built here the way the second
-     morning is above. The third mutation of that round, the year written in Serbian
-     on an English page, is **not** measured here and that is worth saying rather
-     than implying otherwise: the portal has one dictionary (`i18n/sr.json`), so
-     there is no English page to draw. What holds that claim is `i18n/format.test.ts`,
-     which asks `formatYear` for both languages. */
-  it('writes each race under its own year, and the length as it stands', async () => {
-    const real = globalThis.fetch
-    const races: Race[] = await (await real('/mock/races.json')).json()
-    const events: BtlEvent[] = await (await real('/mock/events.json')).json()
-    const leagues: League[] = await (await real('/mock/leagues.json')).json()
-    const league = must(
-      leagues.find((one) => one.slug === 'brdska-2019'),
-      'takmičenje brdska-2019',
-    )
-    const held = new Set(events.filter((one) => league.eventIds.includes(one.id)).map((one) => one.id))
-    const mine = must(
-      races.find((race) => held.has(race.eventId)),
-      'trka ovog takmičenja',
-    )
-    /* The same race a year earlier, which is what a competition looks like when it
-       has run before. */
-    const older: Race = {
-      ...mine,
-      id: `${mine.id}-ranija-sezona`,
-      date: `${Number(mine.date.slice(0, 4)) - 1}${mine.date.slice(4)}`,
-    }
-
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/races.json')
-        ? new Response(JSON.stringify([...races, older]), { status: 200 })
-        : real(input))
-
-    renderAt(RUN)
-
-    const said = (await (await grid()).findAllByRole('columnheader'))
-      .map((head) => head.textContent ?? '')
-      .filter((one) => one.startsWith(mine.name))
-
-    expect(said.length, 'the two seasons are no longer two columns').toBe(2)
-    expect(
-      new Set(said).size,
-      `a year that is not the race's own: ${said.join(' / ')}`,
-    ).toBe(2)
-    expect(said.some((one) => one.includes(`${mine.date.slice(0, 4)}.`)), said.join(' / ')).toBe(true)
-    expect(said.some((one) => one.includes(`${older.date.slice(0, 4)}.`)), said.join(' / ')).toBe(true)
-    /* And a length nobody rounded on the way. */
-    expect(
-      said.every((one) => one.endsWith(`(${formatDistance(mine.distanceKm, 'sr')})`)),
-      said.join(' / '),
-    ).toBe(true)
+    expect(heads, 'the second morning became a column of its own').toHaveLength(held.length)
+    expect(heads.map((one) => one.textContent)).not.toContain(formatDayMonth(second.date))
   }, SLOW)
 })
 
-describe('the heading that names one block of the standing', () => {
-  it('reaches across every column, so the grid keeps one shape', async () => {
-    /* A block heading is one cell in a row of its own, and it has to be as wide
-       as the table or the table has two shapes: sixteen columns in every row of
-       people and one in every row that names a group. A browser then draws the
-       heading in the width of the first column and the rest of that row empty,
-       and a screen reader announcing „column 1 of 16" over a heading meant for
-       all sixteen tells the reader the wrong thing about where they are.
-
-       Counted against the headings the table actually has, rather than against a
-       number written here: the grid is as wide as the competition has races, and
-       a figure repeated here would be a second home for that count.
-
-       Measured by a mutation: with the span cut to one, every other test in this
-       file and in `details.test.tsx` stayed green. */
-    renderAt(RUN)
-
-    const table = await grid()
-    const columns = within(must(table.getAllByRole('rowgroup')[0], 'the head of the table'))
-      .getAllByRole('columnheader')
-
-    expect(columns.length).toBeGreaterThan(2)
-
-    const blocks = table.getAllByRole('rowgroup').slice(1)
-
-    expect(blocks.length, 'the standing is drawn as one block').toBeGreaterThan(1)
-
-    for (const block of blocks) {
-      const heading = must(within(block).getAllByRole('rowheader')[0], 'the name of the block')
-
-      expect(heading).toHaveAttribute('colspan', String(columns.length))
-      /* And it names the group of rows it opens rather than a group of columns.
-         The portal draws no `<colgroup>` anywhere, so `colgroup` pointed at
-         something that does not exist; a heading that opens a `<tbody>` is a row
-         group heading, which is what a reader moving through the table is told
-         when they ask which block they are in. */
-      expect(heading).toHaveAttribute('scope', 'rowgroup')
-    }
-  })
-})
-
-describe('a page of a standing that is split into blocks', () => {
-  it('is still fifty placings, however the blocks fall across it', async () => {
-    /* The page is cut out of the ordered list and then dealt into blocks, so the
-       arithmetic that says where a block starts runs once per block. Measured by
-       a review on 27.08.2026: with that running total left at nought, every block
-       was cut from the beginning, page one drew a hundred placings in a field of
-       two blocks and all 137 in a field of six, and 61 tests stayed green.
-
-       Green because every other case here builds its field by copying one
-       competitor, so the whole of it is one man of one age and the standing is
-       one block: the only arithmetic this change added was never run over more
-       than one. This is the case that runs it. */
+describe('which half of the field is being read', () => {
+  it('opens on the men, and the control changes the standing to the women', async () => {
+    /* Owner, 07.09.2026: „Žene ne treba da budu ispod muškaraca, nego da postoji filter gore desno
+       da se biraju Muškarci ili Žene." Both blocks stood one under the other until then, which put
+       a woman behind men she was never competing against unless the reader had scrolled far enough
+       to meet the heading that said otherwise. */
     await withCompetitors(MANY, true)
 
-      renderAt(RUN)
+    const user = setupUser()
+    const { router } = renderAt(RUN)
 
-      const table = await grid()
+    const men = named(await grid())
 
-      expect(placings(table)).toHaveLength(PER_PAGE)
+    await user.click(screen.getByRole('button', { name: 'Žene' }))
 
-      /* And the field really is two blocks, which is what makes the count above
-         mean anything. Not asked of this page: the blocks are cut out of one
-         ordered list and the men fill the first sixty nine places, so page one is
-         one block and the boundary falls on page two. Asked of the second page,
-         which is where both blocks meet. */
-      await setupUser().click(screen.getByRole('button', { name: 'Sledeća' }))
+    const women = named(await grid())
 
-      const second = await grid()
+    expect(router.state.location.search).toContain('pol=z')
+    /* Nobody is in both, which is what the split is. Two lists that merely differ would also be
+       given by a page that had moved on by one. */
+    expect(women.filter((one) => men.includes(one))).toEqual([])
+    expect(women.length).toBeGreaterThan(0)
 
-      expect(
-        second.getAllByRole('rowgroup').slice(1).length,
-        'the field is one block after all',
-      ).toBeGreaterThan(1)
-      expect(placings(second)).toHaveLength(PER_PAGE)
+    /* **And back**, which is not the same button pressed twice: the control writes the half into
+       the address, and a control that could only ever write one of the two would leave a reader
+       who chose the women with no way to the men but the browser's own back. */
+    await user.click(screen.getByRole('button', { name: 'Muškarci' }))
 
-      /* And page one drew one block and not two with an empty one under it. The
-         men fill the first sixty nine places, so the women have nobody on that
-         page at all, and a block with nobody on the page is a heading over
-         nothing. This is what the filter over the cut blocks is for; the comment
-         beside it used to claim it was for a competition of five people showing
-         eight empty tables, which cannot happen at all because the blocks are
-         built only out of rows that exist. */
-      await setupUser().click(screen.getByRole('button', { name: 'Prethodna' }))
-
-      const back = await grid()
-
-      expect(back.getAllByRole('rowgroup').slice(1)).toHaveLength(1)
-      expect(
-        within(must(back.getAllByRole('rowgroup')[1], 'the one block of page one'))
-          .getAllByRole('rowheader')[0]?.textContent,
-        'the block is named by its code rather than in words',
-      ).toBe('Muškarci')
+    expect(named(await grid())).toEqual(men)
+    expect(router.state.location.search).toContain('pol=m')
   }, SLOW)
 
-  it('loses nobody at a boundary a block falls on', async () => {
-    /* Every placing once and no more, read across all three pages of a mixed
-       field. A block that runs out mid-page and one that begins mid-page are the
-       two ways an off-by-one shows here, and both are on this walk. */
+  it('goes back to the first page when the half changes', async () => {
+    /* Read on page two of the men, the women may have fewer pages than that, and `pageFrom` would
+       land the reader on their last rather than on their first. The main standing drops the age
+       category with the gender for the same reason (`pages/Rankings.tsx`). */
     await withCompetitors(MANY, true)
 
-      const user = setupUser()
+    const user = setupUser()
+    const { router } = renderAt(RUN)
 
-      renderAt(RUN)
+    await grid()
+    await user.click(screen.getByRole('button', { name: 'Sledeća' }))
+    await grid()
 
-      const named = () =>
-        placings(within(screen.getByRole('table', { name: 'Poredak takmičenja' }))).map(
-          (row) => within(row).getAllByRole('rowheader')[0]?.textContent ?? '',
-        )
+    expect(router.state.location.search).toContain('strana=2')
 
-      await grid()
-      const seen = [...named()]
+    await user.click(screen.getByRole('button', { name: 'Žene' }))
+    await grid()
 
-      for (let page = 2; page <= 3; page += 1) {
-        await user.click(screen.getByRole('button', { name: 'Sledeća' }))
-        await grid()
-        seen.push(...named())
-      }
+    expect(router.state.location.search).not.toContain('strana')
+    expect(screen.getByText(/^Prikazano 1 do /)).toBeVisible()
+  }, SLOW)
 
-      expect(seen).toHaveLength(MANY)
-      expect(new Set(seen).size, 'somebody is drawn on two pages').toBe(MANY)
+  it('says so plainly for a half nobody in the competition is', async () => {
+    /* A competition of five men has no women in it, and a table with no rows is a table that says
+       nothing rather than one that says there is nobody. */
+    await withCompetitors(20)
+
+    const user = setupUser()
+
+    renderAt(RUN)
+    await grid()
+
+    await user.click(screen.getByRole('button', { name: 'Žene' }))
+
+    expect(await screen.findByText(sr.leagues.noneOfThese)).toBeVisible()
+    expect(screen.queryByRole('table', { name: 'Poredak takmičenja' })).toBeNull()
   }, SLOW)
 })
