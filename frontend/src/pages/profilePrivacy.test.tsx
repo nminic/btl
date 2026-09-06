@@ -196,6 +196,30 @@ describe('a member entered in administration', () => {
   }, SLOW)
 })
 
+describe('what the settings show back', () => {
+  it('shows the choice that was made, not the one it started on', async () => {
+    /* Measured only that the controls write, never that they read back: a member could choose
+       „samo godinu", come back and find „ne prikazuj ništa" ticked while the profile published
+       the year (review, 06.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007')
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+    await user.click(screen.getByLabelText('Prikaži samo godinu'))
+
+    /* Away and back, so what is read is the record and not what the screen was holding. */
+    await router.navigate(HIM)
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+    await router.navigate('/sr/podesavanja')
+
+    expect(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    ).toBeChecked()
+    expect(screen.getByLabelText('Prikaži samo godinu')).toBeChecked()
+    expect(screen.getByLabelText('Ne prikazuj ništa')).not.toBeChecked()
+  }, SLOW)
   it('can be unticked again, which a missing field would have made impossible', async () => {
     /* **The nastiest half of a field that is not on the blank.** `editRecord` writes text, and
        `like` puts it back into the shape the record holds it in by looking at the record. With
@@ -238,6 +262,12 @@ describe('a member entered in administration', () => {
     )
 
     await user.click(box)
+
+    /* That it was ever on. Both assertions below are the state a new record starts in, so
+       without this the case passes just as well on a control that never hides (review,
+       06.09.2026). */
+    expect(box).toBeChecked()
+
     await user.click(box)
 
     expect(box).not.toBeChecked()
@@ -251,30 +281,6 @@ describe('a member entered in administration', () => {
     expect(screen.queryByText(/sakrio svoj profil/)).toBeNull()
   }, SLOW)
 
-describe('what the settings show back', () => {
-  it('shows the choice that was made, not the one it started on', async () => {
-    /* Measured only that the controls write, never that they read back: a member could choose
-       „samo godinu", come back and find „ne prikazuj ništa" ticked while the profile published
-       the year (review, 06.09.2026). */
-    const user = setupUser()
-    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007')
-
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
-    await user.click(screen.getByLabelText('Prikaži samo godinu'))
-
-    /* Away and back, so what is read is the record and not what the screen was holding. */
-    await router.navigate(HIM)
-    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
-    await router.navigate('/sr/podesavanja')
-
-    expect(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    ).toBeChecked()
-    expect(screen.getByLabelText('Prikaži samo godinu')).toBeChecked()
-    expect(screen.getByLabelText('Ne prikazuj ništa')).not.toBeChecked()
-  }, SLOW)
 })
 
 describe('the birthday a member chooses to show', () => {

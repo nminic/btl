@@ -4,6 +4,7 @@ import { translate } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
 import { loadResource } from '../../data/client'
+import { emptyValues } from '../../forms/validate'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { categoryOf } from '../../data/raceCategory'
@@ -274,32 +275,47 @@ describe('a record that is entered rather than changed', () => {
 
   it.each([
     ['competitors' as const, MEMBERS],
+    ['events' as const, EVENTS],
     ['teams' as const, TEAMS],
-  ])('answers for every field the served %s record has', async (name, entity) => {
-    /* The case above says the same thing about one entity and its title claims the class; a
-       review measured that the class was not held, and three fields were missing from the
-       member blank while the package stayed green (06.09.2026).
+    ['leagues' as const, LEAGUES],
+    ['moderators' as const, MODERATORS],
+  ])('makes a %s record with every field the served ones have', async (name, entity) => {
+    /* The case above says this about one entity and its title claims the class; a review
+       measured that the class was not held, and three fields were missing from the member
+       blank while the package stayed green (06.09.2026).
 
-       **The floor is the served record, not a list written here.** Whatever the portal is
-       fed, a record made in administration carries the same fields, or the day somebody adds
-       a field to the data and forgets the blank, this fails and names it. */
+       **Asked of the record, not of the sources that write it.** The first draft of this
+       counted names across the identity, the form and the blank, and `Object.keys` counts a
+       key whose value is `undefined` too, which is the very state the blank exists to
+       forbid: `like` has nothing to read the shape off, so „false" comes back as a string
+       and a member can tick „hide my profile" and never untick it. It also modelled three
+       writers when there are four, and missed the country a place field writes.
+
+       So the record is made the way the portal makes one, off the form's own empty values,
+       and every field the served records carry must be there **and be something**.
+
+       Over all served records rather than the first, because a field that only some of them
+       carry is exactly the one that goes quietly short.
+
+       **One road, and it is the road a record is made on from an empty form.** A field the
+       form itself asks about is answered by the form, so taking it out of the blank as well
+       leaves this green: measured on the event's `description` and `link`, which the blank
+       carries for the other road, creation by copying an event. That road is not walked here.
+
+       **Two of the eight entities are outside this, measured and said rather than left out
+       quietly.** `RACES` carries a form no screen has rendered since 23.08.2026, since a race
+       is entered inside its event, so nothing makes a race this way. And `pages` is not served
+       as a list of records at all, so there is nothing to compare against. `PRICING` has no
+       served resource of its own. */
     const served = await loadResource<Record<string, unknown>[]>(name)
+    /* As text, which is what the overlay holds and what `like` reads back into shape. */
+    const values = Object.fromEntries(
+      Object.entries(emptyValues(entity.form)).map(([field, value]) => [field, String(value)]),
+    )
+    const made = recordFrom(entity, { id: 'probni', values })
 
-    /* Three sources answer for a field, and together they must answer for all of them: the
-       identity, what the form asks about, and the blank the entity carries for the rest.
-       Compared against the served record, so the floor is the data and not a list here. */
-    const answered = new Set([
-      entity.idField,
-      ...entity.form.fields.map((field) => field.name),
-      ...Object.keys(entity.blank),
-      /* `derived` is a function of the values, so the names come from calling it, not from
-         reading it. A team's address is written this way. */
-      ...(entity.derived === undefined
-        ? []
-        : entity.derived({ name: 'Probni' }).map((one) => one.name)),
-    ])
-
-    const missing = Object.keys(first(served)).filter((field) => !answered.has(field))
+    const carried = [...new Set(served.flatMap((one) => Object.keys(one)))]
+    const missing = carried.filter((field) => made[field] === undefined)
 
     expect(missing).toEqual([])
   })
