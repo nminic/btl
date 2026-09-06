@@ -1,3 +1,4 @@
+import { InviteToTeam } from './profile/InviteToTeam'
 import { memberNumberIn, redirectTo } from './profileAddress'
 import { useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
@@ -155,12 +156,16 @@ function LengthFilter({
  */
 function ProfileBody({
   competitor,
+  competitors,
   results,
   team,
+  teams,
 }: {
   competitor: Competitor
+  competitors: Competitor[]
   results: Result[]
   team: Team | undefined
+  teams: Team[]
 }) {
   const { locale, t } = useI18n()
   const [params, setParams] = useFilterParams()
@@ -239,6 +244,12 @@ function ProfileBody({
   return (
     <div className="profile profile--competitor">
       <ProfileTop competitor={competitor} team={team} seasons={options} season={season} />
+
+      {/* Under the head and above everything the profile is about, because it is
+          an act aimed at the person rather than a fact about them. It draws
+          nothing at all unless the reader is in a team and this member is not
+          (profile/InviteToTeam.tsx). */}
+      <InviteToTeam competitor={competitor} competitors={competitors} teams={teams} />
 
       <div className="profile__row profile__row--bio">
         <Biography text={competitor.bio} gender={competitor.gender} />
@@ -459,8 +470,10 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
 
             <ProfileBody
               competitor={competitor}
+              competitors={competitors}
               results={results}
               team={teams.find((one) => one.id === competitor.teamId)}
+              teams={teams}
             />
           </>
         )

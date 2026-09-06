@@ -791,7 +791,20 @@
     "joinNoSubject": "Prijava u tim „{team}\" nije prihvaćena",
     "joinNoBody": "Tim „{team}\" nije prihvatio tvoju prijavu.",
     "joinWithdraw": "Povuci prijavu",
-    "joinWaiting": "Prijave koje čekaju"
+    "joinWaiting": "Prijave koje čekaju",
+    "invite": "Pozovi u tim",
+    "invited": "Poziv u tim „{team}\" je poslat.",
+    "inviteSubject": "Poziv u tim „{team}\"",
+    "inviteBody": "Tim „{team}\" te poziva da od naredne sezone trčiš za njih.",
+    "inviteAccept": "Prihvati",
+    "inviteRefuse": "Odbij",
+    "inviteSent": "Poslati pozivi",
+    "inviteAccepted": "Prihvatio/la si ovaj poziv i od naredne sezone trčiš za tim „{team}\".",
+    "inviteOvertaken": "U međuvremenu si ušao/la u tim „{team}\", pa ovaj poziv više ne stoji.",
+    "inviteRefused": "Odbio/la si ovaj poziv.",
+    "inviteGone": "Tim koji te je pozvao više ne postoji.",
+    "inviteMissedSubject": "Poziv u tim je ostao bez odgovora",
+    "inviteMissedBody": "{name} je u međuvremenu ušao/la u tim „{team}\", pa vaš poziv više ne stoji."
   },
   "leagues": {
     "racesUnknown": "nepoznato",

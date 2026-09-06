@@ -46,7 +46,7 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  const { memberNumber, remove, editRecord, notify, applications, apply, answer } =
+  const { memberNumber, remove, editRecord, notify, applications, apply, answer, invitations } =
     useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
@@ -111,6 +111,26 @@ export function TeamDetail() {
 
           return asked === undefined || teamOf(asked) !== null ? [] : [{ ask, asked }]
         })
+        /* The invitations this team has sent that are still open, with the person each
+           one names. One that names somebody the portal no longer has is dropped rather
+           than drawn as a blank row, the same way an application is above. */
+        const invited = invitations.flatMap((sent) =>
+          sent.teamId !== team.id
+            ? []
+            : /* Walked rather than found, so „the portal no longer has this member" needs
+                 no question of its own: nothing matches and no row is drawn.
+
+                 Somebody who now has a team is not an open question either, whichever road
+                 they took to it, which is the same test the applications above are filtered
+                 by. It is also what keeps an accepted invitation out of this list, since
+                 that record stays so the member's own message can name the team that
+                 asked. */
+              listedMembers
+                .filter(
+                  (each) => each.memberNumber === sent.memberNumber && teamOf(each) === null,
+                )
+                .map((asked) => ({ sent, asked })),
+        )
         const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
@@ -383,6 +403,34 @@ export function TeamDetail() {
                     </ul>
                   </>
                 )}
+
+              {/* **What this team has asked, so the team does not depend on somebody
+                  else's inbox.** The invitation itself lives in the invited member's mail,
+                  because that is the one person who decides it and the one place the portal
+                  can reach them (PDL, „Gde stoji odluka"). But a team that can see its
+                  questions only by asking the person it asked cannot tell a question nobody
+                  answered from one never sent, so what is still open is drawn here too.
+
+                  Read rather than answerable: nothing here presses anything, because the
+                  answer is not the team's to give. Shown to every member of the team, the
+                  same people who may send one. */}
+              {memberNumber !== null && everNumbers.has(memberNumber) && invited.length > 0 && (
+                <>
+                  <h2 className="profile__section" id="team-invited">
+                    {t('teams.inviteSent')}
+                  </h2>
+                  <ul className="submissions" aria-labelledby="team-invited">
+                    {invited.map(({ sent, asked }) => (
+                      <li key={sent.id} className="submissions__item">
+                        <p className="submissions__meta">
+                          {asked.firstName} {asked.lastName}
+                        </p>
+                        <p className="submissions__meta">{formatShortDate(sent.date, locale)}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
 
               <h2 className="profile__section">{t('teams.members')}</h2>
 

@@ -311,6 +311,17 @@ describe('a sentence with a value put into it', () => {
       'shell.unread',
       'shell.waiting',
       'teams.editDone',
+      /* And the six an invitation is written with. Same answer as the ones below and for the
+         same reason: every value is either the team's name inside quotation marks, which is
+         how this portal has written a team since `teams.proposeDone`, or the invited member's
+         name at the head of a sentence, which is the nominative for the same reason
+         `admin.form.deleteNamed` is. `inviteMissedBody` carries both at once. */
+      'teams.inviteAccepted',
+      'teams.inviteBody',
+      'teams.inviteMissedBody',
+      'teams.inviteOvertaken',
+      'teams.inviteSubject',
+      'teams.invited',
       /* The four an answer to an application is written with, and the two that name the
          member each control is about. One answer covers all six: every value is either the
          team's name inside quotation marks, which is how this portal has written it since

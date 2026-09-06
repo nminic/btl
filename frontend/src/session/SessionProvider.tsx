@@ -1,10 +1,11 @@
 import { pointsOf } from '../data/scoring'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { EventComment, PendingItem, Result } from '../data/types'
 import { nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
   type Application,
+  type Invitation,
   type Creations,
   type Decision,
   type Decisions,
@@ -324,6 +325,35 @@ export function SessionProvider({
     setApplications((current) => current.filter((one) => one.id !== id))
   }, [])
 
+  /* The invitations still open, kept the same way and for the same reason as the
+     applications above: what is open rather than what was ever sent. */
+  const [invitations, setInvitations] = useState<Invitation[]>([])
+  /* Every identity this visit has handed out, including the ones already closed, so a
+     number is never given twice even after the list it came from has shortened. */
+  const sent = useRef<string[]>([])
+
+  /* Counted up from the highest already used rather than from how many there are, for the
+     reason written out beside `apply`: `close` shortens this very list, so a count would
+     hand a later invitation the identity an earlier one still holds, and answering one
+     would answer the other.
+
+     Worked out here rather than inside the setter, because the caller needs it back: the
+     message that carries the invitation names it, and a second copy of this rule at the
+     call site is a second chance for the two to disagree. `useRef` rather than reading the
+     state, because two presses in one render pass would both read the same list. */
+  const invite = useCallback((invitation: Omit<Invitation, 'id'>) => {
+    const id = `inv-${String(nextNumber(sent.current, 'inv-'))}`
+
+    sent.current = [...sent.current, id]
+    setInvitations((current) => [...current, { ...invitation, id }])
+
+    return id
+  }, [])
+
+  const close = useCallback((id: string) => {
+    setInvitations((current) => current.filter((one) => one.id !== id))
+  }, [])
+
   const notify = useCallback((message: Omit<Message, 'id' | 'read'>) => {
     // Newest first, so what just arrived is at the top of the panel and of the
     // inbox, which is where somebody looking for it will look.
@@ -403,6 +433,9 @@ export function SessionProvider({
       applications,
       apply,
       answer,
+      invitations,
+      invite,
+      close,
       going,
       setGoing,
       markRead,
@@ -440,6 +473,9 @@ export function SessionProvider({
       applications,
       apply,
       answer,
+      invitations,
+      invite,
+      close,
       markRead,
       notify,
       notifications,
