@@ -322,6 +322,44 @@ describe('membership', () => {
      level below it (PDL P28a puts the slip inside renewal). As third level
      headings they read as four more sections of the renewal, which they are
      not. */
+  it('names the season a member is in, not the one being sold', async () => {
+    /* **Two readings on one screen, which is the only way to tell them apart.** „Stanje" says
+       what is true of a member now; the panel under it is about renewal. Fed the renewal season
+       the line named 2028 through the whole of 2027, while the season the member was actually
+       running had no mention anywhere on the page (review, 06.09.2026).
+     *
+       Counted rather than guessed: the two answers differ on **every** day from 1 January 2027
+       on, and agree through the whole of 2026, when nothing is running yet and the one being
+       prepared is the only one there is. So the walk takes one day from each of the three
+       states. */
+    const inSeason = renderMembershipOn('2027-06-15', '000001')
+
+    expect(
+      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
+    ).toBeVisible()
+    /* And the renewal panel on the same screen says the other year, which is what makes this a
+       reading and not a coincidence. */
+    expect(screen.getByText(/Obnova članarine za 2028/)).toBeVisible()
+
+    inSeason.unmount()
+
+    const later = renderMembershipOn('2028-03-01', '000001')
+
+    expect(
+      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2028, odlukom/),
+    ).toBeVisible()
+
+    later.unmount()
+
+    /* And before the league has a season at all, the one being prepared is the answer: that is
+       the whole of 2026, where the sentence carried a typed 2027 and was right. */
+    renderMembershipOn('2026-11-01', '000001')
+
+    expect(
+      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
+    ).toBeVisible()
+  })
+
   it('asks a member freed of the fee for nothing at all', async () => {
     /* Pravilnik član 15 and PDL P16: a member freed of the fee never has a payment.
        Only the line about their status said so, while the whole of the renewal
@@ -331,7 +369,15 @@ describe('membership', () => {
        the only thing this screen ever showed. */
     renderFor('000001')
 
-    expect(await screen.findByText(/Oslobođen si plaćanja članarine za sezonu/)).toBeVisible()
+    /* **The season is named, and it is the one this screen is about.** Read as November 2026,
+       what is being renewed is 2027, and the sentence carried that year typed into it until
+       06.09.2026: from 1 January 2028 a member freed of the fee would have read that they were
+       freed of a season already run (review, same day; ADL 31.07.2026 says the running season
+       comes from the clock and never from the constant). Read on two days a year apart, because
+       on one day „the season" and „the year somebody typed" are the same string. */
+    expect(
+      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
+    ).toBeVisible()
     expect(screen.getByText(/Oslobođen si plaćanja članarine, pa nema/)).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()

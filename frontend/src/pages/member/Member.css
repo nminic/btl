@@ -101,6 +101,15 @@
   flex-wrap: wrap;
 }
 
+/* The subject reads as the heading of its own message and not as a run of link
+   text: it was a `<strong>` until 06.09.2026 and it stays that weight now that it
+   opens the message, so the list looks the way it did and the way in is where
+   somebody would press anyway. */
+.messages__subject {
+  font-weight: 600;
+  color: inherit;
+}
+
 .submissions__meta,
 .messages__from,
 .messages__body,

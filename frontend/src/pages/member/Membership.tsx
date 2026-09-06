@@ -6,7 +6,7 @@ import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
 import { bestOfficialSeason } from '../../data/derive'
 import { firstSeasonAllowed, FIRST_SEASON_POINTS } from '../../data/categories'
-import { inYearlyWindow } from '../../data/season'
+import { inYearlyWindow, seasonRunning } from '../../data/season'
 import { useResults } from '../../data/useResource'
 import {
   ipsPayload,
@@ -194,7 +194,18 @@ export function Membership() {
               </h2>
               <p className="membership__state">
                 {feeExempt
-                  ? t('membership.feeExempt')
+                  ? /* **The season they are in, not the one being sold.** This line stands in
+                       „Stanje", which says what is true of a member now, and the panel below it
+                       is the one that talks about renewal. Handed the renewal season it named
+                       2028 from January to September of 2027 while the season the member was
+                       actually running had no mention anywhere on the screen (review,
+                       06.09.2026, measured on four days).
+
+                       Before the league's first season there is none running, and then it is
+                       the one being prepared: that is the whole of 2026, where the sentence
+                       used to carry a typed 2027 and was right. Read from the clock either way,
+                       never from the constant (ADL, 31.07.2026). */
+                    t('membership.feeExempt', { season: seasonRunning(today) ?? nextSeason })
                   : t('membership.active', { season: me.firstSeason })}
               </p>
               {/* Both amounts, side by side, and no choice between them (PDL

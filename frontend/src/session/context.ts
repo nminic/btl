@@ -200,6 +200,22 @@ export type Message = {
   body: string
   date: string
   read: boolean
+  /**
+   * The invitation this message is about, for the one kind of message that asks
+   * rather than tells.
+   *
+   * Optional because every message the portal has ever written is a message that
+   * tells, and a field the old ones do not carry has to be a field the screens
+   * can be handed nothing for. The four that read a message all ask for it
+   * before they draw anything (`MessagesMenu`, `Messages`, `MessageDetail`, and
+   * `notify` which writes it).
+   *
+   * Only the identity is kept here, never the answer: whether the buttons may
+   * still be pressed is worked out when the message is drawn, from whether the
+   * member already has a team (PDL, 06.09.2026). A message that remembered „yes"
+   * would go on offering it after the member joined somewhere else.
+   */
+  invitation?: string
 }
 
 /* What administration has changed, kept apart from the data it changes.
@@ -234,6 +250,35 @@ export type Application = {
   /** Who is asking to be let in. */
   memberNumber: string
   /** The day they asked. */
+  date: string
+}
+
+/**
+ * A team asking one member in, which is the application turned around.
+ *
+ * The same four things an `Application` holds, because it is the same fact read
+ * from the other side, and copying its shape is what lets both be answered by
+ * asking the roster rather than by remembering an answer.
+ *
+ * Where the two differ is **who decides, and therefore where it is read**
+ * (PDL, „Gde stoji odluka", 06.09.2026). An application is decided by whoever
+ * leads the team, a role that may change hands between the question and the
+ * answer, so it lives on the team's page and the leader is worked out each time
+ * it is drawn. An invitation is decided by one named person who cannot change,
+ * and that person has no reason to visit the team's page at all, so it reaches
+ * them in the one place the portal can: their inbox.
+ *
+ * It carries no answer of its own. „May this still be accepted" is worked out
+ * when the message is drawn, from whether the member has a team, so three teams
+ * inviting the same person on the same day need not know about each other.
+ */
+export type Invitation = {
+  id: string
+  /** The team doing the asking. */
+  teamId: string
+  /** Who is being asked in. */
+  memberNumber: string
+  /** The day they were asked. */
   date: string
 }
 
@@ -407,6 +452,18 @@ export type SessionValue = {
   apply: (application: Omit<Application, 'id'>) => void
   /** Answers one: taken in, refused, or taken back by whoever sent it. */
   answer: (id: string) => void
+
+  /** The invitations into a team that are still open, from every team at once. */
+  invitations: Invitation[]
+  /** Sends one, from any member of the team to somebody outside it, and hands
+   *  back the identity it was given: the message that carries it has to name it,
+   *  and working the identity out a second time at the call site would be the
+   *  same rule written twice. */
+  invite: (invitation: Omit<Invitation, 'id'>) => string
+  /** Closes one: accepted, refused, or overtaken because the member joined
+   *  elsewhere. The message stays in the inbox either way, because deleting
+   *  somebody's mail is deleting the answer to „what happened to that". */
+  close: (id: string) => void
   markRead: (id: string) => void
   /** Writes to one member's inbox. The portal already has one and it is where
    *  the sideways messages belong: the bell always, the mail only if the member

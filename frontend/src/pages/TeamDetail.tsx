@@ -20,8 +20,9 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
+import { afterJoining } from '../data/afterJoining'
 import { teamOf } from '../data/derive'
-import { inYearlyWindow, seasonOnSale } from '../data/season'
+import { inYearlyWindow, transfersTakeEffect } from '../data/season'
 import { teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
@@ -46,7 +47,17 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  const { memberNumber, remove, editRecord, notify, applications, apply, answer } =
+  const {
+    memberNumber,
+    remove,
+    editRecord,
+    notify,
+    applications,
+    apply,
+    answer,
+    invitations,
+    close,
+  } =
     useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
@@ -111,6 +122,26 @@ export function TeamDetail() {
 
           return asked === undefined || teamOf(asked) !== null ? [] : [{ ask, asked }]
         })
+        /* The invitations this team has sent that are still open, with the person each
+           one names. One that names somebody the portal no longer has is dropped rather
+           than drawn as a blank row, the same way an application is above. */
+        const invited = invitations.flatMap((sent) =>
+          sent.teamId !== team.id
+            ? []
+            : /* Walked rather than found, so „the portal no longer has this member" needs
+                 no question of its own: nothing matches and no row is drawn.
+
+                 Somebody who now has a team is not an open question either, whichever road
+                 they took to it, which is the same test the applications above are filtered
+                 by. It is also what keeps an accepted invitation out of this list, since
+                 that record stays so the member's own message can name the team that
+                 asked. */
+              listedMembers
+                .filter(
+                  (each) => each.memberNumber === sent.memberNumber && teamOf(each) === null,
+                )
+                .map((asked) => ({ sent, asked })),
+        )
         const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
@@ -294,9 +325,11 @@ export function TeamDetail() {
                   read off the roster every time this page is drawn (owner, 05.09.2026: the
                   application is decided by the administrator of that team).
 
-                  Only inside the window, because the answer writes the season a member runs
-                  from and `seasonOnSale` gives the next one only there; outside it the
-                  application waits, which is what the window is for. */}
+                  Only inside the window, because answering writes the squad a member runs
+                  for and a squad is joined at the start of a season, never inside one (PDL
+                  P13); outside it the application waits, which is what the window is for.
+                  Which season that is, is not this screen's to work out
+                  (`transfersTakeEffect`). */}
               {memberNumber !== null &&
                 runs === memberNumber &&
                 inYearlyWindow(today) &&
@@ -344,7 +377,7 @@ export function TeamDetail() {
                                    which is the next one (PDL, 05.09.2026). */
                                 editRecord(ask.memberNumber, {
                                   teamId: team.id,
-                                  teamSince: String(seasonOnSale(today)),
+                                  teamSince: String(transfersTakeEffect(today)),
                                 })
                                 answer(ask.id)
                                 notify({
@@ -354,6 +387,38 @@ export function TeamDetail() {
                                   body: t('teams.joinDoneBody', { team: team.name }),
                                   date: today,
                                 })
+
+                                /* And every team that had invited them stops waiting on a
+                                   question that can no longer be answered, and is told so.
+                                   The owner's sentence names the road as „ko god da je
+                                   poslao poziv", so this door owes the same as the one in
+                                   the member's own inbox (PDL, 06.09.2026). Nothing is
+                                   kept, because nobody accepted an invitation here. */
+                                const after = afterJoining({
+                                  member: ask.memberNumber,
+                                  joined: team.id,
+                                  keep: undefined,
+                                  invitations,
+                                  teams: listedTeams,
+                                  competitors: listedMembers,
+                                })
+
+                                for (const id of after.close) {
+                                  close(id)
+                                }
+
+                                for (const to of after.tell) {
+                                  notify({
+                                    from: t('app.name'),
+                                    to,
+                                    subject: t('teams.inviteMissedSubject'),
+                                    body: t('teams.inviteMissedBody', {
+                                      name: `${asked.firstName} ${asked.lastName}`,
+                                      team: team.name,
+                                    }),
+                                    date: today,
+                                  })
+                                }
                               }}
                             >
                               {t('teams.joinTaken')}
@@ -383,6 +448,34 @@ export function TeamDetail() {
                     </ul>
                   </>
                 )}
+
+              {/* **What this team has asked, so the team does not depend on somebody
+                  else's inbox.** The invitation itself lives in the invited member's mail,
+                  because that is the one person who decides it and the one place the portal
+                  can reach them (PDL, „Gde stoji odluka"). But a team that can see its
+                  questions only by asking the person it asked cannot tell a question nobody
+                  answered from one never sent, so what is still open is drawn here too.
+
+                  Read rather than answerable: nothing here presses anything, because the
+                  answer is not the team's to give. Shown to every member of the team, the
+                  same people who may send one. */}
+              {memberNumber !== null && everNumbers.has(memberNumber) && invited.length > 0 && (
+                <>
+                  <h2 className="profile__section" id="team-invited">
+                    {t('teams.inviteSent')}
+                  </h2>
+                  <ul className="submissions" aria-labelledby="team-invited">
+                    {invited.map(({ sent, asked }) => (
+                      <li key={sent.id} className="submissions__item">
+                        <p className="submissions__meta">
+                          {asked.firstName} {asked.lastName}
+                        </p>
+                        <p className="submissions__meta">{formatShortDate(sent.date, locale)}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
 
               <h2 className="profile__section">{t('teams.members')}</h2>
 

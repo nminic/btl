@@ -15,7 +15,8 @@ import {
 import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
-import { seasonOnSale } from '../../data/season'
+import { afterJoining } from '../../data/afterJoining'
+import { transfersTakeEffect } from '../../data/season'
 import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -219,7 +220,8 @@ function TeamFields({ item }: { item: PendingItem }) {
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { create, creations, decisions, editRecord, edits, notify, publish, settle } = useSession()
+  const { close, create, creations, decisions, editRecord, edits, invitations, notify, publish, settle } =
+    useSession()
   const overlay = useOverlay()
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
@@ -470,7 +472,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       inATeam.push(one.memberNumber)
       editRecord(one.memberNumber, {
         teamId: id,
-        teamSince: String(seasonOnSale(today)),
+        teamSince: String(transfersTakeEffect(today)),
       })
 
       notify({
@@ -480,6 +482,44 @@ export function PendingQueue({ queue }: { queue: Queue }) {
         body: t('verification.teamAcceptedBody', { name: made.name }),
         date: today,
       })
+
+      /* And the third door into a club owes what the other two owe: every team that
+         had invited this member stops waiting on a question that can no longer be
+         answered, and is told so. The owner's sentence names the road as „ko god da
+         je poslao poziv" (PDL, 06.09.2026), and a founder who was invited elsewhere
+         last week is exactly the case it describes. Nothing is kept, because nobody
+         accepted an invitation here. */
+      const after = afterJoining({
+        member: one.memberNumber,
+        joined: id,
+        keep: undefined,
+        invitations,
+        teams,
+        competitors: allMembers,
+      })
+
+      for (const gone of after.close) {
+        close(gone)
+      }
+
+      for (const to of after.tell) {
+        notify({
+          from: t('app.name'),
+          to,
+          subject: t('teams.inviteMissedSubject'),
+          body: t('teams.inviteMissedBody', {
+            /* Off the member's own record and not off the queue item, which carries the
+               proposal and not the person. Joined rather than taken out of the list, so a
+               member the portal no longer has needs no question of its own. */
+            name: allMembers
+              .filter((each) => each.memberNumber === one.memberNumber)
+              .map((each) => `${each.firstName} ${each.lastName}`)
+              .join(''),
+            team: made.name,
+          }),
+          date: today,
+        })
+      }
     }
 
     return done

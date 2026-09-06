@@ -1,7 +1,7 @@
 import type { Message } from '../session/context'
 import { DEFAULT_LOCALE } from '../i18n/config'
 import { formatDayInSentence } from '../i18n/format'
-import { priceOn, REGISTRATION_OPENS } from './pricing'
+import { priceOn, REGISTRATION_OPENS, SEASON } from './pricing'
 
 /**
  * What the first message says the fee is, and when it starts, read off the price list
@@ -25,6 +25,11 @@ import { priceOn, REGISTRATION_OPENS } from './pricing'
    sentence answers and the one `priceOn` is written for. Looked up in the list by
    name it would need an „or nothing" for a row that is always there, and that is a
    branch no case can reach. */
+/* The price and the day this letter quotes are read from the price list rather than typed,
+   so the inbox and the price list cannot say two different things. Since 06.09.2026 the
+   season is read the same way: it was the one fact here still written out, and moving the
+   league's first year would have left every member greeted with a season that had passed
+   (review, same day). */
 const FEE = priceOn(REGISTRATION_OPENS).eur
 const OPENS = formatDayInSentence(REGISTRATION_OPENS, DEFAULT_LOCALE)
 
@@ -50,7 +55,7 @@ export const FIRST_MESSAGES: Message[] = [
     id: 'msg-1',
     from: 'Balkanska trkačka liga',
     to: '',
-    subject: 'Dobro došao u pripremu sezone 2027',
+    subject: `Dobro došao u pripremu sezone ${SEASON}`,
     body: `Portal je otvoren za razgledanje. Kalendar se puni, a učlanjenje kreće ${OPENS} po ceni od ${FEE} EUR.`,
     date: '2026-07-20',
     read: false,

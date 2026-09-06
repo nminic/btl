@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
 import { formatShortDate } from '../../i18n/format'
 import { useSession } from '../../session/useSession'
@@ -31,7 +32,16 @@ export function Messages({ only }: { only?: string[] } = {}) {
           {messages.map((message) => (
             <li key={message.id} className={message.read ? 'messages__item' : 'messages__item messages__item--unread'}>
               <div className="messages__head">
-                <strong>{message.subject}</strong>
+                {/* **The subject opens the message, on this screen as in the panel.**
+                    Until 06.09.2026 this list wrote every message out whole and linked
+                    to none of them, which was enough while every message told something.
+                    One of them now asks (`member/InvitationAnswer.tsx`), and a member who
+                    reads „Tim te poziva" here found no way to answer and no way to reach
+                    the screen that has one: the only road was the panel in the header
+                    (review, 06.09.2026). */}
+                <Link className="messages__subject" to={`/${locale}/poruke/${message.id}`}>
+                  {message.subject}
+                </Link>
                 <span className="messages__date">{formatShortDate(message.date, locale)}</span>
               </div>
               <p className="messages__from">{message.from}</p>

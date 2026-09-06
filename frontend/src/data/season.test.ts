@@ -1,7 +1,11 @@
+import ts from 'typescript'
+import { basename } from 'node:path'
+import { seasonBeingRenewed } from './pricing'
+import { sources, WHOLE_PORTAL } from '../test/sources'
 import {
+  FIRST_SEASON,
   inYearlyWindow,
   referralMayBeSet,
-  seasonOnSale,
   seasonRunning,
   transfersTakeEffect,
 } from './season'
@@ -14,14 +18,95 @@ describe('the yearly window', () => {
     expect(inYearlyWindow('2027-01-01')).toBe(false)
   })
 
-  it('sells next season once it is open, and this one before that', () => {
-    expect(seasonOnSale('2026-07-29')).toBe(2026)
-    expect(seasonOnSale('2026-10-02')).toBe(2027)
-    expect(seasonOnSale('2026-12-31')).toBe(2027)
+  /**
+   * The year the league starts is written once, and every other name for it reads that one.
+   *
+   * **Two guards, because the fault has two shapes and neither sees the other.** A second name
+   * holding the same number is harmless until somebody moves the first, and then half the portal
+   * follows and half does not, silently, because the number was right in both places up to that
+   * moment (review, 06.09.2026). And a body copied instead of called drifts the same way.
+   *
+   * **What it asks, exactly:** does any module the portal is written in — `.ts` and `.tsx`, which
+   * is what `sources()` opens — write `FIRST_SEASON`'s own number as a number, anywhere but where
+   * it is declared. Not „a year", and not „four digits in the two
+   * thousands": those catch an interval in milliseconds and a price in dinars, and a guard that
+   * fires on a change that is not a fault costs somebody a round for nothing (review,
+   * 06.09.2026). It is the one number this rule is about, and nothing else.
+   *
+   * **Where it stops, said rather than guessed at, and measured on 06.09.2026.** A year written
+   * inside a sentence is a string and no parser can tell it from prose, so this cannot see one.
+   * Three were found this way and all three are gone — the greeting, the sentence a member freed
+   * of the fee reads, and the label on the beginner category — each held by a case rather than by
+   * this sweep. **How many remain is not something this can answer**, and saying „that was the
+   * last" has been wrong twice; what closes the class is that every sentence with a value in it
+   * is frozen in `i18n/valueInSentence.test.ts`, where a year arriving as a value has to be
+   * written down by somebody. Nor does it open `.json`: the form definitions carry
+   * `"max": 2027` twice, which is a live boundary of its own and is written down as such rather
+   * than folded in here.
+   */
+  it('writes the year of the first season in exactly one place', () => {
+    /* **Asked of the parser, not of the text.** A line that holds a year may be prose: a review
+       written down in a comment, a date inside a sentence, a slug. Only the language can say
+       which four digits are a number the portal computes with, and it is the one thing here
+       that cannot be wrong about its own syntax. */
+    const walked: string[] = []
+
+    const written = sources().flatMap((one) => {
+      const file = ts.createSourceFile(one.path, one.code, ts.ScriptTarget.Latest, true)
+      const found: string[] = []
+
+      const walk = (node: ts.Node): void => {
+        if (ts.isNumericLiteral(node) && node.text === String(FIRST_SEASON)) {
+          const [first] = node.parent.getText().split(/\r?\n/)
+
+          found.push(`${basename(one.path)}: ${first?.trim() ?? ''}`)
+        }
+
+        ts.forEachChild(node, walk)
+      }
+
+      walk(file)
+      /* Counted after the file has been read and not before: pushed at the head of the body, a
+         filter written one line below it leaves the floor counting what was offered while the
+         sweep reads nothing (review, 06.09.2026). This says what was parsed. */
+      walked.push(one.path)
+
+      return found
+    })
+
+    /* **Counted inside the walk, not beside it.** Written against `sources()` before the chain,
+       the floor and the sweep are held together by nothing but the order of two lines: a filter
+       slipped between them narrows what is read while the floor goes on counting what was
+       offered, and the sweep can lose every screen in the portal without a word (review,
+       06.09.2026). This counts what was actually opened. */
+    expect(walked.length, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
+    /* Built from the same constant the search is built from, so moving the year is not itself
+       reported as „written in more than one place" (review, 06.09.2026). */
+    expect(written).toEqual([`season.ts: FIRST_SEASON = ${FIRST_SEASON}`])
   })
 
+  /* And the two names that answer „which season are we heading into" answer the same on every
+     day that matters. Written as agreement rather than as a rule about the text, because what
+     hurts is not a second copy but a second copy that says something else. */
+  it('answers the same whether it is asked as a renewal or as a transfer', () => {
+    for (const day of ['2026-09-30', '2026-10-01', '2026-12-31', '2027-01-01', '2025-11-15']) {
+      expect(seasonBeingRenewed(day)).toBe(transfersTakeEffect(day))
+    }
+  })
+
+  /* **The season a transfer lands in, on both sides of the window and on both sides of New
+     Year.** It shared a body with „what is being sold" until 06.09.2026, and outside the window
+     that body answered with the season that is **running**: a proposal decided on 5 January put
+     its founder into a squad in the middle of a season. The two look alike and are not, so this
+     asks on the days where they used to disagree. */
   it('lands a transfer at the start of a season, never inside one', () => {
-    expect(transfersTakeEffect('2026-11-15')).toBe(2027)
+    expect(transfersTakeEffect('2026-09-30')).toBe(2027)
+    expect(transfersTakeEffect('2026-10-01')).toBe(2027)
+    expect(transfersTakeEffect('2026-12-31')).toBe(2027)
+    expect(transfersTakeEffect('2027-01-01')).toBe(2028)
+    /* And never a season the league does not have: the clock can be put back, and
+       „the next year" before the first season is a year nothing was run in. */
+    expect(transfersTakeEffect('2025-11-15')).toBe(2027)
   })
 
   it('shuts the referral amount on the day the window opens, and not before', () => {

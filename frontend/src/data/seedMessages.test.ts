@@ -47,3 +47,39 @@ describe('the messages the inbox starts with', () => {
     }
   })
 })
+
+describe('the season the portal greets its members with', () => {
+  /**
+   * The first letter every member reads names a season, and it must be the league's own.
+   *
+   * **Asked by making the constant answer differently, not by reading the text.** „Is this year
+   * derived" cannot be answered by looking at a string: the right answer and the wrong one are
+   * the same six characters while `FIRST_SEASON` is 2027, so a case that compares the sentence to
+   * „2027" passes whether the year was read or typed (review, 06.09.2026). What separates them is
+   * a portal whose first season is not 2027, and only the module that owns that number can make
+   * one.
+   *
+   * The same shape `genderMark` is measured by: ask the tool to answer differently and require
+   * the sentence to follow.
+   */
+  it('reads the year from the league rather than carrying its own', async () => {
+    vi.resetModules()
+    vi.doMock('./pricing', async () => {
+      const real = await vi.importActual<typeof import('./pricing')>('./pricing')
+
+      return { ...real, SEASON: 9999 }
+    })
+
+    /* Put back in `finally`, because a mock left standing by a failed assertion is a mock the
+       next case inherits: the portal has already had one such escape reach a commit
+       (`CLAUDE.md`, 01.09.2026). */
+    try {
+      const { FIRST_MESSAGES } = await import('./seedMessages')
+
+      expect(FIRST_MESSAGES[0]?.subject).toContain('9999')
+    } finally {
+      vi.doUnmock('./pricing')
+      vi.resetModules()
+    }
+  })
+})

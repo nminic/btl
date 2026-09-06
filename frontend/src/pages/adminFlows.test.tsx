@@ -48,6 +48,9 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
     signOut: vi.fn(),
     withdraw: vi.fn(),
     amend: vi.fn(),
+    invitations: [],
+    invite: vi.fn(),
+    close: vi.fn(),
     corrected: {},
     submissions: states.map((status, index) => ({
       id: `sub-${index}`,

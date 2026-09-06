@@ -82,18 +82,34 @@ export function inYearlyWindow(today: string): boolean {
   return dayInYear >= WINDOW_OPENS && dayInYear <= WINDOW_CLOSES
 }
 
-/** The season being sold on a given day: next year once the window is open. */
-export function seasonOnSale(today: string): number {
-  const year = Number(today.slice(0, 4))
-
-  return inYearlyWindow(today) ? year + 1 : year
-}
-
 /**
- * A transfer asked for now takes effect at the start of the next season, never
- * during a running one (PDL P13). If the window closes with nothing agreed, the
- * member stays where they were.
+ * The season a member starts running for a club from.
+ *
+ * A transfer agreed today takes effect at the start of the next season and never
+ * during a running one (PDL P13), and a club founded during the year scores
+ * nothing until 1 January (PDL, 05.09.2026). Both say the same thing: the first
+ * season that has not begun, which is next year on every day of this one.
+ *
+ * **It delegated to `seasonOnSale` until 06.09.2026, and that was wrong outside
+ * the transfer window.** The two questions look alike and are not: what is on
+ * sale in September is the season that is running, because that is the membership
+ * somebody is buying, while a squad agreed in September cannot be joined until
+ * the next one. Every screen that writes this is shut outside the window, so the
+ * difference never showed, until the moderator's queue started deciding proposals
+ * on days of its own: a proposal sent in December and approved on 5 January wrote
+ * the running season, `inTeamIn` then said yes, and the club counted that
+ * member's results from the middle of a season (review, 06.09.2026).
+ *
+ * Written as its own answer rather than as a call to `seasonOnSale`, because that
+ * shared body was the whole of the fault. **But it is not a third answer either:**
+ * `seasonBeingRenewed` in `data/pricing.ts` had been saying the same thing since
+ * 29.08.2026, in its own words („A transfer is the same question with the same
+ * answer"), so leaving both would be one fact with two homes and one floor. It
+ * reads this one now, and the floor lives here: before the league has a season
+ * there is nothing to join, so the answer is never earlier than the first
+ * (`FIRST_SEASON`). Without it a clock set to 2025 wrote a club membership
+ * starting in 2026, a season the league does not have (review, 06.09.2026).
  */
 export function transfersTakeEffect(today: string): number {
-  return seasonOnSale(today)
+  return Math.max(FIRST_SEASON, Number(today.slice(0, 4)) + 1)
 }
