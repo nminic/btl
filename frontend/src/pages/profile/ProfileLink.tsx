@@ -18,6 +18,14 @@ import type { ReactNode } from 'react'
  * and the same class, so the row keeps its name, its number and its place. The owner's rule,
  * 06.09.2026: „sva njegova pojavljivanja na portalu u tabelama i rang listama postaju tekst
  * umesto link za sve posetioce koji nisu ulogovani."
+ *
+ * **And the same words to a reader who cannot see it**, whichever of the two it draws (review,
+ * 07.09.2026). Where the whole control is a picture, the words are in `label` and there is nothing
+ * else: the picture itself is `aria-hidden`, and so is the number of the place beside it. Given
+ * only to the link, that made the first face on a board of ten into a list item with nothing at
+ * all in it for a screen reader, on exactly the member the hiding is about. So the span says the
+ * words too, out of the way of the eye, which is the shape the board already used before this
+ * component existed.
  */
 export function ProfileLink({
   competitor,
@@ -31,9 +39,11 @@ export function ProfileLink({
   /* Where the whole control is a picture, the name lives in the title, and it has to survive the
      control becoming plain markup (`home/TopTen.tsx`). */
   title?: string
-  /* What the link is called out loud, where the words inside it are a picture and not a name
-     (`home/TopTen.tsx`). Only on the link: an `aria-label` on a span replaces the words of
-     something nobody can press, which is a name read out for a control that is not there. */
+  /* What the drawn thing is called out loud, where the words inside it are a picture and not a
+     name (`home/TopTen.tsx`). It reaches a reader two ways, because there is no one way that
+     works for both halves: `aria-label` names a link, and on a `<span>` it would be a name read
+     out for a control that is not there, so there the words are written into the markup and put
+     out of the way of the eye instead. */
   label?: string
   children: ReactNode
 }) {
@@ -43,6 +53,7 @@ export function ProfileLink({
     return (
       <span className={className} title={title}>
         {children}
+        {label !== undefined && <span className="visually-hidden">{label}</span>}
       </span>
     )
   }

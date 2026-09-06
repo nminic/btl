@@ -212,6 +212,49 @@ describe('TopTen', () => {
     )
   })
 
+  /* **A face with nowhere to go still says whose it is** (review, 07.09.2026).
+     Everything drawn inside one of these circles is out of the reading: the circle carries
+     `aria-hidden`, and so does the number beside it, because both are said by the name the link
+     is called. Take the link away and the words go with it, and the item is then a place on a
+     board of ten with nothing in it at all for a reader who cannot see the picture.
+
+     **Both reasons, in one case, because there is now one branch.** A branch inside this widget
+     used to ask `!slot.active` and draw the plain circle itself, which is the question
+     `ProfileLink` answers for all eight screens that draw a competitor; hiding was added to that
+     rule on 06.09.2026 and this widget knew nothing of it. The two are measured together here so
+     that neither can be answered without the other.
+
+     Read against a third face that **is** a link, or „nobody is a link" would be the same
+     sentence as „the board drew nothing". */
+  it('says who a face is even where it leads nowhere, for either reason', () => {
+    const gone = competitor('000002', false)
+    const hiding = { ...competitor('000004'), profileHidden: true }
+
+    renderWidget(
+      <TopTen
+        competitors={[competitor('000001'), gone, hiding]}
+        results={[result('000001', 30), result('000002', 20), result('000004', 10)]}
+        season={2027}
+        gender="M"
+      />,
+    )
+
+    /* The leader still has somewhere to go, which is what makes the other two mean something. */
+    expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
+
+    for (const [place, who] of [
+      ['2', gone],
+      ['3', hiding],
+    ] as const) {
+      const reading = `${place}. Ime ${who.memberNumber}`
+
+      expect(screen.queryByRole('link', { name: reading })).toBeNull()
+      /* The words are there, out of the way of the eye. Asked of the item and not of the
+         document, so a name written somewhere else on the card could not answer for this one. */
+      expect(must(screen.getByText(reading).closest('li'), 'the place on the board')).toBeVisible()
+    }
+  })
+
   it('draws a circle and no link at all where the league has nobody', () => {
     renderWidget(<TopTen competitors={[]} results={[]} season={2027} gender="F" />)
 

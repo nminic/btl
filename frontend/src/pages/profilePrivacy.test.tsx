@@ -47,6 +47,16 @@ function lineUnderTheName(number: string): string {
   return must(span.closest('p'), 'the line under the name').textContent ?? ''
 }
 
+/** Every way into a profile that is drawn on the screen right now, as addresses.
+ *
+ *  By the address and not by the words, because the question is where a press lands and the same
+ *  member is drawn as a name on one screen, as a circle on another and as a bar on a third. */
+const waysIn = (): string[] =>
+  screen
+    .getAllByRole('link')
+    .map((one) => one.getAttribute('href') ?? '')
+    .filter((href) => href.includes('/takmicar/'))
+
 /* 000007 is Strahinja Vukićević, born 2007, of Banja Luka, in Dunavski trkači.
    The year is read off the data rather than remembered: written from memory it was 1988, and
    the case then failed on a mechanism that worked. */
@@ -134,6 +144,49 @@ describe('hiding a profile from readers who are not signed in', () => {
     expect(him.closest('a')).toBeNull()
     expect(her.closest('a')).not.toBeNull()
     expect(screen.getByText('000007')).toBeVisible()
+  }, SLOW)
+
+  /* **Every screen, and not the one that remembered** (review, 07.09.2026).
+     Hiding is chosen during a visit and there is no database, so the only place it lives is the
+     session. Eleven screens hand the rule whatever record they hold, and eleven of them hold the
+     record as it came off the file; the list of competitors reads through the overlay and the
+     rest did not, so a member who ticked the box and signed out was plain text there and a link
+     on five other screens. Measured that day: the standing, the top boards, the front page, an
+     event and a competition.
+
+     **The fix is not on these five screens and the case must not be either.** It is in
+     `profile/useProfileLink.ts`, which now lays this visit's own answer over whatever record it
+     is handed, so a twelfth screen written tomorrow is right without being told. What this walk
+     holds is that the door is really the one all of them go through.
+
+     **A screen that drew nothing would say the same thing**, so each address is asked for both
+     halves: there are ways into profiles here, and none of them is his. */
+  it('is read by every screen that draws a name, not only by the one that remembered', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+
+    for (const where of [
+      '/sr/tabela',
+      '/sr/top-liste',
+      '/sr',
+      '/sr/kalendar/novosadski-nocni-maraton-2014',
+      '/sr/liga/brdska-2019/rezultati',
+    ]) {
+      await router.navigate(where)
+
+      /* Waited on until the screen has drawn somebody, which is what makes the second half of
+         the question worth asking. */
+      await waitFor(() => {
+        expect(waysIn().length, `${where}: nijedan profil se ne otvara odavde`).toBeGreaterThan(0)
+      })
+
+      expect(waysIn().filter((href) => href.includes('/takmicar/000007')), where).toEqual([])
+    }
   }, SLOW)
 
   it('gives the way in back to a reader who is signed in', async () => {

@@ -9,8 +9,10 @@ import { Portrait } from '../../components/Portrait'
  * One face on the board, carrying the number of its place, as a way to that
  * person or as a plain circle where there is nowhere to go.
  *
- * A member whose fee has run out carries no link, because their profile is not
- * there to be linked to (PDL P11), which is the rule the tables keep too.
+ * Whether there is anywhere to go is not asked here. `ProfileLink` asks it, for this board and
+ * for every other list on the portal, and the reasons are its own to keep: a member whose fee has
+ * run out has no profile to link to (PDL P11), and one who has hidden theirs has none for a
+ * reader who is not signed in (P23).
  *
  * The name is on the link rather than under it (owner, 31.07.2026, with the old
  * widget in front of him): the board is faces and numbers and nothing else. A
@@ -28,15 +30,17 @@ function Face({ slot, place }: { slot: Competitor | undefined; place: number }) 
   const name = `${slot.firstName} ${slot.lastName}`
   const reading = `${numbered} ${name}`
 
-  if (!slot.active) {
-    return (
-      <span className="top10__face" title={name}>
-        <Portrait competitor={slot} />
-        <span className="visually-hidden">{reading}</span>
-      </span>
-    )
-  }
+  /* **One rule and one shape, since 07.09.2026.** A branch stood here asking
+     `!slot.active` and drawing the circle as a plain `<span>`, which is the very
+     question `ProfileLink` was written to answer once for all eight screens. Two
+     homes for one rule drifted the moment the rule grew a second reason: hiding
+     was added to `profile/visible.ts` and this branch knew nothing of it, so the
+     board went on linking a member the profile itself turns away.
 
+     What the branch got right and took with it is the words: the circle is
+     `aria-hidden` and so is the number beside it, so without them the item is
+     empty to a screen reader. They are on `label`, which the component now says
+     whichever of the two it draws. */
   return (
     <ProfileLink competitor={slot} className="top10__face" title={name} label={reading}>
       <Portrait competitor={slot} />
