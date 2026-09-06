@@ -255,6 +255,21 @@ describe('what the settings show back', () => {
 
     /* She signs in, hides, and changes her mind. */
     await user.click(screen.getByRole('button', { name: 'postani 000033' }))
+
+    /* **Whose screen this is, said out loud, because otherwise nothing says it.** Podešavanja
+       draws no name and no number, and all thirty two served members answer „ne prikazuj ništa"
+       and „profil nije skriven" exactly as a record made from the blank does. So every assertion
+       below can be satisfied by the wrong member: put the session on 000001 and the case goes on
+       passing while it has stopped saying anything about a blank (review, 06.09.2026).
+
+       `moj-profil` is the one address that draws whoever is signed in, so the name under it is
+       the identity itself rather than a second copy of it. */
+    await router.navigate('/sr/moj-profil')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Milica Pavlović/ }),
+    ).toBeVisible()
+
     await router.navigate('/sr/podesavanja')
 
     const box = await screen.findByLabelText(

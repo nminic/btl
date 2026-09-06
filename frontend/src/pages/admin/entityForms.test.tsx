@@ -308,9 +308,15 @@ describe('a record that is entered rather than changed', () => {
        as a list of records at all, so there is nothing to compare against. `PRICING` has no
        served resource of its own. */
     const served = await loadResource<Record<string, unknown>[]>(name)
-    /* A checkbox as the word the overlay holds, everything else as it comes. Not `String` over
-       everything: that turns a value that is not there into the word „undefined", which is a
-       string, and the floor would then be blind to the one thing it is for. */
+    /* A checkbox as the word the overlay holds, everything else as it comes, which is exactly
+       what the portal writes: `textFrom` puts every form value through `String` on the way to a
+       record, and `emptyValues` hands out only `''` and `false`, so these are the same strings.
+
+       Written as a ternary rather than `String` over everything because that is what keeps the
+       type honest: the record wants `Record<string, string>`, and anything else here is a
+       compile error rather than a value quietly turning into its own name. Measured in review
+       06.09.2026, and worth saying plainly: `String` over everything catches exactly as much as
+       this does, because `emptyValues` cannot return a value that is not there. */
     const values = Object.fromEntries(
       Object.entries(emptyValues(entity.form)).map(([field, value]) => [
         field,
@@ -353,6 +359,34 @@ describe('a record that is entered rather than changed', () => {
       .map(([field, seen]) => `${field}: ${shapeOf(made[field])}, served ${[...seen].join('/')}`)
 
     expect(wrong).toEqual([])
+
+    /* **And the answer, where the shape cannot tell right from wrong.** A field the data ever
+       leaves empty is a field a record is allowed not to have, so a record where nothing was
+       entered has not got it. Asked only about shape, `teamId: 'team-dunav'` on the blank is a
+       string like any other, and every member entered in administration would be in the Dunav
+       club without a request and without an invitation, counted into that club's standing
+       (PDL P13). Measured in review 06.09.2026: the whole package stays green. The same for
+       `referredBy`, which credits somebody a referral they never brought.
+
+       Derived, not listed: whichever fields the served records leave empty are the fields this
+       asks about, and today that is three on a member (`teamId`, `teamSince`, `referredBy`) and
+       one on a team (`logo`). A fifth arriving tomorrow is asked the same question without
+       anybody adding it here.
+
+       Where it stops: a field the data never leaves empty says nothing here, and „ništa" as the
+       birthday a new member starts on is held on the three buttons in Podešavanja
+       (profilePrivacy.test.tsx), because „none" and „full" are the same shape and neither is
+       empty. */
+    const filled = [...shapes]
+      .filter(([field, seen]) => seen.has('null') && made[field] !== null)
+      .map(([field]) => `${field}: ${String(made[field])}`)
+
+    expect(filled).toEqual([])
+
+    /* **The floor of the floor.** Everything above is read off `served`, so an empty list makes
+       both questions ask about nothing at all and pass by saying so (review, 06.09.2026):
+       `loadResource` handing back `[]` would let a field leave the blank unseen. */
+    expect(shapes.size).toBeGreaterThan(0)
   })
 })
 
