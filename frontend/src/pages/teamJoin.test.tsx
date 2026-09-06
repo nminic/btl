@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
-import { Saved } from '../test/saved'
+import { Asked, Pigeonhole, Saved } from '../test/saved'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useSession } from '../session/useSession'
@@ -166,6 +166,7 @@ describe('the way a member asks to be let into a team', () => {
       <>
         <Also who="000004" team="team-vardar" day={DAY} />
         <Answered who="000004" />
+        <Asked />
       </>,
     )
 
@@ -176,6 +177,17 @@ describe('the way a member asks to be let into a team', () => {
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
     await user.click(screen.getByRole('button', { name: 'prijavi 000004' }))
     await user.click(await screen.findByRole('button', { name: 'Povuci prijavu' }))
+
+    /* **Taking one back takes one back.** Closing goes by identity, so an identity that
+       reaches two records closes both, and a list emptied instead of filtered closes
+       everything. Neither shows on this screen, which draws one team. */
+    expect(
+      within(screen.getByRole('list', { name: 'open applications' })).getByText(/000004/),
+    ).toBeVisible()
+    expect(
+      within(screen.getByRole('list', { name: 'open applications' })).queryByText(/000002/),
+    ).toBeNull()
+
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
 
     /* Vardar answers the one it was sent. If the two share an identity, this takes 000002's
@@ -183,6 +195,37 @@ describe('the way a member asks to be let into a team', () => {
     await user.click(screen.getByRole('button', { name: 'odgovori 000004' }))
 
     expect(await screen.findByRole('button', { name: 'Povuci prijavu' })).toBeVisible()
+  }, SLOW)
+
+  it('takes back its own and not whichever was filed first', async () => {
+    /* The identity a withdrawal carries is read off the member who sent it, not off the
+       top of the list. With their own filed first the right answer and the wrong one
+       coincide and the case says nothing, which is what the case above does: measured
+       06.09.2026, a withdrawal reading `applications[0]` passed it. Here somebody else's
+       stands first, and taking it by position would close a question the member never
+       asked, on a team they have nothing to do with. */
+    const user = setupUser()
+
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <>
+        <Also who="000004" team="team-vardar" day={DAY} />
+        <Asked />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'prijavi 000004' }))
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(await screen.findByRole('button', { name: 'Povuci prijavu' }))
+
+    const open = within(screen.getByRole('list', { name: 'open applications' }))
+
+    expect(open.getByText(/000004/)).toBeVisible()
+    expect(open.queryByText(/000002/)).toBeNull()
   }, SLOW)
 
   it('is not offered outside the transfer window', async () => {
@@ -382,12 +425,18 @@ describe('the answer the team gives', () => {
       DAY,
       <>
         <Become who="000001" />
+        <Become who="000002" />
         <Saved />
+        <Asked />
+        <Pigeonhole />
       </>,
     )
 
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+
+    /* The day it was asked, drawn beside the name (owner, 06.09.2026). */
+    expect(await screen.findByText(/15\D+10\D+2026/)).toBeVisible()
 
     await user.click(await screen.findByRole('button', { name: TAKE }))
 
@@ -397,6 +446,23 @@ describe('the answer the team gives', () => {
     expect(written.getByText(/000002.*2027/)).toBeVisible()
     /* And the question is over: it is not waiting on this team any more. */
     expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
+
+    /* **Over in the session too, and not merely out of sight.** Taking the member in hides
+       the application by itself, because somebody with a team is not asked about again, so
+       an answer that never closed it looked exactly like one that did. Left open, it would
+       stop that member joining anywhere the day they left this team. */
+    expect(
+      within(screen.getByRole('list', { name: 'open applications' })).queryByText(/000002/),
+    ).toBeNull()
+
+    /* And the member is told, which happens on a screen this one cannot see. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).getByText(
+        /Primljen si u tim „Dunavski trkači"/,
+      ),
+    ).toBeVisible()
   }, SLOW)
 
   it('refuses without putting anybody in the team, and the question is over either way', async () => {
@@ -410,7 +476,10 @@ describe('the answer the team gives', () => {
       DAY,
       <>
         <Become who="000001" />
+        <Become who="000002" />
         <Saved />
+        <Asked />
+        <Pigeonhole />
       </>,
     )
 
@@ -422,6 +491,19 @@ describe('the answer the team gives', () => {
 
     expect(written.queryByText(/000002.*team-dunav/)).toBeNull()
     expect(screen.queryByRole('button', { name: REFUSE })).toBeNull()
+    expect(
+      within(screen.getByRole('list', { name: 'open applications' })).queryByText(/000002/),
+    ).toBeNull()
+
+    /* **And the member is told which of the two things happened.** Both answers write a
+       message and both close the application, so on this screen a refusal that congratulated
+       the member read exactly like one that did not. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    const told = within(await screen.findByRole('list', { name: 'inbox' }))
+
+    expect(told.getByText(/Prijava u tim „Dunavski trkači" nije prihvaćena/)).toBeVisible()
+    expect(told.queryByText(/Primljen si u tim/)).toBeNull()
   }, SLOW)
 
   it('follows the team rather than the person, when the one who ran it leaves', async () => {
@@ -474,9 +556,6 @@ describe('the answer the team gives', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
     expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
-    /* And no heading over an empty list: it announced applications that were not
-       there (review, 06.09.2026). */
-    expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
     /* And no heading over an empty list: it announced applications that were not there
        (review, 06.09.2026). */
     expect(screen.queryByText('Prijave koje čekaju')).toBeNull()

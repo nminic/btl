@@ -17,7 +17,7 @@ import {
   totalsOf,
 } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
-import { formatNumber, formatPoints } from '../i18n/format'
+import { formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { teamOf } from '../data/derive'
@@ -318,6 +318,14 @@ export function TeamDetail() {
                         <li key={ask.id} className="submissions__item">
                           <p className="submissions__meta">
                             {asked.firstName} {asked.lastName}
+                          </p>
+                          {/* And the day they asked, which is the same shape the
+                              moderator's queue gives a card (`admin/PendingQueue.tsx`).
+                              Until 06.09.2026 the day was written and never read, and a
+                              field nobody reads is a field nobody can be wrong about;
+                              owner, 06.09.2026, chose to draw it rather than drop it. */}
+                          <p className="submissions__meta">
+                            {formatShortDate(ask.date, locale)}
                           </p>
                           <p className="member__actions">
                             {/* Both controls carry the name of whoever is being answered

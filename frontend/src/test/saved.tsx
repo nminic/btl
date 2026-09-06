@@ -88,6 +88,52 @@ export function Deleted() {
   )
 }
 
+/**
+ * Every application still open, and on whose behalf.
+ *
+ * An application is the one thing on the portal answered by somebody other than whoever
+ * wrote it, so „whose is this" and „is it still open" are two questions and no screen
+ * shows either. A team that has taken a member in draws nothing about the application it
+ * answered, and the member's own page draws nothing either. Read only through a screen, an
+ * answer that never closed the application looks exactly like one that did, until months
+ * later the member cannot join anywhere and nobody knows why.
+ *
+ * One line per application, by the identity it carries, so a test can say which one went
+ * and equally which one stayed. That second half is the point: closing takes an identity,
+ * and an identity that reaches two records closes both.
+ */
+export function Asked() {
+  const { applications } = useSession()
+
+  return (
+    <ul aria-label="open applications">
+      {applications.map((one) => (
+        <li key={one.id}>{`${one.id} | ${one.memberNumber} | ${one.teamId} | ${one.date}`}</li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * And what the pigeonhole holds for whoever is reading, for the same reason.
+ *
+ * What the portal tells a member lands on „/poruke", which is a different screen from the
+ * one that wrote it, so a test standing where an application is answered cannot see
+ * whether anything reached anybody, or which of two opposite things it said. Read off
+ * `inbox`, which is what that screen reads.
+ */
+export function Pigeonhole() {
+  const { inbox } = useSession()
+
+  return (
+    <ul aria-label="inbox">
+      {inbox.map((one) => (
+        <li key={one.id}>{`${one.subject} | ${one.body}`}</li>
+      ))}
+    </ul>
+  )
+}
+
 /** The values in one line, in the order they were written, so a test can say
  *  what is there and equally what is not. */
 function written(values: Record<string, string>): string {
