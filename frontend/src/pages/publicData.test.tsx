@@ -1,5 +1,8 @@
-import { act, cleanup, screen } from '@testing-library/react'
+import { act, cleanup, screen, within } from '@testing-library/react'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
+import { DEFAULT_LOCALE } from '../i18n/config'
+import { QUEUES } from './admin/queues'
+import type { Role } from '../roles/context'
 import { beginsWith, metSaid } from '../test/met'
 import { renderAt } from '../test/render'
 
@@ -238,6 +241,193 @@ function expectPart(part: string | undefined): void {
   expect(screen.getByRole('heading', { level: 2, name: part })).toBeVisible()
 }
 
+
+/**
+ * That the page offers no way of its own up a level, on every address the portal has.
+ *
+ * Owner, 05.09.2026: „Obriši sve Nazad linkove koje si pomenuo, **ne želim da imam ni jedan
+ * takav slučaj na portalu**... Default Back akcija mi je OK." That is a rule about the portal,
+ * and the guard that stood knew only the word „Nazad". A review measured the hole: a way back
+ * reading „Kalendar" walks straight past it, and two of the nine that were removed read exactly
+ * that (06.09.2026).
+ *
+ * **Asked of the shape of the link, not of its words.** A way up a level is a link whose address
+ * is a strict ancestor of the address being read: from `/sr/tim/dunavski-trkaci` to `/sr/timovi`
+ * is not one, because `timovi` is not `tim`; from `/sr/kalendar/dan/2027-05-08` to `/sr/kalendar`
+ * is. Read off the one link, with nothing followed through the code.
+ *
+ * **What is allowed is a named list, not a shape.** The first draft freed anything inside a
+ * `<nav>` and anything standing beside a button, and both were measured and thrown out: on
+ * `/sr/moji-rezultati` the second freed **277 of 278** links in the page, because every row
+ * carries „Izmeni" beside a delete control, and the first freed any way back at all the moment
+ * somebody wrapped it in breadcrumbs (review, 06.09.2026). A shape that common is not an
+ * exception, it is a door.
+ *
+ * So the two that exist are written down by address and by target, and everything else fails.
+ * They are the parts of a competition, where the link to the competition is the **other tab**,
+ * and „Odustani" beside „Pošalji". A third cannot be let in by wrapping it in anything: it
+ * fails the gate and asks for a decision once, which is where the cost belongs.
+ */
+const ALLOWED: Record<string, string[]> = {
+  /* **Keyed by the role as well as by the address**, because every public address is drawn
+     twice and a render that does not draw the allowed link leaves the allowance unspent: on
+     `/ocena` a visitor meets `SignedOut`, so a real way back added there was let through for
+     free, one for one (review, 06.09.2026). Each render now says exactly what it may hold. */
+  'competitor /sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
+  'visitor /sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
+  /* „Odustani" beside „Pošalji" on the screen that rates an event. Only to a member: a
+     visitor is shown `SignedOut` and there is no form to close.
+     **Not covered by the owner's sentence, and said so rather than dressed up.** What he kept on
+     05.09.2026 was „samo dva dugmeta u administraciji (D), koja i nisu veze nego zatvaraju
+     formu": those are buttons, in administration. This is a `<Link>` on a member's screen. It is
+     allowed here because it does the same job, and because taking it away would leave a
+     half-filled form with no way out but the browser; that reading is written down as a decision
+     in `btl-produkt/PDL.md` so the journal carries it, and the owner can overturn it there. */
+  'competitor /sr/kalendar/fruskogorski-maraton-2010/ocena': [
+    '/sr/kalendar/fruskogorski-maraton-2010',
+  ],
+}
+
+/** Which of the allowances were actually met, so the list cannot quietly go stale. */
+const met = new Set<string>()
+
+function noWayUp(address: string, role: Role): void {
+  const path = address.split('?')[0] ?? address
+  const allowed = ALLOWED[`${role} ${address}`] ?? []
+
+  const up = within(screen.getByRole('main'))
+    .queryAllByRole('link')
+    .map((one) => (one.getAttribute('href') ?? '').split('?')[0] ?? '')
+    .filter((href) => href !== FRONT && path.startsWith(`${href}/`))
+
+  up.filter((href) => allowed.includes(href)).forEach((href) => met.add(`${role} ${address} ${href}`))
+
+  expect(
+    up.filter((href) => !allowed.includes(href)),
+    `${address} offers no way of its own up a level`,
+  ).toEqual([])
+
+  /* **And exactly the ones it names, no more.** Read as „is this target allowed", a second link
+     to the same address rides in free: on the screen that rates an event „Odustani" holds
+     `/sr/kalendar/:slug`, so a real way back to the event was let through beside it, and that is
+     the very link the owner had removed. Read as „no more than the allowance", the render that
+     draws none of them leaves the allowance unspent and frees one anyway (reviews, 06.09.2026). */
+  expect(up.sort(), `${role} on ${address} offers exactly the ways up allowed`).toEqual(
+    [...allowed].sort(),
+  )
+}
+
+/** The portal itself, which is nobody's parent, in the language every row here is written in.
+ *  Read off `i18n/config.ts` rather than written out, because the day an `/en` row joins the
+ *  table a hand-written `/sr` would call the way home a way back and free the real one. */
+const FRONT = `/${DEFAULT_LOCALE}`
+
+
+/**
+ * And the same question over administration and over the two member forms the sweep above
+ * cannot reach.
+ *
+ * **Why they are not in that sweep.** It asks what a browser downloads on behalf of somebody who
+ * is not entitled to it, so administration is deliberately outside it. And two member forms
+ * (`/sr/novi-tim`, `/sr/tim/:slug/izmena`) answer `SignedOut` or send the reader away for both
+ * roles it walks with, so the form itself is never drawn there.
+ *
+ * **Why they must be asked anyway.** The owner's sentence was about the portal, and he reasoned
+ * about administration by name when he kept the two controls that close a form. A review put a
+ * real way back into `admin/AdminMembers.tsx` and into `member/EditTeam.tsx` and the whole
+ * package stayed green (06.09.2026): eleven addresses and two forms had nobody at all.
+ *
+ * **Each row names the heading it expects**, for the reason this file already gives about the
+ * public table: two of these rows reach a record through a hand-written slug or a hand-written
+ * path, and those are exactly the ones that rot quietly. Without the name, a renamed team or a
+ * renamed route leaves the row measuring the front page and passing (review, 06.09.2026).
+ *
+ * **And the list has a floor**: every administration address the route table has, with the one
+ * pattern `verifikacija/:queue` opened into the six queues it stands for. Five of those six had
+ * never been asked, because the table hides them behind one pattern.
+ *
+ * **The two member forms are named by hand and that is a boundary**, said rather than left to be
+ * found: the floor below reads the route table for administration only, so deleting those two
+ * rows takes them out of every sweep at once. A third form of the same kind needs its row written
+ * here, and nothing will ask for it.
+ *
+ * **What is still outside, said rather than hidden:** the six screens that confirm a sending.
+ * Nothing here draws the state after something is sent, so a way up on a confirmation would slip
+ * past. Those six are held for what lies under them (`pages/backAfterSending.test.tsx`).
+ */
+/** The one pattern that stands for six screens. Compared whole rather than by its ending:
+ *  another address with the same parameter name would be swallowed by it and lose its row
+ *  without a sound (review, 06.09.2026). */
+const QUEUE_PATTERN = 'administracija/verifikacija/:queue'
+
+const ADMIN = '000001'
+
+const BEHIND: [string, Role, string | null, string][] = [
+  ['/sr/administracija', 'superadmin', ADMIN, 'Administracija'],
+  ['/sr/administracija/entiteti', 'superadmin', ADMIN, 'Članovi'],
+  ['/sr/administracija/verifikacija', 'superadmin', ADMIN, 'Red za proveru rezultata'],
+  ['/sr/administracija/verifikacija/rezultati', 'superadmin', ADMIN, 'Red za proveru rezultata'],
+  ['/sr/administracija/verifikacija/uplate', 'superadmin', ADMIN, 'Uplate i aktivacija članova'],
+  ['/sr/administracija/verifikacija/timovi', 'superadmin', ADMIN, 'Novi timovi'],
+  ['/sr/administracija/verifikacija/trkacki-profil', 'superadmin', ADMIN, 'Trkački profil'],
+  ['/sr/administracija/verifikacija/komentari', 'superadmin', ADMIN, 'Komentari'],
+  ['/sr/administracija/verifikacija/termini', 'superadmin', ADMIN, 'Prijave promene termina'],
+  ['/sr/administracija/cenovnik', 'superadmin', ADMIN, 'Cenovnik'],
+  ['/sr/administracija/clanovi', 'superadmin', ADMIN, 'Članovi'],
+  ['/sr/administracija/dogadjaji', 'superadmin', ADMIN, 'Događaji'],
+  ['/sr/administracija/timovi', 'superadmin', ADMIN, 'Timovi'],
+  ['/sr/administracija/lige', 'superadmin', ADMIN, 'Lige'],
+  ['/sr/administracija/strane', 'superadmin', ADMIN, 'Statične strane'],
+  ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
+  /* A member with no team, inside the window, so the form is really drawn. */
+  ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
+  /* And the one who administers this team, likewise. */
+  ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001', 'Izmena tima'],
+]
+
+describe('what administration and the member forms offer', () => {
+  it('has a row for every administration address the route table has', () => {
+    const every = [...ROUTES, ...EXTRA_ADDRESSES]
+      .map((route) => route.path)
+      .filter((path) => path.startsWith('administracija'))
+      /* One pattern stands for six screens through three components, and five of them had
+         never been opened by anything. */
+      .flatMap((path) =>
+        path === QUEUE_PATTERN ? QUEUES.map((queue) => queue.path) : [path],
+      )
+
+    const missing = every.filter(
+      (path) => !BEHIND.some(([address]) => address === `/sr/${path}`),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it('keeps every row it has, including the two nothing else asks for', () => {
+    /* The rows for administration have a real floor above: the route table asks for them. The
+       two member forms have only this. Deleting one of them took it out of every sweep at once
+       and nothing fell (review, 06.09.2026), because the public walk sends both roles away from
+       those addresses before the form is drawn.
+
+       A count is a weak floor and it is written down as one: it cannot say a row is right, only
+       that one went missing. Changing this number is a decision, not a formality. */
+    expect(BEHIND).toHaveLength(18)
+  })
+
+  it.each(BEHIND)('offers no way of its own up a level on %s', async (
+    address,
+    role,
+    who,
+    heading,
+  ) => {
+    renderAt(address, role, who, undefined, '2026-10-15')
+
+    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+
+    noWayUp(address, role)
+  })
+})
+
 describe('what a browser downloads outside administration', () => {
   it('visits every address the route table has', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
@@ -284,6 +474,7 @@ describe('what a browser downloads outside administration', () => {
        case above refuses to let one in without a row here. */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
 
+    noWayUp(address, 'visitor')
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
@@ -314,12 +505,25 @@ describe('what a browser downloads outside administration', () => {
        about the screen behind it (review, 04.09.2026). */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
 
+    noWayUp(address, 'competitor')
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
 
   /* The other half, so the sweep above is known to be looking at something: the
      queue is fetched, by the screen whose queue it is. */
+  it('meets every way up it allows, so the list cannot go stale', () => {
+    /* The allowance is written by hand, and a hand-written list rots in two directions: it can
+       be short, which the case above catches, and it can keep a line for a link nobody draws any
+       more, which nothing would catch. Both walks above have run by now, so what was met is
+       known. */
+    const promised = Object.entries(ALLOWED).flatMap(([address, hrefs]) =>
+      hrefs.map((href) => `${address} ${href}`),
+    )
+
+    expect([...met].sort()).toEqual(promised.sort())
+  })
+
   it('asks for it on the screen that decides on it', async () => {
     const asked = watch()
 

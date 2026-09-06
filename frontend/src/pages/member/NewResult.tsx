@@ -123,11 +123,11 @@ export function NewResult() {
      Both figures travel, because the second is the one the comment above says cannot be
      worked out afterwards. Read without asserting a type over a value this screen did not
      make (ADL A14), the same way `pages/sent.ts` reads it. */
-  const said = useSent()
-  const earned = Reflect.get(Object(said), 'points')
+  const confirmed = useSent()
+  const shown = Reflect.get(Object(confirmed), 'points')
   const done =
-    typeof earned === 'number'
-      ? { points: earned, again: Reflect.get(Object(said), 'again') === true }
+    typeof shown === 'number'
+      ? { points: shown, again: Reflect.get(Object(confirmed), 'again') === true }
       : null
   const confirm = useSend()
   /**

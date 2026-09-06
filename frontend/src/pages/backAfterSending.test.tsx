@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { join, relative, sep } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, relative, sep } from 'node:path'
 import { at } from '../test/at'
 import { renderAt } from '../test/render'
+import { BACK_CASES } from '../test/backCases'
 import { sources } from '../test/sources'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
@@ -212,18 +214,32 @@ describe('the way back from a confirmation', () => {
  * says out loud, not by a list somebody has to remember to extend.
  */
 describe('every screen that confirms a sending', () => {
+  it('names a file that is really there, and a case really in it', () => {
+    const wrong = Object.entries(BACK_CASES).filter(([, [file, address]]) => {
+      const at = join(process.cwd(), 'src', file)
+      const named = file.split('/').at(-1)
+      /* By the listing rather than by `existsSync`: Windows answers yes to the wrong case and
+         the gate runs on Linux, so the wrong name passed on the machine it was written on. */
+      const there = readdirSync(dirname(at)).includes(named ?? '')
+
+      const said = there ? readFileSync(at, 'utf8') : ''
+
+      /* Both, because either alone is met by a file that has nothing to do with this: the
+         address of the registration form appears in the sweep of every address too, and the
+         walk appears in every file that measures history. Together they name a case that walks
+         back from this screen. */
+      return !there || !said.includes(address) || !said.includes('router.navigate(-1)')
+    })
+
+    expect(wrong).toEqual([])
+  })
+
   it('has a case here saying where the way back leads', () => {
     const sending = sources()
       .filter(({ code }) => /import \{[^}]*\buseSend\b[^}]*\} from/.test(code))
       .map(({ path }) => relative(join(process.cwd(), 'src'), path).split(sep).join('/'))
       .sort()
 
-    expect(sending).toEqual([
-      'pages/event/RateEvent.tsx',
-      'pages/event/ReportResult.tsx',
-      'pages/member/EditTeam.tsx',
-      'pages/member/NewResult.tsx',
-      'pages/member/ProposeTeam.tsx',
-    ])
+    expect(sending).toEqual(Object.keys(BACK_CASES).sort())
   })
 })

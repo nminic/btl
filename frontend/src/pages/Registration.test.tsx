@@ -1,5 +1,5 @@
 import { SLOW } from '../test/slow'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -265,6 +265,52 @@ describe('Registration once it is open', () => {
 
     expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('leaves the form behind when it is sent, so the way back does not offer it again', async () => {
+    /* The sixth screen that confirms a sending, and the last one still holding its
+       confirmation in itself. Owner, 06.09.2026: „Popravi isto kao ostalih pet." Left as it
+       was, one press forward brought the form back filled in, and this form carries the
+       password, the electronic address, the street and the number of an identity document.
+
+       Two presses, because the fault lives one step deep: without the replacing, the first
+       press still lands on the level and only the second finds the form (review,
+       06.09.2026). Drawn through the portal's own router rather than the memory one above,
+       since the question is about history and only that router has any. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/registracija', 'visitor', null, undefined, OPEN)
+
+    const form = router.state.location.pathname
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+
+    /* **And only two facts made the journey.** The whole of this change is what does not
+       travel, and nothing measured it: written as `{ ...values, ... }` the entry would carry
+       the password and the number of an identity document, and no case would fall, because
+       neither is ever drawn and „never on the screen" does not reach them. The browser keeps
+       this entry and hands it back when a session is restored, on the machine the member
+       typed on (review, 06.09.2026; ADL A12 keeps the document number as the most sensitive
+       thing the portal holds).
+
+       Asserted as the whole of what is there, not as „the password is absent": a list of
+       what must not be in it is a list somebody has to remember to extend. */
+    expect(router.state.location.state).toEqual({
+      sent: { email: 'vladan@primer.rs', referred: false },
+    })
+
+    await router.navigate(-1)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
+    await router.navigate(-1)
+
+    expect(router.state.location.pathname).not.toBe(form)
   }, SLOW)
 
   it('says nothing about a referral to somebody who arrived without one', async () => {
