@@ -61,7 +61,8 @@ export function TeamDetail() {
            05.09.2026). The ways into founding a team read the same records for the
            same reason. */
         const listedMembers = recordsOf(MEMBERS, competitors, overlay)
-        const team = recordsOf(TEAMS, teams, overlay).find((one) => one.slug === slug)
+        const listedTeams = recordsOf(TEAMS, teams, overlay)
+        const team = listedTeams.find((one) => one.slug === slug)
 
         if (team === undefined) {
           return <h1>{t('teams.notFound')}</h1>
@@ -82,10 +83,34 @@ export function TeamDetail() {
         const me = listedMembers.find((one) => one.memberNumber === memberNumber)
         const runs = teamAdminOf(team, listedMembers)
         /* The application this member has open, wherever it is: one at a time, because a
-           member is in one team and cannot be waiting on two. */
-        const asking = applications.find((one) => one.memberNumber === memberNumber)
-        /* And the ones waiting on this team, drawn for whoever runs it now. */
-        const waiting = applications.filter((one) => one.teamId === team.id)
+           member is in one team and cannot be waiting on two.
+
+           **On a team that is still there.** A team deleted while the application waited
+           left the member waiting on nothing: no way in anywhere else, and no way to end
+           it, so they were outside every team on the portal for good (review, 06.09.2026).
+           An application about a team that is gone is about nothing, and stops counting. */
+        const asking = applications.find(
+          (one) =>
+            one.memberNumber === memberNumber &&
+            listedTeams.some((each) => each.id === one.teamId),
+        )
+        /* The ones this team can still answer about, worked out before the section is drawn
+           rather than inside it: a heading over an empty list announced applications that
+           were not there (review, 06.09.2026).
+
+           A member administration has deleted has nothing left to let in, and one who has
+           come by a team meanwhile is already somewhere, so taking them would move them out
+           of that team without it being asked, which P13 forbids everywhere else. Both stay
+           theirs to take back. */
+        const waiting = applications.flatMap((ask) => {
+          if (ask.teamId !== team.id) {
+            return []
+          }
+
+          const asked = listedMembers.find((each) => each.memberNumber === ask.memberNumber)
+
+          return asked === undefined || teamOf(asked) !== null ? [] : [{ ask, asked }]
+        })
         const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
@@ -150,10 +175,10 @@ export function TeamDetail() {
                         there is somebody to answer: a team nobody is in has nobody to
                         decide. */}
                     {memberNumber !== null &&
+                      asking === undefined &&
                       runs !== null &&
                       teamOf(me) === null &&
-                      inYearlyWindow(today) &&
-                      (asking === undefined ? (
+                      inYearlyWindow(today) && (
                         <button
                           type="button"
                           className="button button--secondary"
@@ -163,24 +188,29 @@ export function TeamDetail() {
                         >
                           {t('teams.join')}
                         </button>
-                      ) : (
-                        /* **And a way to take it back, on the team it was sent to and
-                           nowhere else.** An application must always have an ending, and
-                           the one who sent it is the one who can end it without speaking
-                           for the team. On any other team there is simply no way in while
-                           it waits, because a member is in one team (PDL P13). */
-                        asking.teamId === team.id && (
-                          <button
-                            type="button"
-                            className="button button--secondary"
-                            onClick={() => {
-                              answer(asking.id)
-                            }}
-                          >
-                            {t('teams.joinWithdraw')}
-                          </button>
-                        )
-                      ))}
+                      )}
+                    {/* **And a way to take it back, on its own terms and not on the terms
+                        that let it be sent.** Written inside the conditions above, it
+                        disappeared the moment any of them changed: the team deleted, a team
+                        arrived by another road, the window shut. The application went on
+                        existing with nothing that could end it, and the member stayed
+                        outside every team on the portal (review, 06.09.2026). Ending what
+                        you started may not depend on whether you could start it again.
+
+                        On the team it was sent to and nowhere else: on any other there is
+                        simply no way in while it waits, because a member is in one team
+                        (PDL P13). */}
+                    {asking !== undefined && asking.teamId === team.id && (
+                      <button
+                        type="button"
+                        className="button button--secondary"
+                        onClick={() => {
+                          answer(asking.id)
+                        }}
+                      >
+                        {t('teams.joinWithdraw')}
+                      </button>
+                    )}
                     {memberNumber !== null && runs === memberNumber && (
                       <>
                         <Link
@@ -284,65 +314,68 @@ export function TeamDetail() {
                   <>
                     <h2 className="profile__section">{t('teams.joinWaiting')}</h2>
                     <ul className="submissions">
-                      {waiting.map((one) => {
-                        const asked = listedMembers.find(
-                          (each) => each.memberNumber === one.memberNumber,
-                        )
-
-                        /* A member administration has deleted since they asked has nothing
-                           left to let in, and their application is not drawn. It is still
-                           theirs to take back, and the team is not asked about somebody who
-                           is not there. */
-                        return asked === undefined ? null : (
-                          <li key={one.id} className="submissions__item">
-                            <p className="submissions__meta">
-                              {asked.firstName} {asked.lastName}
-                            </p>
-                            <p className="member__actions">
-                              <button
-                                type="button"
-                                className="button button--secondary"
-                                onClick={() => {
-                                  /* What an approval in the moderator's queue writes, because
-                                     it is the same fact by another road: the team on the
-                                     member's record, and the season they run for it from,
-                                     which is the next one (PDL, 05.09.2026). */
-                                  editRecord(one.memberNumber, {
-                                    teamId: team.id,
-                                    teamSince: String(seasonOnSale(today)),
-                                  })
-                                  answer(one.id)
-                                  notify({
-                                    from: t('app.name'),
-                                    to: one.memberNumber,
-                                    subject: t('teams.joinDoneSubject', { team: team.name }),
-                                    body: t('teams.joinDoneBody', { team: team.name }),
-                                    date: today,
-                                  })
-                                }}
-                              >
-                                {t('teams.joinTaken')}
-                              </button>{' '}
-                              <button
-                                type="button"
-                                className="button button--secondary"
-                                onClick={() => {
-                                  answer(one.id)
-                                  notify({
-                                    from: t('app.name'),
-                                    to: one.memberNumber,
-                                    subject: t('teams.joinNoSubject', { team: team.name }),
-                                    body: t('teams.joinNoBody', { team: team.name }),
-                                    date: today,
-                                  })
-                                }}
-                              >
-                                {t('teams.joinRefused')}
-                              </button>
-                            </p>
-                          </li>
-                        )
-                      })}
+                      {waiting.map(({ ask, asked }) => (
+                        <li key={ask.id} className="submissions__item">
+                          <p className="submissions__meta">
+                            {asked.firstName} {asked.lastName}
+                          </p>
+                          <p className="member__actions">
+                            {/* Both controls carry the name of whoever is being answered
+                                about. Two members waiting on one team put two controls
+                                with one name on the screen, and a reader who arrives at
+                                „Primi u tim" is answered „about whom" by nothing (WCAG 2.2
+                                AA, SC 2.4.6; review, 06.09.2026). The same shape
+                                `DeleteRecord` keeps a few rows above this one, and for the
+                                same reason (`admin.form.deleteNamed`). */}
+                            <button
+                              type="button"
+                              className="button button--secondary"
+                              aria-label={t('teams.joinTakenNamed', {
+                                name: `${asked.firstName} ${asked.lastName}`,
+                              })}
+                              onClick={() => {
+                                /* What an approval in the moderator's queue writes, because
+                                   it is the same fact by another road: the team on the
+                                   member's record, and the season they run for it from,
+                                   which is the next one (PDL, 05.09.2026). */
+                                editRecord(ask.memberNumber, {
+                                  teamId: team.id,
+                                  teamSince: String(seasonOnSale(today)),
+                                })
+                                answer(ask.id)
+                                notify({
+                                  from: t('app.name'),
+                                  to: ask.memberNumber,
+                                  subject: t('teams.joinDoneSubject', { team: team.name }),
+                                  body: t('teams.joinDoneBody', { team: team.name }),
+                                  date: today,
+                                })
+                              }}
+                            >
+                              {t('teams.joinTaken')}
+                            </button>{' '}
+                            <button
+                              type="button"
+                              className="button button--secondary"
+                              aria-label={t('teams.joinRefusedNamed', {
+                                name: `${asked.firstName} ${asked.lastName}`,
+                              })}
+                              onClick={() => {
+                                answer(ask.id)
+                                notify({
+                                  from: t('app.name'),
+                                  to: ask.memberNumber,
+                                  subject: t('teams.joinNoSubject', { team: team.name }),
+                                  body: t('teams.joinNoBody', { team: team.name }),
+                                  date: today,
+                                })
+                              }}
+                            >
+                              {t('teams.joinRefused')}
+                            </button>
+                          </p>
+                        </li>
+                      ))}
                     </ul>
                   </>
                 )}

@@ -28,6 +28,12 @@ const DAY = '2026-10-15'
 const SHUT = '2026-06-15'
 
 const DUNAV = '/sr/tim/dunavski-trkaci'
+const VARDAR = '/sr/tim/vardarski-krug'
+
+/* What the two controls are called, now that each carries the name of whoever it answers
+   about. 000002 is Relja Momčilović. */
+const TAKE = 'Primi u tim: Relja Momčilović'
+const REFUSE = 'Odbij: Relja Momčilović'
 
 describe('the way a member asks to be let into a team', () => {
   it('is offered inside the window to somebody with no team, and asked once', async () => {
@@ -50,7 +56,7 @@ describe('the way a member asks to be let into a team', () => {
     const { router } = renderAt(DUNAV, 'competitor', '000002', undefined, DAY)
 
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
-    await router.navigate('/sr/tim/vardarski-krug')
+    await router.navigate(VARDAR)
 
     await screen.findByRole('heading', { level: 1, name: 'Vardarski krug' })
 
@@ -72,9 +78,111 @@ describe('the way a member asks to be let into a team', () => {
 
     /* And they are free on every other team again, which is what „waiting" was keeping
        them from. */
-    await router.navigate('/sr/tim/vardarski-krug')
+    await router.navigate(VARDAR)
 
     expect(await screen.findByRole('button', { name: 'Prijavi se u tim' })).toBeVisible()
+  }, SLOW)
+
+  it('can still be taken back once the member has a team by another road', async () => {
+    /* **The way out shared its conditions with the way in, so it vanished whenever they
+       changed** (review, 06.09.2026). Here a team arrives by another road while the
+       application waits, which administration and the moderator's queue both do. Ending
+       what you started may not depend on whether you could start it again. */
+    const user = setupUser()
+
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <Given who="000002" team="team-vardar" />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(screen.getByRole('button', { name: 'daj tim 000002' }))
+
+    expect(await screen.findByRole('button', { name: 'Povuci prijavu' })).toBeVisible()
+  }, SLOW)
+
+  it('can still be taken back after the window has shut', async () => {
+    /* Outside the window an application simply waits, which is what one door for every
+       change of team means. Waiting is not being stuck: drawn inside the window check, in
+       June the member had an application and nothing that could end it. */
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      SHUT,
+      <Applied who="000002" team="team-dunav" day={DAY} />,
+    )
+
+    return screen.findByRole('button', { name: 'Povuci prijavu' }).then((one) => {
+      expect(one).toBeVisible()
+      expect(screen.queryByRole('button', { name: 'Prijavi se u tim' })).toBeNull()
+    })
+  })
+
+  it('stops counting when the team it was sent to is deleted, so the member is free', async () => {
+    /* **The worst of the three.** The team is deleted by the control 133c put on this very
+       page. Written as it was, the application stayed open, no other team offered a way in
+       because the member was waiting, and no page offered a way out because the team was
+       gone: 000002 was outside every team on the portal for good (review, 06.09.2026). An
+       application about a team that is not there is about nothing. */
+    const user = setupUser()
+    const { router } = renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <Folded team="team-dunav" />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(screen.getByRole('button', { name: 'obriši team-dunav' }))
+    await router.navigate(VARDAR)
+
+    expect(await screen.findByRole('button', { name: 'Prijavi se u tim' })).toBeVisible()
+  }, SLOW)
+
+  it('keeps its own identity when an earlier one has been taken back', async () => {
+    /* **Two applications answered to one identity** while the id was counted from how many
+       there are, and `answer` shortens that very list (review, 06.09.2026). Add, add, take
+       one back, add again: the fourth is handed the number the second holds, and taking
+       either back takes both. The team the other was sent to never saw it go.
+
+       000002 asks Dunav, 000004 asks Vardar, 000002 takes theirs back and asks again, then
+       000004 takes theirs back. If the two share an id, 000002 is left with nothing. */
+    const user = setupUser()
+
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <>
+        <Also who="000004" team="team-vardar" day={DAY} />
+        <Answered who="000004" />
+      </>,
+    )
+
+    /* Add, add, take the first back, add again: the fourth is handed the number the second
+       holds while the count is read off the length. All of it on one page, because six
+       steps through three addresses did not reach the end and the case then measured
+       something else (measured 06.09.2026). */
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(screen.getByRole('button', { name: 'prijavi 000004' }))
+    await user.click(await screen.findByRole('button', { name: 'Povuci prijavu' }))
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+
+    /* Vardar answers the one it was sent. If the two share an identity, this takes 000002's
+       with it and leaves them with nothing they ever asked to end. */
+    await user.click(screen.getByRole('button', { name: 'odgovori 000004' }))
+
+    expect(await screen.findByRole('button', { name: 'Povuci prijavu' })).toBeVisible()
   }, SLOW)
 
   it('is not offered outside the transfer window', async () => {
@@ -153,6 +261,80 @@ function Erased({ who }: { who: string }) {
   return null
 }
 
+/** A member who has come by a team some other way while their application waited. The
+ *  moderator approving a team they proposed writes exactly this
+ *  (`admin/PendingQueue.tsx`), and so does administration editing their record. */
+function Given({ who, team }: { who: string; team: string }) {
+  const { editRecord } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        editRecord(who, { teamId: team, teamSince: '2027' })
+      }}
+    >
+      daj tim {who}
+    </button>
+  )
+}
+
+/** A second application, filed the way the screen files one, on behalf of somebody who is
+ *  not the member reading this page. */
+function Also({ who, team, day }: { who: string; team: string; day: string }) {
+  const { apply } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        apply({ teamId: team, memberNumber: who, date: day })
+      }}
+    >
+      prijavi {who}
+    </button>
+  )
+}
+
+/** That other application answered, the way the team answers one: by the identity it
+ *  carries. */
+function Answered({ who }: { who: string }) {
+  const { applications, answer } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        applications
+          .filter((one) => one.memberNumber === who)
+          .forEach((one) => {
+            answer(one.id)
+          })
+      }}
+    >
+      odgovori {who}
+    </button>
+  )
+}
+
+/** A team deleted during this same visit, which the control 133c put on this very page
+ *  does. On a button and not on mounting, because the application has to exist before the
+ *  team stops doing so. */
+function Folded({ team }: { team: string }) {
+  const { remove } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        remove('teams', team)
+      }}
+    >
+      obriši {team}
+    </button>
+  )
+}
+
 /** An application already open, filed the way the screen files one, so the answering side
  *  can be measured on a day when nobody could have sent it. */
 function Applied({ who, team, day }: { who: string; team: string; day: string }) {
@@ -183,7 +365,7 @@ describe('the answer the team gives', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
     expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+    expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
   }, SLOW)
 
   it('lets the member in from the next season, which is when a team scores', async () => {
@@ -207,14 +389,14 @@ describe('the answer the team gives', () => {
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
 
-    await user.click(await screen.findByRole('button', { name: 'Primi u tim' }))
+    await user.click(await screen.findByRole('button', { name: TAKE }))
 
     const written = within(screen.getByRole('list', { name: 'session records' }))
 
     expect(written.getByText(/000002.*team-dunav/)).toBeVisible()
     expect(written.getByText(/000002.*2027/)).toBeVisible()
     /* And the question is over: it is not waiting on this team any more. */
-    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+    expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
   }, SLOW)
 
   it('refuses without putting anybody in the team, and the question is over either way', async () => {
@@ -234,12 +416,12 @@ describe('the answer the team gives', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
-    await user.click(await screen.findByRole('button', { name: 'Odbij' }))
+    await user.click(await screen.findByRole('button', { name: REFUSE }))
 
     const written = within(screen.getByRole('list', { name: 'session records' }))
 
     expect(written.queryByText(/000002.*team-dunav/)).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
+    expect(screen.queryByRole('button', { name: REFUSE })).toBeNull()
   }, SLOW)
 
   it('follows the team rather than the person, when the one who ran it leaves', async () => {
@@ -266,7 +448,7 @@ describe('the answer the team gives', () => {
 
     /* 000001 is out of the team now, so they no longer answer for it. */
     expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+    expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
   }, SLOW)
 
   it('is not asked about somebody administration has deleted since they asked', async () => {
@@ -291,7 +473,95 @@ describe('the answer the team gives', () => {
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+    expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
+    /* And no heading over an empty list: it announced applications that were not
+       there (review, 06.09.2026). */
+    expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
+    /* And no heading over an empty list: it announced applications that were not there
+       (review, 06.09.2026). */
+    expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
+  }, SLOW)
+
+  it('is not asked about somebody who has come by a team since they asked', async () => {
+    /* An application waits, and in the meantime the member is in a team by another road:
+       administration edits their record, or the moderator approves the team they proposed
+       (`admin/PendingQueue.tsx` writes the same field). Drawn all the same, taking it moves
+       them out of that team without that team ever being asked, which is the one thing
+       P13 makes impossible everywhere else. */
+    const user = setupUser()
+
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <>
+        <Given who="000002" team="team-vardar" />
+        <Become who="000001" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(screen.getByRole('button', { name: 'daj tim 000002' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
+    /* And no heading over an empty list: it announced applications that were not
+       there (review, 06.09.2026). */
+    expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
+  }, SLOW)
+
+  it('reaches whoever runs the team now, not merely away from whoever ran it before', async () => {
+    /* The other half of „follows the team rather than the person", and the half no case
+       measured (review, 06.09.2026): that the **new** administrator is asked. Without it
+       `runs === memberNumber` could be narrowed back to the founder and the application
+       would wait for ever with nobody able to answer, and the package stayed green.
+       000001 founded Dunav and leaves; 000007 is then its longest serving member. */
+    const user = setupUser()
+
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <>
+        <Become who="000007" />
+        <Left who="000001" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
+
+    expect(await screen.findByRole('button', { name: TAKE })).toBeVisible()
+  }, SLOW)
+
+  it('is asked of the team it was sent to and of no other', async () => {
+    /* The filter by team had no case that fell when it was taken away: without it the
+       administrator of one team answered about somebody who had asked another, and taking
+       them wrote the wrong team onto their record (review, 06.09.2026). 000003 runs
+       Vardar; this application went to Dunav. */
+    const user = setupUser()
+    const { router } = renderAt(
+      DUNAV,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <Become who="000003" />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
+    await router.navigate(VARDAR)
+
+    await screen.findByRole('heading', { level: 1, name: 'Vardarski krug' })
+
+    expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
+    expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
   }, SLOW)
 
   it('is not given outside the window, because the answer is what writes the season', () => {
@@ -311,7 +581,7 @@ describe('the answer the team gives', () => {
 
     return screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' }).then(() => {
       expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Primi u tim' })).toBeNull()
+      expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
     })
   })
 })

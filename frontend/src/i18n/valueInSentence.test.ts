@@ -311,19 +311,17 @@ describe('a sentence with a value put into it', () => {
       'shell.unread',
       'shell.waiting',
       'teams.editDone',
-      /* The six an application to a team is made of, and one answer covers all of them:
-         every value in them is a name, and a name here stands in the nominative because
-         it is either the subject of the sentence („{name} se prijavljuje") or a proper
-         name inside quotation marks („u tim „{team}""), which is how this portal has
-         written a team's name since `teams.proposeDone`. Nothing in them is governed by a
-         verb or a preposition that would ask for another case. */
-      /* The four an answer to an application is written with, and one answer covers them:
-         every value in them is the team's name inside quotation marks, which is how this
-         portal has written it since `teams.proposeDone`. */
+      /* The four an answer to an application is written with, and the two that name the
+         member each control is about. One answer covers all six: every value is either the
+         team's name inside quotation marks, which is how this portal has written it since
+         `teams.proposeDone`, or a person's name after a colon, which is the nominative for
+         the same reason `admin.form.deleteNamed` is. */
       'teams.joinDoneBody',
       'teams.joinDoneSubject',
       'teams.joinNoBody',
       'teams.joinNoSubject',
+      'teams.joinRefusedNamed',
+      'teams.joinTakenNamed',
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',

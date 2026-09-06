@@ -309,7 +309,14 @@ export function SessionProvider({
   const apply = useCallback((application: Omit<Application, 'id'>) => {
     setApplications((current) => [
       ...current,
-      { ...application, id: `app-${current.length + 1}` },
+      /* Counted up from the highest already used, never from how many there are, because
+         `answer` above shortens this very list: two members ask, the first is answered, a
+         third asks, and a count hands it the id the second holds. Two applications then
+         answer to one identity, and taking one back takes the other with it, unseen by the
+         team it was sent to (review, 06.09.2026). The neighbouring list that also empties
+         (`submissions`) reads `nextNumber` for the same reason; `proposals` and `messages`
+         may count, because nothing ever leaves them. */
+      { ...application, id: `app-${String(nextNumber(current.map((one) => one.id), 'app-'))}` },
     ])
   }, [])
 
