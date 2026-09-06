@@ -269,44 +269,51 @@ function expectPart(part: string | undefined): void {
  * fails the gate and asks for a decision once, which is where the cost belongs.
  */
 const ALLOWED: Record<string, string[]> = {
-  /* The tabs of a competition: standing on „Rezultati", this is „Propozicije"
-     (`components/PartsNav.tsx`). Taking it away would remove the way to half the screen. */
-  '/sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
-  /* „Odustani" beside „Pošalji" on the screen that rates an event.
+  /* **Keyed by the role as well as by the address**, because every public address is drawn
+     twice and a render that does not draw the allowed link leaves the allowance unspent: on
+     `/ocena` a visitor meets `SignedOut`, so a real way back added there was let through for
+     free, one for one (review, 06.09.2026). Each render now says exactly what it may hold. */
+  'competitor /sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
+  'visitor /sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
+  /* „Odustani" beside „Pošalji" on the screen that rates an event. Only to a member: a
+     visitor is shown `SignedOut` and there is no form to close.
      **Not covered by the owner's sentence, and said so rather than dressed up.** What he kept on
      05.09.2026 was „samo dva dugmeta u administraciji (D), koja i nisu veze nego zatvaraju
      formu": those are buttons, in administration. This is a `<Link>` on a member's screen. It is
      allowed here because it does the same job, and because taking it away would leave a
      half-filled form with no way out but the browser; that reading is written down as a decision
      in `btl-produkt/PDL.md` so the journal carries it, and the owner can overturn it there. */
-  '/sr/kalendar/fruskogorski-maraton-2010/ocena': ['/sr/kalendar/fruskogorski-maraton-2010'],
+  'competitor /sr/kalendar/fruskogorski-maraton-2010/ocena': [
+    '/sr/kalendar/fruskogorski-maraton-2010',
+  ],
 }
 
 /** Which of the allowances were actually met, so the list cannot quietly go stale. */
 const met = new Set<string>()
 
-function noWayUp(address: string): void {
+function noWayUp(address: string, role: Role): void {
   const path = address.split('?')[0] ?? address
-  const allowed = ALLOWED[address] ?? []
+  const allowed = ALLOWED[`${role} ${address}`] ?? []
 
   const up = within(screen.getByRole('main'))
     .queryAllByRole('link')
     .map((one) => (one.getAttribute('href') ?? '').split('?')[0] ?? '')
     .filter((href) => href !== FRONT && path.startsWith(`${href}/`))
 
-  up.filter((href) => allowed.includes(href)).forEach((href) => met.add(`${address} ${href}`))
+  up.filter((href) => allowed.includes(href)).forEach((href) => met.add(`${role} ${address} ${href}`))
 
   expect(
     up.filter((href) => !allowed.includes(href)),
     `${address} offers no way of its own up a level`,
   ).toEqual([])
 
-  /* **And no more of them than the allowance names.** Read as „is this target allowed", a second
-     link to the same address rides in free: on the screen that rates an event „Odustani" holds
+  /* **And exactly the ones it names, no more.** Read as „is this target allowed", a second link
+     to the same address rides in free: on the screen that rates an event „Odustani" holds
      `/sr/kalendar/:slug`, so a real way back to the event was let through beside it, and that is
-     the very link the owner had removed (review, 06.09.2026). */
-  expect(up.length, `${address} offers no second way up beside the one allowed`).toBeLessThanOrEqual(
-    allowed.length,
+     the very link the owner had removed. Read as „no more than the allowance", the render that
+     draws none of them leaves the allowance unspent and frees one anyway (reviews, 06.09.2026). */
+  expect(up.sort(), `${role} on ${address} offers exactly the ways up allowed`).toEqual(
+    [...allowed].sort(),
   )
 }
 
@@ -339,10 +346,20 @@ const FRONT = `/${DEFAULT_LOCALE}`
  * pattern `verifikacija/:queue` opened into the six queues it stands for. Five of those six had
  * never been asked, because the table hides them behind one pattern.
  *
+ * **The two member forms are named by hand and that is a boundary**, said rather than left to be
+ * found: the floor below reads the route table for administration only, so deleting those two
+ * rows takes them out of every sweep at once. A third form of the same kind needs its row written
+ * here, and nothing will ask for it.
+ *
  * **What is still outside, said rather than hidden:** the six screens that confirm a sending.
  * Nothing here draws the state after something is sent, so a way up on a confirmation would slip
  * past. Those six are held for what lies under them (`pages/backAfterSending.test.tsx`).
  */
+/** The one pattern that stands for six screens. Compared whole rather than by its ending:
+ *  another address with the same parameter name would be swallowed by it and lose its row
+ *  without a sound (review, 06.09.2026). */
+const QUEUE_PATTERN = 'administracija/verifikacija/:queue'
+
 const ADMIN = '000001'
 
 const BEHIND: [string, Role, string | null, string][] = [
@@ -376,7 +393,7 @@ describe('what administration and the member forms offer', () => {
       /* One pattern stands for six screens through three components, and five of them had
          never been opened by anything. */
       .flatMap((path) =>
-        path.endsWith(':queue') ? QUEUES.map((queue) => queue.path) : [path],
+        path === QUEUE_PATTERN ? QUEUES.map((queue) => queue.path) : [path],
       )
 
     const missing = every.filter(
@@ -384,6 +401,17 @@ describe('what administration and the member forms offer', () => {
     )
 
     expect(missing).toEqual([])
+  })
+
+  it('keeps every row it has, including the two nothing else asks for', () => {
+    /* The rows for administration have a real floor above: the route table asks for them. The
+       two member forms have only this. Deleting one of them took it out of every sweep at once
+       and nothing fell (review, 06.09.2026), because the public walk sends both roles away from
+       those addresses before the form is drawn.
+
+       A count is a weak floor and it is written down as one: it cannot say a row is right, only
+       that one went missing. Changing this number is a decision, not a formality. */
+    expect(BEHIND).toHaveLength(18)
   })
 
   it.each(BEHIND)('offers no way of its own up a level on %s', async (
@@ -396,7 +424,7 @@ describe('what administration and the member forms offer', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
 
-    noWayUp(address)
+    noWayUp(address, role)
   })
 })
 
@@ -446,7 +474,7 @@ describe('what a browser downloads outside administration', () => {
        case above refuses to let one in without a row here. */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
 
-    noWayUp(address)
+    noWayUp(address, 'visitor')
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
@@ -477,7 +505,7 @@ describe('what a browser downloads outside administration', () => {
        about the screen behind it (review, 04.09.2026). */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
 
-    noWayUp(address)
+    noWayUp(address, 'competitor')
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })

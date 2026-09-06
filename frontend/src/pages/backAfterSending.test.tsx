@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, sep } from 'node:path'
 import { at } from '../test/at'
 import { renderAt } from '../test/render'
+import { BACK_CASES } from '../test/backCases'
 import { sources } from '../test/sources'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
@@ -212,33 +213,9 @@ describe('the way back from a confirmation', () => {
  * `CLAUDE.md` calls a floor: the question is answered by something the language already
  * says out loud, not by a list somebody has to remember to extend.
  */
-/**
- * Where each one's case lives, and proof that the case is really there.
- *
- * The keys have a floor: they are the modules that import `useSend`, read off the sources. The
- * values had none. First they were unread and one was wrong; then they were read, but only to
- * ask whether a file of that name exists, while the map is called „where each one's case lives".
- * A review deleted the whole case for the sixth screen and the package stayed green, with this
- * still saying where that case was (06.09.2026).
- *
- * So each value now names the file **and the address its case walks**, and both are checked: the
- * file by the directory listing, letter for letter, because `existsSync` on Windows answers yes
- * to the wrong case and the gate runs on Linux; and the address by reading the file. Delete the
- * case and the address goes with it.
- */
-const CASES: Record<string, [file: string, address: string]> = {
-  'pages/event/RateEvent.tsx': ['pages/backAfterSending.test.tsx', '/ocena'],
-  'pages/event/ReportResult.tsx': ['pages/backAfterSending.test.tsx', '/prijava?trka='],
-  'pages/member/EditTeam.tsx': ['pages/backAfterSending.test.tsx', '/sr/tim/dunavski-trkaci/izmena'],
-  'pages/member/NewResult.tsx': ['pages/backAfterSending.test.tsx', '/sr/rezultat/novi'],
-  'pages/member/ProposeTeam.tsx': ['pages/backAfterSending.test.tsx', '/sr/novi-tim'],
-  /* Its own file, because filling this form takes forty lines that already live there. */
-  'pages/Registration.tsx': ['pages/Registration.test.tsx', '/sr/registracija'],
-}
-
 describe('every screen that confirms a sending', () => {
   it('names a file that is really there, and a case really in it', () => {
-    const wrong = Object.entries(CASES).filter(([, [file, address]]) => {
+    const wrong = Object.entries(BACK_CASES).filter(([, [file, address]]) => {
       const at = join(process.cwd(), 'src', file)
       const named = file.split('/').at(-1)
       /* By the listing rather than by `existsSync`: Windows answers yes to the wrong case and
@@ -263,6 +240,6 @@ describe('every screen that confirms a sending', () => {
       .map(({ path }) => relative(join(process.cwd(), 'src'), path).split(sep).join('/'))
       .sort()
 
-    expect(sending).toEqual(Object.keys(CASES).sort())
+    expect(sending).toEqual(Object.keys(BACK_CASES).sort())
   })
 })
