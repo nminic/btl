@@ -1,4 +1,5 @@
 import { sep } from 'node:path'
+import ts from 'typescript'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
 
 /**
@@ -13,19 +14,27 @@ import { sources, WHOLE_PORTAL } from '../../test/sources'
  * rule was being kept on two screens out of eight and there was nothing to say which".
  *
  * So the address itself is built in one module, and everything else asks for a link and is handed
- * one or nothing (`profileLinkFor`, `ProfileLink`, `useProfileLink`).
+ * one or nothing (`profile/useProfileLink.ts`, `profile/ProfileLink.tsx`).
  *
- * **Asked of the imports rather than of one function's name** (review, 07.09.2026). It used to
- * sweep for `profilePath`, which is one of two exports that build an address: `redirectTo` builds
- * the same address for the canonical redirect, and a screen reaching for that one walked past the
- * floor untouched. A name is a list of one, and this is the second time a list in a guard has been
- * shorter than the thing it guards; what the module exports is not a list, it is what the module
- * exports, and reading the import catches an export written tomorrow as well.
+ * **What this floor no longer has to hold, since 07.09.2026.** „Every screen comes through the
+ * hook" used to rest here, and it could not: `profileLinkFor` was exported beside the rule, so a
+ * screen could import that instead and build the address without ever reading what this visit had
+ * said about the member. A review measured exactly that, on a screen rewritten to call it: every
+ * gate green, 2645 cases, 100 per cent, and a member who had just hidden themselves drawn as a
+ * link. The answer was to stop exporting it rather than to write a longer floor. What cannot be
+ * imported needs no guarding.
+ *
+ * **Asked of the parsed imports rather than of the text**, from the same review. The sweep before
+ * this one matched `from '…profileAddress'` with a regular expression, so the same import written
+ * with double quotes walked straight past it, and nothing in the gate refuses double quotes:
+ * `.oxlintrc.json` has no rule about them and there is no formatter in the gate. The parser reads
+ * a module specifier whatever it is quoted with. Precedent in the portal:
+ * `pages/league/componentWords.test.ts` reads its source the same way, for the same reason.
  *
  * What is named is the four modules that may reach it, each with the reason it may:
  *
- * - `profile/visible.ts` is the rule itself: the one place allowed to turn „may this reader reach
- *   this profile" into an address.
+ * - `profile/useProfileLink.ts` is the one place that turns „may this reader reach this profile"
+ *   into an address, and it hands the address out without handing out the turning.
  * - `profile/ProfileHead.tsx` builds the tabs **inside** an open profile, which is not a link from
  *   elsewhere: a reader who is on the page has already been let in, and the tabs are the same
  *   address with a part hung off it.
@@ -40,26 +49,76 @@ import { sources, WHOLE_PORTAL } from '../../test/sources'
  * opposite of a screen deciding one for itself.
  */
 const MAY = [
-  `profile${sep}visible.ts`,
+  `profile${sep}useProfileLink.ts`,
   `profile${sep}ProfileHead.tsx`,
   `pages${sep}CompetitorProfile.tsx`,
   `pages${sep}CompetitorAwards.tsx`,
 ]
 
-/** How a file names the module, whatever depth it sits at. */
-const REACHES = /from '[^']*\bprofileAddress'/
+/** The maker of the address, however a file spells the way to it. */
+const MAKER = /(^|\/)profileAddress$/
+
 /**
- * An address written out rather than asked for: the shape `/${locale}/takmicar/${…}`, which is
- * what `profilePath` and `redirectTo` produce.
+ * An address written out rather than asked for: a piece of text holding `takmicar/` with something
+ * other than a route parameter after it.
  *
- * The interpolation is the whole of the question, and it is what keeps this from needing a list of
- * exceptions. `app/routes.ts` and `app/routeObjects.tsx` write `takmicar/:memberNumber`, which is
- * the address as a pattern and not as a value, and three comments spell an address out for a
- * reader; none of them puts a value into one.
+ * Read off the parsed literals and not off the source, so that a comment spelling an address out
+ * for a reader is not one written, and so that the pieces of a template are seen one by one: what
+ * `profilePath` produces is `/${locale}`, then `/takmicar/`, then the address, and the middle
+ * piece is what this finds. An address glued together with `+` is caught for the same reason.
+ *
+ * The exception is the address as a **pattern**, `takmicar/:memberNumber`, which is how the table
+ * of routes says where these two screens live (`app/routes.ts`, `app/routeObjects.tsx`). A pattern
+ * has no value in it and leads nobody anywhere; the colon is what tells the two apart, and that is
+ * why this is a shape rather than a list of files.
  */
-const WRITES = /takmicar\/\$\{/
+const WRITES = /takmicar\/(?!:)/
+
+/** Every module a file imports from, whatever it is quoted with. */
+function importsOf(path: string, code: string): string[] {
+  const source = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const found: string[] = []
+
+  const walk = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      found.push(node.moduleSpecifier.text)
+    }
+
+    ts.forEachChild(node, walk)
+  }
+
+  walk(source)
+
+  return found
+}
+
+/** Every piece of text a file holds, comments aside, which the parser tells apart for us. */
+function textIn(path: string, code: string): string[] {
+  const source = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const found: string[] = []
+
+  const walk = (node: ts.Node): void => {
+    if (
+      ts.isStringLiteral(node) ||
+      ts.isNoSubstitutionTemplateLiteral(node) ||
+      ts.isTemplateHead(node) ||
+      ts.isTemplateMiddle(node) ||
+      ts.isTemplateTail(node) ||
+      ts.isJsxText(node)
+    ) {
+      found.push(node.text)
+    }
+
+    ts.forEachChild(node, walk)
+  }
+
+  walk(source)
+
+  return found
+}
 
 const shortened = (path: string) => path.split(sep).slice(-2).join(sep)
+const itself = (path: string) => path.endsWith(`pages${sep}profileAddress.ts`)
 
 describe('the address of a profile', () => {
   it('is reached from four modules, and every screen asks for a link instead', () => {
@@ -70,9 +129,9 @@ describe('the address of a profile', () => {
     expect(swept.length, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
 
     const reaching = swept
-      .filter(({ code }) => REACHES.test(code))
+      .filter(({ path, code }) => importsOf(path, code).some((one) => MAKER.test(one)))
       .map(({ path }) => path)
-      .filter((path) => !path.endsWith(`pages${sep}profileAddress.ts`))
+      .filter((path) => !itself(path))
       .map(shortened)
       .sort()
 
@@ -81,9 +140,9 @@ describe('the address of a profile', () => {
 
   it('is written out in one module and nowhere else', () => {
     const writing = sources()
-      .filter(({ code }) => WRITES.test(code))
+      .filter(({ path, code }) => textIn(path, code).some((one) => WRITES.test(one)))
       .map(({ path }) => path)
-      .filter((path) => !path.endsWith(`pages${sep}profileAddress.ts`))
+      .filter((path) => !itself(path))
       .map(shortened)
 
     expect(writing).toEqual([])

@@ -2,8 +2,38 @@ import { useCallback } from 'react'
 import { applyChanges } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { profileLinkFor } from './visible'
+import { profilePath } from '../profileAddress'
+import { reachable } from './visible'
 import type { Competitor } from '../../data/types'
+
+/**
+ * The address a list may send a reader to, or nothing.
+ *
+ * **One question, asked in one place, for every screen that writes a name.** Nine screens draw a
+ * competitor's name and eight of them may link it; the rule that says whether they may is the
+ * same rule the profile page uses to decide whether to draw itself, so a member the page turns
+ * away cannot be reached from a list either.
+ *
+ * Nothing is taken away from the reader when the answer is nothing: the name stays, as plain
+ * text. The owner's rule, 06.09.2026: „sva njegova pojavljivanja na portalu u tabelama i rang
+ * listama postaju tekst umesto link za sve posetioce koji nisu ulogovani." The data on those
+ * lists is not touched either — hiding is about reaching the profile, not about what a list says.
+ *
+ * **Not exported, and that is the whole of the guarantee** (review, 07.09.2026). It lived beside
+ * the rule in `profile/visible.ts` and was exported there, so a screen could import it, build an
+ * address itself and never come through the hook below — which is to say, never read what this
+ * visit has said about that member. Measured: a screen rewritten that way passed every gate,
+ * 2645 cases and 100 per cent, while linking a member who had just hidden themselves. A floor
+ * over „who may build an address" could have caught it; not exporting it means there is nothing
+ * to catch.
+ */
+function profileLinkFor(
+  competitor: Competitor,
+  reader: string | null,
+  locale: string,
+): string | undefined {
+  return reachable(competitor, reader) ? profilePath(competitor, locale) : undefined
+}
 
 /**
  * The address a screen may send a reader to for a competitor, or nothing.
@@ -33,8 +63,7 @@ import type { Competitor } from '../../data/types'
  * a list still draws rather than about where its names lead.
  *
  * Nothing comes back when the profile cannot be reached, and the screen then draws the name as
- * plain text. That is the whole of the rule the owner set on 06.09.2026: hiding takes away the
- * way in, not the name and not the row.
+ * plain text.
  */
 export function useProfileLink(): (competitor: Competitor) => string | undefined {
   const { memberNumber: reader, edits } = useSession()
@@ -42,11 +71,7 @@ export function useProfileLink(): (competitor: Competitor) => string | undefined
 
   return useCallback(
     (competitor: Competitor) =>
-      profileLinkFor(
-        applyChanges(competitor, edits[competitor.memberNumber]),
-        reader,
-        locale,
-      ),
+      profileLinkFor(applyChanges(competitor, edits[competitor.memberNumber]), reader, locale),
     [edits, reader, locale],
   )
 }

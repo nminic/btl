@@ -1,4 +1,3 @@
-import { profilePath } from '../profileAddress'
 import type { Competitor } from '../../data/types'
 
 /**
@@ -26,7 +25,8 @@ export type Readable = { kind: 'none' } | { kind: 'shown'; competitor: Competito
  *
  * The one question behind both halves of the rule, so they cannot drift: the page asks it to
  * decide whether to draw or to send the reader away, and every list on the portal asks it to
- * decide whether a name is a link or plain text (`profileLinkFor`).
+ * decide whether a name is a link or plain text (`profile/useProfileLink.ts`, which is the one
+ * place that turns this answer into an address, and does not export the turning).
  *
  * **Two reasons for one answer, and the second is the new one.** A member whose fee has run out
  * has no visible profile at all (P11) and has been drawn as plain text on two screens since
@@ -53,30 +53,6 @@ export function profileFor(
   return competitor === undefined || !reachable(competitor, reader)
     ? { kind: 'none' }
     : { kind: 'shown', competitor }
-}
-
-/**
- * The address a list may send a reader to, or nothing.
- *
- * **One question, asked in one place, for every screen that writes a name.** Nine screens draw a
- * competitor's name and eight of them may link it; the rule that says whether they may is the
- * same rule the profile page uses to decide whether to draw itself, so a member the page turns
- * away cannot be reached from a list either.
- *
- * Nothing is taken away from the reader when the answer is nothing: the name stays, as plain
- * text. The owner's rule, 06.09.2026: „sva njegova pojavljivanja na portalu u tabelama i rang
- * listama postaju tekst umesto link za sve posetioce koji nisu ulogovani." The data on those
- * lists is not touched either — hiding is about reaching the profile, not about what a list says.
- *
- * `profilePath` stays for the one thing that is not a link from elsewhere: the tabs inside an
- * open profile (`profile/ProfileHead.tsx`), where the reader is already looking at it.
- */
-export function profileLinkFor(
-  competitor: Competitor,
-  reader: string | null,
-  locale: string,
-): string | undefined {
-  return reachable(competitor, reader) ? profilePath(competitor, locale) : undefined
 }
 
 /**

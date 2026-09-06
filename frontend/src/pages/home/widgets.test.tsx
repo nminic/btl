@@ -261,6 +261,12 @@ describe('TopTen', () => {
       })
 
       expect(must(said.closest('li'), 'the place on the board')).toBeVisible()
+      /* **And out of the way of the eye**, which is the whole of what keeps this widget what the
+         owner asked for: „no names under the circles" (31.07.2026). The class is the only thing
+         doing that, and `.top10__face` has neither a size nor an `overflow` (`pages/Home.css`), so
+         without it the words drop below the circle and stretch the cell. Held the way the portal
+         already holds this elsewhere (`pages/Home.test.tsx`, `components/Resource.test.tsx`). */
+      expect(said).toHaveClass('visually-hidden')
     }
   })
 
