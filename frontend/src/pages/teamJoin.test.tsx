@@ -36,6 +36,12 @@ const OTHER_DAY = '2026-10-18'
 const TAKE_OTHER = 'Primi u tim: Časlav Radenković'
 const REFUSE_OTHER = 'Odbij: Časlav Radenković'
 
+/** A day inside the window of the **following** year, so the season an answer writes and
+ *  the season the application was sent in are two different numbers. */
+const NEXT_WINDOW = '2027-10-20'
+/** And a third application, on a third day, so no row is first and last at once. */
+const THIRD_DAY = '2026-10-20'
+
 const DUNAV = '/sr/tim/dunavski-trkaci'
 const VARDAR = '/sr/tim/vardarski-krug'
 
@@ -862,6 +868,130 @@ describe('the answer the team gives', () => {
         /Primljen si u tim „Vardarski krug"/,
       ),
     ).toBeVisible()
+  }, SLOW)
+
+  it('answers one card of three, on a team that is not the first, a window later', async () => {
+    /* **One case in which every axis is distinct at once**, written after three rounds had
+       each found one that was not (reviews, 06.09.2026). Measured one at a time, each fix
+       left the next coinciding: `waiting[0]` was closed and `waiting[waiting.length - 1]`
+       was not, because two rows make the second one the last as well; the team's name was
+       measured on a subject and not on a body; and every application was answered inside
+       the same window it was sent in, so the season could be read off either day.
+
+       Here: three members waiting, and the **middle** one is answered, so neither the first
+       row nor the last one is it. The team is Vardar, which is neither the first team in the
+       file nor the one the other cases stand on. The page is read in the window of the
+       **following** year, so `seasonOnSale(today)` is 2028 while `seasonOnSale(ask.date)`
+       would be 2027, a season already run: read off the wrong day, every result that member
+       ran through 2027 would count towards their new team.
+
+       000003 runs Vardar. 000002, 000004 and 000006 have no team. */
+    const user = setupUser()
+
+    renderAt(
+      VARDAR,
+      'competitor',
+      '000003',
+      undefined,
+      NEXT_WINDOW,
+      <>
+        <Applied who="000002" team="team-vardar" day={DAY} />
+        <Applied who="000004" team="team-vardar" day={OTHER_DAY} />
+        <Applied who="000006" team="team-vardar" day={THIRD_DAY} />
+        <Become who="000002" />
+        <Become who="000004" />
+        <Saved />
+        <Asked />
+        <Pigeonhole />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: TAKE_OTHER }))
+
+    /* The team whose page this is, and the season being sold on the day of the answer. */
+    const written = within(screen.getByRole('list', { name: 'session records' }))
+
+    expect(written.getByText(/000004.*team-vardar/)).toBeVisible()
+    expect(written.getByText(/000004.*2028/)).toBeVisible()
+
+    /* Neither of the other two was touched, and both are still waiting. */
+    const open = within(screen.getByRole('list', { name: 'open applications' }))
+
+    expect(open.queryByText(/000004/)).toBeNull()
+    expect(open.getByText(/000002/)).toBeVisible()
+    expect(open.getByText(/000006/)).toBeVisible()
+
+    /* What the member is told: the team that took them, in the words for being taken, on
+       the day it happened. All three were readable off the wrong record. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    const told = within(await screen.findByRole('list', { name: 'inbox' }))
+
+    expect(told.getByText(/Primljen si u tim „Vardarski krug"/)).toBeVisible()
+    expect(told.getByText(/Od naredne sezone trčiš za tim „Vardarski krug"/)).toBeVisible()
+    expect(told.getByText(/2027-10-20/)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).queryByText(
+        /Primljen si u tim/,
+      ),
+    ).toBeNull()
+  }, SLOW)
+
+  it('refuses one card of three, on a team that is not the first, a window later', async () => {
+    /* The refusing half, and it needs its own: both refusing cases stood on Dunav, which is
+       the first team in the file, so `team.name` in the subject and in the body could be
+       read off `listedTeams[0]` with the package green (review, 06.09.2026). */
+    const user = setupUser()
+
+    renderAt(
+      VARDAR,
+      'competitor',
+      '000003',
+      undefined,
+      NEXT_WINDOW,
+      <>
+        <Applied who="000002" team="team-vardar" day={DAY} />
+        <Applied who="000004" team="team-vardar" day={OTHER_DAY} />
+        <Applied who="000006" team="team-vardar" day={THIRD_DAY} />
+        <Become who="000002" />
+        <Become who="000004" />
+        <Saved />
+        <Asked />
+        <Pigeonhole />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: REFUSE_OTHER }))
+
+    /* Nobody was put in a team by a refusal. */
+    expect(
+      within(screen.getByRole('list', { name: 'session records' })).queryByText(/team-vardar/),
+    ).toBeNull()
+
+    const open = within(screen.getByRole('list', { name: 'open applications' }))
+
+    expect(open.queryByText(/000004/)).toBeNull()
+    expect(open.getByText(/000002/)).toBeVisible()
+    expect(open.getByText(/000006/)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    const told = within(await screen.findByRole('list', { name: 'inbox' }))
+
+    expect(told.getByText(/Prijava u tim „Vardarski krug" nije prihvaćena/)).toBeVisible()
+    expect(told.getByText(/Tim „Vardarski krug" nije prihvatio tvoju prijavu/)).toBeVisible()
+    expect(told.getByText(/2027-10-20/)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).queryByText(
+        /nije prihvaćena/,
+      ),
+    ).toBeNull()
   }, SLOW)
 
   it('is not given outside the window, because the answer is what writes the season', () => {

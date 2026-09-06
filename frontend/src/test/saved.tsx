@@ -128,7 +128,7 @@ export function Pigeonhole() {
   return (
     <ul aria-label="inbox">
       {inbox.map((one) => (
-        <li key={one.id}>{`${one.subject} | ${one.body}`}</li>
+        <li key={one.id}>{`${one.date} | ${one.subject} | ${one.body}`}</li>
       ))}
     </ul>
   )
