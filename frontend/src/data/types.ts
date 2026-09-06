@@ -85,6 +85,11 @@ export type Attending = {
 
 export type MembershipBasis = 'payment' | 'feeExempt'
 
+/** What a member shows of their birthday on their own profile. */
+export const BIRTHDAY_SHOWN = ['none', 'year', 'full'] as const
+
+export type BirthdayShown = (typeof BIRTHDAY_SHOWN)[number]
+
 export type Competitor = {
   memberNumber: string
   firstName: string
@@ -127,6 +132,37 @@ export type Competitor = {
    * 12.08.2026).
    */
   referredBy: string | null
+  /**
+   * Whether this member has hidden their profile from readers who are not signed in.
+   *
+   * The published privacy policy has promised this since it was written: „U podešavanjima
+   * možete sakriti profil od posetilaca koji nisu prijavljeni, ali ne i od ostalih članova,
+   * jer bi time nestao smisao zajedničkog rangiranja." Nothing in the code answered for it
+   * until 06.09.2026, when the owner asked for the control rather than for the sentence to go.
+   *
+   * **What it hides is the profile page, not the member.** The reason is in the policy's own
+   * sentence: the standing would stop meaning anything. So the name keeps its place in every
+   * table and every ranking, and it is the page behind it that says nothing to a stranger.
+   */
+  profileHidden: boolean
+  /**
+   * How much of the birthday this member has chosen to show on their own profile.
+   *
+   * Owner, 06.09.2026: „Izbor privatnosti da li član želi da prikaže ceo datum rođenja, samo
+   * godinu ili ništa služi za to šta će biti vidljivo na njegovom / njenom profilu, i ni za šta
+   * više." One field with three values rather than two switches, because that is the shape of
+   * the question, and the default is „none" because both the policy and Član 74 already say the
+   * exception is off unless chosen.
+   *
+   * **`full` shows the year until the record carries a date.** The record holds `birthYear` and
+   * nothing finer; `birthDate` is collected at registration and is one of the thirteen fields
+   * with nowhere to live until the backend. The choice is kept from the first day so that
+   * nobody has to be asked twice when the date arrives.
+   *
+   * It hides the day, never the category: „Javna je samo kategorija koja iz njega proizlazi"
+   * (Član 74).
+   */
+  birthdayShown: BirthdayShown
   teamId: string | null
   /**
    * The season this member joined their club, which is not the season they

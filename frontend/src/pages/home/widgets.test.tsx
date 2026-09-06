@@ -41,6 +41,8 @@ const competitor = (memberNumber: string, active = true): Competitor => ({
   referredBy: null,
   teamId: null,
   teamSince: null,
+  profileHidden: false,
+  birthdayShown: 'none',
   bio: '',
   active,
 })

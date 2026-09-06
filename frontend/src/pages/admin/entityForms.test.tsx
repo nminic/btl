@@ -3,6 +3,8 @@ import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
+import { loadResource } from '../../data/client'
+import { emptyValues } from '../../forms/validate'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { categoryOf } from '../../data/raceCategory'
@@ -269,6 +271,122 @@ describe('a record that is entered rather than changed', () => {
     expect(made.logo).toBeNull()
     expect(made.crop).toEqual({ x: 0.5, y: 0.5, size: 1 })
     expect(made.name).toBe('Probni tim')
+  })
+
+  it.each([
+    ['competitors' as const, MEMBERS],
+    ['events' as const, EVENTS],
+    ['teams' as const, TEAMS],
+    ['leagues' as const, LEAGUES],
+    ['moderators' as const, MODERATORS],
+  ])('makes a %s record with every field the served ones have', async (name, entity) => {
+    /* The case above says this about one entity and its title claims the class; a review
+       measured that the class was not held, and three fields were missing from the member
+       blank while the package stayed green (06.09.2026).
+
+       **Asked of the record, not of the sources that write it.** The first draft of this
+       counted names across the identity, the form and the blank, and `Object.keys` counts a
+       key whose value is `undefined` too, which is the very state the blank exists to
+       forbid: `like` has nothing to read the shape off, so „false" comes back as a string
+       and a member can tick „hide my profile" and never untick it. It also modelled three
+       writers when there are four, and missed the country a place field writes.
+
+       So the record is made the way the portal makes one, off the form's own empty values,
+       and every field the served records carry must be there **and be something**.
+
+       Over all served records rather than the first, because a field that only some of them
+       carry is exactly the one that goes quietly short.
+
+       **One road, and it is the road a record is made on from an empty form.** A field the
+       form itself asks about is answered by the form, so taking it out of the blank as well
+       leaves this green: measured on the event's `description` and `link`, which the blank
+       carries for the other road, creation by copying an event. That road is not walked here.
+
+       **Two of the eight entities are outside this, measured and said rather than left out
+       quietly.** `RACES` carries a form no screen has rendered since 23.08.2026, since a race
+       is entered inside its event, so nothing makes a race this way. And `pages` is not served
+       as a list of records at all, so there is nothing to compare against. `PRICING` has no
+       served resource of its own. */
+    const served = await loadResource<Record<string, unknown>[]>(name)
+    /* A checkbox as the word the overlay holds, everything else as it comes, which is exactly
+       what the portal writes: `textFrom` puts every form value through `String` on the way to a
+       record, and `emptyValues` hands out only `''` and `false`, so these are the same strings.
+
+       Written as a ternary rather than `String` over everything because that is what keeps the
+       type honest: the record wants `Record<string, string>`, and anything else here is a
+       compile error rather than a value quietly turning into its own name. Measured in review
+       06.09.2026, and worth saying plainly: `String` over everything catches exactly as much as
+       this does, because `emptyValues` cannot return a value that is not there. */
+    const values = Object.fromEntries(
+      Object.entries(emptyValues(entity.form)).map(([field, value]) => [
+        field,
+        typeof value === 'boolean' ? String(value) : value,
+      ]),
+    )
+    const made = recordFrom(entity, { id: 'probni', values })
+
+    /* **The shape, not the presence.** Asked only „is it there", a value of the wrong shape
+       walks through: `birthdayShown: null` in the blank is present, and a member entered in
+       administration then opens Podešavanja with none of the three answers chosen, while the
+       record behaves as „show nothing" (review, 06.09.2026). The shapes the served records
+       carry are the answer, and they carry every shape a field is allowed: `teamId` is a
+       string on some and null on others, so both are right and neither is guessed here.
+
+       A field that is not there at all has the shape „undefined", which no served record
+       carries, so one question answers both.
+
+       **Where this floor stops, measured rather than left for the next reader.** It holds a
+       blank field the form does not ask for, in both directions: `copiedFrom` off the event
+       blank falls, and so does `copiedFrom: null`. It does not hold `description` and `link`
+       off that same blank, because `emptyValues` seeds every form field, so the record is
+       made whole without them; the blank says as much in its own comment. And it says
+       nothing about a value that is the right shape and the wrong answer, which is a question
+       about behaviour: „ništa" as the birthday a new member starts on is held where it shows,
+       on the three buttons in Podešavanja (profilePrivacy.test.tsx). */
+    const shapeOf = (value: unknown): string =>
+      value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
+
+    const shapes = new Map<string, Set<string>>()
+
+    for (const one of served) {
+      for (const [field, value] of Object.entries(one)) {
+        shapes.set(field, (shapes.get(field) ?? new Set()).add(shapeOf(value)))
+      }
+    }
+
+    const wrong = [...shapes]
+      .filter(([field, seen]) => !seen.has(shapeOf(made[field])))
+      .map(([field, seen]) => `${field}: ${shapeOf(made[field])}, served ${[...seen].join('/')}`)
+
+    expect(wrong).toEqual([])
+
+    /* **And the answer, where the shape cannot tell right from wrong.** A field the data ever
+       leaves empty is a field a record is allowed not to have, so a record where nothing was
+       entered has not got it. Asked only about shape, `teamId: 'team-dunav'` on the blank is a
+       string like any other, and every member entered in administration would be in the Dunav
+       club without a request and without an invitation, counted into that club's standing
+       (PDL P13). Measured in review 06.09.2026: the whole package stays green. The same for
+       `referredBy`, which credits somebody a referral they never brought.
+
+       Derived, not listed: whichever fields the served records leave empty are the fields this
+       asks about, and today that is three on a member (`teamId`, `teamSince`, `referredBy`) and
+       one on a team (`logo`). A fifth arriving tomorrow is asked the same question without
+       anybody adding it here.
+
+       Where it stops: a field the data never leaves empty says nothing here, and „ništa" as the
+       birthday a new member starts on is held on the three buttons in Podešavanja
+       (profilePrivacy.test.tsx), because „none" and „full" are the same shape and neither is
+       empty. */
+    const filled = [...shapes]
+      .filter(([field, seen]) => seen.has('null') && made[field] !== null)
+      .map(([field]) => `${field}: ${String(made[field])}`)
+
+    expect(filled).toEqual([])
+
+    /* **The floor of the floor.** Everything above is read off `served`, so an empty list makes
+       both questions ask about nothing at all and pass by saying so (review, 06.09.2026):
+       `loadResource` handing back `[]` would let a field leave the blank unseen. */
+    expect(shapes.size).toBeGreaterThan(0)
   })
 })
 

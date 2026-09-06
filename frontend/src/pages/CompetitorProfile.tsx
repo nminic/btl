@@ -5,6 +5,11 @@ import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
+import { MEMBERS, recordsOf } from './admin/entityForms'
+import { useOverlay } from './admin/overlay'
+import { useSession } from '../session/useSession'
+import { ProfileHidden } from './profile/ProfileHidden'
+import { profileFor } from './profile/visible'
 import { useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
 import { Counters } from './home/Counters'
@@ -394,20 +399,28 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   const params = useParams()
   const { search } = useLocation()
   const memberNumber = given ?? memberNumberIn(params.memberNumber)
+  const { memberNumber: reader } = useSession()
+  const overlay = useOverlay()
   const state = combineResources(useCompetitors(), useResults(), useTeams())
 
   return (
     <Resource state={state}>
-      {([competitors, results, teams]) => {
-        const competitor = competitors.find(
-          (one) => one.memberNumber === memberNumber && one.active,
-        )
+      {([everybody, results, teams]) => {
+        /* Through the overlay, so a choice made in Podešavanja this visit is answered by this
+           screen at once rather than only after the data is loaded again. */
+        const competitors = recordsOf(MEMBERS, everybody, overlay)
+        const readable = profileFor(competitors, memberNumber, reader)
 
-        if (competitor === undefined) {
+        if (readable.kind === 'none') {
           return <h1>{t('profile.notFound')}</h1>
         }
 
+        const { competitor } = readable
         const name = `${competitor.firstName} ${competitor.lastName}`
+
+        if (readable.kind === 'hidden') {
+          return <ProfileHidden name={name} />
+        }
 
         /* One address and no alias (PDL P11): a reader who arrived by the
            number alone, or by a bookmark made before the name was in the

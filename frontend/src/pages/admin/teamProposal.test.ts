@@ -72,6 +72,8 @@ const MEMBERS: Competitor[] = [
     referredBy: null,
     teamId: 'team-dunav',
     teamSince: 2019,
+    profileHidden: false,
+    birthdayShown: 'none',
     bio: '',
   },
 ]

@@ -121,7 +121,25 @@ export const MEMBERS: EntityDef = {
   form: clan,
   idField: 'memberNumber',
   handsOutIdentity: nextMemberNumber,
-  blank: { teamId: null, active: true },
+  /* Every field the record carries that no field on the form asks about. A missing one is
+     `undefined`, not a default, and that is worse than a wrong value: `undefined` is not
+     `'none'`, so a member entered here had their year of birth published without anybody
+     choosing it; the profile threw before that on a biography that was not there; and a
+     boolean that is absent takes the string „false" off the overlay, which is true, so a
+     member could tick „hide my profile" and never untick it again (reviews, 06.09.2026).
+
+     Held against the served record rather than against this list, in
+     `entityForms.test.tsx`: a list of fields is exactly the thing that goes quietly short. */
+  blank: {
+    teamId: null,
+    teamSince: null,
+    active: true,
+    bio: '',
+    referralCode: '',
+    referredBy: null,
+    profileHidden: false,
+    birthdayShown: 'none',
+  },
 }
 
 export const EVENTS: EntityDef = {

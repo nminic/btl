@@ -26,6 +26,8 @@ const someone = (over: Partial<Competitor> = {}): Competitor => ({
   referredBy: null,
   teamId: null,
   teamSince: null,
+  profileHidden: false,
+  birthdayShown: 'none',
   bio: '',
   ...over,
 })

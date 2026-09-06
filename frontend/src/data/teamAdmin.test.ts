@@ -49,6 +49,8 @@ const member = (
   referredBy: null,
   teamId,
   teamSince,
+  profileHidden: false,
+  birthdayShown: 'none',
   bio: '',
 })
 

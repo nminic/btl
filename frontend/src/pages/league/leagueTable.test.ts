@@ -19,6 +19,8 @@ const person = (memberNumber: string): Competitor => ({
   referredBy: null,
   teamId: null,
   teamSince: null,
+  profileHidden: false,
+  birthdayShown: 'none',
   bio: '',
 })
 

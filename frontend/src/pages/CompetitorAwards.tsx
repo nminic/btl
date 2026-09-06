@@ -12,6 +12,11 @@ import { earnedDucats } from '../data/ducatEarned'
 import { unitFor, type Ducat } from '../data/ducatRule'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { useSession } from '../session/useSession'
+import { MEMBERS, recordsOf } from './admin/entityForms'
+import { useOverlay } from './admin/overlay'
+import { ProfileHidden } from './profile/ProfileHidden'
+import { profileFor } from './profile/visible'
 import {
   combinePair,
   combineResources,
@@ -50,6 +55,8 @@ function AwardsBody({
   part: string | undefined
 }) {
   const { t } = useI18n()
+  const { memberNumber: reader } = useSession()
+  const overlay = useOverlay()
   const state = combinePair(
     combineResources(useCompetitors(), useResults(), useTeams()),
     useDucats(),
@@ -57,13 +64,21 @@ function AwardsBody({
 
   return (
     <Resource state={state}>
-      {([[competitors, results, teams], ducats]) => {
-        const competitor = competitors.find(
-          (one) => one.memberNumber === memberNumber && one.active,
-        )
+      {([[everybody, results, teams], ducats]) => {
+        /* The same three answers as the profile itself, from the same place, and through the
+           same overlay: this page draws the same head from the same record, and a check written
+           on one of the two is a check on neither. */
+        const competitors = recordsOf(MEMBERS, everybody, overlay)
+        const readable = profileFor(competitors, memberNumber, reader)
 
-        if (competitor === undefined) {
+        if (readable.kind === 'none') {
           return <h1>{t('profile.notFound')}</h1>
+        }
+
+        const { competitor } = readable
+
+        if (readable.kind === 'hidden') {
+          return <ProfileHidden name={`${competitor.firstName} ${competitor.lastName}`} />
         }
 
         return (
