@@ -88,11 +88,10 @@ describe('the name of a page', () => {
   })
 
   it('gives the page its own name back on the way out of a record', async () => {
-    const user = setupUser()
-    renderAt('/sr/tim/dunavski-trkaci')
+    const { router } = renderAt('/sr/tim/dunavski-trkaci')
 
     await waitFor(() => expect(document.title).toContain('Dunavski trkači'))
-    await user.click(screen.getByRole('link', { name: sr.teams.backToTeams }))
+    await router.navigate('/sr/timovi')
 
     await waitFor(() => expect(document.title).toBe(`${sr.seo.teams.title} · ${LEAGUE}`))
   })

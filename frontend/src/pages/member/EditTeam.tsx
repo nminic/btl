@@ -1,6 +1,5 @@
 import { countryName } from '../../data/countryName'
-import { useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router'
+import { Navigate, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { WHOLE } from '../../components/crop'
 import { Resource } from '../../components/Resource'
@@ -11,6 +10,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import { predlogTima } from '../../forms/definitions'
 import type { FieldError, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
+import { useSend, useSent } from '../sent'
 import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, addressOf, nameError } from '../admin/teamProposal'
@@ -59,7 +59,11 @@ export function EditTeam() {
   const overlay = useOverlay()
   const state = combinePair(useCompetitors(), useTeams())
   /** The name it was sent under, so the screen can say which team is waiting. */
-  const [sent, setSent] = useState<string | null>(null)
+  /* Held by the address rather than by the screen, so the way back from this
+     confirmation is the team itself and not the form already sent (PDL, 05.09.2026). */
+  const said = useSent()
+  const sent = typeof said === 'string' ? said : null
+  const confirm = useSend()
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -124,11 +128,6 @@ export function EditTeam() {
               <div role="status">
                 <h1>{t('teams.editDoneTitle')}</h1>
                 <p>{t('teams.editDone', { name: sent })}</p>
-                <p className="member__actions">
-                  <Link className="button button--primary" to={`/${locale}/tim/${team.slug}`}>
-                    {t('teams.editBack')}
-                  </Link>
-                </p>
               </div>
             )
           }
@@ -169,7 +168,7 @@ export function EditTeam() {
               crop: WHOLE,
             })
 
-            setSent(name)
+            confirm(`/${locale}/tim/${slug}`, name)
           }
 
           return (

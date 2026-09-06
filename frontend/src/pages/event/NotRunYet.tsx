@@ -1,4 +1,3 @@
-import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
 
 /** Why the form is not being drawn. Two reasons, and the second is only ever a
@@ -20,22 +19,17 @@ type Why = 'notRunYet' | 'notRanIt'
  * page it was hidden on. An unoffered form that renders and accepts when it is
  * asked for by name is a rule that holds only for people who were not looking.
  *
- * It says so rather than sending the reader somewhere else. Somebody who
- * followed a link is owed the reason it did not work, and the way back to the
- * event is the thing they wanted anyway.
+ * It says so rather than sending the reader somewhere else. Somebody who followed a link
+ * is owed the reason it did not work, and the browser's own way back is then one press
+ * away from the event they came from.
  */
-export function NotRunYet({ slug, why = 'notRunYet' }: { slug: string; why?: Why }) {
-  const { locale, t } = useI18n()
+export function NotRunYet({ why = 'notRunYet' }: { why?: Why }) {
+  const { t } = useI18n()
 
   return (
     <div className="member">
       <h1>{t(`event.${why}`)}</h1>
       <p>{t(`event.${why}Why`)}</p>
-      <p className="member__actions">
-        <Link className="button button--primary" to={`/${locale}/kalendar/${slug}`}>
-          {t('report.backToEvent')}
-        </Link>
-      </p>
     </div>
   )
 }

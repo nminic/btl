@@ -750,11 +750,25 @@ describe('messages', () => {
     expect(screen.getByRole('button', { name: 'Otvori poruke, 1 nepročitana' })).toBeVisible()
   })
 
-  it('leads back to the whole inbox', async () => {
+  it('leads back to the whole inbox, through the menu and not a link on the page', async () => {
+    /* The way back that stood inside the page went with every other „Nazad" link (owner,
+       05.09.2026: „ne želim da imam ni jedan takav slučaj na portalu"), and the browser's
+       own back does that work now. What must stay reachable is the pigeonhole itself, and
+       it lives in the menu, which is not a way back but a way anywhere. */
     const user = setupUser()
     renderAt('/sr/poruke/msg-2', 'competitor', '000007')
 
-    await user.click(await within(screen.getByRole('main')).findByRole('link', { name: 'Sve poruke' }))
+    /* Pinned by the message's own subject, not by „a level one heading": read as „any
+       heading", the page that failed to draw at all satisfied the line below just as well
+       as the one that drew (review, 06.09.2026). */
+    await screen.findByRole('heading', { level: 1, name: 'Rezultat je odobren' })
+
+    expect(
+      within(screen.getByRole('main')).queryByRole('link', { name: 'Sve poruke' }),
+    ).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(await screen.findByRole('link', { name: 'Sve poruke' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Poruke' })).toBeVisible()
   })
@@ -974,7 +988,10 @@ describe('a result from entry to decision', () => {
     /* A second race, which this must leave alone: one correction is about one
        result, and a list rewritten wholesale would carry the correction into
        every row of it. */
-    await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
+    /* A link now, not a button: the confirmation lives on its own entry in the history
+       since 06.09.2026, so starting another one is going somewhere rather than clearing
+       something the screen was holding. */
+    await user.click(screen.getByRole('link', { name: 'Unesi još jedan' }))
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
     await user.type(screen.getByLabelText(/Datum trke/), '11052026')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')

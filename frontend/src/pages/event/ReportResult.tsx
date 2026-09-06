@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
@@ -14,6 +13,7 @@ import { raceKind } from '../../data/raceKind'
 import type { FormValues } from '../../forms/types'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { useSend, useSent } from '../sent'
 import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
 import { SignedOut } from '../member/SignedOut'
@@ -62,8 +62,12 @@ export function ReportResult() {
   const today = useToday()
   const { memberNumber, submit } = useSession()
   const state = combinePair(useEvents(), useRaces())
-  /** The points the entry earned, once there has been one. */
-  const [done, setDone] = useState<number | null>(null)
+  /* The points the entry earned, once there has been one, held by the address rather
+     than by the screen: the way back from this confirmation is the member's own list of
+     results, not the form they have already sent (PDL, 05.09.2026). */
+  const said = useSent()
+  const done = typeof said === 'number' ? said : null
+  const confirm = useSend()
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -83,9 +87,6 @@ export function ReportResult() {
         <p className="member__actions">
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
             {t('newResult.toMine')}
-          </Link>{' '}
-          <Link className="button button--secondary" to={`/${locale}/kalendar/${slug}`}>
-            {t('report.backToEvent')}
           </Link>
         </p>
       </div>
@@ -110,7 +111,7 @@ export function ReportResult() {
              refuses a date in the future, and a form that is merely not offered
              still answers when the address is typed. */
           if (event.date > today) {
-            return <NotRunYet slug={event.slug} />
+            return <NotRunYet />
           }
 
           /* The races of this event that have been run, which is not the same as
@@ -141,11 +142,6 @@ export function ReportResult() {
                 <h1>{event.name}</h1>
                 <p className="profile__empty">
                   {t(mineHere.length === 0 ? 'report.noRaces' : 'report.noRace')}
-                </p>
-                <p className="member__actions">
-                  <Link className="button button--secondary" to={`/${locale}/kalendar/${slug}`}>
-                    {t('report.backToEvent')}
-                  </Link>
                 </p>
               </>
             )
@@ -215,7 +211,7 @@ export function ReportResult() {
               comment: String(values.comment),
             })
 
-            setDone(run.points)
+            confirm(`/${locale}/moji-rezultati`, run.points)
           }
 
           return (

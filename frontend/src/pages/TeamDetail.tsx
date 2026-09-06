@@ -259,16 +259,6 @@ export function TeamDetail() {
                   {' · '}
                   {t('units.memberCount', { count: everMembers.length })}
                 </p>
-                {/* The way back, under the name and not over it. It stood first and the page
-                    then began with a link rather than with its own heading, so a reader
-                    listing the headings of a page met a control before learning which page
-                    they were on (WCAG 2.2, 1.3.1 and 2.4.6; owner, 04.09.2026, who chose to
-                    keep it a link rather than dress it as a button: it is a way out, not an
-                    action). `EventDetail` has always had its heading first inside this same
-                    header, so this is that shape and not a new one. */}
-                <p className="profile__meta">
-                  <Link to={`/${locale}/timovi`}>{t('teams.backToTeams')}</Link>
-                </p>
               </header>
 
               {/* Three of one width, and the words first, because they are the

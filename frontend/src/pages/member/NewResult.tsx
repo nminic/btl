@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useSend, useSent } from '../sent'
 import { useFilterParams } from '../../app/useFilterParams'
 import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
@@ -113,7 +114,22 @@ export function NewResult() {
    * address named is no longer refused and the screen would say the ordinary
    * thing about it.
    */
-  const [done, setDone] = useState<{ points: number; again: boolean } | null>(null)
+  /* **Held by the address, not by the screen.** Drawn in place, the entry under the
+     confirmation was this form, filled in and already sent, so the browser's own way back
+     offered the member the chance to send the same result a second time. That is exactly
+     the case the owner named on 05.09.2026: „Nazad sa potvrde poslatog rezultata treba da
+     vodi na formu Moji rezultati, a ne na formu za slanje rezultata."
+
+     Both figures travel, because the second is the one the comment above says cannot be
+     worked out afterwards. Read without asserting a type over a value this screen did not
+     make (ADL A14), the same way `pages/sent.ts` reads it. */
+  const said = useSent()
+  const earned = Reflect.get(Object(said), 'points')
+  const done =
+    typeof earned === 'number'
+      ? { points: earned, again: Reflect.get(Object(said), 'again') === true }
+      : null
+  const confirm = useSend()
   /**
    * The refused result this is a correction of, where the address names one.
    *
@@ -379,7 +395,10 @@ export function NewResult() {
        odmah po unosu vidi koliko je bodova dobio"). The points were already
        being worked out here and then thrown away, so the one thing the member
        came to find out was the one thing the screen did not say. */
-    setDone({ points: earned, again: correcting !== undefined || fixingOne !== undefined })
+    confirm(`/${locale}/moji-rezultati`, {
+      points: earned,
+      again: correcting !== undefined || fixingOne !== undefined,
+    })
   }
 
   if (done !== null) {
@@ -399,13 +418,9 @@ export function NewResult() {
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
             {t('newResult.toMine')}
           </Link>{' '}
-          <button
-            type="button"
-            className="button button--secondary"
-            onClick={() => setDone(null)}
-          >
+          <Link className="button button--secondary" to={`/${locale}/rezultat/novi`}>
             {t('newResult.another')}
-          </button>
+          </Link>
         </p>
       </div>
     )

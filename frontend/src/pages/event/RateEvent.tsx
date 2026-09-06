@@ -18,6 +18,7 @@ import { LongBox } from '../../forms/LongBox'
 import { limitOf } from '../../forms/records'
 import { WHOLE } from '../../components/crop'
 import { useI18n } from '../../i18n/useI18n'
+import { useSend, useSent } from '../sent'
 import { useSession } from '../../session/useSession'
 import { SignedOut } from '../member/SignedOut'
 import { NotRunYet } from './NotRunYet'
@@ -66,7 +67,11 @@ function RateOne() {
   const state = combineFour(useEvents(), useCompetitors(), useResults(), useRaces())
   const [rating, setRating] = useState<EventRating>(NO_RATING)
   const [comment, setComment] = useState('')
-  const [sent, setSent] = useState(false)
+  /* Held by the address rather than by the screen, so that the way back from this
+     confirmation is the event and not the form that has already been sent (PDL,
+     05.09.2026). */
+  const sent = useSent() !== undefined
+  const confirm = useSend()
 
   if (memberNumber === null) {
     return <SignedOut />
@@ -79,11 +84,6 @@ function RateOne() {
       <div className="member" role="status">
         <h1>{t('event.commentTitle')}</h1>
         <p>{t('event.commentSent')}</p>
-        <p className="member__actions">
-          <Link className="button button--primary" to={`/${locale}/kalendar/${slug}`}>
-            {t('report.backToEvent')}
-          </Link>
-        </p>
       </div>
     )
   }
@@ -103,7 +103,7 @@ function RateOne() {
           /* Checked here and not only where the button is. The address can be
              typed, and a rule kept by hiding a link is not kept. */
           if (event.date > today) {
-            return <NotRunYet slug={event.slug} />
+            return <NotRunYet />
           }
 
           /* And a rating belongs to somebody who was there (owner, 11.08.2026).
@@ -111,7 +111,7 @@ function RateOne() {
              the date is: the address can be typed, and a rule kept by hiding a
              link is not kept. */
           if (!ran(results, races, event.id, mine)) {
-            return <NotRunYet slug={event.slug} why="notRanIt" />
+            return <NotRunYet why="notRanIt" />
           }
 
           const me = competitors.find((one) => one.memberNumber === mine)
@@ -152,7 +152,7 @@ function RateOne() {
               country: '',
               rating,
             })
-            setSent(true)
+            confirm(`/${locale}/kalendar/${slug}`, true)
           }
 
           return (
