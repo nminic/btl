@@ -13,15 +13,23 @@ import { CATEGORIES } from '../../data/derive'
 import { FIRST, NEXT } from './rotation'
 import { addressOf } from '../profileAddress'
 import { TopByCategory } from './TopByCategory'
+import { SessionProvider } from '../../session/SessionProvider'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
 import { ColumnChart } from '../../components/ColumnChart'
 import type { NewsItem, SponsorEntry } from './content'
 
-function renderWidget(ui: React.ReactNode) {
+/* **Inside a session, since 06.09.2026.** Whether a name may lead to a profile now depends on
+   who is reading: a member hiding from readers who are not signed in is drawn as plain text to
+   them and as a link to everybody else (`profile/visible.ts`). A widget drawn outside a session
+   cannot answer that, so the harness answers it: nobody signed in, which is the reading these
+   cases have always been written for. */
+function renderWidget(ui: React.ReactNode, memberNumber: string | null = null) {
   return render(
     <I18nProvider locale="sr">
-      <MemoryRouter>{ui}</MemoryRouter>
+      <MemoryRouter>
+        <SessionProvider initialMemberNumber={memberNumber}>{ui}</SessionProvider>
+      </MemoryRouter>
     </I18nProvider>,
   )
 }
@@ -658,7 +666,9 @@ describe('TopByCategory', () => {
     rerender(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />
+          <SessionProvider initialMemberNumber={null}>
+            <TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />
+          </SessionProvider>
         </MemoryRouter>
       </I18nProvider>,
     )

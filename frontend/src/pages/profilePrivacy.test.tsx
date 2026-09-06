@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
@@ -69,16 +69,97 @@ describe('hiding a profile from readers who are not signed in', () => {
     ).toBeVisible()
     expect(lineUnderTheName('000007')).toMatch(/Banja Luka/)
 
-    /* And to a reader who is not signed in, the page says so and nothing else. */
+    /* **And to a reader who is not signed in, there is no page at all.** The owner, 06.09.2026:
+       „do profilnih strana tog takmičara je nemoguće doći… javni posetilac se preusmerava na
+       naslovnu stranu portala." Until then the address answered with a page of its own, which
+       said the member was hiding; that told a visitor which numbers belong to members who hide,
+       which is the thing being hidden. */
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
 
-    expect(
-      await screen.findByText(/sakrio svoj profil od posetilaca koji nisu prijavljeni/),
-    ).toBeVisible()
+    /* Read off the address rather than off a heading: „Balkanska trkačka liga" is the name of the
+       portal and is written on every screen, so a heading by that name is satisfied by the page
+       the reader is leaving as much as by the one they arrive at. */
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
     expect(screen.queryByText(/Članski broj 000007/)).toBeNull()
-    /* The name stays, because the reader followed it here from a table where it also stays:
-       „ali ne i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja". */
-    expect(screen.getByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
+  }, SLOW)
+
+  it('answers a deep link the same way whether the profile is hidden or was never there', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+
+    /* **The two have to be one answer.** A „nije pronađen" for a number nobody has and a redirect
+       for a number somebody is hiding behind lets a visitor read the difference off the screen and
+       so learn exactly what was hidden. Owner, 06.09.2026: „Oba na naslovnu." */
+    await router.navigate(HIM)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
+    await router.navigate('/sr/takmicar/000999-niko-nikic')
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+  }, SLOW)
+
+  it('leaves the name where it stood, as words instead of a way in', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+    await router.navigate('/sr/takmicari')
+
+    /* **Nothing is taken off the list.** Owner, 06.09.2026: „Meni je potpuno OK da u spisku
+       takmičara stoje podaci kako jesu, samo opet nema linka ka skrivenim profilima ukoliko
+       posetilac nije ulogovan." So the card keeps the name, the number and the town; what it
+       loses is the way in.
+
+       Read against a member who is **not** hiding on the same screen, because „there is no link"
+       is also what a screen with no cards at all would say. */
+    const him = await screen.findByText('Strahinja Vukićević')
+    const her = screen.getByText('Ivona Stamenkovska')
+
+    expect(him.closest('a')).toBeNull()
+    expect(her.closest('a')).not.toBeNull()
+    expect(screen.getByText('000007')).toBeVisible()
+  }, SLOW)
+
+  it('gives the way in back to a reader who is signed in', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/podesavanja',
+      'competitor',
+      '000007',
+      undefined,
+      undefined,
+      <>
+        <SignOut />
+        <Become who="000002" />
+      </>,
+    )
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+
+    /* Another member, not the one who is hiding: hiding is from readers who are not signed in and
+       from nobody else, so a member reading somebody else's list sees the way in (P23). */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/takmicari')
+
+    expect((await screen.findByText('Strahinja Vukićević')).closest('a')).not.toBeNull()
   }, SLOW)
 
   it('leaves every other profile alone', async () => {
@@ -144,14 +225,15 @@ describe('hiding a profile from readers who are not signed in', () => {
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
     await router.navigate(`${HIM}/priznanja`)
 
-    expect(
-      await screen.findByText(/sakrio svoj profil od posetilaca koji nisu prijavljeni/),
-    ).toBeVisible()
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
     expect(screen.queryByText(/Članski broj 000007/)).toBeNull()
-    /* And the heading is the name, which is the one thing the decision keeps public. Handed
-       the member number instead, this page would greet a reader with a bare figure and both
-       assertions above would still pass (review, 06.09.2026). */
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Strahinja Vukićević')
+    /* And nothing of the trophies either: this address used to answer with a page of its own that
+       carried the name, and since 06.09.2026 both addresses answer the same way as a profile that
+       was never there. */
+    expect(screen.queryByText(/Strahinja Vukićević/)).toBeNull()
   }, SLOW)
 })
 

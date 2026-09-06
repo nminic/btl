@@ -1,4 +1,4 @@
-import { profilePath } from '../profileAddress'
+import { ProfileLink } from '../profile/ProfileLink'
 import { Link } from 'react-router'
 import { BOARD_PLACES, boardOfTen } from '../../data/derive'
 import type { Competitor, Gender, Result } from '../../data/types'
@@ -18,7 +18,7 @@ import { Portrait } from '../../components/Portrait'
  * called and what the tooltip says.
  */
 function Face({ slot, place }: { slot: Competitor | undefined; place: number }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const numbered = t('home.place', { place })
 
   if (slot === undefined) {
@@ -38,14 +38,9 @@ function Face({ slot, place }: { slot: Competitor | undefined; place: number }) 
   }
 
   return (
-    <Link
-      className="top10__face"
-      to={profilePath(slot, locale)}
-      title={name}
-      aria-label={reading}
-    >
+    <ProfileLink competitor={slot} className="top10__face" title={name} label={reading}>
       <Portrait competitor={slot} />
-    </Link>
+    </ProfileLink>
   )
 }
 
