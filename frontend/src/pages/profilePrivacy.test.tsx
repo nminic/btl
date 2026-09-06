@@ -261,6 +261,19 @@ describe('what the settings show back', () => {
       'Sakrij moj profil od posetilaca koji nisu prijavljeni',
     )
 
+    /* **What a member who has answered nothing starts with, and it is the answer the record
+       has to arrive already holding.** The floor over the blank asks what shape a value is,
+       and „full" is the same shape as „none": a record made in administration could open
+       this screen with the whole birth date chosen by somebody who was never asked. The
+       recorded rule is that nothing is shown until the member says otherwise (PDL, privatnost
+       profila), so it is stated here as the three buttons answer it, not as a field name.
+
+       All three, because the one that is taken is only half of it: the case has to fall on a
+       blank that starts on „year" as much as on one that starts on „full". */
+    expect(screen.getByLabelText('Ne prikazuj ništa')).toBeChecked()
+    expect(screen.getByLabelText('Prikaži samo godinu')).not.toBeChecked()
+    expect(screen.getByLabelText('Prikaži ceo datum')).not.toBeChecked()
+
     await user.click(box)
 
     /* That it was ever on. Both assertions below are the state a new record starts in, so

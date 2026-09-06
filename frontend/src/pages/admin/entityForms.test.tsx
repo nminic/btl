@@ -308,16 +308,51 @@ describe('a record that is entered rather than changed', () => {
        as a list of records at all, so there is nothing to compare against. `PRICING` has no
        served resource of its own. */
     const served = await loadResource<Record<string, unknown>[]>(name)
-    /* As text, which is what the overlay holds and what `like` reads back into shape. */
+    /* A checkbox as the word the overlay holds, everything else as it comes. Not `String` over
+       everything: that turns a value that is not there into the word „undefined", which is a
+       string, and the floor would then be blind to the one thing it is for. */
     const values = Object.fromEntries(
-      Object.entries(emptyValues(entity.form)).map(([field, value]) => [field, String(value)]),
+      Object.entries(emptyValues(entity.form)).map(([field, value]) => [
+        field,
+        typeof value === 'boolean' ? String(value) : value,
+      ]),
     )
     const made = recordFrom(entity, { id: 'probni', values })
 
-    const carried = [...new Set(served.flatMap((one) => Object.keys(one)))]
-    const missing = carried.filter((field) => made[field] === undefined)
+    /* **The shape, not the presence.** Asked only „is it there", a value of the wrong shape
+       walks through: `birthdayShown: null` in the blank is present, and a member entered in
+       administration then opens Podešavanja with none of the three answers chosen, while the
+       record behaves as „show nothing" (review, 06.09.2026). The shapes the served records
+       carry are the answer, and they carry every shape a field is allowed: `teamId` is a
+       string on some and null on others, so both are right and neither is guessed here.
 
-    expect(missing).toEqual([])
+       A field that is not there at all has the shape „undefined", which no served record
+       carries, so one question answers both.
+
+       **Where this floor stops, measured rather than left for the next reader.** It holds a
+       blank field the form does not ask for, in both directions: `copiedFrom` off the event
+       blank falls, and so does `copiedFrom: null`. It does not hold `description` and `link`
+       off that same blank, because `emptyValues` seeds every form field, so the record is
+       made whole without them; the blank says as much in its own comment. And it says
+       nothing about a value that is the right shape and the wrong answer, which is a question
+       about behaviour: „ništa" as the birthday a new member starts on is held where it shows,
+       on the three buttons in Podešavanja (profilePrivacy.test.tsx). */
+    const shapeOf = (value: unknown): string =>
+      value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
+
+    const shapes = new Map<string, Set<string>>()
+
+    for (const one of served) {
+      for (const [field, value] of Object.entries(one)) {
+        shapes.set(field, (shapes.get(field) ?? new Set()).add(shapeOf(value)))
+      }
+    }
+
+    const wrong = [...shapes]
+      .filter(([field, seen]) => !seen.has(shapeOf(made[field])))
+      .map(([field, seen]) => `${field}: ${shapeOf(made[field])}, served ${[...seen].join('/')}`)
+
+    expect(wrong).toEqual([])
   })
 })
 
