@@ -26,16 +26,20 @@ describe('the yearly window', () => {
    * follows and half does not, silently, because the number was right in both places up to that
    * moment (review, 06.09.2026). And a body copied instead of called drifts the same way.
    *
-   * **What it asks, exactly:** does any file in the portal write `FIRST_SEASON`'s own number as a
-   * number, anywhere but where it is declared. Not „a year", and not „four digits in the two
+   * **What it asks, exactly:** does any module the portal is written in — `.ts` and `.tsx`, which
+   * is what `sources()` opens — write `FIRST_SEASON`'s own number as a number, anywhere but where
+   * it is declared. Not „a year", and not „four digits in the two
    * thousands": those catch an interval in milliseconds and a price in dinars, and a guard that
    * fires on a change that is not a fault costs somebody a round for nothing (review,
    * 06.09.2026). It is the one number this rule is about, and nothing else.
    *
-   * **Where it stops, said rather than guessed at.** A year written inside a sentence is a
-   * string and no parser can tell it from prose, so this cannot see one. The one copy that
-   * existed is gone (`data/seedMessages.ts` derives it), and the rest of that class is held by
-   * the screens that read those sentences.
+   * **Where it stops, said rather than guessed at, and measured on 06.09.2026.** A year written
+   * inside a sentence is a string and no parser can tell it from prose, so this cannot see one;
+   * the two that were live are gone, both derived now (`data/seedMessages.ts` and the sentence a
+   * member freed of the fee reads), and each is held by a case that makes the season answer
+   * differently rather than by this sweep. Nor does it open `.json`: the form definitions carry
+   * `"max": 2027` twice, which is a live boundary of its own and is written down as such rather
+   * than folded in here.
    */
   it('writes the year of the first season in exactly one place', () => {
     /* **Asked of the parser, not of the text.** A line that holds a year may be prose: a review
@@ -45,8 +49,6 @@ describe('the yearly window', () => {
     const walked: string[] = []
 
     const written = sources().flatMap((one) => {
-      walked.push(one.path)
-
       const file = ts.createSourceFile(one.path, one.code, ts.ScriptTarget.Latest, true)
       const found: string[] = []
 
@@ -61,6 +63,10 @@ describe('the yearly window', () => {
       }
 
       walk(file)
+      /* Counted after the file has been read and not before: pushed at the head of the body, a
+         filter written one line below it leaves the floor counting what was offered while the
+         sweep reads nothing (review, 06.09.2026). This says what was parsed. */
+      walked.push(one.path)
 
       return found
     })
@@ -71,7 +77,9 @@ describe('the yearly window', () => {
        offered, and the sweep can lose every screen in the portal without a word (review,
        06.09.2026). This counts what was actually opened. */
     expect(walked.length, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
-    expect(written).toEqual(['season.ts: FIRST_SEASON = 2027'])
+    /* Built from the same constant the search is built from, so moving the year is not itself
+       reported as „written in more than one place" (review, 06.09.2026). */
+    expect(written).toEqual([`season.ts: FIRST_SEASON = ${FIRST_SEASON}`])
   })
 
   /* And the two names that answer „which season are we heading into" answer the same on every

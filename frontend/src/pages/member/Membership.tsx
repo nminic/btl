@@ -194,7 +194,13 @@ export function Membership() {
               </h2>
               <p className="membership__state">
                 {feeExempt
-                  ? t('membership.feeExempt')
+                  ? /* The season they are freed of, read from the clock like everything else on
+                       this screen. It was typed into the sentence until 06.09.2026, so from
+                       1 January 2028 a member freed of the fee would have read that they were
+                       freed of a season that had already passed (review, same day). ADL,
+                       31.07.2026: the running season is worked out from the clock and never from
+                       the constant. */
+                    t('membership.feeExempt', { season: nextSeason })
                   : t('membership.active', { season: me.firstSeason })}
               </p>
               {/* Both amounts, side by side, and no choice between them (PDL

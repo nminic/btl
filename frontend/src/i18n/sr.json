@@ -933,7 +933,7 @@
     "title": "Moja članarina",
     "status": "Stanje",
     "active": "Član od {season}. sezone.",
-    "feeExempt": "Oslobođen si plaćanja članarine za sezonu 2027, odlukom Upravnog odbora.",
+    "feeExempt": "Oslobođen si plaćanja članarine za sezonu {season}, odlukom Upravnog odbora.",
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
     "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "byCountry": "Načini plaćanja zavise od države na tvom profilu ({country}).",

@@ -253,6 +253,7 @@ describe('a sentence with a value put into it', () => {
       'membership.byCountry',
       'membership.chooseCategory',
       'membership.costs',
+      'membership.feeExempt',
       'membership.firstSeasonClosed',
       'membership.firstSeasonOpen',
       'membership.inTeam',
