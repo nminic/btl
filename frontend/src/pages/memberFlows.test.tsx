@@ -750,11 +750,22 @@ describe('messages', () => {
     expect(screen.getByRole('button', { name: 'Otvori poruke, 1 nepročitana' })).toBeVisible()
   })
 
-  it('leads back to the whole inbox', async () => {
+  it('leads back to the whole inbox, through the menu and not a link on the page', async () => {
+    /* The way back that stood inside the page went with every other „Nazad" link (owner,
+       05.09.2026: „ne želim da imam ni jedan takav slučaj na portalu"), and the browser's
+       own back does that work now. What must stay reachable is the pigeonhole itself, and
+       it lives in the menu, which is not a way back but a way anywhere. */
     const user = setupUser()
     renderAt('/sr/poruke/msg-2', 'competitor', '000007')
 
-    await user.click(await within(screen.getByRole('main')).findByRole('link', { name: 'Sve poruke' }))
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(
+      within(screen.getByRole('main')).queryByRole('link', { name: 'Sve poruke' }),
+    ).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(await screen.findByRole('link', { name: 'Sve poruke' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Poruke' })).toBeVisible()
   })

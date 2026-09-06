@@ -4,13 +4,11 @@
     "title": "Lige",
     "season": "Sezona {season}.",
     "events": "Događaja",
-    "backToLeagues": "Nazad na lige",
     "notFound": "Ove lige nema.",
     "rules": "Propozicije",
     "prizes": "Nagrade",
     "countingEvents": "Događaji koji ulaze u ligu",
     "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
-    "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze.",
     "none": "Trenutno nema nijednog dodatnog takmičenja.",
     "parts": {
       "label": "Delovi takmičenja",

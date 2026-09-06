@@ -753,7 +753,6 @@
       "points": "Bodovi"
     },
     "empty": "Nema timova.",
-    "backToTeams": "Nazad na timove",
     "about": "O timu",
     "aboutEmpty": "Ovaj tim još nije napisao ništa o sebi.",
     "members": "Članovi",
@@ -771,7 +770,6 @@
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
-    "proposeBack": "Nazad na timove",
     "proposeShut": "Tim se osniva u prelaznom roku, od 1. oktobra do 31. decembra.",
     "edit": "Izmeni",
     "editTitle": "Izmena tima",
@@ -779,7 +777,6 @@
     "editNote": "Izmena ponovo prolazi verifikaciju. Dok čeka odluku moderatora, na portalu stoje postojeći podaci tima.",
     "editDoneTitle": "Izmena je poslata",
     "editDone": "Izmena tima „{name}“ čeka odluku moderatora. Dok čeka, na portalu stoje postojeći podaci.",
-    "editBack": "Nazad na tim",
     "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
     "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru.",
     "join": "Prijavi se u tim",
@@ -799,13 +796,11 @@
     "title": "Lige",
     "season": "Sezona {season}.",
     "events": "Događaja",
-    "backToLeagues": "Nazad na lige",
     "notFound": "Ove lige nema.",
     "rules": "Propozicije",
     "prizes": "Nagrade",
     "countingEvents": "Događaji koji ulaze u ligu",
     "noEvents": "Ovoj ligi još nije dodeljen nijedan događaj.",
-    "lead": "Takmičenja koja teku uporedo sa ligom, svako sa svojim spiskom događaja i svojim propozicijama. Bodovanje je uvek isto, menja se samo koji događaji ulaze.",
     "none": "Trenutno nema nijednog dodatnog takmičenja.",
     "parts": {
       "label": "Delovi takmičenja",
@@ -1347,7 +1342,6 @@
     "noteTime": "Prijavljuješ rezultat sa trke {race}. Vreme portal već zna sa same trke i isto je za svakoga ko ju je završio; upiši koliko si prešao.",
     "noteFree": "Prijavljuješ rezultat sa trke {race}. Ova trka ne zadaje ni dužinu ni vreme, pa upiši i jedno i drugo.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
-    "backToEvent": "Nazad na događaj",
     "noRace": "Rezultat se unosi sa reda trke, na strani događaja."
   },
   "pager": {

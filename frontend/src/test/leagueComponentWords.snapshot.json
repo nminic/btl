@@ -68,13 +68,11 @@
     ":",
     "leagues",
     "leagues.events",
-    "leagues.lead",
     "leagues.none",
     "leagues.season",
     "leagues.title",
     "leagues__item",
     "leagues__list",
-    "member__note",
     "profile__empty",
     "react-router",
     "·"

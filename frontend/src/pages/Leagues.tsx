@@ -12,7 +12,6 @@ export function Leagues() {
   return (
     <div className="leagues">
       <h1>{t('leagues.title')}</h1>
-      <p className="member__note">{t('leagues.lead')}</p>
 
       <Resource state={state}>
         {(all) => {
