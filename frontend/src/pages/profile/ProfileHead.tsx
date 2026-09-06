@@ -63,14 +63,33 @@ export function ProfileHead({
         <p className="profile__meta">
           {/* The public page of a competitor is the digital membership card, so the
               number is named rather than left to stand on its own between a name
-              and a category (owner, 17.08.2026). Nothing else is added here: a
-              date of birth or anything else private has no place on a card. */}
+              and a category (owner, 17.08.2026). What else stands here is what the
+              member chose to put there, and nothing more. */}
           <span className="profile__number">
             {t('profile.memberNumberLabel', { number: competitor.memberNumber })}
           </span>
           {' · '}
           {categoryLabel(categoryOfMember(competitor, SEASON), t)}
           {' · '}
+          {/* **The birthday, where the owner put it: after the category and before the town**
+              (06.09.2026). Drawn only when the member has chosen to show it, and never for
+              anybody who has not: both the policy and Član 74 say the exception is off unless
+              chosen.
+
+              The year even for „ceo datum", because the record holds `birthYear` and nothing
+              finer until the backend; the control in Podešavanja says so beside the choice
+              rather than here, where a sentence of explanation would sit in the middle of a
+              line of facts.
+
+              An earlier comment here said a date of birth „has no place on a card". That was
+              true while there was no choice; with one, what is on the card is what the member
+              put there. */}
+          {competitor.birthdayShown === 'none' ? null : (
+            <>
+              {competitor.birthYear}
+              {' · '}
+            </>
+          )}
           {competitor.city}
           {' · '}
           {t('profile.memberSince', { season: competitor.firstSeason })}

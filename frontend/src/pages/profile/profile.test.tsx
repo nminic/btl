@@ -300,6 +300,8 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     referredBy: null,
     teamId: null,
     teamSince: null,
+    profileHidden: false,
+    birthdayShown: 'none' as const,
     bio: '',
   })
 

@@ -671,6 +671,8 @@
       "length": "Dužina"
     },
     "notFound": "Ovog profila nema.",
+    "hidden": "Ovaj takmičar je sakrio svoj profil od posetilaca koji nisu prijavljeni.",
+    "hiddenSignIn": "Prijavi se pa ga otvori.",
     "byCategory": "Trke po dužini",
     "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata.",
     "racesWord": {
@@ -1166,6 +1168,14 @@
     "title": "Podešavanja",
     "intro": "Podešavanja važe za tvoj nalog na svim uređajima.",
     "appearance": "Izgled",
+    "privacy": "Privatnost",
+    "hideProfile": "Sakrij moj profil od posetilaca koji nisu prijavljeni",
+    "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od onih koji nisu prijavljeni.",
+    "birthday": "Rođendan na mom profilu",
+    "birthdayNone": "Ne prikazuj ništa",
+    "birthdayYear": "Prikaži samo godinu",
+    "birthdayFull": "Prikaži ceo datum",
+    "birthdayNote": "Uzrasna kategorija je javna i ovaj izbor je ne menja. Dok portal ne dobije bazu, i izbor „ceo datum\" prikazuje samo godinu, jer se pun datum još nigde ne čuva.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
     "themeLight": "Svetla",
