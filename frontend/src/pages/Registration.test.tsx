@@ -288,6 +288,20 @@ describe('Registration once it is open', () => {
 
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
 
+    /* **And only two facts made the journey.** The whole of this change is what does not
+       travel, and nothing measured it: written as `{ ...values, ... }` the entry would carry
+       the password and the number of an identity document, and no case would fall, because
+       neither is ever drawn and „never on the screen" does not reach them. The browser keeps
+       this entry and hands it back when a session is restored, on the machine the member
+       typed on (review, 06.09.2026; ADL A12 keeps the document number as the most sensitive
+       thing the portal holds).
+
+       Asserted as the whole of what is there, not as „the password is absent": a list of
+       what must not be in it is a list somebody has to remember to extend. */
+    expect(router.state.location.state).toEqual({
+      sent: { email: 'vladan@primer.rs', referred: false },
+    })
+
     await router.navigate(-1)
 
     await waitFor(() => {

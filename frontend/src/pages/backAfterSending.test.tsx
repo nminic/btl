@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
+import { existsSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { at } from '../test/at'
 import { renderAt } from '../test/render'
@@ -212,21 +213,35 @@ describe('the way back from a confirmation', () => {
  * says out loud, not by a list somebody has to remember to extend.
  */
 /**
- * Where each one's case lives. Written by hand, and held against the derived list above:
- * a screen that starts confirming a sending cannot be left out, only put in the wrong
- * place, and the file it names is one line to check.
+ * Where each one's case lives, and the file each name points at really exists.
+ *
+ * The keys have a floor: they are the modules that import `useSend`, read off the sources. The
+ * values had none, and one of them was wrong (`registration.test.tsx` for a file called
+ * `Registration.test.tsx`), which nobody noticed because nothing read them (review, 06.09.2026).
+ * Now the file system answers for them.
  */
 const CASES: Record<string, string> = {
-  'pages/event/RateEvent.tsx': 'backAfterSending.test.tsx',
-  'pages/event/ReportResult.tsx': 'backAfterSending.test.tsx',
-  'pages/member/EditTeam.tsx': 'backAfterSending.test.tsx',
-  'pages/member/NewResult.tsx': 'backAfterSending.test.tsx',
-  'pages/member/ProposeTeam.tsx': 'backAfterSending.test.tsx',
+  'pages/event/RateEvent.tsx': 'pages/backAfterSending.test.tsx',
+  'pages/event/ReportResult.tsx': 'pages/backAfterSending.test.tsx',
+  'pages/member/EditTeam.tsx': 'pages/backAfterSending.test.tsx',
+  'pages/member/NewResult.tsx': 'pages/backAfterSending.test.tsx',
+  'pages/member/ProposeTeam.tsx': 'pages/backAfterSending.test.tsx',
   /* Its own file, because filling this form takes forty lines that already live there. */
-  'pages/Registration.tsx': 'registration.test.tsx',
+  'pages/Registration.tsx': 'pages/Registration.test.tsx',
 }
 
 describe('every screen that confirms a sending', () => {
+  it('names a file that is really there', () => {
+    /* Written before this: „the file system answers for them", while nothing read the values at
+       all. A comment claiming a guard that is not there is worse than no guard, because it stops
+       the next reader from writing one. */
+    const missing = Object.entries(CASES).filter(
+      ([, file]) => !existsSync(join(process.cwd(), 'src', file)),
+    )
+
+    expect(missing).toEqual([])
+  })
+
   it('has a case here saying where the way back leads', () => {
     const sending = sources()
       .filter(({ code }) => /import \{[^}]*\buseSend\b[^}]*\} from/.test(code))

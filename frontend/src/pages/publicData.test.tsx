@@ -1,5 +1,7 @@
 import { act, cleanup, screen, within } from '@testing-library/react'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
+import { DEFAULT_LOCALE } from '../i18n/config'
+import type { Role } from '../roles/context'
 import { beginsWith, metSaid } from '../test/met'
 import { renderAt } from '../test/render'
 
@@ -242,67 +244,113 @@ function expectPart(part: string | undefined): void {
 /**
  * That the page offers no way of its own up a level, on every address the portal has.
  *
- * Owner, 05.09.2026: „Obriši sve Nazad linkove koje si pomenuo, **ne želim da imam ni
- * jedan takav slučaj na portalu**... Default Back akcija mi je OK." That is a rule about
- * the portal, and it was held by a query over the dictionary, which knows only the word
- * „Nazad". A review measured the hole: a way back reading „Kalendar" or „Sve poruke" walks
- * straight past it, and two of the nine that were removed read exactly that (06.09.2026).
+ * Owner, 05.09.2026: „Obriši sve Nazad linkove koje si pomenuo, **ne želim da imam ni jedan
+ * takav slučaj na portalu**... Default Back akcija mi je OK." That is a rule about the portal,
+ * and the guard that stood knew only the word „Nazad". A review measured the hole: a way back
+ * reading „Kalendar" walks straight past it, and two of the nine that were removed read exactly
+ * that (06.09.2026).
  *
- * **Asked of the shape of the link, not of its words.** A way up a level is a link whose
- * address is a strict ancestor of the address being read: from `/sr/tim/dunavski-trkaci`
- * to `/sr/timovi` is not one, because `timovi` is not `tim`; from
- * `/sr/kalendar/dan/2027-05-08` to `/sr/kalendar` is. Read off the one link, with nothing
- * followed through the code, so the question has a bottom (`CLAUDE.md`).
+ * **Asked of the shape of the link, not of its words.** A way up a level is a link whose address
+ * is a strict ancestor of the address being read: from `/sr/tim/dunavski-trkaci` to `/sr/timovi`
+ * is not one, because `timovi` is not `tim`; from `/sr/kalendar/dan/2027-05-08` to `/sr/kalendar`
+ * is. Read off the one link, with nothing followed through the code.
  *
- * **The front page is not a level above**, it is the portal, so a link to it is not a way
- * back: an error screen offering the way home is what the owner kept. Written as the one
- * exception rather than as a list of addresses.
+ * **What is allowed is a named list, not a shape.** The first draft freed anything inside a
+ * `<nav>` and anything standing beside a button, and both were measured and thrown out: on
+ * `/sr/moji-rezultati` the second freed **277 of 278** links in the page, because every row
+ * carries „Izmeni" beside a delete control, and the first freed any way back at all the moment
+ * somebody wrapped it in breadcrumbs (review, 06.09.2026). A shape that common is not an
+ * exception, it is a door.
  *
- * Held here rather than in a sweep of its own, for the same reason `beginsWith` is: this
- * walk already opens every address outside administration twice and waits for it to
- * settle, and the case above refuses to let an address in without a row here.
+ * So the two that exist are written down by address and by target, and everything else fails.
+ * They are the parts of a competition, where the link to the competition is the **other tab**,
+ * and „Odustani" beside „Pošalji". A third cannot be let in by wrapping it in anything: it
+ * fails the gate and asks for a decision once, which is where the cost belongs.
  */
+const ALLOWED: Record<string, string[]> = {
+  /* The tabs of a competition: standing on „Rezultati", this is „Propozicije"
+     (`components/PartsNav.tsx`). Taking it away would remove the way to half the screen. */
+  '/sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
+  /* „Odustani" beside „Pošalji": the pair the owner kept when he took the rest away
+     (05.09.2026: „nisu veze nego zatvaraju formu"). */
+  '/sr/kalendar/fruskogorski-maraton-2010/ocena': ['/sr/kalendar/fruskogorski-maraton-2010'],
+}
+
+/** Which of the allowances were actually met, so the list cannot quietly go stale. */
+const met = new Set<string>()
+
 function noWayUp(address: string): void {
   const path = address.split('?')[0] ?? address
+  const allowed = ALLOWED[address] ?? []
 
   const up = within(screen.getByRole('main'))
     .queryAllByRole('link')
-    .filter((one) => !aWayAnywhere(one) && !besideAControl(one))
     .map((one) => (one.getAttribute('href') ?? '').split('?')[0] ?? '')
     .filter((href) => href !== FRONT && path.startsWith(`${href}/`))
 
-  expect(up, `${address} offers no way of its own up a level`).toEqual([])
+  up.filter((href) => allowed.includes(href)).forEach((href) => met.add(`${address} ${href}`))
+
+  expect(
+    up.filter((href) => !allowed.includes(href)),
+    `${address} offers no way of its own up a level`,
+  ).toEqual([])
 }
 
-/** The portal itself, which is nobody's parent. */
-const FRONT = '/sr'
+/** The portal itself, which is nobody's parent, in the language every row here is written in.
+ *  Read off `i18n/config.ts` rather than written out, because the day an `/en` row joins the
+ *  table a hand-written `/sr` would call the way home a way back and free the real one. */
+const FRONT = `/${DEFAULT_LOCALE}`
 
-/**
- * A link inside a navigation is not a way back but one destination among several.
- *
- * The parts of a competition are drawn this way (`components/PartsNav.tsx`): standing on
- * „Rezultati", the link to the competition itself is the **other tab**, and the set marks
- * which one is open. Taking it for a way back would ask the portal to remove the way to
- * half of its own screen.
- */
-function aWayAnywhere(link: HTMLElement): boolean {
-  return link.closest('nav') !== null
-}
 
 /**
- * And a link standing beside a button closes what that button sends.
+ * And the same question over administration and over the two member forms the sweep above
+ * cannot reach.
  *
- * „Odustani" beside „Pošalji" is the pair the owner kept when he took the rest away
- * (05.09.2026: „Ostaju samo dva dugmeta u administraciji, koja i nisu veze nego zatvaraju
- * formu"). Those two are buttons and this one is a link, but it is the same thing doing the
- * same job, and the reason he gave for keeping them is about the job.
+ * **Why they are not in that sweep.** It asks what a browser downloads on behalf of somebody who
+ * is not entitled to it, so administration is deliberately outside it. And two member forms
+ * (`/sr/novi-tim`, `/sr/tim/:slug/izmena`) answer `SignedOut` or send the reader away for both
+ * roles it walks with, so the form itself is never drawn there.
  *
- * Read as „its own group holds a control", not as „somewhere on the page there is one", so
- * a way back cannot creep in by standing anywhere near a button.
+ * **Why they must be asked anyway.** The owner's sentence was about the portal, and he reasoned
+ * about administration by name when he kept the two controls that close a form. A review put a
+ * real way back into `admin/AdminMembers.tsx` and into `member/EditTeam.tsx` and the whole
+ * package stayed green (06.09.2026): eleven addresses and two forms had nobody at all.
+ *
+ * **What is still outside, said rather than hidden:** the six screens that confirm a sending.
+ * Nothing here draws the state after something is sent, so a way up on a confirmation would slip
+ * past. Those six are held for what lies under them (`pages/backAfterSending.test.tsx`), not for
+ * what they draw.
  */
-function besideAControl(link: HTMLElement): boolean {
-  return link.parentElement?.querySelector('button') != null
-}
+/** Whoever administers the portal in the probe data. */
+const ADMIN = '000001'
+
+const BEHIND: [string, Role, string | null][] = [
+  ['/sr/administracija', 'superadmin', ADMIN],
+  ['/sr/administracija/entiteti', 'superadmin', ADMIN],
+  ['/sr/administracija/verifikacija', 'superadmin', ADMIN],
+  ['/sr/administracija/verifikacija/rezultati', 'superadmin', ADMIN],
+  ['/sr/administracija/cenovnik', 'superadmin', ADMIN],
+  ['/sr/administracija/clanovi', 'superadmin', ADMIN],
+  ['/sr/administracija/dogadjaji', 'superadmin', ADMIN],
+  ['/sr/administracija/timovi', 'superadmin', ADMIN],
+  ['/sr/administracija/lige', 'superadmin', ADMIN],
+  ['/sr/administracija/strane', 'superadmin', ADMIN],
+  ['/sr/administracija/moderatori', 'superadmin', ADMIN],
+  /* A member with no team, inside the window, so the form is really drawn. */
+  ['/sr/novi-tim', 'competitor', '000002'],
+  /* And the one who administers this team, likewise. */
+  ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001'],
+]
+
+describe('what administration and the member forms offer', () => {
+  it.each(BEHIND)('offers no way of its own up a level on %s', async (address, role, who) => {
+    renderAt(address, role, who, undefined, '2026-10-15')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    noWayUp(address)
+  })
+})
 
 describe('what a browser downloads outside administration', () => {
   it('visits every address the route table has', () => {
@@ -388,6 +436,18 @@ describe('what a browser downloads outside administration', () => {
 
   /* The other half, so the sweep above is known to be looking at something: the
      queue is fetched, by the screen whose queue it is. */
+  it('meets every way up it allows, so the list cannot go stale', () => {
+    /* The allowance is written by hand, and a hand-written list rots in two directions: it can
+       be short, which the case above catches, and it can keep a line for a link nobody draws any
+       more, which nothing would catch. Both walks above have run by now, so what was met is
+       known. */
+    const promised = Object.entries(ALLOWED).flatMap(([address, hrefs]) =>
+      hrefs.map((href) => `${address} ${href}`),
+    )
+
+    expect([...met].sort()).toEqual(promised.sort())
+  })
+
   it('asks for it on the screen that decides on it', async () => {
     const asked = watch()
 
