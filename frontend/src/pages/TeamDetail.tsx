@@ -312,8 +312,14 @@ export function TeamDetail() {
                 inYearlyWindow(today) &&
                 waiting.length > 0 && (
                   <>
-                    <h2 className="profile__section">{t('teams.joinWaiting')}</h2>
-                    <ul className="submissions">
+                    {/* Named by its own heading, because a list of questions about people
+                        is a thing a reader arrives at and must be able to leave again
+                        (WCAG 2.2, 1.3.1). It also lets a case say „these three and no
+                        others" instead of counting every `li` on the page. */}
+                    <h2 className="profile__section" id="team-waiting">
+                      {t('teams.joinWaiting')}
+                    </h2>
+                    <ul className="submissions" aria-labelledby="team-waiting">
                       {waiting.map(({ ask, asked }) => (
                         <li key={ask.id} className="submissions__item">
                           <p className="submissions__meta">

@@ -121,6 +121,12 @@ export function Asked() {
  * one that wrote it, so a test standing where an application is answered cannot see
  * whether anything reached anybody, or which of two opposite things it said. Read off
  * `inbox`, which is what that screen reads.
+ *
+ * **The whole message on one line, not the fields somebody thought to check.** Picked
+ * apart, every field left out is a field that can be wrong with the package green: the
+ * sender was one of those, and a message from the team rather than from the league read
+ * the same to every case here (review, 06.09.2026). A line that carries all of it cannot
+ * be partly right.
  */
 export function Pigeonhole() {
   const { inbox } = useSession()
@@ -128,7 +134,9 @@ export function Pigeonhole() {
   return (
     <ul aria-label="inbox">
       {inbox.map((one) => (
-        <li key={one.id}>{`${one.date} | ${one.subject} | ${one.body}`}</li>
+        <li key={one.id}>
+          {`${one.from} | ${one.to} | ${one.date} | ${one.subject} | ${one.body}`}
+        </li>
       ))}
     </ul>
   )

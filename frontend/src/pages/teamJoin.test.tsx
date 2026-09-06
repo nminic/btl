@@ -5,6 +5,7 @@ import { renderAt } from '../test/render'
 import { Asked, Pigeonhole, Saved } from '../test/saved'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
+import { useClock } from '../clock/useClock'
 import { useSession } from '../session/useSession'
 
 /* A member asking to be let into a team, and the team answering.
@@ -371,6 +372,23 @@ function Answered({ who }: { who: string }) {
       }}
     >
       odgovori {who}
+    </button>
+  )
+}
+
+/** The clock moved on during the visit, so the day something was written and the day it
+ *  is read are two days even on the road that really writes it. */
+function Ticking({ to }: { to: string }) {
+  const { simulate } = useClock()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        simulate(to)
+      }}
+    >
+      pomeri dan
     </button>
   )
 }
@@ -981,9 +999,13 @@ describe('the answer the team gives', () => {
 
     const told = within(await screen.findByRole('list', { name: 'inbox' }))
 
-    expect(told.getByText(/Prijava u tim „Vardarski krug" nije prihvaćena/)).toBeVisible()
-    expect(told.getByText(/Tim „Vardarski krug" nije prihvatio tvoju prijavu/)).toBeVisible()
-    expect(told.getByText(/2027-10-20/)).toBeVisible()
+    /* The whole line, sender and recipient included: picked apart, a refusal that came
+       from the team rather than from the league read the same (review, 06.09.2026). */
+    expect(
+      told.getByText(
+        'Balkanska trkačka liga | 000004 | 2027-10-20 | Prijava u tim „Vardarski krug" nije prihvaćena | Tim „Vardarski krug" nije prihvatio tvoju prijavu.',
+      ),
+    ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
 
@@ -992,6 +1014,71 @@ describe('the answer the team gives', () => {
         /nije prihvaćena/,
       ),
     ).toBeNull()
+  }, SLOW)
+
+  it('carries what a member really sent through to the card the team answers', async () => {
+    /* **The whole road, with nothing coinciding with anything.** The cases above reach the
+       card through `Applied`, which writes the day itself, so the road that writes a day and
+       the road that draws one were never joined; and every application was sent on Dunav,
+       which is the first team in the file (review, 06.09.2026). Here the member presses the
+       control, on a team that is not the first, and the clock then moves a year on, so the
+       day sent, the day read and the season written are three numbers.
+
+       Three applications, and the one answered is the **middle**: 000004 arrives on
+       mounting, 000002 by pressing „Prijavi se u tim", 000006 through the probe after.
+
+       Every assertion is a **whole line**, not fields somebody thought to name. A line
+       cannot be partly right, and picking fields is what left the sender, the name of the
+       key written and the visible words on the buttons unmeasured through four rounds. */
+    const user = setupUser()
+
+    renderAt(
+      VARDAR,
+      'competitor',
+      '000002',
+      undefined,
+      DAY,
+      <>
+        <Applied who="000004" team="team-vardar" day={OTHER_DAY} />
+        <Also who="000006" team="team-vardar" day={THIRD_DAY} />
+        <Ticking to={NEXT_WINDOW} />
+        <Become who="000003" />
+        <Become who="000002" />
+        <Saved />
+        <Pigeonhole />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+    await user.click(screen.getByRole('button', { name: 'prijavi 000006' }))
+    await user.click(screen.getByRole('button', { name: 'pomeri dan' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
+
+    /* Three cards, in the order they were sent, read off the list the screen draws. */
+    const waiting = within(
+      await screen.findByRole('list', { name: 'Prijave koje čekaju' }),
+    ).getAllByRole('listitem')
+
+    expect(waiting).toHaveLength(3)
+    expect(waiting[1]).toHaveTextContent('Relja Momčilović15. 10. 2026.Primi u tim Odbij')
+
+    await user.click(screen.getByRole('button', { name: TAKE }))
+
+    /* The whole of what was written: the field names as well as the values. */
+    expect(
+      within(screen.getByRole('list', { name: 'session records' })).getByText(
+        'edit 000002 | teamId=team-vardar teamSince=2028',
+      ),
+    ).toBeVisible()
+
+    /* And the whole of what was said, including who it is from and who it is to. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).getByText(
+        'Balkanska trkačka liga | 000002 | 2027-10-20 | Primljen si u tim „Vardarski krug" | Od naredne sezone trčiš za tim „Vardarski krug".',
+      ),
+    ).toBeVisible()
   }, SLOW)
 
   it('is not given outside the window, because the answer is what writes the season', () => {
