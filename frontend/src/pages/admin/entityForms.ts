@@ -121,7 +121,11 @@ export const MEMBERS: EntityDef = {
   form: clan,
   idField: 'memberNumber',
   handsOutIdentity: nextMemberNumber,
-  blank: { teamId: null, active: true },
+  /* Every field the record carries that no field on the form asks about. A missing one is
+     `undefined`, not a default, and `undefined` is not `'none'`: a member entered here would
+     have had their year of birth published without anybody choosing it, and the profile would
+     have thrown before that on a biography that was not there (review, 06.09.2026). */
+  blank: { teamId: null, active: true, bio: '', profileHidden: false, birthdayShown: 'none' },
 }
 
 export const EVENTS: EntityDef = {

@@ -8,6 +8,8 @@ import { Resource } from '../components/Resource'
 import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { useSession } from '../session/useSession'
+import { ProfileHidden } from './profile/ProfileHidden'
+import { profileFor } from './profile/visible'
 import { useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
 import { Counters } from './home/Counters'
@@ -407,34 +409,17 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
         /* Through the overlay, so a choice made in Podešavanja this visit is answered by this
            screen at once rather than only after the data is loaded again. */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
-        const competitor = competitors.find(
-          (one) => one.memberNumber === memberNumber && one.active,
-        )
+        const readable = profileFor(competitors, memberNumber, reader)
 
-        if (competitor === undefined) {
+        if (readable.kind === 'none') {
           return <h1>{t('profile.notFound')}</h1>
         }
 
+        const { competitor } = readable
         const name = `${competitor.firstName} ${competitor.lastName}`
 
-        /* **Hidden from readers who are not signed in, and from nobody else.** The published
-           privacy policy has promised exactly this since it was written, and nothing in the
-           code answered for it until 06.09.2026.
-
-           Said in its own words rather than answered with „no such competitor": the name is in
-           the tables and the rankings either way, so a reader who followed it here is owed the
-           reason this page says nothing, and the way to see it.
-
-           Not the same as the inactive member above, who has no visible profile at all (PDL
-           P11). This one has a profile and has chosen who it is for. */
-        if (competitor.profileHidden && reader === null) {
-          return (
-            <div className="member">
-              <h1>{name}</h1>
-              <p className="member__note">{t('profile.hidden')}</p>
-              <p className="member__note">{t('profile.hiddenSignIn')}</p>
-            </div>
-          )
+        if (readable.kind === 'hidden') {
+          return <ProfileHidden name={name} />
         }
 
         /* One address and no alias (PDL P11): a reader who arrived by the

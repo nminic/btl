@@ -16,6 +16,18 @@ import { useSession } from '../session/useSession'
  * visit, because the whole of the question is what somebody else sees.
  */
 
+/** The reader becomes somebody else inside one visit, because what one member chose is read
+ *  by another. */
+function Become({ who }: { who: string }) {
+  const { signIn } = useSession()
+
+  return (
+    <button type="button" onClick={() => { signIn(who) }}>
+      postani {who}
+    </button>
+  )
+}
+
 /** The reader stops being signed in, without leaving the visit. */
 function SignOut() {
   const { signOut } = useSession()
@@ -83,6 +95,129 @@ describe('hiding a profile from readers who are not signed in', () => {
        record, it would have hidden everybody at once. */
     expect(await screen.findByText(/Članski broj 000002/)).toBeVisible()
     expect(screen.queryByText(/sakrio svoj profil/)).toBeNull()
+  }, SLOW)
+
+  it('is not hiding from other members, which is the half the policy explains', async () => {
+    /* Every case here read a member's own profile, so „signed in" and „it is me" were the same
+       reader and the condition could be narrowed to the owner with nothing falling (review,
+       06.09.2026). The policy gives the reason for the other half in the same sentence: „ali ne
+       i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja." */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/podesavanja',
+      'competitor',
+      '000007',
+      undefined,
+      undefined,
+      <Become who="000012" />,
+    )
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+    await user.click(screen.getByRole('button', { name: 'postani 000012' }))
+    await router.navigate(HIM)
+
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+
+    expect(lineUnderTheName('000007')).toMatch(/Banja Luka/)
+    expect(screen.queryByText(/sakrio svoj profil/)).toBeNull()
+  }, SLOW)
+
+  it('holds on the page of awards, which draws the same head', async () => {
+    /* The check stood on the profile and not here, and this address is public and bookmarked:
+       a reader refused the profile got the whole card one address further along, birthday and
+       all (review, 06.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/podesavanja',
+      'competitor',
+      '000007',
+      undefined,
+      undefined,
+      <SignOut />,
+    )
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+    await router.navigate(`${HIM}/priznanja`)
+
+    expect(
+      await screen.findByText(/sakrio svoj profil od posetilaca koji nisu prijavljeni/),
+    ).toBeVisible()
+    expect(screen.queryByText(/Članski broj 000007/)).toBeNull()
+  }, SLOW)
+})
+
+describe('a member entered in administration', () => {
+  it('publishes no birthday, because nobody chose one', async () => {
+    /* **A record made where no field asks the question.** The form in administration asks for
+       nine things and none of them is the birthday or the hiding, so the record is made from
+       `MEMBERS.blank`. A field missing there is `undefined`, and `undefined` is not `'none'`:
+       read as „anything but none", the year of birth of somebody who never chose was published
+       on a public page, and the profile threw before that on a biography that was not there
+       (review, 06.09.2026).
+
+       Walked through administration rather than written into the session, because that is the
+       one road by which such a record comes to exist. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/clanovi', 'superadmin', '000001')
+
+    await user.click(await screen.findByRole('button', { name: 'Novi član' }))
+
+    await user.type(await screen.findByLabelText(/^Ime$/), 'Milica')
+    await user.type(screen.getByLabelText(/^Prezime$/), 'Pavlović')
+    await user.selectOptions(screen.getByLabelText(/^Pol$/), 'F')
+    await user.type(screen.getByLabelText(/Godina rođenja/), '1991')
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Kraljevo')
+    await user.selectOptions(screen.getByLabelText(/^Država$/), 'RS')
+    await user.type(screen.getByLabelText(/U ligi od sezone/), '2027')
+    await user.selectOptions(screen.getByLabelText(/Osnov članstva/), 'payment')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* Her public page draws at all, which it did not: it threw on a biography that was not
+       there. And it says nothing she did not choose. */
+    await router.navigate('/sr/takmicar/000033')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Milica Pavlović/ }),
+    ).toBeVisible()
+
+    const line = must(
+      screen.getByText(/Kraljevo/).closest('p'),
+      'the line under the name',
+    ).textContent
+
+    expect(line).toMatch(/Kraljevo/)
+    expect(line).not.toMatch(/1991/)
+  }, SLOW)
+})
+
+describe('what the settings show back', () => {
+  it('shows the choice that was made, not the one it started on', async () => {
+    /* Measured only that the controls write, never that they read back: a member could choose
+       „samo godinu", come back and find „ne prikazuj ništa" ticked while the profile published
+       the year (review, 06.09.2026). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007')
+
+    await user.click(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    )
+    await user.click(screen.getByLabelText('Prikaži samo godinu'))
+
+    /* Away and back, so what is read is the record and not what the screen was holding. */
+    await router.navigate(HIM)
+    await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
+    await router.navigate('/sr/podesavanja')
+
+    expect(
+      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    ).toBeChecked()
+    expect(screen.getByLabelText('Prikaži samo godinu')).toBeChecked()
+    expect(screen.getByLabelText('Ne prikazuj ništa')).not.toBeChecked()
   }, SLOW)
 })
 

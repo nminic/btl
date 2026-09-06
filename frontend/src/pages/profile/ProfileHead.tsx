@@ -84,12 +84,12 @@ export function ProfileHead({
               An earlier comment here said a date of birth „has no place on a card". That was
               true while there was no choice; with one, what is on the card is what the member
               put there. */}
-          {competitor.birthdayShown === 'none' ? null : (
+          {competitor.birthdayShown === 'year' || competitor.birthdayShown === 'full' ? (
             <>
               {competitor.birthYear}
               {' · '}
             </>
-          )}
+          ) : null}
           {competitor.city}
           {' · '}
           {t('profile.memberSince', { season: competitor.firstSeason })}
