@@ -3,17 +3,32 @@ import { useFilterParams } from '../app/useFilterParams'
 import { useToday } from '../clock/useClock'
 import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
-import type { FormValues } from '../forms/types'
 import { REFERRAL_CODE, REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
 import { formatDayInSentence } from '../i18n/format'
+import { useSend, useSent } from './sent'
 import { useI18n } from '../i18n/useI18n'
 
-/* The form itself is the JSON definition; this screen only decides what happens
- * with the values: until the backend exists, it holds them long enough to say
- * where the letter of confirmation went. */
+/* The form itself is the JSON definition; this screen only decides what happens with the
+ * values: until the backend exists, it carries two of them on the confirmation's own entry
+ * in the history, long enough to say where the letter of confirmation went. */
 export function Registration() {
   const { locale, t } = useI18n()
-  const [sent, setSent] = useState<FormValues | null>(null)
+  /* **Held by the address, not by the screen.** Drawn in place, the entry under this
+     confirmation was the form itself, and one press forward brought it back filled in:
+     the password, the electronic address, the street and the number of an identity
+     document, on whatever machine the member happened to be using. Every other screen
+     that confirms a sending was put right on 06.09.2026 and this one was left, because it
+     was not on the owner's list; he then asked for it („Popravi isto kao ostalih pet").
+
+     Two facts travel, and only two: where the letter went, and whether somebody brought
+     this member. What was typed does not, which is the whole point. */
+  const said = useSent()
+  const where = Reflect.get(Object(said), 'email')
+  const sent =
+    typeof where === 'string'
+      ? { email: where, referred: Reflect.get(Object(said), 'referred') === true }
+      : null
+  const confirm = useSend()
   const [resent, setResent] = useState(false)
   /* Which side of 1 October the portal is on, from the one clock the whole
      portal reads (src/clock). It used to be a prop with the machine's date
@@ -71,13 +86,13 @@ export function Registration() {
     return (
       <div className="registration-done" role="status">
         <h1>{t('registration.doneTitle')}</h1>
-        <p>{t('registration.doneText', { email: String(sent.email) })}</p>
+        <p>{t('registration.doneText', { email: sent.email })}</p>
         <p>{t('registration.checkSpam')}</p>
         {/* Said only to somebody who arrived by a link, and it says both halves
             of the rule: the referral is recorded now, and it pays when this
             member's own fee is activated. Whoever brought them is not named,
             since the code is theirs and not this member's to be told. */}
-        {sent.referredBy === undefined ? null : <p>{t('registration.doneReferral')}</p>}
+        {sent.referred ? <p>{t('registration.doneReferral')}</p> : null}
         {/* Asking again says so and stays where it is. It used to empty `sent`,
             which unmounted this confirmation and handed back a blank form:
             nothing said the letter had gone out again, and everything typed was
@@ -112,7 +127,7 @@ export function Registration() {
     <FormRenderer
       form={registracija}
       onSubmit={(values) => {
-        setSent(referral === null ? values : { ...values, referredBy: referral })
+        confirm(`/${locale}`, { email: String(values.email), referred: referral !== null })
       }}
     />
   )

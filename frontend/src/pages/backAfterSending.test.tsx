@@ -211,6 +211,21 @@ describe('the way back from a confirmation', () => {
  * `CLAUDE.md` calls a floor: the question is answered by something the language already
  * says out loud, not by a list somebody has to remember to extend.
  */
+/**
+ * Where each one's case lives. Written by hand, and held against the derived list above:
+ * a screen that starts confirming a sending cannot be left out, only put in the wrong
+ * place, and the file it names is one line to check.
+ */
+const CASES: Record<string, string> = {
+  'pages/event/RateEvent.tsx': 'backAfterSending.test.tsx',
+  'pages/event/ReportResult.tsx': 'backAfterSending.test.tsx',
+  'pages/member/EditTeam.tsx': 'backAfterSending.test.tsx',
+  'pages/member/NewResult.tsx': 'backAfterSending.test.tsx',
+  'pages/member/ProposeTeam.tsx': 'backAfterSending.test.tsx',
+  /* Its own file, because filling this form takes forty lines that already live there. */
+  'pages/Registration.tsx': 'registration.test.tsx',
+}
+
 describe('every screen that confirms a sending', () => {
   it('has a case here saying where the way back leads', () => {
     const sending = sources()
@@ -218,12 +233,6 @@ describe('every screen that confirms a sending', () => {
       .map(({ path }) => relative(join(process.cwd(), 'src'), path).split(sep).join('/'))
       .sort()
 
-    expect(sending).toEqual([
-      'pages/event/RateEvent.tsx',
-      'pages/event/ReportResult.tsx',
-      'pages/member/EditTeam.tsx',
-      'pages/member/NewResult.tsx',
-      'pages/member/ProposeTeam.tsx',
-    ])
+    expect(sending).toEqual(Object.keys(CASES).sort())
   })
 })

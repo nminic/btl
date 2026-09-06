@@ -1,4 +1,4 @@
-import { act, cleanup, screen } from '@testing-library/react'
+import { act, cleanup, screen, within } from '@testing-library/react'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import { beginsWith, metSaid } from '../test/met'
 import { renderAt } from '../test/render'
@@ -238,6 +238,72 @@ function expectPart(part: string | undefined): void {
   expect(screen.getByRole('heading', { level: 2, name: part })).toBeVisible()
 }
 
+
+/**
+ * That the page offers no way of its own up a level, on every address the portal has.
+ *
+ * Owner, 05.09.2026: „Obriši sve Nazad linkove koje si pomenuo, **ne želim da imam ni
+ * jedan takav slučaj na portalu**... Default Back akcija mi je OK." That is a rule about
+ * the portal, and it was held by a query over the dictionary, which knows only the word
+ * „Nazad". A review measured the hole: a way back reading „Kalendar" or „Sve poruke" walks
+ * straight past it, and two of the nine that were removed read exactly that (06.09.2026).
+ *
+ * **Asked of the shape of the link, not of its words.** A way up a level is a link whose
+ * address is a strict ancestor of the address being read: from `/sr/tim/dunavski-trkaci`
+ * to `/sr/timovi` is not one, because `timovi` is not `tim`; from
+ * `/sr/kalendar/dan/2027-05-08` to `/sr/kalendar` is. Read off the one link, with nothing
+ * followed through the code, so the question has a bottom (`CLAUDE.md`).
+ *
+ * **The front page is not a level above**, it is the portal, so a link to it is not a way
+ * back: an error screen offering the way home is what the owner kept. Written as the one
+ * exception rather than as a list of addresses.
+ *
+ * Held here rather than in a sweep of its own, for the same reason `beginsWith` is: this
+ * walk already opens every address outside administration twice and waits for it to
+ * settle, and the case above refuses to let an address in without a row here.
+ */
+function noWayUp(address: string): void {
+  const path = address.split('?')[0] ?? address
+
+  const up = within(screen.getByRole('main'))
+    .queryAllByRole('link')
+    .filter((one) => !aWayAnywhere(one) && !besideAControl(one))
+    .map((one) => (one.getAttribute('href') ?? '').split('?')[0] ?? '')
+    .filter((href) => href !== FRONT && path.startsWith(`${href}/`))
+
+  expect(up, `${address} offers no way of its own up a level`).toEqual([])
+}
+
+/** The portal itself, which is nobody's parent. */
+const FRONT = '/sr'
+
+/**
+ * A link inside a navigation is not a way back but one destination among several.
+ *
+ * The parts of a competition are drawn this way (`components/PartsNav.tsx`): standing on
+ * „Rezultati", the link to the competition itself is the **other tab**, and the set marks
+ * which one is open. Taking it for a way back would ask the portal to remove the way to
+ * half of its own screen.
+ */
+function aWayAnywhere(link: HTMLElement): boolean {
+  return link.closest('nav') !== null
+}
+
+/**
+ * And a link standing beside a button closes what that button sends.
+ *
+ * „Odustani" beside „Pošalji" is the pair the owner kept when he took the rest away
+ * (05.09.2026: „Ostaju samo dva dugmeta u administraciji, koja i nisu veze nego zatvaraju
+ * formu"). Those two are buttons and this one is a link, but it is the same thing doing the
+ * same job, and the reason he gave for keeping them is about the job.
+ *
+ * Read as „its own group holds a control", not as „somewhere on the page there is one", so
+ * a way back cannot creep in by standing anywhere near a button.
+ */
+function besideAControl(link: HTMLElement): boolean {
+  return link.parentElement?.querySelector('button') != null
+}
+
 describe('what a browser downloads outside administration', () => {
   it('visits every address the route table has', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
@@ -284,6 +350,7 @@ describe('what a browser downloads outside administration', () => {
        case above refuses to let one in without a row here. */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
 
+    noWayUp(address)
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
@@ -314,6 +381,7 @@ describe('what a browser downloads outside administration', () => {
        about the screen behind it (review, 04.09.2026). */
     expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
 
+    noWayUp(address)
     expectPart(part)
     expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
   })
