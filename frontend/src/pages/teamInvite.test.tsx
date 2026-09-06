@@ -637,7 +637,6 @@ describe('which day the answer is read off', () => {
       IN_WINDOW,
       <>
         <Become who="000002" />
-        <Become who="000003" />
         <Day on="2027-10-15" />
       </>,
     )
@@ -677,6 +676,7 @@ describe('which day the answer is read off', () => {
         <Become who="000003" />
         <Become who="000002" />
         <Day on="2027-10-15" />
+        <Day on="2027-11-20" />
       </>,
     )
 
@@ -696,6 +696,10 @@ describe('which day the answer is read off', () => {
     await user.click(must(both[1], 'the invitation Dunavski trkači sent'))
     await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
 
+    /* Read on a **third** day, so the day the notice carries is not also the day the panel is
+       drawn on: written the same day, „the message's day" and „today" are one string and the
+       assertion would pass on a panel that drew the clock (review, 06.09.2026). */
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-20' }))
     await user.click(screen.getByRole('button', { name: 'postani 000003' }))
 
     const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
@@ -722,11 +726,124 @@ describe('which day the answer is read off', () => {
        (`teamJoin.test.tsx`). */
     await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
     await user.click(screen.getByRole('button', { name: 'danas je 2026-12-20' }))
+
+    /* A second question, two months later and about somebody else. */
+    await router.navigate(OTHER_FREE)
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
     await router.navigate('/sr/tim/dunavski-trkaci')
 
-    const sent = await screen.findByRole('list', { name: 'Poslati pozivi' })
+    /* **Two rows, and each has to carry its own two facts.** With one open question „the day of
+       this row" and „the day of the first row" are the same string, so both fields could be read
+       off the first record and the page would still pass: measured 06.09.2026, both mutations
+       left the whole package green. Relja was asked in October and Časlav in December, so the
+       two rows differ in the name and in the day at once. */
+    const rows = within(await screen.findByRole('list', { name: 'Poslati pozivi' })).getAllByRole(
+      'listitem',
+    )
 
-    expect(within(sent).getByText('15. 10. 2026.')).toBeVisible()
+    expect(rows).toHaveLength(2)
+
+    const said = rows.map((row) => row.textContent ?? '')
+
+    expect(said.filter((one) => /Relja Momčilović/.test(one) && /15\. 10\. 2026\./.test(one))).toHaveLength(1)
+    expect(said.filter((one) => /Časlav Radenković/.test(one) && /20\. 12\. 2026\./.test(one))).toHaveLength(1)
+  }, SLOW)
+})
+
+describe('the day the notice carries, on the other two doors', () => {
+  it('dates it by the day the club took the member in, not by the day they applied', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000003',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000001" />
+        <Become who="000003" />
+        <Day on="2027-10-15" />
+        <Day on="2027-11-20" />
+      </>,
+    )
+
+    /* **The same axis as on the door through the inbox, and `afterJoining` is why it has to be
+       written three times rather than once.** The rule that decides who is told lives in one
+       module; the day each door writes does not, and each writes it from something of its own.
+       Measured 06.09.2026: the notice on this door dated by the application it answers rather
+       than by the clock left the whole package green.
+
+       Vardar asks Relja in the 2026 window. Relja applies to Dunavski trkači the same day, the
+       window shuts with nothing agreed, and they take him in a year later. The notice Vardar
+       gets is about something that happened in October 2027. */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-10-15' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-20' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
+
+    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
+
+    expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('15. 10. 2027.')
+  }, SLOW)
+
+  it('dates it by the day the proposal was approved, not by the day it was sent', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'superadmin',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000001" />
+        <Become who="000007" />
+        <Day on="2027-01-05" />
+        <Day on="2027-02-10" />
+      </>,
+    )
+
+    /* And the third door, for the same reason. A proposal sent inside the window and approved
+       after it is a state the queue allows on purpose, and the notice is about the approval. */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/novi-tim')
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-05' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
+    const card = within(must(heading.closest('li'), 'the card the proposal stands on'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-02-10' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+
+    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
+
+    expect(must(told[0], 'the notice Dunavski trkači were sent').textContent).toContain('5. 1. 2027.')
   }, SLOW)
 })
 

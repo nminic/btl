@@ -1,3 +1,7 @@
+import ts from 'typescript'
+import { basename, sep } from 'node:path'
+import { seasonBeingRenewed } from './pricing'
+import { sources } from '../test/sources'
 import {
   inYearlyWindow,
   referralMayBeSet,
@@ -18,6 +22,56 @@ describe('the yearly window', () => {
      the window that body answered with the season that is **running**: a proposal decided
      on 5 January put its founder into a squad in the middle of a season. The two look
      alike and are not, so this asks on the four days where they used to disagree. */
+  /**
+   * The year the league starts is written once, and every other name for it reads that one.
+   *
+   * **Two guards, because the fault has two shapes and neither sees the other.** A second name
+   * holding the same number is harmless until somebody moves the first, and then half the portal
+   * follows and half does not, silently, because the number was right in both places up to that
+   * moment (review, 06.09.2026). And a body copied instead of called drifts the same way.
+   *
+   * The floor is derived and holds no list: **the whole of `src/data` may write a year as a
+   * number exactly once**, and that once is `FIRST_SEASON` itself. Anything else — a price list
+   * with its own 2027, a season worked out inline — falls here and asks the question once.
+   */
+  it('writes the year of the first season in exactly one place', () => {
+    /* **Asked of the parser, not of the text.** A line that holds a year may be prose: a review
+       written down in a comment, a date inside a sentence, a slug. Only the language can say
+       which four digits are a number the portal computes with, and it is the one thing here
+       that cannot be wrong about its own syntax. */
+    const written = sources()
+      .filter((one) => one.path.includes(`${sep}data${sep}`) && one.path.endsWith('.ts'))
+      .flatMap((one) => {
+        const file = ts.createSourceFile(one.path, one.code, ts.ScriptTarget.Latest, true)
+        const found: string[] = []
+
+        const walk = (node: ts.Node): void => {
+          if (ts.isNumericLiteral(node) && /^20\d\d$/.test(node.text)) {
+            const [first] = node.parent.getText().split(/\r?\n/)
+
+            found.push(`${basename(one.path)}: ${first?.trim() ?? ''}`)
+          }
+
+          ts.forEachChild(node, walk)
+        }
+
+        walk(file)
+
+        return found
+      })
+
+    expect(written).toEqual(['season.ts: FIRST_SEASON = 2027'])
+  })
+
+  /* And the two names that answer „which season are we heading into" answer the same on every
+     day that matters. Written as agreement rather than as a rule about the text, because what
+     hurts is not a second copy but a second copy that says something else. */
+  it('answers the same whether it is asked as a renewal or as a transfer', () => {
+    for (const day of ['2026-09-30', '2026-10-01', '2026-12-31', '2027-01-01', '2025-11-15']) {
+      expect(seasonBeingRenewed(day)).toBe(transfersTakeEffect(day))
+    }
+  })
+
   it('lands a transfer at the start of a season, never inside one', () => {
     expect(transfersTakeEffect('2026-09-30')).toBe(2027)
     expect(transfersTakeEffect('2026-10-01')).toBe(2027)
