@@ -148,6 +148,10 @@ describe('hiding a profile from readers who are not signed in', () => {
       await screen.findByText(/sakrio svoj profil od posetilaca koji nisu prijavljeni/),
     ).toBeVisible()
     expect(screen.queryByText(/Članski broj 000007/)).toBeNull()
+    /* And the heading is the name, which is the one thing the decision keeps public. Handed
+       the member number instead, this page would greet a reader with a bare figure and both
+       assertions above would still pass (review, 06.09.2026). */
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Strahinja Vukićević')
   }, SLOW)
 })
 
@@ -185,15 +189,67 @@ describe('a member entered in administration', () => {
       await screen.findByRole('heading', { level: 1, name: /Milica Pavlović/ }),
     ).toBeVisible()
 
-    const line = must(
-      screen.getByText(/Kraljevo/).closest('p'),
-      'the line under the name',
-    ).textContent
+    const line = lineUnderTheName('000033')
 
     expect(line).toMatch(/Kraljevo/)
     expect(line).not.toMatch(/1991/)
   }, SLOW)
 })
+
+  it('can be unticked again, which a missing field would have made impossible', async () => {
+    /* **The nastiest half of a field that is not on the blank.** `editRecord` writes text, and
+       `like` puts it back into the shape the record holds it in by looking at the record. With
+       no `profileHidden` there to look at, „false" comes back as the string „false", which is
+       true: the member ticks once and can never untick, and the box shows ticked while the
+       profile stays hidden to every stranger (review, 06.09.2026).
+
+       Walked on a member entered in administration, because that is the only road to a record
+       made from the blank. */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/administracija/clanovi',
+      'superadmin',
+      '000001',
+      undefined,
+      undefined,
+      <>
+        <Become who="000033" />
+        <SignOut />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Novi član' }))
+    await user.type(await screen.findByLabelText(/^Ime$/), 'Milica')
+    await user.type(screen.getByLabelText(/^Prezime$/), 'Pavlović')
+    await user.selectOptions(screen.getByLabelText(/^Pol$/), 'F')
+    await user.type(screen.getByLabelText(/Godina rođenja/), '1991')
+    await user.type(screen.getByLabelText(/^Mesto$/), 'Kraljevo')
+    await user.selectOptions(screen.getByLabelText(/^Država$/), 'RS')
+    await user.type(screen.getByLabelText(/U ligi od sezone/), '2027')
+    await user.selectOptions(screen.getByLabelText(/Osnov članstva/), 'payment')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* She signs in, hides, and changes her mind. */
+    await user.click(screen.getByRole('button', { name: 'postani 000033' }))
+    await router.navigate('/sr/podesavanja')
+
+    const box = await screen.findByLabelText(
+      'Sakrij moj profil od posetilaca koji nisu prijavljeni',
+    )
+
+    await user.click(box)
+    await user.click(box)
+
+    expect(box).not.toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+    await router.navigate('/sr/takmicar/000033')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Milica Pavlović/ }),
+    ).toBeVisible()
+    expect(screen.queryByText(/sakrio svoj profil/)).toBeNull()
+  }, SLOW)
 
 describe('what the settings show back', () => {
   it('shows the choice that was made, not the one it started on', async () => {

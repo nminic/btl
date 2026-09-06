@@ -3,6 +3,7 @@ import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
+import { loadResource } from '../../data/client'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { categoryOf } from '../../data/raceCategory'
@@ -269,6 +270,38 @@ describe('a record that is entered rather than changed', () => {
     expect(made.logo).toBeNull()
     expect(made.crop).toEqual({ x: 0.5, y: 0.5, size: 1 })
     expect(made.name).toBe('Probni tim')
+  })
+
+  it.each([
+    ['competitors' as const, MEMBERS],
+    ['teams' as const, TEAMS],
+  ])('answers for every field the served %s record has', async (name, entity) => {
+    /* The case above says the same thing about one entity and its title claims the class; a
+       review measured that the class was not held, and three fields were missing from the
+       member blank while the package stayed green (06.09.2026).
+
+       **The floor is the served record, not a list written here.** Whatever the portal is
+       fed, a record made in administration carries the same fields, or the day somebody adds
+       a field to the data and forgets the blank, this fails and names it. */
+    const served = await loadResource<Record<string, unknown>[]>(name)
+
+    /* Three sources answer for a field, and together they must answer for all of them: the
+       identity, what the form asks about, and the blank the entity carries for the rest.
+       Compared against the served record, so the floor is the data and not a list here. */
+    const answered = new Set([
+      entity.idField,
+      ...entity.form.fields.map((field) => field.name),
+      ...Object.keys(entity.blank),
+      /* `derived` is a function of the values, so the names come from calling it, not from
+         reading it. A team's address is written this way. */
+      ...(entity.derived === undefined
+        ? []
+        : entity.derived({ name: 'Probni' }).map((one) => one.name)),
+    ])
+
+    const missing = Object.keys(first(served)).filter((field) => !answered.has(field))
+
+    expect(missing).toEqual([])
   })
 })
 
