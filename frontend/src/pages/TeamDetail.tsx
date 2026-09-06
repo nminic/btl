@@ -22,7 +22,7 @@ import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { afterJoining } from '../data/afterJoining'
 import { teamOf } from '../data/derive'
-import { inYearlyWindow, seasonOnSale } from '../data/season'
+import { inYearlyWindow, transfersTakeEffect } from '../data/season'
 import { teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
@@ -375,7 +375,7 @@ export function TeamDetail() {
                                    which is the next one (PDL, 05.09.2026). */
                                 editRecord(ask.memberNumber, {
                                   teamId: team.id,
-                                  teamSince: String(seasonOnSale(today)),
+                                  teamSince: String(transfersTakeEffect(today)),
                                 })
                                 answer(ask.id)
                                 notify({

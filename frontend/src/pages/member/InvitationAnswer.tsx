@@ -1,6 +1,6 @@
 import { teamOf } from '../../data/derive'
 import { afterJoining } from '../../data/afterJoining'
-import { inYearlyWindow, seasonOnSale } from '../../data/season'
+import { inYearlyWindow, transfersTakeEffect } from '../../data/season'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { useToday } from '../../clock/useClock'
@@ -75,7 +75,15 @@ export function InvitationAnswer({
     return (
       <p className="messages__answered">
         {mine === undefined
-          ? t('teams.inviteRefused')
+          ? /* **What can be said about a closed invitation of somebody who is in no
+               club, and nothing more.** It used to say „you refused this", and that
+               became a lie the day closing got a second cause: accepting one club's
+               invitation closes the others, and if that club is then deleted the
+               member is in no club again and reads that they refused a question they
+               never saw open (review, 06.09.2026). Nothing here remembers which of
+               the two it was, and nothing should: what is true either way is that the
+               question is over. */
+            t('teams.inviteClosed')
           : t(mine.id === invitation?.teamId ? 'teams.inviteAccepted' : 'teams.inviteOvertaken', {
               team: mine.name,
             })}
@@ -103,14 +111,22 @@ export function InvitationAnswer({
      at the start of the next season and never during a running one.
 
      The invitation waits rather than lapsing, which is what the window is for: it
-     is open again on 1 October, and until then this says so instead of offering a
-     button. */
-  if (!inYearlyWindow(today)) {
-    return <p className="messages__answered">{t('teams.inviteWaits')}</p>
-  }
+     is open again on 1 October, and until then this says so instead of offering the
+     button.
+
+     **„Odbij" is not held by the window and stays.** Refusing writes nothing about
+     any squad, it only ends a question; held by the same condition, a member asked
+     on 30 December could neither take the offer nor be rid of it until the following
+     October, while the club kept them on its list of open questions the whole time
+     (review, 06.09.2026). The window governs joining a club, not answering a
+     letter. */
+  const shut = !inYearlyWindow(today)
 
   return (
     <p className="messages__answer">
+      {shut ? (
+        <span className="messages__answered">{t('teams.inviteWaits')}</span>
+      ) : (
       <button
         type="button"
         className="button button--secondary"
@@ -122,7 +138,7 @@ export function InvitationAnswer({
              same way rather than a third way. */
           editRecord(invitation.memberNumber, {
             teamId: invitation.teamId,
-            teamSince: String(seasonOnSale(today)),
+            teamSince: String(transfersTakeEffect(today)),
           })
 
           /* **Every other team that asked is told, and its question is closed.** The rule
@@ -154,7 +170,8 @@ export function InvitationAnswer({
         }}
       >
         {t('teams.inviteAccept')}
-      </button>{' '}
+      </button>
+      )}{' '}
       <button
         type="button"
         className="button button--quiet"

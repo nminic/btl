@@ -801,7 +801,7 @@
     "inviteSent": "Poslati pozivi",
     "inviteAccepted": "Prihvatio/la si ovaj poziv i od naredne sezone trčiš za tim „{team}\".",
     "inviteOvertaken": "U međuvremenu si ušao/la u tim „{team}\", pa ovaj poziv više ne stoji.",
-    "inviteRefused": "Odbio/la si ovaj poziv.",
+    "inviteClosed": "Ovaj poziv više ne stoji.",
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
     "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 1. oktobra do 31. decembra.",
     "inviteMissedSubject": "Poziv u tim je ostao bez odgovora",

@@ -16,7 +16,7 @@ import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
 import { afterJoining } from '../../data/afterJoining'
-import { seasonOnSale } from '../../data/season'
+import { transfersTakeEffect } from '../../data/season'
 import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -472,7 +472,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       inATeam.push(one.memberNumber)
       editRecord(one.memberNumber, {
         teamId: id,
-        teamSince: String(seasonOnSale(today)),
+        teamSince: String(transfersTakeEffect(today)),
       })
 
       notify({

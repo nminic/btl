@@ -6,7 +6,7 @@ import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
-import { MEMBERS, recordsOf } from './admin/entityForms'
+import { MEMBERS, TEAMS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { useSession } from '../session/useSession'
 import { ProfileHidden } from './profile/ProfileHidden'
@@ -416,10 +416,15 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
 
   return (
     <Resource state={state}>
-      {([everybody, results, teams]) => {
+      {([everybody, results, allTeams]) => {
         /* Through the overlay, so a choice made in Podešavanja this visit is answered by this
-           screen at once rather than only after the data is loaded again. */
+           screen at once rather than only after the data is loaded again.
+
+           And the clubs the same way, since 06.09.2026: a club founded during this visit lives
+           in the overlay and nowhere else, so read off the file this page told the member who
+           had just joined it that they were in no club at all (review, same day). */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
+        const teams = recordsOf(TEAMS, allTeams, overlay)
         const readable = profileFor(competitors, memberNumber, reader)
 
         if (readable.kind === 'none') {
