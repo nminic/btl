@@ -21,7 +21,7 @@ import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { teamOf } from '../data/derive'
-import { inYearlyWindow } from '../data/season'
+import { inYearlyWindow, seasonOnSale } from '../data/season'
 import { teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
@@ -46,7 +46,8 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  const { memberNumber, remove, editRecord, notify, asked: pendingAsks } = useSession()
+  const { memberNumber, remove, editRecord, notify, applications, apply, answer } =
+    useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
@@ -79,8 +80,12 @@ export function TeamDetail() {
         /* Whoever is reading, off the same list as everything else on this screen, and
            what they are called, because an application says who is asking. */
         const me = listedMembers.find((one) => one.memberNumber === memberNumber)
-        const myName = me === undefined ? '' : `${me.firstName} ${me.lastName}`
         const runs = teamAdminOf(team, listedMembers)
+        /* The application this member has open, wherever it is: one at a time, because a
+           member is in one team and cannot be waiting on two. */
+        const asking = applications.find((one) => one.memberNumber === memberNumber)
+        /* And the ones waiting on this team, drawn for whoever runs it now. */
+        const waiting = applications.filter((one) => one.teamId === team.id)
         const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
@@ -132,48 +137,49 @@ export function TeamDetail() {
                         `admin` is null for a team nobody is in, and comparing it
                         with a visitor's own null would put the button in front of
                         everybody who is not signed in. */}
-                    {/* And the way in, for somebody who has no team to leave. Only inside
-                        the transfer window, because that is the one door through which a
-                        team changes (owner, 05.09.2026), and only where there is somebody
-                        to answer: a team nobody is in has no administrator, so an
-                        application to it would be a letter to nobody.
+                    {/* **The way in, and the way it is answered, both on the team's own
+                        page.** An application is a record about this team, not a letter to
+                        whoever happened to run it when it was sent: who may answer it is
+                        worked out here, from the roster, every time it is drawn. Written as
+                        a letter it went to a person, and a founder who left went on
+                        deciding while the one who really ran the team never saw it (review,
+                        06.09.2026).
 
-                        **One application at a time, and about the member rather than
-                        about this team.** The application lives as a question in an
-                        administrator's inbox, which the member who sent it cannot see, so
-                        without this the same letter goes again on every press. Counted per
-                        team instead, one member could stand in two inboxes at once and two
-                        administrators would each answer without knowing of the other; the
-                        second answer then pulled the member out of the team the first had
-                        just put them in (review, 05.09.2026). */}
+                        Offered only inside the transfer window, which is the one door
+                        through which a team changes (owner, 05.09.2026), and only where
+                        there is somebody to answer: a team nobody is in has nobody to
+                        decide. */}
                     {memberNumber !== null &&
                       runs !== null &&
                       teamOf(me) === null &&
                       inYearlyWindow(today) &&
-                      (pendingAsks.some((one) => one.memberNumber === memberNumber) ? (
-                        <p className="rankings__empty">{t('teams.joinAsked')}</p>
-                      ) : (
+                      (asking === undefined ? (
                         <button
                           type="button"
                           className="button button--secondary"
                           onClick={() => {
-                            notify({
-                              from: t('app.name'),
-                              to: runs,
-                              subject: t('teams.joinSubject', { name: myName }),
-                              body: t('teams.joinBody', { name: myName, team: team.name }),
-                              date: today,
-                              asks: {
-                                kind: 'teamJoin',
-                                teamId: team.id,
-                                teamName: team.name,
-                                memberNumber,
-                              },
-                            })
+                            apply({ teamId: team.id, memberNumber, date: today })
                           }}
                         >
                           {t('teams.join')}
                         </button>
+                      ) : (
+                        /* **And a way to take it back, on the team it was sent to and
+                           nowhere else.** An application must always have an ending, and
+                           the one who sent it is the one who can end it without speaking
+                           for the team. On any other team there is simply no way in while
+                           it waits, because a member is in one team (PDL P13). */
+                        asking.teamId === team.id && (
+                          <button
+                            type="button"
+                            className="button button--secondary"
+                            onClick={() => {
+                              answer(asking.id)
+                            }}
+                          >
+                            {t('teams.joinWithdraw')}
+                          </button>
+                        )
                       ))}
                     {memberNumber !== null && runs === memberNumber && (
                       <>
@@ -261,6 +267,85 @@ export function TeamDetail() {
 
                 <Counters totals={totals} races={false} />
               </div>
+
+              {/* **What is waiting on this team, for whoever runs it now.** Drawn here and
+                  not sent anywhere, so the question follows the team: hand the team to
+                  somebody else and the applications go with it, because who may answer is
+                  read off the roster every time this page is drawn (owner, 05.09.2026: the
+                  application is decided by the administrator of that team).
+
+                  Only inside the window, because the answer writes the season a member runs
+                  from and `seasonOnSale` gives the next one only there; outside it the
+                  application waits, which is what the window is for. */}
+              {memberNumber !== null &&
+                runs === memberNumber &&
+                inYearlyWindow(today) &&
+                waiting.length > 0 && (
+                  <>
+                    <h2 className="profile__section">{t('teams.joinWaiting')}</h2>
+                    <ul className="submissions">
+                      {waiting.map((one) => {
+                        const asked = listedMembers.find(
+                          (each) => each.memberNumber === one.memberNumber,
+                        )
+
+                        /* A member administration has deleted since they asked has nothing
+                           left to let in, and their application is not drawn. It is still
+                           theirs to take back, and the team is not asked about somebody who
+                           is not there. */
+                        return asked === undefined ? null : (
+                          <li key={one.id} className="submissions__item">
+                            <p className="submissions__meta">
+                              {asked.firstName} {asked.lastName}
+                            </p>
+                            <p className="member__actions">
+                              <button
+                                type="button"
+                                className="button button--secondary"
+                                onClick={() => {
+                                  /* What an approval in the moderator's queue writes, because
+                                     it is the same fact by another road: the team on the
+                                     member's record, and the season they run for it from,
+                                     which is the next one (PDL, 05.09.2026). */
+                                  editRecord(one.memberNumber, {
+                                    teamId: team.id,
+                                    teamSince: String(seasonOnSale(today)),
+                                  })
+                                  answer(one.id)
+                                  notify({
+                                    from: t('app.name'),
+                                    to: one.memberNumber,
+                                    subject: t('teams.joinDoneSubject', { team: team.name }),
+                                    body: t('teams.joinDoneBody', { team: team.name }),
+                                    date: today,
+                                  })
+                                }}
+                              >
+                                {t('teams.joinTaken')}
+                              </button>{' '}
+                              <button
+                                type="button"
+                                className="button button--secondary"
+                                onClick={() => {
+                                  answer(one.id)
+                                  notify({
+                                    from: t('app.name'),
+                                    to: one.memberNumber,
+                                    subject: t('teams.joinNoSubject', { team: team.name }),
+                                    body: t('teams.joinNoBody', { team: team.name }),
+                                    date: today,
+                                  })
+                                }}
+                              >
+                                {t('teams.joinRefused')}
+                              </button>
+                            </p>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </>
+                )}
 
               <h2 className="profile__section">{t('teams.members')}</h2>
 

@@ -317,14 +317,13 @@ describe('a sentence with a value put into it', () => {
          name inside quotation marks („u tim „{team}""), which is how this portal has
          written a team's name since `teams.proposeDone`. Nothing in them is governed by a
          verb or a preposition that would ask for another case. */
-      'teams.joinBody',
-      /* The team's name inside quotation marks, as everywhere else it is written. */
-      'teams.joinClosedSubject',
+      /* The four an answer to an application is written with, and one answer covers them:
+         every value in them is the team's name inside quotation marks, which is how this
+         portal has written it since `teams.proposeDone`. */
       'teams.joinDoneBody',
       'teams.joinDoneSubject',
       'teams.joinNoBody',
       'teams.joinNoSubject',
-      'teams.joinSubject',
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',

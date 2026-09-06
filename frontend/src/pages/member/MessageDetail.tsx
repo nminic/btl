@@ -1,12 +1,4 @@
 import { useEffect } from 'react'
-import { useToday } from '../../clock/useClock'
-import { Resource } from '../../components/Resource'
-import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
-import { joinRefusal } from '../../data/teamJoin'
-import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
-import { useOverlay } from '../admin/overlay'
-import { seasonOnSale } from '../../data/season'
-import type { Ask } from '../../session/context'
 import { Link, useParams } from 'react-router'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -29,10 +21,7 @@ import './Member.css'
 export function MessageDetail() {
   const { locale, t } = useI18n()
   const { id } = useParams()
-  const { memberNumber, inbox, markRead, decisions, settle, editRecord, notify } = useSession()
-  const today = useToday()
-  const overlay = useOverlay()
-  const state = combinePair(useTeams(), useCompetitors())
+  const { memberNumber, inbox, markRead } = useSession()
   /* Out of the inbox rather than out of the store, so an address that names
    * somebody else's message answers with the not found page instead of showing
    * it (Message.to). */
@@ -51,59 +40,6 @@ export function MessageDetail() {
 
   if (message === undefined) {
     return <NotFound />
-  }
-
-  /* Taken off the message once, so the two controls below and the question they answer are
-     about the same thing rather than about three reads of it. */
-  const { asks } = message
-  const said = message.id
-  const mine = memberNumber
-
-  /* Taking somebody in writes what an approval in the moderator's queue writes, because it
-     is the same fact arriving by another road: the team on the member's record, and the
-     season from which they run for it, which is the next one (PDL, 05.09.2026: „obračun
-     poena tima počinje tek od 1.1. naredne sezone"). */
-  const take = (ask: Ask): void => {
-    editRecord(ask.memberNumber, { teamId: ask.teamId, teamSince: String(seasonOnSale(today)) })
-    settle(said, { status: 'approved', note: '', basis: '', memberNumber: '' })
-    notify({
-      from: t('app.name'),
-      to: ask.memberNumber,
-      subject: t('teams.joinDoneSubject', { team: ask.teamName }),
-      body: t('teams.joinDoneBody', { team: ask.teamName }),
-      date: today,
-    })
-  }
-
-  /**
-   * Ends an application nobody can answer, which is not the same as refusing one.
-   *
-   * **The team has said nothing, so the member must not be told it refused them.** The
-   * control that ends this stands under a sentence which says the reader may not decide,
-   * or that nobody can, and writing „the team did not accept you" there put words in the
-   * mouth of a team that had never seen the application (review, 06.09.2026). What is
-   * true is that it could not be answered, and that they may ask again.
-   */
-  const close = (ask: Ask): void => {
-    settle(said, { status: 'rejected', note: '', basis: '', memberNumber: '' })
-    notify({
-      from: t('app.name'),
-      to: ask.memberNumber,
-      subject: t('teams.joinClosedSubject', { team: ask.teamName }),
-      body: t('teams.joinClosedBody'),
-      date: today,
-    })
-  }
-
-  const refuse = (ask: Ask): void => {
-    settle(said, { status: 'rejected', note: '', basis: '', memberNumber: '' })
-    notify({
-      from: t('app.name'),
-      to: ask.memberNumber,
-      subject: t('teams.joinNoSubject', { team: ask.teamName }),
-      body: t('teams.joinNoBody', { team: ask.teamName }),
-      date: today,
-    })
   }
 
   return (
@@ -133,93 +69,6 @@ export function MessageDetail() {
       </Link>
 
       <p className="messages__body">{message.body}</p>
-
-      {/* And the answer, on the one kind of message that asks for one. Most messages tell;
-          an application to a team is decided by whoever runs that team and by nobody else
-          (owner, 05.09.2026: the moderator's queue is for what the league decides, and who
-          is in whose team is not that).
-
-          Answered once. The answer is a `Decision` under this message's own id, the same
-          way everything else on this portal that somebody decides is kept, so „has this
-          been answered" has one home and cannot be asked twice.
-
-          **The wait is inline**, because the message itself is already drawn above it: a
-          loader without that lies over the whole page, dims what is there and lets nothing
-          be pressed, which is meant for a page that has nothing on it yet (`Loader.css`,
-          and the eight other places that hold part of a screen). */}
-      {asks !== undefined &&
-        (decisions[said] !== undefined ? (
-          <p className="messages__answer">{t('teams.joinSettled')}</p>
-        ) : (
-          <Resource state={state} inline>
-            {([teams, competitors]) => {
-              /* **Asked here and not when the letter was written.** Between the asking
-                 and the answering the portal can change underneath the question: the
-                 team can be deleted, whoever answers can stop administering it, the
-                 member can join another team, and the window can close. All four were
-                 live before this was written, and the worst of them pulled a member out
-                 of a team that had never been asked (review, 05.09.2026). The queue of
-                 the moderators asks the same four in the same place, at the moment it
-                 writes (`admin/teamProposal.ts`). */
-              const listed = recordsOf(MEMBERS, competitors, overlay)
-              const why = joinRefusal(
-                asks,
-                recordsOf(TEAMS, teams, overlay),
-                listed,
-                mine,
-                today,
-              )
-
-              return why === null ? (
-                <p className="messages__answer">
-                  <button
-                    type="button"
-                    className="button button--secondary"
-                    onClick={() => {
-                      take(asks)
-                    }}
-                  >
-                    {t('teams.joinTaken')}
-                  </button>{' '}
-                  <button
-                    type="button"
-                    className="button button--secondary"
-                    onClick={() => {
-                      refuse(asks)
-                    }}
-                  >
-                    {t('teams.joinRefused')}
-                  </button>
-                </p>
-              ) : (
-                <p className="messages__answer">
-                  {t(why)}{' '}
-                  {/* **And nothing to press where the reason passes by itself.** The window
-                      opens again on 1 October and the application is answered then; a
-                      control that ended it here would turn nine weeks of waiting into a
-                      refusal nobody meant (review, 06.09.2026). */}
-                  {/* **And a way to end it, because a question with no answer never
-                      ends.** „Waiting" is read off the decisions, so an application that
-                      cannot be taken went on counting for ever, and the member who sent it
-                      was refused the way in on every team on the portal (review,
-                      05.09.2026). Closing it is a refusal like any other: the member is
-                      told, and is free to ask again. */}
-                  {why !== 'teams.joinShut' && (
-                    <button
-                      type="button"
-                      className="button button--secondary"
-                      onClick={() => {
-                        close(asks)
-                      }}
-                    >
-                      {t('teams.joinClose')}
-                    </button>
-                  )}
-                </p>
-              )
-            }}
-          </Resource>
-        ))}
     </div>
   )
 }

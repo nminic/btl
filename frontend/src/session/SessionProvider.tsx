@@ -4,6 +4,7 @@ import type { EventComment, PendingItem, Result } from '../data/types'
 import { nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
+  type Application,
   type Creations,
   type Decision,
   type Decisions,
@@ -299,6 +300,23 @@ export function SessionProvider({
     setGoingAll((current) => ({ ...current, [eventId]: going }))
   }, [])
 
+  /* The applications waiting for an answer. Kept as a list of what is open rather than as
+     a list of everything ever sent with a decision beside it: an application that has been
+     answered, refused or taken back is over, and nothing on the portal asks about it
+     again. One list means „is this member waiting" cannot be answered two ways. */
+  const [applications, setApplications] = useState<Application[]>([])
+
+  const apply = useCallback((application: Omit<Application, 'id'>) => {
+    setApplications((current) => [
+      ...current,
+      { ...application, id: `app-${current.length + 1}` },
+    ])
+  }, [])
+
+  const answer = useCallback((id: string) => {
+    setApplications((current) => current.filter((one) => one.id !== id))
+  }, [])
+
   const notify = useCallback((message: Omit<Message, 'id' | 'read'>) => {
     // Newest first, so what just arrived is at the top of the panel and of the
     // inbox, which is where somebody looking for it will look.
@@ -355,18 +373,6 @@ export function SessionProvider({
     setEdits(({ [id]: _gone, ...rest }) => rest)
   }, [])
 
-  /* The questions still waiting for an answer, without the messages that carry them.
-   * A screen that offers to ask has to know what has already been asked, or a member
-   * presses twice and the administrator gets the same application twice; and that much
-   * is not private the way the words of a message are (`context.ts`). */
-  const asked = useMemo(
-    () =>
-      messages.flatMap((one) =>
-        one.asks !== undefined && decisions[one.id] === undefined ? [one.asks] : [],
-      ),
-    [messages, decisions],
-  )
-
   /* What the person at the keyboard is allowed to see: what was written to them,
    * and what was written to the whole league. The store holds everybody's. */
   const inbox = useMemo(
@@ -387,7 +393,9 @@ export function SessionProvider({
       withdraw,
       decide,
       inbox,
-      asked,
+      applications,
+      apply,
+      answer,
       going,
       setGoing,
       markRead,
@@ -422,7 +430,9 @@ export function SessionProvider({
       withdraw,
       decide,
       inbox,
-      asked,
+      applications,
+      apply,
+      answer,
       markRead,
       notify,
       notifications,
