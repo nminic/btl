@@ -3,6 +3,7 @@ import { basename } from 'node:path'
 import { seasonBeingRenewed } from './pricing'
 import { sources, WHOLE_PORTAL } from '../test/sources'
 import {
+  FIRST_SEASON,
   inYearlyWindow,
   referralMayBeSet,
   seasonRunning,
@@ -25,50 +26,51 @@ describe('the yearly window', () => {
    * follows and half does not, silently, because the number was right in both places up to that
    * moment (review, 06.09.2026). And a body copied instead of called drifts the same way.
    *
-   * The floor is derived and holds no list: **the whole portal may write a year as a number
-   * exactly once**, and that once is `FIRST_SEASON` itself. Anything else — a price list with its
-   * own 2027, a screen that types the year instead of reading it, a season worked out inline —
-   * falls here and asks the question once.
+   * **What it asks, exactly:** does any file in the portal write `FIRST_SEASON`'s own number as a
+   * number, anywhere but where it is declared. Not „a year", and not „four digits in the two
+   * thousands": those catch an interval in milliseconds and a price in dinars, and a guard that
+   * fires on a change that is not a fault costs somebody a round for nothing (review,
+   * 06.09.2026). It is the one number this rule is about, and nothing else.
+   *
+   * **Where it stops, said rather than guessed at.** A year written inside a sentence is a
+   * string and no parser can tell it from prose, so this cannot see one. The one copy that
+   * existed is gone (`data/seedMessages.ts` derives it), and the rest of that class is held by
+   * the screens that read those sentences.
    */
   it('writes the year of the first season in exactly one place', () => {
     /* **Asked of the parser, not of the text.** A line that holds a year may be prose: a review
        written down in a comment, a date inside a sentence, a slug. Only the language can say
        which four digits are a number the portal computes with, and it is the one thing here
        that cannot be wrong about its own syntax. */
-    const swept = sources()
+    const walked: string[] = []
 
-    /* **The whole portal, and that is not ambition but measurement.** The first draft swept
-       `src/data` only, and the second name for this year lives outside it: `SEASON` comes out
-       of `data/pricing.ts` and three screens read it, so a screen that writes the year instead
-       of reading it was exactly the drift this floor is for and exactly what it could not see
-       (review, 06.09.2026). Narrowing bought nothing either: over all 222 files the sweep finds
-       the same single hit it found over 24.
+    const written = sources().flatMap((one) => {
+      walked.push(one.path)
 
-       And no filter on the path. `sources()` records that `path.includes` reads the **absolute**
-       path, so a checkout under a folder called `data` would have quietly changed what this
-       measured. */
-    expect(swept.length, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
+      const file = ts.createSourceFile(one.path, one.code, ts.ScriptTarget.Latest, true)
+      const found: string[] = []
 
-    const written = swept
-      .flatMap((one) => {
-        const file = ts.createSourceFile(one.path, one.code, ts.ScriptTarget.Latest, true)
-        const found: string[] = []
+      const walk = (node: ts.Node): void => {
+        if (ts.isNumericLiteral(node) && node.text === String(FIRST_SEASON)) {
+          const [first] = node.parent.getText().split(/\r?\n/)
 
-        const walk = (node: ts.Node): void => {
-          if (ts.isNumericLiteral(node) && /^20\d\d$/.test(node.text)) {
-            const [first] = node.parent.getText().split(/\r?\n/)
-
-            found.push(`${basename(one.path)}: ${first?.trim() ?? ''}`)
-          }
-
-          ts.forEachChild(node, walk)
+          found.push(`${basename(one.path)}: ${first?.trim() ?? ''}`)
         }
 
-        walk(file)
+        ts.forEachChild(node, walk)
+      }
 
-        return found
-      })
+      walk(file)
 
+      return found
+    })
+
+    /* **Counted inside the walk, not beside it.** Written against `sources()` before the chain,
+       the floor and the sweep are held together by nothing but the order of two lines: a filter
+       slipped between them narrows what is read while the floor goes on counting what was
+       offered, and the sweep can lose every screen in the portal without a word (review,
+       06.09.2026). This counts what was actually opened. */
+    expect(walked.length, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
     expect(written).toEqual(['season.ts: FIRST_SEASON = 2027'])
   })
 
