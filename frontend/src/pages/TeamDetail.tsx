@@ -20,6 +20,7 @@ import { combineResources, useCompetitors, useResults, useTeams } from '../data/
 import { formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
+import { afterJoining } from '../data/afterJoining'
 import { teamOf } from '../data/derive'
 import { inYearlyWindow, seasonOnSale } from '../data/season'
 import { teamAdminOf } from '../data/teamAdmin'
@@ -46,7 +47,17 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  const { memberNumber, remove, editRecord, notify, applications, apply, answer, invitations } =
+  const {
+    memberNumber,
+    remove,
+    editRecord,
+    notify,
+    applications,
+    apply,
+    answer,
+    invitations,
+    close,
+  } =
     useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
@@ -374,6 +385,38 @@ export function TeamDetail() {
                                   body: t('teams.joinDoneBody', { team: team.name }),
                                   date: today,
                                 })
+
+                                /* And every team that had invited them stops waiting on a
+                                   question that can no longer be answered, and is told so.
+                                   The owner's sentence names the road as „ko god da je
+                                   poslao poziv", so this door owes the same as the one in
+                                   the member's own inbox (PDL, 06.09.2026). Nothing is
+                                   kept, because nobody accepted an invitation here. */
+                                const after = afterJoining({
+                                  member: ask.memberNumber,
+                                  joined: team.id,
+                                  keep: undefined,
+                                  invitations,
+                                  teams: listedTeams,
+                                  competitors: listedMembers,
+                                })
+
+                                for (const id of after.close) {
+                                  close(id)
+                                }
+
+                                for (const to of after.tell) {
+                                  notify({
+                                    from: t('app.name'),
+                                    to,
+                                    subject: t('teams.inviteMissedSubject'),
+                                    body: t('teams.inviteMissedBody', {
+                                      name: `${asked.firstName} ${asked.lastName}`,
+                                      team: team.name,
+                                    }),
+                                    date: today,
+                                  })
+                                }
                               }}
                             >
                               {t('teams.joinTaken')}

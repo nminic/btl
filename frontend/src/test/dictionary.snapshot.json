@@ -803,6 +803,7 @@
     "inviteOvertaken": "U međuvremenu si ušao/la u tim „{team}\", pa ovaj poziv više ne stoji.",
     "inviteRefused": "Odbio/la si ovaj poziv.",
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
+    "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 1. oktobra do 31. decembra.",
     "inviteMissedSubject": "Poziv u tim je ostao bez odgovora",
     "inviteMissedBody": "{name} je u međuvremenu ušao/la u tim „{team}\", pa vaš poziv više ne stoji."
   },

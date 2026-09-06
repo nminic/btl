@@ -3,6 +3,7 @@ import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
+import { useClock } from '../clock/useClock'
 import { useSession } from '../session/useSession'
 
 /* „Pozovi u tim", from the press to the answer.
@@ -57,6 +58,20 @@ function Delete({ team }: { team: string }) {
   )
 }
 
+/** The day the portal is read as, moved inside one visit. The portal has its own control for
+ *  this (`clock/useClock`), and the invitation has to be answered on a different day from the
+ *  one it was sent on: sent and read on one day, „is the window open" and „was it open when
+ *  this was sent" are the same question and the case says nothing about either. */
+function Day({ on }: { on: string }) {
+  const { simulate } = useClock()
+
+  return (
+    <button type="button" onClick={() => { simulate(on) }}>
+      danas je {on}
+    </button>
+  )
+}
+
 /* 000001 Vladan Đurišić and 000007 Strahinja Vukićević are both in Dunavski trkači, 000003
    Anđelija Vukotić leads Vardar, and 000002 Relja Momčilović and 000004 Časlav Radenković have
    no team at all. Read off `public/mock/competitors.json` rather than remembered. */
@@ -105,9 +120,13 @@ describe('who is offered „Pozovi u tim"', () => {
   })
 
   it('is not offered by a member who has no team of their own', async () => {
-    renderAt(TAKEN, 'competitor', '000002', undefined, IN_WINDOW)
+    /* On the profile of somebody who **also** has no team, so only one of the two conditions
+       can be the reason. Read on a member who has one, both fall at once and the case is
+       satisfied by the wrong one: it would go on passing while „a member with no team may
+       invite in the name of some team" was true (review, 06.09.2026). */
+    renderAt(OTHER_FREE, 'competitor', '000002', undefined, IN_WINDOW)
 
-    expect(await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: /Časlav Radenković/ })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Pozovi u tim' })).toBeNull()
   })
 
@@ -146,6 +165,21 @@ describe('who is offered „Pozovi u tim"', () => {
        (PDL, 06.09.2026). */
     expect(screen.queryByRole('button', { name: 'Pozovi u tim' })).toBeNull()
     expect(screen.getByText(/Poziv u tim „Dunavski trkači" je poslat/)).toBeVisible()
+  }, SLOW)
+
+  it('is still offered by the same team about somebody else', async () => {
+    const user = setupUser()
+    const { router } = renderAt(FREE, 'competitor', '000007', undefined, IN_WINDOW)
+
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await router.navigate(OTHER_FREE)
+
+    /* **The other half of „not twice", and without it the rule reads „once, ever".** The case
+       above has one team, one person and one invitation, so it cannot tell „this team already
+       asked **this person**" from „this team already asked". Measured 06.09.2026: dropping the
+       member from that comparison leaves everything green, and a club that has invited anybody
+       can never invite again. */
+    expect(await screen.findByRole('button', { name: 'Pozovi u tim' })).toBeVisible()
   }, SLOW)
 })
 
@@ -491,5 +525,380 @@ describe('what is left when a team goes away', () => {
     expect(
       (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
     ).toEqual([])
+  }, SLOW)
+})
+
+describe('the transfer window holds the answer as well as the question', () => {
+  it('does not offer „Prihvati" once the window has shut, and says the invitation waits', async () => {
+    const user = setupUser()
+
+    renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Day on="2027-01-05" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheInvitation(user)
+
+    expect(await screen.findByRole('button', { name: 'Prihvati' })).toBeVisible()
+
+    /* **Five days into the new season.** „Prihvati" writes the season the member runs for the
+       club from, and `seasonOnSale` gives the next one only inside the window: pressed here the
+       same line writes the season that is already running, and somebody joins a squad in the
+       middle of it and carries points to it (review, 06.09.2026). Everything that changes a
+       squad goes through one door (PDL, 05.09.2026), and the door is shut. */
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-05' }))
+
+    expect(await screen.findByText(/Poziv čeka/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
+  }, SLOW)
+})
+
+describe('a team is told whichever road the member took in', () => {
+  it('tells the team that was waiting when the member is taken in on their own application', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000003',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000001" />
+        <Become who="000003" />
+      </>,
+    )
+
+    /* Vardar asks Relja, and Relja meanwhile applies to Dunavski trkači and is taken in there.
+       The owner's sentence is „kad član uđe u tim (ko god da je poslao poziv)", so this road
+       owes exactly what accepting an invitation owes: Vardar's question ends and Vardar is
+       told (PDL, 06.09.2026). Until then the notice was written at one of the three doors and
+       the other two were silent. */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
+
+    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
+
+    expect(told).toHaveLength(1)
+
+    /* And the notice says who left and where they went, which is the whole of what it carries.
+       Read on the message itself, because the panel shows only the subject and the subject has
+       no value in it at all. */
+    await user.click(must(told[0], 'the notice Vardar was sent'))
+
+    expect(
+      await screen.findByText(/Relja Momčilović je u međuvremenu ušao\/la u tim „Dunavski trkači"/),
+    ).toBeVisible()
+  }, SLOW)
+
+  it('leaves nothing open on the team page after the member is taken in elsewhere', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000003',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000001" />
+        <Become who="000009" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
+
+    /* 000009 is in Vardar and does not lead it, which is the point: the list is drawn to every
+       member of the team, so a question that has ended must be gone for all of them and not
+       only for whoever was told. */
+    await user.click(screen.getByRole('button', { name: 'postani 000009' }))
+    await router.navigate('/sr/tim/vardarski-krug')
+
+    expect(await screen.findByRole('heading', { level: 1, name: /Vardar/ })).toBeVisible()
+    expect(screen.queryByRole('list', { name: 'Poslati pozivi' })).toBeNull()
+  }, SLOW)
+})
+
+describe('the third door, and the team that was joined', () => {
+  it('tells the team that was waiting when a moderator approves the team the member proposed', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'superadmin',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000003" />
+        <Become who="000001" />
+      </>,
+    )
+
+    /* Dunavski trkači ask Relja, and Relja meanwhile founds a club of his own. Approving the
+       proposal writes the team on his record exactly as the other two doors do
+       (`admin/PendingQueue.tsx`), so it owes the same: the question Dunavski trkači are waiting
+       on has ended, and they are told. Walked as a superadmin because the walk crosses into
+       the administration, which is shut to a competitor. */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/novi-tim')
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
+    const card = within(must(heading.closest('li'), 'the card the proposal stands on'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    /* **Who was told, first**, because a case that only says who was not told passes just as
+       well when nobody was told at all. 000007 sent the invitation but 000001 leads Dunavski
+       trkači, so this also says the notice goes to the role and not to whoever typed. */
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+
+    expect(
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toHaveLength(1)
+
+    /* And two people who have nothing to do with it: Anđelija leads another club entirely, and
+       Relja is the one who left rather than the one who was left. */
+    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
+
+    expect(
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toEqual([])
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toEqual([])
+  }, SLOW)
+
+  it('does not tell the team the member has just joined about its own invitation', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000001" />
+      </>,
+    )
+
+    /* Dunavski trkači ask Relja **and** Relja applies to Dunavski trkači, and then they take
+       him in on the application. Their own question ended by being answered, so a notice saying
+       „he went somewhere else" would be the club told about itself. Every other case has the
+       inviting team and the joined team be different clubs, so this axis is measured nowhere
+       else (measured 06.09.2026: without it, removing that one condition changes nothing). */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
+
+    expect(
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toEqual([])
+  }, SLOW)
+})
+
+describe('the way to the answer', () => {
+  it('opens from the list of all messages, not only from the panel in the header', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <Become who="000002" />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await router.navigate('/sr/poruke')
+
+    /* **„Sve poruke" is where the panel sends a member who wants to read properly.** It wrote
+       every message out whole and linked to none of them, which was enough while every message
+       told something; one of them now asks, and a member who read „Tim te poziva" here had no
+       way to answer and no way to reach the screen that has one (review, 06.09.2026).
+
+       Read inside the list itself, because the panel in the header keeps its own links in the
+       document and would answer this on its own. */
+    const list = within(await screen.findByRole('list'))
+
+    await user.click(list.getByRole('link', { name: /Poziv u tim/ }))
+
+    expect(await screen.findByRole('button', { name: 'Prihvati' })).toBeVisible()
+  }, SLOW)
+})
+
+describe('what the invitation must not be confused with', () => {
+  it('never hands a refused invitation to the next person the team asks', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000007" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheInvitation(user)
+    await user.click(await screen.findByRole('button', { name: 'Odbij' }))
+
+    /* The list of open invitations has just shortened, and the next identity is counted from
+       the highest ever given rather than from how many there are (`SessionProvider`). Counted,
+       the second invitation is handed the identity the refused one still names: Relja's own
+       refused message offers „Prihvati" again and pressing it puts **Časlav** in the club
+       (review, 06.09.2026). */
+    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
+    await router.navigate(OTHER_FREE)
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheInvitation(user)
+
+    expect(await screen.findByText(/Odbio\/la si ovaj poziv/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+  }, SLOW)
+
+  it('leaves every message that is not an invitation exactly as it was', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    /* The plan for this increment named this as the likeliest fault of the lot: every message
+       the portal has ever written is a message that tells, and drawing the answer unless a
+       message says otherwise puts two buttons under all of them. Walked on the messages the
+       prototype starts with, which carry no invitation at all. */
+    const first = (await inbox(user))[0]
+
+    await user.click(must(first, 'the first message in the inbox'))
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+    expect(screen.queryByText(/poziv/i)).toBeNull()
+  }, SLOW)
+
+  it('does not come back to life when the club that took them in is deleted', async () => {
+    const user = setupUser()
+
+    renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Delete team="team-dunav" />
+      </>,
+    )
+
+    /* **The accepted invitation is the one that is not closed**, so that the member's own copy
+       of the message can name the club that asked. Left at that, the question would be open
+       again the moment they were out of a club, and the club's page would list it as waiting.
+
+       The portal has one road out of a club and it takes the club with it: no form carries a
+       team field, and both places that clear it (`AdminTeams`, `TeamDetail`) are deleting the
+       club itself. So the message answers with the club being gone rather than with two
+       buttons, and there is nothing to come back to. Written as a case because it is the only
+       thing standing between the kept record and a question that answers itself twice
+       (review, 06.09.2026). */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheInvitation(user)
+    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+    expect(await screen.findByText(/Prihvatio\/la si ovaj poziv/)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'obriši team-dunav' }))
+
+    expect(await screen.findByText(/Tim koji te je pozvao više ne postoji/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+  }, SLOW)
+
+  it('ends only the invitations of the member who joined', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000007" />
+      </>,
+    )
+
+    /* Dunavski trkači ask two people. Relja accepts; Časlav's question is nobody's business but
+       his own and must still be waiting. Every other case has all the invitations in the visit
+       belong to one person, so „this member's" and „any" give the same list and the axis is
+       measured nowhere (review, 06.09.2026). */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await router.navigate(OTHER_FREE)
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheInvitation(user)
+    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+
+    const sent = await screen.findByRole('list', { name: 'Poslati pozivi' })
+
+    expect(within(sent).getByText(/Časlav Radenković/)).toBeVisible()
+    expect(within(sent).queryByText(/Relja Momčilović/)).toBeNull()
   }, SLOW)
 })

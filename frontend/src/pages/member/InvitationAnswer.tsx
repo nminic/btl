@@ -1,6 +1,6 @@
 import { teamOf } from '../../data/derive'
-import { teamAdminOf } from '../../data/teamAdmin'
-import { seasonOnSale } from '../../data/season'
+import { afterJoining } from '../../data/afterJoining'
+import { inYearlyWindow, seasonOnSale } from '../../data/season'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { useToday } from '../../clock/useClock'
@@ -49,6 +49,14 @@ export function InvitationAnswer({
   const mine = teams.find(
     (one) => one.id === teamOf(competitors.find((each) => each.memberNumber === memberNumber)),
   )
+  /* The name of whoever this invitation names, for the notice the other teams get.
+     Joined rather than taken out of the list, so „the portal no longer has this
+     member" needs no question of its own: nothing matches, the name is empty, and
+     the loop that would use it has no team to write to either. */
+  const mineName = competitors
+    .filter((one) => one.memberNumber === memberNumber)
+    .map((one) => `${one.firstName} ${one.lastName}`)
+    .join('')
 
   if (invitation === undefined || mine !== undefined) {
     /* **Three sentences, and none of them is remembered.** An accepted invitation
@@ -85,6 +93,22 @@ export function InvitationAnswer({
     return <p className="messages__answered">{t('teams.inviteGone')}</p>
   }
 
+  /* **And only inside the transfer window, for the same reason the team's own page
+     answers an application only there.** „Prihvati" writes the season the member
+     runs for the club from, and `seasonOnSale` gives the next one only inside the
+     window: pressed on 5 January the same line writes the season that is already
+     running, and the member joins a squad in the middle of it and carries points
+     to it (review, 06.09.2026). PDL 05.09.2026 puts everything that changes a
+     squad through one door, and `transfersTakeEffect` says a transfer takes effect
+     at the start of the next season and never during a running one.
+
+     The invitation waits rather than lapsing, which is what the window is for: it
+     is open again on 1 October, and until then this says so instead of offering a
+     button. */
+  if (!inYearlyWindow(today)) {
+    return <p className="messages__answered">{t('teams.inviteWaits')}</p>
+  }
+
   return (
     <p className="messages__answer">
       <button
@@ -101,52 +125,31 @@ export function InvitationAnswer({
             teamSince: String(seasonOnSale(today)),
           })
 
-          /* **Every other team that asked is told, and its question is closed.**
-             The owner asked for exactly this on 06.09.2026: „kad član uđe u tim
-             (ko god da je poslao poziv), svi ostali pozivi za ostale timove se
-             automatski brišu". The message in each of those inboxes stays; what
-             ends is the question.
+          /* **Every other team that asked is told, and its question is closed.** The rule
+             itself is in `data/afterJoining.ts`, because there are three doors into a club
+             and this is one of them: written only here, the other two left every other team
+             waiting on a question nobody could answer (review, 06.09.2026). */
+          const { close: ending, tell } = afterJoining({
+            member: invitation.memberNumber,
+            joined: invitation.teamId,
+            keep: invitation.id,
+            invitations,
+            teams,
+            competitors,
+          })
 
-             Told to whoever leads that team at this moment, worked out from its
-             roster rather than remembered from whoever pressed „Pozovi": the
-             notice is the team's business, not the typist's, and a team with
-             nobody in it has nobody to tell. */
-          const others = invitations.filter(
-            (one) => one.memberNumber === invitation.memberNumber && one.id !== invitation.id,
-          )
-
-          for (const other of others) {
-            close(other.id)
+          for (const id of ending) {
+            close(id)
           }
 
-          /* Walked rather than found, three times over, so „that team is gone" and „the
-             portal no longer has this member" need no question of their own: neither
-             matches anything here and the body simply does not run, which is the same
-             silence a team with nobody in it gets and for the same reason. Closing is
-             done above and on its own, so it happens whatever the walk finds. */
-          for (const who of competitors.filter(
-            (one) => one.memberNumber === invitation.memberNumber,
-          )) {
-            for (const other of others) {
-              for (const team of teams.filter((one) => one.id === other.teamId)) {
-                const lead = teamAdminOf(team, competitors)
-
-                if (lead === null) {
-                  continue
-                }
-
-                notify({
-                  from: t('app.name'),
-                  to: lead,
-                  subject: t('teams.inviteMissedSubject'),
-                  body: t('teams.inviteMissedBody', {
-                    name: `${who.firstName} ${who.lastName}`,
-                    team: asking.name,
-                  }),
-                  date: today,
-                })
-              }
-            }
+          for (const to of tell) {
+            notify({
+              from: t('app.name'),
+              to,
+              subject: t('teams.inviteMissedSubject'),
+              body: t('teams.inviteMissedBody', { name: mineName, team: asking.name }),
+              date: today,
+            })
           }
         }}
       >
