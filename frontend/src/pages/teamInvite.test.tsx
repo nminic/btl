@@ -626,6 +626,110 @@ describe('the third door writes the season the other two write', () => {
   }, SLOW)
 })
 
+describe('which day the answer is read off', () => {
+  it('writes the season of the day it is answered, not of the day it was sent', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000002" />
+        <Become who="000003" />
+        <Day on="2027-10-15" />
+      </>,
+    )
+
+    /* **Two windows apart, which is the only setup that separates the two days.** A portal
+       read on the day the invitation was sent gives the same answer whichever day the season
+       is read off, so every case until now was satisfied by either: measured 06.09.2026,
+       `transfersTakeEffect(invitation.date)` left the whole package green.
+
+       The state is one the portal deliberately allows: „Poziv van roka čeka, ne propada... 1.
+       oktobra se dugme vraća samo od sebe" (PDL, 06.09.2026). Sent in the 2026 window,
+       answered in the 2027 one, the member runs for the club from 2028. Read off the day it
+       was sent it would be 2027, a season already run from end to end, and the club would
+       count every result that member has. */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-10-15' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheInvitation(user)
+    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+    await router.navigate(FREE)
+
+    expect(await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
+    expect(clubLine()).toContain('U klubu Dunavski trkači od 2028.')
+  }, SLOW)
+
+  it('dates the notice by the day it is sent, not by the day the invitation was', async () => {
+    const user = setupUser()
+
+    renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Become who="000003" />
+        <Become who="000002" />
+        <Day on="2027-10-15" />
+      </>,
+    )
+
+    /* The notice to the club left waiting carries a day, and it is drawn in the panel and in
+       „Sve poruke". Read off the invitation it answers rather than off the clock, a thing that
+       happened in October 2027 is filed under October 2026 (review, 06.09.2026). Same two
+       windows, because on one day the two are the same string. */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-10-15' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    const both = (await inbox(user)).filter((one) => /Poziv u tim „/.test(one.textContent ?? ''))
+
+    await user.click(must(both[1], 'the invitation Dunavski trkači sent'))
+    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
+
+    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
+
+    expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('15. 10. 2027.')
+  }, SLOW)
+
+  it('dates a sent invitation by the day it was sent, not by the day the page is read', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <Day on="2026-12-20" />,
+    )
+
+    /* The club reads its own open questions, and each carries the day it asked. Read off the
+       clock instead, a club opening the page in December is told it asked somebody today,
+       whom it asked in October: the right answer and the wrong one are the same string on
+       every case that reads the page on the day it sent (review, 06.09.2026). The row for an
+       application a few lines above has this case written for the same reason
+       (`teamJoin.test.tsx`). */
+    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-12-20' }))
+    await router.navigate('/sr/tim/dunavski-trkaci')
+
+    const sent = await screen.findByRole('list', { name: 'Poslati pozivi' })
+
+    expect(within(sent).getByText('15. 10. 2026.')).toBeVisible()
+  }, SLOW)
+})
+
 describe('a team is told whichever road the member took in', () => {
   it('tells the team that was waiting when the member is taken in on their own application', async () => {
     const user = setupUser()
