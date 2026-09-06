@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { screen, within } from '@testing-library/react'
+import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { Asked, Pigeonhole, Saved } from '../test/saved'
 import { SLOW } from '../test/slow'
@@ -28,6 +29,12 @@ const DAY = '2026-10-15'
 const SHUT = '2026-06-15'
 /** And a later day inside the same window, for whatever must not be today. */
 const LATER = '2026-10-20'
+/** A second application on one team, on a third day, so no two of the three coincide. */
+const OTHER_DAY = '2026-10-18'
+
+/* 000004 is Časlav Radenković, the second member with no team. */
+const TAKE_OTHER = 'Primi u tim: Časlav Radenković'
+const REFUSE_OTHER = 'Odbij: Časlav Radenković'
 
 const DUNAV = '/sr/tim/dunavski-trkaci'
 const VARDAR = '/sr/tim/vardarski-krug'
@@ -687,6 +694,174 @@ describe('the answer the team gives', () => {
 
     expect(screen.queryByText('Prijave koje čekaju')).toBeNull()
     expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
+  }, SLOW)
+
+  it('answers about the card it stands on, when two are waiting on one team', async () => {
+    /* **With one application on the team, „this row" and „the first row" are one string.**
+       Every case here had exactly one, so `ask.date` could be read as `waiting[0].ask.date`
+       and `ask.memberNumber` as `waiting[0].ask.memberNumber` with the whole package green
+       (review, 06.09.2026). Two members waiting on one team is the state this screen was
+       written for, and nothing measured it.
+
+       Drawn that way, the second card carries the first one's day, and taking the second in
+       writes the team onto that member while telling the first: the one let in never hears
+       of it, and the one still waiting is congratulated on something they did not get.
+
+       Third instance of one fault in one day, and the deepest of the three: the rule „never
+       the only record of its kind" was written and then not carried to the rows of a list. */
+    const user = setupUser()
+
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000001',
+      undefined,
+      LATER,
+      <>
+        <Applied who="000002" team="team-dunav" day={DAY} />
+        <Applied who="000004" team="team-dunav" day={OTHER_DAY} />
+        <Become who="000002" />
+        <Become who="000004" />
+        <Saved />
+        <Asked />
+        <Pigeonhole />
+      </>,
+    )
+
+    /* Each card carries its own day, read inside the card that names the member. */
+    await screen.findByText('Časlav Radenković')
+
+    const card = (name: string) =>
+      within(
+        must(
+          screen
+            .getAllByRole('listitem')
+            .find((one) => within(one).queryByText(name) !== null),
+          `a waiting card for ${name}`,
+        ),
+      )
+
+    expect(card('Časlav Radenković').getByText(/18\D+10\D+2026/)).toBeVisible()
+    expect(card('Relja Momčilović').getByText(/15\D+10\D+2026/)).toBeVisible()
+
+    /* And taking one in reaches that one, on their record. */
+    await user.click(screen.getByRole('button', { name: TAKE_OTHER }))
+
+    const written = within(screen.getByRole('list', { name: 'session records' }))
+
+    expect(written.getByText(/000004.*team-dunav/)).toBeVisible()
+    expect(written.queryByText(/000002.*team-dunav/)).toBeNull()
+
+    /* The other is still waiting, and was told nothing. */
+    expect(
+      within(screen.getByRole('list', { name: 'open applications' })).getByText(/000002/),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).getByText(
+        /Primljen si u tim „Dunavski trkači"/,
+      ),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).queryByText(
+        /Primljen si u tim „Dunavski trkači"/,
+      ),
+    ).toBeNull()
+  }, SLOW)
+
+  it('refuses the one it stands on, when two are waiting on one team', async () => {
+    /* The other half of the case above, and it needed its own: with one application on the
+       team, a refusal written to `waiting[0]` reads exactly like one written to the member
+       whose card was pressed, and the package stays green (measured 06.09.2026, after the
+       accepting half was already fixed). Refused wrongly, the member who was turned down
+       hears nothing and somebody still waiting is told they were refused. */
+    const user = setupUser()
+
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000001',
+      undefined,
+      LATER,
+      <>
+        <Applied who="000002" team="team-dunav" day={DAY} />
+        <Applied who="000004" team="team-dunav" day={OTHER_DAY} />
+        <Become who="000002" />
+        <Become who="000004" />
+        <Asked />
+        <Pigeonhole />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: REFUSE_OTHER }))
+
+    /* The one refused is gone from the list; the other is still waiting. */
+    const open = within(screen.getByRole('list', { name: 'open applications' }))
+
+    expect(open.queryByText(/000004/)).toBeNull()
+    expect(open.getByText(/000002/)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).getByText(
+        /Prijava u tim „Dunavski trkači" nije prihvaćena/,
+      ),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).queryByText(
+        /Prijava u tim „Dunavski trkači" nije prihvaćena/,
+      ),
+    ).toBeNull()
+  }, SLOW)
+
+  it('writes the team whose page it is, and not whichever team stands first', async () => {
+    /* Every case that takes a member in stands on Dunav, and Dunav is also the first team
+       in the file, so `team.id` and `listedTeams[0].id` are one string and either could be
+       written with the package green (measured 06.09.2026). Written wrong, a member
+       accepted by one team lands in another, and is told the name of a third.
+
+       Vardar is run by 000003, who is in it. */
+    const user = setupUser()
+
+    renderAt(
+      VARDAR,
+      'competitor',
+      '000003',
+      undefined,
+      LATER,
+      <>
+        <Applied who="000002" team="team-vardar" day={DAY} />
+        <Become who="000002" />
+        <Saved />
+        <Pigeonhole />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: TAKE }))
+
+    expect(
+      within(screen.getByRole('list', { name: 'session records' })).getByText(
+        /000002.*team-vardar/,
+      ),
+    ).toBeVisible()
+
+    /* And the member is told the name of the team that took them. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).getByText(
+        /Primljen si u tim „Vardarski krug"/,
+      ),
+    ).toBeVisible()
   }, SLOW)
 
   it('is not given outside the window, because the answer is what writes the season', () => {
