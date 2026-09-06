@@ -4,6 +4,7 @@ import type { EventComment, PendingItem, Result } from '../data/types'
 import { nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
+  type Application,
   type Creations,
   type Decision,
   type Decisions,
@@ -299,6 +300,30 @@ export function SessionProvider({
     setGoingAll((current) => ({ ...current, [eventId]: going }))
   }, [])
 
+  /* The applications waiting for an answer. Kept as a list of what is open rather than as
+     a list of everything ever sent with a decision beside it: an application that has been
+     answered, refused or taken back is over, and nothing on the portal asks about it
+     again. One list means „is this member waiting" cannot be answered two ways. */
+  const [applications, setApplications] = useState<Application[]>([])
+
+  const apply = useCallback((application: Omit<Application, 'id'>) => {
+    setApplications((current) => [
+      ...current,
+      /* Counted up from the highest already used, never from how many there are, because
+         `answer` above shortens this very list: two members ask, the first is answered, a
+         third asks, and a count hands it the id the second holds. Two applications then
+         answer to one identity, and taking one back takes the other with it, unseen by the
+         team it was sent to (review, 06.09.2026). The neighbouring list that also empties
+         (`submissions`) reads `nextNumber` for the same reason; `proposals` and `messages`
+         may count, because nothing ever leaves them. */
+      { ...application, id: `app-${String(nextNumber(current.map((one) => one.id), 'app-'))}` },
+    ])
+  }, [])
+
+  const answer = useCallback((id: string) => {
+    setApplications((current) => current.filter((one) => one.id !== id))
+  }, [])
+
   const notify = useCallback((message: Omit<Message, 'id' | 'read'>) => {
     // Newest first, so what just arrived is at the top of the panel and of the
     // inbox, which is where somebody looking for it will look.
@@ -375,6 +400,9 @@ export function SessionProvider({
       withdraw,
       decide,
       inbox,
+      applications,
+      apply,
+      answer,
       going,
       setGoing,
       markRead,
@@ -409,6 +437,9 @@ export function SessionProvider({
       withdraw,
       decide,
       inbox,
+      applications,
+      apply,
+      answer,
       markRead,
       notify,
       notifications,

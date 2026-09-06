@@ -781,7 +781,18 @@
     "editDone": "Izmena tima „{name}“ čeka odluku moderatora. Dok čeka, na portalu stoje postojeći podaci.",
     "editBack": "Nazad na tim",
     "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
-    "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru."
+    "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru.",
+    "join": "Prijavi se u tim",
+    "joinTaken": "Primi u tim",
+    "joinTakenNamed": "Primi u tim: {name}",
+    "joinRefused": "Odbij",
+    "joinRefusedNamed": "Odbij: {name}",
+    "joinDoneSubject": "Primljen si u tim „{team}\"",
+    "joinDoneBody": "Od naredne sezone trčiš za tim „{team}\".",
+    "joinNoSubject": "Prijava u tim „{team}\" nije prihvaćena",
+    "joinNoBody": "Tim „{team}\" nije prihvatio tvoju prijavu.",
+    "joinWithdraw": "Povuci prijavu",
+    "joinWaiting": "Prijave koje čekaju"
   },
   "leagues": {
     "racesUnknown": "nepoznato",

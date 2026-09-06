@@ -311,6 +311,17 @@ describe('a sentence with a value put into it', () => {
       'shell.unread',
       'shell.waiting',
       'teams.editDone',
+      /* The four an answer to an application is written with, and the two that name the
+         member each control is about. One answer covers all six: every value is either the
+         team's name inside quotation marks, which is how this portal has written it since
+         `teams.proposeDone`, or a person's name after a colon, which is the nominative for
+         the same reason `admin.form.deleteNamed` is. */
+      'teams.joinDoneBody',
+      'teams.joinDoneSubject',
+      'teams.joinNoBody',
+      'teams.joinNoSubject',
+      'teams.joinRefusedNamed',
+      'teams.joinTakenNamed',
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',

@@ -209,6 +209,34 @@ export type Message = {
  * the record with the overlay applied. When the backend arrives the overlay
  * becomes a PATCH and the screens do not notice.
  */
+/**
+ * A member asking to be let into a team, kept as a record about the team rather than as a
+ * letter to a person.
+ *
+ * **Why it is not a message.** The first draft of this was: the application went to
+ * whoever ran the team at the moment it was sent, as a question inside their inbox. Every
+ * fault that draft had came from that one choice, and there were six of them. The
+ * authority belongs to a role and not to a person, so a founder who left went on deciding
+ * while the one who really ran the team never saw it; „is it still waiting" was read off
+ * the answer, so an application nobody could answer waited for ever and kept the member
+ * out of every team on the portal; and each of those needed a patch that opened the next
+ * one (reviews, 05. and 06.09.2026).
+ *
+ * Kept this way, none of that arises. Who may answer is worked out where it is drawn, from
+ * the roster, every time (`data/teamAdmin.ts`). It is drawn on the team's own page, which
+ * is where the team is and where „Izmeni" and „Obriši" already stand. And it always has an
+ * ending, because the member who sent it can take it back.
+ */
+export type Application = {
+  id: string
+  /** The team being asked about. */
+  teamId: string
+  /** Who is asking to be let in. */
+  memberNumber: string
+  /** The day they asked. */
+  date: string
+}
+
 export type Edits = Record<string, Record<string, string>>
 
 /* And what administration has created, kept the same way for the same reason.
@@ -372,6 +400,13 @@ export type SessionValue = {
   /** Everything written to whoever is signed in, plus everything written to the
    *  whole league. Not the whole store: see Message.to. */
   inbox: Message[]
+
+  /** The applications to join a team that nobody has answered yet. */
+  applications: Application[]
+  /** Files one, from the member asking. */
+  apply: (application: Omit<Application, 'id'>) => void
+  /** Answers one: taken in, refused, or taken back by whoever sent it. */
+  answer: (id: string) => void
   markRead: (id: string) => void
   /** Writes to one member's inbox. The portal already has one and it is where
    *  the sideways messages belong: the bell always, the mail only if the member
