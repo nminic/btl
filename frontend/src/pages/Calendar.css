@@ -542,11 +542,6 @@
   padding: var(--space-10) var(--space-12);
 }
 
-.calendar__back {
-  margin: 0 0 var(--space-8);
-  font-size: 0.85rem;
-}
-
 /* Seven hundred and eighty, not the eight hundred and twenty the rest of the
    portal switches at. Its content sets it: below this the month is one column of
    days, and moving it to 820 took the grid, the weekday headings and the ring on

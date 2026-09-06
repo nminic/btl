@@ -19,9 +19,9 @@ type Why = 'notRunYet' | 'notRanIt'
  * page it was hidden on. An unoffered form that renders and accepts when it is
  * asked for by name is a rule that holds only for people who were not looking.
  *
- * It says so rather than sending the reader somewhere else. Somebody who
- * followed a link is owed the reason it did not work, and the way back to the
- * event is the thing they wanted anyway.
+ * It says so rather than sending the reader somewhere else. Somebody who followed a link
+ * is owed the reason it did not work, and the browser's own way back is then one press
+ * away from the event they came from.
  */
 export function NotRunYet({ why = 'notRunYet' }: { why?: Why }) {
   const { t } = useI18n()

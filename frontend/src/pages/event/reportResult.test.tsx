@@ -209,7 +209,6 @@ describe('an event with no races on it', () => {
 
     expect(await screen.findByText(/nema nijednu trku/)).toBeVisible()
     expect(screen.queryByLabelText(/Sati/)).toBeNull()
-    /* And the way back is the event it came from. */
   })
 })
 

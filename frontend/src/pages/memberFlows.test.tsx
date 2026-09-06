@@ -758,7 +758,10 @@ describe('messages', () => {
     const user = setupUser()
     renderAt('/sr/poruke/msg-2', 'competitor', '000007')
 
-    await screen.findByRole('heading', { level: 1 })
+    /* Pinned by the message's own subject, not by „a level one heading": read as „any
+       heading", the page that failed to draw at all satisfied the line below just as well
+       as the one that drew (review, 06.09.2026). */
+    await screen.findByRole('heading', { level: 1, name: 'Rezultat je odobren' })
 
     expect(
       within(screen.getByRole('main')).queryByRole('link', { name: 'Sve poruke' }),
@@ -985,7 +988,10 @@ describe('a result from entry to decision', () => {
     /* A second race, which this must leave alone: one correction is about one
        result, and a list rewritten wholesale would carry the correction into
        every row of it. */
-    await user.click(screen.getByRole('button', { name: 'Unesi još jedan' }))
+    /* A link now, not a button: the confirmation lives on its own entry in the history
+       since 06.09.2026, so starting another one is going somewhere rather than clearing
+       something the screen was holding. */
+    await user.click(screen.getByRole('link', { name: 'Unesi još jedan' }))
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
     await user.type(screen.getByLabelText(/Datum trke/), '11052026')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')

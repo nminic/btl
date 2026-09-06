@@ -18,9 +18,14 @@ import sr from './sr.json'
  * **What it knows, and what it does not.** It knows the word. A link back whose words avoid
  * „Nazad" walks past it, and that is stated rather than pretended: a rule about where a link
  * points cannot be read off one call, and a guard that must follow a value through the code
- * has no bottom (`CLAUDE.md`). The word is what the owner's sentence is about and what
- * every one of the nine used, so the narrow question is answered completely instead of the
- * wide one being answered halfway.
+ * has no bottom (`CLAUDE.md`).
+ *
+ * **Two of the nine did avoid it**, and saying otherwise would be this guard claiming more
+ * than it holds: the way out of a message read „Sve poruke", and the way off a day of the
+ * calendar read „Kalendar". Both are gone, and both are held elsewhere, by
+ * `pages/memberFlows.test.tsx` and `pages/Calendar.test.tsx`. Complete here is the word,
+ * not the class; the class is held by those two and by `pages/backAfterSending.test.tsx`,
+ * which reads its list of screens off the imports rather than off a memory.
  */
 
 /** The one the owner kept, and why: it is not a way back but the way out of a form.
