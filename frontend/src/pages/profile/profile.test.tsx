@@ -146,11 +146,15 @@ describe('what a competitor has won', () => {
   })
 
   it('is not there at all for a member who is no longer active', async () => {
-    renderAt('/sr/takmicar/000032/priznanja')
+    const { router } = renderAt('/sr/takmicar/000032/priznanja')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' }),
-    ).toBeVisible()
+    /* **The home page, and not a page that says the profile is missing.** Since 06.09.2026 an
+       address that leads nowhere and an address somebody is hiding behind answer the same way, so
+       that a visitor cannot read the difference off the screen (PDL P23). Read off the address,
+       because the name of the portal is written on every screen. */
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
   })
 })
 
@@ -610,9 +614,15 @@ describe('what the portal calls the person whose page it is', () => {
   it('asks no gender at all for a profile that is not there', async () => {
     /* There is no record to read one off, so the sentence is written not to
        need one rather than guessed at. */
-    renderAt('/sr/takmicar/999999')
+    const { router } = renderAt('/sr/takmicar/999999')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' })).toBeVisible()
+    /* **The home page, and not a page that says the profile is missing.** Since 06.09.2026 an
+       address that leads nowhere and an address somebody is hiding behind answer the same way, so
+       that a visitor cannot read the difference off the screen (PDL P23). Read off the address,
+       because the name of the portal is written on every screen. */
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
   })
 })
 

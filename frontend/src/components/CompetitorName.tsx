@@ -1,7 +1,6 @@
-import { profilePath } from '../pages/profileAddress'
+import { useProfileLink } from '../pages/profile/useProfileLink'
 import { Link } from 'react-router'
 import type { Competitor } from '../data/types'
-import { useI18n } from '../i18n/useI18n'
 
 /**
  * A competitor's name, as a link to their profile while there is one to link to.
@@ -24,15 +23,20 @@ export function CompetitorName({
   competitor: Competitor
   className?: string
 }) {
-  const { locale } = useI18n()
+  const linkTo = useProfileLink()
   const name = `${competitor.firstName} ${competitor.lastName}`
+  const to = linkTo(competitor)
 
-  if (!competitor.active) {
+  /* **Two reasons for one answer, and neither is asked here.** A member whose fee has run out has
+     no profile to open (P11), and a member who has hidden theirs has none for a reader who is not
+     signed in (P23, 06.09.2026). Which of the two it is belongs to `profile/visible.ts`; what
+     belongs here is that the name stays either way. */
+  if (to === undefined) {
     return <span className={className}>{name}</span>
   }
 
   return (
-    <Link className={className} to={profilePath(competitor, locale)}>
+    <Link className={className} to={to}>
       {name}
     </Link>
   )

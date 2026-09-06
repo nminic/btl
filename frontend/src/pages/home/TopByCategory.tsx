@@ -1,4 +1,5 @@
-import { profilePath } from '../profileAddress'
+import { appended } from '../profile/visible'
+import { useProfileLink } from '../profile/useProfileLink'
 import { useEffect, useState } from 'react'
 import { ColumnChart, type ChartColumn } from '../../components/ColumnChart'
 import { topByCategory } from '../../data/derive'
@@ -61,7 +62,7 @@ export function TopByCategory({
   /** Only a test shortens this; nothing in the application passes it. */
   turnMs?: number
 }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   /* Two of them, and the difference between them is the whole of the change.
      `category` is where the chart is going; `shown` is what is on the screen
      while it gets there. They are apart only during the fade. */
@@ -148,6 +149,7 @@ export function TopByCategory({
     return () => clearTimeout(swap)
   }, [category, shown, turnMs])
 
+  const linkTo = useProfileLink()
   const columns: ChartColumn[] = topByCategory(competitors, results, season, shown, TOP).map(
     (column) => ({
       competitor: column.competitor,
@@ -161,9 +163,9 @@ export function TopByCategory({
          The season is written out even though the chart is of the running one: a
          profile opens on all of them by default (owner, 31.07.2026), so leaving
          it out would widen the very thing the bar was showing. */
-      to: column.competitor.active
-        ? `${profilePath(column.competitor, locale)}?sezona=${season}&duzina=${shown}`
-        : undefined,
+      /* The query hangs off an address, so it is asked for first and appended only when there
+         is one: a profile nobody may open has no bar to press (`profile/visible.ts`). */
+      to: appended(linkTo(column.competitor), `?sezona=${season}&duzina=${shown}`),
     }),
   )
 

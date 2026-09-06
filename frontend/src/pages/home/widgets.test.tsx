@@ -13,15 +13,23 @@ import { CATEGORIES } from '../../data/derive'
 import { FIRST, NEXT } from './rotation'
 import { addressOf } from '../profileAddress'
 import { TopByCategory } from './TopByCategory'
+import { SessionProvider } from '../../session/SessionProvider'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
 import { ColumnChart } from '../../components/ColumnChart'
 import type { NewsItem, SponsorEntry } from './content'
 
-function renderWidget(ui: React.ReactNode) {
+/* **Inside a session, since 06.09.2026.** Whether a name may lead to a profile now depends on
+   who is reading: a member hiding from readers who are not signed in is drawn as plain text to
+   them and as a link to everybody else (`profile/visible.ts`). A widget drawn outside a session
+   cannot answer that, so the harness answers it: nobody signed in, which is the reading these
+   cases have always been written for. */
+function renderWidget(ui: React.ReactNode, memberNumber: string | null = null) {
   return render(
     <I18nProvider locale="sr">
-      <MemoryRouter>{ui}</MemoryRouter>
+      <MemoryRouter>
+        <SessionProvider initialMemberNumber={memberNumber}>{ui}</SessionProvider>
+      </MemoryRouter>
     </I18nProvider>,
   )
 }
@@ -202,6 +210,58 @@ describe('TopTen', () => {
     expect(new Set(faces.map((one) => one.style.getPropertyValue('--face-hue'))).size).toBe(
       competitors.length,
     )
+  })
+
+  /* **A face with nowhere to go still says whose it is** (review, 07.09.2026).
+     Everything drawn inside one of these circles is out of the reading: the circle carries
+     `aria-hidden`, and so does the number beside it, because both are said by the name the link
+     is called. Take the link away and the words go with it, and the item is then a place on a
+     board of ten with nothing in it at all for a reader who cannot see the picture.
+
+     **Both reasons, in one case, because there is now one branch.** A branch inside this widget
+     used to ask `!slot.active` and draw the plain circle itself, which is the question
+     `ProfileLink` answers for all eight screens that draw a competitor; hiding was added to that
+     rule on 06.09.2026 and this widget knew nothing of it. The two are measured together here so
+     that neither can be answered without the other.
+
+     Read against a third face that **is** a link, or „nobody is a link" would be the same
+     sentence as „the board drew nothing". */
+  it('says who a face is even where it leads nowhere, for either reason', () => {
+    const gone = competitor('000002', false)
+    const hiding = { ...competitor('000004'), profileHidden: true }
+
+    renderWidget(
+      <TopTen
+        competitors={[competitor('000001'), gone, hiding]}
+        results={[result('000001', 30), result('000002', 20), result('000004', 10)]}
+        season={2027}
+        gender="M"
+      />,
+    )
+
+    /* The leader still has somewhere to go, which is what makes the other two mean something. */
+    expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
+
+    for (const [place, who] of [
+      ['2', gone],
+      ['3', hiding],
+    ] as const) {
+      const reading = `${place}. Ime ${who.memberNumber}`
+
+      expect(screen.queryByRole('link', { name: reading })).toBeNull()
+      /* The words are there **for a reader**, which is not the same as being in the markup:
+         everything else in one of these circles carries `aria-hidden`, and a mutation that put
+         the words behind it too was invisible to a plain `getByText`. So what is skipped here is
+         the branch of the tree a screen reader skips.
+
+         Asked of the item and not of the document, so a name written somewhere else on the card
+         could not answer for this one. */
+      const said = screen.getByText(reading, {
+        ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *',
+      })
+
+      expect(must(said.closest('li'), 'the place on the board')).toBeVisible()
+    }
   })
 
   it('draws a circle and no link at all where the league has nobody', () => {
@@ -658,7 +718,9 @@ describe('TopByCategory', () => {
     rerender(
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />
+          <SessionProvider initialMemberNumber={null}>
+            <TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />
+          </SessionProvider>
         </MemoryRouter>
       </I18nProvider>,
     )
