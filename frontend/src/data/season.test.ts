@@ -1,7 +1,6 @@
 import {
   inYearlyWindow,
   referralMayBeSet,
-  seasonOnSale,
   seasonRunning,
   transfersTakeEffect,
 } from './season'
@@ -14,14 +13,19 @@ describe('the yearly window', () => {
     expect(inYearlyWindow('2027-01-01')).toBe(false)
   })
 
-  it('sells next season once it is open, and this one before that', () => {
-    expect(seasonOnSale('2026-07-29')).toBe(2026)
-    expect(seasonOnSale('2026-10-02')).toBe(2027)
-    expect(seasonOnSale('2026-12-31')).toBe(2027)
-  })
-
+  /* **The season a transfer lands in, on both sides of the window and on both sides of
+     New Year.** It shared a body with „what is being sold" until 06.09.2026, and outside
+     the window that body answered with the season that is **running**: a proposal decided
+     on 5 January put its founder into a squad in the middle of a season. The two look
+     alike and are not, so this asks on the four days where they used to disagree. */
   it('lands a transfer at the start of a season, never inside one', () => {
-    expect(transfersTakeEffect('2026-11-15')).toBe(2027)
+    expect(transfersTakeEffect('2026-09-30')).toBe(2027)
+    expect(transfersTakeEffect('2026-10-01')).toBe(2027)
+    expect(transfersTakeEffect('2026-12-31')).toBe(2027)
+    expect(transfersTakeEffect('2027-01-01')).toBe(2028)
+    /* And never a season the league does not have: the clock can be put back, and
+       „the next year" before the first season is a year nothing was run in. */
+    expect(transfersTakeEffect('2025-11-15')).toBe(2027)
   })
 
   it('shuts the referral amount on the day the window opens, and not before', () => {

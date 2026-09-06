@@ -536,9 +536,11 @@ describe('a team the moment it is approved', () => {
        because the roster read the file (review, 05.09.2026). */
     /* On a day inside the transfer window, like every other signed-in reading here.
        Read on the real day, the walk approves a team on a day the portal does not take
-       one at all, and `seasonOnSale` then writes the **current** season into the
-       founder's record, so the new team's page draws them in this season's standing
-       with four races behind them. Both states pass these three assertions, so the
+       one at all. Until 06.09.2026 the season written into the founder's record then came
+       out as the **current** one, so the new team's page drew them in this season's
+       standing with four races behind them; `transfersTakeEffect` answers with the season
+       that has not begun on every day now, but the walk is still pinned, because what it
+       measures is the founding and not the arithmetic. Both states pass these three assertions, so the
        day has to be pinned or the walk quietly changes what it measures on 1 October
        (review, 05.09.2026). */
     const user = setupUser()

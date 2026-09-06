@@ -103,12 +103,11 @@ export function InvitationAnswer({
 
   /* **And only inside the transfer window, for the same reason the team's own page
      answers an application only there.** „Prihvati" writes the season the member
-     runs for the club from, and `seasonOnSale` gives the next one only inside the
-     window: pressed on 5 January the same line writes the season that is already
-     running, and the member joins a squad in the middle of it and carries points
-     to it (review, 06.09.2026). PDL 05.09.2026 puts everything that changes a
-     squad through one door, and `transfersTakeEffect` says a transfer takes effect
-     at the start of the next season and never during a running one.
+     runs for the club from, and a squad is joined at the start of a season and never
+     inside one (PDL P13). The season itself is not this screen's to work out
+     (`transfersTakeEffect`); what is this screen's is that the offer is made only
+     while the door is open, because PDL 05.09.2026 puts everything that changes a
+     squad through that one door.
 
      The invitation waits rather than lapsing, which is what the window is for: it
      is open again on 1 October, and until then this says so instead of offering the

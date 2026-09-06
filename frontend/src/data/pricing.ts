@@ -1,3 +1,4 @@
+import { transfersTakeEffect } from './season'
 /* The price list as data with periods of validity, not as numbers written into
  * a screen (ADL A12). The front page reads it to say what membership costs
  * today and when that changes; the membership page and the price list read the
@@ -29,7 +30,7 @@ export type PriceRow = {
 
 /** The season the portal was built for: the first one, and what the competition
  *  screens are dated by. What membership is being sold for is a different
- *  question and moves with the calendar (seasonOnSale in data/season.ts). */
+ *  question and moves with the calendar (`seasonBeingRenewed` below). */
 export const SEASON = 2027
 
 /** Before this date nobody can even begin to register: the portal is open for
@@ -225,7 +226,11 @@ export function registrationOpen(today: string): boolean {
  * (PDL P13).
  */
 export function seasonBeingRenewed(today: string): number {
-  return Math.max(SEASON, Number(today.slice(0, 4)) + 1)
+  /* Read from `data/season.ts` rather than worked out again, since 06.09.2026:
+     the sentence above already said a transfer is this same question, and for a
+     while it was answered in two places that could drift apart. One of them is
+     enough, and the lower of the two is where a season belongs. */
+  return transfersTakeEffect(today)
 }
 
 /** The league the portal exists for. It is implied everywhere and is never

@@ -899,8 +899,8 @@ describe('the answer the team gives', () => {
        Here: three members waiting, and the **middle** one is answered, so neither the first
        row nor the last one is it. The team is Vardar, which is neither the first team in the
        file nor the one the other cases stand on. The page is read in the window of the
-       **following** year, so `seasonOnSale(today)` is 2028 while `seasonOnSale(ask.date)`
-       would be 2027, a season already run: read off the wrong day, every result that member
+       **following** year, so the season written is 2028 while the day the application was sent
+       would give 2027, a season already run: read off the wrong day, every result that member
        ran through 2027 would count towards their new team.
 
        000003 runs Vardar. 000002, 000004 and 000006 have no team. */
@@ -1082,11 +1082,12 @@ describe('the answer the team gives', () => {
   }, SLOW)
 
   it('is not given outside the window, because the answer is what writes the season', () => {
-    /* `seasonOnSale` gives the next season only inside the window; answered in June the
-       same expression writes the running one, which would put the member into this year's
-       team with every result they have already run this year (review, 05.09.2026). Outside
-       it the application simply waits, which is what one window for every change of team
-       means (owner, 05.09.2026). */
+    /* One window for every change of team (owner, 05.09.2026), so outside it the application
+       simply waits. It was also the only thing standing between an answer in June and a member
+       put into this year's squad with every result they had already run: the season written
+       came out of „what is being sold" until 06.09.2026, and that is the running one outside
+       the window. It has its own answer now (`transfersTakeEffect`), and the window stays
+       because it is the decision, not a consequence of the arithmetic. */
     renderAt(
       DUNAV,
       'competitor',

@@ -325,9 +325,11 @@ export function TeamDetail() {
                   read off the roster every time this page is drawn (owner, 05.09.2026: the
                   application is decided by the administrator of that team).
 
-                  Only inside the window, because the answer writes the season a member runs
-                  from and `seasonOnSale` gives the next one only there; outside it the
-                  application waits, which is what the window is for. */}
+                  Only inside the window, because answering writes the squad a member runs
+                  for and a squad is joined at the start of a season, never inside one (PDL
+                  P13); outside it the application waits, which is what the window is for.
+                  Which season that is, is not this screen's to work out
+                  (`transfersTakeEffect`). */}
               {memberNumber !== null &&
                 runs === memberNumber &&
                 inYearlyWindow(today) &&

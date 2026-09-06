@@ -82,13 +82,6 @@ export function inYearlyWindow(today: string): boolean {
   return dayInYear >= WINDOW_OPENS && dayInYear <= WINDOW_CLOSES
 }
 
-/** The season being sold on a given day: next year once the window is open. */
-export function seasonOnSale(today: string): number {
-  const year = Number(today.slice(0, 4))
-
-  return inYearlyWindow(today) ? year + 1 : year
-}
-
 /**
  * The season a member starts running for a club from.
  *
@@ -107,9 +100,16 @@ export function seasonOnSale(today: string): number {
  * the running season, `inTeamIn` then said yes, and the club counted that
  * member's results from the middle of a season (review, 06.09.2026).
  *
- * Written as its own answer rather than as a call to the other one, because the
- * shared body was the whole of the fault.
+ * Written as its own answer rather than as a call to `seasonOnSale`, because that
+ * shared body was the whole of the fault. **But it is not a third answer either:**
+ * `seasonBeingRenewed` in `data/pricing.ts` had been saying the same thing since
+ * 29.08.2026, in its own words („A transfer is the same question with the same
+ * answer"), so leaving both would be one fact with two homes and one floor. It
+ * reads this one now, and the floor lives here: before the league has a season
+ * there is nothing to join, so the answer is never earlier than the first
+ * (`FIRST_SEASON`). Without it a clock set to 2025 wrote a club membership
+ * starting in 2026, a season the league does not have (review, 06.09.2026).
  */
 export function transfersTakeEffect(today: string): number {
-  return Number(today.slice(0, 4)) + 1
+  return Math.max(FIRST_SEASON, Number(today.slice(0, 4)) + 1)
 }

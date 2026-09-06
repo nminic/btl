@@ -561,11 +561,11 @@ describe('the transfer window holds the answer as well as the question', () => {
 
     expect(await screen.findByRole('button', { name: 'Prihvati' })).toBeVisible()
 
-    /* **Five days into the new season.** „Prihvati" writes the season the member runs for the
-       club from, and `seasonOnSale` gives the next one only inside the window: pressed here the
-       same line writes the season that is already running, and somebody joins a squad in the
-       middle of it and carries points to it (review, 06.09.2026). Everything that changes a
-       squad goes through one door (PDL, 05.09.2026), and the door is shut. */
+    /* **Five days into the new season, and the door is shut.** Everything that changes a squad
+       goes through one window (PDL, 05.09.2026), so the offer is not made outside it; what the
+       season written would be is a separate question and lives in `transfersTakeEffect`. Until
+       06.09.2026 neither held, and pressing here put somebody into a squad in the middle of a
+       season (review, same day). */
     await user.click(screen.getByRole('button', { name: 'danas je 2027-01-05' }))
 
     expect(await screen.findByText(/Poziv čeka/)).toBeVisible()
@@ -604,10 +604,11 @@ describe('the third door writes the season the other two write', () => {
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
     /* **Sent in the window and decided five days into the next season**, which is the moderator's
-       own day and not the member's. Until 06.09.2026 the queue wrote `seasonOnSale`, which
-       outside the window answers with the season that is **running**: the founder went into a
-       squad in the middle of a season and the club counted their results from that moment (PDL
-       05.09.2026, „Obračun bodova tima počinje 1. januara naredne sezone"; review, same day).
+       own day and not the member's. Until 06.09.2026 the season written came out of „what is
+       being sold", which outside the window answers with the season that is **running**: the
+       founder went into a squad in the middle of a season and the club counted their results
+       from that moment (PDL 05.09.2026, „Obračun bodova tima počinje 1. januara naredne
+       sezone"; review, same day).
 
        What it writes now is the first season that has not begun, which is what the other two
        doors write and what the concept is called (`transfersTakeEffect`). */
@@ -638,6 +639,7 @@ describe('a team is told whichever road the member took in', () => {
         <Become who="000002" />
         <Become who="000001" />
         <Become who="000003" />
+        <Become who="000009" />
       </>,
     )
 
@@ -655,6 +657,19 @@ describe('a team is told whichever road the member took in', () => {
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
     await router.navigate('/sr/tim/dunavski-trkaci')
     await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
+
+    /* **Nobody who was not meant to be told, first.** An empty address is the league talking
+       to everybody (`Message.to`), so a notice addressed to nobody lands in every signed-in
+       member's inbox and „the club that was waiting was told" is satisfied by that same
+       message: measured 06.09.2026, `to: ''` on this door left the whole package green while
+       the same mutation fell on the other two. Milica is in Vardar and does not lead it, so
+       she separates two axes at once — the whole league, and any member of the club rather
+       than the one who leads it. */
+    await user.click(screen.getByRole('button', { name: 'postani 000009' }))
+
+    expect(
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toEqual([])
 
     await user.click(screen.getByRole('button', { name: 'postani 000003' }))
 
@@ -782,6 +797,7 @@ describe('the third door, and the team that was joined', () => {
       <>
         <Become who="000002" />
         <Become who="000001" />
+        <Become who="000007" />
       </>,
     )
 
@@ -807,7 +823,15 @@ describe('the third door, and the team that was joined', () => {
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
     const card = within(must(heading.closest('li'), 'the card the proposal stands on'))
 
+    /* **The proposal is approved by somebody else**, because the sentence names whoever went
+       into the club and this door has two people in hand: the member on the queue item and the
+       member at the keyboard. Approved by the same person, those two are one string and the
+       case says nothing about which of them is written: measured 06.09.2026, reading the name
+       off the session instead of off the queue item left the whole package green, and every
+       waiting club would have been told that the moderator had joined a club. */
+    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
     await user.click(card.getByRole('button', { name: 'Odobri' }))
+
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
 
     const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
