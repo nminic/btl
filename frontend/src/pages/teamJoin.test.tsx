@@ -26,6 +26,8 @@ import { useSession } from '../session/useSession'
 const DAY = '2026-10-15'
 /** And one outside it. */
 const SHUT = '2026-06-15'
+/** And a later day inside the same window, for whatever must not be today. */
+const LATER = '2026-10-20'
 
 const DUNAV = '/sr/tim/dunavski-trkaci'
 const VARDAR = '/sr/tim/vardarski-krug'
@@ -426,6 +428,7 @@ describe('the answer the team gives', () => {
       <>
         <Become who="000001" />
         <Become who="000002" />
+        <Become who="000004" />
         <Saved />
         <Asked />
         <Pigeonhole />
@@ -434,9 +437,6 @@ describe('the answer the team gives', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
-
-    /* The day it was asked, drawn beside the name (owner, 06.09.2026). */
-    expect(await screen.findByText(/15\D+10\D+2026/)).toBeVisible()
 
     await user.click(await screen.findByRole('button', { name: TAKE }))
 
@@ -463,7 +463,43 @@ describe('the answer the team gives', () => {
         /Primljen si u tim „Dunavski trkači"/,
       ),
     ).toBeVisible()
+
+    /* **And in nobody else's.** A pigeonhole shows what was written to this member and what
+       was written to the whole league alike, so a message addressed to everybody satisfies
+       the line above exactly as one addressed to 000002 does, and every member of the
+       portal would read that somebody else had been let into a team. The precedent is
+       `adminFlows.test.tsx`, „writes it to that member and to nobody else, least of all to
+       everybody"; this is that assertion, not a new shape. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).queryByText(
+        /Primljen si u tim „Dunavski trkači"/,
+      ),
+    ).toBeNull()
   }, SLOW)
+
+  it('says the day the application was sent, and not the day it is read', async () => {
+    /* **Written with one day for both, the right answer and the wrong one are the same
+       string.** The case that first drew this used `DAY` as the day it was sent and as the
+       day the page was read, so `ask.date` and `today` could be swapped with the whole
+       package green (review, 06.09.2026). Read five days later, inside the same window,
+       they part. Same fault as „takes back its own and not whichever was filed first", and
+       it went in one commit after that one. */
+    renderAt(
+      DUNAV,
+      'competitor',
+      '000001',
+      undefined,
+      LATER,
+      <Applied who="000002" team="team-dunav" day={DAY} />,
+    )
+
+    return screen.findByText(/15\D+10\D+2026/).then((one) => {
+      expect(one).toBeVisible()
+      expect(screen.queryByText(/20\D+10\D+2026/)).toBeNull()
+    })
+  })
 
   it('refuses without putting anybody in the team, and the question is over either way', async () => {
     const user = setupUser()
@@ -477,6 +513,7 @@ describe('the answer the team gives', () => {
       <>
         <Become who="000001" />
         <Become who="000002" />
+        <Become who="000004" />
         <Saved />
         <Asked />
         <Pigeonhole />
@@ -504,6 +541,15 @@ describe('the answer the team gives', () => {
 
     expect(told.getByText(/Prijava u tim „Dunavski trkači" nije prihvaćena/)).toBeVisible()
     expect(told.queryByText(/Primljen si u tim/)).toBeNull()
+
+    /* And, as above, written to that member and to nobody else. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    expect(
+      within(await screen.findByRole('list', { name: 'inbox' })).queryByText(
+        /Prijava u tim „Dunavski trkači" nije prihvaćena/,
+      ),
+    ).toBeNull()
   }, SLOW)
 
   it('follows the team rather than the person, when the one who ran it leaves', async () => {
