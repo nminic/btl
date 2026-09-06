@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { existsSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, relative, sep } from 'node:path'
 import { at } from '../test/at'
 import { renderAt } from '../test/render'
 import { sources } from '../test/sources'
@@ -213,33 +213,48 @@ describe('the way back from a confirmation', () => {
  * says out loud, not by a list somebody has to remember to extend.
  */
 /**
- * Where each one's case lives, and the file each name points at really exists.
+ * Where each one's case lives, and proof that the case is really there.
  *
  * The keys have a floor: they are the modules that import `useSend`, read off the sources. The
- * values had none, and one of them was wrong (`registration.test.tsx` for a file called
- * `Registration.test.tsx`), which nobody noticed because nothing read them (review, 06.09.2026).
- * Now the file system answers for them.
+ * values had none. First they were unread and one was wrong; then they were read, but only to
+ * ask whether a file of that name exists, while the map is called „where each one's case lives".
+ * A review deleted the whole case for the sixth screen and the package stayed green, with this
+ * still saying where that case was (06.09.2026).
+ *
+ * So each value now names the file **and the address its case walks**, and both are checked: the
+ * file by the directory listing, letter for letter, because `existsSync` on Windows answers yes
+ * to the wrong case and the gate runs on Linux; and the address by reading the file. Delete the
+ * case and the address goes with it.
  */
-const CASES: Record<string, string> = {
-  'pages/event/RateEvent.tsx': 'pages/backAfterSending.test.tsx',
-  'pages/event/ReportResult.tsx': 'pages/backAfterSending.test.tsx',
-  'pages/member/EditTeam.tsx': 'pages/backAfterSending.test.tsx',
-  'pages/member/NewResult.tsx': 'pages/backAfterSending.test.tsx',
-  'pages/member/ProposeTeam.tsx': 'pages/backAfterSending.test.tsx',
+const CASES: Record<string, [file: string, address: string]> = {
+  'pages/event/RateEvent.tsx': ['pages/backAfterSending.test.tsx', '/ocena'],
+  'pages/event/ReportResult.tsx': ['pages/backAfterSending.test.tsx', '/prijava?trka='],
+  'pages/member/EditTeam.tsx': ['pages/backAfterSending.test.tsx', '/sr/tim/dunavski-trkaci/izmena'],
+  'pages/member/NewResult.tsx': ['pages/backAfterSending.test.tsx', '/sr/rezultat/novi'],
+  'pages/member/ProposeTeam.tsx': ['pages/backAfterSending.test.tsx', '/sr/novi-tim'],
   /* Its own file, because filling this form takes forty lines that already live there. */
-  'pages/Registration.tsx': 'pages/Registration.test.tsx',
+  'pages/Registration.tsx': ['pages/Registration.test.tsx', '/sr/registracija'],
 }
 
 describe('every screen that confirms a sending', () => {
-  it('names a file that is really there', () => {
-    /* Written before this: „the file system answers for them", while nothing read the values at
-       all. A comment claiming a guard that is not there is worse than no guard, because it stops
-       the next reader from writing one. */
-    const missing = Object.entries(CASES).filter(
-      ([, file]) => !existsSync(join(process.cwd(), 'src', file)),
-    )
+  it('names a file that is really there, and a case really in it', () => {
+    const wrong = Object.entries(CASES).filter(([, [file, address]]) => {
+      const at = join(process.cwd(), 'src', file)
+      const named = file.split('/').at(-1)
+      /* By the listing rather than by `existsSync`: Windows answers yes to the wrong case and
+         the gate runs on Linux, so the wrong name passed on the machine it was written on. */
+      const there = readdirSync(dirname(at)).includes(named ?? '')
 
-    expect(missing).toEqual([])
+      const said = there ? readFileSync(at, 'utf8') : ''
+
+      /* Both, because either alone is met by a file that has nothing to do with this: the
+         address of the registration form appears in the sweep of every address too, and the
+         walk appears in every file that measures history. Together they name a case that walks
+         back from this screen. */
+      return !there || !said.includes(address) || !said.includes('router.navigate(-1)')
+    })
+
+    expect(wrong).toEqual([])
   })
 
   it('has a case here saying where the way back leads', () => {

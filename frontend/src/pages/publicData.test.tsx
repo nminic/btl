@@ -1,6 +1,7 @@
 import { act, cleanup, screen, within } from '@testing-library/react'
 import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
 import { DEFAULT_LOCALE } from '../i18n/config'
+import { QUEUES } from './admin/queues'
 import type { Role } from '../roles/context'
 import { beginsWith, metSaid } from '../test/met'
 import { renderAt } from '../test/render'
@@ -271,8 +272,13 @@ const ALLOWED: Record<string, string[]> = {
   /* The tabs of a competition: standing on „Rezultati", this is „Propozicije"
      (`components/PartsNav.tsx`). Taking it away would remove the way to half the screen. */
   '/sr/liga/runtrace-2027/rezultati': ['/sr/liga/runtrace-2027'],
-  /* „Odustani" beside „Pošalji": the pair the owner kept when he took the rest away
-     (05.09.2026: „nisu veze nego zatvaraju formu"). */
+  /* „Odustani" beside „Pošalji" on the screen that rates an event.
+     **Not covered by the owner's sentence, and said so rather than dressed up.** What he kept on
+     05.09.2026 was „samo dva dugmeta u administraciji (D), koja i nisu veze nego zatvaraju
+     formu": those are buttons, in administration. This is a `<Link>` on a member's screen. It is
+     allowed here because it does the same job, and because taking it away would leave a
+     half-filled form with no way out but the browser; that reading is written down as a decision
+     in `btl-produkt/PDL.md` so the journal carries it, and the owner can overturn it there. */
   '/sr/kalendar/fruskogorski-maraton-2010/ocena': ['/sr/kalendar/fruskogorski-maraton-2010'],
 }
 
@@ -294,6 +300,14 @@ function noWayUp(address: string): void {
     up.filter((href) => !allowed.includes(href)),
     `${address} offers no way of its own up a level`,
   ).toEqual([])
+
+  /* **And no more of them than the allowance names.** Read as „is this target allowed", a second
+     link to the same address rides in free: on the screen that rates an event „Odustani" holds
+     `/sr/kalendar/:slug`, so a real way back to the event was let through beside it, and that is
+     the very link the owner had removed (review, 06.09.2026). */
+  expect(up.length, `${address} offers no second way up beside the one allowed`).toBeLessThanOrEqual(
+    allowed.length,
+  )
 }
 
 /** The portal itself, which is nobody's parent, in the language every row here is written in.
@@ -316,37 +330,71 @@ const FRONT = `/${DEFAULT_LOCALE}`
  * real way back into `admin/AdminMembers.tsx` and into `member/EditTeam.tsx` and the whole
  * package stayed green (06.09.2026): eleven addresses and two forms had nobody at all.
  *
+ * **Each row names the heading it expects**, for the reason this file already gives about the
+ * public table: two of these rows reach a record through a hand-written slug or a hand-written
+ * path, and those are exactly the ones that rot quietly. Without the name, a renamed team or a
+ * renamed route leaves the row measuring the front page and passing (review, 06.09.2026).
+ *
+ * **And the list has a floor**: every administration address the route table has, with the one
+ * pattern `verifikacija/:queue` opened into the six queues it stands for. Five of those six had
+ * never been asked, because the table hides them behind one pattern.
+ *
  * **What is still outside, said rather than hidden:** the six screens that confirm a sending.
  * Nothing here draws the state after something is sent, so a way up on a confirmation would slip
- * past. Those six are held for what lies under them (`pages/backAfterSending.test.tsx`), not for
- * what they draw.
+ * past. Those six are held for what lies under them (`pages/backAfterSending.test.tsx`).
  */
-/** Whoever administers the portal in the probe data. */
 const ADMIN = '000001'
 
-const BEHIND: [string, Role, string | null][] = [
-  ['/sr/administracija', 'superadmin', ADMIN],
-  ['/sr/administracija/entiteti', 'superadmin', ADMIN],
-  ['/sr/administracija/verifikacija', 'superadmin', ADMIN],
-  ['/sr/administracija/verifikacija/rezultati', 'superadmin', ADMIN],
-  ['/sr/administracija/cenovnik', 'superadmin', ADMIN],
-  ['/sr/administracija/clanovi', 'superadmin', ADMIN],
-  ['/sr/administracija/dogadjaji', 'superadmin', ADMIN],
-  ['/sr/administracija/timovi', 'superadmin', ADMIN],
-  ['/sr/administracija/lige', 'superadmin', ADMIN],
-  ['/sr/administracija/strane', 'superadmin', ADMIN],
-  ['/sr/administracija/moderatori', 'superadmin', ADMIN],
+const BEHIND: [string, Role, string | null, string][] = [
+  ['/sr/administracija', 'superadmin', ADMIN, 'Administracija'],
+  ['/sr/administracija/entiteti', 'superadmin', ADMIN, 'Članovi'],
+  ['/sr/administracija/verifikacija', 'superadmin', ADMIN, 'Red za proveru rezultata'],
+  ['/sr/administracija/verifikacija/rezultati', 'superadmin', ADMIN, 'Red za proveru rezultata'],
+  ['/sr/administracija/verifikacija/uplate', 'superadmin', ADMIN, 'Uplate i aktivacija članova'],
+  ['/sr/administracija/verifikacija/timovi', 'superadmin', ADMIN, 'Novi timovi'],
+  ['/sr/administracija/verifikacija/trkacki-profil', 'superadmin', ADMIN, 'Trkački profil'],
+  ['/sr/administracija/verifikacija/komentari', 'superadmin', ADMIN, 'Komentari'],
+  ['/sr/administracija/verifikacija/termini', 'superadmin', ADMIN, 'Prijave promene termina'],
+  ['/sr/administracija/cenovnik', 'superadmin', ADMIN, 'Cenovnik'],
+  ['/sr/administracija/clanovi', 'superadmin', ADMIN, 'Članovi'],
+  ['/sr/administracija/dogadjaji', 'superadmin', ADMIN, 'Događaji'],
+  ['/sr/administracija/timovi', 'superadmin', ADMIN, 'Timovi'],
+  ['/sr/administracija/lige', 'superadmin', ADMIN, 'Lige'],
+  ['/sr/administracija/strane', 'superadmin', ADMIN, 'Statične strane'],
+  ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
   /* A member with no team, inside the window, so the form is really drawn. */
-  ['/sr/novi-tim', 'competitor', '000002'],
+  ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
   /* And the one who administers this team, likewise. */
-  ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001'],
+  ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001', 'Izmena tima'],
 ]
 
 describe('what administration and the member forms offer', () => {
-  it.each(BEHIND)('offers no way of its own up a level on %s', async (address, role, who) => {
+  it('has a row for every administration address the route table has', () => {
+    const every = [...ROUTES, ...EXTRA_ADDRESSES]
+      .map((route) => route.path)
+      .filter((path) => path.startsWith('administracija'))
+      /* One pattern stands for six screens through three components, and five of them had
+         never been opened by anything. */
+      .flatMap((path) =>
+        path.endsWith(':queue') ? QUEUES.map((queue) => queue.path) : [path],
+      )
+
+    const missing = every.filter(
+      (path) => !BEHIND.some(([address]) => address === `/sr/${path}`),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it.each(BEHIND)('offers no way of its own up a level on %s', async (
+    address,
+    role,
+    who,
+    heading,
+  ) => {
     renderAt(address, role, who, undefined, '2026-10-15')
 
-    await screen.findByRole('heading', { level: 1 })
+    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
 
     noWayUp(address)
   })
