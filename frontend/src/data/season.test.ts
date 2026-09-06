@@ -1,7 +1,7 @@
 import ts from 'typescript'
-import { basename, sep } from 'node:path'
+import { basename } from 'node:path'
 import { seasonBeingRenewed } from './pricing'
-import { sources } from '../test/sources'
+import { sources, WHOLE_PORTAL } from '../test/sources'
 import {
   inYearlyWindow,
   referralMayBeSet,
@@ -17,11 +17,6 @@ describe('the yearly window', () => {
     expect(inYearlyWindow('2027-01-01')).toBe(false)
   })
 
-  /* **The season a transfer lands in, on both sides of the window and on both sides of
-     New Year.** It shared a body with „what is being sold" until 06.09.2026, and outside
-     the window that body answered with the season that is **running**: a proposal decided
-     on 5 January put its founder into a squad in the middle of a season. The two look
-     alike and are not, so this asks on the four days where they used to disagree. */
   /**
    * The year the league starts is written once, and every other name for it reads that one.
    *
@@ -30,17 +25,31 @@ describe('the yearly window', () => {
    * follows and half does not, silently, because the number was right in both places up to that
    * moment (review, 06.09.2026). And a body copied instead of called drifts the same way.
    *
-   * The floor is derived and holds no list: **the whole of `src/data` may write a year as a
-   * number exactly once**, and that once is `FIRST_SEASON` itself. Anything else — a price list
-   * with its own 2027, a season worked out inline — falls here and asks the question once.
+   * The floor is derived and holds no list: **the whole portal may write a year as a number
+   * exactly once**, and that once is `FIRST_SEASON` itself. Anything else — a price list with its
+   * own 2027, a screen that types the year instead of reading it, a season worked out inline —
+   * falls here and asks the question once.
    */
   it('writes the year of the first season in exactly one place', () => {
     /* **Asked of the parser, not of the text.** A line that holds a year may be prose: a review
        written down in a comment, a date inside a sentence, a slug. Only the language can say
        which four digits are a number the portal computes with, and it is the one thing here
        that cannot be wrong about its own syntax. */
-    const written = sources()
-      .filter((one) => one.path.includes(`${sep}data${sep}`) && one.path.endsWith('.ts'))
+    const swept = sources()
+
+    /* **The whole portal, and that is not ambition but measurement.** The first draft swept
+       `src/data` only, and the second name for this year lives outside it: `SEASON` comes out
+       of `data/pricing.ts` and three screens read it, so a screen that writes the year instead
+       of reading it was exactly the drift this floor is for and exactly what it could not see
+       (review, 06.09.2026). Narrowing bought nothing either: over all 222 files the sweep finds
+       the same single hit it found over 24.
+
+       And no filter on the path. `sources()` records that `path.includes` reads the **absolute**
+       path, so a checkout under a folder called `data` would have quietly changed what this
+       measured. */
+    expect(swept.length, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
+
+    const written = swept
       .flatMap((one) => {
         const file = ts.createSourceFile(one.path, one.code, ts.ScriptTarget.Latest, true)
         const found: string[] = []
@@ -72,6 +81,11 @@ describe('the yearly window', () => {
     }
   })
 
+  /* **The season a transfer lands in, on both sides of the window and on both sides of New
+     Year.** It shared a body with „what is being sold" until 06.09.2026, and outside the window
+     that body answered with the season that is **running**: a proposal decided on 5 January put
+     its founder into a squad in the middle of a season. The two look alike and are not, so this
+     asks on the days where they used to disagree. */
   it('lands a transfer at the start of a season, never inside one', () => {
     expect(transfersTakeEffect('2026-09-30')).toBe(2027)
     expect(transfersTakeEffect('2026-10-01')).toBe(2027)

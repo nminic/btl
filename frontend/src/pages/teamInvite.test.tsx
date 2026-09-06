@@ -843,7 +843,13 @@ describe('the day the notice carries, on the other two doors', () => {
 
     const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
 
-    expect(must(told[0], 'the notice Dunavski trkači were sent').textContent).toContain('5. 1. 2027.')
+    /* Whole, and not as a piece of a longer day: „5. 1. 2027." is inside „15. 1. 2027.", so a
+       notice ten days late would satisfy `toContain` (review, 06.09.2026). Nothing in this walk
+       can produce that day, which is why it is a doubt rather than a fault; it costs one
+       boundary to remove it. */
+    expect(must(told[0], 'the notice Dunavski trkači were sent').textContent).toMatch(
+      /(?<!\d)5\. 1\. 2027\./,
+    )
   }, SLOW)
 })
 
