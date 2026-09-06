@@ -249,9 +249,18 @@ describe('TopTen', () => {
       const reading = `${place}. Ime ${who.memberNumber}`
 
       expect(screen.queryByRole('link', { name: reading })).toBeNull()
-      /* The words are there, out of the way of the eye. Asked of the item and not of the
-         document, so a name written somewhere else on the card could not answer for this one. */
-      expect(must(screen.getByText(reading).closest('li'), 'the place on the board')).toBeVisible()
+      /* The words are there **for a reader**, which is not the same as being in the markup:
+         everything else in one of these circles carries `aria-hidden`, and a mutation that put
+         the words behind it too was invisible to a plain `getByText`. So what is skipped here is
+         the branch of the tree a screen reader skips.
+
+         Asked of the item and not of the document, so a name written somewhere else on the card
+         could not answer for this one. */
+      const said = screen.getByText(reading, {
+        ignore: 'script, style, [aria-hidden="true"], [aria-hidden="true"] *',
+      })
+
+      expect(must(said.closest('li'), 'the place on the board')).toBeVisible()
     }
   })
 
