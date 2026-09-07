@@ -22,6 +22,7 @@ import { formatCourseTime, formatDuration, formatNumber, formatPoints } from '..
 import { useI18n } from '../i18n/useI18n'
 import { leaderClass } from '../components/podium'
 import { mineIn, rowClass } from '../components/mine'
+import { NamePlate } from '../components/NamePlate'
 import { useSession } from '../session/useSession'
 import './Rankings.css'
 import './TopBoards.css'
@@ -372,7 +373,11 @@ function Boards({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
-        name: <NameOrInitial competitor={row.competitor} />,
+        name: (
+          <NamePlate competitors={[row.competitor]}>
+            <NameOrInitial competitor={row.competitor} />
+          </NamePlate>
+        ),
         members: [row.competitor.memberNumber],
         cells: [{ text: formatNumber(row.kilometers, locale, 2) }],
       })),
@@ -388,7 +393,11 @@ function Boards({
         to: profile(row.competitor),
         key: row.competitor.memberNumber,
         position: row.position,
-        name: <NameOrInitial competitor={row.competitor} />,
+        name: (
+          <NamePlate competitors={[row.competitor]}>
+            <NameOrInitial competitor={row.competitor} />
+          </NamePlate>
+        ),
         members: [row.competitor.memberNumber],
         cells: [{ text: formatCourseTime(row.seconds) }],
       })),
@@ -443,7 +452,7 @@ function Boards({
         to: profile(row.competitor),
         key: row.result.id,
         position: row.position,
-        name: nameOf(row.competitor),
+        name: <NamePlate competitors={[row.competitor]}>{nameOf(row.competitor)}</NamePlate>,
         members: [row.competitor.memberNumber],
         cells: [
           { text: row.result.raceName, words: true },

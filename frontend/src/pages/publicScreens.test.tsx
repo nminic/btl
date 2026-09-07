@@ -1085,7 +1085,22 @@ describe('TopBoards', () => {
     for (const name of ['Najviše kilometara', 'Najduže na stazi']) {
       const rows = board(name).getAllByRole('row').slice(1)
       const link = within(at(rows, 0)).getByRole('link')
-      const whole = must(link.textContent, 'the name in the row')
+      /* Everything the link says with the two pieces a reader never hears taken out, **named one by
+         one** and not gathered by their attribute (review, 07.09.2026). Gathered, the expected
+         value and the measured one are computed by the same rule: `aria-hidden` put on the surname
+         would take it out of both at once, and the case would pass while a reader heard „Strahinja"
+         and nothing more.
+
+         The two are the initial of the surname, which the narrow card swaps in, and the circle
+         with the member's own initials in it, which the owner asked for on 07.09.2026
+         (`components/NamePlate.tsx`). */
+      const unheard = ['.boards__initial', '.portrait'].map(
+        (piece) => link.querySelector(piece)?.textContent ?? '',
+      )
+      const whole = unheard.reduce(
+        (said, piece) => said.replace(piece, ''),
+        must(link.textContent, 'the name in the row'),
+      )
 
       /* The surname stands apart, and the initial after it is the first letter
          of that surname and a full stop. */
@@ -1097,7 +1112,12 @@ describe('TopBoards', () => {
       /* Read out as the whole name and not as the letter beside it: the initial
          is out of the accessible tree, the surname never is. */
       expect(initial).toHaveAttribute('aria-hidden', 'true')
-      expect(link).toHaveAccessibleName(whole.replace(initial.textContent ?? '', '').trim())
+      /* And the surname never is, which is the sentence above this one and the thing the gathered
+         version quietly stopped holding. */
+      expect(must(link.querySelector('.boards__family'), 'the surname')).not.toHaveAttribute(
+        'aria-hidden',
+      )
+      expect(link).toHaveAccessibleName(whole.trim())
     }
   })
 

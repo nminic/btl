@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { CompetitorName } from '../../components/CompetitorName'
+import { NamePlate, OverTwoLines } from '../../components/NamePlate'
+import { ProfileLink } from '../profile/ProfileLink'
 import { Pager } from '../../components/Pager'
 import { PER_PAGE, pageFrom } from '../../components/pageOf'
 import { Resource } from '../../components/Resource'
@@ -180,7 +181,14 @@ function Grid({
             {shown.map((row) => (
               <tr key={row.competitor.memberNumber}>
                 <th scope="row" className="league__who">
-                  <CompetitorName competitor={row.competitor} />
+                  {/* **Krug pa ime u dva reda** (vlasnik, 07.09.2026): ovo je jedino mesto
+                      koje ime lomi, jer je prva kolona zamrznuta i ima mesta ispod. „U ligi dva
+                      reda, u tabelama jedan." */}
+                  <ProfileLink competitor={row.competitor}>
+                    <NamePlate competitors={[row.competitor]}>
+                      <OverTwoLines competitor={row.competitor} />
+                    </NamePlate>
+                  </ProfileLink>
                 </th>
                 <td className="table__points league__total">{formatPoints(row.total, locale)}</td>
                 {table.columns.map((column) => {

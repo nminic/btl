@@ -2,6 +2,7 @@ import { categoryLabel } from '../data/categories'
 import { useEffect, useMemo } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
+import { NamePlate } from '../components/NamePlate'
 import { GenderTabs } from '../components/GenderTabs'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
@@ -182,7 +183,7 @@ function Standing({
         <p className="rankings__empty">{t('rankings.empty')}</p>
       ) : (
         <div className="table-scroll">
-          <table className="table">
+          <table className="table rankings__table">
             <thead>
               <tr>
                 <th scope="col">{t('rankings.columns.position')}</th>
@@ -230,7 +231,22 @@ function Standing({
                     )}
                   </td>
                   <td>
-                    <CompetitorName competitor={row.competitor} />{' '}
+                    {/* The circle before the name, and the name **not** broken over two lines
+                        (owner, 07.09.2026: „U ligi dva reda, u tabelama jedan"). The standing of a
+                        competition breaks it on purpose; this table does not.
+                     *
+                        **And on a telephone the circle is not drawn at all**, which is the owner's
+                        own answer of 07.09.2026, given with the measurement in front of him: „Krug
+                        se ne crta ispod 700px." The circle took about thirty four pixels of a
+                        column 167 wide at 360, and a long name then wrapped of its own accord —
+                        nine of seventeen names ran to two lines where one did before, and the row
+                        grew from 75 to 100 pixels. This is one of the four screens he expects to
+                        be easiest on a telephone (PDL P24), so the circle is the half that gives
+                        way. The rule is in `Rankings.css` and is held, with the class it hangs
+                        off, by `styles/leagueLayout.test.ts`. */}
+                    <NamePlate competitors={[row.competitor]}>
+                      <CompetitorName competitor={row.competitor} />
+                    </NamePlate>{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
                   <td>{categoryLabel(categoryOfMember(row.competitor, season), t)}</td>
