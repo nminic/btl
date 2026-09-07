@@ -1721,6 +1721,14 @@ describe('the racing pairs that hold now', () => {
     /* A season that is over is history rather than „who they are paired with". */
     expect(pairsFrom([old], '000001', 2027)).toEqual([])
     expect(pairsFrom([now], '000009', 2027)).toEqual([])
+    /* **And the floor is that season and not the one before it** (review, 07.09.2026): with eight
+       years between `old` and `from`, `>= from - 1` answers with the same two ids and the boundary
+       is not measured at all. So it is asked one year at a time, from both sides. */
+    const justOver = pair('justOver', '000001', '000030', 2026)
+
+    expect(pairsFrom([justOver, now], '000001', 2027).map((one) => one.id)).toEqual(['now'])
+    expect(pairsFrom([justOver, now], '000001', 2026).map((one) => one.id))
+      .toEqual(['justOver', 'now'])
   })
 
   it('says which pair one member is in, of the season asked about', () => {
