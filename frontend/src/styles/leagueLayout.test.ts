@@ -84,12 +84,34 @@ describe('the name of a competitor beside their circle', () => {
    * the rule is in the sheet and says what it was measured saying. */
   it('is written the way a name is written, and not the way a column heading is', () => {
     const rule = ruleFor(readFileSync(PLATE, 'utf-8'), '.plate', 'NamePlate.css')
+    const base = {
+      'text-transform': 'none',
+      'letter-spacing': 'normal',
+      'font-weight': '400',
+      /* And it reads from the left, in a cell the shared table rule would align right. */
+      'text-align': 'start',
+    }
 
-    expect(rule.getPropertyValue('text-transform')).toBe('none')
-    expect(rule.getPropertyValue('letter-spacing')).toBe('normal')
-    expect(rule.getPropertyValue('font-weight')).toBe('400')
-    /* And it reads from the left, in a cell the shared table rule would align right. */
-    expect(rule.getPropertyValue('text-align')).toBe('start')
+    for (const [property, said] of Object.entries(base)) {
+      expect(rule.getPropertyValue(property), property).toBe(said)
+    }
+
+    /* **And nowhere in the sheet is any of the four said differently** (review, 07.09.2026). Read
+       unconditionally alone, the same four written inside this sheet's own telephone block put the
+       name back in capitals and in 700 on every telephone, with the whole gate green — which is
+       the owner's sentence of 07.09.2026 undone („Imena i prezimena ne treba da budu sva velikim
+       slovima"). `everyRule` reads the sheet wherever a block is written, nested blocks and blocks
+       with no selector of their own included. */
+    const said = everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
+      .filter((one) => /[.]plate(?![-_])/.test(one.selectorText))
+      .flatMap(({ selectorText, style }) =>
+        Object.entries(base)
+          .map(([property, want]) => ({ property, want, got: style.getPropertyValue(property) }))
+          .filter(({ want, got }) => got !== '' && got !== want)
+          .map(({ property, got }) => `${selectorText} { ${property}: ${got} }`),
+      )
+
+    expect(said, 'the plate is dressed some other way at some width').toEqual([])
   })
 
   it('lays the two halves one under the other where a screen writes them', () => {
@@ -105,6 +127,21 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(laid.length, 'the two halves are not laid out together').toBe(1)
     expect(must(first(laid), 'the rule').style.getPropertyValue('display')).toBe('block')
+
+    /* **And at no width are they laid out any other way** (review, 07.09.2026): `display: inline`
+       on the two of them inside this sheet's telephone block puts the whole name back on one line
+       in the standing of a competition, which is „U ligi dva reda" undone, and the gate stayed
+       green. */
+    expect(
+      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
+        .flatMap(({ selectorText, style }) =>
+          selectorText.split(',').map((one) => ({ one: one.trim(), style })),
+        )
+        .filter(({ one }) => /[.]plate__(given|family)$/.test(one))
+        .map(({ style }) => style.getPropertyValue('display'))
+        .filter((was) => was !== '' && was !== 'block'),
+      'a half of the name is laid out some other way at some width',
+    ).toEqual([])
   })
 
   it('lays the words beside the circle in a line, and only a pair in rows', () => {
@@ -220,6 +257,18 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(rule.getPropertyValue('inline-size')).toBe('1.7rem')
     expect(rule.getPropertyValue('block-size')).toBe('1.7rem')
+
+    /* **And the sheet gives it two sizes and no third** (review, 07.09.2026): the full size written
+       again after the telephone block wins on order and the long surnames are cut again, with the
+       gate green. Two, in this order: beside words at every width, and smaller where the column is
+       capped. */
+    expect(
+      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
+        .filter((one) => one.selectorText.includes('.portrait'))
+        .map((one) => one.style.getPropertyValue('inline-size'))
+        .filter((size) => size !== ''),
+      'the circle is given another size somewhere',
+    ).toEqual(['2.1rem', '1.7rem'])
   })
 
   it('is not drawn at all in the main standing on a telephone, which the owner chose', () => {

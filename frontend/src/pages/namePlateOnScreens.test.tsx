@@ -64,7 +64,7 @@ describe('the circle beside a name', () => {
        `styles/leagueLayout.test.ts`; here is the other half, that something actually wears it.
        Precedent for asking the drawn element: `pages/publicScreens.test.tsx`. */
     expect(
-      must(inTable.closest('table'), 'the table of the standing').classList.toString(),
+      [...must(inTable.closest('table'), 'the table of the standing').classList],
       'the main standing no longer wears the name its own rule reaches for',
     ).toContain('rankings__table')
 

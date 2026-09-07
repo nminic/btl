@@ -240,7 +240,42 @@ export function rulesInMedia(css: string, condition: string, named: string): CSS
  * condition still belongs to `rulesInMedia`, and a question about what applies unconditionally
  * still belongs to `unconditionalRules`; the difference is which of the three the question is.
  */
-export function everyRule(css: string, named: string): CSSStyleRule[] {
+/**
+ * One declaration block of a sheet, with the selector it belongs to.
+ *
+ * A plain shape rather than `CSSStyleRule`, because CSS nesting writes blocks that have no selector
+ * of their own: everything put bare inside a nested at-rule, and everything put after a nested rule
+ * in the same block, is kept by the CSSOM as `CSSNestedDeclarations` and belongs to the selector
+ * around it. Those are what a guard has to see, and they are not rules.
+ */
+export type Declared = { selectorText: string; style: CSSStyleDeclaration }
+
+/**
+ * Every declaration block a sheet has, wherever it is written: unconditional, inside a media
+ * query, inside a container query, nested inside another rule, at any depth.
+ *
+ * **Written on 07.09.2026 and widened twice in two rounds, both times by the same kind of finding.**
+ * A guard read `unconditionalRules` and a review put the declaration inside the sheet's own media
+ * block; this was written; a review put it inside a nested rule and the walk returned early on the
+ * first style rule; this was widened; a review then put it **after** a nested rule, where the CSSOM
+ * keeps it as `CSSNestedDeclarations`, which is neither a style rule nor a grouping rule and fell
+ * through both branches. Each time the sheet reached the browser saying the opposite of what the
+ * guard read, with the whole gate green.
+ *
+ * The shape below is the answer to all three at once: **walk everything, and give every block the
+ * selector it will be applied under.** A block with no selector of its own takes the one around it,
+ * which is what the browser does with it.
+ *
+ * This is for the questions that are about the sheet as a whole: „is this property written
+ * **anywhere**", „does this half of a name carry a weight **at any width**". A question about one
+ * condition still belongs to `rulesInMedia`, and a question about what applies unconditionally
+ * still belongs to `unconditionalRules`.
+ *
+ * **What it still cannot answer** is which of two blocks wins where both apply: that is the
+ * cascade, jsdom computes none, and a guard built on this holds what a sheet **says** and not what
+ * a browser **does** (ADL A33).
+ */
+export function everyRule(css: string, named: string): Declared[] {
   const tag = document.createElement('style')
 
   tag.textContent = css
@@ -250,26 +285,32 @@ export function everyRule(css: string, named: string): CSSStyleRule[] {
 
   expect(sheet, `jsdom did not parse ${named}`).not.toBeNull()
 
-  /* `CSSGroupingRule` is the one base every wrapper that holds rules of its own inherits from: a
-     media query, a container query, `@supports`, `@layer`. Asked of the base rather than of a list
-     of kinds, so a wrapper the portal writes tomorrow is walked without this being told about it.
-     Measured in this jsdom: `CSSGroupingRule`, `CSSMediaRule` and `CSSSupportsRule` are all
-     defined.
-   *
-     **A style rule is one of those too, and the first draft of this stopped at it** (review,
-     07.09.2026). CSS nesting writes rules inside a rule — `.plate { & .plate__words { … } }` — and
-     jsdom hands them back on that rule's own `cssRules`; a walk that returned early on the first
-     `CSSStyleRule` threw the answer away. Measured: two nested declarations, both of them faults
-     two earlier rounds had found and fixed, reached the built stylesheet with 2701 cases green.
-     So a style rule is both an answer and a place to keep looking. */
-  const walk = (rules: CSSRule[]): CSSStyleRule[] =>
+  const walk = (rules: CSSRule[], under: string): Declared[] =>
     rules.flatMap((rule) => {
-      const inside = rule instanceof CSSGroupingRule ? walk([...rule.cssRules]) : []
+      if (rule instanceof CSSStyleRule) {
+        /* Its own declarations, and then everything written inside it, under its own selector. */
+        return [
+          { selectorText: rule.selectorText, style: rule.style },
+          ...walk([...rule.cssRules], rule.selectorText),
+        ]
+      }
 
-      return rule instanceof CSSStyleRule ? [rule, ...inside] : inside
+      if (rule instanceof CSSGroupingRule) {
+        /* A media query, a container query, `@supports`, `@layer`: it holds rules and changes
+           nothing about which selector they are applied under. */
+        return walk([...rule.cssRules], under)
+      }
+
+      /* What is left with declarations of its own is a block with no selector: `CSSNestedDeclarations`,
+         which the CSSOM makes for everything written bare inside a nested at-rule and for everything
+         written after a nested rule in the same block. Recognised by what it has rather than by its
+         name, because the type is newer than this project's TypeScript. */
+      return 'style' in rule && rule.style instanceof CSSStyleDeclaration
+        ? [{ selectorText: under, style: rule.style }]
+        : []
     })
 
-  const found = walk([...(sheet?.cssRules ?? [])])
+  const found = walk([...(sheet?.cssRules ?? [])], '')
 
   tag.remove()
 
