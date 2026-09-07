@@ -1,4 +1,5 @@
-import { pairOf, seasonFormedOn } from '../../data/derive'
+import { pairOf } from '../../data/derive'
+import { transfersTakeEffect } from '../../data/season'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { useToday } from '../../clock/useClock'
@@ -60,8 +61,15 @@ export function InviteToPair({
      **Worked out again when the answer comes, and this one is only for the question**: „Formiranje
      mora biti završeno do 31. decembra" puts the deadline on the finishing, and a pair is finished
      when the other one confirms. Asked on 31 December and answered on 2 January, the pair belongs
-     to the season after next, and the button here has no way to know that (review, 07.09.2026). */
-  const season = seasonFormedOn(today)
+     to the season after next, and the button here has no way to know that (review, 07.09.2026).
+   *
+     **And it is the portal's own answer to „which season does a change take effect in", not a
+     second one written beside it** (review, 07.09.2026). `transfersTakeEffect` says exactly this
+     for a club and carries the floor that a hand-written year does not: before the league has a
+     season there is nothing to join, so the answer is never earlier than `FIRST_SEASON`. Without
+     it a clock set to 2025 wrote a pair for 2026, a season the league does not have, which is the
+     same fault that was measured on a club a day earlier. */
+  const season = transfersTakeEffect(today)
 
   if (
     me === undefined ||

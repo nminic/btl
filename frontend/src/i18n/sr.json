@@ -487,7 +487,7 @@
     "brokenBody": "{who} je od sezone {season} u drugom trkačkom paru, pa je vaš raskinut.",
     "sent": "Poslat poziv: {who}.",
     "received": "Primljen poziv: {who}.",
-    "endedBody": "{who} je raskinuo trkački par za sezonu {season}.",
+    "endedBody": "Trkački par sa {who} za sezonu {season} je raskinut.",
     "mine": "Trkački par",
     "none": "Nije u trkačkom paru.",
     "breakUp": "Raskini trkački par",

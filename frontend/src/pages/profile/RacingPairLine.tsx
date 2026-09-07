@@ -44,23 +44,33 @@ export function RacingPairLine({
       .map((one) => `${one.firstName} ${one.lastName}`)
       .join('')
 
+  /* **The questions still standing, drawn whether or not there is a pair** (review, 07.09.2026).
+     Drawn only inside „there is no pair", a member who has a pair and an open question about
+     another one saw nothing of it: the question can still end the pair they have, and its own page
+     is where somebody looks for it.
+
+     On somebody else's profile, none of it: whether they have been asked, and by whom, is their
+     business. */
+  const waiting = mine
+    ? pairInvites
+        .filter((one) => one.from === reader || one.to === reader)
+        .map((one) => (
+          <span key={one.id} className="profile__pair-waiting">
+            {' '}
+            {one.from === reader
+              ? t('pair.sent', { who: named(one.to) })
+              : t('pair.received', { who: named(one.from) })}
+          </span>
+        ))
+    : []
+
   if (pair === null) {
-    /* **On somebody else's profile, nothing at all**: whether they have been asked, and by whom, is
-       their business. On the reader's own, the state PDL asks a profile to carry: that there is no
-       pair, and the questions still standing, both the ones sent and the ones received (odluka
-       07.09.2026; a review found only the first two of the three were drawn). */
+    /* On the reader's own page, the state PDL asks a profile to carry: that there is no pair, and
+       the questions still standing, both the ones sent and the ones received. */
     return mine ? (
       <p className="profile__pair">
-        <span>{t('pair.none')}</span>{' '}
-        {pairInvites
-          .filter((one) => one.from === reader || one.to === reader)
-          .map((one) => (
-            <span key={one.id} className="profile__pair-waiting">
-              {one.from === reader
-                ? t('pair.sent', { who: named(one.to) })
-                : t('pair.received', { who: named(one.from) })}
-            </span>
-          ))}
+        <span>{t('pair.none')}</span>
+        {waiting}
       </p>
     ) : null
   }
@@ -109,6 +119,7 @@ export function RacingPairLine({
           </button>
         </>
       )}
+      {waiting}
     </p>
   )
 }

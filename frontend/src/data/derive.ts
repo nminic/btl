@@ -968,21 +968,6 @@ export function pairsNow(
 }
 
 /**
- * The season a racing pair finished on this day holds for: the next one.
- *
- * „Formiranje mora biti završeno do 31. decembra da bi trkački par važio u novoj sezoni" (PDL P13).
- * The deadline is on the finishing, so this is asked with the day the second of the two confirmed
- * and never with the day the first of them asked: asked on 31 December and answered on 2 January,
- * the pair belongs to the season after next.
- *
- * One home, because two screens ask it: the button that sends the question works out what it is
- * asking about, and the answer works out what it is making.
- */
-export function seasonFormedOn(day: string): number {
-  return Number(day.slice(0, 4)) + 1
-}
-
-/**
  * The pair one member is in, of the pairs that hold, or nothing.
  *
  * Takes nobody as well as somebody: a screen asks this before it knows whether anybody is signed

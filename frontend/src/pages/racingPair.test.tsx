@@ -90,6 +90,15 @@ async function goToMyProfile(user: ReturnType<typeof setupUser>) {
   await user.click(await screen.findByRole('link', { name: 'Moj profil' }))
 }
 
+/** The one notice about a pair that ended, opened. */
+async function openTheNotice(user: ReturnType<typeof setupUser>) {
+  const waiting = (await inbox(user)).filter((one) =>
+    /Trkački par je raskinut/.test(one.textContent ?? ''),
+  )
+
+  await user.click(must(waiting[0], 'a notice in the inbox'))
+}
+
 /** The one invitation waiting, opened. */
 async function openTheInvitation(user: ReturnType<typeof setupUser>) {
   const waiting = (await inbox(user)).filter((one) =>
@@ -303,7 +312,12 @@ describe('a pair that is ended', () => {
 
     await user.click(must(his[0], 'the notice'))
 
-    expect(screen.getByText(/Katarina Novaković je raskinula|Katarina Novaković je raskinuo/)).toBeVisible()
+    /* By name and **for the season the pair held**, not the season being read: the pair is for
+       2027 and this is read in 2026, so a notice that named the running season would say 2026 and
+       the case can tell the two apart. */
+    expect(
+      screen.getByText(/Trkački par sa Katarina Novaković za sezonu 2027 je raskinut/),
+    ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'postani 000004' }))
 
@@ -561,6 +575,66 @@ describe('a question that is still standing', () => {
 
     expect(invite().length).toBe(0)
     expect(screen.getByText(/Poziv u trkački par je poslat/)).toBeVisible()
+
+    /* **And his page says nothing at all about it**, which is his and hers and nobody else's: the
+       questions still standing are drawn on the reader own page only, so on his page, read by her,
+       there is no such line to read. */
+    expect(document.querySelector('.profile__pair')).toBeNull()
+  }, SLOW)
+
+  it('stands on the page of somebody who already has a pair, because it can still end it', async () => {
+    /* Drawn only inside „there is no pair", a member with a pair and an open question about another
+       one saw nothing of it on their own page, and that question can still end the pair they have
+       (review, 07.09.2026). */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question to her'))
+
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+    await user.click(must(invite()[0], 'his question to Ivona'))
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Relja/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'his line').textContent ?? ''
+
+    expect(line).toContain('Ivona Stamenkovska')
+    expect(line).toContain('Poslat poziv: Katarina Novaković')
+  }, SLOW)
+
+  it('is not listed on somebody else’s page, and neither is anybody else’s', async () => {
+    /* Two things one case can hold, because they fail the same way: a reader who is shown questions
+       that are not theirs, and a page that shows its own owner's questions to whoever opens it. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000004', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question to her'))
+
+    /* A third member opens her page: the question between the other two is not there. */
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(document.querySelector('.profile__pair')).toBeNull()
+
+    /* And her own page carries her own questions and nobody else's. */
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'her line').textContent ?? ''
+
+    expect(line).toContain('Nije u trkačkom paru')
+    expect(line).not.toContain('Katarina')
   }, SLOW)
 })
 
@@ -577,5 +651,147 @@ describe('a pair from a season that is over', () => {
     expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
       'Nije u trkačkom paru',
     )
+  }, SLOW)
+})
+
+describe('accepting when both of them are already paired', () => {
+  it('ends both pairs, and each one who is left is told by name', async () => {
+    /* The decision of 07.09.2026, both halves of it: „prihvatanje izvodi **oba** člana iz onoga u
+       čemu su za tu sezonu" and „**svaki** ostavljeni partner dobija poruku". Every other walk has
+       exactly one of the two sides paired, so „both" and „whichever one there is" draw the same
+       screen and no case can tell them apart. Here both are.
+
+       It is also the only walk in which the two notices must name **different** people: read off
+       the question rather than off the pair that ended, the second one would name the man who
+       asked, who has nothing to do with the pair that was ended. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    /* He asks her, and that question stays open while everything else happens. */
+    await user.click(must(invite()[0], 'his question to her'))
+
+    /* He pairs with Ivona. */
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+    await user.click(must(invite()[0], 'his question to Ivona'))
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* And she pairs with Časlav. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question to her'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Now she takes the older question, which is still open. Two pairs end at once. */
+    const older = (await inbox(user)).filter((one) =>
+      /Poziv u trkački par/.test(one.textContent ?? ''),
+    )
+
+    /* The **older** of the two, and the panel draws the newest first. */
+    await user.click(must(older[older.length - 1], 'his older question'))
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Ivona is told, and her notice names the man she is no longer paired with. */
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheNotice(user)
+
+    expect(
+      screen.getByText(/Relja Momčilović je od sezone 2027 u drugom trkačkom paru/),
+    ).toBeVisible()
+
+    /* Časlav is told too, and his notice names **her**. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await openTheNotice(user)
+
+    expect(
+      screen.getByText(/Katarina Novaković je od sezone 2027 u drugom trkačkom paru/),
+    ).toBeVisible()
+  }, SLOW)
+})
+
+describe('the questions on a page that is not the reader\u2019s', () => {
+  it('are the reader\u2019s own on their own page, and nobody\u2019s on anybody else\u2019s', async () => {
+    /* Two leaks that fail the same way, so one walk holds both: a page that shows the reader's own
+       questions on **somebody else's** profile, and a page that lists **other people's** questions
+       on the reader's own. Both were open until 07.09.2026, and neither is visible unless the
+       reader has a question of their own while looking at a page that has a pair on it. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000004', undefined, TODAY, THREE)
+
+    /* Časlav asks Katarina, so he has a question of his own standing. */
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+
+    /* Relja and Ivona pair up, so there is a profile with a pair to read. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+    await user.click(must(invite()[0], 'his question to Ivona'))
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Časlav reads Ivona's page: her pair is there, and his own question is not. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    const hers = must(document.querySelector('.profile__pair'), 'her line').textContent ?? ''
+
+    expect(hers).toContain('Relja Momčilović')
+    expect(hers).not.toContain('Poslat poziv')
+
+    /* And Ivona's own page lists her own questions and nobody else's: Časlav's question to Katarina
+       is not hers to see. */
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    const mine = must(document.querySelector('.profile__pair'), 'her own line').textContent ?? ''
+
+    expect(mine).toContain('Relja Momčilović')
+    /* Her own question was answered and closed, so there is none to list. Read without asking whose
+       a question is, the one Časlav sent Katarina would stand here, on a page it has nothing to do
+       with, and it would be named after **him** rather than after her, which is why the case names
+       both. */
+    expect(mine).not.toContain('poziv')
+    expect(mine).not.toContain('Časlav')
+  }, SLOW)
+})
+
+describe('a clock set before the league had a season', () => {
+  it('never writes a pair for a season the league does not have', async () => {
+    /* `FIRST_SEASON` is 2027, and „prva sezona koja još nije počela" is the portal's own question
+       with the portal's own answer (`data/season.ts`, `transfersTakeEffect`), floored for exactly
+       this reason on 06.09.2026 after a clock set to 2025 wrote a club membership for 2026.
+       Written again by hand here, the same clock wrote a **pair** for 2026 (review, 07.09.2026). */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, '2025-10-15', THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'the line').textContent ?? ''
+
+    expect(line).toContain('Za sezonu 2027')
+    expect(line).not.toContain('Za sezonu 2026')
   }, SLOW)
 })

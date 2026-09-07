@@ -1,4 +1,5 @@
-import { pairOf, seasonFormedOn } from '../../data/derive'
+import { pairOf } from '../../data/derive'
+import { transfersTakeEffect } from '../../data/season'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { useToday } from '../../clock/useClock'
@@ -48,7 +49,7 @@ export function PairInviteAnswer({
   /* **The season is worked out here and not read off the question** (review, 07.09.2026):
      „Formiranje mora biti završeno do 31. decembra", and forming ends with this press. A question
      asked on 31 December and answered on 2 January makes a pair for the season after next. */
-  const season = seasonFormedOn(today)
+  const season = transfersTakeEffect(today)
   const mine = pairOf(pairs, memberNumber, season)
   /* Whatever the one who asked has paired into since. */
   const theirs = pairOf(pairs, invite.from, season)
