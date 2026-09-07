@@ -308,8 +308,6 @@ export type PairInvite = {
   from: string
   /** Who is being asked. */
   to: string
-  /** The season the pair would hold for, which is the one after the asking (PDL P13). */
-  season: number
   /** The day it was sent. */
   date: string
 }

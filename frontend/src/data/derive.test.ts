@@ -1680,6 +1680,24 @@ describe('the racing pairs that hold now', () => {
     expect(pairsNow(file, made, []).map((one) => one.id)).toEqual(['new'])
   })
 
+  it('leaves a season that is over alone, however its members pair up now', () => {
+    /* **PDL P13: „Ne brišu se nikad istorijski podaci, oni su zamrznuti."** Read without the season,
+       a pair made for 2027 took its two members out of every pair the file had for them, and the
+       board of 2019 lost a row that had been there for seven years. Measured by a review on
+       07.09.2026 by walking the screens, and the whole gate stayed green.
+
+       One member is in one pair **per season**, which is what the file's two pairs for 2019 are:
+       history, and nobody's to change. */
+    const file = [pair('frozen', '000001', '000002', 2019)]
+    const made = [pair('new', '000001', '000009', 2027)]
+
+    expect(pairsNow(file, made, []).map((one) => one.id)).toEqual(['frozen', 'new'])
+    /* And the same two members pairing again **for the same season** does take the old one out,
+       which is the rule the season was hiding. */
+    expect(pairsNow(file, [pair('again', '000001', '000009', 2019)], []).map((one) => one.id))
+      .toEqual(['again'])
+  })
+
   it('drops a pair this visit made and then broke', () => {
     const made = [pair('made', '000001', '000002')]
 

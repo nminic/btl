@@ -950,14 +950,36 @@ export function pairsNow(
   made: RacingPair[],
   broken: string[],
 ): RacingPair[] {
-  const taken = new Set(made.flatMap((one) => one.memberNumbers))
+  /* **By season, and that is the whole of it** (review, 07.09.2026). Read without the season, a
+     pair made today took its two members out of **every** pair the file has for them, including
+     the seasons that are frozen: confirming a pair for 2027 deleted a 2019 pair off the board of
+     2019, which is „Ne brišu se nikad istorijski podaci" undone (PDL P13). One member is in one
+     pair **per season**, and nothing about a season that is over is anybody's to change. */
+  const taken = new Set(made.flatMap((one) => one.memberNumbers.map((who) => `${one.season}:${who}`)))
 
   return [
     ...fromFile.filter(
-      (one) => !broken.includes(one.id) && !one.memberNumbers.some((who) => taken.has(who)),
+      (one) =>
+        !broken.includes(one.id) &&
+        !one.memberNumbers.some((who) => taken.has(`${one.season}:${who}`)),
     ),
     ...made.filter((one) => !broken.includes(one.id)),
   ]
+}
+
+/**
+ * The season a racing pair finished on this day holds for: the next one.
+ *
+ * „Formiranje mora biti završeno do 31. decembra da bi trkački par važio u novoj sezoni" (PDL P13).
+ * The deadline is on the finishing, so this is asked with the day the second of the two confirmed
+ * and never with the day the first of them asked: asked on 31 December and answered on 2 January,
+ * the pair belongs to the season after next.
+ *
+ * One home, because two screens ask it: the button that sends the question works out what it is
+ * asking about, and the answer works out what it is making.
+ */
+export function seasonFormedOn(day: string): number {
+  return Number(day.slice(0, 4)) + 1
 }
 
 /**

@@ -1,4 +1,4 @@
-import { pairOf } from '../../data/derive'
+import { pairOf, seasonFormedOn } from '../../data/derive'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { useToday } from '../../clock/useClock'
@@ -25,8 +25,13 @@ import type { Competitor, RacingPair } from '../../data/types'
  * **What is not a condition, and it looks like one.** „Formiranje mora biti završeno do 31. decembra
  * da bi trkački par važio u novoj sezoni" (PDL P13) reads like a deadline that closes the button at
  * some point in the year. It is not: every day of a year is before the end of that year, so nothing
- * is ever refused. What the sentence really fixes is **which season** a pair formed today holds
- * for, and that is the line below rather than a condition here.
+ * is ever refused. What the sentence really fixes is **which season** a pair holds for.
+ *
+ * **And it fixes it on the day the pair is finished, not on the day it is asked for** (review,
+ * 07.09.2026): forming ends with the other one confirming. So the season worked out here is only
+ * for the question the button asks, and `member/PairInviteAnswer.tsx` works it out again on the day
+ * the answer comes. Asked on 31 December and answered on 2 January, a pair belongs to the season
+ * after next, which is what „mora biti završeno do 31. decembra" says.
  *
  * There is no condition against inviting yourself: the two are of different sexes, so they cannot be
  * the same person. Written down because an absent check is the kind of thing a later reader adds
@@ -48,10 +53,15 @@ export function InviteToPair({
   const { memberNumber: reader, pairInvites, invitePair, notify } = useSession()
 
   const me = competitors.find((one) => one.memberNumber === reader)
-  /* The season a pair formed today would hold for: the next one. Read off the day rather than off
-     the season picker, because the rule is about the calendar and not about what is being looked
-     at (PDL P13). */
-  const season = Number(today.slice(0, 4)) + 1
+  /* The season a pair confirmed today would hold for: the next one. Read off the day rather than
+     off the season picker, because the rule is about the calendar and not about what is being
+     looked at (PDL P13).
+   *
+     **Worked out again when the answer comes, and this one is only for the question**: „Formiranje
+     mora biti završeno do 31. decembra" puts the deadline on the finishing, and a pair is finished
+     when the other one confirms. Asked on 31 December and answered on 2 January, the pair belongs
+     to the season after next, and the button here has no way to know that (review, 07.09.2026). */
+  const season = seasonFormedOn(today)
 
   if (
     me === undefined ||
@@ -76,12 +86,7 @@ export function InviteToPair({
       type="button"
       className="button button--secondary"
       onClick={() => {
-        const id = invitePair({
-          from: me.memberNumber,
-          to: competitor.memberNumber,
-          season,
-          date: today,
-        })
+        const id = invitePair({ from: me.memberNumber, to: competitor.memberNumber, date: today })
 
         /* The invitation and the message that carries it are written together, because neither is
            any use alone: the record is what may be answered, and the inbox is the only place the
@@ -90,7 +95,7 @@ export function InviteToPair({
           from: t('app.name'),
           to: competitor.memberNumber,
           subject: t('pair.inviteSubject'),
-          body: t('pair.inviteBody', { who: `${me.firstName} ${me.lastName}`, season }),
+          body: t('pair.inviteBody', { who: `${me.firstName} ${me.lastName}` }),
           date: today,
           pairInvite: id,
         })

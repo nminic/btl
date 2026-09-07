@@ -315,9 +315,11 @@ describe('a sentence with a value put into it', () => {
       /* The racing pair, which the owner asked for on 07.09.2026: who is asking and for which
          season, whose pair the reader is already in, and who a broken pair was broken for. */
       'pair.brokenBody',
+      'pair.endedBody',
       'pair.inviteBody',
-      'pair.inviteOvertaken',
+      'pair.received',
       /* The day the two of them confirmed, written the way every other day on a profile is. */
+      'pair.sent',
       'pair.since <- formatShortDate',
       'profile.allDucats',
       'profile.allResults',

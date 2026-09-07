@@ -1,4 +1,4 @@
-import { pairOf } from '../../data/derive'
+import { pairOf, seasonFormedOn } from '../../data/derive'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { useToday } from '../../clock/useClock'
@@ -31,6 +31,7 @@ export function PairInviteAnswer({
   const { memberNumber, pairInvites, closePairInvite, makePair, breakPair, notify } = useSession()
 
   const invite = pairInvites.find((one) => one.id === id)
+  const between = new Set([String(memberNumber), invite?.from])
   const named = (who: string) =>
     competitors
       .filter((one) => one.memberNumber === who)
@@ -44,24 +45,43 @@ export function PairInviteAnswer({
     return <p className="messages__answered">{t('pair.inviteClosed')}</p>
   }
 
-  const mine = pairOf(pairs, memberNumber, invite.season)
+  /* **The season is worked out here and not read off the question** (review, 07.09.2026):
+     „Formiranje mora biti završeno do 31. decembra", and forming ends with this press. A question
+     asked on 31 December and answered on 2 January makes a pair for the season after next. */
+  const season = seasonFormedOn(today)
+  const mine = pairOf(pairs, memberNumber, season)
+  /* Whatever the one who asked has paired into since. */
+  const theirs = pairOf(pairs, invite.from, season)
 
-  if (mine !== null) {
-    /* The reader has paired since being asked. Their own pair is named, because „you are already
-       in a pair" without saying with whom is a sentence that sends somebody looking. */
-    return (
-      <p className="messages__answered">
-        {t('pair.inviteOvertaken', {
-          who: named(mine.memberNumbers.filter((one) => one !== memberNumber).join('')),
-        })}
-      </p>
-    )
+  /* **Both sides are treated alike, and that is a decision** (07.09.2026, after a review found the
+     two halves answered differently). PDL says „Prihvatanje novog poziva dok već postoji par
+     raskida stari i istog trenutka obaveštava dotadašnjeg partnera", written of nobody in
+     particular; the owner's example beside it happens to describe the one who asked. Written to
+     refuse the reader and break the asker, the same sentence had two answers depending on which
+     side the pair stood, and the reader had a quieter way round it anyway: end their own pair with
+     no word to anybody and then accept.
+   *
+     So accepting ends whatever either of them is in for that season, and whoever is left is told.
+     The boundary in the other direction: **a pair of a season that is over is never touched**, and
+     nothing here reaches one, because both are read for the season being formed. */
+  const takeOutOf = (pair: RacingPair | null) => {
+    if (pair === null) {
+      return
+    }
+
+    const left = pair.memberNumbers.filter((one) => !between.has(one)).join('')
+
+    breakPair(pair.id)
+    /* To that one member and to nobody else. Written to the league it would tell everybody that
+       somebody's pair had ended, which is that member's business and not the league's. */
+    notify({
+      from: t('app.name'),
+      to: left,
+      subject: t('pair.brokenSubject'),
+      body: t('pair.brokenBody', { who: named(other(pair, left)), season }),
+      date: today,
+    })
   }
-
-  /* Whatever the one who asked has paired into since. Accepting takes them out of it, which is the
-     owner's own sentence („muškarac zatraži novi par, nova žena prihvati, dotadašnja žena istog
-     trenutka dobija poruku"), so the person they leave has to be told at that moment. */
-  const theirs = pairOf(pairs, invite.from, invite.season)
 
   return (
     <p className="messages__answer">
@@ -69,28 +89,15 @@ export function PairInviteAnswer({
         type="button"
         className="button"
         onClick={() => {
-          if (theirs !== null) {
-            const left = theirs.memberNumbers.filter((one) => one !== invite.from).join('')
-
-            breakPair(theirs.id)
-            /* To that one member and to nobody else. Written to the league it would tell everybody
-               that somebody's pair had ended, which is that member's business and not the
-               league's. */
-            notify({
-              from: t('app.name'),
-              to: left,
-              subject: t('pair.brokenSubject'),
-              body: t('pair.brokenBody', { who: named(invite.from), season: invite.season }),
-              date: today,
-            })
-          }
+          takeOutOf(theirs)
+          takeOutOf(mine)
 
           /* Written without a check that somebody is signed in, and that is not an omission: this
              is a member's own inbox and a visitor never reaches it (`SignedOut`). A check nothing
              can reach is a check nobody can be sure still works, which is the argument
              `profile/InviteToTeam.tsx` makes about inviting yourself. */
           makePair({
-            season: invite.season,
+            season,
             memberNumbers: [invite.from, String(memberNumber)],
             since: today,
           })
@@ -110,4 +117,9 @@ export function PairInviteAnswer({
       </button>
     </p>
   )
+}
+
+/** The half of a pair that is not the one named. */
+function other(pair: RacingPair, than: string): string {
+  return pair.memberNumbers.filter((one) => one !== than).join('')
 }
