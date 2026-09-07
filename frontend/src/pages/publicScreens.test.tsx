@@ -1072,12 +1072,24 @@ describe('TopBoards', () => {
     expect(Number(races.style.getPropertyValue('--count-chars'))).toBeLessThan(longest)
   })
 
-  it('carries a surname and an initial, so a narrow card can swap one for the other', async () => {
-    /* Owner, 05.08.2026: where a full name would take two lines, the surname
-       gives way to an initial. Which cards those are is a question about width,
-       so the choosing is done by a container query (TopBoards.css) and what is
-       held here is that both halves are in the markup and that the name a reader
-       hears is the whole one either way. */
+  it('writes the whole surname, on its own line, on the boards that read like the standing', async () => {
+    /* **Owner, 07.09.2026:** „Zasto se ovde nije nasao krug a onda ime i prezime u dva reda?",
+       asked of „Najvise kilometara". His sentence that morning had put these boards with the
+       standing of a competition („Tako bi trebalo da izgledaju i top liste Najvise kilometara,
+       Najduze na stazi…"), and „u tabelama jedan" was about the two he named as additions, the
+       main standing and the best single races.
+     *
+       **This replaces the guard over the surname that gave way to an initial** (owner, 05.08.2026,
+       „umesto prezimena stavi samo inicijal sa tackom"). That was written when the name and the
+       figure shared one line and a long surname wrapped; with a line of its own the surname fits,
+       measured in a browser: at 1280 the card is 351px, the row 64px and the board 741px, with
+       „Vukićević" whole; at 360 the card is 328px, the rows 64 and 75px, the boards 741 and 831px,
+       „Vukićević" whole, and the page scrolls sideways at neither width. The container query, the
+       two spans and the initial are gone, and `@container` no longer appears anywhere in the
+       portal.
+     *
+       What is held here is what a reader gets: both halves drawn, the whole surname in the page,
+       and the accessible name still one name. */
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
@@ -1085,41 +1097,24 @@ describe('TopBoards', () => {
     for (const name of ['Najviše kilometara', 'Najduže na stazi']) {
       const rows = board(name).getAllByRole('row').slice(1)
       const link = within(at(rows, 0)).getByRole('link')
-      /* Everything the link says with the two pieces a reader never hears taken out, **named one by
-         one** and not gathered by their attribute (review, 07.09.2026). Gathered, the expected
-         value and the measured one are computed by the same rule: `aria-hidden` put on the surname
-         would take it out of both at once, and the case would pass while a reader heard „Strahinja"
-         and nothing more.
 
-         The two are the initial of the surname, which the narrow card swaps in, and the circle
-         with the member's own initials in it, which the owner asked for on 07.09.2026
-         (`components/NamePlate.tsx`). */
-      const unheard = ['.boards__initial', '.portrait'].map(
-        (piece) => link.querySelector(piece)?.textContent ?? '',
-      )
-      const whole = unheard.reduce(
-        (said, piece) => said.replace(piece, ''),
-        must(link.textContent, 'the name in the row'),
-      )
+      const given = must(link.querySelector('.plate__given'), 'the given name').textContent
+      const family = must(link.querySelector('.plate__family'), 'the surname').textContent
 
-      /* The surname stands apart, and the initial after it is the first letter
-         of that surname and a full stop. */
-      const family = must(link.querySelector('.boards__family'), 'the surname').textContent
-      const initial = must(link.querySelector('.boards__initial'), 'the initial')
-
+      expect(given).not.toBe('')
       expect(family).not.toBe('')
-      expect(initial.textContent).toBe(`${must(family, 'the surname').slice(0, 1)}.`)
-      /* Read out as the whole name and not as the letter beside it: the initial
-         is out of the accessible tree, the surname never is. */
-      expect(initial).toHaveAttribute('aria-hidden', 'true')
-      /* And the surname never is, which is the sentence above this one and the thing the gathered
-         version quietly stopped holding. */
-      expect(must(link.querySelector('.boards__family'), 'the surname')).not.toHaveAttribute(
-        'aria-hidden',
-      )
-      expect(link).toHaveAccessibleName(whole.trim())
+      /* Whole, and not a letter and a full stop: that is the thing the owner asked to be undone. */
+      expect(must(family, 'the surname').length).toBeGreaterThan(1)
+      /* One name to the ear, whatever the sheet does with the two lines. The circle says nothing
+         (`components/Portrait.tsx` is `aria-hidden`), so the accessible name is the two halves with
+         the space between them. */
+      expect(link).toHaveAccessibleName(`${given} ${family}`)
     }
-  })
+
+    /* And nothing anywhere still swaps a surname for an initial. */
+    expect(document.querySelectorAll('.boards__initial').length).toBe(0)
+    expect(document.querySelectorAll('.boards__family').length).toBe(0)
+  }, SLOW)
 
   /* Every board of the page that really is a table, asked of the drawn screen.
    *
@@ -1158,17 +1153,20 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
 
-    for (const [name, expected] of [
+    /* Which cells of which board carry a figure and which carry words. Hand written, because it
+       is the shape of each board and nothing derives it; the floor is at the end of this case,
+       where the names walked here are compared with the boards the screen really draws as tables.
+
+       The board of pairs has one column: its second line, the races they share, lives inside the
+       figure's own cell rather than in a column of its own. */
+    const marked = [
       ['Najviše kilometara', ['figure']],
       ['Najduže na stazi', ['figure']],
       ['Najbolji pojedinačni rezultati', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
-      /* The fourth board that is a table, from 07.09.2026. Its one cell carries a second line
-         under the figure, and that line is part of the figure's cell rather than a column of its
-         own, so the marking is the same one column (review, 07.09.2026: this list did not grow
-         when the board did, and a cell marked as words passed). */
       ['Najbolji trkački parovi', ['figure']],
-    ] as const) {
-      expect(BOARDS_THAT_ARE_TABLES, 'the list below has stopped naming every board').toContain(name)
+    ] as const
+
+    for (const [name, expected] of marked) {
       const rows = board(name).getAllByRole('row')
       /* The place and the name are the shared table's own two columns and are
          set by it; what these marks are for is everything after them. */
@@ -1189,8 +1187,11 @@ describe('TopBoards', () => {
       expect(within(at(rows, 1)).getAllByRole('cell').slice(2).map(setting)).toEqual(expected)
     }
 
-    /* And the list above is every board that is a table, so the fifth one fails here rather than
-       going unmeasured. */
+    /* **And the list this loop walks is every board that is a table**, in both directions
+        (review, 07.09.2026). Written as „each of these names is in the constant" it was one way
+        only: a fifth board added to the constant to quiet the other guard would never reach this
+        loop, and its column of figures could be laid out as words with the gate green. */
+    expect(marked.map(([name]) => name).sort()).toEqual(BOARDS_THAT_ARE_TABLES)
     expect(tableBoards()).toEqual(BOARDS_THAT_ARE_TABLES)
   })
 
@@ -1280,7 +1281,7 @@ describe('TopBoards', () => {
 
     const none = board('Najbolji trkački parovi')
 
-    expect(none.getByText(/U ovoj sezoni takvog para nema/)).toBeVisible()
+    expect(none.getByText(/nijedan trkački par nema zajedničku trku/)).toBeVisible()
     expect(none.queryByRole('table')).not.toBeInTheDocument()
   }, SLOW)
 

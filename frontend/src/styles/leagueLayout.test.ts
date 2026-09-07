@@ -282,12 +282,13 @@ describe('the name of a competitor beside their circle', () => {
 
   it('lays the words beside the circle in a line, and only a pair in rows', () => {
     /* **Measured by a review on 07.09.2026, and it was a high finding.** `.plate__words` was a
-       grid, and a grid makes every child its own row. Two of the six screens hand over three
-       children – the given name, the surname, and the initial a narrow card swaps in
-       (`pages/TopBoards.tsx`, `NameOrInitial`) – so „Strahinja" and „Vukićević" stood one under
-       the other on „Najviše kilometara" and „Najduže na stazi", at every width. That is the
-       opposite of what the owner asked for, and on a narrow card it was worse than the wrap the
-       container query exists to prevent: the given name with a lone „V." beneath it.
+       grid, and a grid makes every child its own row. Two of the six screens handed over three
+       children then – the given name, the surname, and the initial a narrow card swapped in – so
+       „Strahinja" and „Vukićević" stood one under the other on „Najviše kilometara" and „Najduže
+       na stazi" at every width, which was the opposite of what the owner had asked for that
+       morning. (Those two boards write the name over two lines from 07.09.2026, on his word, and
+       the initial is gone; the fault this rule prevents is now the pair, whose four lines would
+       become eight.)
 
        Nothing drawn could see it: the fault is a height, and jsdom lays nothing out (ADL A33).
        Measured in a browser afterwards: at 1280 not one of the thirty names on those boards is on

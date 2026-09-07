@@ -51,57 +51,6 @@
 
 .boards__board {
   min-inline-size: 0;
-  /* Each board answers about its own width, so a name can give up its surname on
-     the boards that stand in the narrow column and keep it where there is room
-     (owner, 05.08.2026; `NameOrInitial` in TopBoards.tsx).
-
-     A query about an inline-size container reads its content box, so these are
-     content widths. Measured over the seasons on the two boards this touches,
-     counting rows: at 245px, which is the narrow column of a 900px page, 144 of
-     208 wrap; at 312px, eleven; at 320px, seven, all of them the same name; at
-     321px, none. So the question is asked at 320.
-
-     Which is a threshold nothing on the portal is near. The main column is
-     capped at 1100px (Shell.css), so the narrow board is 317px wide on a 1280px
-     page and on a 1920px one alike, and these two boards abbreviate at every
-     desktop width the portal produces. The number matters if that cap moves, and
-     it is measured rather than guessed for the same reason.
-
-     In pixels, and left there on 13.08.2026 when every `@media` width on the
-     portal went to em. The two are not the same question. A media query in em
-     asks about the reader's text against the screen, which is what a breakpoint
-     is for; this one asks whether a name fits a box, and both the name and the
-     box grow with the text, so the ratio the measurement was taken at holds. It
-     is a component's own threshold rather than a place the portal changes shape,
-     which is why scale.test.ts does not read container queries at all. */
-  container-type: inline-size;
-}
-
-/* The full name while there is room for it. */
-.boards__initial {
-  display: none;
-}
-
-@container (max-width: 320px) {
-  /* Off the screen rather than out of the page, so the surname is still read
-     out. The recipe is `visually-hidden` in index.css, written out here because
-     what is being switched is whether it applies, and a class cannot be put on
-     an element by a container query. */
-  .boards__family {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .boards__initial {
-    display: inline;
-  }
 }
 
 /* The boards that are tables wear the card; the ones that are charts carry their

@@ -45,8 +45,10 @@
   min-inline-size: 0;
 }
 
-/* Two rows, and that is the whole of what tells the standing of a competition from the tables
-   (owner: „U ligi dva reda, u tabelama jedan"). The two halves are two elements with a space
+/* Two rows, worn by the standing of a competition and by three of the top boards, which the
+   owner grouped with it on 07.09.2026; the main standing and the best single races keep the name
+   on one line („U ligi dva reda, u tabelama jedan", where „tabele" were those two). Each half of a
+   pair wears them too. The two halves are two elements with a space
    between them, so a reader hears one name (`OverTwoLines`); here they are laid one under the
    other. Two screens write them, the standing of a competition and the board of best pairs, and
    both of them want exactly this; nothing that writes a name on one line does.
