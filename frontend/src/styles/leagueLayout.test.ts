@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { first, must } from '../test/at'
 import {
+  everyRule,
   ruleFor,
   ruleInMedia,
-  rulesInMedia,
   sheetsOf,
   unconditionalRules,
   unremarked,
@@ -121,6 +121,18 @@ describe('the name of a competitor beside their circle', () => {
       'the circle and the name no longer stand side by side',
     ).toBe('inline-flex')
 
+    /* **And nowhere else in the sheet is it said otherwise.** Read unconditionally alone, the same
+       declaration written inside this sheet's own telephone block put the circle above the name on
+       every telephone with the whole gate green, and a review measured exactly that. `everyRule`
+       reads the sheet wherever a rule is written. */
+    expect(
+      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
+        .filter((rule) => /[.]plate(?![-_])/.test(rule.selectorText))
+        .map((rule) => rule.style.getPropertyValue('display'))
+        .filter((said) => said !== '' && said !== 'inline-flex'),
+      'the plate is laid out some other way at some width',
+    ).toEqual([])
+
     const words = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
       (rule) => rule.selectorText === '.plate__words',
     )
@@ -140,16 +152,16 @@ describe('the name of a competitor beside their circle', () => {
     expect(pair.length, 'a pair lays its two names nowhere').toBe(1)
     expect(must(first(pair), 'the rule').style.getPropertyValue('display')).toBe('grid')
 
-    /* And the telephone too, because `unconditionalRules` steps over every `@media` by
-       construction: the same declaration written inside the narrow block would bring the fault
-       back at exactly the width the review measured it worst on, ten of thirty names on 360, and
-       this case would not have seen it. */
+    /* And at every width, not only unconditionally: the same declaration written inside this
+       sheet's telephone block would bring the fault back exactly where a review measured it worst,
+       ten of thirty names on 360. */
     expect(
-      rulesInMedia(readFileSync(PLATE, 'utf-8'), '(max-width: 699.98px)', 'NamePlate.css')
-        .filter((rule) => rule.selectorText === '.plate__words')
+      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
+        .filter((rule) => rule.selectorText.includes('.plate__words'))
+        .filter((rule) => !rule.selectorText.includes('.plate--pair'))
         .map((rule) => rule.style.getPropertyValue('display'))
         .filter((said) => said !== ''),
-      'the words beside the circle are laid out in rows on a telephone',
+      'the words beside the circle are laid out in rows at some width',
     ).toEqual([])
   })
 
@@ -163,8 +175,9 @@ describe('the name of a competitor beside their circle', () => {
      *
        Measured when a review put the weight back: the surname came out at 700 against the given
        name's 400, and the row grew from 62,2 to 66,7 pixels, with the whole gate green. */
-    const sheet = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-    const dressed = sheet
+    /* Read wherever a rule is written, not only where it is written unconditionally: a review put
+       the weight back inside this sheet's telephone block and the whole gate stayed green. */
+    const dressed = everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
       .filter((rule) => /[.]plate__(given|family|words)/.test(rule.selectorText))
       .filter((rule) => rule.style.getPropertyValue('font-weight') !== '')
       .map((rule) => rule.selectorText)
@@ -192,6 +205,38 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(rule.getPropertyValue('inline-size')).toBe('1.7rem')
     expect(rule.getPropertyValue('block-size')).toBe('1.7rem')
+  })
+
+  it('is not drawn at all in the main standing on a telephone, which the owner chose', () => {
+    /* **The owner's answer, with the measurement in front of him** (07.09.2026): „Krug se ne crta
+       ispod 700px." The circle takes about thirty four pixels of a column that is 167 wide at 360,
+       and a long name then wraps of its own accord — nine of seventeen names ran to two lines
+       where one did before, and the row grew from 75 to 100 pixels. This screen is one of the four
+       he expects to be easiest on a telephone (PDL P24), so the circle is the half that gives way.
+     *
+       **Two hand-written facts hold that answer and neither was read by anything** (review,
+       07.09.2026): the class on the table, and the rule that hangs off it. Either could be deleted
+       with the whole gate green, and the circle would be back at 360. Both are asked here.
+     *
+       Measured in a browser after the change: at 360 the main standing draws no circle, one of
+       seventeen names is on two lines as before, and the row is 75 pixels again; the top boards on
+       the same width still draw all thirty of theirs; at 1280 the circle is back. */
+    const rule = ruleInMedia(
+      readFileSync(join(SRC, 'pages/Rankings.css'), 'utf-8'),
+      '(max-width: 699.98px)',
+      '.rankings__table .plate__faces',
+      'Rankings.css',
+    )
+
+    expect(rule.getPropertyValue('display')).toBe('none')
+
+    /* And the table really wears the name the rule reaches for. A class is a fact with two homes,
+       and this is the second: `styles/hooks.test.ts` holds a handful of such pairs and this name
+       is not among the prefixes it knows. */
+    expect(
+      readFileSync(join(SRC, 'pages/Rankings.tsx'), 'utf-8'),
+      'the main standing no longer wears the name its own rule reaches for',
+    ).toContain('className="table rankings__table"')
   })
 
   it('reaches the sheet that makes the circle a circle', () => {

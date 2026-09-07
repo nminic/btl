@@ -306,10 +306,17 @@
    to be easiest on a telephone (PDL P24), so the circle is the half that gives way; from a tablet
    up it is drawn as he asked.
  *
-   Written against this table by name rather than against `.rankings`, which wraps five screens:
-   the top boards are inside one too, and their circles stay. The width is the one the whole portal
-   narrows its tables at, in pixels, on the list `styles/scale.test.ts` keeps and for the reason it
-   records there. */
+   Written against this table by name, and the name is the point: the circle stays everywhere else
+   it is drawn. Measured rather than assumed (review, 07.09.2026, after an earlier version of this
+   note got it wrong): the bare class `.rankings` is worn by four screens and **the top boards are
+   not among them** — they wear `boards rankings--tooled`, and the standing of a competition wears
+   `.profile`. So a rule written against `.rankings` would have missed the boards, and one written
+   against `.rankings--tooled` would have taken their circles away; neither is what was asked for.
+   `.rankings__table` is on one element in the portal and is selected from one place.
+
+   The width is the one the whole portal narrows its tables at, in pixels, on the list
+   `styles/scale.test.ts` keeps and for the reason it records there. Hiding a cell's contents at
+   that width is the shape `styles/table.css` already uses for `.table__hide-phone`. */
 @media (max-width: 699.98px) {
   .rankings__table .plate__faces {
     display: none;

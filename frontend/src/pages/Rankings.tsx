@@ -235,18 +235,15 @@ function Standing({
                         (owner, 07.09.2026: „U ligi dva reda, u tabelama jedan"). The standing of a
                         competition breaks it on purpose; this table does not.
                      *
-                        **What the circle costs here, measured rather than claimed** (review,
-                        07.09.2026). It takes about thirty four pixels of a column that is 167 wide
-                        on a telephone, and a long name then wraps of its own accord: at 360, nine
-                        of seventeen names run to two lines where one did before, and the row grows
-                        from 75 to 100 pixels. At 1280 none of them wraps.
-                     *
-                        That wrapping is not the deliberate break the owner set apart — no screen
-                        asks for it, it is what a narrow column does — but the cost is real and it
-                        falls on a telephone, which is where the owner expects most of the reading
-                        (PDL P24). It is written down here and put to him rather than decided by
-                        this commit: the alternative is to draw no circle in this table under
-                        700px, which is one line of stylesheet. */}
+                        **And on a telephone the circle is not drawn at all**, which is the owner's
+                        own answer of 07.09.2026, given with the measurement in front of him: „Krug
+                        se ne crta ispod 700px." The circle took about thirty four pixels of a
+                        column 167 wide at 360, and a long name then wrapped of its own accord —
+                        nine of seventeen names ran to two lines where one did before, and the row
+                        grew from 75 to 100 pixels. This is one of the four screens he expects to
+                        be easiest on a telephone (PDL P24), so the circle is the half that gives
+                        way. The rule is in `Rankings.css` and is held, with the class it hangs
+                        off, by `styles/leagueLayout.test.ts`. */}
                     <NamePlate competitors={[row.competitor]}>
                       <CompetitorName competitor={row.competitor} />
                     </NamePlate>{' '}

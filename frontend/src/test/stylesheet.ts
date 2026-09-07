@@ -225,6 +225,52 @@ export function rulesInMedia(css: string, condition: string, named: string): CSS
   return found
 }
 
+/**
+ * Every rule a sheet has, wherever it is written: unconditional, inside a media query, inside a
+ * container query, at any depth.
+ *
+ * **Written on 07.09.2026, and the reason is a class of finding rather than one.** Twice in two
+ * rounds a guard read `unconditionalRules` and a review put the same declaration inside the sheet's
+ * own `@media` block, where it applies to every telephone and where the guard, by construction,
+ * cannot look. `rulesInMedia` answers only for the one condition it is given, so a guard built on
+ * it holds against the query it names and against no other.
+ *
+ * This is for the questions that are about the sheet as a whole: „is this property written
+ * **anywhere**", „does this half of a name carry a weight **at any width**". A question about one
+ * condition still belongs to `rulesInMedia`, and a question about what applies unconditionally
+ * still belongs to `unconditionalRules`; the difference is which of the three the question is.
+ */
+export function everyRule(css: string, named: string): CSSStyleRule[] {
+  const tag = document.createElement('style')
+
+  tag.textContent = css
+  document.head.append(tag)
+
+  const sheet = tag.sheet
+
+  expect(sheet, `jsdom did not parse ${named}`).not.toBeNull()
+
+  /* `CSSGroupingRule` is the one base every wrapper that holds rules of its own inherits from: a
+     media query, a container query, `@supports`, `@layer`. Asked of the base rather than of a list
+     of kinds, so a wrapper the portal writes tomorrow is walked without this being told about it.
+     Measured in this jsdom: `CSSGroupingRule`, `CSSMediaRule` and `CSSSupportsRule` are all
+     defined. */
+  const walk = (rules: CSSRule[]): CSSStyleRule[] =>
+    rules.flatMap((rule) => {
+      if (rule instanceof CSSStyleRule) {
+        return [rule]
+      }
+
+      return rule instanceof CSSGroupingRule ? walk([...rule.cssRules]) : []
+    })
+
+  const found = walk([...(sheet?.cssRules ?? [])])
+
+  tag.remove()
+
+  return found
+}
+
 /** The one rule of one media query written for exactly this selector. */
 export function ruleInMedia(
   css: string,
