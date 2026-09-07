@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { first, must } from '../test/at'
+import { PLATE_CLASSES } from '../test/plate'
 import { ruleFor, ruleInMedia, sheetsOf, unconditionalRules, unremarked } from '../test/stylesheet'
 
 /**
@@ -9,40 +10,51 @@ import { ruleFor, ruleInMedia, sheetsOf, unconditionalRules, unremarked } from '
  * **Why they need a guard at all.** Each is a decision, each is a line or two of CSS, and each was
  * measured by a review to be undoable with the whole gate staying green: `border-collapse` put back
  * to `collapse`, the two-column query put back on the list of competitions, the name put back in
- * capitals. jsdom applies no stylesheet, so nothing that draws a screen can see any of them (ADL
- * A33, `styles/tableScroll.test.ts` and `styles/outsideHost.test.ts` exist for the same reason).
+ * capitals, the circle taken away at every width. jsdom applies no stylesheet, so nothing that
+ * draws a screen can see any of them (ADL A33, `styles/tableScroll.test.ts` and
+ * `styles/outsideHost.test.ts` exist for the same reason).
  *
- * **The shape below is the answer to six rounds of review, five of which were about this file and
- * none about the screen** (07.09.2026). Every one of the five was the same finding in a different
- * coat: a declaration written **somewhere else in the same sheet** that the reading did not look
- * at. A property off the list (`width` where the case asked for `inline-size`); a selector off the
- * filter (`.plate__words` where the filter asked for `.plate`); a selector spelt another way
- * (`&:not(.plate--pair)`, which a parser hands back unresolved); a second sheet (`NamePlate.css`
- * hiding a circle a case only looked for in `Rankings.css`). Each round closed one and left the
- * next open, because a reading that has to enumerate which selectors, which properties and which
- * sheets could say the opposite has no floor: there is always one more.
+ * **This file has been rewritten twice by review, and both times for the same cause** (07.09.2026).
+ * Five rounds went on filters: „is this property said anywhere else", asked by naming the selectors,
+ * the properties and the sheets to look at. Each round found one more name off the list, because a
+ * reading that has to enumerate has no floor. The filters were then replaced by a golden text, and
+ * the very next round showed the golden text had the same disease one level up: **its scope** was
+ * chosen by searching sheets for the word `plate`, and two of the owner's five sentences are about
+ * the **circle**, which is called `portrait` and is defined in a shared sheet that the plate's own
+ * sheet imports on its first line. `.rankings__table .portrait { display: none }` took the circle
+ * off the main standing at every width with the whole gate green.
  *
- * So the question is turned around, and this is the repo's own rule for a guard whose rounds are
- * all about itself (`CLAUDE.md`, „čuvar se uprošćava do oblika koji ne može da bude u krivu"):
+ * So nothing here chooses its own scope by pattern any more. Three questions, each handed to
+ * something that already answers it:
  *
- * - **The cases below say what each decision is**, by reading the one rule that carries it. They
- *   are the readable half and they fall when that rule is deleted or changed. None of them claims
- *   to know what the rest of the sheet says.
- * - **`dressed by the sheet a browser was measured against` is the floor**, and it cannot be asked
- *   incompletely: every declaration that acts is in it, at any depth, under any condition, under
- *   any name. A sixth way to undo one of these decisions is still a change to that text.
+ * - **Which sheets dress the plate:** the import graph (`sheetsOf`), not a search for a word. It
+ *   follows `@import`, so the shared sheet of the circle is in whether or not anyone remembers it.
+ * - **Which classes the plate wears:** the DOM (`PLATE_CLASSES`, floored in
+ *   `components/namePlate.test.tsx` by rendering a plate and reading `classList`). The outer
+ *   element writes its two classes through a template, so no reading of the source has them.
+ * - **What those sheets say:** the whole of their text, compared. Not „is this property written
+ *   somewhere else", which cannot be asked completely, but „is this sheet the text a browser was
+ *   measured against", which cannot be asked incompletely.
  *
- * That is the shape `pages/publicData.test.tsx` already uses: a hand-written table of what is
- * expected, and a derived floor that fails the day the table is short.
+ * The named cases below still say **what each decision is**, by reading the one rule that carries
+ * it; that is the readable half, and each falls when its rule is deleted or changed. The golden
+ * text and the sweep are the floor under them.
  *
- * **What is still outside all of it**, written as a boundary rather than left for a review: the
- * **cascade between sheets**. A rule in another stylesheet, of higher specificity or later in the
- * bundle, overrides one of these and nothing here can see it, because jsdom computes no cascade
- * (ADL A33) and the portal has been bitten by exactly that (`pages/league/League.css` records it
- * twice). That half is measured in a real browser and written down: at 360 with the grid scrolled
- * 260px sideways the horizontal rules of the scrolling half no longer cross „Član" and „Bodovi";
- * the list of competitions is one box of 328px; the main standing draws no circle and its rows are
- * 75px again, while the top boards on the same width still draw all thirty of theirs.
+ * **What is outside all of it, written rather than left for a review to find:**
+ *
+ * - **The cascade between sheets.** A rule elsewhere of higher specificity, or later in the bundle,
+ *   overriding one of these. jsdom computes no cascade (ADL A33) and the portal has been bitten by
+ *   exactly that (`pages/league/League.css` records it twice). Measured in a real browser instead:
+ *   at 360 with the grid scrolled 260px sideways the horizontal rules of the scrolling half no
+ *   longer cross „Član" and „Bodovi"; the list of competitions is one box of 328px; the main
+ *   standing draws no circle and its rows are 75px again, while the top boards on the same width
+ *   still draw all thirty of theirs, and at 1280 the circle is back on both.
+ * - **What an existing rule of another widget says.** The sweep sees that
+ *   `components/ColumnChart.css` writes `.portrait` nine times and fails when that becomes ten; it
+ *   does not read what those nine say. They dress the circles of a chart, which draws no plate. A
+ *   sheet is only in that list because it names one of these classes at all.
+ * - **A sheet reaching the plate without naming a class**, through `[class~="portrait"]` or such.
+ *   Nothing on the portal is written that way.
  */
 const SRC = join(process.cwd(), 'src')
 const LEAGUE = join(SRC, 'pages/league/League.css')
@@ -61,21 +73,28 @@ const RANKINGS = join(SRC, 'pages/Rankings.css')
 const COLUMNS = ['grid-template-columns', 'grid-template', 'grid:', 'column-count', 'columns:']
 
 /**
- * The whole of the sheet that dresses a name beside a circle, as it stood when a browser was
- * measured against it on 07.09.2026.
+ * The whole of what dresses a name beside a circle, as it stood when a browser was measured
+ * against it on 07.09.2026.
+ *
+ * **Both sheets, because the component brings both:** its own, and the shared one that makes the
+ * circle a circle, which its first line imports. The second was missing from the first draft of
+ * this text and a review took the circle away from every screen by changing one word in it, with
+ * the whole gate green.
  *
  * Comments are blanked and empty lines dropped, so prose does not churn this and what is compared
  * is the CSS that acts. Kept here rather than in a `.snap` file on purpose: this repo checks out
  * with CRLF on one machine and LF on another, and a golden text nobody can regenerate with a flag
  * is a golden text nobody regenerates without reading it.
  *
- * **Five of the owner's sentences are in here**, so the moment this fails is the moment to say
+ * **Six of the owner's sentences are in here**, so the moment this fails is the moment to say
  * whether the edit keeps them: no capitals and no weight on a name (07.09.2026, and 13.08.2026 for
  * the weight); the circle beside the words rather than above them; two lines in the standing of a
  * competition and one in the tables; a pair as two circles above one another with a name beside
- * each; and the circle smaller where the frozen column is capped.
+ * each; the circle smaller where the frozen column is capped; and the circle round, in white on
+ * the member's own colour (PDL P13, and `styles/circle.test.ts` says the same in words).
  */
-const PLATE_SHEET = `@import './Portrait.css';
+const PLATE_SHEETS = `=== components/NamePlate.css ===
+@import './Portrait.css';
 .plate {
   display: inline-flex;
   align-items: center;
@@ -115,7 +134,48 @@ const PLATE_SHEET = `@import './Portrait.css';
     block-size: 1.7rem;
     font-size: 0.55rem;
   }
+}
+
+=== components/Portrait.css ===
+.face-circle {
+  border-radius: 50%;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  background: hsl(var(--face-hue, 214) 45% 32%);
+  color: var(--white);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.portrait {
+  display: grid;
+  inline-size: 2.9rem;
+  block-size: 2.9rem;
+  font-size: 0.85rem;
+}
+.portrait--empty {
+  background: transparent;
+  border: 1px dashed var(--control-border);
 }`
+
+/**
+ * Which sheets outside the plate's own name one of its classes, and how many times.
+ *
+ * Three of them dress the circle of another widget, which draws no plate: the chart on the top
+ * boards, the ten faces on the front page, and the head of a profile. The fourth is the owner's
+ * own decision of 07.09.2026, „Krug se ne crta ispod 700px", written against the main standing by
+ * name, and it is read as a rule two cases below.
+ *
+ * A tenth mention in the chart fails this and is answered in one line. A **new** rule anywhere in
+ * the portal aiming at a plate's class fails it too, and that is the thing this is for: that is
+ * how the circle was taken off the main standing at every width with the gate green.
+ */
+const REACHED_FROM = [
+  'components/ColumnChart.css: portrait x9',
+  'pages/Home.css: portrait x2',
+  'pages/Profile.css: portrait x2',
+  'pages/Rankings.css: plate__faces x1',
+]
 
 /** A sheet with its prose and its empty lines gone: what is left is what acts. `trimEnd` also takes
  *  the carriage return this repo checks out with on Windows, so the text is the same on either. */
@@ -138,12 +198,26 @@ function everySheet(dir: string): string[] {
   })
 }
 
-/** The sheets that dress a plate: those that write one of its classes outside a comment. */
-function dressers(): string[] {
-  return everySheet(SRC)
-    .filter((path) => acting(readFileSync(path, 'utf-8')).includes('.plate'))
-    .map((path) => relative(SRC, path).split(sep).join('/'))
-    .sort((one, two) => one.localeCompare(two))
+/** Where a file sits under `src`, written the same way on either platform. */
+function named(path: string): string {
+  return relative(SRC, path).split(sep).join('/')
+}
+
+/** The sheets the plate brings, asked of the import graph and not of a search. */
+function brought(): string[] {
+  const screen = join(SRC, 'components/NamePlate.tsx')
+
+  return [...sheetsOf(screen, readFileSync(screen, 'utf-8'))].map(named).sort()
+}
+
+/** How often one sheet names a class of the plate's, counted as a whole class and not as a prefix,
+ *  so `.portrait--empty` is not a mention of `.portrait`. */
+function mentions(css: string): string[] {
+  return PLATE_CLASSES.flatMap((one) => {
+    const found = css.match(new RegExp(`\\.${one}(?![\\w-])`, 'g'))
+
+    return found ? [`${one} x${found.length}`] : []
+  })
 }
 
 describe('the grid of a competition', () => {
@@ -179,7 +253,7 @@ describe('the name of a competitor beside their circle', () => {
    * jsdom applies no stylesheet, so nothing that draws a screen can see any of this (ADL A33). It
    * was measured in a browser at 360, at 1280 and at 200 per cent text; what the cases below hold
    * is that each rule is in the sheet and says what it was measured saying, and what the golden
-   * text holds is that the sheet says nothing else. */
+   * text holds is that the sheets say nothing else. */
   it('is written the way a name is written, and not the way a column heading is', () => {
     const rule = ruleFor(readFileSync(PLATE, 'utf-8'), '.plate', 'NamePlate.css')
 
@@ -277,64 +351,73 @@ describe('the name of a competitor beside their circle', () => {
        one did before, and the row grew from 75 to 100 pixels. This screen is one of the four he
        expects to be easiest on a telephone (PDL P24), so the circle is the half that gives way.
      *
-       **The answer has two halves and both are asked.** „Below 700px" is the rule read here.
-       „**And only in the main standing**" is the other half, and it is undone from the other side:
-       `.plate__faces { display: none }` written into `NamePlate.css` takes the circle off the top
-       boards and the standing of a competition too. That half is held by the golden text below,
-       where such a rule is a change to the sheet.
+       **The answer has two halves and both are asked, but not both here.** „Below 700px, and above
+       it drawn" is this rule. „**And only in the main standing**" is undone from two other sides,
+       and each has its own floor: written into the plate's own sheets it changes the golden text,
+       and written into any other sheet in the portal it changes the sweep two cases below. Both
+       were measured undoing it with the gate green.
      *
        Measured in a browser after the change: at 360 the main standing draws no circle, one of
        seventeen names is on two lines as before, and the row is 75 pixels again; the top boards on
        the same width still draw all thirty of theirs; at 1280 the circle is back. */
-    const sheet = readFileSync(RANKINGS, 'utf-8')
-
     expect(
       ruleInMedia(
-        sheet,
+        readFileSync(RANKINGS, 'utf-8'),
         '(max-width: 699.98px)',
         '.rankings__table .plate__faces',
         'Rankings.css',
       ).getPropertyValue('display'),
     ).toBe('none')
-
-    /* **And this sheet says it once**, which the rule above cannot tell on its own (review,
-       07.09.2026): the same selector written again after that block, unconditionally, wins on
-       order at every width, and a review measured it - the circle back at 360, the name wrapping
-       again, the row back from 75 to 100 pixels, with the whole gate green. Counted rather than
-       filtered, over the sheet with its prose blanked, because a count has no list in it: a second
-       mention of a plate class anywhere in this sheet, at any depth and in any shape, makes it
-       two. The two directions meet here - move the rule out of the query and the case above fails,
-       write a second one and this fails. */
-    expect(
-      acting(sheet).split('.plate').length - 1,
-      'the sheet of the main standing says more than one thing about a plate',
-    ).toBe(1)
   })
 
-  it('is dressed by these two sheets and by no others', () => {
-    /* Found rather than listed, so the day a third sheet starts writing a plate class this fails
-       and somebody says whether it keeps the decisions the other two carry. The one written
-       boundary: a sheet that reaches the plate without spelling the class, through
-       `[class~="plate__faces"]` or such, is outside this. Nothing on the portal is written that
-       way, and if something one day is, this is the sentence that was wrong. */
-    expect(dressers()).toEqual(['components/NamePlate.css', 'pages/Rankings.css'])
+  it('is dressed by the sheets its own component brings, and by the text measured in a browser', () => {
+    /* **The floor under every case above.** The cases say what each decision is; this says the
+       sheets are the text those measurements were taken from. Two questions, both handed to
+       something that answers them rather than to a pattern: which sheets, to the import graph;
+       what they say, to the whole of their text.
+
+       `sheetsOf` follows `@import`, so the shared sheet of the circle is in here whether or not
+       anybody remembers that the circle is not called `plate`. A review took it away from all six
+       screens by changing `display: grid` to `display: none` in it, and the first draft of this
+       case, scoped by searching sheets for the word `plate`, stayed green.
+
+       When this fails, the diff is the answer: read the change against the six sentences listed
+       beside `PLATE_SHEETS` and, if it keeps them, write the new text there. */
+    const found = brought().map((one) => `=== ${one} ===\n${acting(readFileSync(join(SRC, one), 'utf-8'))}`)
+
+    expect(found.join('\n\n')).toBe(PLATE_SHEETS)
   })
 
-  it('is dressed by the sheet a browser was measured against, and nothing else', () => {
-    /* **The floor under every case above** (07.09.2026, and the reason is written at the head of
-       this file). The cases say what each decision is; this says the sheet is the text those
-       measurements were taken from. It is the one question about a stylesheet that cannot be asked
-       incompletely, and it is what five rounds of narrowing filters were reaching for.
+  it('is reached into from these sheets and no others', () => {
+    /* Every stylesheet of the portal except the two above, asked which of the plate's classes it
+       names and how often. Found rather than listed on both sides: the sheets from the file
+       system, the classes from the DOM (`test/plate.ts`, floored in
+       `components/namePlate.test.tsx`).
 
-       When this fails, the diff is the answer: read the change against the five sentences listed
-       beside `PLATE_SHEET` and, if it keeps them, write the new text there. */
-    expect(acting(readFileSync(PLATE, 'utf-8'))).toBe(PLATE_SHEET)
+       This is the half a golden text cannot hold, because a sheet that reaches in is not one of
+       the plate's own. It is also the half that was missing when a review wrote
+       `.rankings__table .portrait { display: none }` into `pages/Rankings.css`: the main standing
+       drew no circle at any width, and the whole gate stayed green. */
+    const own = new Set(brought())
+
+    const found = everySheet(SRC)
+      .filter((path) => !own.has(named(path)))
+      .flatMap((path) => {
+        const said = mentions(acting(readFileSync(path, 'utf-8')))
+
+        return said.length > 0 ? [`${named(path)}: ${said.join(', ')}`] : []
+      })
+      .sort((one, two) => one.localeCompare(two))
+
+    expect(found, 'a sheet outside the plate has begun to dress it').toEqual(REACHED_FROM)
   })
 
   it('reaches the sheet that makes the circle a circle', () => {
     /* `NamePlate` draws `.portrait` and does not define it: the circle is one decision in one
        place (ADL A7, `components/Portrait.css`). A class whose sheet nobody asks for is a class
-       the bundle may leave out, and the portal has been bitten by exactly that. */
+       the bundle may leave out, and the portal has been bitten by exactly that. This is also what
+       the two cases above stand on: drop the import and the plate is dressed by one sheet, which
+       is a different golden text and a different sweep. */
     const screen = join(SRC, 'components/NamePlate.tsx')
     const sheets = sheetsOf(screen, readFileSync(screen, 'utf-8'))
 

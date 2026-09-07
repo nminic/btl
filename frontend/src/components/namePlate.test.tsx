@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { NamePlate, OverTwoLines } from './NamePlate'
 import { at, first, htmlElement, must } from '../test/at'
-import type { Competitor } from '../data/types'
+import { PLATE_CLASSES, person } from '../test/plate'
 
 /**
  * The circle beside a name, and what it is allowed to say.
@@ -11,27 +11,6 @@ import type { Competitor } from '../data/types'
  * one thing the screens cannot answer is answered here too: **a pair**, which the board of pairs
  * will draw the day there is a database to build one from and which nothing draws today.
  */
-const person = (memberNumber: string, firstName: string, lastName: string): Competitor => ({
-  memberNumber,
-  firstName,
-  lastName,
-  gender: 'M',
-  city: 'Beograd',
-  country: 'RS',
-  birthYear: 1985,
-  firstSeason2027: false,
-  firstSeason: 2027,
-  membershipBasis: 'payment',
-  referralCode: 'proba0000',
-  referredBy: null,
-  teamId: null,
-  teamSince: null,
-  profileHidden: false,
-  birthdayShown: 'none',
-  bio: '',
-  active: true,
-})
-
 /* Two people whose initials, numbers and names differ in every letter, so a plate that took the
    wrong one of the two is caught by any of the three. */
 const ANA = person('000011', 'Ana', 'Marković')
@@ -128,5 +107,38 @@ describe('a competitor as a circle and a name', () => {
     expect(within(words).getByText('Marković')).toHaveClass('plate__family')
     /* One name to the ear, and that is what the space between the two elements buys. */
     expect(words.textContent).toBe('Ana Marković')
+  })
+
+  it('wears these classes and no others, which is what a stylesheet can reach it by', () => {
+    /* **The floor under `PLATE_CLASSES`**, written in the same commit as the list itself
+       (07.09.2026). A guard over the stylesheets asks „does any other sheet in the portal write
+       one of the plate's classes", and it can only ask that of names it has. Read off the source,
+       it would have neither of the two the outer element wears: they are written
+       `` `plate${pair ? ' plate--pair' : ''}` ``.
+
+       **The cost of getting this list wrong was measured that day.** It held only names beginning
+       with `plate`, so a review wrote `.rankings__table .portrait { display: none }` into
+       `pages/Rankings.css` and the main standing drew no circle at any width, against the owner's
+       „Krug se ne crta ispod 700px" (which says it is drawn above it), with the whole gate green.
+
+       A pair with a name over two lines is every shape this component has: the plain plate is the
+       same element without one modifier, and a screen that writes its own words writes no class of
+       the plate's. */
+    const { container } = render(
+      <NamePlate competitors={[ANA, BORIS]}>
+        <OverTwoLines competitor={ANA} />
+      </NamePlate>,
+    )
+
+    const worn = new Set<string>()
+
+    for (const one of container.querySelectorAll('*')) {
+      for (const name of one.classList) {
+        worn.add(name)
+      }
+    }
+
+    expect([...worn].sort(), 'the plate wears a class the stylesheet guard has never heard of')
+      .toEqual(PLATE_CLASSES)
   })
 })
