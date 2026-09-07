@@ -56,6 +56,28 @@
   text-align: right;
 }
 
+/* A row's own heading is a body cell, and wears the body's rule under it.
+ *
+ * `.table th` above is written for a column heading, where the thicker line is
+ * what parts the headings from the rows. A cell with `scope="row"` is not that:
+ * it stands in the body, beside cells that carry a line of one pixel, and the
+ * two are the same line to a reader.
+ *
+ * **Measured on QA on 07.09.2026, and the owner saw it before this was written:**
+ * in the standing of a competition the name is such a cell, so the line under it
+ * was two pixels while the line under the points beside it was one. Until
+ * 07.09.2026 the grid was `border-collapse: collapse` and the browser resolved
+ * the two into one; the frozen columns needed `separate` so that a sticky cell
+ * paints over what scrolls under it, and with `separate` every cell paints its
+ * own edge. The step showed the moment that changed, and it read as a doubled
+ * line rather than as a thicker one.
+ *
+ * Only the width, so a table that wants a different colour or style under a row
+ * heading still says so. */
+.table tbody th {
+  border-bottom-width: 1px;
+}
+
 /* The first three columns are words, so they read from the left. */
 .table th:nth-child(-n + 3),
 .table td:nth-child(-n + 3) {

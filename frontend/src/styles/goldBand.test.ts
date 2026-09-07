@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { at, must } from '../test/at'
-import { bodyOf, closes, ruleAt, unremarked } from '../test/stylesheet'
+import { bodyOf, closes, ruleAt, ruleFor, unremarked } from '../test/stylesheet'
 import sr from '../i18n/sr.json'
 
 /* The gold band that names a board, and the one thing about it no screen test
@@ -415,6 +415,46 @@ describe('a surname a card has no room for', () => {
     expect(bodyOf(query, '.boards__initial')).toMatch(/display:\s*inline/)
     /* And drawn the other way round outside it. */
     expect(bodyOf(css, '.boards__initial')).toMatch(/display:\s*none/)
+  })
+})
+
+describe('the line under a row whose first cell is its heading', () => {
+  it('is the body’s line and not the heading row’s', () => {
+    /* **The owner saw this on QA on 07.09.2026:** „duplirana crta ispod imena, deluje polomljeno."
+       In the standing of a competition the name is a `th` with `scope="row"`, so that a screen
+       reader can say whose row a number belongs to, and it was therefore taking the rule written
+       for a **column** heading: two pixels under the name, one under every cell beside it.
+
+       It showed the day the grid stopped collapsing its borders. Until 07.09.2026 it was
+       `border-collapse: collapse`, where the browser resolves the two edges into one; the frozen
+       columns need `separate` so that a sticky cell paints over what scrolls under it, and with
+       `separate` every cell paints its own. Measured in a browser at 375 before the fix: the name
+       cell 2px, the two cells beside it 1px; after it, all three 1px and all three ending on the
+       same pixel, with no sideways scroll of the page.
+
+       Only the width is written, so a table that wants another colour or style under a row heading
+       still says so. Read off the sheet because jsdom applies none (ADL A33). */
+    const css = read('src/styles/table.css')
+    /* The width, however the rule writes it. Two of the three write the shorthand and give it a
+       token for the colour, which no parser can take apart into longhands, so the width is the
+       first word of what comes back; the third writes the longhand alone. */
+    const under = (selector: string) => {
+      const rule = ruleFor(css, selector, 'table.css')
+      const longhand = rule.getPropertyValue('border-bottom-width')
+
+      return longhand === '' ? rule.getPropertyValue('border-bottom').split(' ')[0] : longhand
+    }
+
+    /* Asked of the browser's own parser rather than of the text, because `.table td` is written
+       twice in this sheet and the first of the two is a group it shares with `.table th`. A reader
+       that takes the first `.table td {` it finds reads the wrong block, and this case measured
+       that before it measured anything else. */
+    expect(under('.table tbody th')).toBe('1px')
+    /* And the two it stands between, so the boundary is written in both directions: the heading
+       row keeps the thicker line that parts the headings from the rows, and a body cell keeps the
+       thin one the row heading is now equal to. */
+    expect(under('.table th')).toBe('2px')
+    expect(under('.table td')).toBe('1px')
   })
 })
 
