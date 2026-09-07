@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE } from '../i18n/config'
 import { QUEUES } from './admin/queues'
 import type { Role } from '../roles/context'
 import { beginsWith, metSaid } from '../test/met'
-import { PUBLIC } from '../test/addresses'
+import { DAY, PUBLIC } from '../test/addresses'
 import { renderAt } from '../test/render'
 
 /**
@@ -55,7 +55,6 @@ const ME = '000021'
  * changed anything. Chosen before that day and before next season, which is
  * where the generated calendar lives.
  */
-const DAY = '2026-08-07'
 
 /**
  * A route pattern as what it matches: `takmicar/:memberNumber` against

@@ -11,6 +11,21 @@
  */
 
 /**
+ * The day the table is read on.
+ *
+ * Deliberately before 01.10.2026 and inside the season the generated calendar lives in: what a
+ * screen draws depends on the day, and two of the addresses below change with it — the
+ * registration, whose heading changes when it opens, and a profile, whose owner has to be a member
+ * on the day it is read.
+ *
+ * Beside the table since 07.09.2026, because two sweeps read it: the one that watches what a
+ * browser downloads, and the one that hides a member and asks every address whether it still leads
+ * to their profile. Written out in both, the day would part from the table the moment somebody
+ * moved one of them.
+ */
+export const DAY = '2026-08-07'
+
+/**
  * Every address outside administration, with the heading each one is supposed
  * to draw.
  *

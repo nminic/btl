@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import { must } from '../test/at'
-import { PUBLIC } from '../test/addresses'
+import { DAY, PUBLIC } from '../test/addresses'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
@@ -72,7 +72,15 @@ function lineUnderTheName(number: string): string {
  *  member is drawn as a name on one screen, as a circle on another and as a bar on a third. */
 const waysIn = (): string[] =>
   screen
-    .getAllByRole('link')
+    /* **Including what is out of the accessibility tree** (review, 07.09.2026). A link inside an
+       `aria-hidden` subtree is left out of the default reading, and it is still a link: a pointer
+       presses it and a search engine follows it. The board of ten is built of exactly that — the
+       picture and the number of the place are both `aria-hidden`, and the name is what the link is
+       called (`profile/ProfileLink.tsx`) — so moving that one attribute a level up would have left
+       a visitor a clickable face of a member who had hidden themselves, with every gate green.
+       Measured: with the attribute moved, this sweep passed 45 of 45; with `hidden: true`, 31 of
+       them fail. */
+    .getAllByRole('link', { hidden: true })
     .map((one) => one.getAttribute('href') ?? '')
     .filter((href) => href.includes('/takmicar/'))
 
@@ -615,7 +623,7 @@ describe('the birthday a member chooses to show', () => {
  * question.** What P23 actually forbids is not an import; it is a link. So this asks about the
  * link, on every address there is, and how the address was built stops mattering: a hand-written
  * one, one through a re-export, one through a module nobody thought of, all end in the same
- * `href` and all fail here.
+ * `href` and all fail here, whether or not a screen reader would ever meet it.
  *
  * **Over the same table `pages/publicData.test.tsx` sweeps** (`test/addresses.ts`), which is held
  * against the route table itself, so an address added tomorrow is swept without anybody
@@ -642,10 +650,12 @@ describe('a hidden profile is reachable from nowhere', () => {
   it.each(PUBLIC)('is not reached from %s', async (where, asVisitor) => {
     const user = setupUser()
 
-    /* The same day the other sweep over this table reads it on (`pages/publicData.test.tsx`), and
-       for its reason: what a screen draws depends on the day, and one of these addresses is a
-       profile whose owner has to be a member on it. The day is part of the address. */
-    renderAt(where, 'visitor', null, undefined, '2026-08-07', <Hide who="000007" />)
+    /* The same day the other sweep over this table reads it on, and out of the same place as the
+       table itself (`test/addresses.ts`). What a screen draws depends on the day: one of these
+       addresses opens the registration, whose heading changes when it opens, and another is a
+       profile whose owner has to be a member on it. Written out here, the day would part from the
+       table it belongs to the moment somebody moved one of them. */
+    renderAt(where, 'visitor', null, undefined, DAY, <Hide who="000007" />)
 
     await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
 
