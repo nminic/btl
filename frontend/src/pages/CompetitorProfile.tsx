@@ -1,4 +1,6 @@
 import { InviteToTeam } from './profile/InviteToTeam'
+import { InviteToPair } from './profile/InviteToPair'
+import { RacingPairLine } from './profile/RacingPairLine'
 import { memberNumberIn, redirectTo } from './profileAddress'
 import { useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
@@ -19,9 +21,16 @@ import {
   resultsOf,
   seasonsWithResults,
   totalsOf,
+  pairsNow,
 } from '../data/derive'
-import type { Competitor, Gender, Result, Team } from '../data/types'
-import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
+import type { Competitor, Gender, RacingPair, Result, Team } from '../data/types'
+import {
+  combineFour,
+  useCompetitors,
+  usePairs,
+  useResults,
+  useTeams,
+} from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
@@ -159,12 +168,15 @@ function ProfileBody({
   results,
   team,
   teams,
+  pairs,
 }: {
   competitor: Competitor
   competitors: Competitor[]
   results: Result[]
   team: Team | undefined
   teams: Team[]
+  /** The pairs that hold now, the file and this visit together (`data/derive.ts`, `pairsNow`). */
+  pairs: RacingPair[]
 }) {
   const { locale, t } = useI18n()
   const [params, setParams] = useFilterParams()
@@ -249,6 +261,14 @@ function ProfileBody({
           nothing at all unless the reader is in a team and this member is not
           (profile/InviteToTeam.tsx). */}
       <InviteToTeam competitor={competitor} competitors={competitors} teams={teams} />
+
+      {/* And the same act for a racing pair, under it and for the same reason: aimed at the person
+          rather than a fact about them. It draws nothing unless the two of them could pair
+          (profile/InviteToPair.tsx). */}
+      <InviteToPair competitor={competitor} competitors={competitors} pairs={pairs} />
+
+      {/* And the fact itself, which PDL asks a profile to show beside the team. */}
+      <RacingPairLine competitor={competitor} competitors={competitors} pairs={pairs} />
 
       <div className="profile__row profile__row--bio">
         <Biography text={competitor.bio} gender={competitor.gender} />
@@ -409,13 +429,13 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   const params = useParams()
   const { search } = useLocation()
   const memberNumber = given ?? memberNumberIn(params.memberNumber)
-  const { memberNumber: reader } = useSession()
+  const { memberNumber: reader, pairsMade, pairsBroken } = useSession()
   const overlay = useOverlay()
-  const state = combineResources(useCompetitors(), useResults(), useTeams())
+  const state = combineFour(useCompetitors(), useResults(), useTeams(), usePairs())
 
   return (
     <Resource state={state}>
-      {([everybody, results, allTeams]) => {
+      {([everybody, results, allTeams, fromFile]) => {
         /* Through the overlay, so a choice made in Podešavanja this visit is answered by this
            screen at once rather than only after the data is loaded again.
 
@@ -479,6 +499,7 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
               results={results}
               team={teams.find((one) => one.id === competitor.teamId)}
               teams={teams}
+              pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
             />
           </>
         )

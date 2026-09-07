@@ -17,6 +17,9 @@ import {
   topByProgress,
   topByTimeOnCourse,
   topPairs,
+  pairsNow,
+  pairOf,
+  latestPairOf,
   rankTeams,
   resultsOf,
   seasonsWithResults,
@@ -1641,5 +1644,77 @@ describe('the board of best racing pairs', () => {
       'before',
     ])
     expect(topPairs(both, [HE, SHE], results, 2027, 0)).toEqual([])
+  })
+})
+
+describe('the racing pairs that hold now', () => {
+  const pair = (id: string, one: string, two: string, season = 2027): RacingPair => ({
+    id,
+    season,
+    memberNumbers: [one, two],
+    since: `${season - 1}-12-14`,
+  })
+
+  it('is what the file says while this visit has changed nothing', () => {
+    const file = [pair('a', '000001', '000002'), pair('b', '000003', '000004')]
+
+    expect(pairsNow(file, [], []).map((one) => one.id)).toEqual(['a', 'b'])
+  })
+
+  it('drops the one this visit broke, and keeps the rest', () => {
+    const file = [pair('a', '000001', '000002'), pair('b', '000003', '000004')]
+
+    expect(pairsNow(file, [], ['a']).map((one) => one.id)).toEqual(['b'])
+  })
+
+  it('takes both members out of whatever the file paired them with', () => {
+    /* PDL P13: one pair per member. Accepting a new invitation breaks the old one, and the rule is
+       written here once rather than at each screen that asks.
+
+       **Both ends are read**, and the case is written so that they differ: the newly made pair
+       takes the **second** member of one file pair and the **first** of another, so a version that
+       looked at one end only would leave one of the two standing. */
+    const file = [pair('his', '000001', '000002'), pair('hers', '000003', '000004')]
+    const made = [pair('new', '000002', '000003')]
+
+    expect(pairsNow(file, made, []).map((one) => one.id)).toEqual(['new'])
+  })
+
+  it('drops a pair this visit made and then broke', () => {
+    const made = [pair('made', '000001', '000002')]
+
+    expect(pairsNow([], made, ['made'])).toEqual([])
+    expect(pairsNow([], made, []).map((one) => one.id)).toEqual(['made'])
+  })
+
+  it('says the furthest season they are paired for, whichever order the pairs arrive in', () => {
+    /* A profile asks this rather than `pairOf`, because a pair confirmed today holds for the season
+       after this one: asked about the season being run, a profile would say nothing at all to
+       somebody who has just confirmed one.
+
+       **Both orders**, because „the first one found" and „the furthest season" agree in one of them
+       and the case would not tell them apart. */
+    const now = pair('now', '000001', '000002', 2027)
+    const soon = pair('soon', '000001', '000002', 2028)
+
+    expect(latestPairOf([now, soon], '000001', 2027)?.id).toBe('soon')
+    expect(latestPairOf([soon, now], '000001', 2027)?.id).toBe('soon')
+    /* And a season that is over is history rather than „who they are paired with". */
+    expect(latestPairOf([pair('old', '000001', '000002', 2019)], '000001', 2027)).toBe(null)
+    expect(latestPairOf([now], '000009', 2027)).toBe(null)
+  })
+
+  it('says which pair one member is in, of the season asked about', () => {
+    /* The season is a rung of its own: a member paired in 2026 and paired again in 2027 has two
+       records, and the profile asks about the season it is drawing. */
+    const two = [pair('now', '000001', '000002'), pair('before', '000001', '000009', 2026)]
+
+    expect(pairOf(two, '000001', 2027)?.id).toBe('now')
+    expect(pairOf(two, '000001', 2026)?.id).toBe('before')
+    /* Read from the second member as well, because a pair is symmetric and the profile of either
+       of them asks the same question. */
+    expect(pairOf(two, '000002', 2027)?.id).toBe('now')
+    expect(pairOf(two, '000009', 2027)).toBe(null)
+    expect(pairOf(two, '000004', 2027)).toBe(null)
   })
 })

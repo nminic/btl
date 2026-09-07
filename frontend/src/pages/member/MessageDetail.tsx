@@ -3,10 +3,12 @@ import { useParams } from 'react-router'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
+import { combineResources, useCompetitors, usePairs, useTeams } from '../../data/useResource'
 import { MEMBERS, TEAMS, recordsOf } from '../admin/entityForms'
+import { pairsNow } from '../../data/derive'
 import { useOverlay } from '../admin/overlay'
 import { InvitationAnswer } from './InvitationAnswer'
+import { PairInviteAnswer } from './PairInviteAnswer'
 import { NotFound } from '../NotFound'
 import { Resource } from '../../components/Resource'
 import { SignedOut } from './SignedOut'
@@ -26,8 +28,8 @@ import './Member.css'
 export function MessageDetail() {
   const { locale } = useI18n()
   const { id } = useParams()
-  const { memberNumber, inbox, markRead } = useSession()
-  const state = combinePair(useCompetitors(), useTeams())
+  const { memberNumber, inbox, markRead, pairsMade, pairsBroken } = useSession()
+  const state = combineResources(useCompetitors(), useTeams(), usePairs())
   const overlay = useOverlay()
   /* Out of the inbox rather than out of the store, so an address that names
    * somebody else's message answers with the not found page instead of showing
@@ -38,6 +40,9 @@ export function MessageDetail() {
      branch nothing can reach, and a branch nothing reaches is a branch that hides
      what it would have done. */
   const invitation = message?.invitation
+  /* The same, for the one that asks about a racing pair. Two fields rather than one with a kind
+     beside it, so the compiler keeps the two answers apart (`session/context.ts`). */
+  const pairInvite = message?.pairInvite
   const unread = message !== undefined && !message.read
 
   useEffect(() => {
@@ -83,6 +88,22 @@ export function MessageDetail() {
                  gone from the records and still in the file, and the invitation it
                  sent is answered by asking which team it was. */
               teams={recordsOf(TEAMS, allTeams, overlay)}
+            />
+          )}
+        </Resource>
+      )}
+
+      {/* And the message that asks about a racing pair, answered the same way and from the same
+          resources. The pairs are read through what this visit has made and broken, so the answer
+          is held against where the two of them stand **now**: accepted once, the button is gone
+          rather than offered again (`data/derive.ts`, `pairsNow`). */}
+      {pairInvite !== undefined && (
+        <Resource state={state}>
+          {([everybody, , fromFile]) => (
+            <PairInviteAnswer
+              pairInvite={pairInvite}
+              competitors={recordsOf(MEMBERS, everybody, overlay)}
+              pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
             />
           )}
         </Resource>

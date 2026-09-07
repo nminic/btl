@@ -933,6 +933,76 @@ const BY_KILOMETERS = byLadder<TallyRow>([
   (row) => -Date.parse(row.reachedOn),
 ])
 
+/**
+ * The racing pairs that hold now: what the file says, less what this visit broke, plus what it
+ * made.
+ *
+ * The prototype has no database, so a pair confirmed during a visit lives in the session (ADL A2).
+ * Read through this, every screen sees the same answer: the board of best pairs, and the profile
+ * that says who somebody is paired with.
+ *
+ * **A member is in one pair at a time** (PDL P13), so a pair made in this visit takes its two
+ * members out of whatever the file paired them with. That is the same rule as „prihvatanje novog
+ * poziva raskida stari", written once here rather than at each screen that asks.
+ */
+export function pairsNow(
+  fromFile: RacingPair[],
+  made: RacingPair[],
+  broken: string[],
+): RacingPair[] {
+  const taken = new Set(made.flatMap((one) => one.memberNumbers))
+
+  return [
+    ...fromFile.filter(
+      (one) => !broken.includes(one.id) && !one.memberNumbers.some((who) => taken.has(who)),
+    ),
+    ...made.filter((one) => !broken.includes(one.id)),
+  ]
+}
+
+/**
+ * The pair one member is in, of the pairs that hold, or nothing.
+ *
+ * Takes nobody as well as somebody: a screen asks this before it knows whether anybody is signed
+ * in, and „nobody is in a pair" is the right answer rather than a question of its own. No member
+ * number is `null`, so the search simply finds nothing.
+ */
+export function pairOf(
+  pairs: RacingPair[],
+  memberNumber: string | null,
+  season: number,
+): RacingPair | null {
+  return (
+    pairs.find(
+      (one) => one.season === season && one.memberNumbers.some((who) => who === memberNumber),
+    ) ?? null
+  )
+}
+
+/**
+ * The pair one member is in for the furthest season, of the pairs that hold, or nothing.
+ *
+ * **A profile asks this rather than `pairOf`**, and the reason is the deadline: a pair formed today
+ * holds for the season **after** this one (PDL P13), so a member who confirms one in September has
+ * nothing to show for it until January if the profile asks about the season being run. That reads
+ * as a portal that lost the press. Asked this way, the profile says what they have and which season
+ * it is for, which is both halves of the truth.
+ */
+export function latestPairOf(
+  pairs: RacingPair[],
+  memberNumber: string | null,
+  /** The earliest season that still counts, which is the one being run: a pair from a season that
+   *  is over is history and not „who they are paired with". */
+  from: number,
+): RacingPair | null {
+  return pairs
+    .filter((one) => one.season >= from && one.memberNumbers.some((who) => who === memberNumber))
+    .reduce<RacingPair | null>(
+      (best, one) => (best === null || one.season > best.season ? one : best),
+      null,
+    )
+}
+
 /** A racing pair's season: what the two of them did on the races they both ran. */
 export type PairRow = Totals & {
   pair: RacingPair

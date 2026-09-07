@@ -1,11 +1,12 @@
 import { pointsOf } from '../data/scoring'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { EventComment, PendingItem, Result } from '../data/types'
+import type { EventComment, PendingItem, RacingPair, Result } from '../data/types'
 import { nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
   type Application,
   type Invitation,
+  type PairInvite,
   type Creations,
   type Decision,
   type Decisions,
@@ -354,6 +355,42 @@ export function SessionProvider({
     setInvitations((current) => current.filter((one) => one.id !== id))
   }, [])
 
+  /* The pair half of the same three things, kept the same way and for the same reasons written
+     above: what is open rather than what was ever sent, and identities counted up from the highest
+     already used rather than from how many there are, because closing one shortens the list. */
+  const [pairInvites, setPairInvites] = useState<PairInvite[]>([])
+  const [pairsMade, setPairsMade] = useState<RacingPair[]>([])
+  const [pairsBroken, setPairsBroken] = useState<string[]>([])
+  const asked = useRef<string[]>([])
+  const paired = useRef<string[]>([])
+
+  const invitePair = useCallback((invite: Omit<PairInvite, 'id'>) => {
+    const id = `par-${String(nextNumber(asked.current, 'par-'))}`
+
+    asked.current = [...asked.current, id]
+    setPairInvites((current) => [...current, { ...invite, id }])
+
+    return id
+  }, [])
+
+  const closePairInvite = useCallback((id: string) => {
+    setPairInvites((current) => current.filter((one) => one.id !== id))
+  }, [])
+
+  const makePair = useCallback((pair: Omit<RacingPair, 'id'>) => {
+    const id = `pair-${String(nextNumber(paired.current, 'pair-'))}`
+
+    paired.current = [...paired.current, id]
+    setPairsMade((current) => [...current, { ...pair, id }])
+  }, [])
+
+  const breakPair = useCallback((id: string) => {
+    /* Written twice is written twice, and that is harmless: the list is only ever read with
+       `includes`, so a second entry says the same thing as the first. A guard against it would be
+       a branch nothing reaches, and a branch nothing reaches is one nobody can be sure works. */
+    setPairsBroken((current) => [...current, id])
+  }, [])
+
   const notify = useCallback((message: Omit<Message, 'id' | 'read'>) => {
     // Newest first, so what just arrived is at the top of the panel and of the
     // inbox, which is where somebody looking for it will look.
@@ -436,6 +473,13 @@ export function SessionProvider({
       invitations,
       invite,
       close,
+      pairInvites,
+      invitePair,
+      closePairInvite,
+      pairsMade,
+      pairsBroken,
+      makePair,
+      breakPair,
       going,
       setGoing,
       markRead,
@@ -476,6 +520,13 @@ export function SessionProvider({
       invitations,
       invite,
       close,
+      pairInvites,
+      invitePair,
+      closePairInvite,
+      pairsMade,
+      pairsBroken,
+      makePair,
+      breakPair,
       markRead,
       notify,
       notifications,
