@@ -290,8 +290,8 @@ describe('hiding a profile from readers who are not signed in', () => {
          happens to the link (owner, 06.09.2026), so the name is what proves he is on the page.
 
          Asked of the text of the page rather than of one node, because these screens write a name
-         in more than one shape: the boards cut the surname down to an initial on a narrow card and
-         keep both halves in the markup, and on the front page his name reaches the text only
+         in more than one shape: the boards write it over two lines, in two elements with a space
+         between them, and on the front page his name reaches the text only
          through the plain-text branch of `ProfileLink`, out of the way of the eye. A query for one
          node finds neither, and the question here is only whether the screen mentions him at all.
 

@@ -95,8 +95,9 @@ type Place = {
    *  filtered. Until 11.08.2026 the reason was stronger, since a tie nothing
    *  separated was a shared place and a board could read 1, 1, 3 (PDL P12). */
   position: number
-  /** Written out, or written to give up its surname where the card is too
-   *  narrow to hold both words (`NameOrInitial`). */
+  /** Written the way the board writes a name: over two lines on the three boards the owner asked
+   *  to look like the standing of a competition, on one line on the board of best single races,
+   *  which he grouped with the tables (07.09.2026). */
   name: ReactNode
   /** Whose row this is, so it can be marked for whoever is reading it
    *  (src/components/mine.ts). Two of them on a board of pairs, and none at all
@@ -154,40 +155,14 @@ type Widget = ({ kind: 'chart' } & ChartData) | ({ kind: 'table' } & BoardData)
  * four the standing keeps: the place, the name, one column of its own, and the
  * measure (PDL P12).
  */
-/**
- * A name that gives up its surname when the card it stands in has no room for
- * both words (owner, 05.08.2026: "umesto prezimena stavi samo inicijal sa
- * tačkom").
- *
- * Which cards those are is a question about width and not about how long a name
- * is: at 900px the board of time on course wraps "Predrag Simić" at thirteen
- * characters, while the board of kilometres beside it holds "Ksenija Vasiljević"
- * at eighteen, because the column of figures next to the name is wider on one
- * than on the other. So the card asks itself (`@container` in TopBoards.css)
- * rather than anybody counting letters.
- *
- * Both pieces are always in the markup, and only one of them is ever drawn. The
- * surname is taken off the screen rather than out of the page, so the whole name
- * is the accessible name at every width and stays the accessible name even if
- * the stylesheet never arrives; the initial is `aria-hidden`, or a reader would
- * hear the letter and then the surname it stands for.
- *
- * A copy of the surname that only the narrow card lets into the page would do
- * the same job with one rule less, and would hand the accessible name over to a
- * stylesheet: with none applied, which is how these screens are tested, the
- * surname is in the name twice.
+/* **The surname is no longer given up on a narrow card, and the whole mechanism is gone**
+ * (owner, 07.09.2026). It was written on 05.08.2026 („umesto prezimena stavi samo inicijal sa
+ * tačkom") because the name and the figure shared one line and a long surname wrapped. The owner
+ * then asked for these boards to look like the standing of a competition, „ime, prezime" one under
+ * the other, and a surname with a line of its own has room: measured at 360, where the card is
+ * 328px, „Milovanović" fits whole. So the container query, the two spans and the initial went with
+ * it, and `@container` no longer appears anywhere in the portal.
  */
-function NameOrInitial({ competitor }: { competitor: Competitor }) {
-  return (
-    <>
-      {competitor.firstName} <span className="boards__family">{competitor.lastName}</span>
-      <span className="boards__initial" aria-hidden="true">
-        {`${competitor.lastName.slice(0, 1)}.`}
-      </span>
-    </>
-  )
-}
-
 function cellClass(cell: Cell, last: boolean): string {
   return [
     cell.words === true ? 'boards__detail' : 'boards__figure',
@@ -394,7 +369,7 @@ function Boards({
         position: row.position,
         name: (
           <NamePlate competitors={[row.competitor]}>
-            <NameOrInitial competitor={row.competitor} />
+            <OverTwoLines competitor={row.competitor} />
           </NamePlate>
         ),
         members: [row.competitor.memberNumber],
@@ -414,7 +389,7 @@ function Boards({
         position: row.position,
         name: (
           <NamePlate competitors={[row.competitor]}>
-            <NameOrInitial competitor={row.competitor} />
+            <OverTwoLines competitor={row.competitor} />
           </NamePlate>
         ),
         members: [row.competitor.memberNumber],

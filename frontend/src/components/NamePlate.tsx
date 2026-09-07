@@ -16,9 +16,9 @@ import './NamePlate.css'
  * this is that lesson applied before the fact rather than after it.
  *
  * **The circles are its business and the words are not.** Each of the six screens already writes
- * the name the way that screen needs it: the boards cut the surname to an initial on a narrow
- * card and keep both halves in the markup (`TopBoards.tsx`), the standing of a competition breaks
- * it over two lines and the tables keep it on one („U ligi dva reda, u tabelama jedan", owner, the
+ * the name the way that screen needs it: the standing of a competition and three of the boards
+ * break it over two lines, and the main standing and the best single races keep it on one („U ligi
+ * dva reda, u tabelama jedan", owner, the
  * same day). A component that decided that as well would be a second home for three answers that
  * already have one each.
  *
@@ -54,8 +54,9 @@ export function NamePlate({
 }
 
 /**
- * A name over two lines, worn by the standing of a competition and by each half of a pair on the
- * board of best pairs, and by nothing else.
+ * A name over two lines, worn by the standing of a competition, by „Najviše kilometara" and
+ * „Najduže na stazi", and by each half of a pair on the board of best pairs. The main standing and
+ * the best single races keep the name on one line and do not use this.
  *
  * Two elements with a space between them rather than a line break the stylesheet could take away:
  * what a reader hears has to be „Ime Prezime" either way, and two elements parted by a space are

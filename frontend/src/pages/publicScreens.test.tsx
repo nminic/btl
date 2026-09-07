@@ -3,7 +3,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
-import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
+import {
+  categoriesOf,
+  fieldFor,
+  rankingFor,
+  topByCategory,
+  topByKilometers,
+  topByTimeOnCourse,
+} from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
 import pages from '../../public/mock/pages.json'
@@ -1072,54 +1079,76 @@ describe('TopBoards', () => {
     expect(Number(races.style.getPropertyValue('--count-chars'))).toBeLessThan(longest)
   })
 
-  it('carries a surname and an initial, so a narrow card can swap one for the other', async () => {
-    /* Owner, 05.08.2026: where a full name would take two lines, the surname
-       gives way to an initial. Which cards those are is a question about width,
-       so the choosing is done by a container query (TopBoards.css) and what is
-       held here is that both halves are in the markup and that the name a reader
-       hears is the whole one either way. */
-    renderAt('/sr/top-liste?sezona=2019')
+  it('writes the whole surname, on its own line, on the boards that read like the standing', async () => {
+    /* **Owner, 07.09.2026:** „Zasto se ovde nije nasao krug a onda ime i prezime u dva reda?",
+       asked of „Najvise kilometara". His sentence that morning had put these boards with the
+       standing of a competition („Tako bi trebalo da izgledaju i top liste Najvise kilometara,
+       Najduze na stazi…"), and „u tabelama jedan" was about the two he named as additions, the
+       main standing and the best single races.
+     *
+       **This replaces the guard over the surname that gave way to an initial** (owner, 05.08.2026,
+       „umesto prezimena stavi samo inicijal sa tackom"). That was written when the name and the
+       figure shared one line and a long surname wrapped; with a line of its own the surname fits,
+       measured in a browser: at 1280 the card is 351px, the row 64px and the board 741px, with
+       „Vukićević" whole; at 360 the card is 328px, the rows 64 and 75px, the boards 741 and 831px,
+       „Vukićević" whole, and the page scrolls sideways at neither width. The container query, the
+       two spans and the initial are gone, and `@container` no longer appears anywhere in the
+       portal.
+     *
+       What is held here is what a reader gets: both halves drawn, the whole surname in the page,
+       and the accessible name still one name. */
+    /* Read on a fixed day, and the same day the case computes the field on: `fieldFor` drops
+       members who are no longer active, so the screen and the case must be asking about one field
+       (review, 07.09.2026). The precedent is the case about a season with no results, which reads
+       on a day of its own for the same reason. */
+    const TODAY = '2026-08-04'
+
+    renderAt('/sr/top-liste?sezona=2019', 'visitor', null, undefined, TODAY)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi']) {
+    /* **Compared with the members, not with itself, and on every row** (review, 07.09.2026,
+       twice). Asked as „the surname is longer than one character", the case passed while every
+       surname on a board was „V.": an initial and a full stop are two characters. Asked of the
+       first row only, it passed while a shortening written by **length** rather than by width left
+       the leader alone and cut the nine below him, which is the first shape anybody would write and
+       the one PDL names as the wrong reading.
+     *
+       So all ten rows of each board are read against the ten the board is ranking, in order. That
+       is a second source for the name and, because the two boards rank differently below the top,
+       a second source for **which board** as well: they share a leader and part company at once
+       (their second places are Radoslav Milovanović and Andrija Pavlović).
+     *
+       The day is the one the screen is read on, not a day of the season: `fieldFor` drops members
+       who are no longer active, so a case that asks about a different day asks about a different
+       field, and would one day fail over somebody who has nothing to do with a surname. */
+    const field = fieldFor(await loadResource<Competitor[]>('competitors'), 2019, TODAY)
+    const results = await loadResource<Result[]>('results')
+
+    for (const [name, ranked] of [
+      ['Najviše kilometara', topByKilometers(field, results, 2019, 10)],
+      ['Najduže na stazi', topByTimeOnCourse(field, results, 2019, 10)],
+    ] as const) {
       const rows = board(name).getAllByRole('row').slice(1)
-      const link = within(at(rows, 0)).getByRole('link')
-      /* Everything the link says with the two pieces a reader never hears taken out, **named one by
-         one** and not gathered by their attribute (review, 07.09.2026). Gathered, the expected
-         value and the measured one are computed by the same rule: `aria-hidden` put on the surname
-         would take it out of both at once, and the case would pass while a reader heard „Strahinja"
-         and nothing more.
 
-         The two are the initial of the surname, which the narrow card swaps in, and the circle
-         with the member's own initials in it, which the owner asked for on 07.09.2026
-         (`components/NamePlate.tsx`). */
-      const unheard = ['.boards__initial', '.portrait'].map(
-        (piece) => link.querySelector(piece)?.textContent ?? '',
-      )
-      const whole = unheard.reduce(
-        (said, piece) => said.replace(piece, ''),
-        must(link.textContent, 'the name in the row'),
-      )
+      expect(rows.length, name).toBe(ranked.length)
 
-      /* The surname stands apart, and the initial after it is the first letter
-         of that surname and a full stop. */
-      const family = must(link.querySelector('.boards__family'), 'the surname').textContent
-      const initial = must(link.querySelector('.boards__initial'), 'the initial')
+      for (const [index, row] of rows.entries()) {
+        const who = must(at(ranked, index), `place ${index + 1} of ${name}`).competitor
+        const link = within(row).getByRole('link')
+        const where = `${name}, ${index + 1}.`
 
-      expect(family).not.toBe('')
-      expect(initial.textContent).toBe(`${must(family, 'the surname').slice(0, 1)}.`)
-      /* Read out as the whole name and not as the letter beside it: the initial
-         is out of the accessible tree, the surname never is. */
-      expect(initial).toHaveAttribute('aria-hidden', 'true')
-      /* And the surname never is, which is the sentence above this one and the thing the gathered
-         version quietly stopped holding. */
-      expect(must(link.querySelector('.boards__family'), 'the surname')).not.toHaveAttribute(
-        'aria-hidden',
-      )
-      expect(link).toHaveAccessibleName(whole.trim())
+        expect(must(link.querySelector('.plate__given'), 'the given name').textContent, where)
+          .toBe(who.firstName)
+        expect(must(link.querySelector('.plate__family'), 'the surname').textContent, where)
+          .toBe(who.lastName)
+        /* One name to the ear, whatever the sheet does with the two lines. The circle says nothing
+           (`components/Portrait.tsx` is `aria-hidden`), so the accessible name is the two halves
+           with the space between them. */
+        expect(link, where).toHaveAccessibleName(`${who.firstName} ${who.lastName}`)
+      }
     }
-  })
+  }, SLOW)
 
   /* Every board of the page that really is a table, asked of the drawn screen.
    *
@@ -1158,17 +1187,20 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
 
-    for (const [name, expected] of [
+    /* Which cells of which board carry a figure and which carry words. Hand written, because it
+       is the shape of each board and nothing derives it; the floor is at the end of this case,
+       where the names walked here are compared with the boards the screen really draws as tables.
+
+       The board of pairs has one column: its second line, the races they share, lives inside the
+       figure's own cell rather than in a column of its own. */
+    const marked = [
       ['Najviše kilometara', ['figure']],
       ['Najduže na stazi', ['figure']],
       ['Najbolji pojedinačni rezultati', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
-      /* The fourth board that is a table, from 07.09.2026. Its one cell carries a second line
-         under the figure, and that line is part of the figure's cell rather than a column of its
-         own, so the marking is the same one column (review, 07.09.2026: this list did not grow
-         when the board did, and a cell marked as words passed). */
       ['Najbolji trkački parovi', ['figure']],
-    ] as const) {
-      expect(BOARDS_THAT_ARE_TABLES, 'the list below has stopped naming every board').toContain(name)
+    ] as const
+
+    for (const [name, expected] of marked) {
       const rows = board(name).getAllByRole('row')
       /* The place and the name are the shared table's own two columns and are
          set by it; what these marks are for is everything after them. */
@@ -1189,8 +1221,11 @@ describe('TopBoards', () => {
       expect(within(at(rows, 1)).getAllByRole('cell').slice(2).map(setting)).toEqual(expected)
     }
 
-    /* And the list above is every board that is a table, so the fifth one fails here rather than
-       going unmeasured. */
+    /* **And the list this loop walks is every board that is a table**, in both directions
+        (review, 07.09.2026). Written as „each of these names is in the constant" it was one way
+        only: a fifth board added to the constant to quiet the other guard would never reach this
+        loop, and its column of figures could be laid out as words with the gate green. */
+    expect(marked.map(([name]) => name).sort()).toEqual(BOARDS_THAT_ARE_TABLES)
     expect(tableBoards()).toEqual(BOARDS_THAT_ARE_TABLES)
   })
 
@@ -1280,7 +1315,7 @@ describe('TopBoards', () => {
 
     const none = board('Najbolji trkački parovi')
 
-    expect(none.getByText(/U ovoj sezoni takvog para nema/)).toBeVisible()
+    expect(none.getByText(/nijedan trkački par nema zajedničku trku/)).toBeVisible()
     expect(none.queryByRole('table')).not.toBeInTheDocument()
   }, SLOW)
 
@@ -1411,9 +1446,8 @@ describe('TopBoards', () => {
        which is the one thing a board about improvement must not do (PDL P12,
        30.07.2026). He is on the boards that measure the season itself. */
     expect(board('Najbolji napredak').queryByText('Miloje Stanojlović')).not.toBeInTheDocument()
-    /* By the name the link carries rather than by the words on the screen: on
-       this board a surname is drawn in a span of its own, so that a card with no
-       room for it can put an initial there instead, and the whole name is the
+    /* By the name the link carries rather than by the words on the screen: on this board the
+       given name and the surname are two elements, one under the other, so the whole name is the
        accessible name rather than one run of text. */
     expect(
       board('Najviše kilometara').getByRole('link', { name: 'Miloje Stanojlović' }),

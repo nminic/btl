@@ -23,6 +23,25 @@ import { SLOW } from '../test/slow'
 const plate = () =>
   htmlElement(must(document.querySelector('.plate'), 'the circle and the name beside it'))
 
+/**
+ * Which board writes a name over two lines and which keeps it on one, and it is not the same
+ * answer for all four (owner, 07.09.2026).
+ *
+ * Hand written, because no rule derives it: it is which of his two sentences a board belongs to.
+ * Its floor is the case below, which reads the boards that carry a plate off the drawn screen and
+ * compares them with the names here, so a fifth board fails the gate instead of being missed.
+ */
+const SHAPE = [
+  /* In the order the owner named them and not in the order a machine sorts them, so the `.sort()`
+     below is doing something: written already sorted it was a silent no-op, and the day somebody
+     adds a fifth board at the end of this list the gate would go red for the wrong reason (review,
+     07.09.2026). */
+  ['Najviše kilometara', 'two'],
+  ['Najduže na stazi', 'two'],
+  ['Najbolji trkački parovi', 'two'],
+  ['Najbolji pojedinačni rezultati', 'one'],
+] as const
+
 describe('the circle beside a name', () => {
   it('breaks the name in the standing of a competition, and keeps it whole in the tables', async () => {
     renderAt('/sr/liga/brdska-2019')
@@ -42,7 +61,8 @@ describe('the circle beside a name', () => {
         'the surname',
       ).textContent?.slice(0, 1)}`,
     )
-    /* Two lines, which is this screen and no other. */
+    /* Two lines. Which screens do that and which do not is the case below; here it is enough
+       that this one does. */
     expect(within(inLeague).getByText(/./, { selector: '.plate__given' })).toBeVisible()
 
     cleanup()
@@ -99,14 +119,32 @@ describe('the circle beside a name', () => {
       .map((board) => board.querySelector('.boards__title')?.textContent)
       .sort()
 
-    expect(carried).toEqual(
-      [
-        'Najbolji pojedinačni rezultati',
-        'Najbolji trkački parovi',
-        'Najduže na stazi',
-        'Najviše kilometara',
-      ].sort(),
-    )
+    expect(carried).toEqual(SHAPE.map(([name]) => name).sort())
+
+    /* **And each of them writes the name the way the owner sorted it** (07.09.2026). His sentence
+       that morning put three of these boards with the standing of a competition („Tako bi trebalo
+       da izgledaju i top liste Najviše kilometara, Najduže na stazi…"), and „u tabelama jedan" was
+       about the two he named as additions that afternoon, the main standing and the best single
+       races. Read as „every board is a table", which is what this file did until the owner asked
+       „Zašto se ovde nije našao krug a onda ime i prezime u dva reda?", two of these boards were
+       wrong.
+
+       The list is compared with the screen above, so a fifth board fails here rather than going
+       unmeasured, and each row of it says what that board draws. */
+    for (const [name, lines] of SHAPE) {
+      const board = htmlElement(
+        must(
+          [...document.querySelectorAll('.boards__board')].find(
+            (one) => one.querySelector('.boards__title')?.textContent === name,
+          ),
+          `the board ${name}`,
+        ),
+      )
+      const halves = board.querySelectorAll('.plate__given').length
+
+      expect(halves > 0, `${name} writes the name in ${lines === 'two' ? 'one line' : 'two lines'}`)
+        .toBe(lines === 'two')
+    }
   }, SLOW)
 
   it('draws a pair as two circles above one another and four lines beside them', async () => {

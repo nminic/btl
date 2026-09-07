@@ -30,26 +30,34 @@
 
 .plate__words {
   /* **Not a grid**, and that was measured (review, 07.09.2026). It was one, and a grid makes every
-     child its own row: the boards hand over three of them (the given name, the surname, and the
-     initial the narrow card swaps in), so „Strahinja" and „Vukićević" stood one under the other on
-     „Najviše kilometara" and „Najduže na stazi", at every width, which is the opposite of what the
-     owner asked for („U ligi dva reda, u tabelama jedan"). On a narrow card it was worse than the
-     wrap the container query exists to prevent: the given name with a lone „V." beneath it.
+     child its own row. At the time the boards handed over three of them, the given name, the
+     surname, and the initial a narrow card swapped in, so „Strahinja" and „Vukićević" stood one
+     under the other at every width while the boards were meant to keep a name on one line.
+
+     Both halves of that have since changed on the owner's word: those boards write the name over
+     two lines from 07.09.2026, and the initial is gone with the container query that chose it. The
+     rule stays, because the fault it prevents is now the pair, whose four lines would become
+     eight, and because a grid here is a decision nobody needs to take again.
 
      Two lines where a screen asks for them are laid by the two halves themselves
-     (`.plate__given`, `.plate__family`), which two screens write: the standing of a competition,
-     and the board of best pairs, where each half of the pair is one of those names.
+     (`.plate__given`, `.plate__family`), which four screens write: the standing of a competition,
+     „Najviše kilometara", „Najduže na stazi", and the board of best pairs, where each half of the
+     pair is one of those names. The one writer of both classes is `OverTwoLines`, and it has four
+     call sites; the main standing and the best single races keep the name on one line.
 
      Cut rather than pushed: the column of a name is bounded on both tables that carry one, and a
      name that will not give way widens the table instead of ending in an ellipsis. */
   min-inline-size: 0;
 }
 
-/* Two rows, and that is the whole of what tells the standing of a competition from the tables
-   (owner: „U ligi dva reda, u tabelama jedan"). The two halves are two elements with a space
+/* Two rows, worn by the standing of a competition and by three of the top boards, which the
+   owner grouped with it on 07.09.2026; the main standing and the best single races keep the name
+   on one line („U ligi dva reda, u tabelama jedan", where „tabele" were those two). Each half of a
+   pair wears them too. The two halves are two elements with a space
    between them, so a reader hears one name (`OverTwoLines`); here they are laid one under the
-   other. Two screens write them, the standing of a competition and the board of best pairs, and
-   both of them want exactly this; nothing that writes a name on one line does.
+   other. Four screens write them: the standing of a competition, „Najviše kilometara", „Najduže na
+   stazi", and each half of a pair. The main standing and the best single races write one line and
+   never reach this rule.
 
    **Neither of them is bold**, and that is an older decision rather than a choice made here:
    `pages/league/League.css` puts the name in that grid at 400 because a review measured on
