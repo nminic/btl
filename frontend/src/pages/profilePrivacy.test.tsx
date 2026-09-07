@@ -170,19 +170,47 @@ describe('hiding a profile from readers who are not signed in', () => {
     )
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
 
-    for (const where of [
-      '/sr/tabela',
-      '/sr/top-liste',
-      '/sr',
-      '/sr/kalendar/novosadski-nocni-maraton-2014',
-      '/sr/liga/brdska-2019/rezultati',
-    ]) {
-      await router.navigate(where)
+    /* **Each screen waited for by its own heading, and then waited on until it stops drawing**
+       (review, 07.09.2026). Neither half was there and both were needed.
 
-      /* Waited on until the screen has drawn somebody, which is what makes the second half of
-         the question worth asking. */
+       Read straight after `navigate`, the old screen is still in the document: measured that day,
+       the front page reported the eighteen ways in that the standing before it had drawn, letter
+       for letter, while the same screen visited alone reports twenty-nine; and a screen put second
+       in the loop reported nought, so „no way in is his" passed over an empty document. Four of
+       the five addresses were not measured at all.
+
+       The heading says the new screen has mounted. The settling says it has finished: a screen
+       arrives in waves, and a question asked at the first wave is asked of a third of the answers.
+       Both are needed and neither is enough.
+
+       The heading is written down beside the address, the way `pages/publicData.test.tsx` writes
+       its own table, and it is floored by the two questions under it: a heading that stops
+       matching fails on the wait, and an address that leads into no profile at all fails on the
+       count. */
+    const WALK: [address: string, heading: string][] = [
+      ['/sr/tabela', 'BTL tabele'],
+      ['/sr/top-liste', 'Top liste'],
+      ['/sr', 'Balkanska trkačka liga'],
+      ['/sr/kalendar/novosadski-nocni-maraton-2014', 'Novosadski noćni maraton'],
+      ['/sr/liga/brdska-2019/rezultati', 'Brdska liga 2019'],
+    ]
+
+    for (const [where, heading] of WALK) {
+      await router.navigate(where)
+      await screen.findByRole('heading', { level: 1, name: heading })
+
+      /* Two readings alike and neither of them nought: the screen has drawn somebody and has
+         stopped adding to them. Counted rather than compared against a number written here, or
+         the day a competitor is added to the file this walk would fail on arithmetic. */
+      let seen = -1
+
       await waitFor(() => {
-        expect(waysIn().length, `${where}: nijedan profil se ne otvara odavde`).toBeGreaterThan(0)
+        const now = waysIn().length
+        const done = now > 0 && now === seen
+
+        seen = now
+
+        expect(done, `${where}: ekran se još crta`).toBe(true)
       })
 
       expect(waysIn().filter((href) => href.includes('/takmicar/000007')), where).toEqual([])
