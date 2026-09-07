@@ -181,9 +181,10 @@ function Grid({
             {shown.map((row) => (
               <tr key={row.competitor.memberNumber}>
                 <th scope="row" className="league__who">
-                  {/* **Krug pa ime u dva reda** (vlasnik, 07.09.2026): ovo je jedino mesto
-                      koje ime lomi, jer je prva kolona zamrznuta i ima mesta ispod. „U ligi dva
-                      reda, u tabelama jedan." */}
+                  {/* **Krug pa ime u dva reda** (vlasnik, 07.09.2026), jer je prva kolona
+                      zamrznuta i ima mesta ispod. Isto rade i „Najviše kilometara" i „Najduže na
+                      stazi", koje je vlasnik istog dana svrstao uz ligu; jedan red ostaje na
+                      glavnoj tabeli i na Najboljim pojedinačnim rezultatima. */}
                   <ProfileLink competitor={row.competitor}>
                     <NamePlate competitors={[row.competitor]}>
                       <OverTwoLines competitor={row.competitor} />

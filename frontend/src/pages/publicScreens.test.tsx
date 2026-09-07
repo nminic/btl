@@ -3,7 +3,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
-import { categoriesOf, fieldFor, rankingFor, topByCategory } from '../data/derive'
+import {
+  categoriesOf,
+  fieldFor,
+  rankingFor,
+  topByCategory,
+  topByKilometers,
+  topByTimeOnCourse,
+} from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
 import pages from '../../public/mock/pages.json'
@@ -1094,26 +1101,31 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi']) {
+    /* **Compared with the member, not with itself** (review, 07.09.2026). Asked as „the surname
+       is longer than one character", the case passed while every surname on a board was „V.": an
+       initial and a full stop are two characters. The two halves are now read against the person
+       the board is ranking, which is a second source and the only one that can tell a name from a
+       letter. */
+    const field = fieldFor(await loadResource<Competitor[]>('competitors'), 2019, '2019-12-31')
+    const results = await loadResource<Result[]>('results')
+
+    for (const [name, top] of [
+      ['Najviše kilometara', first(topByKilometers(field, results, 2019, 1))],
+      ['Najduže na stazi', first(topByTimeOnCourse(field, results, 2019, 1))],
+    ] as const) {
+      const who = must(top, `the leader of ${name}`).competitor
       const rows = board(name).getAllByRole('row').slice(1)
       const link = within(at(rows, 0)).getByRole('link')
 
-      const given = must(link.querySelector('.plate__given'), 'the given name').textContent
-      const family = must(link.querySelector('.plate__family'), 'the surname').textContent
-
-      expect(given).not.toBe('')
-      expect(family).not.toBe('')
-      /* Whole, and not a letter and a full stop: that is the thing the owner asked to be undone. */
-      expect(must(family, 'the surname').length).toBeGreaterThan(1)
+      expect(must(link.querySelector('.plate__given'), 'the given name').textContent, name)
+        .toBe(who.firstName)
+      expect(must(link.querySelector('.plate__family'), 'the surname').textContent, name)
+        .toBe(who.lastName)
       /* One name to the ear, whatever the sheet does with the two lines. The circle says nothing
          (`components/Portrait.tsx` is `aria-hidden`), so the accessible name is the two halves with
          the space between them. */
-      expect(link).toHaveAccessibleName(`${given} ${family}`)
+      expect(link).toHaveAccessibleName(`${who.firstName} ${who.lastName}`)
     }
-
-    /* And nothing anywhere still swaps a surname for an initial. */
-    expect(document.querySelectorAll('.boards__initial').length).toBe(0)
-    expect(document.querySelectorAll('.boards__family').length).toBe(0)
   }, SLOW)
 
   /* Every board of the page that really is a table, asked of the drawn screen.
@@ -1412,9 +1424,8 @@ describe('TopBoards', () => {
        which is the one thing a board about improvement must not do (PDL P12,
        30.07.2026). He is on the boards that measure the season itself. */
     expect(board('Najbolji napredak').queryByText('Miloje Stanojlović')).not.toBeInTheDocument()
-    /* By the name the link carries rather than by the words on the screen: on
-       this board a surname is drawn in a span of its own, so that a card with no
-       room for it can put an initial there instead, and the whole name is the
+    /* By the name the link carries rather than by the words on the screen: on this board the
+       given name and the surname are two elements, one under the other, so the whole name is the
        accessible name rather than one run of text. */
     expect(
       board('Najviše kilometara').getByRole('link', { name: 'Miloje Stanojlović' }),

@@ -115,7 +115,7 @@ describe('the circle beside a name', () => {
       .map((board) => board.querySelector('.boards__title')?.textContent)
       .sort()
 
-    expect(carried).toEqual(SHAPE.map(([name]) => name))
+    expect(carried).toEqual(SHAPE.map(([name]) => name).sort())
 
     /* **And each of them writes the name the way the owner sorted it** (07.09.2026). His sentence
        that morning put three of these boards with the standing of a competition („Tako bi trebalo

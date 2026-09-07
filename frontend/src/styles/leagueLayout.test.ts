@@ -265,9 +265,10 @@ describe('the name of a competitor beside their circle', () => {
   })
 
   it('lays the two halves one under the other where a screen writes them', () => {
-    /* The breaking is the sheet's, and two screens write the two halves
-       (`components/NamePlate.tsx`, `OverTwoLines`): the standing of a competition, and each half of
-       a pair on the board of best pairs. Both halves are named in one rule, because a
+    /* The breaking is the sheet's, and four screens write the two halves
+       (`components/NamePlate.tsx`, `OverTwoLines`): the standing of a competition, „Najviše
+       kilometara", „Najduže na stazi", and each half of a pair. Both halves are named in one rule,
+       because a
        rule that laid out one of them would leave the other on the line it was on; the selector is
        spelt the way the browser's own parser gives it back. */
     const laid = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
