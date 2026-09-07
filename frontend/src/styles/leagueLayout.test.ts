@@ -1,43 +1,54 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, relative, sep } from 'node:path'
 import { first, must } from '../test/at'
-import {
-  everyRule,
-  ruleFor,
-  ruleInMedia,
-  sheetsOf,
-  unconditionalRules,
-  unremarked,
-} from '../test/stylesheet'
+import { ruleFor, ruleInMedia, sheetsOf, unconditionalRules, unremarked } from '../test/stylesheet'
 
 /**
- * The two things the owner asked for on 07.09.2026 that live only in a stylesheet.
+ * The things the owner asked for on 07.09.2026 that live only in a stylesheet.
  *
- * **Why they need a guard at all.** Both are decisions, both are one line, and both were measured
- * by a review to be undoable with the whole gate staying green: `border-collapse` put back to
- * `collapse`, and the two-column query put back on the list of competitions. jsdom applies no
- * stylesheet, so nothing that draws a screen can see either (ADL A33, `styles/tableScroll.test.ts`
- * and `styles/outsideHost.test.ts` exist for the same reason and are the shape copied here).
+ * **Why they need a guard at all.** Each is a decision, each is a line or two of CSS, and each was
+ * measured by a review to be undoable with the whole gate staying green: `border-collapse` put back
+ * to `collapse`, the two-column query put back on the list of competitions, the name put back in
+ * capitals. jsdom applies no stylesheet, so nothing that draws a screen can see any of them (ADL
+ * A33, `styles/tableScroll.test.ts` and `styles/outsideHost.test.ts` exist for the same reason).
  *
- * **What this holds and what it cannot, written as a boundary rather than discovered round by
- * round.** These cases read what a **sheet says**, through the browser's own parser, at every depth
- * and under every condition it is written in (`everyRule`). Three rounds of review each found one
- * more place a sheet can say something — a media block, a nested rule, a second rule further down —
- * and each was closed by widening the reading rather than by naming the place.
+ * **The shape below is the answer to six rounds of review, five of which were about this file and
+ * none about the screen** (07.09.2026). Every one of the five was the same finding in a different
+ * coat: a declaration written **somewhere else in the same sheet** that the reading did not look
+ * at. A property off the list (`width` where the case asked for `inline-size`); a selector off the
+ * filter (`.plate__words` where the filter asked for `.plate`); a selector spelt another way
+ * (`&:not(.plate--pair)`, which a parser hands back unresolved); a second sheet (`NamePlate.css`
+ * hiding a circle a case only looked for in `Rankings.css`). Each round closed one and left the
+ * next open, because a reading that has to enumerate which selectors, which properties and which
+ * sheets could say the opposite has no floor: there is always one more.
  *
- * What they cannot hold is the **cascade between sheets**: a rule in another stylesheet, of higher
- * specificity or later in the bundle, that overrides one of these. jsdom applies no stylesheet and
- * computes no cascade (ADL A33), so nothing here can see it, and the portal has been bitten by
- * exactly that before (`pages/league/League.css` documents it twice). That half is measured in a
- * real browser and written down: at 360 with the grid scrolled 260px sideways the horizontal rules
- * of the scrolling half no longer cross „Član" and „Bodovi"; the list of competitions is one box
- * of 328px; the main standing draws no circle and its rows are 75px again, while the top boards on
- * the same width still draw all thirty of theirs.
+ * So the question is turned around, and this is the repo's own rule for a guard whose rounds are
+ * all about itself (`CLAUDE.md`, „čuvar se uprošćava do oblika koji ne može da bude u krivu"):
+ *
+ * - **The cases below say what each decision is**, by reading the one rule that carries it. They
+ *   are the readable half and they fall when that rule is deleted or changed. None of them claims
+ *   to know what the rest of the sheet says.
+ * - **`dressed by the sheet a browser was measured against` is the floor**, and it cannot be asked
+ *   incompletely: every declaration that acts is in it, at any depth, under any condition, under
+ *   any name. A sixth way to undo one of these decisions is still a change to that text.
+ *
+ * That is the shape `pages/publicData.test.tsx` already uses: a hand-written table of what is
+ * expected, and a derived floor that fails the day the table is short.
+ *
+ * **What is still outside all of it**, written as a boundary rather than left for a review: the
+ * **cascade between sheets**. A rule in another stylesheet, of higher specificity or later in the
+ * bundle, overrides one of these and nothing here can see it, because jsdom computes no cascade
+ * (ADL A33) and the portal has been bitten by exactly that (`pages/league/League.css` records it
+ * twice). That half is measured in a real browser and written down: at 360 with the grid scrolled
+ * 260px sideways the horizontal rules of the scrolling half no longer cross „Član" and „Bodovi";
+ * the list of competitions is one box of 328px; the main standing draws no circle and its rows are
+ * 75px again, while the top boards on the same width still draw all thirty of theirs.
  */
 const SRC = join(process.cwd(), 'src')
 const LEAGUE = join(SRC, 'pages/league/League.css')
 const LEAGUES = join(SRC, 'pages/Leagues.css')
 const PLATE = join(SRC, 'components/NamePlate.css')
+const RANKINGS = join(SRC, 'pages/Rankings.css')
 
 /**
  * Every property a stylesheet can lay a track of columns with.
@@ -48,6 +59,92 @@ const PLATE = join(SRC, 'components/NamePlate.css')
  * (`column-count`, and the shorthand that contains it).
  */
 const COLUMNS = ['grid-template-columns', 'grid-template', 'grid:', 'column-count', 'columns:']
+
+/**
+ * The whole of the sheet that dresses a name beside a circle, as it stood when a browser was
+ * measured against it on 07.09.2026.
+ *
+ * Comments are blanked and empty lines dropped, so prose does not churn this and what is compared
+ * is the CSS that acts. Kept here rather than in a `.snap` file on purpose: this repo checks out
+ * with CRLF on one machine and LF on another, and a golden text nobody can regenerate with a flag
+ * is a golden text nobody regenerates without reading it.
+ *
+ * **Five of the owner's sentences are in here**, so the moment this fails is the moment to say
+ * whether the edit keeps them: no capitals and no weight on a name (07.09.2026, and 13.08.2026 for
+ * the weight); the circle beside the words rather than above them; two lines in the standing of a
+ * competition and one in the tables; a pair as two circles above one another with a name beside
+ * each; and the circle smaller where the frozen column is capped.
+ */
+const PLATE_SHEET = `@import './Portrait.css';
+.plate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-10);
+  text-align: start;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.plate .portrait {
+  inline-size: 2.1rem;
+  block-size: 2.1rem;
+  font-size: 0.68rem;
+}
+.plate__words {
+  min-inline-size: 0;
+}
+.plate__given,
+.plate__family {
+  display: block;
+  line-height: 1.2;
+}
+.plate--pair .plate__faces {
+  display: grid;
+  gap: var(--space-4);
+}
+.plate--pair .plate__words {
+  display: grid;
+  gap: var(--space-4);
+}
+@media (max-width: 699.98px) {
+  .plate {
+    gap: var(--space-6);
+  }
+  .plate .portrait {
+    inline-size: 1.7rem;
+    block-size: 1.7rem;
+    font-size: 0.55rem;
+  }
+}`
+
+/** A sheet with its prose and its empty lines gone: what is left is what acts. `trimEnd` also takes
+ *  the carriage return this repo checks out with on Windows, so the text is the same on either. */
+function acting(css: string): string {
+  return unremarked(css)
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line !== '')
+    .join('\n')
+}
+
+/** Every stylesheet the portal has, found rather than listed. */
+function everySheet(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) {
+      return everySheet(join(dir, entry.name))
+    }
+
+    return entry.name.endsWith('.css') ? [join(dir, entry.name)] : []
+  })
+}
+
+/** The sheets that dress a plate: those that write one of its classes outside a comment. */
+function dressers(): string[] {
+  return everySheet(SRC)
+    .filter((path) => acting(readFileSync(path, 'utf-8')).includes('.plate'))
+    .map((path) => relative(SRC, path).split(sep).join('/'))
+    .sort((one, two) => one.localeCompare(two))
+}
 
 describe('the grid of a competition', () => {
   it('lets each cell paint its own edge, so the frozen columns are opaque', () => {
@@ -80,38 +177,17 @@ describe('the name of a competitor beside their circle', () => {
    * on that one cell, so the sixth screen that draws a name is right without being told.
    *
    * jsdom applies no stylesheet, so nothing that draws a screen can see any of this (ADL A33). It
-   * was measured in a browser at 360, at 1280 and at 200 per cent text; what is held here is that
-   * the rule is in the sheet and says what it was measured saying. */
+   * was measured in a browser at 360, at 1280 and at 200 per cent text; what the cases below hold
+   * is that each rule is in the sheet and says what it was measured saying, and what the golden
+   * text holds is that the sheet says nothing else. */
   it('is written the way a name is written, and not the way a column heading is', () => {
     const rule = ruleFor(readFileSync(PLATE, 'utf-8'), '.plate', 'NamePlate.css')
-    const base = {
-      'text-transform': 'none',
-      'letter-spacing': 'normal',
-      'font-weight': '400',
-      /* And it reads from the left, in a cell the shared table rule would align right. */
-      'text-align': 'start',
-    }
 
-    for (const [property, said] of Object.entries(base)) {
-      expect(rule.getPropertyValue(property), property).toBe(said)
-    }
-
-    /* **And nowhere in the sheet is any of the four said differently** (review, 07.09.2026). Read
-       unconditionally alone, the same four written inside this sheet's own telephone block put the
-       name back in capitals and in 700 on every telephone, with the whole gate green — which is
-       the owner's sentence of 07.09.2026 undone („Imena i prezimena ne treba da budu sva velikim
-       slovima"). `everyRule` reads the sheet wherever a block is written, nested blocks and blocks
-       with no selector of their own included. */
-    const said = everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-      .filter((one) => /[.]plate(?![-_])/.test(one.selectorText))
-      .flatMap(({ selectorText, style }) =>
-        Object.entries(base)
-          .map(([property, want]) => ({ property, want, got: style.getPropertyValue(property) }))
-          .filter(({ want, got }) => got !== '' && got !== want)
-          .map(({ property, got }) => `${selectorText} { ${property}: ${got} }`),
-      )
-
-    expect(said, 'the plate is dressed some other way at some width').toEqual([])
+    expect(rule.getPropertyValue('text-transform')).toBe('none')
+    expect(rule.getPropertyValue('letter-spacing')).toBe('normal')
+    expect(rule.getPropertyValue('font-weight')).toBe('400')
+    /* And it reads from the left, in a cell the shared table rule would align right. */
+    expect(rule.getPropertyValue('text-align')).toBe('start')
   })
 
   it('lays the two halves one under the other where a screen writes them', () => {
@@ -127,35 +203,20 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(laid.length, 'the two halves are not laid out together').toBe(1)
     expect(must(first(laid), 'the rule').style.getPropertyValue('display')).toBe('block')
-
-    /* **And at no width are they laid out any other way** (review, 07.09.2026): `display: inline`
-       on the two of them inside this sheet's telephone block puts the whole name back on one line
-       in the standing of a competition, which is „U ligi dva reda" undone, and the gate stayed
-       green. */
-    expect(
-      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-        .flatMap(({ selectorText, style }) =>
-          selectorText.split(',').map((one) => ({ one: one.trim(), style })),
-        )
-        .filter(({ one }) => /[.]plate__(given|family)$/.test(one))
-        .map(({ style }) => style.getPropertyValue('display'))
-        .filter((was) => was !== '' && was !== 'block'),
-      'a half of the name is laid out some other way at some width',
-    ).toEqual([])
   })
 
   it('lays the words beside the circle in a line, and only a pair in rows', () => {
     /* **Measured by a review on 07.09.2026, and it was a high finding.** `.plate__words` was a
        grid, and a grid makes every child its own row. Two of the five screens hand over three
-       children — the given name, the surname, and the initial a narrow card swaps in
-       (`pages/TopBoards.tsx`, `NameOrInitial`) — so „Strahinja" and „Vukićević" stood one under
+       children – the given name, the surname, and the initial a narrow card swaps in
+       (`pages/TopBoards.tsx`, `NameOrInitial`) – so „Strahinja" and „Vukićević" stood one under
        the other on „Najviše kilometara" and „Najduže na stazi", at every width. That is the
        opposite of what the owner asked for, and on a narrow card it was worse than the wrap the
        container query exists to prevent: the given name with a lone „V." beneath it.
 
        Nothing drawn could see it: the fault is a height, and jsdom lays nothing out (ADL A33).
-       What is held here is the one declaration that caused it. Measured in a browser afterwards:
-       at 1280 not one of the thirty names on those boards is on two lines. */
+       Measured in a browser afterwards: at 1280 not one of the thirty names on those boards is on
+       two lines. */
     /* **What puts the words beside the circle is the plate itself**, and that was the half this
        case was missing (review, 07.09.2026): with `display: inline-flex` gone from `.plate`, the
        circle stands **above** the name on all five screens and the name takes the whole column,
@@ -166,18 +227,6 @@ describe('the name of a competitor beside their circle', () => {
       ruleFor(readFileSync(PLATE, 'utf-8'), '.plate', 'NamePlate.css').getPropertyValue('display'),
       'the circle and the name no longer stand side by side',
     ).toBe('inline-flex')
-
-    /* **And nowhere else in the sheet is it said otherwise.** Read unconditionally alone, the same
-       declaration written inside this sheet's own telephone block put the circle above the name on
-       every telephone with the whole gate green, and a review measured exactly that. `everyRule`
-       reads the sheet wherever a rule is written. */
-    expect(
-      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-        .filter((rule) => /[.]plate(?![-_])/.test(rule.selectorText))
-        .map((rule) => rule.style.getPropertyValue('display'))
-        .filter((said) => said !== '' && said !== 'inline-flex'),
-      'the plate is laid out some other way at some width',
-    ).toEqual([])
 
     const words = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
       (rule) => rule.selectorText === '.plate__words',
@@ -197,44 +246,6 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(pair.length, 'a pair lays its two names nowhere').toBe(1)
     expect(must(first(pair), 'the rule').style.getPropertyValue('display')).toBe('grid')
-
-    /* And at every width, not only unconditionally: the same declaration written inside this
-       sheet's telephone block would bring the fault back exactly where a review measured it worst,
-       ten of thirty names on 360. */
-    expect(
-      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-        /* Selector by selector, and not over the whole list of them (review, 07.09.2026): a rule
-           written `.plate--pair .plate__words, .plate__words` mentions the pair and lays every
-           plate in rows, and an exception asked of the whole string let it through. */
-        .flatMap((rule) =>
-          rule.selectorText.split(',').map((one) => ({ one: one.trim(), style: rule.style })),
-        )
-        .filter(({ one }) => one.includes('.plate__words'))
-        .filter(({ one }) => !one.includes('.plate--pair'))
-        .map(({ style }) => style.getPropertyValue('display'))
-        .filter((said) => said !== ''),
-      'the words beside the circle are laid out in rows at some width',
-    ).toEqual([])
-  })
-
-  it('has no weight of its own on either half of a name', () => {
-    /* **A decision from 13.08.2026 that this component can undo silently.** The name of a
-       competitor in the standing of a competition is written at 400 (`pages/league/League.css`)
-       because a review measured that day that every name in that grid was bold while the same
-       names on the ranking table were not. The plate draws inside that cell, so a weight written
-       on either half brings back half of that fault, and the rule above reads the weight off
-       `.plate` — where a declaration on a child never shows.
-     *
-       Measured when a review put the weight back: the surname came out at 700 against the given
-       name's 400, and the row grew from 62,2 to 66,7 pixels, with the whole gate green. */
-    /* Read wherever a rule is written, not only where it is written unconditionally: a review put
-       the weight back inside this sheet's telephone block and the whole gate stayed green. */
-    const dressed = everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-      .filter((rule) => /[.]plate__(given|family|words)/.test(rule.selectorText))
-      .filter((rule) => rule.style.getPropertyValue('font-weight') !== '')
-      .map((rule) => rule.selectorText)
-
-    expect(dressed, 'a half of the name carries a weight of its own').toEqual([])
   })
 
   it('gives the circle up on a telephone, so the name keeps its letters', () => {
@@ -257,35 +268,25 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(rule.getPropertyValue('inline-size')).toBe('1.7rem')
     expect(rule.getPropertyValue('block-size')).toBe('1.7rem')
-
-    /* **And the sheet gives it two sizes and no third** (review, 07.09.2026): the full size written
-       again after the telephone block wins on order and the long surnames are cut again, with the
-       gate green. Two, in this order: beside words at every width, and smaller where the column is
-       capped. */
-    expect(
-      everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-        .filter((one) => one.selectorText.includes('.portrait'))
-        .map((one) => one.style.getPropertyValue('inline-size'))
-        .filter((size) => size !== ''),
-      'the circle is given another size somewhere',
-    ).toEqual(['2.1rem', '1.7rem'])
   })
 
   it('is not drawn at all in the main standing on a telephone, which the owner chose', () => {
     /* **The owner's answer, with the measurement in front of him** (07.09.2026): „Krug se ne crta
        ispod 700px." The circle takes about thirty four pixels of a column that is 167 wide at 360,
-       and a long name then wraps of its own accord — nine of seventeen names ran to two lines
-       where one did before, and the row grew from 75 to 100 pixels. This screen is one of the four
-       he expects to be easiest on a telephone (PDL P24), so the circle is the half that gives way.
+       and a long name then wraps of its own accord: nine of seventeen names ran to two lines where
+       one did before, and the row grew from 75 to 100 pixels. This screen is one of the four he
+       expects to be easiest on a telephone (PDL P24), so the circle is the half that gives way.
      *
-       **Two hand-written facts hold that answer and neither was read by anything** (review,
-       07.09.2026): the class on the table, and the rule that hangs off it. Either could be deleted
-       with the whole gate green, and the circle would be back at 360. Both are asked here.
+       **The answer has two halves and both are asked.** „Below 700px" is the rule read here.
+       „**And only in the main standing**" is the other half, and it is undone from the other side:
+       `.plate__faces { display: none }` written into `NamePlate.css` takes the circle off the top
+       boards and the standing of a competition too. That half is held by the golden text below,
+       where such a rule is a change to the sheet.
      *
        Measured in a browser after the change: at 360 the main standing draws no circle, one of
        seventeen names is on two lines as before, and the row is 75 pixels again; the top boards on
        the same width still draw all thirty of theirs; at 1280 the circle is back. */
-    const sheet = readFileSync(join(SRC, 'pages/Rankings.css'), 'utf-8')
+    const sheet = readFileSync(RANKINGS, 'utf-8')
 
     expect(
       ruleInMedia(
@@ -296,23 +297,38 @@ describe('the name of a competitor beside their circle', () => {
       ).getPropertyValue('display'),
     ).toBe('none')
 
-    /* **And the sheet nowhere says otherwise**, which one rule read on its own cannot tell
-       (review, 07.09.2026). The same selector written again after that block, unconditionally,
-       wins on order at every width, and a review measured it: the circle back at 360, the name
-       wrapping again, the row back from 75 to 100 pixels, with 2701 cases green. Read through
-       `everyRule`, a second rule about that circle is a second answer and fails here. */
+    /* **And this sheet says it once**, which the rule above cannot tell on its own (review,
+       07.09.2026): the same selector written again after that block, unconditionally, wins on
+       order at every width, and a review measured it - the circle back at 360, the name wrapping
+       again, the row back from 75 to 100 pixels, with the whole gate green. Counted rather than
+       filtered, over the sheet with its prose blanked, because a count has no list in it: a second
+       mention of a plate class anywhere in this sheet, at any depth and in any shape, makes it
+       two. The two directions meet here - move the rule out of the query and the case above fails,
+       write a second one and this fails. */
     expect(
-      everyRule(sheet, 'Rankings.css')
-        .filter((one) => one.selectorText.includes('.plate__faces'))
-        .map((one) => one.style.getPropertyValue('display'))
-        .filter((said) => said !== 'none'),
-      'the circle is given back at some width',
-    ).toEqual([])
+      acting(sheet).split('.plate').length - 1,
+      'the sheet of the main standing says more than one thing about a plate',
+    ).toBe(1)
+  })
 
-    /* That the table really wears this name is the other home of the same fact, and it is asked of
-       the **drawn screen** rather than of the source (`pages/namePlateOnScreens.test.tsx`): read
-       off the text of the file, a mention of the name in a comment answered for it, which a review
-       measured. */
+  it('is dressed by these two sheets and by no others', () => {
+    /* Found rather than listed, so the day a third sheet starts writing a plate class this fails
+       and somebody says whether it keeps the decisions the other two carry. The one written
+       boundary: a sheet that reaches the plate without spelling the class, through
+       `[class~="plate__faces"]` or such, is outside this. Nothing on the portal is written that
+       way, and if something one day is, this is the sentence that was wrong. */
+    expect(dressers()).toEqual(['components/NamePlate.css', 'pages/Rankings.css'])
+  })
+
+  it('is dressed by the sheet a browser was measured against, and nothing else', () => {
+    /* **The floor under every case above** (07.09.2026, and the reason is written at the head of
+       this file). The cases say what each decision is; this says the sheet is the text those
+       measurements were taken from. It is the one question about a stylesheet that cannot be asked
+       incompletely, and it is what five rounds of narrowing filters were reaching for.
+
+       When this fails, the diff is the answer: read the change against the five sentences listed
+       beside `PLATE_SHEET` and, if it keeps them, write the new text there. */
+    expect(acting(readFileSync(PLATE, 'utf-8'))).toBe(PLATE_SHEET)
   })
 
   it('reaches the sheet that makes the circle a circle', () => {
