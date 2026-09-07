@@ -633,8 +633,13 @@ describe('a question that is still standing', () => {
 
     const line = must(document.querySelector('.profile__pair'), 'her line').textContent ?? ''
 
+    /* **Named after the one who sent it**, which is what makes this assertion able to fail: the
+       question standing is Časlav's to Katarina, so a page that listed it would say „Primljen
+       poziv: Časlav Radenković". Written against her name it could not fail either way (review,
+       07.09.2026). */
     expect(line).toContain('Nije u trkačkom paru')
-    expect(line).not.toContain('Katarina')
+    expect(line).not.toContain('poziv')
+    expect(line).not.toContain('Časlav')
   }, SLOW)
 })
 
@@ -793,5 +798,88 @@ describe('a clock set before the league had a season', () => {
 
     expect(line).toContain('Za sezonu 2027')
     expect(line).not.toContain('Za sezonu 2026')
+  }, SLOW)
+})
+
+describe('two questions waiting on one page', () => {
+  it('are two sentences and not one', async () => {
+    /* Two of them ran into each other with nothing between: „Nije u trkačkom paru.Primljen poziv:
+       Relja Momčilović.Primljen poziv: Časlav Radenković." (review, 07.09.2026). No other walk has
+       a member with two questions standing on their own page, so nothing could see it. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(must(invite()[0], 'the second question'))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'her line').textContent ?? ''
+
+    expect(line).toContain('Momčilović. Primljen poziv')
+  }, SLOW)
+})
+
+describe('the day a notice about a broken pair carries', () => {
+  it('is the day it was written, and not any other', async () => {
+    /* The notice is dated, and the date is drawn in the panel, in the list of messages and on the
+       message itself. Written with any other day it would file itself among older mail and read as
+       something that happened then (review, 07.09.2026).
+
+       The day is moved between making the pair and ending it, so „the day it was written" and „the
+       day the pair was made" are two different strings and the case can tell them apart. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(screen.getByRole('button', { name: 'Raskini trkački par' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheNotice(user)
+
+    /* Read off the opened message rather than off the panel, which draws the same date beside the
+       subject: one of the two would answer for the other. */
+    expect(must(document.querySelector('.messages__from'), 'the line under the subject').textContent)
+      .toContain('2. 1. 2027')
+  }, SLOW)
+})
+
+describe('the button on the profile of somebody already paired', () => {
+  it('is gone on a clock the league had no season on', async () => {
+    /* The other half of „one home for the season a change takes effect in" (review, 07.09.2026).
+       The answer was measured on that clock and the **question** was not: written by hand, the
+       button asks about 2026 while the pair it would duplicate was written for 2027, so it goes on
+       standing beside a pair that already exists. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, '2025-10-15', THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* A third man opens her page: she is paired, so there is nothing to ask. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(invite().length).toBe(0)
   }, SLOW)
 })
