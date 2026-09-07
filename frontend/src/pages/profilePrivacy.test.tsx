@@ -264,7 +264,7 @@ describe('hiding a profile from readers who are not signed in', () => {
       ['/sr/kalendar/novosadski-nocni-maraton-2014', 'Novosadski noćni maraton', '000007'],
       /* The one screen `000007` is not on, and the one member the standing of this competition
          does draw. */
-      ['/sr/liga/brdska-2019/rezultati', 'Brdska liga 2019', '000001'],
+      ['/sr/liga/brdska-2019', 'Brdska liga 2019', '000001'],
     ]
 
     for (const [where, heading, who] of WALK) {
