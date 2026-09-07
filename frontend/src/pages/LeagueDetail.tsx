@@ -2,6 +2,7 @@ import { useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useFilterParams } from '../app/useFilterParams'
 import { GenderTabs } from '../components/GenderTabs'
+import type { Gender } from '../data/types'
 import { Resource } from '../components/Resource'
 import { combinePair, useEvents, useLeagues } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
@@ -38,6 +39,12 @@ export function LeagueDetail() {
   const { t } = useI18n()
   const { slug } = useParams()
   const [params, setParams] = useFilterParams()
+  /* **Read once and handed down**, since 07.09.2026. The control and the standing both asked the
+     address which half of the field was being read, and two readers of one fact can disagree: a
+     review measured the control frozen to the men while the table drew the women, so the button
+     said `aria-pressed="true"` over somebody else's standing. There is nothing to keep in step
+     when there is one reader. */
+  const gender: Gender = params.get('pol') === 'z' ? 'F' : 'M'
   /* Only what the head needs. The grid asks for the races, the results and the members itself, so
      a competition still names itself while the heaviest file on the portal is on its way. */
   const state = combinePair(useLeagues(), useEvents())
@@ -86,15 +93,11 @@ export function LeagueDetail() {
                       four screens; what tells a reader which of them they have
                       landed on is the name of the thing they are choosing inside,
                       and here that is this competition. */}
-                  <GenderTabs
-                    gender={params.get('pol') === 'z' ? 'F' : 'M'}
-                    label={league.name}
-                    onChange={chooseGender}
-                  />
+                  <GenderTabs gender={gender} label={league.name} onChange={chooseGender} />
                 </div>
               </header>
 
-              <LeagueResults league={league} events={events} />
+              <LeagueResults league={league} events={events} gender={gender} />
             </div>
           </>
         )

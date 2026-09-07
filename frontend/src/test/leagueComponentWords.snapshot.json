@@ -4,6 +4,7 @@
     "../app/useFilterParams",
     "../components/GenderTabs",
     "../components/Resource",
+    "../data/types",
     "../data/useResource",
     "../i18n/useI18n",
     "./Profile.css",
@@ -29,6 +30,7 @@
     "../components/season",
     "../data/derive",
     "../data/pricing",
+    "../data/types",
     "../data/useResource",
     "../i18n/useI18n",
     "../session/useSession",
@@ -49,6 +51,7 @@
     "leagues.rules",
     "leagues.season",
     "leagues.title",
+    "leagues.unknown",
     "leagues__facts",
     "leagues__item",
     "leagues__list",
@@ -57,6 +60,7 @@
     "rankings rankings--tooled",
     "rankings__head-tool",
     "react-router",
+    "ready",
     "rules",
     "·"
   ],
@@ -99,6 +103,7 @@
     "button button--secondary",
     "field__control league__editor",
     "leagues.notWritten",
+    "prizes",
     "profile__section",
     "profile__text",
     "react",
@@ -121,8 +126,6 @@
     "./leagueTable",
     "/",
     "/kalendar/",
-    "F",
-    "M",
     "_blank",
     "col",
     "league__race",
@@ -134,7 +137,6 @@
     "leagues.standing",
     "noreferrer",
     "pager.leagueStanding",
-    "pol",
     "profile__empty",
     "rankings.columns.member",
     "rankings.columns.points",
@@ -145,7 +147,6 @@
     "table-scroll",
     "table__points",
     "table__points league__total",
-    "visually-hidden",
-    "z"
+    "visually-hidden"
   ]
 }

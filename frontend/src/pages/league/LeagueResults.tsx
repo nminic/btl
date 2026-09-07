@@ -41,12 +41,14 @@ function Grid({
   races,
   results,
   competitors,
+  gender,
 }: {
   league: League
   events: BtlEvent[]
   races: Race[]
   results: Result[]
   competitors: Competitor[]
+  gender: Gender
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -78,14 +80,13 @@ function Grid({
      both, so the block no longer needs a heading of its own inside the table: the
      control above it says which one is being read.
 
-     Which half, read off the same key the main standing reads it off
-     (`pages/Rankings.tsx`), because it is the same control saying the same thing;
-     the control itself is drawn by the screen that owns the heading
-     (`pages/LeagueDetail.tsx`).
+     **Which half is not read here**, since 07.09.2026: it is handed down by the
+     screen that draws the control (`pages/LeagueDetail.tsx`), so the button and the
+     table cannot say different things. Two readers of one address were measured
+     disagreeing: the control frozen to the men over a standing of women.
 
      A competition of five men has no block for the women, and then this is empty
      and says so. */
-  const gender: Gender = params.get('pol') === 'z' ? 'F' : 'M'
   const rows =
     leagueGroups(table.rows).find((group) => group.code === genderMark(gender))?.rows ?? []
 
@@ -202,7 +203,16 @@ function Grid({
   )
 }
 
-export function LeagueResults({ league, events }: { league: League; events: BtlEvent[] }) {
+export function LeagueResults({
+  league,
+  events,
+  gender,
+}: {
+  league: League
+  events: BtlEvent[]
+  /** Which half of the field, decided by the screen that draws the control for it. */
+  gender: Gender
+}) {
   const { t } = useI18n()
   const state = combineResources(useRaces(), useResults(), useCompetitors())
 
@@ -215,6 +225,7 @@ export function LeagueResults({ league, events }: { league: League; events: BtlE
           races={races}
           results={results}
           competitors={competitors}
+          gender={gender}
         />
       )}
     </Resource>

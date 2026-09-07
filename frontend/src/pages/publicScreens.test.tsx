@@ -10,6 +10,8 @@ import pages from '../../public/mock/pages.json'
 import words from '../test/leagueWords.snapshot.json'
 import screens from '../test/leagueScreens.snapshot.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
+import { sep } from 'node:path'
+import { sources } from '../test/sources'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -1964,30 +1966,65 @@ describe('Teams', () => {
  * a page keeping its own arrangement fails rather than quietly sitting where it
  * used to.
  */
+/**
+ * Every screen that wears the shared row of a heading and a control, and the file that draws it.
+ *
+ * **The file is written down beside the address so the list can have a floor** (review,
+ * 07.09.2026). It was a list of addresses and nothing else, and two screens added that same day
+ * were simply not on it: the list of competitions and the page of one. Both wear the row, neither
+ * was walked, and a control wrapped in one more element on either of them passed the whole gate.
+ *
+ * The floor is the case under this one: whatever file writes `rankings__head-tool` is either here
+ * with an address, or it is `profile/ProfileHead.tsx`, which is on neither list for a reason
+ * written out below.
+ */
+const SHARED_ROW = [
+  ['/sr/tabela', 'the season table', 'pages/Rankings.tsx'],
+  /* On an event, as somebody who administers one, which since 23.08.2026 is
+     the only way this row has anything in it: the way into the form left it
+     for the rows of the table, so a member who has not run this event is
+     offered nothing here and the row draws nothing at all. The event's head
+     became the shared row on 06.08.2026, and nothing held that it had
+     (goldBand.test.ts says only that the old grid is gone, which stays true
+     whatever replaces it). */
+  ['/sr/kalendar/fruskogorski-maraton-2010', 'an event', 'pages/event/EventActions.tsx', 'superadmin'],
+  ['/sr/takmicari', 'the competitors', 'pages/Competitors.tsx'],
+  ['/sr/timovi', 'the teams', 'pages/Teams.tsx'],
+  ['/sr/top-liste', 'the top boards', 'pages/TopBoards.tsx'],
+  ['/sr/kalendar', 'the calendar', 'pages/Calendar.tsx'],
+  /* The two the owner asked for on 07.09.2026: the season beside „Lige", and „Muškarci / Žene"
+     beside the name of a competition, „kao što je recimo za Timove". */
+  ['/sr/lige', 'the list of competitions', 'pages/Leagues.tsx'],
+  ['/sr/liga/brdska-2019', 'a competition', 'pages/LeagueDetail.tsx'],
+  /* A profile is **not** on this list since 23.08.2026, and that is the owner's
+     decision rather than an oversight: its season has to stand beside the name on
+     a wide screen and in the row with the parts on a narrow one, so the head, the
+     parts and the season are one grid and the season is a child of that grid
+     rather than of the row around the heading (`profile/ProfileHead.tsx`,
+     `ProfileTop`). What it does keep is asked two blocks up, in „chooses the
+     season at the top of the page". */
+  ['/sr/tim/dunavski-trkaci', 'a team', 'pages/TeamDetail.tsx'],
+] as const
+
 describe('the row a screen opens with', () => {
-  for (const [path, screenName, role] of [
-    ['/sr/tabela', 'the season table'],
-    /* On an event, as somebody who administers one, which since 23.08.2026 is
-       the only way this row has anything in it: the way into the form left it
-       for the rows of the table, so a member who has not run this event is
-       offered nothing here and the row draws nothing at all. The event's head
-       became the shared row on 06.08.2026, and nothing held that it had
-       (goldBand.test.ts says only that the old grid is gone, which stays true
-       whatever replaces it). */
-    ['/sr/kalendar/fruskogorski-maraton-2010', 'an event', 'superadmin'],
-    ['/sr/takmicari', 'the competitors'],
-    ['/sr/timovi', 'the teams'],
-    ['/sr/top-liste', 'the top boards'],
-    ['/sr/kalendar', 'the calendar'],
-    /* A profile is **not** on this list since 23.08.2026, and that is the owner's
-       decision rather than an oversight: its season has to stand beside the name on
-       a wide screen and in the row with the parts on a narrow one, so the head, the
-       parts and the season are one grid and the season is a child of that grid
-       rather than of the row around the heading (`profile/ProfileHead.tsx`,
-       `ProfileTop`). What it does keep is asked two blocks up, in „chooses the
-       season at the top of the page". */
-    ['/sr/tim/dunavski-trkaci', 'a team'],
-  ] as const) {
+  it('is walked on every screen that draws one, and that list is not written from memory', () => {
+    /* The floor. A screen added tomorrow either appears on the walk above or fails here and asks
+       for a line once, which is the whole difference between a list and a list with a floor.
+
+       `profile/ProfileHead.tsx` is the one file that writes the class and is not walked, and the
+       reason is in the comment above; it is named here so that the exception is a decision rather
+       than a gap. */
+    const drawing = sources()
+      .filter(({ code }) => code.includes('rankings__head-tool'))
+      .map(({ path }) => path.slice(process.cwd().length + 1).split(sep).join('/'))
+      .filter((path) => path !== 'src/pages/profile/ProfileHead.tsx')
+      .sort()
+
+    expect(drawing.length, 'the portal draws no such row at all').toBeGreaterThan(0)
+    expect(drawing).toEqual(SHARED_ROW.map(([, , file]) => `src/${file}`).sort())
+  })
+
+  for (const [path, screenName, , role] of SHARED_ROW) {
     it(`is the shared one on ${screenName}`, async () => {
       renderAt(path, role ?? 'competitor', '000007')
 

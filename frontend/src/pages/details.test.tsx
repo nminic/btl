@@ -1,5 +1,5 @@
 import { slugify } from './rulebookToc'
-import { act, cleanup, screen, within } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import type { BtlEvent, League } from '../data/types'
 import { at, first, last, must } from '../test/at'
@@ -317,6 +317,15 @@ describe('LeagueDetail', () => {
 
     expect(within(box).getByText(new RegExp(`Sezona 2019`))).toBeVisible()
     expect(box.textContent).toContain(`Događaja: ${league.eventIds.length}`)
+
+    /* **Waited for, because it arrives after the box does** (review, 07.09.2026). „Učesnika" is
+       worked out of the three heaviest files on the portal, and the list no longer waits on them:
+       the names, the seasons, the terms and the prizes draw out of the one small file, and this
+       number fills in behind them. Read at once, it is still empty, which is what the screen
+       deliberately shows while the answer is coming. */
+    await waitFor(() => {
+      expect(box.textContent).toMatch(/Učesnika: \d/)
+    })
 
     const said = must(box.textContent, 'the line of facts')
 

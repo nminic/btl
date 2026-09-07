@@ -483,6 +483,37 @@ describe('which half of the field is being read', () => {
     expect(router.state.location.search).toContain('pol=m')
   }, SLOW)
 
+  it('says which half it is drawing, out loud and in the same breath', async () => {
+    /* **One reader of one fact** (review, 07.09.2026). The control and the standing both asked the
+       address which half was being read, and two readers can disagree: with the control frozen to
+       the men, the table drew the women and the button „Muškarci" still reported
+       `aria-pressed="true"`, so a reader working by ear was told the opposite of what was on the
+       screen, and the whole gate stayed green.
+
+       The address is now read once, by the screen that draws the control, and handed down
+       (`pages/LeagueDetail.tsx`). What is asked here is the thing that can no longer part: the
+       button that says it is pressed, and the rows underneath it, name the same half.
+
+       Read on an address that opens **on the women**, because the men are what both a working
+       screen and a frozen one show first. */
+    await withCompetitors(MANY, true)
+
+    renderAt(`${RUN}?pol=z`)
+
+    const women = named(await grid())
+
+    expect(screen.getByRole('button', { name: 'Žene' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Muškarci' })).toHaveAttribute('aria-pressed', 'false')
+
+    /* And the rows really are the women, not merely fifty of somebody: the fixture makes every
+       odd-numbered member a woman, so their numbers are the odd ones. */
+    expect(women.length).toBeGreaterThan(0)
+    expect(
+      women.filter((one) => Number((one ?? '').replace(/\D/g, '')) % 2 === 1),
+      'the standing under „Žene" is not the women',
+    ).toEqual([])
+  }, SLOW)
+
   it('goes back to the first page when the half changes', async () => {
     /* Read on page two of the men, the women may have fewer pages than that, and `pageFrom` would
        land the reader on their last rather than on their first. The main standing drops the age

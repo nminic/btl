@@ -35,7 +35,7 @@
     },
     "leagues": {
       "title": "BTL lige",
-      "description": "Lige koje teku uporedo sa glavnom, i koji događaji ulaze u njih."
+      "description": "Sva takmičenja koja teku uporedo sa glavnom ligom, sa propozicijama, nagradama i brojem učesnika."
     },
     "calendar": {
       "title": "BTL kalendar",
@@ -158,10 +158,10 @@
       "recordDescription": "{name}: sastav tima i bodovi koje su njegovi članovi osvojili u Balkanskoj trkačkoj ligi."
     },
     "league": {
-      "title": "Propozicije takmičenja",
-      "description": "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
+      "title": "Poredak takmičenja",
+      "description": "Poredak jednog takmičenja koje teče uz glavnu ligu, po polu, sa bodovima sa svakog događaja.",
       "recordTitle": "{name}",
-      "recordDescription": "{name}: propozicije, nagrade i događaji koji u sezoni {season} ulaze u ovo takmičenje."
+      "recordDescription": "{name}: poredak u sezoni {season}, po polu, sa bodovima sa svakog događaja."
     },
     "message": {
       "title": "Poruka",
@@ -811,6 +811,7 @@
     "standing": "Poredak takmičenja",
     "noResults": "Na ovom takmičenju još nema nijednog rezultata.",
     "noneOfThese": "U ovom takmičenju nema nijednog rezultata u izabranoj konkurenciji.",
+    "unknown": "nepoznato",
     "notWritten": "Još nije napisano.",
     "name": "Liga"
   },

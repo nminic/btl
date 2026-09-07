@@ -1,7 +1,8 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import type { ResourceName } from '../data/client'
-import { first } from '../test/at'
+import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
+import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
 /* A screen must wait only on the data it actually shows.
@@ -19,6 +20,11 @@ import { setupUser } from '../test/user'
 const BOTH: [ResourceName][] = [['races'], ['events']]
 
 /** Serves every resource off disk as usual, except the one named, which fails. */
+/** The one line of facts under the name of a competition, whole. The words and the number are two
+ *  nodes, so a query for either says nothing about the other. */
+const facts = () =>
+  must(document.querySelector('.leagues__facts'), 'the line of facts').textContent ?? ''
+
 function breakResource(name: ResourceName) {
   const real = globalThis.fetch
 
@@ -84,6 +90,46 @@ describe('a part of a screen waits without covering the page', () => {
     expect(new Set(said).size).toBe(said.length)
     expect(said).toContain('Učitavanje: Rezultati članova')
   })
+
+  it('draws the list of competitions while the heaviest file is still on its way', async () => {
+    /* **Measured by a review on 07.09.2026, and it was a high finding.** The list read only
+       `leagues.json` (1,9 KB) until that day; the number of entrants the owner asked for is worked
+       out of the results (1,4 MB), the races (553 KB) and the events (373 KB), and waiting on all
+       four put the whole screen under a full-page loader. What was behind that loader is what the
+       owner had just moved onto this screen: the names of the competitions, their seasons, their
+       terms and their prizes.
+
+       So the number waits and the screen does not. Empty while the answer is coming, because a
+       nought where the file has not arrived is the table telling a lie. */
+    restore = stallResource('results')
+    renderAt('/sr/lige?sezona=2027')
+
+    expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Propozicije' })).toBeVisible()
+    /* And no plate over the page: an inline wait is a wait beside the words, not instead of
+       them. */
+    expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+    /* Read off the line of facts as a whole, because the words and the number are two nodes: the
+       word is a key of the dictionary and the number is a component that fills in behind it. */
+    expect(facts()).toContain('Učesnika:')
+    expect(facts(), 'the number arrived while the file was held').not.toMatch(/Učesnika: \d/)
+  }, SLOW)
+
+  it('says so rather than counting nought when that file never arrives', async () => {
+    /* The other half of the same finding. A count of none where the file failed is a lie in the
+       other direction, and the word for it has to be a word. */
+    restore = breakResource('results')
+    renderAt('/sr/lige?sezona=2027')
+
+    expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+    /* Waited for: the word arrives when the request gives up, which is a moment after the screen
+       is drawn out of the small file it does wait on. */
+    await waitFor(() => {
+      expect(facts()).toContain('Učesnika: nepoznato')
+    })
+    /* And the screen is not replaced by an error: what failed is one number of one line. */
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  }, SLOW)
 
   it('keeps the front page readable while the president is still on his way', async () => {
     restore = stallResource('pages')

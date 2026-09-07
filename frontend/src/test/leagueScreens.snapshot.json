@@ -18,7 +18,7 @@
     "head": [
       "BTL lige · Balkanska trkačka liga",
       "Balkanska trkačka liga",
-      "Lige koje teku uporedo sa glavnom, i koji događaji ulaze u njih.",
+      "Sva takmičenja koja teku uporedo sa glavnom ligom, sa propozicijama, nagradama i brojem učesnika.",
       "https://balkanskatrkackaliga.net/sr/lige",
       "sr_RS"
     ]
@@ -43,7 +43,7 @@
     "head": [
       "BTL lige · Balkanska trkačka liga",
       "Balkanska trkačka liga",
-      "Lige koje teku uporedo sa glavnom, i koji događaji ulaze u njih.",
+      "Sva takmičenja koja teku uporedo sa glavnom ligom, sa propozicijama, nagradama i brojem učesnika.",
       "https://balkanskatrkackaliga.net/sr/lige",
       "sr_RS"
     ]
@@ -67,7 +67,7 @@
     "head": [
       "BTL lige · Balkanska trkačka liga",
       "Balkanska trkačka liga",
-      "Lige koje teku uporedo sa glavnom, i koji događaji ulaze u njih.",
+      "Sva takmičenja koja teku uporedo sa glavnom ligom, sa propozicijama, nagradama i brojem učesnika.",
       "https://balkanskatrkackaliga.net/sr/lige",
       "sr_RS"
     ]
@@ -112,7 +112,7 @@
     "head": [
       "Balkanska trkačka liga",
       "Brdska liga 2019 · Balkanska trkačka liga",
-      "Brdska liga 2019: propozicije, nagrade i događaji koji u sezoni 2019 ulaze u ovo takmičenje.",
+      "Brdska liga 2019: poredak u sezoni 2019, po polu, sa bodovima sa svakog događaja.",
       "https://balkanskatrkackaliga.net/sr/liga/brdska-2019",
       "sr_RS"
     ]
@@ -157,7 +157,7 @@
     "head": [
       "Balkanska trkačka liga",
       "Brdska liga 2019 · Balkanska trkačka liga",
-      "Brdska liga 2019: propozicije, nagrade i događaji koji u sezoni 2019 ulaze u ovo takmičenje.",
+      "Brdska liga 2019: poredak u sezoni 2019, po polu, sa bodovima sa svakog događaja.",
       "https://balkanskatrkackaliga.net/sr/liga/brdska-2019",
       "sr_RS"
     ]
@@ -182,14 +182,14 @@
     "head": [
       "Balkanska trkačka liga",
       "Planinska liga 2027 · Balkanska trkačka liga",
-      "Planinska liga 2027: propozicije, nagrade i događaji koji u sezoni 2027 ulaze u ovo takmičenje.",
+      "Planinska liga 2027: poredak u sezoni 2027, po polu, sa bodovima sa svakog događaja.",
       "https://balkanskatrkackaliga.net/sr/liga/planinska-2027",
       "sr_RS"
     ]
   },
   "/sr/liga/ne-postoji · visitor": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarPropozicije takmičenjaOve lige nema.Politika privatnostiUslovi korišćenjaKontakt",
-    "title": "Propozicije takmičenja · Balkanska trkačka liga",
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarPoredak takmičenjaOve lige nema.Politika privatnostiUslovi korišćenjaKontakt",
+    "title": "Poredak takmičenja · Balkanska trkačka liga",
     "labels": [
       "Aleksandra Milovanović-Stefanović",
       "Glavna navigacija",
@@ -205,8 +205,8 @@
     ],
     "head": [
       "Balkanska trkačka liga",
-      "Propozicije takmičenja · Balkanska trkačka liga",
-      "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
+      "Poredak jednog takmičenja koje teče uz glavnu ligu, po polu, sa bodovima sa svakog događaja.",
+      "Poredak takmičenja · Balkanska trkačka liga",
       "https://balkanskatrkackaliga.net/sr/liga/ne-postoji",
       "sr_RS"
     ]

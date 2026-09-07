@@ -20,12 +20,23 @@ import { useI18n } from '../../i18n/useI18n'
  */
 export function EditableText({
   value,
+  field,
   headingId,
   heading,
   canEdit,
   onSave,
 }: {
   value: string
+  /**
+   * Which field of the competition this is, so the box is bounded by **its own** limit.
+   *
+   * It read `rules` for both until 07.09.2026, which was right only for as long as the two limits
+   * were the same number. A review measured what happens when they part: with the prizes lowered
+   * to 500 in the definition, a moderator writing here was let past 500 and the administration
+   * form then told them their own text was too long. That is the very fault `limitOf` exists to
+   * prevent, moved one screen along.
+   */
+  field: 'rules' | 'prizes'
   headingId: string
   heading: string
   canEdit: boolean
@@ -54,7 +65,7 @@ export function EditableText({
              anybody cared to paste, so the text could come back longer than the form that made it
              accepts, and the next person to open that form was told their own words were too
              long. The number lives in the definition (`forms/records.ts`). */
-          maxLength={limitOf(liga, 'rules')}
+          maxLength={limitOf(liga, field)}
           onBlur={(event) => {
             onSave(event.target.value)
             setEditing(false)
