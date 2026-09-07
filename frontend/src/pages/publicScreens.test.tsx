@@ -1195,15 +1195,43 @@ describe('TopBoards', () => {
     expect(board('Najduže na stazi').getAllByText(TIME_ON_COURSE).length).toBe(10)
   })
 
-  it('stands the pairs board empty rather than inventing one', async () => {
+  it('ranks the pairs of a season, and stands empty in a season that has none', async () => {
+    /* **This case said the opposite until 07.09.2026**, and it was right until then: a pair is made
+       by two people confirming each other, nothing in the data said who had, and an invented pair
+       would have been worse than an empty board. The owner then asked to see the shape: „Izmokuj mi
+       podatke za neki fiktivni par da mogu da vidim kako to izgleda", „neka dva para". Two pairs are
+       now mocked in `public/mock/pairs.json`, and both of them are two members who really do share
+       races in the mocked results, so the figures are derived and not written by hand.
+
+       **Both halves are still here**, because only one of them changed: a season the pairs were
+       formed for has a table, and a season they were not formed for still says the sentence. Without
+       the second half the empty board would have no case at all, and the sentence it stands on could
+       be deleted with the whole gate green. */
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
-    const pairs = board('Najbolji trkački parovi')
 
-    expect(pairs.getByText(/stiže zajedno sa bazom/)).toBeVisible()
-    expect(pairs.queryByRole('table')).not.toBeInTheDocument()
-  })
+    const pairs = board('Najbolji trkački parovi')
+    /* Two pairs, and the one that scored more of its points together on top. */
+    const rows = pairs.getAllByRole('row').slice(1)
+
+    expect(rows.length).toBe(2)
+    expect(within(at(rows, 0)).getByText('Ristić')).toBeVisible()
+    expect(within(at(rows, 0)).getByText('Bogdanović')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('Živković')).toBeVisible()
+
+    cleanup()
+
+    /* And a season nobody paired up for: the sentence, and no table at all. */
+    renderAt('/sr/top-liste?sezona=2018')
+
+    await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
+
+    const none = board('Najbolji trkački parovi')
+
+    expect(none.getByText(/stiže zajedno sa bazom/)).toBeVisible()
+    expect(none.queryByRole('table')).not.toBeInTheDocument()
+  }, SLOW)
 
   it('draws the progress as one bar of two levels, the season before under the gain', async () => {
     /* Owner, 04.08.2026: "svaki stubac ima dva nivoa: manje istaknut niži iz

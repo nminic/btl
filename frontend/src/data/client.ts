@@ -33,6 +33,7 @@ export const RESOURCE_NAMES = [
      10.08.2026). Nine hundred kilobytes, which is why it is a resource and not
      an import: it is asked for when somebody starts typing a place, and on no
      other screen. */
+  'pairs',
   'places',
   'races',
   'results',

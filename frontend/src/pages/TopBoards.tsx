@@ -14,15 +14,16 @@ import {
   topByKilometers,
   topByProgress,
   topByTimeOnCourse,
+  topPairs,
   fieldFor,
 } from '../data/derive'
-import type { Competitor, RaceCategory, Result } from '../data/types'
-import { combinePair, useCompetitors, useResults } from '../data/useResource'
+import type { Competitor, RaceCategory, RacingPair, Result } from '../data/types'
+import { combineResources, useCompetitors, usePairs, useResults } from '../data/useResource'
 import { formatCourseTime, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { leaderClass } from '../components/podium'
 import { mineIn, rowClass } from '../components/mine'
-import { NamePlate } from '../components/NamePlate'
+import { NamePlate, OverTwoLines } from '../components/NamePlate'
 import { useSession } from '../session/useSession'
 import './Rankings.css'
 import './TopBoards.css'
@@ -278,10 +279,12 @@ function nameOf(competitor: Competitor): string {
 function Boards({
   competitors,
   results,
+  pairs,
   seasonParam,
 }: {
   competitors: Competitor[]
   results: Result[]
+  pairs: RacingPair[]
   seasonParam: string | null
 }) {
   const { locale, t } = useI18n()
@@ -413,12 +416,33 @@ function Boards({
        top, their points together to the right and the races they share below
        that (04.08.2026). None of that can be drawn from nothing, so the shape
        arrives with the pairs themselves. */
-    const pairs: Widget = {
+    const bestPairs: Widget = {
       kind: 'table',
       id: 'pairs',
       title: t('topBoards.pairs'),
       columns: [{ text: t('topBoards.columns.points') }],
-      places: [],
+      places: topPairs(pairs, field, results, season, PLACES).map((row) => ({
+        key: row.pair.id,
+        position: row.position,
+        /* No link on the row: a pair is two people and there is no one profile to lead to. The
+           `Place` said so before there was a pair to draw. */
+        name: (
+          <NamePlate competitors={row.competitors}>
+            {/* One element per person, so the pair's own rule lays the two of them as two rows
+                and each of those holds a name over two lines: four lines in all, which is what
+                the owner asked for (07.09.2026). Without the wrapper the four halves would each
+                be a row of that grid and the gap would fall between a given name and its own
+                surname. */}
+            {row.competitors.map((one) => (
+              <span key={one.memberNumber}>
+                <OverTwoLines competitor={one} />
+              </span>
+            ))}
+          </NamePlate>
+        ),
+        members: row.competitors.map((one) => one.memberNumber),
+        cells: [{ text: formatPoints(row.points, locale) }],
+      })),
       empty: t('topBoards.pairsSoon'),
     }
 
@@ -477,10 +501,10 @@ function Boards({
       onCourse,
       byLength('short'),
       progress,
-      pairs,
+      bestPairs,
       bestRaces,
     ]
-  }, [field, results, season, locale, t, linkTo])
+  }, [field, results, pairs, season, locale, t, linkTo])
 
   return (
     <>
@@ -514,17 +538,18 @@ export function TopBoards() {
   const [params] = useFilterParams()
   /* Only what the boards show. The teams went off this page with the layout of
      04.08.2026, and the file of teams went with them. */
-  const state = combinePair(useCompetitors(), useResults())
+  const state = combineResources(useCompetitors(), useResults(), usePairs())
 
   return (
     <div className="boards rankings--tooled">
       <h1>{t('topBoards.title')}</h1>
 
       <Resource state={state}>
-        {([competitors, results]) => (
+        {([competitors, results, pairs]) => (
           <Boards
             competitors={competitors}
             results={results}
+            pairs={pairs}
             seasonParam={params.get('sezona')}
           />
         )}

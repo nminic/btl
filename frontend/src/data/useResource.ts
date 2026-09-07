@@ -10,6 +10,7 @@ import type {
   League,
   Moderator,
   Race,
+  RacingPair,
   Result,
   StaticPage,
   Team,
@@ -319,4 +320,5 @@ export const useResults = (): ResourceState<Result[]> => {
     return { status: 'ready', data: live.data.map((one) => corrected[one.id] ?? one) }
   }, [live, corrected])
 }
+export const usePairs = () => useResource<RacingPair[]>('pairs')
 export const useTeams = () => useResource<Team[]>('teams')

@@ -39,6 +39,7 @@ describe('the list of resources', () => {
       'leagues',
       'moderators',
       'pages',
+      'pairs',
       'places',
       'races',
       'results',
