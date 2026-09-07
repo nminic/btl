@@ -178,6 +178,16 @@ const IN_PIXELS = new Map([
     'cuts a competitor name and a race name to an ellipsis, both already clipped above',
   ],
   [
+    'components/NamePlate.css 699.98',
+    /* In pixels because it is the other half of the query above, on the same screen. The first
+       column of a competition's standing is capped at 7,5rem there and the circle stands inside
+       that cap, so the two have to narrow at the same window width; in `em` they would agree only
+       at the default text size, and a reader at 200 per cent would get the narrow column at one
+       width and the small circle at another. Measured at 360 before this: the given name fitted
+       and the surname was cut. */
+    'shrinks the circle so the name in the frozen column keeps its letters',
+  ],
+  [
     'pages/Profile.css 700',
     /* In pixels because it has to be the other half of a pixel query. The table
        of races is given equal columns and a width worked out from how many it

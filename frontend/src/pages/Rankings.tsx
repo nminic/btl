@@ -2,6 +2,7 @@ import { categoryLabel } from '../data/categories'
 import { useEffect, useMemo } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
+import { NamePlate } from '../components/NamePlate'
 import { GenderTabs } from '../components/GenderTabs'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
@@ -230,7 +231,12 @@ function Standing({
                     )}
                   </td>
                   <td>
-                    <CompetitorName competitor={row.competitor} />{' '}
+                    {/* Krug pre imena, a ime ostaje u jednom redu (vlasnik, 07.09.2026:
+                        „U ligi dva reda, u tabelama jedan"): red ove tabele je red po članu i
+                        svaka nova linija je ceo red viši. */}
+                    <NamePlate competitors={[row.competitor]}>
+                      <CompetitorName competitor={row.competitor} />
+                    </NamePlate>{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
                   <td>{categoryLabel(categoryOfMember(row.competitor, season), t)}</td>

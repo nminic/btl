@@ -1085,7 +1085,18 @@ describe('TopBoards', () => {
     for (const name of ['Najviše kilometara', 'Najduže na stazi']) {
       const rows = board(name).getAllByRole('row').slice(1)
       const link = within(at(rows, 0)).getByRole('link')
-      const whole = must(link.textContent, 'the name in the row')
+      /* Everything the link says with the pieces a reader never hears taken out. There are two of
+         those since 07.09.2026: the initial of the surname, which the narrow card swaps in, and
+         the circle with the member's own initials in it, which the owner asked for on that day
+         (`components/NamePlate.tsx`). Both are `aria-hidden`, and both are in `textContent`, so
+         the whole name is what is left once they are gone. */
+      const unheard = [...link.querySelectorAll('[aria-hidden="true"]')].map(
+        (one) => one.textContent ?? '',
+      )
+      const whole = unheard.reduce(
+        (said, piece) => said.replace(piece, ''),
+        must(link.textContent, 'the name in the row'),
+      )
 
       /* The surname stands apart, and the initial after it is the first letter
          of that surname and a full stop. */
@@ -1097,7 +1108,7 @@ describe('TopBoards', () => {
       /* Read out as the whole name and not as the letter beside it: the initial
          is out of the accessible tree, the surname never is. */
       expect(initial).toHaveAttribute('aria-hidden', 'true')
-      expect(link).toHaveAccessibleName(whole.replace(initial.textContent ?? '', '').trim())
+      expect(link).toHaveAccessibleName(whole.trim())
     }
   })
 

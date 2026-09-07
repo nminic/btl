@@ -1,0 +1,84 @@
+/* A face and a name side by side, on the six tables the owner named (07.09.2026). */
+
+/* For `.face-circle` and `.portrait`, which the plate draws and does not define: the circle is one
+   decision in one place (ADL A7, `components/Portrait.css`). Imported so that a screen which wears
+   this class really reaches the sheet that makes it a circle; the portal has been bitten by a class
+   whose sheet nobody asked for (`styles/outsideHost.test.ts`). */
+@import './Portrait.css';
+
+.plate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-10);
+  /* The name reads from the left even in a cell the shared table rule aligns right, and it is
+     never written in capitals: this is somebody's name and not a three letter column heading
+     (owner, 07.09.2026: „Imena i prezimena ne treba da budu sva velikim slovima"). Written on the
+     plate rather than on each of the six cells, so a seventh place is right without being told. */
+  text-align: start;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+/* Smaller than the circle on a board of ten, which is the widget the circle was sized for: there
+   it is the whole of the item, here it stands beside words and a row of a table is as tall as it. */
+.plate .portrait {
+  inline-size: 2.1rem;
+  block-size: 2.1rem;
+  font-size: 0.68rem;
+}
+
+.plate__words {
+  display: grid;
+  /* Cut rather than pushed: the column of a name is bounded on both tables that carry one, and a
+     name that will not give way widens the table instead of ending in an ellipsis. */
+  min-inline-size: 0;
+}
+
+/* Two rows, and that is the whole of what tells the standing of a competition from the tables
+   (owner: „U ligi dva reda, u tabelama jedan"). The two halves are two elements with a space
+   between them, so a reader hears one name (`OverTwoLines`); here they are laid one under the
+   other. Only the standing of a competition writes them, so nothing else is broken by this. */
+.plate__given,
+.plate__family {
+  display: block;
+  line-height: 1.2;
+}
+
+.plate__family {
+  font-weight: 700;
+}
+
+/* A pair: one circle above the other, and the two names beside them, each on its own row (owner,
+   07.09.2026). Nothing draws one until the board of pairs has rows, which waits for the database. */
+.plate--pair .plate__faces {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.plate--pair .plate__words {
+  gap: var(--space-4);
+}
+
+/* On a telephone the circle gives way, because the column does not.
+ *
+ * In the standing of a competition the first column is frozen and capped at 7,5rem there
+ * (`pages/league/League.css`), and the cap is what keeps the races their room. Measured at 360
+ * with the circle at its full size: the given name fitted and the surname was cut, „Milovanović"
+ * ending in an ellipsis. Nine pixels of circle buy about a letter and a half of surname, and a
+ * letter of a name is worth more than a millimetre of a monogram whose letters the name already
+ * carries.
+ *
+ * The same width the whole portal narrows its tables at, and the one it is written in: pixels, and
+ * on the list `styles/scale.test.ts` keeps. */
+@media (max-width: 699.98px) {
+  .plate {
+    gap: var(--space-6);
+  }
+
+  .plate .portrait {
+    inline-size: 1.7rem;
+    block-size: 1.7rem;
+    font-size: 0.55rem;
+  }
+}

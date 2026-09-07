@@ -112,7 +112,7 @@
   "src/pages/league/LeagueResults.tsx": [
     "../../app/useFilterParams",
     "../../clock/useClock",
-    "../../components/CompetitorName",
+    "../../components/NamePlate",
     "../../components/Pager",
     "../../components/Resource",
     "../../components/pageOf",
@@ -122,6 +122,7 @@
     "../../data/useResource",
     "../../i18n/format",
     "../../i18n/useI18n",
+    "../profile/ProfileLink",
     "./League.css",
     "./leagueTable",
     "/",

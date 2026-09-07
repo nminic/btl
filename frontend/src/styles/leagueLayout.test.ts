@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor, sheetsOf, unremarked } from '../test/stylesheet'
+import { first, must } from '../test/at'
+import { ruleFor, sheetsOf, unconditionalRules, unremarked } from '../test/stylesheet'
 
 /**
  * The two things the owner asked for on 07.09.2026 that live only in a stylesheet.
@@ -20,6 +21,7 @@ import { ruleFor, sheetsOf, unremarked } from '../test/stylesheet'
 const SRC = join(process.cwd(), 'src')
 const LEAGUE = join(SRC, 'pages/league/League.css')
 const LEAGUES = join(SRC, 'pages/Leagues.css')
+const PLATE = join(SRC, 'components/NamePlate.css')
 
 /**
  * Every property a stylesheet can lay a track of columns with.
@@ -49,6 +51,54 @@ describe('the grid of a competition', () => {
     /* Nought, or `separate` puts a gutter between every pair of cells and the table stops looking
        like one table. */
     expect(rule.getPropertyValue('border-spacing')).toBe('0px')
+  })
+})
+
+describe('the name of a competitor beside their circle', () => {
+  /* Owner, 07.09.2026: „Imena i prezimena ne treba da budu sva velikim slovima, nego kružni logo
+   * sa slikom ili inicijalima, i pored u dva reda Ime i Prezime."
+   *
+   * The capitals are not written by the standing; they come from `.table th`, which dresses every
+   * heading on the portal, and the name of a competitor in the standing of a competition is a `th`
+   * so that a screen reader can say whose row a number belongs to. Undone on the plate rather than
+   * on that one cell, so the sixth screen that draws a name is right without being told.
+   *
+   * jsdom applies no stylesheet, so nothing that draws a screen can see any of this (ADL A33). It
+   * was measured in a browser at 360, at 1280 and at 200 per cent text; what is held here is that
+   * the rule is in the sheet and says what it was measured saying. */
+  it('is written the way a name is written, and not the way a column heading is', () => {
+    const rule = ruleFor(readFileSync(PLATE, 'utf-8'), '.plate', 'NamePlate.css')
+
+    expect(rule.getPropertyValue('text-transform')).toBe('none')
+    expect(rule.getPropertyValue('letter-spacing')).toBe('normal')
+    expect(rule.getPropertyValue('font-weight')).toBe('400')
+    /* And it reads from the left, in a cell the shared table rule would align right. */
+    expect(rule.getPropertyValue('text-align')).toBe('start')
+  })
+
+  it('lays the two halves one under the other where a screen writes them', () => {
+    /* The breaking is the sheet's, and only the standing of a competition writes the two halves
+       (`components/NamePlate.tsx`, `OverTwoLines`). Both halves are named in one rule, because a
+       rule that laid out one of them would leave the other on the line it was on; the selector is
+       spelt the way the browser's own parser gives it back. */
+    const laid = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
+      (rule) =>
+        rule.selectorText.includes('.plate__given') &&
+        rule.selectorText.includes('.plate__family'),
+    )
+
+    expect(laid.length, 'the two halves are not laid out together').toBe(1)
+    expect(must(first(laid), 'the rule').style.getPropertyValue('display')).toBe('block')
+  })
+
+  it('reaches the sheet that makes the circle a circle', () => {
+    /* `NamePlate` draws `.portrait` and does not define it: the circle is one decision in one
+       place (ADL A7, `components/Portrait.css`). A class whose sheet nobody asks for is a class
+       the bundle may leave out, and the portal has been bitten by exactly that. */
+    const screen = join(SRC, 'components/NamePlate.tsx')
+    const sheets = sheetsOf(screen, readFileSync(screen, 'utf-8'))
+
+    expect([...sheets].some((one) => one.endsWith(join('components', 'Portrait.css')))).toBe(true)
   })
 })
 
