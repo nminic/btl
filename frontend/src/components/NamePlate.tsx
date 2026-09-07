@@ -10,7 +10,8 @@ import './NamePlate.css'
  * Prezime."
  *
  * **One component and six places**, because the same shape was about to be written six times: the
- * standing of a competition, the main standing, and three of the top boards. What the portal has
+ * standing of a competition, the main standing, and four of the top boards (most kilometres,
+ * longest on the course, best single races, and best pairs). What the portal has
  * learnt about writing one rule at eight call sites is on `components/CompetitorName.tsx`, and
  * this is that lesson applied before the fact rather than after it.
  *
@@ -53,7 +54,8 @@ export function NamePlate({
 }
 
 /**
- * A name over two lines, which is what the standing of a competition wears and nothing else does.
+ * A name over two lines, worn by the standing of a competition and by each half of a pair on the
+ * board of best pairs, and by nothing else.
  *
  * Two elements with a space between them rather than a line break the stylesheet could take away:
  * what a reader hears has to be „Ime Prezime" either way, and two elements parted by a space are

@@ -1121,6 +1121,27 @@ describe('TopBoards', () => {
     }
   })
 
+  /* Every board of the page that really is a table, asked of the drawn screen.
+   *
+   * **The floor under the two hand-written lists below**, and it took three rounds to write. Both
+   * lists named three boards; the pairs became a fourth on 07.09.2026 and neither grew, so a cell
+   * of that board could be marked as words while its heading stayed a figure, and its places could
+   * be numbered from two with no gold on the leader, both with the whole gate green. A list is
+   * safe when the day it goes short is the day the gate fails (`CLAUDE.md`, „Spisak u čuvaru se
+   * piše zajedno sa svojim podom"), and the precedent is `pages/namePlateOnScreens.test.tsx`. */
+  const tableBoards = () =>
+    [...document.querySelectorAll('.boards__board')]
+      .filter((one) => one.querySelector('table') !== null)
+      .map((one) => must(one.querySelector('.boards__title'), 'a board title').textContent)
+      .sort()
+
+  const BOARDS_THAT_ARE_TABLES = [
+    'Najbolji pojedinačni rezultati',
+    'Najbolji trkački parovi',
+    'Najduže na stazi',
+    'Najviše kilometara',
+  ]
+
   it('sets a figure to the right and words to the left, on every board', async () => {
     /* The shared table pushes its first three columns to the left, which is
        right for a name and wrong for a number, and on two of these boards the
@@ -1147,6 +1168,7 @@ describe('TopBoards', () => {
          when the board did, and a cell marked as words passed). */
       ['Najbolji trkački parovi', ['figure']],
     ] as const) {
+      expect(BOARDS_THAT_ARE_TABLES, 'the list below has stopped naming every board').toContain(name)
       const rows = board(name).getAllByRole('row')
       /* The place and the name are the shared table's own two columns and are
          set by it; what these marks are for is everything after them. */
@@ -1166,6 +1188,10 @@ describe('TopBoards', () => {
       )
       expect(within(at(rows, 1)).getAllByRole('cell').slice(2).map(setting)).toEqual(expected)
     }
+
+    /* And the list above is every board that is a table, so the fifth one fails here rather than
+       going unmeasured. */
+    expect(tableBoards()).toEqual(BOARDS_THAT_ARE_TABLES)
   })
 
   it('marks the leader of a board and nobody else', async () => {
@@ -1175,15 +1201,22 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolji pojedinačni rezultati']) {
+    /* **Every board that is a table**, and the list is checked against the screen below: until
+       07.09.2026 this named three by hand, the pairs became a fourth, and its places could be
+       numbered from two with no gold on the leader while the gate stayed green (review). */
+    expect(tableBoards()).toEqual(BOARDS_THAT_ARE_TABLES)
+
+    for (const name of BOARDS_THAT_ARE_TABLES) {
       const rows = board(name).getAllByRole('row').slice(1)
       /* Read off the place written in the row rather than counted, because a
          shared first place is two rows and both of them won: counting one would
-         be a test that fails on correct data. None of these three boards has a
+         be a test that fails on correct data. None of these boards has a
          tie at the top today, and none of them is promised not to. */
       const leading = (row: HTMLElement) => first(within(row).getAllByRole('cell')).textContent
 
-      expect(rows.length).toBeGreaterThan(3)
+      /* More than one, so „the leader and nobody else" has somebody to be nobody. The board of
+         pairs carries two rows and the other three carry ten. */
+      expect(rows.length).toBeGreaterThan(1)
       expect(rows.filter((row) => row.className === 'podium').map(leading)).toEqual(
         rows.filter((row) => leading(row) === '1').map(leading),
       )
@@ -1247,7 +1280,7 @@ describe('TopBoards', () => {
 
     const none = board('Najbolji trkački parovi')
 
-    expect(none.getByText(/nijedan trkački par još nema zajedničku trku/)).toBeVisible()
+    expect(none.getByText(/U ovoj sezoni takvog para nema/)).toBeVisible()
     expect(none.queryByRole('table')).not.toBeInTheDocument()
   }, SLOW)
 
@@ -1292,6 +1325,10 @@ describe('TopBoards', () => {
         .slice(1)
 
       expect(rows.length, 'the board of pairs is cut somewhere other than five').toBe(5)
+      /* And the cut is the board's and not the length of this setup (review, 07.09.2026): take one
+         pair out of the six above and the board draws five whatever the limit says, so the case
+         would go on passing with the limit gone. */
+      expect(rows.length, 'the setup is no longer longer than the cut').toBeLessThan(six.length)
     } finally {
       /* Put back what stood before, and not `vi.unstubAllGlobals`: this suite serves the mocked
          files through a stub of its own, and unstubbing reverts to the one that stood before that

@@ -265,8 +265,9 @@ describe('the name of a competitor beside their circle', () => {
   })
 
   it('lays the two halves one under the other where a screen writes them', () => {
-    /* The breaking is the sheet's, and only the standing of a competition writes the two halves
-       (`components/NamePlate.tsx`, `OverTwoLines`). Both halves are named in one rule, because a
+    /* The breaking is the sheet's, and two screens write the two halves
+       (`components/NamePlate.tsx`, `OverTwoLines`): the standing of a competition, and each half of
+       a pair on the board of best pairs. Both halves are named in one rule, because a
        rule that laid out one of them would leave the other on the line it was on; the selector is
        spelt the way the browser's own parser gives it back. */
     const laid = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
@@ -281,7 +282,7 @@ describe('the name of a competitor beside their circle', () => {
 
   it('lays the words beside the circle in a line, and only a pair in rows', () => {
     /* **Measured by a review on 07.09.2026, and it was a high finding.** `.plate__words` was a
-       grid, and a grid makes every child its own row. Two of the five screens hand over three
+       grid, and a grid makes every child its own row. Two of the six screens hand over three
        children – the given name, the surname, and the initial a narrow card swaps in
        (`pages/TopBoards.tsx`, `NameOrInitial`) – so „Strahinja" and „Vukićević" stood one under
        the other on „Najviše kilometara" and „Najduže na stazi", at every width. That is the
@@ -293,7 +294,7 @@ describe('the name of a competitor beside their circle', () => {
        two lines. */
     /* **What puts the words beside the circle is the plate itself**, and that was the half this
        case was missing (review, 07.09.2026): with `display: inline-flex` gone from `.plate`, the
-       circle stands **above** the name on all five screens and the name takes the whole column,
+       circle stands **above** the name on all six screens and the name takes the whole column,
        and nothing said a word. Measured in a browser at 1280: the circle at `top 148,8 left 8` and
        the name at `top 146,4 left 51,6` becomes the circle at `top 204,4` and the name at
        `top 238 left 8`, 200px wide. */

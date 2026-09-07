@@ -485,7 +485,7 @@
       "ultra": "Najviše ultramaratona"
     },
     "pairs": "Najbolji trkački parovi",
-    "pairsNone": "U ovoj sezoni nijedan trkački par još nema zajedničku trku. Par se pravi obostranom potvrdom, najkasnije do 31. decembra, a na listu ulazi kad njih dvoje istrče istu trku.",
+    "pairsNone": "Na ovoj listi je trkački par koji je te sezone istrčao bar jednu zajedničku trku. Par se pravi obostranom potvrdom, najkasnije do 31. decembra, da bi važio u narednoj sezoni. U ovoj sezoni takvog para nema.",
     "sharedRaces": {
       "one": "{count} zajednička trka",
       "few": "{count} zajedničke trke",
