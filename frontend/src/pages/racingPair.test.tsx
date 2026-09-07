@@ -77,6 +77,7 @@ const THREE = (
     <Become who="000005" />
     <Become who="000006" />
     <Day on="2027-01-02" />
+    <Day on="2026-12-05" />
     <Day on="2026-11-20" />
   </>
 )
@@ -194,7 +195,12 @@ describe('the answer to „Pozovi u trkački par"', () => {
     /* Her own profile now names him, for the season the pair was formed for and not for the one
        being run: „Formiranje mora biti završeno do 31. decembra da bi trkački par važio u novoj
        sezoni" (PDL P13). */
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
+    /* **Read in December and not in January, so the season is not the year of the reading**
+       (review, 07.09.2026): moved to 2 January, „Za sezonu 2027" could have come off the clock as
+       easily as off the pair, and a portal writing the season being **run** beside a pair drew the
+       same line. Four days now, each with one job: asked on 15 October, confirmed on 20 November,
+       read on 5 December, and the pair belongs to 2027. */
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-12-05' }))
     await goToMyProfile(user)
     await screen.findByRole('heading', { level: 1, name: /Katarina/ })
 
@@ -202,26 +208,47 @@ describe('the answer to „Pozovi u trkački par"', () => {
 
     expect(line).toContain('Relja Momčilović')
     expect(line).toContain('Za sezonu 2027')
-    /* The day the two of them finished it, and neither of the other two days. */
+    /* The day the two of them finished it, and none of the other three days. */
     expect(line).toContain('20. 11. 2026')
     expect(line).not.toContain('15. 10. 2026')
-    expect(line).not.toContain('2. 1. 2027')
+    expect(line).not.toContain('5. 12. 2026')
   }, SLOW)
 
   it('says the day a question was asked, and not the day it is read', async () => {
-    /* **Two sources of one string, parted by the clock** (review, 07.09.2026). Opened on the day it
-       was sent, `message.date` and „today" are the same string, so the assertion in the walk above
-       holds just as well for a portal that files every message under the day it is opened. Here
-       five weeks pass between the question and the reading, and the two part. */
+    /* **Three sources of one string, and each is parted from the others** (reviews of 07.09.2026).
+       Opened on the day it was sent, `message.date` and „today" are the same string, so a portal
+       filing every message under the day it is opened drew the same line. And opened as the only
+       message, or as the newest, `message.date` and `inbox[0].date` are the same string too, so one
+       drawing the date of the **newest** message drew it as well.
+     *
+       So: Relja asks on 15 October, Časlav asks five weeks later, and it is **Relja's** question,
+       the older of the two, that is opened. */
     const user = setupUser()
 
     renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
 
     await screen.findByRole('heading', { level: 1, name: /Katarina/ })
-    await user.click(must(invite()[0], 'the button'))
-    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await user.click(must(invite()[0], 'his question'))
+
     await user.click(screen.getByRole('button', { name: 'danas je 2026-11-20' }))
-    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question five weeks later'))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+
+    const waiting = (await inbox(user)).filter((one) =>
+      /Poziv u trkački par/.test(one.textContent ?? ''),
+    )
+
+    expect(waiting.length).toBe(2)
+
+    /* The newest is drawn first, so the older of the two is the second row. */
+    await user.click(at(waiting, 1))
+
+    expect(screen.getByText(/Relja Momčilović te poziva u trkački par/)).toBeVisible()
 
     const said =
       must(document.querySelector('.messages__from'), 'the line under the subject').textContent ?? ''
@@ -994,6 +1021,12 @@ describe('a member who holds a pair for this season and one for the next', () =>
     expect(said).toContain('Za sezonu 2027')
     expect(said).toContain('Časlav Radenković')
     expect(said).toContain('Za sezonu 2028')
+    /* **And each row carries its own day** (review, 07.09.2026). The only other walk that reads a
+       day has one pair in it, so `pair.since` and `held[0].since` are the same string there and a
+       portal writing the first pair's day on every row drew the right screen. The two were made two
+       days apart, and both days are here. */
+    expect(said).toContain('31. 12. 2026')
+    expect(said).toContain('2. 1. 2027')
     expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(2)
 
     /* **The second one is pressed, and that is the whole point of pressing it** (review,
@@ -1007,6 +1040,27 @@ describe('a member who holds a pair for this season and one for the next', () =>
     expect(afterTheSecond).toContain('Relja Momčilović')
     expect(afterTheSecond).toContain('Za sezonu 2027')
     expect(afterTheSecond).not.toContain('Časlav Radenković')
+
+    /* **And the notice goes to the half whose pair ended, naming that pair's season** (review,
+       07.09.2026, which measured that neither was held anywhere). This is the only walk in which
+       the two halves differ: with one pair, „the one who was left" and „the one on the first pair"
+       are the same member and the same season, so a portal telling the **wrong** partner, about the
+       **wrong** season, drew the same inbox. Časlav's pair is the one that ended, so his is the
+       inbox it lands in, and Relja, whose pair still stands, hears nothing. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await openTheNotice(user)
+
+    expect(
+      screen.getByText(/Trkački par sa Katarina Novaković za sezonu 2028 je raskinut/),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    const toldAnyway = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    expect(toldAnyway.length).toBe(0)
 
     /* **And now the first of two, which is a second axis and not the same one twice** (my own
        mutations, 07.09.2026). Pressed second and then last-of-one, every press is the last press,
