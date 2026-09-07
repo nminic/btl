@@ -67,9 +67,14 @@ describe('the circle beside a name', () => {
   it('is drawn on the three boards the owner named, and on no other', async () => {
     /* Owner, 07.09.2026: „Samo koje sam naveo ovako, ali da dodam da u glavnoj BTL tabeli i u
        Najboljim pojedinačnim rezultatima treba dodati kružnu sličicu / inicijale pre Imena i
-       prezimena." The four boards left out are his choice of scope, recorded in the journal, and
-       what makes this case worth having is that it holds **both** directions: the three that
-       carry the circle and the ones that must not. */
+       prezimena." The boards left out are his choice of scope, recorded in the journal.
+
+       **What the second half of this list holds today, said plainly.** Seven of the ten boards are
+       charts and one is empty until there is a database, so none of them has a name to put a
+       circle beside: the „and on no other" is answered by their shape rather than by anybody's
+       restraint. It becomes a real question the day one of those charts becomes a table, and then
+       this line is what asks it. Measured: of the four boards that are tables, three are named
+       here and the fourth (`pairs`) has no rows. */
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
