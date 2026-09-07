@@ -1212,24 +1212,37 @@ describe('TopBoards', () => {
     await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
 
     const pairs = board('Najbolji trkački parovi')
-    /* Two pairs, and the one that scored more of its points together on top. */
     const rows = pairs.getAllByRole('row').slice(1)
 
     expect(rows.length).toBe(2)
-    expect(within(at(rows, 0)).getByText('Ristić')).toBeVisible()
-    expect(within(at(rows, 0)).getByText('Bogdanović')).toBeVisible()
-    expect(within(at(rows, 1)).getByText('Živković')).toBeVisible()
+
+    /* **The order is the ladder's, and the mocked file is written to prove it** (review,
+       07.09.2026). The weaker pair is listed **first** in `public/mock/pairs.json` and holds the
+       lower first member number, which is what `withPlaces` ends every board on. So neither the
+       order of the file nor that last rung can produce this order: only the points can. */
+    expect(within(at(rows, 0)).getByText('Milovanović')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('Đurišić')).toBeVisible()
+
+    /* The number under the points, which the owner asked for on 04.08.2026 and which nothing drew
+       until now: their points together, and under them the races they share. The second pair ran
+       **more** races for **fewer** points, so neither figure can stand in for the other. */
+    expect(within(at(rows, 0)).getByText('510,34')).toBeVisible()
+    expect(within(at(rows, 0)).getByText('13 zajedničkih trka')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('480,31')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('21 zajednička trka')).toBeVisible()
 
     cleanup()
 
-    /* And a season nobody paired up for: the sentence, and no table at all. */
+    /* And a season nobody paired up for: the sentence, and no table at all. The sentence is about
+       **this season** and not about the database, which is what it said until 07.09.2026 and what
+       it could no longer say once another season had a table (review). */
     renderAt('/sr/top-liste?sezona=2018')
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
 
     const none = board('Najbolji trkački parovi')
 
-    expect(none.getByText(/stiže zajedno sa bazom/)).toBeVisible()
+    expect(none.getByText(/U ovoj sezoni nijedan trkački par nije formiran/)).toBeVisible()
     expect(none.queryByRole('table')).not.toBeInTheDocument()
   }, SLOW)
 
@@ -2144,6 +2157,29 @@ describe('the row of whoever is signed in', () => {
   const ME = '000007'
 
   const marked = (rows: HTMLElement[]) => rows.filter((row) => row.classList.contains('table__mine'))
+
+  it('is marked on the board of pairs for the half that is not on top', async () => {
+    /* PDL, and the owner's own words quoted in `components/mine.ts`: his row is marked on the
+       boards that are tables „ukoliko sam u paru". A row of a pair is about **two** people, and
+       the one signed in here is the **lower** of the two: 000001 scored less of that pair's points
+       than 000009 did, so he is the second line and not the first.
+
+       That is the whole of the case (review, 07.09.2026): written to mark only the half on top,
+       the board looks right, this screen reads the same, and the member who is the second name
+       never finds his own row. */
+    renderAt('/sr/top-liste?sezona=2019', 'competitor', '000001')
+
+    await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
+
+    const mine = marked(
+      within(screen.getByRole('table', { name: 'Najbolji trkački parovi' }))
+        .getAllByRole('row')
+        .slice(1),
+    )
+
+    expect(mine).toHaveLength(1)
+    expect(within(at(mine, 0)).getByText('Đurišić')).toBeVisible()
+  }, SLOW)
 
   it('is marked in the season table, and nowhere else in it', async () => {
     renderAt('/sr/tabela?sezona=2019', 'competitor', ME)

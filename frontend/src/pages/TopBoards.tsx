@@ -65,9 +65,22 @@ const PLACES = 10
  *  about who moved, and five says that. */
 const PROGRESS_PLACES = 5
 
+/* And five on the board of pairs, on which the owner rested the whole shape (PDL, 07.09.2026):
+   „Kod parova stoje dve slicice jedna ispod druge, a u nivou svake ime i prezime jedno ispod
+   drugog. **Ima mesta jer se prikazuje pet parova, ne deset.**" A row of a pair is four lines
+   tall, so ten of them would be a box twice the height of the two beside it. */
+const PAIR_PLACES = 5
+
 /** One cell after the name, and how it is set: words read from the left,
  *  numbers from the right, and a column a telephone does not have room for. */
-type Cell = { text: string; words?: boolean; hidePhone?: boolean }
+type Cell = {
+  text: string
+  /** A second line under the first, in the same cell. One board has one: the pairs carry the races
+   *  they share under the points they scored on them (owner, 04.08.2026). */
+  under?: string
+  words?: boolean
+  hidePhone?: boolean
+}
 
 type Place = {
   /** Where the name leads. Missing where there is nothing to lead to: a member
@@ -243,6 +256,9 @@ function Board({ id, title, columns, places, empty }: BoardData) {
                   {place.cells.map((cell, index) => (
                     <td key={index} className={cellClass(cell, index === place.cells.length - 1)}>
                       {cell.text}
+                      {cell.under === undefined ? null : (
+                        <span className="boards__under">{cell.under}</span>
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -406,22 +422,24 @@ function Boards({
       })),
     }
 
-    /* The pairs. A pair is two members who confirmed each other (PDL P13) and it
-       is ranked on the races they ran together (P12); neither the pairing nor
-       the joint race exists in the data the prototype reads, and inventing one
-       would be worse than an empty board. Verification says the same thing about
-       the queues that have no table yet.
+    /* The pairs. A pair is two members who confirmed each other (PDL P13) and it is ranked on the
+       races they ran together (P12).
 
-       The owner asked for both names one under the other, whoever scored more on
-       top, their points together to the right and the races they share below
-       that (04.08.2026). None of that can be drawn from nothing, so the shape
-       arrives with the pairs themselves. */
+       **The whole of what the owner asked for, and it is four things** (04.08.2026, 07.09.2026):
+       both names one under the other, whoever scored more of the pair's points on top, their points
+       together to the right, and **the races they share below those points**. Two circles, one
+       above the other, and four lines beside them.
+
+       This board stood empty until 07.09.2026 and said so, because a pair is made by two members
+       confirming each other and nothing in the data said who had. The owner then asked for two
+       pairs to be mocked so he could see the shape; the flow that really makes one is the next
+       increment. */
     const bestPairs: Widget = {
       kind: 'table',
       id: 'pairs',
       title: t('topBoards.pairs'),
       columns: [{ text: t('topBoards.columns.points') }],
-      places: topPairs(pairs, field, results, season, PLACES).map((row) => ({
+      places: topPairs(pairs, field, results, season, PAIR_PLACES).map((row) => ({
         key: row.pair.id,
         position: row.position,
         /* No link on the row: a pair is two people and there is no one profile to lead to. The
@@ -441,9 +459,17 @@ function Boards({
           </NamePlate>
         ),
         members: row.competitors.map((one) => one.memberNumber),
-        cells: [{ text: formatPoints(row.points, locale) }],
+        cells: [
+          {
+            text: formatPoints(row.points, locale),
+            /* Under the points and not beside them, which is where the owner put it
+               (04.08.2026): „sa desne strane stoji njihov ukupan broj BTL bodova, a ispod toga
+               broj zajednickih trka." */
+            under: t('topBoards.sharedRaces', { count: row.races }),
+          },
+        ],
       })),
-      empty: t('topBoards.pairsSoon'),
+      empty: t('topBoards.pairsNone'),
     }
 
     /* The whole of a result, across the whole width of the page (owner,

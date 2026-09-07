@@ -60,7 +60,8 @@
 }
 
 /* A pair: one circle above the other, and the two names beside them, each on its own row (owner,
-   07.09.2026). Nothing draws one until the board of pairs has rows, which waits for the database. */
+   07.09.2026). A row here holds a whole name, and a name is two lines, so a pair reads as four
+   lines beside two circles. Drawn by the board of best pairs. */
 .plate--pair .plate__faces {
   display: grid;
   gap: var(--space-4);

@@ -51,11 +51,11 @@ describe('a competitor as a circle and a name', () => {
   })
 
   it('draws two circles for a pair, and the words beside them', () => {
-    /* **A pair, which nothing on the portal draws today** (owner, 07.09.2026: „dva kruga jedan
-       iznad drugog, imena desno"). The board of pairs has no rows until there is a database,
-       because a pair is made by two people confirming each other, and its own words say so.
-       Measured here so that the day the rows arrive nothing has to be drawn again
-       (`btl-produkt/PDL.md`, „Ime sa slikom"). */
+    /* **A pair** (owner, 07.09.2026: „dva kruga jedan iznad drugog, imena desno"). The board of
+       best pairs draws them, and this is where the component's own half is measured: that it takes
+       two people, marks itself a pair, and puts the words beside the circles in the order the
+       circles are drawn in. What the board does with that shape, four lines and the races under
+       the points, is measured on the board (`pages/namePlateOnScreens.test.tsx`). */
     const { container } = render(
       <NamePlate competitors={[ANA, BORIS]}>
         <span>Ana Marković</span>

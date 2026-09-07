@@ -1515,6 +1515,73 @@ describe('the board of best racing pairs', () => {
     expect(board.map((row) => row.pair.id)).toEqual(['earlier', 'later'])
   })
 
+  it('goes on to the kilometres when the points and the races are level', () => {
+    /* The third rung, and it had no case of its own until a review deleted it and watched the whole
+       gate stay green (07.09.2026). The board of teams, written out of the same sentence of the
+       owner's on 11.08.2026, had one 580 lines up; the precedent was copied without its guard.
+
+       **The two pairs are chosen so that only this rung can order them.** Level on points and on
+       races, level on time, and the pair with the longer race holds the **larger** sum of member
+       numbers, which is the rung under this one. Deleted, the ladder falls through to that sum and
+       hands first place to the other pair. */
+    const four = [
+      competitor('000001', { gender: 'M' }),
+      competitor('000002', { gender: 'F' }),
+      competitor('000003', { gender: 'M' }),
+      competitor('000009', { gender: 'F' }),
+    ]
+    const results = [
+      result('000001', '2027-05-01', 30, { raceId: 'short', distanceKm: 10 }),
+      result('000002', '2027-05-01', 30, { raceId: 'short', distanceKm: 10 }),
+      result('000003', '2027-05-02', 30, { raceId: 'long', distanceKm: 30 }),
+      result('000009', '2027-05-02', 30, { raceId: 'long', distanceKm: 30 }),
+    ]
+
+    const board = topPairs(
+      [pair('short', '000001', '000002'), pair('long', '000003', '000009')],
+      four,
+      results,
+      2027,
+      10,
+    )
+
+    expect(board.map((row) => row.pair.id)).toEqual(['long', 'short'])
+    expect(board.map((row) => row.kilometers)).toEqual([60, 20])
+  })
+
+  it('counts a race once when one of them has two results on it', () => {
+    /* **The history the portal reads holds this** (review, 07.09.2026): 165 pairs of results in the
+       mocked file share a member and a race, four of them inside one season. Read as one result per
+       race, one of his is dropped and hers is added twice, and a race they ran once is reported as
+       two.
+
+       Both halves are asked, because the fault had two: the count of races, and the points. */
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'one', id: 'his-first' }),
+      result('000001', '2027-05-01', 5, { raceId: 'one', id: 'his-second' }),
+      result('000002', '2027-05-01', 20, { raceId: 'one', id: 'hers' }),
+    ]
+
+    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+
+    expect(at(board, 0).races).toBe(1)
+    expect(at(board, 0).points).toBe(35)
+  })
+
+  it('keeps the order the pair was written in when the two halves are level', () => {
+    /* The other side of „the larger half first". Two halves that scored the same are not a reason
+       to reorder anybody, and the pair as written is the answer that does not move from one reading
+       to the next. */
+    const results = [
+      result('000001', '2027-05-01', 30, { raceId: 'together' }),
+      result('000002', '2027-05-01', 30, { raceId: 'together' }),
+    ]
+
+    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+
+    expect(at(board, 0).competitors.map((one) => one.memberNumber)).toEqual(['000001', '000002'])
+  })
+
   it('leaves off a pair that ran nothing together, and one the portal does not know both of', () => {
     /* Neither is nought points: the board ranks what a pair did, and a pair that did nothing has
        nothing to rank. The second is the state a season of history arrives in, a pair naming a

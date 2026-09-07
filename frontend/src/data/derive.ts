@@ -971,6 +971,11 @@ const BY_PAIR = byLadder<PairRow>([
  * A pair whose member the portal does not know, and a pair that ran nothing together, are both left
  * off the board rather than shown at nought: the board ranks what a pair did, and neither of those
  * did anything.
+ *
+ * **Two pairs are mocked** (`public/mock/pairs.json`, owner 07.09.2026: „neka dva para"), because
+ * he asked to see the shape before the flow that makes one exists. How two members become a pair,
+ * a button on the other one's profile and a confirmation from the inbox, is the next increment and
+ * is written in PDL.
  */
 export function topPairs(
   pairs: RacingPair[],
@@ -992,25 +997,31 @@ export function topPairs(
         return []
       }
 
-      const his = new Map(
-        inSeason
-          .filter((result) => result.memberNumber === one.memberNumber)
-          .map((result) => [result.raceId, result]),
-      )
-      /* Every race the second of them ran that the first ran too, both results kept. Written as a
-         lookup rather than as a filter on the race, because the shared race is what the two of them
-         are ranked on and both halves of it are needed to add anything up. */
-      const together = inSeason
-        .filter((result) => result.memberNumber === two.memberNumber)
-        .flatMap((theirs) => {
-          const own = his.get(theirs.raceId)
+      /* Every result the first of them has, kept by race and **all of them**: a member can hold
+         two results on one race, and the history the portal reads holds four such pairs inside one
+         season. A map of one result apiece would drop one of his and count hers twice, and the
+         board would say a race they ran once was two. */
+      const his = new Map<string, Result[]>()
 
-          return own === undefined ? [] : [own, theirs]
-        })
+      for (const result of inSeason) {
+        if (result.memberNumber === one.memberNumber) {
+          his.set(result.raceId, [...(his.get(result.raceId) ?? []), result])
+        }
+      }
 
-      if (together.length === 0) {
+      const hers = inSeason.filter((result) => result.memberNumber === two.memberNumber)
+      /* The races, not the results: what the ladder counts is how many races the two of them ran
+         together, and a race is one however many rows either of them has on it. */
+      const shared = new Set(hers.map((result) => result.raceId).filter((raceId) => his.has(raceId)))
+
+      if (shared.size === 0) {
         return []
       }
+
+      const together = [
+        ...hers.filter((result) => shared.has(result.raceId)),
+        ...[...his].flatMap(([raceId, mine]) => (shared.has(raceId) ? mine : [])),
+      ]
 
       const points = (who: Competitor) =>
         totalsOf(together.filter((result) => result.memberNumber === who.memberNumber)).points
@@ -1025,7 +1036,7 @@ export function topPairs(
           pair,
           competitors: ordered,
           ...totalsOf(together),
-          races: together.length / 2,
+          races: shared.size,
         },
       ]
     })

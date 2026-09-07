@@ -75,7 +75,7 @@ describe('the circle beside a name', () => {
     ).toBeNull()
   }, SLOW)
 
-  it('is drawn on the three boards the owner named, and on no other', async () => {
+  it('is drawn on the four boards the owner named, and on no other', async () => {
     /* Owner, 07.09.2026: „Samo koje sam naveo ovako, ali da dodam da u glavnoj BTL tabeli i u
        Najboljim pojedinačnim rezultatima treba dodati kružnu sličicu / inicijale pre Imena i
        prezimena." The boards left out are his choice of scope, recorded in the journal.
@@ -118,8 +118,16 @@ describe('the circle beside a name', () => {
        the two of them one under the other. Asked of the drawn screen, because the count of lines
        is the whole of what the owner asked for and nothing in a stylesheet says it.
 
-       Measured in a browser at 780 after this was written: the two circles at x 76, one at y 127
-       and one at y 164; the four lines all at x 119, at y 122, 141, 164 and 184; the row 106px. */
+       **And the one on top is the one who scored more of the pair's points, not the better
+       season** (owner, 04.08.2026). The mocked pair is chosen so that the two answers differ
+       (review, 07.09.2026): over the whole of 2019 Radoslav Milovanović has more points than
+       Isidora Živković, and on the thirteen races they ran together she has more than twice his.
+       Read off the season, this case would name him first.
+
+       Measured in a browser after this was written. At 780: the two circles at x 76, one at y 127
+       and one at y 164; the four lines all at x 119; the row 106px. At **360**, where the card is
+       328px wide: the circles at x 74 and 1,7rem across, the four lines at x 107, the races under
+       the points at x 214 and 107px wide, the row 106px, and the page does not scroll sideways. */
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
@@ -142,7 +150,7 @@ describe('the circle beside a name', () => {
        against the first name. The one who scored more of the pair's points is the one on top
        (owner, 04.08.2026), and in this season that is Slobodan Ristić. */
     expect([...row.querySelectorAll('.plate__given, .plate__family')].map((one) => one.textContent))
-      .toEqual(['Slobodan', 'Ristić', 'Milica', 'Bogdanović'])
+      .toEqual(['Isidora', 'Živković', 'Radoslav', 'Milovanović'])
 
     /* **Two elements beside the circles and not four**, which is what puts the gap between the two
        people rather than between a given name and its own surname: the pair rule lays the words in
@@ -153,10 +161,21 @@ describe('the circle beside a name', () => {
       "a pair hands over its names in something other than two pieces",
     ).toBe(2)
 
+    /* **And the second pair is the one that proves which measure decides**, because for the first
+       the two answers agree (review, 07.09.2026). Over the whole of 2019 Vladan Đurišić has more
+       points than Milica Bogdanović; on the twenty one races they ran together she has more. Read
+       off the season, he would be the first line here. */
+    const second = htmlElement(must(board.querySelectorAll('tbody tr')[1], 'the second pair'))
+
+    expect(
+      [...second.querySelectorAll('.plate__given, .plate__family')].map((one) => one.textContent),
+      'the half on top of a pair is not the one who scored more of its points',
+    ).toEqual(['Milica', 'Bogdanović', 'Vladan', 'Đurišić'])
+
     /* The initials of both, in the same order, so a circle never stands beside the other name. */
     expect([...row.querySelectorAll('.portrait')].map((one) => one.textContent)).toEqual([
-      'SR',
-      'MB',
+      'IŽ',
+      'RM',
     ])
   }, SLOW)
 })
