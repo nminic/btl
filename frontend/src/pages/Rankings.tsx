@@ -183,7 +183,7 @@ function Standing({
         <p className="rankings__empty">{t('rankings.empty')}</p>
       ) : (
         <div className="table-scroll">
-          <table className="table">
+          <table className="table rankings__table">
             <thead>
               <tr>
                 <th scope="col">{t('rankings.columns.position')}</th>

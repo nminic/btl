@@ -178,6 +178,14 @@ const IN_PIXELS = new Map([
     'cuts a competitor name and a race name to an ellipsis, both already clipped above',
   ],
   [
+    'pages/Rankings.css 699.98',
+    /* In pixels for the reason the plate's own query is: the two say one thing between them, that
+       on a telephone the name takes the room the circle was taking, and they have to say it at the
+       same window width. Asked in `em`, a reader at 200 per cent would lose the circle at one
+       width and get the narrow name column at another. */
+    'takes the circle out of the main standing so the name keeps its one line',
+  ],
+  [
     'components/NamePlate.css 699.98',
     /* In pixels because it is the other half of the query above, on the same screen. The first
        column of a competition's standing is capped at 7,5rem there and the circle stands inside

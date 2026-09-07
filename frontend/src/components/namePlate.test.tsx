@@ -87,11 +87,15 @@ describe('a competitor as a circle and a name', () => {
     const drawn = circles(container)
 
     expect(drawn.map((one) => one.textContent)).toEqual(['AM', 'BP'])
-    /* **And the plate says it is a pair**, which is the whole of how the two circles come to stand
-       one above the other: every rule that lays a pair out hangs off this one class
-       (`NamePlate.css`). A review measured what its absence costs: with the modifier gone the two
-       circles are drawn side by side, every rule about a pair becomes dead, and the whole gate
-       stays green — and the day the board of pairs has rows, the shape is simply wrong. */
+    /* **And the plate says it is a pair**, which is what every rule about a pair hangs off
+       (`NamePlate.css`). Without the class the two **names** go onto one line, side by side, and
+       every rule about a pair becomes dead while the whole gate stays green — so the day the board
+       of pairs has rows, the shape is simply wrong.
+     *
+       What does **not** change is the circles: a circle is `display: grid` in its own right
+       (`components/Portrait.css`), so the two stand one above the other whatever this class says,
+       and the rule that names them buys the four pixels between them and nothing more. Measured by
+       a review on 07.09.2026, after an earlier version of this note claimed otherwise. */
     expect(htmlElement(must(container.firstElementChild, 'the plate'))).toHaveClass('plate--pair')
     /* Both names beside them, in the order their circles are drawn in, so the second face is not
        read against the first name. */

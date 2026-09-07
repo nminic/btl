@@ -296,3 +296,22 @@
   font-size: 0.85rem;
 }
 
+
+/* **Krug ustupa mesto imenu na telefonu, i to samo u ovoj tabeli** (owner, 07.09.2026, asked with
+   the measurement in front of him: „Krug se ne crta ispod 700px").
+ *
+   The circle takes about thirty four pixels of a column that is 167 wide at 360, and a long name
+   then wraps of its own accord: measured, nine of seventeen names ran to two lines where one did
+   before, and the row grew from 75 to 100 pixels. This screen is one of the four the owner expects
+   to be easiest on a telephone (PDL P24), so the circle is the half that gives way; from a tablet
+   up it is drawn as he asked.
+ *
+   Written against this table by name rather than against `.rankings`, which wraps five screens:
+   the top boards are inside one too, and their circles stay. The width is the one the whole portal
+   narrows its tables at, in pixels, on the list `styles/scale.test.ts` keeps and for the reason it
+   records there. */
+@media (max-width: 699.98px) {
+  .rankings__table .plate__faces {
+    display: none;
+  }
+}

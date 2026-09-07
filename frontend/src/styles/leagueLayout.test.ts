@@ -1,7 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { first, must } from '../test/at'
-import { ruleFor, ruleInMedia, sheetsOf, unconditionalRules, unremarked } from '../test/stylesheet'
+import {
+  ruleFor,
+  ruleInMedia,
+  rulesInMedia,
+  sheetsOf,
+  unconditionalRules,
+  unremarked,
+} from '../test/stylesheet'
 
 /**
  * The two things the owner asked for on 07.09.2026 that live only in a stylesheet.
@@ -103,6 +110,17 @@ describe('the name of a competitor beside their circle', () => {
        Nothing drawn could see it: the fault is a height, and jsdom lays nothing out (ADL A33).
        What is held here is the one declaration that caused it. Measured in a browser afterwards:
        at 1280 not one of the thirty names on those boards is on two lines. */
+    /* **What puts the words beside the circle is the plate itself**, and that was the half this
+       case was missing (review, 07.09.2026): with `display: inline-flex` gone from `.plate`, the
+       circle stands **above** the name on all five screens and the name takes the whole column,
+       and nothing said a word. Measured in a browser at 1280: the circle at `top 148,8 left 8` and
+       the name at `top 146,4 left 51,6` becomes the circle at `top 204,4` and the name at
+       `top 238 left 8`, 200px wide. */
+    expect(
+      ruleFor(readFileSync(PLATE, 'utf-8'), '.plate', 'NamePlate.css').getPropertyValue('display'),
+      'the circle and the name no longer stand side by side',
+    ).toBe('inline-flex')
+
     const words = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
       (rule) => rule.selectorText === '.plate__words',
     )
@@ -121,6 +139,37 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(pair.length, 'a pair lays its two names nowhere').toBe(1)
     expect(must(first(pair), 'the rule').style.getPropertyValue('display')).toBe('grid')
+
+    /* And the telephone too, because `unconditionalRules` steps over every `@media` by
+       construction: the same declaration written inside the narrow block would bring the fault
+       back at exactly the width the review measured it worst on, ten of thirty names on 360, and
+       this case would not have seen it. */
+    expect(
+      rulesInMedia(readFileSync(PLATE, 'utf-8'), '(max-width: 699.98px)', 'NamePlate.css')
+        .filter((rule) => rule.selectorText === '.plate__words')
+        .map((rule) => rule.style.getPropertyValue('display'))
+        .filter((said) => said !== ''),
+      'the words beside the circle are laid out in rows on a telephone',
+    ).toEqual([])
+  })
+
+  it('has no weight of its own on either half of a name', () => {
+    /* **A decision from 13.08.2026 that this component can undo silently.** The name of a
+       competitor in the standing of a competition is written at 400 (`pages/league/League.css`)
+       because a review measured that day that every name in that grid was bold while the same
+       names on the ranking table were not. The plate draws inside that cell, so a weight written
+       on either half brings back half of that fault, and the rule above reads the weight off
+       `.plate` — where a declaration on a child never shows.
+     *
+       Measured when a review put the weight back: the surname came out at 700 against the given
+       name's 400, and the row grew from 62,2 to 66,7 pixels, with the whole gate green. */
+    const sheet = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
+    const dressed = sheet
+      .filter((rule) => /[.]plate__(given|family|words)/.test(rule.selectorText))
+      .filter((rule) => rule.style.getPropertyValue('font-weight') !== '')
+      .map((rule) => rule.selectorText)
+
+    expect(dressed, 'a half of the name carries a weight of its own').toEqual([])
   })
 
   it('gives the circle up on a telephone, so the name keeps its letters', () => {
