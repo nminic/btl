@@ -1,5 +1,8 @@
 import { screen, within } from '@testing-library/react'
+import { liga } from '../forms/definitions'
+import { limitOf } from '../forms/records'
 import { at, must } from '../test/at'
+import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -152,6 +155,36 @@ describe('the text of a competition', () => {
     expect(box.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
     expect(box.queryByRole('button', { name: 'Izmeni' })).not.toBeInTheDocument()
   })
+
+  it('bounds each box by its own field, not by the first of the two', async () => {
+    /* **Two fields and one limit was a bug waiting for the two numbers to part** (review,
+       07.09.2026). The component drew both texts and read the cap off `rules` for both, which is
+       right for exactly as long as the definition gives them the same number. Measured that day
+       with the prizes lowered to 500: the box let a moderator write three thousand, and the
+       administration form then told them their own text was too long — the very fault `limitOf`
+       exists to prevent, moved one screen along.
+
+       Held against the definition rather than against a number written here, because the number is
+       the definition's to change (`forms/definitions/admin-liga.form.json`). */
+    const user = setupUser()
+    renderAt('/sr/lige?sezona=2027', 'superadmin')
+
+    const box = await boxOf(/RunTrace liga/)
+
+    for (const [heading, field] of [
+      ['Propozicije', 'rules'],
+      ['Nagrade', 'prizes'],
+    ] as const) {
+      const section = must(box.getByRole('heading', { name: heading }).closest('section'), 'section')
+
+      await user.click(within(section).getByRole('button', { name: 'Izmeni' }))
+
+      expect(within(section).getByRole('textbox', { name: heading })).toHaveAttribute(
+        'maxlength',
+        String(limitOf(liga, field)),
+      )
+    }
+  }, SLOW)
 
   it('is shown to a visitor once it has been written', async () => {
     renderAt('/sr/lige?sezona=2027')
