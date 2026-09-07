@@ -1097,34 +1097,56 @@ describe('TopBoards', () => {
      *
        What is held here is what a reader gets: both halves drawn, the whole surname in the page,
        and the accessible name still one name. */
-    renderAt('/sr/top-liste?sezona=2019')
+    /* Read on a fixed day, and the same day the case computes the field on: `fieldFor` drops
+       members who are no longer active, so the screen and the case must be asking about one field
+       (review, 07.09.2026). The precedent is the case about a season with no results, which reads
+       on a day of its own for the same reason. */
+    const TODAY = '2026-08-04'
+
+    renderAt('/sr/top-liste?sezona=2019', 'visitor', null, undefined, TODAY)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    /* **Compared with the member, not with itself** (review, 07.09.2026). Asked as „the surname
-       is longer than one character", the case passed while every surname on a board was „V.": an
-       initial and a full stop are two characters. The two halves are now read against the person
-       the board is ranking, which is a second source and the only one that can tell a name from a
-       letter. */
-    const field = fieldFor(await loadResource<Competitor[]>('competitors'), 2019, '2019-12-31')
+    /* **Compared with the members, not with itself, and on every row** (review, 07.09.2026,
+       twice). Asked as „the surname is longer than one character", the case passed while every
+       surname on a board was „V.": an initial and a full stop are two characters. Asked of the
+       first row only, it passed while a shortening written by **length** rather than by width left
+       the leader alone and cut the nine below him, which is the first shape anybody would write and
+       the one PDL names as the wrong reading.
+     *
+       So all ten rows of each board are read against the ten the board is ranking, in order. That
+       is a second source for the name and, because the two boards rank differently below the top,
+       a second source for **which board** as well: they share a leader and part company at once
+       (their second places are Radoslav Milovanović and Andrija Pavlović).
+     *
+       The day is the one the screen is read on, not a day of the season: `fieldFor` drops members
+       who are no longer active, so a case that asks about a different day asks about a different
+       field, and would one day fail over somebody who has nothing to do with a surname. */
+    const field = fieldFor(await loadResource<Competitor[]>('competitors'), 2019, TODAY)
     const results = await loadResource<Result[]>('results')
 
-    for (const [name, top] of [
-      ['Najviše kilometara', first(topByKilometers(field, results, 2019, 1))],
-      ['Najduže na stazi', first(topByTimeOnCourse(field, results, 2019, 1))],
+    for (const [name, ranked] of [
+      ['Najviše kilometara', topByKilometers(field, results, 2019, 10)],
+      ['Najduže na stazi', topByTimeOnCourse(field, results, 2019, 10)],
     ] as const) {
-      const who = must(top, `the leader of ${name}`).competitor
       const rows = board(name).getAllByRole('row').slice(1)
-      const link = within(at(rows, 0)).getByRole('link')
 
-      expect(must(link.querySelector('.plate__given'), 'the given name').textContent, name)
-        .toBe(who.firstName)
-      expect(must(link.querySelector('.plate__family'), 'the surname').textContent, name)
-        .toBe(who.lastName)
-      /* One name to the ear, whatever the sheet does with the two lines. The circle says nothing
-         (`components/Portrait.tsx` is `aria-hidden`), so the accessible name is the two halves with
-         the space between them. */
-      expect(link).toHaveAccessibleName(`${who.firstName} ${who.lastName}`)
+      expect(rows.length, name).toBe(ranked.length)
+
+      for (const [index, row] of rows.entries()) {
+        const who = must(at(ranked, index), `place ${index + 1} of ${name}`).competitor
+        const link = within(row).getByRole('link')
+        const where = `${name}, ${index + 1}.`
+
+        expect(must(link.querySelector('.plate__given'), 'the given name').textContent, where)
+          .toBe(who.firstName)
+        expect(must(link.querySelector('.plate__family'), 'the surname').textContent, where)
+          .toBe(who.lastName)
+        /* One name to the ear, whatever the sheet does with the two lines. The circle says nothing
+           (`components/Portrait.tsx` is `aria-hidden`), so the accessible name is the two halves
+           with the space between them. */
+        expect(link, where).toHaveAccessibleName(`${who.firstName} ${who.lastName}`)
+      }
     }
   }, SLOW)
 

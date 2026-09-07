@@ -40,8 +40,10 @@
      eight, and because a grid here is a decision nobody needs to take again.
 
      Two lines where a screen asks for them are laid by the two halves themselves
-     (`.plate__given`, `.plate__family`), which two screens write: the standing of a competition,
-     and the board of best pairs, where each half of the pair is one of those names.
+     (`.plate__given`, `.plate__family`), which four screens write: the standing of a competition,
+     „Najviše kilometara", „Najduže na stazi", and the board of best pairs, where each half of the
+     pair is one of those names. The one writer of both classes is `OverTwoLines`, and it has four
+     call sites; the main standing and the best single races keep the name on one line.
 
      Cut rather than pushed: the column of a name is bounded on both tables that carry one, and a
      name that will not give way widens the table instead of ending in an ellipsis. */

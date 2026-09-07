@@ -32,10 +32,14 @@ const plate = () =>
  * compares them with the names here, so a fifth board fails the gate instead of being missed.
  */
 const SHAPE = [
-  ['Najbolji pojedinačni rezultati', 'one'],
-  ['Najbolji trkački parovi', 'two'],
-  ['Najduže na stazi', 'two'],
+  /* In the order the owner named them and not in the order a machine sorts them, so the `.sort()`
+     below is doing something: written already sorted it was a silent no-op, and the day somebody
+     adds a fifth board at the end of this list the gate would go red for the wrong reason (review,
+     07.09.2026). */
   ['Najviše kilometara', 'two'],
+  ['Najduže na stazi', 'two'],
+  ['Najbolji trkački parovi', 'two'],
+  ['Najbolji pojedinačni rezultati', 'one'],
 ] as const
 
 describe('the circle beside a name', () => {
