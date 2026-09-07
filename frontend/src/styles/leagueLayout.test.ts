@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { first, must } from '../test/at'
-import { ruleFor, sheetsOf, unconditionalRules, unremarked } from '../test/stylesheet'
+import { ruleFor, ruleInMedia, sheetsOf, unconditionalRules, unremarked } from '../test/stylesheet'
 
 /**
  * The two things the owner asked for on 07.09.2026 that live only in a stylesheet.
@@ -89,6 +89,28 @@ describe('the name of a competitor beside their circle', () => {
 
     expect(laid.length, 'the two halves are not laid out together').toBe(1)
     expect(must(first(laid), 'the rule').style.getPropertyValue('display')).toBe('block')
+  })
+
+  it('gives the circle up on a telephone, so the name keeps its letters', () => {
+    /* In the standing of a competition the first column is frozen and capped at 7,5rem
+       (`pages/league/League.css`), and the circle stands inside that cap. Measured in a browser at
+       360 with the circle at its full size: the given name fitted and every long surname was cut,
+       „Milovanović" and „Stanojlović" both ending in an ellipsis. At 1,7rem none of the six is
+       cut. Nine pixels of circle are worth about a letter and a half of surname, and the circle
+       says nothing the name does not.
+
+       The width is the one the whole portal narrows its tables at, and it is written in pixels for
+       the reason `styles/scale.test.ts` records beside it: it has to fire at the same window width
+       as the cap it stands inside. */
+    const rule = ruleInMedia(
+      readFileSync(PLATE, 'utf-8'),
+      '(max-width: 699.98px)',
+      '.plate .portrait',
+      'NamePlate.css',
+    )
+
+    expect(rule.getPropertyValue('inline-size')).toBe('1.7rem')
+    expect(rule.getPropertyValue('block-size')).toBe('1.7rem')
   })
 
   it('reaches the sheet that makes the circle a circle', () => {
