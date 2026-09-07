@@ -7,9 +7,14 @@ import { PLATE_CLASSES, person } from '../test/plate'
  * The circle beside a name, and what it is allowed to say.
  *
  * The owner asked for it on 07.09.2026 („kružni logo sa slikom ili inicijalima, i pored u dva reda
- * Ime i Prezime") and it is drawn on five screens. Measured here rather than five times, and the
- * one thing the screens cannot answer is answered here too: **a pair**, which the board of pairs
- * will draw the day there is a database to build one from and which nothing draws today.
+ * Ime i Prezime") and it is drawn on **six**: the standing of a competition, the main standing, and
+ * four boards, the last of which is the pairs. Measured here rather than six times.
+ *
+ * **A pair is measured here too**, and that is this file's own half: that the component takes two
+ * people, marks itself a pair, and puts the words beside the circles in the order the circles are
+ * drawn in. What the board does with that shape is measured on the board
+ * (`pages/namePlateOnScreens.test.tsx`). Until 07.09.2026 nothing drew a pair at all and this file
+ * said so; the owner then asked for two to be mocked.
  */
 /* Two people whose initials, numbers and names differ in every letter, so a plate that took the
    wrong one of the two is caught by any of the three. */

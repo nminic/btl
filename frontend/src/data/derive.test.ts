@@ -1568,18 +1568,39 @@ describe('the board of best racing pairs', () => {
     expect(at(board, 0).points).toBe(35)
   })
 
+  it('counts it once when the second of them is the one with two results', () => {
+    /* The mirror, and it is not the same case (review, 07.09.2026). Counted off the second
+       member's rows rather than off the races, the first setup gives the right answer anyway,
+       because there the doubled rows belong to the first. Written this way round the two answers
+       part: her two rows on one race are still one race. */
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'one', id: 'his' }),
+      result('000002', '2027-05-01', 20, { raceId: 'one', id: 'hers-first' }),
+      result('000002', '2027-05-01', 5, { raceId: 'one', id: 'hers-second' }),
+    ]
+
+    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+
+    expect(at(board, 0).races).toBe(1)
+    expect(at(board, 0).points).toBe(35)
+  })
+
   it('keeps the order the pair was written in when the two halves are level', () => {
     /* The other side of „the larger half first". Two halves that scored the same are not a reason
        to reorder anybody, and the pair as written is the answer that does not move from one reading
-       to the next. */
+       to the next.
+
+       **Written with the larger member number first** (review, 07.09.2026): the other way round,
+       „the order they were written in" and „the smaller member number" give the same answer and the
+       case cannot tell one from the other. */
     const results = [
       result('000001', '2027-05-01', 30, { raceId: 'together' }),
       result('000002', '2027-05-01', 30, { raceId: 'together' }),
     ]
 
-    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+    const board = topPairs([pair('p1', '000002', '000001')], [HE, SHE], results, 2027, 10)
 
-    expect(at(board, 0).competitors.map((one) => one.memberNumber)).toEqual(['000001', '000002'])
+    expect(at(board, 0).competitors.map((one) => one.memberNumber)).toEqual(['000002', '000001'])
   })
 
   it('leaves off a pair that ran nothing together, and one the portal does not know both of', () => {

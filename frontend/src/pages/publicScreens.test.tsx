@@ -1141,6 +1141,11 @@ describe('TopBoards', () => {
       ['Najviše kilometara', ['figure']],
       ['Najduže na stazi', ['figure']],
       ['Najbolji pojedinačni rezultati', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
+      /* The fourth board that is a table, from 07.09.2026. Its one cell carries a second line
+         under the figure, and that line is part of the figure's cell rather than a column of its
+         own, so the marking is the same one column (review, 07.09.2026: this list did not grow
+         when the board did, and a cell marked as words passed). */
+      ['Najbolji trkački parovi', ['figure']],
     ] as const) {
       const rows = board(name).getAllByRole('row')
       /* The place and the name are the shared table's own two columns and are
@@ -1242,8 +1247,57 @@ describe('TopBoards', () => {
 
     const none = board('Najbolji trkački parovi')
 
-    expect(none.getByText(/U ovoj sezoni nijedan trkački par nije formiran/)).toBeVisible()
+    expect(none.getByText(/nijedan trkački par još nema zajedničku trku/)).toBeVisible()
     expect(none.queryByRole('table')).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('draws five pairs and no more, however many there are', async () => {
+    /* PDL, 07.09.2026: „Kod parova stoje dve sličice jedna ispod druge… **Ima mesta jer se
+       prikazuje pet parova, ne deset.**" The whole shape rests on that number, and with two mocked
+       pairs nothing on any screen could see it: a review swapped the board's limit for the general
+       ten and the gate stayed green.
+
+       **So the file is served rather than changed** (the precedent is `pages/adminEventKind.test.tsx`
+       and three others): six pairs go over the wire for this one case, the two that ship stay as
+       they are, and the cut is measured. Every one of the six is a real mixed pair out of the
+       mocked results with at least one race in common, so the board has something to rank. */
+    const served = globalThis.fetch
+    const six = [
+      ['000009', '000020'],
+      ['000014', '000030'],
+      ['000008', '000018'],
+      ['000006', '000028'],
+      ['000027', '000029'],
+      ['000007', '000015'],
+    ].map(([one, two], index) => ({
+      id: `probe-${index}`,
+      season: 2019,
+      memberNumbers: [one, two],
+      since: '2018-12-01',
+    }))
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('pairs.json')
+        ? new Response(JSON.stringify(six), { headers: { 'content-type': 'application/json' } })
+        : served(input, init),
+    )
+
+    try {
+      renderAt('/sr/top-liste?sezona=2019')
+
+      await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
+
+      const rows = within(screen.getByRole('table', { name: 'Najbolji trkački parovi' }))
+        .getAllByRole('row')
+        .slice(1)
+
+      expect(rows.length, 'the board of pairs is cut somewhere other than five').toBe(5)
+    } finally {
+      /* Put back what stood before, and not `vi.unstubAllGlobals`: this suite serves the mocked
+         files through a stub of its own, and unstubbing reverts to the one that stood before that
+         (`pages/publicData.test.tsx` records the same). */
+      vi.stubGlobal('fetch', served)
+    }
   }, SLOW)
 
   it('draws the progress as one bar of two levels, the season before under the gain', async () => {
@@ -2158,28 +2212,34 @@ describe('the row of whoever is signed in', () => {
 
   const marked = (rows: HTMLElement[]) => rows.filter((row) => row.classList.contains('table__mine'))
 
-  it('is marked on the board of pairs for the half that is not on top', async () => {
-    /* PDL, and the owner's own words quoted in `components/mine.ts`: his row is marked on the
-       boards that are tables „ukoliko sam u paru". A row of a pair is about **two** people, and
-       the one signed in here is the **lower** of the two: 000001 scored less of that pair's points
-       than 000009 did, so he is the second line and not the first.
+  /* PDL, and the owner's own words quoted in `components/mine.ts`: his row is marked on the boards
+     that are tables „ukoliko sam u paru". A row of a pair is about **two** people.
+   *
+     **Both of them are read, and that took two rounds of review to get right.** The first draft
+     signed in only 000001, who is the lower half by points **and** the first member number written
+     in the file, so it could not tell „both halves are marked" from either of the two ways of
+     marking one. Read from both ends there is no such value: 000001 is the second line and the
+     first number, 000009 is the first line and the second number, so marking either one alone
+     fails one of the two readings. */
+  for (const [member, family] of [
+    ['000001', 'Đurišić'],
+    ['000009', 'Bogdanović'],
+  ] as const) {
+    it(`is marked on the board of pairs for ${family}`, async () => {
+      renderAt('/sr/top-liste?sezona=2019', 'competitor', member)
 
-       That is the whole of the case (review, 07.09.2026): written to mark only the half on top,
-       the board looks right, this screen reads the same, and the member who is the second name
-       never finds his own row. */
-    renderAt('/sr/top-liste?sezona=2019', 'competitor', '000001')
+      await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
 
-    await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
+      const mine = marked(
+        within(screen.getByRole('table', { name: 'Najbolji trkački parovi' }))
+          .getAllByRole('row')
+          .slice(1),
+      )
 
-    const mine = marked(
-      within(screen.getByRole('table', { name: 'Najbolji trkački parovi' }))
-        .getAllByRole('row')
-        .slice(1),
-    )
-
-    expect(mine).toHaveLength(1)
-    expect(within(at(mine, 0)).getByText('Đurišić')).toBeVisible()
-  }, SLOW)
+      expect(mine).toHaveLength(1)
+      expect(within(at(mine, 0)).getByText(family)).toBeVisible()
+    }, SLOW)
+  }
 
   it('is marked in the season table, and nowhere else in it', async () => {
     renderAt('/sr/tabela?sezona=2019', 'competitor', ME)

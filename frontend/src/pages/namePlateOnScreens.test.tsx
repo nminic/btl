@@ -118,11 +118,10 @@ describe('the circle beside a name', () => {
        the two of them one under the other. Asked of the drawn screen, because the count of lines
        is the whole of what the owner asked for and nothing in a stylesheet says it.
 
-       **And the one on top is the one who scored more of the pair's points, not the better
-       season** (owner, 04.08.2026). The mocked pair is chosen so that the two answers differ
-       (review, 07.09.2026): over the whole of 2019 Radoslav Milovanović has more points than
-       Isidora Živković, and on the thirteen races they ran together she has more than twice his.
-       Read off the season, this case would name him first.
+       **The one on top is the one who scored more of the pair's points, not the better season**
+       (owner, 04.08.2026). For **this** pair the two measures agree, so what parts them is the
+       second pair below; this one holds the order of the four lines and nothing about which
+       measure chose it (review, 07.09.2026).
 
        Measured in a browser after this was written. At 780: the two circles at x 76, one at y 127
        and one at y 164; the four lines all at x 119; the row 106px. At **360**, where the card is
@@ -147,8 +146,7 @@ describe('the circle beside a name', () => {
     expect(row.querySelectorAll('.portrait').length).toBe(2)
 
     /* And four lines, in the order the two circles are drawn in, so the second face is not read
-       against the first name. The one who scored more of the pair's points is the one on top
-       (owner, 04.08.2026), and in this season that is Slobodan Ristić. */
+       against the first name. */
     expect([...row.querySelectorAll('.plate__given, .plate__family')].map((one) => one.textContent))
       .toEqual(['Isidora', 'Živković', 'Radoslav', 'Milovanović'])
 
