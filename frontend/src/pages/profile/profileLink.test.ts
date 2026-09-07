@@ -32,13 +32,20 @@ import { inside, sources, WHOLE_PORTAL } from '../../test/sources'
  * stop mattering. Two files reach the same module exactly when they resolve to the same file, and
  * that is the whole of the question.
  *
+ * **And nothing may pass the maker along**, which is the second case below. A module on the list
+ * could re-export what it imports (`export { profilePath } from '…'`), and a screen reaching for it
+ * *there* resolves to that module rather than to this one, so the first case would answer as
+ * though nothing had happened. A review measured exactly that. The portal writes no such
+ * re-export anywhere, so the cheapest complete answer is to refuse the form outright rather than to
+ * follow it: the day one is wanted, it fails here and asks the question once.
+ *
  * **What this floor deliberately does not hold, written down rather than left to be found.** An
  * address spelt out by hand reaches no module at all, so nothing here sees it. A guard over that
  * was tried and removed in the same round: „is this string an address" cannot be answered from one
  * expression, because the pieces can be glued together in any number of ways — a review wrote
  * `` `/${locale}/takmicar` + `/${number}` `` and walked past a pattern that had just been written
  * to catch exactly that. What holds that case is behaviour and not text
- * (`pages/profilePrivacy.test.tsx`, which hides a member and then reads five screens), and the
+ * (`pages/profilePrivacy.test.tsx`, which hides two members and then reads five screens), and the
  * limit of **that** is its five screens. A sixth screen that spells an address out by hand is
  * caught by neither, and that is the boundary of this pair, recorded in `btl-produkt/PDL.md`.
  *
@@ -108,5 +115,35 @@ describe('the address of a profile', () => {
       .sort()
 
     expect(reaching).toEqual([...MAY].sort())
+  })
+
+  it('is not passed along, because nothing in the portal passes anything along', () => {
+    /* One module re-exporting another is a second name for the same thing, and the case above
+       answers about the name a file writes rather than about what stands behind it. Rather than
+       follow the chain, the form is refused: the portal has never written one, so this costs
+       nothing today and closes the way in for good.
+
+       Asked of the parser and not of the text, for the reason the whole file exists: `export … from`
+       can be written with either quote, with a type modifier, with a namespace or with a list, and
+       the parser tells them apart from an ordinary export without being told how they are spelt. */
+    const passing = sources()
+      .filter(({ path, code }) => {
+        const source = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+        let found = false
+        const walk = (node: ts.Node): void => {
+          if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined) {
+            found = true
+          }
+
+          ts.forEachChild(node, walk)
+        }
+
+        walk(source)
+
+        return found
+      })
+      .map(({ path }) => relative(process.cwd(), path).split(sep).slice(-2).join(sep))
+
+    expect(passing, 'a module now hands on what it imports').toEqual([])
   })
 })

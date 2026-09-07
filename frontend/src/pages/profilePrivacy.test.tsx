@@ -57,6 +57,14 @@ const waysIn = (): string[] =>
     .map((one) => one.getAttribute('href') ?? '')
     .filter((href) => href.includes('/takmicar/'))
 
+/** What each of the two is called, so the walk can ask whether the screen draws them at all.
+ *  Written out rather than read off the file, because a name read from the same place the screen
+ *  reads it from would agree with it however wrong both were. */
+const NAMES: Record<string, string> = {
+  '000001': 'Vladan Đurišić',
+  '000007': 'Strahinja Vukićević',
+}
+
 /* 000007 is Strahinja Vukićević, born 2007, of Banja Luka, in Dunavski trkači.
    The year is read off the data rather than remembered: written from memory it was 1988, and
    the case then failed on a mechanism that worked. */
@@ -163,11 +171,41 @@ describe('hiding a profile from readers who are not signed in', () => {
      halves: there are ways into profiles here, and none of them is his. */
   it('is read by every screen that draws a name, not only by the one that remembered', async () => {
     const user = setupUser()
-    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
-
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    const { router } = renderAt(
+      '/sr/podesavanja',
+      'competitor',
+      '000007',
+      undefined,
+      undefined,
+      <>
+        <Become who="000001" />
+        <SignOut />
+      </>,
     )
+    const hide = async () =>
+      user.click(
+        await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+      )
+
+    await hide()
+
+    /* **Two members hidden in one visit, because one member is not on every screen** (review,
+       07.09.2026). The walk hid `000007` alone and asked five screens about him, and on the fifth
+       he simply is not drawn: the standing of a competition is of the members who raced it, and he
+       raced none of `brdska-2019`. „No way in is his" was then answered by his absence rather than
+       by the rule, and a review measured it: with hiding switched off in `profile/visible.ts`
+       altogether, four of the five addresses fail and that one passes.
+
+       Swapping the address does not mend it. Of the three competitions in the file, the other two
+       draw no way into any profile at all, so nothing there could carry this question either.
+
+       So each address names the member it can really answer about, and both are hidden before the
+       walk starts. Both edits live in the same overlay, keyed by member number, so one visit is
+       enough. */
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+    await router.navigate('/sr/podesavanja')
+    await hide()
+
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
 
     /* **Each screen waited for by its own heading, and then waited on until it stops drawing**
@@ -187,15 +225,17 @@ describe('hiding a profile from readers who are not signed in', () => {
        its own table, and it is floored by the two questions under it: a heading that stops
        matching fails on the wait, and an address that leads into no profile at all fails on the
        count. */
-    const WALK: [address: string, heading: string][] = [
-      ['/sr/tabela', 'BTL tabele'],
-      ['/sr/top-liste', 'Top liste'],
-      ['/sr', 'Balkanska trkačka liga'],
-      ['/sr/kalendar/novosadski-nocni-maraton-2014', 'Novosadski noćni maraton'],
-      ['/sr/liga/brdska-2019/rezultati', 'Brdska liga 2019'],
+    const WALK: [address: string, heading: string, who: string][] = [
+      ['/sr/tabela', 'BTL tabele', '000007'],
+      ['/sr/top-liste', 'Top liste', '000007'],
+      ['/sr', 'Balkanska trkačka liga', '000007'],
+      ['/sr/kalendar/novosadski-nocni-maraton-2014', 'Novosadski noćni maraton', '000007'],
+      /* The one screen `000007` is not on, and the one member the standing of this competition
+         does draw. */
+      ['/sr/liga/brdska-2019/rezultati', 'Brdska liga 2019', '000001'],
     ]
 
-    for (const [where, heading] of WALK) {
+    for (const [where, heading, who] of WALK) {
       await router.navigate(where)
       await screen.findByRole('heading', { level: 1, name: heading })
 
@@ -213,7 +253,20 @@ describe('hiding a profile from readers who are not signed in', () => {
         expect(done, `${where}: ekran se još crta`).toBe(true)
       })
 
-      expect(waysIn().filter((href) => href.includes('/takmicar/000007')), where).toEqual([])
+      /* And he is really drawn here, which is the half that was missing: „none of these ways in
+         is his" is also what a screen that never mentions him would say. His name stays whatever
+         happens to the link (owner, 06.09.2026), so the name is what proves he is on the page.
+
+         Asked of the text of the page rather than of one node, because two of these five screens
+         write a name in pieces: the boards cut the surname down to an initial on a narrow card and
+         keep both halves in the markup, and the chart on the front page draws the name inside a
+         bar. A query for one node finds neither, and the question here is only whether the screen
+         mentions him at all. */
+      expect(
+        document.body.textContent?.includes(NAMES[who] ?? who),
+        `${where}: ${String(NAMES[who])} nije ni nacrtan`,
+      ).toBe(true)
+      expect(waysIn().filter((href) => href.includes(`/takmicar/${who}`)), where).toEqual([])
     }
   }, SLOW)
 
