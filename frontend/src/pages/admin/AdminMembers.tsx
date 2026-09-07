@@ -1,7 +1,6 @@
-import { profilePath } from '../profileAddress'
+import { ProfileLink } from '../profile/ProfileLink'
 import { categoryLabel } from '../../data/categories'
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { categoryOfMember } from '../../data/derive'
 import { SEASON } from '../../data/pricing'
@@ -20,7 +19,7 @@ import '../member/Member.css'
  * off every public screen and shown only here, to staff with rights over members
  * (PDL P8, P11, P23). */
 export function AdminMembers() {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const overlay = useOverlay()
   const session = useSession()
   const [search, setSearch] = useState('')
@@ -95,9 +94,9 @@ export function AdminMembers() {
                     {rows.map((one) => (
                       <tr key={one.memberNumber}>
                         <td>
-                          <Link to={profilePath(one, locale)}>
+                          <ProfileLink competitor={one}>
                             {one.firstName} {one.lastName}
-                          </Link>{' '}
+                          </ProfileLink>{' '}
                           <span className="table__member-number">{one.memberNumber}</span>
                         </td>
                         <td>{categoryLabel(categoryOfMember(one, SEASON), t)}</td>

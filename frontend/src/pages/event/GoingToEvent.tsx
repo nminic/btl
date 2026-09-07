@@ -1,6 +1,5 @@
-import { profilePath } from '../profileAddress'
+import { ProfileLink } from '../profile/ProfileLink'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { combinePair, useAttendance, useCompetitors } from '../../data/useResource'
@@ -164,9 +163,9 @@ function Going({
                 /* No record to lead to, so no link: the words stand alone. */
                 <span>{t('event.someMember')}</span>
               ) : (
-                <Link to={profilePath(who, locale)}>
+                <ProfileLink competitor={who}>
                   {who.firstName} {who.lastName}
-                </Link>
+                </ProfileLink>
               )}
 
               {/* Not to oneself, and not to somebody there is no record of: a

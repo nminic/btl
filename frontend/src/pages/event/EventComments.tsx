@@ -1,5 +1,4 @@
-import { profilePath } from '../profileAddress'
-import { Link } from 'react-router'
+import { ProfileLink } from '../profile/ProfileLink'
 import { useGrowing } from '../../components/growing'
 import { LoadMore } from '../../components/LoadMore'
 import { Portrait } from '../../components/Portrait'
@@ -246,9 +245,9 @@ function Comment({
             {who === undefined || !who.active ? (
               comment.who
             ) : (
-              <Link to={profilePath(who, locale)}>
+              <ProfileLink competitor={who}>
                 {who.firstName} {who.lastName}
-              </Link>
+              </ProfileLink>
             )}
           </p>
           <p className="comments__date">

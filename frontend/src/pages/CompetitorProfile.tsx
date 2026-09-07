@@ -9,7 +9,6 @@ import { Resource } from '../components/Resource'
 import { MEMBERS, TEAMS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { useSession } from '../session/useSession'
-import { ProfileHidden } from './profile/ProfileHidden'
 import { profileFor } from './profile/visible'
 import { useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
@@ -428,15 +427,16 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
         const readable = profileFor(competitors, memberNumber, reader)
 
         if (readable.kind === 'none') {
-          return <h1>{t('profile.notFound')}</h1>
+          /* **The home page, and the same for a profile that does not exist.** The owner's rule,
+             06.09.2026: „javni posetilac se preusmerava na naslovnu stranu portala." Written as
+             one answer for both, because a „nije pronađen" for one and a redirect for the other
+             would let a visitor read off the difference which numbers belong to members who are
+             hiding, which is the thing being hidden. */
+          return <Navigate to={`/${locale}`} replace />
         }
 
         const { competitor } = readable
         const name = `${competitor.firstName} ${competitor.lastName}`
-
-        if (readable.kind === 'hidden') {
-          return <ProfileHidden name={name} />
-        }
 
         /* One address and no alias (PDL P11): a reader who arrived by the
            number alone, or by a bookmark made before the name was in the

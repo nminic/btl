@@ -1,7 +1,6 @@
-import { profilePath } from './profileAddress'
+import { ProfileLink } from './profile/ProfileLink'
 import { categoryLabel } from '../data/categories'
 import { useMemo } from 'react'
-import { Link } from 'react-router'
 import { monogramFor } from '../app/monogram'
 import { Resource } from '../components/Resource'
 import { hueFor } from './competitorFace'
@@ -9,6 +8,8 @@ import { activeOnly, categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../d
 import { SEASON } from '../data/pricing'
 import type { Competitor, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
+import { MEMBERS, recordsOf } from './admin/entityForms'
+import { useOverlay } from './admin/overlay'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
@@ -71,7 +72,7 @@ function CompetitorCards({
         <ul className="cards">
           {cards.map(({ competitor, totals: own }) => (
             <li key={competitor.memberNumber} className="cards__item">
-              <Link className="card" to={profilePath(competitor, locale)}>
+              <ProfileLink competitor={competitor} className="card">
                 <span
                   className="card__face"
                   style={{ '--face-hue': hueFor(competitor.memberNumber) }}
@@ -105,7 +106,7 @@ function CompetitorCards({
                     <span className="card__value">{formatPoints(own.points, locale)}</span>
                   </span>
                 </span>
-              </Link>
+              </ProfileLink>
             </li>
           ))}
         </ul>
@@ -122,15 +123,19 @@ export function Competitors() {
    * turned into an error message if that one file failed, over data no card on
    * it has ever read. */
   const state = combinePair(useCompetitors(), useResults())
+  /* Through the overlay, like the profile page and the message that carries an invitation: a
+     member who ticked „sakrij moj profil" a moment ago lives there and nowhere else, so read off
+     the file this list would go on offering the way in that the profile itself refuses. */
+  const overlay = useOverlay()
 
   return (
     <div className="rankings rankings--tooled">
       <h1>{t('competitors.title')}</h1>
 
       <Resource state={state}>
-        {([competitors, results]) => (
+        {([everybody, results]) => (
           <CompetitorCards
-            competitors={competitors}
+            competitors={recordsOf(MEMBERS, everybody, overlay)}
             results={results}
             search={search}
             onSearch={(value) => setParams(value === '' ? {} : { trazi: value })}

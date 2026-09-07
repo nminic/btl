@@ -1,4 +1,4 @@
-import { profilePath } from './profileAddress'
+import { useProfileLink } from './profile/useProfileLink'
 import { useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useFilterParams } from '../app/useFilterParams'
@@ -293,11 +293,14 @@ function Boards({
      holds here. */
   const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
 
+  /* Held steady across renders (`useProfileLink` is a `useCallback` over the reader and the
+     locale), so it may sit in the list below without rebuilding the boards on every render. */
+  const linkTo = useProfileLink()
+
   /* One pass over the results per board, and the season only changes when
    * somebody changes it, so the boards are not rebuilt on every render. */
   const boards = useMemo<Widget[]>(() => {
-    const profile = (who: Competitor) =>
-      who.active ? profilePath(who, locale) : undefined
+    const profile = (who: Competitor) => linkTo(who)
     const noResults = t('topBoards.empty')
 
     /* One of the five lists by length, as a chart of its own. On the front page
@@ -468,7 +471,7 @@ function Boards({
       pairs,
       bestRaces,
     ]
-  }, [field, results, season, locale, t])
+  }, [field, results, season, locale, t, linkTo])
 
   return (
     <>

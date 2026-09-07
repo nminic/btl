@@ -15,7 +15,6 @@ import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
 import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
-import { ProfileHidden } from './profile/ProfileHidden'
 import { profileFor } from './profile/visible'
 import {
   combinePair,
@@ -54,7 +53,7 @@ function AwardsBody({
    *  is the one address these trophies live at (PDL P11). */
   part: string | undefined
 }) {
-  const { t } = useI18n()
+  const { locale } = useI18n()
   const { memberNumber: reader } = useSession()
   const overlay = useOverlay()
   const state = combinePair(
@@ -72,14 +71,15 @@ function AwardsBody({
         const readable = profileFor(competitors, memberNumber, reader)
 
         if (readable.kind === 'none') {
-          return <h1>{t('profile.notFound')}</h1>
+          /* **The home page, and the same for a profile that does not exist.** The owner's rule,
+             06.09.2026: „javni posetilac se preusmerava na naslovnu stranu portala." Written as
+             one answer for both, because a „nije pronađen" for one and a redirect for the other
+             would let a visitor read off the difference which numbers belong to members who are
+             hiding, which is the thing being hidden. */
+          return <Navigate to={`/${locale}`} replace />
         }
 
         const { competitor } = readable
-
-        if (readable.kind === 'hidden') {
-          return <ProfileHidden name={`${competitor.firstName} ${competitor.lastName}`} />
-        }
 
         return (
           <AwardsFor

@@ -1632,11 +1632,15 @@ describe('CompetitorProfile', () => {
        kao da ne postoji". Nothing read the flag, so the profile of somebody who
        had left was public; there was no such member in the data either, so the
        rule had nothing to be checked against. 000032 is one now. */
-    renderAt('/sr/takmicar/000032')
+    const { router } = renderAt('/sr/takmicar/000032')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' }),
-    ).toBeVisible()
+    /* **The home page, and not a page that says the profile is missing.** Since 06.09.2026 an
+       address that leads nowhere and an address somebody is hiding behind answer the same way, so
+       that a visitor cannot read the difference off the screen (PDL P23). Read off the address,
+       because the name of the portal is written on every screen. */
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
   })
 
   /* Its own limit, and not the whole suite's: `ADL.md` A2 keeps `testTimeout` at the
@@ -1743,11 +1747,15 @@ describe('CompetitorProfile', () => {
   })
 
   it('says so when the competitor does not exist', async () => {
-    renderAt('/sr/takmicar/M9999')
+    const { router } = renderAt('/sr/takmicar/M9999')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovog profila nema.' }),
-    ).toBeVisible()
+    /* **The home page, and not a page that says the profile is missing.** Since 06.09.2026 an
+       address that leads nowhere and an address somebody is hiding behind answer the same way, so
+       that a visitor cannot read the difference off the screen (PDL P23). Read off the address,
+       because the name of the portal is written on every screen. */
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
   })
 
   it('handles a competitor who has never raced', async () => {
