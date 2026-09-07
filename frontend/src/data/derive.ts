@@ -987,27 +987,26 @@ export function pairOf(
 }
 
 /**
- * The pair one member is in for the furthest season, of the pairs that hold, or nothing.
+ * Every pair one member is in that still counts, earliest season first.
  *
- * **A profile asks this rather than `pairOf`**, and the reason is the deadline: a pair formed today
- * holds for the season **after** this one (PDL P13), so a member who confirms one in September has
- * nothing to show for it until January if the profile asks about the season being run. That reads
- * as a portal that lost the press. Asked this way, the profile says what they have and which season
- * it is for, which is both halves of the truth.
+ * **All of them, and that was measured** (review, 07.09.2026). It used to answer with the pair of
+ * the furthest season, a rule that appears in no journal and that I had invented while fixing
+ * something else. On 2 January a member can hold two: the one they are running the season in, and
+ * one made for the season after. Answered with the furthest, the running one vanished from their
+ * own page and there was no way left to end it, while the other half of it went on being told they
+ * were paired.
+ *
+ * A season that is over is history rather than „who they are paired with", so `from` is the season
+ * being run and nothing earlier is returned.
  */
-export function latestPairOf(
+export function pairsFrom(
   pairs: RacingPair[],
   memberNumber: string | null,
-  /** The earliest season that still counts, which is the one being run: a pair from a season that
-   *  is over is history and not „who they are paired with". */
   from: number,
-): RacingPair | null {
+): RacingPair[] {
   return pairs
     .filter((one) => one.season >= from && one.memberNumbers.some((who) => who === memberNumber))
-    .reduce<RacingPair | null>(
-      (best, one) => (best === null || one.season > best.season ? one : best),
-      null,
-    )
+    .sort((left, right) => left.season - right.season)
 }
 
 /** A racing pair's season: what the two of them did on the races they both ran. */

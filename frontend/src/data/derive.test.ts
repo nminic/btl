@@ -19,7 +19,7 @@ import {
   topPairs,
   pairsNow,
   pairOf,
-  latestPairOf,
+  pairsFrom,
   rankTeams,
   resultsOf,
   seasonsWithResults,
@@ -1705,21 +1705,22 @@ describe('the racing pairs that hold now', () => {
     expect(pairsNow([], made, []).map((one) => one.id)).toEqual(['made'])
   })
 
-  it('says the furthest season they are paired for, whichever order the pairs arrive in', () => {
-    /* A profile asks this rather than `pairOf`, because a pair confirmed today holds for the season
-       after this one: asked about the season being run, a profile would say nothing at all to
-       somebody who has just confirmed one.
+  it('says every pair that still counts, earliest season first', () => {
+    /* **Every one of them, and not the furthest** (review, 07.09.2026). On 2 January a member holds
+       two: the season being run, and the one made for the season after. Answered with one, the
+       other disappears from their own page and there is no way left to end it, while the person on
+       the far side of it goes on being told they are paired.
 
-       **Both orders**, because „the first one found" and „the furthest season" agree in one of them
-       and the case would not tell them apart. */
+       **Handed in newest first**, so „the order they arrive in" and „earliest season first" are
+       different answers and the case can tell them apart. */
     const now = pair('now', '000001', '000002', 2027)
-    const soon = pair('soon', '000001', '000002', 2028)
+    const soon = pair('soon', '000001', '000009', 2028)
+    const old = pair('old', '000001', '000004', 2019)
 
-    expect(latestPairOf([now, soon], '000001', 2027)?.id).toBe('soon')
-    expect(latestPairOf([soon, now], '000001', 2027)?.id).toBe('soon')
-    /* And a season that is over is history rather than „who they are paired with". */
-    expect(latestPairOf([pair('old', '000001', '000002', 2019)], '000001', 2027)).toBe(null)
-    expect(latestPairOf([now], '000009', 2027)).toBe(null)
+    expect(pairsFrom([soon, now, old], '000001', 2027).map((one) => one.id)).toEqual(['now', 'soon'])
+    /* A season that is over is history rather than „who they are paired with". */
+    expect(pairsFrom([old], '000001', 2027)).toEqual([])
+    expect(pairsFrom([now], '000009', 2027)).toEqual([])
   })
 
   it('says which pair one member is in, of the season asked about', () => {
