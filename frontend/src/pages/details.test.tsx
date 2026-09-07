@@ -1,9 +1,10 @@
 import { slugify } from './rulebookToc'
-import { act, cleanup, screen, within } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
-import type { BtlEvent, Race } from '../data/types'
+import type { BtlEvent, League } from '../data/types'
 import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
+import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
 describe('TeamDetail', () => {
@@ -268,77 +269,104 @@ describe('EventDetail, the results of the league members who ran it', () => {
   })
 })
 
-/** The event a row leads to, found by the address on its link. By the name it
- *  would be the wrong one: the same race is run every year and eight events
- *  carry that name. */
-const eventOf = (events: BtlEvent[], row: HTMLElement) => {
-  const href = within(row).getByRole('link').getAttribute('href') ?? ''
-
-  return events.find((one) => href.endsWith(`/${one.slug}`))
-}
-
 describe('LeagueDetail', () => {
-  it('lists the events that count towards the league', async () => {
-    renderAt('/sr/liga/runtrace-2027')
+  /* **The page of one competition is its name, the half of the field being read, and the
+     standing** (owner, 07.09.2026): „na strani Lige ne postoje propozicije i nagrade (one se vide
+     samo na listi svih liga), pa ni događaji koji ulaze u ligu, a ni dugme rezultati jer se odmah
+     prikazuju rezultati."
 
-    expect(await screen.findByRole('heading', { level: 1, name: /RunTrace liga 2027/ }))
-      .toBeVisible()
+     Three cases went with that sentence rather than being rewritten: the table of events that
+     count, the column counting each event's races, and the nav between two parts. What the second
+     of them was really about — that a count is read off the races and never off a list an event
+     carries — is not lost: the standing itself is built that way (`league/leagueTable.ts`), and
+     the number of entrants on the list of competitions is read off the very rows that standing
+     draws. */
 
-    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
-    expect(rows.length).toBeGreaterThan(1)
-    expect(within(first(rows)).getByRole('link')).toHaveAttribute(
-      'href',
-      expect.stringContaining('/sr/kalendar/'),
-    )
-  })
-
-  it('counts the races of each event off the races themselves', async () => {
-    /* The count used to be read off a list the event carried, which only the
-       generator ever filled, so a race entered by hand was one this column never
-       saw (ADL A7, 06.08.2026). Read off the races, the two agree by
-       construction. */
-    renderAt('/sr/liga/runtrace-2027')
-
-    await screen.findByRole('heading', { level: 1, name: /RunTrace liga 2027/ })
-
-    const events = await loadResource<BtlEvent[]>('events')
-    const races = await loadResource<Race[]>('races')
-    const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
-    const found = must(
-      rows
-        .map((row) => ({ row, event: eventOf(events, row) }))
-        .find(({ event }) => races.some((race) => race.eventId === event?.id)),
-      'an event of the league that has races',
-    )
-    const mine = races.filter((race) => race.eventId === found.event?.id).length
-
-    expect(mine).toBeGreaterThan(0)
-    expect(within(found.row).getAllByRole('cell')[3]?.textContent).toBe(String(mine))
-  })
-
-  it('shows the rules and the prizes that have been written', async () => {
-    // Both live under the second part now (owner, 31.07.2026).
-    renderAt('/sr/liga/runtrace-2027')
+  it('shows the rules and the prizes on the list of competitions, and not on the page', async () => {
+    /* Owner, 07.09.2026: „Propozicije i Nagrade treba da se izlistavaju na ovoj strani, a ne kad
+       se uđe u ligu." RunTrace is the competition that carries both. */
+    renderAt('/sr/lige?sezona=2027')
 
     expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
-  })
 
-  it('hides both sections while neither has been written', async () => {
-    /* The league nobody has written anything about yet. RunTrace carries the
-       written text, so the two cases are two leagues rather than one. */
-    renderAt('/sr/liga/planinska-2027')
+    cleanup()
+    renderAt('/sr/liga/runtrace-2027')
 
-    await screen.findByRole('heading', { level: 1 })
+    await screen.findByRole('heading', { level: 1, name: /RunTrace liga 2027/ })
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Nagrade' })).not.toBeInTheDocument()
+  })
+
+  it('says how many events count and how many people are in it', async () => {
+    /* Owner, 07.09.2026: „Osim sezone i broja događaja, treba da bude i Učesnika". Held against
+       the files rather than against a number written here, and „Učesnika" against the standing
+       itself: the owner said it is „Koliko ih je u tabeli", so the list and the page behind it
+       cannot disagree without one of them being wrong. */
+    renderAt('/sr/lige?sezona=2019')
+
+    const box = must(
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('li'),
+      'the box of the competition',
+    )
+    const leagues = await loadResource<League[]>('leagues')
+    const league = must(
+      leagues.find((one) => one.slug === 'brdska-2019'),
+      'takmičenje brdska-2019',
+    )
+
+    expect(within(box).getByText(new RegExp(`Sezona 2019`))).toBeVisible()
+    expect(box.textContent).toContain(`Događaja: ${league.eventIds.length}`)
+
+    /* **Waited for, because it arrives after the box does** (review, 07.09.2026). „Učesnika" is
+       worked out of the three heaviest files on the portal, and the list no longer waits on them:
+       the names, the seasons, the terms and the prizes draw out of the one small file, and this
+       number fills in behind them. Read at once, it is still empty, which is what the screen
+       deliberately shows while the answer is coming. */
+    await waitFor(() => {
+      expect(box.textContent).toMatch(/Učesnika: \d/)
+    })
+
+    const said = must(box.textContent, 'the line of facts')
+
+    cleanup()
+
+    /* And „Učesnika" against the standing itself, counted the way a reader would: both halves of
+       the field, because the list carries one number for the competition and not one per gender.
+       Neither half is the answer on its own, and that is the mutation this is written against:
+       the men alone are a number the box could plausibly carry. */
+    const user = setupUser()
+
+    renderAt('/sr/liga/brdska-2019')
+
+    const men = placings(await screen.findByRole('table', { name: 'Poredak takmičenja' })).length
+
+    await user.click(screen.getByRole('button', { name: 'Žene' }))
+
+    const women = placings(await screen.findByRole('table', { name: 'Poredak takmičenja' })).length
+
+    expect(men, 'the men are the whole field').toBeGreaterThan(0)
+    expect(women, 'the women are the whole field').toBeGreaterThan(0)
+    expect(said).toContain(`Učesnika: ${String(men + women)}`)
+  }, SLOW)
+
+  it('hides both sections while neither has been written', async () => {
+    /* The competition nobody has written anything about yet, and a visitor, who has no pencil to
+       be offered. RunTrace carries the written text, so the two cases are two competitions rather
+       than one. */
+    renderAt('/sr/lige?sezona=2027')
+
+    await screen.findAllByRole('heading', { level: 2 })
+    expect(screen.queryAllByRole('heading', { name: 'Propozicije' })).toHaveLength(1)
   })
 
   it('holds up for a league with no events yet', async () => {
     renderAt('/sr/liga/planinska-2027')
 
     expect(await screen.findByRole('heading', { level: 1, name: /Planinska liga/ })).toBeVisible()
-    expect(screen.getByText('Ovoj ligi još nije dodeljen nijedan događaj.')).toBeVisible()
+    expect(
+      await screen.findByText('Na ovom takmičenju još nema nijednog rezultata.'),
+    ).toBeVisible()
   })
 
   it('says so when nothing runs alongside the league', async () => {
@@ -374,28 +402,29 @@ describe('LeagueDetail', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Ove lige nema.' })).toBeVisible()
   })
 
-  it('is reachable from the list of leagues', async () => {
+  it('is reachable from the list of leagues, and opens on the standing', async () => {
     const user = setupUser()
-    renderAt('/sr/lige')
+    renderAt('/sr/lige?sezona=2027')
 
     await user.click(await screen.findByRole('link', { name: /RunTrace liga/ }))
 
-    expect(await screen.findByRole('heading', { name: /Događaji koji ulaze u ligu/ })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: /RunTrace liga/ })).toBeVisible()
+    /* No nav between parts, and no button to the results: „a ni dugme rezultati jer se odmah
+       prikazuju rezultati" (owner, 07.09.2026). */
+    expect(screen.queryByRole('navigation', { name: 'Delovi takmičenja' })).toBeNull()
   })
 })
 
 
 /**
- * The rows of the competition grid that are people, out of a table that also
- * carries a row per block.
+ * The rows of the competition grid that are people.
  *
- * The standing is split into blocks since 27.08.2026: a competition ranks by
- * gender, and each block is introduced by one heading across the whole width. Those rows are not placings. `slice(1)` was
- * enough while the only row that was not a person stood at the top.
+ * Every row of the body is a placing since 07.09.2026, when the two blocks became one chosen half
+ * and the heading that used to open each block went with them. The head of the table is still a
+ * row and is still not a placing.
  *
- * Told apart by role and not by position: a placing carries a heading of its own
- * row, the runner's name, while a block heading is a column header over a group
- * of columns. Neither can be mistaken for the other.
+ * Told apart by role and not by position: a placing carries a heading of its own row, the
+ * runner's name, and cells beside it; the head of the table carries column headings and no cells.
  */
 const placings = (grid: HTMLElement): HTMLElement[] =>
   within(grid)
@@ -406,12 +435,16 @@ const placings = (grid: HTMLElement): HTMLElement[] =>
         within(row).queryAllByRole('cell').length > 0,
     )
 
-describe('a competition, in two parts', () => {
-  /* Owner, 31.07.2026: the same shape the profile has. The standing is a grid,
-     with everybody who ran down the side and every race across the top. The
-     data has one competition that has actually been run; the three of 2027 are
-     necessarily empty, which is why one was added. */
-  const RUN = '/sr/liga/brdska-2019/rezultati'
+describe('a competition, on one page', () => {
+  /* Owner, 31.07.2026 for the grid and 07.09.2026 for the page being one: the standing is a grid,
+     with everybody who ran down the side and every event of the competition across the top. The
+     data has one competition that has actually been run; the three of 2027 are necessarily empty,
+     which is why one was added.
+
+     The second address (`/liga/:slug/rezultati`) named the same page as the first once the parts
+     collapsed into one, so it is gone rather than kept as an alias: two addresses for one page is
+     what the portal refuses everywhere else (P11). */
+  const RUN = '/sr/liga/brdska-2019'
 
   it('opens on the standing, with the total in the second column', async () => {
     renderAt(RUN)
@@ -427,38 +460,22 @@ describe('a competition, in two parts', () => {
     expect(heads.length).toBeGreaterThan(2)
   })
 
-  it('orders each block by that second column, highest first', async () => {
-    /* Highest first **inside a block**, and that is the whole of what splitting
-       the standing means. Read across the table the numbers now go up again at
-       every boundary, and they should: a competition ranks nobody against
-       somebody in another block.
-
-       Until 27.08.2026 this asked the question of the whole table, which was the
-       right question while there was one block; asked of the whole table now it
-       would fail on a correct screen, and passing it by dropping the order
-       altogether would leave the ranking unguarded. So it is asked once per
-       block, and the boundaries come from the same headings the reader sees. */
+  it('orders the half being read by that second column, highest first', async () => {
+    /* One half at a time since 07.09.2026, so the question is the whole table's again, as it was
+       before the two blocks stood one under the other. What has not changed is that a competition
+       ranks nobody against somebody of the other gender: the ranking is inside the half, and the
+       half is what the screen draws. */
     renderAt(RUN)
 
     const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
-    const blocks = within(grid).getAllByRole('rowgroup').slice(1)
+    const totals = placings(grid).map((row) =>
+      Number(must(first(within(row).getAllByRole('cell')).textContent, 'text').replace(',', '.')),
+    )
 
-    expect(blocks.length, 'the standing is drawn as one block').toBeGreaterThan(1)
-
-    for (const block of blocks) {
-      const named = must(within(block).getAllByRole('rowheader')[0]?.textContent, 'the block name')
-      const totals = within(block)
-        .getAllByRole('row')
-        .filter(
-          (row) =>
-            within(row).queryAllByRole('rowheader').length > 0 &&
-            within(row).queryAllByRole('cell').length > 0,
-        )
-        .map((row) => Number(must(first(within(row).getAllByRole('cell')).textContent, 'text').replace(',', '.')))
-
-      expect(totals.length, `the block ${named} has nobody in it`).toBeGreaterThan(0)
-      expect([...totals].sort((left, right) => right - left), `the block ${named} is out of order`).toEqual(totals)
-    }
+    expect(totals.length, 'the standing has nobody in it').toBeGreaterThan(1)
+    expect([...totals].sort((left, right) => right - left), 'the standing is out of order').toEqual(
+      totals,
+    )
   })
 
   it('leaves the cell of a race somebody did not run empty', async () => {
@@ -474,31 +491,30 @@ describe('a competition, in two parts', () => {
     expect(cells.some((one) => one === '0,00')).toBe(false)
   })
 
-  it('keeps the written text on the other part, and not on this one', async () => {
-    const user = setupUser()
+  it('carries nothing but the name, the control and the standing', async () => {
+    /* The whole of the owner's sentence of 07.09.2026, as one list of what is not here: no terms,
+       no prizes, no table of the events that count, and no nav between parts. */
     renderAt(RUN)
 
     await screen.findByRole('table', { name: 'Poredak takmičenja' })
+
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'Propozicije' }))
-
-    expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
-    // The events that count moved here too, under what is written about them.
-    expect(screen.getByRole('table', { name: 'Događaji koji ulaze u ligu' })).toBeVisible()
-    expect(screen.queryByRole('table', { name: 'Poredak takmičenja' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Nagrade' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Događaji koji ulaze u ligu' })).toBeNull()
+    expect(screen.queryByRole('navigation', { name: 'Delovi takmičenja' })).toBeNull()
+    /* And the one control that is here: which half of the field is being read. */
+    expect(screen.getByRole('button', { name: 'Žene' })).toBeVisible()
   })
 
   it('says so plainly for a competition that has not been run', async () => {
-    renderAt('/sr/liga/runtrace-2027/rezultati')
+    renderAt('/sr/liga/runtrace-2027')
 
     expect(await screen.findByText('Na ovom takmičenju još nema nijednog rezultata.')).toBeVisible()
   })
 })
 
 describe('the grid of a competition, in the details the review found unguarded', () => {
-  const RUN = '/sr/liga/brdska-2019/rezultati'
+  const RUN = '/sr/liga/brdska-2019'
 
   it('names each row by its runner, as a heading of that row', async () => {
     renderAt(RUN)
@@ -559,9 +575,13 @@ describe('the grid of a competition, in the details the review found unguarded',
       renderAt(RUN)
 
       const grid = await screen.findByRole('table', { name: 'Poredak takmičenja' })
+      /* Asked of the body and not of the whole table, since 07.09.2026: every column heading is
+         now a way to that event's page, so a question asked of the table would answer about those
+         instead. What is asked here is whether a name in the standing leads anywhere. */
+      const body = must(within(grid).getAllByRole('rowgroup')[1], 'the body of the standing')
 
-      expect(within(grid).getAllByRole('rowheader').length).toBeGreaterThan(0)
-      expect(within(grid).queryAllByRole('link')).toHaveLength(0)
+      expect(within(body).getAllByRole('rowheader').length).toBeGreaterThan(0)
+      expect(within(body).queryAllByRole('link')).toHaveLength(0)
     } finally {
       globalThis.fetch = real
     }

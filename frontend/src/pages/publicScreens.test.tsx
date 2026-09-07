@@ -10,6 +10,8 @@ import pages from '../../public/mock/pages.json'
 import words from '../test/leagueWords.snapshot.json'
 import screens from '../test/leagueScreens.snapshot.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
+import { sep } from 'node:path'
+import { sources } from '../test/sources'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -1964,30 +1966,65 @@ describe('Teams', () => {
  * a page keeping its own arrangement fails rather than quietly sitting where it
  * used to.
  */
+/**
+ * Every screen that wears the shared row of a heading and a control, and the file that draws it.
+ *
+ * **The file is written down beside the address so the list can have a floor** (review,
+ * 07.09.2026). It was a list of addresses and nothing else, and two screens added that same day
+ * were simply not on it: the list of competitions and the page of one. Both wear the row, neither
+ * was walked, and a control wrapped in one more element on either of them passed the whole gate.
+ *
+ * The floor is the case under this one: whatever file writes `rankings__head-tool` is either here
+ * with an address, or it is `profile/ProfileHead.tsx`, which is on neither list for a reason
+ * written out below.
+ */
+const SHARED_ROW = [
+  ['/sr/tabela', 'the season table', 'pages/Rankings.tsx'],
+  /* On an event, as somebody who administers one, which since 23.08.2026 is
+     the only way this row has anything in it: the way into the form left it
+     for the rows of the table, so a member who has not run this event is
+     offered nothing here and the row draws nothing at all. The event's head
+     became the shared row on 06.08.2026, and nothing held that it had
+     (goldBand.test.ts says only that the old grid is gone, which stays true
+     whatever replaces it). */
+  ['/sr/kalendar/fruskogorski-maraton-2010', 'an event', 'pages/event/EventActions.tsx', 'superadmin'],
+  ['/sr/takmicari', 'the competitors', 'pages/Competitors.tsx'],
+  ['/sr/timovi', 'the teams', 'pages/Teams.tsx'],
+  ['/sr/top-liste', 'the top boards', 'pages/TopBoards.tsx'],
+  ['/sr/kalendar', 'the calendar', 'pages/Calendar.tsx'],
+  /* The two the owner asked for on 07.09.2026: the season beside „Lige", and „Muškarci / Žene"
+     beside the name of a competition, „kao što je recimo za Timove". */
+  ['/sr/lige', 'the list of competitions', 'pages/Leagues.tsx'],
+  ['/sr/liga/brdska-2019', 'a competition', 'pages/LeagueDetail.tsx'],
+  /* A profile is **not** on this list since 23.08.2026, and that is the owner's
+     decision rather than an oversight: its season has to stand beside the name on
+     a wide screen and in the row with the parts on a narrow one, so the head, the
+     parts and the season are one grid and the season is a child of that grid
+     rather than of the row around the heading (`profile/ProfileHead.tsx`,
+     `ProfileTop`). What it does keep is asked two blocks up, in „chooses the
+     season at the top of the page". */
+  ['/sr/tim/dunavski-trkaci', 'a team', 'pages/TeamDetail.tsx'],
+] as const
+
 describe('the row a screen opens with', () => {
-  for (const [path, screenName, role] of [
-    ['/sr/tabela', 'the season table'],
-    /* On an event, as somebody who administers one, which since 23.08.2026 is
-       the only way this row has anything in it: the way into the form left it
-       for the rows of the table, so a member who has not run this event is
-       offered nothing here and the row draws nothing at all. The event's head
-       became the shared row on 06.08.2026, and nothing held that it had
-       (goldBand.test.ts says only that the old grid is gone, which stays true
-       whatever replaces it). */
-    ['/sr/kalendar/fruskogorski-maraton-2010', 'an event', 'superadmin'],
-    ['/sr/takmicari', 'the competitors'],
-    ['/sr/timovi', 'the teams'],
-    ['/sr/top-liste', 'the top boards'],
-    ['/sr/kalendar', 'the calendar'],
-    /* A profile is **not** on this list since 23.08.2026, and that is the owner's
-       decision rather than an oversight: its season has to stand beside the name on
-       a wide screen and in the row with the parts on a narrow one, so the head, the
-       parts and the season are one grid and the season is a child of that grid
-       rather than of the row around the heading (`profile/ProfileHead.tsx`,
-       `ProfileTop`). What it does keep is asked two blocks up, in „chooses the
-       season at the top of the page". */
-    ['/sr/tim/dunavski-trkaci', 'a team'],
-  ] as const) {
+  it('is walked on every screen that draws one, and that list is not written from memory', () => {
+    /* The floor. A screen added tomorrow either appears on the walk above or fails here and asks
+       for a line once, which is the whole difference between a list and a list with a floor.
+
+       `profile/ProfileHead.tsx` is the one file that writes the class and is not walked, and the
+       reason is in the comment above; it is named here so that the exception is a decision rather
+       than a gap. */
+    const drawing = sources()
+      .filter(({ code }) => code.includes('rankings__head-tool'))
+      .map(({ path }) => path.slice(process.cwd().length + 1).split(sep).join('/'))
+      .filter((path) => path !== 'src/pages/profile/ProfileHead.tsx')
+      .sort()
+
+    expect(drawing.length, 'the portal draws no such row at all').toBeGreaterThan(0)
+    expect(drawing).toEqual(SHARED_ROW.map(([, , file]) => `src/${file}`).sort())
+  })
+
+  for (const [path, screenName, , role] of SHARED_ROW) {
     it(`is the shared one on ${screenName}`, async () => {
       renderAt(path, role ?? 'competitor', '000007')
 
@@ -2274,29 +2311,32 @@ describe('Leagues', () => {
 
        The day is pinned, because a screen that changes with the date would otherwise
        hold today rather than what the portal says. */
+    /* **The seats moved with the screens on 07.09.2026**, and the reason each one is
+       here moved with them. What the owner took off the page of one competition — the
+       terms, the prizes and the events that count — is read on the list of them, so the
+       branches that used to be reached one screen in are reached on the list now. */
     const SCREENS = [
       ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
+      /* The list through the eyes of somebody who may fill it in, which is where the
+         terms and the prizes are now written („Ceo tekst, uređuje se tu"). A field with
+         nothing written in it is drawn to **nobody else**: `EditableText` returns
+         nothing at all when the value is empty and the reader cannot edit, so the
+         sentence „Još nije napisano." and anything put beside it is invisible to a
+         visitor and passed the whole gate (measured 01.09.2026). Both competitions of
+         2027 stand on this one screen, one written and one empty. */
+      ['/sr/lige', 'RunTrace liga 2027', 'superadmin'],
+      /* The other season, which is the whole of what the control beside the heading
+         does. Read without it, a competition of 2019 is on no seat at all. */
+      ['/sr/lige?sezona=2019', 'Brdska liga 2019', 'visitor'],
       ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'visitor'],
-      /* The same page under somebody who may change it. Everything drawn behind
-         `canEdit` is invisible to a visitor, so a rule put beside the button that
-         edits the rules of a competition is read by the one person acting on it and
-         by no guard at all (review, 01.09.2026). */
-      ['/sr/liga/brdska-2019', 'Brdska liga 2019', 'superadmin'],
-      ['/sr/liga/brdska-2019/rezultati', 'Muškarci', 'visitor'],
-      /* A second competition, because five seats over one record see only the branches
-         that one record takes. `planinska-2027` is public, reachable from the list, and
-         empty in every way `brdska-2019` is full: no events, no standing, and nothing
-         written in its rules or its prizes. A sentence put into any of those four
-         branches is drawn to a visitor and passed the whole gate while only the full
-         competition was opened (review, 01.09.2026). */
+      /* The other half of the field, which is the other branch of the one control this
+         screen has. Read only as it opens, everything the women's standing draws is
+         outside every guard here. */
+      ['/sr/liga/brdska-2019?pol=z', 'Brdska liga 2019', 'visitor'],
+      /* A second competition, because seats over one record see only the branches that
+         one record takes. `planinska-2027` is public, reachable from the list, and empty
+         in every way `brdska-2019` is full: no events and no standing. */
       ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'visitor'],
-      /* And the empty competition through the eyes of somebody who may fill it in. A
-         field with nothing written in it is drawn to **nobody else**: `EditableText`
-         returns nothing at all when the value is empty and the reader cannot edit, so
-         the sentence „Još nije napisano." and anything put beside it is invisible to a
-         visitor and passed the whole gate (measured 01.09.2026). */
-      ['/sr/liga/planinska-2027', 'Planinska liga 2027', 'superadmin'],
-      ['/sr/liga/planinska-2027/rezultati', 'Planinska liga 2027', 'visitor'],
       /* And the competition that is not there, which is its own screen. */
       ['/sr/liga/ne-postoji', 'Ove lige nema.', 'visitor'],
       ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
@@ -2356,9 +2396,11 @@ describe('Leagues', () => {
         return [branch]
       }
 
-      /* `leagues.parts` is an object of three names rather than a sentence, so the
-         walk goes down rather than stopping at the first one it meets. Measured: a
-         grouping written into `leagues.parts.rules` is caught. */
+      /* A branch of the dictionary may hold an object of names rather than a sentence,
+         so the walk goes down rather than stopping at the first thing it meets. It was
+         written for `leagues.parts`, three names of the two tabs a competition had until
+         07.09.2026; those are gone with the tabs, and the walk stays, because the next
+         branch of names would otherwise be read as nothing at all. */
       return branch !== null && typeof branch === 'object' ? Object.values(branch).flatMap(said) : []
     }
 

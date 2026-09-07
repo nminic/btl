@@ -98,21 +98,11 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/tabela', 'BTL tabele', 'BTL tabele'],
   ['/sr/top-liste', 'Top liste', 'Top liste'],
   ['/sr/lige', 'Lige', 'Lige'],
-  [
-    '/sr/liga/runtrace-2027',
-    'RunTrace liga 2027',
-    'RunTrace liga 2027',
-    'Propozicije',
-  ],
-  /* The results carry no heading of their own, so the part is named by what
-     the other part has and this one must not: a table of standings instead of
-     the terms of the competition. */
-  [
-    '/sr/liga/runtrace-2027/rezultati',
-    'RunTrace liga 2027',
-    'RunTrace liga 2027',
-    '',
-  ],
+  /* One address since 07.09.2026, and no part to name. It was two, and the second
+     (`/liga/:slug/rezultati`) named the same page as the first once the owner took the terms,
+     the prizes and the events off this screen; two addresses for one page is what the portal
+     refuses everywhere else (P11), so it is gone rather than kept as an alias. */
+  ['/sr/liga/runtrace-2027', 'RunTrace liga 2027', 'RunTrace liga 2027'],
   ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
   ['/sr/politika-privatnosti', 'Politika privatnosti', 'Politika privatnosti'],
   ['/sr/uslovi-koriscenja', 'Uslovi korišćenja', 'Uslovi korišćenja'],

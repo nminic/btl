@@ -1,6 +1,6 @@
 {
   "/sr/lige · visitor": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarLigeLigeRunTrace liga 2027Sezona 2027. · Događaja: 8Planinska liga 2027Sezona 2027. · Događaja: 0Brdska liga 2019Sezona 2019. · Događaja: 10Politika privatnostiUslovi korišćenjaKontakt",
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarLigeLigeSezona20272019RunTrace liga 2027Sezona 2027. · Događaja: 8 · Učesnika: 0PropozicijeBoduju se svi rezultati sa dogadjaja koji ulaze u ligu. Plasman je zbir svih trka, ne najboljih N. Pune propozicije objavljuju se uz pravilnik za sezonu.NagradeMedalje za prva tri mesta, po polu. Priznanja za najvise kilometara i najduze na stazi. Sve se dodeljuje na kraju sezone.Planinska liga 2027Sezona 2027. · Događaja: 0 · Učesnika: 0Politika privatnostiUslovi korišćenjaKontakt",
     "title": "BTL lige · Balkanska trkačka liga",
     "labels": [
       "Aleksandra Milovanović-Stefanović",
@@ -18,107 +18,155 @@
     "head": [
       "BTL lige · Balkanska trkačka liga",
       "Balkanska trkačka liga",
-      "Lige koje teku uporedo sa glavnom, i koji događaji ulaze u njih.",
+      "Sva takmičenja koja teku uporedo sa glavnom ligom, sa propozicijama, nagradama i brojem učesnika.",
+      "https://balkanskatrkackaliga.net/sr/lige",
+      "sr_RS"
+    ]
+  },
+  "/sr/lige · superadmin": {
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarAdministracija17LigeLigeSezona20272019RunTrace liga 2027Sezona 2027. · Događaja: 8 · Učesnika: 0PropozicijeBoduju se svi rezultati sa dogadjaja koji ulaze u ligu. Plasman je zbir svih trka, ne najboljih N. Pune propozicije objavljuju se uz pravilnik za sezonu.IzmeniNagradeMedalje za prva tri mesta, po polu. Priznanja za najvise kilometara i najduze na stazi. Sve se dodeljuje na kraju sezone.IzmeniPlaninska liga 2027Sezona 2027. · Događaja: 0 · Učesnika: 0PropozicijeJoš nije napisano.IzmeniNagradeJoš nije napisano.IzmeniPolitika privatnostiUslovi korišćenjaKontakt",
+    "title": "BTL lige · Balkanska trkačka liga",
+    "labels": [
+      "Administracija, 17 na čekanju",
+      "Aleksandra Milovanović-Stefanović",
+      "Glavna navigacija",
+      "Jelena Radulović",
+      "Jezik",
+      "Milena Šarić",
+      "Naslovna strana",
+      "Nenad Vujačić",
+      "Otvori kalendar",
+      "Uloga",
+      "Uslovi i pravila",
+      "Vrati na stvarni datum"
+    ],
+    "head": [
+      "BTL lige · Balkanska trkačka liga",
+      "Balkanska trkačka liga",
+      "Sva takmičenja koja teku uporedo sa glavnom ligom, sa propozicijama, nagradama i brojem učesnika.",
+      "https://balkanskatrkackaliga.net/sr/lige",
+      "sr_RS"
+    ]
+  },
+  "/sr/lige?sezona=2019 · visitor": {
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarLigeLigeSezona20272019Brdska liga 2019Sezona 2019. · Događaja: 10 · Učesnika: 19PropozicijeBoduju se samo dogadjaji sa spiska ispod. Plasman je zbir BTL bodova sa svih trka lige, bez odbacivanja najlosijeg rezultata. Ko je istrcao bar jednu trku, na tabeli je.NagradePehari za prva tri mesta, bez podele po kategorijama. Dodeljuju se na zavrsnoj trci sezone.Politika privatnostiUslovi korišćenjaKontakt",
+    "title": "BTL lige · Balkanska trkačka liga",
+    "labels": [
+      "Aleksandra Milovanović-Stefanović",
+      "Glavna navigacija",
+      "Jelena Radulović",
+      "Jezik",
+      "Milena Šarić",
+      "Naslovna strana",
+      "Nenad Vujačić",
+      "Otvori kalendar",
+      "Uloga",
+      "Uslovi i pravila",
+      "Vrati na stvarni datum"
+    ],
+    "head": [
+      "BTL lige · Balkanska trkačka liga",
+      "Balkanska trkačka liga",
+      "Sva takmičenja koja teku uporedo sa glavnom ligom, sa propozicijama, nagradama i brojem učesnika.",
       "https://balkanskatrkackaliga.net/sr/lige",
       "sr_RS"
     ]
   },
   "/sr/liga/brdska-2019 · visitor": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarBrdska liga 2019Brdska liga 2019PropozicijeRezultatiPropozicijeBoduju se samo dogadjaji sa spiska ispod. Plasman je zbir BTL bodova sa svih trka lige, bez odbacivanja najlosijeg rezultata. Ko je istrcao bar jednu trku, na tabeli je.NagradePehari za prva tri mesta, bez podele po kategorijama. Dodeljuju se na zavrsnoj trci sezone.Događaji koji ulaze u ligu 10Događaji koji ulaze u liguDatumDogađajMestoTrke5. 1. 2019.MrazijadaSarajevo114. 1. 2019.Šidski novogodišnji maratonSubotica227. 1. 2019.BTL trening trekČačak39. 2. 2019.Zimski noćni polumaratonPodgorica215. 2. 2019.Sretenjska atletska trka na IbruNiš123. 2. 2019.Avala Night SkytrailNovi Sad124. 2. 2019.Splitski polumaratonSarajevo12. 3. 2019.Srebrno jezero polumaratonČačak13. 11. 2019.Mandarine half-marathonKragujevac13. 11. 2019.Mandarine half - maratonSubotica1Politika privatnostiUslovi korišćenjaKontakt",
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarBrdska liga 2019Brdska liga 2019MuškarciŽenePoredak takmičenjaČlanBodovi05.01.14.01.27.01.09.02.15.02.23.02.24.02.02.03.03.11.03.11.Miloje Stanojlović59,364,4515,8610,9813,3814,69Vladan Đurišić46,5313,222,0512,9512,735,58Slobodan Ristić44,4712,6516,5115,31Ognjen Perišić41,503,6313,3412,4412,09Radoslav Milovanović38,618,3511,439,779,06Relja Momčilović34,524,1315,7414,65Predrag Simić31,1710,4211,828,93Vukašin Todorović30,8115,3015,51Nemanja Cvetković24,847,8310,086,93Uroš Lazarević24,032,228,698,015,11Borivoje Jovanović23,912,695,946,358,93Časlav Radenković11,532,558,98Politika privatnostiUslovi korišćenjaKontakt",
     "title": "Brdska liga 2019 · Balkanska trkačka liga",
     "labels": [
       "Aleksandra Milovanović-Stefanović",
-      "Delovi takmičenja",
+      "Avala Night Skytrail",
+      "Avala Night Skytrail 23.02.",
+      "BTL trening trek",
+      "BTL trening trek 27.01.",
+      "Brdska liga 2019",
       "Glavna navigacija",
       "Jelena Radulović",
       "Jezik",
+      "Mandarine half - maraton",
+      "Mandarine half - maraton 03.11.",
+      "Mandarine half-marathon",
+      "Mandarine half-marathon 03.11.",
       "Milena Šarić",
+      "Mrazijada",
+      "Mrazijada 05.01.",
       "Naslovna strana",
       "Nenad Vujačić",
       "Otvori kalendar",
-      "Uloga",
-      "Uslovi i pravila",
-      "Vrati na stvarni datum"
-    ],
-    "head": [
-      "Balkanska trkačka liga",
-      "Brdska liga 2019 · Balkanska trkačka liga",
-      "Brdska liga 2019: propozicije, nagrade i događaji koji u sezoni 2019 ulaze u ovo takmičenje.",
-      "https://balkanskatrkackaliga.net/sr/liga/brdska-2019",
-      "sr_RS"
-    ]
-  },
-  "/sr/liga/brdska-2019 · superadmin": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarAdministracija17Brdska liga 2019Brdska liga 2019PropozicijeRezultatiPropozicijeBoduju se samo dogadjaji sa spiska ispod. Plasman je zbir BTL bodova sa svih trka lige, bez odbacivanja najlosijeg rezultata. Ko je istrcao bar jednu trku, na tabeli je.IzmeniNagradePehari za prva tri mesta, bez podele po kategorijama. Dodeljuju se na zavrsnoj trci sezone.IzmeniDogađaji koji ulaze u ligu 10Događaji koji ulaze u liguDatumDogađajMestoTrke5. 1. 2019.MrazijadaSarajevo114. 1. 2019.Šidski novogodišnji maratonSubotica227. 1. 2019.BTL trening trekČačak39. 2. 2019.Zimski noćni polumaratonPodgorica215. 2. 2019.Sretenjska atletska trka na IbruNiš123. 2. 2019.Avala Night SkytrailNovi Sad124. 2. 2019.Splitski polumaratonSarajevo12. 3. 2019.Srebrno jezero polumaratonČačak13. 11. 2019.Mandarine half-marathonKragujevac13. 11. 2019.Mandarine half - maratonSubotica1Politika privatnostiUslovi korišćenjaKontakt",
-    "title": "Brdska liga 2019 · Balkanska trkačka liga",
-    "labels": [
-      "Administracija, 17 na čekanju",
-      "Aleksandra Milovanović-Stefanović",
-      "Delovi takmičenja",
-      "Glavna navigacija",
-      "Jelena Radulović",
-      "Jezik",
-      "Milena Šarić",
-      "Naslovna strana",
-      "Nenad Vujačić",
-      "Otvori kalendar",
-      "Uloga",
-      "Uslovi i pravila",
-      "Vrati na stvarni datum"
-    ],
-    "head": [
-      "Balkanska trkačka liga",
-      "Brdska liga 2019 · Balkanska trkačka liga",
-      "Brdska liga 2019: propozicije, nagrade i događaji koji u sezoni 2019 ulaze u ovo takmičenje.",
-      "https://balkanskatrkackaliga.net/sr/liga/brdska-2019",
-      "sr_RS"
-    ]
-  },
-  "/sr/liga/brdska-2019/rezultati · visitor": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarBrdska liga 2019, poredakBrdska liga 2019PropozicijeRezultatiPoredak takmičenjaČlanBodoviMrazijada 2019. (6,4 km)Šidski novogodišnji maraton 2019. (32,4 km)Šidski novogodišnji maraton 2019. (42,2 km)BTL trening trek 2019. (16,5 km)BTL trening trek 2019. (34,6 km)BTL trening trek 2019. (42,5 km)Zimski noćni polumaraton 2019. (7,0 km)Zimski noćni polumaraton 2019. (21,1 km)Sretenjska atletska trka na Ibru 2019. (3,0 km)Avala Night Skytrail 2019. (11,0 km)Splitski polumaraton 2019. (21,1 km)Srebrno jezero polumaraton 2019. (21,1 km)Mandarine half-marathon 2019. (21,1 km)Mandarine half - maraton 2019. (21,1 km)MuškarciMiloje Stanojlović59,364,4515,8610,9813,3814,69Vladan Đurišić46,5313,222,0512,9512,735,58Slobodan Ristić44,4712,6516,5115,31Ognjen Perišić41,503,6313,3412,4412,09Radoslav Milovanović38,618,3511,439,779,06Relja Momčilović34,524,1315,7414,65Predrag Simić31,1710,4211,828,93Vukašin Todorović30,8115,3015,51Nemanja Cvetković24,847,8310,086,93Uroš Lazarević24,032,228,698,015,11Borivoje Jovanović23,912,695,946,358,93Časlav Radenković11,532,558,98ŽeneKatarina Novaković52,223,2615,8514,9510,607,56Milica Bogdanović51,973,3012,1714,1011,4410,96Ivona Stamenkovska47,0620,3912,7513,92Isidora Živković42,158,3514,9511,647,21Teodora Mitrović22,238,6313,60Ksenija Vasiljević9,685,194,49Nevena Popović2,902,90Politika privatnostiUslovi korišćenjaKontakt",
-    "title": "Brdska liga 2019, poredak · Balkanska trkačka liga",
-    "labels": [
-      "Aleksandra Milovanović-Stefanović",
-      "Avala Night Skytrail 2019. (11,0 km)",
-      "BTL trening trek 2019. (16,5 km)",
-      "BTL trening trek 2019. (34,6 km)",
-      "BTL trening trek 2019. (42,5 km)",
-      "Delovi takmičenja",
-      "Glavna navigacija",
-      "Jelena Radulović",
-      "Jezik",
-      "Mandarine half - maraton 2019. (21,1 km)",
-      "Mandarine half-marathon 2019. (21,1 km)",
-      "Milena Šarić",
-      "Mrazijada 2019. (6,4 km)",
-      "Naslovna strana",
-      "Nenad Vujačić",
-      "Otvori kalendar",
-      "Splitski polumaraton 2019. (21,1 km)",
-      "Srebrno jezero polumaraton 2019. (21,1 km)",
-      "Sretenjska atletska trka na Ibru 2019. (3,0 km)",
+      "Splitski polumaraton",
+      "Splitski polumaraton 24.02.",
+      "Srebrno jezero polumaraton",
+      "Srebrno jezero polumaraton 02.03.",
+      "Sretenjska atletska trka na Ibru",
+      "Sretenjska atletska trka na Ibru 15.02.",
       "Uloga",
       "Uslovi i pravila",
       "Vrati na stvarni datum",
-      "Zimski noćni polumaraton 2019. (21,1 km)",
-      "Zimski noćni polumaraton 2019. (7,0 km)",
-      "Šidski novogodišnji maraton 2019. (32,4 km)",
-      "Šidski novogodišnji maraton 2019. (42,2 km)"
+      "Zimski noćni polumaraton",
+      "Zimski noćni polumaraton 09.02.",
+      "Šidski novogodišnji maraton",
+      "Šidski novogodišnji maraton 14.01."
     ],
     "head": [
       "Balkanska trkačka liga",
-      "Brdska liga 2019, poredak u sezoni 2019: ko je trčao koju trku i sa koliko bodova.",
-      "Brdska liga 2019, poredak · Balkanska trkačka liga",
-      "https://balkanskatrkackaliga.net/sr/liga/brdska-2019/rezultati",
+      "Brdska liga 2019 · Balkanska trkačka liga",
+      "Brdska liga 2019: poredak u sezoni 2019, po polu, sa bodovima sa svakog događaja.",
+      "https://balkanskatrkackaliga.net/sr/liga/brdska-2019",
+      "sr_RS"
+    ]
+  },
+  "/sr/liga/brdska-2019?pol=z · visitor": {
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarBrdska liga 2019Brdska liga 2019MuškarciŽenePoredak takmičenjaČlanBodovi05.01.14.01.27.01.09.02.15.02.23.02.24.02.02.03.03.11.03.11.Katarina Novaković52,223,2615,8514,9510,607,56Milica Bogdanović51,973,3012,1714,1011,4410,96Ivona Stamenkovska47,0620,3912,7513,92Isidora Živković42,158,3514,9511,647,21Teodora Mitrović22,238,6313,60Ksenija Vasiljević9,685,194,49Nevena Popović2,902,90Politika privatnostiUslovi korišćenjaKontakt",
+    "title": "Brdska liga 2019 · Balkanska trkačka liga",
+    "labels": [
+      "Aleksandra Milovanović-Stefanović",
+      "Avala Night Skytrail",
+      "Avala Night Skytrail 23.02.",
+      "BTL trening trek",
+      "BTL trening trek 27.01.",
+      "Brdska liga 2019",
+      "Glavna navigacija",
+      "Jelena Radulović",
+      "Jezik",
+      "Mandarine half - maraton",
+      "Mandarine half - maraton 03.11.",
+      "Mandarine half-marathon",
+      "Mandarine half-marathon 03.11.",
+      "Milena Šarić",
+      "Mrazijada",
+      "Mrazijada 05.01.",
+      "Naslovna strana",
+      "Nenad Vujačić",
+      "Otvori kalendar",
+      "Splitski polumaraton",
+      "Splitski polumaraton 24.02.",
+      "Srebrno jezero polumaraton",
+      "Srebrno jezero polumaraton 02.03.",
+      "Sretenjska atletska trka na Ibru",
+      "Sretenjska atletska trka na Ibru 15.02.",
+      "Uloga",
+      "Uslovi i pravila",
+      "Vrati na stvarni datum",
+      "Zimski noćni polumaraton",
+      "Zimski noćni polumaraton 09.02.",
+      "Šidski novogodišnji maraton",
+      "Šidski novogodišnji maraton 14.01."
+    ],
+    "head": [
+      "Balkanska trkačka liga",
+      "Brdska liga 2019 · Balkanska trkačka liga",
+      "Brdska liga 2019: poredak u sezoni 2019, po polu, sa bodovima sa svakog događaja.",
+      "https://balkanskatrkackaliga.net/sr/liga/brdska-2019",
       "sr_RS"
     ]
   },
   "/sr/liga/planinska-2027 · visitor": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarPlaninska liga 2027Planinska liga 2027PropozicijeRezultatiDogađaji koji ulaze u ligu 0Ovoj ligi još nije dodeljen nijedan događaj.Politika privatnostiUslovi korišćenjaKontakt",
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarPlaninska liga 2027Planinska liga 2027MuškarciŽeneNa ovom takmičenju još nema nijednog rezultata.Politika privatnostiUslovi korišćenjaKontakt",
     "title": "Planinska liga 2027 · Balkanska trkačka liga",
     "labels": [
       "Aleksandra Milovanović-Stefanović",
-      "Delovi takmičenja",
       "Glavna navigacija",
       "Jelena Radulović",
       "Jezik",
@@ -126,6 +174,7 @@
       "Naslovna strana",
       "Nenad Vujačić",
       "Otvori kalendar",
+      "Planinska liga 2027",
       "Uloga",
       "Uslovi i pravila",
       "Vrati na stvarni datum"
@@ -133,65 +182,14 @@
     "head": [
       "Balkanska trkačka liga",
       "Planinska liga 2027 · Balkanska trkačka liga",
-      "Planinska liga 2027: propozicije, nagrade i događaji koji u sezoni 2027 ulaze u ovo takmičenje.",
+      "Planinska liga 2027: poredak u sezoni 2027, po polu, sa bodovima sa svakog događaja.",
       "https://balkanskatrkackaliga.net/sr/liga/planinska-2027",
-      "sr_RS"
-    ]
-  },
-  "/sr/liga/planinska-2027 · superadmin": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarAdministracija17Planinska liga 2027Planinska liga 2027PropozicijeRezultatiPropozicijeJoš nije napisano.IzmeniNagradeJoš nije napisano.IzmeniDogađaji koji ulaze u ligu 0Ovoj ligi još nije dodeljen nijedan događaj.Politika privatnostiUslovi korišćenjaKontakt",
-    "title": "Planinska liga 2027 · Balkanska trkačka liga",
-    "labels": [
-      "Administracija, 17 na čekanju",
-      "Aleksandra Milovanović-Stefanović",
-      "Delovi takmičenja",
-      "Glavna navigacija",
-      "Jelena Radulović",
-      "Jezik",
-      "Milena Šarić",
-      "Naslovna strana",
-      "Nenad Vujačić",
-      "Otvori kalendar",
-      "Uloga",
-      "Uslovi i pravila",
-      "Vrati na stvarni datum"
-    ],
-    "head": [
-      "Balkanska trkačka liga",
-      "Planinska liga 2027 · Balkanska trkačka liga",
-      "Planinska liga 2027: propozicije, nagrade i događaji koji u sezoni 2027 ulaze u ovo takmičenje.",
-      "https://balkanskatrkackaliga.net/sr/liga/planinska-2027",
-      "sr_RS"
-    ]
-  },
-  "/sr/liga/planinska-2027/rezultati · visitor": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarPlaninska liga 2027, poredakPlaninska liga 2027PropozicijeRezultatiNa ovom takmičenju još nema nijednog rezultata.Politika privatnostiUslovi korišćenjaKontakt",
-    "title": "Planinska liga 2027, poredak · Balkanska trkačka liga",
-    "labels": [
-      "Aleksandra Milovanović-Stefanović",
-      "Delovi takmičenja",
-      "Glavna navigacija",
-      "Jelena Radulović",
-      "Jezik",
-      "Milena Šarić",
-      "Naslovna strana",
-      "Nenad Vujačić",
-      "Otvori kalendar",
-      "Uloga",
-      "Uslovi i pravila",
-      "Vrati na stvarni datum"
-    ],
-    "head": [
-      "Balkanska trkačka liga",
-      "Planinska liga 2027, poredak u sezoni 2027: ko je trčao koju trku i sa koliko bodova.",
-      "Planinska liga 2027, poredak · Balkanska trkačka liga",
-      "https://balkanskatrkackaliga.net/sr/liga/planinska-2027/rezultati",
       "sr_RS"
     ]
   },
   "/sr/liga/ne-postoji · visitor": {
-    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarPropozicije takmičenjaOve lige nema.Politika privatnostiUslovi korišćenjaKontakt",
-    "title": "Propozicije takmičenja · Balkanska trkačka liga",
+    "text": "Preskoči na sadržajBalkanska trkačka ligaSvaka trka se brojiPosetilacTakmičarJ. R.N. V.M. Š.A. M.-S.SuperadminDanašnji datum↺SRSrpskiEnglishPrijavi seUčlani seOtvori meniPravilnikTakmičariBTL tabeleTop listeTimoviLigeKalendarPoredak takmičenjaOve lige nema.Politika privatnostiUslovi korišćenjaKontakt",
+    "title": "Poredak takmičenja · Balkanska trkačka liga",
     "labels": [
       "Aleksandra Milovanović-Stefanović",
       "Glavna navigacija",
@@ -207,8 +205,8 @@
     ],
     "head": [
       "Balkanska trkačka liga",
-      "Propozicije takmičenja · Balkanska trkačka liga",
-      "Propozicije, nagrade i događaji koji ulaze u jedno takmičenje uz glavnu ligu.",
+      "Poredak jednog takmičenja koje teče uz glavnu ligu, po polu, sa bodovima sa svakog događaja.",
+      "Poredak takmičenja · Balkanska trkačka liga",
       "https://balkanskatrkackaliga.net/sr/liga/ne-postoji",
       "sr_RS"
     ]

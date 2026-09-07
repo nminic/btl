@@ -2,6 +2,7 @@ import { categoryLabel } from '../data/categories'
 import { useEffect, useMemo } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
+import { GenderTabs } from '../components/GenderTabs'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import {
@@ -92,22 +93,13 @@ function Standing({
           that says which table is being read rather than narrowing it, so it
           belongs with the name of the screen and not among the filters. */}
       <div className="rankings__head-tool">
-        <div className="rankings__tabs" role="group" aria-label={t('rankings.title')}>
-          <button
-            type="button"
-            aria-pressed={gender === 'M'}
-            onClick={() => onChange({ pol: 'm', kategorija: '' })}
-          >
-            {t('rankings.men')}
-          </button>
-          <button
-            type="button"
-            aria-pressed={gender === 'F'}
-            onClick={() => onChange({ pol: 'z', kategorija: '' })}
-          >
-            {t('rankings.women')}
-          </button>
-        </div>
+        {/* The age category goes with it: the bands of one gender are not the bands of the
+            other, so a category chosen for the men names nothing among the women. */}
+        <GenderTabs
+          gender={gender}
+          label={t('rankings.title')}
+          onChange={(next) => onChange({ pol: next === 'M' ? 'm' : 'z', kategorija: '' })}
+        />
 
         {/* Beside them and to their right, in the shape it has on the top boards
             and on the teams (owner, 23.08.2026: „Sezona dropdown 2026 treba da

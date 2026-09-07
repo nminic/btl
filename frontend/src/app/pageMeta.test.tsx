@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import sr from '../i18n/sr.json'
@@ -351,30 +351,27 @@ describe('PageMeta', () => {
   })
 })
 
-describe('the two parts of a competition', () => {
-  const meta = () => document.querySelector('meta[name="description"]')?.getAttribute('content')
+describe('a competition, which is one page and one address', () => {
+  it('names itself by the record it is showing', async () => {
+    /* It was two addresses until 07.09.2026, and both were indexable, so each had to name itself
+       apart from the other or a search engine would meet one title over two pages. The parts
+       collapsed into one when the owner took the terms, the prizes and the events off this page
+       („a ni dugme rezultati jer se odmah prikazuju rezultati"), and the second address went with
+       them rather than being kept as an alias: two addresses for one page is what the portal
+       refuses everywhere else (P11).
 
-  it('name themselves apart, so no two addresses share a title', async () => {
-    /* Both parts are indexable and both carried the same title and the same
-       description. The profile has named its awards apart from itself since
-       30.07.2026; this is the same rule on the competition.
-
-       Waited for rather than read straight away: until the record arrives the
-       address shows its own generic name, and the generic names do differ, so
-       reading too early would pass on a page that never names the record at
+       Waited for rather than read straight away: until the record arrives the address shows its
+       own generic name, and reading too early would pass on a page that never names the record at
        all. */
     renderAt('/sr/liga/brdska-2019')
-    await waitFor(() => expect(document.title).toContain('Brdska liga 2019'))
-    const standing = { title: document.title, description: meta() }
 
-    cleanup()
+    await waitFor(() => {
+      expect(document.title).toContain('Brdska liga 2019')
+    })
 
-    renderAt('/sr/liga/brdska-2019/rezultati')
-    await waitFor(() => expect(document.title).toContain('Brdska liga 2019'))
-
-    expect(document.title).not.toBe(standing.title)
-    expect(document.title).toContain('poredak')
-    expect(meta()).not.toBe(standing.description)
+    expect(
+      document.querySelector('meta[name="description"]')?.getAttribute('content'),
+    ).toContain('Brdska liga 2019')
   })
 })
 

@@ -1,5 +1,8 @@
 import { screen, within } from '@testing-library/react'
+import { liga } from '../forms/definitions'
+import { limitOf } from '../forms/records'
 import { at, must } from '../test/at'
+import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -108,14 +111,30 @@ describe('changing data in administration', () => {
 })
 
 describe('the text of a competition', () => {
+  /* **Read on the list of competitions, and changed there** (owner, 07.09.2026): „Propozicije i
+     Nagrade treba da se izlistavaju na ovoj strani, a ne kad se uđe u ligu", and, asked where a
+     moderator should edit them now: „Ceo tekst, uređuje se tu." A screen that shows one thing and
+     changes it somewhere else is a screen where the two can disagree, and the person who spots the
+     mistake is the one who cannot fix it.
+
+     Every case below therefore names the box of one competition and asks inside it: the list draws
+     three, and a question asked of the screen would be answered by whichever one came first. */
+  const boxOf = async (name: RegExp) =>
+    within(
+      must(
+        (await screen.findByRole('heading', { level: 2, name })).closest('li'),
+        'the box of the competition',
+      ),
+    )
+
   it('is written by whoever runs it, and only by them', async () => {
     const user = setupUser()
-    renderAt('/sr/liga/planinska-2027', 'superadmin')
+    renderAt('/sr/lige?sezona=2027', 'superadmin')
 
-    await screen.findByRole('heading', { level: 1 })
+    const box = await boxOf(/Planinska liga/)
 
     // Nobody has written the rules yet, and staff are offered the chance to.
-    const rules = must(screen.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'section')
+    const rules = must(box.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'section')
     expect(within(rules).getByText('Još nije napisano.')).toBeVisible()
 
     await user.click(within(rules).getByRole('button', { name: 'Izmeni' }))
@@ -129,18 +148,51 @@ describe('the text of a competition', () => {
   })
 
   it('is not offered to a visitor, and an empty one is not shown at all', async () => {
-    renderAt('/sr/liga/planinska-2027')
+    renderAt('/sr/lige?sezona=2027')
 
-    await screen.findByRole('heading', { level: 1 })
-    expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Izmeni' })).not.toBeInTheDocument()
+    const box = await boxOf(/Planinska liga/)
+
+    expect(box.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
+    expect(box.queryByRole('button', { name: 'Izmeni' })).not.toBeInTheDocument()
   })
 
-  it('is shown to a visitor once it has been written', async () => {
-    renderAt('/sr/liga/runtrace-2027')
+  it('bounds each box by its own field, not by the first of the two', async () => {
+    /* **Two fields and one limit was a bug waiting for the two numbers to part** (review,
+       07.09.2026). The component drew both texts and read the cap off `rules` for both, which is
+       right for exactly as long as the definition gives them the same number. Measured that day
+       with the prizes lowered to 500: the box let a moderator write three thousand, and the
+       administration form then told them their own text was too long — the very fault `limitOf`
+       exists to prevent, moved one screen along.
 
-    expect(await screen.findByRole('heading', { name: 'Propozicije' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
+       Held against the definition rather than against a number written here, because the number is
+       the definition's to change (`forms/definitions/admin-liga.form.json`). */
+    const user = setupUser()
+    renderAt('/sr/lige?sezona=2027', 'superadmin')
+
+    const box = await boxOf(/RunTrace liga/)
+
+    for (const [heading, field] of [
+      ['Propozicije', 'rules'],
+      ['Nagrade', 'prizes'],
+    ] as const) {
+      const section = must(box.getByRole('heading', { name: heading }).closest('section'), 'section')
+
+      await user.click(within(section).getByRole('button', { name: 'Izmeni' }))
+
+      expect(within(section).getByRole('textbox', { name: heading })).toHaveAttribute(
+        'maxlength',
+        String(limitOf(liga, field)),
+      )
+    }
+  }, SLOW)
+
+  it('is shown to a visitor once it has been written', async () => {
+    renderAt('/sr/lige?sezona=2027')
+
+    const box = await boxOf(/RunTrace liga/)
+
+    expect(box.getByRole('heading', { name: 'Propozicije' })).toBeVisible()
+    expect(box.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
   })
 })
 
@@ -176,9 +228,16 @@ describe('the last few branches these screens have', () => {
 
   it('leaves an already written competition text alone unless it is changed', async () => {
     const user = setupUser()
-    renderAt('/sr/liga/runtrace-2027', 'superadmin')
+    renderAt('/sr/lige?sezona=2027', 'superadmin')
 
-    const prizes = must((await screen.findByRole('heading', { name: 'Nagrade' })).closest('section'), 'section')
+    const box = must(
+      (await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).closest('li'),
+      'the box of the competition',
+    )
+    const prizes = must(
+      within(box).getByRole('heading', { name: 'Nagrade' }).closest('section'),
+      'section',
+    )
     const before = must(
       must(prizes.querySelector('.profile__text'), 'the prose of the prizes').textContent,
       'text',

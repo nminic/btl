@@ -121,8 +121,8 @@ describe('every form definition in the portal', () => {
        there is no box to limit. */
     expect(drawn.map(({ path }) => path).sort()).toEqual([
       'forms/LongBox.tsx',
-      'pages/LeagueDetail.tsx',
       'pages/event/GoingToEvent.tsx',
+      'pages/league/EditableText.tsx',
     ])
     expect(loose).toEqual([])
 

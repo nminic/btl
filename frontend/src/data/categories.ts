@@ -92,18 +92,16 @@ export function firstSeasonAllowed(points: number): boolean {
  * with the language.
  */
 export function categoryLabel(code: string, t: (key: string) => string): string {
-  /* A mark of a gender on its own is not a category code at all: it is what a
-     competition groups by, which since 31.08.2026 is every competition there is
-     (owner: „Lige treba da imaju poredak samo po polu"), and the standing
-     has always called those two groups „Muškarci" and „Žene" (`Rankings.tsx`).
-     Written here rather than beside the competition, because this is the one
-     place that turns a code into words and two places would be two names for one
-     group. Found by a review on 27.08.2026: the blocks were drawn as „M" and
-     „Ž", a single letter each, while a comment claimed they were named the way
-     the standing names them. */
-  if (code === genderMark('M') || code === genderMark('F')) {
-    return t(code === genderMark('M') ? 'rankings.men' : 'rankings.women')
-  }
+  /* **A bare mark of a gender was answered here until 07.09.2026, and is not any more.**
+     It was the standing of a competition that produced one: the grid drew two blocks, one
+     per gender, and each block carried its mark as a heading, so this function had to know
+     that „M" means „Muškarci". On 07.09.2026 the owner replaced the two blocks with a
+     control beside the heading („Žene ne treba da budu ispod muškaraca, nego da postoji
+     filter gore desno"), the headings went with them, and nothing on the portal hands a
+     bare mark to this function any more: every code that reaches it is an age band or the
+     band of a first season (`categoryCodeFor`). The words themselves did not move — the
+     control says „Muškarci" and „Žene" out of `rankings.men` and `rankings.women`, which is
+     where they always came from. */
 
   if (!code.endsWith(` ${FIRST_SEASON_BAND}`)) {
     return code

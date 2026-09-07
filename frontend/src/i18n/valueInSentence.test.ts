@@ -345,8 +345,6 @@ describe('a sentence with a value put into it', () => {
       'seo.event.recordTitle <- formatDate',
       'seo.league.recordDescription',
       'seo.league.recordTitle',
-      'seo.leagueResults.recordDescription',
-      'seo.leagueResults.recordTitle',
       'seo.team.recordDescription',
       'seo.team.recordTitle',
       'seo.verificationQueue.queueDescription',

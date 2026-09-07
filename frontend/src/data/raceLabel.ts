@@ -131,12 +131,17 @@ export function raceLabel(race: Named, among: Named[], locale: string): string {
  * The same label in two halves: what the race is called, and everything the label
  * adds to tell it from its neighbours.
  *
- * One builder and two ways of reading it, rather than two builders. The grid of a
- * competition needs the halves because it may cut the name and must never cut the
- * rest (`pages/league/LeagueResults.tsx`), and a grid that split the finished
- * string would be reading a shape this file is free to change.
+ * **Not exported since 07.09.2026, and the halves are why.** The grid of a competition read them
+ * because its heading was turned on its side and capped, so the name had to be allowed to give way
+ * while the measure never did. The owner replaced that heading with the day the race was run
+ * („normalno ispisani horizontalno, format dd.mm."), which is narrow lying down and has no halves
+ * to cut. Nothing outside this file reads them any more, and an export nobody reads is a shape the
+ * file can no longer change freely for no one's benefit.
+ *
+ * Kept as two halves inside, because `raceLabel` is written out of them and the ladder of rungs
+ * that decides what „the rest" is belongs in one place.
  */
-export function raceLabelParts(
+function raceLabelParts(
   race: Named,
   among: Named[],
   locale: string,

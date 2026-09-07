@@ -144,7 +144,6 @@ const DETAILS: RouteObject[] = [
      back leads there (owner, 04.09.2026). */
   { path: 'tim/:slug/izmena', element: <EditTeam /> },
   { path: 'liga/:slug', element: <LeagueDetail /> },
-  { path: 'liga/:slug/rezultati', element: <LeagueDetail part="results" /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
   /* The six verification queues (PDL P28a). The addresses live in QUEUES, which

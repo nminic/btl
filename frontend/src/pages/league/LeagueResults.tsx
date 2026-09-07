@@ -4,12 +4,11 @@ import { Pager } from '../../components/Pager'
 import { PER_PAGE, pageFrom } from '../../components/pageOf'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
-import { categoryLabel } from '../../data/categories'
+import { genderMark } from '../../data/categories'
 import { fieldFor } from '../../data/derive'
-import { raceLabelParts } from '../../data/raceLabel'
-import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
+import type { BtlEvent, Competitor, Gender, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
-import { formatPoints } from '../../i18n/format'
+import { formatDayMonth, formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueGroups, leagueTable } from './leagueTable'
 import './League.css'
@@ -22,13 +21,15 @@ import { useFilterParams } from '../../app/useFilterParams'
  * the top, points where they meet, and the total in the second column, which is
  * what the table is ordered by.
  *
- * The headings across the top are written on their side. That was asked for, and
- * the reason is arithmetic: the widest competition in the data has forty six
- * races, and forty six columns of "Beogradski maraton" laid flat is a table
- * nobody can put on a screen. Turned, a column costs its own width and no more.
+ * **A column is an event, and its head is the day, written across** (owner, 07.09.2026). It was
+ * the name of the race turned on its side until then, for a reason that was arithmetic: the widest
+ * competition in the data has forty six races, and forty six names laid flat is a table nobody can
+ * put on a screen. A day in `dd.mm.` is narrow lying down, so the reason is spent and the turning
+ * goes with it; and once the head is only a day, two races of one event have nothing left to tell
+ * them apart, so they are one column holding what both brought (`leagueTable.ts`).
  *
- * A race somebody did not run is left empty rather than shown as nought. Nought
- * is a claim: it says they ran it and scored nothing.
+ * An event somebody did not race is left empty rather than shown as nought. Nought is a claim: it
+ * says they were there and scored nothing.
  *
  * Its own component below the resource, not inside it, so the grid can be
  * memoised: it walks every result there is, and a render that rebuilt it would
@@ -40,12 +41,14 @@ function Grid({
   races,
   results,
   competitors,
+  gender,
 }: {
   league: League
   events: BtlEvent[]
   races: Race[]
   results: Result[]
   competitors: Competitor[]
+  gender: Gender
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -64,42 +67,44 @@ function Grid({
     return <p className="profile__empty">{t('leagues.noResults')}</p>
   }
 
+  /* **One half of the field at a time, chosen beside the heading** (owner,
+     07.09.2026): „Žene ne treba da budu ispod muškaraca, nego da postoji filter
+     gore desno da se biraju Muškarci ili Žene." Until then both blocks stood one
+     under the other, which put a woman behind men she was never competing against
+     unless the reader had scrolled far enough to meet the heading that said
+     otherwise.
+
+     The split itself is unchanged and still belongs to the data (`leagueGroups`):
+     every competition ranks by gender and by nothing else (owner, 31.08.2026,
+     „nego globalno!"). What changed is that the screen draws one block instead of
+     both, so the block no longer needs a heading of its own inside the table: the
+     control above it says which one is being read.
+
+     **Which half is not read here**, since 07.09.2026: it is handed down by the
+     screen that draws the control (`pages/LeagueDetail.tsx`), so the button and the
+     table cannot say different things. Two readers of one address were measured
+     disagreeing: the control frozen to the men over a standing of women.
+
+     A competition of five men has no block for the women, and then this is empty
+     and says so. */
+  const rows =
+    leagueGroups(table.rows).find((group) => group.code === genderMark(gender))?.rows ?? []
+
+  if (rows.length === 0) {
+    return <p className="profile__empty">{t('leagues.noneOfThese')}</p>
+  }
+
   /* Fifty placed to a page (owner, 03.08.2026, PDL P24). A competition has as
      many rows as the league has members and there is no number of members the
-     portal would refuse, so this is the side that had to be bounded. The width
-     is not bounded and cannot be by paging: forty six races are forty six
-     columns whatever this does, so they go on scrolling inside their own box. */
-  const page = pageFrom(params.get('strana'), table.rows.length)
+     portal would refuse, so this is the side that had to be bounded. The width is
+     not bounded and cannot be by paging: forty six races are forty six columns
+     whatever this does, so they go on scrolling inside their own box.
 
-  /* Split by gender, and paged over the split rather than beside it.
-
-     Owner, 31.08.2026: „Lige treba da imaju poredak samo po polu. Ne želim
-     dodatna pravila", said of every competition („nego globalno!"). That
-     overturned P15, under which each one set its own split, and the setting went
-     with it rather than being left switched off. What P15 got right and is worth
-     keeping in mind here: „samo po polu" is not „no grouping", and a table that
-     draws one undivided grid places a woman behind men she was never competing
-     against, which is what this screen did until 27.08.2026.
-
-     The blocks are cut out of one ordered list rather than paged one by one, so
-     the page is still fifty rows wherever the boundaries fall. A block that has
-     nobody left on this page is not drawn, which is also what keeps a competition
-     of five people from showing eight empty tables. */
-  const from = (page - 1) * PER_PAGE
-  const groups = leagueGroups(table.rows)
-  let above = 0
-  const shown = groups
-    .map((group) => {
-      const start = above
-
-      above += group.rows.length
-
-      return {
-        code: group.code,
-        rows: group.rows.slice(Math.max(0, from - start), Math.max(0, from + PER_PAGE - start)),
-      }
-    })
-    .filter((group) => group.rows.length > 0)
+     Of the half being read, since 07.09.2026. Paged over both halves together, a
+     page could hold forty men and ten women, and the reader who asked for the
+     women got ten of them on a page that says fifty. */
+  const page = pageFrom(params.get('strana'), rows.length)
+  const shown = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   return (
     <>
@@ -117,122 +122,72 @@ function Grid({
                 {t('rankings.columns.points')}
               </th>
               {table.columns.map((column) => (
-                <th scope="col" key={column.raceId} className="league__race">
-                  {/* The race said the way the whole portal says one: its name, when
-                      it was run, and its measure in brackets (`data/raceLabel.ts`;
-                      owner, 29.08.2026). „Mrazijada 2019. (6,4 km)".
+                <th scope="col" key={column.eventId} className="league__race">
+                  {/* **The day, lying down, and the event behind it** (owner,
+                      07.09.2026): „treba da stoje datumi trka samo u redu u kojem
+                      su sad uspravni nazivi (normalno ispisani horizontalno,
+                      format dd.mm.) i da ti datumi na mouseover daju samo naziv
+                      događaja, a da klik vodi na stranu događaja u novom
+                      prozoru."
 
-                      **Said by that helper and not built here.** What a race is
-                      called is one fact, and a grid that spelt it out itself would
-                      be a second home for it: the two drifted once already, when
-                      this heading carried the name of the **event** while every
-                      other screen had moved to the name of the race.
+                      `formatDayMonth` and not a slice taken here: `dd.mm.` is a
+                      fixed numeric shape the owner has asked for by name three
+                      times now, and it has one home (`i18n/format.ts`).
 
-                      **Among the races of this competition and not of one event,**
-                      which is the set a reader is comparing here. That is what makes
-                      the year worth having: two seasons of one race are two columns
-                      the year parts, where inside a single event it never could.
+                      **The name is on the title because that is what was asked,
+                      and in the accessible name because a title is not one.**
+                      A `title` is shown to a pointer and to almost nothing else:
+                      it never reaches a keyboard, and screen readers differ on
+                      whether they read it at all. So the same words are given as
+                      the link's own name, where they are also what a reader of
+                      the column hears: the head of the column is what a screen
+                      reader says over every number under it, and „12.09." on its
+                      own says nothing about which race that is. The day is kept
+                      inside that name as well, which is what SC 2.5.3 asks of a
+                      control whose visible words are part of it.
 
-                      **The measure has its place before the name, and the name is
-                      what gives way.** The heading is turned on its side and capped
-                      at 9rem (144px), and at 6.5rem (104px) under the narrow query
-                      (`League.css`). Each pixel figure is what the `rem` beside it
-                      comes to at the browser's default text size, which is the size
-                      the root leaves the reader (`index.css`, `font-size: 100%`).
-                      All four numbers are held against the sheet by
-                      `styles/raceHeadingHalves.test.ts`, which reads the caps out of
-                      this note and the conversion out of that root rule; what that
-                      file still holds nothing about is what the narrow cap **does**,
-                      and it says so in its own words. Standing last, the name was never seen
-                      at all: a review measured on 29.08.2026 that all fourteen
-                      headings of one competition were cut before it began. Standing
-                      first, it ate the measure instead, and two columns of „Šidski
-                      novogodišnji maraton" read alike though one is 32,4 km and the
-                      other 42,2. So the two halves are two elements, the measure
-                      refuses to shrink and the name agrees to (`League.css`, weighed
-                      by `styles/raceHeadingHalves.test.ts`).
+                      **A new window, which is what was asked, and never the
+                      current one.** A reader is inside a standing, has scrolled
+                      it sideways to the column they were curious about, and
+                      following the link in place would cost them that place.
+                      `rel="noreferrer"` beside it, the way the portal already
+                      opens one of its own pages in a new tab
+                      (`forms/worded.tsx`).
 
-                      **That is precedence, and not a promise that the measure always
-                      fits.** Where the cap is narrower than the measure on its own,
-                      the name is gone altogether and the measure loses its own tail.
-                      Measured in Chrome over the built sheet on 29.08.2026, at 360
-                      where the cap is 6.5rem (104px), over four of these headings. Three
-                      of them have fallen to the rung that writes the day and the fourth
-                      still stands on the first rung, which writes the year
-                      (`data/raceLabel.ts`); that is what makes the last of the four
-                      short enough to leave the name anything at all:
-
-                        ` 15. 10. 2022. (42,2 km)`  wants 116,69px, name 0px, „m)" cut
-                        ` 12. 12. 2019. (100,0 km)` wants 122,89px, name 0px, „m)" cut
-                        ` 5. 8. 2022. (42,2 km)`    wants 104,27px, name 0px, nothing cut
-                        ` 2019. (21,1 km)`          wants  80,55px, name 23,45px
-
-                      At 1280 and at 768, where it is 9rem (144px), all four fit whole.
-                      At 200 per cent text the proportion is the same, because the cap
-                      and the letters are both written in `rem`, and every pixel figure
-                      given for the cap above is what it comes to at the default size.
-
-                      **What the order buys, measured the other way round.** With the
-                      measure allowed to give way as well (`flex: 0 1 auto` and
-                      `min-inline-size: 0` on it), the first of those four came back
-                      at 360 as 46,58px of measure beside 57,42px of name: of the
-                      116,69px that tells this column from its neighbour, 70,11 were
-                      taken away to make room for a name the two columns share. The
-                      name is the half a reader can afford to lose, because whatever
-                      shares it shares it whole. */}
-                  {(() => {
-                    const said = raceLabelParts(column, table.columns, locale)
-
-                    return (
-                      <span className="league__race-name" title={`${said.name} ${said.rest}`}>
-                        <span className="league__race-called">{said.name}</span>
-                        <span className="league__race-measure">{` ${said.rest}`}</span>
-                      </span>
-                    )
-                  })()}
+                      **Two events on one day are two columns reading one date**,
+                      and that is the answer as it was given (owner, 07.09.2026):
+                      „ako dva dogadjaja imaju isti datum i neko stigne da ih
+                      istrci obe, svakako neka bude opcija 2", which was the day
+                      alone. What tells them apart is the name the pointer is told
+                      and the page the press opens. Two **races** of one event no
+                      longer arise here at all: a column is the event
+                      (`leagueTable.ts`). */}
+                  <a
+                    className="league__race-day"
+                    href={`/${locale}/kalendar/${column.slug}`}
+                    title={column.name}
+                    aria-label={`${column.name} ${formatDayMonth(column.date)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {formatDayMonth(column.date)}
+                  </a>
                 </th>
               ))}
             </tr>
           </thead>
-          {shown.map((group) => (
-          <tbody key={group.code}>
-            {/* What this block is, said in the table rather than beside it: a
-                row of its own, spanning every column, so a screen reader meets
-                the name of the group before the people in it rather than after.
-                `rowgroup` and not `colgroup`, corrected 27.08.2026 after a
-                review read the two apart: `colgroup` names a group of columns and
-                the portal draws no `<colgroup>` anywhere, while this heading opens
-                a `<tbody>` and names every row inside it, which is what a row
-                group is.
-
-                Named by the same string the standing names it by
-                (`categoryLabel`), so the two screens never call one group two
-                things. It also carries the gender case unchanged, which is what
-                a competition ranking by gender alone shows. */}
-            <tr className="league__group">
-              <th scope="rowgroup" colSpan={2 + table.columns.length}>
-                {/* The words inside their own box, and it is that box that is
-                    pinned rather than the cell around it. The cell spans every
-                    column, so it is wider than the screen by design, and pinning
-                    the left edge of something wider than the window pins nothing:
-                    measured at 360px, the heading travelled from 16 to -384 as
-                    soon as the grid was scrolled 400 pixels sideways, which is
-                    the name of the block sailing off the left edge while the
-                    reader is still inside it. */}
-                <span className="league__group-name">{categoryLabel(group.code, t)}</span>
-              </th>
-            </tr>
-            {group.rows.map((row) => (
+          <tbody>
+            {shown.map((row) => (
               <tr key={row.competitor.memberNumber}>
                 <th scope="row" className="league__who">
                   <CompetitorName competitor={row.competitor} />
                 </th>
                 <td className="table__points league__total">{formatPoints(row.total, locale)}</td>
                 {table.columns.map((column) => {
-                  const points = row.points.get(column.raceId)
+                  const points = row.points.get(column.eventId)
 
                   return (
-                    <td key={column.raceId} className="table__points">
+                    <td key={column.eventId} className="table__points">
                       {points === undefined ? '' : formatPoints(points, locale)}
                     </td>
                   )
@@ -240,16 +195,24 @@ function Grid({
               </tr>
             ))}
           </tbody>
-          ))}
         </table>
       </div>
 
-      <Pager page={page} rows={table.rows.length} label={t('pager.leagueStanding')} />
+      <Pager page={page} rows={rows.length} label={t('pager.leagueStanding')} />
     </>
   )
 }
 
-export function LeagueResults({ league, events }: { league: League; events: BtlEvent[] }) {
+export function LeagueResults({
+  league,
+  events,
+  gender,
+}: {
+  league: League
+  events: BtlEvent[]
+  /** Which half of the field, decided by the screen that draws the control for it. */
+  gender: Gender
+}) {
   const { t } = useI18n()
   const state = combineResources(useRaces(), useResults(), useCompetitors())
 
@@ -262,6 +225,7 @@ export function LeagueResults({ league, events }: { league: League; events: BtlE
           races={races}
           results={results}
           competitors={competitors}
+          gender={gender}
         />
       )}
     </Resource>

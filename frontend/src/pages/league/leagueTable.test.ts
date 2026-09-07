@@ -95,45 +95,57 @@ const races = [
 ]
 
 describe('the grid of a competition', () => {
-  it('takes its columns from the races of its own events, oldest first', () => {
+  it('takes its columns from the events of the competition, oldest first', () => {
     const table = leagueTable(league, events, races, [], [])
 
-    /* e3 is not in the competition, so r3 is not a column. Within one day the
-       shorter race comes first, and it is the distance that says which is
-       shorter: by name "10 km" would stand in front of "5 km". */
-    expect(table.columns.map((one) => one.raceId)).toEqual(['r2', 'r4', 'r1'])
-    expect(first(table.columns).name).toBe('Trka')
+    /* e3 is not in the competition, so it is not a column, though it has a race of
+       its own. e1 has two races and is one column, which is what changed on
+       07.09.2026 (owner: „Datum i kaze se dogadjaj samo"). */
+    expect(table.columns.map((one) => one.eventId)).toEqual(['e2', 'e1'])
+    expect(table.columns.map((one) => one.date)).toEqual(['2019-03-01', '2019-05-01'])
   })
 
-  it('calls a race what the race is called, not what its event is called', async () => {
-    /* Owner, 23.08.2026, in the same breath as giving a race a name: „u listi
-       rezultata treba da se prikazuju nazivi trka na kojima je čovek učestvovao, a
-       ne događaja." This grid carried the event's name until 29.08.2026, so a race
-       somebody had renamed stood here under the name it no longer had.
+  it('carries what the pointer is told and where the press lands', () => {
+    /* The heading itself is only a day, so everything that says which event this is
+       reaches the screen through these two: the name on the pointer and on the link
+       out loud, and the address the link opens (`LeagueResults.tsx`). Measured by
+       their own values, because the day is the same for a column that lost both. */
+    const table = leagueTable(league, events, races, [], [])
 
-       Nothing moved for the races in the file, and that is the point of the case:
-       a race's name starts out as its event's, so measuring on one of those proves
-       nothing. This one is renamed. */
-    const named = [race('r5', 'e1', 12, '2019-05-02', 'Polumaraton kroz grad')]
-    const table = leagueTable(league, events, named, [], [])
-
-    expect(first(table.columns).name).toBe('Polumaraton kroz grad')
+    expect(first(table.columns).name).toBe('Događaj e2')
+    expect(first(table.columns).slug).toBe('e2')
   })
 
-  it('carries the kind of that race, since the heading is written from it', () => {
-    /* A column is named by what its race is measured by (`data/raceLabel.ts`), and
-       this is the only path by which the kind reaches the heading. Measured by its
-       own values rather than by the label, because the label has its own guards and
-       a column that carried the wrong race's kind would satisfy them both.
+  it('gives no column to an event that has no race yet', () => {
+    /* An event may be entered a fortnight before anybody knows its distances
+       (owner, 23.08.2026), and until a race is added to it there is nothing that
+       could ever stand under such a column. The width of this table is its whole
+       difficulty, so a column that can never carry a number is width spent on
+       nothing. */
+    const table = leagueTable(league, events, [race('r2', 'e2', 21, '2019-03-01')], [], [])
 
-       A length of nought on purpose: a column that lost the kind would fall back to
-       naming the race „(0,0 km)", which is what the grid drew before the field was
-       carried at all. */
-    const timed = [race('r6', 'e1', 0, '2019-05-02')]
-    const table = leagueTable(league, events, [{ ...first(timed), kind: 'time', limitSeconds: 86_400 }], [], [])
+    expect(table.columns.map((one) => one.eventId)).toEqual(['e2'])
+  })
 
-    expect(first(table.columns).kind).toBe('time')
-    expect(first(table.columns).limitSeconds).toBe(86_400)
+  it('draws two events of one day as two columns, in the order of their names', () => {
+    /* Owner, 07.09.2026: „ako dva dogadjaja imaju isti datum i neko stigne da ih
+       istrci obe, svakako neka bude opcija 2", and option two was the day alone. So
+       the two read the same date and are told apart by the name on the pointer and
+       the page the press opens.
+
+       The order is by the name and not by the order the file happens to be written
+       in, or the table would shuffle between two columns nothing else parts. Read
+       with the later name given first, so that a sort that does nothing is caught. */
+    const sameDay = [event('z-drugi', '2019-03-01'), event('a-prvi', '2019-03-01')]
+    const table = leagueTable(
+      { ...league, eventIds: ['z-drugi', 'a-prvi'] },
+      sameDay,
+      [race('r7', 'z-drugi', 10, '2019-03-01'), race('r8', 'a-prvi', 10, '2019-03-01')],
+      [],
+      [],
+    )
+
+    expect(table.columns.map((one) => one.eventId)).toEqual(['a-prvi', 'z-drugi'])
   })
 
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {
@@ -168,10 +180,10 @@ describe('the grid of a competition', () => {
        up and land on the second column. */
     expect(table.rows.map((one) => one.total)).toEqual([40, 15])
     expect(first(table.rows).competitor.memberNumber).toBe('000002')
-    expect(at(table.rows, 1).points.get('r3')).toBeUndefined()
+    expect(at(table.rows, 1).points.get('e3')).toBeUndefined()
   })
 
-  it('leaves a race somebody did not run out of the row rather than at nought', () => {
+  it('leaves an event somebody did not race out of the row rather than at nought', () => {
     const table = leagueTable(
       league,
       events,
@@ -180,9 +192,31 @@ describe('the grid of a competition', () => {
       [person('000001')],
     )
 
-    // Nought would be a claim: it says they ran it and scored nothing.
-    expect(first(table.rows).points.get('r1')).toBe(10)
-    expect(first(table.rows).points.has('r2')).toBe(false)
+    // Nought would be a claim: it says they were there and scored nothing.
+    expect(first(table.rows).points.get('e1')).toBe(10)
+    expect(first(table.rows).points.has('e2')).toBe(false)
+  })
+
+  it('adds up two races of one event into the one cell that event has', () => {
+    /* Owner, 07.09.2026, asked what two columns of one event should be now that the
+       heading is only a day: „U teoriji neko moze imati rezultate na dve trke u
+       istom dogadjaju i onda ce dole u njegovu celiju biti upisan zbir bodova sa obe
+       trke."
+
+       r1 and r4 are two races of e1, which is the ordinary shape of a marathon
+       morning: the long one and the short one. The two numbers are different and
+       neither is the sum, so a cell holding either of them alone is caught, and so
+       is a cell holding the last one written. */
+    const table = leagueTable(
+      league,
+      events,
+      races,
+      [result('000001', 'r1', 10), result('000001', 'r4', 7)],
+      [person('000001')],
+    )
+
+    expect(first(table.rows).points.get('e1')).toBe(17)
+    expect(first(table.rows).total).toBe(17)
   })
 
   it('settles a tie by member number rather than by chance', () => {
@@ -199,7 +233,10 @@ describe('the grid of a competition', () => {
 
   it('adds two results on one race rather than keeping the last of them', () => {
     /* Nothing on the portal should produce this, and a grid that quietly kept
-       one of the two would hide it instead of showing it. */
+       one of the two would hide it instead of showing it. Since 07.09.2026 the same
+       line adds two races of one event as well, which is a thing the portal does
+       produce; that case is above, and this one is still worth its own because the
+       fault it describes is a different one. */
     const table = leagueTable(
       league,
       events,
@@ -208,7 +245,7 @@ describe('the grid of a competition', () => {
       [person('000001')],
     )
 
-    expect(first(table.rows).points.get('r1')).toBe(17)
+    expect(first(table.rows).points.get('e1')).toBe(17)
     expect(first(table.rows).total).toBe(17)
   })
 })

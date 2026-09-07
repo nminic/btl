@@ -35,7 +35,13 @@ import dictionary from '../../test/dictionary.snapshot.json'
  */
 const FILES = sources()
   .map((one) => one.path.slice(process.cwd().length + 1).split(sep).join('/'))
-  .filter((path) => path.endsWith('.tsx') && /league/i.test(path.split('/').at(-1) ?? ''))
+  /* **The whole path and not the name of the file**, since 07.09.2026. It read the name alone,
+     and on that day the terms and the prizes of a competition moved out of `LeagueDetail.tsx`
+     into `league/EditableText.tsx`, which draws them on the list of competitions. The words went
+     with them and the sweep stopped reading them, silently: a component in the folder of a
+     competition, drawing what a competition says, and outside every guard that exists for it.
+     The folder is as much a statement of what a file is about as its name. */
+  .filter((path) => path.endsWith('.tsx') && /league/i.test(path))
   .sort()
 
 function wordsIn(path: string): string[] {
