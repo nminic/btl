@@ -19,13 +19,23 @@ import type { Competitor } from '../../data/types'
  * listama postaju tekst umesto link za sve posetioce koji nisu ulogovani." The data on those
  * lists is not touched either — hiding is about reaching the profile, not about what a list says.
  *
- * **Not exported, and that is the whole of the guarantee** (review, 07.09.2026). It lived beside
- * the rule in `profile/visible.ts` and was exported there, so a screen could import it, build an
- * address itself and never come through the hook below — which is to say, never read what this
- * visit has said about that member. Measured: a screen rewritten that way passed every gate,
- * 2645 cases and 100 per cent, while linking a member who had just hidden themselves. A floor
- * over „who may build an address" could have caught it; not exporting it means there is nothing
- * to catch.
+ * **Not exported**, so a screen cannot reach for it and build an address without coming through
+ * the hook below — which is to say, without reading what this visit has said about that member.
+ * It lived beside the rule in `profile/visible.ts` and was exported there until 07.09.2026;
+ * measured that day, a screen rewritten to call it passed every gate, 2645 cases and 100 per cent,
+ * while linking a member who had just hidden themselves.
+ *
+ * **What holds this is behaviour and not a rule about imports** (07.09.2026, after four rounds of
+ * review). A floor stood here that asked which modules reach `pages/profileAddress`, and each
+ * round found one more way to write the same import: a second exported name, double quotes,
+ * `export … from`, `import(…)`, a `.ts` extension, and finally `export { profilePath }` written as
+ * a statement beside the import it re-exports. The question was wrong, not the reading: what P23
+ * forbids is a link, not an import, and a link can be built without importing anything at all.
+ *
+ * So the floor is gone and `pages/profilePrivacy.test.tsx` hides a member and asks **every address
+ * the portal has** whether it still leads to their profile. All five mutations the floor used to
+ * catch were run against it before it was deleted, and all five fall — including the two the floor
+ * never could: an address spelt out by hand, and a bare re-export.
  */
 function profileLinkFor(
   competitor: Competitor,

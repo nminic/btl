@@ -77,8 +77,13 @@ const waysIn = (): string[] =>
     .filter((href) => href.includes('/takmicar/'))
 
 /** What each of the two is called, so the walk can ask whether the screen draws them at all.
+ *
  *  Written out rather than read off the file, because a name read from the same place the screen
- *  reads it from would agree with it however wrong both were. */
+ *  reads it from would agree with it however wrong both were.
+ *
+ *  Asked for with `must`, so a sixth row added to the walk without a name here fails saying which
+ *  member is missing. Left to fall back on the number, it would quietly ask the page for „000012"
+ *  and report „undefined nije ni nacrtan" (review, 07.09.2026). */
 const NAMES: Record<string, string> = {
   '000001': 'Vladan Đurišić',
   '000007': 'Strahinja Vukićević',
@@ -276,14 +281,20 @@ describe('hiding a profile from readers who are not signed in', () => {
          is his" is also what a screen that never mentions him would say. His name stays whatever
          happens to the link (owner, 06.09.2026), so the name is what proves he is on the page.
 
-         Asked of the text of the page rather than of one node, because two of these five screens
-         write a name in pieces: the boards cut the surname down to an initial on a narrow card and
-         keep both halves in the markup, and the chart on the front page draws the name inside a
-         bar. A query for one node finds neither, and the question here is only whether the screen
-         mentions him at all. */
+         Asked of the text of the page rather than of one node, because these screens write a name
+         in more than one shape: the boards cut the surname down to an initial on a narrow card and
+         keep both halves in the markup, and on the front page his name reaches the text only
+         through the plain-text branch of `ProfileLink`, out of the way of the eye. A query for one
+         node finds neither, and the question here is only whether the screen mentions him at all.
+
+         What that costs, said plainly: on the front page this half and the half above it are not
+         independent, because both are answered by the same branch. It is not a false pass — it is
+         a false alarm waiting to happen, if that branch ever stops writing the name. Measured on
+         07.09.2026 by a review, and left as it is: the other four screens answer the two halves
+         from different places. */
       expect(
-        document.body.textContent?.includes(NAMES[who] ?? who),
-        `${where}: ${String(NAMES[who])} nije ni nacrtan`,
+        document.body.textContent?.includes(must(NAMES[who], `ime člana ${who}`)),
+        `${where}: ${must(NAMES[who], who)} nije ni nacrtan`,
       ).toBe(true)
       expect(waysIn().filter((href) => href.includes(`/takmicar/${who}`)), where).toEqual([])
     }
