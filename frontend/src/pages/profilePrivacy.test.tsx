@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import { must } from '../test/at'
+import { PUBLIC } from '../test/addresses'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
@@ -24,6 +25,24 @@ function Become({ who }: { who: string }) {
   return (
     <button type="button" onClick={() => { signIn(who) }}>
       postani {who}
+    </button>
+  )
+}
+
+/**
+ * A member hides their profile, without walking the screen that offers the box.
+ *
+ * What it writes is exactly what the checkbox writes (`member/Settings.tsx`): the same key, the
+ * same field, the same word. What it saves is the visit: the sweep below opens thirty addresses,
+ * and paying for a trip to the settings on each of them is thirty renders of a screen the sweep is
+ * not about. The case that measures the box itself is the first one in this file.
+ */
+function Hide({ who }: { who: string }) {
+  const { editRecord } = useSession()
+
+  return (
+    <button type="button" onClick={() => { editRecord(who, { profileHidden: 'true' }) }}>
+      sakrij {who}
     </button>
   )
 }
@@ -569,4 +588,76 @@ describe('the birthday a member chooses to show', () => {
       await screen.findByText(/pun datum još nigde ne čuva/),
     ).toBeVisible()
   })
+})
+
+/**
+ * That **no address the portal has** leads a visitor to a profile that is hidden.
+ *
+ * **This is the fifth form of this question and the first that cannot be spelt around**
+ * (07.09.2026). The four before it all asked the same thing about the source: which modules reach
+ * the one that builds the address of a profile. Each was answered by reading the code, and each
+ * missed one way of writing the same thing, one per round of review: a second exported name, a
+ * double-quoted specifier, `export … from`, `import(…)`, a `.ts` extension, and finally
+ * `export { profilePath }` written as a statement of its own beside the import it re-exports.
+ *
+ * **A guard that has been wrong five times about how something is written is asking the wrong
+ * question.** What P23 actually forbids is not an import; it is a link. So this asks about the
+ * link, on every address there is, and how the address was built stops mattering: a hand-written
+ * one, one through a re-export, one through a module nobody thought of, all end in the same
+ * `href` and all fail here.
+ *
+ * **Over the same table `pages/publicData.test.tsx` sweeps** (`test/addresses.ts`), which is held
+ * against the route table itself, so an address added tomorrow is swept without anybody
+ * remembering to add it. That is the floor this question needs and the one the module sweep never
+ * had.
+ *
+ * **One member, and it has to be him.** The table sweeps `/sr/takmicar/000001` and its trophies,
+ * so hiding `000001` would turn two of the addresses being swept into a redirect to the front
+ * page — which is the right answer, and is measured by the first case in this file rather than
+ * here. `000007` is drawn on the standing, the top boards, the front page, an event and the team,
+ * and his own profile is not on the table, so he is the one who can be hidden while every address
+ * still draws what it draws.
+ *
+ * The one screen he is not on is the standing of a competition, and that is what the walk above
+ * covers, with the member that standing does draw.
+ *
+ * **What this cannot say**, written down rather than left to be found: it sweeps the addresses the
+ * portal answers **outside administration**, as a visitor. Administration is behind a right and is
+ * not a place a visitor reaches at all, which is what P23 is about („za sve posetioce koji nisu
+ * ulogovani"). A screen that leads to a hidden profile only for a signed-in member is outside this
+ * and outside the rule.
+ */
+describe('a hidden profile is reachable from nowhere', () => {
+  it.each(PUBLIC)('is not reached from %s', async (where, asVisitor) => {
+    const user = setupUser()
+
+    /* The same day the other sweep over this table reads it on (`pages/publicData.test.tsx`), and
+       for its reason: what a screen draws depends on the day, and one of these addresses is a
+       profile whose owner has to be a member on it. The day is part of the address. */
+    renderAt(where, 'visitor', null, undefined, '2026-08-07', <Hide who="000007" />)
+
+    await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+
+    /* The screen, and then the screen having stopped drawing. Nought is a legitimate answer here,
+       unlike in the walk above: most of these addresses lead into no profile at all, and what is
+       asked of them is that they lead into neither of these two. Which addresses do draw somebody
+       is the walk's business, and it names five of them. */
+    await screen.findByRole('heading', { level: 1, name: asVisitor })
+
+    let seen = -1
+
+    await waitFor(() => {
+      const now = waysIn().length
+      const done = now === seen
+
+      seen = now
+
+      expect(done, `${where}: ekran se još crta`).toBe(true)
+    })
+
+    expect(
+      waysIn().filter((href) => href.includes('/takmicar/000007')),
+      where,
+    ).toEqual([])
+  }, SLOW)
 })
