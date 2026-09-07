@@ -254,14 +254,19 @@ export function everyRule(css: string, named: string): CSSStyleRule[] {
      media query, a container query, `@supports`, `@layer`. Asked of the base rather than of a list
      of kinds, so a wrapper the portal writes tomorrow is walked without this being told about it.
      Measured in this jsdom: `CSSGroupingRule`, `CSSMediaRule` and `CSSSupportsRule` are all
-     defined. */
+     defined.
+   *
+     **A style rule is one of those too, and the first draft of this stopped at it** (review,
+     07.09.2026). CSS nesting writes rules inside a rule — `.plate { & .plate__words { … } }` — and
+     jsdom hands them back on that rule's own `cssRules`; a walk that returned early on the first
+     `CSSStyleRule` threw the answer away. Measured: two nested declarations, both of them faults
+     two earlier rounds had found and fixed, reached the built stylesheet with 2701 cases green.
+     So a style rule is both an answer and a place to keep looking. */
   const walk = (rules: CSSRule[]): CSSStyleRule[] =>
     rules.flatMap((rule) => {
-      if (rule instanceof CSSStyleRule) {
-        return [rule]
-      }
+      const inside = rule instanceof CSSGroupingRule ? walk([...rule.cssRules]) : []
 
-      return rule instanceof CSSGroupingRule ? walk([...rule.cssRules]) : []
+      return rule instanceof CSSStyleRule ? [rule, ...inside] : inside
     })
 
   const found = walk([...(sheet?.cssRules ?? [])])

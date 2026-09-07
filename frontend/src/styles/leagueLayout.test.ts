@@ -19,11 +19,20 @@ import {
  * stylesheet, so nothing that draws a screen can see either (ADL A33, `styles/tableScroll.test.ts`
  * and `styles/outsideHost.test.ts` exist for the same reason and are the shape copied here).
  *
- * **What this holds and what it cannot.** It reads the declarations out of the sheet and asks that
- * the sheet reaches the screen that wears the class. Where the cut actually falls at a given width
- * is a browser's question and was answered in one: at 360, with the grid scrolled 260px sideways,
- * the horizontal rules of the scrolling half no longer cross „Član" and „Bodovi", and the list of
- * competitions is one box of 328px.
+ * **What this holds and what it cannot, written as a boundary rather than discovered round by
+ * round.** These cases read what a **sheet says**, through the browser's own parser, at every depth
+ * and under every condition it is written in (`everyRule`). Three rounds of review each found one
+ * more place a sheet can say something — a media block, a nested rule, a second rule further down —
+ * and each was closed by widening the reading rather than by naming the place.
+ *
+ * What they cannot hold is the **cascade between sheets**: a rule in another stylesheet, of higher
+ * specificity or later in the bundle, that overrides one of these. jsdom applies no stylesheet and
+ * computes no cascade (ADL A33), so nothing here can see it, and the portal has been bitten by
+ * exactly that before (`pages/league/League.css` documents it twice). That half is measured in a
+ * real browser and written down: at 360 with the grid scrolled 260px sideways the horizontal rules
+ * of the scrolling half no longer cross „Član" and „Bodovi"; the list of competitions is one box
+ * of 328px; the main standing draws no circle and its rows are 75px again, while the top boards on
+ * the same width still draw all thirty of theirs.
  */
 const SRC = join(process.cwd(), 'src')
 const LEAGUE = join(SRC, 'pages/league/League.css')
@@ -157,9 +166,15 @@ describe('the name of a competitor beside their circle', () => {
        ten of thirty names on 360. */
     expect(
       everyRule(readFileSync(PLATE, 'utf-8'), 'NamePlate.css')
-        .filter((rule) => rule.selectorText.includes('.plate__words'))
-        .filter((rule) => !rule.selectorText.includes('.plate--pair'))
-        .map((rule) => rule.style.getPropertyValue('display'))
+        /* Selector by selector, and not over the whole list of them (review, 07.09.2026): a rule
+           written `.plate--pair .plate__words, .plate__words` mentions the pair and lays every
+           plate in rows, and an exception asked of the whole string let it through. */
+        .flatMap((rule) =>
+          rule.selectorText.split(',').map((one) => ({ one: one.trim(), style: rule.style })),
+        )
+        .filter(({ one }) => one.includes('.plate__words'))
+        .filter(({ one }) => !one.includes('.plate--pair'))
+        .map(({ style }) => style.getPropertyValue('display'))
         .filter((said) => said !== ''),
       'the words beside the circle are laid out in rows at some width',
     ).toEqual([])
@@ -221,22 +236,34 @@ describe('the name of a competitor beside their circle', () => {
        Measured in a browser after the change: at 360 the main standing draws no circle, one of
        seventeen names is on two lines as before, and the row is 75 pixels again; the top boards on
        the same width still draw all thirty of theirs; at 1280 the circle is back. */
-    const rule = ruleInMedia(
-      readFileSync(join(SRC, 'pages/Rankings.css'), 'utf-8'),
-      '(max-width: 699.98px)',
-      '.rankings__table .plate__faces',
-      'Rankings.css',
-    )
+    const sheet = readFileSync(join(SRC, 'pages/Rankings.css'), 'utf-8')
 
-    expect(rule.getPropertyValue('display')).toBe('none')
-
-    /* And the table really wears the name the rule reaches for. A class is a fact with two homes,
-       and this is the second: `styles/hooks.test.ts` holds a handful of such pairs and this name
-       is not among the prefixes it knows. */
     expect(
-      readFileSync(join(SRC, 'pages/Rankings.tsx'), 'utf-8'),
-      'the main standing no longer wears the name its own rule reaches for',
-    ).toContain('className="table rankings__table"')
+      ruleInMedia(
+        sheet,
+        '(max-width: 699.98px)',
+        '.rankings__table .plate__faces',
+        'Rankings.css',
+      ).getPropertyValue('display'),
+    ).toBe('none')
+
+    /* **And the sheet nowhere says otherwise**, which one rule read on its own cannot tell
+       (review, 07.09.2026). The same selector written again after that block, unconditionally,
+       wins on order at every width, and a review measured it: the circle back at 360, the name
+       wrapping again, the row back from 75 to 100 pixels, with 2701 cases green. Read through
+       `everyRule`, a second rule about that circle is a second answer and fails here. */
+    expect(
+      everyRule(sheet, 'Rankings.css')
+        .filter((one) => one.selectorText.includes('.plate__faces'))
+        .map((one) => one.style.getPropertyValue('display'))
+        .filter((said) => said !== 'none'),
+      'the circle is given back at some width',
+    ).toEqual([])
+
+    /* That the table really wears this name is the other home of the same fact, and it is asked of
+       the **drawn screen** rather than of the source (`pages/namePlateOnScreens.test.tsx`): read
+       off the text of the file, a mention of the name in a comment answered for it, which a review
+       measured. */
   })
 
   it('reaches the sheet that makes the circle a circle', () => {

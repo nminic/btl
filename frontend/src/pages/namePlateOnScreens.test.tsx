@@ -57,6 +57,17 @@ describe('the circle beside a name', () => {
 
     const inTable = plate()
 
+    /* **And the table wears the name its own rule reaches for**, read off the drawn screen rather
+       than off the source of the file (review, 07.09.2026: read as text, a mention of the name in a
+       comment answered for it). That name is what carries the owner's decision of the same day —
+       „Krug se ne crta ispod 700px" — and the rule that hangs off it is held in
+       `styles/leagueLayout.test.ts`; here is the other half, that something actually wears it.
+       Precedent for asking the drawn element: `pages/publicScreens.test.tsx`. */
+    expect(
+      must(inTable.closest('table'), 'the table of the standing').classList.toString(),
+      'the main standing no longer wears the name its own rule reaches for',
+    ).toContain('rankings__table')
+
     expect(inTable.querySelector('.portrait')).not.toBeNull()
     expect(
       inTable.querySelector('.plate__given'),
