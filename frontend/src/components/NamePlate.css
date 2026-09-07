@@ -29,8 +29,17 @@
 }
 
 .plate__words {
-  display: grid;
-  /* Cut rather than pushed: the column of a name is bounded on both tables that carry one, and a
+  /* **Not a grid**, and that was measured (review, 07.09.2026). It was one, and a grid makes every
+     child its own row: the boards hand over three of them (the given name, the surname, and the
+     initial the narrow card swaps in), so „Strahinja" and „Vukićević" stood one under the other on
+     „Najviše kilometara" and „Najduže na stazi", at every width, which is the opposite of what the
+     owner asked for („U ligi dva reda, u tabelama jedan"). On a narrow card it was worse than the
+     wrap the container query exists to prevent: the given name with a lone „V." beneath it.
+
+     Two lines where a screen asks for them are laid by the two halves themselves
+     (`.plate__given`, `.plate__family`), and that is the one screen that writes them.
+
+     Cut rather than pushed: the column of a name is bounded on both tables that carry one, and a
      name that will not give way widens the table instead of ending in an ellipsis. */
   min-inline-size: 0;
 }
@@ -38,15 +47,16 @@
 /* Two rows, and that is the whole of what tells the standing of a competition from the tables
    (owner: „U ligi dva reda, u tabelama jedan"). The two halves are two elements with a space
    between them, so a reader hears one name (`OverTwoLines`); here they are laid one under the
-   other. Only the standing of a competition writes them, so nothing else is broken by this. */
+   other. Only the standing of a competition writes them, so nothing else is broken by this.
+
+   **Neither of them is bold**, and that is an older decision rather than a choice made here:
+   `pages/league/League.css` puts the name in that grid at 400 because a review measured on
+   13.08.2026 that every competitor's name in it was bold while the same names on the ranking table
+   were not. A surname in 700 here would have brought back half of that, silently. */
 .plate__given,
 .plate__family {
   display: block;
   line-height: 1.2;
-}
-
-.plate__family {
-  font-weight: 700;
 }
 
 /* A pair: one circle above the other, and the two names beside them, each on its own row (owner,
@@ -57,6 +67,7 @@
 }
 
 .plate--pair .plate__words {
+  display: grid;
   gap: var(--space-4);
 }
 

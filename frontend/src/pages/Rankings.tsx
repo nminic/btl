@@ -231,9 +231,22 @@ function Standing({
                     )}
                   </td>
                   <td>
-                    {/* Krug pre imena, a ime ostaje u jednom redu (vlasnik, 07.09.2026:
-                        „U ligi dva reda, u tabelama jedan"): red ove tabele je red po članu i
-                        svaka nova linija je ceo red viši. */}
+                    {/* The circle before the name, and the name **not** broken over two lines
+                        (owner, 07.09.2026: „U ligi dva reda, u tabelama jedan"). The standing of a
+                        competition breaks it on purpose; this table does not.
+                     *
+                        **What the circle costs here, measured rather than claimed** (review,
+                        07.09.2026). It takes about thirty four pixels of a column that is 167 wide
+                        on a telephone, and a long name then wraps of its own accord: at 360, nine
+                        of seventeen names run to two lines where one did before, and the row grows
+                        from 75 to 100 pixels. At 1280 none of them wraps.
+                     *
+                        That wrapping is not the deliberate break the owner set apart — no screen
+                        asks for it, it is what a narrow column does — but the cost is real and it
+                        falls on a telephone, which is where the owner expects most of the reading
+                        (PDL P24). It is written down here and put to him rather than decided by
+                        this commit: the alternative is to draw no circle in this table under
+                        700px, which is one line of stylesheet. */}
                     <NamePlate competitors={[row.competitor]}>
                       <CompetitorName competitor={row.competitor} />
                     </NamePlate>{' '}

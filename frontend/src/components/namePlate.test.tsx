@@ -55,6 +55,8 @@ describe('a competitor as a circle and a name', () => {
     const drawn = circles(container)
 
     expect(drawn).toHaveLength(2)
+    /* And neither of the two is a pair, which is the other half of that one class. */
+    expect(container.querySelectorAll('.plate--pair')).toHaveLength(0)
     expect(first(drawn).textContent).toBe('BP')
     expect(at(drawn, 1).textContent).toBe('AM')
   })
@@ -85,6 +87,12 @@ describe('a competitor as a circle and a name', () => {
     const drawn = circles(container)
 
     expect(drawn.map((one) => one.textContent)).toEqual(['AM', 'BP'])
+    /* **And the plate says it is a pair**, which is the whole of how the two circles come to stand
+       one above the other: every rule that lays a pair out hangs off this one class
+       (`NamePlate.css`). A review measured what its absence costs: with the modifier gone the two
+       circles are drawn side by side, every rule about a pair becomes dead, and the whole gate
+       stays green — and the day the board of pairs has rows, the shape is simply wrong. */
+    expect(htmlElement(must(container.firstElementChild, 'the plate'))).toHaveClass('plate--pair')
     /* Both names beside them, in the order their circles are drawn in, so the second face is not
        read against the first name. */
     const words = htmlElement(

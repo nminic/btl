@@ -91,6 +91,38 @@ describe('the name of a competitor beside their circle', () => {
     expect(must(first(laid), 'the rule').style.getPropertyValue('display')).toBe('block')
   })
 
+  it('lays the words beside the circle in a line, and only a pair in rows', () => {
+    /* **Measured by a review on 07.09.2026, and it was a high finding.** `.plate__words` was a
+       grid, and a grid makes every child its own row. Two of the five screens hand over three
+       children — the given name, the surname, and the initial a narrow card swaps in
+       (`pages/TopBoards.tsx`, `NameOrInitial`) — so „Strahinja" and „Vukićević" stood one under
+       the other on „Najviše kilometara" and „Najduže na stazi", at every width. That is the
+       opposite of what the owner asked for, and on a narrow card it was worse than the wrap the
+       container query exists to prevent: the given name with a lone „V." beneath it.
+
+       Nothing drawn could see it: the fault is a height, and jsdom lays nothing out (ADL A33).
+       What is held here is the one declaration that caused it. Measured in a browser afterwards:
+       at 1280 not one of the thirty names on those boards is on two lines. */
+    const words = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
+      (rule) => rule.selectorText === '.plate__words',
+    )
+
+    expect(words.length, 'the words beside the circle have no rule at all').toBe(1)
+    expect(
+      must(first(words), 'the rule').style.getPropertyValue('display'),
+      'the words beside the circle are laid out in rows again',
+    ).toBe('')
+
+    /* And a pair is the one thing that is: two circles above one another, and a name beside each
+       (owner, 07.09.2026). */
+    const pair = unconditionalRules(readFileSync(PLATE, 'utf-8'), 'NamePlate.css').filter(
+      (rule) => rule.selectorText === '.plate--pair .plate__words',
+    )
+
+    expect(pair.length, 'a pair lays its two names nowhere').toBe(1)
+    expect(must(first(pair), 'the rule').style.getPropertyValue('display')).toBe('grid')
+  })
+
   it('gives the circle up on a telephone, so the name keeps its letters', () => {
     /* In the standing of a competition the first column is frozen and capped at 7,5rem
        (`pages/league/League.css`), and the circle stands inside that cap. Measured in a browser at
