@@ -365,6 +365,26 @@ export type Result = {
   category: RaceCategory
 }
 
+/**
+ * A racing pair: two members who confirmed one another, for one season.
+ *
+ * **A record of its own rather than a field on a member** (odluka 07.09.2026). A team is a field
+ * (`teamId`) because the relation is many to one; a pair is symmetric, so `pairWith` written on
+ * both members would be one fact in two homes and the two could drift apart (ADL A31). It is also
+ * what the board of best pairs ranks, and a board ranks records.
+ *
+ * `season` is the season the pair holds for. Forming has to be finished by 31 December for the
+ * pair to count in the season that follows (PDL, „Trkacki par"), so a pair is made in one year and
+ * raced in the next, and `since` is the day the second of the two confirmed.
+ */
+export type RacingPair = {
+  id: string
+  season: number
+  /** Both members, and exactly two: a pair is one man and one woman (PDL). */
+  memberNumbers: [string, string]
+  since: string
+}
+
 export type Team = {
   id: string
   slug: string

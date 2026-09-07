@@ -7,9 +7,14 @@ import { PLATE_CLASSES, person } from '../test/plate'
  * The circle beside a name, and what it is allowed to say.
  *
  * The owner asked for it on 07.09.2026 („kružni logo sa slikom ili inicijalima, i pored u dva reda
- * Ime i Prezime") and it is drawn on five screens. Measured here rather than five times, and the
- * one thing the screens cannot answer is answered here too: **a pair**, which the board of pairs
- * will draw the day there is a database to build one from and which nothing draws today.
+ * Ime i Prezime") and it is drawn on **six**: the standing of a competition, the main standing, and
+ * four boards, the last of which is the pairs. Measured here rather than six times.
+ *
+ * **A pair is measured here too**, and that is this file's own half: that the component takes two
+ * people, marks itself a pair, and puts the words beside the circles in the order the circles are
+ * drawn in. What the board does with that shape is measured on the board
+ * (`pages/namePlateOnScreens.test.tsx`). Until 07.09.2026 nothing drew a pair at all and this file
+ * said so; the owner then asked for two to be mocked.
  */
 /* Two people whose initials, numbers and names differ in every letter, so a plate that took the
    wrong one of the two is caught by any of the three. */
@@ -51,11 +56,11 @@ describe('a competitor as a circle and a name', () => {
   })
 
   it('draws two circles for a pair, and the words beside them', () => {
-    /* **A pair, which nothing on the portal draws today** (owner, 07.09.2026: „dva kruga jedan
-       iznad drugog, imena desno"). The board of pairs has no rows until there is a database,
-       because a pair is made by two people confirming each other, and its own words say so.
-       Measured here so that the day the rows arrive nothing has to be drawn again
-       (`btl-produkt/PDL.md`, „Ime sa slikom"). */
+    /* **A pair** (owner, 07.09.2026: „dva kruga jedan iznad drugog, imena desno"). The board of
+       best pairs draws them, and this is where the component's own half is measured: that it takes
+       two people, marks itself a pair, and puts the words beside the circles in the order the
+       circles are drawn in. What the board does with that shape, four lines and the races under
+       the points, is measured on the board (`pages/namePlateOnScreens.test.tsx`). */
     const { container } = render(
       <NamePlate competitors={[ANA, BORIS]}>
         <span>Ana Marković</span>

@@ -113,6 +113,16 @@
   padding: var(--space-16);
 }
 
+/* The second line of a cell, which one board has: the pairs carry the races they share under the
+   points they scored on them (owner, 04.08.2026). Its own line, quieter than the figure over it,
+   and it wears no weight of its own: the figure is what the board ranks by. */
+.boards__under {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
 .boards__title {
   margin: 0 0 var(--space-8);
   font-size: 1.05rem;

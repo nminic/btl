@@ -16,6 +16,7 @@ import {
   topByKilometers,
   topByProgress,
   topByTimeOnCourse,
+  topPairs,
   rankTeams,
   resultsOf,
   seasonsWithResults,
@@ -27,7 +28,15 @@ import { teamOf } from './derive'
 import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
 import { DOTS } from './types'
-import type { BtlEvent, Competitor, Race, RaceCategory, Result, Team } from './types'
+import type {
+  BtlEvent,
+  Competitor,
+  Race,
+  RaceCategory,
+  RacingPair,
+  Result,
+  Team,
+} from './types'
 
 const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Competitor => ({
   memberNumber,
@@ -1354,5 +1363,283 @@ describe('the best of a member`s official seasons', () => {
     const late = [result('000001', '2033-06-01', 12)]
 
     expect(bestOfficialSeason(late, '000001')).toBe(12)
+  })
+})
+
+describe('the board of best racing pairs', () => {
+  /* PDL P12, the owner's own words: „Zajednicka trka za par znaci ista trka, ne samo isti
+     dogadjaj. Ako on trci maraton a ona polumaraton na istoj manifestaciji, to nije zajednicka
+     trka i ne ulazi u poredak parova." And the ladder, given for the team and the pair together on
+     11.08.2026: points, races, kilometres, time on course. */
+  const pair = (id: string, one: string, two: string, season = 2027): RacingPair => ({
+    id,
+    season,
+    memberNumbers: [one, two],
+    since: `${season - 1}-12-14`,
+  })
+
+  const HE = competitor('000001', { gender: 'M' })
+  const SHE = competitor('000002', { gender: 'F' })
+
+  it('counts the races both of them ran, and not the meetings they both turned up to', () => {
+    /* The two of them at one meeting, on two different races of it: his marathon and her half.
+       Same `eventSlug`, different `raceId`, which is the whole of the owner's sentence. And one
+       race they really did run together. */
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'together' }),
+      result('000002', '2027-05-01', 20, { raceId: 'together' }),
+      result('000001', '2027-06-01', 500, { raceId: 'his-marathon', eventSlug: 'jedan-dogadjaj' }),
+      result('000002', '2027-06-01', 400, { raceId: 'her-half', eventSlug: 'jedan-dogadjaj' }),
+    ]
+
+    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+
+    expect(board.length).toBe(1)
+    /* Thirty, not nine hundred and thirty: the meeting they shared is not a race they shared. */
+    expect(at(board, 0).points).toBe(30)
+    expect(at(board, 0).races).toBe(1)
+  })
+
+  it('puts the one who scored more of the pair points first, not the better season', () => {
+    /* **Two sources of one value, kept apart on purpose.** He is far ahead of her over the season,
+       and she is ahead of him on the race they ran together. The name at the top of a pair is
+       about the pair (owner, 04.08.2026), so it is hers; ordering by the season would say his, and
+       the case could not tell the two apart if his season were only his shared race. */
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'together' }),
+      result('000002', '2027-05-01', 40, { raceId: 'together' }),
+      result('000001', '2027-07-01', 900, { raceId: 'alone' }),
+    ]
+
+    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+
+    expect(at(board, 0).competitors.map((one) => one.memberNumber)).toEqual(['000002', '000001'])
+  })
+
+  it('ranks two pairs by points, then by the races they ran together', () => {
+    const four = [
+      competitor('000001', { gender: 'M' }),
+      competitor('000002', { gender: 'F' }),
+      competitor('000003', { gender: 'M' }),
+      competitor('000004', { gender: 'F' }),
+    ]
+    /* Level on points, **and on kilometres and on time**, and the second pair earned theirs over
+       two races instead of one. Only the rung about races can part them, which is the whole point
+       of the case: written with two ordinary races the second pair also has twice the distance,
+       and the board comes out the same order with the rung deleted (measured 07.09.2026). So the
+       second pair runs two half-length races: same twenty kilometres, same hundred minutes. */
+    const half = { distanceKm: 5, seconds: 1500 }
+    const results = [
+      result('000001', '2027-05-01', 30, { raceId: 'one' }),
+      result('000002', '2027-05-01', 30, { raceId: 'one' }),
+      result('000003', '2027-05-02', 15, { raceId: 'two', ...half }),
+      result('000004', '2027-05-02', 15, { raceId: 'two', ...half }),
+      result('000003', '2027-05-03', 15, { raceId: 'three', ...half }),
+      result('000004', '2027-05-03', 15, { raceId: 'three', ...half }),
+    ]
+
+    const board = topPairs(
+      [pair('p1', '000001', '000002'), pair('p2', '000003', '000004')],
+      four,
+      results,
+      2027,
+      10,
+    )
+
+    expect(board.map((row) => row.pair.id)).toEqual(['p2', 'p1'])
+    expect(board.map((row) => row.position)).toEqual([1, 2])
+  })
+
+  it('parts two pairs that are level all the way down by the smaller sum of member numbers', () => {
+    /* The last rung, out of the Pravilnik and into PDL P12. Both pairs ran one race and scored the
+       same on it, so nothing above this can separate them.
+
+       **The two members are chosen so that the sum and the first number disagree** (measured
+       07.09.2026): `000002 + 000003` adds up to five and `000001 + 000009` to ten, while the
+       second pair holds the lower first number. Written the other way round, deleting the rung
+       altogether gave the same order, because `withPlaces` ends every board on the member number
+       and that agreed with the sum. So the rung is the only thing that can put the smaller sum
+       first here. */
+    const four = [
+      competitor('000001', { gender: 'M' }),
+      competitor('000002', { gender: 'F' }),
+      competitor('000003', { gender: 'M' }),
+      competitor('000009', { gender: 'F' }),
+    ]
+    const results = [
+      result('000002', '2027-05-01', 30, { raceId: 'one' }),
+      result('000003', '2027-05-01', 30, { raceId: 'one' }),
+      result('000001', '2027-05-02', 30, { raceId: 'two' }),
+      result('000009', '2027-05-02', 30, { raceId: 'two' }),
+    ]
+
+    /* Handed in with the larger sum first, so the order that comes back is the rung and not the
+       order of the list. */
+    const board = topPairs(
+      [pair('sum-ten', '000001', '000009'), pair('sum-five', '000002', '000003')],
+      four,
+      results,
+      2027,
+      10,
+    )
+
+    expect(board.map((row) => row.pair.id)).toEqual(['sum-five', 'sum-ten'])
+  })
+
+  it('parts two pairs whose member numbers even add up the same, by the lower of them', () => {
+    /* The rung under the last rung. Two pairs can be level on everything the ladder measures and
+       still have the same sum: 000001 with 000004 adds up to what 000002 with 000003 does. The
+       ladder ends there, and `withPlaces` then parts them by the member number, which is what it
+       does for every board on the portal (PDL P12: there is no shared place). */
+    const four = [
+      competitor('000001', { gender: 'M' }),
+      competitor('000002', { gender: 'F' }),
+      competitor('000003', { gender: 'M' }),
+      competitor('000004', { gender: 'F' }),
+    ]
+    const results = [
+      result('000001', '2027-05-01', 30, { raceId: 'one' }),
+      result('000004', '2027-05-01', 30, { raceId: 'one' }),
+      result('000002', '2027-05-02', 30, { raceId: 'two' }),
+      result('000003', '2027-05-02', 30, { raceId: 'two' }),
+    ]
+
+    const board = topPairs(
+      [pair('later', '000002', '000003'), pair('earlier', '000001', '000004')],
+      four,
+      results,
+      2027,
+      10,
+    )
+
+    expect(board.map((row) => row.pair.id)).toEqual(['earlier', 'later'])
+  })
+
+  it('goes on to the kilometres when the points and the races are level', () => {
+    /* The third rung, and it had no case of its own until a review deleted it and watched the whole
+       gate stay green (07.09.2026). The board of teams, written out of the same sentence of the
+       owner's on 11.08.2026, had one 580 lines up; the precedent was copied without its guard.
+
+       **The two pairs are chosen so that only this rung can order them.** Level on points and on
+       races, level on time, and the pair with the longer race holds the **larger** sum of member
+       numbers, which is the rung under this one. Deleted, the ladder falls through to that sum and
+       hands first place to the other pair. */
+    const four = [
+      competitor('000001', { gender: 'M' }),
+      competitor('000002', { gender: 'F' }),
+      competitor('000003', { gender: 'M' }),
+      competitor('000009', { gender: 'F' }),
+    ]
+    const results = [
+      result('000001', '2027-05-01', 30, { raceId: 'short', distanceKm: 10 }),
+      result('000002', '2027-05-01', 30, { raceId: 'short', distanceKm: 10 }),
+      result('000003', '2027-05-02', 30, { raceId: 'long', distanceKm: 30 }),
+      result('000009', '2027-05-02', 30, { raceId: 'long', distanceKm: 30 }),
+    ]
+
+    const board = topPairs(
+      [pair('short', '000001', '000002'), pair('long', '000003', '000009')],
+      four,
+      results,
+      2027,
+      10,
+    )
+
+    expect(board.map((row) => row.pair.id)).toEqual(['long', 'short'])
+    expect(board.map((row) => row.kilometers)).toEqual([60, 20])
+  })
+
+  it('counts a race once when one of them has two results on it', () => {
+    /* **The history the portal reads holds this** (review, 07.09.2026): 165 pairs of results in the
+       mocked file share a member and a race, four of them inside one season. Read as one result per
+       race, one of his is dropped and hers is added twice, and a race they ran once is reported as
+       two.
+
+       Both halves are asked, because the fault had two: the count of races, and the points. */
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'one', id: 'his-first' }),
+      result('000001', '2027-05-01', 5, { raceId: 'one', id: 'his-second' }),
+      result('000002', '2027-05-01', 20, { raceId: 'one', id: 'hers' }),
+    ]
+
+    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+
+    expect(at(board, 0).races).toBe(1)
+    expect(at(board, 0).points).toBe(35)
+  })
+
+  it('counts it once when the second of them is the one with two results', () => {
+    /* The mirror, and it is not the same case (review, 07.09.2026). Counted off the second
+       member's rows rather than off the races, the first setup gives the right answer anyway,
+       because there the doubled rows belong to the first. Written this way round the two answers
+       part: her two rows on one race are still one race. */
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'one', id: 'his' }),
+      result('000002', '2027-05-01', 20, { raceId: 'one', id: 'hers-first' }),
+      result('000002', '2027-05-01', 5, { raceId: 'one', id: 'hers-second' }),
+    ]
+
+    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+
+    expect(at(board, 0).races).toBe(1)
+    expect(at(board, 0).points).toBe(35)
+  })
+
+  it('keeps the order the pair was written in when the two halves are level', () => {
+    /* The other side of „the larger half first". Two halves that scored the same are not a reason
+       to reorder anybody, and the pair as written is the answer that does not move from one reading
+       to the next.
+
+       **Written with the larger member number first** (review, 07.09.2026): the other way round,
+       „the order they were written in" and „the smaller member number" give the same answer and the
+       case cannot tell one from the other. */
+    const results = [
+      result('000001', '2027-05-01', 30, { raceId: 'together' }),
+      result('000002', '2027-05-01', 30, { raceId: 'together' }),
+    ]
+
+    const board = topPairs([pair('p1', '000002', '000001')], [HE, SHE], results, 2027, 10)
+
+    expect(at(board, 0).competitors.map((one) => one.memberNumber)).toEqual(['000002', '000001'])
+  })
+
+  it('leaves off a pair that ran nothing together, and one the portal does not know both of', () => {
+    /* Neither is nought points: the board ranks what a pair did, and a pair that did nothing has
+       nothing to rank. The second is the state a season of history arrives in, a pair naming a
+       member who is not in the field being read. */
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'his' }),
+      result('000002', '2027-05-02', 20, { raceId: 'hers' }),
+    ]
+
+    const board = topPairs(
+      [
+        pair('apart', '000001', '000002'),
+        pair('unknown-second', '000001', '000099'),
+        pair('unknown-first', '000099', '000002'),
+      ],
+      [HE, SHE],
+      results,
+      2027,
+      10,
+    )
+
+    expect(board).toEqual([])
+  })
+
+  it('reads the pairs of the season it is asked about, and cuts the board to the limit', () => {
+    const results = [
+      result('000001', '2027-05-01', 10, { raceId: 'together' }),
+      result('000002', '2027-05-01', 20, { raceId: 'together' }),
+      result('000001', '2026-05-01', 10, { raceId: 'earlier' }),
+      result('000002', '2026-05-01', 20, { raceId: 'earlier' }),
+    ]
+    const both = [pair('now', '000001', '000002'), pair('before', '000001', '000002', 2026)]
+
+    expect(topPairs(both, [HE, SHE], results, 2027, 10).map((row) => row.pair.id)).toEqual(['now'])
+    expect(topPairs(both, [HE, SHE], results, 2026, 10).map((row) => row.pair.id)).toEqual([
+      'before',
+    ])
+    expect(topPairs(both, [HE, SHE], results, 2027, 0)).toEqual([])
   })
 })

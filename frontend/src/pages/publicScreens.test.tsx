@@ -1121,6 +1121,27 @@ describe('TopBoards', () => {
     }
   })
 
+  /* Every board of the page that really is a table, asked of the drawn screen.
+   *
+   * **The floor under the two hand-written lists below**, and it took three rounds to write. Both
+   * lists named three boards; the pairs became a fourth on 07.09.2026 and neither grew, so a cell
+   * of that board could be marked as words while its heading stayed a figure, and its places could
+   * be numbered from two with no gold on the leader, both with the whole gate green. A list is
+   * safe when the day it goes short is the day the gate fails (`CLAUDE.md`, „Spisak u čuvaru se
+   * piše zajedno sa svojim podom"), and the precedent is `pages/namePlateOnScreens.test.tsx`. */
+  const tableBoards = () =>
+    [...document.querySelectorAll('.boards__board')]
+      .filter((one) => one.querySelector('table') !== null)
+      .map((one) => must(one.querySelector('.boards__title'), 'a board title').textContent)
+      .sort()
+
+  const BOARDS_THAT_ARE_TABLES = [
+    'Najbolji pojedinačni rezultati',
+    'Najbolji trkački parovi',
+    'Najduže na stazi',
+    'Najviše kilometara',
+  ]
+
   it('sets a figure to the right and words to the left, on every board', async () => {
     /* The shared table pushes its first three columns to the left, which is
        right for a name and wrong for a number, and on two of these boards the
@@ -1141,7 +1162,13 @@ describe('TopBoards', () => {
       ['Najviše kilometara', ['figure']],
       ['Najduže na stazi', ['figure']],
       ['Najbolji pojedinačni rezultati', ['words', 'figure', 'figure', 'figure', 'figure', 'figure']],
+      /* The fourth board that is a table, from 07.09.2026. Its one cell carries a second line
+         under the figure, and that line is part of the figure's cell rather than a column of its
+         own, so the marking is the same one column (review, 07.09.2026: this list did not grow
+         when the board did, and a cell marked as words passed). */
+      ['Najbolji trkački parovi', ['figure']],
     ] as const) {
+      expect(BOARDS_THAT_ARE_TABLES, 'the list below has stopped naming every board').toContain(name)
       const rows = board(name).getAllByRole('row')
       /* The place and the name are the shared table's own two columns and are
          set by it; what these marks are for is everything after them. */
@@ -1161,6 +1188,10 @@ describe('TopBoards', () => {
       )
       expect(within(at(rows, 1)).getAllByRole('cell').slice(2).map(setting)).toEqual(expected)
     }
+
+    /* And the list above is every board that is a table, so the fifth one fails here rather than
+       going unmeasured. */
+    expect(tableBoards()).toEqual(BOARDS_THAT_ARE_TABLES)
   })
 
   it('marks the leader of a board and nobody else', async () => {
@@ -1170,15 +1201,22 @@ describe('TopBoards', () => {
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
-    for (const name of ['Najviše kilometara', 'Najduže na stazi', 'Najbolji pojedinačni rezultati']) {
+    /* **Every board that is a table**, and the list is checked against the screen below: until
+       07.09.2026 this named three by hand, the pairs became a fourth, and its places could be
+       numbered from two with no gold on the leader while the gate stayed green (review). */
+    expect(tableBoards()).toEqual(BOARDS_THAT_ARE_TABLES)
+
+    for (const name of BOARDS_THAT_ARE_TABLES) {
       const rows = board(name).getAllByRole('row').slice(1)
       /* Read off the place written in the row rather than counted, because a
          shared first place is two rows and both of them won: counting one would
-         be a test that fails on correct data. None of these three boards has a
+         be a test that fails on correct data. None of these boards has a
          tie at the top today, and none of them is promised not to. */
       const leading = (row: HTMLElement) => first(within(row).getAllByRole('cell')).textContent
 
-      expect(rows.length).toBeGreaterThan(3)
+      /* More than one, so „the leader and nobody else" has somebody to be nobody. The board of
+         pairs carries two rows and the other three carry ten. */
+      expect(rows.length).toBeGreaterThan(1)
       expect(rows.filter((row) => row.className === 'podium').map(leading)).toEqual(
         rows.filter((row) => leading(row) === '1').map(leading),
       )
@@ -1195,15 +1233,109 @@ describe('TopBoards', () => {
     expect(board('Najduže na stazi').getAllByText(TIME_ON_COURSE).length).toBe(10)
   })
 
-  it('stands the pairs board empty rather than inventing one', async () => {
+  it('ranks the pairs of a season, and stands empty in a season that has none', async () => {
+    /* **This case said the opposite until 07.09.2026**, and it was right until then: a pair is made
+       by two people confirming each other, nothing in the data said who had, and an invented pair
+       would have been worse than an empty board. The owner then asked to see the shape: „Izmokuj mi
+       podatke za neki fiktivni par da mogu da vidim kako to izgleda", „neka dva para". Two pairs are
+       now mocked in `public/mock/pairs.json`, and both of them are two members who really do share
+       races in the mocked results, so the figures are derived and not written by hand.
+
+       **Both halves are still here**, because only one of them changed: a season the pairs were
+       formed for has a table, and a season they were not formed for still says the sentence. Without
+       the second half the empty board would have no case at all, and the sentence it stands on could
+       be deleted with the whole gate green. */
     renderAt('/sr/top-liste?sezona=2019')
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
-    const pairs = board('Najbolji trkački parovi')
 
-    expect(pairs.getByText(/stiže zajedno sa bazom/)).toBeVisible()
-    expect(pairs.queryByRole('table')).not.toBeInTheDocument()
-  })
+    const pairs = board('Najbolji trkački parovi')
+    const rows = pairs.getAllByRole('row').slice(1)
+
+    expect(rows.length).toBe(2)
+
+    /* **The order is the ladder's, and the mocked file is written to prove it** (review,
+       07.09.2026). The weaker pair is listed **first** in `public/mock/pairs.json` and holds the
+       lower first member number, which is what `withPlaces` ends every board on. So neither the
+       order of the file nor that last rung can produce this order: only the points can. */
+    expect(within(at(rows, 0)).getByText('Milovanović')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('Đurišić')).toBeVisible()
+
+    /* The number under the points, which the owner asked for on 04.08.2026 and which nothing drew
+       until now: their points together, and under them the races they share. The second pair ran
+       **more** races for **fewer** points, so neither figure can stand in for the other. */
+    expect(within(at(rows, 0)).getByText('510,34')).toBeVisible()
+    expect(within(at(rows, 0)).getByText('13 zajedničkih trka')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('480,31')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('21 zajednička trka')).toBeVisible()
+
+    cleanup()
+
+    /* And a season nobody paired up for: the sentence, and no table at all. The sentence is about
+       **this season** and not about the database, which is what it said until 07.09.2026 and what
+       it could no longer say once another season had a table (review). */
+    renderAt('/sr/top-liste?sezona=2018')
+
+    await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
+
+    const none = board('Najbolji trkački parovi')
+
+    expect(none.getByText(/U ovoj sezoni takvog para nema/)).toBeVisible()
+    expect(none.queryByRole('table')).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('draws five pairs and no more, however many there are', async () => {
+    /* PDL, 07.09.2026: „Kod parova stoje dve sličice jedna ispod druge… **Ima mesta jer se
+       prikazuje pet parova, ne deset.**" The whole shape rests on that number, and with two mocked
+       pairs nothing on any screen could see it: a review swapped the board's limit for the general
+       ten and the gate stayed green.
+
+       **So the file is served rather than changed** (the precedent is `pages/adminEventKind.test.tsx`
+       and three others): six pairs go over the wire for this one case, the two that ship stay as
+       they are, and the cut is measured. Every one of the six is a real mixed pair out of the
+       mocked results with at least one race in common, so the board has something to rank. */
+    const served = globalThis.fetch
+    const six = [
+      ['000009', '000020'],
+      ['000014', '000030'],
+      ['000008', '000018'],
+      ['000006', '000028'],
+      ['000027', '000029'],
+      ['000007', '000015'],
+    ].map(([one, two], index) => ({
+      id: `probe-${index}`,
+      season: 2019,
+      memberNumbers: [one, two],
+      since: '2018-12-01',
+    }))
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('pairs.json')
+        ? new Response(JSON.stringify(six), { headers: { 'content-type': 'application/json' } })
+        : served(input, init),
+    )
+
+    try {
+      renderAt('/sr/top-liste?sezona=2019')
+
+      await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
+
+      const rows = within(screen.getByRole('table', { name: 'Najbolji trkački parovi' }))
+        .getAllByRole('row')
+        .slice(1)
+
+      expect(rows.length, 'the board of pairs is cut somewhere other than five').toBe(5)
+      /* And the cut is the board's and not the length of this setup (review, 07.09.2026): take one
+         pair out of the six above and the board draws five whatever the limit says, so the case
+         would go on passing with the limit gone. */
+      expect(rows.length, 'the setup is no longer longer than the cut').toBeLessThan(six.length)
+    } finally {
+      /* Put back what stood before, and not `vi.unstubAllGlobals`: this suite serves the mocked
+         files through a stub of its own, and unstubbing reverts to the one that stood before that
+         (`pages/publicData.test.tsx` records the same). */
+      vi.stubGlobal('fetch', served)
+    }
+  }, SLOW)
 
   it('draws the progress as one bar of two levels, the season before under the gain', async () => {
     /* Owner, 04.08.2026: "svaki stubac ima dva nivoa: manje istaknut niži iz
@@ -2116,6 +2248,35 @@ describe('the row of whoever is signed in', () => {
   const ME = '000007'
 
   const marked = (rows: HTMLElement[]) => rows.filter((row) => row.classList.contains('table__mine'))
+
+  /* PDL, and the owner's own words quoted in `components/mine.ts`: his row is marked on the boards
+     that are tables „ukoliko sam u paru". A row of a pair is about **two** people.
+   *
+     **Both of them are read, and that took two rounds of review to get right.** The first draft
+     signed in only 000001, who is the lower half by points **and** the first member number written
+     in the file, so it could not tell „both halves are marked" from either of the two ways of
+     marking one. Read from both ends there is no such value: 000001 is the second line and the
+     first number, 000009 is the first line and the second number, so marking either one alone
+     fails one of the two readings. */
+  for (const [member, family] of [
+    ['000001', 'Đurišić'],
+    ['000009', 'Bogdanović'],
+  ] as const) {
+    it(`is marked on the board of pairs for ${family}`, async () => {
+      renderAt('/sr/top-liste?sezona=2019', 'competitor', member)
+
+      await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
+
+      const mine = marked(
+        within(screen.getByRole('table', { name: 'Najbolji trkački parovi' }))
+          .getAllByRole('row')
+          .slice(1),
+      )
+
+      expect(mine).toHaveLength(1)
+      expect(within(at(mine, 0)).getByText(family)).toBeVisible()
+    }, SLOW)
+  }
 
   it('is marked in the season table, and nowhere else in it', async () => {
     renderAt('/sr/tabela?sezona=2019', 'competitor', ME)

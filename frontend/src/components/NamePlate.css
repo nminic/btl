@@ -37,7 +37,8 @@
      wrap the container query exists to prevent: the given name with a lone „V." beneath it.
 
      Two lines where a screen asks for them are laid by the two halves themselves
-     (`.plate__given`, `.plate__family`), and that is the one screen that writes them.
+     (`.plate__given`, `.plate__family`), which two screens write: the standing of a competition,
+     and the board of best pairs, where each half of the pair is one of those names.
 
      Cut rather than pushed: the column of a name is bounded on both tables that carry one, and a
      name that will not give way widens the table instead of ending in an ellipsis. */
@@ -47,7 +48,8 @@
 /* Two rows, and that is the whole of what tells the standing of a competition from the tables
    (owner: „U ligi dva reda, u tabelama jedan"). The two halves are two elements with a space
    between them, so a reader hears one name (`OverTwoLines`); here they are laid one under the
-   other. Only the standing of a competition writes them, so nothing else is broken by this.
+   other. Two screens write them, the standing of a competition and the board of best pairs, and
+   both of them want exactly this; nothing that writes a name on one line does.
 
    **Neither of them is bold**, and that is an older decision rather than a choice made here:
    `pages/league/League.css` puts the name in that grid at 400 because a review measured on
@@ -60,7 +62,8 @@
 }
 
 /* A pair: one circle above the other, and the two names beside them, each on its own row (owner,
-   07.09.2026). Nothing draws one until the board of pairs has rows, which waits for the database. */
+   07.09.2026). A row here holds a whole name, and a name is two lines, so a pair reads as four
+   lines beside two circles. Drawn by the board of best pairs. */
 .plate--pair .plate__faces {
   display: grid;
   gap: var(--space-4);

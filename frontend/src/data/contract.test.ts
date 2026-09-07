@@ -10,7 +10,7 @@ import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the thirteen names the backend has to answer for', () => {
+  it('is the fourteen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -39,6 +39,7 @@ describe('the list of resources', () => {
       'leagues',
       'moderators',
       'pages',
+      'pairs',
       'places',
       'races',
       'results',

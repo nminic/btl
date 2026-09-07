@@ -10,7 +10,8 @@ import './NamePlate.css'
  * Prezime."
  *
  * **One component and six places**, because the same shape was about to be written six times: the
- * standing of a competition, the main standing, and three of the top boards. What the portal has
+ * standing of a competition, the main standing, and four of the top boards (most kilometres,
+ * longest on the course, best single races, and best pairs). What the portal has
  * learnt about writing one rule at eight call sites is on `components/CompetitorName.tsx`, and
  * this is that lesson applied before the fact rather than after it.
  *
@@ -22,9 +23,9 @@ import './NamePlate.css'
  * already have one each.
  *
  * **A pair is two of them**, one circle above the other and the words beside them (owner, same
- * day). Nothing draws a pair today: the board of pairs has no rows until there is a database, and
- * its own words say so. What is here is the shape, measured by this component's own cases, so the
- * day pairs arrive nothing has to be drawn again (`btl-produkt/PDL.md`, „Ime sa slikom").
+ * day), and each name over two lines, which is four lines in all („ime, prezime, ime, prezime u 4
+ * reda ukupno", the same day). The board of best pairs draws them (`pages/TopBoards.tsx`); the
+ * pairs it draws are mocked until the flow that makes one exists, which is written in PDL.
  *
  * **The circle says nothing out loud.** `Portrait` is `aria-hidden`, so a reader who cannot see it
  * hears the words and only the words; the initials in it are the same two letters the name begins
@@ -53,7 +54,8 @@ export function NamePlate({
 }
 
 /**
- * A name over two lines, which is what the standing of a competition wears and nothing else does.
+ * A name over two lines, worn by the standing of a competition and by each half of a pair on the
+ * board of best pairs, and by nothing else.
  *
  * Two elements with a space between them rather than a line break the stylesheet could take away:
  * what a reader hears has to be „Ime Prezime" either way, and two elements parted by a space are

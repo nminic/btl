@@ -377,6 +377,9 @@ describe('a sentence with a value put into it', () => {
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',
+      /* The races a pair ran together, under the points they scored on them (owner, 04.08.2026).
+         A plural, so the number decides which of the three Serbian forms the sentence takes. */
+      'topBoards.sharedRaces',
       'units.btlPoints <- formatPoints',
       'units.memberCount',
       'verification.activateAllAsk',

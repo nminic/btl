@@ -2,7 +2,17 @@ import { categoryCodeFor } from './categories'
 import { FIRST_SEASON } from './season'
 import { raceKind } from './raceKind'
 import { DOTS } from './types'
-import type { BtlEvent, Competitor, Dot, Gender, Race, RaceCategory, Result, Team } from './types'
+import type {
+  BtlEvent,
+  Competitor,
+  Dot,
+  Gender,
+  Race,
+  RaceCategory,
+  RacingPair,
+  Result,
+  Team,
+} from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
  * rules can be tested without a screen, and so the same rule is not written
@@ -922,6 +932,117 @@ const BY_KILOMETERS = byLadder<TallyRow>([
   // it negated.
   (row) => -Date.parse(row.reachedOn),
 ])
+
+/** A racing pair's season: what the two of them did on the races they both ran. */
+export type PairRow = Totals & {
+  pair: RacingPair
+  /** Both of them, the one who scored the larger half of the pair's points first (owner,
+   *  04.08.2026: „oba imena jedno ispod drugog, ko je skupio vise gore"). */
+  competitors: [Competitor, Competitor]
+}
+
+/** The two member numbers added up, which is the last rung of the pair's ladder. */
+function sumOfNumbers(pair: RacingPair): number {
+  return pair.memberNumbers.reduce((sum, one) => sum + Number(one), 0)
+}
+
+/* The ladder for the board of best pairs. The same four rungs the board of teams uses, which the
+   owner gave for both on 11.08.2026: „I za tim i za par je redosled BTL bodovi (sto vise), broj
+   trka (sto vise), kilometri (sto vise), vreme na stazi (sto vise)." Under all of it the lower sum
+   of the two member numbers (PDL P12), fed negated because the ladder always puts the larger
+   number first. */
+const BY_PAIR = byLadder<PairRow>([
+  (row) => row.points,
+  (row) => row.races,
+  (row) => row.kilometers,
+  (row) => row.seconds,
+  (row) => -sumOfNumbers(row.pair),
+])
+
+/**
+ * The best racing pairs of a season.
+ *
+ * **Only the races both of them ran, and the same race rather than the same meeting** (PDL P12,
+ * owner: „Zajednicka trka za par znaci ista trka, ne samo isti dogadjaj. Ako on trci maraton a ona
+ * polumaraton na istoj manifestaciji, to nije zajednicka trka i ne ulazi u poredak parova"). So a
+ * pair's points are the points of both of them on those races and nothing else, and `races` counts
+ * the races rather than the results, which come two to a race.
+ *
+ * A pair whose member the portal does not know, and a pair that ran nothing together, are both left
+ * off the board rather than shown at nought: the board ranks what a pair did, and neither of those
+ * did anything.
+ *
+ * **Two pairs are mocked** (`public/mock/pairs.json`, owner 07.09.2026: „neka dva para"), because
+ * he asked to see the shape before the flow that makes one exists. How two members become a pair,
+ * a button on the other one's profile and a confirmation from the inbox, is the next increment and
+ * is written in PDL.
+ */
+export function topPairs(
+  pairs: RacingPair[],
+  competitors: Competitor[],
+  results: Result[],
+  season: number,
+  limit: number,
+): Placed<PairRow>[] {
+  const known = new Map(competitors.map((one) => [one.memberNumber, one]))
+  const inSeason = results.filter((result) => seasonOf(result) === season)
+
+  const rows = pairs
+    .filter((pair) => pair.season === season)
+    .flatMap((pair) => {
+      const one = known.get(pair.memberNumbers[0])
+      const two = known.get(pair.memberNumbers[1])
+
+      if (one === undefined || two === undefined) {
+        return []
+      }
+
+      /* Every result the first of them has, kept by race and **all of them**: a member can hold
+         two results on one race, and the history the portal reads holds four such pairs inside one
+         season. A map of one result apiece would drop one of his and count hers twice, and the
+         board would say a race they ran once was two. */
+      const his = new Map<string, Result[]>()
+
+      for (const result of inSeason) {
+        if (result.memberNumber === one.memberNumber) {
+          his.set(result.raceId, [...(his.get(result.raceId) ?? []), result])
+        }
+      }
+
+      const hers = inSeason.filter((result) => result.memberNumber === two.memberNumber)
+      /* The races, not the results: what the ladder counts is how many races the two of them ran
+         together, and a race is one however many rows either of them has on it. */
+      const shared = new Set(hers.map((result) => result.raceId).filter((raceId) => his.has(raceId)))
+
+      if (shared.size === 0) {
+        return []
+      }
+
+      const together = [
+        ...hers.filter((result) => shared.has(result.raceId)),
+        ...[...his].flatMap(([raceId, mine]) => (shared.has(raceId) ? mine : [])),
+      ]
+
+      const points = (who: Competitor) =>
+        totalsOf(together.filter((result) => result.memberNumber === who.memberNumber)).points
+
+      /* The larger half first, which is what the owner asked to read at the top of a pair's two
+         names (04.08.2026). Level halves keep the order the pair was written in. */
+      const ordered: [Competitor, Competitor] =
+        points(one) >= points(two) ? [one, two] : [two, one]
+
+      return [
+        {
+          pair,
+          competitors: ordered,
+          ...totalsOf(together),
+          races: shared.size,
+        },
+      ]
+    })
+
+  return withPlaces(rows, BY_PAIR, (row) => row.pair.memberNumbers[0]).slice(0, limit)
+}
 
 export function topByKilometers(
   competitors: Competitor[],
