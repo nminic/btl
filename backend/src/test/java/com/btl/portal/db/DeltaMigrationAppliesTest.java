@@ -663,26 +663,18 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * case need not press a key to be worth having: "the last town of the codebook
 	 * leaves" presses none.
 	 *
-	 * <p><b>Which cases nothing holds, counted rather than assumed.</b> A case is
-	 * held when taking it away takes something away that a floor counts. Asked of
-	 * the generator, case by case, on 09.09.2026: "a country joins the middle of the
-	 * list, with a town in it" is the only one that writes the INSERT against the
-	 * town codebook, so the statement floor holds it; "a country changes its code,
-	 * and its towns move with it" and "a town is renamed and changes places with its
-	 * neighbour" are the only case named for {@code place_country_fk} and
-	 * {@code place_rank_unique}, so the verdict floor holds them. The remaining two
-	 * are held by neither. "the last town of the codebook leaves" writes only the
-	 * DELETE against the town codebook, which "a country leaves and another takes
-	 * the name it gives up" writes as well, and no verdict names it; and that second
-	 * case writes nothing another case does not, while the key it is named for
-	 * carries two other verdicts. Either can be deleted along with its verdict and
-	 * the suite stays green.
+	 * <p><b>What neither floor holds.</b> A key that carries more than one verdict
+	 * can lose one of them, together with the case that verdict names, and nothing
+	 * here fails: {@link #everyKeyADeltaCouldTripHasAVerdict()} asks only that every
+	 * key has some verdict, and this one only that every verdict names a case that
+	 * exists. Whoever deletes a case has to look at how many verdicts its key
+	 * carries, because neither floor looks.
 	 *
 	 * <p><b>Why that is written down instead of guarded.</b> Deleting a case and the
 	 * line that names it leaves nothing behind for a floor to miss, and a rule that
-	 * every case must be needed would have been false about those two the day it was
-	 * written. What does hold is narrower and is what those cases are for: while the
-	 * case is there, the generator's behaviour under it is measured, and taking
+	 * every case must be needed would have been false the day it was written. What
+	 * does hold is narrower and is what such a case is for: while the case is there,
+	 * the generator's behaviour under it is measured, and taking
 	 * {@code code not in leaving} out of the generator fails "a country leaves and
 	 * another takes the name it gives up".
 	 */
