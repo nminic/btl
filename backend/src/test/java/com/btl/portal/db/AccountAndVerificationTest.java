@@ -49,6 +49,7 @@ class AccountAndVerificationTest extends DatabaseTest {
 	   why the patterns are obvious rather than plausible. */
 	private static final String ONE_HASH = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 	private static final String ANOTHER_HASH = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+	private static final String THIRD_HASH = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 
 	/* An arbitrary instant, and arbitrary on purpose: the migration chooses no
 	   lifetime and neither does this file. */
@@ -97,9 +98,16 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 * gives the column a default or makes it NOT NULL: every account would then
 	 * be born activated and the click on the link would confirm what was already
 	 * true.
+	 *
+	 * A second account, already confirmed, is here so that the answer can only
+	 * come from the row being asked about. With one row in the table the query
+	 * and a query with no WHERE at all give the same word, and the case would
+	 * measure nothing.
 	 */
 	@Test
 	void anAccountIsBornWithItsAddressUnconfirmed() {
+		db.sql("insert into account (email, role_id, email_confirmed_at) values ('stari@primer.rs', " + COMPETITOR
+				+ ", " + AN_INSTANT + ")").update();
 		db.sql("insert into account (email, role_id) values ('nov@primer.rs', " + COMPETITOR + ")").update();
 
 		assertThat(db.sql("select email_confirmed_at is null from account where email = 'nov@primer.rs'")
@@ -155,6 +163,11 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 * The third row is a second competitor, and it is the cardinality: nothing
 	 * says an account is alone in its role, and a unique key on {@code role_id}
 	 * would mean the portal could hold one competitor.
+	 *
+	 * The role is read back and not only written, which is what makes the two
+	 * halves two halves. Asserting only which addresses are confirmed would give
+	 * the same answer if all three rows were competitors, and the case would then
+	 * say nothing about the role at all.
 	 */
 	@Test
 	void confirmingTheAddressAndTheRoleDoNotFollowEachOther() {
@@ -163,12 +176,18 @@ class AccountAndVerificationTest extends DatabaseTest {
 				+ AN_INSTANT + ")").update();
 		db.sql("insert into account (email, role_id) values ('drugi@primer.rs', " + COMPETITOR + ")").update();
 
-		assertThat(db.sql("select email from account where email_confirmed_at is null order by email")
-				.query(String.class).list())
-				.containsExactly("ceka@primer.rs", "drugi@primer.rs");
+		assertThat(waiting("email_confirmed_at is null"))
+				.containsExactly("ceka@primer.rs competitor", "drugi@primer.rs competitor");
 
-		assertThat(db.sql("select email from account where email_confirmed_at is not null").query(String.class).list())
-				.containsExactly("gost@primer.rs");
+		assertThat(waiting("email_confirmed_at is not null")).containsExactly("gost@primer.rs visitor");
+	}
+
+	private List<String> waiting(String condition) {
+		return db
+				.sql("select a.email || ' ' || r.code from account a join role r on r.id = a.role_id"
+						+ " where " + condition + " order by a.email")
+				.query(String.class)
+				.list();
 	}
 
 	/**
@@ -202,13 +221,20 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 * link has to be issuable, and a unique key on {@code account_id} would refuse
 	 * it. Whether issuing the second retires the first is not decided anywhere
 	 * and the schema does not decide it either.
+	 *
+	 * A second account with a link of its own is here so that the two counted are
+	 * counted because they belong to this account. With one account in the table
+	 * the join carries nothing and the same two would be the answer to "how many
+	 * links are there".
 	 */
 	@Test
 	void oneAccountMayHaveMoreThanOneLinkWaiting() {
 		db.sql("insert into account (email, role_id) values ('ponovo@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (email, role_id) values ('jednom@primer.rs', " + COMPETITOR + ")").update();
 
 		issue("ponovo@primer.rs", ONE_HASH);
 		issue("ponovo@primer.rs", ANOTHER_HASH);
+		issue("jednom@primer.rs", THIRD_HASH);
 
 		assertThat(db.sql("select count(*) from email_verification_token t join account a on a.id = t.account_id"
 				+ " where a.email = 'ponovo@primer.rs'").query(Long.class).single())
@@ -229,7 +255,7 @@ class AccountAndVerificationTest extends DatabaseTest {
 
 		issue("odlazi@primer.rs", ONE_HASH);
 		issue("odlazi@primer.rs", ANOTHER_HASH);
-		issue("ostaje@primer.rs", "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
+		issue("ostaje@primer.rs", THIRD_HASH);
 
 		db.sql("delete from account where email = 'odlazi@primer.rs'").update();
 
