@@ -581,6 +581,74 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	}
 
 	/**
+	 * The sentence in a delta's own header that says which keys the deferral at
+	 * the top of it cannot reach.
+	 *
+	 * <p><b>Why this is not prose.</b> That header is written into every delta
+	 * verbatim, and a delta is immutable the moment it is applied: a key added to
+	 * the schema and left off that sentence is a wrong sentence in a file nobody
+	 * may edit again. Found on 09.09.2026 with {@code place_geonames_id_unique}
+	 * missing from it, while {@code V3__place.sql} named the very same key plain
+	 * two files away.
+	 *
+	 * <p><b>Read out of the delta rather than out of the generator.</b> What
+	 * ships is the header the generator wrote, and any delta carries the same one,
+	 * so the first case is taken and nothing is said about which.
+	 *
+	 * <p><b>Both directions, and the catalogue answers both.</b> A key that was
+	 * never declared DEFERRABLE has to be named there, because SET CONSTRAINTS
+	 * cannot help with it; a key that was declared deferrable must not be, because
+	 * that sentence would then be false about it. Primary keys are left out of the
+	 * question: they are never deferrable and the sentence is not about them, and
+	 * the floor that says the distinction is a real one is that both sides come
+	 * back non-empty.
+	 */
+	@Test
+	void theHeaderOfADeltaNamesTheKeysTheDeferralCannotReach() throws Exception {
+		Matcher sentence = NEVER_DEFERRABLE.matcher(generate(changes().getFirst()).output());
+
+		assertThat(sentence.find())
+				.as("the sentence that lists them has been reworded, so nothing below is being read")
+				.isTrue();
+
+		Set<String> named = new LinkedHashSet<>();
+		Matcher name = QUOTED.matcher(sentence.group(1));
+
+		while (name.find()) {
+			named.add(name.group(1));
+		}
+
+		assertThat(uniqueKeys(false)).isNotEmpty();
+		assertThat(uniqueKeys(true))
+				.as("a key that can be deferred, so the sentence would be false about it")
+				.isNotEmpty()
+				.doesNotContainAnyElementsOf(named);
+		assertThat(named)
+				.as("a plain key the header does not name, or a name for a key that is gone")
+				.containsExactlyInAnyOrderElementsOf(uniqueKeys(false));
+	}
+
+	/** The unique keys of the codebook tables, on one side or the other of the
+	 *  only distinction this is about. */
+	private List<String> uniqueKeys(boolean deferrable) {
+		return db
+				.sql("select con.conname from pg_constraint con"
+						+ " where con.conrelid = any (array[" + tableLiterals() + "]::regclass[])"
+						+ "   and con.contype = 'u' and con.condeferrable = ?"
+						+ " order by con.conname")
+				.param(deferrable)
+				.query(String.class)
+				.list();
+	}
+
+	/** The list of names in that sentence, and the sentence it is in. */
+	private static final Pattern NEVER_DEFERRABLE = Pattern
+			.compile("((?:`\\w+`[,\\s]*(?:and\\s+)?)+)\\s*were never declared\\s+deferrable");
+
+	/** One name out of that list. */
+	private static final Pattern QUOTED = Pattern.compile("`(\\w+)`");
+
+	/**
 	 * And a verdict names a case that exists.
 	 *
 	 * Without this the verdicts are prose: a case renamed leaves every line that
