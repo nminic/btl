@@ -17,8 +17,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,18 +51,31 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the working tree. Nothing under {@code frontend/} is written, and no migration
  * file is written either: {@code --stdout} hands the SQL back.
  *
- * <p><b>What each case measures</b>, and each was chosen because it fails without
- * one particular part of the fix:
+ * <p><b>The cases are counted, and that is the point of the two floors at the
+ * bottom.</b> Until 09.09.2026 the list below was four cases with nothing under
+ * it, and a fifth shape went straight past: two countries exchanging names, which
+ * the generator wrote as a migration that cannot run while the text it wrote into
+ * that same migration said it refuses to. A hand written list is not the fault; a
+ * hand written list with nothing underneath it is. So two questions are asked of
+ * the catalogue and of the generator's own output rather than of a memory:
  *
  * <ul>
- * <li>a country changing its code fails under the order this replaced, at
- * {@code country_deletes}, because the towns that name it are only re-pointed
- * three statements later;
- * <li>a country joining the middle of the list fails without
- * {@code set constraints all deferred}, because its {@code sort_order} is held by
- * a country that has not moved down yet;
- * <li>a town leaving covers the one statement the other two do not reach.
+ * <li>{@link #everyStatementADeltaCanWriteIsWrittenBySomeCase()}: the six
+ * statements are six because there are two codebooks and a row can arrive, leave
+ * or change, and the tables come out of {@code pg_tables};
+ * <li>{@link #everyKeyADeltaCouldTripHasAVerdict()}: every key and foreign key in
+ * the schema either has a case that puts pressure on it or a written decision
+ * saying a delta cannot reach it.
  * </ul>
+ *
+ * <p><b>What the second floor deliberately leaves out, recorded here rather than
+ * left to be found.</b> CHECK and NOT NULL constraints are not counted. They are
+ * questions about one row's own fields, and a delta carries only what the
+ * codebook says, so a row that breaks one of them is a broken source file and
+ * fails identically on a first load. What is counted is every constraint whose
+ * answer depends on other rows or on the order of statements, which is exactly
+ * the primary keys, the unique keys and the foreign keys: those are the ones a
+ * delta can trip where the same data loaded from empty would go straight in.
  *
  * <p><b>What it does not measure.</b> The test transaction is rolled back, so the
  * COMMIT that would check the deferred order keys never happens. {@code set
@@ -82,7 +102,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * One change to the codebooks, and the two halves of it.
 	 *
 	 * @param what      what the change is, in words, which is also what a failure
-	 *                  is named after
+	 *                  is named after and what the floors below line up against
 	 * @param countries what it does to the country list
 	 * @param places    what it does to the town codebook
 	 */
@@ -110,6 +130,29 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 		throw new IllegalStateException("no country " + code + " in " + COUNTRIES);
 	}
 
+	/** Where a town is swapped with the one below it. The middle of the file, so
+	 *  that neither end of it can be what makes the case pass. */
+	private static int middleOf(ArrayNode towns) {
+		return towns.size() / 2;
+	}
+
+	/** What the town at that position is renamed to. Nothing in the codebook
+	 *  carries this name, and no key covers a town's name anyway. */
+	private static final String RENAMED = "Preimenovano Mesto";
+
+	/** Swaps the town in the middle of the codebook with the one below it and
+	 *  renames it, which is one town changing both what it is called and where in
+	 *  the order it stands. */
+	private static void renameAndMove(ArrayNode towns) {
+		int at = middleOf(towns);
+		ArrayNode moving = (ArrayNode) towns.get(at);
+		ArrayNode neighbour = (ArrayNode) towns.get(at + 1);
+
+		moving.set(1, StringNode.valueOf(RENAMED));
+		towns.set(at, neighbour);
+		towns.set(at + 1, moving);
+	}
+
 	static List<Change> changes() {
 		return List.of(
 				/* The case the old order died on. GB leaves and UK arrives, and
@@ -127,8 +170,8 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 						},
 						towns -> {
 							for (JsonNode town : towns) {
-								if ("GB".equals(town.get(1).stringValue())) {
-									((ArrayNode) town).set(1, StringNode.valueOf("UK"));
+								if ("GB".equals(town.get(2).stringValue())) {
+									((ArrayNode) town).set(2, StringNode.valueOf("UK"));
 								}
 							}
 						}),
@@ -148,20 +191,32 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 						},
 						towns -> {
 							ArrayNode town = JSON.createArrayNode();
+							town.add(99_000_001);
 							town.add("Zzgrad Proba");
 							town.add("ZZ");
 							towns.add(town);
 						}),
 
 				/* And the statement neither of the two above reaches. The last town
-				   of the file is the one town that can leave on its own: any other
-				   one shifts the rank of every town below it, because a town is
-				   lined up by its position and not by anything about the town
-				   (PlaceIdentityTest). */
+				   of the file is taken because it is the one town that leaves
+				   without moving anything else; any other one shifts the rank of
+				   every town below it, and this case is about the DELETE. */
 				new Change("the last town of the codebook leaves",
 						rest -> {
 						},
-						towns -> towns.remove(towns.size() - 1)));
+						towns -> towns.remove(towns.size() - 1)),
+
+				/* The town side of the deferral, and the case that says a town is
+				   its mark and not its position. Two neighbours exchange ranks
+				   inside one UPDATE, which a plain unique key over `rank` would
+				   refuse on the first of the two rows to be written; one of them is
+				   also renamed, so the row is doing both things a town can do to
+				   itself in one migration. aTownKeepsItsIdentityThroughARename
+				   reads the same change back by the mark. */
+				new Change("a town is renamed and changes places with its neighbour",
+						rest -> {
+						},
+						DeltaMigrationAppliesTest::renameAndMove));
 	}
 
 	@ParameterizedTest
@@ -185,36 +240,314 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	}
 
 	/**
-	 * And the one shape of change it will not write, it refuses instead of writing.
+	 * A town renamed and moved is the same town afterwards, and its row is the
+	 * same row.
 	 *
-	 * A country arriving with a name another country has not given up. The insert
-	 * is the first statement of a delta, because a town may be moving to the
-	 * country that is arriving, and {@code country_name_unique} is plain: it was
-	 * never declared deferrable, so {@code SET CONSTRAINTS} cannot put it off and
-	 * it is checked as the row is written. There is no order of the six statements
-	 * that both frees the name and has the country in place in time, so this is a
-	 * migration written by hand, and the generator says so instead of writing SQL
-	 * that stops halfway through on a live database.
+	 * <p>This is what the GeoNames mark is for (owner, 08.09.2026, ADL A16), and
+	 * before it existed the answer was the other way round: a delta lined the two
+	 * states of the codebook up by {@code rank}, so the contents of a row followed
+	 * a position in a file, and taking one town out of the top of the codebook
+	 * left the row that had held Shanghai holding Chongqing under the same
+	 * {@code place.id}.
 	 *
-	 * <p>It is the first case above with one thing taken out of it, the new name,
-	 * which is also what says that case passes for a reason.
+	 * <p><b>Why the change under test moves the town as well as renaming it.</b>
+	 * A rename on its own would leave {@code place.id} unchanged whichever way the
+	 * two states were lined up, so the assertion would hold for a reason that has
+	 * nothing to do with the mark and would go on holding if the mark were
+	 * ignored. Moved as well, the two answers come apart: lined up by the mark,
+	 * one row takes both the new name and the new position; lined up by the
+	 * position, the row that used to hold this town takes the neighbour's name
+	 * instead. So the id being unchanged proves nothing by itself, and is not what
+	 * is asserted; what is asserted is that it is unchanged <em>while</em> the name
+	 * and the position both moved, and that the neighbour's row moved the other
+	 * way under its own id.
 	 */
 	@Test
-	void theGeneratorRefusesADeltaItCannotWrite() throws Exception {
-		Ran ran = generate(new Change("a country changes its code and keeps its name",
-				rest -> countryNamed(rest, "GB").put("code", "UK"),
-				towns -> {
-					for (JsonNode town : towns) {
-						if ("GB".equals(town.get(1).stringValue())) {
-							((ArrayNode) town).set(1, "UK");
-						}
-					}
-				}));
+	void aTownKeepsItsIdentityThroughARename() throws Exception {
+		ArrayNode before = (ArrayNode) JSON.readTree(repositoryRoot().resolve(PLACES));
+		int at = middleOf(before);
+		long moving = before.get(at).get(0).longValue();
+		long neighbour = before.get(at + 1).get(0).longValue();
+
+		Map<String, Object> was = rowOf(moving);
+		Map<String, Object> neighbourWas = rowOf(neighbour);
+
+		Ran ran = generate(new Change("a town is renamed and changes places with its neighbour",
+				rest -> {
+				},
+				DeltaMigrationAppliesTest::renameAndMove));
+
+		assertThat(ran.exitCode()).as("the generator said: %s", ran.errors()).isZero();
+		jdbc.execute(ran.output());
+		jdbc.execute("set constraints all immediate");
+
+		Map<String, Object> now = rowOf(moving);
+		Map<String, Object> neighbourNow = rowOf(neighbour);
+
+		assertThat(now.get("id"))
+				.as("the town is its mark, so the row that carried it still carries it")
+				.isEqualTo(was.get("id"));
+		assertThat(now.get("name"))
+				.as("and it really was renamed, or the assertion above is about a migration that did nothing")
+				.isEqualTo(RENAMED)
+				.isNotEqualTo(was.get("name"));
+		assertThat(now.get("rank"))
+				.as("and it really did move, which is what tells a mark apart from a position")
+				.isEqualTo(neighbourWas.get("rank"));
+
+		assertThat(neighbourNow.get("id")).isEqualTo(neighbourWas.get("id"));
+		assertThat(neighbourNow.get("name")).isEqualTo(neighbourWas.get("name"));
+		assertThat(neighbourNow.get("rank"))
+				.as("the neighbour went the other way, under its own id, rather than being overwritten")
+				.isEqualTo(was.get("rank"));
+	}
+
+	private Map<String, Object> rowOf(long mark) {
+		return db
+				.sql("select id, name, rank from place where geonames_id = ?")
+				.param(mark)
+				.query()
+				.singleRow();
+	}
+
+	// ------------------------------------------------- the deltas it will not write
+
+	/**
+	 * One shape of change the generator refuses, and what it has to say while
+	 * refusing.
+	 *
+	 * @param change what is done to the codebooks
+	 * @param says   the sentence the refusal is recognised by
+	 * @param names  the country the refusal has to name, because a refusal that
+	 *               does not say which one leaves somebody reading a diff of two
+	 *               hundred and forty six lines
+	 */
+	record Refusal(Change change, String says, String names) {
+
+		@Override
+		public String toString() {
+			return change.what();
+		}
+	}
+
+	/**
+	 * Both shapes, and they are one thing seen twice: a country taking a name that
+	 * is still worn at the moment its statement runs. {@code country_name_unique}
+	 * is plain, so PostgreSQL checks it as each row is written and neither the
+	 * deferral at the top of a delta nor any order of the six statements helps.
+	 *
+	 * <p>The second of them stood open until 09.09.2026, and it was not an
+	 * oversight in the list of cases so much as in what the list was a list of: the
+	 * first shape had a case, so the constraint looked covered. Measured then:
+	 * exchanging the names of the two Congos in {@code countries.json}, which is
+	 * exactly what somebody writes the day they work out which is which, left the
+	 * generator at exit code 0 and produced a migration that fails with
+	 * {@code duplicate key value violates unique constraint "country_name_unique"}
+	 * on a live database, carrying a header that said the script refuses to write
+	 * such a delta.
+	 */
+	static List<Refusal> refusals() {
+		return List.of(
+				/* The first case above with one thing taken out of it, the new name,
+				   which is also what says that case passes for a reason. */
+				new Refusal(new Change("a country changes its code and keeps its name",
+						rest -> countryNamed(rest, "GB").put("code", "UK"),
+						towns -> {
+							for (JsonNode town : towns) {
+								if ("GB".equals(town.get(2).stringValue())) {
+									((ArrayNode) town).set(2, StringNode.valueOf("UK"));
+								}
+							}
+						}),
+						"a country arrives carrying a name another country has not given up yet",
+						"Ujedinjeno Kraljevstvo"),
+
+				/* And the one that got past the list. Neither country arrives and
+				   neither leaves: both are updated, in one UPDATE over a VALUES
+				   list, and whichever of the two rows PostgreSQL writes first lands
+				   on a name the other has not released. */
+				new Refusal(new Change("two countries exchange names, which is one UPDATE over both",
+						rest -> {
+							ObjectNode brazzaville = countryNamed(rest, "CG");
+							ObjectNode kinshasa = countryNamed(rest, "CD");
+							String wasBrazzaville = brazzaville.get("name").stringValue();
+
+							brazzaville.put("name", kinshasa.get("name").stringValue());
+							kinshasa.put("name", wasBrazzaville);
+						},
+						towns -> {
+						}),
+						"a country takes a name another country gives up in the very same statement",
+						"Kongo - Kinšasa"));
+	}
+
+	@ParameterizedTest
+	@MethodSource("refusals")
+	void theGeneratorRefusesADeltaItCannotWrite(Refusal refusal) throws Exception {
+		Ran ran = generate(refusal.change());
 
 		assertThat(ran.exitCode()).isNotZero();
-		assertThat(ran.errors()).contains("a country arrives carrying a name another country has not given up yet",
-				"Ujedinjeno Kraljevstvo");
+		assertThat(ran.errors()).contains(refusal.says(), refusal.names());
 		assertThat(ran.output()).isBlank();
+	}
+
+	// ------------------------------------------------------------------- the floors
+
+	/**
+	 * Every statement a delta can write is written by one of the cases above.
+	 *
+	 * <p>Six, and derived rather than counted to: there are two codebooks in the
+	 * schema and a row of one can arrive, leave or change, which is an INSERT, a
+	 * DELETE and an UPDATE against each. The table names come out of
+	 * {@code pg_tables} through {@link DatabaseTest#tablesInTheSchema()}, so a
+	 * fourth codebook table arriving fails here rather than being covered by
+	 * silence, and the observed side is read out of the SQL the generator actually
+	 * wrote rather than out of the generator's source.
+	 */
+	@Test
+	void everyStatementADeltaCanWriteIsWrittenBySomeCase() throws Exception {
+		Set<String> written = new LinkedHashSet<>();
+
+		for (Change change : changes()) {
+			written.addAll(statementsIn(generate(change).output()));
+		}
+
+		List<String> possible = tablesInTheSchema().stream()
+				.filter(table -> !NOT_MAINTAINED_BY_A_DELTA.contains(table))
+				.flatMap(table -> Stream.of("insert " + table, "update " + table, "delete " + table))
+				.toList();
+
+		assertThat(written)
+				.as("a statement no case reaches is a statement nothing has ever run")
+				.containsExactlyInAnyOrderElementsOf(possible);
+	}
+
+	/**
+	 * The one table a delta leaves alone, named rather than left out quietly.
+	 *
+	 * The price list is not derived from a file: there is no {@code pricing.json},
+	 * so the seven rows are written into the generator by hand and a change to them
+	 * is a migration written by hand as well. Said in full at {@code PRICE_ROWS} in
+	 * the generator. The day pricing moves into a file of its own, this line goes
+	 * and three statements arrive.
+	 */
+	private static final Set<String> NOT_MAINTAINED_BY_A_DELTA = Set.of("price_row");
+
+	/** The verb and the table of every statement in a migration, in order. */
+	private static final Pattern STATEMENT = Pattern.compile("(?m)^(insert into|update|delete from) (\\w+)");
+
+	private static Set<String> statementsIn(String sql) {
+		Set<String> found = new LinkedHashSet<>();
+		Matcher matcher = STATEMENT.matcher(sql);
+
+		while (matcher.find()) {
+			found.add(matcher.group(1).split(" ")[0] + " " + matcher.group(2));
+		}
+
+		return found;
+	}
+
+	/**
+	 * One key of the schema and what a delta can do to it.
+	 *
+	 * @param constraint its name
+	 * @param measuredBy the case that puts pressure on it, named exactly as the
+	 *                   case names itself, or null
+	 * @param decided    why a delta cannot reach it at all, or null
+	 */
+	record Verdict(String constraint, String measuredBy, String decided) {
+
+		static Verdict measuredBy(String constraint, String change) {
+			return new Verdict(constraint, change, null);
+		}
+
+		static Verdict outOfReach(String constraint, String why) {
+			return new Verdict(constraint, null, why);
+		}
+
+		@Override
+		public String toString() {
+			return constraint;
+		}
+	}
+
+	/**
+	 * The verdict for every key and foreign key in the schema.
+	 *
+	 * Hand written, and floored twice below: the names have to be the names the
+	 * catalogue gives, and every case named here has to be a case that exists while
+	 * every case that exists has to be named here. So a key added without a verdict
+	 * fails, a verdict for a key that is gone fails, a case renamed fails, and a
+	 * case nothing needs fails.
+	 */
+	private static final List<Verdict> VERDICTS = List.of(
+			Verdict.outOfReach("country_pk", "a delta never writes an id; the sequence does"),
+			Verdict.outOfReach("country_code_unique",
+					"the code is what the two states of the country list are lined up by, so a code among the "
+							+ "arrivals is one the database does not carry, and no statement changes a code"),
+			Verdict.measuredBy("country_name_unique", "a country changes its code and keeps its name"),
+			Verdict.measuredBy("country_name_unique", "two countries exchange names, which is one UPDATE over both"),
+			Verdict.measuredBy("country_sort_order_unique", "a country joins the middle of the list, with a town in it"),
+
+			Verdict.outOfReach("place_pk", "a delta never writes an id; the sequence does"),
+			Verdict.outOfReach("place_geonames_id_unique",
+					"the mark is what the two states of the town codebook are lined up by, so a mark among the "
+							+ "arrivals is one the database does not carry, and the deletes stand ahead of the "
+							+ "inserts, so a mark given up is free before one is taken"),
+			Verdict.measuredBy("place_rank_unique", "a town is renamed and changes places with its neighbour"),
+			Verdict.measuredBy("place_country_fk", "a country changes its code, and its towns move with it"),
+
+			Verdict.outOfReach("price_row_pk", "a delta does not touch the price list at all"),
+			Verdict.outOfReach("price_row_key_unique", "a delta does not touch the price list at all"),
+			Verdict.outOfReach("price_row_sort_order_unique", "a delta does not touch the price list at all"));
+
+	@Test
+	void everyKeyADeltaCouldTripHasAVerdict() {
+		List<String> declared = db
+				.sql("select con.conname from pg_constraint con"
+						+ " where con.conrelid = any (array[" + tableLiterals() + "]::regclass[])"
+						+ "   and con.contype in ('p', 'u', 'f')"
+						+ " order by con.conname")
+				.query(String.class)
+				.list();
+
+		assertThat(declared).isNotEmpty();
+		assertThat(VERDICTS.stream().map(Verdict::constraint).collect(Collectors.toSet()))
+				.as("a key with no verdict, or a verdict for a key that is gone")
+				.containsExactlyInAnyOrderElementsOf(Set.copyOf(declared));
+
+		assertThat(VERDICTS)
+				.as("a verdict says one thing or the other, never both and never neither")
+				.allSatisfy(verdict -> assertThat(verdict.measuredBy() == null).isNotEqualTo(verdict.decided() == null));
+	}
+
+	/**
+	 * And a verdict names a case that exists.
+	 *
+	 * Without this the verdicts are prose: a case renamed leaves every line that
+	 * pointed at it pointing at nothing, and the list above goes on looking
+	 * complete. The other direction is deliberately not asserted here, because a
+	 * case need not press a key to be worth having: "the last town of the codebook
+	 * leaves" presses none and is the only case that writes the DELETE against the
+	 * town codebook, which is what the statement floor above holds it by.
+	 */
+	@Test
+	void everyVerdictNamesACaseThatExists() {
+		Set<String> cases = Stream
+				.concat(changes().stream().map(Change::what), refusals().stream().map(one -> one.change().what()))
+				.collect(Collectors.toSet());
+
+		Set<String> named = VERDICTS.stream()
+				.map(Verdict::measuredBy)
+				.filter(one -> one != null)
+				.collect(Collectors.toSet());
+
+		assertThat(named).isNotEmpty();
+		assertThat(cases).containsAll(named);
+	}
+
+	private String tableLiterals() {
+		return tablesInTheSchema().stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
 	}
 
 	// ----------------------------------------------------------------- the two states
@@ -237,8 +570,8 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 		Path before = Files.createDirectories(work.resolve("before"));
 		Path after = Files.createDirectories(work.resolve("after"));
 
-		Files.copy(root.resolve(COUNTRIES), before.resolve("countries.json"));
-		Files.copy(root.resolve(PLACES), before.resolve("places.json"));
+		copyOver(root.resolve(COUNTRIES), before.resolve("countries.json"));
+		copyOver(root.resolve(PLACES), before.resolve("places.json"));
 
 		ObjectNode countries = (ObjectNode) JSON.readTree(root.resolve(COUNTRIES));
 		ArrayNode towns = (ArrayNode) JSON.readTree(root.resolve(PLACES));
@@ -251,6 +584,12 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 
 		return run(root, python(), GENERATOR, "--delta", "--stdout",
 				"--before", before.toString(), "--after", after.toString());
+	}
+
+	/** Overwriting, because one test now runs the generator more than once and the
+	 *  temporary directory is the same one throughout that test. */
+	private static void copyOver(Path from, Path to) throws IOException {
+		Files.copy(from, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	/**
@@ -314,7 +653,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	record CountryRow(String code, String name, boolean inRegion, int sortOrder) {
 	}
 
-	record TownRow(String name, String countryCode, String englishName, int rank) {
+	record TownRow(long geonamesId, String name, String countryCode, String englishName, int rank) {
 	}
 
 	private List<CountryRow> countriesInTheDatabase() {
@@ -328,13 +667,13 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	private List<TownRow> townsInTheDatabase() {
 		return db
 				.sql("""
-						select p.name, c.code as country_code, p.english_name, p.rank
+						select p.geonames_id, p.name, c.code as country_code, p.english_name, p.rank
 						  from place p
 						  join country c on c.id = p.country_id
 						 order by p.rank
 						""")
-				.query((rs, row) -> new TownRow(rs.getString("name"), rs.getString("country_code"),
-						rs.getString("english_name"), rs.getInt("rank")))
+				.query((rs, row) -> new TownRow(rs.getLong("geonames_id"), rs.getString("name"),
+						rs.getString("country_code"), rs.getString("english_name"), rs.getInt("rank")))
 				.list();
 	}
 
@@ -361,8 +700,8 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 
 		for (int index = 0; index < file.size(); index++) {
 			JsonNode town = file.get(index);
-			rows.add(new TownRow(town.get(0).stringValue(), town.get(1).stringValue(),
-					town.size() > 2 ? town.get(2).stringValue() : null, index + 1));
+			rows.add(new TownRow(town.get(0).longValue(), town.get(1).stringValue(), town.get(2).stringValue(),
+					town.size() > 3 ? town.get(3).stringValue() : null, index + 1));
 		}
 
 		return rows;

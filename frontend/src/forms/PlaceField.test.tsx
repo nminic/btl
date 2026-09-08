@@ -15,17 +15,20 @@ import { PlaceField } from './PlaceField'
  * still wins over the list, and that the list can be walked without a mouse.
  */
 
+/* The first field of a row is the town's GeoNames mark (ADL A16). The two
+   Londons are why it is there and why the marks below are distinct rather than
+   decorative: without it the last two rows are the same town written twice. */
 const CODEBOOK: Place[] = [
-  ['Beograd', 'RS', 'Belgrade'],
-  ['Beočin', 'RS'],
-  ['Bern', 'CH', 'Berne'],
-  ['Boston', 'US'],
+  [792680, 'Beograd', 'RS', 'Belgrade'],
+  [792578, 'Beočin', 'RS'],
+  [2661552, 'Bern', 'CH', 'Berne'],
+  [4930956, 'Boston', 'US'],
   /* A town in a code the list of countries has no name for. */
-  ['Bardejov', 'ZZ'],
+  [725168, 'Bardejov', 'ZZ'],
   /* And a name two countries share, which is the ordinary case rather than the
      odd one: seven hundred and thirty eight of them stand in the codebook. */
-  ['London', 'GB'],
-  ['London', 'US'],
+  [2643743, 'London', 'GB'],
+  [5367815, 'London', 'US'],
 ]
 
 /** The codebook as the portal fetches it. The list is a resource rather than an

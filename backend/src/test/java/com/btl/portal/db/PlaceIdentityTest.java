@@ -3,149 +3,140 @@ package com.btl.portal.db;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * A town has no identity of its own yet, so nothing may point at one.
+ * A town has an identity of its own, and it is the one thing anything may point at.
  *
- * <p><b>The measurement this is here for.</b> The town codebook ships each town
- * as {@code ["name", "COUNTRY"]} and nothing else. There is no mark ADL A36 O1
- * could put beside the {@code bigserial}, because none exists in the source, and
- * the pair of name and country is not one either: 1,614 of those pairs occur more
- * than once in the 46,906 towns. So a delta migration lines the two states of the
- * codebook up by {@code rank}, which is a position in a file and not a fact about
- * a town. Taking one town out of the top of the codebook produces 46,877 changed
- * rows, and the row that held Shenzhen ends up holding Guangzhou under the same
- * {@code place.id}.
+ * <p><b>What this class used to say, and why it says the opposite now.</b> Until
+ * 08.09.2026 the codebook shipped each town as {@code ["name", "COUNTRY"]} and
+ * nothing else, so a town had no mark, the pair was no mark either (1,616 of
+ * those pairs occur more than once in the 47,016 towns), and a delta migration
+ * had to line the two states of the codebook up by {@code rank}, a position in a
+ * file. Taking one town out of the top rewrote every row below it, and the row
+ * that held Shanghai ended up holding Chongqing under the same {@code place.id}.
+ * This class then held a boundary: nothing anywhere may reference a town. The
+ * owner lifted it on 08.09.2026 by having the codebook carry the GeoNames
+ * identifier the generator was already reading and dropping (ADL A16, A36 O5).
  *
- * <p><b>The boundary that follows, and it is a decision and not a nicety.</b>
- * Nothing may hold a foreign key to {@code place}, and nothing may carry a
- * town's id in a column of its own, until the codebook carries a stable mark.
- * A row whose contents move under a stable id cannot be referred to by that id:
- * the reference would survive and mean a different town, and no constraint
- * anywhere would say so. Nothing points at a town today, which is the whole of
- * why nothing is wrong today, and that is exactly the kind of fact that stops
- * being true in a commit nobody thought was about towns.
+ * <p><b>What holds now, and what each half is worth on its own.</b> The mark
+ * without the key is a column somebody may fill twice; the key without
+ * plainness is a column no foreign key may name, which is precisely what
+ * {@code place.rank} is and precisely why the mark is not it. So both are asked,
+ * and the third test is the one that says what the other two are for.
  *
- * <p><b>What lifts it.</b> The mark that exists is the GeoNames identifier.
- * {@code ../btl-produkt/istorijski-podaci/napravi-mesta.py} already reads it out
- * of {@code cities500} (column 0) and drops it on the way out, so lifting this is
- * one line in that generator, a rebuilt codebook, a delta migration that adds the
- * column and fills it, and a delta that then lines rows up by the mark instead of
- * by the rank. Until then ADL A36 O5, which gives an event a foreign key to a
- * place, cannot be built, and this says so where it will be read: in the build,
- * on the day somebody writes that foreign key.
- *
- * <p><b>Both questions are asked of the catalogue</b>, not of a list of tables
- * kept here. A table added in a later migration is covered the moment it exists,
- * which is the only way a boundary about "anything at all" can be held.
+ * <p>Read out of the catalogue rather than off the migration, because the
+ * question is what the database ended up with. The column name is the one thing
+ * written down here, and it has to be: it is the name the generator and the
+ * front end both use, and nothing but agreement makes it the right one.
  */
 class PlaceIdentityTest extends DatabaseTest {
 
-	/** The codebook whose rows have no identity of their own, and its id column. */
+	/** The codebook, and the mark beside its surrogate key. */
 	private static final String TOWNS = "place";
+	private static final String MARK = "geonames_id";
+
+	/** The column that is a position in the file rather than a fact about a town. */
+	private static final String POSITION = "rank";
 
 	@Test
-	void noForeignKeyAnywhereReferencesTheTownCodebook() {
-		List<String> pointing = db
+	void theCodebookCarriesAMarkOfItsOwn() {
+		List<Map<String, Object>> column = db
 				.sql("""
-						select cls.relname || '.' || con.conname
-						  from pg_constraint con
-						  join pg_class cls on cls.oid = con.conrelid
-						  join pg_namespace nsp on nsp.oid = cls.relnamespace
-						 where con.contype = 'f'
-						   and nsp.nspname = current_schema()
-						   and con.confrelid = ?::regclass
-						 order by 1
-						""")
-				.param(TOWNS)
-				.query(String.class)
-				.list();
-
-		assertThat(pointing)
-				.as("a town's id follows its position in the codebook and not the town, so a row that keeps this "
-						+ "reference through the next delta keeps a reference to a different town")
-				.isEmpty();
-	}
-
-	/**
-	 * And nothing carries a town's id without saying so with a foreign key either.
-	 *
-	 * The test above asks about foreign keys, and a column named after the
-	 * codebook with no foreign key on it would answer it with silence while being
-	 * the same fault: a stored number that means a different town after the next
-	 * delta. The name is the schema's own convention rather than a guess -
-	 * {@code place.country_id} names {@code country} that way in the migration
-	 * this test was written against.
-	 */
-	@Test
-	void noColumnOutsideTheCodebookCarriesATownId() {
-		List<String> carrying = db
-				.sql("""
-						select cls.relname || '.' || att.attname
+						select format_type(att.atttypid, att.atttypmod) as type,
+						       att.attnotnull                           as required
 						  from pg_attribute att
 						  join pg_class cls on cls.oid = att.attrelid
 						  join pg_namespace nsp on nsp.oid = cls.relnamespace
-						 where cls.relkind = 'r'
-						   and nsp.nspname = current_schema()
+						 where nsp.nspname = current_schema()
+						   and cls.relname = ?
+						   and att.attname = ?
 						   and att.attnum > 0
 						   and not att.attisdropped
-						   and att.attname = ? || '_id'
-						 order by 1
 						""")
-				.param(TOWNS)
-				.query(String.class)
-				.list();
+				.params(TOWNS, MARK)
+				.query()
+				.listOfRows();
 
-		assertThat(carrying)
-				.as("the codebook has no stable identity to carry; see this class for what lifts the boundary")
-				.isEmpty();
+		assertThat(column)
+				.as("a town is identified by its GeoNames mark, so the column carrying it is the one thing "
+						+ "about a town that may not be missing")
+				.singleElement()
+				.satisfies(row -> {
+					assertThat(row.get("type")).isEqualTo("bigint");
+					assertThat(row.get("required")).isEqualTo(true);
+				});
 	}
 
 	/**
-	 * The floor under both: the schema really is one where those questions could
-	 * have been answered the other way.
+	 * And the mark is unique, through a key that is plain.
 	 *
-	 * Two empty lists prove nothing on their own. A query with a typo in it, a
-	 * schema read in the wrong place, a catalogue view that does not hold what it
-	 * is supposed to, and both of the tests above pass for ever. So the same two
-	 * questions are asked about the one reference the schema does carry, a town's
-	 * foreign key to its country, and both have to find it.
+	 * Both parts in one assertion because they are one decision. Unique, or two
+	 * towns wear one mark and a reference to either means both. Plain, or nothing
+	 * may name it: PostgreSQL refuses a foreign key to a deferrable unique
+	 * constraint outright, when the referring table is created. The whole point of
+	 * the mark is being referred to (ADL A36 O5), so a deferrable one would be a
+	 * mark that does not do the one thing it is for.
 	 */
 	@Test
-	void andTheSameTwoQuestionsFindTheReferenceTheSchemaDoesCarry() {
-		List<String> pointingAtCountries = db
+	void theMarkIsUniqueAndItsKeyIsPlain() {
+		List<Map<String, Object>> keys = db
 				.sql("""
-						select cls.relname || '.' || con.conname
+						select con.conname       as name,
+						       con.condeferrable as deferrable
 						  from pg_constraint con
 						  join pg_class cls on cls.oid = con.conrelid
 						  join pg_namespace nsp on nsp.oid = cls.relnamespace
-						 where con.contype = 'f'
-						   and nsp.nspname = current_schema()
-						   and con.confrelid = 'country'::regclass
-						 order by 1
+						  join pg_attribute att on att.attrelid = con.conrelid and att.attnum = any (con.conkey)
+						 where nsp.nspname = current_schema()
+						   and cls.relname = ?
+						   and con.contype in ('p', 'u')
+						   and array_length(con.conkey, 1) = 1
+						   and att.attname = ?
 						""")
-				.query(String.class)
-				.list();
+				.params(TOWNS, MARK)
+				.query()
+				.listOfRows();
 
-		List<String> carryingCountryId = db
-				.sql("""
-						select cls.relname || '.' || att.attname
-						  from pg_attribute att
-						  join pg_class cls on cls.oid = att.attrelid
-						  join pg_namespace nsp on nsp.oid = cls.relnamespace
-						 where cls.relkind = 'r'
-						   and nsp.nspname = current_schema()
-						   and att.attnum > 0
-						   and not att.attisdropped
-						   and att.attname = 'country_id'
-						 order by 1
-						""")
-				.query(String.class)
-				.list();
+		assertThat(keys)
+				.singleElement()
+				.satisfies(key -> {
+					assertThat(key.get("name")).isEqualTo("place_geonames_id_unique");
+					assertThat(key.get("deferrable")).isEqualTo(false);
+				});
+	}
 
-		assertThat(pointingAtCountries).containsExactly("place.place_country_fk");
-		assertThat(carryingCountryId).containsExactly("place.country_id");
+	/**
+	 * The floor under both, and the sentence they are here to make: this is the
+	 * column a foreign key may name, and the position is not.
+	 *
+	 * Two empty answers or two catalogue rows prove nothing by themselves. A query
+	 * against the wrong schema, a column renamed on one side only, and the two
+	 * tests above would go on passing. Here the two columns are used the way the
+	 * schema means them to be used, and they have to answer differently: a table
+	 * referring to the mark is created, a table referring to the position is
+	 * refused before a row is ever written.
+	 *
+	 * <p>Which is also the whole difference between what this class held before
+	 * 08.09.2026 and what it holds now. The refusal on {@code rank} is unchanged
+	 * and is the old boundary, still standing where it belongs: over the column
+	 * that is a position. What changed is that the town now has somewhere else to
+	 * be pointed at.
+	 */
+	@Test
+	void aForeignKeyMayNameTheMarkAndMayNotNameThePosition() {
+		assertThat(db.sql("create table points_at_the_mark (v bigint references " + TOWNS + " (" + MARK + "))")
+				.update())
+				.isZero();
+
+		assertThatThrownBy(() -> db
+				.sql("create table points_at_the_position (v integer references " + TOWNS + " (" + POSITION + "))")
+				.update())
+				.as("the order of the codebook is maintained by moving a range of it, so its key is deferrable, "
+						+ "and a deferrable unique key is one nothing may name")
+				.hasMessageContaining("cannot use a deferrable unique constraint for referenced table");
 	}
 }

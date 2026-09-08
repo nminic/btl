@@ -7,7 +7,7 @@ import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
 import countries from './countries.json'
-import { plainly } from './places'
+import { plainly, type Place } from './places'
 import { EVENT_KINDS, FEATURED, ITEM_KINDS, RACE_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
@@ -350,7 +350,7 @@ describe('the generated data', () => {
   })
 
   it('carries a codebook of towns every one of which can be typed', async () => {
-    /* Nine hundred kilobytes nobody in this repository wrote, read by a search
+    /* A megabyte and a quarter nobody in this repository wrote, read by a search
        that folds a letter with a mark above it onto the letter (`plainly`). A
        letter that fold does not know is a town that is in the codebook and
        cannot be reached: seventy eight towns in Poland were, Wrocław among
@@ -361,7 +361,7 @@ describe('the generated data', () => {
        shipped file rather than a fixture, because the fault is a disagreement
        between this side and the generator, and a fixture agrees with whoever
        wrote it. */
-    const places = await loadResource<[string, string, string?][]>('places')
+    const places = await loadResource<Place[]>('places')
 
     expect(places.length).toBeGreaterThan(40000)
 
@@ -371,7 +371,7 @@ describe('the generated data', () => {
        the local name and appended the English one raw, and a Cyrillic main-list
        name is exactly what made the two differ. */
     const unreachable = places
-      .flatMap(([name, country, english]) =>
+      .flatMap(([, name, country, english]) =>
         [name, english ?? name].map((written) => ({ written, country })),
       )
       .filter(({ written }) => /[^a-z0-9 '&.,()/-]/.test(plainly(written)))
@@ -383,10 +383,37 @@ describe('the generated data', () => {
   it('carries a codebook whose towns each say which country they are in', async () => {
     /* The country is the whole reason the field was allowed to swallow the one
        beside it, so a row without one is a town that files an event nowhere. */
-    const places = await loadResource<[string, string, string?][]>('places')
-    const nameless = places.filter(([name, country]) => name === '' || !/^[A-Z]{2}$/.test(country))
+    const places = await loadResource<Place[]>('places')
+    const nameless = places.filter(
+      ([, name, country]) => name === '' || !/^[A-Z]{2}$/.test(country),
+    )
 
     expect(nameless).toEqual([])
+  })
+
+  it('carries a codebook in which every town is told apart from every other', async () => {
+    /* The mark, which is what a town **is** (owner, 08.09.2026, ADL A16). It is
+       the GeoNames identifier and the same number `place.geonames_id` keeps in
+       the database, so a town written down anywhere still means that town after
+       the codebook is rebuilt from a newer export.
+
+       Nothing else in a row can do that job, and this says so from the file
+       rather than from the decision: name and country repeat, so a mark that
+       repeated would leave two towns indistinguishable and a reference to either
+       of them meaning both. Held over the shipped file, because the fault would
+       be the generator's and a fixture agrees with whoever wrote it. */
+    const places = await loadResource<Place[]>('places')
+    const marks = places.map(([mark]) => mark)
+
+    expect(marks.every((mark) => Number.isInteger(mark) && mark > 0)).toBe(true)
+    expect(new Set(marks).size).toBe(places.length)
+
+    /* And the floor under that, measured on the same file: the pair everything
+       used before the mark arrived does repeat, so the assertion above is one
+       this codebook could have failed. */
+    const pairs = places.map(([, name, country]) => `${name}|${country}`)
+
+    expect(new Set(pairs).size).toBeLessThan(places.length)
   })
 
   it('names every country its towns stand in, and puts Kosovo in Serbia', async () => {
@@ -399,22 +426,37 @@ describe('the generated data', () => {
        mesto sa Kosova, automatski podrazumevana država postaje Srbija. Kosovo ne
        sme uopšte postojati u listi država." So the codebook writes those towns
        RS, and XK appears nowhere. */
-    const places = await loadResource<[string, string, string?][]>('places')
+    const places = await loadResource<Place[]>('places')
     const named = new Set([...countries.region, ...countries.rest].map((one) => one.code))
-    const strangers = [...new Set(places.map(([, country]) => country))].filter(
+    const strangers = [...new Set(places.map(([, , country]) => country))].filter(
       (country) => !named.has(country),
     )
 
     expect(strangers).toEqual([])
-    expect(places.filter(([, country]) => country === 'XK')).toEqual([])
+    expect(places.filter(([, , country]) => country === 'XK')).toEqual([])
     expect(named.has('XK')).toBe(false)
     /* And Priština is in Serbia, under its own name: the codebook of the world
        writes those towns in Albanian, and they are the only towns of Serbia that
        would then stand on a Serbian portal in another language (ADL A16 asks for
-       the local name everywhere in the region). The foreign form stays as the
-       English one, which is what the third place in a row is for. */
-    expect(places.filter(([name]) => name === 'Priština')).toEqual([['Priština', 'RS', 'Pristina']])
-    expect(places.filter(([name]) => name === 'Peć')).toEqual([['Peć', 'RS', 'Pejë']])
+       the local name everywhere in the region).
+
+       Two towns rather than one, because the two get their Serbian name by
+       different routes and only one of the routes is new. Peć has it from a
+       Latin name GeoNames files under a language of the region, and its Albanian
+       form stays on as the English one. Kosovska Mitrovica has none: GeoNames
+       dropped the `sh` language code, and what is left for it is the Serbian
+       name in Cyrillic, transliterated here (owner, 08.09.2026). Take that
+       transliteration out and this row reads Mitrovicë.
+
+       Priština carries no English name at all since 08.09.2026, and that is the
+       generator being right rather than a loss: the main list now writes it
+       "Pristina", which is the same name without the mark above the s, and a
+       name written twice is not a second name. */
+    expect(places.filter(([, name]) => name === 'Priština')).toEqual([[786714, 'Priština', 'RS']])
+    expect(places.filter(([, name]) => name === 'Peć')).toEqual([[787157, 'Peć', 'RS', 'Pejë']])
+    expect(places.filter(([, name]) => name === 'Kosovska Mitrovica')).toEqual([
+      [789225, 'Kosovska Mitrovica', 'RS', 'Mitrovicë'],
+    ])
   })
 
   it('carries no event of a kind the portal does not have, and no state at all', async () => {

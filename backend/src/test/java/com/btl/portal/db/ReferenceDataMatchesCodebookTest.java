@@ -65,7 +65,9 @@ class ReferenceDataMatchesCodebookTest extends DatabaseTest {
 	record CountryRow(String code, String name, boolean inRegion, int sortOrder) {
 	}
 
-	record PlaceRow(String name, String countryCode, String englishName, int rank) {
+	/** A town as both sides hold it. The mark first, because it is what the town
+	 *  is: name and country repeat, and the rank is a position in the file. */
+	record PlaceRow(long geonamesId, String name, String countryCode, String englishName, int rank) {
 	}
 
 	@Test
@@ -100,21 +102,26 @@ class ReferenceDataMatchesCodebookTest extends DatabaseTest {
 
 		for (int index = 0; index < file.size(); index++) {
 			JsonNode place = file.get(index);
-			String english = place.size() > 2 ? place.get(2).stringValue() : null;
-			expected.add(new PlaceRow(place.get(0).stringValue(), place.get(1).stringValue(), english, index + 1));
+			String english = place.size() > 3 ? place.get(3).stringValue() : null;
+			expected.add(new PlaceRow(place.get(0).longValue(), place.get(1).stringValue(),
+					place.get(2).stringValue(), english, index + 1));
 		}
 
 		List<PlaceRow> actual = db.sql("""
-						select p.name, c.code as country_code, p.english_name, p.rank
+						select p.geonames_id, p.name, c.code as country_code, p.english_name, p.rank
 						  from place p
 						  join country c on c.id = p.country_id
 						 order by p.rank
 						""")
-				.query((rs, row) -> new PlaceRow(rs.getString("name"), rs.getString("country_code"),
-						rs.getString("english_name"), rs.getInt("rank")))
+				.query((rs, row) -> new PlaceRow(rs.getLong("geonames_id"), rs.getString("name"),
+						rs.getString("country_code"), rs.getString("english_name"), rs.getInt("rank")))
 				.list();
 
-		assertThat(expected).hasSize(46_906);
+		/* Forty seven thousand and sixteen, measured on the export of 08.09.2026.
+		   Written out for the reason the country count is: a codebook that quietly
+		   shrank is a failure here rather than a shorter list matching a shorter
+		   table. */
+		assertThat(expected).hasSize(47_016);
 
 		sameRows(expected, actual);
 	}

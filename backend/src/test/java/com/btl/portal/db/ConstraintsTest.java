@@ -81,9 +81,12 @@ class ConstraintsTest extends DatabaseTest {
 	   fixture. */
 	private static final String GOOD_COUNTRY =
 			"insert into country (code, name, in_region, sort_order) values ('ZZ', 'Zemlja Proba', false, 9001)";
+	/* 99000001 is past every mark GeoNames has issued (the largest in the codebook
+	   is 13,697,165), so a probe row cannot land on a real town's mark and make a
+	   failure below name place_geonames_id_unique instead of what it is about. */
 	private static final String GOOD_PLACE =
-			"insert into place (name, country_id, english_name, rank) "
-					+ "select 'Probno Mesto', id, 'Probe Town', 900001 from country where code = 'RS'";
+			"insert into place (geonames_id, name, country_id, english_name, rank) "
+					+ "select 99000001, 'Probno Mesto', id, 'Probe Town', 900001 from country where code = 'RS'";
 	private static final String GOOD_PRICE_ROW =
 			"insert into price_row (key, kind, day_from, day_to, eur, rsd, ranking, sort_order) "
 					+ "values ('probe', 'period', '02-01', '02-02', 1, 120, true, 9001)";
@@ -125,34 +128,53 @@ class ConstraintsTest extends DatabaseTest {
 
 				// ------------------------------------------------------------------ place
 				Violation.of("place_pk",
-						"insert into place (id, name, country_id, rank) "
-								+ "select id, 'Probno Mesto', country_id, 900001 from place where rank = 1"),
+						"insert into place (id, geonames_id, name, country_id, rank) "
+								+ "select id, 99000001, 'Probno Mesto', country_id, 900001 from place where rank = 1"),
 				/* A town in a country the codebook does not list. The staging table
 				   the migration loads through carries the same key on the country
 				   code, so a bad code cannot even reach this table. */
 				Violation.of("place_country_fk",
-						"insert into place (name, country_id, rank) values ('Probno Mesto', -1, 900001)"),
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "values (99000001, 'Probno Mesto', -1, 900001)"),
+				/* The mark, and the whole of what it is for: a second row wearing
+				   one town's GeoNames identifier is two towns nothing can tell
+				   apart, and a reference to either of them means both. */
+				Violation.of("place_geonames_id_unique",
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select geonames_id, 'Probno Mesto', country_id, 900001 from place where rank = 1"),
+				Violation.of("place_geonames_id_positive",
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select 0, 'Probno Mesto', id, 900001 from country where code = 'RS'"),
 				Violation.of("place_rank_unique",
-						"insert into place (name, country_id, rank) select 'Probno Mesto', id, 1 from country where code = 'RS'"),
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select 99000001, 'Probno Mesto', id, 1 from country where code = 'RS'"),
 				Violation.of("place_rank_positive",
-						"insert into place (name, country_id, rank) select 'Probno Mesto', id, 0 from country where code = 'RS'"),
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select 99000001, 'Probno Mesto', id, 0 from country where code = 'RS'"),
 				Violation.of("place_name_not_blank",
-						"insert into place (name, country_id, rank) select '  ', id, 900001 from country where code = 'RS'"),
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select 99000001, '  ', id, 900001 from country where code = 'RS'"),
 				Violation.of("place_english_name_not_blank",
-						"insert into place (name, country_id, english_name, rank) "
-								+ "select 'Probno Mesto', id, '  ', 900001 from country where code = 'RS'"),
+						"insert into place (geonames_id, name, country_id, english_name, rank) "
+								+ "select 99000001, 'Probno Mesto', id, '  ', 900001 from country where code = 'RS'"),
 				Violation.of("place_english_name_differs",
-						"insert into place (name, country_id, english_name, rank) "
-								+ "select 'Probno Mesto', id, 'Probno Mesto', 900001 from country where code = 'RS'"),
+						"insert into place (geonames_id, name, country_id, english_name, rank) "
+								+ "select 99000001, 'Probno Mesto', id, 'Probno Mesto', 900001 from country where code = 'RS'"),
 				Violation.notNull("place_id_not_null", "id",
-						"insert into place (id, name, country_id, rank) "
+						"insert into place (id, geonames_id, name, country_id, rank) "
+								+ "select null, 99000001, 'Probno Mesto', id, 900001 from country where code = 'RS'"),
+				Violation.notNull("place_geonames_id_not_null", "geonames_id",
+						"insert into place (geonames_id, name, country_id, rank) "
 								+ "select null, 'Probno Mesto', id, 900001 from country where code = 'RS'"),
 				Violation.notNull("place_name_not_null", "name",
-						"insert into place (name, country_id, rank) select null, id, 900001 from country where code = 'RS'"),
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select 99000001, null, id, 900001 from country where code = 'RS'"),
 				Violation.notNull("place_country_id_not_null", "country_id",
-						"insert into place (name, country_id, rank) values ('Probno Mesto', null, 900001)"),
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "values (99000001, 'Probno Mesto', null, 900001)"),
 				Violation.notNull("place_rank_not_null", "rank",
-						"insert into place (name, country_id, rank) select 'Probno Mesto', id, null from country where code = 'RS'"),
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select 99000001, 'Probno Mesto', id, null from country where code = 'RS'"),
 
 				// -------------------------------------------------------------- price_row
 				Violation.of("price_row_pk",

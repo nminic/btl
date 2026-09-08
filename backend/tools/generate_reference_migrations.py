@@ -21,7 +21,7 @@ order its statements have to be in, and that guess was wrong until 09.09.2026.
 It writes, under `backend/src/main/resources/db/migration`:
 
     V2__country.sql     246 countries, out of frontend/src/data/countries.json
-    V3__place.sql    46,906 towns,     out of frontend/public/mock/places.json
+    V3__place.sql    47,016 towns,     out of frontend/public/mock/places.json
     V4__price_list.sql    7 price rows (see PRICE_ROWS below for where they come from)
 
 
@@ -75,6 +75,16 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
+# Everything this script says, it says in UTF-8, named rather than left to the
+# machine. The refusals below name a country, and a country is named in Serbian:
+# `Kongo - Kinšasa` written to a redirected stderr on Windows goes out in cp1252,
+# because that is what Python takes the preferred encoding to be, and whoever
+# reads it back as UTF-8 gets `MalformedInput`. Measured on 09.09.2026, by
+# DeltaMigrationAppliesTest, on the refusal that says two countries may not
+# exchange names. The same reasoning is written out again over `--stdout`, which
+# writes bytes for the same reason and cannot use this.
+sys.stderr.reconfigure(encoding='utf-8')
 
 REPO = Path(__file__).resolve().parents[2]
 COUNTRIES = REPO / 'frontend' / 'src' / 'data' / 'countries.json'
@@ -360,42 +370,43 @@ PLACE_DDL = """
 
    `english_name` is only there for a town that really is called something else
    in English: Beograd is Belgrade, Novi Sad is Novi Sad in both. Two hundred and
-   two towns of the forty seven thousand have one.
+   twenty three towns of the forty seven thousand have one.
 
    There is deliberately no unique key over (name, country). It would not hold:
-   one thousand six hundred and fourteen name and country pairs occur more than
+   one thousand six hundred and sixteen name and country pairs occur more than
    once in the codebook, three towns in China are all called Zhongshan, and they
    are three towns.
 
-   WHAT `id` IS NOT, AND THE BOUNDARY THAT FOLLOWS FROM IT
-   ------------------------------------------------------
-   `id` is a bigserial and there is nothing beside it. ADL A36 O1 asks for a
-   speaking mark next to the key "where one already exists", and for a town none
-   does: the codebook ships each town as ["name", "COUNTRY"] and nothing else, so
-   there is no mark to carry, and the pair of name and country is not one either,
-   for the reason two paragraphs up.
+   WHAT `geonames_id` IS, AND WHY A TOWN HAS ONE
+   ---------------------------------------------
+   `id` is a bigserial and `geonames_id` is the speaking mark beside it (ADL A36
+   O1), which is the same shape `country.code` has one table over. It is the
+   number GeoNames gives the town in the export this codebook is cut from, and it
+   is the town's identity (owner, 08.09.2026, ADL A16).
 
-   A delta migration therefore lines the two states of the codebook up by `rank`,
-   which is a position in a file and not a fact about a town. Measured on
-   09.09.2026: taking one town out of the top of the codebook produces 46,877
-   changed rows, and the row that held Shenzhen ends up holding Guangzhou under
-   the same `id`. Nothing is lost today because nothing points at a town, and
-   that is the whole of why it is not lost.
+   Until 08.09.2026 there was nothing beside the bigserial, and this comment said
+   so and drew a boundary from it. The codebook shipped each town as
+   ["name", "COUNTRY"], and the pair is no identity either, for the reason a
+   paragraph up. So a delta migration had to line the two states of the codebook
+   up by `rank`, which is a position in a file and not a fact about a town:
+   measured on 09.09.2026, taking one town out of the top produced 46,877 changed
+   rows, and the row that held Shanghai ended up holding Chongqing under the same
+   `id`. Nothing could point at a town, and ADL A36 O5, which gives an event a
+   foreign key to a place, could not be built at all.
 
-   SO: NOTHING MAY HOLD A FOREIGN KEY TO THIS TABLE. Not a decision about style,
-   a consequence of the paragraph above: a row whose contents move under a stable
-   `id` cannot be referred to by that `id`. ADL A36 O5 gives an event a foreign
-   key to a place, and that increment cannot be written until the codebook itself
-   carries a mark of its own. The one that exists is the GeoNames identifier,
-   which ../btl-produkt/istorijski-podaci/napravi-mesta.py already reads out of
-   cities500 and drops on the way out; carrying it through is what makes O5
-   buildable, and it is a change to the codebook and so to this table, which
-   means the next migration and not this one (ADL A2).
+   With the mark, a delta lines the two states up by the mark and `rank` is an
+   ordinary column it updates. A town that is renamed, moved in the order, or
+   given a different country is the same row throughout, and its `id` is the same
+   number afterwards. DeltaMigrationAppliesTest measures exactly that, by
+   renaming a town and moving it in the same delta.
 
-   PlaceIdentityTest fails the day anything references a town, so the boundary is
-   held rather than remembered. */
+   THE KEY OVER THE MARK IS PLAIN AND NEVER DEFERRABLE. That is the decision the
+   comment over `place_rank_unique` below took in advance and it is why: a mark
+   exists to be pointed at, and no foreign key may name a deferrable unique
+   constraint. PlaceIdentityTest holds both halves. */
 create table place (
     id           bigserial not null,
+    geonames_id  bigint    not null,
     name         text      not null collate sr_latn,
     country_id   bigint    not null,
     english_name text      collate sr_latn,
@@ -403,6 +414,10 @@ create table place (
 
     constraint place_pk primary key (id),
     constraint place_country_fk foreign key (country_id) references country (id),
+
+    /* Plain, for the reason written above, and it is the one key in this table
+       anything outside it may name. */
+    constraint place_geonames_id_unique unique (geonames_id),
 
     /* Unique, and deferrable, and initially immediate. All three of those are
        decisions and the middle one was measured on 08.09.2026 rather than
@@ -449,17 +464,23 @@ create table place (
           when the referring table is created rather than when a row is written.
           So a column declared deferrable is a column nothing can ever refer to.
 
-       Which decides a question this table does not have yet and will:
-       WHEN THE TOWN CODEBOOK GETS A SPEAKING MARK OF ITS OWN, THAT MARK'S UNIQUE
-       KEY IS PLAIN AND NEVER DEFERRABLE. The mark exists to be referred to, that
-       is the whole of what ADL A36 O5 wants it for, and price 2 says a
-       deferrable key cannot be. The rule the schema already follows is the same
-       one said from the other side: a key over an order is deferrable because a
-       range of it moves; a key that is looked up stays plain. The two that are
-       looked up today, `country_code_unique` and `price_row_key_unique`, stay
-       plain and stay available as arbiters, and KeysAndIndexesTest measures both
-       prices against every deferrable key in the schema. */
+       Which decided a question this table did not have when that was written and
+       has now: `place_geonames_id_unique`, three lines up, IS PLAIN. The mark
+       exists to be referred to, that is the whole of what ADL A36 O5 wants it
+       for, and price 2 says a deferrable key cannot be. The rule the schema
+       follows is the same one said from the other side: a key over an order is
+       deferrable because a range of it moves; a key that is looked up stays
+       plain. The three that are looked up, `country_code_unique`,
+       `place_geonames_id_unique` and `price_row_key_unique`, stay plain and stay
+       available as arbiters, and KeysAndIndexesTest measures both prices against
+       every deferrable key in the schema. */
     constraint place_rank_unique unique (rank) deferrable initially immediate,
+
+    /* A GeoNames identifier is a positive integer, and the same kind of
+       statement `country_code_shape` makes about a country code: this column
+       carries a mark from somebody else's catalogue, so what a mark may look
+       like is written down where a row that is not one cannot get in. */
+    constraint place_geonames_id_positive check (geonames_id > 0),
 
     constraint place_rank_positive check (rank > 0),
     constraint place_name_not_blank check (btrim(name) <> ''),
@@ -484,6 +505,7 @@ create index place_country_idx on place (country_id);
    know fails here, loudly, at the line that carries it, instead of quietly
    dropping that town on the join below. */
 create table place_import (
+    geonames_id  bigint  not null,
     name         text    not null,
     country_code text    not null references country (code),
     english_name text,
@@ -492,8 +514,8 @@ create table place_import (
 """
 
 PLACE_TAIL = """
-insert into place (name, country_id, english_name, rank)
-select i.name, c.id, i.english_name, i.rank
+insert into place (geonames_id, name, country_id, english_name, rank)
+select i.geonames_id, i.name, c.id, i.english_name, i.rank
   from place_import i
   join country c on c.code = i.country_code
  order by i.rank;
@@ -503,25 +525,36 @@ drop table place_import;
 
 
 def places(data):
+    """The codebook as rows: (mark, name, country code, English name, rank).
+
+    The mark comes first because it is the town's identity and the rank is a
+    position in the file (ADL A16). Both are read here rather than one of them
+    being counted to somewhere else.
+    """
     rows = []
 
     for index, place in enumerate(data, start=1):
-        name = place[0]
-        code = place[1]
-        english = place[2] if len(place) > 2 else None
+        mark = place[0]
+        name = place[1]
+        code = place[2]
+        english = place[3] if len(place) > 3 else None
+        assert isinstance(mark, int) and mark > 0, f'town {index} has no GeoNames mark'
         assert name.strip() != '', f'town {index} has no name'
         assert english != name, f'town {index} repeats its name in English'
-        rows.append((name, code, english, index))
+        rows.append((mark, name, code, english, index))
+
+    marks = [row[0] for row in rows]
+    assert len(set(marks)) == len(marks), 'two towns share a GeoNames mark, which is the one thing it may not do'
 
     return rows
 
 
 def place_migration(rows):
     lines = [BANNER.format(source=relative(PLACES)), PLACE_DDL,
-             '\ncopy place_import (name, country_code, english_name, rank) from stdin;']
+             '\ncopy place_import (geonames_id, name, country_code, english_name, rank) from stdin;']
 
-    for name, code, english, rank in rows:
-        lines.append('\t'.join((copy_field(name), copy_field(code), copy_field(english), str(rank))))
+    for mark, name, code, english, rank in rows:
+        lines.append('\t'.join((str(mark), copy_field(name), copy_field(code), copy_field(english), str(rank))))
 
     lines.append('\\.')
     lines.append(PLACE_TAIL)
@@ -700,10 +733,10 @@ DELTA_HEAD = """
        no row names it;
      - countries leave after that, and this is where the order was wrong until
        09.09.2026. `country_deletes` stood second, ahead of `place_updates`, and
-       a town is lined up by its position in the file rather than by anything
-       about the town: removing a country with its only town wrote the DELETE
-       against the LAST rank in the file and left the row that actually named
-       that country to be rewritten three statements later. Both that and a
+       a town was then lined up by its position in the file rather than by
+       anything about the town: removing a country with its only town wrote the
+       DELETE against the LAST rank in the file and left the row that actually
+       named that country to be rewritten three statements later. Both that and a
        country changing its code came back `update or delete on table "country"
        violates foreign key constraint "place_country_fk" on table "place"`. The
        sentence that used to stand here, that this was the only order that runs
@@ -713,22 +746,44 @@ DELTA_HEAD = """
      - and the countries that stayed are updated last, which is also where the
        order columns settle before the COMMIT that checks them.
 
-   What this does not cover, said here rather than left to be found: a country
-   arriving with a name the codebook has not released yet. Its INSERT is the
-   first statement, `country_name_unique` is plain, and no order of these six
-   statements both frees that name and still has the new country in place before
-   a town moves to it. The script refuses to write such a delta and names the
-   country; that one is a migration written by hand. */
+   HOW THE TWO STATES ARE LINED UP. A country by its `code` and a town by its
+   `geonames_id`, and both of those are the row's identity rather than its
+   position (ADL A16). So a town that is renamed, moved in the order or given a
+   different country is one UPDATE of one row and keeps its `place.id`, and
+   `rank` is an ordinary column this migration writes. Until 08.09.2026 a town
+   had no mark and was lined up by `rank` instead, and then taking one town out
+   of the top of the codebook rewrote the contents of every row below it.
+
+   What this does not cover, said here rather than left to be found. It is one
+   thing in two shapes: a country taking a name that is still worn at the moment
+   the statement runs. `country_name_unique` is plain, so it was never declared
+   deferrable, SET CONSTRAINTS cannot put it off, and PostgreSQL checks it as
+   each row is written, inside the statement.
+
+     - A country ARRIVING with a name the codebook has not released yet. Its
+       INSERT is the first statement, and moving it later is no answer, because a
+       town may be moving to that country.
+     - Two countries EXCHANGING names, which is what somebody writes the day they
+       work out which Congo is which. `country_updates` is a single UPDATE over a
+       VALUES list, so the first of the two rows to be written lands on a name the
+       second has not given up yet, `duplicate key value violates unique
+       constraint "country_name_unique"`, and the order rows are written inside a
+       statement is not something to lean on even where a chain would come out
+       right one way round.
+
+   The script refuses both, names the countries, and those are migrations written
+   by hand. What it does write is a country taking a name that a LEAVING country
+   gives up, because `country_deletes` stands ahead of `country_updates`. */
 """
 
 
 def difference(before, after, key):
     """Three lists: rows that moved, rows that arrived, keys that left.
 
-    `key` picks the field the two sides are lined up by, and it is the field
-    nothing else may change: the country code, and the town's position in the
-    file. Everything else about a row is a change to that row rather than a
-    different row.
+    `key` picks the field the two sides are lined up by, and it is the field that
+    is the row's identity: the country code, and the town's GeoNames mark.
+    Everything else about a row, its name, its country and its place in the
+    order, is a change to that row rather than a different row.
     """
     was = {key(row): row for row in before}
     now = {key(row): row for row in after}
@@ -765,36 +820,47 @@ def country_inserts(added):
             + values_list(added, country_values) + ';\n') if added else None
 
 
-def place_values(row):
-    name, code, english, rank = row
+PLACE_COLUMNS = '\n       ) as v (geonames_id, rank, name, country_code, english_name)\n'
 
-    return f'({rank}, {sql_text(name)}, {sql_text(code)}, {sql_text(english)})'
+
+def place_values(row):
+    mark, name, code, english, rank = row
+
+    return f'({mark}, {rank}, {sql_text(name)}, {sql_text(code)}, {sql_text(english)})'
 
 
 def place_deletes(removed):
-    return ('delete from place where rank in ('
-            + ', '.join(str(rank) for rank in removed) + ');\n') if removed else None
+    return ('delete from place where geonames_id in ('
+            + ', '.join(str(mark) for mark in removed) + ');\n') if removed else None
 
 
 def place_updates(changed):
+    """Everything about a town except which town it is.
+
+    `rank` is written here like any other column, because a town is found by its
+    mark: moving a town in the order is that town's row changing, and the order
+    key is deferred by the first statement of the migration so a whole range of
+    it may move in this one UPDATE.
+    """
     return ('update place as p\n'
             '   set name = v.name::text,\n'
             '       country_id = c.id,\n'
-            '       english_name = v.english_name::text\n'
+            '       english_name = v.english_name::text,\n'
+            '       rank = v.rank::integer\n'
             '  from (values\n'
             + values_list(changed, place_values)
-            + '\n       ) as v (rank, name, country_code, english_name)\n'
-            '  join country c on c.code = v.country_code::text\n'
-            ' where p.rank = v.rank::integer;\n') if changed else None
+            + PLACE_COLUMNS
+            + '  join country c on c.code = v.country_code::text\n'
+            ' where p.geonames_id = v.geonames_id::bigint;\n') if changed else None
 
 
 def place_inserts(added):
-    return ('insert into place (name, country_id, english_name, rank)\n'
-            'select v.name::text, c.id, v.english_name::text, v.rank::integer\n'
+    return ('insert into place (geonames_id, name, country_id, english_name, rank)\n'
+            'select v.geonames_id::bigint, v.name::text, c.id, v.english_name::text, v.rank::integer\n'
             '  from (values\n'
             + values_list(added, place_values)
-            + '\n       ) as v (rank, name, country_code, english_name)\n'
-            '  join country c on c.code = v.country_code::text;\n') if added else None
+            + PLACE_COLUMNS
+            + '  join country c on c.code = v.country_code::text;\n') if added else None
 
 
 def every_town_names_a_country(country_rows, place_rows):
@@ -808,7 +874,7 @@ def every_town_names_a_country(country_rows, place_rows):
     file is written.
     """
     listed = {code for code, _, _, _ in country_rows}
-    orphans = sorted({code for _, code, _, _ in place_rows if code not in listed})
+    orphans = sorted({code for _, _, code, _, _ in place_rows if code not in listed})
 
     if orphans:
         raise SystemExit('the town codebook names countries the country list does not carry: '
@@ -816,27 +882,59 @@ def every_town_names_a_country(country_rows, place_rows):
                          + '\nremove those towns as well, or put the countries back')
 
 
-def no_country_arrives_with_a_name_still_worn(before, added):
-    """A country arriving may not take a name the codebook has not released.
+def no_country_takes_a_name_still_worn(before, added, changed, removed):
+    """No country may take a name that is still worn when its statement runs.
 
-    `country_inserts` is the first statement of a delta, so at that moment the
-    table still holds every country of `before`, and `country_name_unique` is
-    plain: it was never declared deferrable, so SET CONSTRAINTS cannot put it
-    off and it is checked as the row is written. Moving the insert later is not
-    an answer either, because a town moving to that country has to find it there.
+    `country_name_unique` is plain: it was never declared deferrable, so SET
+    CONSTRAINTS cannot put it off and PostgreSQL checks it as each row is
+    written, inside the statement. That makes two shapes of delta unwritable, and
+    the second of them is the one this refused to see until 09.09.2026:
 
-    Said here, before a file is written, rather than as `duplicate key value
-    violates unique constraint "country_name_unique"` in the middle of a
-    migration on a live database.
+    1. A country ARRIVING with a name another country has not given up.
+       `country_inserts` is the first statement, so every country of `before` is
+       still there. Moving the insert later is no answer, because a town moving to
+       that country has to find it there.
+
+    2. Two countries EXCHANGING names, which is the ordinary shape of somebody
+       working out which Congo is which. `country_updates` is a single UPDATE over
+       a VALUES list, and a plain unique index is checked per row inside a
+       statement, so whichever of the two rows is written first lands on a name
+       the other has not released. Measured: swapping the names of CG and CD in
+       `countries.json` left this script at exit code 0 and produced a migration
+       that fails with `duplicate key value violates unique constraint
+       "country_name_unique"`, while the DELTA_HEAD text it wrote into that same
+       file said the script refuses to write such a delta.
+
+    What is not refused, and is measured rather than reasoned: a name freed by a
+    country that LEAVES. `country_deletes` stands ahead of `country_updates`, so
+    by then the name is gone.
+
+    Said here, before a file is written, rather than as a migration that stops
+    halfway through on a live database.
     """
     worn = {name for _, name, _, _ in before}
-    clashing = sorted({name for _, name, _, _ in added if name in worn})
+    arriving = sorted({name for _, name, _, _ in added if name in worn})
 
-    if clashing:
+    if arriving:
         raise SystemExit('a country arrives carrying a name another country has not given up yet: '
-                         + ', '.join(clashing)
+                         + ', '.join(arriving)
                          + '\nthe first statement of a delta is the insert, and country_name_unique is plain, '
                            'so this one is a migration written by hand')
+
+    # And who wears what by the time `country_updates` runs: the ones that left
+    # are gone by then, the ones that arrived are in.
+    leaving = set(removed)
+    wearer = {name: code for code, name, _, _ in before if code not in leaving}
+    wearer.update({name: code for code, name, _, _ in added})
+
+    exchanging = sorted({name for code, name, _, _ in changed
+                         if wearer.get(name, code) != code})
+
+    if exchanging:
+        raise SystemExit('a country takes a name another country gives up in the very same statement: '
+                         + ', '.join(exchanging)
+                         + '\ncountry_updates is one UPDATE and country_name_unique is plain, so it is checked '
+                           'row by row inside it; this one is a migration written by hand')
 
 
 def delta_migration(since, before=None, after=None):
@@ -852,9 +950,9 @@ def delta_migration(since, before=None, after=None):
     every_town_names_a_country(country_now, place_now)
 
     country_changed, country_added, country_removed = difference(country_before, country_now, lambda row: row[0])
-    place_changed, place_added, place_removed = difference(place_before, place_now, lambda row: row[3])
+    place_changed, place_added, place_removed = difference(place_before, place_now, lambda row: row[0])
 
-    no_country_arrives_with_a_name_still_worn(country_before, country_added)
+    no_country_takes_a_name_still_worn(country_before, country_added, country_changed, country_removed)
 
     say(f'countries: {len(country_changed)} changed, {len(country_added)} added, {len(country_removed)} removed')
     say(f'places: {len(place_changed)} changed, {len(place_added)} added, {len(place_removed)} removed')

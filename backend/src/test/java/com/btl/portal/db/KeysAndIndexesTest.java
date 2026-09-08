@@ -75,12 +75,13 @@ class KeysAndIndexesTest extends DatabaseTest {
 	 * foreign key can ever name.
 	 * </ol>
 	 *
-	 * <p>Both are measured below rather than asserted here, and the second decides
-	 * a question the schema does not have yet: when the town codebook gets a
-	 * speaking mark of its own, so that ADL A36 O5 can give an event a foreign key
-	 * to a place, that mark's unique key is <b>plain</b>. It exists to be pointed
-	 * at, and price 2 says a deferrable one cannot be. See {@link PlaceIdentityTest}
-	 * for why the codebook has no such mark today.
+	 * <p>Both are measured below rather than asserted here, and the second decided
+	 * a question the schema did not have when this was written and has now. The
+	 * town codebook was given a speaking mark of its own on 08.09.2026, so that
+	 * ADL A36 O5 can give an event a foreign key to a place, and that mark's
+	 * unique key is <b>plain</b>: it exists to be pointed at, and price 2 says a
+	 * deferrable one cannot be. See {@link PlaceIdentityTest}, which holds the two
+	 * halves of that over the codebook itself.
 	 */
 	private static final List<Key> KEYS = List.of(
 			new Key("country_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
@@ -89,6 +90,8 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("country_sort_order_unique", true,
 					"the order countries are listed in: a country joining the region moves every one below it"),
 			new Key("place_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("place_geonames_id_unique", false,
+					"a town is looked up by its GeoNames mark, and the mark is there to be pointed at"),
 			new Key("place_rank_unique", true,
 					"the order towns are suggested in: inserting one town moves the rank of every smaller town"),
 			new Key("price_row_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),

@@ -10,11 +10,15 @@ import { placeName, placesLike, plainly, SUGGESTIONS, type Place } from './place
  * be among the first few offered.
  */
 
-const BEOGRAD: Place = ['Beograd', 'RS', 'Belgrade']
-const NOVI_SAD: Place = ['Novi Sad', 'RS']
-const UZICE: Place = ['Užice', 'RS']
-const BOSTON_US: Place = ['Boston', 'US']
-const BOSTON_GB: Place = ['Boston', 'GB']
+/* The first field is the town's GeoNames mark, and these are the real ones out
+   of the shipped codebook rather than numbers made up here. Two of them earn
+   their place: Boston in the United States and Boston in England are one name in
+   two countries, and the mark is the only field that tells them apart. */
+const BEOGRAD: Place = [792680, 'Beograd', 'RS', 'Belgrade']
+const NOVI_SAD: Place = [3194360, 'Novi Sad', 'RS']
+const UZICE: Place = [3188434, 'Užice', 'RS']
+const BOSTON_US: Place = [4930956, 'Boston', 'US']
+const BOSTON_GB: Place = [2655138, 'Boston', 'GB']
 
 const SOME: Place[] = [BEOGRAD, NOVI_SAD, UZICE, BOSTON_US, BOSTON_GB]
 
@@ -39,7 +43,7 @@ describe('the letters of a town as they are typed', () => {
 describe('the town somebody is typing', () => {
   it('says nothing until two letters have been typed', () => {
     /* One letter matches thousands of towns and answers nothing (owner,
-       10.08.2026), and the codebook is nine hundred kilobytes that nobody who
+       10.08.2026), and the codebook is a megabyte and a quarter that nobody who
        merely opened a form has asked for. */
     expect(placesLike(SOME, '')).toEqual([])
     expect(placesLike(SOME, 'b')).toEqual([])
@@ -73,7 +77,7 @@ describe('the town somebody is typing', () => {
   })
 
   it('stops at eight, because a list longer than the form is not a suggestion', () => {
-    const many: Place[] = Array.from({ length: 40 }, (_, at) => [`Nova ${String(at)}`, 'RS'])
+    const many: Place[] = Array.from({ length: 40 }, (_, at) => [1000 + at, `Nova ${String(at)}`, 'RS'])
 
     expect(placesLike(many, 'nova')).toHaveLength(8)
     /* And the constant is that number, said separately: written as

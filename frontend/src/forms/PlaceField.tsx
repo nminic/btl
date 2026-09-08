@@ -124,14 +124,14 @@ export function PlaceField({
     const found = new Map<string, Set<string>>()
 
     for (const one of places) {
-      for (const written of one[2] === undefined ? [one[0]] : [one[0], one[2]]) {
+      for (const written of one[3] === undefined ? [one[1]] : [one[1], one[3]]) {
         const folded = plainly(written)
         const already = found.get(folded)
 
         if (already === undefined) {
-          found.set(folded, new Set([one[1]]))
+          found.set(folded, new Set([one[2]]))
         } else {
-          already.add(one[1])
+          already.add(one[2])
         }
       }
     }
@@ -143,7 +143,7 @@ export function PlaceField({
      place. Picking counts even for a name two countries share, because then the
      row that was pressed said which of them it was; typing „London" says
      nothing, and the choice stays open. */
-  const known = picked?.[1] ?? (only.length === 1 ? only[0] : undefined)
+  const known = picked?.[2] ?? (only.length === 1 ? only[0] : undefined)
 
   useEffect(() => {
     /* And a town typed out in full, letter by letter, ends in the same place as
@@ -236,7 +236,7 @@ export function PlaceField({
     }
 
     touched.current = true
-    onChange(placeName(place, locale), place[1])
+    onChange(placeName(place, locale), place[2])
     setPicked(place)
     setOpen(false)
     setAt(-1)
@@ -390,7 +390,13 @@ export function PlaceField({
         <ul className="place__list" id={listId} role="listbox" aria-label={t('form.places')}>
           {offered.map((place, index) => (
             <li
-              key={`${place[0]}-${place[1]}-${String(index)}`}
+              /* The town's own mark, which is what it is for: the name and the
+                 country are not a key, since seven hundred and thirty eight
+                 names in the codebook stand in more than one country and a
+                 country can hold two towns of one name. Before the codebook
+                 carried a mark this was name, country and the row number
+                 together, and the row number was doing the work. */
+              key={place[0]}
               id={`${listId}-${String(index)}`}
               className={index === at ? 'place__one place__one--at' : 'place__one'}
               role="option"
@@ -407,7 +413,7 @@ export function PlaceField({
               }}
             >
               <span className="place__name">{placeName(place, locale)}</span>{' '}
-              <span className="place__country">({countryName(place[1])})</span>
+              <span className="place__country">({countryName(place[2])})</span>
             </li>
           ))}
         </ul>
