@@ -12,6 +12,12 @@ Two things this script does, and they are not the same thing:
         since `main`. This is how a codebook is maintained after its migration
         has been merged, and it is the only way.
 
+`--delta` also takes `--before <dir>`, `--after <dir>` and `--stdout`, and those
+three exist for one caller: `DeltaMigrationAppliesTest` hands it two codebooks
+with one thing changed between them and applies the migration it gets back to a
+real PostgreSQL. A generated migration nothing ever runs is a guess about the
+order its statements have to be in, and that guess was wrong until 09.09.2026.
+
 It writes, under `backend/src/main/resources/db/migration`:
 
     V2__country.sql     246 countries, out of frontend/src/data/countries.json
@@ -147,6 +153,35 @@ def read_at(revision, path):
         raise SystemExit(f'{relative(path)} is not in {revision}, so there is nothing to compare against')
 
     return json.loads(text)
+
+
+def codebooks(revision=None, directory=None):
+    """Both codebooks together, out of a directory, out of git, or off the disk.
+
+    One reader for the two sides of a delta, so that neither side can be read a
+    way the other cannot. A directory holds them under the names they have in
+    the repository, which is what lets a test hand the generator a codebook with
+    one thing changed in it and get the migration that change would produce,
+    without writing anything under `frontend/`.
+    """
+    if directory is not None:
+        return (json.loads((directory / COUNTRIES.name).read_text(encoding='utf-8')),
+                json.loads((directory / PLACES.name).read_text(encoding='utf-8')))
+
+    if revision is not None:
+        return read_at(revision, COUNTRIES), read_at(revision, PLACES)
+
+    return (json.loads(COUNTRIES.read_text(encoding='utf-8')),
+            json.loads(PLACES.read_text(encoding='utf-8')))
+
+
+def say(message):
+    """Progress, on the error stream.
+
+    Not on the output stream, because --stdout puts the migration there and a
+    caller reading it must get SQL and nothing else.
+    """
+    print(message, file=sys.stderr)
 
 
 def next_version():
@@ -330,7 +365,35 @@ PLACE_DDL = """
    There is deliberately no unique key over (name, country). It would not hold:
    one thousand six hundred and fourteen name and country pairs occur more than
    once in the codebook, three towns in China are all called Zhongshan, and they
-   are three towns. */
+   are three towns.
+
+   WHAT `id` IS NOT, AND THE BOUNDARY THAT FOLLOWS FROM IT
+   ------------------------------------------------------
+   `id` is a bigserial and there is nothing beside it. ADL A36 O1 asks for a
+   speaking mark next to the key "where one already exists", and for a town none
+   does: the codebook ships each town as ["name", "COUNTRY"] and nothing else, so
+   there is no mark to carry, and the pair of name and country is not one either,
+   for the reason two paragraphs up.
+
+   A delta migration therefore lines the two states of the codebook up by `rank`,
+   which is a position in a file and not a fact about a town. Measured on
+   09.09.2026: taking one town out of the top of the codebook produces 46,877
+   changed rows, and the row that held Shenzhen ends up holding Guangzhou under
+   the same `id`. Nothing is lost today because nothing points at a town, and
+   that is the whole of why it is not lost.
+
+   SO: NOTHING MAY HOLD A FOREIGN KEY TO THIS TABLE. Not a decision about style,
+   a consequence of the paragraph above: a row whose contents move under a stable
+   `id` cannot be referred to by that `id`. ADL A36 O5 gives an event a foreign
+   key to a place, and that increment cannot be written until the codebook itself
+   carries a mark of its own. The one that exists is the GeoNames identifier,
+   which ../btl-produkt/istorijski-podaci/napravi-mesta.py already reads out of
+   cities500 and drops on the way out; carrying it through is what makes O5
+   buildable, and it is a change to the codebook and so to this table, which
+   means the next migration and not this one (ADL A2).
+
+   PlaceIdentityTest fails the day anything references a town, so the boundary is
+   held rather than remembered. */
 create table place (
     id           bigserial not null,
     name         text      not null collate sr_latn,
@@ -371,14 +434,31 @@ create table place (
        taken together can still say `set constraints place_rank_unique deferred`,
        which is the point of DEFERRABLE, and the check then fires at COMMIT.
 
-       What this costs, measured and named rather than discovered later: an
-       `insert ... on conflict (rank)` no longer compiles against this table,
-       `ON CONFLICT does not support deferrable unique constraints/exclusion
-       constraints as arbiters`. Nothing does that today and a delta migration
-       has no business doing it either, because it must say which rows it means.
-       The two remaining unique keys that are looked up rather than ordered,
-       `country_code_unique` and `price_row_key_unique`, stay plain and stay
-       available as arbiters. */
+       What this costs, measured and named rather than discovered later. There
+       are two prices, not one, and the second is the larger of them:
+
+       1. An `insert ... on conflict (rank)` no longer compiles against this
+          table, `ON CONFLICT does not support deferrable unique constraints/
+          exclusion constraints as arbiters`. Nothing does that today and a delta
+          migration has no business doing it either, because it must say which
+          rows it means.
+
+       2. No foreign key may point at a deferrable unique key at all: `create
+          table t (r integer references place (rank))` is `ERROR: cannot use a
+          deferrable unique constraint for referenced table "place"`, refused
+          when the referring table is created rather than when a row is written.
+          So a column declared deferrable is a column nothing can ever refer to.
+
+       Which decides a question this table does not have yet and will:
+       WHEN THE TOWN CODEBOOK GETS A SPEAKING MARK OF ITS OWN, THAT MARK'S UNIQUE
+       KEY IS PLAIN AND NEVER DEFERRABLE. The mark exists to be referred to, that
+       is the whole of what ADL A36 O5 wants it for, and price 2 says a
+       deferrable key cannot be. The rule the schema already follows is the same
+       one said from the other side: a key over an order is deferrable because a
+       range of it moves; a key that is looked up stays plain. The two that are
+       looked up today, `country_code_unique` and `price_row_key_unique`, stay
+       plain and stay available as arbiters, and KeysAndIndexesTest measures both
+       prices against every deferrable key in the schema. */
     constraint place_rank_unique unique (rank) deferrable initially immediate,
 
     constraint place_rank_positive check (rank > 0),
@@ -600,18 +680,45 @@ DELTA_HEAD = """
    change is a migration somebody writes by hand, and this script does not
    pretend otherwise.
 
-   The order of the statements below is not arrangement, it is the only order
-   that runs, and it was found by running it (08.09.2026):
+   `set constraints all deferred` is the first statement and it is the whole
+   reason the three order keys were declared DEFERRABLE. V3 says so over
+   `place.rank`: an order is maintained by moving a range of it, and a
+   maintenance transaction that needs a sequence of statements taken together
+   asks for the check once, at the end, when the order is final. Nothing else is
+   loosened. `country_code_unique`, `country_name_unique` and
+   `price_row_key_unique` were never declared deferrable, so SET CONSTRAINTS does
+   not touch them and they are still checked as each row is written.
 
-     - towns go before countries, both when leaving; a country still named by a
-       town is `update or delete on table "country" violates foreign key
-       constraint "place_country_fk" on table "place"`, and it does not matter
-       that the town was on its way out too;
-     - countries arrive before towns are moved or added, because a town may be
-       moving to a country that is arriving in this same migration;
-     - and each statement stands on its own, because the order columns are
-       DEFERRABLE INITIALLY IMMEDIATE: one UPDATE may move a whole range at once,
-       and no UPDATE may end with two rows in one position. */
+   What is left is `place_country_fk`, which is not deferrable and cannot be, and
+   it alone decides the order below. Each line of it is a case that was run
+   against a real database, and DeltaMigrationAppliesTest runs this migration
+   against one rather than reading it:
+
+     - countries arrive first, because a town may be moving to a country that is
+       arriving in this same migration;
+     - towns leave, change and arrive next, so that by the time a country goes
+       no row names it;
+     - countries leave after that, and this is where the order was wrong until
+       09.09.2026. `country_deletes` stood second, ahead of `place_updates`, and
+       a town is lined up by its position in the file rather than by anything
+       about the town: removing a country with its only town wrote the DELETE
+       against the LAST rank in the file and left the row that actually named
+       that country to be rewritten three statements later. Both that and a
+       country changing its code came back `update or delete on table "country"
+       violates foreign key constraint "place_country_fk" on table "place"`. The
+       sentence that used to stand here, that this was the only order that runs
+       and was found by running it, was true of the inputs it had been run on and
+       of no others, which is what a generator with no test over its output is
+       worth;
+     - and the countries that stayed are updated last, which is also where the
+       order columns settle before the COMMIT that checks them.
+
+   What this does not cover, said here rather than left to be found: a country
+   arriving with a name the codebook has not released yet. Its INSERT is the
+   first statement, `country_name_unique` is plain, and no order of these six
+   statements both frees that name and still has the new country in place before
+   a town moves to it. The script refuses to write such a delta and names the
+   country; that one is a migration written by hand. */
 """
 
 
@@ -709,34 +816,64 @@ def every_town_names_a_country(country_rows, place_rows):
                          + '\nremove those towns as well, or put the countries back')
 
 
-def delta_migration(since):
+def no_country_arrives_with_a_name_still_worn(before, added):
+    """A country arriving may not take a name the codebook has not released.
+
+    `country_inserts` is the first statement of a delta, so at that moment the
+    table still holds every country of `before`, and `country_name_unique` is
+    plain: it was never declared deferrable, so SET CONSTRAINTS cannot put it
+    off and it is checked as the row is written. Moving the insert later is not
+    an answer either, because a town moving to that country has to find it there.
+
+    Said here, before a file is written, rather than as `duplicate key value
+    violates unique constraint "country_name_unique"` in the middle of a
+    migration on a live database.
+    """
+    worn = {name for _, name, _, _ in before}
+    clashing = sorted({name for _, name, _, _ in added if name in worn})
+
+    if clashing:
+        raise SystemExit('a country arrives carrying a name another country has not given up yet: '
+                         + ', '.join(clashing)
+                         + '\nthe first statement of a delta is the insert, and country_name_unique is plain, '
+                           'so this one is a migration written by hand')
+
+
+def delta_migration(since, before=None, after=None):
     """The next migration, or None when the two codebooks already agree with git."""
-    country_before = countries(read_at(since, COUNTRIES))
-    country_now = countries(json.loads(COUNTRIES.read_text(encoding='utf-8')))
-    place_before = places(read_at(since, PLACES))
-    place_now = places(json.loads(PLACES.read_text(encoding='utf-8')))
+    country_file_before, place_file_before = codebooks(revision=since, directory=before)
+    country_file_now, place_file_now = codebooks(directory=after)
+
+    country_before = countries(country_file_before)
+    country_now = countries(country_file_now)
+    place_before = places(place_file_before)
+    place_now = places(place_file_now)
 
     every_town_names_a_country(country_now, place_now)
 
     country_changed, country_added, country_removed = difference(country_before, country_now, lambda row: row[0])
     place_changed, place_added, place_removed = difference(place_before, place_now, lambda row: row[3])
 
-    print(f'countries: {len(country_changed)} changed, {len(country_added)} added, {len(country_removed)} removed')
-    print(f'places: {len(place_changed)} changed, {len(place_added)} added, {len(place_removed)} removed')
+    no_country_arrives_with_a_name_still_worn(country_before, country_added)
 
-    parts = [part for part in (place_deletes(place_removed),
-                               country_deletes(country_removed),
-                               country_updates(country_changed),
-                               country_inserts(country_added),
+    say(f'countries: {len(country_changed)} changed, {len(country_added)} added, {len(country_removed)} removed')
+    say(f'places: {len(place_changed)} changed, {len(place_added)} added, {len(place_removed)} removed')
+
+    # The order is explained in DELTA_HEAD and measured by DeltaMigrationAppliesTest.
+    parts = [part for part in (country_inserts(country_added),
+                               place_deletes(place_removed),
                                place_updates(place_changed),
-                               place_inserts(place_added)) if part]
+                               place_inserts(place_added),
+                               country_deletes(country_removed),
+                               country_updates(country_changed)) if part]
 
     if not parts:
         return None
 
     return (BANNER.format(source=f'{relative(COUNTRIES)} and {relative(PLACES)}')
-            + DELTA_HEAD.format(since=since)
-            + '\n' + '\n'.join(parts))
+            + DELTA_HEAD.format(since=before or since)
+            + '\nset constraints all deferred;\n\n'
+            + '\n'.join(parts))
 
 
 # --------------------------------------------------------------------------
@@ -749,27 +886,48 @@ def main(argv=None):
     parser.add_argument('--since', default=None,
                         help='the revision the delta is measured against; the released branch by default, '
                              'which is what every database that matters has applied')
+    parser.add_argument('--before', default=None,
+                        help='a directory holding countries.json and places.json to measure the delta against, '
+                             'instead of git; for a test that has to hand the generator a state git does not hold')
+    parser.add_argument('--after', default=None,
+                        help='a directory holding the two codebooks as they should end up, instead of this '
+                             'working tree')
+    parser.add_argument('--stdout', action='store_true',
+                        help='write the migration to standard output instead of into the migration directory')
     options = parser.parse_args(argv)
 
     released = released_branch()
 
     if options.delta:
+        before = Path(options.before).resolve() if options.before else None
+        after = Path(options.after).resolve() if options.after else None
         since = options.since or released
 
-        if since is None:
+        if since is None and before is None:
             raise SystemExit('neither origin/main nor main resolves in this clone; say --since <revision>')
 
-        body = delta_migration(since)
+        body = delta_migration(since, before, after)
 
         if body is None:
-            print(f'the codebooks already say what {since} says; nothing to write')
+            say(f'the codebooks already say what {before or since} says; nothing to write')
+            return 0
+
+        if options.stdout:
+            # Bytes, and UTF-8 named rather than left to the machine. Town names
+            # carry every accent Europe has and the default encoding of a Windows
+            # console is cp1252, which stops at the first c-with-caron with
+            # `UnicodeEncodeError: 'charmap' codec can't encode character`. The
+            # files this reads are UTF-8 and the file it would otherwise write is
+            # UTF-8, so this is the same file by another way out.
+            sys.stdout.buffer.write(body.encode('utf-8'))
             return 0
 
         write(f'V{next_version()}__reference_data_update.sql', body, released)
         return 0
 
-    country_rows = countries(json.loads(COUNTRIES.read_text(encoding='utf-8')))
-    place_rows = places(json.loads(PLACES.read_text(encoding='utf-8')))
+    country_file, place_file = codebooks()
+    country_rows = countries(country_file)
+    place_rows = places(place_file)
     every_town_names_a_country(country_rows, place_rows)
 
     write('V2__country.sql', country_migration(country_rows), released)

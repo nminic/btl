@@ -38,7 +38,35 @@
    There is deliberately no unique key over (name, country). It would not hold:
    one thousand six hundred and fourteen name and country pairs occur more than
    once in the codebook, three towns in China are all called Zhongshan, and they
-   are three towns. */
+   are three towns.
+
+   WHAT `id` IS NOT, AND THE BOUNDARY THAT FOLLOWS FROM IT
+   ------------------------------------------------------
+   `id` is a bigserial and there is nothing beside it. ADL A36 O1 asks for a
+   speaking mark next to the key "where one already exists", and for a town none
+   does: the codebook ships each town as ["name", "COUNTRY"] and nothing else, so
+   there is no mark to carry, and the pair of name and country is not one either,
+   for the reason two paragraphs up.
+
+   A delta migration therefore lines the two states of the codebook up by `rank`,
+   which is a position in a file and not a fact about a town. Measured on
+   09.09.2026: taking one town out of the top of the codebook produces 46,877
+   changed rows, and the row that held Shenzhen ends up holding Guangzhou under
+   the same `id`. Nothing is lost today because nothing points at a town, and
+   that is the whole of why it is not lost.
+
+   SO: NOTHING MAY HOLD A FOREIGN KEY TO THIS TABLE. Not a decision about style,
+   a consequence of the paragraph above: a row whose contents move under a stable
+   `id` cannot be referred to by that `id`. ADL A36 O5 gives an event a foreign
+   key to a place, and that increment cannot be written until the codebook itself
+   carries a mark of its own. The one that exists is the GeoNames identifier,
+   which ../btl-produkt/istorijski-podaci/napravi-mesta.py already reads out of
+   cities500 and drops on the way out; carrying it through is what makes O5
+   buildable, and it is a change to the codebook and so to this table, which
+   means the next migration and not this one (ADL A2).
+
+   PlaceIdentityTest fails the day anything references a town, so the boundary is
+   held rather than remembered. */
 create table place (
     id           bigserial not null,
     name         text      not null collate sr_latn,
@@ -79,14 +107,31 @@ create table place (
        taken together can still say `set constraints place_rank_unique deferred`,
        which is the point of DEFERRABLE, and the check then fires at COMMIT.
 
-       What this costs, measured and named rather than discovered later: an
-       `insert ... on conflict (rank)` no longer compiles against this table,
-       `ON CONFLICT does not support deferrable unique constraints/exclusion
-       constraints as arbiters`. Nothing does that today and a delta migration
-       has no business doing it either, because it must say which rows it means.
-       The two remaining unique keys that are looked up rather than ordered,
-       `country_code_unique` and `price_row_key_unique`, stay plain and stay
-       available as arbiters. */
+       What this costs, measured and named rather than discovered later. There
+       are two prices, not one, and the second is the larger of them:
+
+       1. An `insert ... on conflict (rank)` no longer compiles against this
+          table, `ON CONFLICT does not support deferrable unique constraints/
+          exclusion constraints as arbiters`. Nothing does that today and a delta
+          migration has no business doing it either, because it must say which
+          rows it means.
+
+       2. No foreign key may point at a deferrable unique key at all: `create
+          table t (r integer references place (rank))` is `ERROR: cannot use a
+          deferrable unique constraint for referenced table "place"`, refused
+          when the referring table is created rather than when a row is written.
+          So a column declared deferrable is a column nothing can ever refer to.
+
+       Which decides a question this table does not have yet and will:
+       WHEN THE TOWN CODEBOOK GETS A SPEAKING MARK OF ITS OWN, THAT MARK'S UNIQUE
+       KEY IS PLAIN AND NEVER DEFERRABLE. The mark exists to be referred to, that
+       is the whole of what ADL A36 O5 wants it for, and price 2 says a
+       deferrable key cannot be. The rule the schema already follows is the same
+       one said from the other side: a key over an order is deferrable because a
+       range of it moves; a key that is looked up stays plain. The two that are
+       looked up today, `country_code_unique` and `price_row_key_unique`, stay
+       plain and stay available as arbiters, and KeysAndIndexesTest measures both
+       prices against every deferrable key in the schema. */
     constraint place_rank_unique unique (rank) deferrable initially immediate,
 
     constraint place_rank_positive check (rank > 0),

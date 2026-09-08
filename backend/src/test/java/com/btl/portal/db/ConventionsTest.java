@@ -2,7 +2,12 @@ package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -104,16 +109,60 @@ class ConventionsTest extends DatabaseTest {
 	 * nobody notices, and no constraint anywhere would say so. This does.
 	 *
 	 * Read out of the catalogue rather than listed from memory, so a fourth table
-	 * arriving without a decision fails here instead of being found later.
+	 * arriving without a decision fails here instead of being found later. Flyway's
+	 * own table is left out by {@link DatabaseTest#tablesInTheSchema()}, which asks
+	 * Flyway what it is called; until 09.09.2026 this line wrote the name out by
+	 * hand instead, which was the same setting written in two places two files
+	 * apart.
 	 */
 	@Test
 	void theSchemaHoldsOnlyTheTablesTheseMigrationsCreate() {
-		List<String> tables = db
-				.sql("select tablename from pg_tables where schemaname = current_schema() order by tablename")
-				.query(String.class)
-				.list();
+		assertThat(tablesInTheSchema()).containsExactly("country", "place", "price_row");
+	}
 
-		assertThat(tables).containsExactly("country", "flyway_schema_history", "place", "price_row");
+	/**
+	 * And no Java source writes that name out again.
+	 *
+	 * The floor under the line above, and it is here because the line above is
+	 * what it was measured on: setting {@code spring.flyway.table} to anything
+	 * else broke exactly one test in the suite, this one, because it alone held
+	 * the name rather than asking for it. Fixing the one line leaves nothing at
+	 * all saying the next one may not do the same, and a test that would only fail
+	 * under a setting nobody has set is not a floor.
+	 *
+	 * <p>What it reads and what it does not, said rather than narrowed quietly:
+	 * every {@code .java} file under {@code backend/src}, found by walking the
+	 * tree rather than listed, against the name Flyway itself reports. Properties
+	 * files are not read, and that is the whole of the rule: a configuration file
+	 * is where the setting is allowed to be written, and Java code asks.
+	 */
+	@Test
+	void noJavaSourceWritesTheNameOfFlywaysOwnTable() throws IOException {
+		Path sources = repositoryRoot().resolve("backend/src");
+		String name = flywayTable();
+
+		try (Stream<Path> tree = Files.walk(sources)) {
+			List<String> guilty = tree
+					.filter(path -> path.getFileName().toString().endsWith(".java"))
+					.filter(path -> readable(path).contains(name))
+					.map(path -> sources.relativize(path).toString())
+					.sorted()
+					.toList();
+
+			assertThat(guilty)
+					.as("ask flywayTable() instead: this is a setting, and a setting written down twice is a "
+							+ "setting that moves in one of the two places")
+					.isEmpty();
+		}
+	}
+
+	private static String readable(Path path) {
+		try {
+			return Files.readString(path);
+		}
+		catch (IOException problem) {
+			throw new UncheckedIOException(problem);
+		}
 	}
 
 	private String one(String sql) {

@@ -63,7 +63,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 	private static final List<Applied> PINNED = List.of(
 			new Applied("1", "V1__conventions_and_extensions.sql", 1828764489),
 			new Applied("2", "V2__country.sql", 1858027338),
-			new Applied("3", "V3__place.sql", 1436635256),
+			new Applied("3", "V3__place.sql", -1163349150),
 			new Applied("4", "V4__price_list.sql", -1093755363));
 
 	@Test

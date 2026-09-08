@@ -62,10 +62,25 @@ class KeysAndIndexesTest extends DatabaseTest {
 	 * The rule the lines follow: a key over a column that carries an <b>order</b>
 	 * is deferrable, because an order is maintained by moving a range of it and a
 	 * plain UNIQUE makes that impossible rather than awkward. A key over a column
-	 * that is <b>looked up</b> is not, because nothing ever moves a range of codes,
-	 * and staying plain keeps it usable as an {@code ON CONFLICT} arbiter, which a
-	 * deferrable one is not: {@code ON CONFLICT does not support deferrable unique
-	 * constraints/exclusion constraints as arbiters}.
+	 * that is <b>looked up</b> is not, and there are two prices for getting that
+	 * side wrong rather than the one this file named until 09.09.2026:
+	 *
+	 * <ol>
+	 * <li>a deferrable key is no {@code ON CONFLICT} arbiter, {@code ON CONFLICT
+	 * does not support deferrable unique constraints/exclusion constraints as
+	 * arbiters};
+	 * <li>and nothing may point at one at all: {@code ERROR: cannot use a
+	 * deferrable unique constraint for referenced table}, refused when the
+	 * referring table is created. A column declared deferrable is a column no
+	 * foreign key can ever name.
+	 * </ol>
+	 *
+	 * <p>Both are measured below rather than asserted here, and the second decides
+	 * a question the schema does not have yet: when the town codebook gets a
+	 * speaking mark of its own, so that ADL A36 O5 can give an event a foreign key
+	 * to a place, that mark's unique key is <b>plain</b>. It exists to be pointed
+	 * at, and price 2 says a deferrable one cannot be. See {@link PlaceIdentityTest}
+	 * for why the codebook has no such mark today.
 	 */
 	private static final List<Key> KEYS = List.of(
 			new Key("country_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
@@ -108,7 +123,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 						       con.condeferrable      as deferrable,
 						       con.condeferred        as deferred,
 						       cls.relname            as table_name,
-						       string_agg(att.attname, ',' order by att.attnum) as columns
+						       string_agg(att.attname, ',' order by att.attnum) as columns,
+						       string_agg(format_type(att.atttypid, att.atttypmod), ',' order by att.attnum)
+						                              as column_types
 						  from pg_constraint con
 						  join pg_class cls on cls.oid = con.conrelid
 						  join pg_namespace nsp on nsp.oid = cls.relnamespace
@@ -155,6 +172,11 @@ class KeysAndIndexesTest extends DatabaseTest {
 	/** The keys the list above says may be deferred, as (table, column) to move. */
 	static List<Key> orderKeys() {
 		return KEYS.stream().filter(Key::deferrable).toList();
+	}
+
+	/** And the ones it says may not, which are the ones anything may point at. */
+	static List<Key> lookedUpKeys() {
+		return KEYS.stream().filter(key -> !key.deferrable()).toList();
 	}
 
 	private Map<String, Object> catalogue(Key key) {
@@ -213,6 +235,59 @@ class KeysAndIndexesTest extends DatabaseTest {
 				.update())
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining(key.constraint());
+	}
+
+	/**
+	 * The second price of deferring: nothing may point at such a key.
+	 *
+	 * The comment in V3 called itself a list of what deferring costs and named one
+	 * item, the {@code ON CONFLICT} arbiter. This is the other, and it is the
+	 * larger of the two: a foreign key to a deferrable unique constraint is
+	 * refused outright, when the referring table is created, not when a row is
+	 * written. So the column is one nothing can ever refer to, which is a fact
+	 * about the whole schema rather than about one statement somebody might write.
+	 *
+	 * <p>Run against every deferrable key rather than against {@code place.rank},
+	 * so a fourth order column arriving is measured too. The type comes from
+	 * {@code format_type} for the same reason the column name does: guessing it
+	 * would make this a test about the guess.
+	 */
+	@ParameterizedTest
+	@MethodSource("orderKeys")
+	void noForeignKeyMayPointAtADeferrableKey(Key key) {
+		Map<String, Object> row = catalogue(key);
+
+		assertThatThrownBy(() -> db.sql(pointingAt(row)).update())
+				.as("a deferrable unique key is one no foreign key can name, and that is the price of deferring it")
+				.hasMessageContaining("cannot use a deferrable unique constraint for referenced table");
+	}
+
+	/**
+	 * And the keys that stayed plain can be pointed at, which is what they are for.
+	 *
+	 * The other half, and without it the test above is satisfied by a
+	 * {@code create table} that fails for any reason at all: a typo in the
+	 * statement it builds would pass it against every key and prove nothing. Here
+	 * the same statement, built the same way, has to go through.
+	 */
+	@ParameterizedTest
+	@MethodSource("lookedUpKeys")
+	void aKeyThatStayedPlainIsOneAForeignKeyMayName(Key key) {
+		Map<String, Object> row = catalogue(key);
+
+		assertThat(db.sql(pointingAt(row)).update()).isZero();
+	}
+
+	/** A table whose one column is a foreign key to that key, and nothing else. */
+	private String pointingAt(Map<String, Object> row) {
+		String column = (String) row.get("columns");
+		String type = (String) row.get("column_types");
+
+		assertThat(column)
+				.as("a key over more than one column needs a referring table written for it, not guessed")
+				.doesNotContain(",");
+
+		return "create table points_here (v " + type + " references " + row.get("table_name") + " (" + column + "))";
 	}
 
 	/**
