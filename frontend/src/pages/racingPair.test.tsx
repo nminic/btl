@@ -999,6 +999,22 @@ describe('a pair that ends because the same two are pairing again', () => {
 
     expect(his.length).toBeGreaterThan(0)
     expect(his.filter((one) => /Trkački par je raskinut/.test(one.textContent ?? '')).length).toBe(0)
+
+    /* **And the old pair really ended, which „nobody was left" says nothing about** (review,
+       08.09.2026). Said only of the message, the guard could stand in front of `breakPair` instead
+       of behind it and the gate stayed green, while she was left holding **two** pairs for 2027,
+       each with its own „Raskini" — the one state `pairsNow` calls impossible („one member is in
+       one pair per season", PDL P13). One row, and it is the pair they have just confirmed. */
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const rows = pairRows()
+
+    expect(rows.length).toBe(1)
+    expect(at(rows, 0)).toContain('20. 11. 2026')
+    expect(at(rows, 0)).not.toContain('15. 10. 2026')
+    expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(1)
   }, SLOW)
 })
 
@@ -1015,6 +1031,16 @@ describe('a question addressed to the whole league', () => {
 
     await screen.findByRole('heading', { level: 1, name: /Katarina/ })
     await user.click(screen.getByRole('button', { name: 'pitaj celu ligu' }))
+
+    /* **Both halves of „addressed to the reader", and the first is the one who asked** (review,
+       08.09.2026). Read as „somebody else cannot answer", a rule written as „the reader is the one
+       who asked **or** the one who was asked" says the same thing to a stranger, and lets the asker
+       confirm his own question: pressed, `makePair` pairs him with himself, and his profile draws a
+       pair with no name in it, because the other half of it is him. */
+    await openTheInvitation(user)
+
+    expect(screen.getByText(/Ovaj poziv više nije otvoren/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
 
     /* Časlav, who is neither the one asking nor the one asked. */
     await user.click(screen.getByRole('button', { name: 'postani 000004' }))
