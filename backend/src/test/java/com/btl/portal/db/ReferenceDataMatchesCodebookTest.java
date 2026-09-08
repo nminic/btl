@@ -14,13 +14,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The two codebooks in the database are the two codebooks the portal ships.
  *
- * This is the floor under V2 and V3. Both are written by
- * {@code backend/tools/generate_reference_migrations.py} out of files that live
- * under {@code frontend/}, and a generated file with nothing checking it is a
- * file that drifts the first time somebody edits the SQL by hand, or changes the
- * source and forgets to run the generator. Rather than trusting either, this
- * reads the same two source files and compares them against what actually
- * loaded, row by row and in order.
+ * This is the floor under V2, V3 and every delta migration after them. All of
+ * them are written by {@code backend/tools/generate_reference_migrations.py} out
+ * of files that live under {@code frontend/}, and a generated file with nothing
+ * checking it is a file that drifts the first time somebody edits the SQL by
+ * hand, or changes the source and forgets to write the migration that carries the
+ * change. Rather than trusting either, this reads the same two source files and
+ * compares them against what actually loaded, row by row and in order.
+ *
+ * <p><b>What to do when this fails, because until 08.09.2026 the answer written
+ * everywhere in the repository was the one thing that must not be done.</b> The
+ * codebook and the database have parted company, and the way back is the next
+ * migration and never the last one:
+ *
+ * <pre>python backend/tools/generate_reference_migrations.py --delta</pre>
+ *
+ * which writes what changed as its own V file. Regenerating V2 or V3 over
+ * themselves passes here and on CI, because both start from an empty database,
+ * and stops the backend from starting on QA, where those files have been applied
+ * since the day they merged. The generator refuses to do it and
+ * {@link MigrationsAreImmutableTest} fails if something else does.
  *
  * The source files are read and never written; nothing under {@code frontend/}
  * is touched. The precedent is the front end's own suite, which runs against the

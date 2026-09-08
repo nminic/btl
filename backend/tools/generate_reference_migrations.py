@@ -1,34 +1,72 @@
 # -*- coding: utf-8 -*-
 """Writes the reference-data migrations from the codebooks the portal already ships.
 
-Run from anywhere:
+Two things this script does, and they are not the same thing:
 
     python backend/tools/generate_reference_migrations.py
+        Writes the migration that first creates a codebook table and fills it.
+        Runs only for a migration `main` does not carry yet.
+
+    python backend/tools/generate_reference_migrations.py --delta
+        Writes the NEXT migration, carrying only what changed in the codebook
+        since `main`. This is how a codebook is maintained after its migration
+        has been merged, and it is the only way.
 
 It writes, under `backend/src/main/resources/db/migration`:
 
     V2__country.sql     246 countries, out of frontend/src/data/countries.json
     V3__place.sql    46,906 towns,     out of frontend/public/mock/places.json
-    V4__price_list.sql    6 price rows (see PRICE_ROWS below for where they come from)
+    V4__price_list.sql    7 price rows (see PRICE_ROWS below for where they come from)
 
-Why this script is in the repository rather than beside the data. The mock JSON
-under `frontend/public/mock` was committed as an artefact with its generator
-kept outside the repository, and the entry in the decision journal that records
-what that cost says it plainly: when the shape of the data changes, and it
-changes for as long as the schema is being designed, there is nothing to build
+
+WHY A MIGRATION IS NEVER REWRITTEN, measured rather than asserted
+----------------------------------------------------------------
+ADL A2: a migration is immutable once it is committed. That is not a style rule.
+Flyway records a checksum of every migration it applies, so a database that has
+already run V2 refuses to start against a changed V2:
+
+    Validate failed: Migrations have failed validation
+
+Measured on 08.09.2026: a one-character fix in `countries.json` followed by a
+plain re-run of this script leaves `./mvnw --batch-mode verify` at BUILD SUCCESS,
+locally and on CI, because Testcontainers starts every run from an empty
+database. The same two commits stop the backend from starting on QA, where V2
+has been applied since the day it merged. A green build is therefore no evidence
+at all about the one place it matters, which is exactly why the refusal below is
+in the tool and not in a sentence somebody has to remember.
+
+So this script asks git, not the person running it. A migration `main` already
+carries is never rewritten, with no flag to say otherwise: `main` is the branch
+QA follows (ADL A4a), so a file on it has been applied somewhere and a file that
+is not on it has been applied nowhere. A migration written on a branch and not
+yet merged is rewritten freely, and the script says out loud that it did.
+
+`MigrationsAreImmutableTest` holds the same line from the other side: it pins the
+checksum Flyway itself computed for every applied migration, so a rewrite by any
+hand, this script or an editor, fails the build.
+
+
+WHY THIS SCRIPT IS IN THE REPOSITORY at all
+-------------------------------------------
+The mock JSON under `frontend/public/mock` was committed as an artefact with its
+generator kept outside the repository, and the entry in the decision journal that
+records what that cost says it plainly: when the shape of the data changes, and
+it changes for as long as the schema is being designed, there is nothing to build
 it again with, and a hand edit of forty seven thousand rows is not an edit but a
-rewrite. A generated migration with no generator next to it is the same fault
-one layer down, so the generator lives here.
+rewrite. A generated migration with no generator next to it is the same fault one
+layer down, so the generator lives here.
 
-**Do not edit the generated .sql files by hand.** Change this script and run it
-again. `ReferenceDataMatchesCodebookTest` reads the same source files this
-script reads and compares them against what actually loaded, so a hand edit, or
-a run of this script that was forgotten, fails the build rather than shipping.
+`ReferenceDataMatchesCodebookTest` reads the same source files this script reads
+and compares them against what actually loaded, so a codebook changed without a
+delta migration fails the build, and the failure names the command above.
 
 Both source files are read, never written. Nothing under `frontend/` is touched.
 """
 
+import argparse
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -38,18 +76,101 @@ PLACES = REPO / 'frontend' / 'public' / 'mock' / 'places.json'
 MIGRATIONS = REPO / 'backend' / 'src' / 'main' / 'resources' / 'db' / 'migration'
 
 BANNER = """--
--- GENERATED FILE. Do not edit by hand.
+-- GENERATED FILE, and immutable from the day it merges (ADL A2).
 --
 -- Written by backend/tools/generate_reference_migrations.py out of
 --   {source}
--- Run that script again after changing the source; a hand edit here is undone
--- by the next run, and ReferenceDataMatchesCodebookTest fails on either.
+--
+-- Do not edit this file and do not regenerate it over itself. A database that
+-- has applied it remembers its checksum, so a changed byte here stops the
+-- backend from starting: "Validate failed: Migrations have failed validation".
+-- The build would not see it, because the tests start from an empty database.
+--
+-- To change a codebook: change the source above and write the difference as the
+-- next migration,
+--
+--   python backend/tools/generate_reference_migrations.py --delta
+--
+-- which is what the script does anyway once this file is on main; before that it
+-- rewrites this one and says so. MigrationsAreImmutableTest fails on a rewrite
+-- whatever hand made it.
 --
 """
 
 
+# --------------------------------------------------------------------------
+# What git already knows
+# --------------------------------------------------------------------------
+
+def git(*arguments):
+    """Runs git inside this repository. The output, or None if git said no.
+
+    None and empty string are different answers and both matter: `cat-file -e`
+    succeeds with no output at all, which is how it says the file is there.
+    """
+    finished = subprocess.run(('git', '-C', str(REPO)) + arguments,
+                              capture_output=True, text=True, encoding='utf-8')
+
+    return finished.stdout if finished.returncode == 0 else None
+
+
+def released_branch():
+    """The name of the branch QA is served from, as this clone can see it.
+
+    `origin/main` first, because that is the branch the server pulls and the one
+    a stale local `main` would lie about; the local name is the fallback for a
+    clone with no remote. None when neither resolves, and then nothing is
+    written: a tool that cannot tell what has been released must not guess that
+    nothing has.
+    """
+    for name in ('origin/main', 'main'):
+        if git('rev-parse', '--verify', '--quiet', name + '^{commit}') is not None:
+            return name
+
+    return None
+
+
+def relative(path):
+    return path.relative_to(REPO).as_posix()
+
+
+def carried_by(revision, path):
+    """Does that revision hold this file."""
+    return git('cat-file', '-e', f'{revision}:{relative(path)}') is not None
+
+
+def read_at(revision, path):
+    """The file as it stood at that revision, parsed as JSON."""
+    text = git('show', f'{revision}:{relative(path)}')
+
+    if text is None:
+        raise SystemExit(f'{relative(path)} is not in {revision}, so there is nothing to compare against')
+
+    return json.loads(text)
+
+
+def next_version():
+    """One past the highest V number on disk.
+
+    Read from the directory rather than remembered, so the number cannot fall
+    behind a migration somebody else added in the same branch.
+    """
+    numbers = [int(match.group(1))
+               for match in (re.match(r'V(\d+)__', found.name) for found in MIGRATIONS.glob('V*.sql'))
+               if match]
+
+    return max(numbers, default=0) + 1
+
+
+# --------------------------------------------------------------------------
+# Writing
+# --------------------------------------------------------------------------
+
 def sql_text(value):
     """A text literal. Doubling the quote is the whole of the escaping SQL asks for."""
+    if value is None:
+        return 'null'
+
     return "'" + value.replace("'", "''") + "'"
 
 
@@ -70,17 +191,32 @@ def copy_field(value):
                  .replace('\r', '\\r'))
 
 
-def write(name, body):
-    """Writes one migration, with LF endings whatever machine this runs on.
+def write(name, body, released):
+    """Writes one migration, unless it is one that has already been released.
 
-    `.gitattributes` normalises line endings on the way into the repository, so
-    a file written with CRLF here is stored as LF anyway; writing LF means
-    running this script on Windows leaves no diff of its own.
+    LF endings whatever machine this runs on. `.gitattributes` normalises line
+    endings on the way into the repository, so a file written with CRLF here is
+    stored as LF anyway; writing LF means running this script on Windows leaves
+    no diff of its own.
     """
     target = MIGRATIONS / name
+
+    if released is None:
+        raise SystemExit('neither origin/main nor main resolves in this clone, so nothing can be said about '
+                         'which migrations have been released; refusing to write anything')
+
+    if carried_by(released, target):
+        raise SystemExit(f'{relative(target)} is on {released} and has been applied to every database that '
+                         f'follows it, so rewriting it would stop Flyway from starting (ADL A2). Write the '
+                         f'difference as the next migration instead:\n'
+                         f'    python {relative(Path(__file__).resolve())} --delta')
+
+    if target.exists():
+        print(f'{relative(target)}: rewriting, {released} does not carry it yet')
+
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(body, encoding='utf-8', newline='\n')
-    print(f'{target.relative_to(REPO)}: {target.stat().st_size / 1024:.0f} KB')
+    print(f'{relative(target)}: {target.stat().st_size / 1024:.0f} KB')
 
 
 # --------------------------------------------------------------------------
@@ -112,7 +248,16 @@ create table country (
     constraint country_pk primary key (id),
     constraint country_code_unique unique (code),
     constraint country_name_unique unique (name),
-    constraint country_sort_order_unique unique (sort_order),
+
+    /* Deferrable, and initially immediate, because this one carries an order and
+       an order is maintained by moving a range of it. A country inserted into
+       the eleven of the region moves every country below it, which the next
+       delta migration writes as one UPDATE, and a plain UNIQUE checks its index
+       row by row inside a statement and refuses the first move. Deferrable means
+       checked when the statement ends; initially immediate means that is still
+       the statement it is written in, and not the commit two hundred statements
+       later. Said in full in V3, over `place.rank`, where it was measured. */
+    constraint country_sort_order_unique unique (sort_order) deferrable initially immediate,
 
     constraint country_code_shape check (code ~ '^[A-Z]{2}$'),
 
@@ -146,13 +291,16 @@ def countries(data):
     return rows
 
 
-def country_migration(rows):
-    values = ',\n'.join(
-        f"    ({sql_text(code)}, {sql_text(name)}, {'true' if in_region else 'false'}, {order})"
-        for code, name, in_region, order in rows
-    )
+def country_values(row):
+    code, name, in_region, order = row
 
-    return (BANNER.format(source=COUNTRIES.relative_to(REPO).as_posix())
+    return f"({sql_text(code)}, {sql_text(name)}, {'true' if in_region else 'false'}, {order})"
+
+
+def country_migration(rows):
+    values = ',\n'.join('    ' + country_values(row) for row in rows)
+
+    return (BANNER.format(source=relative(COUNTRIES))
             + COUNTRY_DDL
             + '\ninsert into country (code, name, in_region, sort_order) values\n'
             + values
@@ -192,7 +340,46 @@ create table place (
 
     constraint place_pk primary key (id),
     constraint place_country_fk foreign key (country_id) references country (id),
-    constraint place_rank_unique unique (rank),
+
+    /* Unique, and deferrable, and initially immediate. All three of those are
+       decisions and the middle one was measured on 08.09.2026 rather than
+       reasoned about.
+
+       Unique, because `rank` is the only thing left of the population and two
+       towns holding one position is an order that answers differently depending
+       on which row the reader met first.
+
+       Deferrable, because an order is maintained by moving a range of it, and a
+       plain UNIQUE makes that impossible rather than merely awkward. Inserting a
+       town at position 46,900 is
+
+           update place set rank = rank + 1 where rank >= 46900;
+
+       and under a plain UNIQUE that is `ERROR: duplicate key value violates
+       unique constraint "place_rank_unique", Key (rank)=(46901)`: PostgreSQL
+       checks a non-deferrable unique index as each row is written, so the first
+       row to move lands on a neighbour that has not moved yet. There is no order
+       of rows that avoids it and no way to ask for it to be put off, because a
+       constraint that was not declared DEFERRABLE cannot be deferred. Declared
+       deferrable, the same statement goes through, because the check happens
+       when the statement ends and by then the ranks are unique again.
+
+       Initially immediate, so that everything else is exactly as strict as it
+       was: a second town claiming rank 1 is still rejected by the INSERT that
+       writes it, not at some COMMIT far away with no statement to blame. A
+       maintenance transaction that needs a whole sequence of statements to be
+       taken together can still say `set constraints place_rank_unique deferred`,
+       which is the point of DEFERRABLE, and the check then fires at COMMIT.
+
+       What this costs, measured and named rather than discovered later: an
+       `insert ... on conflict (rank)` no longer compiles against this table,
+       `ON CONFLICT does not support deferrable unique constraints/exclusion
+       constraints as arbiters`. Nothing does that today and a delta migration
+       has no business doing it either, because it must say which rows it means.
+       The two remaining unique keys that are looked up rather than ordered,
+       `country_code_unique` and `price_row_key_unique`, stay plain and stay
+       available as arbiters. */
+    constraint place_rank_unique unique (rank) deferrable initially immediate,
 
     constraint place_rank_positive check (rank > 0),
     constraint place_name_not_blank check (btrim(name) <> ''),
@@ -204,6 +391,11 @@ create table place (
     constraint place_english_name_differs check (english_name is null or english_name <> name)
 );
 
+/* Every town of one country, which is the one question this table is asked that
+   the primary key cannot answer: the country field on a form narrows the town
+   field. Forty seven thousand rows is far past the size at which the planner
+   would rather read the whole table, and it does read the whole table without
+   this line. KeysAndIndexesTest holds the plan, not the line. */
 create index place_country_idx on place (country_id);
 
 /* Loaded through a staging table rather than straight in, for one reason: the
@@ -245,7 +437,7 @@ def places(data):
 
 
 def place_migration(rows):
-    lines = [BANNER.format(source=PLACES.relative_to(REPO).as_posix()), PLACE_DDL,
+    lines = [BANNER.format(source=relative(PLACES)), PLACE_DDL,
              '\ncopy place_import (name, country_code, english_name, rank) from stdin;']
 
     for name, code, english, rank in rows:
@@ -263,8 +455,8 @@ def place_migration(rows):
 
 PRICE_DDL = """
 /* The price list as one table with a kind of row on it (ADL A36, O12): four
-   periods, one level, one fee. Six rows, and the kind is what tells them apart
-   rather than three tables answering one question.
+   periods, one level, one fee, one referral. Seven rows, and the kind is what
+   tells them apart rather than four tables answering one question.
 
    Amounts are numeric and never a float (ADL A12), and the two currencies are
    two price lists rather than one with a rate on it: the dinar price is fixed
@@ -280,8 +472,8 @@ PRICE_DDL = """
    that the four periods tile the year with no gap and no overlap. No overlap is
    expressible as an exclusion constraint over a range; no gap is not, and half
    a rule in the schema reads as the whole of it. Both halves are held over the
-   six rows by PriceListRowsTest instead, which is the stronger statement of the
-   two. */
+   seven rows by PriceListRowsTest instead, which is the stronger statement of
+   the two. */
 create table price_row (
     id         bigserial     not null,
     key        text          not null,
@@ -295,9 +487,13 @@ create table price_row (
 
     constraint price_row_pk primary key (id),
     constraint price_row_key_unique unique (key),
-    constraint price_row_sort_order_unique unique (sort_order),
 
-    constraint price_row_kind_known check (kind in ('period', 'level', 'fee')),
+    /* Deferrable for the reason `place.rank` is: this column is an order, and an
+       order is maintained by moving a range of it. Initially immediate, so the
+       ordinary insert is checked exactly where it is written. */
+    constraint price_row_sort_order_unique unique (sort_order) deferrable initially immediate,
+
+    constraint price_row_kind_known check (kind in ('period', 'level', 'fee', 'referral')),
     constraint price_row_key_not_blank check (btrim(key) <> ''),
     constraint price_row_sort_order_positive check (sort_order > 0),
 
@@ -325,13 +521,14 @@ create table price_row (
 
     /* Only a period answers whether what it buys is ranked. The junior fee
        holds whenever it is paid and follows the period it was paid in
-       (Clan 11), and the fee buys nothing in the rulebook at all, so both leave
-       the column empty rather than saying Da or Ne. */
+       (Clan 11), the fee buys nothing in the rulebook at all, and the referral
+       is credited rather than sold, so all three leave the column empty rather
+       than saying Da or Ne. */
     constraint price_row_only_period_is_ranked check ((ranking is not null) = (kind = 'period'))
 );
 """
 
-# The six rows of the price list.
+# The seven rows of the price list.
 #
 # Their source is `frontend/src/data/pricing.ts`, which is TypeScript and not
 # data: there is no `pricing.json` under `frontend/public/mock`, so unlike the
@@ -340,10 +537,21 @@ create table price_row (
 # holds the shape of it against ADL A36 O12 rather than against a source file.
 # The day pricing moves into a file of its own, this reads it.
 #
+# For the same reason `--delta` does not cover this table: a delta is a
+# difference against the source as git holds it, and running an older copy of
+# this script to find out what it used to say is not a comparison, it is
+# executing history. Seven rows changed by hand are a hand written migration.
+#
 #   early / regular / late / season   PDL P8, four periods, EUR and RSD
 #   junior                            PDL P8, a level and not a period
 #   processing                        PDL, 03.08.2026 and 04.08.2026: 3 EUR on a
 #                                     payment in euro, its own row, no dinar side
+#   referral                          PDL P16, owner 12.08.2026 and 11.08.2026:
+#                                     5 EUR / 600 RSD credited for a member
+#                                     brought in, a row of the price list and not
+#                                     a number on a screen, with no period of its
+#                                     own and no bearing on the right to rank.
+#                                     `REFERRAL` in frontend/src/data/pricing.ts.
 PRICE_ROWS = [
     ('early', 'period', '10-01', '10-05', 35, 4200, True),
     ('regular', 'period', '10-06', '11-30', 40, 4800, True),
@@ -351,19 +559,20 @@ PRICE_ROWS = [
     ('season', 'period', '01-01', '09-30', 40, 4800, False),
     ('junior', 'level', None, None, 20, 2400, None),
     ('processing', 'fee', None, None, 3, None, None),
+    ('referral', 'referral', None, None, 5, 600, None),
 ]
 
 
 def price_migration():
     def literal(value):
-        if value is None:
-            return 'null'
         if value is True:
             return 'true'
         if value is False:
             return 'false'
         if isinstance(value, str):
             return sql_text(value)
+        if value is None:
+            return 'null'
         return str(value)
 
     values = ',\n'.join(
@@ -378,13 +587,194 @@ def price_migration():
             + ';\n')
 
 
-def main():
+# --------------------------------------------------------------------------
+# The difference between two states of a codebook
+# --------------------------------------------------------------------------
+
+DELTA_HEAD = """
+/* What changed in the two codebooks between {since} and this working tree.
+
+   Written by --delta rather than by rewriting the migration that first loaded
+   them, because that one has been applied and its checksum is remembered
+   (ADL A2). Data only: a column that has to appear or a constraint that has to
+   change is a migration somebody writes by hand, and this script does not
+   pretend otherwise.
+
+   The order of the statements below is not arrangement, it is the only order
+   that runs, and it was found by running it (08.09.2026):
+
+     - towns go before countries, both when leaving; a country still named by a
+       town is `update or delete on table "country" violates foreign key
+       constraint "place_country_fk" on table "place"`, and it does not matter
+       that the town was on its way out too;
+     - countries arrive before towns are moved or added, because a town may be
+       moving to a country that is arriving in this same migration;
+     - and each statement stands on its own, because the order columns are
+       DEFERRABLE INITIALLY IMMEDIATE: one UPDATE may move a whole range at once,
+       and no UPDATE may end with two rows in one position. */
+"""
+
+
+def difference(before, after, key):
+    """Three lists: rows that moved, rows that arrived, keys that left.
+
+    `key` picks the field the two sides are lined up by, and it is the field
+    nothing else may change: the country code, and the town's position in the
+    file. Everything else about a row is a change to that row rather than a
+    different row.
+    """
+    was = {key(row): row for row in before}
+    now = {key(row): row for row in after}
+
+    changed = [row for name, row in now.items() if name in was and was[name] != row]
+    added = [row for name, row in now.items() if name not in was]
+    removed = [name for name in was if name not in now]
+
+    return changed, added, sorted(removed)
+
+
+def values_list(rows, render):
+    return ',\n'.join('           ' + render(row) for row in rows)
+
+
+def country_deletes(removed):
+    return ('delete from country where code in ('
+            + ', '.join(sql_text(code) for code in removed) + ');\n') if removed else None
+
+
+def country_updates(changed):
+    return ('update country as c\n'
+            '   set name = v.name::text,\n'
+            '       in_region = v.in_region::boolean,\n'
+            '       sort_order = v.sort_order::integer\n'
+            '  from (values\n'
+            + values_list(changed, country_values)
+            + '\n       ) as v (code, name, in_region, sort_order)\n'
+            ' where c.code = v.code::text;\n') if changed else None
+
+
+def country_inserts(added):
+    return ('insert into country (code, name, in_region, sort_order) values\n'
+            + values_list(added, country_values) + ';\n') if added else None
+
+
+def place_values(row):
+    name, code, english, rank = row
+
+    return f'({rank}, {sql_text(name)}, {sql_text(code)}, {sql_text(english)})'
+
+
+def place_deletes(removed):
+    return ('delete from place where rank in ('
+            + ', '.join(str(rank) for rank in removed) + ');\n') if removed else None
+
+
+def place_updates(changed):
+    return ('update place as p\n'
+            '   set name = v.name::text,\n'
+            '       country_id = c.id,\n'
+            '       english_name = v.english_name::text\n'
+            '  from (values\n'
+            + values_list(changed, place_values)
+            + '\n       ) as v (rank, name, country_code, english_name)\n'
+            '  join country c on c.code = v.country_code::text\n'
+            ' where p.rank = v.rank::integer;\n') if changed else None
+
+
+def place_inserts(added):
+    return ('insert into place (name, country_id, english_name, rank)\n'
+            'select v.name::text, c.id, v.english_name::text, v.rank::integer\n'
+            '  from (values\n'
+            + values_list(added, place_values)
+            + '\n       ) as v (rank, name, country_code, english_name)\n'
+            '  join country c on c.code = v.country_code::text;\n') if added else None
+
+
+def every_town_names_a_country(country_rows, place_rows):
+    """No town may name a country the list does not carry.
+
+    V3 says this with a foreign key on the staging table it loads through, so the
+    first load has always said it. A delta has no staging table, and the sentence
+    it would otherwise be told in is `violates foreign key constraint
+    "place_country_fk"` in the middle of a migration on a live database. Said
+    here it is a codebook that has not been finished, and it is said before a
+    file is written.
+    """
+    listed = {code for code, _, _, _ in country_rows}
+    orphans = sorted({code for _, code, _, _ in place_rows if code not in listed})
+
+    if orphans:
+        raise SystemExit('the town codebook names countries the country list does not carry: '
+                         + ', '.join(orphans)
+                         + '\nremove those towns as well, or put the countries back')
+
+
+def delta_migration(since):
+    """The next migration, or None when the two codebooks already agree with git."""
+    country_before = countries(read_at(since, COUNTRIES))
+    country_now = countries(json.loads(COUNTRIES.read_text(encoding='utf-8')))
+    place_before = places(read_at(since, PLACES))
+    place_now = places(json.loads(PLACES.read_text(encoding='utf-8')))
+
+    every_town_names_a_country(country_now, place_now)
+
+    country_changed, country_added, country_removed = difference(country_before, country_now, lambda row: row[0])
+    place_changed, place_added, place_removed = difference(place_before, place_now, lambda row: row[3])
+
+    print(f'countries: {len(country_changed)} changed, {len(country_added)} added, {len(country_removed)} removed')
+    print(f'places: {len(place_changed)} changed, {len(place_added)} added, {len(place_removed)} removed')
+
+    parts = [part for part in (place_deletes(place_removed),
+                               country_deletes(country_removed),
+                               country_updates(country_changed),
+                               country_inserts(country_added),
+                               place_updates(place_changed),
+                               place_inserts(place_added)) if part]
+
+    if not parts:
+        return None
+
+    return (BANNER.format(source=f'{relative(COUNTRIES)} and {relative(PLACES)}')
+            + DELTA_HEAD.format(since=since)
+            + '\n' + '\n'.join(parts))
+
+
+# --------------------------------------------------------------------------
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('--delta', action='store_true',
+                        help='write the next migration with what changed in the codebooks, '
+                             'instead of rewriting the migrations that first loaded them')
+    parser.add_argument('--since', default=None,
+                        help='the revision the delta is measured against; the released branch by default, '
+                             'which is what every database that matters has applied')
+    options = parser.parse_args(argv)
+
+    released = released_branch()
+
+    if options.delta:
+        since = options.since or released
+
+        if since is None:
+            raise SystemExit('neither origin/main nor main resolves in this clone; say --since <revision>')
+
+        body = delta_migration(since)
+
+        if body is None:
+            print(f'the codebooks already say what {since} says; nothing to write')
+            return 0
+
+        write(f'V{next_version()}__reference_data_update.sql', body, released)
+        return 0
+
     country_rows = countries(json.loads(COUNTRIES.read_text(encoding='utf-8')))
     place_rows = places(json.loads(PLACES.read_text(encoding='utf-8')))
+    every_town_names_a_country(country_rows, place_rows)
 
-    write('V2__country.sql', country_migration(country_rows))
-    write('V3__place.sql', place_migration(place_rows))
-    write('V4__price_list.sql', price_migration())
+    write('V2__country.sql', country_migration(country_rows), released)
+    write('V3__place.sql', place_migration(place_rows), released)
+    write('V4__price_list.sql', price_migration(), released)
 
     print(f'countries: {len(country_rows)}, places: {len(place_rows)}, price rows: {len(PRICE_ROWS)}')
     return 0

@@ -20,6 +20,19 @@
  *       R__, and a codebook is its own V migration written by a generator that
  *       lives in the repository: backend/tools/generate_reference_migrations.py.
  *
+ *   A2  A migration is immutable from the day it merges, and that is a fact
+ *       about Flyway before it is a rule about people: a database that has
+ *       applied a file remembers its checksum and refuses to start against a
+ *       changed one, "Validate failed: Migrations have failed validation". The
+ *       tests will not tell you, because they begin at an empty database. So a
+ *       codebook is corrected by writing the NEXT migration with the difference,
+ *
+ *           python backend/tools/generate_reference_migrations.py --delta
+ *
+ *       never by regenerating the file that loaded it. The generator refuses to
+ *       rewrite a migration main carries, and MigrationsAreImmutableTest pins the
+ *       checksum of every one of them.
+ *
  *   O21 Names sort by the Serbian Latin alphabet, through the ICU collation
  *       created below.
  *

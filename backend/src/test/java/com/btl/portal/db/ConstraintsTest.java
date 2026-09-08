@@ -24,12 +24,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * it: an insert that trips a different constraint proves nothing about this one.
  *
  * The list is written by hand, and the floor under it is
- * {@link #everyConstraintOnTheReferenceTablesHasARowThatBreaksIt()}, which reads
- * the constraints back out of {@code pg_constraint}. The two must agree exactly,
- * so a constraint added to a migration without a row here fails the build, and a
- * row here naming a constraint that no longer exists fails it too. PostgreSQL 18
+ * {@link #everyConstraintInTheSchemaHasARowThatBreaksIt()}, which reads the
+ * constraints back out of {@code pg_constraint}. The two must agree exactly, so a
+ * constraint added to a migration without a row here fails the build, and a row
+ * here naming a constraint that no longer exists fails it too. PostgreSQL 18
  * records NOT NULL in {@code pg_constraint} like any other constraint, so the
  * floor covers those as well and not only the CHECKs.
+ *
+ * <p>Which tables that floor looks at is itself read out of {@code pg_tables},
+ * and until 08.09.2026 it was three names written here. That is a list whose only
+ * floor is another list, in another class: a fourth table arriving made
+ * {@code ConventionsTest} ask for its name, and nothing at all asked for it here,
+ * so both of its constraints would have been carried with no row that breaks
+ * them and the build would have been green. Measured, in that order: a constraint
+ * added to an existing table failed the build, the same constraint on a new table
+ * did not.
  *
  * The other direction is {@link #aLegitimateRowIsAccepted(String)}: without it,
  * a constraint that rejects everything would pass every test above.
@@ -66,9 +75,6 @@ class ConstraintsTest extends DatabaseTest {
 			return constraint;
 		}
 	}
-
-	/** The three tables this increment adds, and the only tables that exist. */
-	private static final List<String> REFERENCE_TABLES = List.of("country", "place", "price_row");
 
 	/* A row of each table that breaks nothing: every violation below is one of
 	   these with a single field spoiled, so what fails is the field and not the
@@ -208,30 +214,37 @@ class ConstraintsTest extends DatabaseTest {
 	 * remembered.
 	 *
 	 * A hand written list is not the fault; a hand written list with nothing
-	 * underneath it is. This asks PostgreSQL what constraints those three tables
-	 * actually carry, so neither side can drift: a constraint added to a migration
+	 * underneath it is. This asks PostgreSQL what constraints the schema actually
+	 * carries, so neither side can drift: a constraint added to a migration
 	 * without a row above fails here, and a row above naming a constraint that has
 	 * been dropped fails here too.
 	 *
-	 * {@code regclass} rather than a name compared against {@code pg_class}: the
-	 * cast resolves the table the same way a query in this session resolves it,
-	 * so the answer cannot come from a table of the same name in another schema.
+	 * Which tables, in turn, comes from {@code pg_tables} and not from a list
+	 * beside this one: see {@link DatabaseTest#tablesInTheSchema()} for what that
+	 * cost when it was a list. {@code regclass} rather than a name compared against
+	 * {@code pg_class}: the cast resolves each table the same way a query in this
+	 * session resolves it, so the answer cannot come from a table of the same name
+	 * in another schema.
 	 */
 	@Test
-	void everyConstraintOnTheReferenceTablesHasARowThatBreaksIt() {
-		String tables = REFERENCE_TABLES.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
+	void everyConstraintInTheSchemaHasARowThatBreaksIt() {
+		List<String> tables = tablesInTheSchema();
+		String literals = tables.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
 
 		List<String> declared = db
 				.sql("select con.conname from pg_constraint con"
-						+ " where con.conrelid = any (array[" + tables + "]::regclass[])"
+						+ " where con.conrelid = any (array[" + literals + "]::regclass[])"
 						+ " order by con.conname")
 				.query(String.class)
 				.list();
 
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
 
+		assertThat(tables).isNotEmpty();
 		assertThat(declared).isNotEmpty();
-		assertThat(covered).containsExactlyInAnyOrderElementsOf(declared);
+		assertThat(covered)
+				.as("every constraint on %s needs a row above that breaks it", tables)
+				.containsExactlyInAnyOrderElementsOf(declared);
 	}
 
 	/**

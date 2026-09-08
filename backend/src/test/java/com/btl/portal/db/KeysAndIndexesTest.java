@@ -1,0 +1,275 @@
+package com.btl.portal.db;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.dao.DataIntegrityViolationException;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * Two questions {@link ConstraintsTest} does not ask, and neither did anything else.
+ *
+ * <p><b>Whether a key may be deferred.</b> {@code ConstraintsTest} proves that
+ * every key rejects a duplicate. It says nothing about <em>when</em> the rejection
+ * happens, and for a column that carries an order that is the whole question.
+ * Measured on 08.09.2026 against the schema as it was: {@code update place set
+ * rank = rank + 1 where rank >= 46900}, which is what inserting a town at position
+ * 46,900 is, came back {@code ERROR: duplicate key value violates unique
+ * constraint "place_rank_unique", Key (rank)=(46901)}. A plain UNIQUE is checked
+ * as each row is written, so the first row to move lands on a neighbour that has
+ * not moved yet, and there is no order of rows that avoids it. Nor could it be put
+ * off: a constraint not declared DEFERRABLE cannot be deferred. The order the
+ * whole town field depends on was therefore unmaintainable, and no test said so.
+ *
+ * <p><b>Whether an index exists at all.</b> {@code ConstraintsTest} reads
+ * {@code pg_constraint} and {@code ConventionsTest} reads {@code pg_tables}, and
+ * before 08.09.2026 nothing read {@code pg_indexes}: deleting the one index in the
+ * schema left the build at BUILD SUCCESS.
+ *
+ * <p>Both lists below are written by hand and both have a floor that is not
+ * another list: the catalogue. A key added without a line here fails, an index
+ * added without a line here fails, and a line here for something that no longer
+ * exists fails too.
+ */
+class KeysAndIndexesTest extends DatabaseTest {
+
+	/**
+	 * One key of the schema, and the decision about deferring it.
+	 *
+	 * @param constraint its name
+	 * @param deferrable whether it may be put off to the end of the statement,
+	 *                   which is the only way a range of an order can move
+	 * @param why        the reason, in words, because the answer is a decision and
+	 *                   not a fact anybody can look up
+	 */
+	record Key(String constraint, boolean deferrable, String why) {
+
+		@Override
+		public String toString() {
+			return constraint;
+		}
+	}
+
+	/**
+	 * The decision, one line per key, and the shortest true reason for it.
+	 *
+	 * The rule the lines follow: a key over a column that carries an <b>order</b>
+	 * is deferrable, because an order is maintained by moving a range of it and a
+	 * plain UNIQUE makes that impossible rather than awkward. A key over a column
+	 * that is <b>looked up</b> is not, because nothing ever moves a range of codes,
+	 * and staying plain keeps it usable as an {@code ON CONFLICT} arbiter, which a
+	 * deferrable one is not: {@code ON CONFLICT does not support deferrable unique
+	 * constraints/exclusion constraints as arbiters}.
+	 */
+	private static final List<Key> KEYS = List.of(
+			new Key("country_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("country_code_unique", false, "a country is looked up by its code; codes are not a sequence"),
+			new Key("country_name_unique", false, "a name is looked up, not counted from one end"),
+			new Key("country_sort_order_unique", true,
+					"the order countries are listed in: a country joining the region moves every one below it"),
+			new Key("place_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("place_rank_unique", true,
+					"the order towns are suggested in: inserting one town moves the rank of every smaller town"),
+			new Key("price_row_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("price_row_key_unique", false, "a price row is looked up by its key"),
+			new Key("price_row_sort_order_unique", true,
+					"the order the price list is drawn in: a row inserted between two moves the rest"));
+
+	/** One index of the schema that no key owns, and what it is for. */
+	record Index(String name, String forWhat) {
+
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+
+	private static final List<Index> INDEXES = List.of(
+			new Index("place_country_idx", "narrowing the town field by the country already chosen on the form"));
+
+	/**
+	 * Every primary key and unique key in the schema, with what the catalogue says
+	 * about deferring it and which single column it covers.
+	 *
+	 * The column comes from {@code conkey} rather than from the list above, so the
+	 * list holds only the part that is a decision. A key over more than one column
+	 * comes back with both names and the shift below refuses to guess.
+	 */
+	private List<Map<String, Object>> keysInTheSchema() {
+		return db
+				.sql("""
+						select con.conname            as constraint_name,
+						       con.condeferrable      as deferrable,
+						       con.condeferred        as deferred,
+						       cls.relname            as table_name,
+						       string_agg(att.attname, ',' order by att.attnum) as columns
+						  from pg_constraint con
+						  join pg_class cls on cls.oid = con.conrelid
+						  join pg_namespace nsp on nsp.oid = cls.relnamespace
+						  join pg_attribute att on att.attrelid = con.conrelid and att.attnum = any (con.conkey)
+						 where con.contype in ('p', 'u')
+						   and nsp.nspname = current_schema()
+						   and cls.relname <> ?
+						 group by con.conname, con.condeferrable, con.condeferred, cls.relname
+						 order by con.conname
+						""")
+				.param(flywayTable())
+				.query()
+				.listOfRows();
+	}
+
+	/**
+	 * The floor: the catalogue and the list above name the same keys, and agree
+	 * about every one of them.
+	 *
+	 * Both directions in one assertion, because both are the same mistake seen
+	 * from either side: a key that arrives without a decision, and a decision that
+	 * outlives its key. {@code condeferred} is asserted false throughout, which is
+	 * the difference between INITIALLY IMMEDIATE and INITIALLY DEFERRED: a key that
+	 * starts deferred moves its complaint to a COMMIT with no statement to blame.
+	 */
+	@Test
+	void everyKeyInTheSchemaHasADecisionAboutDeferring() {
+		Map<String, Boolean> decided = KEYS.stream().collect(Collectors.toMap(Key::constraint, Key::deferrable));
+
+		Map<String, Boolean> declared = keysInTheSchema().stream()
+				.collect(Collectors.toMap(row -> (String) row.get("constraint_name"),
+						row -> (Boolean) row.get("deferrable")));
+
+		assertThat(declared).isNotEmpty();
+		assertThat(declared)
+				.as("a key with no line in KEYS, or a line in KEYS with no key")
+				.containsExactlyInAnyOrderEntriesOf(decided);
+
+		assertThat(keysInTheSchema())
+				.as("every key is checked at the end of its own statement, never first at COMMIT")
+				.allSatisfy(row -> assertThat(row.get("deferred")).isEqualTo(false));
+	}
+
+	/** The keys the list above says may be deferred, as (table, column) to move. */
+	static List<Key> orderKeys() {
+		return KEYS.stream().filter(Key::deferrable).toList();
+	}
+
+	private Map<String, Object> catalogue(Key key) {
+		return keysInTheSchema().stream()
+				.filter(row -> key.constraint().equals(row.get("constraint_name")))
+				.findFirst()
+				.orElseThrow();
+	}
+
+	/**
+	 * A whole range of the order moves in one statement.
+	 *
+	 * This is the maintenance that a plain UNIQUE refuses and the reason these
+	 * three keys are deferrable. It is written as the operation itself rather than
+	 * as a question to {@code pg_constraint}, because what was broken was not the
+	 * flag: it was that the work could not be done.
+	 */
+	@ParameterizedTest
+	@MethodSource("orderKeys")
+	void aRangeOfTheOrderMovesInOneStatement(Key key) {
+		Map<String, Object> row = catalogue(key);
+		String table = (String) row.get("table_name");
+		String column = (String) row.get("columns");
+
+		assertThat(column)
+				.as("a deferrable key over more than one column needs a shift written for it, not guessed")
+				.doesNotContain(",");
+
+		int moved = db
+				.sql("update " + table + " set " + column + " = " + column + " + 1"
+						+ " where " + column + " >= (select max(" + column + ") - 5 from " + table + ")")
+				.update();
+
+		assertThat(moved).isEqualTo(6);
+	}
+
+	/**
+	 * And the statement that ends with two rows in one position is still refused.
+	 *
+	 * The other half of the boundary, and the half that says the first test is not
+	 * simply the constraint switched off. Deferrable moves the check to the end of
+	 * the statement; it does not remove it, and nothing here says
+	 * {@code SET CONSTRAINTS}. A key changed to INITIALLY DEFERRED lets this
+	 * through to a COMMIT that never comes in a rolled back test, and a key that
+	 * lost its UNIQUE lets it through for good.
+	 */
+	@ParameterizedTest
+	@MethodSource("orderKeys")
+	void andAStatementThatEndsWithTwoRowsInOnePositionIsRefused(Key key) {
+		Map<String, Object> row = catalogue(key);
+		String table = (String) row.get("table_name");
+		String column = (String) row.get("columns");
+
+		assertThatThrownBy(() -> db
+				.sql("update " + table + " set " + column + " = 1 where " + column + " = 2")
+				.update())
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining(key.constraint());
+	}
+
+	/**
+	 * Every index that no key brought with it has a line above.
+	 *
+	 * A unique key and a primary key each create an index of their own, and those
+	 * are decisions already held by {@link #everyKeyInTheSchemaHasADecisionAboutDeferring()};
+	 * {@code conindid} is how the catalogue says which index belongs to which key,
+	 * so what is left over is exactly the indexes somebody wrote on purpose.
+	 * Flyway's own table brings an index of its own and is left out with it.
+	 */
+	@Test
+	void everyIndexNoKeyOwnsHasALineHere() {
+		List<String> standalone = db
+				.sql("""
+						select cls.relname
+						  from pg_class cls
+						  join pg_index idx on idx.indexrelid = cls.oid
+						  join pg_class tbl on tbl.oid = idx.indrelid
+						  join pg_namespace nsp on nsp.oid = cls.relnamespace
+						 where cls.relkind = 'i'
+						   and nsp.nspname = current_schema()
+						   and tbl.relname <> ?
+						   and not exists (select 1 from pg_constraint con where con.conindid = cls.oid)
+						 order by cls.relname
+						""")
+				.param(flywayTable())
+				.query(String.class)
+				.list();
+
+		assertThat(standalone)
+				.as("an index with no line in INDEXES, or a line in INDEXES with no index")
+				.containsExactlyInAnyOrderElementsOf(INDEXES.stream().map(Index::name).toList());
+	}
+
+	/**
+	 * And the one index there is does its job: the towns of a country are found
+	 * through it and not by reading all forty seven thousand.
+	 *
+	 * The plan and not the line in {@code pg_indexes}, because an index nobody can
+	 * use is the same as no index. Sequential scans are turned off for this
+	 * transaction so the answer does not depend on when autovacuum last collected
+	 * statistics; that changes which plan is cheapest, not which plans exist, so a
+	 * dropped index still leaves PostgreSQL reading the whole table and this still
+	 * fails.
+	 */
+	@Test
+	void theTownsOfOneCountryAreFoundThroughTheIndex() {
+		db.sql("set local enable_seqscan = off").update();
+
+		Long serbia = db.sql("select id from country where code = 'RS'").query(Long.class).single();
+
+		String plan = String.join("\n",
+				db.sql("explain (costs off) select id from place where country_id = " + serbia)
+						.query(String.class)
+						.list());
+
+		assertThat(plan).contains("place_country_idx");
+	}
+}
