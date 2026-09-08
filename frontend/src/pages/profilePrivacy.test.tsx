@@ -674,6 +674,46 @@ describe('the birthday a member chooses to show', () => {
  * ulogovani"). A screen that leads to a hidden profile only for a signed-in member is outside this
  * and outside the rule.
  */
+describe('the partner named on a pair line', () => {
+  it('is a way in until they hide, and words after', async () => {
+    /* **The sweep below cannot say this, and that is why this case exists** (security review,
+       08.09.2026). It asserts absence: no address on the page leads to the hidden member. A page
+       that never drew the pair line at all satisfies that exactly as well, and for one commit that
+       is what happened, because every pair in the mock is from 2019 and a profile draws only the
+       season being run and later. The probe that fixed it can go the same way: change the season it
+       makes the pair for and the sweep passes green over a live hole.
+     *
+       So the line is read here positively, and from both sides of the rule in one visit: while he
+       is not hiding his name is the way in, and the moment he hides it is the same name as words.
+       The same shape as `leaves the name where it stood` above, which reads a member who is hiding
+       beside one who is not. */
+    const user = setupUser()
+
+    renderAt(
+      '/sr/takmicar/000001',
+      'visitor',
+      null,
+      undefined,
+      DAY,
+      <>
+        <Hide who="000007" />
+        <Pair a="000001" b="000007" season={Number(DAY.slice(0, 4)) + 1} />
+      </>,
+    )
+
+    await screen.findByRole('heading', { level: 1, name: /Vladan/ })
+    await user.click(screen.getByRole('button', { name: 'upari 000001 i 000007' }))
+
+    expect((await screen.findByText('Strahinja Vukićević')).closest('a')).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Strahinja Vukićević').closest('a')).toBeNull()
+    })
+  }, SLOW)
+})
+
 describe('a hidden profile is reachable from nowhere', () => {
   it.each(PUBLIC)('is not reached from %s', async (where, asVisitor) => {
     const user = setupUser()
