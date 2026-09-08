@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * The roles the portal has, and the twelve boxes of the matrix of rights.
  *
- * V5 loads nineteen rows written by hand, so the question this file has to
+ * V5 loads sixteen rows written by hand, so the question this file has to
  * answer is the one a hand written list always raises: what is underneath it.
  * The answer differs per claim, and saying which is which is the point of this
  * comment, because a claim with nothing under it is worth knowing about before
@@ -33,23 +33,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * source text is answering a question about how something is written, and this
  * one is about what is there.</li>
  *
- * <li><b>The four roles the portal uses have a floor</b>, the same dictionary.
- * The role switch names every role it can become, {@code role.<code>}
- * (RoleSwitch.tsx), so the day the portal learns to be a sponsor the dictionary
- * gains the word and {@code in_use} has to answer for it.</li>
+ * <li><b>The four roles have a floor</b>, the same dictionary, and since the
+ * owner's decision of 08.09.2026 it covers the whole table rather than part of
+ * it. The role switch names every role it can become, {@code role.<code>}
+ * (RoleSwitch.tsx), and the table carries exactly the four the portal shows, so
+ * the two lists are one list read twice. That is what makes the seven this file
+ * used to expect a failure rather than a longer list agreeing with a longer
+ * table: a league organiser, a sponsor or a boutique inserted here has no word
+ * in the dictionary and fails, and a role the portal learns tomorrow reaches
+ * the dictionary and fails until the migration carries it too.</li>
  *
- * <li><b>The other three roles have none, and cannot have one.</b> They are in
- * the schema because PDL P21 calls the list of seven final and ADL A8 says a
- * difference between that list and the schema would be a debt where the
- * difference between the list and the code is not. Their source is a sentence
- * in a decision journal, and a guard that parses prose is a guard that argues
- * with the person writing the prose. The boundary is written down here instead:
- * an eighth role could be decided and this file would not know.</li>
- *
- * <li><b>{@code rights_mode} has none either.</b> It is useMay() in rights.ts,
- * which is TypeScript the portal runs and not a file to read. What holds it is
- * the one claim that matters most and is measurable here: exactly one role
- * holds everything, and it is the superadmin.</li>
+ * <li><b>{@code rights_mode} has none.</b> It is useMay() in rights.ts, which
+ * is TypeScript the portal runs and not a file to read. What holds it is the
+ * one claim that matters most and is measurable here: exactly one role holds
+ * everything, and it is the superadmin.</li>
  * </ul>
  */
 class RolesAndRightsTest extends DatabaseTest {
@@ -66,46 +63,49 @@ class RolesAndRightsTest extends DatabaseTest {
 	 *  into it than it is not written at all. */
 	private static final String NOT_A_ROLE = "label";
 
-	record RoleRow(String code, String rightsMode, boolean inUse) {
+	record RoleRow(String code, String rightsMode) {
 	}
 
 	/**
-	 * All seven of PDL P21, with what each of them may hold and whether the
-	 * portal uses it today.
+	 * Exactly four roles, with what each of them may hold.
 	 *
-	 * The three at the bottom are the ones the running portal does not show. A
-	 * league organiser and a sponsor get their own screens later and the
-	 * boutique is inactive until further notice, and all three hold nothing of
-	 * this matrix: the twelve rights below describe what a moderator may do, and
-	 * PDL P21 says so in those words.
+	 * The owner decided on 08.09.2026 that the schema carries four and not the
+	 * seven PDL P21 lists: a league organiser, a sponsor and a boutique are
+	 * roles the portal knows as a concept and do not enter the database. He was
+	 * asked twice, the second time with the ADL A8 sentence that said the
+	 * opposite quoted back to him, and answered the same both times.
+	 *
+	 * Both halves of that are measured here, and they are two different
+	 * mutations. Four rows written out catches a row lost; comparing as an exact
+	 * set catches the three coming back, which is what putting them in the model
+	 * "from the start" would mean.
 	 */
 	@Test
-	void allSevenRolesAreRowsAndHoldWhatTheSpecificationSays() {
+	void exactlyFourRolesAreRowsAndHoldWhatTheSpecificationSays() {
 		List<RoleRow> rows = db
-				.sql("select code, rights_mode, in_use from role order by code")
-				.query((rs, row) -> new RoleRow(rs.getString("code"), rs.getString("rights_mode"),
-						rs.getBoolean("in_use")))
+				.sql("select code, rights_mode from role order by code")
+				.query((rs, row) -> new RoleRow(rs.getString("code"), rs.getString("rights_mode")))
 				.list();
 
 		assertThat(rows).containsExactlyInAnyOrder(
-				new RoleRow("visitor", "none", true),
-				new RoleRow("competitor", "none", true),
-				new RoleRow("moderator", "granted", true),
-				new RoleRow("superadmin", "all", true),
-				new RoleRow("league_organiser", "none", false),
-				new RoleRow("sponsor", "none", false),
-				new RoleRow("boutique", "none", false));
+				new RoleRow("visitor", "none"),
+				new RoleRow("competitor", "none"),
+				new RoleRow("moderator", "granted"),
+				new RoleRow("superadmin", "all"));
 	}
 
 	/**
-	 * The roles the portal uses are the roles the portal can name.
+	 * The roles in the schema are the roles the portal can name.
 	 *
-	 * This is the floor under {@code in_use}, and it works in both directions: a
-	 * role the switch offers and this table calls dormant fails here, and so
-	 * does a role marked in use that the portal has no word for.
+	 * The floor under the list above, and it works in both directions: a role
+	 * the switch offers that this table does not carry fails here, and so does a
+	 * row here that the portal has no word for. Since the decision of
+	 * 08.09.2026 it covers the whole table, where it used to cover only the part
+	 * marked in use, and that is what makes the seven roles impossible to
+	 * restore quietly: three of them have nothing in the dictionary.
 	 */
 	@Test
-	void theRolesInUseAreTheOnesThePortalCanName() {
+	void theRolesInTheSchemaAreTheOnesThePortalCanName() {
 		List<String> named = new ArrayList<>();
 
 		for (String key : read(DICTIONARY).get("role").propertyNames()) {
@@ -118,9 +118,9 @@ class RolesAndRightsTest extends DatabaseTest {
 		   failure here rather than a shorter list matching a shorter table. */
 		assertThat(named).hasSize(4);
 
-		List<String> inUse = db.sql("select code from role where in_use").query(String.class).list();
+		List<String> loaded = db.sql("select code from role").query(String.class).list();
 
-		assertThat(inUse).containsExactlyInAnyOrderElementsOf(named);
+		assertThat(loaded).containsExactlyInAnyOrderElementsOf(named);
 	}
 
 	/**

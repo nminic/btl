@@ -102,7 +102,13 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("role_code_unique", false, "a role is looked up by its code, and V5 carries no order at all"),
 			new Key("admin_right_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("admin_right_code_unique", false,
-					"a right is looked up by the key the portal writes it down under, entity:members"));
+					"a right is looked up by the key the portal writes it down under, entity:members"),
+			new Key("account_pk", false,
+					"a surrogate key nothing outside the portal sees, and the token table points at it"),
+			new Key("email_verification_token_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("email_verification_token_hash_unique", false,
+					"a link is looked up by the digest it hashes to, and one digest may open one account"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -116,7 +122,13 @@ class KeysAndIndexesTest extends DatabaseTest {
 	private static final List<Index> INDEXES = List.of(
 			new Index("place_country_idx", "narrowing the town field by the country already chosen on the form"),
 			new Index("role_only_one_holds_every_right",
-					"at most one role may hold every right; a partial index because a unique constraint takes no WHERE"));
+					"at most one role may hold every right; a partial index because a unique constraint takes no WHERE"),
+			new Index("account_email_unique",
+					"one address is one account whatever case it is typed in; an index because the uniqueness is over "
+							+ "lower(email) and a unique constraint takes no expression"),
+			new Index("account_role_idx", "the accounts of one role, which is how a role that cannot be dropped is found"),
+			new Index("email_verification_token_account_idx",
+					"the live links of one account, which is what re-sending the confirmation reads"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

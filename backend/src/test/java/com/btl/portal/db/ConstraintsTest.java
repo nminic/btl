@@ -308,7 +308,10 @@ class ConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void everyTableInTheSchemaIsClaimedByAConstraintTest() {
-		List<String> claimed = Stream.of(TABLES, RoleAndRightConstraintsTest.TABLES).flatMap(List::stream).toList();
+		List<String> claimed = Stream
+				.of(TABLES, RoleAndRightConstraintsTest.TABLES, AccountConstraintsTest.TABLES)
+				.flatMap(List::stream)
+				.toList();
 
 		assertThat(tablesInTheSchema())
 				.as("a table whose constraints no class breaks on purpose is a table with no test over it")

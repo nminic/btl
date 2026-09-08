@@ -1,12 +1,10 @@
 /* Roles, and the boxes the superadmin ticks for one moderator.
  *
  * ADL A36 O9 puts accounts and roles in the first schema and authentication in
- * the second, so nothing here knows about a password, a token or a session.
- * Nor is there an account yet: whether an address of electronic mail is the
- * name somebody signs in under is a question standing with the owner, and a
- * table of accounts written before that answer arrives would have to be
- * rewritten around it. What can be written without that answer is what a role
- * is and what a right is, which are the two codebooks a grant will point at.
+ * the second, so nothing here knows about a password or a session. What this
+ * file writes is what a role is and what a right is, which are the two
+ * codebooks everything else about permission points at. The account itself is
+ * V6, and it points at role.id.
  *
  * Written by hand rather than by backend/tools/generate_reference_migrations.py,
  * and the difference is the source and not the size. That script exists because
@@ -18,21 +16,35 @@
  * which reads the portal's own dictionary and compares it with what loaded.
  *
  *
- * WHY SEVEN ROLES WHERE THE PORTAL SHOWS FOUR
- * -------------------------------------------
- * PDL P21 lists the roles and calls the list final: Superadmin, Moderator,
+ * FOUR ROLES, AND WHY THE OTHER THREE OF PDL P21 ARE NOT HERE
+ * -----------------------------------------------------------
+ * PDL P21 lists seven roles and calls the list final: Superadmin, Moderator,
  * Takmicar, Posetilac, Organizator lige, Sponzor, Butik. The running portal
  * carries four of them (frontend/src/roles/context.ts): a league organiser and
  * a sponsor get their own screens later, and the boutique is inactive until
  * further notice while its holder sells inside the portal rather than the
  * association selling for him (PDL P20).
  *
- * ADL A8 says what to do with that gap in one sentence: the difference between
- * the list and the code is deliberate and is not a debt, and a difference
- * between the list and the SCHEMA would be. A role added to the model later is
- * a migration; a role added now is one line. So all seven are rows, and which
- * four the portal uses today is a column rather than an absence, because an
- * absence cannot be told apart from a forgetting.
+ * ADL A8, decision of 08.09.2026: the schema carries exactly four, and the
+ * other three do not enter it. The owner was asked twice, the second time with
+ * the two sentences that said the opposite quoted back to him verbatim, and
+ * answered the same both times. What that decision overturned, said here so it
+ * cannot come back as an assumption: that a difference between the list and the
+ * SCHEMA would be a debt, and that the boutique exists in the model from the
+ * start.
+ *
+ * The cost is known and was accepted with the decision. When a league organiser
+ * or a sponsor gets a screen, that is a migration over a table that already
+ * carries rows and accounts pointing at them, rather than one line in the first
+ * migration, and a migration cannot be edited once it is merged (ADL A2, worded
+ * for this decision in A8). What is NOT changed is PDL P20 and P21: seven is
+ * still the list of roles the portal knows as a concept. Four is what the
+ * database holds.
+ *
+ * This file is corrected in place rather than followed by a migration that
+ * deletes three rows, because it has not been merged: A8 words the immutability
+ * of A2 as being from the merge onward, and a V6 undoing a V5 that never ran
+ * anywhere would leave a history claiming the portal once shipped seven roles.
  *
  *
  * WHAT THESE TWO TABLES DELIBERATELY DO NOT CARRY
@@ -41,15 +53,20 @@
  *
  *   - No grant, no row of the matrix. A tick belongs to one named moderator
  *     (ADL A8: the rights belong to a row in the matrix, and without a name
- *     there is no row), and the name is an account. The grant table arrives
- *     with the accounts and points at admin_right.id.
+ *     there is no row). V6 gives the name an account, but which accounts hold
+ *     which boxes is the moderator's own increment; the grant table joins
+ *     account.id to admin_right.id when it arrives.
  *
  *   - No isMember and no isStaff. The two predicates in context.ts answer for
- *     the four roles the portal shows, and nothing anywhere answers them for a
- *     sponsor or a boutique: whether either belongs inside administration at
- *     all has never been decided. A boolean column would decide it silently in
- *     seven rows, and a schema is the worst place to keep a guess, so the
- *     question goes to the owner instead and the column waits for the answer.
+ *     the four roles the portal shows, and every role here is one of those
+ *     four, so a column would repeat in the database what rights_mode and the
+ *     four codes already say. The day a sponsor arrives, whether a sponsor
+ *     belongs inside administration is a decision that comes with him.
+ *
+ *   - No in_use. It was here while the table carried seven rows and told the
+ *     four the portal shows from the three it does not. With four rows it is
+ *     true on every one of them, and a column that never differs is a sentence
+ *     the reader has to check before learning it says nothing.
  *
  *   - No order. The order of the columns in the matrix is read off the two
  *     lists that build it (ENTITY_FORMS, QUEUES), the definitions stay in the
@@ -85,21 +102,18 @@
               moderator, and the only reason the matrix exists: a single level
               called "moderator" would make the six people who administer this
               portal into one person with six passwords (ADL A8).
-     none     Holds nothing. Everybody else, and that includes the three roles
-              the portal does not use yet: the twelve rights below are the
-              moderator's matrix, and PDL P21 says granular rights describe what
-              a moderator may do, not what anybody else may.
+     none     Holds nothing: the visitor and the competitor. The twelve rights
+              below are the moderator's matrix, and PDL P21 says granular rights
+              describe what a moderator may do, not what anybody else may.
 
-   `in_use` is whether the portal puts anybody in this role today. Four of the
-   seven, and the floor under that number is the portal's own dictionary rather
-   than this comment: the role switch names every role it can become, so a role
-   the portal learns tomorrow arrives in the dictionary and fails
-   RolesAndRightsTest until this column agrees. */
+   The floor under the four rows is the portal's own dictionary rather than this
+   comment: the role switch names every role it can become, so a role the portal
+   learns tomorrow arrives in the dictionary and fails RolesAndRightsTest until
+   this table carries it too. */
 create table role (
     id          bigserial not null,
     code        text      not null,
     rights_mode text      not null,
-    in_use      boolean   not null,
 
     constraint role_pk primary key (id),
     constraint role_code_unique unique (code),
@@ -162,17 +176,14 @@ create table admin_right (
 );
 
 
-insert into role (code, rights_mode, in_use) values
-    ('visitor', 'none', true),
-    ('competitor', 'none', true),
-    ('moderator', 'granted', true),
-    ('superadmin', 'all', true),
-    /* The three PDL P21 names and the portal does not show yet. In the model
-       from the start, and the boutique by name: "postoji u modelu od pocetka,
-       ali je neaktivna do daljnjeg" (PDL P21, P20). */
-    ('league_organiser', 'none', false),
-    ('sponsor', 'none', false),
-    ('boutique', 'none', false);
+/* The four the owner decided on 08.09.2026, and no others. A league organiser,
+   a sponsor and a boutique are roles the portal knows as a concept (PDL P21,
+   P20) and are not rows here; see the head of this file. */
+insert into role (code, rights_mode) values
+    ('visitor', 'none'),
+    ('competitor', 'none'),
+    ('moderator', 'granted'),
+    ('superadmin', 'all');
 
 /* Six entities and six queues.
  *

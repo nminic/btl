@@ -69,7 +69,7 @@ class RoleAndRightConstraintsTest extends DatabaseTest {
 	 */
 	static final List<String> TABLES = List.of("role", "admin_right");
 
-	private static final String ROLE_INSERT = "insert into role (code, rights_mode, in_use) values (";
+	private static final String ROLE_INSERT = "insert into role (code, rights_mode) values (";
 	private static final String RIGHT_INSERT = "insert into admin_right (scope, target) values (";
 
 	/* A row of each table that breaks nothing: every violation below is one of
@@ -77,32 +77,31 @@ class RoleAndRightConstraintsTest extends DatabaseTest {
 	   fixture. Written out rather than built by the two helpers below, because
 	   the annotation that uses them takes a constant and a method call is not
 	   one. */
-	private static final String GOOD_ROLE = ROLE_INSERT + "'probna_uloga', 'none', false)";
+	private static final String GOOD_ROLE = ROLE_INSERT + "'probna_uloga', 'none')";
 	private static final String GOOD_RIGHT = RIGHT_INSERT + "'entity', 'probno')";
 
 	static List<Violation> violations() {
 		return List.of(
 				// ------------------------------------------------------------------- role
 				Violation.of("role_pk",
-						"insert into role (id, code, rights_mode, in_use) "
-								+ "select id, 'probna_uloga', 'none', false from role where code = 'moderator'"),
-				Violation.of("role_code_unique", role("'moderator', 'none', false")),
+						"insert into role (id, code, rights_mode) "
+								+ "select id, 'probna_uloga', 'none' from role where code = 'moderator'"),
+				Violation.of("role_code_unique", role("'moderator', 'none'")),
 				/* A capital letter, which is also the case the dictionary and the
 				   front end never use. It cannot trip the unique instead: the
 				   default collation is deterministic, so Probna and probna are two
 				   codes. */
-				Violation.of("role_code_shape", role("'Probna', 'none', false")),
-				Violation.of("role_rights_mode_known", role("'probna_uloga', 'some', false")),
+				Violation.of("role_code_shape", role("'Probna', 'none'")),
+				Violation.of("role_rights_mode_known", role("'probna_uloga', 'some'")),
 				/* The security rule of this migration, and the one that is an index
 				   rather than a constraint. A second role holding everything would be
 				   a way to hold every right that nobody ticked and no screen would
 				   name (rights.ts useMay, PDL P28a). */
-				Violation.of("role_only_one_holds_every_right", role("'probna_uloga', 'all', false")),
+				Violation.of("role_only_one_holds_every_right", role("'probna_uloga', 'all'")),
 				Violation.notNull("role_id_not_null", "id",
-						"insert into role (id, code, rights_mode, in_use) values (null, 'probna_uloga', 'none', false)"),
-				Violation.notNull("role_code_not_null", "code", role("null, 'none', false")),
-				Violation.notNull("role_rights_mode_not_null", "rights_mode", role("'probna_uloga', null, false")),
-				Violation.notNull("role_in_use_not_null", "in_use", role("'probna_uloga', 'none', null")),
+						"insert into role (id, code, rights_mode) values (null, 'probna_uloga', 'none')"),
+				Violation.notNull("role_code_not_null", "code", role("null, 'none'")),
+				Violation.notNull("role_rights_mode_not_null", "rights_mode", role("'probna_uloga', null")),
 
 				// ------------------------------------------------------------ admin_right
 				Violation.of("admin_right_pk",
