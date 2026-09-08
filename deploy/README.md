@@ -204,10 +204,14 @@ applied by the next `up -d --build backend`, with no separate step.
 
 ### What QA costs in memory
 
-The host has 4 GB and no swap, and it already carries the edge proxy, the
-production frontend and the QA frontend. Both new services therefore carry an
-explicit `mem_limit`, so a runaway JVM cannot take the public site down with it.
-The JVM reads that limit, not the host's total, and sizes its heap from it.
+The host has 4 GB in total and already carries the edge proxy, the production
+frontend and the QA frontend. Both new services therefore carry an explicit
+`mem_limit`, so a runaway JVM cannot take the public site down with it. The JVM
+reads that limit, not the host's total, and sizes its heap from it.
+
+Whether the host has any swap has not been checked; `free -h` on `btl-prod`
+answers it. Hetzner cloud images generally ship without, and if that holds here
+then the build peak below is a hard ceiling rather than a slow patch.
 
 | | limit | measured at rest |
 |---|---|---|
