@@ -1,2 +1,14 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+
+# Migrations keep the endings the generator writes, on every machine.
+#
+# Measured on 08.09.2026 rather than assumed: PostgreSQL's COPY reads a CRLF file
+# the same as an LF one, so the town codebook loads either way, forty six thousand
+# nine hundred and six rows and not one stray carriage return. This is not about
+# that. It is about a one megabyte generated file being byte for byte what
+# `backend/tools/generate_reference_migrations.py` wrote, so that re-running the
+# generator on Windows produces no diff, and so that nothing downstream of the
+# file - a checksum, a hand comparison, a restore drill run from psql - has to
+# know which machine last checked it out.
+src/main/resources/db/migration/*.sql text eol=lf
