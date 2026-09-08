@@ -53,11 +53,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>The cases are counted, and that is the point of the two floors at the
  * bottom.</b> Until 09.09.2026 the list below was four cases with nothing under
- * it, and a fifth shape went straight past: two countries exchanging names, which
- * the generator wrote as a migration that cannot run while the text it wrote into
- * that same migration said it refuses to. A hand written list is not the fault; a
- * hand written list with nothing underneath it is. So two questions are asked of
- * the catalogue and of the generator's own output rather than of a memory:
+ * it, and a shape it did not hold went straight past: two countries exchanging
+ * names, which the generator wrote as a migration that cannot run while the text
+ * it wrote into that same migration said it refuses to. A hand written list is
+ * not the fault; a hand written list with nothing underneath it is. So two
+ * questions are asked of the catalogue and of the generator's own output rather
+ * than of a memory:
  *
  * <ul>
  * <li>{@link #everyStatementADeltaCanWriteIsWrittenBySomeCase()}: the six
@@ -128,6 +129,34 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 		}
 
 		throw new IllegalStateException("no country " + code + " in " + COUNTRIES);
+	}
+
+	/**
+	 * Takes a country out of the list and hands back the name it gives up.
+	 *
+	 * Found rather than counted to, for the reason {@link #countryNamed} gives,
+	 * and the name is read off the row being removed rather than written here: a
+	 * literal would be a second copy of the country list and would go on passing
+	 * the day somebody edits that row.
+	 */
+	private static String countryLeaves(ArrayNode rest, String code) {
+		for (int at = 0; at < rest.size(); at++) {
+			if (code.equals(rest.get(at).get("code").stringValue())) {
+				return rest.remove(at).get("name").stringValue();
+			}
+		}
+
+		throw new IllegalStateException("no country " + code + " in " + COUNTRIES);
+	}
+
+	/** Every town of one country out of the codebook, back to front so that a
+	 *  removal does not move the rows still to be looked at. */
+	private static void townsOfCountryLeave(ArrayNode towns, String code) {
+		for (int at = towns.size() - 1; at >= 0; at--) {
+			if (code.equals(towns.get(at).get(2).stringValue())) {
+				towns.remove(at);
+			}
+		}
 	}
 
 	/** Where a town is swapped with the one below it. The middle of the file, so
@@ -216,7 +245,30 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 				new Change("a town is renamed and changes places with its neighbour",
 						rest -> {
 						},
-						DeltaMigrationAppliesTest::renameAndMove));
+						DeltaMigrationAppliesTest::renameAndMove),
+
+				/* The half of country_name_unique that is allowed, which had no
+				   case at all until 09.09.2026 while the two halves that are
+				   refused had one each. The generator grants it in a single
+				   condition, `code not in leaving`, and taking that condition
+				   out turned a delta that runs into a refusal with the whole
+				   suite still green.
+
+				   The two Congos, because the pair is real: CD leaves with all
+				   of its towns and CG takes the name it gives up. The deletes
+				   against country stand ahead of the updates to it, so by the
+				   time CG is written the name is nobody's. Both codebooks move,
+				   and that is not decoration either: this is the one case where
+				   a country goes while its towns are DELETED rather than
+				   re-pointed, which is the DELETE against place standing ahead
+				   of the DELETE against country. */
+				new Change("a country leaves and another takes the name it gives up",
+						rest -> {
+							String freed = countryLeaves(rest, "CD");
+
+							countryNamed(rest, "CG").put("name", freed);
+						},
+						towns -> townsOfCountryLeave(towns, "CD")));
 	}
 
 	@ParameterizedTest
@@ -487,6 +539,13 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 							+ "arrivals is one the database does not carry, and no statement changes a code"),
 			Verdict.measuredBy("country_name_unique", "a country changes its code and keeps its name"),
 			Verdict.measuredBy("country_name_unique", "two countries exchange names, which is one UPDATE over both"),
+			/* And the shape this key allows, which is a verdict of its own rather
+			   than the absence of one. A key covered only by refusals is a key
+			   nothing has ever written through: the generator's permission for
+			   this shape is one condition, and with no case naming it, taking
+			   that condition out turned a delta that runs into a refusal and
+			   left every test green (review, 09.09.2026). */
+			Verdict.measuredBy("country_name_unique", "a country leaves and another takes the name it gives up"),
 			Verdict.measuredBy("country_sort_order_unique", "a country joins the middle of the list, with a town in it"),
 
 			Verdict.outOfReach("place_pk", "a delta never writes an id; the sequence does"),

@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { RESOURCE_NAMES } from './client'
+import { plainly, type Place } from './places'
 import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
 /* Two rules that say something the code cannot say for itself, and that have
@@ -23,9 +24,9 @@ describe('the list of resources', () => {
        counts as decided.
 
        Eleven until 10.08.2026, when the codebook of the world's towns arrived:
-       the event form offers a town from the second letter typed, and the list it
-       offers from is nine hundred kilobytes that no screen but that one asks
-       for (owner, 10.08.2026).
+       the event form offers a town from the second letter typed, and the
+       codebook is 1200 KB that no screen but that one asks for (owner,
+       10.08.2026).
 
        Thirteen since 11.08.2026, when a member could say they are going to a
        race: who is going is written by members and read by members, and an
@@ -226,6 +227,162 @@ describe('what the ducats are called', () => {
        the shared floor is a floor for it too. */
     expect(everything().length).toBeGreaterThan(WHOLE_PORTAL)
     expect(everything().some((one) => one.path.endsWith('DucatGallery.tsx'))).toBe(true)
+  })
+})
+
+/**
+ * Every number the portal writes down about the codebook of towns, against the
+ * codebook.
+ *
+ * **Why this exists.** A number measured once and written into a sentence goes
+ * stale the next time the codebook is rebuilt, and it goes stale one home at a
+ * time. Counted on 09.09.2026: the size of the codebook is written in six
+ * sentences across the portal, three of them still said „nine hundred
+ * kilobytes" over a file of 1247, and the review that found it had named two of
+ * those three. The third turned up only by sweeping for the fact rather than
+ * working through the list. The two counts of shared names and the count of
+ * curly apostrophes had drifted the same way, in one home each.
+ *
+ * **What holds it.** Not a list of files: the facts below are read out of every
+ * file the sweep opens, so a home written tomorrow is held the day it is
+ * written, and a home that rewords itself out of the pattern fails on the
+ * „written down somewhere" line rather than going quiet. The expected side is
+ * derived from the shipped codebook every time this runs, and the folding is
+ * `plainly` itself rather than a copy of it, so a name is counted the way the
+ * portal counts it.
+ *
+ * **Where it stops, said rather than left to be found.** Three more numbers
+ * about the same codebook are written in words and are not held here: how many
+ * towns there are, how many carry an English name, and how many name-and-country
+ * pairs repeat. The first is a rounded claim about a property and stays true as
+ * the codebook grows, which is the shape that converges. The other two are exact
+ * and their homes are `V3__place.sql`, an applied migration whose checksum is
+ * remembered (ADL A2): its prose is a snapshot of the day it was written and
+ * must not be rewritten, so a guard that expected it to keep up would be asking
+ * for the one thing that must not happen. Both were measured on 09.09.2026 and
+ * both were right.
+ */
+describe('what the portal writes down about the codebook of towns', () => {
+  /** The shipped file, which `everything()` deliberately drops and which is the
+   *  source of truth for every number below. */
+  const CODEBOOK = join(process.cwd(), 'public', 'mock', 'places.json')
+
+  const towns: Place[] = JSON.parse(readFileSync(CODEBOOK, 'utf-8'))
+
+  /** Both names a town is written under, which is what the portal folds and
+   *  searches: the local one always, the English one where the town has one. */
+  const written = (town: Place) => (town[3] === undefined ? [town[1]] : [town[1], town[3]])
+
+  /** How many names stand in more than one country, counted over whichever
+   *  spelling of a town's names is handed in. */
+  function inMoreThanOneCountry(spelling: (town: Place) => string[]): number {
+    const countries = new Map<string, Set<string>>()
+
+    for (const town of towns) {
+      for (const name of spelling(town)) {
+        const already = countries.get(name)
+
+        if (already === undefined) {
+          countries.set(name, new Set([town[2]]))
+        } else {
+          already.add(town[2])
+        }
+      }
+    }
+
+    return [...countries.values()].filter((held) => held.size > 1).length
+  }
+
+  /**
+   * The marks `plainly` folds onto a straight apostrophe, asked of `plainly`
+   * rather than written out here.
+   *
+   * A list here would be a second copy of the one in `places.ts`, which is the
+   * very thing the sentence being held is about. Every letter the codebook
+   * actually carries is offered to the fold, and the ones that come back an
+   * apostrophe are the marks that sentence means.
+   */
+  function marksThatFoldOntoAnApostrophe(): Set<string> {
+    const every = new Set<string>()
+
+    for (const town of towns) {
+      for (const name of written(town)) {
+        for (const letter of name) {
+          every.add(letter)
+        }
+      }
+    }
+
+    return new Set([...every].filter((letter) => letter !== "'" && plainly(letter) === "'"))
+  }
+
+  const curly = marksThatFoldOntoAnApostrophe()
+
+  /**
+   * One fact: what it is, the shape the portal writes it in, and what the
+   * codebook says it is.
+   *
+   * `says` carries exactly one group, the number, and is read against a file
+   * whose comment stars have been taken off and whose whitespace has been
+   * collapsed, so a sentence that wraps over three lines is still one sentence.
+   */
+  const FACTS: { what: string; says: RegExp; is: number }[] = [
+    {
+      what: 'how big it is, in kilobytes rounded to the nearest hundred',
+      says: /codebook is (\d+) KB/g,
+      is: Math.round(statSync(CODEBOOK).size / 1024 / 100) * 100,
+    },
+    {
+      what: 'names in more than one country, folded the way the field folds them',
+      says: /(\d+) names in it stand in more than one country/g,
+      is: inMoreThanOneCountry((town) => written(town).map(plainly)),
+    },
+    {
+      what: 'names in more than one country, spelt the way the codebook spells them',
+      says: /(\d+) names in the codebook stand in more than one country/g,
+      is: inMoreThanOneCountry((town) => [town[1]]),
+    },
+    {
+      what: 'towns carrying a mark that folds onto an apostrophe',
+      says: /which (\d+) towns carry/g,
+      is: towns.filter((town) =>
+        written(town).some((name) => [...name].some((letter) => curly.has(letter))),
+      ).length,
+    },
+  ]
+
+  /** A file as one long sentence: the star a block comment puts at the head of
+   *  each of its lines taken off, and every run of whitespace collapsed, so a
+   *  phrase that wraps is still that phrase. The star that closes a comment
+   *  keeps its slash and is left alone. */
+  const flat = (code: string) => code.replace(/^[ \t]*\*(?![/*])/gm, ' ').replace(/\s+/g, ' ')
+
+  const swept = everything().filter((one) => one.path.endsWith('.ts') || one.path.endsWith('.tsx'))
+
+  it('reads the whole portal, tests and all', () => {
+    /* The floor under everything below, and asked of the list these tests really
+       read rather than of the sweep it was filtered from: a narrowing slipped in
+       between would leave the count answering for what was offered while the
+       facts were measured over less. Tests are in it on purpose. Three of the
+       six homes of the size are test files, and a sweep of production code alone
+       would have held half of them. */
+    expect(swept.length).toBeGreaterThan(WHOLE_PORTAL)
+    expect(swept.filter((one) => one.path.includes('.test.')).length).toBeGreaterThan(0)
+  })
+
+  it.each(FACTS)('agrees with the codebook about $what', ({ says, is }) => {
+    const said: string[] = []
+
+    for (const { path, code } of swept) {
+      for (const found of flat(code).matchAll(says)) {
+        said.push(`${path}: ${found[1] ?? ''}`)
+      }
+    }
+
+    /* Written down somewhere, or the pattern has stopped recognising the
+       sentence it was written for and the line below is measuring nothing. */
+    expect(said).not.toEqual([])
+    expect(said.filter((one) => !one.endsWith(`: ${String(is)}`))).toEqual([])
   })
 })
 

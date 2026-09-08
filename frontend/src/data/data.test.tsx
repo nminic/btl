@@ -350,7 +350,7 @@ describe('the generated data', () => {
   })
 
   it('carries a codebook of towns every one of which can be typed', async () => {
-    /* A megabyte and a quarter nobody in this repository wrote, read by a search
+    /* The codebook is 1200 KB nobody in this repository wrote, read by a search
        that folds a letter with a mark above it onto the letter (`plainly`). A
        letter that fold does not know is a town that is in the codebook and
        cannot be reached: seventy eight towns in Poland were, Wrocław among

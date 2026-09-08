@@ -26,7 +26,7 @@ const CODEBOOK: Place[] = [
   /* A town in a code the list of countries has no name for. */
   [725168, 'Bardejov', 'ZZ'],
   /* And a name two countries share, which is the ordinary case rather than the
-     odd one: seven hundred and thirty eight of them stand in the codebook. */
+     odd one: 744 names in the codebook stand in more than one country. */
   [2643743, 'London', 'GB'],
   [5367815, 'London', 'US'],
 ]

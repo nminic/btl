@@ -43,8 +43,8 @@ describe('the letters of a town as they are typed', () => {
 describe('the town somebody is typing', () => {
   it('says nothing until two letters have been typed', () => {
     /* One letter matches thousands of towns and answers nothing (owner,
-       10.08.2026), and the codebook is a megabyte and a quarter that nobody who
-       merely opened a form has asked for. */
+       10.08.2026), and the codebook is 1200 KB that nobody who merely opened a
+       form has asked for. */
     expect(placesLike(SOME, '')).toEqual([])
     expect(placesLike(SOME, 'b')).toEqual([])
     expect(placesLike(SOME, 'be')).toEqual([BEOGRAD])

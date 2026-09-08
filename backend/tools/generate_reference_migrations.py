@@ -718,9 +718,12 @@ DELTA_HEAD = """
    `place.rank`: an order is maintained by moving a range of it, and a
    maintenance transaction that needs a sequence of statements taken together
    asks for the check once, at the end, when the order is final. Nothing else is
-   loosened. `country_code_unique`, `country_name_unique` and
-   `price_row_key_unique` were never declared deferrable, so SET CONSTRAINTS does
-   not touch them and they are still checked as each row is written.
+   loosened. `country_code_unique`, `country_name_unique`,
+   `place_geonames_id_unique` and `price_row_key_unique` were never declared
+   deferrable, so SET CONSTRAINTS does not touch them and they are still checked
+   as each row is written. The mark is on that list on purpose and V3 says why:
+   a key that is looked up and referred to cannot be deferrable at all, because
+   no foreign key may point at one.
 
    What is left is `place_country_fk`, which is not deferrable and cannot be, and
    it alone decides the order below. Each line of it is a case that was run
@@ -773,7 +776,12 @@ DELTA_HEAD = """
 
    The script refuses both, names the countries, and those are migrations written
    by hand. What it does write is a country taking a name that a LEAVING country
-   gives up, because `country_deletes` stands ahead of `country_updates`. */
+   gives up, because `country_deletes` stands ahead of `country_updates`. That
+   half is a case of its own, "a country leaves and another takes the name it
+   gives up", and it is run against a database like every line above. It was
+   written down on 09.09.2026, a round after the sentence you are reading: the
+   refusal had cases and the permission had none, so removing the one condition
+   that grants it left every test green. */
 """
 
 
@@ -905,9 +913,13 @@ def no_country_takes_a_name_still_worn(before, added, changed, removed):
        "country_name_unique"`, while the DELTA_HEAD text it wrote into that same
        file said the script refuses to write such a delta.
 
-    What is not refused, and is measured rather than reasoned: a name freed by a
-    country that LEAVES. `country_deletes` stands ahead of `country_updates`, so
-    by then the name is gone.
+    What is not refused: a name freed by a country that LEAVES.
+    `country_deletes` stands ahead of `country_updates`, so by then the name is
+    gone. That is `code not in leaving` below, and until 09.09.2026 it was the
+    one line here with no case behind it: taking it out made the script refuse a
+    delta that runs, and the whole suite stayed green. It has one now, "a country
+    leaves and another takes the name it gives up" in DeltaMigrationAppliesTest,
+    which is a delta run against a database rather than a sentence about one.
 
     Said here, before a file is written, rather than as a migration that stops
     halfway through on a live database.

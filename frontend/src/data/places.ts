@@ -60,8 +60,8 @@ const ON_THEIR_OWN: [RegExp, string][] = [
   [/ħ/g, 'h'],
   [/ə/g, 'e'],
   /* And the two a typesetter uses that no keyboard has: the curly apostrophe,
-     which four hundred and twenty one towns carry, and the long dash inside a
-     name like Rosemont–La Petite-Patrie, which a person types as a hyphen. */
+     which 388 towns carry, and the long dash inside a name like
+     Rosemont–La Petite-Patrie, which a person types as a hyphen. */
   [/[’‘`]/g, "'"],
   [/[–—]/g, '-'],
 ]
@@ -120,8 +120,8 @@ export function placesLike(places: Place[], typed: string): Place[] {
 /**
  * The codebook, once somebody has started typing.
  *
- * A megabyte and a quarter is not sent to anybody who merely opened a form. The
- * request goes out on the second letter, and `loadResource` holds what came
+ * The codebook is 1200 KB and is not sent to anybody who merely opened a form.
+ * The request goes out on the second letter, and `loadResource` holds what came
  * back, so every later field on every later screen answers from memory.
  *
  * A codebook that fails to arrive leaves the field a plain text box, which is
