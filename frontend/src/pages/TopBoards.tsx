@@ -15,6 +15,7 @@ import {
   topByProgress,
   topByTimeOnCourse,
   topPairs,
+  pairsNow,
   fieldFor,
 } from '../data/derive'
 import type { Competitor, RaceCategory, RacingPair, Result } from '../data/types'
@@ -536,6 +537,7 @@ function Boards({
 
 export function TopBoards() {
   const { t } = useI18n()
+  const { pairsMade, pairsBroken } = useSession()
   const [params] = useFilterParams()
   /* Only what the boards show. The teams went off this page with the layout of
      04.08.2026, and the file of teams went with them. */
@@ -546,11 +548,13 @@ export function TopBoards() {
       <h1>{t('topBoards.title')}</h1>
 
       <Resource state={state}>
-        {([competitors, results, pairs]) => (
+        {([competitors, results, fromFile]) => (
           <Boards
             competitors={competitors}
             results={results}
-            pairs={pairs}
+            /* Through what this visit has made and broken, so a pair confirmed a moment ago is on
+               the board the moment it exists, and one that was ended is off it (`pairsNow`). */
+            pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
             seasonParam={params.get('sezona')}
           />
         )}

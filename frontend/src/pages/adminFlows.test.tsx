@@ -50,6 +50,13 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
     amend: vi.fn(),
     invitations: [],
     invite: vi.fn(),
+    pairInvites: [],
+    invitePair: vi.fn(),
+    closePairInvite: vi.fn(),
+    pairsMade: [],
+    pairsBroken: [],
+    makePair: vi.fn(),
+    breakPair: vi.fn(),
     close: vi.fn(),
     corrected: {},
     submissions: states.map((status, index) => ({

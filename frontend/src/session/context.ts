@@ -1,5 +1,12 @@
 import { createContext } from 'react'
-import type { EventComment, MembershipBasis, RaceCategory, PendingItem, Result } from '../data/types'
+import type {
+  EventComment,
+  MembershipBasis,
+  RaceCategory,
+  PendingItem,
+  RacingPair,
+  Result,
+} from '../data/types'
 
 /* What the prototype remembers between screens.
  *
@@ -216,6 +223,16 @@ export type Message = {
    * would go on offering it after the member joined somewhere else.
    */
   invitation?: string
+  /**
+   * The invitation into a racing pair this message is about, kept apart from the one above rather
+   * than sharing it.
+   *
+   * Two fields and not one with a kind beside it, because the two are answered by different
+   * screens and the compiler is then the thing that keeps them apart: a message that carries a
+   * pair's identity cannot be handed to the screen that answers a team's. Only the identity is
+   * kept, never the answer, for the reason written above.
+   */
+  pairInvite?: string
 }
 
 /* What administration has changed, kept apart from the data it changes.
@@ -272,6 +289,29 @@ export type Application = {
  * when the message is drawn, from whether the member has a team, so three teams
  * inviting the same person on the same day need not know about each other.
  */
+/**
+ * One member asking another into a racing pair, which is the same shape as an invitation into a
+ * team and for the same reason (odluka 07.09.2026, vlasnik: „Poslušaću predlog broj 1").
+ *
+ * Where it differs from a team's invitation is that both ends are one person: a pair is made by two
+ * members confirming each other (PDL P13), so there is no role that could change hands between the
+ * question and the answer. It still reaches the one who has to answer through their inbox, because
+ * that is the one place the portal can put something addressed to a named person.
+ *
+ * It carries no answer of its own, exactly as `Invitation` does not: „may this still be accepted"
+ * is worked out when the message is drawn, from whether either of them already has a pair, so two
+ * people asking the same person on the same day need not know about each other.
+ */
+export type PairInvite = {
+  id: string
+  /** Who is asking. */
+  from: string
+  /** Who is being asked. */
+  to: string
+  /** The day it was sent. */
+  date: string
+}
+
 export type Invitation = {
   id: string
   /** The team doing the asking. */
@@ -460,6 +500,22 @@ export type SessionValue = {
    *  and working the identity out a second time at the call site would be the
    *  same rule written twice. */
   invite: (invitation: Omit<Invitation, 'id'>) => string
+
+  /** The invitations into a racing pair that are still open, from everybody at once. */
+  pairInvites: PairInvite[]
+  /** Sends one, and hands back the identity it was given, for the same reason `invite` does: the
+   *  message that carries it has to name it. */
+  invitePair: (invite: Omit<PairInvite, 'id'>) => string
+  /** Closes one: accepted, refused, or overtaken because one of the two paired up elsewhere. */
+  closePairInvite: (id: string) => void
+  /** The pairs made during this visit. There is no database, so a pair confirmed now lives here
+   *  until the visit ends (ADL A2). */
+  pairsMade: RacingPair[]
+  /** The identities of pairs that were broken during this visit, whether they came from the file
+   *  or were made in it: „Ne postoji par onda, raskida se" (PDL P13). */
+  pairsBroken: string[]
+  makePair: (pair: Omit<RacingPair, 'id'>) => void
+  breakPair: (id: string) => void
   /** Closes one: accepted, refused, or overtaken because the member joined
    *  elsewhere. The message stays in the inbox either way, because deleting
    *  somebody's mail is deleting the answer to „what happened to that". */

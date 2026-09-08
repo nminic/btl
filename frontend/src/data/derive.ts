@@ -933,6 +933,82 @@ const BY_KILOMETERS = byLadder<TallyRow>([
   (row) => -Date.parse(row.reachedOn),
 ])
 
+/**
+ * The racing pairs that hold now: what the file says, less what this visit broke, plus what it
+ * made.
+ *
+ * The prototype has no database, so a pair confirmed during a visit lives in the session (ADL A2).
+ * Read through this, every screen sees the same answer: the board of best pairs, and the profile
+ * that says who somebody is paired with.
+ *
+ * **A member is in one pair at a time** (PDL P13), so a pair made in this visit takes its two
+ * members out of whatever the file paired them with. That is the same rule as „prihvatanje novog
+ * poziva raskida stari", written once here rather than at each screen that asks.
+ */
+export function pairsNow(
+  fromFile: RacingPair[],
+  made: RacingPair[],
+  broken: string[],
+): RacingPair[] {
+  /* **By season, and that is the whole of it** (review, 07.09.2026). Read without the season, a
+     pair made today took its two members out of **every** pair the file has for them, including
+     the seasons that are frozen: confirming a pair for 2027 deleted a 2019 pair off the board of
+     2019, which is „Ne brišu se nikad istorijski podaci" undone (PDL P13). One member is in one
+     pair **per season**, and nothing about a season that is over is anybody's to change. */
+  const taken = new Set(made.flatMap((one) => one.memberNumbers.map((who) => `${one.season}:${who}`)))
+
+  return [
+    ...fromFile.filter(
+      (one) =>
+        !broken.includes(one.id) &&
+        !one.memberNumbers.some((who) => taken.has(`${one.season}:${who}`)),
+    ),
+    ...made.filter((one) => !broken.includes(one.id)),
+  ]
+}
+
+/**
+ * The pair one member is in, of the pairs that hold, or nothing.
+ *
+ * Takes nobody as well as somebody: a screen asks this before it knows whether anybody is signed
+ * in, and „nobody is in a pair" is the right answer rather than a question of its own. No member
+ * number is `null`, so the search simply finds nothing.
+ */
+export function pairOf(
+  pairs: RacingPair[],
+  memberNumber: string | null,
+  season: number,
+): RacingPair | null {
+  return (
+    pairs.find(
+      (one) => one.season === season && one.memberNumbers.some((who) => who === memberNumber),
+    ) ?? null
+  )
+}
+
+/**
+ * Every pair one member is in that still counts, earliest season first.
+ *
+ * **All of them, and that was measured** (review, 07.09.2026). It used to answer with the pair of
+ * the furthest season, a rule that appears in no journal and that I had invented while fixing
+ * something else. On 2 January a member can hold two: the one they are running the season in, and
+ * one made for the season after. Answered with the furthest, the running one vanished from their
+ * own page and there was no way left to end it, while the other half of it went on being told they
+ * were paired.
+ *
+ * A season that is over is history rather than „who they are paired with", so `from` is the season
+ * being run and nothing earlier is returned.
+ */
+export function pairsFrom(
+  pairs: RacingPair[],
+  memberNumber: string | null,
+  from: number,
+): RacingPair[] {
+  return pairs
+    .filter((one) => one.season >= from && one.memberNumbers.some((who) => who === memberNumber))
+    .sort((left, right) => left.season - right.season)
+}
+
 /** A racing pair's season: what the two of them did on the races they both ran. */
 export type PairRow = Totals & {
   pair: RacingPair

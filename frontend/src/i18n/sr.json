@@ -475,6 +475,24 @@
       "other": "{count} takmičarki"
     }
   },
+  "pair": {
+    "invite": "Pozovi u trkački par",
+    "asked": "Poziv u trkački par je poslat i čeka odgovor.",
+    "inviteSubject": "Poziv u trkački par",
+    "inviteBody": "{who} te poziva u trkački par. Par nastaje tek kad ti potvrdiš, i važi za sezonu koja počinje posle 31. decembra.",
+    "accept": "Prihvati",
+    "refuse": "Odbij",
+    "inviteClosed": "Ovaj poziv više nije otvoren.",
+    "brokenSubject": "Trkački par je raskinut",
+    "brokenBody": "{who} je od sezone {season} u drugom trkačkom paru, pa je vaš raskinut.",
+    "sent": "Poslat poziv: {who}.",
+    "received": "Primljen poziv: {who}.",
+    "endedBody": "Trkački par sa {who} za sezonu {season} je raskinut.",
+    "mine": "Trkački par",
+    "none": "Nije u trkačkom paru.",
+    "breakUp": "Raskini trkački par",
+    "since": "Za sezonu {season}, u paru od {date}."
+  },
   "topBoards": {
     "title": "Top liste",
     "byLength": {

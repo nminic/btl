@@ -1,0 +1,1268 @@
+import { screen, within } from '@testing-library/react'
+import { at, first, htmlElement, must } from '../test/at'
+import { renderAt } from '../test/render'
+import { SLOW } from '../test/slow'
+import { setupUser } from '../test/user'
+import { useClock } from '../clock/useClock'
+import { useSession } from '../session/useSession'
+
+/* „Pozovi u trkački par", from the press to the answer.
+ *
+ * The owner chose this door out of three on 07.09.2026 („Poslušaću predlog broj 1, tvoju
+ * preporuku"): the question is asked from the other person's profile and answered from their
+ * inbox, which is exactly how a team invites somebody (`pages/teamInvite.test.tsx`, and this file
+ * is written from it).
+ *
+ * Everything is walked on the screens, in one visit, because every half of it is about what
+ * somebody else sees: the press is on one member's profile, the answer is in another member's
+ * mail, and, when a pair is broken to make room, the notice is in a third member's.
+ */
+
+/** A question put to nobody in particular: the record is real and the message that carries it is
+ *  addressed to the league rather than to a member.
+ *
+ *  **No screen writes one, and that is the point** (security review, 08.09.2026). The whole of what
+ *  keeps somebody from answering a question that is not theirs used to be the inbox, which lets
+ *  `to: ''` through by design, so one message of this shape and every member of the portal held the
+ *  same answer. This draws that shape beside the portal, because the portal must refuse it whether
+ *  or not the portal can make it. */
+function AskTheLeague({ from, to }: { from: string; to: string }) {
+  const { invitePair, notify } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const id = invitePair({ from, to, date: TODAY })
+
+        notify({
+          from: 'Balkanska trkačka liga',
+          to: '',
+          subject: 'Poziv u trkački par',
+          body: 'Poziv poslat celoj ligi',
+          date: TODAY,
+          pairInvite: id,
+        })
+      }}
+    >
+      pitaj celu ligu
+    </button>
+  )
+}
+
+/** The reader becomes somebody else inside one visit. */
+function Become({ who }: { who: string }) {
+  const { signIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        signIn(who)
+      }}
+    >
+      postani {who}
+    </button>
+  )
+}
+
+/* Read off `public/mock/competitors.json` rather than remembered: 000002 Relja Momčilović is a man
+   and 000015 Katarina Novaković a woman, and neither is in any pair in `public/mock/pairs.json`,
+   which holds only 000001 with 000009 and 000014 with 000030, both for 2019. 000004 Časlav
+   Radenković is a second man, for the case about two of one sex. */
+const HER = '/sr/takmicar/000015-katarina-novakovic'
+const OTHER_MAN = '/sr/takmicar/000004-caslav-radenkovic'
+const TODAY = '2026-10-15'
+
+const invite = () => screen.queryAllByRole('button', { name: 'Pozovi u trkački par' })
+
+/** Each line the profile draws about pairs, in the order it draws them.
+ *
+ *  A member may hold more than one pair, and the questions still standing are a line of their own,
+ *  so „what the page says about pairs" is every one of those lines and not the first of them.
+ *
+ *  **And they are kept apart** (review, 07.09.2026): joined into one string, „both days are on the
+ *  page" is all that can be said, and a portal that writes each row's day beside the **other**
+ *  row's name says exactly that. A member choosing which „Raskini" to press reads the season beside
+ *  the name, so a row that carries somebody else's is a member ending the wrong pair. */
+const pairRows = () => [...document.querySelectorAll('.profile__pair')].map((one) => one.textContent ?? '')
+
+/** All of it as one string, for the assertions that are about the page rather than about a row. */
+const pairText = () => pairRows().join(' ')
+
+/** The day the portal is read as, moved inside one visit. A pair asked for on one day and confirmed
+ *  on another is the whole of what „formiranje mora biti završeno do 31. decembra" is about. */
+function Day({ on }: { on: string }) {
+  const { simulate } = useClock()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        simulate(on)
+      }}
+    >
+      danas je {on}
+    </button>
+  )
+}
+
+/** The three members the walks become, drawn beside the portal. Signing in as somebody else inside
+ *  one visit is what lets a press in one member's hands be read in another's inbox. */
+const THREE = (
+  <>
+    <Become who="000015" />
+    <Become who="000002" />
+    <Become who="000004" />
+    <Become who="000005" />
+    <Become who="000006" />
+    <Day on="2027-01-02" />
+    <Day on="2026-12-05" />
+    <Day on="2026-11-20" />
+  </>
+)
+
+/** Every message in the panel in the header, newest first, the way the panel draws them. */
+async function inbox(user: ReturnType<typeof setupUser>) {
+  await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
+
+  return screen
+    .queryAllByRole('link')
+    .filter((one) => /\/poruke\/msg-/.test(one.getAttribute('href') ?? ''))
+}
+
+/** The reader's own profile, reached the way a member reaches it: through the account menu in the
+ *  header. Walked rather than rendered again, because a pair confirmed a moment ago lives in the
+ *  session and rendering again would build a new one. */
+async function goToMyProfile(user: ReturnType<typeof setupUser>) {
+  await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
+  await user.click(await screen.findByRole('link', { name: 'Moj profil' }))
+}
+
+/** The one notice about a pair that ended, opened. */
+async function openTheNotice(user: ReturnType<typeof setupUser>) {
+  const waiting = (await inbox(user)).filter((one) =>
+    /Trkački par je raskinut/.test(one.textContent ?? ''),
+  )
+
+  await user.click(must(waiting[0], 'a notice in the inbox'))
+}
+
+/** The one invitation waiting, opened. */
+async function openTheInvitation(user: ReturnType<typeof setupUser>) {
+  const waiting = (await inbox(user)).filter((one) =>
+    /Poziv u trkački par/.test(one.textContent ?? ''),
+  )
+
+  await user.click(must(waiting[0], 'an invitation in the inbox'))
+}
+
+describe('who is offered „Pozovi u trkački par"', () => {
+  it('is offered to a member on the profile of somebody of the other sex', async () => {
+    renderAt(HER, 'competitor', '000002', undefined, TODAY)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(invite()[0]).toBeVisible()
+  }, SLOW)
+
+  it('is offered to nobody who is not signed in', async () => {
+    /* A pair is two members confirming each other, so a visitor has nothing to confirm with. */
+    renderAt(HER, 'visitor', null, undefined, TODAY)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(invite().length).toBe(0)
+  }, SLOW)
+
+  it('is offered to nobody on the profile of somebody of the same sex', async () => {
+    /* „Trkački par mora biti mešovit, jedan muškarac i jedna žena" (PDL P13). */
+    renderAt(OTHER_MAN, 'competitor', '000002', undefined, TODAY)
+
+    await screen.findByRole('heading', { level: 1, name: /Časlav/ })
+
+    expect(invite().length).toBe(0)
+  }, SLOW)
+
+  it('is offered once, and then says so', async () => {
+    /* An invitation is sent without the other person saying anything, so the same member could
+       otherwise fill the same inbox with the same question every day. What stands instead is that
+       it was already asked, which is also the answer to „did my press register". */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+
+    expect(invite().length).toBe(0)
+    expect(screen.getByText(/Poziv u trkački par je poslat/)).toBeVisible()
+  }, SLOW)
+})
+
+describe('the answer to „Pozovi u trkački par"', () => {
+  it('makes the pair on „Prihvati", and both profiles say so', async () => {
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+
+    /* **The message goes to her and to nobody else.** Written to the league it would tell every
+       member of the portal that these two were being asked to pair, which is their business. */
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+
+    expect(screen.getByText(/Relja Momčilović te poziva u trkački par/)).toBeVisible()
+
+    /* **And the question carries the day it was sent**, which is drawn in the panel, in the list of
+       messages and on the message itself: written with any other day it files itself among older
+       mail (review, 07.09.2026). Read off the opened message, because the panel draws the same date
+       beside the subject and one would answer for the other. */
+    expect(
+      must(document.querySelector('.messages__from'), 'the line under the subject').textContent,
+    ).toContain('15. 10. 2026')
+
+    /* **Three days, three roles, and no two of them the same string** (my own mutations,
+       07.09.2026, which found two of these passing). The question was asked on 15 October; it is
+       confirmed five weeks later; and her page is read in the new year. Asked and confirmed on one
+       day, a portal writing the pair with the day it was **asked** for draws the same line as one
+       writing the day it was **finished**; read on that day too, so does one drawing „today". */
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-11-20' }))
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Her own profile now names him, for the season the pair was formed for and not for the one
+       being run: „Formiranje mora biti završeno do 31. decembra da bi trkački par važio u novoj
+       sezoni" (PDL P13). */
+    /* **Read in December and not in January, so the season is not the year of the reading**
+       (review, 07.09.2026): moved to 2 January, „Za sezonu 2027" could have come off the clock as
+       easily as off the pair, and a portal writing the season being **run** beside a pair drew the
+       same line. Four days now, each with one job: asked on 15 October, confirmed on 20 November,
+       read on 5 December, and the pair belongs to 2027. */
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-12-05' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const line = pairText()
+
+    expect(line).toContain('Relja Momčilović')
+    expect(line).toContain('Za sezonu 2027')
+    /* The day the two of them finished it, and none of the other three days. */
+    expect(line).toContain('20. 11. 2026')
+    expect(line).not.toContain('15. 10. 2026')
+    expect(line).not.toContain('5. 12. 2026')
+  }, SLOW)
+
+  it('says the day a question was asked, and not the day it is read', async () => {
+    /* **Three sources of one string, and each is parted from the others** (reviews of 07.09.2026).
+       Opened on the day it was sent, `message.date` and „today" are the same string, so a portal
+       filing every message under the day it is opened drew the same line. And opened as the only
+       message, or as the newest, `message.date` and `inbox[0].date` are the same string too, so one
+       drawing the date of the **newest** message drew it as well.
+     *
+       So: Relja asks on 15 October, Časlav asks five weeks later, and it is **Relja's** question,
+       the older of the two, that is opened. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-11-20' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question five weeks later'))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+
+    const waiting = (await inbox(user)).filter((one) =>
+      /Poziv u trkački par/.test(one.textContent ?? ''),
+    )
+
+    expect(waiting.length).toBe(2)
+
+    /* The newest is drawn first, so the older of the two is the second row. */
+    await user.click(at(waiting, 1))
+
+    expect(screen.getByText(/Relja Momčilović te poziva u trkački par/)).toBeVisible()
+
+    const said =
+      must(document.querySelector('.messages__from'), 'the line under the subject').textContent ?? ''
+
+    expect(said).toContain('15. 10. 2026')
+    expect(said).not.toContain('20. 11. 2026')
+  }, SLOW)
+
+  it('makes nothing on „Odbij", and the question is over', async () => {
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Odbij' }))
+
+    /* Nothing is written down about which of the two answers it was, so the sentence says only
+       that the question is over. */
+    expect(screen.getByText(/Ovaj poziv više nije otvoren/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+
+    /* **And no pair was made**, which the sentence alone does not say: „Odbij" that quietly paired
+       them would leave exactly this screen behind (review of my own mutations, 07.09.2026). */
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    /* The line stays and says there is no pair, which is what a profile owes its own reader: an
+       empty space answers nothing. */
+    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
+      'Nije u trkačkom paru',
+    )
+  }, SLOW)
+})
+
+describe('the button once a pair exists', () => {
+  it('is offered to neither of them, from either side', async () => {
+    /* „Jedan par po osobi po sezoni" (PDL P13). Both ends are read, because the button asks about
+       both and a version that asked about one of them would leave the other able to be asked again
+       (review of my own mutations, 07.09.2026). */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* A third member, on her profile: she is taken, so there is nothing to ask. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(invite().length).toBe(0)
+
+    /* And on Ivona's profile, who is free: the one asking is the one who is taken now. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    expect(invite().length).toBe(0)
+  }, SLOW)
+})
+
+describe('a pair that is ended', () => {
+  it('is ended from the profile of whoever is reading, and from no other', async () => {
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* His profile, read by her: the pair is said, and there is no button on it. Ending somebody
+       else's pair is somebody else's decision. */
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    /* And from her own profile to his, by the link the pair itself draws: naming the other half is
+       what „par sa linkovima" in PDL means. */
+    await user.click(
+      within(htmlElement(must(document.querySelector('.profile__pair'), 'the line'))).getByRole(
+        'link',
+      ),
+    )
+    await screen.findByRole('heading', { level: 1, name: /Relja/ })
+
+    /* And it names **his** other half, which is her: read off the reader instead of off the profile
+       being drawn, a profile would tell everybody that the person they are looking at is paired
+       with themselves (review, 07.09.2026). */
+    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
+      'Katarina Novaković',
+    )
+    expect(screen.queryByRole('button', { name: 'Raskini trkački par' })).toBeNull()
+  }, SLOW)
+
+  it('is gone from both profiles once it is ended', async () => {
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(screen.getByRole('button', { name: 'Raskini trkački par' }))
+
+    /* The line stays and says there is no pair, which is what a profile owes its own reader: an
+       empty space answers nothing. */
+    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
+      'Nije u trkačkom paru',
+    )
+
+    /* **And the other half is told**, by name and in his own inbox. Ending a pair is a change that
+       hits somebody who is not pressing anything, and PDL says such a member is told at once; the
+       same thing happens through „Prihvati", and a portal that told them one way and not the other
+       would be a strange portal (review, 07.09.2026). A third member, who has nothing to do with
+       either of them, has no such message: the notice is his, not the league's. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    const his = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    expect(his.length).toBe(1)
+
+    await user.click(must(his[0], 'the notice'))
+
+    /* By name and **for the season the pair held**, not the season being read: the pair is for
+       2027 and this is read in 2026, so a notice that named the running season would say 2026 and
+       the case can tell the two apart. */
+    expect(
+      screen.getByText(/Trkački par sa Katarina Novaković za sezonu 2027 je raskinut/),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    expect(
+      (await inbox(user)).filter((one) => /Trkački par je raskinut/.test(one.textContent ?? ''))
+        .length,
+    ).toBe(0)
+  }, SLOW)
+})
+
+describe('the board of best pairs', () => {
+  it('has the pair the moment it is confirmed', async () => {
+    /* There is no database, so a pair confirmed during a visit lives in the session; every screen
+       reads the file and the session as one thing (`data/derive.ts`, `pairsNow`), which is what
+       makes the board and the profile agree. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* **What this holds, said plainly** (review, 07.09.2026, which measured that the comment here
+       claimed more than the walk does). A pair made in a visit has no results, so it can appear on
+       no board; and a pair out of the file cannot be ended on a real clock, because a profile draws
+       only seasons from the current one up. So „the board reads the session" and „the board reads
+       the file" are not two different screens in this prototype, and nothing here can tell them
+       apart. What is held is the half that can be: the portal does not fall over on a pair that has
+       nothing to rank, and her own page says what it should. */
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    /* The pair is on her profile the moment it exists, which is the half of „every screen reads the
+       file and the session as one thing" that can be walked to (`data/derive.ts`, `pairsNow`). */
+    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
+      'Relja',
+    )
+  }, SLOW)
+})
+
+describe('a question that has been overtaken, and a pair that makes room', () => {
+  it('ends the reader’s own pair too, and tells the one she leaves', async () => {
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+
+    /* A second man asks her the same thing, from her own profile. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(must(invite()[0], 'the second button'))
+
+    /* She takes the second and then opens the first, which is now over. */
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+
+    const waiting = (await inbox(user)).filter((one) =>
+      /Poziv u trkački par/.test(one.textContent ?? ''),
+    )
+
+    await user.click(must(waiting[0], 'the newer invitation'))
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* **And then the older one, which is still open and still may be taken.** Both halves are
+       treated alike (07.09.2026): accepting ends whatever either of them is in and tells whoever is
+       left. Refusing the reader while breaking the asker gave the same sentence of PDL two answers
+       depending on which side the pair stood, and she could get round it anyway by ending her own
+       pair without a word to anybody. */
+    await user.click(must((await inbox(user))[1], 'the older invitation'))
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* And the question is closed by being taken: opened again it offers nothing. „Poziv postoji dok
+       se ne odgovori; odgovor ga uklanja" (`session/context.ts`). */
+    expect(screen.getByText(/Ovaj poziv više nije otvoren/)).toBeVisible()
+
+    /* The man she left is told, by name and in his own inbox. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    const left = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    expect(left.length).toBe(1)
+  }, SLOW)
+
+  it('tells the one who is left when accepting breaks a pair', async () => {
+    /* The owner's own sentence: „muškarac zatraži novi par, nova žena prihvati, dotadašnja žena
+       istog trenutka dobija poruku." He asks two women; the second answers first, and when the
+       first answers after her the pair that stood is ended and the woman who is left is told, by
+       name and in her own inbox rather than in the league's. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button on her profile'))
+
+    /* And the same question to a second woman, walked to through the list of members rather than
+       rendered beside the portal: what is measured is what one press does to another member's
+       inbox. */
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+    await user.click(must(invite()[0], 'the button on the second profile'))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Ivona is told, and the notice names the man she is no longer paired with. */
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+
+    const hers = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    await user.click(must(hers[0], 'the notice'))
+
+    expect(screen.getByText(/Relja Momčilović je od sezone 2027 u drugom trkačkom paru/)).toBeVisible()
+
+    /* **And her pair is really gone**, which the notice alone does not say: an accept that told her
+       and left the old pair standing would leave exactly this screen behind. */
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    /* The line stays and says there is no pair, which is what a profile owes its own reader: an
+       empty space answers nothing. */
+    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
+      'Nije u trkačkom paru',
+    )
+
+    /* **And it was written to her and not to the league**, which is the other thing the notice
+       alone cannot say: a third member, who has nothing to do with either of them, has no such
+       message (review of my own mutations, 07.09.2026). */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    const his = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    expect(his.length).toBe(0)
+  }, SLOW)
+})
+
+describe('a pair whose other half the portal does not have', () => {
+  it('is still said, and there is nothing to open', async () => {
+    /* A pair is a record of two member numbers, and the file could name somebody the portal no
+       longer has: a member who left, or a season of history imported before its people. The pair is
+       a fact either way and is said; what there is not is a profile to open, so the number stands
+       where the name would.
+
+       Served rather than written into `public/mock/pairs.json`, which is the precedent four other
+       cases in this repo use: the two pairs that ship stay as they are. */
+    const served = globalThis.fetch
+    const orphan = [
+      { id: 'orphan', season: 2027, memberNumbers: ['000015', '000099'], since: '2026-12-01' },
+    ]
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('pairs.json')
+        ? new Response(JSON.stringify(orphan), { headers: { 'content-type': 'application/json' } })
+        : served(input, init),
+    )
+
+    try {
+      renderAt(HER, 'competitor', '000015', undefined, TODAY)
+
+      await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+      const line = htmlElement(must(document.querySelector('.profile__pair'), 'the line'))
+
+      expect(line.textContent).toContain('000099')
+      expect(within(line).queryByRole('link')).toBeNull()
+    } finally {
+      /* Put back what stood before, and not `vi.unstubAllGlobals`: this suite serves the mocked
+         files through a stub of its own (`pages/publicData.test.tsx` records the same). */
+      vi.stubGlobal('fetch', served)
+    }
+  }, SLOW)
+})
+
+describe('the last day of December', () => {
+  it('is a deadline on finishing, so an answer in January makes a pair for the season after next', async () => {
+    /* **PDL P13: „Formiranje mora biti završeno do 31. decembra da bi trkački par važio u novoj
+       sezoni."** Forming ends when the second of the two confirms, so the season is worked out on
+       the day of the answer and never on the day of the question.
+
+       Asked on the last day of 2026 and answered two days later: read off the question this makes a
+       pair for 2027, a season already being run, which is the deadline undone. Measured by a review
+       on 07.09.2026 by walking exactly this, with the whole gate green. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, '2026-12-31', THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'the line').textContent ?? ''
+
+    /* The season, not the day: the day it was confirmed is 2. 1. 2027 and says so, which is exactly
+       why the two are read apart. */
+    expect(line).toContain('Za sezonu 2028')
+    expect(line).not.toContain('Za sezonu 2027')
+  }, SLOW)
+})
+
+describe('a question that is still standing', () => {
+  it('stands on both profiles, said from each side', async () => {
+    /* PDL asks a profile to carry „tekući trkački par sa linkom, **pozivi koji čekaju (i poslati i
+       primljeni)**, i dugme Raskini". A review on 07.09.2026 found two of the three drawn: the one
+       who asked could see nothing at all on their own page, and the one who was asked could see it
+       only in the inbox.
+
+       Both sides are read, because „poslat" and „primljen" are the same record seen from two ends
+       and a version that drew one of them would look right from whichever end the case opened. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Relja/ })
+
+    expect(must(document.querySelector('.profile__pair'), 'his line').textContent).toContain(
+      'Poslat poziv: Katarina Novaković',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(must(document.querySelector('.profile__pair'), 'her line').textContent).toContain(
+      'Primljen poziv: Relja Momčilović',
+    )
+
+    /* **And she is not offered the same question back**, which is the other direction of one
+       standing question: two of them in two inboxes would be two answers to one thing. Read on his
+       profile, walked to through the list of members. */
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Relja Momčilović/ }))
+    await screen.findByRole('heading', { level: 1, name: /Relja/ })
+
+    expect(invite().length).toBe(0)
+    expect(screen.getByText(/Poziv u trkački par je poslat/)).toBeVisible()
+
+    /* **And his page says nothing at all about it**, which is his and hers and nobody else's: the
+       questions still standing are drawn on the reader own page only, so on his page, read by her,
+       there is no such line to read. */
+    expect(document.querySelector('.profile__pair')).toBeNull()
+  }, SLOW)
+
+  it('stands on the page of somebody who already has a pair, because it can still end it', async () => {
+    /* Drawn only inside „there is no pair", a member with a pair and an open question about another
+       one saw nothing of it on their own page, and that question can still end the pair they have
+       (review, 07.09.2026). */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question to her'))
+
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+    await user.click(must(invite()[0], 'his question to Ivona'))
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Relja/ })
+
+    const line = pairText()
+
+    expect(line).toContain('Ivona Stamenkovska')
+    expect(line).toContain('Poslat poziv: Katarina Novaković')
+  }, SLOW)
+
+  it('is not listed on somebody else’s page, and neither is anybody else’s', async () => {
+    /* Two things one case can hold, because they fail the same way: a reader who is shown questions
+       that are not theirs, and a page that shows its own owner's questions to whoever opens it. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000004', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question to her'))
+
+    /* A third member opens her page: the question between the other two is not there. */
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(document.querySelector('.profile__pair')).toBeNull()
+
+    /* And her own page carries her own questions and nobody else's. */
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'her line').textContent ?? ''
+
+    /* **Named after the one who sent it**, which is what makes this assertion able to fail: the
+       question standing is Časlav's to Katarina, so a page that listed it would say „Primljen
+       poziv: Časlav Radenković". Written against her name it could not fail either way (review,
+       07.09.2026). */
+    expect(line).toContain('Nije u trkačkom paru')
+    expect(line).not.toContain('poziv')
+    expect(line).not.toContain('Časlav')
+  }, SLOW)
+})
+
+describe('a pair from a season that is over', () => {
+  it('is not drawn as the pair somebody has now', async () => {
+    /* `public/mock/pairs.json` pairs 000009 Milica Bogdanović with 000001 Vladan Đurišić for
+       **2019**. Read without a floor under the season, her profile in 2026 says she is in that pair
+       today, and the whole gate stays green: the argument the profile is read with is measured
+       nowhere else (review, 07.09.2026). */
+    renderAt('/sr/takmicar/000009-milica-bogdanovic', 'competitor', '000009', undefined, TODAY)
+
+    await screen.findByRole('heading', { level: 1, name: /Milica/ })
+
+    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
+      'Nije u trkačkom paru',
+    )
+  }, SLOW)
+})
+
+describe('accepting when both of them are already paired', () => {
+  it('ends both pairs, and each one who is left is told by name', async () => {
+    /* The decision of 07.09.2026, both halves of it: „prihvatanje izvodi **oba** člana iz onoga u
+       čemu su za tu sezonu" and „**svaki** ostavljeni partner dobija poruku". Every other walk has
+       exactly one of the two sides paired, so „both" and „whichever one there is" draw the same
+       screen and no case can tell them apart. Here both are.
+
+       It is also the only walk in which the two notices must name **different** people: read off
+       the question rather than off the pair that ended, the second one would name the man who
+       asked, who has nothing to do with the pair that was ended. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    /* He asks her, and that question stays open while everything else happens. */
+    await user.click(must(invite()[0], 'his question to her'))
+
+    /* He pairs with Ivona. */
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+    await user.click(must(invite()[0], 'his question to Ivona'))
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* And she pairs with Časlav. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question to her'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Now she takes the older question, which is still open. Two pairs end at once. */
+    const older = (await inbox(user)).filter((one) =>
+      /Poziv u trkački par/.test(one.textContent ?? ''),
+    )
+
+    /* The **older** of the two, and the panel draws the newest first. */
+    /* **On a later day than everything above**, and inside the same season, so „the day this was
+       written" and „the day the pair was made" are two different strings and the notices can be
+       read for the first of them (review, 07.09.2026: the day on this side was written and never
+       read). */
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-11-20' }))
+    await user.click(must(older[older.length - 1], 'his older question'))
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Ivona is told, and her notice names the man she is no longer paired with. */
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheNotice(user)
+
+    expect(
+      screen.getByText(/Relja Momčilović je od sezone 2027 u drugom trkačkom paru/),
+    ).toBeVisible()
+    /* And it is dated the day it was written, not the day the pair it ends was made. */
+    expect(
+      must(document.querySelector('.messages__from'), 'the line under the subject').textContent,
+    ).toContain('20. 11. 2026')
+
+    /* Časlav is told too, and his notice names **her**. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await openTheNotice(user)
+
+    expect(
+      screen.getByText(/Katarina Novaković je od sezone 2027 u drugom trkačkom paru/),
+    ).toBeVisible()
+  }, SLOW)
+})
+
+describe('the questions on a page that is not the reader\u2019s', () => {
+  it('are the reader\u2019s own on their own page, and nobody\u2019s on anybody else\u2019s', async () => {
+    /* Two leaks that fail the same way, so one walk holds both: a page that shows the reader's own
+       questions on **somebody else's** profile, and a page that lists **other people's** questions
+       on the reader's own. Both were open until 07.09.2026, and neither is visible unless the
+       reader has a question of their own while looking at a page that has a pair on it. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000004', undefined, TODAY, THREE)
+
+    /* Časlav asks Katarina, so he has a question of his own standing. */
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+
+    /* Relja and Ivona pair up, so there is a profile with a pair to read. */
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+    await user.click(must(invite()[0], 'his question to Ivona'))
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* Časlav reads Ivona's page: her pair is there, and his own question is not. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Ivona Stamenkovska/ }))
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    /* Every line the page draws about pairs, and not the first of them: the questions still
+       standing are a line of their own, so read off the first element this would pass for a portal
+       that put Časlav's question on Ivona's page (review, 07.09.2026). */
+    const hers = pairText()
+
+    expect(hers).toContain('Relja Momčilović')
+    expect(hers).not.toContain('Poslat poziv')
+
+    /* And Ivona's own page lists her own questions and nobody else's: Časlav's question to Katarina
+       is not hers to see. */
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Ivona/ })
+
+    const mine = pairText()
+
+    expect(mine).toContain('Relja Momčilović')
+    /* Her own question was answered and closed, so there is none to list. Read without asking whose
+       a question is, the one Časlav sent Katarina would stand here, on a page it has nothing to do
+       with, and it would be named after **him** rather than after her, which is why the case names
+       both. */
+    expect(mine).not.toContain('poziv')
+    expect(mine).not.toContain('Časlav')
+  }, SLOW)
+})
+
+describe('a clock set before the league had a season', () => {
+  it('never writes a pair for a season the league does not have', async () => {
+    /* `FIRST_SEASON` is 2027, and „prva sezona koja još nije počela" is the portal's own question
+       with the portal's own answer (`data/season.ts`, `transfersTakeEffect`), floored for exactly
+       this reason on 06.09.2026 after a clock set to 2025 wrote a club membership for 2026.
+       Written again by hand here, the same clock wrote a **pair** for 2026 (review, 07.09.2026). */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, '2025-10-15', THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'the line').textContent ?? ''
+
+    expect(line).toContain('Za sezonu 2027')
+    expect(line).not.toContain('Za sezonu 2026')
+  }, SLOW)
+})
+
+describe('two questions waiting on one page', () => {
+  it('are two sentences and not one', async () => {
+    /* Two of them ran into each other with nothing between: „Nije u trkačkom paru.Primljen poziv:
+       Relja Momčilović.Primljen poziv: Časlav Radenković." (review, 07.09.2026). No other walk has
+       a member with two questions standing on their own page, so nothing could see it. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(must(invite()[0], 'the second question'))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const line = must(document.querySelector('.profile__pair'), 'her line').textContent ?? ''
+
+    expect(line).toContain('Momčilović. Primljen poziv')
+  }, SLOW)
+})
+
+describe('a pair that ends because the same two are pairing again', () => {
+  it('tells nobody, because nobody was left', async () => {
+    /* **An empty recipient is the whole league** (`SessionProvider`, `inbox`: `to === ''` reaches
+       everybody), and the one who is left is worked out by taking the reader and the asker out of
+       the pair. When the pair being ended is the pair of those two, that leaves nothing, and the
+       notice went to every member of the portal, in the second person and with an empty name where
+       a name belongs, so it read to each of them as news about their own pair (security review,
+       08.09.2026).
+     *
+       Reaching it: they pair for 2027 in October, he asks again on 2 January, when the button is
+       offered afresh because the season being formed is now 2028, and she answers on a clock moved
+       back into 2026, which makes the answer about 2027 again, the season of the pair they are
+       already in. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his second question'))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-11-20' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* A third member, who has to do with neither of them. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    const his = await inbox(user)
+
+    expect(his.length).toBeGreaterThan(0)
+    expect(his.filter((one) => /Trkački par je raskinut/.test(one.textContent ?? '')).length).toBe(0)
+
+    /* **And the old pair really ended, which „nobody was left" says nothing about** (review,
+       08.09.2026). Said only of the message, the guard could stand in front of `breakPair` instead
+       of behind it and the gate stayed green, while she was left holding **two** pairs for 2027,
+       each with its own „Raskini" — the one state `pairsNow` calls impossible („one member is in
+       one pair per season", PDL P13). One row, and it is the pair they have just confirmed. */
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    const rows = pairRows()
+
+    expect(rows.length).toBe(1)
+    expect(at(rows, 0)).toContain('20. 11. 2026')
+    expect(at(rows, 0)).not.toContain('15. 10. 2026')
+    expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(1)
+  }, SLOW)
+})
+
+describe('a question addressed to the whole league', () => {
+  it('is answered by nobody, whoever opens it', async () => {
+    /* The reader is not the one it names, so there is nothing here to answer, and what is said is
+       what is said about any question that is over: nothing about how it ended. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, [
+      THREE,
+      <AskTheLeague key="ask" from="000002" to="000015" />,
+    ])
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(screen.getByRole('button', { name: 'pitaj celu ligu' }))
+
+    /* **Both halves of „addressed to the reader", and the first is the one who asked** (review,
+       08.09.2026). Read as „somebody else cannot answer", a rule written as „the reader is the one
+       who asked **or** the one who was asked" says the same thing to a stranger, and lets the asker
+       confirm his own question: pressed, `makePair` pairs him with himself, and his profile draws a
+       pair with no name in it, because the other half of it is him. */
+    await openTheInvitation(user)
+
+    expect(screen.getByText(/Ovaj poziv više nije otvoren/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+
+    /* **And the question the probe wrote is a live one**, which is the half without which none of
+       this says anything (review, 08.09.2026). „Ovaj poziv više nije otvoren" has two sources: no
+       such record, and a record that is not the reader's. A probe writing a `pairInvite` that names
+       nothing at all draws the same sentence to everybody, and the whole of the rule could then be
+       deleted from the portal with the gate still green. So the one the question **names** opens it
+       and finds the answer waiting. */
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+
+    expect(screen.getByRole('button', { name: 'Prihvati' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Odbij' })).toBeVisible()
+
+    /* Časlav, who is neither the one asking nor the one asked. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await openTheInvitation(user)
+
+    expect(screen.getByText(/Ovaj poziv više nije otvoren/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
+  }, SLOW)
+})
+
+describe('the day a notice about a broken pair carries', () => {
+  it('is the day it was written, and not any other', async () => {
+    /* The notice is dated, and the date is drawn in the panel, in the list of messages and on the
+       message itself. Written with any other day it would file itself among older mail and read as
+       something that happened then (review, 07.09.2026).
+
+       The day is moved between making the pair and ending it, so „the day it was written" and „the
+       day the pair was made" are two different strings and the case can tell them apart. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(screen.getByRole('button', { name: 'Raskini trkački par' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await openTheNotice(user)
+
+    /* Read off the opened message rather than off the panel, which draws the same date beside the
+       subject: one of the two would answer for the other. */
+    expect(must(document.querySelector('.messages__from'), 'the line under the subject').textContent)
+      .toContain('2. 1. 2027')
+
+    /* **And the season the notice names is the ended pair's, not the one being formed** (review,
+       07.09.2026). This is the one walk in which the two part: the pair is for 2027, and on 2
+       January the season a new pair would be made for is 2028. Everywhere else they are the same
+       number, so a portal reading the season off the clock named the right one by accident, and the
+       member would be told their **standing** pair had ended while the one that really did goes
+       unnamed. */
+    const body = must(document.querySelector('.messages__body'), 'the notice').textContent ?? ''
+
+    expect(body).toContain('Trkački par sa Katarina Novaković za sezonu 2027 je raskinut')
+    expect(body).not.toContain('2028')
+  }, SLOW)
+})
+
+describe('the button on the profile of somebody already paired', () => {
+  it('is gone on a clock the league had no season on', async () => {
+    /* The other half of „one home for the season a change takes effect in" (review, 07.09.2026).
+       The answer was measured on that clock and the **question** was not: written by hand, the
+       button asks about 2026 while the pair it would duplicate was written for 2027, so it goes on
+       standing beside a pair that already exists. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, '2025-10-15', THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* A third man opens her page: she is paired, so there is nothing to ask. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(invite().length).toBe(0)
+  }, SLOW)
+})
+
+describe('a member who holds a pair for this season and one for the next', () => {
+  it('sees both, and can end either', async () => {
+    /* **Both, and not the one of the furthest season** (review, 07.09.2026). „The furthest wins" was
+       a rule I invented while fixing something else and wrote into no journal, so nothing measured
+       it. From 1 January a member can hold two at once: the one they are running the season in, and
+       one made for the season after. Answered with the furthest, the running one vanished from
+       their own page, there was no way left to end it, and the person on the far side of it went on
+       being told they were paired.
+
+       The walk is the only place the two can exist together: a pair is made for the season after
+       the day it is confirmed, so the second one has to be confirmed after the new year has
+       started. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, '2026-12-31', THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* The new year starts, so the pair they just made is the season being run and a question asked
+       now is about the one after. */
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the second question'))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    /* **Row by row, and each carries its own name, season and day** (reviews of 07.09.2026). The
+       only other walk that reads a day has one pair in it, so `pair.since` and `held[0].since` are
+       the same string there. And read as one page rather than as rows, a portal that hands each row
+       the **other** row's season and day says both of everything and passes. */
+    const rows = pairRows()
+
+    expect(rows.length).toBe(2)
+
+    expect(at(rows, 0)).toContain('Relja Momčilović')
+    expect(at(rows, 0)).toContain('Za sezonu 2027')
+    expect(at(rows, 0)).toContain('31. 12. 2026')
+
+    expect(at(rows, 1)).toContain('Časlav Radenković')
+    expect(at(rows, 1)).toContain('Za sezonu 2028')
+    expect(at(rows, 1)).toContain('2. 1. 2027')
+
+    expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(2)
+
+    /* **The second one is pressed, and that is the whole point of pressing it** (review,
+       07.09.2026). Every button reading `held[0].id` ends the earliest pair whichever is pressed,
+       and pressed first that draws the same screen as the code that is right. Pressed second it
+       does not. */
+    await user.click(at(screen.getAllByRole('button', { name: 'Raskini trkački par' }), 1))
+
+    const afterTheSecond = pairText()
+
+    expect(afterTheSecond).toContain('Relja Momčilović')
+    expect(afterTheSecond).toContain('Za sezonu 2027')
+    expect(afterTheSecond).not.toContain('Časlav Radenković')
+
+    /* **And the notice goes to the half whose pair ended, naming that pair's season** (review,
+       07.09.2026, which measured that neither was held anywhere). This is the only walk in which
+       the two halves differ: with one pair, „the one who was left" and „the one on the first pair"
+       are the same member and the same season, so a portal telling the **wrong** partner, about the
+       **wrong** season, drew the same inbox. Časlav's pair is the one that ended, so his is the
+       inbox it lands in, and Relja, whose pair still stands, hears nothing. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    const told = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    /* One notice, not „at least one": a second `notify` beside the first would fill his inbox with
+       the same sentence and „there is one to open" would say nothing about it. */
+    expect(told.length).toBe(1)
+
+    await user.click(must(first(told), 'his notice'))
+
+    expect(
+      screen.getByText(/Trkački par sa Katarina Novaković za sezonu 2028 je raskinut/),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+
+    const his = await inbox(user)
+    const toldAnyway = his.filter((one) => /Trkački par je raskinut/.test(one.textContent ?? ''))
+
+    /* **The panel is open, and that is asserted rather than assumed.** „Relja hears nothing" is a
+       claim about absence, and a panel that never opened answers it exactly as well as a portal
+       that wrote to the right member. Every inbox in the portal holds the two messages the league
+       is seeded with (`data/seedMessages.ts`, both `to: ''`), so the same read witnesses itself. */
+    expect(his.length).toBeGreaterThan(0)
+    expect(toldAnyway.length).toBe(0)
+
+    /* **And now the first of two, which is a second axis and not the same one twice** (my own
+       mutations, 07.09.2026). Pressed second and then last-of-one, every press is the last press,
+       so a button reading `held[held.length - 1].id` drew the right screen throughout. She pairs
+       for 2028 again, with somebody else, and this time the **earlier** pair is the one ended. */
+    await user.click(screen.getByRole('button', { name: 'postani 000005' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the third question'))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+    expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(2)
+
+    await user.click(
+      must(first(screen.getAllByRole('button', { name: 'Raskini trkački par' })), 'the first'),
+    )
+
+    const afterTheFirst = pairText()
+
+    expect(afterTheFirst).not.toContain('Relja Momčilović')
+    expect(afterTheFirst).toContain('Bogoljub Nikolajević')
+    expect(afterTheFirst).toContain('Za sezonu 2028')
+  }, SLOW)
+})
