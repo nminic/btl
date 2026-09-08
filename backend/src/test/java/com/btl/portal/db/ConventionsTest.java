@@ -100,7 +100,7 @@ class ConventionsTest extends DatabaseTest {
 	}
 
 	/**
-	 * The schema holds the three tables these migrations create, and nothing else.
+	 * The schema holds the tables these migrations create, and nothing else.
 	 *
 	 * The town codebook is loaded through a staging table, because the codebook
 	 * names a country by its code and the table holds it by its id, and the
@@ -108,7 +108,7 @@ class ConventionsTest extends DatabaseTest {
 	 * a table in the production database that nothing owns, nothing migrates and
 	 * nobody notices, and no constraint anywhere would say so. This does.
 	 *
-	 * Read out of the catalogue rather than listed from memory, so a fourth table
+	 * Read out of the catalogue rather than listed from memory, so a table
 	 * arriving without a decision fails here instead of being found later. Flyway's
 	 * own table is left out by {@link DatabaseTest#tablesInTheSchema()}, which asks
 	 * Flyway what it is called; until 09.09.2026 this line wrote the name out by
@@ -117,7 +117,7 @@ class ConventionsTest extends DatabaseTest {
 	 */
 	@Test
 	void theSchemaHoldsOnlyTheTablesTheseMigrationsCreate() {
-		assertThat(tablesInTheSchema()).containsExactly("country", "place", "price_row");
+		assertThat(tablesInTheSchema()).containsExactly("admin_right", "country", "place", "price_row", "role");
 	}
 
 	/**

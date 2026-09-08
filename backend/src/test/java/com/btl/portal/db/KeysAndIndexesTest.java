@@ -97,7 +97,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("price_row_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("price_row_key_unique", false, "a price row is looked up by its key"),
 			new Key("price_row_sort_order_unique", true,
-					"the order the price list is drawn in: a row inserted between two moves the rest"));
+					"the order the price list is drawn in: a row inserted between two moves the rest"),
+			new Key("role_pk", false, "a surrogate key nothing outside the portal sees, and account.role_id names it"),
+			new Key("role_code_unique", false, "a role is looked up by its code, and V5 carries no order at all"),
+			new Key("admin_right_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("admin_right_code_unique", false,
+					"a right is looked up by the key the portal writes it down under, entity:members"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -109,7 +114,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 	}
 
 	private static final List<Index> INDEXES = List.of(
-			new Index("place_country_idx", "narrowing the town field by the country already chosen on the form"));
+			new Index("place_country_idx", "narrowing the town field by the country already chosen on the form"),
+			new Index("role_only_one_holds_every_right",
+					"at most one role may hold every right; a partial index because a unique constraint takes no WHERE"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says
