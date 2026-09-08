@@ -18,6 +18,38 @@ import { useSession } from '../session/useSession'
  * mail, and, when a pair is broken to make room, the notice is in a third member's.
  */
 
+/** A question put to nobody in particular: the record is real and the message that carries it is
+ *  addressed to the league rather than to a member.
+ *
+ *  **No screen writes one, and that is the point** (security review, 08.09.2026). The whole of what
+ *  keeps somebody from answering a question that is not theirs used to be the inbox, which lets
+ *  `to: ''` through by design, so one message of this shape and every member of the portal held the
+ *  same answer. This draws that shape beside the portal, because the portal must refuse it whether
+ *  or not the portal can make it. */
+function AskTheLeague({ from, to }: { from: string; to: string }) {
+  const { invitePair, notify } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const id = invitePair({ from, to, date: TODAY })
+
+        notify({
+          from: 'Balkanska trkačka liga',
+          to: '',
+          subject: 'Poziv u trkački par',
+          body: 'Poziv poslat celoj ligi',
+          date: TODAY,
+          pairInvite: id,
+        })
+      }}
+    >
+      pitaj celu ligu
+    </button>
+  )
+}
+
 /** The reader becomes somebody else inside one visit. */
 function Become({ who }: { who: string }) {
   const { signIn } = useSession()
@@ -44,11 +76,19 @@ const TODAY = '2026-10-15'
 
 const invite = () => screen.queryAllByRole('button', { name: 'Pozovi u trkački par' })
 
-/** Everything the profile says about pairs, as one string. A member may hold more than one pair,
- *  and the questions still standing are a line of their own, so „what the page says about pairs" is
- *  every one of those lines and not the first of them. */
-const pairText = () =>
-  [...document.querySelectorAll('.profile__pair')].map((one) => one.textContent ?? '').join(' ')
+/** Each line the profile draws about pairs, in the order it draws them.
+ *
+ *  A member may hold more than one pair, and the questions still standing are a line of their own,
+ *  so „what the page says about pairs" is every one of those lines and not the first of them.
+ *
+ *  **And they are kept apart** (review, 07.09.2026): joined into one string, „both days are on the
+ *  page" is all that can be said, and a portal that writes each row's day beside the **other**
+ *  row's name says exactly that. A member choosing which „Raskini" to press reads the season beside
+ *  the name, so a row that carries somebody else's is a member ending the wrong pair. */
+const pairRows = () => [...document.querySelectorAll('.profile__pair')].map((one) => one.textContent ?? '')
+
+/** All of it as one string, for the assertions that are about the page rather than about a row. */
+const pairText = () => pairRows().join(' ')
 
 /** The day the portal is read as, moved inside one visit. A pair asked for on one day and confirmed
  *  on another is the whole of what „formiranje mora biti završeno do 31. decembra" is about. */
@@ -917,6 +957,75 @@ describe('two questions waiting on one page', () => {
   }, SLOW)
 })
 
+describe('a pair that ends because the same two are pairing again', () => {
+  it('tells nobody, because nobody was left', async () => {
+    /* **An empty recipient is the whole league** (`SessionProvider`, `inbox`: `to === ''` reaches
+       everybody), and the one who is left is worked out by taking the reader and the asker out of
+       the pair. When the pair being ended is the pair of those two, that leaves nothing, and the
+       notice went to every member of the portal, in the second person and with an empty name where
+       a name belongs, so it read to each of them as news about their own pair (security review,
+       08.09.2026).
+     *
+       Reaching it: they pair for 2027 in October, he asks again on 2 January, when the button is
+       offered afresh because the season being formed is now 2028, and she answers on a clock moved
+       back into 2026, which makes the answer about 2027 again, the season of the pair they are
+       already in. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his question'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await user.click(screen.getByRole('link', { name: 'Takmičari' }))
+    await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'his second question'))
+
+    await user.click(screen.getByRole('button', { name: 'danas je 2026-11-20' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    /* A third member, who has to do with neither of them. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+
+    const his = await inbox(user)
+
+    expect(his.length).toBeGreaterThan(0)
+    expect(his.filter((one) => /Trkački par je raskinut/.test(one.textContent ?? '')).length).toBe(0)
+  }, SLOW)
+})
+
+describe('a question addressed to the whole league', () => {
+  it('is answered by nobody, whoever opens it', async () => {
+    /* The reader is not the one it names, so there is nothing here to answer, and what is said is
+       what is said about any question that is over: nothing about how it ended. */
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, [
+      THREE,
+      <AskTheLeague key="ask" from="000002" to="000015" />,
+    ])
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(screen.getByRole('button', { name: 'pitaj celu ligu' }))
+
+    /* Časlav, who is neither the one asking nor the one asked. */
+    await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+    await openTheInvitation(user)
+
+    expect(screen.getByText(/Ovaj poziv više nije otvoren/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
+  }, SLOW)
+})
+
 describe('the day a notice about a broken pair carries', () => {
   it('is the day it was written, and not any other', async () => {
     /* The notice is dated, and the date is drawn in the panel, in the list of messages and on the
@@ -947,6 +1056,17 @@ describe('the day a notice about a broken pair carries', () => {
        subject: one of the two would answer for the other. */
     expect(must(document.querySelector('.messages__from'), 'the line under the subject').textContent)
       .toContain('2. 1. 2027')
+
+    /* **And the season the notice names is the ended pair's, not the one being formed** (review,
+       07.09.2026). This is the one walk in which the two part: the pair is for 2027, and on 2
+       January the season a new pair would be made for is 2028. Everywhere else they are the same
+       number, so a portal reading the season off the clock named the right one by accident, and the
+       member would be told their **standing** pair had ended while the one that really did goes
+       unnamed. */
+    const body = must(document.querySelector('.messages__body'), 'the notice').textContent ?? ''
+
+    expect(body).toContain('Trkački par sa Katarina Novaković za sezonu 2027 je raskinut')
+    expect(body).not.toContain('2028')
   }, SLOW)
 })
 
@@ -1014,19 +1134,22 @@ describe('a member who holds a pair for this season and one for the next', () =>
     await goToMyProfile(user)
     await screen.findByRole('heading', { level: 1, name: /Katarina/ })
 
-    /* Both pairs, earliest season first, and one way to end each of them. */
-    const said = pairText()
+    /* **Row by row, and each carries its own name, season and day** (reviews of 07.09.2026). The
+       only other walk that reads a day has one pair in it, so `pair.since` and `held[0].since` are
+       the same string there. And read as one page rather than as rows, a portal that hands each row
+       the **other** row's season and day says both of everything and passes. */
+    const rows = pairRows()
 
-    expect(said).toContain('Relja Momčilović')
-    expect(said).toContain('Za sezonu 2027')
-    expect(said).toContain('Časlav Radenković')
-    expect(said).toContain('Za sezonu 2028')
-    /* **And each row carries its own day** (review, 07.09.2026). The only other walk that reads a
-       day has one pair in it, so `pair.since` and `held[0].since` are the same string there and a
-       portal writing the first pair's day on every row drew the right screen. The two were made two
-       days apart, and both days are here. */
-    expect(said).toContain('31. 12. 2026')
-    expect(said).toContain('2. 1. 2027')
+    expect(rows.length).toBe(2)
+
+    expect(at(rows, 0)).toContain('Relja Momčilović')
+    expect(at(rows, 0)).toContain('Za sezonu 2027')
+    expect(at(rows, 0)).toContain('31. 12. 2026')
+
+    expect(at(rows, 1)).toContain('Časlav Radenković')
+    expect(at(rows, 1)).toContain('Za sezonu 2028')
+    expect(at(rows, 1)).toContain('2. 1. 2027')
+
     expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(2)
 
     /* **The second one is pressed, and that is the whole point of pressing it** (review,
@@ -1048,7 +1171,16 @@ describe('a member who holds a pair for this season and one for the next', () =>
        **wrong** season, drew the same inbox. Časlav's pair is the one that ended, so his is the
        inbox it lands in, and Relja, whose pair still stands, hears nothing. */
     await user.click(screen.getByRole('button', { name: 'postani 000004' }))
-    await openTheNotice(user)
+
+    const told = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    /* One notice, not „at least one": a second `notify` beside the first would fill his inbox with
+       the same sentence and „there is one to open" would say nothing about it. */
+    expect(told.length).toBe(1)
+
+    await user.click(must(first(told), 'his notice'))
 
     expect(
       screen.getByText(/Trkački par sa Katarina Novaković za sezonu 2028 je raskinut/),
@@ -1056,10 +1188,14 @@ describe('a member who holds a pair for this season and one for the next', () =>
 
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
 
-    const toldAnyway = (await inbox(user)).filter((one) =>
-      /Trkački par je raskinut/.test(one.textContent ?? ''),
-    )
+    const his = await inbox(user)
+    const toldAnyway = his.filter((one) => /Trkački par je raskinut/.test(one.textContent ?? ''))
 
+    /* **The panel is open, and that is asserted rather than assumed.** „Relja hears nothing" is a
+       claim about absence, and a panel that never opened answers it exactly as well as a portal
+       that wrote to the right member. Every inbox in the portal holds the two messages the league
+       is seeded with (`data/seedMessages.ts`, both `to: ''`), so the same read witnesses itself. */
+    expect(his.length).toBeGreaterThan(0)
     expect(toldAnyway.length).toBe(0)
 
     /* **And now the first of two, which is a second axis and not the same one twice** (my own

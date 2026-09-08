@@ -31,7 +31,14 @@ export function PairInviteAnswer({
   const today = useToday()
   const { memberNumber, pairInvites, closePairInvite, makePair, breakPair, notify } = useSession()
 
-  const invite = pairInvites.find((one) => one.id === id)
+  /* **Addressed to the reader, and that is asked here rather than left to the inbox** (security
+     review, 08.09.2026). The screen is reached through a message, and the inbox already refuses
+     somebody else's mail, so nothing today gets this far with a question that is not theirs. But
+     the whole of that guard is one filter which deliberately lets `to === ''` through, and this
+     same file could write such a message before the fix above; one of those carrying a question and
+     every member of the portal answers it. This is also the rule a server endpoint will be written
+     from, and there a filter over one member's inbox is not what stands in the way. */
+  const invite = pairInvites.find((one) => one.id === id && one.to === String(memberNumber))
   const between = new Set([String(memberNumber), invite?.from])
   const named = (who: string) =>
     competitors
@@ -73,6 +80,19 @@ export function PairInviteAnswer({
     const left = pair.memberNumbers.filter((one) => !between.has(one)).join('')
 
     breakPair(pair.id)
+
+    /* **Nobody was left, so nobody is told** (security review, 08.09.2026). When the pair being
+       ended is the pair of these two, the filter above takes out both of them and `left` is the
+       empty string, which the inbox reads as „the whole league" (`SessionProvider`, `inbox`). Every
+       member of the portal then read „je od sezone {season} u drugom trkačkom paru, pa je vaš
+       raskinut", addressed in the second person and with an empty name where a name should be, so
+       it looked to each of them like news about their own pair.
+     *
+       And there is nothing to say either way: the two of them are pairing with each other, so the
+       pair that ends is the one they are replacing and no third member has lost anything. */
+    if (left === '') {
+      return
+    }
     /* To that one member and to nobody else. Written to the league it would tell everybody that
        somebody's pair had ended, which is that member's business and not the league's. */
     notify({

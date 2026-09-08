@@ -3,6 +3,7 @@ import { formatShortDate } from '../../i18n/format'
 import { useToday } from '../../clock/useClock'
 import { pairsFrom } from '../../data/derive'
 import { useI18n } from '../../i18n/useI18n'
+import { useProfileLink } from './useProfileLink'
 import { useSession } from '../../session/useSession'
 import type { Competitor, RacingPair } from '../../data/types'
 
@@ -27,6 +28,15 @@ import type { Competitor, RacingPair } from '../../data/types'
  *
  * **The questions still standing are the reader's own, and only on their own page.** Whether
  * somebody else has been asked, and by whom, is their business (odluka 07.09.2026).
+ *
+ * **Where the partner's name leads is not decided here** (security review, 08.09.2026). It was, for
+ * one commit: the address was spelt out by hand, and a visitor reading somebody's profile got a
+ * live link to their partner even when that partner had hidden their profile, or had let their fee
+ * run out. What the visitor got out of it is exactly what P23 hides: a full name, a member number,
+ * and the knowledge that the page is there to be hidden. `profile/useProfileLink.ts` is the one
+ * place that turns „may this reader reach this member" into an address, and it reads the member
+ * again through this visit's overlay, because hiding is chosen during a visit. When it answers with
+ * nothing the name stays, as words.
  */
 export function RacingPairLine({
   competitor,
@@ -40,6 +50,7 @@ export function RacingPairLine({
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
+  const linkTo = useProfileLink()
   const { memberNumber: reader, pairInvites, breakPair, notify } = useSession()
   const mine = reader === competitor.memberNumber
   const named = (who: string) =>
@@ -78,6 +89,9 @@ export function RacingPairLine({
       {held.map((pair) => {
         const other = pair.memberNumbers.filter((one) => one !== competitor.memberNumber).join('')
         const partner = competitors.find((one) => one.memberNumber === other)
+        /* Nothing where this reader may not reach that profile, and nothing where the portal no
+           longer has the member at all: one answer, because on the screen they are the same. */
+        const to = partner === undefined ? undefined : linkTo(partner)
 
         return (
           <p className="profile__pair" key={pair.id}>
@@ -86,8 +100,12 @@ export function RacingPairLine({
               /* A member the portal no longer has: the pair is still a fact and is still said, but
                  there is nothing to open. */
               <span>{other}</span>
+            ) : to === undefined ? (
+              <span>
+                {partner.firstName} {partner.lastName}
+              </span>
             ) : (
-              <Link to={`/${locale}/takmicar/${other}`}>
+              <Link to={to}>
                 {partner.firstName} {partner.lastName}
               </Link>
             )}{' '}

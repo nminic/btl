@@ -47,6 +47,34 @@ function Hide({ who }: { who: string }) {
   )
 }
 
+/**
+ * Two members are in a racing pair, without walking the three screens that make one.
+ *
+ * **Written for the sweep below, which could not see the pair line at all** (security review,
+ * 08.09.2026). A profile draws only pairs of the season being run and later, and every pair in
+ * `public/mock/pairs.json` is from 2019, so the line was never on the screen while the sweep read
+ * it. The link it drew by hand to a hidden member therefore passed every gate.
+ *
+ * The two are of one sex, which no screen would allow (a pair is mixed, PDL P13). That rule belongs
+ * to the screen that offers the question, and this is about where a name leads: the sweep needs the
+ * hidden member paired with somebody whose profile it actually opens, and `000001` is the only
+ * profile in the table.
+ */
+function Pair({ a, b, season }: { a: string; b: string; season: number }) {
+  const { makePair } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        makePair({ season, memberNumbers: [a, b], since: DAY })
+      }}
+    >
+      upari {a} i {b}
+    </button>
+  )
+}
+
 /** The reader stops being signed in, without leaving the visit. */
 function SignOut() {
   const { signOut } = useSession()
@@ -655,9 +683,22 @@ describe('a hidden profile is reachable from nowhere', () => {
        addresses opens the registration, whose heading changes when it opens, and another is a
        profile whose owner has to be a member on it. Written out here, the day would part from the
        table it belongs to the moment somebody moved one of them. */
-    renderAt(where, 'visitor', null, undefined, DAY, <Hide who="000007" />)
+    renderAt(
+      where,
+      'visitor',
+      null,
+      undefined,
+      DAY,
+      <>
+        <Hide who="000007" />
+        <Pair a="000001" b="000007" season={Number(DAY.slice(0, 4)) + 1} />
+      </>,
+    )
 
     await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+    /* So that the profile of 000001, which this table does open, draws a line about a pair with the
+       member being hidden. Without it the line is not on any screen the sweep reads. */
+    await user.click(screen.getByRole('button', { name: 'upari 000001 i 000007' }))
 
     /* The screen, and then the screen having stopped drawing. Nought is a legitimate answer here,
        unlike in the walk above: most of these addresses lead into no profile at all, and what is
