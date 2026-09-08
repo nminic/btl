@@ -13,14 +13,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p><b>What this class used to say, and why it says the opposite now.</b> Until
  * 08.09.2026 the codebook shipped each town as {@code ["name", "COUNTRY"]} and
- * nothing else, so a town had no mark, the pair was no mark either (1,616 of
- * those pairs occur more than once in the 47,016 towns), and a delta migration
- * had to line the two states of the codebook up by {@code rank}, a position in a
+ * nothing else, so a town had no mark, the pair was no mark either because more
+ * than one town carries the same name and country, and a delta migration had to
+ * line the two states of the codebook up by {@code rank}, a position in a
  * file. Taking one town out of the top rewrote every row below it, and the row
  * that held Shanghai ended up holding Chongqing under the same {@code place.id}.
  * This class then held a boundary: nothing anywhere may reference a town. The
  * owner lifted it on 08.09.2026 by having the codebook carry the GeoNames
  * identifier the generator was already reading and dropping (ADL A16, A36 O5).
+ * How many such pairs there are is deliberately not written here: it is a number
+ * that changes every time the codebook is rebuilt, and the two homes that give it
+ * are {@code V3__place.sql}, which nothing may rewrite, and {@code places.ts},
+ * where {@code contract.test.ts} asks the shipped codebook for it on every run.
+ * Written here it would be a third copy with nothing under it, and it was one
+ * until 09.09.2026.
  *
  * <p><b>What holds now, and what each half is worth on its own.</b> The mark
  * without the key is a column somebody may fill twice; the key without

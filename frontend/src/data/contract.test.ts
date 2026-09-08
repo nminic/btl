@@ -245,22 +245,46 @@ describe('what the ducats are called', () => {
  *
  * **What holds it.** Not a list of files: the facts below are read out of every
  * file the sweep opens, so a home written tomorrow is held the day it is
- * written, and a home that rewords itself out of the pattern fails on the
- * „written down somewhere" line rather than going quiet. The expected side is
- * derived from the shipped codebook every time this runs, and the folding is
- * `plainly` itself rather than a copy of it, so a name is counted the way the
- * portal counts it.
+ * written. The expected side is derived from the shipped codebook every time
+ * this runs, and the folding is `plainly` itself rather than a copy of it, so a
+ * name is counted the way the portal counts it.
  *
- * **Where it stops, said rather than left to be found.** Three more numbers
- * about the same codebook are written in words and are not held here: how many
- * towns there are, how many carry an English name, and how many name-and-country
- * pairs repeat. The first is a rounded claim about a property and stays true as
- * the codebook grows, which is the shape that converges. The other two are exact
- * and their homes are `V3__place.sql`, an applied migration whose checksum is
- * remembered (ADL A2): its prose is a snapshot of the day it was written and
- * must not be rewritten, so a guard that expected it to keep up would be asking
- * for the one thing that must not happen. Both were measured on 09.09.2026 and
- * both were right.
+ * **And what it does not hold, measured rather than assumed.** The „written down
+ * somewhere" line is per fact and not per home. It fails when the last home of a
+ * fact stops matching the pattern, and says nothing while any other home still
+ * matches. Measured on 09.09.2026: the size of the codebook has six homes, and
+ * one of them reworded out of the pattern altogether left the whole suite green.
+ * Nothing here can close that. Naming which files ought to carry a fact is the
+ * list this deliberately does not keep, and no derived question answers „was
+ * this sentence here yesterday" over a working tree. So it is written down as a
+ * boundary instead: a fact that every home drops is caught, a home that goes
+ * quiet on its own is not.
+ *
+ * **Where it stops, said rather than left to be found.** Two more numbers about
+ * the same codebook are not held here: how many towns there are, and how many
+ * carry an English name. Neither is written exactly in anything this sweep
+ * opens, which is `frontend/` and nothing else. How many towns there are appears
+ * inside it only rounded, a claim about a property that stays true as the
+ * codebook grows; how many carry an English name does not appear at all. Both
+ * are written out exactly in `V3__place.sql` and in the template in
+ * `backend/tools/generate_reference_migrations.py` it came out of. The migration
+ * is the home that needs no guard, because Flyway remembers its checksum
+ * (ADL A2) and `MigrationsAreImmutableTest` pins the number it computed: that
+ * prose is a snapshot of the day it was written and must not be rewritten, so a
+ * guard expecting it to keep up would be asking for the one thing that must not
+ * happen. The template is a copy of that snapshot, and the generator refuses to
+ * write a migration `main` already carries, so nothing it says about today's
+ * codebook is ever read.
+ *
+ * **What this paragraph used to say, and what that cost.** It excused a third
+ * number the same way, how many name-and-country pairs repeat, on the grounds
+ * that its home was that migration. That number had four homes, and two of them
+ * are edited as freely as any other line: `places.ts`, which this very sweep
+ * opens, and `PlaceIdentityTest`. Measured on 09.09.2026, a wrong number written
+ * into `places.ts` left the whole suite green, so the sentence excusing it was
+ * telling the next reader not to look at the one home that had gone stale. It is
+ * held below now, and `PlaceIdentityTest`, which this sweep cannot reach, says
+ * that pairs repeat without saying how many.
  */
 describe('what the portal writes down about the codebook of towns', () => {
   /** The shipped file, which `everything()` deliberately drops and which is the
@@ -291,6 +315,25 @@ describe('what the portal writes down about the codebook of towns', () => {
     }
 
     return [...countries.values()].filter((held) => held.size > 1).length
+  }
+
+  /** How many name-and-country pairs more than one town carries, spelt the way
+   *  the codebook spells them. This is the number that says a town's identity
+   *  cannot be what it is called and where it is, which is why the mark exists
+   *  (owner, 08.09.2026, ADL A16), so it is asked of the codebook rather than
+   *  remembered. */
+  function pairsMoreThanOneTownCarries(): number {
+    const carried = new Map<string, number>()
+
+    for (const town of towns) {
+      /* Written as JSON rather than joined by a separator, because a name
+         may carry any character a separator could be. */
+      const pair = JSON.stringify([town[1], town[2]])
+
+      carried.set(pair, (carried.get(pair) ?? 0) + 1)
+    }
+
+    return [...carried.values()].filter((many) => many > 1).length
   }
 
   /**
@@ -348,6 +391,11 @@ describe('what the portal writes down about the codebook of towns', () => {
       is: towns.filter((town) =>
         written(town).some((name) => [...name].some((letter) => curly.has(letter))),
       ).length,
+    },
+    {
+      what: 'name and country pairs more than one town carries',
+      says: /(\d+) name and country pairs in the codebook are carried by more than one town/g,
+      is: pairsMoreThanOneTownCarries(),
     },
   ]
 

@@ -12,11 +12,11 @@ import { loadResource } from './client'
  * (CC BY 4.0).
  *
  * The mark comes first because it is what the town **is** (owner, 08.09.2026,
- * ADL A16). Name and country are not: one thousand six hundred and sixteen
- * name-and-country pairs occur more than once in the codebook, and three towns
- * in China are all called Zhongshan. It is a GeoNames identifier and the same
- * number the database keeps in `place.geonames_id`, so a town written down
- * anywhere still means that town after the codebook is rebuilt.
+ * ADL A16). Name and country are not: 1616 name and country pairs in the
+ * codebook are carried by more than one town, and China alone has more than one
+ * town called Zhongshan. It is a GeoNames identifier and the same number the
+ * database keeps in `place.geonames_id`, so a town written down anywhere still
+ * means that town after the codebook is rebuilt.
  */
 export type Place = [geonames: number, name: string, country: string, english?: string]
 

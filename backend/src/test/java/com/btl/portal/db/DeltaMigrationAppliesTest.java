@@ -527,10 +527,12 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * The verdict for every key and foreign key in the schema.
 	 *
 	 * Hand written, and floored twice below: the names have to be the names the
-	 * catalogue gives, and every case named here has to be a case that exists while
-	 * every case that exists has to be named here. So a key added without a verdict
-	 * fails, a verdict for a key that is gone fails, a case renamed fails, and a
-	 * case nothing needs fails.
+	 * catalogue gives, and every case named here has to be a case that exists. So a
+	 * key added without a verdict fails, a verdict for a key that is gone fails, and
+	 * a case renamed fails.
+	 *
+	 * The other direction is not asserted, and {@link #everyVerdictNamesACaseThatExists()}
+	 * says both why and what it leaves open.
 	 */
 	private static final List<Verdict> VERDICTS = List.of(
 			Verdict.outOfReach("country_pk", "a delta never writes an id; the sequence does"),
@@ -544,7 +546,11 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 			   nothing has ever written through: the generator's permission for
 			   this shape is one condition, and with no case naming it, taking
 			   that condition out turned a delta that runs into a refusal and
-			   left every test green (review, 09.09.2026). */
+			   left every test green (review, 09.09.2026).
+
+			   It is the third verdict for this key, so removing it leaves the
+			   key covered and nothing here fails. What that does and does not
+			   hold is written out at everyVerdictNamesACaseThatExists. */
 			Verdict.measuredBy("country_name_unique", "a country leaves and another takes the name it gives up"),
 			Verdict.measuredBy("country_sort_order_unique", "a country joins the middle of the list, with a town in it"),
 
@@ -651,12 +657,34 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	/**
 	 * And a verdict names a case that exists.
 	 *
-	 * Without this the verdicts are prose: a case renamed leaves every line that
+	 * <p>Without this the verdicts are prose: a case renamed leaves every line that
 	 * pointed at it pointing at nothing, and the list above goes on looking
 	 * complete. The other direction is deliberately not asserted here, because a
 	 * case need not press a key to be worth having: "the last town of the codebook
-	 * leaves" presses none and is the only case that writes the DELETE against the
-	 * town codebook, which is what the statement floor above holds it by.
+	 * leaves" presses none.
+	 *
+	 * <p><b>Which cases nothing holds, counted rather than assumed.</b> A case is
+	 * held when taking it away takes something away that a floor counts. Asked of
+	 * the generator, case by case, on 09.09.2026: "a country joins the middle of the
+	 * list, with a town in it" is the only one that writes the INSERT against the
+	 * town codebook, so the statement floor holds it; "a country changes its code,
+	 * and its towns move with it" and "a town is renamed and changes places with its
+	 * neighbour" are the only case named for {@code place_country_fk} and
+	 * {@code place_rank_unique}, so the verdict floor holds them. The remaining two
+	 * are held by neither. "the last town of the codebook leaves" writes only the
+	 * DELETE against the town codebook, which "a country leaves and another takes
+	 * the name it gives up" writes as well, and no verdict names it; and that second
+	 * case writes nothing another case does not, while the key it is named for
+	 * carries two other verdicts. Either can be deleted along with its verdict and
+	 * the suite stays green.
+	 *
+	 * <p><b>Why that is written down instead of guarded.</b> Deleting a case and the
+	 * line that names it leaves nothing behind for a floor to miss, and a rule that
+	 * every case must be needed would have been false about those two the day it was
+	 * written. What does hold is narrower and is what those cases are for: while the
+	 * case is there, the generator's behaviour under it is measured, and taking
+	 * {@code code not in leaving} out of the generator fails "a country leaves and
+	 * another takes the name it gives up".
 	 */
 	@Test
 	void everyVerdictNamesACaseThatExists() {
