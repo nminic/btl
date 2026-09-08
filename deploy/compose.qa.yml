@@ -23,9 +23,24 @@
 # machine is broken by antivirus or a proxy, which no server-side change can
 # fix.
 #
-# Deploy with: docker compose -f compose.qa.yml up -d --build frontend
+# Secrets come from "deploy/.env" in this checkout, which Compose reads because
+# the deploy command is run from this directory. That file is gitignored and is
+# NOT the same file as the production one: production runs out of /opt/btl and
+# QA out of /opt/btl-qa, so the two never see each other's values. The template
+# is ".env.example" in the repository root.
+#
+# Deploy with two commands, not one, because "up --build" builds in parallel and
+# the Maven and npm builds together peak at more memory than this host can spare
+# next to the running site:
+#   docker compose -f compose.qa.yml build backend
+#   docker compose -f compose.qa.yml up -d --build frontend backend
 # Never run "docker compose down" here: it deletes the network the edge proxy
-# is attached to.
+# is attached to. To restart one service, use "restart <service>".
+#
+# Memory: the host has 4 GB in total and already runs the edge proxy, the
+# production frontend and the QA frontend. Both services below therefore carry
+# an explicit mem_limit, so a runaway JVM heap cannot take the public site down
+# with it. The numbers are in deploy/README.md, under "What QA costs in memory".
 name: qa
 
 services:
@@ -47,3 +62,96 @@ services:
       default:
         aliases:
           - qa-frontend
+
+  # Kept as "postgres" because that is what the root docker-compose.yml calls
+  # it, so the two files can be read against each other. It is only reachable
+  # inside the "qa_default" network: no "ports:" here on purpose, since a
+  # published port would put the database on the host, and the host is a
+  # production machine.
+  postgres:
+    image: postgres:18
+    container_name: qa-postgres
+    restart: unless-stopped
+    environment:
+      # Deliberately QA_-prefixed rather than the POSTGRES_* names the root
+      # docker-compose.yml uses. The database name, the role and the password
+      # must not be shared with production, and different variable names make
+      # that a property of the file instead of a rule someone has to remember
+      # while copying an .env around on the same host.
+      POSTGRES_DB: ${QA_POSTGRES_DB:-btl_qa}
+      POSTGRES_USER: ${QA_POSTGRES_USER:-btl_qa}
+      POSTGRES_PASSWORD: ${QA_POSTGRES_PASSWORD:?set QA_POSTGRES_PASSWORD in deploy/.env, copied from .env.example}
+    volumes:
+      # postgres:18 keeps its data under /var/lib/postgresql/18/docker and
+      # declares /var/lib/postgresql as the volume, so the mount is the parent
+      # directory and not the .../data path used by images up to 17. Compose
+      # prefixes the volume with the project name, so this is "qa_postgres-data"
+      # on the host and cannot collide with production's own volume.
+      - postgres-data:/var/lib/postgresql
+    # The default 64 MB of /dev/shm is not enough for parallel query workers,
+    # and the failure shows up as a query error rather than as a container that
+    # will not start.
+    shm_size: 128mb
+    mem_limit: 512m
+    healthcheck:
+      # -h 127.0.0.1 forces a TCP connection. Without it pg_isready talks over
+      # the unix socket, which exists during the image's own bootstrap phase
+      # while the server is still refusing real connections.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${QA_POSTGRES_USER:-btl_qa} -d ${QA_POSTGRES_DB:-btl_qa}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  # Must stay named "backend" on port 8080: frontend/nginx.conf proxies /api/ to
+  # http://backend:8080 and resolves that name at runtime through Docker DNS.
+  # Not published to the host either, for the same reason as the database.
+  backend:
+    build:
+      context: ../backend
+    container_name: qa-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Spring's relaxed binding: these three override spring.datasource.* with
+      # no properties file involved. The "local" profile is deliberately not
+      # activated, because application-local.properties points at localhost,
+      # which inside this container is the container itself.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${QA_POSTGRES_DB:-btl_qa}
+      SPRING_DATASOURCE_USERNAME: ${QA_POSTGRES_USER:-btl_qa}
+      SPRING_DATASOURCE_PASSWORD: ${QA_POSTGRES_PASSWORD:?set QA_POSTGRES_PASSWORD in deploy/.env, copied from .env.example}
+      # Flyway needs no configuration: Spring Boot runs the migrations from
+      # classpath:db/migration on startup, before JPA is handed the DataSource.
+      # There are no migration files on main yet, so the schema comes up empty
+      # and Flyway only creates its own history table.
+      #
+      # Health details are on so that "does the backend see the database" has a
+      # visible answer instead of a bare {"status":"UP"}. QA only: actuator is
+      # not routed from the edge, the whole site is behind basic auth, and
+      # compose.prod.yml must not copy this line.
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      # The JVM sizes the heap from the cgroup limit below, not from the host's
+      # 4 GB, so this is what keeps it from taking a quarter of the machine.
+      # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
+      # native memory next to the heap.
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=55 -XX:+UseSerialGC -Xss512k"
+    mem_limit: 640m
+    healthcheck:
+      # /actuator/health is the one endpoint Spring Boot exposes by default and
+      # the one ManagementWebSecurityAutoConfiguration leaves unauthenticated,
+      # even with spring-boot-starter-security on the classpath. Its aggregate
+      # status includes the DataSource indicator, so this goes red when the
+      # database is unreachable and not only when the process has died. curl -f
+      # turns the 503 that a DOWN status returns into a non-zero exit.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      # Flyway plus the Spring context take tens of seconds on a 2 vCPU host,
+      # and failures inside this window do not count against retries.
+      start_period: 90s
+
+volumes:
+  postgres-data:
