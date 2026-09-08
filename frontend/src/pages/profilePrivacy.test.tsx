@@ -708,9 +708,7 @@ describe('the partner named on a pair line', () => {
 
     await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
 
-    await waitFor(() => {
-      expect(screen.getByText('Strahinja Vukićević').closest('a')).toBeNull()
-    })
+    expect(screen.getByText('Strahinja Vukićević').closest('a')).toBeNull()
   }, SLOW)
 })
 

@@ -1042,6 +1042,18 @@ describe('a question addressed to the whole league', () => {
     expect(screen.getByText(/Ovaj poziv više nije otvoren/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
 
+    /* **And the question the probe wrote is a live one**, which is the half without which none of
+       this says anything (review, 08.09.2026). „Ovaj poziv više nije otvoren" has two sources: no
+       such record, and a record that is not the reader's. A probe writing a `pairInvite` that names
+       nothing at all draws the same sentence to everybody, and the whole of the rule could then be
+       deleted from the portal with the gate still green. So the one the question **names** opens it
+       and finds the answer waiting. */
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+
+    expect(screen.getByRole('button', { name: 'Prihvati' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Odbij' })).toBeVisible()
+
     /* Časlav, who is neither the one asking nor the one asked. */
     await user.click(screen.getByRole('button', { name: 'postani 000004' }))
     await openTheInvitation(user)
