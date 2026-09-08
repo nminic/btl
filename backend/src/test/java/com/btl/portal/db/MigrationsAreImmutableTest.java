@@ -64,7 +64,9 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("1", "V1__conventions_and_extensions.sql", 1828764489),
 			new Applied("2", "V2__country.sql", 1858027338),
 			new Applied("3", "V3__place.sql", 614394979),
-			new Applied("4", "V4__price_list.sql", -1093755363));
+			new Applied("4", "V4__price_list.sql", -1093755363),
+			new Applied("5", "V5__role_and_admin_right.sql", -574827303),
+			new Applied("6", "V6__account_and_email_verification.sql", -1209616982));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
