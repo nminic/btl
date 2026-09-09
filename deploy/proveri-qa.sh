@@ -38,10 +38,32 @@
 # is never a list somebody wrote; and it is built from the checkout on every run, so a new migration
 # needs no blessing at all. Measured: the six migrations of 09.09.2026 apply in two seconds.
 #
-# WHAT THIS STILL DOES NOT SEE, said rather than left to be found: rows. Whether `place` holds the
-# right 47016 towns is section 5, and whether a migration says what it should say is the gate's
-# question, answered against a schema built from nothing. This one asks only whether the schema QA
-# is running is the schema these files describe.
+# WHAT IT COMPARES, and the list is the query and not a promise: the database's own collation,
+# ctype, locale provider and encoding; every relation of every kind - table, partitioned table,
+# view, materialised view, foreign table - with its persistence, its row-security flag and its
+# storage options; every column with its POSITION, type, nullability, collation, default and
+# whether it is generated; every constraint in the schema with its definition and whether it is
+# validated, reached through the schema rather than through a table so a domain's constraint is in
+# too; every index, sequence, trigger, routine, row-security policy, view body, domain and
+# non-default collation; and the number of privileges granted to anybody but the owner.
+#
+# A round on 09.09.2026 measured all of that as MISSING, eleven mutations passing with `poklapa se`,
+# and the sharpest was the last one on that list: two databases whose own collation differs give an
+# identical catalogue, while `lower('CUPRIJA')` answers differently in each - and
+# `account_email_unique` is an index over `lower(email)`.
+#
+# WHAT IT STILL DOES NOT SEE, measured rather than assumed:
+#
+#   - ROWS. Whether `place` holds the right 47016 towns is section 5; whether a migration says what
+#     it should say is the gate's question, answered against a schema built from nothing.
+#   - WHO OWNS an object. The reference database is built by `postgres` and QA runs as `btl_qa`, so
+#     ownership differs on every row by construction. What is compared instead is that nobody but
+#     the owner has been granted anything, which is 0 on both sides today.
+#   - A MIGRATION THAT MAY NOT RUN IN A TRANSACTION. Flyway takes `executeInTransaction=false`;
+#     this applies each file with `psql -1`. None of the migrations needs it today. The day one does
+#     - `create index concurrently` is the likely one - it will fail HERE and be reported as a
+#     checkout that is not what was merged, which is the wrong sentence. It is written down so the
+#     next person recognises it rather than believing it.
 
 set -eu
 
@@ -59,12 +81,22 @@ psql() { docker exec qa-postgres psql -U "${QA_POSTGRES_USER:-btl_qa}" -d "${QA_
 #
 # No ORDER BY: sorting inside the database would sort by that database's collation, and the two
 # databases need not have the same one. The client sorts both sides in byte order instead.
+FLYWAY="'flyway_schema_history'"
+
 CATALOGUE="
-select 'tabela ' || c.relname
-  from pg_class c join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public' and c.relkind = 'r' and c.relname <> 'flyway_schema_history'
+select 'baza ' || d.datcollate || ' ' || d.datctype || ' ' || d.datlocprovider::text
+       || ' ' || pg_encoding_to_char(d.encoding)
+  from pg_database d where d.datname = current_database()
 union all
-select 'kolona ' || c.relname || '.' || a.attname
+select 'relacija ' || c.relkind::text || ' ' || c.relname
+       || ' ' || c.relpersistence::text
+       || case when c.relrowsecurity then ' rls' else ' bez-rls' end
+       || coalesce(' opcije ' || array_to_string(c.reloptions, ','), '')
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')
+   and c.relname <> $FLYWAY
+union all
+select 'kolona ' || c.relname || ' ' || lpad(a.attnum::text, 3, '0') || ' ' || a.attname
        || ' ' || format_type(a.atttypid, a.atttypmod)
        || case when a.attnotnull then ' not-null' else ' nullable' end
        || coalesce(' collate ' || (select co.collname from pg_collation co
@@ -75,20 +107,61 @@ select 'kolona ' || c.relname || '.' || a.attname
   join pg_class c on c.oid = a.attrelid
   join pg_namespace n on n.oid = c.relnamespace
   left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
- where n.nspname = 'public' and c.relkind = 'r' and a.attnum > 0 and not a.attisdropped
-   and c.relname <> 'flyway_schema_history'
+ where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')
+   and a.attnum > 0 and not a.attisdropped and c.relname <> $FLYWAY
 union all
-select 'ogranicenje ' || c.relname || '.' || con.conname
+select 'ogranicenje ' || coalesce(c.relname, t.typname, '(sema)') || '.' || con.conname
        || case when con.convalidated then ' validated ' else ' NIJE-VALIDIRANO ' end
        || pg_get_constraintdef(con.oid)
   from pg_constraint con
-  join pg_class c on c.oid = con.conrelid
-  join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public' and c.relname <> 'flyway_schema_history'
+  left join pg_class c on c.oid = con.conrelid
+  left join pg_type t on t.oid = con.contypid
+ where con.connamespace = 'public'::regnamespace
+   and coalesce(c.relname, '') <> $FLYWAY
 union all
-select 'indeks ' || indexdef
-  from pg_indexes
- where schemaname = 'public' and tablename <> 'flyway_schema_history'
+select 'indeks ' || indexdef from pg_indexes
+ where schemaname = 'public' and tablename <> $FLYWAY
+union all
+select 'sekvenca ' || sequencename || ' ' || data_type::text || ' start ' || start_value
+       || ' korak ' || increment_by || ' od ' || min_value || ' do ' || max_value
+       || case when cycle then ' ciklicno' else ' bez-ciklusa' end
+  from pg_sequences where schemaname = 'public'
+union all
+select 'okidac ' || pg_get_triggerdef(tg.oid)
+  from pg_trigger tg join pg_class c on c.oid = tg.tgrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and not tg.tgisinternal
+union all
+select 'rutina ' || p.prokind::text || ' ' || p.proname
+       || '(' || pg_get_function_identity_arguments(p.oid) || ') -> '
+       || pg_get_function_result(p.oid)
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public'
+union all
+select 'politika ' || tablename || '.' || policyname || ' ' || cmd
+       || coalesce(' using ' || qual, '') || coalesce(' with ' || with_check, '')
+  from pg_policies where schemaname = 'public'
+union all
+select 'pogled ' || viewname || ' ' || md5(definition) from pg_views where schemaname = 'public'
+union all
+select 'materijalizovan ' || matviewname || ' ' || md5(definition)
+  from pg_matviews where schemaname = 'public'
+union all
+select 'domen ' || t.typname || ' ' || format_type(t.typbasetype, t.typtypmod)
+  from pg_type t join pg_namespace n on n.oid = t.typnamespace
+ where n.nspname = 'public' and t.typtype = 'd'
+union all
+select 'kolacija ' || co.collname || ' ' || co.collprovider::text
+       || ' ' || coalesce(co.colllocale, co.collcollate, '?')
+       || case when co.collisdeterministic then ' deterministicka' else ' nedeterministicka' end
+  from pg_collation co join pg_namespace n on n.oid = co.collnamespace
+ where n.nspname = 'public'
+union all
+select 'prava-izvan-vlasnika ' || count(*)::text
+  from information_schema.role_table_grants g
+  join pg_class c on c.relname = g.table_name
+  join pg_namespace n on n.oid = c.relnamespace and n.nspname = g.table_schema
+ where g.table_schema = 'public' and g.grantee <> pg_get_userbyid(c.relowner)
 "
 
 say '--- 1. kontejneri ---'
@@ -146,13 +219,25 @@ docker rm -f "$REFERENCE" >/dev/null 2>&1 || true
 docker run -d --name "$REFERENCE" -e POSTGRES_PASSWORD=referentna -e POSTGRES_DB=ref "$image" >/dev/null
 
 waited=0
-until docker exec "$REFERENCE" pg_isready -q -U postgres -d ref 2>/dev/null; do
+# Over TCP and not over the unix socket, which is what compose.qa.yml two files away already
+# writes down and explains: the socket exists during the image own bootstrap phase, while the
+# temporary server is still refusing real connections, so a gate over it opens too early. Measured
+# on the QA host on 09.09.2026: two runs in twelve got through that window, the migrations went to
+# the bootstrap server, it was shut down under them, and the script blamed the checkout.
+until docker exec "$REFERENCE" pg_isready -q -h 127.0.0.1 -U postgres -d ref 2>/dev/null; do
   waited=$((waited + 1))
   [ "$waited" -lt 60 ] || fail "referentna baza se nije digla za 60 sekundi"
   sleep 1
 done
 
-for file in "$MIGRATIONS"/V*.sql; do
+# In the order of the VERSIONS and not of the file names, and taken from the same `$want` section 3
+# already sorted numerically, so the order has one home rather than two. A glob sorts V10 before V2,
+# and a round on 09.09.2026 measured what that does: the reference build dies on the first file and
+# blames the checkout, from V10 onwards, for ever.
+for version in $want; do
+  file=$(ls "$MIGRATIONS"/V"$version"__*.sql)
+  [ "$(printf '%s\n' "$file" | wc -l)" = 1 ] \
+    || fail "vise fajlova nosi verziju $version, sto ni Flyway ne prima: $file"
   docker exec -i "$REFERENCE" psql -q -v ON_ERROR_STOP=1 -U postgres -d ref -1 -f - < "$file" \
     || fail "$file ne prolazi ni na praznoj bazi, dakle checkout nije ono sto je spojeno"
 done
