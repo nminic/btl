@@ -743,7 +743,14 @@ DELTA_HEAD = """
    middle of a migration on a live database. So a codebook that drops a row is
    refused before a file is written, with the town or the country named, and that
    one is a migration written by hand: where the member goes instead has an
-   answer only a person has. Note what this makes of a country changing its
+   answer only a person has. ADL A40 is where that migration is written down, and
+   it is three things rather than one: that answer; the renumbering of the order
+   column of every row below the one that leaves, `place.rank` for a town and
+   `country.sort_order` for a country, since ReferenceDataMatchesCodebookTest
+   reads the expected value as the position of the row in its file; and the count
+   written by hand into that same test. The refusal names all three, because a
+   sentence that says only "written by hand" leaves the second one to be found by
+   a red build. Note what this makes of a country changing its
    `code`: the code is the identity, so that is one country leaving and another
    arriving, and it is refused with the rest.
 
@@ -993,6 +1000,24 @@ def no_codebook_row_leaves(country_before, country_removed, place_before, place_
     by clearing the key: a town that is not the codebook's stays as TEXT, and a
     foreign key action writes one column and not the other.
 
+    WHICH IS NOT THE WHOLE OF THAT MIGRATION, and until 09.09.2026 this said
+    "written by hand" and stopped there, naming the door and nothing behind it.
+    ADL A40 is where it is written down and it is three things:
+
+      1. the question above, answered out loud rather than by default;
+      2. RENUMBERING the order column of every row below the one that leaves,
+         `place.rank` for a town and `country.sort_order` for a country, because
+         ReferenceDataMatchesCodebookTest builds the expected value as the
+         position of the row in its file (index + 1) and compares it with that
+         column, so a DELETE on its own fails on every row under the one that
+         went;
+      3. moving the count written by hand into that same test.
+
+    The refusal below says all three, and the second one loudest, because whoever
+    reads it has just been stopped and the renumbering is the half that is not
+    guessed. A36 O18 was narrowed the same day: a generated migration is how a
+    codebook gains a row and how a row changes, and a row leaving is this.
+
     A country changing its `code` is caught here as well and that is worth saying
     out loud. The code is what the two states of the list are lined up by, so
     changing it is one country leaving and another arriving, and the leaving half
@@ -1009,7 +1034,18 @@ def no_codebook_row_leaves(country_before, country_removed, place_before, place_
                          + ', '.join(leaving)
                          + '\ncompetitor and btl_event point at both codebooks ON DELETE RESTRICT (V7) and this '
                            'script reads two files, so it cannot see which rows are worn; this one is a '
-                           'migration written by hand')
+                           'migration written by hand, and ADL A40 is where what it has to do is written down.'
+                           '\n\nThree things rather than one, and the second is the half nobody works out '
+                           'unaided:'
+                           '\n  1. decide where the members and the events standing on that row go: onto '
+                           'another row of the codebook, or into typed text (`city` with `place_id` left '
+                           'empty, which ADL A36 O5 allows). Neither may be chosen in silence.'
+                           '\n  2. RENUMBER the order column of every row BELOW the one that leaves - '
+                           '`place.rank` for a town, `country.sort_order` for a country. '
+                           'ReferenceDataMatchesCodebookTest builds the expected value as the position of '
+                           'the row in its file (index + 1) and compares it with that column, so a DELETE '
+                           'on its own fails on every row under the one that went.'
+                           '\n  3. move the count written by hand into that same test.')
 
 
 def delta_migration(since, before=None, after=None):
