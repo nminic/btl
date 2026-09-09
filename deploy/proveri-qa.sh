@@ -12,30 +12,36 @@
 #
 # It exits non-zero on the first thing that is not what it should be, and says which.
 #
-# THE TWO FLOORS, because the first draft of this file had neither and a round on 09.09.2026
-# measured both holes on real infrastructure:
+# THE TWO FLOORS, because the first draft had neither and two rounds measured both holes on real
+# infrastructure:
 #
 #   - Which migrations must be there is read off the CHECKOUT this script runs inside, one version
-#     per V<n>__*.sql file. The first draft asked only for "more than none", so a database that had
-#     lost a merged migration - four applied out of five, the table gone, the history row gone,
-#     which is what is left after a hand `flyway repair` - printed SVE PROVERE PROSLE and exited 0.
-#     That is the exact state A39 exists for, and it is the one state the gate cannot see.
-#   - What the schema must CARRY is read off qa-katalog.txt beside this file, line for line: every
-#     table, every constraint with its kind, every index. The first draft printed those counts and
-#     asserted nothing about them, so a psql that answered zero to all three, and a real database
-#     with `place` dropped, both passed.
+#     per V<n>__*.sql file, and the applied set must EQUAL it. The first draft asked only for "more
+#     than none", so a database carrying five of six - the table gone, the history row gone, which
+#     is what a hand `flyway repair` leaves - printed SVE PROVERE PROSLE and exited 0.
 #
-# The catalogue is regenerated on the server, from a database whose migrations have all just been
-# applied, and committed:
+#   - What the schema must CARRY is measured against a REFERENCE DATABASE this script builds, here
+#     and now, by applying those same migration files into a throwaway postgres container. Both
+#     catalogues are then read with one query and compared line for line: every table, every column
+#     with its type, nullability, collation and default, every constraint with its definition AND
+#     whether it is validated, and every index with its definition.
 #
-#   sh proveri-qa.sh --zapisi
+# WHY A REFERENCE DATABASE AND NOT A FILE. The second draft compared against a catalogue committed
+# beside this script, and a round measured five ways past it, each exiting 0: a dropped column, a
+# CHECK replaced by `check (true)`, a unique index rebuilt over `email` instead of `lower(email)`, a
+# constraint restored as NOT VALID over a row that breaks it, and a collation changed from sr_latn.
+# All five carried the same object NAMES, and names were all the file held. Worse, the file had to
+# be blessed from a live database after every new migration, and that blessing ran BEFORE the schema
+# was ever compared - so a broken deploy could write itself a catalogue that matched it.
 #
-# What that blesses, said out loud rather than left to be assumed: the catalogue is a snapshot of a
-# live schema, so it is only as right as the deploy that made it. What keeps it honest is that it
-# carries the migration versions it was written for, and refuses to be used against any other set -
-# so a migration merged after it was written cannot be checked against it by accident. That a
-# migration builds what it says it builds is the gate's question, and the gate answers it against a
-# schema built from nothing.
+# A reference database has neither problem. PostgreSQL parses the migrations, so the expected side
+# is never a list somebody wrote; and it is built from the checkout on every run, so a new migration
+# needs no blessing at all. Measured: the six migrations of 09.09.2026 apply in two seconds.
+#
+# WHAT THIS STILL DOES NOT SEE, said rather than left to be found: rows. Whether `place` holds the
+# right 47016 towns is section 5, and whether a migration says what it should say is the gate's
+# question, answered against a schema built from nothing. This one asks only whether the schema QA
+# is running is the schema these files describe.
 
 set -eu
 
@@ -43,21 +49,47 @@ say() { printf '%s\n' "$*"; }
 fail() { printf 'PALO: %s\n' "$*" >&2; exit 1; }
 
 MIGRATIONS=../backend/src/main/resources/db/migration
-CATALOGUE=./qa-katalog.txt
+REFERENCE=btl-qa-referentna-sema
 
 psql() { docker exec qa-postgres psql -U "${QA_POSTGRES_USER:-btl_qa}" -d "${QA_POSTGRES_DB:-btl_qa}" -tAc "$1"; }
 
-# Everything the schema carries, in one sorted list. contype is cast because `text || "char"` has
-# more than one candidate operator in PostgreSQL 18 and the query fails to plan without it.
-catalogue_of_the_database() {
-  psql "select 'tabela '||tablename from pg_tables where schemaname = 'public'
-        union all
-        select 'ogranicenje '||contype::text||' '||conname from pg_constraint
-         where connamespace = 'public'::regnamespace
-        union all
-        select 'indeks '||indexname from pg_indexes where schemaname = 'public'
-        order by 1"
-}
+# Everything the schema is, not just what the objects are called. Flyway's own table is left out on
+# both sides, because the reference database has no Flyway in it; what is in that table is section
+# 3's question and it asks it directly.
+#
+# No ORDER BY: sorting inside the database would sort by that database's collation, and the two
+# databases need not have the same one. The client sorts both sides in byte order instead.
+CATALOGUE="
+select 'tabela ' || c.relname
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relkind = 'r' and c.relname <> 'flyway_schema_history'
+union all
+select 'kolona ' || c.relname || '.' || a.attname
+       || ' ' || format_type(a.atttypid, a.atttypmod)
+       || case when a.attnotnull then ' not-null' else ' nullable' end
+       || coalesce(' collate ' || (select co.collname from pg_collation co
+                                    where co.oid = a.attcollation and co.collname <> 'default'), '')
+       || coalesce(' default ' || pg_get_expr(d.adbin, d.adrelid), '')
+       || case when a.attgenerated <> '' then ' generated' else '' end
+  from pg_attribute a
+  join pg_class c on c.oid = a.attrelid
+  join pg_namespace n on n.oid = c.relnamespace
+  left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+ where n.nspname = 'public' and c.relkind = 'r' and a.attnum > 0 and not a.attisdropped
+   and c.relname <> 'flyway_schema_history'
+union all
+select 'ogranicenje ' || c.relname || '.' || con.conname
+       || case when con.convalidated then ' validated ' else ' NIJE-VALIDIRANO ' end
+       || pg_get_constraintdef(con.oid)
+  from pg_constraint con
+  join pg_class c on c.oid = con.conrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relname <> 'flyway_schema_history'
+union all
+select 'indeks ' || indexdef
+  from pg_indexes
+ where schemaname = 'public' and tablename <> 'flyway_schema_history'
+"
 
 say '--- 1. kontejneri ---'
 docker compose -f compose.qa.yml ps --format '{{.Name}}\t{{.State}}\t{{.Status}}'
@@ -83,8 +115,8 @@ say ''
 say '--- 3. svaka migracija koju main nosi je primenjena ---'
 [ -d "$MIGRATIONS" ] || fail "nema foldera $MIGRATIONS; skripta se pokrece iz /opt/btl-qa/deploy"
 
-# The floor: one version per file, read off the names rather than out of the SQL. A file is on main
-# or it is not, and nothing about what it contains matters here.
+# One version per file, read off the names rather than out of the SQL. A file is on main or it is
+# not, and nothing about what it contains matters here.
 want=$(ls "$MIGRATIONS" | sed -n 's/^V\([0-9][0-9]*\)__.*\.sql$/\1/p' | sort -n | tr '\n' ' ' | sed 's/ *$//')
 [ -n "$want" ] || fail "u $MIGRATIONS nema nijedne V<broj>__*.sql migracije, dakle checkout nije potpun"
 
@@ -98,41 +130,45 @@ say "primenjeno svih $(printf '%s' "$want" | wc -w): $want"
 failed=$(psql "select count(*) from flyway_schema_history where not success")
 [ "$failed" = 0 ] || fail "$failed migracija je zabelezeno kao neuspelo"
 
-if [ "${1:-}" = '--zapisi' ]; then
-  say ''
-  say "--- zapisujem $CATALOGUE za migracije [$want] ---"
-  {
-    say '# Sta sema nosi, procitano iz zive QA baze posle deploya u kom su sve migracije prosle.'
-    say '# Ne pise se rukom: sh proveri-qa.sh --zapisi'
-    printf '# migracije: %s\n' "$want"
-    catalogue_of_the_database
-  } > "$CATALOGUE"
-  say "zapisano redova: $(grep -vc '^#' "$CATALOGUE")"
-  exit 0
-fi
-
 say ''
-say '--- 4. sema nosi tacno ono sto je zapisano, red za red ---'
-[ -f "$CATALOGUE" ] || fail "nema $CATALOGUE; napravi ga sa: sh proveri-qa.sh --zapisi"
+say '--- 4. sema je ono sto migracije opisuju, do definicije ---'
 
-written_for=$(sed -n 's/^# migracije: //p' "$CATALOGUE")
-[ "$written_for" = "$want" ] \
-  || fail "katalog je pisan za migracije [$written_for], a main nosi [$want]; posle uspesnog deploya: sh proveri-qa.sh --zapisi"
+# The same image QA is running, asked of the running container rather than written here, so the
+# reference cannot be built by a different PostgreSQL than the one being measured.
+image=$(docker inspect -f '{{.Config.Image}}' qa-postgres)
 
 live=$(mktemp)
-recorded=$(mktemp)
+expected=$(mktemp)
 # shellcheck disable=SC2064
-trap "rm -f '$live' '$recorded'" EXIT
+trap "docker rm -f '$REFERENCE' >/dev/null 2>&1 || true; rm -f '$live' '$expected'" EXIT
 
-catalogue_of_the_database > "$live"
-grep -v '^#' "$CATALOGUE" > "$recorded"
+docker rm -f "$REFERENCE" >/dev/null 2>&1 || true
+docker run -d --name "$REFERENCE" -e POSTGRES_PASSWORD=referentna -e POSTGRES_DB=ref "$image" >/dev/null
 
-if ! diff -u "$recorded" "$live" > /dev/null; then
-  say 'razlika (- zapisano, + u bazi):'
-  diff -u "$recorded" "$live" | sed -n '3,$p' | grep -E '^[-+]' || true
-  fail 'sema u bazi nije ono sto je zapisano'
+waited=0
+until docker exec "$REFERENCE" pg_isready -q -U postgres -d ref 2>/dev/null; do
+  waited=$((waited + 1))
+  [ "$waited" -lt 60 ] || fail "referentna baza se nije digla za 60 sekundi"
+  sleep 1
+done
+
+for file in "$MIGRATIONS"/V*.sql; do
+  docker exec -i "$REFERENCE" psql -q -v ON_ERROR_STOP=1 -U postgres -d ref -1 -f - < "$file" \
+    || fail "$file ne prolazi ni na praznoj bazi, dakle checkout nije ono sto je spojeno"
+done
+say "referentna sema napravljena od $(printf '%s' "$want" | wc -w) migracija"
+
+psql "$CATALOGUE" | LC_ALL=C sort > "$live"
+docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$CATALOGUE" | LC_ALL=C sort > "$expected"
+
+[ -s "$expected" ] || fail 'referentna sema je prazna, dakle poredjenje ispod ne tvrdi nista'
+
+if ! diff -u "$expected" "$live" > /dev/null; then
+  say 'razlika (- ono sto migracije opisuju, + ono sto QA nosi):'
+  diff -u "$expected" "$live" | sed -n '3,$p' | grep -E '^[-+]' || true
+  fail 'sema na QA nije ono sto migracije opisuju'
 fi
-say "poklapa se, redova: $(wc -l < "$recorded")"
+say "poklapa se, redova: $(wc -l < "$expected")"
 
 say ''
 say '--- 5. sifarnici nose ono sto migracija tvrdi ---'
