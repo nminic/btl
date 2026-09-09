@@ -90,12 +90,6 @@ REFERENCE=btl-qa-referentna-sema
 
 psql() { docker exec qa-postgres psql -U "${QA_POSTGRES_USER:-btl_qa}" -d "${QA_POSTGRES_DB:-btl_qa}" -tAc "$1"; }
 
-# Everything the schema is, not just what the objects are called. Flyway's own table is left out on
-# both sides, because the reference database has no Flyway in it; what is in that table is section
-# 3's question and it asks it directly.
-#
-# No ORDER BY: sorting inside the database would sort by that database's collation, and the two
-# databases need not have the same one. The client sorts both sides in byte order instead.
 say '--- 1. kontejneri ---'
 docker compose -f compose.qa.yml ps --format '{{.Name}}\t{{.State}}\t{{.Status}}'
 
@@ -144,8 +138,10 @@ image=$(docker inspect -f '{{.Config.Image}}' qa-postgres)
 
 live=$(mktemp)
 expected=$(mktemp)
+live_raw=$(mktemp)
+expected_raw=$(mktemp)
 # shellcheck disable=SC2064
-trap "docker rm -f '$REFERENCE' >/dev/null 2>&1 || true; rm -f '$live' '$expected'" EXIT
+trap "docker rm -f '$REFERENCE' >/dev/null 2>&1 || true; rm -f '$live' '$expected' '$live_raw' '$expected_raw'" EXIT
 
 docker rm -f "$REFERENCE" >/dev/null 2>&1 || true
 docker run -d --name "$REFERENCE" -e POSTGRES_PASSWORD=referentna -e POSTGRES_DB=ref "$image" >/dev/null
@@ -179,18 +175,27 @@ say "referentna sema napravljena od $(printf '%s' "$want" | wc -w) migracija"
 # tokens with a fresh random string on every run, so they differ between any two dumps and say
 # nothing. Everything else stays, including the order pg_dump chooses, which is its own and the
 # same for both.
-ocisti() { grep -vE '^(--|$|\\restrict |\\unrestrict )'; }
+# Only the two tokens go. pg_dump 18 fills them with a fresh random string on every run, so they
+# differ between any two dumps and say nothing; everything else stays, comments and blank lines
+# included. Measured 09.09.2026: without any cleaning at all the two dumps differ in exactly four
+# lines, which are those two on each side, so there is nothing else to remove - and removing more
+# was a hole of its own, since `^--` also matches the second line of a string broken across two.
+ocisti() { grep -vE '^(\\restrict |\\unrestrict )' "$1"; }
 
+# Into a file first and only then read, because `sh` has no pipefail: through a pipe the exit code
+# of pg_dump is invisible, and the floor written for exactly that case could never be reached, since
+# `grep -v` that selects nothing exits 1 and `set -e` ends the script before it.
 docker exec qa-postgres pg_dump -U "${QA_POSTGRES_USER:-btl_qa}" -d "${QA_POSTGRES_DB:-btl_qa}" \
-  --schema-only --no-owner --no-acl --exclude-table=flyway_schema_history | ocisti > "$live"
-docker exec "$REFERENCE" pg_dump -U postgres -d ref --schema-only --no-owner --no-acl \
-  | ocisti > "$expected"
+  --schema-only --no-owner --no-acl --exclude-table=flyway_schema_history > "$live_raw" \
+  || fail 'pg_dump nad QA bazom nije prosao'
+docker exec "$REFERENCE" pg_dump -U postgres -d ref --schema-only --no-owner --no-acl > "$expected_raw" \
+  || fail 'pg_dump nad referentnom bazom nije prosao'
 
-# Both sides get a floor, and the live one needs its own because a pipe hides the exit code of the
-# command that fills it: `sh` has no pipefail, so a pg_dump that fails leaves an empty file and a
-# comparison that says nothing.
-[ -s "$expected" ] || fail 'referentna sema je prazna, dakle poredjenje ispod ne tvrdi nista'
-[ -s "$live" ] || fail 'ispis zive seme je prazan, dakle pg_dump nad QA bazom nije prosao'
+[ -s "$expected_raw" ] || fail 'referentna sema je prazna, dakle poredjenje ispod ne tvrdi nista'
+[ -s "$live_raw" ] || fail 'ispis zive seme je prazan'
+
+ocisti "$live_raw" > "$live"
+ocisti "$expected_raw" > "$expected"
 
 if ! diff -u "$expected" "$live" > /dev/null; then
   say 'razlika (- ono sto migracije opisuju, + ono sto QA nosi):'
@@ -199,53 +204,80 @@ if ! diff -u "$expected" "$live" > /dev/null; then
 fi
 say "sema se poklapa, redova: $(wc -l < "$expected")"
 
-# And the settings beside it, because a dump describes the schema and not the switch that stops the
-# schema from acting. Everything whose source is not the built-in default: `postgresql.conf`,
-# `postgresql.auto.conf` where `ALTER SYSTEM` writes, the database, the role. Not `session` and not
-# `client`, which last only as long as one connection.
-NASTAVAK="select name || ' = ' || setting || ' (' || source || ')' from pg_settings
- where source not in ('default', 'client', 'session') order by name"
+# WHAT A DUMP CANNOT SAY, asked beside it. Four things, and each is here because a round measured
+# the hole rather than because it seemed prudent.
+#
+# The DATABASE ITSELF. `pg_dump` without `--create` says nothing about it, and `pg_settings` cannot
+# stand in: `lc_collate` and `lc_ctype` stopped being settings in PostgreSQL 16. Measured
+# 09.09.2026: a database created with ICU `tr-TR` passed everything, and in it
+# `lower('IVAN@primer.rs')` is `ıvan@primer.rs` with a dotless i, so the unique index over
+# `lower(email)` took both spellings and one address opened two accounts. That is ADL A38 gone.
+BAZA="select 'baza ' || d.datcollate || ' ' || d.datctype || ' ' || d.datlocprovider::text
+       || ' ' || pg_encoding_to_char(d.encoding)
+  from pg_database d where d.datname = current_database()"
 
-# And whether the triggers FIRE, which a dump structurally cannot say: a foreign key is carried out
-# by internal triggers, `alter table ... disable trigger all` turns them off, and the DDL pg_dump
-# writes is unchanged because there is no DDL for that state. Measured 09.09.2026: with the dump
-# alone, a row naming a role that does not exist went into `account` and the check said everything
-# passed. Internal triggers are keyed by the CONSTRAINT they enforce, since their own names carry
-# OIDs that differ between two databases.
-OKIDACI="select 'okidac ' || c.relname || '.' || tg.tgname || ' ' || tg.tgenabled::text
+# WHAT IS WRITTEN IN THE CONFIGURATION FILES, read off the files and not off the running values.
+# `ALTER SYSTEM` writes into postgresql.auto.conf and takes effect on the next reload or restart, so
+# `pg_settings` alone calls a database green while the switch that disables every foreign key is
+# already on disk - and the container restarts unless stopped. `pg_file_settings` is the file as
+# written, `applied` says whether it is in force yet, and `pending_restart` catches the rest.
+FAJLOVI="select 'u-fajlu ' || name || ' = ' || setting
+       || ' iz ' || regexp_replace(sourcefile, '.*/', '')
+       || ' primenjeno=' || applied::text || coalesce(' greska=' || error, '')
+  from pg_file_settings
+union all
+select 'ceka-restart ' || name from pg_settings where pending_restart
+union all
+select 'podesavanje ' || name || ' = ' || setting || ' (' || source || ')' from pg_settings
+ where source not in ('default', 'client', 'session')"
+
+# WHETHER THE TRIGGERS FIRE, which has no DDL form at all: a foreign key is carried out by internal
+# triggers, `alter table ... disable trigger all` turns them off, and the DDL pg_dump writes is
+# unchanged. Measured: with the dump alone a row naming a role that does not exist went into
+# `account`. Internal ones are keyed by the CONSTRAINT they enforce, since their own names carry
+# OIDs that differ between two databases. Every schema and not only `public`, because the dump
+# beside this one has no schema of its own either, and a pair of unequal reach lies.
+OKIDACI="select 'okidac ' || n.nspname || '.' || c.relname || '.' || tg.tgname || ' ' || tg.tgenabled::text
   from pg_trigger tg join pg_class c on c.oid = tg.tgrelid
   join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public' and not tg.tgisinternal
+ where n.nspname not in ('pg_catalog', 'information_schema') and not tg.tgisinternal
 union all
-select 'sprovodjenje ' || con.conname || ' ' || string_agg(distinct tg.tgenabled::text, ',')
+select 'sprovodjenje ' || n.nspname || '.' || con.conname || ' ' || string_agg(distinct tg.tgenabled::text, ',')
   from pg_trigger tg
   join pg_constraint con on con.oid = tg.tgconstraint
   join pg_class c on c.oid = tg.tgrelid
   join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public' and tg.tgisinternal
- group by con.conname
- order by 1"
+ where n.nspname not in ('pg_catalog', 'information_schema') and tg.tgisinternal
+ group by n.nspname, con.conname"
 
+# And the privileges, because the dumps are taken without ACLs.
 VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
   from information_schema.role_table_grants g
   join pg_class c on c.relname = g.table_name
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = g.table_schema
- where g.table_schema = 'public' and g.grantee <> pg_get_userbyid(c.relowner)"
+ where g.table_schema not in ('pg_catalog', 'information_schema')
+   and g.grantee <> pg_get_userbyid(c.relowner)"
 
-{ psql "$NASTAVAK"; psql "$OKIDACI"; psql "$VLASNIK"; } > "$live"
-{ docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$NASTAVAK"
+# Sorted by the CLIENT in byte order and never inside the database: an ORDER BY would sort by that
+# database's collation, and the two need not have the same one - which is the very thing the line
+# above this is here to catch, so the comparison must not depend on it. Measured 09.09.2026: with
+# the query ordering, a database with libc `C` produced a difference of pure order and a verdict
+# that named the wrong cause.
+{ psql "$BAZA"; psql "$FAJLOVI"; psql "$OKIDACI"; psql "$VLASNIK"; } | LC_ALL=C sort > "$live"
+{ docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$BAZA"
+  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$FAJLOVI"
   docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$OKIDACI"
-  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$VLASNIK"; } > "$expected"
+  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$VLASNIK"; } | LC_ALL=C sort > "$expected"
 
 [ -s "$expected" ] || fail 'referentna podesavanja su prazna, dakle poredjenje ispod ne tvrdi nista'
 [ -s "$live" ] || fail 'podesavanja zive baze se ne citaju'
 
 if ! diff -u "$expected" "$live" > /dev/null; then
-  say 'razlika u podesavanjima (- ocekivano, + na QA):'
+  say 'razlika izvan seme (- ocekivano, + na QA):'
   diff -u "$expected" "$live" | sed -n '3,$p' | grep -E '^[-+]' || true
-  fail 'QA baza nosi podesavanje koje referentna nema, ili joj jedno nedostaje'
+  fail 'QA baza nije podesena kao sto referentna jeste'
 fi
-say "podesavanja se poklapaju, redova: $(wc -l < "$expected")"
+say "podesavanja i okidaci se poklapaju, redova: $(wc -l < "$expected")"
 
 say ''
 say '--- 5. sifarnici nose ono sto migracija tvrdi ---'
