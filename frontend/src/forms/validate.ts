@@ -1,7 +1,33 @@
 import { ageOn, parseDate } from './dateField'
 import type { FieldDef, FieldError, FormDef, FormValues } from './types'
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/**
+ * An address is visible ASCII: `!` (0x21) through `~` (0x7E), without `@`
+ * (0x40), on every side of the `@` and the dot.
+ *
+ * A range of what is allowed and not an exclusion of what is not, which is the
+ * same shape `account_email_shape` carries in V6 and for the same reason. This
+ * was `[^\s@]`, and `\s` is a list: it holds U+00A0 and U+FEFF but not U+200B
+ * and not U+00AD, so an address pasted out of Word with a zero width space in
+ * it read as free, was registered, and became the same person's second account.
+ * A range has no such gap, so the day somebody finds a seventh invisible
+ * character there is nothing here to add.
+ *
+ * `data/outsideLink.ts` paid for the other kind on 23.08.2026: six invisible
+ * characters written out by hand, and a round found seven more that did the
+ * same thing. It could not take this road, because the address of somebody's
+ * page may be in any script on earth. An address of electronic mail on this
+ * portal may not, and that is what makes the tighter rule available here.
+ *
+ * The trailing space characters `trim()` does take are gone before this runs,
+ * and `trimValues` trims the value that is actually submitted with the same
+ * function, so what this judged is what the backend receives.
+ *
+ * Nothing here is a security measure and the database refuses the same shapes
+ * again; what this buys is the member being told on the spot rather than after
+ * a round trip.
+ */
+const EMAIL = /^[\x21-\x3F\x41-\x7E]+@[\x21-\x3F\x41-\x7E]+\.[\x21-\x3F\x41-\x7E]+$/
 
 /** Never matches, so a broken pattern rejects the value instead of the page. */
 const NEVER = /(?!)/
