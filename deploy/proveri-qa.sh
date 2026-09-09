@@ -39,13 +39,24 @@
 # needs no blessing at all. Measured: the six migrations of 09.09.2026 apply in two seconds.
 #
 # WHAT IT COMPARES, and the list is the query and not a promise: the database's own collation,
-# ctype, locale provider and encoding; every relation of every kind - table, partitioned table,
-# view, materialised view, foreign table - with its persistence, its row-security flag and its
-# storage options; every column with its POSITION, type, nullability, collation, default and
-# whether it is generated; every constraint in the schema with its definition and whether it is
-# validated, reached through the schema rather than through a table so a domain's constraint is in
-# too; every index, sequence, trigger, routine, row-security policy, view body, domain and
-# non-default collation; and the number of privileges granted to anybody but the owner.
+# ctype, locale provider and encoding; every setting stored on the database or on a role; every
+# relation of every kind - table, partitioned table, view, materialised view, foreign table - with
+# its persistence, both of its row-security flags and its storage options; every column with its
+# POSITION, type, nullability, collation, default and whether it is generated; every constraint in
+# the schema with its definition and whether it is validated AND enforced, reached through the
+# schema rather than through a table so a domain's constraint is in too; every index with its
+# definition and whether it is valid, ready and live; every sequence, routine, row-security policy,
+# view body, domain and non-default collation; every trigger with whether it FIRES, the internal
+# ones that carry out foreign keys included, keyed by the constraint they enforce; and the number of
+# table-level privileges granted to anybody but the owner.
+#
+# THE ENFORCEMENT FLAGS ARE A CLASS AND ARE SWEPT AS ONE. A round on 09.09.2026 returned two
+# instances of one sentence - an object that is there and does not act - and the workspace rule for
+# that is to sweep the class rather than patch the instance. The one that fired on this schema:
+# `alter database btl_qa set session_replication_role = 'replica'` turns off ALL SIXTEEN foreign
+# keys at once, survives a restart, leaves every constraint definition untouched, and let a row into
+# `account` naming a role that does not exist. The second: an index whose `indisvalid` is false
+# looks identical while two accounts sharing one `lower(email)` both go in, which is ADL A38 gone.
 #
 # A round on 09.09.2026 measured all of that as MISSING, eleven mutations passing with `poklapa se`,
 # and the sharpest was the last one on that list: two databases whose own collation differs give an
@@ -57,8 +68,16 @@
 #   - ROWS. Whether `place` holds the right 47016 towns is section 5; whether a migration says what
 #     it should say is the gate's question, answered against a schema built from nothing.
 #   - WHO OWNS an object. The reference database is built by `postgres` and QA runs as `btl_qa`, so
-#     ownership differs on every row by construction. What is compared instead is that nobody but
-#     the owner has been granted anything, which is 0 on both sides today.
+#     ownership differs on every row by construction. What is compared instead is the number of
+#     TABLE-level privileges held by anybody but the owner, 0 on both sides today.
+#   - PRIVILEGES BELOW OR BESIDE A TABLE: on a column, on a sequence, on the schema.
+#     `information_schema.role_table_grants` does not carry them, so `grant select (email) on
+#     account to somebody` passes. Measured 09.09.2026 and left here rather than fixed, because it
+#     is a middle finding and those wait for the owner's word.
+#   - A REPEATABLE `R__` MIGRATION. The reference is built from `V*` only, so a view Flyway has
+#     applied from an `R__` file shows up as something QA carries and the migrations do not, and the
+#     check goes red about a healthy deploy. No such file exists today; `V1` names the convention.
+#     Measured 09.09.2026, and recorded rather than fixed for the same reason.
 #   - A MIGRATION THAT MAY NOT RUN IN A TRANSACTION. Flyway takes `executeInTransaction=false`;
 #     this applies each file with `psql -1`. None of the migrations needs it today. The day one does
 #     - `create index concurrently` is the likely one - it will fail HERE and be reported as a
@@ -91,6 +110,7 @@ union all
 select 'relacija ' || c.relkind::text || ' ' || c.relname
        || ' ' || c.relpersistence::text
        || case when c.relrowsecurity then ' rls' else ' bez-rls' end
+       || case when c.relforcerowsecurity then ' rls-i-vlasniku' else ' vlasnik-izuzet' end
        || coalesce(' opcije ' || array_to_string(c.reloptions, ','), '')
   from pg_class c join pg_namespace n on n.oid = c.relnamespace
  where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')
@@ -111,7 +131,8 @@ select 'kolona ' || c.relname || ' ' || lpad(a.attnum::text, 3, '0') || ' ' || a
    and a.attnum > 0 and not a.attisdropped and c.relname <> $FLYWAY
 union all
 select 'ogranicenje ' || coalesce(c.relname, t.typname, '(sema)') || '.' || con.conname
-       || case when con.convalidated then ' validated ' else ' NIJE-VALIDIRANO ' end
+       || case when con.convalidated then ' validated' else ' NIJE-VALIDIRANO' end
+       || case when con.conenforced then ' sprovodi-se ' else ' NE-SPROVODI-SE ' end
        || pg_get_constraintdef(con.oid)
   from pg_constraint con
   left join pg_class c on c.oid = con.conrelid
@@ -119,18 +140,42 @@ select 'ogranicenje ' || coalesce(c.relname, t.typname, '(sema)') || '.' || con.
  where con.connamespace = 'public'::regnamespace
    and coalesce(c.relname, '') <> $FLYWAY
 union all
-select 'indeks ' || indexdef from pg_indexes
- where schemaname = 'public' and tablename <> $FLYWAY
+select 'indeks '
+       || case when i.indisvalid then 'valjan' else 'NIJE-VALJAN' end
+       || case when i.indisready then ' spreman' else ' NIJE-SPREMAN' end
+       || case when i.indislive then ' ziv ' else ' NIJE-ZIV ' end
+       || x.indexdef
+  from pg_indexes x
+  join pg_class ic on ic.relname = x.indexname
+  join pg_namespace n on n.oid = ic.relnamespace and n.nspname = x.schemaname
+  join pg_index i on i.indexrelid = ic.oid
+ where x.schemaname = 'public' and x.tablename <> $FLYWAY
 union all
 select 'sekvenca ' || sequencename || ' ' || data_type::text || ' start ' || start_value
        || ' korak ' || increment_by || ' od ' || min_value || ' do ' || max_value
        || case when cycle then ' ciklicno' else ' bez-ciklusa' end
   from pg_sequences where schemaname = 'public'
 union all
-select 'okidac ' || pg_get_triggerdef(tg.oid)
+select 'okidac ' || tg.tgenabled::text || ' ' || pg_get_triggerdef(tg.oid)
   from pg_trigger tg join pg_class c on c.oid = tg.tgrelid
   join pg_namespace n on n.oid = c.relnamespace
  where n.nspname = 'public' and not tg.tgisinternal
+union all
+select 'sprovodjenje ' || con.conname || ' ' || string_agg(distinct tg.tgenabled::text, ',')
+  from pg_trigger tg
+  join pg_constraint con on con.oid = tg.tgconstraint
+  join pg_class c on c.oid = tg.tgrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and tg.tgisinternal
+ group by con.conname
+union all
+select 'podesavanje ' || coalesce(r.rolname, '(sve role)') || ' '
+       || case when s.setdatabase = 0 then '(sve baze)' else 'ova baza' end
+       || ' ' || array_to_string(s.setconfig, ' ')
+  from pg_db_role_setting s
+  left join pg_roles r on r.oid = s.setrole
+ where s.setdatabase = (select oid from pg_database where datname = current_database())
+    or s.setdatabase = 0
 union all
 select 'rutina ' || p.prokind::text || ' ' || p.proname
        || '(' || pg_get_function_identity_arguments(p.oid) || ') -> '
