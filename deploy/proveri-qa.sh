@@ -132,9 +132,13 @@ failed=$(psql "select count(*) from flyway_schema_history where not success")
 say ''
 say '--- 4. sema je ono sto migracije opisuju, red za red ---'
 
-# The same image QA is running, asked of the running container rather than written here, so the
-# reference cannot be built by a different PostgreSQL than the one being measured.
-image=$(docker inspect -f '{{.Config.Image}}' qa-postgres)
+# The same image QA is running, and the IMAGE and not its tag:  gives the tag as it
+# was written when the container was made, and a tag moves. That mattered little while two
+# catalogues were compared, since a minor release does not change a catalogue; it matters now,
+# because the comparison is pg_dump TEXT and its format does change between minor releases - the
+# two random tokens this script strips arrived exactly that way.  is the digest, and
+#  takes it.
+image=$(docker inspect -f '{{.Image}}' qa-postgres)
 
 live=$(mktemp)
 expected=$(mktemp)
