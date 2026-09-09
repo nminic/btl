@@ -504,14 +504,20 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	// --------------------------------------------- and the DELETE it will not write
 
 	/**
-	 * One row standing on a codebook, and the DELETE that then cannot run.
+	 * One row standing on a codebook, the DELETE that then cannot run, and the two
+	 * instructions: the one that lets it run and the one that does not.
 	 *
-	 * @param what       what the case is, in words, and what a verdict names
-	 * @param constraint the key that has to be the reason the DELETE fails
-	 * @param stands     the row that names a codebook row
-	 * @param drops      the DELETE a delta would have written for that codebook row
+	 * @param what        what the case is, in words, and what a verdict names
+	 * @param constraint  the key that has to be the reason the DELETE fails
+	 * @param stands      the row that names a codebook row
+	 * @param drops       the DELETE a delta would have written for that codebook row
+	 * @param frees       the UPDATE the refusal instructs, after which {@code drops} must go through
+	 * @param refusesToo  the constraint that refuses when the OLD instruction is followed instead,
+	 *                    and it is a different one on each side: a check for a town, the foreign key
+	 *                    itself for a country
 	 */
-	record Pressure(String what, String constraint, String stands, String drops) {
+	record Pressure(String what, String constraint, String stands, String drops, String frees,
+			String refusesToo) {
 
 		@Override
 		public String toString() {
@@ -544,6 +550,43 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 				+ " null, '', false, 'none')";
 	}
 
+	/* The country the leaving town is in, read off the town rather than named, so
+	   the case does not have to know which country the first town of the codebook
+	   is in. Which country it becomes is not asserted and could not be: the
+	   instruction says the decision is a person's, and any country satisfies the
+	   check. What is asserted is that a country is written at all. */
+	private static final String THE_TOWNS_COUNTRY = "(select country_id from place where rank = 1)";
+
+	/* And a country that is certainly not the one leaving, for the other half. RS
+	   is the one country in the codebook with forty seven thousand towns, so it
+	   cannot be A_COUNTRY_WITH_NO_TOWNS, which is what would otherwise make the
+	   DELETE below pass for the wrong reason. */
+	private static final String ANOTHER_COUNTRY = "(select id from country where code = 'RS')";
+
+	/** The instruction the refusal gives for a town: three columns written together. */
+	private static String movedOff(String table, String which, String country) {
+		return "update " + table + " set place_id = null, city = 'Zaselak', country_id = " + country
+				+ " where " + which;
+	}
+
+	/**
+	 * And the instruction it used to give, which is the same one short of a column.
+	 *
+	 * <p>One shape for all four cases, because it is one sentence that was wrong in
+	 * two ways at once. Against a town it writes {@code city} while {@code
+	 * country_id} stays empty, and the check that makes those two conditions of
+	 * each other refuses it. Against a country it changes nothing at all - whoever
+	 * stands on a country already has the name typed and the key empty - so it goes
+	 * through and the DELETE it was supposed to unblock is refused exactly as
+	 * before.
+	 */
+	private static String oldInstructionFor(Pressure pressure) {
+		String table = pressure.constraint().startsWith("competitor") ? "competitor" : "btl_event";
+		String which = "competitor".equals(table) ? "member_number = '000904'" : "slug = 'cetvrta-proba-2027'";
+
+		return "update " + table + " set place_id = null, city = 'Zaselak' where " + which;
+	}
+
 	private static String eventStandingOn(String town, String city, String country) {
 		return "insert into btl_event (" + EVENT_COLUMNS + ") values ('cetvrta-proba-2027', 'Cetvrta proba',"
 				+ " date '2027-06-06', " + town + ", " + city + ", " + country + ", 'race', false, '', '', null)";
@@ -566,15 +609,25 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	static List<Pressure> pressures() {
 		return List.of(
 				new Pressure("a member stands on a town the codebook drops", "competitor_place_fk",
-						memberStandingOn(A_TOWN, "null", "null"), "delete from place where rank = 1"),
+						memberStandingOn(A_TOWN, "null", "null"), "delete from place where rank = 1",
+						movedOff("competitor", "member_number = '000904'", THE_TOWNS_COUNTRY),
+						"competitor_typed_town_names_its_country"),
 				new Pressure("a member stands on a country the codebook drops", "competitor_country_fk",
 						memberStandingOn("null", "'Zaselak'", A_COUNTRY_WITH_NO_TOWNS),
-						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS),
+						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS,
+						"update competitor set country_id = " + ANOTHER_COUNTRY
+								+ " where member_number = '000904'",
+						"competitor_country_fk"),
 				new Pressure("an event stands on a town the codebook drops", "btl_event_place_fk",
-						eventStandingOn(A_TOWN, "null", "null"), "delete from place where rank = 1"),
+						eventStandingOn(A_TOWN, "null", "null"), "delete from place where rank = 1",
+						movedOff("btl_event", "slug = 'cetvrta-proba-2027'", THE_TOWNS_COUNTRY),
+						"btl_event_typed_town_names_its_country"),
 				new Pressure("an event stands on a country the codebook drops", "btl_event_country_fk",
 						eventStandingOn("null", "'Zaselak'", A_COUNTRY_WITH_NO_TOWNS),
-						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS));
+						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS,
+						"update btl_event set country_id = " + ANOTHER_COUNTRY
+								+ " where slug = 'cetvrta-proba-2027'",
+						"btl_event_country_fk"));
 	}
 
 	/**
@@ -613,6 +666,50 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 		assertThat(db.sql(pressure.drops()).update())
 				.as("the row the case above stands on is not there to be deleted")
 				.isOne();
+	}
+
+	/**
+	 * The instruction the refusal gives is an UPDATE that lets the DELETE through.
+	 *
+	 * <p>The refusal is prose, but what it claims is behaviour: do this and the row
+	 * can go. Measured by running it rather than by reading it, which is the only
+	 * way that sentence has ever been held. Until 09.09.2026 it was held by nothing
+	 * at all, and it was wrong: it named two columns where a typed town needs
+	 * three, and it offered a town's answer to somebody whose country is leaving.
+	 */
+	@ParameterizedTest
+	@MethodSource("pressures")
+	void theInstructionInTheRefusalLetsTheCodebookRowGo(Pressure pressure) {
+		assertThat(db.sql(pressure.stands()).update()).isOne();
+
+		assertThat(db.sql(pressure.frees()).update())
+				.as("the instruction moved nobody, so the DELETE below would say nothing")
+				.isOne();
+
+		assertThat(db.sql(pressure.drops()).update())
+				.as("the row is still worn after the instruction the refusal gives")
+				.isOne();
+	}
+
+	/**
+	 * And the instruction it used to give does not, on either side.
+	 *
+	 * <p>One assertion over the pair rather than two, because only one of the two
+	 * statements throws in any given case and which one it is is the finding: for a
+	 * town the UPDATE itself breaks the check, for a country the UPDATE is a no-op
+	 * that goes through and the DELETE is refused by the key just as before. The
+	 * constraint named in {@code refusesToo} is what says which of the two
+	 * happened, so a case that started failing for the other reason fails here.
+	 */
+	@ParameterizedTest
+	@MethodSource("pressures")
+	void andTheInstructionItGaveBeforeDoesNot(Pressure pressure) {
+		assertThat(db.sql(pressure.stands()).update()).isOne();
+
+		assertThatThrownBy(() -> {
+			db.sql(oldInstructionFor(pressure)).update();
+			db.sql(pressure.drops()).update();
+		}).hasMessageContaining(pressure.refusesToo());
 	}
 
 	// ------------------------------------------------------------------- the floors
@@ -932,6 +1029,104 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 				.containsExactlyInAnyOrderElementsOf(holding);
 	}
 
+	/**
+	 * The refusal names every column a typed town is written with, and the schema
+	 * says which those are.
+	 *
+	 * <p>The behaviour of that instruction is measured by
+	 * {@link #theInstructionInTheRefusalLetsTheCodebookRowGo(Pressure)}, which runs
+	 * it. This is the other half, and without it the two are not tied: the UPDATE
+	 * in that case is written here rather than read out of the message, so the
+	 * message can go back to naming two columns and the suite stays green. It did
+	 * name two until 09.09.2026, and the migration a person would then have written
+	 * by hand breaks on the check.
+	 *
+	 * <p><b>The floor is a closure and not a list.</b> It starts at
+	 * {@code place_id}, which is what a town on a member is, and takes in every
+	 * column reachable from it through a CHECK: {@code place_id} and {@code city}
+	 * are conditions of each other, {@code city} and {@code country_id} are
+	 * conditions of each other, and that is the whole of the web today. A fourth
+	 * column joining it tomorrow fails this until the refusal names it too, which
+	 * is the thing a hand written list of three could not do.
+	 *
+	 * <p>Asked of both tables, because the refusal says the event is the same as the
+	 * member and nothing else would notice the day it stops being.
+	 */
+	@Test
+	void theRefusalNamesEveryColumnATypedTownIsWrittenWith() throws Exception {
+		List<String> onAMember = columnsATypedTownIsWrittenWith("competitor");
+
+		assertThat(onAMember)
+				.as("the closure found nothing, so the comparison below is against an empty list")
+				.isNotEmpty();
+		assertThat(columnsATypedTownIsWrittenWith("btl_event"))
+				.as("the event no longer holds a town the way the member does, and the refusal says it does")
+				.containsExactlyInAnyOrderElementsOf(onAMember);
+
+		Matcher sentence = TYPED_TOWN.matcher(generate(aCodebookRowLeaves()).errors());
+
+		assertThat(sentence.find())
+				.as("the sentence that lists the columns has been reworded, so nothing below is being read")
+				.isTrue();
+
+		Set<String> named = new LinkedHashSet<>();
+		Matcher name = QUOTED.matcher(sentence.group(1));
+
+		while (name.find()) {
+			named.add(name.group(1));
+		}
+
+		assertThat(named)
+				.as("a column the instruction does not name, or a name for a column that is not in the web")
+				.containsExactlyInAnyOrderElementsOf(onAMember);
+	}
+
+	/**
+	 * The case whose refusal carries that instruction, chosen by the sentence it is
+	 * recognised by rather than by its place in the list.
+	 *
+	 * <p>Three of the five cases end in that refusal and any of them would do; what
+	 * may not be done is to take whichever is first, because the first two are the
+	 * other refusal entirely and the one below would then read a message that never
+	 * carried the instruction.
+	 */
+	private static Change aCodebookRowLeaves() {
+		return refusals().stream()
+				.filter(one -> "the codebook drops a row a member or an event may be standing on".equals(one.says()))
+				.map(Refusal::change)
+				.findFirst()
+				.orElseThrow();
+	}
+
+	/**
+	 * Every column reachable from {@code place_id} through the CHECK constraints of
+	 * one table, {@code place_id} itself included.
+	 *
+	 * <p>NOT NULL is recorded in {@code pg_constraint} in PostgreSQL 18 like any
+	 * other constraint and would drag in every column of the table, so the walk is
+	 * over {@code contype = 'c'} alone.
+	 */
+	private List<String> columnsATypedTownIsWrittenWith(String table) {
+		return db
+				.sql("with recursive reached as ("
+						+ "   select a.attnum from pg_attribute a"
+						+ "    where a.attrelid = ?::regclass and a.attname = 'place_id'"
+						+ " union"
+						+ "   select k.attnum from reached r"
+						+ "     join pg_constraint con on con.conrelid = ?::regclass and con.contype = 'c'"
+						+ "      and r.attnum = any (con.conkey)"
+						+ "     join unnest(con.conkey) as k(attnum) on true"
+						+ " )"
+						+ " select a.attname from reached r"
+						+ "   join pg_attribute a on a.attrelid = ?::regclass and a.attnum = r.attnum"
+						+ " order by a.attname")
+				.param(table)
+				.param(table)
+				.param(table)
+				.query(String.class)
+				.list();
+	}
+
 	/** The foreign keys held by a table a delta does not write, pointing at one it
 	 *  does, narrowed by whatever else is asked. */
 	private List<String> keysPointingAtACodebook(String and) {
@@ -968,6 +1163,11 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 
 	/** One name out of that list. */
 	private static final Pattern QUOTED = Pattern.compile("`(\\w+)`");
+
+	/** The columns the refusal says a typed town is written with, and the sentence
+	 *  they stand in. */
+	private static final Pattern TYPED_TOWN = Pattern
+			.compile("((?:`\\w+`[,\\s]*(?:and\\s+)?)+)\\s*are written together");
 
 	/**
 	 * And a verdict names a case that exists.

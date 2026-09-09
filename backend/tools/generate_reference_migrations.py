@@ -743,7 +743,10 @@ DELTA_HEAD = """
    middle of a migration on a live database. So a codebook that drops a row is
    refused before a file is written, with the town or the country named, and that
    one is a migration written by hand: where the member goes instead has an
-   answer only a person has. ADL A40 is where that migration is written down, and
+   answer only a person has: typed text is `city` and `country_id` together and
+   never `city` alone, and a country that leaves has no typed-text answer at all,
+   because whoever stands on it has the name typed already.
+   ADL A40 is where that migration is written down, and
    it is three things rather than one: that answer; the renumbering of the order
    column of every row below the one that leaves, `place.rank` for a town and
    `country.sort_order` for a country, since ReferenceDataMatchesCodebookTest
@@ -1004,7 +1007,17 @@ def no_codebook_row_leaves(country_before, country_removed, place_before, place_
     "written by hand" and stopped there, naming the door and nothing behind it.
     ADL A40 is where it is written down and it is three things:
 
-      1. the question above, answered out loud rather than by default;
+      1. the question above, answered out loud rather than by default, and the
+         two codebooks answer it differently. A town goes onto another row or
+         into typed text, and typed text is `city` AND `country_id` with
+         `place_id` empty: three columns, because
+         `competitor_typed_town_names_its_country` makes the typed name and the
+         country conditions of each other. A country has no typed-text answer at
+         all, since whoever stands on it already has the name typed, so only
+         another country lets the row go. This point read "`city` with
+         `place_id` empty" until a round on 09.09.2026 ran it against the schema
+         and it broke the check - and the paragraph two above this one, written
+         a day earlier, had said "with its country beside it" all along;
       2. RENUMBERING the order column of every row below the one that leaves,
          `place.rank` for a town and `country.sort_order` for a country, because
          ReferenceDataMatchesCodebookTest builds the expected value as the
@@ -1037,9 +1050,16 @@ def no_codebook_row_leaves(country_before, country_removed, place_before, place_
                            'migration written by hand, and ADL A40 is where what it has to do is written down.'
                            '\n\nThree things rather than one, and the second is the half nobody works out '
                            'unaided:'
-                           '\n  1. decide where the members and the events standing on that row go: onto '
-                           'another row of the codebook, or into typed text (`city` with `place_id` left '
-                           'empty, which ADL A36 O5 allows). Neither may be chosen in silence.'
+                           '\n  1. decide where the members and the events standing on that row go, and the '
+                           'two codebooks part company here. A TOWN leaving: onto another row of the '
+                           'codebook, or into typed text, and typed text is THREE columns and not two: '
+                           '`city`, `country_id` and `place_id` are written together, the first two '
+                           'filled and the last emptied, because '
+                           '`competitor_typed_town_names_its_country` makes the typed name and the '
+                           'country conditions of each other (V7, and `btl_event` the same). A COUNTRY '
+                           'leaving: typed text is not an option at all, because whoever stands on that '
+                           'country already has the name typed, and only ANOTHER country lets the row '
+                           'go. Neither may be chosen in silence.'
                            '\n  2. RENUMBER the order column of every row BELOW the one that leaves - '
                            '`place.rank` for a town, `country.sort_order` for a country. '
                            'ReferenceDataMatchesCodebookTest builds the expected value as the position of '
