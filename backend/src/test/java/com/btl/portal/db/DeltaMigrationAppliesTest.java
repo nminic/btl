@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.JsonNode;
@@ -1052,33 +1053,99 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * <p>Asked of both tables, because the refusal says the event is the same as the
 	 * member and nothing else would notice the day it stops being.
 	 */
-	@Test
-	void theRefusalNamesEveryColumnATypedTownIsWrittenWith() throws Exception {
-		List<String> onAMember = columnsATypedTownIsWrittenWith("competitor");
+	/**
+	 * Both places the instruction is written say the same columns in the same two
+	 * roles, and the schema says which role each column is in.
+	 *
+	 * <p>The behaviour of the instruction is measured by
+	 * {@link #theInstructionInTheRefusalLetsTheCodebookRowGo(Pressure)}, which runs
+	 * it. This is the other half, and without it the two are not tied: the UPDATE
+	 * in that case is written there rather than read out of the message, so the
+	 * message can drift and the suite stays green. It drifted twice, on 09.09.2026:
+	 * first it named two columns where three are needed, and then the third place
+	 * it is written kept the two-column sentence for a round after the other two
+	 * were fixed.
+	 *
+	 * <p><b>Two places, because a person meets it in two.</b> The refusal is what
+	 * stops whoever is running the refresh; the header is what the next reader of a
+	 * generated delta finds months later. A guard over one of them says nothing
+	 * about the other, and that is exactly what happened.
+	 *
+	 * <p><b>Two roles and not one list.</b> Which column is emptied and which are
+	 * filled is the whole of the sentence, and a single unordered list cannot hold
+	 * it: permuting three names leaves the list equal and the instruction wrong.
+	 * The roles come out of the schema rather than from here. Emptied is the column
+	 * the key into the codebook is made of, asked of {@code pg_constraint}; filled
+	 * is the rest of the closure reachable from it through CHECK constraints. So a
+	 * fourth column joining that web arrives on the filled side and fails until
+	 * both sentences name it.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"the refusal", "the header of a delta"})
+	void bothPlacesTheInstructionIsWrittenNameTheSameColumnsInTheSameRoles(String where) throws Exception {
+		List<String> emptied = theKeyIntoTheCodebook("competitor");
+		List<String> filled = new ArrayList<>(columnsATypedTownIsWrittenWith("competitor"));
 
-		assertThat(onAMember)
-				.as("the closure found nothing, so the comparison below is against an empty list")
+		filled.removeAll(emptied);
+
+		assertThat(emptied)
+				.as("no key into the codebook, so the emptied side below is a comparison against nothing")
 				.isNotEmpty();
-		assertThat(columnsATypedTownIsWrittenWith("btl_event"))
-				.as("the event no longer holds a town the way the member does, and the refusal says it does")
-				.containsExactlyInAnyOrderElementsOf(onAMember);
+		assertThat(filled)
+				.as("the closure is the key and nothing else, so the filled side says nothing")
+				.isNotEmpty();
+		assertThat(theKeyIntoTheCodebook("btl_event"))
+				.as("the event no longer holds a town the way the member does, and both sentences say it does")
+				.containsExactlyInAnyOrderElementsOf(emptied);
 
-		Matcher sentence = TYPED_TOWN.matcher(generate(aCodebookRowLeaves()).errors());
+		String instruction = instructionWritten(where);
 
-		assertThat(sentence.find())
-				.as("the sentence that lists the columns has been reworded, so nothing below is being read")
+		assertThat(namesIn(EMPTIED, instruction))
+				.as("what %s says is emptied is not the key into the codebook", where)
+				.containsExactlyInAnyOrderElementsOf(emptied);
+		assertThat(namesIn(FILLED, instruction))
+				.as("what %s says is filled is not the rest of the web", where)
+				.containsExactlyInAnyOrderElementsOf(filled);
+	}
+
+	/** The text of one of the two places, asked of the generator rather than held here. */
+	private String instructionWritten(String where) throws Exception {
+		return "the refusal".equals(where)
+				? generate(aCodebookRowLeaves()).errors()
+				: generate(changes().getFirst()).output();
+	}
+
+	/** The backticked names in the one sentence a pattern picks out, and it must
+	 *  pick one out: a reworded sentence is a guard reading nothing. */
+	private static Set<String> namesIn(Pattern sentence, String text) {
+		Matcher found = sentence.matcher(text);
+
+		assertThat(found.find())
+				.as("no sentence matches %s, so this side of the instruction is not being read", sentence.pattern())
 				.isTrue();
 
 		Set<String> named = new LinkedHashSet<>();
-		Matcher name = QUOTED.matcher(sentence.group(1));
+		Matcher name = QUOTED.matcher(found.group(1));
 
 		while (name.find()) {
 			named.add(name.group(1));
 		}
 
-		assertThat(named)
-				.as("a column the instruction does not name, or a name for a column that is not in the web")
-				.containsExactlyInAnyOrderElementsOf(onAMember);
+		return named;
+	}
+
+	/** The columns the foreign key into the town codebook is made of. */
+	private List<String> theKeyIntoTheCodebook(String table) {
+		return db
+				.sql("select a.attname from pg_constraint con"
+						+ "  join unnest(con.conkey) as k(attnum) on true"
+						+ "  join pg_attribute a on a.attrelid = con.conrelid and a.attnum = k.attnum"
+						+ " where con.conrelid = ?::regclass and con.contype = 'f'"
+						+ "   and con.confrelid = 'place'::regclass"
+						+ " order by a.attname")
+				.param(table)
+				.query(String.class)
+				.list();
 	}
 
 	/**
@@ -1164,10 +1231,17 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	/** One name out of that list. */
 	private static final Pattern QUOTED = Pattern.compile("`(\\w+)`");
 
-	/** The columns the refusal says a typed town is written with, and the sentence
-	 *  they stand in. */
-	private static final Pattern TYPED_TOWN = Pattern
-			.compile("((?:`\\w+`[,\\s]*(?:and\\s+)?)+)\\s*are written together");
+	/** The columns an instruction says are emptied, and the ones it says are
+	 *  filled. Two lists rather than one, because which is which is the whole of
+	 *  the sentence: until 09.09.2026 it was one list and a permutation of it
+	 *  turned the instruction upside down with the suite still green. Written to
+	 *  take any number on either side, so a column joining one of the two roles is
+	 *  a wording change and not a new pattern. */
+	private static final Pattern EMPTIED = Pattern
+			.compile("((?:`\\w+`[,\\s]*(?:and\\s+)?)+)\\s*(?:is|are) emptied");
+
+	private static final Pattern FILLED = Pattern
+			.compile("((?:`\\w+`[,\\s]*(?:and\\s+)?)+)\\s*(?:is|are) filled");
 
 	/**
 	 * And a verdict names a case that exists.

@@ -743,9 +743,10 @@ DELTA_HEAD = """
    middle of a migration on a live database. So a codebook that drops a row is
    refused before a file is written, with the town or the country named, and that
    one is a migration written by hand: where the member goes instead has an
-   answer only a person has: typed text is `city` and `country_id` together and
-   never `city` alone, and a country that leaves has no typed-text answer at all,
-   because whoever stands on it has the name typed already.
+   answer only a person has, and the shape of it is fixed: in one statement
+   `place_id` is emptied, and `city` and `country_id` are filled. A country that
+   leaves has no typed-text answer at all, because whoever stands on it has the
+   name typed already.
    ADL A40 is where that migration is written down, and
    it is three things rather than one: that answer; the renumbering of the order
    column of every row below the one that leaves, `place.rank` for a town and
@@ -1052,11 +1053,12 @@ def no_codebook_row_leaves(country_before, country_removed, place_before, place_
                            'unaided:'
                            '\n  1. decide where the members and the events standing on that row go, and the '
                            'two codebooks part company here. A TOWN leaving: onto another row of the '
-                           'codebook, or into typed text, and typed text is THREE columns and not two: '
-                           '`city`, `country_id` and `place_id` are written together, the first two '
-                           'filled and the last emptied, because '
-                           '`competitor_typed_town_names_its_country` makes the typed name and the '
-                           'country conditions of each other (V7, and `btl_event` the same). A COUNTRY '
+                           'codebook, or into typed text, and typed text is THREE columns and not two. '
+                           'In one statement: `place_id` is emptied, and `city` and `country_id` are '
+                           'filled. Both halves are needed, because '
+                           '`competitor_town_is_from_the_codebook_or_typed` and '
+                           '`competitor_typed_town_names_its_country` make those three conditions of '
+                           'each other (V7, and `btl_event` the same). A COUNTRY '
                            'leaving: typed text is not an option at all, because whoever stands on that '
                            'country already has the name typed, and only ANOTHER country lets the row '
                            'go. Neither may be chosen in silence.'
