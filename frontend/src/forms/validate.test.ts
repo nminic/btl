@@ -79,30 +79,54 @@ describe('validateField', () => {
        other kind: six invisible characters written out by hand, and a round
        found seven more doing the same thing. That file could not take this road
        because an address of a page may be in any script; an address of
-       electronic mail on this portal may not, so the rule can name what is
-       allowed and then there is nothing left to forget.
+       electronic mail on this portal may not, so the rule names what is allowed
+       rather than what is not, and a range has no gap for an invisible
+       character to sit in.
 
-       Every code point there is, in the local part and in the domain, and the
-       whole sweep costs about a fifth of a second. Asked through
-       `validateField` and not through the pattern, so what is measured includes
-       the trim in front of it. */
+       Every code point there is, asked at each of the three classes the rule is
+       made of, and asked at each of them on its own: in front of the `@`, in
+       the domain in front of the dot, and in the domain behind it. On its own
+       and not as one list of what got through somewhere, because all three
+       accept the same 93 and one list cannot see a class widened by itself.
+       Measured: `[\x21-\x7E]` behind the dot moves this third list and neither
+       of the other two, and that rule accepts `trkac@primer.rs@zlo.com`, an
+       address with two `@` that the schema in the database refuses.
+
+       What is left to forget here is a class and not a character: a pattern
+       grown a fourth one would still be swept in three places and read green.
+       That is a question about how the pattern is written, and this case asks
+       what it does, so there is no floor under it here; the boundary is written
+       down instead of left for a round to find.
+
+       Asked through `validateField` and not through the pattern, so what is
+       measured includes the trim in front of it. */
     const field = text({ type: 'email' })
-    const accepted: number[] = []
+    const inLocalPart: number[] = []
+    const beforeTheDot: number[] = []
+    const afterTheDot: number[] = []
 
     for (let point = 1; point <= 0x10ffff; point += 1) {
       const character = String.fromCodePoint(point)
 
-      if (
-        validateField(field, `a${character}b@primer.rs`) === null ||
-        validateField(field, `ab@pri${character}mer.rs`) === null
-      ) {
-        accepted.push(point)
+      if (validateField(field, `a${character}b@primer.rs`) === null) {
+        inLocalPart.push(point)
+      }
+
+      if (validateField(field, `ab@pri${character}mer.rs`) === null) {
+        beforeTheDot.push(point)
+      }
+
+      if (validateField(field, `ab@primer.${character}rs`) === null) {
+        afterTheDot.push(point)
       }
     }
 
     const visible = Array.from({ length: 0x7e - 0x21 + 1 }, (_, index) => 0x21 + index)
+    const allowed = visible.filter((point) => point !== 0x40)
 
-    expect(accepted).toEqual(visible.filter((point) => point !== 0x40))
+    expect(inLocalPart, 'in front of the @').toEqual(allowed)
+    expect(beforeTheDot, 'in the domain, in front of the dot').toEqual(allowed)
+    expect(afterTheDot, 'in the domain, behind the dot').toEqual(allowed)
   })
 
   it('checks numeric bounds only for number fields', () => {
