@@ -695,7 +695,8 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * so the seven rows are written into the generator by hand and a change to them
 	 * is a migration written by hand as well. Said in full at {@code PRICE_ROWS} in
 	 * the generator. The day pricing moves into a file of its own, this line goes
-	 * and three statements arrive.
+	 * and two statements arrive, an INSERT and an UPDATE, with a case for each and
+	 * a refusal for the row that leaves.
 	 */
 	private static final Set<String> NOT_MAINTAINED_BY_A_DELTA = Set.of("price_row");
 
