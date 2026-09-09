@@ -188,6 +188,45 @@
  * and it is what a delta lines the codebook up by. It is an identity for the
  * codebook's own maintenance, and the key is the identity for everything else.
  *
+ * AND WHAT HAPPENS WHEN THE CODEBOOK DROPS A TOWN THE MEMBER IS STANDING ON.
+ * Nothing, because it may not: `competitor_place_fk`, `competitor_country_fk`
+ * and the two that match them on `btl_event` are ON DELETE RESTRICT. Written
+ * out rather than left at the default, and the default is the reason it is
+ * written out: NO ACTION is what these four carried until 09.09.2026, and NO
+ * ACTION is not a decision anybody took. Two answers run, and the reason this
+ * is the one is not that the other fails a test:
+ *
+ *   - ON DELETE SET NULL lets the town go and leaves the member without one.
+ *     It is not available here even if somebody wanted it. O5 says a town the
+ *     codebook does not have stays as TEXT with an empty key, which is exactly
+ *     what `competitor_town_is_from_the_codebook_or_typed` says as
+ *     `(place_id is null) <> (city is null)`: clearing `place_id` without
+ *     writing `city` in the same breath breaks that check, and a foreign key
+ *     action writes one column and cannot write the other. So SET NULL does not
+ *     buy a DELETE that goes through, it buys the same refusal worded by the
+ *     check instead of by the key. Measured on 09.09.2026 by declaring it that
+ *     way and deleting a town a member names: `new row for relation
+ *     "competitor" violates check constraint
+ *     "competitor_town_is_from_the_codebook_or_typed"`.
+ *
+ *   - ON DELETE RESTRICT says what is meant. A codebook does not lose a row
+ *     somebody is standing on, and where the member goes instead is a question
+ *     with an answer only a person has: another town, or the same name typed as
+ *     text with its country beside it. That is a migration written by hand, and
+ *     generate_reference_migrations.py refuses to write it, names the town or
+ *     the country, and says so before a file exists rather than halfway through
+ *     one on a live database.
+ *
+ * RESTRICT and not NO ACTION, which refuses the same DELETE today. The
+ * difference is what can be said about them afterwards: RESTRICT is checked
+ * where it is written and cannot be put off at all, while NO ACTION is the half
+ * of the pair a deferral may reach the day somebody declares one of these keys
+ * DEFERRABLE. A delta's first statement is `set constraints all deferred`, and
+ * its header names these four as the keys that statement cannot reach
+ * (generate_reference_migrations.py, DeltaMigrationAppliesTest). That sentence
+ * is true of RESTRICT by what RESTRICT is, and true of NO ACTION only by what
+ * nobody has done yet.
+ *
  * `referred_by` is the member who brought this one, as a key and not as the
  * referral code the link carries. The code is the public half and lives in its
  * own column; who it belongs to is a row, and a row is what a foreign key
@@ -228,8 +267,10 @@ create table competitor (
     constraint competitor_member_number_unique unique (member_number),
     constraint competitor_referral_code_unique unique (referral_code),
 
-    constraint competitor_place_fk foreign key (place_id) references place (id),
-    constraint competitor_country_fk foreign key (country_id) references country (id),
+    constraint competitor_place_fk foreign key (place_id) references place (id)
+        on delete restrict,
+    constraint competitor_country_fk foreign key (country_id) references country (id)
+        on delete restrict,
     constraint competitor_referred_by_fk foreign key (referred_by) references competitor (id)
         on delete set null,
 
@@ -305,7 +346,11 @@ create index competitor_referred_by_idx on competitor (referred_by);
  * names `place.id` and not `place.geonames_id` for the three reasons written out
  * over `competitor`. This is the reference ADL A36 O5 asks for and it is here
  * rather than there, so the sentence is worth pointing at twice: an event holds
- * the portal's own key to a town, and the town holds GeoNames' number. */
+ * the portal's own key to a town, and the town holds GeoNames' number. Both keys
+ * are ON DELETE RESTRICT for the reason written out over `competitor`, and an
+ * event is the half of that pair a delta would meet first: an event stands at a
+ * town for years after it is run, and its town is not a preference somebody can
+ * be asked about again. */
 create table btl_event (
     id          bigserial not null,
     slug        text      not null,
@@ -323,8 +368,10 @@ create table btl_event (
     constraint btl_event_pk primary key (id),
     constraint btl_event_slug_unique unique (slug),
 
-    constraint btl_event_place_fk foreign key (place_id) references place (id),
-    constraint btl_event_country_fk foreign key (country_id) references country (id),
+    constraint btl_event_place_fk foreign key (place_id) references place (id)
+        on delete restrict,
+    constraint btl_event_country_fk foreign key (country_id) references country (id)
+        on delete restrict,
     constraint btl_event_copied_from_fk foreign key (copied_from) references btl_event (id)
         on delete set null,
 

@@ -10,7 +10,10 @@ Two things this script does, and they are not the same thing:
     python backend/tools/generate_reference_migrations.py --delta
         Writes the NEXT migration, carrying only what changed in the codebook
         since `main`. This is how a codebook is maintained after its migration
-        has been merged, and it is the only way.
+        has been merged, and it is the only way. A row that has LEFT a codebook
+        is the one change it will not write: V7 points at both codebooks ON
+        DELETE RESTRICT and only the database knows which rows are worn, so that
+        one is refused by name. See no_codebook_row_leaves.
 
 `--delta` also takes `--before <dir>`, `--after <dir>` and `--stdout`, and those
 three exist for one caller: `DeltaMigrationAppliesTest` hands it two codebooks
@@ -725,29 +728,49 @@ DELTA_HEAD = """
    a key that is looked up and referred to cannot be deferrable at all, because
    no foreign key may point at one.
 
-   What is left is `place_country_fk`, which is not deferrable and cannot be, and
-   it alone decides the order below. Each line of it is a case that was run
-   against a real database, and DeltaMigrationAppliesTest runs this migration
+   NOR DOES IT TOUCH WHAT POINTS AT THE CODEBOOKS, and until 09.09.2026 that
+   sentence was missing from here while four such keys stood in V7.
+   `competitor_place_fk`, `competitor_country_fk`, `btl_event_place_fk` and
+   `btl_event_country_fk` are ON DELETE RESTRICT, so a member or an event holds
+   the town and the country it names and RESTRICT is checked where it is written,
+   which is the half of the pair no deferral reaches at all.
+
+   SO A DELTA NEVER TAKES A ROW OUT OF A CODEBOOK. It adds rows and it changes
+   them, and that is the whole of it. Which towns and which countries are worn is
+   something only the database knows, this script reads two files, and a DELETE
+   written blind comes back as `update or delete on table "place" violates
+   foreign key constraint "competitor_place_fk" on table "competitor"` in the
+   middle of a migration on a live database. So a codebook that drops a row is
+   refused before a file is written, with the town or the country named, and that
+   one is a migration written by hand: where the member goes instead has an
+   answer only a person has. Note what this makes of a country changing its
+   `code`: the code is the identity, so that is one country leaving and another
+   arriving, and it is refused with the rest.
+
+   What is left of the order is `place_country_fk`, which is not deferrable and
+   cannot be, and it alone decides the three lines below. Each is a case that was
+   run against a real database, and DeltaMigrationAppliesTest runs this migration
    against one rather than reading it:
 
      - countries arrive first, because a town may be moving to a country that is
        arriving in this same migration;
-     - towns leave, change and arrive next, so that by the time a country goes
-       no row names it;
-     - countries leave after that, and this is where the order was wrong until
-       09.09.2026. `country_deletes` stood second, ahead of `place_updates`, and
-       a town was then lined up by its position in the file rather than by
-       anything about the town: removing a country with its only town wrote the
-       DELETE against the LAST rank in the file and left the row that actually
-       named that country to be rewritten three statements later. Both that and a
-       country changing its code came back `update or delete on table "country"
-       violates foreign key constraint "place_country_fk" on table "place"`. The
-       sentence that used to stand here, that this was the only order that runs
-       and was found by running it, was true of the inputs it had been run on and
-       of no others, which is what a generator with no test over its output is
-       worth;
+     - towns change and arrive next;
      - and the countries that stayed are updated last, which is also where the
        order columns settle before the COMMIT that checks them.
+
+   There were six statements here until 09.09.2026 and the two DELETEs decided
+   most of the order. `country_deletes` stood second, ahead of `place_updates`,
+   and a town was then lined up by its position in the file rather than by
+   anything about the town: removing a country with its only town wrote the
+   DELETE against the LAST rank in the file and left the row that actually named
+   that country to be rewritten three statements later. Both that and a country
+   changing its code came back `update or delete on table "country" violates
+   foreign key constraint "place_country_fk" on table "place"`. The sentence that
+   used to stand here, that this was the only order that runs and was found by
+   running it, was true of the inputs it had been run on and of no others, which
+   is what a generator with no test over its output is worth. Both DELETEs are
+   gone now, for the reason in the paragraph above and not because that order was
+   ever made to work.
 
    HOW THE TWO STATES ARE LINED UP. A country by its `code` and a town by its
    `geonames_id`, and both of those are the row's identity rather than its
@@ -775,13 +798,12 @@ DELTA_HEAD = """
        right one way round.
 
    The script refuses both, names the countries, and those are migrations written
-   by hand. What it does write is a country taking a name that a LEAVING country
-   gives up, because `country_deletes` stands ahead of `country_updates`. That
-   half is a case of its own, "a country leaves and another takes the name it
-   gives up", and it is run against a database like every line above. It was
-   written down on 09.09.2026, a round after the sentence you are reading: the
-   refusal had cases and the permission had none, so removing the one condition
-   that grants it left every test green. */
+   by hand. A country that LEAVES frees its name and is not one of those two
+   shapes, and that is still asked before the refusal above it: a delta in which
+   CD leaves and CG takes the name it gives up is turned away for the removal,
+   naming CD, rather than for an exchange that is not happening. Getting that
+   wrong would send whoever writes the migration by hand looking for a name
+   clash that will not be there once CD is gone. */
 """
 
 
@@ -807,11 +829,6 @@ def values_list(rows, render):
     return ',\n'.join('           ' + render(row) for row in rows)
 
 
-def country_deletes(removed):
-    return ('delete from country where code in ('
-            + ', '.join(sql_text(code) for code in removed) + ');\n') if removed else None
-
-
 def country_updates(changed):
     return ('update country as c\n'
             '   set name = v.name::text,\n'
@@ -835,11 +852,6 @@ def place_values(row):
     mark, name, code, english, rank = row
 
     return f'({mark}, {rank}, {sql_text(name)}, {sql_text(code)}, {sql_text(english)})'
-
-
-def place_deletes(removed):
-    return ('delete from place where geonames_id in ('
-            + ', '.join(str(mark) for mark in removed) + ');\n') if removed else None
 
 
 def place_updates(changed):
@@ -913,13 +925,21 @@ def no_country_takes_a_name_still_worn(before, added, changed, removed):
        "country_name_unique"`, while the DELTA_HEAD text it wrote into that same
        file said the script refuses to write such a delta.
 
-    What is not refused: a name freed by a country that LEAVES.
-    `country_deletes` stands ahead of `country_updates`, so by then the name is
-    gone. That is `code not in leaving` below, and until 09.09.2026 it was the
-    one line here with no case behind it: taking it out made the script refuse a
-    delta that runs, and the whole suite stayed green. It has one now, "a country
-    leaves and another takes the name it gives up" in DeltaMigrationAppliesTest,
-    which is a delta run against a database rather than a sentence about one.
+    Not refused here: a name freed by a country that LEAVES. That is
+    `code not in leaving` below, and it is what tells CG taking the name CD gives
+    up apart from the two shapes above.
+
+    Since 09.09.2026 no country may leave at all - no_codebook_row_leaves is the
+    next question asked and it turns that delta away - so this condition no
+    longer decides whether a file is written. It decides WHICH refusal the person
+    reading gets, and that is the whole of its job: without it, a delta in which
+    CD leaves and CG takes its name is turned away for an exchange that is not
+    happening, and whoever writes that migration by hand goes looking for a name
+    clash that disappears with CD. The order of the two questions is therefore
+    load bearing and is measured that way: "a country changes its code and keeps
+    its name" is refused HERE, for the name, while "a country leaves and another
+    takes the name it gives up" gets past this and is refused below, for the
+    removal.
 
     Said here, before a file is written, rather than as a migration that stops
     halfway through on a live database.
@@ -949,6 +969,49 @@ def no_country_takes_a_name_still_worn(before, added, changed, removed):
                            'row by row inside it; this one is a migration written by hand')
 
 
+def no_codebook_row_leaves(country_before, country_removed, place_before, place_removed):
+    """A delta adds rows to a codebook and changes them. It never takes one out.
+
+    V7 points at both codebooks ON DELETE RESTRICT, four times over:
+    `competitor_place_fk` and `competitor_country_fk` from the member,
+    `btl_event_place_fk` and `btl_event_country_fk` from the event. So a town or
+    a country that leaves is a DELETE the database refuses the moment one member
+    or one event names it, and which rows those are is something only that
+    database knows. This script is handed two files.
+
+    A DELETE written blind is therefore a migration that stops halfway through on
+    a live database with `update or delete on table "place" violates foreign key
+    constraint "competitor_place_fk" on table "competitor"`, and the same shape
+    from the country side. Refused here instead, with the town or the country
+    named, exactly as no_country_takes_a_name_still_worn refuses the two shapes
+    it cannot write.
+
+    Written by hand rather than made cleverer, because the missing half is not
+    SQL. Where the member goes when his town leaves the codebook - another town,
+    or the same name typed as text with its country beside it - is a question
+    with an answer only a person has, and ADL A36 O5 is why it cannot be answered
+    by clearing the key: a town that is not the codebook's stays as TEXT, and a
+    foreign key action writes one column and not the other.
+
+    A country changing its `code` is caught here as well and that is worth saying
+    out loud. The code is what the two states of the list are lined up by, so
+    changing it is one country leaving and another arriving, and the leaving half
+    is a row members and events are standing on.
+    """
+    country_names = {code: name for code, name, _, _ in country_before}
+    place_names = {mark: name for mark, name, _, _, _ in place_before}
+
+    leaving = ([f'{country_names[code]} ({code})' for code in country_removed]
+               + [f'{place_names[mark]} ({mark})' for mark in place_removed])
+
+    if leaving:
+        raise SystemExit('the codebook drops a row a member or an event may be standing on: '
+                         + ', '.join(leaving)
+                         + '\ncompetitor and btl_event point at both codebooks ON DELETE RESTRICT (V7) and this '
+                           'script reads two files, so it cannot see which rows are worn; this one is a '
+                           'migration written by hand')
+
+
 def delta_migration(since, before=None, after=None):
     """The next migration, or None when the two codebooks already agree with git."""
     country_file_before, place_file_before = codebooks(revision=since, directory=before)
@@ -964,17 +1027,19 @@ def delta_migration(since, before=None, after=None):
     country_changed, country_added, country_removed = difference(country_before, country_now, lambda row: row[0])
     place_changed, place_added, place_removed = difference(place_before, place_now, lambda row: row[0])
 
+    # The name comes first on purpose: the removal below would otherwise answer
+    # for a country that arrives with a name still worn, and that is a different
+    # migration to write by hand. Its docstring says which case holds each half.
     no_country_takes_a_name_still_worn(country_before, country_added, country_changed, country_removed)
+    no_codebook_row_leaves(country_before, country_removed, place_before, place_removed)
 
-    say(f'countries: {len(country_changed)} changed, {len(country_added)} added, {len(country_removed)} removed')
-    say(f'places: {len(place_changed)} changed, {len(place_added)} added, {len(place_removed)} removed')
+    say(f'countries: {len(country_changed)} changed, {len(country_added)} added')
+    say(f'places: {len(place_changed)} changed, {len(place_added)} added')
 
     # The order is explained in DELTA_HEAD and measured by DeltaMigrationAppliesTest.
     parts = [part for part in (country_inserts(country_added),
-                               place_deletes(place_removed),
                                place_updates(place_changed),
                                place_inserts(place_added),
-                               country_deletes(country_removed),
                                country_updates(country_changed)) if part]
 
     if not parts:

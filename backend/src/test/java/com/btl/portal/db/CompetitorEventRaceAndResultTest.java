@@ -385,11 +385,18 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"attending.attending_event_fk cascade",
 				// O6: the next running of the race stays, its link empties
 				"btl_event.btl_event_copied_from_fk set null",
-				// a codebook never disappears under a row that names it
-				"btl_event.btl_event_country_fk no action",
-				"btl_event.btl_event_place_fk no action",
-				"competitor.competitor_country_fk no action",
-				"competitor.competitor_place_fk no action",
+				/* A codebook never disappears under a row that names it, and RESTRICT
+				   says so where NO ACTION was only the default nobody had changed.
+				   Both refuse the same DELETE today; RESTRICT is the one that cannot
+				   be put off, which is what lets a delta's header say the deferral
+				   at the top of it does not reach these four
+				   (generate_reference_migrations.py, DeltaMigrationAppliesTest). Set
+				   on 09.09.2026: `place.place_country_fk` below is V3's and stays as
+				   it is, because a merged migration is not rewritten (ADL A2). */
+				"btl_event.btl_event_country_fk restrict",
+				"btl_event.btl_event_place_fk restrict",
+				"competitor.competitor_country_fk restrict",
+				"competitor.competitor_place_fk restrict",
 				// the credit is paid; the pointer at a deleted person is what goes
 				"competitor.competitor_referred_by_fk set null",
 				"email_verification_token.email_verification_token_account_fk cascade",
