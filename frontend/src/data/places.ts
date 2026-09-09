@@ -2,22 +2,30 @@ import { useEffect, useState } from 'react'
 import { loadResource } from './client'
 
 /**
- * A town, as the codebook holds it: the name in this region's languages, the
- * country it is in, and the English name where the town has one of its own.
+ * A town, as the codebook holds it: its GeoNames mark, the name in this
+ * region's languages, the country it is in, and the English name where the town
+ * has one of its own.
  *
  * A tuple rather than an object because there are forty seven thousand of them
  * and the field names would outweigh the data. Built by
  * `btl-produkt/istorijski-podaci/napravi-mesta.py` out of the GeoNames export
  * (CC BY 4.0).
+ *
+ * The mark comes first because it is what the town **is** (owner, 08.09.2026,
+ * ADL A16). Name and country are not: 1616 name and country pairs in the
+ * codebook are carried by more than one town, and China alone has more than one
+ * town called Zhongshan. It is a GeoNames identifier and the same number the
+ * database keeps in `place.geonames_id`, so a town written down anywhere still
+ * means that town after the codebook is rebuilt.
  */
-export type Place = [name: string, country: string, english?: string]
+export type Place = [geonames: number, name: string, country: string, english?: string]
 
 /** How the town is written on a page in this language. English where the town
  *  has an English name of its own, the local name everywhere else (owner,
  *  11.08.2026): Belgrade on the English portal, Beograd on the Serbian one, and
  *  Novi Sad on both, because Novi Sad is not called anything else. */
 export function placeName(place: Place, locale: string): string {
-  return locale === 'en' ? (place[2] ?? place[0]) : place[0]
+  return locale === 'en' ? (place[3] ?? place[1]) : place[1]
 }
 
 /**
@@ -52,8 +60,8 @@ const ON_THEIR_OWN: [RegExp, string][] = [
   [/ħ/g, 'h'],
   [/ə/g, 'e'],
   /* And the two a typesetter uses that no keyboard has: the curly apostrophe,
-     which four hundred and twenty one towns carry, and the long dash inside a
-     name like Rosemont–La Petite-Patrie, which a person types as a hyphen. */
+     which 388 towns carry, and the long dash inside a name like
+     Rosemont–La Petite-Patrie, which a person types as a hyphen. */
   [/[’‘`]/g, "'"],
   [/[–—]/g, '-'],
 ]
@@ -99,9 +107,9 @@ export function placesLike(places: Place[], typed: string): Place[] {
       return found
     }
 
-    const english = place[2]
+    const english = place[3]
 
-    if (plainly(place[0]).startsWith(wanted) || (english !== undefined && plainly(english).startsWith(wanted))) {
+    if (plainly(place[1]).startsWith(wanted) || (english !== undefined && plainly(english).startsWith(wanted))) {
       found.push(place)
     }
   }
@@ -112,8 +120,8 @@ export function placesLike(places: Place[], typed: string): Place[] {
 /**
  * The codebook, once somebody has started typing.
  *
- * Nine hundred kilobytes are not sent to anybody who merely opened a form. The
- * request goes out on the second letter, and `loadResource` holds what came
+ * The codebook is 1200 KB and is not sent to anybody who merely opened a form.
+ * The request goes out on the second letter, and `loadResource` holds what came
  * back, so every later field on every later screen answers from memory.
  *
  * A codebook that fails to arrive leaves the field a plain text box, which is
