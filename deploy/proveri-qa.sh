@@ -38,46 +38,42 @@
 # is never a list somebody wrote; and it is built from the checkout on every run, so a new migration
 # needs no blessing at all. Measured: the six migrations of 09.09.2026 apply in two seconds.
 #
-# WHAT IT COMPARES, and the list is the query and not a promise: the database's own collation,
-# ctype, locale provider and encoding; every setting stored on the database or on a role; every
-# relation of every kind - table, partitioned table, view, materialised view, foreign table - with
-# its persistence, both of its row-security flags and its storage options; every column with its
-# POSITION, type, nullability, collation, default and whether it is generated; every constraint in
-# the schema with its definition and whether it is validated AND enforced, reached through the
-# schema rather than through a table so a domain's constraint is in too; every index with its
-# definition and whether it is valid, ready and live; every sequence, routine, row-security policy,
-# view body, domain and non-default collation; every trigger with whether it FIRES, the internal
-# ones that carry out foreign keys included, keyed by the constraint they enforce; and the number of
-# table-level privileges granted to anybody but the owner.
+# WHAT IT COMPARES, and it is not a list: the SCHEMA AS PostgreSQL ITSELF WRITES IT DOWN.
+# `pg_dump --schema-only` of the live database against `pg_dump --schema-only` of the reference,
+# line for line. Beside it, every setting whose source is not the built-in default, which is where
+# a switch that turns enforcement off is written; and the number of table-level privileges held by
+# anybody but the owner, since the dumps are taken without ACLs.
 #
-# THE ENFORCEMENT FLAGS ARE A CLASS AND ARE SWEPT AS ONE. A round on 09.09.2026 returned two
-# instances of one sentence - an object that is there and does not act - and the workspace rule for
-# that is to sweep the class rather than patch the instance. The one that fired on this schema:
-# `alter database btl_qa set session_replication_role = 'replica'` turns off ALL SIXTEEN foreign
-# keys at once, survives a restart, leaves every constraint definition untouched, and let a row into
-# `account` naming a role that does not exist. The second: an index whose `indisvalid` is false
-# looks identical while two accounts sharing one `lower(email)` both go in, which is ADL A38 gone.
+# WHY A DUMP AND NOT A QUERY OVER THE CATALOGUES. There was such a query here, and it grew for four
+# rounds in a row, each of which found the next catalogue it did not read: names but not
+# definitions, then no columns, then no trigger enabled-flag - so `alter database ... set
+# session_replication_role = 'replica'` turned off all sixteen foreign keys and it saw nothing -
+# then no `postgresql.auto.conf`, no rewrite rules, no policy permissiveness, no routine body.
+# Every round the fix was one more branch, and every round there was a next one. That is the shape
+# the workspace rules say to stop building: a guard that must ENUMERATE what to look at has no
+# floor, and the answer is to compare the whole text against a golden one.
 #
-# A round on 09.09.2026 measured all of that as MISSING, eleven mutations passing with `poklapa se`,
-# and the sharpest was the last one on that list: two databases whose own collation differs give an
-# identical catalogue, while `lower('CUPRIJA')` answers differently in each - and
-# `account_email_unique` is an index over `lower(email)`.
+# What a dump CANNOT say is asked beside it, and it is a closed list rather than an open one: a
+# setting, and whether a trigger fires. Both are states with no DDL form, so no dump of any schema
+# would carry them. Everything that HAS a DDL form is in the dump by construction.
+#
+# `pg_dump` is that golden text and it costs nothing to keep current, because the golden side is
+# generated from the migrations on every run. Measured on the QA host before this was written: the
+# two dumps differ in exactly two lines, the `\restrict` and `\unrestrict` tokens pg_dump 18 makes
+# at random, and are byte for byte identical without them.
 #
 # WHAT IT STILL DOES NOT SEE, measured rather than assumed:
 #
 #   - ROWS. Whether `place` holds the right 47016 towns is section 5; whether a migration says what
 #     it should say is the gate's question, answered against a schema built from nothing.
-#   - WHO OWNS an object. The reference database is built by `postgres` and QA runs as `btl_qa`, so
-#     ownership differs on every row by construction. What is compared instead is the number of
-#     TABLE-level privileges held by anybody but the owner, 0 on both sides today.
-#   - PRIVILEGES BELOW OR BESIDE A TABLE: on a column, on a sequence, on the schema.
-#     `information_schema.role_table_grants` does not carry them, so `grant select (email) on
-#     account to somebody` passes. Measured 09.09.2026 and left here rather than fixed, because it
-#     is a middle finding and those wait for the owner's word.
+#   - WHO OWNS an object, and the privileges on a column, a sequence or the schema. The dumps are
+#     taken `--no-owner --no-acl`, because the reference is built by `postgres` and QA runs as
+#     `btl_qa`, so ownership differs on every row by construction. What is compared instead is the
+#     count of TABLE-level privileges held by anybody but the owner, 0 on both sides today.
 #   - A REPEATABLE `R__` MIGRATION. The reference is built from `V*` only, so a view Flyway has
-#     applied from an `R__` file shows up as something QA carries and the migrations do not, and the
-#     check goes red about a healthy deploy. No such file exists today; `V1` names the convention.
-#     Measured 09.09.2026, and recorded rather than fixed for the same reason.
+#     applied from an `R__` file shows up as something QA carries and the migrations do not. No such
+#     file exists today; `V1` names the convention. Recorded 09.09.2026 rather than fixed, because
+#     it is a middle finding and those wait for the owner's word.
 #   - A MIGRATION THAT MAY NOT RUN IN A TRANSACTION. Flyway takes `executeInTransaction=false`;
 #     this applies each file with `psql -1`. None of the migrations needs it today. The day one does
 #     - `create index concurrently` is the likely one - it will fail HERE and be reported as a
@@ -100,115 +96,6 @@ psql() { docker exec qa-postgres psql -U "${QA_POSTGRES_USER:-btl_qa}" -d "${QA_
 #
 # No ORDER BY: sorting inside the database would sort by that database's collation, and the two
 # databases need not have the same one. The client sorts both sides in byte order instead.
-FLYWAY="'flyway_schema_history'"
-
-CATALOGUE="
-select 'baza ' || d.datcollate || ' ' || d.datctype || ' ' || d.datlocprovider::text
-       || ' ' || pg_encoding_to_char(d.encoding)
-  from pg_database d where d.datname = current_database()
-union all
-select 'relacija ' || c.relkind::text || ' ' || c.relname
-       || ' ' || c.relpersistence::text
-       || case when c.relrowsecurity then ' rls' else ' bez-rls' end
-       || case when c.relforcerowsecurity then ' rls-i-vlasniku' else ' vlasnik-izuzet' end
-       || coalesce(' opcije ' || array_to_string(c.reloptions, ','), '')
-  from pg_class c join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')
-   and c.relname <> $FLYWAY
-union all
-select 'kolona ' || c.relname || ' ' || lpad(a.attnum::text, 3, '0') || ' ' || a.attname
-       || ' ' || format_type(a.atttypid, a.atttypmod)
-       || case when a.attnotnull then ' not-null' else ' nullable' end
-       || coalesce(' collate ' || (select co.collname from pg_collation co
-                                    where co.oid = a.attcollation and co.collname <> 'default'), '')
-       || coalesce(' default ' || pg_get_expr(d.adbin, d.adrelid), '')
-       || case when a.attgenerated <> '' then ' generated' else '' end
-  from pg_attribute a
-  join pg_class c on c.oid = a.attrelid
-  join pg_namespace n on n.oid = c.relnamespace
-  left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
- where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')
-   and a.attnum > 0 and not a.attisdropped and c.relname <> $FLYWAY
-union all
-select 'ogranicenje ' || coalesce(c.relname, t.typname, '(sema)') || '.' || con.conname
-       || case when con.convalidated then ' validated' else ' NIJE-VALIDIRANO' end
-       || case when con.conenforced then ' sprovodi-se ' else ' NE-SPROVODI-SE ' end
-       || pg_get_constraintdef(con.oid)
-  from pg_constraint con
-  left join pg_class c on c.oid = con.conrelid
-  left join pg_type t on t.oid = con.contypid
- where con.connamespace = 'public'::regnamespace
-   and coalesce(c.relname, '') <> $FLYWAY
-union all
-select 'indeks '
-       || case when i.indisvalid then 'valjan' else 'NIJE-VALJAN' end
-       || case when i.indisready then ' spreman' else ' NIJE-SPREMAN' end
-       || case when i.indislive then ' ziv ' else ' NIJE-ZIV ' end
-       || x.indexdef
-  from pg_indexes x
-  join pg_class ic on ic.relname = x.indexname
-  join pg_namespace n on n.oid = ic.relnamespace and n.nspname = x.schemaname
-  join pg_index i on i.indexrelid = ic.oid
- where x.schemaname = 'public' and x.tablename <> $FLYWAY
-union all
-select 'sekvenca ' || sequencename || ' ' || data_type::text || ' start ' || start_value
-       || ' korak ' || increment_by || ' od ' || min_value || ' do ' || max_value
-       || case when cycle then ' ciklicno' else ' bez-ciklusa' end
-  from pg_sequences where schemaname = 'public'
-union all
-select 'okidac ' || tg.tgenabled::text || ' ' || pg_get_triggerdef(tg.oid)
-  from pg_trigger tg join pg_class c on c.oid = tg.tgrelid
-  join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public' and not tg.tgisinternal
-union all
-select 'sprovodjenje ' || con.conname || ' ' || string_agg(distinct tg.tgenabled::text, ',')
-  from pg_trigger tg
-  join pg_constraint con on con.oid = tg.tgconstraint
-  join pg_class c on c.oid = tg.tgrelid
-  join pg_namespace n on n.oid = c.relnamespace
- where n.nspname = 'public' and tg.tgisinternal
- group by con.conname
-union all
-select 'podesavanje ' || coalesce(r.rolname, '(sve role)') || ' '
-       || case when s.setdatabase = 0 then '(sve baze)' else 'ova baza' end
-       || ' ' || array_to_string(s.setconfig, ' ')
-  from pg_db_role_setting s
-  left join pg_roles r on r.oid = s.setrole
- where s.setdatabase = (select oid from pg_database where datname = current_database())
-    or s.setdatabase = 0
-union all
-select 'rutina ' || p.prokind::text || ' ' || p.proname
-       || '(' || pg_get_function_identity_arguments(p.oid) || ') -> '
-       || pg_get_function_result(p.oid)
-  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
- where n.nspname = 'public'
-union all
-select 'politika ' || tablename || '.' || policyname || ' ' || cmd
-       || coalesce(' using ' || qual, '') || coalesce(' with ' || with_check, '')
-  from pg_policies where schemaname = 'public'
-union all
-select 'pogled ' || viewname || ' ' || md5(definition) from pg_views where schemaname = 'public'
-union all
-select 'materijalizovan ' || matviewname || ' ' || md5(definition)
-  from pg_matviews where schemaname = 'public'
-union all
-select 'domen ' || t.typname || ' ' || format_type(t.typbasetype, t.typtypmod)
-  from pg_type t join pg_namespace n on n.oid = t.typnamespace
- where n.nspname = 'public' and t.typtype = 'd'
-union all
-select 'kolacija ' || co.collname || ' ' || co.collprovider::text
-       || ' ' || coalesce(co.colllocale, co.collcollate, '?')
-       || case when co.collisdeterministic then ' deterministicka' else ' nedeterministicka' end
-  from pg_collation co join pg_namespace n on n.oid = co.collnamespace
- where n.nspname = 'public'
-union all
-select 'prava-izvan-vlasnika ' || count(*)::text
-  from information_schema.role_table_grants g
-  join pg_class c on c.relname = g.table_name
-  join pg_namespace n on n.oid = c.relnamespace and n.nspname = g.table_schema
- where g.table_schema = 'public' and g.grantee <> pg_get_userbyid(c.relowner)
-"
-
 say '--- 1. kontejneri ---'
 docker compose -f compose.qa.yml ps --format '{{.Name}}\t{{.State}}\t{{.Status}}'
 
@@ -249,7 +136,7 @@ failed=$(psql "select count(*) from flyway_schema_history where not success")
 [ "$failed" = 0 ] || fail "$failed migracija je zabelezeno kao neuspelo"
 
 say ''
-say '--- 4. sema je ono sto migracije opisuju, do definicije ---'
+say '--- 4. sema je ono sto migracije opisuju, red za red ---'
 
 # The same image QA is running, asked of the running container rather than written here, so the
 # reference cannot be built by a different PostgreSQL than the one being measured.
@@ -288,17 +175,77 @@ for version in $want; do
 done
 say "referentna sema napravljena od $(printf '%s' "$want" | wc -w) migracija"
 
-psql "$CATALOGUE" | LC_ALL=C sort > "$live"
-docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$CATALOGUE" | LC_ALL=C sort > "$expected"
+# Comments, blank lines and the two `\restrict`/`\unrestrict` tokens go: pg_dump 18 fills those
+# tokens with a fresh random string on every run, so they differ between any two dumps and say
+# nothing. Everything else stays, including the order pg_dump chooses, which is its own and the
+# same for both.
+ocisti() { grep -vE '^(--|$|\\restrict |\\unrestrict )'; }
 
+docker exec qa-postgres pg_dump -U "${QA_POSTGRES_USER:-btl_qa}" -d "${QA_POSTGRES_DB:-btl_qa}" \
+  --schema-only --no-owner --no-acl --exclude-table=flyway_schema_history | ocisti > "$live"
+docker exec "$REFERENCE" pg_dump -U postgres -d ref --schema-only --no-owner --no-acl \
+  | ocisti > "$expected"
+
+# Both sides get a floor, and the live one needs its own because a pipe hides the exit code of the
+# command that fills it: `sh` has no pipefail, so a pg_dump that fails leaves an empty file and a
+# comparison that says nothing.
 [ -s "$expected" ] || fail 'referentna sema je prazna, dakle poredjenje ispod ne tvrdi nista'
+[ -s "$live" ] || fail 'ispis zive seme je prazan, dakle pg_dump nad QA bazom nije prosao'
 
 if ! diff -u "$expected" "$live" > /dev/null; then
   say 'razlika (- ono sto migracije opisuju, + ono sto QA nosi):'
   diff -u "$expected" "$live" | sed -n '3,$p' | grep -E '^[-+]' || true
   fail 'sema na QA nije ono sto migracije opisuju'
 fi
-say "poklapa se, redova: $(wc -l < "$expected")"
+say "sema se poklapa, redova: $(wc -l < "$expected")"
+
+# And the settings beside it, because a dump describes the schema and not the switch that stops the
+# schema from acting. Everything whose source is not the built-in default: `postgresql.conf`,
+# `postgresql.auto.conf` where `ALTER SYSTEM` writes, the database, the role. Not `session` and not
+# `client`, which last only as long as one connection.
+NASTAVAK="select name || ' = ' || setting || ' (' || source || ')' from pg_settings
+ where source not in ('default', 'client', 'session') order by name"
+
+# And whether the triggers FIRE, which a dump structurally cannot say: a foreign key is carried out
+# by internal triggers, `alter table ... disable trigger all` turns them off, and the DDL pg_dump
+# writes is unchanged because there is no DDL for that state. Measured 09.09.2026: with the dump
+# alone, a row naming a role that does not exist went into `account` and the check said everything
+# passed. Internal triggers are keyed by the CONSTRAINT they enforce, since their own names carry
+# OIDs that differ between two databases.
+OKIDACI="select 'okidac ' || c.relname || '.' || tg.tgname || ' ' || tg.tgenabled::text
+  from pg_trigger tg join pg_class c on c.oid = tg.tgrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and not tg.tgisinternal
+union all
+select 'sprovodjenje ' || con.conname || ' ' || string_agg(distinct tg.tgenabled::text, ',')
+  from pg_trigger tg
+  join pg_constraint con on con.oid = tg.tgconstraint
+  join pg_class c on c.oid = tg.tgrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and tg.tgisinternal
+ group by con.conname
+ order by 1"
+
+VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
+  from information_schema.role_table_grants g
+  join pg_class c on c.relname = g.table_name
+  join pg_namespace n on n.oid = c.relnamespace and n.nspname = g.table_schema
+ where g.table_schema = 'public' and g.grantee <> pg_get_userbyid(c.relowner)"
+
+{ psql "$NASTAVAK"; psql "$OKIDACI"; psql "$VLASNIK"; } > "$live"
+{ docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$NASTAVAK"
+  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$OKIDACI"
+  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$VLASNIK"; } > "$expected"
+
+[ -s "$expected" ] || fail 'referentna podesavanja su prazna, dakle poredjenje ispod ne tvrdi nista'
+[ -s "$live" ] || fail 'podesavanja zive baze se ne citaju'
+
+if ! diff -u "$expected" "$live" > /dev/null; then
+  say 'razlika u podesavanjima (- ocekivano, + na QA):'
+  diff -u "$expected" "$live" | sed -n '3,$p' | grep -E '^[-+]' || true
+  fail 'QA baza nosi podesavanje koje referentna nema, ili joj jedno nedostaje'
+fi
+say "podesavanja se poklapaju, redova: $(wc -l < "$expected")"
 
 say ''
 say '--- 5. sifarnici nose ono sto migracija tvrdi ---'
