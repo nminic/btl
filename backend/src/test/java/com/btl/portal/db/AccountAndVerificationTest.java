@@ -28,10 +28,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <li><b>The link is stored as a digest and never as itself</b> (ADL A8), so
  * whoever reads this table can activate nobody.</li>
  *
- * <li><b>Every link has an end, and the schema does not say when.</b>
- * PRED-BAZU-ANALIZA O9 lists the lifetime of a token among the four things
- * nobody has written down, so a number here would be an assumption in the one
- * place that cannot hold one.</li>
+ * <li><b>Every link has an end, and the schema says when: twenty four hours</b>
+ * ([ODLUKA 08.09.2026, vlasnik], ADL A38). Held as a default rather than as an
+ * interval the backend remembers, so a row written by anything at all still gets
+ * an end, and held loosely enough that a row which names its own end keeps
+ * it.</li>
  * </ul>
  *
  * Three of these are asked of {@code information_schema} and
@@ -51,8 +52,10 @@ class AccountAndVerificationTest extends DatabaseTest {
 	private static final String ANOTHER_HASH = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
 	private static final String THIRD_HASH = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 
-	/* An arbitrary instant, and arbitrary on purpose: the migration chooses no
-	   lifetime and neither does this file. */
+	/* An end the caller names, and it is deliberately nowhere near twenty four
+	   hours from now: the column has a default, so a fixture that happened to
+	   agree with it would leave every case below unable to say which of the two
+	   wrote the row. */
 	private static final String AN_INSTANT = "timestamptz '2027-01-01 00:00:00+00'";
 
 	/**
@@ -191,25 +194,88 @@ class AccountAndVerificationTest extends DatabaseTest {
 	}
 
 	/**
-	 * The schema chooses neither the moment of confirmation nor the lifetime of a
-	 * link.
+	 * The schema chooses the lifetime of a link and does not choose the moment of
+	 * confirmation.
 	 *
-	 * Both columns carry no default, and that is the decision rather than an
-	 * omission. How long a confirmation link lasts is not written down anywhere
-	 * (PRED-BAZU-ANALIZA O9, in as many words), so the column exists, NOT NULL,
-	 * and the backend supplies the instant; the day the owner picks a number it
-	 * goes there and the migration does not move. A default of an interval from
-	 * now would be that number, written by me, in a migration that cannot be
-	 * edited once it is merged.
+	 * The asymmetry is the point and both halves are decisions. A link runs out on
+	 * a clock, so the clock belongs to the column ([ODLUKA 08.09.2026, vlasnik],
+	 * ADL A38); an address is confirmed by a member clicking, so nothing but the
+	 * click may write that instant, and a default there would confirm every
+	 * account at birth.
+	 *
+	 * The interval is asked for by name and not merely counted, because inside a
+	 * transaction {@code interval '24 hours'} and {@code interval '1 day'} put the
+	 * end at the same instant and no measurement below can tell them apart. They
+	 * are not the same rule: a day is a calendar day, so on the night the clocks
+	 * change it is twenty three hours or twenty five. What comes back here has
+	 * been parsed and normalised by PostgreSQL rather than read off the file, so
+	 * {@code interval '1440 minutes'} is the same answer and {@code interval '1
+	 * day'} is a different one, which is exactly the line that matters.
+	 *
+	 * {@code id} is the third answer, and it is here so that a query answering the
+	 * same word to everything cannot pass: one column has no default and two do.
+	 * What the default DOES is behaviour and is measured below.
 	 */
 	@Test
-	void theSchemaChoosesNeitherTheMomentOfConfirmationNorTheLifetimeOfALink() {
-		assertThat(hasNoDefault("account", "email_confirmed_at")).isTrue();
-		assertThat(hasNoDefault("email_verification_token", "expires_at")).isTrue();
+	void theSchemaChoosesTheLifetimeOfALinkAndNotTheMomentOfConfirmation() {
+		assertThat(defaultOf("email_verification_token", "expires_at"))
+				.as("hours and not days, because a day is twenty three or twenty five of them twice a year")
+				.isEqualTo("(now() + '24:00:00'::interval)");
 
-		/* And the one column here that does have a default, so a query answering
-		   yes to everything cannot pass for two columns without one. */
-		assertThat(hasNoDefault("email_verification_token", "id")).isFalse();
+		assertThat(defaultOf("account", "email_confirmed_at")).isEqualTo(NO_DEFAULT);
+		assertThat(defaultOf("email_verification_token", "id")).isNotEqualTo(NO_DEFAULT);
+	}
+
+	/**
+	 * A link written without an end lasts twenty four hours, and one written with
+	 * an end keeps the end it was given.
+	 *
+	 * [ODLUKA 08.09.2026, vlasnik], ADL A38, in his words: long enough that
+	 * somebody who opens his mail the next morning still gets in, short enough
+	 * that a link out of an old message is not live for months.
+	 *
+	 * Two rows and not one, because with one row every value below could have come
+	 * from somewhere else. The row that says nothing is asked how far its end is
+	 * from {@code now()}, which is the other source of that instant and the only
+	 * one that would still answer twenty four hours if the default were the clock
+	 * rather than a date somebody typed. The row that names its own end is what
+	 * makes this a floor and not a ceiling: a generated column, or a trigger, or a
+	 * check demanding the interval would all pass the first assertion and fail
+	 * here, and the backend has to be able to shorten a link.
+	 *
+	 * The two rows are told apart by their digest and not by being alone in the
+	 * table, so neither answer can be the other row's.
+	 *
+	 * Which interval was written is a different question and is asked above: these
+	 * two rows would answer the same to a day as to twenty four hours.
+	 */
+	@Test
+	void aLinkWrittenWithoutAnEndLastsTwentyFourHoursAndOneWrittenWithAnEndKeepsIt() {
+		db.sql("insert into account (email, role_id) values ('rok@primer.rs', " + COMPETITOR + ")").update();
+
+		issueWithoutAnEnd("rok@primer.rs", ONE_HASH);
+		issue("rok@primer.rs", ANOTHER_HASH);
+
+		assertThat(db
+				.sql("select extract(epoch from (expires_at - now()))::bigint from email_verification_token"
+						+ " where token_hash = '" + ONE_HASH + "'")
+				.query(Long.class)
+				.single())
+				.isEqualTo(86_400L);
+
+		assertThat(db
+				.sql("select expires_at = " + AN_INSTANT + " from email_verification_token where token_hash = '"
+						+ ANOTHER_HASH + "'")
+				.query(Boolean.class)
+				.single())
+				.isTrue();
+	}
+
+	/** A link whose end nobody names, which is what leaves it to the column. */
+	private void issueWithoutAnEnd(String email, String hash) {
+		db.sql("insert into email_verification_token (account_id, token_hash) values ("
+				+ "(select id from account where email = '" + email + "'), '" + hash + "')")
+				.update();
 	}
 
 	/**
@@ -282,18 +348,29 @@ class AccountAndVerificationTest extends DatabaseTest {
 				.list();
 	}
 
+	/** What {@link #defaultOf(String, String)} says where there is no default. */
+	private static final String NO_DEFAULT = "<no default>";
+
 	/**
-	 * Asked as a question with a yes or no answer rather than by reading the
-	 * default back, so a column that is not there is an empty result and a loud
-	 * failure instead of a null that reads like "no default".
+	 * The default PostgreSQL recorded, as PostgreSQL writes it back.
+	 *
+	 * Not the text of the migration. What comes back has been parsed and
+	 * normalised, so {@code interval '1440 minutes'} and {@code interval '24
+	 * hours'} are one answer here while {@code interval '1 day'} is another, and
+	 * that is the difference no measurement inside a transaction can see.
+	 *
+	 * Coalesced rather than returned as a null, for two reasons: a missing default
+	 * fails on a word somebody can read, and a column that is not there at all is
+	 * an empty result and a loud failure rather than a null that reads like "no
+	 * default".
 	 */
-	private Boolean hasNoDefault(String table, String column) {
+	private String defaultOf(String table, String column) {
 		return db
-				.sql("select column_default is null from information_schema.columns"
+				.sql("select coalesce(column_default, '" + NO_DEFAULT + "') from information_schema.columns"
 						+ " where table_schema = current_schema() and table_name = ? and column_name = ?")
 				.param(table)
 				.param(column)
-				.query(Boolean.class)
+				.query(String.class)
 				.single();
 	}
 }

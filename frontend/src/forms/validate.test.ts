@@ -44,6 +44,67 @@ describe('validateField', () => {
     expect(validateField(field, 'trkac@')).toEqual({ key: 'form.errors.email' })
   })
 
+  it('refuses an address carrying a character nobody can see', () => {
+    /* What this costs when it is let through: the address reads as free, the
+       member registers, and one person holds two accounts under one address
+       that a moderator's list draws twice, identically. The database refuses
+       these too (`account_email_shape` in V6) and says the same thing there;
+       what this buys is the member being told before he presses.
+
+       The four were measured against the pattern this file used to carry,
+       `[^\s@]`: `\s` holds U+00A0 and U+FEFF but not U+200B and not U+00AD,
+       and it holds nothing at all about a letter from another alphabet. */
+    const field = text({ type: 'email' })
+    const said: [string, string][] = [
+      ['U+200B, a zero width space in the middle', 'trkac@pri\u200Bmer.rs'],
+      ['U+200B at the end, where trim() does not reach it', 'trkac@primer.rs\u200B'],
+      ['U+00AD, a soft hyphen that draws nothing', 'trkac@pri\u00ADmer.rs'],
+      ['U+0430, a Cyrillic a and the same picture as the Latin one', 'trk\u0430c@primer.rs'],
+    ]
+
+    for (const [what, address] of said) {
+      expect(validateField(field, address), what).toEqual({ key: 'form.errors.email' })
+    }
+
+    /* And that the four were actually asked. A loop over an emptied list asserts
+       nothing and passes, which is this case satisfying itself; measured, and it
+       did. The floor below would still refuse all four, so what this line holds
+       is the four stories rather than the rule. */
+    expect(said).toHaveLength(4)
+  })
+
+  it('accepts every visible ASCII character in an address, and nothing else at all', () => {
+    /* The floor under the four above, and the reason they are four stories
+       rather than four entries on a list. `data/outsideLink.ts` paid for the
+       other kind: six invisible characters written out by hand, and a round
+       found seven more doing the same thing. That file could not take this road
+       because an address of a page may be in any script; an address of
+       electronic mail on this portal may not, so the rule can name what is
+       allowed and then there is nothing left to forget.
+
+       Every code point there is, in the local part and in the domain, and the
+       whole sweep costs about a fifth of a second. Asked through
+       `validateField` and not through the pattern, so what is measured includes
+       the trim in front of it. */
+    const field = text({ type: 'email' })
+    const accepted: number[] = []
+
+    for (let point = 1; point <= 0x10ffff; point += 1) {
+      const character = String.fromCodePoint(point)
+
+      if (
+        validateField(field, `a${character}b@primer.rs`) === null ||
+        validateField(field, `ab@pri${character}mer.rs`) === null
+      ) {
+        accepted.push(point)
+      }
+    }
+
+    const visible = Array.from({ length: 0x7e - 0x21 + 1 }, (_, index) => 0x21 + index)
+
+    expect(accepted).toEqual(visible.filter((point) => point !== 0x40))
+  })
+
   it('checks numeric bounds only for number fields', () => {
     const field = text({ type: 'number', min: 1, max: 300 })
 

@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,6 +38,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * the design rather than repetition: the shape of an address is what keeps one
  * address from being stored two ways, and the unique is asked once about the
  * same address and once about the same address in different case.
+ *
+ * The rows on the shape of an address have a floor of their own,
+ * {@link #anAddressMayCarryEveryVisibleAsciiCharacterExceptTheAtSignAndNothingElse()},
+ * because half of them are invisible characters and a list of those is a list
+ * that cannot be finished by thinking about it.
  */
 class AccountConstraintsTest extends DatabaseTest {
 
@@ -92,11 +98,13 @@ class AccountConstraintsTest extends DatabaseTest {
 	private static final String OTHER_HASH = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
 	private static final String THIRD_HASH = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 
-	/* The instant a link stops working. Written out as a literal and deliberately
-	   not as an interval from now: how long a confirmation link lasts is NOT
-	   decided (PRED-BAZU-ANALIZA O9), the migration chooses no default, and a
-	   fixture saying "one hour" would be the first place that number ever
-	   appeared. This one is a date and means nothing. */
+	/* The instant a link stops working, named by the caller rather than left to
+	   the column, so that every row below breaks the one thing it is here to
+	   break and not the clock as well. Deliberately nowhere near the twenty four
+	   hours the column would have chosen ([ODLUKA 08.09.2026, vlasnik], ADL A38):
+	   a fixture that agreed with the default would leave nothing here able to say
+	   which of the two wrote the row. What the default does is behaviour and is
+	   AccountAndVerificationTest's. */
 	private static final String AN_INSTANT = "timestamptz '2027-01-01 00:00:00+00'";
 
 	private static final String ACCOUNT_INSERT = "insert into account (email, role_id) values (";
@@ -146,13 +154,41 @@ class AccountConstraintsTest extends DatabaseTest {
 				   else in the suite would notice that change. */
 				Violation.of("account_email_unique", account("'Proba@Primer.RS', " + COMPETITOR)),
 
-				/* Four shapes, and none of them is an attempt at validating an
-				   address. Each one is a way the same address could be written twice
-				   and stored twice, or a string that is not an address at all. */
+				/* Shapes, and none of them is an attempt at validating an address.
+				   Each one is a way the same address could be written twice and
+				   stored twice, or a string that is not an address at all. */
 				Violation.of("account_email_shape", account("'probaprimer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("' proba@primer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("'proba@pri@mer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("'@primer.rs', " + COMPETITOR)),
+
+				/* And four the eye cannot see, which is the reason the check is a
+				   range of what is allowed rather than an exclusion of whitespace.
+				   Every one of these reads to a moderator as proba@primer.rs, the
+				   address probe() has already taken, and every one of them went in
+				   beside it while the check excluded [:space:]: under the
+				   en_US.utf8 ctype of the postgres:18 image that class is the ASCII
+				   whitespace and nothing more, and lower() folds none of these
+				   either, so the unique index did not fire.
+
+				   Written as chr() and not as the character itself, so that the name
+				   of the failing case names the code point instead of showing a gap
+				   nobody can read. */
+				// U+00A0, the no break space Word and Outlook put in front of a
+				// pasted address
+				Violation.of("account_email_shape", account("'proba@primer.rs' || chr(160), " + COMPETITOR)),
+				// U+200B, zero width space: nothing at all is drawn for it
+				Violation.of("account_email_shape",
+						account("'proba@pri' || chr(8203) || 'mer.rs', " + COMPETITOR)),
+				// U+00AD, the soft hyphen, which draws a hyphen only if the line
+				// happens to break there and otherwise nothing
+				Violation.of("account_email_shape",
+						account("'proba@pri' || chr(173) || 'mer.rs', " + COMPETITOR)),
+				// U+0430, a Cyrillic a. Not invisible but identical, and the reason
+				// the boundary is ASCII and not "printable": this is the same
+				// picture as the Latin a in proba
+				Violation.of("account_email_shape",
+						account("'prob' || chr(1072) || '@primer.rs', " + COMPETITOR)),
 
 				Violation.notNull("account_id_not_null", "id",
 						"insert into account (id, email, role_id) values (null, 'drugi@primer.rs', " + COMPETITOR
@@ -203,8 +239,10 @@ class AccountConstraintsTest extends DatabaseTest {
 						token("null, '" + OTHER_HASH + "', " + AN_INSTANT)),
 				Violation.notNull("email_verification_token_token_hash_not_null", "token_hash",
 						token(PROBE_ACCOUNT + ", null, " + AN_INSTANT)),
-				/* No link without an end. When it ends is the owner's open decision;
-				   that there is an end is this migration's. */
+				/* No link without an end, and this is the half the default does not
+				   cover: a default speaks for a column that was left out of the
+				   statement, and this row puts null in it out loud. Without the NOT
+				   NULL the row would go in and the link would never expire. */
 				Violation.notNull("email_verification_token_expires_at_not_null", "expires_at",
 						token(PROBE_ACCOUNT + ", '" + OTHER_HASH + "', null")));
 	}
@@ -276,5 +314,60 @@ class AccountConstraintsTest extends DatabaseTest {
 	@ValueSource(strings = { GOOD_ACCOUNT, GOOD_TOKEN })
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isEqualTo(1);
+	}
+
+	/**
+	 * The floor under the four invisible characters above, so that they are four
+	 * stories and not four entries on a list nobody can finish.
+	 *
+	 * A list of characters an address may not carry cannot be completed by
+	 * thinking about it: U+00A0 was found, then U+200B, then U+00AD, and the next
+	 * one is found by whoever pastes it into the registration form. So the check
+	 * names what an address MAY carry instead, and this asks the database which
+	 * characters that turns out to be - every code point there is, in the local
+	 * part and in the domain, against the constraint's own expression.
+	 *
+	 * The expression is READ OUT OF THE CATALOGUE and never written here. A test
+	 * carrying its own copy of the pattern would agree with itself no matter what
+	 * the table was actually built with, which is the one thing this has to rule
+	 * out; {@code pg_get_expr} hands back the expression PostgreSQL is really
+	 * enforcing, referring to {@code email}, and the lateral below gives it an
+	 * {@code email} to refer to.
+	 *
+	 * Both positions, and joined with UNION rather than INTERSECT: a character let
+	 * in on one side alone is still a character an address can carry, and union is
+	 * the direction that shows it. Surrogates are left out because they are not
+	 * characters in UTF-8 at all and {@code chr()} refuses them by name.
+	 *
+	 * What it costs: no address outside ASCII, ever, and that is the boundary the
+	 * migration writes down rather than a corner it forgot.
+	 */
+	@Test
+	void anAddressMayCarryEveryVisibleAsciiCharacterExceptTheAtSignAndNothingElse() {
+		String shape = db
+				.sql("select pg_get_expr(con.conbin, con.conrelid) from pg_constraint con"
+						+ " where con.conrelid = 'account'::regclass and con.conname = 'account_email_shape'")
+				.query(String.class)
+				.single();
+
+		List<Integer> accepted = db
+				.sql(sweep("'proba' || chr(code_point) || '@primer.rs'", shape) + " union "
+						+ sweep("'proba@pri' || chr(code_point) || 'mer.rs'", shape) + " order by 1")
+				.query(Integer.class)
+				.list();
+
+		List<Integer> visibleAscii = IntStream.rangeClosed('!', '~').filter(point -> point != '@').boxed().toList();
+
+		assertThat(accepted)
+				.as("an address is ! through ~ without @, and the day that changes it is a decision and not a regular "
+						+ "expression somebody widened")
+				.containsExactlyElementsOf(visibleAscii);
+	}
+
+	/** Every code point in turn, dropped into an address that is otherwise good. */
+	private static String sweep(String address, String shape) {
+		return "select code_point from generate_series(1, 1114111) code_point,"
+				+ " lateral (select " + address + " as email) probe"
+				+ " where code_point not between 55296 and 57343 and " + shape;
 	}
 }
