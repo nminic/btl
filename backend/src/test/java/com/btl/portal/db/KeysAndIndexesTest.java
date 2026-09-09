@@ -8,6 +8,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -108,7 +109,27 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("email_verification_token_pk", false,
 					"a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("email_verification_token_hash_unique", false,
-					"a link is looked up by the digest it hashes to, and one digest may open one account"));
+					"a link is looked up by the digest it hashes to, and one digest may open one account"),
+			new Key("competitor_pk", false,
+					"a surrogate key nothing outside the portal sees, and four tables of V7 point at it"),
+			new Key("competitor_member_number_unique", false,
+					"a member is looked up by the number his profile address is built from; numbers are handed out, "
+							+ "never renumbered"),
+			new Key("competitor_referral_code_unique", false,
+					"a member is looked up by the code the link carries, and one code is one member"),
+			new Key("btl_event_pk", false,
+					"a surrogate key nothing outside the portal sees, and the race, the comment and the attending "
+							+ "row all point at it"),
+			new Key("btl_event_slug_unique", false, "an event is looked up by its address, which is the mark O7 makes"),
+			new Key("race_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("race_day_unique", false,
+					"it exists only to be pointed at: result_race_fk names (id, date) so a race that moves carries "
+							+ "the day on its results with it, and a deferrable key may be named by nothing"),
+			new Key("result_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("attending_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("attending_said_once", false,
+					"one member says once that he is going to one event; a pair is looked up, and it carries no order"),
+			new Key("event_comment_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -128,7 +149,27 @@ class KeysAndIndexesTest extends DatabaseTest {
 							+ "lower(email) and a unique constraint takes no expression"),
 			new Index("account_role_idx", "the accounts of one role, which is how a role that cannot be dropped is found"),
 			new Index("email_verification_token_account_idx",
-					"the live links of one account, which is what re-sending the confirmation reads"));
+					"the live links of one account, which is what re-sending the confirmation reads"),
+			new Index("competitor_place_idx", "the members of one town, and the other end of competitor_place_fk"),
+			new Index("competitor_country_idx", "the members of one country, and the other end of "
+					+ "competitor_country_fk"),
+			new Index("competitor_referred_by_idx", "who one member brought, which is what the referral programme "
+					+ "counts"),
+			new Index("btl_event_place_idx", "the events of one town, and the other end of btl_event_place_fk"),
+			new Index("btl_event_country_idx", "the events of one country, which is how the calendar is narrowed"),
+			new Index("btl_event_copied_from_idx", "what was copied from one event, and the other end of "
+					+ "btl_event_copied_from_fk"),
+			new Index("btl_event_date_idx", "the calendar itself: the events of one day, one month, one season"),
+			new Index("race_event_idx", "the races of one event, which is how an event is drawn"),
+			new Index("race_date_idx", "the races of one day, which is what a season and a league read"),
+			new Index("result_competitor_race_date_idx", "ADL A12, 2c, in as many words: the results of one member "
+					+ "by the day of the race"),
+			new Index("result_race_idx", "the results of one race, and the other end of result_race_fk, which is "
+					+ "over two columns and so is this"),
+			new Index("attending_competitor_idx", "the events one member said he is going to"),
+			new Index("event_comment_event_idx", "the comments under one event, which is how they are drawn"),
+			new Index("event_comment_competitor_idx", "what one member wrote, and the other end of "
+					+ "event_comment_competitor_fk"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says
@@ -300,16 +341,35 @@ class KeysAndIndexesTest extends DatabaseTest {
 		assertThat(db.sql(pointingAt(row)).update()).isZero();
 	}
 
-	/** A table whose one column is a foreign key to that key, and nothing else. */
+	/**
+	 * A table whose only columns are a foreign key to that key, and nothing else.
+	 *
+	 * Written for as many columns as the key has, and until 09.09.2026 it refused
+	 * anything but one and the schema had nothing else. V7 brought two composite
+	 * keys and both are exactly the shape this asks about: {@code race_day_unique}
+	 * exists so that {@code result_race_fk} can name {@code (id, date)}, and
+	 * refusing to build a referring table for it would have left the one key in
+	 * the schema whose whole purpose is being pointed at as the one key nothing
+	 * measured. The columns and their types both come out of {@code format_type}
+	 * and {@code conkey}, in {@code attnum} order on both sides, so the pairs line
+	 * up without either being guessed.
+	 */
 	private String pointingAt(Map<String, Object> row) {
-		String column = (String) row.get("columns");
-		String type = (String) row.get("column_types");
+		String[] columns = ((String) row.get("columns")).split(",");
+		String[] types = ((String) row.get("column_types")).split(",");
 
-		assertThat(column)
-				.as("a key over more than one column needs a referring table written for it, not guessed")
-				.doesNotContain(",");
+		assertThat(types).hasSameSizeAs(columns);
 
-		return "create table points_here (v " + type + " references " + row.get("table_name") + " (" + column + "))";
+		String declarations = IntStream.range(0, columns.length)
+				.mapToObj(at -> "c" + at + " " + types[at])
+				.collect(Collectors.joining(", "));
+		String referring = IntStream.range(0, columns.length)
+				.mapToObj(at -> "c" + at)
+				.collect(Collectors.joining(", "));
+
+		return "create table points_here (" + declarations
+				+ ", foreign key (" + referring + ") references " + row.get("table_name")
+				+ " (" + String.join(", ", columns) + "))";
 	}
 
 	/**
