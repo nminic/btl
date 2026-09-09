@@ -196,11 +196,18 @@ To see the same thing from the database side, which also shows that Flyway ran:
 docker exec qa-postgres psql -U btl_qa -d btl_qa -c '\dt'
 ```
 
-Until the first migration is merged, the only table there is
-`flyway_schema_history`, and the backend log says `No migrations found` followed
-by `Schema "public" is up to date`. An empty schema is the expected state, not a
-failure: Flyway runs at backend startup, so a migration merged to `main` is
-applied by the next `up -d --build backend`, with no separate step.
+It must list **four tables**: `country`, `place`, `price_row`, and Flyway's own
+`flyway_schema_history`. The backend log says `Migrating schema "public" to
+version "1"` and so on through version 4.
+
+**An empty schema is a fault, not a resting state.** It means Flyway found
+nothing on the classpath, and the four migrations that `main` carries were not
+packaged into the jar. Read the log before anything else; a backend that came
+up against an empty schema will still answer `/actuator/health` with `UP`,
+because the database is reachable and that is all that indicator asks.
+
+Flyway runs at backend startup, so a migration merged to `main` is applied by
+the next `up -d --build backend`, with no separate step.
 
 ### What QA costs in memory
 

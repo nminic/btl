@@ -124,8 +124,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${QA_POSTGRES_PASSWORD:?set QA_POSTGRES_PASSWORD in deploy/.env, copied from .env.example}
       # Flyway needs no configuration: Spring Boot runs the migrations from
       # classpath:db/migration on startup, before JPA is handed the DataSource.
-      # There are no migration files on main yet, so the schema comes up empty
-      # and Flyway only creates its own history table.
+      # main carries four migrations (V1 conventions, V2 country, V3 place,
+      # V4 price_list), so a healthy first start applies all four. An empty
+      # schema is a fault, not a resting state: it means Flyway found nothing
+      # on the classpath.
       #
       # Health details are on so that "does the backend see the database" has a
       # visible answer instead of a bare {"status":"UP"}. QA only: actuator is
