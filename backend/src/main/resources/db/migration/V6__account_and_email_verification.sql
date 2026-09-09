@@ -58,7 +58,11 @@
  *     PRED-BAZU-ANALIZA O9, in as many words: "Nije zapisano nista o jacini
  *     lozinke, trajanju sesije, roku tokena za reset i zakljucavanju naloga."
  *     A column invented against an undecided rule is a guess in the one place
- *     that cannot hold one.
+ *     that cannot hold one. Read the sentence and not the word: the token O9
+ *     leaves open is the one that RESETS A PASSWORD, and it is still open. How
+ *     long the link that confirms an ADDRESS lasts is not among the four and is
+ *     not open; the owner decided it on 08.09.2026 and it is written into
+ *     expires_at below.
  *
  *   - No moment of creation on the account. Nothing written down reads one, and
  *     every other column here answers a sentence somebody wrote.
@@ -85,12 +89,38 @@
  * default collation is deterministic, so a plain unique key would let
  * Petar@primer.rs and petar@primer.rs both in and the same person would hold
  * two accounts. The shape check is the other half of the same decision rather
- * than an attempt at validating an address: it refuses whitespace and demands
- * exactly one @ with something either side, and those are exactly the shapes
- * that would let one address be written two ways and stored twice. Where it
- * stops is worth naming - a quoted local part with a space or a second @ in it
- * is legal by the RFC and refused here, and no registration form on this portal
- * would send one.
+ * than an attempt at validating an address: it demands exactly one @ with
+ * something either side, and it demands that everything either side be a
+ * character a reader can see.
+ *
+ * AN ADDRESS IS VISIBLE ASCII, AND THAT IS A MEASURED BOUNDARY RATHER THAN AN
+ * OVERSIGHT. Both sides are a range of code points - ! (0x21) through ~ (0x7E),
+ * with @ (0x40) taken out - and every other character on earth is refused.
+ *
+ * A RANGE and not an exclusion, and that distinction is the whole of it. The
+ * first draft of this line excluded whitespace, [^[:space:]@], and an exclusion
+ * has no floor: under the en_US.utf8 ctype the postgres:18 image is built with,
+ * [:space:] is the ASCII whitespace and nothing more, so U+00A0, U+2007, U+202F,
+ * U+200B, U+FEFF and U+00AD all walked through. lower() folds none of them, so
+ * the unique index below did not fire either, and petar@primer.rs with a zero
+ * width space in the middle went in beside petar@primer.rs as a second account
+ * of the same person. Measured against this image, six characters through the
+ * check and four rows in the table that read to a moderator as one address.
+ * A range cannot come up short the way that list of six did: it says what is
+ * allowed, so the seventh invisible character needs no line here.
+ *
+ * WHAT THE RANGE COSTS, said here so that it is a decision and not a surprise:
+ * no internationalised address. A local part in Cyrillic, a domain written in
+ * its own script, an accented letter - all refused outright, and the refusal is
+ * loud rather than silent. Nothing in PDL or ADL promises one, and the same
+ * range is what refuses a homoglyph, a Cyrillic a that draws the same picture as
+ * a Latin one and is the second account by another road. The day the league owes
+ * somebody an address in his own alphabet, that is a migration and a decision,
+ * not a regular expression quietly widened.
+ *
+ * Where else it stops, worth naming - a quoted local part with a space or a
+ * second @ in it is legal by the RFC and refused here, and no registration form
+ * on this portal would send one.
  *
  * `role_id` is what the account is (ADL A8, PDL P21). Not null and no default:
  * there is no such thing as an account whose role has to be guessed. NO ACTION
@@ -111,7 +141,9 @@ create table account (
     constraint account_pk primary key (id),
     constraint account_role_fk foreign key (role_id) references role (id),
 
-    constraint account_email_shape check (email ~ '^[^[:space:]@]+@[^[:space:]@]+$')
+    /* ! through ~ without @, on both sides. See the note above for why this is a
+       range of what is allowed and not an exclusion of what is not. */
+    constraint account_email_shape check (email ~ '^[\x21-\x3f\x41-\x7e]+@[\x21-\x3f\x41-\x7e]+$')
 );
 
 /* One address is one account, whatever case it is typed in. An index and not a
@@ -147,11 +179,22 @@ create index account_role_idx on account (role_id);
  * opening either, and because a collision is a sign the value did not come from
  * a CSPRNG (ADL A8).
  *
- * `expires_at` is NOT NULL, so no link exists without an end. HOW LONG a link
- * lasts is NOT DECIDED - PRED-BAZU-ANALIZA O9 lists the lifetime of a token
- * among the four things nobody has written down - so this file deliberately
- * carries no default and no interval. The backend supplies the instant, and the
- * day the owner picks a number it goes there and this migration does not move.
+ * `expires_at` is NOT NULL, so no link exists without an end, and the schema
+ * says when that end is: TWENTY FOUR HOURS. [ODLUKA 08.09.2026, vlasnik], ADL
+ * A38, and his reasoning with it - long enough that somebody who opens his mail
+ * the next morning still gets in, short enough that a link out of an old message
+ * is not live for months. When it runs out the member asks for another with one
+ * click, which is the same sentence that keeps account_id above from carrying a
+ * unique key.
+ *
+ * A DEFAULT rather than an interval the backend is trusted to remember, and the
+ * two are not the same promise. A default is the end a row gets when whatever
+ * wrote it said nothing, so twenty four hours holds through a fixture, a repair
+ * typed by hand at three in the morning, and the first version of a service that
+ * has not learned the rule yet. What it is not is a ceiling: the backend may
+ * still write an instant of its own and the default does not touch that row, so
+ * the day the rule moves it moves in one place and this migration does not have
+ * to.
  *
  * ON DELETE CASCADE, and it is the one place in this schema where a cascade is
  * the safe direction rather than the convenient one. A member may ask to be
@@ -164,7 +207,7 @@ create table email_verification_token (
     id         bigserial   not null,
     account_id bigint      not null,
     token_hash text        not null,
-    expires_at timestamptz not null,
+    expires_at timestamptz not null default now() + interval '24 hours',
 
     constraint email_verification_token_pk primary key (id),
     constraint email_verification_token_account_fk

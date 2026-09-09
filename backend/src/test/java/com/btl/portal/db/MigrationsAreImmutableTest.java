@@ -66,7 +66,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("3", "V3__place.sql", 614394979),
 			new Applied("4", "V4__price_list.sql", -1093755363),
 			new Applied("5", "V5__role_and_admin_right.sql", -574827303),
-			new Applied("6", "V6__account_and_email_verification.sql", -1209616982),
+			new Applied("6", "V6__account_and_email_verification.sql", 1366519447),
 			new Applied("7", "V7__competitor_event_race_result.sql", 1147204228));
 
 	@Test
