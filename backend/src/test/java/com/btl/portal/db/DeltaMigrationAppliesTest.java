@@ -451,10 +451,10 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * <p>Six, and derived rather than counted to: there are two codebooks in the
 	 * schema and a row of one can arrive, leave or change, which is an INSERT, a
 	 * DELETE and an UPDATE against each. The table names come out of
-	 * {@code pg_tables} through {@link DatabaseTest#tablesInTheSchema()}, so a
-	 * fourth codebook table arriving fails here rather than being covered by
-	 * silence, and the observed side is read out of the SQL the generator actually
-	 * wrote rather than out of the generator's source.
+	 * {@link ConstraintsTest#TABLES}, so a fourth reference table arriving fails
+	 * here rather than being covered by silence, and the observed side is read out
+	 * of the SQL the generator actually wrote rather than out of the generator's
+	 * source.
 	 */
 	@Test
 	void everyStatementADeltaCanWriteIsWrittenBySomeCase() throws Exception {
@@ -464,7 +464,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 			written.addAll(statementsIn(generate(change).output()));
 		}
 
-		List<String> possible = tablesInTheSchema().stream()
+		List<String> possible = referenceTables().stream()
 				.filter(table -> !NOT_MAINTAINED_BY_A_DELTA.contains(table))
 				.flatMap(table -> Stream.of("insert " + table, "update " + table, "delete " + table))
 				.toList();
@@ -693,8 +693,31 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 		assertThat(cases).containsAll(named);
 	}
 
+	/**
+	 * The tables a delta is about, and until 09.09.2026 that was every table the
+	 * schema had.
+	 *
+	 * <p>It could be, because every table the schema had was a reference table the
+	 * generator writes. V5 and V6 gave the schema tables no generator ever touches,
+	 * and reading {@code pg_tables} here would have asked the verdicts below for a
+	 * line about {@code account_role_fk} and asked a delta's header to name
+	 * {@code email_verification_token_hash_unique}, which is a sentence about a key
+	 * no delta can reach.
+	 *
+	 * <p>What replaces it is not a list written here. {@link ConstraintsTest#TABLES}
+	 * is the class that answers for the reference tables, and it is floored by
+	 * {@link ConstraintsTest#everyTableInTheSchemaIsClaimedByAConstraintTest()}:
+	 * every table in the schema is claimed by exactly one such class, so a fourth
+	 * reference table arriving is claimed there and arrives here with it, and a
+	 * table claimed by any other class is by that fact not a codebook. Read as a
+	 * field rather than as a name, so removing it stops the compiler.
+	 */
+	private static List<String> referenceTables() {
+		return ConstraintsTest.TABLES;
+	}
+
 	private String tableLiterals() {
-		return tablesInTheSchema().stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
+		return referenceTables().stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
 	}
 
 	// ----------------------------------------------------------------- the two states

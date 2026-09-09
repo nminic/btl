@@ -9,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,21 +25,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * it: an insert that trips a different constraint proves nothing about this one.
  *
  * The list is written by hand, and the floor under it is
- * {@link #everyConstraintInTheSchemaHasARowThatBreaksIt()}, which reads the
- * constraints back out of {@code pg_constraint}. The two must agree exactly, so a
- * constraint added to a migration without a row here fails the build, and a row
- * here naming a constraint that no longer exists fails it too. PostgreSQL 18
+ * {@link #everyConstraintOnTheReferenceTablesHasARowThatBreaksIt()}, which reads
+ * the constraints back out of {@code pg_constraint}. The two must agree exactly,
+ * so a constraint added to a migration without a row here fails the build, and a
+ * row here naming a constraint that no longer exists fails it too. PostgreSQL 18
  * records NOT NULL in {@code pg_constraint} like any other constraint, so the
  * floor covers those as well and not only the CHECKs.
  *
- * <p>Which tables that floor looks at is itself read out of {@code pg_tables},
- * and until 08.09.2026 it was three names written here. That is a list whose only
- * floor is another list, in another class: a fourth table arriving made
- * {@code ConventionsTest} ask for its name, and nothing at all asked for it here,
- * so both of its constraints would have been carried with no row that breaks
- * them and the build would have been green. Measured, in that order: a constraint
- * added to an existing table failed the build, the same constraint on a new table
- * did not.
+ * <p>Which tables that floor looks at is {@link #TABLES}, three names written
+ * here, and the reason a hand written list is safe now and was not on 08.09.2026
+ * is the second floor: {@link #everyTableInTheSchemaIsClaimedByAConstraintTest()}
+ * compares {@code pg_tables} against the same list in every class of this kind,
+ * so a table nobody claims fails the build. Until 08.09.2026 there was no such
+ * comparison, and then three names here were a list whose only floor was another
+ * list in another class: a fourth table arriving made {@code ConventionsTest} ask
+ * for its name and nothing at all asked for its constraints. Measured, in that
+ * order: a constraint added to an existing table failed the build, the same
+ * constraint on a new table did not.
  *
  * The other direction is {@link #aLegitimateRowIsAccepted(String)}: without it,
  * a constraint that rejects everything would pass every test above.
@@ -75,6 +78,17 @@ class ConstraintsTest extends DatabaseTest {
 			return constraint;
 		}
 	}
+
+	/**
+	 * The tables this class answers for, and the whole of what it answers for.
+	 *
+	 * Package visible on purpose, and it is the one thing that makes the split
+	 * below safe: {@link #everyTableInTheSchemaIsClaimedByAConstraintTest()} adds
+	 * this list to the same list in every sibling class, in Java rather than by
+	 * matching a name, so a class that renames or drops its list breaks the
+	 * compiler instead of quietly leaving its tables unguarded.
+	 */
+	static final List<String> TABLES = List.of("country", "place", "price_row");
 
 	/* A row of each table that breaks nothing: every violation below is one of
 	   these with a single field spoiled, so what fails is the field and not the
@@ -241,17 +255,25 @@ class ConstraintsTest extends DatabaseTest {
 	 * without a row above fails here, and a row above naming a constraint that has
 	 * been dropped fails here too.
 	 *
-	 * Which tables, in turn, comes from {@code pg_tables} and not from a list
-	 * beside this one: see {@link DatabaseTest#tablesInTheSchema()} for what that
-	 * cost when it was a list. {@code regclass} rather than a name compared against
-	 * {@code pg_class}: the cast resolves each table the same way a query in this
-	 * session resolves it, so the answer cannot come from a table of the same name
-	 * in another schema.
+	 * Which tables it looks at is {@link #TABLES}, and until 09.09.2026 it was
+	 * {@code tablesInTheSchema()}: every table the schema had, because every table
+	 * the schema had was one of these three. V5 gave the schema tables that answer
+	 * to their own class, so reading the whole catalogue here would ask this file
+	 * for a row breaking {@code role_code_shape}. What that change would have cost,
+	 * had it been made on its own, is a hand written list of three names with
+	 * nothing under it, which is exactly the state 08.09.2026 measured and left:
+	 * a fourth table arriving made {@code ConventionsTest} ask for its name and
+	 * nothing at all asked for its constraints. That is why the split comes with
+	 * {@link #everyTableInTheSchemaIsClaimedByAConstraintTest()} in the same commit
+	 * and not after it.
+	 *
+	 * <p>{@code regclass} rather than a name compared against {@code pg_class}: the
+	 * cast resolves each table the same way a query in this session resolves it, so
+	 * the answer cannot come from a table of the same name in another schema.
 	 */
 	@Test
-	void everyConstraintInTheSchemaHasARowThatBreaksIt() {
-		List<String> tables = tablesInTheSchema();
-		String literals = tables.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
+	void everyConstraintOnTheReferenceTablesHasARowThatBreaksIt() {
+		String literals = TABLES.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
 
 		List<String> declared = db
 				.sql("select con.conname from pg_constraint con"
@@ -262,11 +284,38 @@ class ConstraintsTest extends DatabaseTest {
 
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
 
-		assertThat(tables).isNotEmpty();
 		assertThat(declared).isNotEmpty();
 		assertThat(covered)
-				.as("every constraint on %s needs a row above that breaks it", tables)
+				.as("every constraint on %s needs a row above that breaks it", TABLES)
 				.containsExactlyInAnyOrderElementsOf(declared);
+	}
+
+	/**
+	 * And no table in the schema is left without a class that answers for it.
+	 *
+	 * The floor under the split, and the reason the list above may be written by
+	 * hand at all. Each class covers the constraints of the tables it names; this
+	 * says the names together are the schema. A table added to a migration whose
+	 * constraints nobody broke on purpose fails here, and it fails here whichever
+	 * migration added it, because the left hand side is {@code pg_tables} and
+	 * cannot forget a table.
+	 *
+	 * <p>The right hand side is the sibling classes' own constants, referenced as
+	 * Java. A list of class names matched as text would be a second list with the
+	 * same problem the first one had; a compiler cannot resolve a field that is not
+	 * there, so a class that drops or renames its list stops the build rather than
+	 * this test.
+	 */
+	@Test
+	void everyTableInTheSchemaIsClaimedByAConstraintTest() {
+		List<String> claimed = Stream
+				.of(TABLES, RoleAndRightConstraintsTest.TABLES, AccountConstraintsTest.TABLES)
+				.flatMap(List::stream)
+				.toList();
+
+		assertThat(tablesInTheSchema())
+				.as("a table whose constraints no class breaks on purpose is a table with no test over it")
+				.containsExactlyInAnyOrderElementsOf(claimed);
 	}
 
 	/**

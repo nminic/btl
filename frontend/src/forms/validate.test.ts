@@ -44,6 +44,91 @@ describe('validateField', () => {
     expect(validateField(field, 'trkac@')).toEqual({ key: 'form.errors.email' })
   })
 
+  it('refuses an address carrying a character nobody can see', () => {
+    /* What this costs when it is let through: the address reads as free, the
+       member registers, and one person holds two accounts under one address
+       that a moderator's list draws twice, identically. The database refuses
+       these too (`account_email_shape` in V6) and says the same thing there;
+       what this buys is the member being told before he presses.
+
+       The four were measured against the pattern this file used to carry,
+       `[^\s@]`: `\s` holds U+00A0 and U+FEFF but not U+200B and not U+00AD,
+       and it holds nothing at all about a letter from another alphabet. */
+    const field = text({ type: 'email' })
+    const said: [string, string][] = [
+      ['U+200B, a zero width space in the middle', 'trkac@pri\u200Bmer.rs'],
+      ['U+200B at the end, where trim() does not reach it', 'trkac@primer.rs\u200B'],
+      ['U+00AD, a soft hyphen that draws nothing', 'trkac@pri\u00ADmer.rs'],
+      ['U+0430, a Cyrillic a and the same picture as the Latin one', 'trk\u0430c@primer.rs'],
+    ]
+
+    for (const [what, address] of said) {
+      expect(validateField(field, address), what).toEqual({ key: 'form.errors.email' })
+    }
+
+    /* And that the four were actually asked. A loop over an emptied list asserts
+       nothing and passes, which is this case satisfying itself; measured, and it
+       did. The floor below would still refuse all four, so what this line holds
+       is the four stories rather than the rule. */
+    expect(said).toHaveLength(4)
+  })
+
+  it('accepts every visible ASCII character in an address, and nothing else at all', () => {
+    /* The floor under the four above, and the reason they are four stories
+       rather than four entries on a list. `data/outsideLink.ts` paid for the
+       other kind: six invisible characters written out by hand, and a round
+       found seven more doing the same thing. That file could not take this road
+       because an address of a page may be in any script; an address of
+       electronic mail on this portal may not, so the rule names what is allowed
+       rather than what is not, and a range has no gap for an invisible
+       character to sit in.
+
+       Every code point there is, asked at each of the three classes the rule is
+       made of, and asked at each of them on its own: in front of the `@`, in
+       the domain in front of the dot, and in the domain behind it. On its own
+       and not as one list of what got through somewhere, because all three
+       accept the same 93 and one list cannot see a class widened by itself.
+       Measured: `[\x21-\x7E]` behind the dot moves this third list and neither
+       of the other two, and that rule accepts `trkac@primer.rs@zlo.com`, an
+       address with two `@` that the schema in the database refuses.
+
+       What is left to forget here is a class and not a character: a pattern
+       grown a fourth one would still be swept in three places and read green.
+       That is a question about how the pattern is written, and this case asks
+       what it does, so there is no floor under it here; the boundary is written
+       down instead of left for a round to find.
+
+       Asked through `validateField` and not through the pattern, so what is
+       measured includes the trim in front of it. */
+    const field = text({ type: 'email' })
+    const inLocalPart: number[] = []
+    const beforeTheDot: number[] = []
+    const afterTheDot: number[] = []
+
+    for (let point = 1; point <= 0x10ffff; point += 1) {
+      const character = String.fromCodePoint(point)
+
+      if (validateField(field, `a${character}b@primer.rs`) === null) {
+        inLocalPart.push(point)
+      }
+
+      if (validateField(field, `ab@pri${character}mer.rs`) === null) {
+        beforeTheDot.push(point)
+      }
+
+      if (validateField(field, `ab@primer.${character}rs`) === null) {
+        afterTheDot.push(point)
+      }
+    }
+
+    const visible = Array.from({ length: 0x7e - 0x21 + 1 }, (_, index) => 0x21 + index)
+    const allowed = visible.filter((point) => point !== 0x40)
+
+    expect(inLocalPart, 'in front of the @').toEqual(allowed)
+    expect(beforeTheDot, 'in the domain, in front of the dot').toEqual(allowed)
+    expect(afterTheDot, 'in the domain, behind the dot').toEqual(allowed)
+  })
+
   it('checks numeric bounds only for number fields', () => {
     const field = text({ type: 'number', min: 1, max: 300 })
 
