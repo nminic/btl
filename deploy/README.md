@@ -92,12 +92,147 @@ nothing here needs a certificate mount.
 production. It is a **second working copy**, `/opt/btl-qa`, with its own Compose
 project, so pulling on QA never moves production.
 
-```bash
-cd /opt/btl-qa && git pull
-cd deploy && docker compose -f compose.qa.yml up -d --build frontend
+QA runs three services: `frontend`, `backend` and `postgres`. Production still
+runs only `frontend`; it gets a database once QA has proved this arrangement.
+
+```
+internet ──▶ edge-caddy ──▶ qa-frontend  (nginx, this repo)
+                                 │  /api/ ──▶ backend:8080
+                                 ▼
+                            qa-backend   (Spring Boot, Flyway on startup)
+                                 │  jdbc ──▶ postgres:5432
+                                 ▼
+                            qa-postgres  (postgres:18, volume qa_postgres-data)
 ```
 
-Three things hold it together, and all three are easy to break:
+Only `frontend` publishes a host port, and only on loopback. The backend and
+the database are reachable **inside the `qa_default` network and nowhere else**,
+which is also how the frontend reaches them, so the edge proxy needs no change
+for either of them.
+
+### Secrets
+
+The database name, role and password come from `/opt/btl-qa/deploy/.env`, which
+is gitignored and never committed. Compose reads the `.env` of the directory the
+deploy command runs from, and that is `deploy/`. Copy the three `QA_*` lines out
+of `.env.example` in the repository root and set a real password:
+
+```bash
+cd /opt/btl-qa/deploy
+cp ../.env.example .env      # then edit: keep the QA_* lines, set the password
+chmod 600 .env
+```
+
+The names are `QA_POSTGRES_DB`, `QA_POSTGRES_USER` and `QA_POSTGRES_PASSWORD`,
+deliberately different from the `POSTGRES_*` names the root `docker-compose.yml`
+uses, so that QA and production cannot end up on the same database, role or
+password by someone copying one env file over the other on this shared host.
+`QA_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
+anything and names the variable, rather than starting a database without one.
+
+### Deploying
+
+```bash
+cd /opt/btl-qa && git checkout main && git pull
+cd deploy
+docker compose -f compose.qa.yml build backend
+docker compose -f compose.qa.yml up -d --build frontend backend
+```
+
+The build is split in two on purpose. `up --build` builds services in parallel,
+and the Maven build and the npm build together peak at more memory than this
+4 GB host has to spare next to the running site. Building the backend first
+makes the two peaks consecutive; the second command then finds the backend image
+already built and only builds the frontend.
+
+`postgres` is not named in either command because `backend` depends on it and
+Compose starts it first, waiting for its healthcheck before the backend is even
+created.
+
+Deploying only the frontend, the way it worked before there was a backend, still
+works and still touches nothing else:
+
+```bash
+docker compose -f compose.qa.yml up -d --build frontend
+```
+
+### Checking that the backend really sees the database
+
+```bash
+docker compose -f compose.qa.yml ps
+docker exec qa-backend curl -fsS http://127.0.0.1:8080/actuator/health
+```
+
+`ps` must show `qa-backend` as `Up (healthy)`, which is the same question asked
+by the container healthcheck rather than a second opinion: it curls
+`/actuator/health`, whose aggregate status includes Spring's DataSource
+indicator, so it goes red when the database is unreachable and not only when the
+process has died. Reaching for the health endpoint by hand adds the detail, and
+the part that answers this heading is the `db` component:
+
+```json
+{"components":{"db":{"details":{"database":"PostgreSQL",
+ "validationQuery":"isValid()"},"status":"UP"}, ...},"status":"UP"}
+```
+
+Details are shown because `compose.qa.yml` sets
+`MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS=always`. That is a QA-only line: the
+endpoint is not routed from the edge and the whole site is behind basic auth,
+but `compose.prod.yml` must not copy it. `/actuator/health` is the only thing on
+the backend that answers without credentials; every other path under `/actuator`
+returns 401, because Spring Security is on the classpath and only the health
+endpoint is exempt by default.
+
+When the database is genuinely gone, the failure reads as
+`Health check exceeded timeout (5s)` rather than as a body saying `db: DOWN`.
+That is the connection pool waiting out its own 30 second timeout, which is
+longer than the healthcheck's patience. The container still goes `unhealthy`,
+which is the point, and it returns to `healthy` on its own once the database is
+back, with no restart. Measured both ways.
+
+To see the same thing from the database side, which also shows that Flyway ran:
+
+```bash
+docker exec qa-postgres psql -U btl_qa -d btl_qa -c '\dt'
+```
+
+It must list **four tables**: `country`, `place`, `price_row`, and Flyway's own
+`flyway_schema_history`. The backend log says `Migrating schema "public" to
+version "1"` and so on through version 4.
+
+**An empty schema is a fault, not a resting state.** It means Flyway found
+nothing on the classpath, and the four migrations that `main` carries were not
+packaged into the jar. Read the log before anything else; a backend that came
+up against an empty schema will still answer `/actuator/health` with `UP`,
+because the database is reachable and that is all that indicator asks.
+
+Flyway runs at backend startup, so a migration merged to `main` is applied by
+the next `up -d --build backend`, with no separate step.
+
+### What QA costs in memory
+
+The host has 4 GB in total and already carries the edge proxy, the production
+frontend and the QA frontend. Both new services therefore carry an explicit
+`mem_limit`, so a runaway JVM cannot take the public site down with it. The JVM
+reads that limit, not the host's total, and sizes its heap from it.
+
+Whether the host has any swap has not been checked; `free -h` on `btl-prod`
+answers it. Hetzner cloud images generally ship without, and if that holds here
+then the build peak below is a hard ceiling rather than a slow patch.
+
+| | limit | measured at rest |
+|---|---|---|
+| `qa-postgres` | 512 MB | 88 MB |
+| `qa-backend` | 640 MB (352 MB max heap) | 264 MB |
+
+Measured on an idle stack with an empty schema, so the database figure will grow
+with the data; the limit is what it may not pass. Together the two sit around
+350 MB at rest and cannot exceed 1152 MB, against roughly 450 MB for the OS and
+Docker and some 55 MB for the edge proxy and the two nginx containers. The
+running stack is comfortable; the tight moment is the build, which is why the
+deploy above builds the backend on its own.
+
+Four things hold it together, and all four are easy to break:
 
 1. The edge proxy dials `qa-frontend:80`. That name is both the container name
    and a network alias in `compose.qa.yml`; production answers to `frontend` on
@@ -108,6 +243,13 @@ Three things hold it together, and all three are easy to break:
    and taking production down for a few seconds.
 3. QA is behind basic auth, is never cached and is never indexed. Those live in
    `/opt/edge/sites/qa.caddy`.
+4. The backend service must stay named `backend` and stay on port 8080, because
+   `frontend/nginx.conf` proxies `/api/` to `http://backend:8080` and resolves
+   that name through Docker DNS at request time. Renaming the service is a 502
+   that nothing in this file reports. Note that because the edge container also
+   sits on `qa_default`, the names `backend` and `postgres` are now visible to
+   it; when production grows the same two services, they must not be dialled by
+   bare name from the edge, or Docker DNS will answer with whichever it likes.
 
 ### Reviewing QA when TLS is broken on the reviewer's machine
 
@@ -136,7 +278,13 @@ is attached to.
 
 - `frontend/nginx.conf` proxies `/api/` to `backend:8080`, which no service in
   `compose.prod.yml` provides yet. API calls in production return 502 until the
-  backend is deployed.
+  backend is deployed there too. QA has provided it since this file grew its
+  `backend` and `postgres` services; production is deliberately left behind
+  until QA has run that arrangement.
+- The production database of decision O19 does not exist yet, and neither does
+  the daily `pg_dump` it calls for. QA holds nothing that needs restoring, so
+  the QA volume `qa_postgres-data` is backed up by nothing on purpose; it is
+  rebuilt by dropping it and letting Flyway run again.
 - Security headers are set only at the edge. Setting the non-TLS ones
   (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) in
   `frontend/nginx.conf` as well would keep them if the edge config is ever
