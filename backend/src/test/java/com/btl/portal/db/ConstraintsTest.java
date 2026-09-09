@@ -309,7 +309,8 @@ class ConstraintsTest extends DatabaseTest {
 	@Test
 	void everyTableInTheSchemaIsClaimedByAConstraintTest() {
 		List<String> claimed = Stream
-				.of(TABLES, RoleAndRightConstraintsTest.TABLES, AccountConstraintsTest.TABLES)
+				.of(TABLES, RoleAndRightConstraintsTest.TABLES, AccountConstraintsTest.TABLES,
+						AxisConstraintsTest.TABLES)
 				.flatMap(List::stream)
 				.toList();
 

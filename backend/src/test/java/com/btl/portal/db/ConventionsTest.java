@@ -117,8 +117,9 @@ class ConventionsTest extends DatabaseTest {
 	 */
 	@Test
 	void theSchemaHoldsOnlyTheTablesTheseMigrationsCreate() {
-		assertThat(tablesInTheSchema()).containsExactly("account", "admin_right", "country",
-				"email_verification_token", "place", "price_row", "role");
+		assertThat(tablesInTheSchema()).containsExactly("account", "admin_right", "attending", "btl_event",
+				"competitor", "country", "email_verification_token", "event_comment", "place", "price_row", "race",
+				"result", "role");
 	}
 
 	/**
