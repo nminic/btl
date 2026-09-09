@@ -53,9 +53,15 @@
 # the workspace rules say to stop building: a guard that must ENUMERATE what to look at has no
 # floor, and the answer is to compare the whole text against a golden one.
 #
-# What a dump CANNOT say is asked beside it, and it is a closed list rather than an open one: a
-# setting, and whether a trigger fires. Both are states with no DDL form, so no dump of any schema
-# would carry them. Everything that HAS a DDL form is in the dump by construction.
+# What a dump CANNOT say is asked beside it, and it is a closed list rather than an open one: the
+# database's own collation, what is written in the configuration files, whether a trigger fires,
+# and who holds a privilege. None of the four has a DDL form that `pg_dump --schema-only` writes,
+# so no dump of any schema would carry them.
+#
+# The other direction is nearly true and the exception is worth naming: what HAS a DDL form is in
+# the dump, EXCEPT an index that is not valid, which pg_dump leaves out entirely. That is not a
+# hole here - a row that disappears is a difference like any other - but the sentence would be
+# wrong without it.
 #
 # `pg_dump` is that golden text and it costs nothing to keep current, because the golden side is
 # generated from the migrations on every run. Measured on the QA host before this was written: the
@@ -88,7 +94,10 @@ fail() { printf 'PALO: %s\n' "$*" >&2; exit 1; }
 MIGRATIONS=../backend/src/main/resources/db/migration
 REFERENCE=btl-qa-referentna-sema
 
-psql() { docker exec qa-postgres psql -U "${QA_POSTGRES_USER:-btl_qa}" -d "${QA_POSTGRES_DB:-btl_qa}" -tAc "$1"; }
+psql() {
+  docker exec qa-postgres psql -v ON_ERROR_STOP=1 -U "${QA_POSTGRES_USER:-btl_qa}" \
+    -d "${QA_POSTGRES_DB:-btl_qa}" -tAc "$1"
+}
 
 say '--- 1. kontejneri ---'
 docker compose -f compose.qa.yml ps --format '{{.Name}}\t{{.State}}\t{{.Status}}'
@@ -132,12 +141,13 @@ failed=$(psql "select count(*) from flyway_schema_history where not success")
 say ''
 say '--- 4. sema je ono sto migracije opisuju, red za red ---'
 
-# The same image QA is running, and the IMAGE and not its tag:  gives the tag as it
+# The same image QA is running, and the IMAGE and not its tag. `.Config.Image` gives the tag as it
 # was written when the container was made, and a tag moves. That mattered little while two
 # catalogues were compared, since a minor release does not change a catalogue; it matters now,
 # because the comparison is pg_dump TEXT and its format does change between minor releases - the
-# two random tokens this script strips arrived exactly that way.  is the digest, and
-#  takes it.
+# two random tokens this script strips arrived exactly that way. `.Image` is the digest, and
+# `docker run` takes it. Measured: an image untagged while its container runs still resolves by
+# digest, and a digest that resolves to nothing exits 125 rather than pulling something else.
 image=$(docker inspect -f '{{.Image}}' qa-postgres)
 
 live=$(mktemp)
@@ -175,10 +185,6 @@ for version in $want; do
 done
 say "referentna sema napravljena od $(printf '%s' "$want" | wc -w) migracija"
 
-# Comments, blank lines and the two `\restrict`/`\unrestrict` tokens go: pg_dump 18 fills those
-# tokens with a fresh random string on every run, so they differ between any two dumps and say
-# nothing. Everything else stays, including the order pg_dump chooses, which is its own and the
-# same for both.
 # Only the two tokens go. pg_dump 18 fills them with a fresh random string on every run, so they
 # differ between any two dumps and say nothing; everything else stays, comments and blank lines
 # included. Measured 09.09.2026: without any cleaning at all the two dumps differ in exactly four
@@ -224,7 +230,10 @@ BAZA="select 'baza ' || d.datcollate || ' ' || d.datctype || ' ' || d.datlocprov
 # `ALTER SYSTEM` writes into postgresql.auto.conf and takes effect on the next reload or restart, so
 # `pg_settings` alone calls a database green while the switch that disables every foreign key is
 # already on disk - and the container restarts unless stopped. `pg_file_settings` is the file as
-# written, `applied` says whether it is in force yet, and `pending_restart` catches the rest.
+# written. `applied` is read as it is defined and not as it sounds: it means the value COULD be
+# applied now, not that it is in force - measured, a setting written and not reloaded is
+# `applied=true` while the running value is still the old one - so `pending_restart` is beside it
+# and neither may be dropped for the other.
 FAJLOVI="select 'u-fajlu ' || name || ' = ' || setting
        || ' iz ' || regexp_replace(sourcefile, '.*/', '')
        || ' primenjeno=' || applied::text || coalesce(' greska=' || error, '')
@@ -267,11 +276,24 @@ VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
 # above this is here to catch, so the comparison must not depend on it. Measured 09.09.2026: with
 # the query ordering, a database with libc `C` produced a difference of pure order and a verdict
 # that named the wrong cause.
-{ psql "$BAZA"; psql "$FAJLOVI"; psql "$OKIDACI"; psql "$VLASNIK"; } | LC_ALL=C sort > "$live"
-{ docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$BAZA"
-  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$FAJLOVI"
-  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$OKIDACI"
-  docker exec "$REFERENCE" psql -U postgres -d ref -tAc "$VLASNIK"; } | LC_ALL=C sort > "$expected"
+# Into a file first and sorted afterwards, for the reason written above the dumps and broken here
+# in the same commit that wrote it: `sh` has no pipefail, so through a pipe the exit code of every
+# psql is lost. And the loss is symmetric by construction - both sides run the same query text on
+# the same release - so a broken query shortens both, the difference comes out empty, and the
+# script says everything passed. Measured 09.09.2026: one renamed column in the second query, with
+# every foreign key disabled on the live side, gave exit 0; the same state without the pipe gave
+# exit 1.
+: > "$live_raw"
+: > "$expected_raw"
+
+for upit in "$BAZA" "$FAJLOVI" "$OKIDACI" "$VLASNIK"; do
+  psql "$upit" >> "$live_raw" || fail 'upit nad QA bazom nije prosao'
+  docker exec "$REFERENCE" psql -v ON_ERROR_STOP=1 -U postgres -d ref -tAc "$upit" >> "$expected_raw" \
+    || fail 'upit nad referentnom bazom nije prosao'
+done
+
+LC_ALL=C sort "$live_raw" > "$live"
+LC_ALL=C sort "$expected_raw" > "$expected"
 
 [ -s "$expected" ] || fail 'referentna podesavanja su prazna, dakle poredjenje ispod ne tvrdi nista'
 [ -s "$live" ] || fail 'podesavanja zive baze se ne citaju'
