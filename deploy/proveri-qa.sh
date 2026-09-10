@@ -328,8 +328,35 @@ VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
 # script says everything passed. Measured 09.09.2026: one renamed column in the second query, with
 # every foreign key disabled on the live side, gave exit 0; the same state without the pipe gave
 # exit 1.
+# THE RULES IN FORCE ARE MADE TO BE THE RULES ON DISK, and this is what closes the class the
+# behavioural probe below could only sample. A round on 10.09.2026 measured why sampling is not
+# enough: `host postgres all all trust`, reloaded, then the file put back, gives a permanent
+# passwordless SUPERUSER into the `postgres` database, which every cluster has - and a probe that
+# asks about one user in one database on one address cannot see it. Narrow it to another user, or
+# another source address, and it is invisible again. The combinations have no end, which is the
+# shape the workspace rules say to stop enumerating.
+#
+# A reload ends it: after it, memory holds exactly what the file holds, and the file IS compared,
+# line for line, against the reference. So no rule that lives only in memory survives this check,
+# whatever it was narrowed to.
+#
+# WHAT THIS CANNOT DO, and it is the honest half: it heals rather than alarms. A divergence that
+# existed before this ran is gone by the time the comparison happens, so the check says the state is
+# right - which it now is - and cannot say it was wrong a second ago. Reading the rules in force is
+# what would report that, and PostgreSQL exposes no view of them.
+#
+# The reload itself applies the file already on disk, which is what a deploy expects anyway; if that
+# file is wrong, the comparison two steps down says so and names the line.
 : > "$live_raw"
 : > "$expected_raw"
+
+# THE PROBE RUNS FIRST, BEFORE THE RELOAD BELOW, and the order is the whole of it: the reload makes
+# memory equal the file, so a probe after it can no longer see anything and would be a line that
+# always says the same word.
+bez_lozinke qa-postgres "${QA_POSTGRES_USER:-btl_qa}" "${QA_POSTGRES_DB:-btl_qa}" >> "$live_raw"
+bez_lozinke "$REFERENCE" postgres ref >> "$expected_raw"
+
+psql "select pg_reload_conf()" > /dev/null || fail 'ponovno ucitavanje konfiguracije nije proslo'
 
 for upit in "$BAZA" "$FAJLOVI" "$OKIDACI" "$VLASNIK"; do
   psql "$upit" >> "$live_raw" || fail 'upit nad QA bazom nije prosao'
@@ -337,8 +364,7 @@ for upit in "$BAZA" "$FAJLOVI" "$OKIDACI" "$VLASNIK"; do
     || fail 'upit nad referentnom bazom nije prosao'
 done
 
-bez_lozinke qa-postgres "${QA_POSTGRES_USER:-btl_qa}" "${QA_POSTGRES_DB:-btl_qa}" >> "$live_raw"
-bez_lozinke "$REFERENCE" postgres ref >> "$expected_raw"
+
 
 LC_ALL=C sort "$live_raw" > "$live"
 LC_ALL=C sort "$expected_raw" > "$expected"
