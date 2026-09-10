@@ -54,8 +54,10 @@
 # floor, and the answer is to compare the whole text against a golden one.
 #
 # What a dump CANNOT say is asked beside it, and it is a closed list rather than an open one: the
-# database's own collation, what is written in the configuration files, whether a trigger fires,
-# and who holds a privilege. None of the four has a DDL form that `pg_dump --schema-only` writes,
+# database's own collation, what is written in the configuration files - the settings, who may
+# connect and how they prove it - whether a trigger fires, who holds a privilege, and whether
+# the running server refuses a login with no password. None of the five has a DDL form that
+# `pg_dump --schema-only` writes,
 # so no dump of any schema would carry them.
 #
 # The other direction is nearly true and the exception is worth naming: what HAS a DDL form is in
@@ -76,6 +78,12 @@
 #     taken `--no-owner --no-acl`, because the reference is built by `postgres` and QA runs as
 #     `btl_qa`, so ownership differs on every row by construction. What is compared instead is the
 #     count of TABLE-level privileges held by anybody but the owner, 0 on both sides today.
+#   - THE CONTENT OF pg_hba.conf BEYOND ITS RULES, such as a comment, an `include_if_exists`
+#     directive, or a line the parser rejected without an `error` of its own. What is compared is
+#     what PostgreSQL parsed out of that file - which is NOT what decides who gets in. The rules in
+#     force are the ones from the last successful reload, and the file can be put back afterwards.
+#     That sentence stood here until 10.09.2026 and was overturned by measurement, so the running
+#     server is now asked directly whether it refuses a login without a password.
 #   - A REPEATABLE `R__` MIGRATION. The reference is built from `V*` only, so a view Flyway has
 #     applied from an `R__` file shows up as something QA carries and the migrations do not. No such
 #     file exists today; `V1` names the convention. Recorded 09.09.2026 rather than fixed, because
@@ -227,6 +235,11 @@ BAZA="select 'baza ' || d.datcollate || ' ' || d.datctype || ' ' || d.datlocprov
   from pg_database d where d.datname = current_database()"
 
 # WHAT IS WRITTEN IN THE CONFIGURATION FILES, read off the files and not off the running values.
+# All three of them, and pg_hba.conf is here on the owner's word of 10.09.2026 after a round measured
+# what its absence costs: with the last rule flipped from `scram-sha-256` to `trust` and the config
+# reloaded, the check passed while psql from another container on the same network signed in WITHOUT
+# A PASSWORD and read the account table. Measured before it was written: both files render seven
+# rows and zero difference between the live database and the reference.
 # `ALTER SYSTEM` writes into postgresql.auto.conf and takes effect on the next reload or restart, so
 # `pg_settings` alone calls a database green while the switch that disables every foreign key is
 # already on disk - and the container restarts unless stopped. `pg_file_settings` is the file as
@@ -242,7 +255,15 @@ union all
 select 'ceka-restart ' || name from pg_settings where pending_restart
 union all
 select 'podesavanje ' || name || ' = ' || setting || ' (' || source || ')' from pg_settings
- where source not in ('default', 'client', 'session')"
+ where source not in ('default', 'client', 'session')
+union all
+select 'pristup ' || type || ' ' || array_to_string(database, ',') || ' ' || array_to_string(user_name, ',')
+       || ' ' || coalesce(address, '-') || coalesce('/' || netmask, '') || ' ' || auth_method
+       || coalesce(' greska=' || error, '')
+  from pg_hba_file_rules
+union all
+select 'mapa ' || map_name || ' ' || sys_name || ' -> ' || pg_username || coalesce(' greska=' || error, '')
+  from pg_ident_file_mappings"
 
 # WHETHER THE TRIGGERS FIRE, which has no DDL form at all: a foreign key is carried out by internal
 # triggers, `alter table ... disable trigger all` turns them off, and the DDL pg_dump writes is
@@ -264,6 +285,30 @@ select 'sprovodjenje ' || n.nspname || '.' || con.conname || ' ' || string_agg(d
  group by n.nspname, con.conname"
 
 # And the privileges, because the dumps are taken without ACLs.
+# AND WHO ACTUALLY GETS IN, which is the one question the file cannot answer. A round on 10.09.2026
+# measured the difference with this script's own code: pg_hba.conf switched to `trust`, reloaded,
+# then switched BACK without a second reload - the file matched the reference again, the check said
+# everything passed, and psql from another container signed in as superuser with no password at all.
+# The permanent shape is worse: `include_if_exists` produces no row in pg_hba_file_rules, because a
+# directive is not a rule, so a switch can sit in that file for ever and be invisible here.
+#
+# So the rules on disk are compared as before AND the running server is asked to refuse a login. Over
+# TCP to the container's OWN address rather than 127.0.0.1, since the image's own pg_hba trusts the
+# loopback and an answer from there would be about a different rule. `-w` so psql never waits for a
+# password, and PGPASSWORD emptied so it has none to send.
+bez_lozinke() {
+  adresa=$(docker exec "$1" hostname -i | tr -d '\r' | cut -d' ' -f1)
+
+  [ -n "$adresa" ] || fail "$1 nema svoju IP adresu, pa proba prijave ispod ne tvrdi nista"
+
+  if docker exec -e PGPASSWORD= "$1" psql -w -h "$adresa" -U "$2" -d "$3" -tAc 'select 1' \
+    > /dev/null 2>&1; then
+    printf 'prijava-bez-lozinke PROSLA\n'
+  else
+    printf 'prijava-bez-lozinke odbijena\n'
+  fi
+}
+
 VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
   from information_schema.role_table_grants g
   join pg_class c on c.relname = g.table_name
@@ -283,14 +328,43 @@ VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
 # script says everything passed. Measured 09.09.2026: one renamed column in the second query, with
 # every foreign key disabled on the live side, gave exit 0; the same state without the pipe gave
 # exit 1.
+# THE RULES IN FORCE ARE MADE TO BE THE RULES ON DISK, and this is what closes the class the
+# behavioural probe below could only sample. A round on 10.09.2026 measured why sampling is not
+# enough: `host postgres all all trust`, reloaded, then the file put back, gives a permanent
+# passwordless SUPERUSER into the `postgres` database, which every cluster has - and a probe that
+# asks about one user in one database on one address cannot see it. Narrow it to another user, or
+# another source address, and it is invisible again. The combinations have no end, which is the
+# shape the workspace rules say to stop enumerating.
+#
+# A reload ends it: after it, memory holds exactly what the file holds, and the file IS compared,
+# line for line, against the reference. So no rule that lives only in memory survives this check,
+# whatever it was narrowed to.
+#
+# WHAT THIS CANNOT DO, and it is the honest half: it heals rather than alarms. A divergence that
+# existed before this ran is gone by the time the comparison happens, so the check says the state is
+# right - which it now is - and cannot say it was wrong a second ago. Reading the rules in force is
+# what would report that, and PostgreSQL exposes no view of them.
+#
+# The reload itself applies the file already on disk, which is what a deploy expects anyway; if that
+# file is wrong, the comparison two steps down says so and names the line.
 : > "$live_raw"
 : > "$expected_raw"
+
+# THE PROBE RUNS FIRST, BEFORE THE RELOAD BELOW, and the order is the whole of it: the reload makes
+# memory equal the file, so a probe after it can no longer see anything and would be a line that
+# always says the same word.
+bez_lozinke qa-postgres "${QA_POSTGRES_USER:-btl_qa}" "${QA_POSTGRES_DB:-btl_qa}" >> "$live_raw"
+bez_lozinke "$REFERENCE" postgres ref >> "$expected_raw"
+
+psql "select pg_reload_conf()" > /dev/null || fail 'ponovno ucitavanje konfiguracije nije proslo'
 
 for upit in "$BAZA" "$FAJLOVI" "$OKIDACI" "$VLASNIK"; do
   psql "$upit" >> "$live_raw" || fail 'upit nad QA bazom nije prosao'
   docker exec "$REFERENCE" psql -v ON_ERROR_STOP=1 -U postgres -d ref -tAc "$upit" >> "$expected_raw" \
     || fail 'upit nad referentnom bazom nije prosao'
 done
+
+
 
 LC_ALL=C sort "$live_raw" > "$live"
 LC_ALL=C sort "$expected_raw" > "$expected"
