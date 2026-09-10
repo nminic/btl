@@ -539,16 +539,18 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 			"(select c.id from country c where not exists (select 1 from place p where p.country_id = c.id)"
 					+ " order by c.sort_order limit 1)";
 
-	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_year,"
+	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
 			+ " place_id, city, country_id, first_season, first_season_2027, active, membership_basis,"
-			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown";
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " father_name, address, shirt_size, health_statement_at";
 	private static final String EVENT_COLUMNS =
 			"slug, name, date, place_id, city, country_id, kind, featured, description, link, copied_from";
 
 	private static String memberStandingOn(String town, String city, String country) {
-		return "insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000904', 'Probni', 'Clan', 'M', 1990, "
-				+ town + ", " + city + ", " + country + ", 2027, false, true, 'payment', '00112233445566ab',"
-				+ " null, '', false, 'none')";
+		return "insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000904', 'Probni', 'Clan', 'M',"
+				+ " date '1990-05-05', " + town + ", " + city + ", " + country + ", 2027, false, true, 'payment',"
+				+ " '00112233445566ab', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+				+ " timestamptz '2026-09-01 10:00:00+00')";
 	}
 
 	/* The country the leaving town is in, read off the town rather than named, so

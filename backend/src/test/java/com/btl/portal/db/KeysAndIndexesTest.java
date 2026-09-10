@@ -129,7 +129,17 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("attending_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("attending_said_once", false,
 					"one member says once that he is going to one event; a pair is looked up, and it carries no order"),
-			new Key("event_comment_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"));
+			new Key("event_comment_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			/* V8. The first two are the member's own id borrowed as a key, which is what says a
+			   member has at most one of each: one document number, one consent. The third is a
+			   surrogate, and it is also the NAME OF THE FILE on disk (ADL A36 O8), which is what
+			   keeps A12a's first rule keepable - the server never uses the name a browser sent. */
+			new Key("competitor_document_pk", false,
+					"the member's own id, which is what says he has one document number and not a list"),
+			new Key("parental_consent_pk", false,
+					"the member's own id, which is what says one consent was given and not several"),
+			new Key("photo_pk", false,
+					"a surrogate key, and the name the file is written under, so nothing may move it"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -169,7 +179,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("attending_competitor_idx", "the events one member said he is going to"),
 			new Index("event_comment_event_idx", "the comments under one event, which is how they are drawn"),
 			new Index("event_comment_competitor_idx", "what one member wrote, and the other end of "
-					+ "event_comment_competitor_fk"));
+					+ "event_comment_competitor_fk"),
+			// V8, and the other end of competitor_photo_fk: whose picture this is
+			new Index("competitor_photo_idx", "the member a photograph belongs to"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says
