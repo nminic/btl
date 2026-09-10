@@ -44,9 +44,15 @@ create table verification (
     state         text        not null default 'waiting',
     decided_at    timestamptz,
     /* The account that decided, not the member: moderation is done by somebody signed in, and V6
-       already knows what that is. */
-    decided_by    bigint,
-    reason        text,
+       already knows what that is. It may go: a moderator has the same right to have his account
+       deleted as anybody else (PDL P23). */
+    decided_by      bigint,
+    /* And the name it was decided under, which stays when the account does not.
+       PREPISANO IZ V7, gde je isto pitanje vec reseno: `event_comment` drzi `competitor_id` koji
+       sme da nestane i `who text not null` koji ostaje, pa komentar prezivi svog autora. A decision
+       is the same shape of fact: it was made, it stays made, and it says by whom. */
+    decided_by_name text        collate sr_latn,
+    reason          text,
 
     constraint verification_pk primary key (id),
 
@@ -62,6 +68,8 @@ create table verification (
         on delete cascade,
     constraint verification_photo_fk foreign key (photo_id) references photo (id)
         on delete set null,
+    /* And now this really is reachable: the account goes, the pointer empties, and the decision
+       keeps its name. */
     constraint verification_decided_by_fk foreign key (decided_by) references account (id)
         on delete set null,
 
@@ -74,7 +82,16 @@ create table verification (
        neither. Written as a biconditional in both directions, because half of it lets a decision
        exist with nobody's name on it. */
     constraint verification_decided_says_when check ((state = 'waiting') = (decided_at is null)),
-    constraint verification_decided_says_who check ((state = 'waiting') = (decided_by is null)),
+    /* Over the NAME and not over the account, and that is the whole of what a round on 11.09.2026
+       found. Written over `decided_by`, this constraint and the foreign key above contradicted each
+       other: deleting an account made PostgreSQL write NULL into `decided_by` of every row that
+       account had decided, and this check refused exactly that - so deleting the account of a
+       moderator who had ever decided anything failed outright, which is not what `on delete set
+       null` says and not what P23 allows. Measured: the delete came back naming this constraint.
+       The name cannot be taken away by deleting anything, so the two no longer disagree. */
+    constraint verification_decided_says_who check ((state = 'waiting') = (decided_by_name is null)),
+    constraint verification_decided_by_name_not_blank
+        check (decided_by_name is null or btrim(decided_by_name) <> ''),
 
     /* Second: a refusal carries its reason, because the member is told why (PDL 2593) and because a
        refusal with no reason is a decision nobody can answer. An approval carries none: there is

@@ -76,17 +76,18 @@ class VerificationConstraintsTest extends DatabaseTest {
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	private static final String COLUMNS =
-			"queue, competitor_id, subject, body, photo_id, state, decided_at, decided_by, reason";
+			"queue, competitor_id, subject, body, photo_id, state, decided_at, decided_by,"
+			+ " decided_by_name, reason";
 
 	/** Waiting, which is the state everything is written in. */
 	private static final String GOOD_WAITING = row("'comments', " + A_MEMBER + ", 'Probni komentar', 'Tekst',"
-			+ " null, 'waiting', null, null, null");
+			+ " null, 'waiting', null, null, null, null");
 	/** Approved: it says when and by whom, carries no reason and no photograph. */
 	private static final String GOOD_APPROVED = row("'profiles', " + A_MEMBER + ", 'Probni profil', '',"
-			+ " null, 'approved', " + AN_INSTANT + ", " + AN_ACCOUNT + ", null");
+			+ " null, 'approved', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', null");
 	/** Refused: the same, and it says why. */
 	private static final String GOOD_REJECTED = row("'results', " + A_MEMBER + ", 'Probni rezultat', '',"
-			+ " null, 'rejected', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Slika ne pokazuje vreme'");
+			+ " null, 'rejected', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Slika ne pokazuje vreme'");
 
 	private static String row(String values) {
 		return "insert into verification (" + COLUMNS + ") values (" + values + ")";
@@ -111,40 +112,40 @@ class VerificationConstraintsTest extends DatabaseTest {
 				+ " 0, 0, 512)").update();
 		/* And one row already waiting, because a primary key can only be broken by a row that
 		   collides with one that is there: against an empty table that case inserts nothing. */
-		db.sql(row("'teams', " + A_MEMBER + ", 'Zatecen red', '', null, 'waiting', null, null, null")).update();
+		db.sql(row("'teams', " + A_MEMBER + ", 'Zatecen red', '', null, 'waiting', null, null, null, null")).update();
 	}
 
 	static List<Violation> violations() {
 		return List.of(
 				Violation.notNull("verification_queue_not_null", "queue",
-						row("null, " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, null, null")),
+						row("null, " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, null, null, null")),
 				/* A seventh tab, which nobody has the right to moderate. This is the
 				   whole of what makes the six a floor rather than a list: it is not
 				   refused because a CHECK names six words, it is refused because
 				   `queue:results` and its five siblings are rows in the rights matrix
 				   and `queue:sponsors` is not. */
 				Violation.of("verification_queue_fk",
-						row("'sponsors', " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, null, null")),
+						row("'sponsors', " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, null, null, null")),
 				Violation.of("verification_competitor_fk",
 						row("'comments', (select max(id) + 1 from competitor), 'Naslov', '', null, 'waiting',"
-								+ " null, null, null")),
+								+ " null, null, null, null")),
 				Violation.of("verification_photo_fk",
-						row("'profiles', " + A_MEMBER + ", 'Naslov', '', 999999, 'waiting', null, null, null")),
+						row("'profiles', " + A_MEMBER + ", 'Naslov', '', 999999, 'waiting', null, null, null, null")),
 				Violation.of("verification_decided_by_fk",
 						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'approved', " + AN_INSTANT
-								+ ", (select max(id) + 1 from account), null")),
+								+ ", (select max(id) + 1 from account), 'Moderator Probni', null")),
 
 				Violation.notNull("verification_subject_not_null", "subject",
-						row("'comments', " + A_MEMBER + ", null, '', null, 'waiting', null, null, null")),
+						row("'comments', " + A_MEMBER + ", null, '', null, 'waiting', null, null, null, null")),
 				Violation.of("verification_subject_not_blank",
-						row("'comments', " + A_MEMBER + ", '   ', '', null, 'waiting', null, null, null")),
+						row("'comments', " + A_MEMBER + ", '   ', '', null, 'waiting', null, null, null, null")),
 				Violation.notNull("verification_body_not_null", "body",
-						row("'comments', " + A_MEMBER + ", 'Naslov', null, null, 'waiting', null, null, null")),
+						row("'comments', " + A_MEMBER + ", 'Naslov', null, null, 'waiting', null, null, null, null")),
 				Violation.notNull("verification_raised_at_not_null", "raised_at",
 						"insert into verification (queue, subject, body, state, raised_at) values"
 								+ " ('comments', 'Naslov', '', 'waiting', null)"),
 				Violation.notNull("verification_state_not_null", "state",
-						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, null, null, null, null")),
+						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, null, null, null, null, null")),
 				/* A fourth state, which no screen can produce. Written as a DECIDED row -
 				   with a moment and a moderator - and not as a waiting one, because a
 				   state that is not `waiting` and carries neither also breaks the
@@ -154,17 +155,17 @@ class VerificationConstraintsTest extends DatabaseTest {
 				   failure said `verification_decided_says_when`. */
 				Violation.of("verification_state_known",
 						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'pending', " + AN_INSTANT
-								+ ", " + AN_ACCOUNT + ", null")),
+								+ ", " + AN_ACCOUNT + ", 'Moderator Probni', null")),
 
 				/* The key and the id under it. Both are here because the floor asks for
 				   them by name and neither is reachable through the helper above, which
 				   lets the sequence issue the id. */
 				Violation.notNull("verification_id_not_null", "id",
 						"insert into verification (id, " + COLUMNS + ") values (null, 'comments', " + A_MEMBER
-								+ ", 'Naslov', '', null, 'waiting', null, null, null)"),
+								+ ", 'Naslov', '', null, 'waiting', null, null, null, null)"),
 				Violation.of("verification_pk",
 						"insert into verification (id, " + COLUMNS + ") select id, 'comments', " + A_MEMBER
-								+ ", 'Drugi naslov', '', null, 'waiting', null, null, null from verification"
+								+ ", 'Drugi naslov', '', null, 'waiting', null, null, null, null from verification"
 								+ " limit 1"),
 
 				/* THE DECISION, AND BOTH DIRECTIONS OF EACH HALF. Half a
@@ -172,36 +173,40 @@ class VerificationConstraintsTest extends DatabaseTest {
 				   waiting row carry a decision nobody made. */
 				Violation.of("verification_decided_says_when",
 						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'approved', null, " + AN_ACCOUNT
-								+ ", null")),
+								+ ", 'Moderator Probni', null")),
 				Violation.of("verification_decided_says_when",
 						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'waiting', " + AN_INSTANT
-								+ ", null, null")),
+								+ ", null, null, null")),
 				Violation.of("verification_decided_says_who",
 						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'approved', " + AN_INSTANT
-								+ ", null, null")),
+								+ ", " + AN_ACCOUNT + ", null, null")),
 				Violation.of("verification_decided_says_who",
-						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, " + AN_ACCOUNT
-								+ ", null")),
+						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, null, 'Moderator Probni', null")),
+				/* And the name may not be blank, which is the second way a decision could
+				   end up with nobody on it. */
+				Violation.of("verification_decided_by_name_not_blank",
+						row("'comments', " + A_MEMBER + ", 'Naslov', '', null, 'approved', " + AN_INSTANT
+								+ ", " + AN_ACCOUNT + ", '   ', null")),
 
 				/* A refusal with no reason, a refusal whose reason is blank, and an
 				   approval carrying one. */
 				Violation.of("verification_refusal_says_why",
 						row("'results', " + A_MEMBER + ", 'Naslov', '', null, 'rejected', " + AN_INSTANT
-								+ ", " + AN_ACCOUNT + ", null")),
+								+ ", " + AN_ACCOUNT + ", 'Moderator Probni', null")),
 				Violation.of("verification_refusal_says_why",
 						row("'results', " + A_MEMBER + ", 'Naslov', '', null, 'rejected', " + AN_INSTANT
-								+ ", " + AN_ACCOUNT + ", '   '")),
+								+ ", " + AN_ACCOUNT + ", 'Moderator Probni', '   '")),
 				Violation.of("verification_refusal_says_why",
 						row("'results', " + A_MEMBER + ", 'Naslov', '', null, 'approved', " + AN_INSTANT
-								+ ", " + AN_ACCOUNT + ", 'Nema sta da se objasni'")),
+								+ ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Nema sta da se objasni'")),
 
 				/* And the picture, both ways a decided row could still be holding one. */
 				Violation.of("verification_decided_keeps_no_photo",
 						row("'profiles', " + A_MEMBER + ", 'Naslov', '', " + A_PHOTO + ", 'approved', "
-								+ AN_INSTANT + ", " + AN_ACCOUNT + ", null")),
+								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', null")),
 				Violation.of("verification_decided_keeps_no_photo",
 						row("'profiles', " + A_MEMBER + ", 'Naslov', '', " + A_PHOTO + ", 'rejected', "
-								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Slika je mutna'")));
+								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Slika je mutna'")));
 	}
 
 	@ParameterizedTest
@@ -260,6 +265,38 @@ class VerificationConstraintsTest extends DatabaseTest {
 	}
 
 	/**
+	 * A moderator's account may go, and the decision he made stays with his name on
+	 * it.
+	 *
+	 * <p>This is the case a round on 11.09.2026 asked for and the schema could not
+	 * answer. `decided_by` pointed at the account and the check demanded it be there
+	 * for every decided row, so deleting the account made PostgreSQL try to write
+	 * NULL into a column that refused NULL, and the delete failed outright - which
+	 * is not what ON DELETE SET NULL says and not what PDL P23 allows, since a
+	 * moderator has the same right as anybody to have his account deleted.
+	 *
+	 * <p>The shape is V7's, not a new idea: `event_comment` keeps `who` as text
+	 * beside a `competitor_id` that may go, so a comment outlives its author. A
+	 * decision is the same kind of fact.
+	 */
+	@Test
+	void theAccountMayGoAndTheDecisionKeepsTheNameItWasMadeUnder() {
+		db.sql(GOOD_APPROVED).update();
+
+		assertThat(db.sql("delete from account where email = 'moderator@primer.rs'").update())
+				.as("a moderator who has decided something can no longer have his account deleted")
+				.isOne();
+
+		assertThat(db
+				.sql("select decided_by_name || ' | ' || coalesce(decided_by::text, 'bez naloga')"
+						+ " from verification where state = 'approved'")
+				.query(String.class)
+				.single())
+				.as("the decision lost its name, or kept a pointer at an account that is gone")
+				.isEqualTo("Moderator Probni | bez naloga");
+	}
+
+	/**
 	 * The six tabs are the six rights, and neither list is written here.
 	 *
 	 * <p>This is the half the foreign key cannot say by itself: the key refuses a
@@ -279,7 +316,7 @@ class VerificationConstraintsTest extends DatabaseTest {
 
 		for (String tab : rights) {
 			assertThat(db.sql(row("'" + tab + "', " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null,"
-					+ " null, null")).update())
+					+ " null, null, null")).update())
 					.as("the queue refuses the tab %s, which somebody has the right to moderate", tab)
 					.isOne();
 		}
