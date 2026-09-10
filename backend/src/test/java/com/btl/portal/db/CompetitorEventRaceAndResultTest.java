@@ -88,9 +88,14 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 	@Test
 	void theSixTablesCarryTheseColumnsAndNoOthers() {
 		assertThat(columnsOf("competitor")).containsExactlyInAnyOrder("id", "member_number", "first_name",
-				"last_name", "gender", "birth_year", "place_id", "city", "country_id", "first_season",
+				"last_name", "gender", "place_id", "city", "country_id", "first_season",
 				"first_season_2027", "active", "membership_basis", "referral_code", "referred_by", "bio",
-				"profile_hidden", "birthday_shown");
+				"profile_hidden", "birthday_shown",
+				/* V8, the thirteen things registration collects. `birth_year` is here too and is no
+				   longer written by anybody: it is generated from `birth_date`, so the date is the
+				   fact and the year is a way of saying it. */
+				"birth_date", "birth_year", "father_name", "address", "phone", "shirt_size",
+				"health_statement_at", "photo_id");
 
 		assertThat(columnsOf("btl_event")).containsExactlyInAnyOrder("id", "slug", "name", "date", "place_id",
 				"city", "country_id", "kind", "featured", "description", "link", "copied_from");
@@ -121,6 +126,37 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 	 * single row every answer would be the same answer and the case would say
 	 * nothing about which distance produced it.
 	 */
+	/**
+	 * The year a member was born is said by his date of birth, and cannot be
+	 * written beside it.
+	 *
+	 * <p>V7 carried `birth_year` as a column of its own while registration collects
+	 * the whole date, so one fact had two homes and they could drift. V8 made the
+	 * date the fact and the year a way of saying it. Without this case that change
+	 * has no guard at all: the column list two cases up says only that a column
+	 * called `birth_year` exists, and it would go on saying that if the expression
+	 * behind it were the constant 2000.
+	 *
+	 * <p>Both halves are here because either alone can be satisfied by the wrong
+	 * schema. That the year answers correctly is satisfied by an ordinary column
+	 * somebody happened to fill in right; that writing to it is refused is
+	 * satisfied by a column that is generated from anything at all.
+	 */
+	@Test
+	void theYearOfBirthIsSaidByTheDateAndNeverWrittenBesideIt() {
+		long member = member("Rodjen", "Osamdesete", A_TOWN_IN_SERBIA + ", null, null");
+
+		db.sql("update competitor set birth_date = date '1983-11-27' where id = " + member).update();
+
+		assertThat(db.sql("select birth_year from competitor where id = " + member).query(Integer.class).single())
+				.as("the year does not follow the date it is supposed to be read from")
+				.isEqualTo(1983);
+
+		assertThatThrownBy(() -> db.sql("update competitor set birth_year = 1999 where id = " + member).update())
+				.as("the year can be written beside the date, so the two can disagree")
+				.hasMessageContaining("birth_year");
+	}
+
 	@Test
 	void theCategoryOfARaceIsItsLength() {
 		long event = event("duzine-2027", A_TOWN_IN_SERBIA + ", null, null");
@@ -396,13 +432,24 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"btl_event.btl_event_country_fk restrict",
 				"btl_event.btl_event_place_fk restrict",
 				"competitor.competitor_country_fk restrict",
+				/* V8: a photograph may be taken away without taking the member, which is what
+				   moderation does when it refuses a picture. The other direction is not a rule
+				   here at all - deleting a member leaves the row in `photo` behind, and the file
+				   on disk with it, which is the one thing this list cannot say and step six will
+				   have to. */
+				"competitor.competitor_photo_fk set null",
 				"competitor.competitor_place_fk restrict",
 				// the credit is paid; the pointer at a deleted person is what goes
 				"competitor.competitor_referred_by_fk set null",
+				/* V8, and both are CASCADE for the same reason: neither is a fact about the
+				   league, both are the register of members, and the register keeps nothing about
+				   somebody who is no longer in it. */
+				"competitor_document.competitor_document_competitor_fk cascade",
 				"email_verification_token.email_verification_token_account_fk cascade",
 				// the comment outlives its author and keeps his name as text
 				"event_comment.event_comment_competitor_fk set null",
 				"event_comment.event_comment_event_fk cascade",
+				"parental_consent.parental_consent_competitor_fk cascade",
 				"place.place_country_fk no action",
 				"race.race_event_fk cascade",
 				// PDL P21: deleting a member takes his results with him
@@ -505,12 +552,14 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 	private long member(String firstName, String lastName, String town, Long referredBy) {
 		int number = nextMember++;
 		return db
-				.sql("insert into competitor (member_number, first_name, last_name, gender, birth_year, place_id,"
+				.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
 						+ " city, country_id, first_season, first_season_2027, active, membership_basis,"
-						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown) values ('000" + number
-						+ "', '" + firstName + "', '" + lastName + "', 'M', 1990, " + town
+						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+						+ " father_name, address, shirt_size, health_statement_at) values ('000" + number
+						+ "', '" + firstName + "', '" + lastName + "', 'M', date '1990-05-05', " + town
 						+ ", 2027, false, true, 'payment', '0000000000000" + number + "', "
-						+ (referredBy == null ? "null" : referredBy) + ", '', false, 'none') returning id")
+						+ (referredBy == null ? "null" : referredBy) + ", '', false, 'none', "
+						+ "'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class)
 				.single();
 	}
