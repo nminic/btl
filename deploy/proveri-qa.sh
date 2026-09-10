@@ -55,7 +55,9 @@
 #
 # What a dump CANNOT say is asked beside it, and it is a closed list rather than an open one: the
 # database's own collation, what is written in the configuration files - the settings, who may
-# connect and how they prove it - whether a trigger fires, and who holds a privilege. None of the four has a DDL form that `pg_dump --schema-only` writes,
+# connect and how they prove it - whether a trigger fires, who holds a privilege, and whether
+# the running server refuses a login with no password. None of the five has a DDL form that
+# `pg_dump --schema-only` writes,
 # so no dump of any schema would carry them.
 #
 # The other direction is nearly true and the exception is worth naming: what HAS a DDL form is in
@@ -76,9 +78,12 @@
 #     taken `--no-owner --no-acl`, because the reference is built by `postgres` and QA runs as
 #     `btl_qa`, so ownership differs on every row by construction. What is compared instead is the
 #     count of TABLE-level privileges held by anybody but the owner, 0 on both sides today.
-#   - THE CONTENT OF pg_hba.conf BEYOND ITS RULES, such as a comment or a line the parser rejected
-#     without an `error` of its own. What is compared is what PostgreSQL parsed out of it, which is
-#     what decides who gets in.
+#   - THE CONTENT OF pg_hba.conf BEYOND ITS RULES, such as a comment, an `include_if_exists`
+#     directive, or a line the parser rejected without an `error` of its own. What is compared is
+#     what PostgreSQL parsed out of that file - which is NOT what decides who gets in. The rules in
+#     force are the ones from the last successful reload, and the file can be put back afterwards.
+#     That sentence stood here until 10.09.2026 and was overturned by measurement, so the running
+#     server is now asked directly whether it refuses a login without a password.
 #   - A REPEATABLE `R__` MIGRATION. The reference is built from `V*` only, so a view Flyway has
 #     applied from an `R__` file shows up as something QA carries and the migrations do not. No such
 #     file exists today; `V1` names the convention. Recorded 09.09.2026 rather than fixed, because
@@ -280,6 +285,30 @@ select 'sprovodjenje ' || n.nspname || '.' || con.conname || ' ' || string_agg(d
  group by n.nspname, con.conname"
 
 # And the privileges, because the dumps are taken without ACLs.
+# AND WHO ACTUALLY GETS IN, which is the one question the file cannot answer. A round on 10.09.2026
+# measured the difference with this script's own code: pg_hba.conf switched to `trust`, reloaded,
+# then switched BACK without a second reload - the file matched the reference again, the check said
+# everything passed, and psql from another container signed in as superuser with no password at all.
+# The permanent shape is worse: `include_if_exists` produces no row in pg_hba_file_rules, because a
+# directive is not a rule, so a switch can sit in that file for ever and be invisible here.
+#
+# So the rules on disk are compared as before AND the running server is asked to refuse a login. Over
+# TCP to the container's OWN address rather than 127.0.0.1, since the image's own pg_hba trusts the
+# loopback and an answer from there would be about a different rule. `-w` so psql never waits for a
+# password, and PGPASSWORD emptied so it has none to send.
+bez_lozinke() {
+  adresa=$(docker exec "$1" hostname -i | tr -d '\r' | cut -d' ' -f1)
+
+  [ -n "$adresa" ] || fail "$1 nema svoju IP adresu, pa proba prijave ispod ne tvrdi nista"
+
+  if docker exec -e PGPASSWORD= "$1" psql -w -h "$adresa" -U "$2" -d "$3" -tAc 'select 1' \
+    > /dev/null 2>&1; then
+    printf 'prijava-bez-lozinke PROSLA\n'
+  else
+    printf 'prijava-bez-lozinke odbijena\n'
+  fi
+}
+
 VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
   from information_schema.role_table_grants g
   join pg_class c on c.relname = g.table_name
@@ -307,6 +336,9 @@ for upit in "$BAZA" "$FAJLOVI" "$OKIDACI" "$VLASNIK"; do
   docker exec "$REFERENCE" psql -v ON_ERROR_STOP=1 -U postgres -d ref -tAc "$upit" >> "$expected_raw" \
     || fail 'upit nad referentnom bazom nije prosao'
 done
+
+bez_lozinke qa-postgres "${QA_POSTGRES_USER:-btl_qa}" "${QA_POSTGRES_DB:-btl_qa}" >> "$live_raw"
+bez_lozinke "$REFERENCE" postgres ref >> "$expected_raw"
 
 LC_ALL=C sort "$live_raw" > "$live"
 LC_ALL=C sort "$expected_raw" > "$expected"
