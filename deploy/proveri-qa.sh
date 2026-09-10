@@ -54,8 +54,8 @@
 # floor, and the answer is to compare the whole text against a golden one.
 #
 # What a dump CANNOT say is asked beside it, and it is a closed list rather than an open one: the
-# database's own collation, what is written in the configuration files, whether a trigger fires,
-# and who holds a privilege. None of the four has a DDL form that `pg_dump --schema-only` writes,
+# database's own collation, what is written in the configuration files - the settings, who may
+# connect and how they prove it - whether a trigger fires, and who holds a privilege. None of the four has a DDL form that `pg_dump --schema-only` writes,
 # so no dump of any schema would carry them.
 #
 # The other direction is nearly true and the exception is worth naming: what HAS a DDL form is in
@@ -76,6 +76,9 @@
 #     taken `--no-owner --no-acl`, because the reference is built by `postgres` and QA runs as
 #     `btl_qa`, so ownership differs on every row by construction. What is compared instead is the
 #     count of TABLE-level privileges held by anybody but the owner, 0 on both sides today.
+#   - THE CONTENT OF pg_hba.conf BEYOND ITS RULES, such as a comment or a line the parser rejected
+#     without an `error` of its own. What is compared is what PostgreSQL parsed out of it, which is
+#     what decides who gets in.
 #   - A REPEATABLE `R__` MIGRATION. The reference is built from `V*` only, so a view Flyway has
 #     applied from an `R__` file shows up as something QA carries and the migrations do not. No such
 #     file exists today; `V1` names the convention. Recorded 09.09.2026 rather than fixed, because
@@ -227,6 +230,11 @@ BAZA="select 'baza ' || d.datcollate || ' ' || d.datctype || ' ' || d.datlocprov
   from pg_database d where d.datname = current_database()"
 
 # WHAT IS WRITTEN IN THE CONFIGURATION FILES, read off the files and not off the running values.
+# All three of them, and pg_hba.conf is here on the owner's word of 10.09.2026 after a round measured
+# what its absence costs: with the last rule flipped from `scram-sha-256` to `trust` and the config
+# reloaded, the check passed while psql from another container on the same network signed in WITHOUT
+# A PASSWORD and read the account table. Measured before it was written: both files render seven
+# rows and zero difference between the live database and the reference.
 # `ALTER SYSTEM` writes into postgresql.auto.conf and takes effect on the next reload or restart, so
 # `pg_settings` alone calls a database green while the switch that disables every foreign key is
 # already on disk - and the container restarts unless stopped. `pg_file_settings` is the file as
@@ -242,7 +250,15 @@ union all
 select 'ceka-restart ' || name from pg_settings where pending_restart
 union all
 select 'podesavanje ' || name || ' = ' || setting || ' (' || source || ')' from pg_settings
- where source not in ('default', 'client', 'session')"
+ where source not in ('default', 'client', 'session')
+union all
+select 'pristup ' || type || ' ' || array_to_string(database, ',') || ' ' || array_to_string(user_name, ',')
+       || ' ' || coalesce(address, '-') || coalesce('/' || netmask, '') || ' ' || auth_method
+       || coalesce(' greska=' || error, '')
+  from pg_hba_file_rules
+union all
+select 'mapa ' || map_name || ' ' || sys_name || ' -> ' || pg_username || coalesce(' greska=' || error, '')
+  from pg_ident_file_mappings"
 
 # WHETHER THE TRIGGERS FIRE, which has no DDL form at all: a foreign key is carried out by internal
 # triggers, `alter table ... disable trigger all` turns them off, and the DDL pg_dump writes is
