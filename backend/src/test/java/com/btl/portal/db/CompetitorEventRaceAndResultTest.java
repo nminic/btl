@@ -454,7 +454,17 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"race.race_event_fk cascade",
 				// PDL P21: deleting a member takes his results with him
 				"result.result_competitor_fk cascade",
-				"result.result_race_fk cascade");
+				"result.result_race_fk cascade",
+				/* V9, and each of the four says something different about what a queue row is.
+				   The member's rows go with him, as his results do (owner, 11.09.2026, ADL A42).
+				   The moderator's name empties rather than taking the decision with it, because the
+				   decision was made and stays made. The photograph empties for the same reason and
+				   because a decided row may not hold one at all. And the tab itself RESTRICTS: a
+				   right cannot be taken away while rows are still filed under it. */
+				"verification.verification_competitor_fk cascade",
+				"verification.verification_decided_by_fk set null",
+				"verification.verification_photo_fk set null",
+				"verification.verification_queue_fk restrict");
 	}
 
 	/**
