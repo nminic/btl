@@ -416,6 +416,12 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 		assertThat(rules).containsExactly(
 				// V6, and its cascade is the one place a link may not outlive its account
 				"account.account_role_fk no action",
+				/* V18. Sesija i pravo idu SA nalogom, jer bez naloga ne znace nista; ali pravo
+				   dato nalogu NE ide sa samim pravom, jer bi inace brisanje jednog reda matrice
+				   tiho uklonilo tudju dozvolu, i zato je jedini RESTRICT ovde. */
+				"account_admin_right.account_admin_right_account_fk cascade",
+				"account_admin_right.account_admin_right_right_fk restrict",
+				"account_session.account_session_account_fk cascade",
 				// mine: an intention is nothing once either end of it is gone
 				"attending.attending_competitor_fk cascade",
 				"attending.attending_event_fk cascade",
@@ -478,6 +484,8 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"parental_consent.parental_consent_competitor_fk cascade",
 				/* V16. Uplata ide sa osobom, red cenovnika koji imenuje ne sme da ode dok je tu,
 				   a nalog blagajnika se PRAZNI i ime ostaje - isto kao odluka u V9. */
+				/* V18. Link za lozinku ide sa nalogom iz istog razloga kao sesija. */
+				"password_reset_token.password_reset_token_account_fk cascade",
 				"payment.payment_competitor_fk cascade",
 				"payment.payment_price_row_fk restrict",
 				"payment.payment_recorded_by_fk set null",
