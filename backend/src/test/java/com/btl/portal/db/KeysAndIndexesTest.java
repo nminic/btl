@@ -191,7 +191,15 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("message_read_pk", false,
 					"the message and the member together, which is what says reading twice is one fact"),
 			new Key("notification_setting_pk", false,
-					"the member's own id, which is what says he has one set of settings and not a list"));
+					"the member's own id, which is what says he has one set of settings and not a list"),
+
+			/* V14. A surrogate, the address a league is looked up by, and one key that IS the
+			   fact: an event enters a league once, so the pair is the row. */
+			new Key("league_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("league_slug_unique", false,
+					"a league is looked up by its address, the same rule an event and a team follow"),
+			new Key("league_event_pk", false,
+					"the league and the event together; adding one twice is not a second fact"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -280,7 +288,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("message_from_idx", "what one member has sent"),
 			new Index("message_team_invitation_idx", "the message that asks about one invitation"),
 			new Index("message_pair_invite_idx", "the message that asks about one request to pair"),
-			new Index("message_read_competitor_idx", "what one member has already read"));
+			new Index("message_read_competitor_idx", "what one member has already read"),
+			/* V14. The other end of the administrator key, the leagues of one season which is
+			   how the page is drawn, and the other end of the pair in league_event. */
+			new Index("league_admin_idx", "the leagues one member is named to administer"),
+			new Index("league_season_idx", "the leagues of one season, which is how they are listed"),
+			new Index("league_event_event_idx", "every league one event has entered"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

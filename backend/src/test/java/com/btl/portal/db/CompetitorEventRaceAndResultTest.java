@@ -453,6 +453,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   posiljaoca se PRAZNI: poruka prezivi svog posiljaoca isto kao komentar (V7) i
 				   odluka (V9), jer clan sme da trazi brisanje naloga a tudji sanducici se time ne
 				   prepravljaju. */
+				/* V14. Lista dogadjaja u ligi ide sa obe strane, a imenovani administrator se
+				   PRAZNI, isto kao timski: i on je clan i sme da trazi brisanje naloga. */
+				"league.league_admin_fk set null",
+				"league_event.league_event_event_fk cascade",
+				"league_event.league_event_league_fk cascade",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
 				"message.message_team_invitation_fk cascade",
