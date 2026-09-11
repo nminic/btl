@@ -148,7 +148,20 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("result_submission_pk", false,
 					"a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("verification_result_submission_unique", false,
-					"one run waits once; a pointer is looked up as it is written and carries no order"));
+					"one run waits once; a pointer is looked up as it is written and carries no order"),
+			/* V11. Two surrogates, the address a team is looked up by, and the same "waits once"
+			   the run has. The exclusion that says a member is in one team at a time is not here:
+			   it is not a unique key and deferring it was never a question, because it is checked
+			   against rows that are already written rather than against the one being written. */
+			new Key("team_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("team_slug_unique", false,
+					"a team is looked up by its address, which is the rule O7 says an event copied FROM it"),
+			new Key("team_membership_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("team_proposal_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("verification_team_proposal_unique", false,
+					"one proposal waits once; a pointer is looked up as it is written and carries no order"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -204,7 +217,22 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("result_submission_race_idx", "what is waiting on one race, and the other end of "
 					+ "result_submission_race_fk, which is over two columns and so is this"),
 			new Index("result_submission_place_idx", "the waiting runs that name one town of the codebook"),
-			new Index("result_submission_country_idx", "the waiting runs that name one country of the codebook"));
+			new Index("result_submission_country_idx", "the waiting runs that name one country of the codebook"),
+			/* V11. Every one of these is the other end of a key that points out of a team, a
+			   membership or a proposal, and two of them are also how the portal draws a page:
+			   the members of one team, and what one member has sent to moderation. */
+			new Index("team_place_idx", "the teams that name one town of the codebook"),
+			new Index("team_country_idx", "the teams that name one country of the codebook"),
+			new Index("team_logo_idx", "the team a mark belongs to"),
+			new Index("team_admin_idx", "the teams one member is named to administer"),
+			new Index("team_membership_competitor_idx",
+					"every team one member has been in, which his own profile draws"),
+			new Index("team_membership_team_idx", "the members of one team, which is the team page"),
+			new Index("team_proposal_competitor_idx", "what one member has proposed"),
+			new Index("team_proposal_team_idx", "the edits waiting on one team"),
+			new Index("team_proposal_place_idx", "the proposals that name one town of the codebook"),
+			new Index("team_proposal_country_idx", "the proposals that name one country of the codebook"),
+			new Index("team_proposal_logo_idx", "the proposal a mark was attached to"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

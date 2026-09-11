@@ -99,6 +99,17 @@ class VerificationConstraintsTest extends DatabaseTest {
 
 	/** A row of a named tab carrying a named submission, which `row` above cannot write:
 	 *  its column list is V9's and this column is V10's. */
+	/** The team V11 gave the teams tab to point at. */
+	private static final String A_PROPOSAL =
+			"(select id from team_proposal where name = 'Probni predlog')";
+
+	/** The same, for the other subject. */
+	private static String pointingAtProposal(String queue, String proposal) {
+		return "insert into verification (queue, competitor_id, subject, body, state,"
+				+ " team_proposal_id) values ('" + queue + "', " + A_MEMBER + ", 'Naslov', '',"
+				+ " 'waiting', " + proposal + ")";
+	}
+
 	private static String pointingAt(String queue, String submission) {
 		return "insert into verification (queue, competitor_id, subject, body, state,"
 				+ " result_submission_id) values ('" + queue + "', " + A_MEMBER + ", 'Naslov', '',"
@@ -132,6 +143,11 @@ class VerificationConstraintsTest extends DatabaseTest {
 
 		/* And one row already waiting, because a primary key can only be broken by a row that
 		   collides with one that is there: against an empty table that case inserts nothing. */
+		/* And one team somebody proposed, for the three constraints V11 adds. */
+		db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link, place_id, city,"
+				+ " country_id, logo_id) values (" + A_MEMBER + ", null, 'Probni predlog', '', '', "
+				+ A_TOWN + ", null, null, null)").update();
+
 		db.sql(row("'teams', " + A_MEMBER + ", 'Zatecen red', '', null, 'waiting', null, null, null, null")).update();
 	}
 
@@ -238,7 +254,19 @@ class VerificationConstraintsTest extends DatabaseTest {
 								+ " result_submission_id) select 'results', " + A_MEMBER + ", 'Naslov', '',"
 								+ " 'waiting', " + A_SUBMISSION + " from generate_series(1, 2)"),
 				Violation.of("verification_only_the_results_queue_carries_a_submission",
-						pointingAt("comments", A_SUBMISSION)));
+						pointingAt("comments", A_SUBMISSION)),
+
+				/* AND THE TEAM V11 ADDS, in the same three shapes. A row about a queue is about ONE
+				   thing, and that is not a fourth constraint: a row carrying a run must be on the
+				   `results` tab and a row carrying a proposal on `teams`, and a row has one tab, so
+				   these two already say it. */
+				Violation.of("verification_team_proposal_fk", pointingAtProposal("teams", "999999")),
+				Violation.of("verification_team_proposal_unique",
+						"insert into verification (queue, competitor_id, subject, body, state,"
+								+ " team_proposal_id) select 'teams', " + A_MEMBER + ", 'Naslov', '',"
+								+ " 'waiting', " + A_PROPOSAL + " from generate_series(1, 2)"),
+				Violation.of("verification_only_the_teams_queue_carries_a_proposal",
+						pointingAtProposal("comments", A_PROPOSAL)));
 	}
 
 	@ParameterizedTest
@@ -337,6 +365,20 @@ class VerificationConstraintsTest extends DatabaseTest {
 	 * now it had only `subject` and `body`, two pieces of prose that no result can be
 	 * computed out of.
 	 */
+	/**
+	 * And the teams tab carries the team it is about, for the same reason.
+	 */
+	@Test
+	void theTeamsTabCarriesTheProposalItIsAbout() {
+		assertThat(db.sql(pointingAtProposal("teams", A_PROPOSAL)).update()).isOne();
+
+		assertThat(db.sql("select count(*) from verification where team_proposal_id is not null")
+				.query(Long.class)
+				.single())
+				.as("the row went in with an empty pointer, so nothing here is about V11 at all")
+				.isOne();
+	}
+
 	@Test
 	void theResultsTabCarriesTheRunItIsAbout() {
 		assertThat(db.sql(pointingAt("results", A_SUBMISSION)).update()).isOne();
