@@ -157,6 +157,21 @@ class AccountConstraintsTest extends DatabaseTest {
 				/* Shapes, and none of them is an attempt at validating an address.
 				   Each one is a way the same address could be written twice and
 				   stored twice, or a string that is not an address at all. */
+				/* V18. Cetiri koja stizu sa autentikacijom, i sva cetiri stoje ovde jer `account`
+				   pripada ovom fajlu a njegov pod cita katalog. */
+				Violation.of("account_password_hash_shape",
+						"insert into account (email, role_id, password_hash) values ('oblik@primer.rs', "
+								+ COMPETITOR + ", '$2a$10$bez-prefiksa')"),
+				Violation.notNull("account_failed_sign_ins_not_null", "failed_sign_ins",
+						"insert into account (email, role_id, failed_sign_ins) values ('prazno@primer.rs', "
+								+ COMPETITOR + ", null)"),
+				Violation.of("account_failed_sign_ins_not_negative",
+						"insert into account (email, role_id, failed_sign_ins) values ('minus@primer.rs', "
+								+ COMPETITOR + ", -1)"),
+				/* Zakljucan bez ijednog promasaja iza sebe. */
+				Violation.of("account_locked_only_after_enough_failures",
+						"insert into account (email, role_id, locked_until) values ('kljuc@primer.rs', "
+								+ COMPETITOR + ", timestamptz '2027-01-01 10:00:00+00')"),
 				Violation.of("account_email_shape", account("'probaprimer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("' proba@primer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("'proba@pri@mer.rs', " + COMPETITOR)),
