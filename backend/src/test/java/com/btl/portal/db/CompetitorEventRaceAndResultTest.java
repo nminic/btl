@@ -476,6 +476,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"pair_invite.pair_invite_from_fk cascade",
 				"pair_invite.pair_invite_to_fk cascade",
 				"parental_consent.parental_consent_competitor_fk cascade",
+				/* V16. Uplata ide sa osobom, red cenovnika koji imenuje ne sme da ode dok je tu,
+				   a nalog blagajnika se PRAZNI i ime ostaje - isto kao odluka u V9. */
+				"payment.payment_competitor_fk cascade",
+				"payment.payment_price_row_fk restrict",
+				"payment.payment_recorded_by_fk set null",
 				"place.place_country_fk no action",
 				"race.race_event_fk cascade",
 				// PDL P21: deleting a member takes his results with him

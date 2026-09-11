@@ -212,7 +212,16 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"a badge is looked up by the code its drawing is keyed on"),
 			new Key("ducat_award_pk", false, "a surrogate key nothing outside the portal sees"),
 			new Key("ducat_award_won_once", false,
-					"one badge per threshold per period, looked up as it is written and carrying no order"));
+					"one badge per threshold per period, looked up as it is written and carrying no order"),
+
+			/* V16. The reference is what a machine reads off a bank statement, so one line of
+			   that statement has to name one payment; and one payment a season, because paying
+			   twice for a season is not two payments but a conversation. */
+			new Key("payment_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("payment_reference_unique", false,
+					"one line of a bank statement names one payment; looked up as the statement is read"),
+			new Key("payment_one_a_season", false,
+					"one payment per member per season, looked up by the pair and carrying no order"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -311,7 +320,13 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("ducat_kind_idx", "the badges written over one quantity"),
 			new Index("ducat_award_competitor_idx", "every badge one member has won"),
 			new Index("ducat_award_ducat_idx", "everybody who has won one badge"),
-			new Index("ducat_award_kind_idx", "the recognitions given for one quantity"));
+			new Index("ducat_award_kind_idx", "the recognitions given for one quantity"),
+			/* V16. Three ends of keys, and one the screen of payments is actually drawn from:
+			   everything still waiting for one season. */
+			new Index("payment_competitor_idx", "what one member has paid, season by season"),
+			new Index("payment_price_row_idx", "the payments made at one price"),
+			new Index("payment_recorded_by_idx", "what one person has recognised"),
+			new Index("payment_season_state_idx", "everything still waiting for one season"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

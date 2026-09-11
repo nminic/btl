@@ -733,11 +733,12 @@ DELTA_HEAD = """
    `competitor_place_fk`, `competitor_country_fk`, `btl_event_place_fk`,
    `btl_event_country_fk`, `result_submission_place_fk`,
    `result_submission_country_fk`, `team_place_fk`, `team_country_fk`,
-   `team_proposal_place_fk` and
-   `team_proposal_country_fk` are ON DELETE RESTRICT, so a member, an event, a
-   team, a run still waiting to be judged or a team somebody has only proposed
-   holds the town and the country it names, and RESTRICT is checked where it is
-   written, which is the half of the pair no deferral reaches at all.
+   `team_proposal_place_fk`, `team_proposal_country_fk` and
+   `payment_price_row_fk` are ON DELETE RESTRICT, so a member, an event, a team,
+   a run still waiting to be judged or a team somebody has only proposed holds
+   the town and the country it names, a payment holds the price it was asked at,
+   and RESTRICT is checked where it is written, which is the half of the pair no
+   deferral reaches at all.
 
    They arrived in threes rather than all at once, and that is the whole reason
    this sentence is read by a test rather than trusted: four in V7, two more with
