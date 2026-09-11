@@ -5,15 +5,26 @@
  * So V6 built the account - who it is, what it may do, and whether its address has been confirmed -
  * and left out everything about PROVING it is him. This is that.
  *
- * FOUR NUMBERS, AND THE OWNER CHOSE ALL FOUR ON 11.09.2026. They are written into this file as
- * defaults rather than kept in the service, for the reason V6 already set: a column that says
- * `now() + interval '24 hours'` tells the next reader how long a token lives without him having to
- * find the class that writes it.
+ * FOUR NUMBERS, AND THE OWNER CHOSE ALL FOUR ON 11.09.2026:
  *
  *   - a password is at least twelve characters, checked before it gets here (B1);
  *   - a session lasts THIRTY DAYS and renews on use;
  *   - a password reset token lasts ONE HOUR;
- *   - ten failed sign ins lock an account for FIFTEEN MINUTES.
+ *   - ten failed sign ins lock an account, and the lock lasts FIFTEEN MINUTES.
+ *
+ * TWO OF THEM ARE IN THIS FILE AND TWO ARE NOT, and saying which is which is the point of this
+ * paragraph. The two lifetimes are defaults on their columns, for the reason V6 already set: a
+ * column that says `now() + interval '24 hours'` tells the next reader how long a token lives
+ * without him having to find the class that writes it. The threshold of ten is here too, as the
+ * condition on the lock.
+ *
+ * The LENGTH of the lock is not here and cannot be: it is the difference between two moments the
+ * service picks, and a column holds one moment. Fifteen minutes therefore lives in the service and
+ * nothing below measures it. This said otherwise until a round on 11.09.2026 measured it - the
+ * lock's interval was changed from fifteen minutes to three hours in the cases below and all
+ * forty-three still passed, because they were about the threshold and never about the length. A
+ * paragraph claiming a guard that is not there is worse than no paragraph, because the next reader
+ * stops looking.
  *
  * WHAT IS NEVER HERE. Not the password, and not a session token either: both are kept as what they
  * hash to, which is why the two shapes below are hex and fixed width. A stolen copy of this database
@@ -43,6 +54,17 @@
  * The shape is `{algorithm}rest`, which is what Spring's delegating encoder writes (B2). It is
  * checked rather than trusted because the whole point of that encoder is that the algorithm can be
  * replaced later, and a row that lost its prefix would be unreadable by every algorithm at once.
+ *
+ * AND THE ALGORITHM IS NAMED, not merely well formed. This asked for `{any lowercase word}` until a
+ * security round on 11.09.2026, and `noop` is a lowercase word AND a real, registered id of that
+ * same delegating encoder - one whose encoder hands the input straight back. `{noop}hunter2` was
+ * written and read back verbatim. A column whose whole reason for existing is the "somebody took a
+ * copy of the database" case was one import script away from holding the passwords themselves.
+ *
+ * The four are a decision and not a survey: they are the ones Spring builds with parameters it
+ * considers current, and the portal writes the first of them today. Naming them means the day
+ * somebody moves to another algorithm is a day somebody writes a migration, which is exactly the
+ * moment that decision should be made out loud rather than discovered later in a dump.
  */
 alter table account
     add column password_hash    text,
@@ -51,7 +73,7 @@ alter table account
 
 alter table account
     add constraint account_password_hash_shape
-        check (password_hash is null or password_hash ~ '^\{[a-z0-9]+\}.+'),
+        check (password_hash is null or password_hash ~ '^\{(bcrypt|argon2|pbkdf2|scrypt)\}.+'),
     add constraint account_failed_sign_ins_not_negative check (failed_sign_ins >= 0),
 
     /* AND THE LOCK IS ONLY EVER SET WITH A REASON BEHIND IT. Ten is the owner's number; a lock
