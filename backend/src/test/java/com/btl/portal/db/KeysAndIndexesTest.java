@@ -191,7 +191,58 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("message_read_pk", false,
 					"the message and the member together, which is what says reading twice is one fact"),
 			new Key("notification_setting_pk", false,
-					"the member's own id, which is what says he has one set of settings and not a list"));
+					"the member's own id, which is what says he has one set of settings and not a list"),
+
+			/* V14. A surrogate, the address a league is looked up by, and one key that IS the
+			   fact: an event enters a league once, so the pair is the row. */
+			new Key("league_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("league_slug_unique", false,
+					"a league is looked up by its address, the same rule an event and a team follow"),
+			new Key("league_event_pk", false,
+					"the league and the event together; adding one twice is not a second fact"),
+
+			/* V15. The first IS the quantity, which is what makes the kinds a codebook rather
+			   than eleven words inside a CHECK. The last is the only key in the schema written
+			   NULLS NOT DISTINCT, and without that a badge that stands for ever - no season, no
+			   month - could be won twice at the same threshold, because two nulls do not
+			   normally collide. */
+			new Key("ducat_kind_pk", false, "the quantity itself, which is what a badge names"),
+			new Key("ducat_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("ducat_code_unique", false,
+					"a badge is looked up by the code its drawing is keyed on"),
+			new Key("ducat_award_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("ducat_award_won_once", false,
+					"one badge per threshold per period, looked up as it is written and carrying no order"),
+
+			/* V16. The reference is what a machine reads off a bank statement, so one line of
+			   that statement has to name one payment; and one payment a season, because paying
+			   twice for a season is not two payments but a conversation. */
+			new Key("payment_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("payment_reference_unique", false,
+					"one line of a bank statement names one payment; looked up as the statement is read"),
+			new Key("payment_one_a_season", false,
+					"one payment per member per season, looked up by the pair and carrying no order"),
+
+			/* V17. Two surrogates and two keys that say what a PLACE is: one first among the
+			   men and one among the women, because the standings are drawn by gender and
+			   nothing else; and one first team, because the team standings are not. */
+			new Key("season_competitor_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("season_competitor_one_per_place", false,
+					"one place per gender per season, written once when the season freezes and never moved"),
+			new Key("season_team_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("season_team_one_per_place", false,
+					"one place per season, written once when the season freezes and never moved"),
+			new Key("season_league_standing_pk", false,
+					"a surrogate key nothing outside the portal sees"),
+			new Key("season_league_standing_one_per_place", false,
+					"one place per league per gender per season, written once when the season freezes"),
+			/* And the other axis of the same three tables: one member, one place. */
+			new Key("season_competitor_one_place_each", false,
+					"one place per member per season; a standing is looked up by both and carries no order"),
+			new Key("season_team_one_place_each", false,
+					"one place per team per season; a standing is looked up by both and carries no order"),
+			new Key("season_league_standing_one_place_each", false,
+					"one place per member per league per season, written once when the season freezes"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -280,7 +331,33 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("message_from_idx", "what one member has sent"),
 			new Index("message_team_invitation_idx", "the message that asks about one invitation"),
 			new Index("message_pair_invite_idx", "the message that asks about one request to pair"),
-			new Index("message_read_competitor_idx", "what one member has already read"));
+			new Index("message_read_competitor_idx", "what one member has already read"),
+			/* V14. The other end of the administrator key, the leagues of one season which is
+			   how the page is drawn, and the other end of the pair in league_event. */
+			new Index("league_admin_idx", "the leagues one member is named to administer"),
+			new Index("league_season_idx", "the leagues of one season, which is how they are listed"),
+			new Index("league_event_event_idx", "every league one event has entered"),
+			/* V15. The other ends of the three keys that point out of a badge and an award. */
+			new Index("ducat_kind_idx", "the badges written over one quantity"),
+			new Index("ducat_award_competitor_idx", "every badge one member has won"),
+			new Index("ducat_award_ducat_idx", "everybody who has won one badge"),
+			new Index("ducat_award_kind_idx", "the recognitions given for one quantity"),
+			/* V16. Three ends of keys, and one the screen of payments is actually drawn from:
+			   everything still waiting for one season. */
+			new Index("payment_competitor_idx", "what one member has paid, season by season"),
+			new Index("payment_price_row_idx", "the payments made at one price"),
+			new Index("payment_recorded_by_idx", "what one person has recognised"),
+			new Index("payment_season_state_idx", "everything still waiting for one season"),
+			/* V17. The first of each pair is the whole page - one season, read and drawn - and
+			   the rest are the ends of the keys that point out of a frozen row. */
+			new Index("season_competitor_season_idx", "the frozen standings of one season"),
+			new Index("season_competitor_competitor_idx", "every frozen season one member stands in"),
+			new Index("season_team_season_idx", "the frozen team standings of one season"),
+			new Index("season_team_team_idx", "every frozen season one team stands in"),
+			new Index("season_league_standing_season_idx", "the frozen league standings of one season"),
+			new Index("season_league_standing_league_idx", "the frozen standings of one league"),
+			new Index("season_league_standing_competitor_idx",
+					"every frozen league standing one member stands in"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says
@@ -298,7 +375,7 @@ class KeysAndIndexesTest extends DatabaseTest {
 						       con.condeferred        as deferred,
 						       cls.relname            as table_name,
 						       string_agg(att.attname, ',' order by att.attnum) as columns,
-						       string_agg(format_type(att.atttypid, att.atttypmod), ',' order by att.attnum)
+						       string_agg(format_type(att.atttypid, att.atttypmod), '|' order by att.attnum)
 						                              as column_types
 						  from pg_constraint con
 						  join pg_class cls on cls.oid = con.conrelid
@@ -467,7 +544,10 @@ class KeysAndIndexesTest extends DatabaseTest {
 	 */
 	private String pointingAt(Map<String, Object> row) {
 		String[] columns = ((String) row.get("columns")).split(",");
-		String[] types = ((String) row.get("column_types")).split(",");
+		/* Split on a bar and not on a comma: `numeric(12,2)` carries one of its own, and V15
+		   is the first key in the schema over such a column. Before that every type here was
+		   one word, so the comma worked by accident rather than by design. */
+		String[] types = ((String) row.get("column_types")).split(java.util.regex.Pattern.quote("|"));
 
 		assertThat(types).hasSameSizeAs(columns);
 

@@ -297,8 +297,13 @@ class AxisConstraintsTest extends DatabaseTest {
 								+ " 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
 								+ " '00112233445566aa', null, '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"),
-				Violation.notNull("competitor_member_number_not_null", "member_number",
-						competitorRow("null", "'00112233445566aa'")),
+				/* `competitor_member_number_not_null` je ovde stajao do V16, kad je clanski broj
+				   postao neobavezan. To je prvi put da migracija nesto ODUZIMA ovoj semi, i red je
+				   otisao sa njim: ogranicenja kog nema ne moze da obori nijedan red, a pod ispod
+				   ovog spiska cita katalog pa bi ime bez ogranicenja palo.
+
+				   Sto broj i dalje mora da bude sest cifara KAD GA IMA stoji nize, kao
+				   `competitor_member_number_shape`, i to se nije promenilo. */
 				Violation.notNull("competitor_first_name_not_null", "first_name",
 						competitor("'000903', null, 'Clan', 'M', date '1990-05-05', " + A_TOWN
 								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
