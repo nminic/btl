@@ -1,0 +1,95 @@
+package com.btl.portal.domain.award;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/** One race as the badge rules see it, and the period it falls inside. */
+class RaceDoneTest {
+
+	private static RaceDone on(String day) {
+		return new RaceDone(LocalDate.parse(day), "short", "RS", BigDecimal.ONE, 0, 60L, BigDecimal.ONE);
+	}
+
+	/**
+	 * Both ends of a period belong to it.
+	 *
+	 * <p>A month badge is "125 km in July", and a race on the first or the
+	 * thirty-first of July is a race in July. The two boundary rows are the ones
+	 * that would fail the day somebody writes the comparison the other way round,
+	 * and they are the only rows in this table that can.
+	 */
+	@ParameterizedTest(name = "{0} in {1}..{2} = {3}")
+	@CsvSource({
+			"2027-06-30, 2027-07-01, 2027-07-31, false",
+			"2027-07-01, 2027-07-01, 2027-07-31, true",
+			"2027-07-15, 2027-07-01, 2027-07-31, true",
+			"2027-07-31, 2027-07-01, 2027-07-31, true",
+			"2027-08-01, 2027-07-01, 2027-07-31, false",
+	})
+	void aRaceOnEitherEndOfThePeriodIsInsideIt(String day, String from, String to, boolean inside) {
+		assertThat(on(day).inside(LocalDate.parse(from), LocalDate.parse(to))).isEqualTo(inside);
+	}
+
+	/**
+	 * An open end lets everything through on that side and nothing through on the
+	 * other.
+	 *
+	 * <p>Which is what a badge with no period is: "a hundred races ever" has both
+	 * ends open. Each half is measured on its own, because a version ignoring the
+	 * closed end too would pass a case that only opened one.
+	 */
+	@Test
+	void anOpenEndIsNotAClosedOne() {
+		RaceDone summer = on("2027-07-15");
+
+		assertThat(summer.inside(null, LocalDate.parse("2027-12-31"))).isTrue();
+		assertThat(summer.inside(null, LocalDate.parse("2027-07-14")))
+				.as("an open beginning opened the end as well")
+				.isFalse();
+
+		assertThat(summer.inside(LocalDate.parse("2027-01-01"), null)).isTrue();
+		assertThat(summer.inside(LocalDate.parse("2027-07-16"), null))
+				.as("an open end opened the beginning as well")
+				.isFalse();
+
+		assertThat(summer.inside(null, null)).as("a badge with no period took in nobody").isTrue();
+	}
+
+	@Test
+	void aRaceWithoutALengthBandCountsTowardsNoBadge() {
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "  ", "RS", BigDecimal.ONE, 0,
+				60L, BigDecimal.ONE))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("length band");
+	}
+
+	@Test
+	void whatIsNotThereIsRefusedByName() {
+		assertThatThrownBy(() -> new RaceDone(null, "short", "RS", BigDecimal.ONE, 0, 60L, BigDecimal.ONE))
+				.isInstanceOf(NullPointerException.class).hasMessageContaining("on");
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), null, "RS", BigDecimal.ONE, 0,
+				60L, BigDecimal.ONE))
+				.isInstanceOf(NullPointerException.class).hasMessageContaining("category");
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS", null, 0, 60L,
+				BigDecimal.ONE))
+				.isInstanceOf(NullPointerException.class).hasMessageContaining("kilometers");
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS", BigDecimal.ONE, 0,
+				60L, null))
+				.isInstanceOf(NullPointerException.class).hasMessageContaining("points");
+	}
+
+	/** A country nobody knows is a state a race may be in, which is why it is the
+	 *  one of the eight that may be absent. */
+	@Test
+	void aRaceMayNotKnowItsCountry() {
+		assertThat(new RaceDone(LocalDate.parse("2027-07-15"), "short", null, BigDecimal.ONE, 0, 60L,
+				BigDecimal.ONE).country()).isNull();
+	}
+}
