@@ -67,7 +67,7 @@ public final class BreachedPasswords {
 	 */
 	static BreachedPasswords fromStream(InputStream stream, String named) {
 		if (stream == null) {
-			throw new IllegalStateException("nema liste procurelih lozinki: " + named);
+			throw new IllegalStateException("no list of breached passwords at: " + named);
 		}
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
 			return new BreachedPasswords(read(reader));
@@ -103,8 +103,8 @@ public final class BreachedPasswords {
 			}
 			if (entry.codePointCount(0, entry.length()) < PasswordPolicy.SHORTEST) {
 				throw new IllegalStateException(
-						"lozinka kraca od " + PasswordPolicy.SHORTEST + " znakova nikad se ne proverava"
-								+ " protiv liste, jer je duzina prva provera: " + entry);
+						"a password shorter than " + PasswordPolicy.SHORTEST + " characters is never"
+								+ " checked against the list, because the length is tested first: " + entry);
 			}
 			folded.add(PasswordPolicy.fold(entry));
 		}
@@ -114,8 +114,8 @@ public final class BreachedPasswords {
 			   both - and the difference is the whole point: a policy checking an empty list
 			   looks exactly like one that works, and goes on looking like it until somebody
 			   uses a leaked password. */
-			throw new IllegalStateException("lista procurelih lozinki je prazna, pa druga provera"
-					+ " ne bi odbila nijednu lozinku");
+			throw new IllegalStateException("the list of breached passwords is empty, so the second"
+					+ " rule would refuse nothing at all");
 		}
 		return folded;
 	}

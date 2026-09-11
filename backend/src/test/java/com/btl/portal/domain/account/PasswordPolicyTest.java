@@ -169,7 +169,7 @@ class PasswordPolicyTest {
 	void aMissingListIsRefusedRatherThanTreatedAsEmpty() {
 		assertThatThrownBy(() -> BreachedPasswords.fromResource("/security/nema-ovoga.txt"))
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("nema liste");
+				.hasMessageContaining("no list of breached passwords");
 	}
 
 	/**
@@ -231,12 +231,12 @@ class PasswordPolicyTest {
 			@org.junit.jupiter.api.io.TempDir Path folder) throws IOException {
 		assertThatThrownBy(() -> loaded(folder, ""))
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("prazna");
+				.hasMessageContaining("is empty");
 
 		assertThatThrownBy(() -> loaded(folder, "# samo napomena\n\n   \n"))
 				.as("a file of nothing but remarks checks nothing and said so to nobody")
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("prazna");
+				.hasMessageContaining("is empty");
 	}
 
 	/**
