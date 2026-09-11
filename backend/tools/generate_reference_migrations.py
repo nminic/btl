@@ -731,14 +731,19 @@ DELTA_HEAD = """
    NOR DOES IT TOUCH WHAT POINTS AT THE CODEBOOKS, and until 09.09.2026 that
    sentence was missing from here while four such keys stood in V7.
    `competitor_place_fk`, `competitor_country_fk`, `btl_event_place_fk`,
-   `btl_event_country_fk`, `result_submission_place_fk` and
-   `result_submission_country_fk` are ON DELETE RESTRICT, so a member, an event
-   or a run still waiting to be judged holds the town and the country it names
-   and RESTRICT is checked where it is written, which is the half of the pair no
-   deferral reaches at all. The last two arrived with V10 on 11.09.2026: a run
-   reported from a race that is not in the calendar describes where it was run,
-   and it does so while nobody has approved anything, which is exactly the window
-   a delta can arrive in.
+   `btl_event_country_fk`, `result_submission_place_fk`,
+   `result_submission_country_fk`, `team_place_fk`, `team_country_fk`,
+   `team_proposal_place_fk` and
+   `team_proposal_country_fk` are ON DELETE RESTRICT, so a member, an event, a
+   team, a run still waiting to be judged or a team somebody has only proposed
+   holds the town and the country it names, and RESTRICT is checked where it is
+   written, which is the half of the pair no deferral reaches at all.
+
+   They arrived in threes rather than all at once, and that is the whole reason
+   this sentence is read by a test rather than trusted: four in V7, two more with
+   V10 on 11.09.2026, four more with V11 the same day. Each time, a delta that
+   dropped one town would have stopped halfway through on a live database naming
+   a key this header had never heard of.
 
    SO A DELTA NEVER TAKES A ROW OUT OF A CODEBOOK. It adds rows and it changes
    them, and that is the whole of it. Which towns and which countries are worn is

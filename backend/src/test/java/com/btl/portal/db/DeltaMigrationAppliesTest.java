@@ -584,11 +584,16 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * before.
 	 */
 	private static String oldInstructionFor(Pressure pressure) {
+		/* `team_proposal` before `team`, because one name starts with the other. */
 		String table = pressure.constraint().startsWith("competitor") ? "competitor"
-				: pressure.constraint().startsWith("result_submission") ? "result_submission" : "btl_event";
+				: pressure.constraint().startsWith("result_submission") ? "result_submission"
+				: pressure.constraint().startsWith("team_proposal") ? "team_proposal"
+				: pressure.constraint().startsWith("team") ? "team" : "btl_event";
 		String which = switch (table) {
 			case "competitor" -> "member_number = '000904'";
 			case "result_submission" -> "race_name = 'Trka kroz sumu'";
+			case "team" -> "slug = 'peti-probni-tim'";
+			case "team_proposal" -> "name = 'Predlozen tim'";
 			default -> "slug = 'cetvrta-proba-2027'";
 		};
 
@@ -614,6 +619,36 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 				+ " city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment)"
 				+ " select id, date '2027-06-06', 'Trka kroz sumu', 'free', " + town + ", " + city + ", "
 				+ country + ", 10.00, 100, 100, 3600, '', '' from runner";
+	}
+
+	/**
+	 * A team standing on the codebook, which needs nothing else in the database: a
+	 * team names a town and may name nobody to administer it.
+	 */
+	private static String teamStandingOn(String town, String city, String country) {
+		return "insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
+				+ " first_season, admin_id) values ('peti-probni-tim', 'Peti probni tim', '', '', "
+				+ town + ", " + city + ", " + country + ", null, 2027, null)";
+	}
+
+	/**
+	 * And a team somebody has only PROPOSED standing on it, which is the case the
+	 * team's own does not cover: a proposal exists while nobody has approved
+	 * anything, and that is exactly the window a delta can arrive in.
+	 *
+	 * <p>One statement, with the member written in the same breath through a
+	 * data-modifying CTE, and he holds a typed town in another country on purpose -
+	 * standing him on the same row would have the DELETE come back naming
+	 * {@code competitor_place_fk}.
+	 */
+	private static String teamProposalStandingOn(String town, String city, String country) {
+		return "with proposer as (insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000906',"
+				+ " 'Probni', 'Predlagac', 'M', date '1989-09-09', null, 'Zaselak', " + ANOTHER_COUNTRY
+				+ ", 2027, false, true, 'payment', '00112233445566ef', null, '', false, 'none', 'Otac',"
+				+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id)"
+				+ " insert into team_proposal (competitor_id, team_id, name, bio, link, place_id, city,"
+				+ " country_id, logo_id) select id, null, 'Predlozen tim', '', '', " + town + ", " + city
+				+ ", " + country + ", null from proposer";
 	}
 
 	private static String eventStandingOn(String town, String city, String country) {
@@ -673,7 +708,34 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS,
 						"update result_submission set country_id = " + ANOTHER_COUNTRY
 								+ " where race_name = 'Trka kroz sumu'",
-						"result_submission_country_fk"));
+						"result_submission_country_fk"),
+
+				/* And the four V11 adds. A team names a town, and so does a team somebody has only
+				   proposed - and those are not the same case: a proposal stands there while nobody
+				   has approved anything, which is a window a team never sits in. */
+				new Pressure("a team stands on a town the codebook drops", "team_place_fk",
+						teamStandingOn(A_TOWN, "null", "null"), "delete from place where rank = 1",
+						movedOff("team", "slug = 'peti-probni-tim'", THE_TOWNS_COUNTRY),
+						"team_typed_town_names_its_country"),
+				new Pressure("a team stands on a country the codebook drops", "team_country_fk",
+						teamStandingOn("null", "'Zaselak'", A_COUNTRY_WITH_NO_TOWNS),
+						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS,
+						"update team set country_id = " + ANOTHER_COUNTRY
+								+ " where slug = 'peti-probni-tim'",
+						"team_country_fk"),
+				new Pressure("a proposed team stands on a town the codebook drops",
+						"team_proposal_place_fk",
+						teamProposalStandingOn(A_TOWN, "null", "null"),
+						"delete from place where rank = 1",
+						movedOff("team_proposal", "name = 'Predlozen tim'", THE_TOWNS_COUNTRY),
+						"team_proposal_typed_town_names_its_country"),
+				new Pressure("a proposed team stands on a country the codebook drops",
+						"team_proposal_country_fk",
+						teamProposalStandingOn("null", "'Zaselak'", A_COUNTRY_WITH_NO_TOWNS),
+						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS,
+						"update team_proposal set country_id = " + ANOTHER_COUNTRY
+								+ " where name = 'Predlozen tim'",
+						"team_proposal_country_fk"));
 	}
 
 	/**
@@ -945,7 +1007,16 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 			Verdict.measuredBy("result_submission_place_fk",
 					"a waiting run stands on a town the codebook drops"),
 			Verdict.measuredBy("result_submission_country_fk",
-					"a waiting run stands on a country the codebook drops"));
+					"a waiting run stands on a country the codebook drops"),
+
+			/* And the four V11 adds, which took the count of keys holding a codebook from six to
+			   ten in one day. */
+			Verdict.measuredBy("team_place_fk", "a team stands on a town the codebook drops"),
+			Verdict.measuredBy("team_country_fk", "a team stands on a country the codebook drops"),
+			Verdict.measuredBy("team_proposal_place_fk",
+					"a proposed team stands on a town the codebook drops"),
+			Verdict.measuredBy("team_proposal_country_fk",
+					"a proposed team stands on a country the codebook drops"));
 
 	/**
 	 * Both sides of a codebook, and the second side is what this asked nothing
