@@ -94,9 +94,21 @@ public final class SeasonClock {
 	 * that is running. This is the sentence behind "ko 25. oktobra plati narednu
 	 * sezonu, istog dana je vidljiv u pregledu clanova" (owner, 31.07.2026): what he
 	 * paid for is 2028 while everybody else is still running 2027.
+	 *
+	 * <p><b>Never before the first season there is.</b> The calendar answer through
+	 * 2026 is 2026, and there is no season 2026 (PDL P2), so the answer is
+	 * {@link #FIRST_SEASON}. PDL P8 names this case in as many words: "Sezona u
+	 * ponudi ne moze biti pre prve. Kalendarski odgovor kroz leto 2026. je 2026, a
+	 * sezone 2026. nema (P2), pa je odgovor 2027."
+	 *
+	 * <p>A round on 11.09.2026 measured it live rather than in theory: asked about
+	 * that same day, this handed back 2026, a season nothing on the portal has. The
+	 * constant was already here and this was the one place that did not read it.
 	 */
 	public static int seasonBeingPaidFor(ZonedDateTime at) {
 		ZonedDateTime here = at.withZoneSameInstant(ZONE);
-		return transferWindowOpen(here) ? here.getYear() + 1 : here.getYear();
+		int calendar = transferWindowOpen(here) ? here.getYear() + 1 : here.getYear();
+
+		return Math.max(calendar, FIRST_SEASON);
 	}
 }

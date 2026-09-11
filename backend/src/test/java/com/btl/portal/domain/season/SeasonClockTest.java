@@ -143,4 +143,71 @@ class SeasonClockTest {
 				.as("a member in Tokyo was sold next season while it was still September here")
 				.isEqualTo(2027);
 	}
+
+	/**
+	 * And the YEAR is the league's too, not the caller's.
+	 *
+	 * <p>Its own case because the one above measures the zone only through the MONTH,
+	 * and a round on 11.09.2026 measured what that misses: a version reading the month
+	 * off the league but the year off the caller passed every case in this file. The
+	 * two answers can only differ where the year differs between the zones, so the
+	 * moment has to be New Year's Eve and nothing else.
+	 *
+	 * <p>Half past eleven on 31 December in Belgrade is already half past seven on 1
+	 * January in Tokyo. The league is inside the window and in 2027, so the answer is
+	 * 2028; read off Tokyo it would be 2028 plus one, and somebody would be sold a
+	 * season that is two years out.
+	 */
+	@Test
+	void andTheYearIsTheLeaguesTooWhereverTheCallerIs() {
+		ZonedDateTime newYearsEveHere = ZonedDateTime.of(2027, 12, 31, 23, 30, 0, 0, SeasonClock.ZONE);
+
+		assertThat(newYearsEveHere.withZoneSameInstant(TOKYO).getYear())
+				.as("it is not already next year in Tokyo, so this case measures nothing")
+				.isEqualTo(2028);
+
+		assertThat(SeasonClock.seasonBeingPaidFor(newYearsEveHere.withZoneSameInstant(TOKYO)))
+				.as("a member in Tokyo was sold a season two years out because the year came from his clock")
+				.isEqualTo(2028);
+	}
+
+	/**
+	 * NOTHING BEFORE THE FIRST SEASON IS EVER OFFERED, whatever the calendar says.
+	 *
+	 * <p>PDL P8 names this case in as many words: "Sezona u ponudi ne moze biti pre
+	 * prve. Kalendarski odgovor kroz leto 2026. je 2026, a sezone 2026. nema (P2), pa
+	 * je odgovor 2027." A round on 11.09.2026 measured it live rather than in theory:
+	 * asked about that same day, the answer was 2026, a season nothing on the portal
+	 * has - no table, no standing, no price row.
+	 *
+	 * <p>Both sides of the clamp are here. Below the first season the answer is the
+	 * first season; at and above it the calendar decides, so a version that simply
+	 * always answered {@link SeasonClock#FIRST_SEASON} fails on the second half.
+	 */
+	@Test
+	void aSeasonBeforeTheFirstOneIsNeverOffered() {
+		assertThat(SeasonClock.seasonBeingPaidFor(
+				ZonedDateTime.of(2026, 7, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("a member was sold season 2026, which the portal has no table for")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+
+		/* January 2026, which is outside the window: the calendar answer is 2026 by the
+		   other branch as well, so both branches are held down. */
+		assertThat(SeasonClock.seasonBeingPaidFor(
+				ZonedDateTime.of(2026, 1, 5, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+
+		/* October 2026 IS inside the window, and there the calendar already answers 2027
+		   on its own. The clamp must not be what makes this one right, or the case above
+		   would be the only thing measuring it. */
+		assertThat(SeasonClock.seasonBeingPaidFor(
+				ZonedDateTime.of(2026, 10, 25, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.isEqualTo(2027);
+
+		/* And the clamp does not flatten everything that comes after it. */
+		assertThat(SeasonClock.seasonBeingPaidFor(
+				ZonedDateTime.of(2031, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("every season answered as the first one, which is the other way to be wrong")
+				.isEqualTo(2031);
+	}
 }
