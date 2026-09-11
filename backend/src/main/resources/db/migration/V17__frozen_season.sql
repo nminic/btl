@@ -80,7 +80,16 @@ create table season_competitor (
 
     /* One row per place per gender per season: the standings are drawn by gender and nothing else
        (31.08.2026, and it is the same rule leagues follow). */
-    constraint season_competitor_one_per_place unique (season, gender, position)
+    constraint season_competitor_one_per_place unique (season, gender, position),
+
+    /* AND ONE PLACE PER MEMBER, which is the other axis and which all three of these tables
+       were missing evenly. The key above says two members cannot share a place; this says one
+       member cannot hold two. Both are true of a standing and neither implies the other.
+
+       Found by the second round on 11.09.2026. Nothing writes these tables yet, so it was
+       still cheap - the service that freezes a season has not been written, and this is the
+       shape it will be written against. */
+    constraint season_competitor_one_place_each unique (season, competitor_id)
 );
 
 create index season_competitor_season_idx on season_competitor (season);
@@ -112,7 +121,8 @@ create table season_team (
     constraint season_team_points_not_negative check (points >= 0),
     constraint season_team_members_positive check (members > 0),
 
-    constraint season_team_one_per_place unique (season, position)
+    constraint season_team_one_per_place unique (season, position),
+    constraint season_team_one_place_each unique (season, team_id)
 );
 
 create index season_team_season_idx on season_team (season);
@@ -165,7 +175,8 @@ create table season_league_standing (
        the frozen standings of two different leagues that have both since been deleted, which is
        a legitimate pair of rows. The write path is the one that needs guarding, and on it the
        key is never null. */
-    constraint season_league_standing_one_per_place unique (season, league_id, gender, position)
+    constraint season_league_standing_one_per_place unique (season, league_id, gender, position),
+    constraint season_league_standing_one_place_each unique (season, league_id, competitor_id)
 );
 
 create index season_league_standing_season_idx on season_league_standing (season);

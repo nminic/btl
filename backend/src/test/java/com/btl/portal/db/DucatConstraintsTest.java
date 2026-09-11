@@ -327,6 +327,57 @@ class DucatConstraintsTest extends DatabaseTest {
 	}
 
 	/**
+	 * THE FIFTEEN ARE THE FIFTEEN THE PORTAL DRAWS, read out of the portal rather than
+	 * remembered.
+	 *
+	 * <p>The migration invites exactly this check - "fifteen rows fit on a screen and a
+	 * reader can check them against what he sees on the portal" - and until a round on
+	 * 11.09.2026 nothing did it. The only thing that noticed a changed name was the
+	 * migration's checksum, and a checksum says the file was touched, never that a
+	 * value in it is right. It had already drifted once: the migration called
+	 * `duk-uspon` "Uspon" while the portal calls it "Karmanov uspon".
+	 *
+	 * <p>The portal's copy is read off the working tree rather than the classpath,
+	 * because it belongs to the other half of the repository and this build has no
+	 * other way to reach it. That is the boundary: this ties the two while they live
+	 * side by side, and would have to be rewritten the day they do not.
+	 */
+	@Test
+	void theFifteenAreTheFifteenThePortalDraws() throws Exception {
+		java.nio.file.Path drawn = java.nio.file.Path.of("..", "frontend", "public", "mock", "ducats.json");
+
+		assertThat(drawn)
+				.as("the portal's own copy is not where this expects it, so the two are no longer tied")
+				.exists();
+
+		/* THE JSON IS PARSED BY POSTGRES, not by a library added for this one case. Spring Boot
+		   4 does not bring jackson-databind with the web starter, and a dependency taken on for a
+		   test is a dependency the whole application then carries. The database is already here
+		   and already parses JSON, so the comparison is done where both sides can be named. */
+		String drawnText = java.nio.file.Files.readString(drawn, java.nio.charset.StandardCharsets.UTF_8);
+
+		java.util.Map<String, String> theirs = new java.util.TreeMap<>();
+		db.sql("select one ->> 'id' as code, (one ->> 'name') || '|' || (one ->> 'kind') || '|'"
+				+ " || (one ->> 'value') as says from jsonb_array_elements(cast(? as jsonb)) as one")
+				.param(drawnText)
+				.query((rs, one) -> java.util.Map.entry(rs.getString("code"), rs.getString("says")))
+				.list()
+				.forEach(entry -> theirs.put(entry.getKey(), entry.getValue()));
+
+		java.util.Map<String, String> ours = new java.util.TreeMap<>();
+		db.sql("select code, name, kind, threshold from ducat")
+				.query((rs, one) -> java.util.Map.entry(rs.getString("code"),
+						rs.getString("name") + "|" + rs.getString("kind") + "|"
+								+ rs.getBigDecimal("threshold").stripTrailingZeros().toPlainString()))
+				.list()
+				.forEach(entry -> ours.put(entry.getKey(), entry.getValue()));
+
+		assertThat(ours)
+				.as("a badge in the schema is not the badge the portal draws under the same code")
+				.isEqualTo(theirs);
+	}
+
+	/**
 	 * Every kind a badge names is a kind that exists, and every kind that exists is
 	 * named by a badge.
 	 *

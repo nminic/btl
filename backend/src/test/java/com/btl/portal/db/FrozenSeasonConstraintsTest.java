@@ -53,6 +53,11 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	private static final String A_MEMBER = "(select id from competitor where member_number = '001010')";
 	private static final String A_WOMAN = "(select id from competitor where member_number = '001011')";
 	private static final String A_TEAM = "(select id from team where slug = 'zamrznut-tim')";
+	/* A SECOND TEAM, and it is here for one case only: with the key that says a team holds one
+	   place per season, the row that takes second place cannot be the team that already has
+	   first. Found the moment that key was added. */
+	private static final String ANOTHER_TEAM =
+			"(select id from team where slug = 'drugi-zamrznut-tim')";
 	private static final String A_LEAGUE = "(select id from league where slug = 'zamrznuta-liga')";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
@@ -81,7 +86,8 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	/** Second place among the women, which is a different place from second among the men. */
 	private static final String GOOD_RANK =
 			rank("2027, 2, " + A_WOMAN + ", 'Prva Zamrznuta', 'F', 'senior', 812.40, 14");
-	private static final String GOOD_TEAM = team("2027, 2, " + A_TEAM + ", 'Zamrznut tim', 2410.00, 7");
+	private static final String GOOD_TEAM =
+			team("2027, 2, " + ANOTHER_TEAM + ", 'Drugi zamrznut tim', 2410.00, 7");
 	private static final String GOOD_STANDING = standing("2027, " + A_LEAGUE + ", 'Zamrznuta liga', 2, "
 			+ A_WOMAN + ", 'Prva Zamrznuta', 'F', 612.10");
 
@@ -103,6 +109,9 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id, first_season,"
 				+ " admin_id) values ('zamrznut-tim', 'Zamrznut tim', '', '', " + A_TOWN
 				+ ", null, null, null, 2027, null)").update();
+		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
+				+ " first_season, admin_id) values ('drugi-zamrznut-tim', 'Drugi zamrznut tim', '', '', "
+				+ A_TOWN + ", null, null, null, 2027, null)").update();
 		db.sql("insert into league (slug, name, season, rules, prizes, admin_id) values ('zamrznuta-liga',"
 				+ " 'Zamrznuta liga', 2027, '', '', null)").update();
 
@@ -224,7 +233,19 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 				   in 2027, and this is the same place given to somebody else. */
 				Violation.of("season_league_standing_one_per_place",
 						standing("2027, " + A_LEAGUE + ", 'Zamrznuta liga', 1, " + A_WOMAN
-								+ ", 'Prva Zamrznuta', 'M', 500")));
+								+ ", 'Prva Zamrznuta', 'M', 500")),
+
+				/* AND THE OTHER AXIS: one member in two places, one team in two places. The
+				   keys above say two people cannot share a place; these say one person cannot
+				   hold two, and neither implies the other. The probe already holds first place
+				   in all three tables for the same member and the same team. */
+				Violation.of("season_competitor_one_place_each",
+						rank("2027, 2, " + A_MEMBER + ", 'Prvi Zamrznuti', 'M', 'senior', 500, 9")),
+				Violation.of("season_team_one_place_each",
+						team("2027, 2, " + A_TEAM + ", 'Zamrznut tim', 2000, 5")),
+				Violation.of("season_league_standing_one_place_each",
+						standing("2027, " + A_LEAGUE + ", 'Zamrznuta liga', 2, " + A_MEMBER
+								+ ", 'Prvi Zamrznuti', 'M', 400")));
 	}
 
 	@ParameterizedTest

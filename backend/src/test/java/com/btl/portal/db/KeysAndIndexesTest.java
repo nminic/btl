@@ -235,7 +235,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("season_league_standing_pk", false,
 					"a surrogate key nothing outside the portal sees"),
 			new Key("season_league_standing_one_per_place", false,
-					"one place per league per gender per season, written once when the season freezes"));
+					"one place per league per gender per season, written once when the season freezes"),
+			/* And the other axis of the same three tables: one member, one place. */
+			new Key("season_competitor_one_place_each", false,
+					"one place per member per season; a standing is looked up by both and carries no order"),
+			new Key("season_team_one_place_each", false,
+					"one place per team per season; a standing is looked up by both and carries no order"),
+			new Key("season_league_standing_one_place_each", false,
+					"one place per member per league per season, written once when the season freezes"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
