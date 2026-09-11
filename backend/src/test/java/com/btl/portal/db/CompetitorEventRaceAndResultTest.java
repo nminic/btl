@@ -445,6 +445,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   league, both are the register of members, and the register keeps nothing about
 				   somebody who is no longer in it. */
 				"competitor_document.competitor_document_competitor_fk cascade",
+				/* V15. Vrsta velicine je sifarnik pa RESTRICT, kao i svaki drugi. Priznanje ide sa
+				   clanom, ali definicija NE odlazi dok je neko ima: sta je osvojeno ostaje osvojeno,
+				   pa prepisivanje spiska znacaka ne sme tiho da odnese tudja priznanja. */
+				"ducat.ducat_kind_fk restrict",
+				"ducat_award.ducat_award_competitor_fk cascade",
+				"ducat_award.ducat_award_ducat_fk restrict",
+				"ducat_award.ducat_award_kind_fk restrict",
 				"email_verification_token.email_verification_token_account_fk cascade",
 				// the comment outlives its author and keeps his name as text
 				"event_comment.event_comment_competitor_fk set null",
@@ -453,6 +460,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   posiljaoca se PRAZNI: poruka prezivi svog posiljaoca isto kao komentar (V7) i
 				   odluka (V9), jer clan sme da trazi brisanje naloga a tudji sanducici se time ne
 				   prepravljaju. */
+				/* V14. Lista dogadjaja u ligi ide sa obe strane, a imenovani administrator se
+				   PRAZNI, isto kao timski: i on je clan i sme da trazi brisanje naloga. */
+				"league.league_admin_fk set null",
+				"league_event.league_event_event_fk cascade",
+				"league_event.league_event_league_fk cascade",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
 				"message.message_team_invitation_fk cascade",
@@ -464,6 +476,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"pair_invite.pair_invite_from_fk cascade",
 				"pair_invite.pair_invite_to_fk cascade",
 				"parental_consent.parental_consent_competitor_fk cascade",
+				/* V16. Uplata ide sa osobom, red cenovnika koji imenuje ne sme da ode dok je tu,
+				   a nalog blagajnika se PRAZNI i ime ostaje - isto kao odluka u V9. */
+				"payment.payment_competitor_fk cascade",
+				"payment.payment_price_row_fk restrict",
+				"payment.payment_recorded_by_fk set null",
 				"place.place_country_fk no action",
 				"race.race_event_fk cascade",
 				// PDL P21: deleting a member takes his results with him
@@ -485,6 +502,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   timom i sa clanom; oba sifarnika RESTRICT, kao svuda; a znak i imenovani
 				   administrator se PRAZNE, jer slika sme da se obrise a administrator sme da trazi
 				   brisanje naloga (PDL P23) - i ni u jednom od ta dva slucaja tim ne nestaje. */
+				/* V17. Sve cetiri PRAZNE pokazivac i ostavljaju red: zamrznuta sezona je istorija i
+				   ne brise se nikad (P13). Ime tima i lige ostaje jer nisu osobe; ime clana
+				   uklanja OKIDAC, jer strani kljuc ume da isprazni pokazivac a ne i drugu kolonu. */
+				"season_competitor.season_competitor_fk set null",
+				"season_league_standing.season_league_standing_competitor_fk set null",
+				"season_league_standing.season_league_standing_league_fk set null",
+				"season_team.season_team_fk set null",
 				"team.team_admin_fk set null",
 				"team.team_country_fk restrict",
 				"team.team_logo_fk set null",
