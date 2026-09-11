@@ -77,18 +77,37 @@ class StandingTest {
 	/**
 	 * And vertical is ascent AND descent, not one of them.
 	 *
-	 * <p>The rung is named "više vertikale" and the rulebook counts both. One row
-	 * climbs more and the other descends more, by the same amount, so a version
-	 * reading either half alone puts the wrong one first, while a version reading
-	 * both leaves them level and the member number decides.
+	 * <p>The rung is named "više vertikale" and the rulebook counts both.
+	 *
+	 * <p><b>TWO PAIRS, because one pair cannot say it.</b> The case here until a
+	 * round on 11.09.2026 was a single pair, level on the total, one climbing more
+	 * and the other descending more; the member number then decided, and it
+	 * happened to agree with the climbing half, so a version reading only the
+	 * climb passed. Reversing the member numbers only moves the hole to the other
+	 * half. The claim "both halves" is two claims and needs a pair each.
+	 *
+	 * <p>So neither pair is level: each is separated by the TOTAL while the row
+	 * that should lose holds the larger of one half. The first pair falls to a
+	 * version reading only the climb, the second to one reading only the descent,
+	 * and in both the member number is set so that a version consulting no rung at
+	 * all comes out backwards too.
 	 */
 	@Test
 	void verticalIsBothHalvesAndNotOne() {
+		/* 1000 against 900, and the loser climbs eight times as much. */
 		assertThat(orderOf(List.of(
-				row("spusta", 2, "40.00", "100.00", 5, 500, 1500, 3600L),
-				row("penje", 1, "40.00", "100.00", 5, 1500, 500, 3600L))))
-				.as("one half of the vertical decided a place the rulebook says both halves decide")
-				.containsExactly("penje", "spusta");
+				row("silazi", 9, "40.00", "100.00", 5, 100, 900, 3600L),
+				row("penje", 1, "40.00", "100.00", 5, 800, 100, 3600L))))
+				.as("only the climbing half was counted, and the rulebook counts both")
+				.containsExactly("silazi", "penje");
+
+		/* And the same the other way: 1000 against 900, the loser descends eight
+		   times as much. */
+		assertThat(orderOf(List.of(
+				row("penje", 9, "40.00", "100.00", 5, 900, 100, 3600L),
+				row("silazi", 1, "40.00", "100.00", 5, 100, 800, 3600L))))
+				.as("only the descending half was counted, and the rulebook counts both")
+				.containsExactly("penje", "silazi");
 	}
 
 	/**
