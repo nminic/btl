@@ -139,7 +139,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("parental_consent_pk", false,
 					"the member's own id, which is what says one consent was given and not several"),
 			new Key("photo_pk", false,
-					"a surrogate key, and the name the file is written under, so nothing may move it"));
+					"a surrogate key, and the name the file is written under, so nothing may move it"),
+			// V9: a surrogate, because a queue row is looked up by nothing a person types
+			new Key("verification_pk", false, "a surrogate key nothing outside the portal sees"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -181,7 +183,13 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("event_comment_competitor_idx", "what one member wrote, and the other end of "
 					+ "event_comment_competitor_fk"),
 			// V8, and the other end of competitor_photo_fk: whose picture this is
-			new Index("competitor_photo_idx", "the member a photograph belongs to"));
+			new Index("competitor_photo_idx", "the member a photograph belongs to"),
+			/* V9. The first is the only way the queue is ever drawn - one tab, oldest first - and the
+			   other three are the ends of the three keys that point out of it. */
+			new Index("verification_queue_raised_idx", "one tab of the queue, oldest waiting first"),
+			new Index("verification_competitor_idx", "what is waiting on one member, which his own screen asks"),
+			new Index("verification_photo_idx", "the queue row a photograph is waiting in"),
+			new Index("verification_decided_by_idx", "what one moderator has decided"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

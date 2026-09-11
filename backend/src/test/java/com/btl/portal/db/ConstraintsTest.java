@@ -310,7 +310,8 @@ class ConstraintsTest extends DatabaseTest {
 	void everyTableInTheSchemaIsClaimedByAConstraintTest() {
 		List<String> claimed = Stream
 				.of(TABLES, RoleAndRightConstraintsTest.TABLES, AccountConstraintsTest.TABLES,
-						AxisConstraintsTest.TABLES, RegistrationConstraintsTest.TABLES)
+						AxisConstraintsTest.TABLES, RegistrationConstraintsTest.TABLES,
+						VerificationConstraintsTest.TABLES)
 				.flatMap(List::stream)
 				.toList();
 
