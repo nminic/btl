@@ -83,7 +83,8 @@ class AxisConstraintsTest extends DatabaseTest {
 			List.of("competitor", "btl_event", "race", "result", "attending", "event_comment");
 
 	/** Carried by the floor and not by a row, for the reason in the class comment. */
-	private static final Set<String> KEYS_THAT_ONLY_EXIST_AS_A_TARGET = Set.of("race_day_unique");
+	private static final Set<String> KEYS_THAT_ONLY_EXIST_AS_A_TARGET =
+			Set.of("race_day_unique", "competitor_id_gender_unique");
 
 	/* A town and a country out of the codebooks, looked up rather than numbered:
 	   V2 and V3 hand the ids out of a sequence and nothing here may depend on
@@ -792,6 +793,28 @@ class AxisConstraintsTest extends DatabaseTest {
 		   turns out to be awkward: a constraint named here and also given a row
 		   would make the set above pass while saying nothing. */
 		assertThat(covered).doesNotContainAnyElementsOf(KEYS_THAT_ONLY_EXIST_AS_A_TARGET);
+
+		/* AND THE EXEMPTION ITSELF HAS A FLOOR, derived rather than trusted. A name belongs
+		   here only if no row can break it: that is true exactly when its columns strictly
+		   contain the columns of some OTHER unique key on the same table, because the
+		   narrower one is checked first and always fires instead. Both names here are that
+		   shape - (id, date) and (id, gender) over a primary key on id - and a third name
+		   added for convenience rather than for that reason fails here.
+
+		   Written after V12 added the second one. Until then the list was one name with a
+		   paragraph beside it, which is a list with nothing under it. */
+		List<String> reallyUnbreakable = db
+				.sql("select wide.conname from pg_constraint wide join pg_constraint narrow"
+						+ "   on narrow.conrelid = wide.conrelid and narrow.oid <> wide.oid"
+						+ " where wide.conrelid" + relations
+						+ "   and wide.contype in ('u', 'p') and narrow.contype in ('u', 'p')"
+						+ "   and narrow.conkey <@ wide.conkey and narrow.conkey <> wide.conkey")
+				.query(String.class)
+				.list();
+
+		assertThat(reallyUnbreakable)
+				.as("a key is exempted that some row could actually break, or one that could not is missing")
+				.containsExactlyInAnyOrderElementsOf(KEYS_THAT_ONLY_EXIST_AS_A_TARGET);
 	}
 
 	/**
