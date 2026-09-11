@@ -84,7 +84,7 @@ public record SecretToken(String secret, String hash) {
 			digest = MessageDigest.getInstance(algorithm);
 		}
 		catch (NoSuchAlgorithmException impossible) {
-			throw new IllegalStateException(algorithm + " ne postoji na ovoj masini", impossible);
+			throw new IllegalStateException(algorithm + " is not on this machine", impossible);
 		}
 		return HexFormat.of().formatHex(digest.digest(secret.getBytes(StandardCharsets.UTF_8)));
 	}

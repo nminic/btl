@@ -163,7 +163,8 @@ class SecretTokenTest {
 		org.assertj.core.api.Assertions
 				.assertThatThrownBy(() -> SecretToken.hashOf("bilo sta", "NE-POSTOJI-256"))
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("NE-POSTOJI-256");
+				.hasMessageContaining("NE-POSTOJI-256")
+				.hasMessageContaining("is not on this machine");
 	}
 
 }
