@@ -71,7 +71,9 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("8", "V8__registration_document_consent_photo.sql", 2127338092),
 			new Applied("9", "V9__verification_queue.sql", -118383452),
 			new Applied("10", "V10__result_submission.sql", -1474520025),
-			new Applied("11", "V11__team_and_membership.sql", -1487104354));
+			new Applied("11", "V11__team_and_membership.sql", -1487104354),
+			new Applied("12", "V12__joining_a_team_and_a_pair.sql", -558654437),
+			new Applied("13", "V13__inbox_and_notification_settings.sql", -457962498));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

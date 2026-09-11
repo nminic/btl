@@ -451,7 +451,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 						rest -> {
 						},
 						towns -> towns.remove(towns.size() - 1)),
-						"the codebook drops a row somebody may be standing on",
+						"the codebook drops a row a member or an event may be standing on",
 						lastTownOfTheCodebook()),
 
 				/* A country and nothing else. GB leaves and UK arrives with a
@@ -473,7 +473,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 								}
 							}
 						}),
-						"the codebook drops a row somebody may be standing on",
+						"the codebook drops a row a member or an event may be standing on",
 						"Ujedinjeno Kraljevstvo (GB)"),
 
 				/* Both codebooks at once, and the case that says which refusal
@@ -488,7 +488,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 							countryNamed(rest, "CG").put("name", freed);
 						},
 						towns -> townsOfCountryLeave(towns, "CD")),
-						"the codebook drops a row somebody may be standing on",
+						"the codebook drops a row a member or an event may be standing on",
 						"Kongo - Kinšasa (CD)"));
 	}
 
@@ -1281,7 +1281,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 */
 	private static Change aCodebookRowLeaves() {
 		return refusals().stream()
-				.filter(one -> "the codebook drops a row somebody may be standing on".equals(one.says()))
+				.filter(one -> "the codebook drops a row a member or an event may be standing on".equals(one.says()))
 				.map(Refusal::change)
 				.findFirst()
 				.orElseThrow();

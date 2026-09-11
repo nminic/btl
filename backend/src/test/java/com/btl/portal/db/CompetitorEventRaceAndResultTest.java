@@ -449,10 +449,28 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				// the comment outlives its author and keeps his name as text
 				"event_comment.event_comment_competitor_fk set null",
 				"event_comment.event_comment_event_fk cascade",
+				/* V13. Sanduce ide sa onim kome je pisano i sa pitanjem o kom pita, a ime
+				   posiljaoca se PRAZNI: poruka prezivi svog posiljaoca isto kao komentar (V7) i
+				   odluka (V9), jer clan sme da trazi brisanje naloga a tudji sanducici se time ne
+				   prepravljaju. */
+				"message.message_from_fk set null",
+				"message.message_pair_invite_fk cascade",
+				"message.message_team_invitation_fk cascade",
+				"message.message_to_fk cascade",
+				"message_read.message_read_competitor_fk cascade",
+				"message_read.message_read_message_fk cascade",
+				"notification_setting.notification_setting_competitor_fk cascade",
+				/* V12. Pitanje ide sa onim ko pita i sa onim koga pita. */
+				"pair_invite.pair_invite_from_fk cascade",
+				"pair_invite.pair_invite_to_fk cascade",
 				"parental_consent.parental_consent_competitor_fk cascade",
 				"place.place_country_fk no action",
 				"race.race_event_fk cascade",
 				// PDL P21: deleting a member takes his results with him
+				/* V12, i to su dva kljuca koja nose vise od brisanja: idu na (id, gender), pa
+				   sema sama odbija par koji nije mesovit. */
+				"racing_pair.racing_pair_man_fk cascade",
+				"racing_pair.racing_pair_woman_fk cascade",
 				"result.result_competitor_fk cascade",
 				"result.result_race_fk cascade",
 				/* V10, and the run that is waiting obeys the same two sentences the finished one
@@ -471,6 +489,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"team.team_country_fk restrict",
 				"team.team_logo_fk set null",
 				"team.team_place_fk restrict",
+				/* V12. Trazenje i pozivanje idu i sa clanom i sa timom. */
+				"team_application.team_application_competitor_fk cascade",
+				"team_application.team_application_team_fk cascade",
+				"team_invitation.team_invitation_competitor_fk cascade",
+				"team_invitation.team_invitation_team_fk cascade",
 				"team_membership.team_membership_competitor_fk cascade",
 				"team_membership.team_membership_team_fk cascade",
 				"team_proposal.team_proposal_competitor_fk cascade",

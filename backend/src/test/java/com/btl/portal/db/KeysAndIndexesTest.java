@@ -161,7 +161,37 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("team_proposal_pk", false,
 					"a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("verification_team_proposal_unique", false,
-					"one proposal waits once; a pointer is looked up as it is written and carries no order"));
+					"one proposal waits once; a pointer is looked up as it is written and carries no order"),
+
+			/* V12. The first is the one key in the schema that exists only to be pointed at:
+			   without it a foreign key cannot name (id, gender), and without that a racing pair
+			   is mixed only because a service remembered to check. The rest say "asked once" and
+			   "one pair a season", and every one of them is looked up as it is written. */
+			new Key("competitor_id_gender_unique", false,
+					"it exists only to be pointed at: racing_pair names (id, gender) so the database"
+							+ " refuses a pair that is not mixed, and a deferrable key may be named by nothing"),
+			new Key("team_application_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("team_application_asked_once", false,
+					"one member asks one team once for one season; a triple is looked up, and it carries no order"),
+			new Key("team_invitation_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("team_invitation_sent_once", false,
+					"one team asks one member once for one season; a triple is looked up, and it carries no order"),
+			new Key("racing_pair_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("racing_pair_one_man_a_season", false,
+					"one pair a season from his side; a pair is looked up by season and member"),
+			new Key("racing_pair_one_woman_a_season", false,
+					"one pair a season from her side; a pair is looked up by season and member"),
+			new Key("pair_invite_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("pair_invite_asked_once", false,
+					"one open question between two people in that direction, looked up as it is written"),
+
+			/* V13. Two surrogates and one key that IS the fact: who has read what is the pair
+			   itself, and the member's own id is his settings. */
+			new Key("message_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("message_read_pk", false,
+					"the message and the member together, which is what says reading twice is one fact"),
+			new Key("notification_setting_pk", false,
+					"the member's own id, which is what says he has one set of settings and not a list"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -232,7 +262,25 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("team_proposal_team_idx", "the edits waiting on one team"),
 			new Index("team_proposal_place_idx", "the proposals that name one town of the codebook"),
 			new Index("team_proposal_country_idx", "the proposals that name one country of the codebook"),
-			new Index("team_proposal_logo_idx", "the proposal a mark was attached to"));
+			new Index("team_proposal_logo_idx", "the proposal a mark was attached to"),
+			/* V12. Every one is the other end of a key that points out of an asking or a pair,
+			   and the first two are also how a member's own screen draws what he has asked and
+			   what he has been asked. */
+			new Index("team_application_competitor_idx", "what one member has asked for"),
+			new Index("team_application_team_idx", "who has asked to join one team"),
+			new Index("team_invitation_team_idx", "who one team has invited"),
+			new Index("team_invitation_competitor_idx", "what one member has been invited to"),
+			new Index("racing_pair_man_idx", "every season one man has had a pair"),
+			new Index("racing_pair_woman_idx", "every season one woman has had a pair"),
+			new Index("pair_invite_from_idx", "who one member has asked to pair"),
+			new Index("pair_invite_to_idx", "who has asked one member to pair"),
+			/* V13. The first is the inbox itself, newest first, and the rest are the other ends
+			   of the keys that point out of a message. */
+			new Index("message_to_sent_idx", "one member's inbox in the order it arrived"),
+			new Index("message_from_idx", "what one member has sent"),
+			new Index("message_team_invitation_idx", "the message that asks about one invitation"),
+			new Index("message_pair_invite_idx", "the message that asks about one request to pair"),
+			new Index("message_read_competitor_idx", "what one member has already read"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

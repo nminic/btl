@@ -450,6 +450,8 @@ class TeamConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void theAdministratorMayGoAndTheTeamStays() {
+		db.sql("delete from team_membership").update();
+
 		assertThat(db.sql("delete from competitor where member_number = '000950'").update())
 				.as("a member who administers a team can no longer have his account deleted")
 				.isOne();
