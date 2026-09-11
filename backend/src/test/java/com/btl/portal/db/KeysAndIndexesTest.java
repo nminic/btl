@@ -221,7 +221,19 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("payment_reference_unique", false,
 					"one line of a bank statement names one payment; looked up as the statement is read"),
 			new Key("payment_one_a_season", false,
-					"one payment per member per season, looked up by the pair and carrying no order"));
+					"one payment per member per season, looked up by the pair and carrying no order"),
+
+			/* V17. Two surrogates and two keys that say what a PLACE is: one first among the
+			   men and one among the women, because the standings are drawn by gender and
+			   nothing else; and one first team, because the team standings are not. */
+			new Key("season_competitor_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("season_competitor_one_per_place", false,
+					"one place per gender per season, written once when the season freezes and never moved"),
+			new Key("season_team_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("season_team_one_per_place", false,
+					"one place per season, written once when the season freezes and never moved"),
+			new Key("season_league_standing_pk", false,
+					"a surrogate key nothing outside the portal sees"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -326,7 +338,17 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("payment_competitor_idx", "what one member has paid, season by season"),
 			new Index("payment_price_row_idx", "the payments made at one price"),
 			new Index("payment_recorded_by_idx", "what one person has recognised"),
-			new Index("payment_season_state_idx", "everything still waiting for one season"));
+			new Index("payment_season_state_idx", "everything still waiting for one season"),
+			/* V17. The first of each pair is the whole page - one season, read and drawn - and
+			   the rest are the ends of the keys that point out of a frozen row. */
+			new Index("season_competitor_season_idx", "the frozen standings of one season"),
+			new Index("season_competitor_competitor_idx", "every frozen season one member stands in"),
+			new Index("season_team_season_idx", "the frozen team standings of one season"),
+			new Index("season_team_team_idx", "every frozen season one team stands in"),
+			new Index("season_league_standing_season_idx", "the frozen league standings of one season"),
+			new Index("season_league_standing_league_idx", "the frozen standings of one league"),
+			new Index("season_league_standing_competitor_idx",
+					"every frozen league standing one member stands in"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

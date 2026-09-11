@@ -502,6 +502,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   timom i sa clanom; oba sifarnika RESTRICT, kao svuda; a znak i imenovani
 				   administrator se PRAZNE, jer slika sme da se obrise a administrator sme da trazi
 				   brisanje naloga (PDL P23) - i ni u jednom od ta dva slucaja tim ne nestaje. */
+				/* V17. Sve cetiri PRAZNE pokazivac i ostavljaju red: zamrznuta sezona je istorija i
+				   ne brise se nikad (P13). Ime tima i lige ostaje jer nisu osobe; ime clana
+				   uklanja OKIDAC, jer strani kljuc ume da isprazni pokazivac a ne i drugu kolonu. */
+				"season_competitor.season_competitor_fk set null",
+				"season_league_standing.season_league_standing_competitor_fk set null",
+				"season_league_standing.season_league_standing_league_fk set null",
+				"season_team.season_team_fk set null",
 				"team.team_admin_fk set null",
 				"team.team_country_fk restrict",
 				"team.team_logo_fk set null",
