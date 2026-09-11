@@ -141,7 +141,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("photo_pk", false,
 					"a surrogate key, and the name the file is written under, so nothing may move it"),
 			// V9: a surrogate, because a queue row is looked up by nothing a person types
-			new Key("verification_pk", false, "a surrogate key nothing outside the portal sees"));
+			new Key("verification_pk", false, "a surrogate key nothing outside the portal sees"),
+			/* V10. The first is a surrogate like every other. The second is the one key in the
+			   schema that exists to say ONE: a run waits in the queue once, because a run
+			   approved twice is a result written twice with nothing to say which was meant. */
+			new Key("result_submission_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("verification_result_submission_unique", false,
+					"one run waits once; a pointer is looked up as it is written and carries no order"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -189,7 +196,15 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("verification_queue_raised_idx", "one tab of the queue, oldest waiting first"),
 			new Index("verification_competitor_idx", "what is waiting on one member, which his own screen asks"),
 			new Index("verification_photo_idx", "the queue row a photograph is waiting in"),
-			new Index("verification_decided_by_idx", "what one moderator has decided"));
+			new Index("verification_decided_by_idx", "what one moderator has decided"),
+			/* V10. The first is how a member's own screen draws what he has sent in, and the
+			   other three are the ends of the three keys that point out of the submission. The
+			   race one is over two columns because the key it answers is. */
+			new Index("result_submission_competitor_idx", "the runs one member has sent in"),
+			new Index("result_submission_race_idx", "what is waiting on one race, and the other end of "
+					+ "result_submission_race_fk, which is over two columns and so is this"),
+			new Index("result_submission_place_idx", "the waiting runs that name one town of the codebook"),
+			new Index("result_submission_country_idx", "the waiting runs that name one country of the codebook"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says
