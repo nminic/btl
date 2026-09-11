@@ -157,6 +157,34 @@ class AccountConstraintsTest extends DatabaseTest {
 				/* Shapes, and none of them is an attempt at validating an address.
 				   Each one is a way the same address could be written twice and
 				   stored twice, or a string that is not an address at all. */
+				/* V18. Cetiri koja stizu sa autentikacijom, i sva cetiri stoje ovde jer `account`
+				   pripada ovom fajlu a njegov pod cita katalog. */
+				Violation.of("account_password_hash_shape",
+						"insert into account (email, role_id, password_hash) values ('oblik@primer.rs', "
+								+ COMPETITOR + ", '$2a$10$bez-prefiksa')"),
+				/* `noop` is a real id of the same delegating encoder, and ITS encoder hands the
+				   input straight back - so this row is not a badly shaped hash, it is the password
+				   itself. Found by a security round on 11.09.2026, which wrote `{noop}hunter2` and
+				   read it back word for word. */
+				Violation.of("account_password_hash_shape",
+						"insert into account (email, role_id, password_hash) values ('noop@primer.rs', "
+								+ COMPETITOR + ", '{noop}hunter2')"),
+				/* And an algorithm that is well formed but broken. It happened to be refused before
+				   as well, but only because the old pattern wanted lowercase; `{sha256}` would have
+				   gone through. */
+				Violation.of("account_password_hash_shape",
+						"insert into account (email, role_id, password_hash) values ('sha@primer.rs', "
+								+ COMPETITOR + ", '{sha256}5f4dcc3b5aa765d61d8327deb882cf99')"),
+				Violation.notNull("account_failed_sign_ins_not_null", "failed_sign_ins",
+						"insert into account (email, role_id, failed_sign_ins) values ('prazno@primer.rs', "
+								+ COMPETITOR + ", null)"),
+				Violation.of("account_failed_sign_ins_not_negative",
+						"insert into account (email, role_id, failed_sign_ins) values ('minus@primer.rs', "
+								+ COMPETITOR + ", -1)"),
+				/* Zakljucan bez ijednog promasaja iza sebe. */
+				Violation.of("account_locked_only_after_enough_failures",
+						"insert into account (email, role_id, locked_until) values ('kljuc@primer.rs', "
+								+ COMPETITOR + ", timestamptz '2027-01-01 10:00:00+00')"),
 				Violation.of("account_email_shape", account("'probaprimer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("' proba@primer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("'proba@pri@mer.rs', " + COMPETITOR)),
@@ -283,6 +311,27 @@ class AccountConstraintsTest extends DatabaseTest {
 	 * them, so the answer cannot come from a table of the same name in another
 	 * schema.
 	 */
+	/**
+	 * AND WHAT THE PORTAL ITSELF WRITES GOES IN.
+	 *
+	 * <p>The floor under the four algorithm names in the migration. The rows above say
+	 * which strings the column refuses, and a list of refusals can be complete and
+	 * still be wrong in the other direction: a pattern that refuses everything refuses
+	 * `{noop}` too. This asks the one question those rows cannot, and it asks it of the
+	 * encoder rather than of a string written out here, so it keeps answering the day
+	 * {@link com.btl.portal.domain.account.StoredPassword} moves to another algorithm - at which point it fails and
+	 * asks for a migration, which is the decision being made out loud.
+	 */
+	@Test
+	void theHashThePortalItselfWritesIsAHashTheColumnTakes() {
+		String written = new com.btl.portal.domain.account.StoredPassword().of("dvanaest1234sasvim");
+
+		assertThat(db.sql("insert into account (email, role_id, password_hash)"
+				+ " values ('koder@primer.rs', " + COMPETITOR + ", ?)").param(written).update())
+				.as("the column refuses the very hash the portal writes, so nobody could sign in")
+				.isOne();
+	}
+
 	@Test
 	void everyConstraintOnTheTwoTablesHasARowThatBreaksIt() {
 		String tables = TABLES.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));

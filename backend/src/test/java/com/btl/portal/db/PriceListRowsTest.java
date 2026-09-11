@@ -1,5 +1,7 @@
 package com.btl.portal.db;
 
+import com.btl.portal.domain.pricing.MembershipPrice;
+
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -178,4 +180,85 @@ class PriceListRowsTest extends DatabaseTest {
 		   deciding for the price list that it may not. */
 		return LocalDate.parse("2000-" + monthDay);
 	}
+	/**
+	 * THE FOUR PERIODS COVER EVERY DAY OF THE YEAR, EXACTLY ONCE.
+	 *
+	 * <p>Derived rather than counted to. The price list is a yearly cycle (owner,
+	 * 30.07.2026), so there is no day on which nobody can pay and none on which two
+	 * prices apply - and both halves of that are things a boundary typed one day out
+	 * would break in opposite ways. Three hundred and sixty-six days are asked, so
+	 * the twenty-ninth of February is among them.
+	 *
+	 * <p>{@code MembershipPrice.periodFor} throws when nothing covers a day, so a gap
+	 * fails loudly; an overlap is what the count below catches.
+	 */
+	@Test
+	void theFourPeriodsCoverEveryDayOfTheYearExactlyOnce() {
+		List<MembershipPrice.Row> rows = priceList();
+
+		for (java.time.MonthDay day : everyDayOfALeapYear()) {
+			long covering = rows.stream()
+					.filter(row -> "period".equals(row.kind()))
+					.filter(row -> {
+						String asWritten = String.format("%02d-%02d", day.getMonthValue(), day.getDayOfMonth());
+						return row.dayFrom().compareTo(asWritten) <= 0 && row.dayTo().compareTo(asWritten) >= 0;
+					})
+					.count();
+
+			assertThat(covering)
+					.as("%s is covered by %d periods, and every day must be covered by exactly one",
+							day, covering)
+					.isOne();
+		}
+	}
+
+	/**
+	 * And the rows the price rule is written against are the rows the schema holds.
+	 *
+	 * <p>{@code MembershipPriceTest} writes the seven out so its cases can be read
+	 * without a database. This is what stops the two from drifting: a price changed in
+	 * a migration and not there fails here, and so does the other way round.
+	 */
+	@Test
+	void theRowsThePriceRuleReadsAreTheRowsTheSchemaHolds() {
+		/* The amounts are compared at one scale on both sides. `numeric(10,2)` comes back as
+		   `35.00` and a literal thirty-five is `35`, and BigDecimal.equals counts the scale as
+		   part of the value - so two identical prices would read as different. Everything else
+		   is compared as it is. */
+		assertThat(priceList().stream().map(PriceListRowsTest::atOneScale).toList())
+				.as("the price list in the schema is no longer the one the rule is written against")
+				.containsExactlyInAnyOrderElementsOf(
+						com.btl.portal.domain.pricing.MembershipPriceTest.ROWS.stream()
+								.map(PriceListRowsTest::atOneScale)
+								.toList());
+	}
+
+	/** The same row with both amounts written to two decimal places. */
+	private static MembershipPrice.Row atOneScale(MembershipPrice.Row row) {
+		return new MembershipPrice.Row(row.key(), row.kind(), row.dayFrom(), row.dayTo(),
+				row.eur() == null ? null : row.eur().setScale(2, java.math.RoundingMode.UNNECESSARY),
+				row.rsd() == null ? null : row.rsd().setScale(2, java.math.RoundingMode.UNNECESSARY),
+				row.ranking());
+	}
+
+	/** The price list as the schema holds it, in the shape the rule reads. */
+	private List<MembershipPrice.Row> priceList() {
+		return db
+				.sql("select key, kind, day_from, day_to, eur, rsd, ranking from price_row order by sort_order")
+				.query((rs, one) -> new MembershipPrice.Row(
+						rs.getString("key"), rs.getString("kind"),
+						rs.getString("day_from"), rs.getString("day_to"),
+						rs.getBigDecimal("eur"), rs.getBigDecimal("rsd"),
+						rs.getObject("ranking", Boolean.class)))
+				.list();
+	}
+
+	/** Every day a year can have, the twenty-ninth of February included. */
+	private static List<java.time.MonthDay> everyDayOfALeapYear() {
+		return java.time.LocalDate.of(2028, 1, 1)
+				.datesUntil(java.time.LocalDate.of(2029, 1, 1))
+				.map(java.time.MonthDay::from)
+				.toList();
+	}
+
 }

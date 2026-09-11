@@ -242,7 +242,17 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("season_team_one_place_each", false,
 					"one place per team per season; a standing is looked up by both and carries no order"),
 			new Key("season_league_standing_one_place_each", false,
-					"one place per member per league per season, written once when the season freezes"));
+					"one place per member per league per season, written once when the season freezes"),
+			/* V18. Nijedan se ne odlaze: sesija se trazi po otisku na svakom zahtevu, pa se
+			   sudar mora znati odmah; a pravo u matrici je jedan red i nema sta da ceka. */
+			new Key("account_session_pk", false, "one session, looked up by its own number"),
+			new Key("account_session_token_hash_unique", false,
+					"the digest a cookie hashes to, which is how a session is found at all"),
+			new Key("password_reset_token_pk", false, "one reset link, looked up by its own number"),
+			new Key("password_reset_token_hash_unique", false,
+					"the digest a link hashes to, which is how a reset is found at all"),
+			new Key("account_admin_right_pk", false,
+					"one tick of the matrix: this account has this right, and the pair is the key"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -357,7 +367,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("season_league_standing_season_idx", "the frozen league standings of one season"),
 			new Index("season_league_standing_league_idx", "the frozen standings of one league"),
 			new Index("season_league_standing_competitor_idx",
-					"every frozen league standing one member stands in"));
+					"every frozen league standing one member stands in"),
+			/* V18. */
+			new Index("account_session_account_idx", "every session one account has open"),
+			new Index("account_session_expires_idx", "the sessions that have run out, which is what gets swept"),
+			new Index("password_reset_token_account_idx", "every reset link one account has asked for"),
+			new Index("account_admin_right_right_idx", "everybody who has been given one right"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says
