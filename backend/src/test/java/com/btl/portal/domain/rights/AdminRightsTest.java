@@ -110,5 +110,26 @@ class AdminRightsTest {
 				.hasMessageContaining("sometimes");
 	}
 
+	/**
+	 * And nothing at all is refused where it is built, not where it is asked.
+	 *
+	 * <p>Both halves matter and they fail in different places. A role with no mode is
+	 * a row the schema cannot hold, so reading one means something upstream is wrong
+	 * and a plain {@code NullPointerException} says nothing about what. And rights
+	 * built with no mode used to be built happily and fall over on the first question
+	 * - which is somebody's request, a long way from the line that made it.
+	 */
+	@Test
+	void nothingAtAllIsRefusedWhereItIsBuilt() {
+		assertThatThrownBy(() -> AdminRights.Mode.of(null))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("no rights mode");
+
+		assertThatThrownBy(() -> new AdminRights(null, Set.of()))
+				.as("rights with no mode were built, and would have fallen over on a request")
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("no mode");
+	}
+
 
 }

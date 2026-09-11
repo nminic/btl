@@ -242,6 +242,15 @@ class RolesAndRightsTest extends DatabaseTest {
 		assertThat(held.stream().map(AdminRights.Mode::of))
 				.as("a mode the schema holds is one AdminRights cannot read")
 				.containsExactly(AdminRights.Mode.ALL, AdminRights.Mode.GRANTED, AdminRights.Mode.NONE);
+
+		/* AND THE OTHER DIRECTION, which a round on 11.09.2026 found missing. Both lines above
+		   compare the database with a list written here, so a FOURTH value added to the enum -
+		   with nothing changed in any migration - left the database returning its three and both
+		   assertions passing. This reads the enum instead, so the drift is caught whichever side
+		   moves. */
+		assertThat(java.util.Arrays.stream(AdminRights.Mode.values()).map(Enum::name).map(String::toLowerCase))
+				.as("AdminRights knows a mode no role carries, or has lost one that a role does")
+				.containsExactlyInAnyOrderElementsOf(held);
 	}
 
 	/**
@@ -256,6 +265,16 @@ class RolesAndRightsTest extends DatabaseTest {
 		List<String> codes = db.sql("select code from admin_right order by code").query(String.class).list();
 
 		assertThat(codes).hasSize(12);
+
+		/* AND EVERY ONE OF THEM IS THE SHAPE THE COLUMN GENERATES, which is what this floor can
+		   really say. A round on 11.09.2026 pointed out that the three assertions below are a
+		   set lookup asked with the set it was built from, so they would pass for any twelve
+		   strings at all - the shape is the part that ties them to the schema. `admin_right.code`
+		   is generated as `scope || ':' || target`, and a right asked about in any other shape
+		   can never be true for a moderator however many ticks he has. */
+		assertThat(codes)
+				.as("a right no longer has the shape the column generates")
+				.allSatisfy(code -> assertThat(code).matches("^(entity|queue):[a-z]+$"));
 
 		AdminRights ticked = new AdminRights(AdminRights.Mode.GRANTED, Set.copyOf(codes));
 		AdminRights everything = new AdminRights(AdminRights.Mode.ALL, Set.of());

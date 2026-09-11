@@ -36,11 +36,14 @@ public record AdminRights(Mode mode, Set<String> granted) {
 		 *                                  that has moved without this moving with it
 		 */
 		public static Mode of(String rightsMode) {
+			if (rightsMode == null) {
+				throw new IllegalArgumentException("a role with no rights mode at all");
+			}
 			return switch (rightsMode) {
 				case "all" -> ALL;
 				case "granted" -> GRANTED;
 				case "none" -> NONE;
-				default -> throw new IllegalArgumentException("nepoznat nacin prava: " + rightsMode);
+				default -> throw new IllegalArgumentException("unknown rights mode: " + rightsMode);
 			};
 		}
 	}
@@ -53,6 +56,12 @@ public record AdminRights(Mode mode, Set<String> granted) {
 	 * check had been made.
 	 */
 	public AdminRights {
+		if (mode == null) {
+			/* Refused where it is built rather than where it is asked. Without this, an object
+			   with no mode is constructed happily and falls over on the first question - which
+			   is somebody's request, and a long way from the line that made it. */
+			throw new IllegalArgumentException("rights with no mode at all");
+		}
 		granted = Set.copyOf(granted);
 	}
 
