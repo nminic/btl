@@ -455,6 +455,14 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				// PDL P21: deleting a member takes his results with him
 				"result.result_competitor_fk cascade",
 				"result.result_race_fk cascade",
+				/* V10, and the run that is waiting obeys the same two sentences the finished one
+				   does: it goes with its member (PDL P21) and it goes with its race. The two
+				   codebooks RESTRICT exactly as they do from `competitor` and `btl_event`, which is
+				   what stops a delta dropping a town a waiting run names. */
+				"result_submission.result_submission_competitor_fk cascade",
+				"result_submission.result_submission_country_fk restrict",
+				"result_submission.result_submission_place_fk restrict",
+				"result_submission.result_submission_race_fk cascade",
 				/* V9, and each of the four says something different about what a queue row is.
 				   The member's rows go with him, as his results do (owner, 11.09.2026, ADL A42).
 				   The moderator's name empties rather than taking the decision with it, because the
@@ -464,7 +472,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"verification.verification_competitor_fk cascade",
 				"verification.verification_decided_by_fk set null",
 				"verification.verification_photo_fk set null",
-				"verification.verification_queue_fk restrict");
+				"verification.verification_queue_fk restrict",
+				/* And V10's fifth: a decision about a run that is gone is a decision about
+				   nothing, so it goes with it. */
+				"verification.verification_result_submission_fk cascade");
 	}
 
 	/**
@@ -486,6 +497,12 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 		db.sql(addTheReference()).update();
 
 		db.sql("alter table result drop constraint result_race_fk").update();
+		/* And the second key standing on the same index, which V10 added: a waiting run points
+		   at (id, date) for the same reason a finished one does. PostgreSQL refuses to drop an
+		   index another key depends on, so without this line the case fails on the DROP rather
+		   than on what it is about. That refusal is itself the fact: the key below is now load
+		   bearing for two tables and not one. */
+		db.sql("alter table result_submission drop constraint result_submission_race_fk").update();
 		db.sql("alter table race drop constraint race_day_unique").update();
 
 		/* The stack rather than the message: Spring words a statement the database

@@ -93,6 +93,18 @@ class VerificationConstraintsTest extends DatabaseTest {
 		return "insert into verification (" + COLUMNS + ") values (" + values + ")";
 	}
 
+	/** The run V10 gave the results tab to point at, which no other tab has. */
+	private static final String A_SUBMISSION =
+			"(select id from result_submission where race_name = 'Probna prijava')";
+
+	/** A row of a named tab carrying a named submission, which `row` above cannot write:
+	 *  its column list is V9's and this column is V10's. */
+	private static String pointingAt(String queue, String submission) {
+		return "insert into verification (queue, competitor_id, subject, body, state,"
+				+ " result_submission_id) values ('" + queue + "', " + A_MEMBER + ", 'Naslov', '',"
+				+ " 'waiting', " + submission + ")";
+	}
+
 	/**
 	 * A member, an account to decide with, and a photograph to attach.
 	 *
@@ -110,6 +122,14 @@ class VerificationConstraintsTest extends DatabaseTest {
 		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_side) values"
 				+ " ('image/jpeg', 40960, '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',"
 				+ " 0, 0, 512)").update();
+		/* And one run waiting to be judged, for the three constraints V10 adds. Described rather
+		   than from the calendar, because this probe has no event and no race in it and does not
+		   need one: what is being measured here is the pointer, not the run. */
+		db.sql("insert into result_submission (competitor_id, race_date, race_name, race_kind,"
+				+ " place_id, distance_km, ascent_m, descent_m, seconds, link, comment) values ("
+				+ A_MEMBER + ", date '2027-04-04', 'Probna prijava', 'free', " + A_TOWN
+				+ ", 10.00, 100, 100, 3600, '', '')").update();
+
 		/* And one row already waiting, because a primary key can only be broken by a row that
 		   collides with one that is there: against an empty table that case inserts nothing. */
 		db.sql(row("'teams', " + A_MEMBER + ", 'Zatecen red', '', null, 'waiting', null, null, null, null")).update();
@@ -206,7 +226,19 @@ class VerificationConstraintsTest extends DatabaseTest {
 								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', null")),
 				Violation.of("verification_decided_keeps_no_photo",
 						row("'profiles', " + A_MEMBER + ", 'Naslov', '', " + A_PHOTO + ", 'rejected', "
-								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Slika je mutna'")));
+								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Slika je mutna'")),
+
+				/* AND THE RUN THE RESULTS TAB POINTS AT, WHICH V10 ADDS. A run that is not
+				   there; the same run waiting twice, which would let one result be approved
+				   into `result` twice with nothing to say which was meant; and a run hanging
+				   off a tab that does not judge runs. */
+				Violation.of("verification_result_submission_fk", pointingAt("results", "999999")),
+				Violation.of("verification_result_submission_unique",
+						"insert into verification (queue, competitor_id, subject, body, state,"
+								+ " result_submission_id) select 'results', " + A_MEMBER + ", 'Naslov', '',"
+								+ " 'waiting', " + A_SUBMISSION + " from generate_series(1, 2)"),
+				Violation.of("verification_only_the_results_queue_carries_a_submission",
+						pointingAt("comments", A_SUBMISSION)));
 	}
 
 	@ParameterizedTest
@@ -294,6 +326,29 @@ class VerificationConstraintsTest extends DatabaseTest {
 				.single())
 				.as("the decision lost its name, or kept a pointer at an account that is gone")
 				.isEqualTo("Moderator Probni | bez naloga");
+	}
+
+	/**
+	 * And the results tab does carry the run it is about.
+	 *
+	 * <p>The three cases above all refuse something, so together they are satisfied by a
+	 * column nothing may ever be written into. This is the row that has to go in: the
+	 * whole point of V10 is that this tab finally has something to point at, and until
+	 * now it had only `subject` and `body`, two pieces of prose that no result can be
+	 * computed out of.
+	 */
+	@Test
+	void theResultsTabCarriesTheRunItIsAbout() {
+		assertThat(db.sql(pointingAt("results", A_SUBMISSION)).update()).isOne();
+
+		/* And it points at something. A_SUBMISSION is a subselect, and a subselect that finds
+		   nothing is NULL - which the key accepts, which the check accepts, and which would let
+		   the line above pass while pointing at nothing at all. */
+		assertThat(db.sql("select count(*) from verification where result_submission_id is not null")
+				.query(Long.class)
+				.single())
+				.as("the row went in with an empty pointer, so nothing here is about V10 at all")
+				.isOne();
 	}
 
 	/**

@@ -311,7 +311,7 @@ class ConstraintsTest extends DatabaseTest {
 		List<String> claimed = Stream
 				.of(TABLES, RoleAndRightConstraintsTest.TABLES, AccountConstraintsTest.TABLES,
 						AxisConstraintsTest.TABLES, RegistrationConstraintsTest.TABLES,
-						VerificationConstraintsTest.TABLES)
+						VerificationConstraintsTest.TABLES, ResultSubmissionConstraintsTest.TABLES)
 				.flatMap(List::stream)
 				.toList();
 

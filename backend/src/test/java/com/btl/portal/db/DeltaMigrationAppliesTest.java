@@ -451,7 +451,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 						rest -> {
 						},
 						towns -> towns.remove(towns.size() - 1)),
-						"the codebook drops a row a member or an event may be standing on",
+						"the codebook drops a row somebody may be standing on",
 						lastTownOfTheCodebook()),
 
 				/* A country and nothing else. GB leaves and UK arrives with a
@@ -473,7 +473,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 								}
 							}
 						}),
-						"the codebook drops a row a member or an event may be standing on",
+						"the codebook drops a row somebody may be standing on",
 						"Ujedinjeno Kraljevstvo (GB)"),
 
 				/* Both codebooks at once, and the case that says which refusal
@@ -488,7 +488,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 							countryNamed(rest, "CG").put("name", freed);
 						},
 						towns -> townsOfCountryLeave(towns, "CD")),
-						"the codebook drops a row a member or an event may be standing on",
+						"the codebook drops a row somebody may be standing on",
 						"Kongo - Kinšasa (CD)"));
 	}
 
@@ -584,10 +584,36 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * before.
 	 */
 	private static String oldInstructionFor(Pressure pressure) {
-		String table = pressure.constraint().startsWith("competitor") ? "competitor" : "btl_event";
-		String which = "competitor".equals(table) ? "member_number = '000904'" : "slug = 'cetvrta-proba-2027'";
+		String table = pressure.constraint().startsWith("competitor") ? "competitor"
+				: pressure.constraint().startsWith("result_submission") ? "result_submission" : "btl_event";
+		String which = switch (table) {
+			case "competitor" -> "member_number = '000904'";
+			case "result_submission" -> "race_name = 'Trka kroz sumu'";
+			default -> "slug = 'cetvrta-proba-2027'";
+		};
 
 		return "update " + table + " set place_id = null, city = 'Zaselak' where " + which;
+	}
+
+	/**
+	 * A run waiting in the queue standing on the codebook, with the member under it
+	 * standing on something else.
+	 *
+	 * <p>One statement, because a case is one statement: the member is written in the
+	 * same breath through a data-modifying CTE. He holds a TYPED town in another
+	 * country on purpose. Standing him on the same row would have the DELETE come back
+	 * naming {@code competitor_place_fk}, and the case would be measuring a key it is
+	 * not about.
+	 */
+	private static String submissionStandingOn(String town, String city, String country) {
+		return "with runner as (insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000905',"
+				+ " 'Probni', 'Trkac', 'M', date '1991-06-06', null, 'Zaselak', " + ANOTHER_COUNTRY
+				+ ", 2027, false, true, 'payment', '00112233445566cd', null, '', false, 'none', 'Otac',"
+				+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id)"
+				+ " insert into result_submission (competitor_id, race_date, race_name, race_kind, place_id,"
+				+ " city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment)"
+				+ " select id, date '2027-06-06', 'Trka kroz sumu', 'free', " + town + ", " + city + ", "
+				+ country + ", 10.00, 100, 100, 3600, '', '' from runner";
 	}
 
 	private static String eventStandingOn(String town, String city, String country) {
@@ -630,7 +656,24 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS,
 						"update btl_event set country_id = " + ANOTHER_COUNTRY
 								+ " where slug = 'cetvrta-proba-2027'",
-						"btl_event_country_fk"));
+						"btl_event_country_fk"),
+
+				/* And the two V10 adds, which is the third thing in the schema that names a town
+				   of the codebook: a run reported from a race that is NOT in the calendar. It is
+				   not the same case as the event's, even though an approval turns one into the
+				   other - this row exists while nobody has approved anything, which is exactly
+				   the window in which a delta could arrive and find a town it may not drop. */
+				new Pressure("a waiting run stands on a town the codebook drops", "result_submission_place_fk",
+						submissionStandingOn(A_TOWN, "null", "null"), "delete from place where rank = 1",
+						movedOff("result_submission", "race_name = 'Trka kroz sumu'", THE_TOWNS_COUNTRY),
+						"result_submission_typed_town_names_its_country"),
+				new Pressure("a waiting run stands on a country the codebook drops",
+						"result_submission_country_fk",
+						submissionStandingOn("null", "'Zaselak'", A_COUNTRY_WITH_NO_TOWNS),
+						"delete from country where id = " + A_COUNTRY_WITH_NO_TOWNS,
+						"update result_submission set country_id = " + ANOTHER_COUNTRY
+								+ " where race_name = 'Trka kroz sumu'",
+						"result_submission_country_fk"));
 	}
 
 	/**
@@ -896,7 +939,13 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 			Verdict.measuredBy("competitor_place_fk", "a member stands on a town the codebook drops"),
 			Verdict.measuredBy("competitor_country_fk", "a member stands on a country the codebook drops"),
 			Verdict.measuredBy("btl_event_place_fk", "an event stands on a town the codebook drops"),
-			Verdict.measuredBy("btl_event_country_fk", "an event stands on a country the codebook drops"));
+			Verdict.measuredBy("btl_event_country_fk", "an event stands on a country the codebook drops"),
+
+			/* And the two V10 adds, for the same reason and with the same kind of case. */
+			Verdict.measuredBy("result_submission_place_fk",
+					"a waiting run stands on a town the codebook drops"),
+			Verdict.measuredBy("result_submission_country_fk",
+					"a waiting run stands on a country the codebook drops"));
 
 	/**
 	 * Both sides of a codebook, and the second side is what this asked nothing
@@ -1161,7 +1210,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 */
 	private static Change aCodebookRowLeaves() {
 		return refusals().stream()
-				.filter(one -> "the codebook drops a row a member or an event may be standing on".equals(one.says()))
+				.filter(one -> "the codebook drops a row somebody may be standing on".equals(one.says()))
 				.map(Refusal::change)
 				.findFirst()
 				.orElseThrow();
