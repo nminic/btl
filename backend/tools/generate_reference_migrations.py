@@ -988,12 +988,16 @@ def no_country_takes_a_name_still_worn(before, added, changed, removed):
 def no_codebook_row_leaves(country_before, country_removed, place_before, place_removed):
     """A delta adds rows to a codebook and changes them. It never takes one out.
 
-    V7 points at both codebooks ON DELETE RESTRICT, four times over:
-    `competitor_place_fk` and `competitor_country_fk` from the member,
-    `btl_event_place_fk` and `btl_event_country_fk` from the event. So a town or
-    a country that leaves is a DELETE the database refuses the moment one member
-    or one event names it, and which rows those are is something only that
-    database knows. This script is handed two files.
+    Several keys point at both codebooks ON DELETE RESTRICT, and WHICH ONES IS
+    NOT WRITTEN HERE: DELTA_HEAD above names them, a test reads that sentence
+    against the catalogue, and this was two homes for one fact until a round on
+    11.09.2026 found them disagreeing - the header had been brought up to date
+    and this had not. The number only ever goes up: four in V7, six with V10, ten
+    with V11, all in a fortnight.
+
+    So a town or a country that leaves is a DELETE the database refuses the
+    moment anything at all names it, and which rows those are is something only
+    that database knows. This script is handed two files.
 
     A DELETE written blind is therefore a migration that stops halfway through on
     a live database with `update or delete on table "place" violates foreign key
@@ -1049,9 +1053,9 @@ def no_codebook_row_leaves(country_before, country_removed, place_before, place_
                + [f'{place_names[mark]} ({mark})' for mark in place_removed])
 
     if leaving:
-        raise SystemExit('the codebook drops a row a member or an event may be standing on: '
+        raise SystemExit('the codebook drops a row somebody may be standing on: '
                          + ', '.join(leaving)
-                         + '\ncompetitor and btl_event point at both codebooks ON DELETE RESTRICT (V7) and this '
+                         + '\nseveral tables point at both codebooks ON DELETE RESTRICT, and DELTA_HEAD names which; this '
                            'script reads two files, so it cannot see which rows are worn; this one is a '
                            'migration written by hand, and ADL A40 is where what it has to do is written down.'
                            '\n\nThree things rather than one, and the second is the half nobody works out '
