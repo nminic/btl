@@ -445,6 +445,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   league, both are the register of members, and the register keeps nothing about
 				   somebody who is no longer in it. */
 				"competitor_document.competitor_document_competitor_fk cascade",
+				/* V15. Vrsta velicine je sifarnik pa RESTRICT, kao i svaki drugi. Priznanje ide sa
+				   clanom, ali definicija NE odlazi dok je neko ima: sta je osvojeno ostaje osvojeno,
+				   pa prepisivanje spiska znacaka ne sme tiho da odnese tudja priznanja. */
+				"ducat.ducat_kind_fk restrict",
+				"ducat_award.ducat_award_competitor_fk cascade",
+				"ducat_award.ducat_award_ducat_fk restrict",
+				"ducat_award.ducat_award_kind_fk restrict",
 				"email_verification_token.email_verification_token_account_fk cascade",
 				// the comment outlives its author and keeps his name as text
 				"event_comment.event_comment_competitor_fk set null",
