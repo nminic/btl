@@ -3,7 +3,6 @@ package com.btl.portal.web;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -64,12 +63,28 @@ class ApiSecurity {
 	 * purpose and which the container's own probe calls. Without this second chain
 	 * the default one would apply and would ask a machine-to-machine probe to log
 	 * in.
+	 *
+	 * <p><b>AND THIS CHAIN KEEPS NO SESSION EITHER.</b> It carried CSRF protection
+	 * until a security round on 11.09.2026 measured what that costs against a live
+	 * server: the default token repository is the one kept IN THE SESSION, so it
+	 * calls {@code getSession()} the moment an unsafe method arrives without a
+	 * token - before anything has decided whether the path even exists. A POST to a
+	 * made up address came back 403 with a fresh {@code JSESSIONID} on it, and two
+	 * of them came back with two different ones, which is a server handing out
+	 * state to anybody who asks for it in a loop.
+	 *
+	 * <p>Turning it off here is the same sentence as on the chain above, for the
+	 * same reason: CSRF protection guards a browser that sends credentials it was
+	 * given, and nothing in this application gives any. It comes back with the
+	 * cookie it is about, and when it does it will be the chain that HAS the cookie
+	 * that gets it.
 	 */
 	@Bean
 	SecurityFilterChain everythingElse(HttpSecurity http) throws Exception {
 		return http
 				.authorizeHttpRequests(routes -> routes.anyRequest().permitAll())
-				.csrf(Customizer.withDefaults())
+				.csrf(csrf -> csrf.disable())
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.build();
 	}
 }

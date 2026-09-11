@@ -92,6 +92,35 @@ class ApiSecurityTest {
 	}
 
 	/**
+	 * NOTHING HANDS OUT A SESSION, on either chain, to anybody.
+	 *
+	 * <p>The configuration says in as many words that it keeps no session until
+	 * somebody signs in, and until a security round on 11.09.2026 that was true of
+	 * one of its two chains. The other carried CSRF protection, whose default token
+	 * repository lives IN THE SESSION, so an unsafe method arriving without a token
+	 * created one before anything had decided whether the path existed at all. A
+	 * POST to a made up address came back 403 with a fresh JSESSIONID, and two of
+	 * them came back with two different ones.
+	 *
+	 * <p>Asked of the request rather than of the response: a session that was
+	 * created is what matters, and whether the servlet container got as far as
+	 * writing a cookie for it is a detail of how the request was carried. The four
+	 * paths are the two chains times the two kinds of method, because the chain
+	 * that leaked was the one nothing else in this file touches.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"/api/places", "/api/nema-ovoga", "/actuator/health", "/nema-ni-ovoga"})
+	void nothingHandsOutASessionToAnybody(String path) throws Exception {
+		assertThat(http.perform(get(path)).andReturn().getRequest().getSession(false))
+				.as("reading %s handed out a session", path)
+				.isNull();
+
+		assertThat(http.perform(post(path)).andReturn().getRequest().getSession(false))
+				.as("writing to %s handed out a session to somebody who is not signed in", path)
+				.isNull();
+	}
+
+	/**
 	 * The health check stays reachable, because the container's own probe calls it.
 	 *
 	 * <p>It lives outside {@code /api} and is what the second chain exists for.
