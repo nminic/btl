@@ -72,11 +72,30 @@ public final class StoredPassword {
 	/**
 	 * Whether a typed password is the one that was stored.
 	 *
+	 * <p><strong>A stored value the portal does not recognise is "no", not an
+	 * error.</strong> The delegating encoder throws when what it is handed carries no
+	 * {@code {algorithm}} prefix it knows, and on the path this sits on - somebody
+	 * signing in - that would be a server error rather than "wrong password". A person
+	 * typing his password wrongly and a row that has been corrupted would then look
+	 * completely different to him, and only one of those is his to fix.
+	 *
+	 * <p>It is belt and braces rather than the only guard: V18 puts
+	 * {@code account_password_hash_shape} on the column, so a value without a prefix
+	 * cannot be written through the portal at all. This is what happens if one arrives
+	 * some other way.
+	 *
+	 * <p>Found by a round on 11.09.2026, before this was wired to anything.
+	 *
 	 * @param typed  what somebody just typed, never null
 	 * @param stored what the database holds, never null
 	 */
 	public boolean matches(String typed, String stored) {
-		return encoder.matches(typed, stored);
+		try {
+			return encoder.matches(typed, stored);
+		}
+		catch (IllegalArgumentException unrecognised) {
+			return false;
+		}
 	}
 
 	/**

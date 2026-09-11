@@ -33,6 +33,36 @@ class StoredPasswordTest {
 	}
 
 	/**
+	 * A stored value the portal does not recognise is "no", not an error.
+	 *
+	 * <p>On the path this sits on - somebody signing in - an exception would be a
+	 * server error rather than "wrong password", and a person who mistyped his
+	 * password and a row that has been corrupted would see completely different
+	 * things while only one of them is his to fix.
+	 *
+	 * <p>Three shapes, because the encoder treats them differently and only one of
+	 * them was ever safe: nothing at all, a value with no prefix, and a value whose
+	 * prefix names an algorithm that does not exist. Found by a round on 11.09.2026,
+	 * before this was wired to anything.
+	 */
+	@Test
+	void aStoredValueThePortalDoesNotRecogniseIsNoRatherThanAnError() {
+		StoredPassword portal = new StoredPassword();
+
+		assertThat(portal.matches(PASSWORD, "")).isFalse();
+		assertThat(portal.matches(PASSWORD, "ovo-nije-nikakav-otisak"))
+				.as("a stored value with no prefix was a server error instead of a refusal")
+				.isFalse();
+		assertThat(portal.matches(PASSWORD, "{nepoznato}bilo-sta"))
+				.as("a prefix naming an algorithm nobody has was a server error instead of a refusal")
+				.isFalse();
+
+		assertThat(portal.matches(PASSWORD, portal.of(PASSWORD)))
+				.as("the guard swallowed a real answer as well")
+				.isTrue();
+	}
+
+	/**
 	 * Two members who choose the same password are not visibly the same in the
 	 * table.
 	 *
