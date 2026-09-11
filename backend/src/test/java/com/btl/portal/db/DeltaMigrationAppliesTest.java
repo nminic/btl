@@ -985,6 +985,12 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 			Verdict.outOfReach("price_row_pk", "a delta does not touch the price list at all"),
 			Verdict.outOfReach("price_row_key_unique", "a delta does not touch the price list at all"),
 			Verdict.outOfReach("price_row_sort_order_unique", "a delta does not touch the price list at all"),
+			/* And the key V16 pointed AT the price list. It is out of reach for the same reason
+			   the three above are: a delta writes towns and countries and never touches the
+			   price list, so no delta can trip this one either. It is here because the question
+			   is asked of every key that stands on OR points at a codebook, and silence about a
+			   key is what this floor exists to refuse. */
+			Verdict.outOfReach("payment_price_row_fk", "a delta does not touch the price list at all"),
 
 			/* And the four that point AT the codebooks, which this list did not
 			   ask about at all until 09.09.2026: the question put to
