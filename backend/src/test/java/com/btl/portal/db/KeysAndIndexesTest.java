@@ -233,7 +233,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("season_team_one_per_place", false,
 					"one place per season, written once when the season freezes and never moved"),
 			new Key("season_league_standing_pk", false,
-					"a surrogate key nothing outside the portal sees"));
+					"a surrogate key nothing outside the portal sees"),
+			new Key("season_league_standing_one_per_place", false,
+					"one place per league per gender per season, written once when the season freezes"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {

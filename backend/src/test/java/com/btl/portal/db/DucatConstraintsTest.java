@@ -184,6 +184,11 @@ class DucatConstraintsTest extends DatabaseTest {
 				/* And a badge that is not a run at all, claiming a tier rise. */
 				Violation.of("ducat_tier_rises_inside_the_run",
 						ducat("'duk-nov', 'Nov', 'points', 500, 'season', 2, 0, 0, 250")),
+				/* And a tier that rises BETWEEN two pieces of the run: a hundred races every
+				   hundred to a thousand, with the tier rising at a hundred and thirty-seven,
+				   which is not a threshold anybody can reach. Found by a round on 11.09.2026. */
+				Violation.of("ducat_tier_rises_inside_the_run",
+						ducat("'duk-nov', 'Nov', 'raceCount', 100, 'always', 3, 100, 1000, 137")),
 
 				/* WHO HAS WON WHICH. */
 				Violation.notNull("ducat_award_id_not_null", "id",

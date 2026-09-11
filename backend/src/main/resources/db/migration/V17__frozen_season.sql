@@ -150,7 +150,22 @@ create table season_league_standing (
     constraint season_league_standing_position_positive check (position > 0),
     constraint season_league_standing_gender_known check (gender in ('M', 'F')),
     constraint season_league_standing_who_not_blank check (who is null or btrim(who) <> ''),
-    constraint season_league_standing_points_not_negative check (points >= 0)
+    constraint season_league_standing_points_not_negative check (points >= 0),
+
+    /* ONE PLACE PER LEAGUE PER GENDER PER SEASON, which the two tables above have had from the
+       start and this one did not until a round on 11.09.2026 found it. Two first places in one
+       league went in without a word, and the floor over `pg_constraint` could not have caught
+       it: that floor says every constraint that IS declared has a row that breaks it, never
+       that a constraint which ought to exist does.
+
+       PLAIN UNIQUE AND NOT `NULLS NOT DISTINCT`, and that is a deliberate disagreement with the
+       note the round left. `league_id` empties only when a league is DELETED, and these rows are
+       written when a season freezes - at which point the league is still there. So a null here
+       is always history that was already written, and treating two nulls as equal would refuse
+       the frozen standings of two different leagues that have both since been deleted, which is
+       a legitimate pair of rows. The write path is the one that needs guarding, and on it the
+       key is never null. */
+    constraint season_league_standing_one_per_place unique (season, league_id, gender, position)
 );
 
 create index season_league_standing_season_idx on season_league_standing (season);

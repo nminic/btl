@@ -218,7 +218,13 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 				Violation.notNull("season_league_standing_points_not_null", "points",
 						standing("2028, " + A_LEAGUE + ", 'Liga', 1, " + A_MEMBER + ", 'Neko', 'M', null")),
 				Violation.of("season_league_standing_points_not_negative",
-						standing("2028, " + A_LEAGUE + ", 'Liga', 1, " + A_MEMBER + ", 'Neko', 'M', -1")));
+						standing("2028, " + A_LEAGUE + ", 'Liga', 1, " + A_MEMBER + ", 'Neko', 'M', -1")),
+				/* TWO FIRST PLACES IN ONE LEAGUE, which went in without a word until a round on
+				   11.09.2026. The probe already holds first place among the men of this league
+				   in 2027, and this is the same place given to somebody else. */
+				Violation.of("season_league_standing_one_per_place",
+						standing("2027, " + A_LEAGUE + ", 'Zamrznuta liga', 1, " + A_WOMAN
+								+ ", 'Prva Zamrznuta', 'M', 500")));
 	}
 
 	@ParameterizedTest
@@ -272,6 +278,32 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 		assertThat(db.sql(rank("2027, 1, " + A_WOMAN + ", 'Prva Zamrznuta', 'F', 'senior', 1100, 18"))
 				.update())
 				.as("there could not be a first place among the women while there was one among the men")
+				.isOne();
+	}
+
+	/**
+	 * First among the men and first among the women of the SAME league are two
+	 * different places, and so is first place in another league.
+	 *
+	 * <p>Three rows that all say "position 1, season 2027" and all go in, which is
+	 * what says the key is over the four columns and not over fewer. A key that
+	 * forgot the gender would refuse the second; one that forgot the league would
+	 * refuse the third.
+	 */
+	@Test
+	void eachLeagueHasAFirstAmongTheMenAndAFirstAmongTheWomen() {
+		assertThat(db.sql(standing("2027, " + A_LEAGUE + ", 'Zamrznuta liga', 1, " + A_WOMAN
+				+ ", 'Prva Zamrznuta', 'F', 700")).update())
+				.as("there could not be a first place among the women of a league that has one"
+						+ " among the men")
+				.isOne();
+
+		db.sql("insert into league (slug, name, season, rules, prizes, admin_id) values"
+				+ " ('druga-zamrznuta-liga', 'Druga zamrznuta liga', 2027, '', '', null)").update();
+
+		assertThat(db.sql(standing("2027, (select id from league where slug = 'druga-zamrznuta-liga'),"
+				+ " 'Druga zamrznuta liga', 1, " + A_WOMAN + ", 'Prva Zamrznuta', 'M', 300")).update())
+				.as("a second league could not have a first place of its own")
 				.isOne();
 	}
 

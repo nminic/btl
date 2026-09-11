@@ -99,7 +99,13 @@ create table ducat (
     constraint ducat_a_run_is_a_whole_number_of_steps
         check (step = 0 or mod(last - threshold, step) = 0),
 
-    /* And the tier rises inside the run or not at all.
+    /* And the tier rises ON A STEP of the run, or not at all.
+
+       THE STEP HALF WAS MISSING until a round on 11.09.2026. The owner's decision of 10.08.2026
+       is about the PIECES of a series - "Prva cetiri komada svake serije su treci stepen,
+       preostalih sest cetvrti" - so the place where the tier rises has to be one of them. Both
+       rows that exist land on a step (fifty and five hundred), but nothing said they had to,
+       and a badge whose tier rose at a hundred and thirty-seven races went in without a word.
 
        THIS ALSO SAYS THE RUN ENDS ABOVE WHERE IT STARTS, and a separate check saying so was
        written here and then removed: `tier_up_from > threshold and tier_up_from <= last` cannot
@@ -108,7 +114,8 @@ create table ducat (
        measuring this constraint while naming that one. Found while writing that case. */
     constraint ducat_tier_rises_inside_the_run
         check (case when step = 0 then tier_up_from = 0
-                    else tier_up_from > threshold and tier_up_from <= last end)
+                    else tier_up_from > threshold and tier_up_from <= last
+                             and mod(tier_up_from - threshold, step) = 0 end)
 );
 
 create index ducat_kind_idx on ducat (kind);
@@ -135,7 +142,7 @@ insert into ducat (code, name, kind, threshold, period, tier, step, last, tier_u
     ('duk-polumaratoni',    'Polumaratoni',       'halfCount',     100,   'always', 3, 0,   0,    0),
     ('duk-duze-trke',       'Duže trke',          'longCount',     100,   'always', 4, 0,   0,    0),
     ('duk-maratoni',        'Maratoni',           'marathonCount', 100,   'always', 4, 0,   0,    0),
-    ('duk-uspon',           'Uspon',              'totalAscent',   100000,'always', 4, 0,   0,    0),
+    ('duk-uspon',           'Karmanov uspon',     'totalAscent',   100000,'always', 4, 0,   0,    0),
     ('duk-ultramaratoni',   'Ultramaratoni',      'ultraCount',    100,   'always', 4, 0,   0,    0),
     ('duk-obim-planete',    'Obim planete',       'totalKm',       40075, 'always', 5, 0,   0,    0);
 
