@@ -75,6 +75,39 @@ class SecretTokenTest {
 		assertThat(hashes).as("two different secrets hashed to the same thing").hasSize(500);
 	}
 
+	/**
+	 * NOTHING PRINTED EVER CARRIES THE SECRET.
+	 *
+	 * <p>A record writes every field into its own {@code toString}, so this is the one
+	 * case standing between a live session cookie and a log line. A round on
+	 * 11.09.2026 found it printing the secret in full.
+	 */
+	@Test
+	void nothingPrintedEverCarriesTheSecret() {
+		SecretToken token = SecretToken.fresh();
+
+		assertThat(token.toString())
+				.as("a line that logged the whole token would put a live secret in the log")
+				.doesNotContain(token.secret())
+				.contains(token.hash());
+	}
+
+	/**
+	 * And the numbers come from a generator that is meant for this.
+	 *
+	 * <p>"Unpredictable" is not a property any number of samples can show: five hundred
+	 * draws from a generator seeded with forty-two are all different from each other
+	 * too, and every other case in this file passes with one. What can be said is WHICH
+	 * generator, so that is what this asks. A round on 11.09.2026 measured exactly that
+	 * gap.
+	 */
+	@Test
+	void theNumbersComeFromAGeneratorMeantForThis() {
+		assertThat(SecretToken.source())
+				.as("the source of randomness is no longer one built for secrets")
+				.isInstanceOf(java.security.SecureRandom.class);
+	}
+
 	/** The hash does not carry the secret, in either direction. */
 	@Test
 	void theHashSaysNothingAboutTheSecret() {

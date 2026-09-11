@@ -59,6 +59,35 @@ public record SecretToken(String secret, String hash) {
 	}
 
 	/**
+	 * NEVER THE SECRET, whatever is printed.
+	 *
+	 * <p>A record writes every one of its fields into its own {@code toString}, so
+	 * without this any line that logged the whole object rather than one of its parts
+	 * would put a live activation link, session cookie or password reset link into the
+	 * log - and a log is usually easier to reach than a database. The whole reason the
+	 * schema keeps only the hash is the "somebody took a copy of the database" case,
+	 * and a generated {@code toString} walks around it.
+	 *
+	 * <p>Found by a round on 11.09.2026, before this was wired to anything.
+	 */
+	@Override
+	public String toString() {
+		return "SecretToken[hash=" + hash + "]";
+	}
+
+	/**
+	 * The source of randomness, named so that a case can say what it is.
+	 *
+	 * <p>Not for callers. It exists because "the numbers are unpredictable" is not a
+	 * property any number of samples can demonstrate: five hundred draws from a
+	 * generator seeded with forty-two are all different from each other too. What can
+	 * be said is WHICH generator, and that is what the case asks.
+	 */
+	static java.security.SecureRandom source() {
+		return RANDOM;
+	}
+
+	/**
 	 * What a secret somebody has just handed back hashes to, so it can be looked up.
 	 *
 	 * <p>This is the only way the portal ever asks about a token: it never compares
