@@ -96,7 +96,14 @@ class ConventionsTest extends DatabaseTest {
 	void noExtensionIsInstalledBeyondTheOneEveryDatabaseIsBornWith() {
 		List<String> installed = db.sql("select extname from pg_extension order by extname").query(String.class).list();
 
-		assertThat(installed).containsExactly("plpgsql");
+		/* And `btree_gist` from V11, which is the first extension this schema has needed and the
+		   moment V1 wrote about: "The first migration that needs one creates it." What needs it is
+		   `team_membership_one_team_at_a_time`, and nothing smaller says that sentence - a unique
+		   key over the member says he was never in two teams at all, and a partial one over the
+		   rows that have not ended leaves two finished overlapping memberships writable. An
+		   exclusion constraint says it, and this is what lets equality on a plain integer sit in
+		   the same index as an overlapping range. */
+		assertThat(installed).containsExactly("btree_gist", "plpgsql");
 	}
 
 	/**
@@ -120,7 +127,7 @@ class ConventionsTest extends DatabaseTest {
 		assertThat(tablesInTheSchema()).containsExactly("account", "admin_right", "attending", "btl_event",
 				"competitor", "competitor_document", "country", "email_verification_token", "event_comment",
 				"parental_consent", "photo", "place", "price_row", "race", "result", "result_submission", "role",
-				"verification");
+				"team", "team_membership", "team_proposal", "verification");
 	}
 
 	/**

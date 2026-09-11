@@ -463,6 +463,21 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"result_submission.result_submission_country_fk restrict",
 				"result_submission.result_submission_place_fk restrict",
 				"result_submission.result_submission_race_fk cascade",
+				/* V11, i svaki od njih kaze nesto drugo o tome sta je tim. Sastav i predlozi idu sa
+				   timom i sa clanom; oba sifarnika RESTRICT, kao svuda; a znak i imenovani
+				   administrator se PRAZNE, jer slika sme da se obrise a administrator sme da trazi
+				   brisanje naloga (PDL P23) - i ni u jednom od ta dva slucaja tim ne nestaje. */
+				"team.team_admin_fk set null",
+				"team.team_country_fk restrict",
+				"team.team_logo_fk set null",
+				"team.team_place_fk restrict",
+				"team_membership.team_membership_competitor_fk cascade",
+				"team_membership.team_membership_team_fk cascade",
+				"team_proposal.team_proposal_competitor_fk cascade",
+				"team_proposal.team_proposal_country_fk restrict",
+				"team_proposal.team_proposal_logo_fk set null",
+				"team_proposal.team_proposal_place_fk restrict",
+				"team_proposal.team_proposal_team_fk cascade",
 				/* V9, and each of the four says something different about what a queue row is.
 				   The member's rows go with him, as his results do (owner, 11.09.2026, ADL A42).
 				   The moderator's name empties rather than taking the decision with it, because the
@@ -475,7 +490,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"verification.verification_queue_fk restrict",
 				/* And V10's fifth: a decision about a run that is gone is a decision about
 				   nothing, so it goes with it. */
-				"verification.verification_result_submission_fk cascade");
+				"verification.verification_result_submission_fk cascade",
+				/* I sesti kljuc reda za verifikaciju, iz istog razloga kao peti: predlog koga nema
+				   je predlog ni o cemu. */
+				"verification.verification_team_proposal_fk cascade");
 	}
 
 	/**
