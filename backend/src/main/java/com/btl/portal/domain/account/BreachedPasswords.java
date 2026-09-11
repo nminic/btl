@@ -80,7 +80,23 @@ public final class BreachedPasswords {
 	private static Set<String> read(BufferedReader reader) throws IOException {
 		Set<String> folded = new HashSet<>();
 		String line;
+		boolean first = true;
 		while ((line = reader.readLine()) != null) {
+			/* THE BYTE ORDER MARK, which is not whitespace and which `strip` therefore leaves
+			   exactly where it is. A file saved by an editor that writes one would put an
+			   invisible character on the FIRST entry, so that entry would never match anything a
+			   member types - and the password it was supposed to refuse would be accepted.
+
+			   This portal has paid for this class of mistake once already: ADL A38 records
+			   U+200B, U+FEFF and U+00AD going straight through a check on the email address that
+			   was written as a check on spaces. Found here by a round on 11.09.2026, before the
+			   list was replaced by a downloaded one - which is exactly when it would have bitten,
+			   because a downloaded file is not one anybody looks at. */
+			if (first && !line.isEmpty() && line.charAt(0) == '\uFEFF') {
+				line = line.substring(1);
+			}
+			first = false;
+
 			String entry = line.strip();
 			if (entry.isEmpty() || entry.startsWith("#")) {
 				continue;
@@ -91,6 +107,15 @@ public final class BreachedPasswords {
 								+ " protiv liste, jer je duzina prva provera: " + entry);
 			}
 			folded.add(PasswordPolicy.fold(entry));
+		}
+		if (folded.isEmpty()) {
+			/* AND A FILE THAT HOLDS NOTHING IS REFUSED, not just one that is not there.
+			   Until a round on 11.09.2026 only the second was, while the comment above claimed
+			   both - and the difference is the whole point: a policy checking an empty list
+			   looks exactly like one that works, and goes on looking like it until somebody
+			   uses a leaked password. */
+			throw new IllegalStateException("lista procurelih lozinki je prazna, pa druga provera"
+					+ " ne bi odbila nijednu lozinku");
 		}
 		return folded;
 	}

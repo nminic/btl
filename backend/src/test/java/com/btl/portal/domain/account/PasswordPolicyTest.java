@@ -78,8 +78,27 @@ class PasswordPolicyTest {
 	 */
 	@Test
 	void foldingDoesNotDependOnWhereTheServerIs() {
-		assertThat(PasswordPolicy.fold("ILOVEYOUFOREVER")).isEqualTo("iloveyouforever");
-		assertThat(PasswordPolicy.fold("I")).isEqualTo("i");
+		/* THE DEFAULT LOCALE IS ACTUALLY MOVED, and until a round on 11.09.2026 it was not:
+		   the case asserted fold("I") == "i", which is true under every locale this ever runs
+		   under, so taking Locale.ROOT out passed green. The symptom only appears on a machine
+		   nobody runs the tests on, which is exactly why the locale has to be moved here. */
+		java.util.Locale was = java.util.Locale.getDefault();
+		try {
+			java.util.Locale.setDefault(java.util.Locale.forLanguageTag("tr-TR"));
+
+			assertThat("I".toLowerCase())
+					.as("the default locale did not move, so this case measures nothing")
+					.isEqualTo("\u0131");
+
+			assertThat(PasswordPolicy.fold("I"))
+					.as("folding followed the machine's locale, so a password refused in Belgrade"
+							+ " would be accepted in Istanbul")
+					.isEqualTo("i");
+			assertThat(PasswordPolicy.fold("ILOVEYOUFOREVER")).isEqualTo("iloveyouforever");
+		}
+		finally {
+			java.util.Locale.setDefault(was);
+		}
 	}
 
 	/**
@@ -170,6 +189,87 @@ class PasswordPolicyTest {
 		assertThatThrownBy(() -> loaded(folder, "duga lozinka ovde\nkratka\n"))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("kratka");
+	}
+
+	/**
+	 * And the loader counts characters the way a person counts them, not the way
+	 * UTF-16 does.
+	 *
+	 * <p>Six running figures are twelve UTF-16 units and six characters. Counted the
+	 * wrong way they look long enough and go into the list; counted the right way they
+	 * are refused, because nothing shorter than twelve characters can ever be reached.
+	 *
+	 * <p>The same check exists in {@link PasswordPolicy#judge(String)} and is guarded
+	 * there. Here it was not, and every entry any case had used was plain ASCII where
+	 * the two counts agree - so replacing one with the other passed green. Found by a
+	 * round on 11.09.2026.
+	 */
+	@Test
+	void theLoaderCountsCharactersTheWayAPersonDoes(@org.junit.jupiter.api.io.TempDir Path folder)
+			throws IOException {
+		String sixFigures = "🏃".repeat(6);
+
+		assertThat(sixFigures.length())
+				.as("the case no longer tells the two counts apart")
+				.isEqualTo(12);
+
+		assertThatThrownBy(() -> loaded(folder, sixFigures + "\n"))
+				.as("an entry of six characters went into the list, where nothing can ever reach it")
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	/**
+	 * A list that holds nothing is refused, exactly as one that is not there is.
+	 *
+	 * <p>These are two different failures with one consequence: the second rule stops
+	 * refusing anything, and a policy checking an empty list looks exactly like one
+	 * that works. Only the missing file was refused until a round on 11.09.2026, while
+	 * the comment beside it claimed both.
+	 */
+	@Test
+	void aListThatHoldsNothingIsRefusedTheSameWayAMissingOneIs(
+			@org.junit.jupiter.api.io.TempDir Path folder) throws IOException {
+		assertThatThrownBy(() -> loaded(folder, ""))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("prazna");
+
+		assertThatThrownBy(() -> loaded(folder, "# samo napomena\n\n   \n"))
+				.as("a file of nothing but remarks checks nothing and said so to nobody")
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("prazna");
+	}
+
+	/**
+	 * A byte order mark on the first line does not become part of the first entry.
+	 *
+	 * <p>It is not whitespace, so {@code strip} leaves it alone. An editor that writes
+	 * one would put an invisible character on the first password in the list, and that
+	 * password - the one the list was written to refuse - would be accepted.
+	 *
+	 * <p>ADL A38 records this portal paying for the same class of mistake once already,
+	 * on the email address. Found here before the list was replaced by a downloaded
+	 * one, which is exactly when it would have bitten: nobody opens a downloaded file.
+	 */
+	@Test
+	void aByteOrderMarkDoesNotBecomePartOfTheFirstEntry(@org.junit.jupiter.api.io.TempDir Path folder)
+			throws IOException {
+		BreachedPasswords withMark = loaded(folder, "\uFEFFpasswordpassword\nqwertyuiop123\n");
+
+		assertThat(withMark.size()).isEqualTo(2);
+		assertThat(withMark.knows("passwordpassword"))
+				.as("the first password in the list carries an invisible character and matches nothing")
+				.isTrue();
+		assertThat(withMark.knows("\uFEFFpasswordpassword"))
+				.as("the mark was kept and is now part of a password nobody will ever type")
+				.isFalse();
+
+		/* And a file whose very FIRST line is empty is read without the mark check reaching
+		   for a character that is not there. A file written by hand often begins with a blank
+		   line, and the check has to survive that rather than fall over on it. */
+		BreachedPasswords blankFirst = loaded(folder, "\npasswordpassword\n");
+
+		assertThat(blankFirst.size()).isOne();
+		assertThat(blankFirst.knows("passwordpassword")).isTrue();
 	}
 
 	/**
