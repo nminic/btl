@@ -312,7 +312,8 @@ class ConstraintsTest extends DatabaseTest {
 				.of(TABLES, RoleAndRightConstraintsTest.TABLES, AccountConstraintsTest.TABLES,
 						AxisConstraintsTest.TABLES, RegistrationConstraintsTest.TABLES,
 						VerificationConstraintsTest.TABLES, ResultSubmissionConstraintsTest.TABLES,
-						TeamConstraintsTest.TABLES)
+						TeamConstraintsTest.TABLES,
+						JoiningConstraintsTest.TABLES, InboxConstraintsTest.TABLES)
 				.flatMap(List::stream)
 				.toList();
 
