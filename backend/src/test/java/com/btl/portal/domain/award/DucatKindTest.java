@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,14 +38,44 @@ class DucatKindTest {
 				race("2027-07-05", "ultra", "HR", "80.00", 2000, 43200L, "55.50"));
 	}
 
+	/**
+	 * A field where no two bands hold the same NUMBER of races.
+	 *
+	 * <p>Its own field, and a round on 11.09.2026 is why. The field above holds
+	 * exactly one race of each band, so all five counters answered `1` and swapping
+	 * two of them - `shortCount` reading "half" and `halfCount` reading "short" -
+	 * passed every case green. Five counters reading one column and all agreeing on
+	 * the answer is five claims measuring nothing, and a badge once given is never
+	 * taken away (ADL A12, 4), so a swap like that hands out a badge nobody can
+	 * take back.
+	 *
+	 * <p>One short, two half, three long, four marathon, five ultra. Any counter
+	 * reading another counter's band now answers a different number.
+	 */
+	private static List<RaceDone> theBands() {
+		List<RaceDone> field = new ArrayList<>();
+		String[] bands = {"short", "half", "long", "marathon", "ultra"};
+
+		for (int band = 0; band < bands.length; band++) {
+			for (int which = 0; which <= band; which++) {
+				field.add(race("2027-03-0" + (which + 1), bands[band], "RS", "10.00", 100, 3000L, "5.00"));
+			}
+		}
+
+		return List.copyOf(field);
+	}
+
+	@ParameterizedTest(name = "{0} = {1}")
+	@CsvSource({"shortCount, 1", "halfCount, 2", "longCount, 3", "marathonCount, 4", "ultraCount, 5"})
+	void everyCounterCountsItsOwnBand(String code, String expected) {
+		assertThat(DucatKind.named(code).over(theBands()))
+				.as("%s counts another band's races", code)
+				.isEqualByComparingTo(expected);
+	}
+
 	@ParameterizedTest(name = "{0} = {1}")
 	@CsvSource({
 			"raceCount,      5",
-			"shortCount,     1",
-			"halfCount,      1",
-			"longCount,      1",
-			"marathonCount,  1",
-			"ultraCount,     1",
 			"totalKm,        183.30",
 			"totalAscent,    3650",
 			"points,         122.50",
@@ -160,6 +191,25 @@ class DucatKindTest {
 	void theCodesAreTheElevenAndEachIsWrittenOnce() {
 		assertThat(DucatKind.codes()).hasSize(DucatKind.values().length);
 		assertThat(DucatKind.values()).hasSize(11);
+	}
+
+	/**
+	 * A badge nobody has to do anything for is not a badge.
+	 *
+	 * <p>Nought is reached by somebody who has never raced and a negative number by
+	 * everybody alive; `ducat_threshold_positive` says so in the schema, and that
+	 * guard stops at its own edge while the rule of a badge is interpreted here.
+	 * Found by a round on 11.09.2026, which asked with nought races and was told
+	 * the badge was won.
+	 */
+	@Test
+	void aThresholdNobodyHasToReachIsRefused() {
+		assertThatThrownBy(() -> DucatKind.RACE_COUNT.reached(List.of(), BigDecimal.ZERO))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("not a badge");
+		assertThatThrownBy(() -> DucatKind.RACE_COUNT.reached(List.of(), new BigDecimal("-5")))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("not a badge");
 	}
 
 	@Test

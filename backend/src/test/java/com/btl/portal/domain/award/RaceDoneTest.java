@@ -70,6 +70,44 @@ class RaceDoneTest {
 				.hasMessageContaining("length band");
 	}
 
+	/**
+	 * A race refuses every number the schema refuses.
+	 *
+	 * <p>This type does not have to come from the database, and a round on
+	 * 11.09.2026 built one with every number negative: it went through, and a race
+	 * then SUBTRACTED five kilometres from somebody's total. One case per number,
+	 * because the thing that goes wrong here is a copy-paste and a case counting
+	 * refusals would not see it.
+	 */
+	@Test
+	void aRaceRefusesEveryNumberTheSchemaRefuses() {
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS",
+				new BigDecimal("-5.00"), 0, 60L, BigDecimal.ONE))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("kilometers");
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS",
+				BigDecimal.ZERO, 0, 60L, BigDecimal.ONE))
+				.as("a race of no length at all was counted")
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("kilometers");
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS",
+				BigDecimal.ONE, -1, 60L, BigDecimal.ONE))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("climbed less than nothing");
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS",
+				BigDecimal.ONE, 0, 0L, BigDecimal.ONE))
+				.as("a race that took no time at all was counted")
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("seconds");
+		assertThatThrownBy(() -> new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS",
+				BigDecimal.ONE, 0, 60L, new BigDecimal("-0.01")))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("points");
+	}
+
+	/** And nought points IS a race: a result is worth what it is worth, and
+	 *  `result_points_not_negative` permits nought where it refuses less. */
+	@Test
+	void aRaceWorthNoPointsIsStillARace() {
+		assertThat(new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS", BigDecimal.ONE, 0, 60L,
+				BigDecimal.ZERO).points()).isEqualByComparingTo("0");
+	}
+
 	@Test
 	void whatIsNotThereIsRefusedByName() {
 		assertThatThrownBy(() -> new RaceDone(null, "short", "RS", BigDecimal.ONE, 0, 60L, BigDecimal.ONE))

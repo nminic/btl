@@ -98,6 +98,17 @@ public enum DucatKind {
 	public boolean reached(List<RaceDone> races, BigDecimal threshold) {
 		Objects.requireNonNull(threshold, "threshold");
 
+		/* A threshold of nought is reached by somebody who has never raced, and a
+		   negative one by everybody alive. Neither is a badge, which is what
+		   `ducat_threshold_positive` says in the schema; refused here too because the
+		   rule of a badge is interpreted here and the schema's guard stops at its own
+		   edge. Found by a round on 11.09.2026, which asked for nought races and was
+		   told the badge was won. */
+		if (threshold.signum() <= 0) {
+			throw new IllegalArgumentException(
+					"a badge nobody has to do anything for is not a badge: " + threshold);
+		}
+
 		return over(races).compareTo(threshold) >= 0;
 	}
 

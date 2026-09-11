@@ -48,6 +48,38 @@ public record RaceDone(LocalDate on, String category, String country, BigDecimal
 		if (category.isBlank()) {
 			throw new IllegalArgumentException("a race without a length band counts towards no badge");
 		}
+
+		/* THE SAME FOUR THE SCHEMA REFUSES, and refused here because this type does not
+		   have to come from the schema: a round on 11.09.2026 built one with every number
+		   negative and it went through, at which point a race SUBTRACTED five kilometres
+		   from a member's total. `result_distance_positive`, `result_ascent_not_negative`,
+		   `result_seconds_positive` and `result_points_not_negative` say the same in SQL,
+		   and that guard stops at the edge of the database. */
+		positive(kilometers, "kilometers");
+		notNegative(points, "points");
+		positive(seconds, "seconds");
+
+		if (ascent < 0) {
+			throw new IllegalArgumentException("a race cannot have climbed less than nothing: " + ascent);
+		}
+	}
+
+	private static void positive(BigDecimal value, String named) {
+		if (value.signum() <= 0) {
+			throw new IllegalArgumentException("a race with no " + named + " is not a race: " + value);
+		}
+	}
+
+	private static void notNegative(BigDecimal value, String named) {
+		if (value.signum() < 0) {
+			throw new IllegalArgumentException(named + " cannot be negative: " + value);
+		}
+	}
+
+	private static void positive(long value, String named) {
+		if (value <= 0) {
+			throw new IllegalArgumentException("a race with no " + named + " is not a race: " + value);
+		}
 	}
 
 	/** Whether this race falls inside a period, either end of which may be open. */
