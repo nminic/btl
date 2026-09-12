@@ -42,7 +42,13 @@ class ApiSecurity {
 		return http
 				.securityMatcher("/api/**")
 				.authorizeHttpRequests(routes -> routes
-						.requestMatchers("/api/places", "/api/countries").permitAll()
+						/* The codebooks and the calendar are public because they are: a list of
+						   towns, a list of states, and what was run and when. Nothing in any of
+						   the four belongs to anybody, and the calendar is the page a visitor
+						   comes to the portal for. Who RAN a race is a different resource and is
+						   not open by this line. */
+						.requestMatchers("/api/places", "/api/countries",
+								"/api/events", "/api/races").permitAll()
 						/* Signing in is open by necessity: nobody can be asked to be signed in
 						   in order to sign in. It is still the one open route that WRITES, and
 						   what stands in front of it is that every wrong answer costs the guesser
