@@ -119,10 +119,19 @@ public final class WhatTheMessageSays {
 			   those went through - as did a NUL byte, and as did an address whose domain
 			   was written in Cyrillic letters that look exactly like ours.
 
-			   Listing those would have been the fourth wrong list. A web address is
-			   ASCII by the standard that defines it, and anything outside that range has
-			   to be percent encoded before it travels, so the narrow rule is also the
-			   correct one and it has no next character to be surprised by. */
+			   Listing those would have been the fourth wrong list. A web address is ASCII
+			   by the standard that defines it, and anything outside that range has to be
+			   percent encoded before it travels, so a rule drawn at that line has no next
+			   character to be surprised by.
+
+			   IT IS NOT THE STANDARD'S OWN SET, and a round on 12.09.2026 measured the
+			   difference rather than letting this sentence stand as though it were. RFC
+			   3986 also refuses several characters that ARE printable ASCII, among them
+			   the backslash, the backtick and the double quote, and all of those are
+			   accepted here. So this is a superset of what is legal, drawn where it is
+			   because everything outside it is certainly wrong and nothing inside it can
+			   be invisible. Which portal the address names is the question that would
+			   catch the rest, and that one belongs to the bean reading configuration. */
 			if (address.chars().anyMatch(one -> one < '!' || one > '~')) {
 				throw new IllegalArgumentException(
 						"the portal's address holds something that is not printable ASCII");

@@ -191,9 +191,15 @@ class WhatTheMessageSaysTest {
 					.contains(secret);
 		}
 
+		/* THE WHOLE ALPHABET AND NOT NEARLY ALL OF IT. This said "more than sixty"
+		   until a round on 12.09.2026 pointed out that sixty one passes it, so the
+		   comment above promised every character while the assertion allowed three to
+		   be missing - and three missing is exactly what a generator quietly narrowing
+		   its alphabet would look like. Five hundred draws of forty three characters
+		   each miss one of sixty four with a probability too small to write down. */
 		assertThat(seen)
-				.as("the draws did not cover the alphabet, so this proves less than it looks")
-				.hasSizeGreaterThan(60);
+				.as("the draws did not cover the whole alphabet, so this proves less than it says")
+				.hasSize(64);
 	}
 
 	@Test
