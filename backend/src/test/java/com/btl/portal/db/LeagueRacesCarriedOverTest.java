@@ -202,9 +202,20 @@ class LeagueRacesCarriedOverTest extends DatabaseTest {
 				.isEmpty();
 	}
 
-	/** And the season written on the carried row is the LEAGUE'S, which is what the two composite keys are about. */
+	/**
+	 * AND EVERY CARRIED ROW CARRIES A SEASON THE COMPOSITE KEYS ADMIT.
+	 *
+	 * <p><b>It does not say whose season that is, and it cannot.</b> A row that gets
+	 * through has satisfied both composite keys at once, so on it the league's season
+	 * and the race's season are the same number by construction; writing `r.season`
+	 * instead of `l.season` here leaves this case green, which was measured rather
+	 * than assumed. The two are told apart only by the row that DOES NOT get through,
+	 * and that is the case below, {@code aRaceOfAnotherYearStopsTheMigration}. The
+	 * boundary is written here so that nobody loosens that one believing this one
+	 * still holds the season.
+	 */
 	@Test
-	void theSeasonOnTheCarriedRowIsTheLeaguesOwn() {
+	void everyCarriedRowCarriesASeasonTheKeysAdmit() {
 		jdbc.execute(migration("20"));
 
 		assertThat(db.sql("select distinct lr.season from league_race lr"

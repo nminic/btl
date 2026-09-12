@@ -45,21 +45,35 @@
  * points and nothing to count. Naming it costs a sentence; finding it later
  * costs a report that a day went missing.
  *
- * `on conflict do nothing` AND WHY IT IS NOT A SILENT SKIP. `league_race` has
- * shipped since V19 and the moderation screen writes it, so the same pair may
- * already be there. The primary key already says that adding a pair twice is
- * not a second fact; this clause says the same thing to the carry instead of
- * letting it fail over a row that is already exactly what it wants to write.
+ * `on conflict do nothing` AND WHAT IT DOES AND DOES NOT PROMISE. `league_race`
+ * has shipped since V19, so a pair may in principle already be there and the
+ * primary key already says that writing it twice is not a second fact. This
+ * clause says that to the carry instead of letting it fail over a row that is
+ * already exactly what it wants to write. It hides nothing else: a row that
+ * breaks a FOREIGN KEY still stops the migration, clause or no clause, which is
+ * what the season case below relies on.
  *
- * WHAT THIS CANNOT BE MEASURED ON, written down rather than left to a review.
- * Every test starts from an empty database, so when this runs there
- * `league_event` holds no rows and a correct carry and a missing one leave
- * `league_race` equally empty. Replaying the migrations into a second schema of
- * the same database would measure it, and cannot be done: V11 runs `create
- * extension btree_gist` with no `if not exists`, an extension is per database
- * and not per schema, and a merged migration is not rewritten (A2). So the
- * carry itself has no floor under it, and that is the boundary. What IS
- * measured is everything around it: `league_event` is no longer a table
+ * It is NOT a claim that the two sources agree. Nothing writes `league_race`
+ * today, because the moderation screens are their own increment and do not
+ * exist yet. The day they do, this carry would WIDEN a selection somebody had
+ * narrowed: a league that moderation had set to one race of an event would come
+ * out of here counting all of them, because `league_event` names the event and
+ * the carry believes it. This migration runs once, before those screens ship,
+ * so that state cannot occur - but the sentence belongs here rather than in a
+ * report written afterwards.
+ *
+ * HOW THE CARRY IS MEASURED, and where the boundary really is.
+ * `LeagueRacesCarriedOverTest` builds `league_event` back as a fixture, fills it
+ * with rows a league really holds, and then EXECUTES THIS FILE, all inside a
+ * transaction that is rolled back. Deleting the insert below, dropping the
+ * `on conflict`, widening the join or filtering by season all turn it red. A
+ * second measurement exists beside it and is cheaper to describe than to keep:
+ * Flyway can replay every migration into a SECOND DATABASE of the same
+ * container, which was tried and takes about seven seconds. A second SCHEMA is
+ * what cannot be done, because V11 runs `create extension btree_gist` with no
+ * `if not exists` and an extension is per database, not per schema.
+ *
+ * What is measured around the carry: `league_event` is no longer a table
  * (`ConventionsTest`, out of `pg_tables`), its two deletion rules are gone
  * (`CompetitorEventRaceAndResultTest`, out of `pg_constraint`), its key and
  * index are gone (`KeysAndIndexesTest`), and the composite key still refuses a
