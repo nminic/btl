@@ -62,6 +62,61 @@ class ApiSecurityTest {
 	}
 
 	/**
+	 * AND THAT HOLDS FOR EVERY OPEN ROUTE, not for the one somebody thought of.
+	 *
+	 * <p>The cases above name `/api/places` because it was the first. A review on
+	 * 12.09.2026 measured what naming costs: two routes had been opened and added to
+	 * nothing else, so widening one of them to `/api/events/**` passed the whole
+	 * suite without a word.
+	 *
+	 * <p>So the list is read off {@code ApiSecurity} itself rather than written
+	 * again. Every route opened from now on arrives here with it, and the three
+	 * spellings that are NOT it - a sub-path, a different case, a trailing slash -
+	 * stay shut without anybody remembering to say so.
+	 */
+	@Test
+	void noOpenRouteOpensAnythingBesideIt() throws Exception {
+		assertThat(ApiSecurity.READ_BY_ANYBODY)
+				.as("nothing is open at all, so this compares nothing")
+				.isNotEmpty();
+
+		for (String open : ApiSecurity.READ_BY_ANYBODY) {
+			assertThat(statusOf(open))
+					.as("%s is on the open list and is not open", open).isEqualTo(200);
+
+			/* Only the LAST segment is respelled, not the whole path. Upper-casing
+			   `/api` itself leaves the chain that guards `/api/**` altogether, and the
+			   answer is 404 from a dispatcher that has no such mapping - which reveals
+			   nothing, but is a different sentence from the one being asserted here. */
+			String resource = open.substring(open.lastIndexOf('/') + 1);
+			String respelt = open.substring(0, open.lastIndexOf('/') + 1)
+					+ resource.toUpperCase(java.util.Locale.ROOT);
+
+			for (String beside : new String[] {open + "/2", open + "/", respelt}) {
+				assertThat(statusOf(beside))
+						.as("%s was answered, and only %s is open", beside, open)
+						.isEqualTo(401);
+			}
+		}
+	}
+
+	/**
+	 * AND NOTHING ON THAT LIST MAY BE WRITTEN TO.
+	 *
+	 * <p>Open for reading is the whole of what was decided. A catalogue of towns
+	 * anybody could post to is a catalogue anybody could edit, and the same goes for
+	 * the calendar.
+	 */
+	@Test
+	void nothingOpenForReadingIsOpenForWriting() throws Exception {
+		for (String open : ApiSecurity.READ_BY_ANYBODY) {
+			assertThat(http.perform(post(open)).andReturn().getResponse().getStatus())
+					.as("%s could be written to by anybody", open)
+					.isNotEqualTo(200);
+		}
+	}
+
+	/**
 	 * And a path that climbs out of the catalogue is refused before it is anything.
 	 *
 	 * <p>Its own case because the answer is 400 and not 401: the servlet container
