@@ -14,12 +14,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Every constraint the two tables of V14 carry, with the row that breaks it.
+ * Every constraint the league's two tables carry, with the row that breaks it.
  *
  * <p>A league is an entity and the RunTrace league is a row in it (PDL P15), so
- * what is measured here is the general thing: it has an address, a season, an
- * administrator, words about what is won in it, and a list of events that may
- * change during the year.
+ * what is measured here is the general thing: it has an address, a season, words
+ * about what is won in it, and a list of RACES that may change during the year.
+ *
+ * <p><b>Races, and not events, since V20.</b> V14 tied a league to whole events
+ * (`league_event`); the owner asked on 12.09.2026 to be able to take a single
+ * distance off a day, V19 built `league_race` beside it and V20 dropped the older
+ * table. So the second table measured here is `league_race`, and the constraint
+ * that was `league_event_pk` is `league_race_pk`.
  *
  * <p>Two columns somebody would expect are deliberately absent and cannot be
  * measured because there is nothing to measure: a league has no scoring of its own
@@ -46,8 +51,8 @@ class LeagueConstraintsTest extends DatabaseTest {
 		}
 	}
 
-	/** The two tables V14 adds, and the one V19 adds beside them. */
-	static final List<String> TABLES = List.of("league", "league_event", "league_race");
+	/** The league itself, from V14, and the races it counts, from V19. */
+	static final List<String> TABLES = List.of("league", "league_race");
 
 	/**
 	 * ONE KEY HAS NO ROW THAT BREAKS IT, and it is named rather than left out of the
@@ -68,6 +73,7 @@ class LeagueConstraintsTest extends DatabaseTest {
 	private static final String A_LEAGUE = "(select id from league where slug = 'probna-liga')";
 	private static final String AN_EVENT = "(select id from btl_event where slug = 'dogadjaj-u-ligi')";
 	private static final String A_RACE = "(select id from race where name = 'Trka u ligi')";
+	private static final String ANOTHER_RACE = "(select id from race where name = 'Druga trka u ligi')";
 	private static final String A_RACE_OF_ANOTHER_YEAR = "(select id from race where name = 'Trka druge godine')";
 	private static final String ANOTHER_EVENT = "(select id from btl_event where slug = 'drugi-dogadjaj')";
 
@@ -82,10 +88,6 @@ class LeagueConstraintsTest extends DatabaseTest {
 		return "insert into league (" + COLUMNS + ") values (" + values + ")";
 	}
 
-	private static String entry(String values) {
-		return "insert into league_event (league_id, event_id) values (" + values + ")";
-	}
-
 	private static String counted(String values) {
 		return "insert into league_race (league_id, season, race_id) values (" + values + ")";
 	}
@@ -97,11 +99,11 @@ class LeagueConstraintsTest extends DatabaseTest {
 	/** And one with nobody named to run it, and nothing written about it yet. */
 	private static final String GOOD_LEAGUE_UNCLAIMED =
 			league("'treca-liga', 'Treca liga', 2029, '', ''");
-	/** A second event entering the league that is already there. */
-	private static final String GOOD_ENTRY = entry(A_LEAGUE + ", " + ANOTHER_EVENT);
+	/** A second race of the same season counted by the league that already counts one. */
+	private static final String GOOD_COUNTED = counted(A_LEAGUE + ", 2027, " + ANOTHER_RACE);
 
 	/**
-	 * A member, two events, one league, and one event already in it.
+	 * A member, three events, three races, one league, and one race already counted.
 	 */
 	@BeforeEach
 	void probe() {
@@ -122,6 +124,9 @@ class LeagueConstraintsTest extends DatabaseTest {
 		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km,"
 				+ " ascent_m, descent_m) values (" + AN_EVENT + ", 'Trka u ligi', false,"
 				+ " date '2027-05-05', 'length', 0, 10.00, 0, 0)").update();
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km,"
+				+ " ascent_m, descent_m) values (" + ANOTHER_EVENT + ", 'Druga trka u ligi', false,"
+				+ " date '2027-06-06', 'length', 0, 10.00, 0, 0)").update();
 		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind, featured,"
 				+ " description, link, copied_from) values ('dogadjaj-druge-godine',"
 				+ " 'Dogadjaj druge godine', date '2028-05-05', " + A_TOWN
@@ -132,7 +137,6 @@ class LeagueConstraintsTest extends DatabaseTest {
 				+ " 'length', 0, 10.00, 0, 0)").update();
 
 		db.sql(league("'probna-liga', 'Probna liga', 2027, 'Pravila.', 'Nagrade.'")).update();
-		db.sql(entry(A_LEAGUE + ", " + AN_EVENT)).update();
 		db.sql(counted(A_LEAGUE + ", 2027, " + A_RACE)).update();
 	}
 
@@ -169,17 +173,8 @@ class LeagueConstraintsTest extends DatabaseTest {
 				Violation.notNull("league_prizes_not_null", "prizes",
 						league("'nova-liga', 'Nova liga', 2028, '', null")),
 
-				/* WHICH EVENTS ARE IN IT. The pair is the key, so an event enters a league once:
-				   adding it twice is not a second fact. */
-				Violation.notNull("league_event_league_id_not_null", "league_id",
-						entry("null, " + AN_EVENT)),
-				Violation.notNull("league_event_event_id_not_null", "event_id",
-						entry(A_LEAGUE + ", null")),
-				Violation.of("league_event_pk", entry(A_LEAGUE + ", " + AN_EVENT)),
-				Violation.of("league_event_league_fk", entry("999999, " + AN_EVENT)),
-				Violation.of("league_event_event_fk", entry(A_LEAGUE + ", 999999")),
-
-				/* WHICH RACES ARE COUNTED, V19. The pair is the key again, and the season is
+				/* WHICH RACES ARE COUNTED, V19. The pair is the key, so a race is counted by a
+				   league once: adding it twice is not a second fact. And the season is
 				   carried in the row so that both foreign keys can be composite: a row naming
 				   a league of one year and a race of another satisfies neither. */
 				Violation.notNull("league_race_league_id_not_null", "league_id",
@@ -230,7 +225,7 @@ class LeagueConstraintsTest extends DatabaseTest {
 	}
 
 	static List<String> legitimateRows() {
-		return List.of(GOOD_LEAGUE, GOOD_LEAGUE_UNCLAIMED, GOOD_ENTRY);
+		return List.of(GOOD_LEAGUE, GOOD_LEAGUE_UNCLAIMED, GOOD_COUNTED);
 	}
 
 	@ParameterizedTest
@@ -294,69 +289,87 @@ class LeagueConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * The same event may be in two leagues at once, and that is the point of the
-	 * key being the pair.
-	 *
-	 * <p>"Sistem mora podneti vise Liga istovremeno", and nothing says a race belongs
-	 * to only one of them. A key over `event_id` alone would quietly decide otherwise.
-	 */
-	@Test
-	void oneEventMayEnterTwoLeagues() {
-		db.sql(GOOD_LEAGUE).update();
-
-		assertThat(db.sql(entry("(select id from league where slug = 'nova-liga'), " + AN_EVENT)).update())
-				.as("an event could not enter a second league")
-				.isOne();
-	}
-
-	/**
-	 * Taking an event out of a league leaves the event and the league standing.
+	 * Taking a race out of a league leaves the race and the league standing.
 	 *
 	 * <p>"Spisak se sme menjati tokom godine" is the whole reason this is its own
-	 * table, and this is what says removing a row from it removes only the entry.
+	 * table, and the owner said the same thing again on 12.09.2026 about races:
+	 * "Izbacivanje trke iz lige preuračunava tabelu... rezultat ostaje na profilu
+	 * člana". This is what says removing a row from here removes only the entry.
+	 *
+	 * <p>Carried over from the case that said it about `league_event`, which V20
+	 * dropped: the sentence is about the list changing during the year, and the list
+	 * is now races.
 	 */
 	@Test
-	void anEventMayLeaveALeagueDuringTheYear() {
-		assertThat(db.sql("delete from league_event where event_id = " + AN_EVENT).update()).isOne();
+	void aRaceMayLeaveALeagueDuringTheYear() {
+		assertThat(db.sql("delete from league_race where race_id = " + A_RACE).update()).isOne();
 
 		/* Named rather than counted: a count over the whole table says as much about how
 		   many rows the fixture happens to write as about what was deleted, and it breaks
 		   the day another row is added for another reason. */
-		assertThat(db.sql("select count(*) from btl_event where slug = 'dogadjaj-u-ligi'")
+		assertThat(db.sql("select count(*) from race where name = 'Trka u ligi'")
 				.query(Long.class).single())
-				.as("taking the event out of the league deleted the event")
+				.as("taking the race out of the league deleted the race")
 				.isOne();
 		assertThat(db.sql("select count(*) from league where slug = 'probna-liga'")
 				.query(Long.class).single())
-				.as("taking the event out of the league deleted the league")
+				.as("taking the race out of the league deleted the league")
 				.isOne();
 	}
 
 	/**
-	 * Deleting the event takes it out of every league it was in, and deleting the
-	 * league takes its list with it.
+	 * Deleting the race takes it out of every league that counted it, and deleting
+	 * the league takes its list with it.
+	 *
+	 * <p>Both directions, because they are two different foreign keys and a cascade
+	 * written on one of them says nothing about the other. The second half deletes
+	 * the EVENT rather than the race, which is the longer way round on purpose: a
+	 * race goes with its event (V7), and what is measured is that the entry does not
+	 * outlive it through that chain either.
 	 */
 	@Test
-	void deletingEitherSideTakesTheEntryAndNotTheOther() {
+	void deletingEitherSideTakesTheCountedRaceAndNotTheOther() {
+		db.sql("delete from race where name = 'Trka u ligi'").update();
+
+		assertThat(db.sql("select count(*) from league_race").query(Long.class).single())
+				.as("a counted race outlived the race it named")
+				.isZero();
+		assertThat(db.sql("select count(*) from league where slug = 'probna-liga'")
+				.query(Long.class).single())
+				.as("deleting a race deleted a league")
+				.isOne();
+
+		db.sql(GOOD_COUNTED).update();
+		db.sql("delete from league where slug = 'probna-liga'").update();
+
+		assertThat(db.sql("select count(*) from league_race").query(Long.class).single())
+				.as("a counted race outlived the league that counted it")
+				.isZero();
+		assertThat(db.sql("select count(*) from race where name = 'Druga trka u ligi'")
+				.query(Long.class).single())
+				.as("deleting a league deleted a race")
+				.isOne();
+	}
+
+	/**
+	 * And deleting the EVENT takes the counted race with it, through the race.
+	 *
+	 * <p>Its own case rather than a third assertion above, for the same reason the
+	 * two season cases are separate: a failed or cascaded statement is easier to read
+	 * about when one statement is what the case is about. A day taken out of the
+	 * calendar takes its distances, and the leagues counting them stop counting them
+	 * (V7's `race_event_fk`, then V19's `league_race_race_fk`).
+	 */
+	@Test
+	void deletingTheEventStopsEveryLeagueCountingItsRaces() {
 		db.sql("delete from btl_event where slug = 'dogadjaj-u-ligi'").update();
 
-		assertThat(db.sql("select count(*) from league_event").query(Long.class).single())
-				.as("an entry outlived the event it named")
+		assertThat(db.sql("select count(*) from league_race").query(Long.class).single())
+				.as("a counted race outlived the event its race belonged to")
 				.isZero();
 		assertThat(db.sql("select count(*) from league where slug = 'probna-liga'")
 				.query(Long.class).single())
 				.as("deleting an event deleted a league")
-				.isOne();
-
-		db.sql(entry(A_LEAGUE + ", " + ANOTHER_EVENT)).update();
-		db.sql("delete from league where slug = 'probna-liga'").update();
-
-		assertThat(db.sql("select count(*) from league_event").query(Long.class).single())
-				.as("an entry outlived the league it belonged to")
-				.isZero();
-		assertThat(db.sql("select count(*) from btl_event where slug = 'drugi-dogadjaj'")
-				.query(Long.class).single())
-				.as("deleting a league deleted an event")
 				.isOne();
 	}
 
