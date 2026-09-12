@@ -134,6 +134,25 @@ services:
       # not routed from the edge, the whole site is behind basic auth, and
       # compose.prod.yml must not copy this line.
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      # THE RELAY. Brevo on 587 with STARTTLS, which the application's own
+      # properties do NOT turn on: the development default points at a local
+      # catcher with no authentication, and these four lines are what make it
+      # real. Unset, the portal still starts and still serves; only sending
+      # fails, and it fails out loud rather than silently doing nothing.
+      #
+      # The key is never in the repository. It comes from deploy/.env on the
+      # host, which is gitignored, and is generated in the Brevo panel where it
+      # is shown exactly once.
+      SPRING_MAIL_HOST: ${QA_MAIL_HOST:-smtp-relay.brevo.com}
+      SPRING_MAIL_PORT: ${QA_MAIL_PORT:-587}
+      # Empty by default and NOT `:?` like the database ones. `:?` would stop the
+      # whole QA stack from coming up until somebody had pasted a key in, and the
+      # portal does not need to send anything in order to be looked at. Unset,
+      # the relay refuses the login and the send throws; everything else works.
+      SPRING_MAIL_USERNAME: ${QA_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${QA_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 4 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
