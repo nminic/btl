@@ -123,6 +123,30 @@ class ProofThatTheRunHappenedTest {
 				.isEqualTo(A_LINK);
 	}
 
+	/**
+	 * AND A SPACE IS A SPACE WHATEVER KIND IT IS.
+	 *
+	 * <p>U+2009 is a thin space, and it is here rather than an ordinary one because
+	 * an ordinary one is cut by anything. {@code String.trim} stops at U+0020 and
+	 * would leave this one on the end, and the member would be told his address is
+	 * not an address over a character he cannot see. Word processors and mail
+	 * clients put these in; somebody copying a link out of one brings it along.
+	 */
+	@Test
+	void aSpaceNobodyCanSeeIsStillASpace() {
+		/* Written as an escape on purpose: a thin space typed into the source looks
+		   exactly like an ordinary one, and the next reader would not know which this
+		   case is about. */
+		Report pasted = new Report(A_LINK + "\u2009", false, "");
+
+		assertThat(ProofThatTheRunHappened.decide(pasted))
+				.as("a link pasted with a thin space on the end was called not an address")
+				.isEqualTo(Outcome.GOOD);
+		assertThat(ProofThatTheRunHappened.linkAsItGoesIn(pasted))
+				.as("the thin space was stored, and the table will not hold it")
+				.isEqualTo(A_LINK);
+	}
+
 	@Test
 	void aReportThatIsNotThereAtAllIsRefusedHere() {
 		assertThatThrownBy(() -> ProofThatTheRunHappened.decide(null))
@@ -188,9 +212,17 @@ class ProofThatTheRunHappenedTest {
 		}
 	}
 
-	/** Every form definition there is, asked of the file system rather than listed. */
+	/**
+	 * Every form definition there is, asked of the file system rather than listed.
+	 *
+	 * <p>{@code walk} and not {@code list}: {@code list} reads the folder and stops,
+	 * so a definition put in a folder under it would carry this rule with nothing on
+	 * the server knowing. Every form today sits flat in the folder and this changes
+	 * nothing about them; it is here so that the day one does not, the sweep is
+	 * still a sweep.
+	 */
 	private static Set<Path> definitions() {
-		try (Stream<Path> there = Files.list(FORMS)) {
+		try (Stream<Path> there = Files.walk(FORMS)) {
 			Set<Path> found = there.filter(one -> one.getFileName().toString().endsWith(".form.json"))
 					.collect(Collectors.toSet());
 

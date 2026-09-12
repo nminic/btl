@@ -38,12 +38,31 @@ public final class ProofThatTheRunHappened {
 	/**
 	 * A web address and nothing with a space in it.
 	 *
-	 * <p>The same rule as {@code result_submission_link_shape}, and deliberately
-	 * this loose: a result lives on somebody else's timing site, and guessing which
-	 * of them are real is a list that goes stale. What it does refuse is the thing
-	 * that is not an address at all.
+	 * <p>Deliberately this loose: a result lives on somebody else's timing site, and
+	 * guessing which of them are real is a list that goes stale. What it does refuse
+	 * is the thing that is not an address at all.
+	 *
+	 * <p><b>The Unicode property and not {@code \s}, and a security round on
+	 * 12.09.2026 is why.</b> Java's {@code \s} is seven ASCII characters and nothing
+	 * else, while PostgreSQL's {@code [:space:]} in this database's locale also
+	 * counts U+2003, U+2009, U+2028, U+2029 and U+3000. A link ending in one of
+	 * those passed here and was then thrown out by
+	 * {@code result_submission_link_shape}: a member who filled the form in
+	 * correctly got a server fault. Found by asking both sides about every code
+	 * point rather than by thinking of examples, which is also how it came out that
+	 * NBSP, the one everybody reaches for first, is a space to NEITHER side.
+	 *
+	 * <p>{@code IsWhite_Space} is a SUPERSET of what this database calls a space,
+	 * and that direction is the whole point: everything accepted here, the table
+	 * will hold. The other way round is a 500 in the member's face, and the way
+	 * round this is now is at worst an address with a hard space in it called not an
+	 * address.
+	 * {@code LinkShapeMatchesTheSchemaTest.nothingTheCodeAcceptsIsRefusedByTheTable}
+	 * sweeps the whole basic plane rather than naming any character, so the next one
+	 * the two disagree about fails there instead of in front of a member.
 	 */
-	private static final Pattern A_WEB_ADDRESS = Pattern.compile("^https?://[^\\s]+$");
+	private static final Pattern A_WEB_ADDRESS =
+			Pattern.compile("^https?://[^\\p{IsWhite_Space}]+$");
 
 	private ProofThatTheRunHappened() {
 	}
@@ -126,7 +145,10 @@ public final class ProofThatTheRunHappened {
 	public static String linkAsItGoesIn(Report report) {
 		Objects.requireNonNull(report, "report");
 
-		return blank(report.link()) ? "" : report.link().trim();
+		/* `strip` and not `trim`, for the same reason the pattern above is not `\s`:
+		   `trim` cuts nothing above U+0020, so a link pasted with a thin space on the
+		   end would be stored with it, and the table would refuse the row. */
+		return blank(report.link()) ? "" : report.link().strip();
 	}
 
 	/** Absent and whitespace are one thing here: both are a field nobody filled in. */

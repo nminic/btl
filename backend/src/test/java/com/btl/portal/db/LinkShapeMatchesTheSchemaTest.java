@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -99,6 +101,66 @@ class LinkShapeMatchesTheSchemaTest extends DatabaseTest {
 				.as("the code lets '%s' through and the table will not hold what it stores,"
 						+ " which reaches the member as a server fault", typed)
 				.isTrue();
+	}
+
+	/**
+	 * NOTHING THE CODE LETS THROUGH IS REFUSED BY THE TABLE, over every character
+	 * there is.
+	 *
+	 * <p><b>This is the case that was missing, and a security round on 12.09.2026
+	 * measured what that cost.</b> The class carried {@code [^\s]} and the column
+	 * carries {@code [^[:space:]]}, and the two are not the same set: Java's
+	 * {@code \s} is seven ASCII characters, while PostgreSQL in this locale also
+	 * counts U+2003, U+2009, U+2028, U+2029 and U+3000. A member whose link ended
+	 * in one of those was told his report was fine and then handed a server fault.
+	 *
+	 * <p><b>Written as a sweep and not as more examples, because examples are what
+	 * missed it.</b> The five above were not thought of; they were found by asking
+	 * both sides about every code point. The list underneath this case was six
+	 * strings long and had no character outside ASCII in it, so it was green while
+	 * the hole was open. This asks the whole basic plane at once, so the next
+	 * character the two disagree about fails here rather than in front of somebody.
+	 *
+	 * <p>The table is asked FIRST and in one query, because what it refuses is a
+	 * couple of dozen characters while what it takes is sixty thousand. Then those
+	 * few are put to the code, and the one thing that must never happen is the code
+	 * saying yes to something the table will not hold.
+	 *
+	 * <p><b>The character goes in the MIDDLE of the link and not on the end, and
+	 * that is the difference between a sweep and a decoration.</b> Written with it
+	 * on the end, putting the old {@code \s} back cost nothing: {@code strip}
+	 * removes a trailing space of any kind before anybody judges it, so the sweep
+	 * saw a plain address and was happy. In the middle nothing removes it, which is
+	 * the shape a real mistyped address has, and the old pattern fails here at once.
+	 */
+	@Test
+	void nothingTheCodeAcceptsIsRefusedByTheTable() {
+		String rule = whatTheSchemaSays();
+		String condition = rule.substring(rule.indexOf('(') + 1, rule.lastIndexOf(')'));
+
+		/* Surrogates are left out because `chr` refuses them: they are half a
+		   character, and no string ever holds one on its own. */
+		List<Integer> refused = db.sql("select n from generate_series(1, 65535) as n"
+						+ " where (n < 55296 or n > 57343)"
+						+ "  and not ("
+						+ condition.replace("link", "('https://a.rs/' || chr(n) || 'b')") + ")")
+				.query(Integer.class).list();
+
+		assertThat(refused)
+				.as("the table refuses no character at all, so this sweep compares nothing")
+				.isNotEmpty();
+
+		for (int one : refused) {
+			String typed = "https://a.rs/" + new String(Character.toChars(one)) + "b";
+			Report report = reportedWith(typed);
+
+			if (ProofThatTheRunHappened.decide(report) == Outcome.GOOD) {
+				assertThat(theSchemaTakes(ProofThatTheRunHappened.linkAsItGoesIn(report)))
+						.as("U+%04X: the code lets the report through and the table will not hold"
+								+ " what it would store, which reaches the member as a server fault", one)
+						.isTrue();
+			}
+		}
 	}
 
 	/**
