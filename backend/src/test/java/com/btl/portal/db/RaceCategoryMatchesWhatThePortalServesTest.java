@@ -162,21 +162,33 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 	}
 
 	/**
-	 * AND THE TWO KNOW THE SAME WORDS.
+	 * AND THE TWO KNOW THE SAME CATEGORIES, asked as what the rule can PRODUCE.
 	 *
-	 * <p>The case above compares distance by distance and would still pass if both
-	 * sides quietly grew a sixth category that no race the portal serves happens to
-	 * reach. Neither side is typed out here: one set comes off the file, the other
-	 * off what the database answered.
+	 * <p><b>This read the words out of the expression until a round on 12.09.2026,
+	 * and that was the one thing in this file doing what the file exists to stop.</b>
+	 * A45 says the source text answers where something is written, never what
+	 * happens, and the reviewer proved the difference: move the ultra threshold to a
+	 * distance nothing reaches and no race is ever categorised ultra again, while
+	 * the word {@code 'ultra'} sits in the text exactly as before. The assertion
+	 * stayed green about a category that had stopped existing.
+	 *
+	 * <p>So the rule is RUN instead, over every hundredth of a kilometre from
+	 * nothing to a hundred, and what comes back is the set of categories it can
+	 * actually produce. A branch nothing can reach is simply not in that set.
+	 *
+	 * <p>Neither side is typed out here: one comes off the file the portal serves,
+	 * the other off what the database answered.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"race", "result"})
-	void neitherSideKnowsAWordTheOtherDoesNot(String table) {
-		assertThat(whatThePortalServes().values().stream().collect(Collectors.toSet()))
-				.as("the portal and `%s` name different categories", table)
-				.isEqualTo(howTheSchemaWorksItOut(table).lines()
-						.flatMap(one -> java.util.regex.Pattern.compile("'([a-z]+)'::text")
-								.matcher(one).results().map(found -> found.group(1)))
-						.collect(Collectors.toSet()));
+	void neitherSideCanProduceACategoryTheOtherDoesNot(String table) {
+		String asked = howTheSchemaWorksItOut(table).replace("distance_km", "km");
+
+		assertThat(db.sql("select distinct (" + asked + ")"
+						+ " from generate_series(0.00, 100.00, 0.01) as km")
+				.query(String.class).list())
+				.as("the portal and `%s` can produce different categories", table)
+				.containsExactlyInAnyOrderElementsOf(
+						whatThePortalServes().values().stream().collect(Collectors.toSet()));
 	}
 }
