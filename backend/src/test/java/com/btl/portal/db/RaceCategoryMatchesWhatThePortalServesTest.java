@@ -39,6 +39,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * of the catalogue and PostgreSQL evaluates it over every distance at once. A
  * floor that compared the written CASE with a written Java equivalent would be
  * two rules again, which is the thing it exists to stop.
+ *
+ * <p><b>AND THE PORTAL CARRIES A FOURTH HOME OF THE SAME RULE, held where it
+ * lives.</b> {@code frontend/src/data/raceCategory.ts} answers this question in
+ * TypeScript for the administration's form and for a reported result, in six
+ * production paths, and no test here can run it. It is pinned in its own package
+ * against THIS SAME served file ({@code raceCategory.test.ts}), so all four homes
+ * are held against one reference instead of against each other. What said the home
+ * was missing: the threshold moved there from 42.2 to 42.3 and every case in this
+ * file stayed green (12.09.2026).
  */
 class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 
@@ -149,7 +158,16 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 	 */
 	@Test
 	void aRaceAndAResultOfTheSameLengthAreTheSameCategory() {
-		String distances = whatThePortalServes().keySet().stream()
+		Map<BigDecimal, String> served = whatThePortalServes();
+
+		/* Counted before anything is compared, because the comparison below is a
+		   count of disagreements: over an empty sweep it is zero and passes while the
+		   two rules disagree about every length there is. */
+		assertThat(served)
+				.as("the portal serves no races at all, so this compares nothing")
+				.hasSizeGreaterThan(400);
+
+		String distances = served.keySet().stream()
 				.map(BigDecimal::toPlainString).collect(Collectors.joining(","));
 
 		assertThat(db.sql("select count(*) from unnest(array[" + distances + "]::numeric(6,2)[]) as km"

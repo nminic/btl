@@ -1,5 +1,12 @@
 import { categoryOf } from './raceCategory'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+
+/** Every race the portal serves, with the category it is served with. */
+const SERVED: { distanceKm: number; category: string }[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'public/mock/races.json'), 'utf-8'),
+)
 
 /* The category of a race is read off its length and nobody is ever asked for it.
    Until 24.08.2026 the only guard over that reading was the cell it was drawn in,
@@ -34,5 +41,32 @@ describe('the category of a race', () => {
 
     expect(categoryOf(10)).toBe('short')
     expect(categoryOf(0)).toBe('short')
+  })
+
+  it('answers what the portal serves, for every length the portal serves', () => {
+    /* THIS FUNCTION IS THE FOURTH HOME OF ONE RULE and until 12.09.2026 it was the
+       only one without a floor. The other three are `race.category`,
+       `result.category` and this served file, and the backend holds those three
+       against the file (`RaceCategoryMatchesWhatThePortalServesTest`). A Java test
+       cannot run TypeScript, so this half is held here, against the SAME file: four
+       homes pinned to one reference rather than to each other.
+
+       What it caught: the threshold moved here from 42.2 to 42.3 left the whole
+       backend floor green, and the administration's form and a reported result would
+       have drawn one category while the database scored another.
+
+       The case above is the rule asked at its edges; this one is the rule asked of
+       1612 races over 436 distinct lengths, which is a sweep nobody typed. */
+    const lengths = new Set(SERVED.map((one) => one.distanceKm))
+
+    expect(lengths.size).toBeGreaterThan(400)
+    expect(lengths).toContain(42.2)
+    expect(lengths).toContain(21.1)
+
+    const disagreed = SERVED.filter((one) => categoryOf(one.distanceKm) !== one.category)
+
+    expect(
+      disagreed.slice(0, 5).map((one) => `${one.distanceKm} km: served ${one.category}`),
+    ).toEqual([])
   })
 })
