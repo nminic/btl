@@ -45,8 +45,9 @@ class ApiSecurity {
 						.requestMatchers("/api/places", "/api/countries").permitAll()
 						/* Signing in is open by necessity: nobody can be asked to be signed in
 						   in order to sign in. It is still the one open route that WRITES, and
-						   what stands in front of it is the CSRF token below and the fact that
-						   every wrong answer costs the guesser a miss. */
+						   what stands in front of it is that every wrong answer costs the guesser
+						   a miss. The CSRF token below is NOT part of that, and the note on it
+						   says why. */
 						.requestMatchers("/api/sign-in").permitAll()
 						/* AND SIGNING OUT IS OPEN TOO, which reads wrong until the case it is
 						   for: a member whose session ended already. Asked to be signed in in
@@ -76,9 +77,25 @@ class ApiSecurity {
 				   purpose - that is the whole mechanism, because another site can make a
 				   browser send a request but cannot read a cookie from this origin.
 
-				   The session cookie itself is SameSite=Strict, so it is not sent from
-				   another site at all; the CSRF token is the second lock, on the reasoning
-				   that one lock which everything depends on is one mistake away from none. */
+				   WHAT THIS TOKEN DOES AND WHAT IT DOES NOT, because a round on 12.09.2026
+				   proved the sentence that stood here wrong. It said the token was a second
+				   lock beside SameSite. It is not a lock against anybody who speaks HTTP
+				   directly: the check is that the cookie and the header MATCH, and neither is
+				   tied to a secret the server keeps, so a caller writing his own request picks
+				   both and passes. Measured, not argued: a request carrying a value the server
+				   never issued, in both places, was accepted.
+
+				   What it guards is the one thing it can - a browser made to send a request
+				   from another site, which can be given a header but cannot read a cookie from
+				   this origin to put in one.
+
+				   And against that single case it is the SECOND guard, not the first. The
+				   session cookie is SameSite=Strict, so a browser does not send it from another
+				   site at all, and this application configures no CORS anywhere, so a cross
+				   site request carrying this header would not survive its preflight. The token
+				   is here because one guard that everything depends on is one mistake away from
+				   none. Nothing else in the portal may be written as though it stopped a direct
+				   caller. */
 				.csrf(csrf -> csrf.spa())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.httpBasic(basic -> basic.disable())
