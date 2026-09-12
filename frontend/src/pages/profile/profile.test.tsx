@@ -790,22 +790,37 @@ describe('who the profile is about, above everything else', () => {
     const served: Competitor[] = JSON.parse(
       readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
     )
-    const asked = must(
-      served.find((one) => one.memberNumber === '000008'),
-      'the member this case is about',
-    )
 
-    expect(asked.birthdayShown, 'the record no longer asks for a birthday at all').toBe('full')
+    /* BOTH ANSWERS THAT EVER SHOWED ANYTHING, and that is what the first round of
+       review asked for: the case held „ceo datum" and nothing held „samo godinu", so a
+       half-reverted screen conditioned on that one value would have published a year
+       with every test green. The third answer, „ne prikazuj ništa", is held by
+       `profilePrivacy.test.tsx` on a member entered in administration. */
+    for (const number of ['000008', '000007']) {
+      const asked = must(
+        served.find((one) => one.memberNumber === number),
+        'the member this case is about',
+      )
 
-    renderAt('/sr/takmicar/000008')
+      expect(asked.birthdayShown, `${number} no longer asks for a birthday at all`).not.toBe(
+        'none',
+      )
 
-    await screen.findByRole('heading', { level: 1, name: /Ognjen/ })
+      cleanup()
+      renderAt(`/sr/takmicar/${number}`)
+
+      await screen.findByRole('heading', { level: 1 })
+
+      const line = must(document.querySelector('.profile__meta'), 'the line under the name')
+
+      expect(line.textContent, `the card of ${number} draws a year of birth`).not.toContain(
+        String(asked.birthYear),
+      )
+    }
 
     const line = must(document.querySelector('.profile__meta'), 'the line under the name')
 
-    expect(line.textContent, 'the card draws a year of birth').not.toContain(
-      String(asked.birthYear),
-    )
+    expect(line, 'nothing was drawn at all, so nothing was measured').toBeTruthy()
     expect(JSON.stringify(sr), 'the dictionary still offers to show a birthday').not.toContain(
       'Rođendan na mom profilu',
     )
