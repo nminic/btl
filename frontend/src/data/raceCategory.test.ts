@@ -1,12 +1,39 @@
 import { categoryOf } from './raceCategory'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-/** Every race the portal serves, with the category it is served with. */
-const SERVED: { distanceKm: number; category: string }[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/races.json'), 'utf-8'),
-)
+const MOCK = join(process.cwd(), 'public/mock')
+
+type Served = { file: string; distanceKm: number; category: string }
+
+/**
+ * Every record the portal serves that carries a length AND a category, found by
+ * reading the directory rather than by naming the files.
+ *
+ * A list of files here would be the same mistake one level up: the first round of
+ * this floor knew `races.json` and missed `results.json`, where every one of 3528
+ * results carries its own category and three screens read it straight off the
+ * record. Asked of the directory, a file that starts carrying a category tomorrow
+ * is swept the day it appears, and no list has to be remembered.
+ */
+function everythingServedWithACategory(): Served[] {
+  return readdirSync(MOCK)
+    .filter((name) => name.endsWith('.json'))
+    .flatMap((file) => {
+      const parsed: unknown = JSON.parse(readFileSync(join(MOCK, file), 'utf-8'))
+      const records: unknown[] = Array.isArray(parsed) ? parsed : Object.values(parsed as object)
+
+      return records
+        .filter(
+          (one): one is { distanceKm: number; category: string } =>
+            typeof one === 'object' && one !== null && 'distanceKm' in one && 'category' in one,
+        )
+        .map((one) => ({ file, distanceKm: one.distanceKm, category: one.category }))
+    })
+}
+
+const SERVED: Served[] = everythingServedWithACategory()
 
 /* The category of a race is read off its length and nobody is ever asked for it.
    Until 24.08.2026 the only guard over that reading was the cell it was drawn in,
@@ -43,30 +70,36 @@ describe('the category of a race', () => {
     expect(categoryOf(0)).toBe('short')
   })
 
-  it('answers what the portal serves, for every length the portal serves', () => {
-    /* THIS FUNCTION IS THE FOURTH HOME OF ONE RULE and until 12.09.2026 it was the
-       only one without a floor. The other three are `race.category`,
-       `result.category` and this served file, and the backend holds those three
-       against the file (`RaceCategoryMatchesWhatThePortalServesTest`). A Java test
-       cannot run TypeScript, so this half is held here, against the SAME file: four
-       homes pinned to one reference rather than to each other.
+  it('answers what the portal serves, everywhere the portal serves a category', () => {
+    /* ONE RULE WITH FIVE HOMES, and this floor holds the two that live in the
+       browser. `race.category` and `result.category` are generated columns and the
+       backend holds those two against `races.json`
+       (`RaceCategoryMatchesWhatThePortalServesTest`). The other two are served
+       files - `races.json` and `results.json`, the second with a category on each
+       of 3528 results, read straight off the record by the competitor's profile,
+       the event page and „Moji rezultati" - and the fifth is `categoryOf` here,
+       which the administration's form and a reported result draw with.
 
-       What it caught: the threshold moved here from 42.2 to 42.3 left the whole
-       backend floor green, and the administration's form and a reported result would
-       have drawn one category while the database scored another.
+       Both rounds that found this were the same mistake at different depths: round
+       one knew three homes and missed this function, round two knew four and missed
+       `results.json`. So nothing here is named: the sweep reads the directory, and
+       whatever is served with a length and a category is compared with what this
+       function answers for that length.
 
        The case above is the rule asked at its edges; this one is the rule asked of
-       1612 races over 436 distinct lengths, which is a sweep nobody typed. */
+       every length the portal has ever served, which is a sweep nobody typed. */
     const lengths = new Set(SERVED.map((one) => one.distanceKm))
+    const files = new Set(SERVED.map((one) => one.file))
 
-    expect(lengths.size).toBeGreaterThan(400)
+    expect(files.size).toBeGreaterThan(1)
+    expect(SERVED.length).toBeGreaterThan(4000)
     expect(lengths).toContain(42.2)
     expect(lengths).toContain(21.1)
 
     const disagreed = SERVED.filter((one) => categoryOf(one.distanceKm) !== one.category)
 
     expect(
-      disagreed.slice(0, 5).map((one) => `${one.distanceKm} km: served ${one.category}`),
+      disagreed.slice(0, 5).map((one) => `${one.file}, ${one.distanceKm} km: served ${one.category}`),
     ).toEqual([])
   })
 })

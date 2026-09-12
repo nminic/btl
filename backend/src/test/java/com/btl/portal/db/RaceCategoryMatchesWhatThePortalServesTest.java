@@ -40,14 +40,22 @@ import static org.assertj.core.api.Assertions.assertThat;
  * floor that compared the written CASE with a written Java equivalent would be
  * two rules again, which is the thing it exists to stop.
  *
- * <p><b>AND THE PORTAL CARRIES A FOURTH HOME OF THE SAME RULE, held where it
- * lives.</b> {@code frontend/src/data/raceCategory.ts} answers this question in
- * TypeScript for the administration's form and for a reported result, in six
- * production paths, and no test here can run it. It is pinned in its own package
- * against THIS SAME served file ({@code raceCategory.test.ts}), so all four homes
- * are held against one reference instead of against each other. What said the home
- * was missing: the threshold moved there from 42.2 to 42.3 and every case in this
- * file stayed green (12.09.2026).
+ * <p><b>AND THE RULE HAS FIVE HOMES, of which this file holds two.</b> The two
+ * here are the generated columns. The other three live in the browser:
+ * {@code races.json} and {@code results.json}, which are served with a category on
+ * every record, and {@code frontend/src/data/raceCategory.ts}, which answers the
+ * same question in TypeScript for the administration's form and for a reported
+ * result. No test here can run TypeScript and a Java copy of the rule would be a
+ * sixth home, so those three are held in their own package
+ * ({@code raceCategory.test.ts}), by a sweep that READS THE SERVED DIRECTORY
+ * rather than naming files.
+ *
+ * <p><b>Two rounds of review found this, and both were one mistake at different
+ * depths</b> (12.09.2026): the first knew three homes and missed the function, the
+ * second knew four and missed {@code results.json}, where 3528 results carry their
+ * own category and three screens read it straight off the record. Each time the
+ * proof was the same: move the rule in the home nobody holds, and every case here
+ * stays green.
  */
 class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 
