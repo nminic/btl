@@ -5,10 +5,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+
+import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,28 +30,64 @@ class ApiSecurityTest {
 	@Autowired
 	private MockMvc http;
 
+	/**
+	 * The dispatcher itself, asked which paths it answers, rather than a list written
+	 * again. Named, because the actuator registers a second mapping of this type and
+	 * the portal's own controllers live in the first.
+	 */
+	@Autowired
+	@Qualifier("requestMappingHandlerMapping")
+	private RequestMappingHandlerMapping mappings;
+
 	private int statusOf(String path) throws Exception {
 		return http.perform(get(path)).andReturn().getResponse().getStatus();
 	}
 
 	/**
-	 * A ROUTE NOBODY OPENED IS A ROUTE NOBODY CAN READ, even one that does not
-	 * exist.
+	 * EVERY ROUTE NOBODY OPENED IS A ROUTE NOBODY CAN READ.
 	 *
-	 * <p>This is the whole of the configuration in one case, and it is written
-	 * against a path that was never mapped on purpose: 401 rather than 404 is what
-	 * says the rule is "shut unless opened by name". Were it the other way round,
-	 * an endpoint added without a line in the configuration would be readable by
-	 * anybody, and it would be found by whoever read it.
+	 * <p>This is the whole of the configuration in one case: 401 rather than 404 is
+	 * what says the rule is "shut unless opened by name". Were it the other way
+	 * round, an endpoint added without a line in the configuration would be readable
+	 * by anybody, and it would be found by whoever read it. It is also the case that
+	 * would fail first the day somebody writes {@code permitAll()} across
+	 * {@code /api/**} to make a test pass.
 	 *
-	 * <p>It is also the case that would fail first the day somebody writes
-	 * {@code permitAll()} across {@code /api/**} to make a test pass.
+	 * <p><b>The route is not named here, it is asked of the dispatcher.</b> Until
+	 * 13.09.2026 this case named {@code /api/competitors}, which was shut. The day
+	 * that resource was opened the case went red, and had it instead been written
+	 * against a path that was about to be opened tomorrow, it would have gone green
+	 * and stopped measuring anything without a word. Naming a shut route is naming
+	 * something that changes; the thing that does not change is "mapped, and not on
+	 * the open list", and Spring already answers that question.
+	 *
+	 * <p>Today that leaves {@code /api/me}. Every resource opened from here on adds
+	 * itself to the list above, and every one added WITHOUT a rule adds itself here.
 	 */
 	@Test
-	void aRouteNobodyOpenedIsARouteNobodyCanRead() throws Exception {
-		assertThat(statusOf("/api/competitors"))
-				.as("a route with no rule of its own answered somebody who is not signed in")
-				.isEqualTo(401);
+	void everyRouteNobodyOpenedIsARouteNobodyCanRead() throws Exception {
+		List<String> shut = mappings.getHandlerMethods().keySet().stream()
+				.filter(this::answersAGet)
+				.flatMap(info -> info.getDirectPaths().stream())
+				.filter(path -> path.startsWith("/api/"))
+				.filter(path -> !ApiSecurity.READ_BY_ANYBODY.contains(path))
+				.distinct().sorted().toList();
+
+		assertThat(shut)
+				.as("every route the portal maps is on the open list, so this compares nothing")
+				.isNotEmpty();
+
+		for (String path : shut) {
+			assertThat(statusOf(path))
+					.as("%s has no rule of its own and answered somebody who is not signed in", path)
+					.isEqualTo(401);
+		}
+	}
+
+	/** A mapping that names no method at all answers every one of them, GET included. */
+	private boolean answersAGet(RequestMappingInfo info) {
+		Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
+		return methods.isEmpty() || methods.contains(RequestMethod.GET);
 	}
 
 	/**
