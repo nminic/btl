@@ -108,6 +108,25 @@ class RaceDoneTest {
 				BigDecimal.ZERO).points()).isEqualByComparingTo("0");
 	}
 
+	/**
+	 * And the smallest race there can be IS a race.
+	 *
+	 * <p>The other side of the two boundaries that are STRICTLY positive, and the
+	 * side a round on 11.09.2026 found unmeasured: every legal race in these cases
+	 * is far from nought, so a version refusing anything below one kilometre, or
+	 * under a second, passed them all. A hundredth of a kilometre is the smallest
+	 * `result.distance_km` can hold, being numeric(6,2), and a second is the
+	 * smallest `result.seconds` can hold at all.
+	 */
+	@Test
+	void theSmallestRaceTheSchemaCanHoldIsARace() {
+		RaceDone smallest = new RaceDone(LocalDate.parse("2027-07-15"), "short", "RS",
+				new BigDecimal("0.01"), 0, 1L, BigDecimal.ZERO);
+
+		assertThat(smallest.kilometers()).isEqualByComparingTo("0.01");
+		assertThat(smallest.seconds()).isOne();
+	}
+
 	@Test
 	void whatIsNotThereIsRefusedByName() {
 		assertThatThrownBy(() -> new RaceDone(null, "short", "RS", BigDecimal.ONE, 0, 60L, BigDecimal.ONE))

@@ -49,15 +49,25 @@ class DucatKindTest {
 	 * taken away (ADL A12, 4), so a swap like that hands out a badge nobody can
 	 * take back.
 	 *
-	 * <p>One short, two half, three long, four marathon, five ultra. Any counter
-	 * reading another counter's band now answers a different number.
+	 * <p><b>And the counts do not follow the order the quantities are declared in.</b>
+	 * The first attempt held one short, two half, three long, four marathon and five
+	 * ultra, which is the order SHORT_COUNT to ULTRA_COUNT is written in, so every
+	 * band's count was equal to its own position in that list. A round on 11.09.2026
+	 * measured what that leaves open: an implementation ignoring the band entirely
+	 * and answering {@code min(howManyRaces, position)} passed every case here,
+	 * including the empty field, because fifteen is more than five and nought is
+	 * less than one.
+	 *
+	 * <p>So the counts are shuffled against that order - three short, five half, one
+	 * long, four marathon, two ultra - and no formula over a position can reach them.
 	 */
 	private static List<RaceDone> theBands() {
 		List<RaceDone> field = new ArrayList<>();
 		String[] bands = {"short", "half", "long", "marathon", "ultra"};
+		int[] howMany = {3, 5, 1, 4, 2};
 
 		for (int band = 0; band < bands.length; band++) {
-			for (int which = 0; which <= band; which++) {
+			for (int which = 0; which < howMany[band]; which++) {
 				field.add(race("2027-03-0" + (which + 1), bands[band], "RS", "10.00", 100, 3000L, "5.00"));
 			}
 		}
@@ -66,7 +76,7 @@ class DucatKindTest {
 	}
 
 	@ParameterizedTest(name = "{0} = {1}")
-	@CsvSource({"shortCount, 1", "halfCount, 2", "longCount, 3", "marathonCount, 4", "ultraCount, 5"})
+	@CsvSource({"shortCount, 3", "halfCount, 5", "longCount, 1", "marathonCount, 4", "ultraCount, 2"})
 	void everyCounterCountsItsOwnBand(String code, String expected) {
 		assertThat(DucatKind.named(code).over(theBands()))
 				.as("%s counts another band's races", code)
@@ -210,6 +220,22 @@ class DucatKindTest {
 		assertThatThrownBy(() -> DucatKind.RACE_COUNT.reached(List.of(), new BigDecimal("-5")))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("not a badge");
+	}
+
+	/**
+	 * And the smallest threshold there can be IS a threshold.
+	 *
+	 * <p>The other side of the boundary, and the side a round on 11.09.2026 found
+	 * unmeasured: every threshold in the cases above is far from nought, so a
+	 * version refusing everything below ONE passed them all while refusing a
+	 * perfectly legal badge. A hundredth is the smallest the schema can hold, since
+	 * `ducat.threshold` is numeric(12,2).
+	 */
+	@Test
+	void theSmallestThresholdTheSchemaCanHoldIsAThreshold() {
+		assertThat(DucatKind.POINTS.reached(theField(), new BigDecimal("0.01")))
+				.as("the smallest badge the schema can describe was refused as no badge at all")
+				.isTrue();
 	}
 
 	@Test
