@@ -10,6 +10,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
+import java.util.List;
+
 /**
  * Who may ask the server for what.
  *
@@ -37,18 +39,32 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 @Configuration
 class ApiSecurity {
 
+	/**
+	 * WHAT ANYBODY MAY READ, in one list because two places would disagree.
+	 *
+	 * <p>The codebooks and the calendar: a list of towns, a list of states, and what
+	 * was run and when. Nothing in any of them belongs to anybody, and the calendar
+	 * is the page a visitor comes to the portal for. Who RAN a race is a different
+	 * resource and is not opened here.
+	 *
+	 * <p><b>It is a constant rather than four arguments because the guard reads
+	 * it.</b> `ApiSecurityTest` takes every route on this list and asks whether a
+	 * sub-path, a different spelling of it and a trailing slash are still shut, and
+	 * whether writing to it is refused. Written out at the call site, each route
+	 * added later would have had to be added to those cases by somebody who
+	 * remembered they existed - and a review on 12.09.2026 measured what that costs:
+	 * two routes were added here and to nothing else, so widening one of them to
+	 * `/api/events/**` cost nothing in the whole suite.
+	 */
+	static final List<String> READ_BY_ANYBODY =
+			List.of("/api/places", "/api/countries", "/api/events", "/api/races");
+
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
 		return http
 				.securityMatcher("/api/**")
 				.authorizeHttpRequests(routes -> routes
-						/* The codebooks and the calendar are public because they are: a list of
-						   towns, a list of states, and what was run and when. Nothing in any of
-						   the four belongs to anybody, and the calendar is the page a visitor
-						   comes to the portal for. Who RAN a race is a different resource and is
-						   not open by this line. */
-						.requestMatchers("/api/places", "/api/countries",
-								"/api/events", "/api/races").permitAll()
+						.requestMatchers(READ_BY_ANYBODY.toArray(String[]::new)).permitAll()
 						/* Signing in is open by necessity: nobody can be asked to be signed in
 						   in order to sign in. It is still the one open route that WRITES, and
 						   what stands in front of it is that every wrong answer costs the guesser
