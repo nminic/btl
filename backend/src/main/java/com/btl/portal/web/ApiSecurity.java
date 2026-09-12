@@ -3,9 +3,11 @@ package com.btl.portal.web;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 /**
@@ -36,7 +38,7 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 class ApiSecurity {
 
 	@Bean
-	SecurityFilterChain api(HttpSecurity http) throws Exception {
+	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
 		return http
 				.securityMatcher("/api/**")
 				.authorizeHttpRequests(routes -> routes
@@ -81,6 +83,13 @@ class ApiSecurity {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.httpBasic(basic -> basic.disable())
 				.formLogin(form -> form.disable())
+				/* AND WHO IS ASKING IS WORKED OUT BEFORE ANYTHING IS AUTHORISED, which is
+				   what `addFilterBefore` is for. Put after `AuthorizationFilter` it would
+				   run on a request that had already been refused, and every signed in
+				   member would be answered 401 by a chain that was about to know who he
+				   is. `ApiSecurityTest` measures that a member reaches a route that asks
+				   for him. */
+				.addFilterBefore(new WhoIsAsking(db), AuthorizationFilter.class)
 				.exceptionHandling(handling -> handling
 						.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 				.build();
