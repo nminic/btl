@@ -13,15 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,8 +26,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 class LeagueApiTest {
 
-	private static final Path SERVED =
-			Path.of("..", "frontend", "public", "mock", "leagues.json");
 
 	@Autowired
 	private MockMvc http;
@@ -126,31 +116,7 @@ class LeagueApiTest {
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
-		JsonNode answered = answer();
-
-		assertThat(answered.isArray() && !answered.isEmpty())
-				.as("the server answered with nothing, so there are no fields to compare")
-				.isTrue();
-
-		assertThat(answered.get(0).properties().stream().map(Map.Entry::getKey)
-				.collect(Collectors.toSet()))
-				.as("the server no longer answers with everything leagues.json is read for")
-				.containsAll(servedFields());
-	}
-
-	private static Set<String> servedFields() {
-		try {
-			JsonNode all = new ObjectMapper()
-					.readTree(Files.readString(SERVED, StandardCharsets.UTF_8));
-
-			assertThat(all.isArray() && !all.isEmpty())
-					.as("leagues.json is not a list of records, so there is nothing to compare")
-					.isTrue();
-
-			return all.get(0).properties().stream().map(Map.Entry::getKey).collect(Collectors.toSet());
-		} catch (IOException cannot) {
-			throw new UncheckedIOException(cannot);
-		}
+		Answers.everyFieldThePortalReadsIsAnswered("/api/leagues", answer(), "leagues.json");
 	}
 
 	/** And in season order, oldest first, whatever order the rows were written in. */

@@ -1,0 +1,174 @@
+package com.btl.portal.web;
+
+import com.btl.portal.TestcontainersConfiguration;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
+import java.util.stream.StreamSupport;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+
+/** The history, against a real database and against the file the portal serves. */
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
+@Transactional
+class ResultApiTest {
+
+	@Autowired
+	private MockMvc http;
+
+	@Autowired
+	private JdbcClient db;
+
+	/**
+	 * Two members, two days, three runs, and deliberately not in the order they
+	 * were run.
+	 *
+	 * <p>Nothing here is the only one of its kind: two members so a result cannot
+	 * be found by being the only one, two events so a name cannot come back by
+	 * being the only name, and two runs on the same day so that "in date order"
+	 * still has to decide between them.
+	 */
+	@BeforeEach
+	void aHistoryOutOfOrder() {
+		member("000001", "Prvi", "Clan", "M", "1990-05-05", "00112233445566aa");
+		member("000002", "Druga", "Clanica", "F", "1978-11-20", "00112233445566bb");
+
+		event("maratonski-dan-2027", "Maratonski dan", "2027-05-05");
+		event("kratki-dan-2027", "Kratki dan", "2027-03-01");
+
+		race("maratonski-dan-2027", "Maraton", "2027-05-05", 42.20);
+		race("kratki-dan-2027", "Desetka", "2027-03-01", 10.00);
+
+		run("000001", "Maraton", "2027-05-05", 42.20, 350, 410, 12000, 123.45);
+		run("000002", "Desetka", "2027-03-01", 10.00, 0, 5, 3000, 45.60);
+		run("000001", "Desetka", "2027-03-01", 10.00, 0, 5, 3600, 50.00);
+	}
+
+	private void member(String number, String first, String last, String gender, String born,
+			String referral) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, city, country_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
+						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
+						+ " values (?, ?, ?, ?, date '" + born + "',"
+						+ " (select id from place where rank = 1), null, null, 2027, false, true,"
+						+ " 'payment', ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, first, last, gender, referral).update();
+	}
+
+	private void event(String slug, String name, String day) {
+		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
+						+ " featured, description, link)"
+						+ " values (?, ?, date '" + day + "', null, 'Kraljevo',"
+						+ " (select id from country where code = 'RS'), 'race', false, '', '')")
+				.params(slug, name).update();
+	}
+
+	private void race(String eventSlug, String name, String day, double km) {
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m)"
+						+ " values ((select id from btl_event where slug = ?), ?, false,"
+						+ " date '" + day + "', 'length', 0, ?, 0, 0)")
+				.params(eventSlug, name, km).update();
+	}
+
+	private void run(String member, String raceName, String day, double km, int up, int down,
+			int seconds, double points) {
+		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m,"
+						+ " descent_m, seconds, points)"
+						+ " values ((select id from competitor where member_number = ?),"
+						+ " (select id from race where name = ?), date '" + day + "', ?, ?, ?, ?, ?)")
+				.params(member, raceName, km, up, down, seconds, points).update();
+	}
+
+	private JsonNode answer() throws Exception {
+		return new ObjectMapper().readTree(
+				http.perform(get("/api/results")).andReturn().getResponse().getContentAsString());
+	}
+
+	@Test
+	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
+		Answers.everyFieldThePortalReadsIsAnswered("/api/results", answer(), "results.json");
+	}
+
+	@Test
+	void noFieldOfTheAnswerIsTheSameInEveryRecord() throws Exception {
+		Answers.noFieldIsTheSameInEveryRecord("/api/results", answer());
+	}
+
+	/**
+	 * THE HISTORY COMES BACK IN THE ORDER IT WAS RUN.
+	 *
+	 * <p>The rows were written last day first, so an answer in the order they were
+	 * written is a different list from an answer in the order they were run. The two
+	 * runs of the same day are told apart by the key, which is the only thing left
+	 * once the day has decided.
+	 */
+	@Test
+	void theHistoryComesBackInTheOrderItWasRun() throws Exception {
+		assertThat(StreamSupport.stream(answer().spliterator(), false)
+				.map(one -> one.path("seconds").asInt()).toList())
+				.as("the history came back in the order the rows were written")
+				.containsExactly(3000, 3600, 12000);
+	}
+
+	/**
+	 * A RACE RENAMED AFTER THE RUN COMES BACK UNDER ITS NEW NAME, and so does its
+	 * event and the address of it.
+	 *
+	 * <p>This is the case that says the names are joined and not stored. A server
+	 * keeping its own copy of them would answer with the name as it stood when the
+	 * result was written, and every other case in this file would still pass: the
+	 * fields would be named right and none of them would be a constant. What it
+	 * guards is the drift V7 measured on the served data, two hundred and twenty
+	 * three values out of seventeen thousand six hundred and forty.
+	 */
+	@Test
+	void aRaceRenamedAfterTheRunComesBackRenamed() throws Exception {
+		db.sql("update race set name = 'Maraton pod novim imenom', renamed = true"
+				+ " where name = 'Maraton'").update();
+		db.sql("update btl_event set name = 'Dan pod novim imenom', slug = 'novi-slug-2027'"
+				+ " where slug = 'maratonski-dan-2027'").update();
+
+		JsonNode theMarathon = StreamSupport.stream(answer().spliterator(), false)
+				.filter(one -> one.path("seconds").asInt() == 12000)
+				.findFirst().orElseThrow();
+
+		assertThat(theMarathon.path("raceName").asString())
+				.as("the race was renamed and the answer carried the old name")
+				.isEqualTo("Maraton pod novim imenom");
+		assertThat(theMarathon.path("eventName").asString())
+				.as("the event was renamed and the answer carried the old name")
+				.isEqualTo("Dan pod novim imenom");
+		assertThat(theMarathon.path("eventSlug").asString())
+				.as("the event moved and the answer carried the old address")
+				.isEqualTo("novi-slug-2027");
+	}
+
+	/**
+	 * AND A VISITOR READS IT WITHOUT SIGNING IN.
+	 *
+	 * <p>Article 73 of the rulebook lists every verified result among the things
+	 * that are public, and a league whose record cannot be checked is not a league.
+	 */
+	@Test
+	void nobodyHasToSignInToReadTheHistory() throws Exception {
+		assertThat(http.perform(get("/api/results")).andReturn().getResponse().getStatus())
+				.as("/api/results asked a visitor to sign in")
+				.isEqualTo(200);
+	}
+
+}
