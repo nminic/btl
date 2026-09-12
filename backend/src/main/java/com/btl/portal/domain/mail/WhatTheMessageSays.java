@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
+import java.util.regex.Pattern;
 
 /**
  * THE TWO MESSAGES THE PORTAL SENDS TO SOMEBODY WHO IS NOT SIGNED IN, and the
@@ -20,9 +21,26 @@ import java.util.ResourceBundle;
  * token on it. A request's host is written by whoever sent it, so somebody asking
  * the portal to reset a stranger's password, with a host of his own, would have
  * the portal mail that stranger a link to the attacker's machine. The stranger
- * clicks it, the token is his. {@link Portal} exists so that the address can only
- * come from configuration, and the one rule about it is written where it cannot
- * be missed rather than in a comment on a caller.
+ * clicks it, the token is his.
+ *
+ * <p><b>AND WHAT {@link Portal} ACTUALLY DOES ABOUT THAT IS LESS THAN THIS USED
+ * TO CLAIM.</b> It said the type made it so an address "can only come from
+ * configuration". A security round on 12.09.2026 put that sentence to the test
+ * and it did not hold: {@code new Portal("https://zlo.rs")} is accepted, as is
+ * {@code https://balkanskatrkackaliga.net@zlo.rs}, whose real host is the second
+ * one. No type can know where a string came from, and a comment that says
+ * otherwise is worse than no comment, because the next reader builds on a wall
+ * that is not there.
+ *
+ * <p>So what it does is written plainly instead. {@link Portal} refuses
+ * everything that is not the shape of a portal address, which is a narrow shape
+ * and is swept rather than listed. What it does NOT do is know which portal;
+ * that belongs to the single bean that reads the address out of configuration
+ * and hands it on, and until that bean exists this is a boundary rather than a
+ * guard. The type still earns its place: an address can only enter through one
+ * constructor, so there is exactly one line in the portal to look at, and a
+ * method that needs a {@code Portal} cannot be quietly handed a {@code String}
+ * somebody sent in.
  *
  * <p><b>How long a link lasts is not typed into the message.</b> The text carries
  * a place for it and the number comes from {@link Message}, which
@@ -50,16 +68,27 @@ public final class WhatTheMessageSays {
 	 */
 	private static final Locale ONE_SET_OF_WORDS = Locale.ROOT;
 
+	/**
+	 * The alphabet base64 uses when it is meant for addresses, and nothing else.
+	 *
+	 * <p>Letters, digits, and the two characters that replace {@code +} and
+	 * {@code /} precisely so that a value can sit in an address without being
+	 * encoded. No padding, because the token is written without it.
+	 */
+	private static final Pattern A_SECRET = Pattern.compile("^[A-Za-z0-9_-]+$");
+
 	private WhatTheMessageSays() {
 	}
 
 	/**
-	 * WHERE THE PORTAL LIVES, and the only place a link may be built from.
+	 * WHERE THE PORTAL LIVES, in the shape a portal address has.
 	 *
 	 * <p>Held as its own type rather than as a {@code String} so that a method
-	 * needing it cannot be handed a host somebody sent in. Whoever builds one of
-	 * these is holding configuration, and that is a thing a reviewer can see at the
-	 * one place it is constructed.
+	 * needing it cannot be quietly handed one, and so that there is a single
+	 * constructor to look at rather than a habit to remember.
+	 *
+	 * <p><b>What it enforces is the shape, and the shape only.</b> Which portal is
+	 * not its question and it does not pretend otherwise; see the class comment.
 	 *
 	 * @param address the portal's own address, with no trailing slash
 	 */
@@ -83,8 +112,29 @@ public final class WhatTheMessageSays {
 				throw new IllegalArgumentException("the portal's address ends in a slash: " + address);
 			}
 
-			if (address.chars().anyMatch(Character::isWhitespace)) {
-				throw new IllegalArgumentException("the portal's address has a space in it: " + address);
+			/* PRINTABLE ASCII AND NOTHING ELSE, and it replaced a check for whitespace
+			   that a security round on 12.09.2026 walked straight past. That check asked
+			   `Character.isWhitespace`, which says NO to U+00A0, U+2007 and U+202F by
+			   specification and has never heard of U+200B or U+0085, so every one of
+			   those went through - as did a NUL byte, and as did an address whose domain
+			   was written in Cyrillic letters that look exactly like ours.
+
+			   Listing those would have been the fourth wrong list. A web address is
+			   ASCII by the standard that defines it, and anything outside that range has
+			   to be percent encoded before it travels, so the narrow rule is also the
+			   correct one and it has no next character to be surprised by. */
+			if (address.chars().anyMatch(one -> one < '!' || one > '~')) {
+				throw new IllegalArgumentException(
+						"the portal's address holds something that is not printable ASCII");
+			}
+
+			/* AND NOTHING BEFORE AN @, which is the trick the round found and the one
+			   that reads as safe. In `https://balkanskatrkackaliga.net@zlo.rs` everything
+			   before the @ is the userinfo field and the host is `zlo.rs`; a member
+			   glancing at the link sees his own league at the front of it. */
+			if (address.indexOf('@') >= 0) {
+				throw new IllegalArgumentException("the portal's address carries an @, so its host"
+						+ " is not what it reads as: " + address);
 			}
 		}
 	}
@@ -146,8 +196,23 @@ public final class WhatTheMessageSays {
 		Objects.requireNonNull(portal, "portal");
 		Objects.requireNonNull(token, "token");
 
-		if (token.isBlank()) {
-			throw new IllegalArgumentException("a message with no token in it is a message with no link");
+		/* THE TOKEN IS CHECKED AND NOT ASSUMED, and this too came out of the round on
+		   12.09.2026. It used to be enough that it was not blank, on the reasoning that
+		   `SecretToken` writes base64 without padding and is therefore safe in an
+		   address. That reasoning is about a class this one does not call and cannot
+		   see: a token carrying `&` hangs another parameter on the link, one carrying
+		   `#` cuts everything after it into a fragment the server never receives, and
+		   one carrying a space or a newline breaks the link where a mail client folds
+		   it. None of those is an attack today and every one of them is a member
+		   holding a link that does not work, with nothing having said a word.
+
+		   `WhatTheMessageSaysTest.everySecretTheTokenMakerWritesIsOneThisAccepts` keeps
+		   this from being a second guess at somebody else's rule: it makes real tokens
+		   and requires every one of them to pass here, so the day the generator changes,
+		   this fails rather than the member's link. */
+		if (!A_SECRET.matcher(token).matches()) {
+			throw new IllegalArgumentException(
+					"a message with no usable token in it is a message with no link");
 		}
 
 		ResourceBundle words = ResourceBundle.getBundle(WORDS, ONE_SET_OF_WORDS);
