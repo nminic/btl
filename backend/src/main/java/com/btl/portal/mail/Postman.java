@@ -46,11 +46,13 @@ public class Postman {
 	 *                    written here, because QA and production are two
 	 *                    installations of one portal and the day they must differ
 	 *                    is not this class's business
-	 * @param signsIn     whether the relay is given a name and a key
+	 * @param name        the name the relay is given, empty when there is none
+	 * @param key         the key that goes with it
 	 * @param insistsOnTls whether STARTTLS is required rather than merely offered
 	 */
 	Postman(JavaMailSender relay, @Value("${btl.mail.from}") String from,
-			@Value("${spring.mail.properties.mail.smtp.auth:false}") boolean signsIn,
+			@Value("${spring.mail.username:}") String name,
+			@Value("${spring.mail.password:}") String key,
 			@Value("${spring.mail.properties.mail.smtp.starttls.required:false}") boolean insistsOnTls) {
 
 		/* A KEY IS NEVER SENT DOWN A CONNECTION THAT MIGHT NOT BE ENCRYPTED, and
@@ -65,7 +67,22 @@ public class Postman {
 		   Written as a line of configuration the fix would be one deployment away from
 		   being lost. Written here it is a server that does not come up, which is the
 		   loudest a mistake can be and the cheapest to find. Development authenticates
-		   against nothing and is untouched. */
+		   against nothing and is untouched.
+
+		   AND WHAT IT ASKS IS WHETHER THERE ARE CREDENTIALS, not whether
+		   `mail.smtp.auth` is on, which is where the first draft of this guard was
+		   wrong and a second round caught it. Those two are not the same question:
+		   Jakarta Mail sends AUTH LOGIN whenever a name and a key are present and the
+		   server offers AUTH, whatever `mail.smtp.auth` says - that switch only decides
+		   whether MISSING credentials abort the connection. So a deployment carrying a
+		   real Brevo key and no `auth` property walked straight through the old check
+		   and sent the key anyway. Measured, over a socket, against a server that
+		   offered no encryption: the key arrived in Base64.
+
+		   The name is enough to ask about: a key with no name authenticates nothing,
+		   and either of them being set is somebody intending to sign in. */
+		boolean signsIn = !name.isBlank() || !key.isBlank();
+
 		if (signsIn && !insistsOnTls) {
 			throw new IllegalStateException("the portal is set to sign in to the mail relay without"
 					+ " requiring TLS, so its key would travel in the clear to anybody who strips"

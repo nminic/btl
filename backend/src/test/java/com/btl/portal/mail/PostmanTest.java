@@ -7,10 +7,13 @@ import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
 import com.icegreen.greenmail.util.ServerSetupTest;
 import jakarta.mail.internet.MimeMessage;
+import org.yaml.snakeyaml.Yaml;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -146,18 +149,29 @@ class PostmanTest {
 	 */
 	@Test
 	void aPortalThatWouldSendItsKeyInTheClearDoesNotStart() {
-		assertThatThrownBy(() -> new Postman(anywhere(), from, true, false))
-				.as("the portal would sign in to the relay without requiring TLS")
+		assertThatThrownBy(() -> new Postman(anywhere(), from, "brevo-korisnik", "kljuc", false))
+				.as("the portal carries a key and does not require TLS")
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("starttls.required");
 
-		assertThatCode(() -> new Postman(anywhere(), from, true, true))
+		/* A KEY WITH NO NAME, AND A NAME WITH NO KEY, ARE BOTH SOMEBODY SIGNING IN.
+		   These two are here because the first draft of the guard asked whether
+		   `mail.smtp.auth` was on, and a round on 12.09.2026 showed that is a different
+		   question: Jakarta Mail sends AUTH LOGIN whenever credentials are present and
+		   the server offers AUTH, whatever that switch says. Either half being set is
+		   an installation that means to authenticate. */
+		assertThatThrownBy(() -> new Postman(anywhere(), from, "brevo-korisnik", "", false))
+				.isInstanceOf(IllegalStateException.class);
+		assertThatThrownBy(() -> new Postman(anywhere(), from, "", "kljuc", false))
+				.isInstanceOf(IllegalStateException.class);
+
+		assertThatCode(() -> new Postman(anywhere(), from, "brevo-korisnik", "kljuc", true))
 				.as("signing in over required TLS is the arrangement QA and production use")
 				.doesNotThrowAnyException();
-		assertThatCode(() -> new Postman(anywhere(), from, false, false))
+		assertThatCode(() -> new Postman(anywhere(), from, "", "", false))
 				.as("development signs in to nothing and must keep working")
 				.doesNotThrowAnyException();
-		assertThatCode(() -> new Postman(anywhere(), from, false, true))
+		assertThatCode(() -> new Postman(anywhere(), from, "", "", true))
 				.doesNotThrowAnyException();
 	}
 
@@ -178,7 +192,7 @@ class PostmanTest {
 		insisting.getJavaMailProperties().setProperty("mail.smtp.starttls.enable", "true");
 		insisting.getJavaMailProperties().setProperty("mail.smtp.starttls.required", "true");
 
-		assertThatThrownBy(() -> new Postman(insisting, from, false, true)
+		assertThatThrownBy(() -> new Postman(insisting, from, "", "", true)
 				.send(new Said("Naslov", "Telo"), "clan@primer.rs"))
 				.as("the message went to a server offering no STARTTLS")
 				.isInstanceOf(org.springframework.mail.MailException.class);
@@ -227,29 +241,52 @@ class PostmanTest {
 	 * AND THE INSTALLATION THAT ACTUALLY SIGNS IN SETS BOTH SWITCHES.
 	 *
 	 * <p>The guard in the constructor stops a portal configured this way from
-	 * starting, which is the loud half. This is the quiet half: it reads the file
-	 * QA is deployed from and requires the pair to be together there, so the
-	 * mistake is caught by a red test rather than by a server that will not come
-	 * up in the middle of a deploy.
+	 * starting, which is the loud half. This is the quiet half: it reads the file QA
+	 * is deployed from and requires the pair to be together there, so the mistake is
+	 * caught by a red test rather than by a server that will not come up in the
+	 * middle of a deploy.
 	 *
-	 * <p>Read as a pair and not as two separate lines looked for: what is wrong is
-	 * not the absence of a switch but the two disagreeing.
+	 * <p><b>It PARSES the file rather than searching it, and a round on 12.09.2026
+	 * is why.</b> Written as a search for the text {@code SMTP_AUTH: "true"} it was
+	 * proven green while lying in both directions: the same setting written without
+	 * quotes is valid YAML, means the same thing to Compose, and slipped past it;
+	 * and a line commented out still satisfied it, because the text was still in the
+	 * file. Read as values, an unquoted true is a boolean and a commented line is
+	 * not a key at all.
+	 *
+	 * <p><b>And what it asks about is the CREDENTIALS</b>, not the {@code auth}
+	 * switch, for the same reason the constructor does: a name and a key are what
+	 * make Jakarta Mail sign in, and that switch has no say in it.
 	 */
 	@Test
 	void theInstallationThatSignsInAlsoRequiresTls() throws Exception {
-		String deployed = Files.readString(Path.of("..", "deploy", "compose.qa.yml"),
-				StandardCharsets.UTF_8);
+		Map<String, Object> forTheBackend = deployedEnvironment();
 
-		assertThat(deployed)
+		assertThat(forTheBackend)
 				.as("the QA stack no longer configures mail at all, so this compares nothing")
-				.contains("SPRING_MAIL_USERNAME");
+				.containsKey("SPRING_MAIL_USERNAME");
 
-		if (deployed.contains("SMTP_AUTH: \"true\"")) {
-			assertThat(deployed)
-					.as("QA signs in to the relay and does not require TLS, so its key can be"
+		boolean signsIn = Stream.of("SPRING_MAIL_USERNAME", "SPRING_MAIL_PASSWORD")
+				.anyMatch(forTheBackend::containsKey);
+
+		if (signsIn) {
+			assertThat(String.valueOf(
+					forTheBackend.get("SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED")))
+					.as("QA carries a key for the relay and does not require TLS, so the key can be"
 							+ " stripped onto a clear connection")
-					.contains("SMTP_STARTTLS_REQUIRED: \"true\"");
+					.isEqualTo("true");
 		}
+	}
+
+	/** What the QA stack actually hands the backend, read as values and not as text. */
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> deployedEnvironment() throws Exception {
+		Map<String, Object> compose = new Yaml()
+				.load(Files.readString(Path.of("..", "deploy", "compose.qa.yml"), StandardCharsets.UTF_8));
+		Map<String, Object> services = (Map<String, Object>) compose.get("services");
+		Map<String, Object> backend = (Map<String, Object>) services.get("backend");
+
+		return (Map<String, Object>) backend.get("environment");
 	}
 
 	/** A sender that is never used, for the cases that only build a postman. */
@@ -292,7 +329,7 @@ class PostmanTest {
 		nowhere.setPort(1);
 		nowhere.getJavaMailProperties().setProperty("mail.smtp.connectiontimeout", "2000");
 
-		assertThatThrownBy(() -> new Postman(nowhere, from, false, false).send(new Said("Naslov", "Telo"),
+		assertThatThrownBy(() -> new Postman(nowhere, from, "", "", false).send(new Said("Naslov", "Telo"),
 				"clan@primer.rs"))
 				.as("a message that could not be sent was reported as sent")
 				.isInstanceOf(org.springframework.mail.MailException.class);
