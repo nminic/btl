@@ -9,16 +9,19 @@ import com.icegreen.greenmail.util.ServerSetupTest;
 import jakarta.mail.internet.MimeMessage;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Properties;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.context.TestPropertySource;
 
@@ -41,7 +44,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest(classes = {Postman.class,
 		org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration.class})
 @TestPropertySource(properties = {
-		"btl.mail.from=noreply@balkanskatrkackaliga.net",
 		"spring.mail.host=127.0.0.1",
 		"spring.mail.port=3025",
 		"spring.mail.properties.mail.smtp.auth=false"})
@@ -56,6 +58,21 @@ class PostmanTest {
 	@Autowired
 	private Postman postman;
 
+	/** The relay the context built, the same one the postman above was given. */
+	@Autowired
+	private JavaMailSender relay;
+
+	/**
+	 * The address the portal is configured with.
+	 *
+	 * <p><b>Deliberately NOT overridden in {@code @TestPropertySource} above</b>, and
+	 * that is the point rather than an omission: overridden, this class would carry a
+	 * copy of the address and stay green while the installation was configured to send
+	 * from anywhere at all. Measured 13.09.2026 - the copy was there, the setting said
+	 * {@code noreply@}, the relay rewrote the sender, and no case went red. So this
+	 * resolves out of the real {@code application.properties}, which
+	 * {@code itComesFromTheAddressThatRefusesReplies} then reads off the disk as well.
+	 */
 	@Value("${btl.mail.from}")
 	private String from;
 
@@ -94,22 +111,104 @@ class PostmanTest {
 	}
 
 	/**
-	 * AND IT COMES FROM THE ADDRESS THAT REFUSES REPLIES.
+	 * AND IT COMES FROM THE ADDRESS THAT REFUSES REPLIES, HYPHEN AND ALL.
 	 *
-	 * <p>{@code info@} is read by a person and {@code noreply@} is what the portal
-	 * writes from (ADL-posta, 29.07.2026). Sent from the wrong one, every member
-	 * pressing reply would write to a mailbox somebody has to answer, and the
-	 * decision that made those two addresses different would be undone by one
-	 * line of configuration.
+	 * <p>{@code info@} is read by a person and {@code no-reply@} is what the portal
+	 * writes from (ADL A48, 12.09.2026). Sent from the wrong one, every member
+	 * pressing reply would write to a mailbox somebody has to answer.
+	 *
+	 * <p><b>And a wrong address does not merely annoy, it stops the mail.</b> The
+	 * relay lets through only a sender verified in its panel and rewrites every other
+	 * one, so a message from an address it does not know arrives from a stranger
+	 * nobody recognises. Measured 13.09.2026, with the unhyphenated form configured:
+	 * what arrived came from the relay's own domain. One character is the difference.
+	 *
+	 * <p><b>It reads the setting file rather than a string copied into this class</b>,
+	 * the same way {@code theInstallationThatSignsInAlsoRequiresTls} reads the file QA
+	 * is deployed from, and parsed rather than searched for the same reason. Three
+	 * things are held and no two of them are the same question: the file carries the
+	 * decided address, Spring hands the portal what the file carries, and the message
+	 * leaves with what the portal was handed.
+	 *
+	 * <p><b>And it compares the WHOLE address.</b> What stood here was
+	 * {@code startsWith("noreply@")}, which was worse than toothless: measured, that
+	 * prefix is false for the hyphenated address, so the assertion held the overturned
+	 * form in place and would have gone red on the fix rather than on the fault.
 	 */
 	@Test
 	void itComesFromTheAddressThatRefusesReplies() throws Exception {
+		String configured = theAddressTheSettingCarries();
+
+		assertThat(configured)
+				.as("the setting no longer carries the address that is verified with the relay"
+						+ " (ADL A48, 12.09.2026), so the sender is rewritten and every message"
+						+ " the portal sends arrives from a stranger")
+				.isEqualTo("no-reply@balkanskatrkackaliga.net");
+		assertThat(from)
+				.as("the portal was handed an address other than the one the setting file"
+						+ " carries, so something between the two is overriding it and this"
+						+ " class is measuring a value of its own")
+				.isEqualTo(configured);
+
 		postman.send(new Said("Naslov", "Telo"), "clan@primer.rs");
 
 		assertThat(waitForOne().getFrom()[0].toString())
-				.as("the portal wrote from an address a person reads")
-				.isEqualTo(from)
-				.startsWith("noreply@");
+				.as("the message left with an address other than the configured one")
+				.isEqualTo(from);
+	}
+
+	/**
+	 * THE ADDRESS THE INSTALLATION IS CONFIGURED WITH, read out of the settings file
+	 * itself.
+	 *
+	 * <p>PARSED rather than searched, for the reason the compose file further down is:
+	 * a search for the text would be satisfied by a line somebody commented out, and
+	 * blind to the same key written with a space around the equals sign or continued
+	 * onto a second line. Read as properties, a commented line is not a key at all and
+	 * the whitespace is gone before the value is.
+	 */
+	private static String theAddressTheSettingCarries() throws Exception {
+		Properties settings = new Properties();
+
+		try (Reader file = Files.newBufferedReader(
+				Path.of("src", "main", "resources", "application.properties"),
+				StandardCharsets.UTF_8)) {
+			settings.load(file);
+		}
+
+		String address = settings.getProperty("btl.mail.from");
+
+		assertThat(address)
+				.as("application.properties does not set btl.mail.from, so the portal has no"
+						+ " address of its own and this case compares nothing")
+				.isNotNull();
+
+		return address;
+	}
+
+	/**
+	 * AND THE ADDRESS TRAVELS FROM THE SETTING, NOT FROM THE CODE.
+	 *
+	 * <p>The case above compares values that are all equal when everything is right,
+	 * so by itself it cannot tell an address read from the setting apart from one
+	 * written into the class that sends. This hands the postman an address the setting
+	 * does not carry and reads back what travelled: a constant anywhere on the way
+	 * would answer with the configured one instead, and every assertion above would
+	 * still be green.
+	 *
+	 * <p>It matters beyond tidiness. QA and production are two installations of one
+	 * portal, and the day one of them has to write from somewhere else this is what
+	 * stands between a change of one line and a change of the code.
+	 */
+	@Test
+	void theAddressTravelsFromTheSettingAndNotFromTheCode() throws Exception {
+		new Postman(relay, "drugacija@primer.rs", "", "", false)
+				.send(new Said("Naslov", "Telo"), "clan@primer.rs");
+
+		assertThat(waitForOne().getFrom()[0].toString())
+				.as("the portal wrote from an address of its own rather than from the one it"
+						+ " was given")
+				.isEqualTo("drugacija@primer.rs");
 	}
 
 	/**
