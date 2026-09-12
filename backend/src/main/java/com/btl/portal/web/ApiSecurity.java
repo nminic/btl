@@ -41,12 +41,28 @@ class ApiSecurity {
 				.securityMatcher("/api/**")
 				.authorizeHttpRequests(routes -> routes
 						.requestMatchers("/api/places", "/api/countries").permitAll()
+						/* Signing in is open by necessity: nobody can be asked to be signed in
+						   in order to sign in. It is still the one open route that WRITES, and
+						   what stands in front of it is the CSRF token below and the fact that
+						   every wrong answer costs the guesser a miss. */
+						.requestMatchers("/api/sign-in").permitAll()
 						.anyRequest().authenticated())
-				/* No cookie is issued and no session is kept, so there is no session for
-				   anybody to ride: CSRF protection guards a browser that sends credentials
-				   it was given, and nothing here gives any. It comes back in the increment
-				   that signs somebody in, together with the cookie it is about. */
-				.csrf(csrf -> csrf.disable())
+				/* AND NOW THERE IS A COOKIE, SO CSRF PROTECTION IS BACK. This chain gave
+				   none until signing in existed, and the comment here said in as many words
+				   that it would return with the cookie it is about. It has.
+
+				   The token is kept in a COOKIE and not in the session, which matters twice
+				   over: the server stays without session state, and the case saying nothing
+				   hands out a session keeps holding. `withHttpOnlyFalse` is what lets the
+				   portal's own script read the token and echo it in a header, which is the
+				   whole mechanism - another site can make a browser send a request, but it
+				   cannot read a cookie from this origin to put in a header.
+
+				   The session cookie itself is SameSite=Strict, so it is not sent from
+				   another site at all; the CSRF token is the second lock, on the reasoning
+				   that one lock which everything depends on is one mistake away from none. */
+				.csrf(csrf -> csrf.csrfTokenRepository(
+						org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse()))
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.httpBasic(basic -> basic.disable())
 				.formLogin(form -> form.disable())
