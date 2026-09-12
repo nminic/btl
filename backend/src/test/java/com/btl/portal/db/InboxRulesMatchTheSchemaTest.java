@@ -36,8 +36,23 @@ class InboxRulesMatchTheSchemaTest extends DatabaseTest {
 				.replace("team_invitation_id", invitesToATeam ? "1::bigint" : "null::bigint")
 				.replace("pair_invite_id", invitesToAPair ? "1::bigint" : "null::bigint");
 
-		return Boolean.TRUE.equals(db.sql("select coalesce(" + asked + ", false)")
-				.query(Boolean.class).single());
+		Boolean answered = db.sql("select " + asked).query(Boolean.class).single();
+
+		/* NOT `coalesce(..., false)`, and the difference is the wrong way round rather
+		   than cosmetic. PostgreSQL takes a CHECK that evaluates to NULL as SATISFIED:
+		   a constraint refuses a row only on false. Mapping NULL to false would have
+		   this method answer "the table refuses it" about a row the table would hold.
+
+		   Today the question cannot arise - the rule is built out of IS NULL and
+		   IS NOT NULL, which never yield NULL whatever they are given - so either
+		   spelling gives the same answers. That is exactly why it must not be written
+		   as a default: the day somebody rewrites the rule with an operator that does
+		   propagate NULL, a default hides the ambiguity and this asks it out loud. */
+		assertThat(answered)
+				.as("the rule answered neither yes nor no, which PostgreSQL would read as yes")
+				.isNotNull();
+
+		return answered;
 	}
 
 	private String whatTheSchemaSays() {
