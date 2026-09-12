@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -144,6 +145,59 @@ class SignInTest {
 				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("backwards");
 		assertThatThrownBy(() -> new Account(HASH, misses, null))
 				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("backwards");
+	}
+
+	/**
+	 * A NO TAKES THE SAME WORK AS A YES.
+	 *
+	 * <p>Comparing a password takes bcrypt about a tenth of a second, and three of
+	 * the four answers have nothing to compare. Left alone they would come back in a
+	 * fraction of the time, and anybody could then ask "is there an account at this
+	 * address" by measuring how long the no takes - which is the one question every
+	 * other line here refuses to answer.
+	 *
+	 * <p><b>Counted rather than timed.</b> A case asserting that two paths take the
+	 * same number of milliseconds is a coin toss on a loaded machine, and a case
+	 * that flickers is worse than none. So this counts how many times the encoder is
+	 * asked, which is the thing the time is made of, and asks for one on every path.
+	 */
+	@Test
+	void aNoTakesTheSameWorkAsAYes() {
+		java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
+
+		StoredPassword counting = new StoredPassword(new org.springframework.security.crypto.password.PasswordEncoder() {
+
+			@Override
+			public String encode(CharSequence raw) {
+				return raw.toString();
+			}
+
+			@Override
+			public boolean matches(CharSequence raw, String encoded) {
+				asked.incrementAndGet();
+				return raw.toString().equals(encoded);
+			}
+		});
+
+		record Path(String named, Account account) {
+		}
+
+		List<Path> everyWay = List.of(
+				new Path("no such address", null),
+				new Path("no password on the account", new Account(null, 0, null)),
+				new Path("the account is shut", new Account(HASH, 10, NOW.plusSeconds(60))),
+				new Path("the password is wrong", new Account(HASH, 0, null)),
+				new Path("the password is right", new Account(HASH, 0, null)));
+
+		for (Path one : everyWay) {
+			asked.set(0);
+			SignIn.decide(one.account(), "bilo sta", NOW, counting);
+
+			assertThat(asked.get())
+					.as("'%s' asked the encoder %d times, so it can be told apart by how long it takes",
+							one.named(), asked.get())
+					.isOne();
+		}
 	}
 
 	@Test

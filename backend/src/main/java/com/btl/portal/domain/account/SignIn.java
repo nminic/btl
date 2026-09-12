@@ -30,6 +30,30 @@ public final class SignIn {
 	 *  one moment, and a length is the difference between two. */
 	public static final java.time.Duration LOCKED_FOR = java.time.Duration.ofMinutes(15);
 
+	/**
+	 * Something to compare against when there is nothing to compare against.
+	 *
+	 * <p><b>Not decoration: without it the answer tells the time.</b> Comparing a
+	 * password takes bcrypt about a tenth of a second, and the branches that answer
+	 * DO_NOTHING have nothing to compare, so they would answer in a fraction of
+	 * that. Anybody could then ask "is there an account at this address" by
+	 * measuring how long the no takes, which is precisely the question every other
+	 * line here refuses to answer.
+	 *
+	 * <p>So those branches compare against this instead and throw the answer away.
+	 * It is a real hash of a passphrase nobody will type, made once at class
+	 * loading, so the work it costs is the work a real comparison costs.
+	 *
+	 * <p><b>The boundary, written down rather than left to be found.</b> That the
+	 * two paths take the SAME time is not measured by any case here: a timing
+	 * assertion is a coin toss on a loaded machine, and one that flickers is worse
+	 * than none. What is measured is that the comparison happens - see
+	 * {@code aNoTakesTheSameWorkAsAYes}, which counts the calls rather than the
+	 * milliseconds.
+	 */
+	private static final String NOTHING_TO_COMPARE_AGAINST =
+			new StoredPassword().of("nobody will ever type this passphrase");
+
 	private SignIn() {
 	}
 
@@ -65,6 +89,11 @@ public final class SignIn {
 	 * @param now     the moment, so a lock can be asked whether it has run out
 	 */
 	public static Outcome decide(Account account, String typed, Instant now) {
+		return decide(account, typed, now, new StoredPassword());
+	}
+
+	/** The same, told which encoder to use, so a case can count the comparisons. */
+	static Outcome decide(Account account, String typed, Instant now, StoredPassword passwords) {
 		Objects.requireNonNull(typed, "typed");
 		Objects.requireNonNull(now, "now");
 
@@ -72,6 +101,7 @@ public final class SignIn {
 		   there is none. This is also why a stranger cannot lock somebody out of an
 		   account that does not exist - there is nothing to lock. */
 		if (account == null) {
+			passwords.matches(typed, NOTHING_TO_COMPARE_AGAINST);
 			return Outcome.DO_NOTHING;
 		}
 
@@ -79,6 +109,7 @@ public final class SignIn {
 		   would be a suggestion. `isBefore` and not `isAfter` at the boundary means
 		   the moment the lock runs out it is over, rather than one moment later. */
 		if (account.lockedUntil() != null && now.isBefore(account.lockedUntil())) {
+			passwords.matches(typed, NOTHING_TO_COMPARE_AGAINST);
 			return Outcome.DO_NOTHING;
 		}
 
@@ -88,10 +119,11 @@ public final class SignIn {
 		   either - a miss against an account nobody can sign in to would let anybody
 		   shut it for ever. */
 		if (account.passwordHash() == null) {
+			passwords.matches(typed, NOTHING_TO_COMPARE_AGAINST);
 			return Outcome.DO_NOTHING;
 		}
 
-		return new StoredPassword().matches(typed, account.passwordHash())
+		return passwords.matches(typed, account.passwordHash())
 				? Outcome.WELCOME
 				: Outcome.COUNT_THE_MISS;
 	}
