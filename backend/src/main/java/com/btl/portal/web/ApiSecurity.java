@@ -46,6 +46,14 @@ class ApiSecurity {
 						   what stands in front of it is the CSRF token below and the fact that
 						   every wrong answer costs the guesser a miss. */
 						.requestMatchers("/api/sign-in").permitAll()
+						/* AND SIGNING OUT IS OPEN TOO, which reads wrong until the case it is
+						   for: a member whose session ended already. Asked to be signed in in
+						   order to sign out, he is answered 401, the cookie in his browser is
+						   never replaced, and nothing in the portal can ever clear it. What an
+						   attacker gains by the route being open is that he can end a session
+						   he cannot read, and only if he also holds the CSRF token; what the
+						   member gains is that signing out works in the one case he needs it. */
+						.requestMatchers("/api/sign-out").permitAll()
 						.anyRequest().authenticated())
 				/* AND NOW THERE IS A COOKIE, SO CSRF PROTECTION IS BACK. This chain gave
 				   none until signing in existed, and the comment here said in as many words

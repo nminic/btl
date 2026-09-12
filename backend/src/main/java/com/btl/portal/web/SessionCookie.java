@@ -52,14 +52,22 @@ final class SessionCookie {
 		return base(secret).maxAge(LASTS).build();
 	}
 
-	/* SIGNING OUT IS NOT HERE, and the empty cookie that does it is not here either.
-	   It was written and then removed: nothing called it, so nothing measured it, and
-	   a method nobody calls is a rule that can be wrong for a year without a word.
-
-	   When it comes back it belongs beside the route that signs somebody out, and the
-	   one thing to know then is that every flag must match the cookie being replaced -
-	   a browser that sees a different Path or SameSite keeps both and goes on sending
-	   the old one. That is why `base` exists. */
+	/**
+	 * THE COOKIE THAT REPLACES IT, empty and already over.
+	 *
+	 * <p>Written and removed once before, because nothing called it, and a method
+	 * nobody calls is a rule that can be wrong for a year without a word. It is back
+	 * because {@code SignOutApi} calls it.
+	 *
+	 * <p><b>Every flag matches the cookie it replaces, and that is the whole of why
+	 * it goes through {@code base}.</b> A browser matches a cookie by name, domain
+	 * and path; one arriving with a different Path or a different SameSite is a
+	 * SECOND cookie rather than a replacement, and the browser keeps the first and
+	 * goes on sending it. The member reads "you are signed out" and is not.
+	 */
+	static ResponseCookie gone() {
+		return base("").maxAge(0).build();
+	}
 
 	private static ResponseCookie.ResponseCookieBuilder base(String value) {
 		return ResponseCookie.from(NAME, value)
