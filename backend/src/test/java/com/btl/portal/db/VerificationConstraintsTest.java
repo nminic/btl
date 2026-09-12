@@ -130,9 +130,9 @@ class VerificationConstraintsTest extends DatabaseTest {
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into account (email, role_id) values ('moderator@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
-		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_side) values"
+		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter) values"
 				+ " ('image/jpeg', 40960, '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',"
-				+ " 0, 0, 512)").update();
+				+ " 0.3, 0.7, 0.45)").update();
 		/* And one run waiting to be judged, for the three constraints V10 adds. Described rather
 		   than from the calendar, because this probe has no event and no race in it and does not
 		   need one: what is being measured here is the pointer, not the run. */

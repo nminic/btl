@@ -138,9 +138,9 @@ class TeamConstraintsTest extends DatabaseTest {
 				+ " '0011223344556681', null, '', false, 'none', 'Otac', 'Ulica 2', 'S',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 
-		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_side) values"
+		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter) values"
 				+ " ('image/png', 20480, 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',"
-				+ " 0, 0, 256)").update();
+				+ " 0.2, 0.8, 0.6)").update();
 
 		db.sql(team("'probni-tim', 'Probni tim', 'Opis.', '', " + A_TOWN + ", null, null, null, 2027, "
 				+ A_MEMBER)).update();
