@@ -1466,7 +1466,6 @@ describe('the rulebook', () => {
          reference to the rulebook written on another page, and reading
          only the rulebook left it on 80 until the article stopped
          existing. */
-      ['politika-privatnosti', 'sa godinom ili bez nje', 74, /Šta nikada nije javno/],
     ]
 
     const titles = new Map(

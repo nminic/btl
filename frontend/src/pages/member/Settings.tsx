@@ -5,7 +5,6 @@ import type { Theme } from '../../app/themeContext'
 import { useI18n } from '../../i18n/useI18n'
 import { NOTIFICATION_KEYS } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import { BIRTHDAY_SHOWN } from '../../data/types'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { ProfileBio } from './ProfileBio'
@@ -128,37 +127,6 @@ export function Settings() {
                 </div>
               </div>
 
-              {/* One question with three answers, not two switches: that is the shape the owner
-                  described on 06.09.2026, and radios are how the portal already asks a question
-                  with one answer (the theme, above). */}
-              <fieldset className="field field--radio">
-                <legend className="field__label">{t('settings.birthday')}</legend>
-                {BIRTHDAY_SHOWN.map((one) => (
-                  <div key={one} className="field__confirm">
-                    <input
-                      className="field__control"
-                      type="radio"
-                      name="birthday"
-                      id={`birthday-${one}`}
-                      value={one}
-                      checked={me.birthdayShown === one}
-                      onChange={() => {
-                        editRecord(memberNumber, { birthdayShown: one })
-                      }}
-                    />
-                    <label className="field__label" htmlFor={`birthday-${one}`}>
-                      {t(
-                        one === 'none'
-                          ? 'settings.birthdayNone'
-                          : one === 'year'
-                            ? 'settings.birthdayYear'
-                            : 'settings.birthdayFull',
-                      )}
-                    </label>
-                  </div>
-                ))}
-              </fieldset>
-              <p className="member__note">{t('settings.birthdayNote')}</p>
             </section>
           )
         }}
