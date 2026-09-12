@@ -771,6 +771,67 @@ describe('who the profile is about, above everything else', () => {
     ).toBe(true)
   })
 
+  it('never draws a date of birth, not even for a member whose record asks for it', async () => {
+    /* **THE EXCEPTION IS GONE, AND THIS IS WHAT HOLDS IT** (12.09.2026). Article 74 and
+       the privacy policy carried one: a member could publish a birthday „radi liste
+       rođendana". The owner abolished the birthday list on 06.09.2026, so the exception
+       named a thing that did not exist, and on 12.09.2026 he had the sentence struck
+       from both documents rather than rewritten. What stands is the rule with nothing
+       beside it: „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom
+       obliku."
+
+       The member rendered here asks for the FULL date in the served record, and that is
+       the only way this measures anything: while every record said „none", a portal that
+       still drew the year would read exactly like one that does not.
+
+       Held in all three homes at once, because a sentence taken off a screen and left in
+       a document comes back the first time somebody reads the document: the card, the
+       dictionary, and the two published documents. */
+    const served: Competitor[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+    )
+
+    /* BOTH ANSWERS THAT EVER SHOWED ANYTHING, and that is what the first round of
+       review asked for: the case held „ceo datum" and nothing held „samo godinu", so a
+       half-reverted screen conditioned on that one value would have published a year
+       with every test green. The third answer, „ne prikazuj ništa", is held by
+       `profilePrivacy.test.tsx` on a member entered in administration. */
+    for (const number of ['000008', '000007']) {
+      const asked = must(
+        served.find((one) => one.memberNumber === number),
+        'the member this case is about',
+      )
+
+      expect(asked.birthdayShown, `${number} no longer asks for a birthday at all`).not.toBe(
+        'none',
+      )
+
+      cleanup()
+      renderAt(`/sr/takmicar/${number}`)
+
+      await screen.findByRole('heading', { level: 1 })
+
+      const line = must(document.querySelector('.profile__meta'), 'the line under the name')
+
+      expect(line.textContent, `the card of ${number} draws a year of birth`).not.toContain(
+        String(asked.birthYear),
+      )
+    }
+
+    const line = must(document.querySelector('.profile__meta'), 'the line under the name')
+
+    expect(line, 'nothing was drawn at all, so nothing was measured').toBeTruthy()
+    expect(JSON.stringify(sr), 'the dictionary still offers to show a birthday').not.toContain(
+      'Rođendan na mom profilu',
+    )
+
+    const documents = readFileSync(join(process.cwd(), 'public/mock/pages.json'), 'utf-8')
+
+    expect(documents, 'a published document still grants the exception').not.toContain(
+      'Izuzetak postoji samo ako sami izaberete',
+    )
+  })
+
   it('no longer promises that what is won is never taken away', async () => {
     /* „Osvojeno se nikad ne skida. Sve sa ove strane ostaje trajno." stood over
        the trophies until 23.08.2026, when the owner called it meaningless and had

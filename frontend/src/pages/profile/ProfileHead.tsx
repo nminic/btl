@@ -71,25 +71,19 @@ export function ProfileHead({
           {' · '}
           {categoryLabel(categoryOfMember(competitor, SEASON), t)}
           {' · '}
-          {/* **The birthday, where the owner put it: after the category and before the town**
-              (06.09.2026). Drawn only when the member has chosen to show it, and never for
-              anybody who has not: both the policy and Član 74 say the exception is off unless
-              chosen.
+          {/* **THE BIRTHDAY IS NOT HERE, and that is a decision and not an omission**
+              (12.09.2026). It was drawn here from 06.09.2026, for a member who chose to show
+              it, on the strength of one sentence in Član 74 and in the privacy policy: an
+              exception „ako sami izaberete da objavite svoj rođendan radi liste rođendana".
+              The owner abolished the birthday list on 06.09.2026, so the exception named a
+              thing that no longer existed, and on 12.09.2026 he had the sentence struck from
+              both documents rather than rewritten. What is left is the rule without an
+              exception: „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom
+              obliku. Javna je samo kategorija koja iz njega proizlazi."
 
-              The year even for „ceo datum", because the record holds `birthYear` and nothing
-              finer until the backend; the control in Podešavanja says so beside the choice
-              rather than here, where a sentence of explanation would sit in the middle of a
-              line of facts.
-
-              An earlier comment here said a date of birth „has no place on a card". That was
-              true while there was no choice; with one, what is on the card is what the member
-              put there. */}
-          {competitor.birthdayShown === 'year' || competitor.birthdayShown === 'full' ? (
-            <>
-              {competitor.birthYear}
-              {' · '}
-            </>
-          ) : null}
+              So the year is not drawn for anybody, whatever the record says, and
+              `profile.test.tsx` holds that against a member whose record asks for the
+              full date. */}
           {competitor.city}
           {' · '}
           {t('profile.memberSince', { season: competitor.firstSeason })}
