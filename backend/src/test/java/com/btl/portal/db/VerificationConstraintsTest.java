@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p>What the rest of the constraints are for is one decision taken apart. ADL A36
  * O11: a refused row STAYS, with its state and its reason. From that follow the
  * three biconditionals below - a decided row says when and by whom, a refusal says
- * why and an approval does not - and from PDL 900 together with O11 follows the
+ * why and an approval does not - and from PDL P9 together with O11 follows the
  * last one, that a decided row holds no photograph at all.
  */
 class VerificationConstraintsTest extends DatabaseTest {
