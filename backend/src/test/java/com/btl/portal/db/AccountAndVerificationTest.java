@@ -18,7 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <li><b>Two things are called activation and they are not the same thing.</b>
  * PDL, in its own words: activating the ACCOUNT is the member confirming his
  * address by clicking the link, and activating the MEMBERSHIP is a payment
- * recorded or honorary membership, whereupon he gets a member number. And,
+ * recorded membership or one the board has exempted from the fee, whereupon he
+ * gets a member number. And,
  * answered on 11.08.2026: membership may be activated before the address is
  * confirmed. Neither follows from the other, in either direction.</li>
  *

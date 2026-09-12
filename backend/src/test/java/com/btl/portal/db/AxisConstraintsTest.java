@@ -234,6 +234,11 @@ class AxisConstraintsTest extends DatabaseTest {
 				Violation.of("competitor_gender_known", competitor("'000903', 'Probni', 'Clan', 'm', date '1990-05-05', "
 						+ A_TOWN + ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
+				/* `honorary` on purpose, and it must stay. The new Statute of 17.08.2026 has one
+				   kind of membership, and somebody who does not pay is a full member the board has
+				   exempted (article 24, point 10); "počasni" there means somebody who is NOT a
+				   member, so the word may not be used for one. This row is what refuses it: the
+				   basis moved to `feeExempt` and the old value must never be storable again. */
 				Violation.of("competitor_membership_basis_known",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
 								+ ", null, null, 2027, false, true, 'honorary', '00112233445566aa', null,"

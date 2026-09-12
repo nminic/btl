@@ -274,7 +274,8 @@ class AuthenticationConstraintsTest extends DatabaseTest {
 	/**
 	 * AN ACCOUNT WITH NO PASSWORD IS A STATE, not a row the schema refuses.
 	 *
-	 * <p>The owner opens accounts for honorary members himself and for the profiles of
+	 * <p>The owner opens accounts himself for members the board has exempted from the
+	 * fee, and for the profiles of
 	 * earlier years he fills in before launch: nobody ever typed a password for those
 	 * people, and they set one through the reset link. So the column is nullable, and
 	 * this is what says so on purpose rather than by omission.
@@ -284,7 +285,7 @@ class AuthenticationConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void anAccountWithNoPasswordIsAStateAndNotARowTheSchemaRefuses() {
-		assertThat(db.sql("insert into account (email, role_id) values ('pocasni@primer.rs',"
+		assertThat(db.sql("insert into account (email, role_id) values ('bezclanarine@primer.rs',"
 				+ " (select id from role where code = 'competitor'))").update())
 				.as("the owner could not open an account for somebody who has never typed a password")
 				.isOne();
