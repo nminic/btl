@@ -80,8 +80,17 @@ public class Postman {
 		   offered no encryption: the key arrived in Base64.
 
 		   The name is enough to ask about: a key with no name authenticates nothing,
-		   and either of them being set is somebody intending to sign in. */
-		boolean signsIn = !name.isBlank() || !key.isBlank();
+		   and either of them being set is somebody intending to sign in.
+
+		   AND IT ASKS `isEmpty` AND NOT `isBlank`, which a third round caught and which
+		   is the same class of mistake one more time: the question has to be the one the
+		   library asks. `JavaMailSenderImpl` treats a value as absent on `"".equals(...)`
+		   and on nothing else, so a single space IS a credential to it - it opens the
+		   connection, sends AUTH LOGIN, and the space travels in Base64. To `isBlank` a
+		   space is nothing, so the guard would have waved it through. Measured: a
+		   postman built with a space for both, against a server offering no encryption,
+		   authenticated and the server read the space back. */
+		boolean signsIn = !name.isEmpty() || !key.isEmpty();
 
 		if (signsIn && !insistsOnTls) {
 			throw new IllegalStateException("the portal is set to sign in to the mail relay without"

@@ -165,6 +165,15 @@ class PostmanTest {
 		assertThatThrownBy(() -> new Postman(anywhere(), from, "", "kljuc", false))
 				.isInstanceOf(IllegalStateException.class);
 
+		/* A SINGLE SPACE IS A CREDENTIAL, and a third round on 12.09.2026 found this
+		   guard asking `isBlank` while the library asks `"".equals(...)`. To the
+		   library a space is a value: it opens the connection, sends AUTH LOGIN, and
+		   the space travels in Base64. Somebody typing a stray space into
+		   `deploy/.env` is all it takes. */
+		assertThatThrownBy(() -> new Postman(anywhere(), from, " ", " ", false))
+				.as("a space is nothing to us and a credential to the library")
+				.isInstanceOf(IllegalStateException.class);
+
 		assertThatCode(() -> new Postman(anywhere(), from, "brevo-korisnik", "kljuc", true))
 				.as("signing in over required TLS is the arrangement QA and production use")
 				.doesNotThrowAnyException();
@@ -285,8 +294,20 @@ class PostmanTest {
 				.load(Files.readString(Path.of("..", "deploy", "compose.qa.yml"), StandardCharsets.UTF_8));
 		Map<String, Object> services = (Map<String, Object>) compose.get("services");
 		Map<String, Object> backend = (Map<String, Object>) services.get("backend");
+		Object environment = backend.get("environment");
 
-		return (Map<String, Object>) backend.get("environment");
+		/* Compose takes `environment` as a map or as a list of `KEY=value`, and this
+		   reads the map. Written as a bare cast it would fail on the list form with a
+		   ClassCastException naming neither TLS nor authentication, and the next
+		   person would be tempted to make the failure go away rather than to keep what
+		   it was guarding. So it says what it needs and why. */
+		assertThat(environment)
+				.as("the QA stack writes its settings as a list rather than a map, and this case"
+						+ " reads the map - rewrite it to read both rather than dropping it, because"
+						+ " what it holds is that a key for the relay never travels without TLS")
+				.isInstanceOf(Map.class);
+
+		return (Map<String, Object>) environment;
 	}
 
 	/** A sender that is never used, for the cases that only build a postman. */
