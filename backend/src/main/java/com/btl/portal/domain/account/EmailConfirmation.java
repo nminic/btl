@@ -61,11 +61,18 @@ public final class EmailConfirmation {
 	 * send him to ask for another he does not need.
 	 *
 	 * <p><b>"Not one of ours" and "run out" are told apart, and that is safe here</b>
-	 * in a way it is not when signing in. A link is sixty-four characters of
+	 * in a way it is not when signing in. A link carries what {@link
+	 * com.btl.portal.domain.token.SecretToken} makes, which is 256 bits of
 	 * randomness; nobody guesses one, so learning that a particular one is unknown
 	 * teaches nothing about who has registered. What it buys is the difference
 	 * between "ask for another" and "that address is not registered here at all",
 	 * which is the difference between a member who can finish and one who is stuck.
+	 *
+	 * <p>This said "sixty-four characters" until a round on 12.09.2026 counted:
+	 * sixty-four is the width of the SHA-256 digest kept in the row, and what
+	 * travels in the link is forty-three characters of base64. The entropy behind
+	 * the argument is the same either way, which is why it is now stated in bits -
+	 * a number that does not move when somebody changes how it is written down.
 	 */
 	public static Outcome decide(Link link, Instant now) {
 		Objects.requireNonNull(now, "now");
