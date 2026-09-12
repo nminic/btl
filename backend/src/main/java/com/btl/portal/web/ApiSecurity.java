@@ -51,18 +51,25 @@ class ApiSecurity {
 				   none until signing in existed, and the comment here said in as many words
 				   that it would return with the cookie it is about. It has.
 
-				   The token is kept in a COOKIE and not in the session, which matters twice
+				   `csrf.spa()` and not a repository written out by hand, and a security round
+				   on 12.09.2026 is why. Setting only `CookieCsrfTokenRepository.withHttpOnlyFalse()`
+				   leaves the DEFAULT request handler in place, and that one expects the header to
+				   carry an XOR masked token, not the raw value from the cookie. So a script doing
+				   exactly what this comment described - read the cookie, echo it in a header -
+				   got 403 on every request, correct password included. Not an attack: a door
+				   nobody could open, and the test suite said the guard was proved.
+
+				   `spa()` sets the same cookie repository AND the handler that goes with it.
+				   The token is kept in a cookie rather than the session, which matters twice
 				   over: the server stays without session state, and the case saying nothing
-				   hands out a session keeps holding. `withHttpOnlyFalse` is what lets the
-				   portal's own script read the token and echo it in a header, which is the
-				   whole mechanism - another site can make a browser send a request, but it
-				   cannot read a cookie from this origin to put in a header.
+				   hands out a session keeps holding. The cookie is readable by script on
+				   purpose - that is the whole mechanism, because another site can make a
+				   browser send a request but cannot read a cookie from this origin.
 
 				   The session cookie itself is SameSite=Strict, so it is not sent from
 				   another site at all; the CSRF token is the second lock, on the reasoning
 				   that one lock which everything depends on is one mistake away from none. */
-				.csrf(csrf -> csrf.csrfTokenRepository(
-						org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse()))
+				.csrf(csrf -> csrf.spa())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.httpBasic(basic -> basic.disable())
 				.formLogin(form -> form.disable())
