@@ -100,8 +100,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 		assertThat(columnsOf("btl_event")).containsExactlyInAnyOrder("id", "slug", "name", "date", "place_id",
 				"city", "country_id", "kind", "featured", "description", "link", "copied_from");
 
+		/* `season` is V19 and is generated from the day, for one reason: it is half of the
+		   key that ties a league of one year to a race of that year, so the schema says the
+		   rule instead of somebody remembering it. */
 		assertThat(columnsOf("race")).containsExactlyInAnyOrder("id", "event_id", "name", "renamed", "date", "kind",
-				"limit_seconds", "distance_km", "ascent_m", "descent_m", "category");
+				"limit_seconds", "distance_km", "ascent_m", "descent_m", "category", "season");
 
 		assertThat(columnsOf("result")).containsExactlyInAnyOrder("id", "competitor_id", "race_id", "race_date",
 				"distance_km", "ascent_m", "descent_m", "seconds", "points", "category");
@@ -468,9 +471,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   prepravljaju. */
 				/* V14. Lista dogadjaja u ligi ide sa obe strane, a imenovani administrator se
 				   PRAZNI, isto kao timski: i on je clan i sme da trazi brisanje naloga. */
-				"league.league_admin_fk set null",
 				"league_event.league_event_event_fk cascade",
 				"league_event.league_event_league_fk cascade",
+				"league_race.league_race_league_fk cascade",
+				"league_race.league_race_race_fk cascade",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
 				"message.message_team_invitation_fk cascade",

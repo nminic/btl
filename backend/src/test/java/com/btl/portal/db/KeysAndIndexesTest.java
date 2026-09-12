@@ -201,6 +201,17 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("league_event_pk", false,
 					"the league and the event together; adding one twice is not a second fact"),
 
+			/* V19. A league counts RACES, and the season is carried in the key so that the
+			   composite foreign keys can say "a league of 2027 counts a race of 2027" without
+			   any rule anybody has to remember. The two uniques below are not uniqueness: they
+			   are the targets those keys need, the same reason `race_day_unique` exists. */
+			new Key("league_race_pk", false,
+					"the league and the race together; one race may be in several leagues"),
+			new Key("league_season_unique", false,
+					"the target of the league half of the key in league_race"),
+			new Key("race_season_unique", false,
+					"the target of the race half of the key in league_race"),
+
 			/* V15. The first IS the quantity, which is what makes the kinds a codebook rather
 			   than eleven words inside a CHECK. The last is the only key in the schema written
 			   NULLS NOT DISTINCT, and without that a badge that stands for ever - no season, no
@@ -344,9 +355,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("message_read_competitor_idx", "what one member has already read"),
 			/* V14. The other end of the administrator key, the leagues of one season which is
 			   how the page is drawn, and the other end of the pair in league_event. */
-			new Index("league_admin_idx", "the leagues one member is named to administer"),
 			new Index("league_season_idx", "the leagues of one season, which is how they are listed"),
 			new Index("league_event_event_idx", "every league one event has entered"),
+
+			/* V19. Asked from the race's side by the standings: which leagues does this race
+			   count towards. The league's side is already served by the primary key. */
+			new Index("league_race_race_idx", "every league one race counts towards"),
 			/* V15. The other ends of the three keys that point out of a badge and an award. */
 			new Index("ducat_kind_idx", "the badges written over one quantity"),
 			new Index("ducat_award_competitor_idx", "every badge one member has won"),

@@ -35,8 +35,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * The other direction is {@link #aLegitimateRowIsAccepted(String)}: without it,
  * a constraint that rejects everything would pass every case above.
  *
- * ONE CONSTRAINT HAS NO ROW THAT BREAKS IT, and it is named rather than left out
- * of the floor. {@code race_day_unique} is over (id, date) and id is already the
+ * SOME CONSTRAINTS HAVE NO ROW THAT BREAKS THEM, and they are named rather than
+ * left out of the floor. {@code race_season_unique} (V19, the target of the key that
+ * ties a league of one year to a race of that year) is the same shape as the one
+ * described next. {@code race_day_unique} is over (id, date) and id is already the
  * primary key, so no row can violate the pair without violating the key first;
  * it is not there to refuse anything but to be the target the result's composite
  * reference needs. Its proof is behavioural and lives in
@@ -84,7 +86,7 @@ class AxisConstraintsTest extends DatabaseTest {
 
 	/** Carried by the floor and not by a row, for the reason in the class comment. */
 	private static final Set<String> KEYS_THAT_ONLY_EXIST_AS_A_TARGET =
-			Set.of("race_day_unique", "competitor_id_gender_unique");
+			Set.of("race_day_unique", "competitor_id_gender_unique", "race_season_unique");
 
 	/* A town and a country out of the codebooks, looked up rather than numbered:
 	   V2 and V3 hand the ids out of a sequence and nothing here may depend on
