@@ -28,7 +28,20 @@ import java.util.regex.Pattern;
  */
 public record MemberNumber(String written) implements Comparable<MemberNumber> {
 
-	/** Six, so 1 reads as 000001. */
+	/**
+	 * Six, so 1 reads as 000001.
+	 *
+	 * <p><b>Changing it is three edits, not one</b>, and saying so is the point of
+	 * this sentence. {@link #HIGHEST} and the pattern below each carry the six
+	 * independently: a pattern built out of a constant loses the compile time check
+	 * on it, and a ceiling built by arithmetic reads worse than the number itself.
+	 * This said "one place" until a round on 11.09.2026 changed only the constant
+	 * and got sixteen errors and twelve failures - loud rather than quiet, but still
+	 * not one edit.
+	 *
+	 * <p>What holds the three in step is a case at the foot of
+	 * {@code MemberNumberTest}: it reads all three and fails the day one moves alone.
+	 */
 	public static final int WIDTH = 6;
 
 	/**
@@ -77,8 +90,6 @@ public record MemberNumber(String written) implements Comparable<MemberNumber> {
 					"no member number is left: all " + HIGHEST + " of them are spoken for");
 		}
 
-		/* The width is read from the constant rather than written into the format, so the
-		   day six becomes seven there is one place to change and not two. */
 		return new MemberNumber(String.format("%0" + WIDTH + "d", value));
 	}
 
@@ -88,12 +99,22 @@ public record MemberNumber(String written) implements Comparable<MemberNumber> {
 	}
 
 	/**
-	 * Lower first, and compared as a NUMBER.
+	 * Lower first.
 	 *
 	 * <p>Every ladder on the portal ends in the member number, and "niži članski
-	 * broj" means the lower number. Compared as text that happens to agree for as
-	 * long as every one of them is six characters wide; asked for as a number the
-	 * question cannot be got wrong at all.
+	 * broj" means the lower number.
+	 *
+	 * <p><b>Comparing the text would give the same answer, and saying so plainly is
+	 * better than claiming otherwise.</b> The constructor lets nothing through that
+	 * is not exactly six digits, so two of these can never differ in width, and at
+	 * equal widths text and number order alike on every pair there is. This comment
+	 * said the number was what made it right until a round on 11.09.2026 looked for
+	 * a mutation inside this class that could tell the two apart and found none.
+	 *
+	 * <p>It stays a number because the question is about numbers, and because the
+	 * same rung serves the ladders whose last word is a team's own identifier or a
+	 * sum of two member numbers, where nothing guarantees a width at all. That is a
+	 * reason, and it is written as a reason rather than as a guard.
 	 */
 	@Override
 	public int compareTo(MemberNumber other) {

@@ -77,12 +77,14 @@ class MemberNumberTest {
 	}
 
 	/**
-	 * Lower goes ahead, and the comparison is about NUMBERS.
+	 * Lower goes ahead, which is the last rung of every ladder on the portal
+	 * (PDL P12).
 	 *
-	 * <p>The last rung of every ladder on the portal (PDL P12). Six digit strings
-	 * happen to sort the same way, so the case is written on the pair that would
-	 * separate the two answers if the padding were ever lost: "001000" against
-	 * "000999" agrees, "1000" against "999" does not.
+	 * <p>This says the ORDER and nothing beyond it. Whether the comparison reads the
+	 * number or the text cannot be measured from outside the class: the constructor
+	 * lets nothing through that is not six digits wide, and at equal widths the two
+	 * agree on every pair there is. The claim that this case separated them stood
+	 * here until a round on 11.09.2026 measured it and found otherwise.
 	 */
 	@Test
 	void theLowerNumberGoesAhead() {
@@ -99,11 +101,30 @@ class MemberNumberTest {
 		assertThat(MemberNumber.of(42)).hasSameHashCodeAs(new MemberNumber("000042"));
 	}
 
-	/** Six is read from one place, so the day it becomes seven there is one line
-	 *  to change and not two. */
+	/**
+	 * THE THREE PLACES THAT CARRY THE WIDTH AGREE, which is what can be said instead
+	 * of claiming there is one.
+	 *
+	 * <p>It is written in three: the constant, the ceiling, and the pattern the
+	 * constructor checks against. That is a cost, it is named in the constant's own
+	 * comment, and what this case does is make moving one of them alone fail here
+	 * rather than wait to be noticed.
+	 *
+	 * <p>The pattern is asked through BEHAVIOUR rather than read: reading it would
+	 * say where the six is written and never what it does. One digit short and one
+	 * digit long are both refused, and one of exactly the width is taken.
+	 */
 	@Test
-	void theWidthIsSaidOnceAndTheHighestFollowsFromIt() {
+	void theThreePlacesThatCarryTheWidthAgree() {
 		assertThat(MemberNumber.of(1).written()).hasSize(MemberNumber.WIDTH);
 		assertThat(String.valueOf(MemberNumber.HIGHEST)).hasSize(MemberNumber.WIDTH);
+
+		String exactly = "1".repeat(MemberNumber.WIDTH);
+
+		assertThat(new MemberNumber(exactly).written()).isEqualTo(exactly);
+		assertThatThrownBy(() -> new MemberNumber("1".repeat(MemberNumber.WIDTH - 1)))
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> new MemberNumber("1".repeat(MemberNumber.WIDTH + 1)))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 }

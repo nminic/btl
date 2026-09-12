@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * THE SHAPE THE CODE PRODUCES IS THE SHAPE THE SCHEMA ACCEPTS, and PostgreSQL is
@@ -36,8 +37,18 @@ class MemberNumberMatchesTheSchemaTest extends DatabaseTest {
 		String rule = whatTheSchemaSays();
 		String condition = rule.substring(rule.indexOf('(') + 1, rule.lastIndexOf(')'));
 
-		return Boolean.TRUE.equals(db.sql("select " + condition.replace("member_number", "?"))
-				.param(value).query(Boolean.class).single());
+		/* Every mention of the column, not the first: a rule may name it more than once,
+		   and `member_number is null or member_number ~ ...` is a shape this same column
+		   could legitimately take, the column having been nullable since V16. Each one
+		   becomes its own parameter, and each gets the same value. */
+		String asked = condition.replace("member_number", "?");
+		var query = db.sql("select " + asked);
+
+		for (int mention = 0; mention < asked.chars().filter(one -> one == '?').count(); mention++) {
+			query = query.param(mention + 1, value);
+		}
+
+		return Boolean.TRUE.equals(query.query(Boolean.class).single());
 	}
 
 	@Test
@@ -79,6 +90,17 @@ class MemberNumberMatchesTheSchemaTest extends DatabaseTest {
 		assertThat(theSchemaTakes(written))
 				.as("the schema would store '%s', which the code says is not a member number", written)
 				.isFalse();
+
+		/* AND THE CODE STILL REFUSES IT, asked of the code itself rather than taken on
+		   the word of the list above. Until a round on 11.09.2026 this half was missing
+		   while this file's own title claimed to hold the two together: loosening the
+		   Java pattern to five or seven digits left all twenty-seven cases green,
+		   because nothing here ever built a MemberNumber out of anything but the six
+		   digits `of` had just made. What caught it was another file, with its own
+		   unconnected copy of this list, and nothing said the two leaned on each other. */
+		assertThatThrownBy(() -> new MemberNumber(written))
+				.as("the code would take '%s', which the schema refuses", written)
+				.isInstanceOf(RuntimeException.class);
 	}
 
 	/**
