@@ -49,22 +49,12 @@ class DucatKindTest {
 	 * taken away (ADL A12, 4), so a swap like that hands out a badge nobody can
 	 * take back.
 	 *
-	 * <p><b>And the counts do not follow the order the quantities are declared in.</b>
-	 * The first attempt held one short, two half, three long, four marathon and five
-	 * ultra, which is the order SHORT_COUNT to ULTRA_COUNT is written in, so every
-	 * band's count was equal to its own position in that list. A round on 11.09.2026
-	 * measured what that leaves open: an implementation ignoring the band entirely
-	 * and answering {@code min(howManyRaces, position)} passed every case here,
-	 * including the empty field, because fifteen is more than five and nought is
-	 * less than one.
-	 *
-	 * <p>So the counts are shuffled against that order - three short, five half, one
-	 * long, four marathon, two ultra - and no formula over a position can reach them.
+	 * <p>{@code howMany} says how many races of each band, in the order of
+	 * {@code bands}.
 	 */
-	private static List<RaceDone> theBands() {
+	private static List<RaceDone> aFieldOfBands(int... howMany) {
 		List<RaceDone> field = new ArrayList<>();
 		String[] bands = {"short", "half", "long", "marathon", "ultra"};
-		int[] howMany = {3, 5, 1, 4, 2};
 
 		for (int band = 0; band < bands.length; band++) {
 			for (int which = 0; which < howMany[band]; which++) {
@@ -75,12 +65,52 @@ class DucatKindTest {
 		return List.copyOf(field);
 	}
 
-	@ParameterizedTest(name = "{0} = {1}")
-	@CsvSource({"shortCount, 3", "halfCount, 5", "longCount, 1", "marathonCount, 4", "ultraCount, 2"})
-	void everyCounterCountsItsOwnBand(String code, String expected) {
-		assertThat(DucatKind.named(code).over(theBands()))
+	/**
+	 * EVERY COUNTER ANSWERS ITS OWN BAND, AND ANSWERS THE FIELD IT WAS GIVEN.
+	 *
+	 * <p><b>Two fields, and that is the fourth form this case has taken.</b> The
+	 * three before it all asked the same thing of ONE field and differed only in
+	 * the numbers in it, and each time a round found an implementation that never
+	 * looked at {@code category} and passed:
+	 *
+	 * <ol>
+	 * <li>one race of each band: every counter answered 1, so two bands could be
+	 * swapped;</li>
+	 * <li>one, two, three, four, five: that is the order the quantities are
+	 * declared in, so {@code min(howMany, position)} passed;</li>
+	 * <li>three, five, one, four, two: shuffled against that order, but still ONE
+	 * distribution, so a constant kept per band - which the enum hands to
+	 * {@code inBand} itself - passed.</li>
+	 * </ol>
+	 *
+	 * <p>The third round said the form was wrong rather than the numbers, and it
+	 * was: one field and an empty one are two points, and five constants fit two
+	 * points every time. What "reads the band" MEANS is that the answer follows the
+	 * field, so the case gives two fields whose bands differ and requires two
+	 * different answers. Nothing that ignores {@code category} can do that, however
+	 * it is written, because its answer cannot depend on something it does not read.
+	 *
+	 * <p><b>No band keeps its count between the two.</b> Written as reverses of each
+	 * other the middle one would have stayed at one, and a constant for that band
+	 * would still have passed - so the second is a rotation rather than a reversal,
+	 * and every one of the five moves.
+	 */
+	@ParameterizedTest(name = "{0} = {1} then {2}")
+	@CsvSource({
+			"shortCount,    3, 5",
+			"halfCount,     5, 1",
+			"longCount,     1, 4",
+			"marathonCount, 4, 2",
+			"ultraCount,    2, 3",
+	})
+	void everyCounterAnswersItsOwnBandInWhateverFieldItIsGiven(String code, String inOne, String inTheOther) {
+		assertThat(DucatKind.named(code).over(aFieldOfBands(3, 5, 1, 4, 2)))
 				.as("%s counts another band's races", code)
-				.isEqualByComparingTo(expected);
+				.isEqualByComparingTo(inOne);
+
+		assertThat(DucatKind.named(code).over(aFieldOfBands(5, 1, 4, 2, 3)))
+				.as("%s answered the same number for a different field, so it is not reading the band", code)
+				.isEqualByComparingTo(inTheOther);
 	}
 
 	@ParameterizedTest(name = "{0} = {1}")
