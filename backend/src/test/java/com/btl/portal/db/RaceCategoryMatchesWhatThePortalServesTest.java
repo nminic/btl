@@ -172,12 +172,21 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 	 * the word {@code 'ultra'} sits in the text exactly as before. The assertion
 	 * stayed green about a category that had stopped existing.
 	 *
-	 * <p>So the rule is RUN instead, over every hundredth of a kilometre from
-	 * nothing to a hundred, and what comes back is the set of categories it can
-	 * actually produce. A branch nothing can reach is simply not in that set.
+	 * <p>So the rule is RUN instead, over every distance the column can hold, and
+	 * what comes back is the set of categories it can actually produce. A branch
+	 * nothing can reach is simply not in that set.
+	 *
+	 * <p><b>Over every distance the COLUMN can hold, and not over a number typed
+	 * here.</b> This swept to a hundred kilometres until a second round pointed out
+	 * that a hundred was mine and nobody else's: the portal already serves races up
+	 * to 529.93 km, and a branch turning above the swept bound would be unreachable
+	 * to this case while being perfectly reachable in the portal. So the bound comes
+	 * off the column itself - {@code numeric(6,2)} holds up to 9999.99 in steps of a
+	 * hundredth - which is the largest distance that can ever be stored and needs
+	 * nobody to keep it up to date.
 	 *
 	 * <p>Neither side is typed out here: one comes off the file the portal serves,
-	 * the other off what the database answered.
+	 * the other off what the database answered, and the domain off the catalogue.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"race", "result"})
@@ -185,10 +194,35 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 		String asked = howTheSchemaWorksItOut(table).replace("distance_km", "km");
 
 		assertThat(db.sql("select distinct (" + asked + ")"
-						+ " from generate_series(0.00, 100.00, 0.01) as km")
+						+ " from generate_series(0::numeric, " + mostThatFits(table) + ", "
+						+ smallestStep(table) + ") as km")
 				.query(String.class).list())
 				.as("the portal and `%s` can produce different categories", table)
 				.containsExactlyInAnyOrderElementsOf(
 						whatThePortalServes().values().stream().collect(Collectors.toSet()));
+	}
+	/**
+	 * The largest distance the column can hold, asked of the catalogue.
+	 *
+	 * <p>`numeric(p,s)` holds up to ten raised to the digits before the point, less
+	 * one step. Read rather than written, so that widening the column widens the
+	 * sweep with it and nobody has to remember.
+	 */
+	private String mostThatFits(String table) {
+		return db.sql("select (power(10, numeric_precision - numeric_scale)"
+						+ " - power(10, -numeric_scale))::text"
+						+ " from information_schema.columns"
+						+ " where table_schema = current_schema()"
+						+ "  and table_name = ? and column_name = 'distance_km'")
+				.param(table).query(String.class).single();
+	}
+
+	/** And the smallest step it can tell apart, from the same place. */
+	private String smallestStep(String table) {
+		return db.sql("select power(10, -numeric_scale)::text"
+						+ " from information_schema.columns"
+						+ " where table_schema = current_schema()"
+						+ "  and table_name = ? and column_name = 'distance_km'")
+				.param(table).query(String.class).single();
 	}
 }
