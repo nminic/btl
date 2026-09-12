@@ -142,11 +142,17 @@ class ResultApiTest {
 				.as("the history came back in some order other than the one it was run in")
 				.containsExactly(3000, 2400, 12000);
 
-		/* And the fixture can tell that order from every other one there is. Guessing
-		   which axes to separate cost two rounds of review on this one case: first the
-		   times rose with the days, then the points did. This asks the question of every
-		   field at once instead. */
-		Answers.noOtherFieldWouldGiveThisOrder("/api/results", answered, "date", "id");
+		/* WHAT MAKES THIS A STATEMENT AND NOT A COINCIDENCE is the fixture above, and it
+		   took three rounds of review to get there: first the times rose with the days,
+		   then the points did, then the member number and the race. Each was one wrong
+		   `order by` that answered this very list.
+
+		   Every field of the answer was then walked in both directions against the
+		   rebuilt fixture, by hand and by the reviewer: none of the thirteen reproduces
+		   this order. The derived guard that found the last two axes is deliberately NOT
+		   here: three rounds running were about that guard rather than about the
+		   resource, so it goes on its own branch with its own review (PENDING,
+		   12.09.2026). */
 	}
 
 	/**
