@@ -114,11 +114,20 @@ class SessionLifeTest {
 				.isInstanceOf(NullPointerException.class).hasMessageContaining("expiresAt");
 	}
 
-	/** Thirty days is what the schema's own default says, and the two are written in
-	 *  one place each, so this is where they are put beside each other. */
+	/**
+	 * Renewing comes well before the end, or it is not renewing.
+	 *
+	 * <p><b>How long a session lasts is NOT asserted here</b>, and that is the
+	 * correction a round on 12.09.2026 made. This case used to say thirty and its
+	 * name said the schema was what said it; neither was true, because nothing here
+	 * can reach the schema. The number lives in the column default of
+	 * {@code account_session}, and
+	 * {@code AuthenticationConstraintsTest.aSessionLastsThirtyDaysAndAResetLinkOneHour}
+	 * is where the schema is asked and this class is measured against its answer.
+	 * What is left here is the one thing that is about this class alone.
+	 */
 	@Test
-	void thirtyDaysIsWhatTheSchemaSays() {
-		assertThat(SessionLife.LASTS.toDays()).isEqualTo(30);
+	void renewingComesWellBeforeTheEndOfTheSession() {
 		assertThat(SessionLife.RENEW_AFTER).isLessThan(SessionLife.LASTS);
 	}
 }
