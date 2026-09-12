@@ -42,10 +42,11 @@ class ApiSecurity {
 	/**
 	 * WHAT ANYBODY MAY READ, in one list because two places would disagree.
 	 *
-	 * <p>The codebooks and the calendar: a list of towns, a list of states, and what
-	 * was run and when. Nothing in any of them belongs to anybody, and the calendar
-	 * is the page a visitor comes to the portal for. Who RAN a race is a different
-	 * resource and is not opened here.
+	 * <p>The codebooks, the calendar and the leagues: a list of towns, a list of
+	 * states, what was run and when, and what each league counts and pays. Nothing in
+	 * any of them belongs to anybody; the calendar is the page a visitor comes to the
+	 * portal for, and somebody deciding whether to join reads a league's rules before
+	 * anything else. Who RAN a race is a different resource and is not opened here.
 	 *
 	 * <p><b>It is a constant rather than four arguments because the guard reads
 	 * it.</b> `ApiSecurityTest` takes every route on this list and asks whether a
@@ -57,7 +58,8 @@ class ApiSecurity {
 	 * `/api/events/**` cost nothing in the whole suite.
 	 */
 	static final List<String> READ_BY_ANYBODY =
-			List.of("/api/places", "/api/countries", "/api/events", "/api/races");
+			List.of("/api/places", "/api/countries", "/api/events", "/api/races",
+					"/api/leagues");
 
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
