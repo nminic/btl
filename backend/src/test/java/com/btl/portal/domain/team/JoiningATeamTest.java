@@ -80,14 +80,12 @@ class JoiningATeamTest {
 	}
 
 	/**
-	 * And it is asked of EVERY membership, not of the first.
+	 * And a membership that ended BEFORE that season stands in the way of nothing.
 	 *
-	 * <p>The one in the way is second on the list and the harmless one is first, so
-	 * a version looking at one membership answers YES. Written the other way round
-	 * the case would pass whether the rest of the list were read or not.
+	 * <p>The other side of the table above: widening the question from "covers" to
+	 * "ends at or after" must not widen it into refusing everybody who was ever in
+	 * a team.
 	 */
-	/** And a membership that ended BEFORE the season stands in the way of nothing,
-	 *  which is the other side of the rule above. */
 	@Test
 	void aMembershipThatEndedBeforeThatSeasonStandsInTheWayOfNothing() {
 		assertThat(JoiningATeam.mayJoin(
@@ -96,6 +94,13 @@ class JoiningATeamTest {
 				.isEqualTo(Answer.YES);
 	}
 
+	/**
+	 * And it is asked of EVERY membership, not of the first.
+	 *
+	 * <p>The one in the way is second on the list and the harmless one is first, so
+	 * a version looking at one membership answers YES. Written the other way round
+	 * the case would pass whether the rest of the list were read or not.
+	 */
 	@Test
 	void everyMembershipIsAskedAndNotTheFirst() {
 		List<Membership> his = List.of(
