@@ -76,7 +76,11 @@ class AccountAndVerificationTest extends DatabaseTest {
 	@Test
 	void theAccountCarriesItsAddressItsRoleAndItsConfirmationAndNothingElse() {
 		assertThat(columnsOf("account"))
-				.containsExactlyInAnyOrder("id", "email", "role_id", "email_confirmed_at");
+				.containsExactlyInAnyOrder("id", "email", "role_id", "email_confirmed_at",
+						/* V18, and all three of these are about signing in rather than about who
+						   somebody is: what the password hashes to, how many tries have missed
+						   since the last one that did not, and until when the account is shut. */
+						"password_hash", "failed_sign_ins", "locked_until");
 	}
 
 	/**
