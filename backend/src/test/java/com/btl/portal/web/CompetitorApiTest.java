@@ -29,6 +29,8 @@ class CompetitorApiTest {
 	/** Named here with the reason, because a lost field and a withheld one look alike. */
 	private static final String THE_YEAR_OF_BIRTH = "birthYear";
 	private static final String THE_REFERRAL_CODE = "referralCode";
+	private static final String WHO_HANDED_OUT_THE_CODE = "referredBy";
+	private static final String HOW_THE_MEMBERSHIP_IS_HELD = "membershipBasis";
 
 	@Autowired
 	private MockMvc http;
@@ -132,13 +134,25 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE TWO THAT ARE NOT ITS
+	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE FOUR THAT ARE NOT ITS
 	 * BUSINESS, and those are named here with the reason.
 	 *
-	 * <p>The year of birth: the published privacy policy and Article 74 say a date of
-	 * birth is never shown „ni u punom ni u skracenom obliku", and the year is the
-	 * shortened form. The referral code: Article 73 lists what is public and the code
-	 * is not on it.
+	 * <p><b>These four are the whole reason this resource exists.</b> PDL, 06.09.2026,
+	 * measured and named exactly them as the fields that cannot leave the public file
+	 * „dok portal nema bekend", because one file was serving the public side, the
+	 * member's own screens and the administration at once. This is that backend.
+	 *
+	 * <ul>
+	 * <li><b>The year of birth</b> and <b>how the membership is held</b>: Article 74
+	 * says a date of birth is never shown „ni u punom ni u skracenom obliku", and the
+	 * year is the shortened form; the same sentence goes on „Isto vazi za adresu
+	 * elektronske poste, adresu, sve u vezi sa clanarinom i privatne poruke", and the
+	 * basis says who is exempt from paying.</li>
+	 * <li><b>The referral code</b> and <b>who handed it out</b>: Article 73 lists what
+	 * is public and neither is on it. The second one hides behind its name: the portal
+	 * reads `referredBy` as the CODE, not as a member number, so answering with either
+	 * is wrong in its own way.</li>
+	 * </ul>
 	 *
 	 * <p>`Answers` checks each name against the file the portal serves, so a name left
 	 * here after the portal stopped serving it cannot quietly excuse a field that went
@@ -147,7 +161,55 @@ class CompetitorApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors", answer(), "competitors.json",
-				THE_YEAR_OF_BIRTH, THE_REFERRAL_CODE);
+				THE_YEAR_OF_BIRTH, THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
+				HOW_THE_MEMBERSHIP_IS_HELD);
+	}
+
+	/**
+	 * AND NOTHING IN THE ANSWER IS A REFERRAL CODE, whatever it is called.
+	 *
+	 * <p>Asked of the whole answer as TEXT and not of a field name, for the same reason
+	 * the year of birth is: the review that found this measured that swapping the member
+	 * number for the code under the name `referredBy` passed the whole suite, because the
+	 * omission was guarded by that name alone. A code is sixteen hexadecimal characters
+	 * and every member in the fixture carries a different one.
+	 */
+	@Test
+	void noReferralCodeLeavesTheServer() throws Exception {
+		String whole = http.perform(get("/api/competitors")).andReturn().getResponse()
+				.getContentAsString();
+
+		assertThat(whole).as("the answer carries nothing at all, so it says nothing about what it"
+				+ " leaves out").contains("000007", "000012", "000045");
+
+		List<String> codes = db.sql("select referral_code from competitor").query(String.class).list();
+		assertThat(codes).as("no code was read out of the database, so the loop below asserts nothing")
+				.hasSize(3);
+
+		for (String code : codes) {
+			assertThat(whole).as("a referral code (%s) left the server, which Clan 73 does not make"
+					+ " public: it is the member's to hand out, not the portal's to publish", code)
+					.doesNotContain(code);
+		}
+	}
+
+	/**
+	 * AND NOTHING IN THE ANSWER SAYS WHO PAYS AND WHO DOES NOT.
+	 *
+	 * <p>Also asked of the text, because the basis is a short word that could arrive
+	 * under any name, and because a boolean „is exempt" says the same thing as the word
+	 * does.
+	 */
+	@Test
+	void nothingAboutTheMembershipFeeLeavesTheServer() throws Exception {
+		String whole = http.perform(get("/api/competitors")).andReturn().getResponse()
+				.getContentAsString();
+
+		for (String basis : List.of("feeExempt", "payment")) {
+			assertThat(whole).as("the basis a membership is held on (%s) left the server, and Clan 74"
+					+ " puts „sve u vezi sa clanarinom" + '"' + " beside the date of birth", basis)
+					.doesNotContain(basis);
+		}
 	}
 
 	@Test
@@ -167,6 +229,14 @@ class CompetitorApiTest {
 	 * the biography, would walk past a check that only reads names. The three years in
 	 * the fixture are far apart and none of them is also a season in it, so finding one
 	 * is finding a date of birth and not something else.
+	 *
+	 * <p><b>The boundary, written here rather than left for somebody to find:</b> this
+	 * refuses the four digit year and the whole date. It does NOT refuse the age as a
+	 * number, nor a two digit year, both of which name the year of birth to within a
+	 * year. The next increment answers with the age CATEGORY, which is a band of fifteen
+	 * years and is what Article 74 makes public in the same sentence; the difference
+	 * between that band and an age is one character in a query, so whoever writes it
+	 * must say which of the two they are writing.
 	 */
 	@Test
 	void noYearOfBirthLeavesTheServer() throws Exception {

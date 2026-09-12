@@ -8,14 +8,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -44,6 +50,32 @@ class ApiSecurityTest {
 	}
 
 	/**
+	 * A ROUTE WITH A VARIABLE IN IT, registered for this test and nowhere else.
+	 *
+	 * <p>It is here because the case below cannot otherwise measure what it says. The
+	 * portal maps no such route today and the next one it writes will be a profile by
+	 * member number, so without this the first draft of that case would ship green and
+	 * go on being green while saying it had asked about every mapped route.
+	 *
+	 * <p>It is deliberately NOT on the open list and its method is never reached, so
+	 * what it measures is the rule and not the handler.
+	 */
+	@TestConfiguration
+	static class ARouteWithAVariableInIt {
+
+		static final String PATTERN = "/api/one-with-a-variable/{id}";
+		static final String ASKED_AS = "/api/one-with-a-variable/1";
+
+		@RestController
+		static class Probe {
+			@GetMapping(PATTERN)
+			String read(@PathVariable String id) {
+				return id;
+			}
+		}
+	}
+
+	/**
 	 * EVERY ROUTE NOBODY OPENED IS A ROUTE NOBODY CAN READ.
 	 *
 	 * <p>This is the whole of the configuration in one case: 401 rather than 404 is
@@ -63,19 +95,31 @@ class ApiSecurityTest {
 	 *
 	 * <p>Today that leaves {@code /api/me}. Every resource opened from here on adds
 	 * itself to the list above, and every one added WITHOUT a rule adds itself here.
+	 *
+	 * <p><b>Patterns count too, and that is not an afterthought.</b> A first draft read
+	 * {@code getDirectPaths()}, which is empty for a mapping with a variable in it, so a
+	 * route like {@code /api/members/{number}} was in neither list and nothing asked
+	 * about it at all. The very next resource to be written is a profile by member
+	 * number. So the patterns are taken from the mapping itself and each variable is
+	 * asked with a sample value in its place.
 	 */
 	@Test
 	void everyRouteNobodyOpenedIsARouteNobodyCanRead() throws Exception {
 		List<String> shut = mappings.getHandlerMethods().keySet().stream()
 				.filter(this::answersAGet)
-				.flatMap(info -> info.getDirectPaths().stream())
+				.flatMap(this::pathsOf)
 				.filter(path -> path.startsWith("/api/"))
 				.filter(path -> !ApiSecurity.READ_BY_ANYBODY.contains(path))
+				.map(ApiSecurityTest::withASampleValue)
 				.distinct().sorted().toList();
 
 		assertThat(shut)
 				.as("every route the portal maps is on the open list, so this compares nothing")
 				.isNotEmpty();
+		assertThat(shut)
+				.as("a route with a variable in it was not asked about at all, which is how the"
+						+ " first draft of this case managed to say nothing and stay green")
+				.contains(ARouteWithAVariableInIt.ASKED_AS);
 
 		for (String path : shut) {
 			assertThat(statusOf(path))
@@ -88,6 +132,22 @@ class ApiSecurityTest {
 	private boolean answersAGet(RequestMappingInfo info) {
 		Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
 		return methods.isEmpty() || methods.contains(RequestMethod.GET);
+	}
+
+	/** Every spelling the mapping answers to, variables and all, asked of the mapping itself. */
+	private Stream<String> pathsOf(RequestMappingInfo info) {
+		PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
+		return patterns == null ? info.getDirectPaths().stream()
+				: patterns.getPatternValues().stream();
+	}
+
+	/**
+	 * A path is asked of the server, so a variable has to become something. Anything
+	 * does: the question is whether a rule lets it through, and no rule here is about
+	 * the value.
+	 */
+	private static String withASampleValue(String pattern) {
+		return pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1").replace("*", "1");
 	}
 
 	/**
