@@ -44,6 +44,10 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 		<dependency>
@@ -97,6 +101,24 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- A YAML parser, so that the case reading the deploy file reads VALUES and not
+		     text. A security round on 12.09.2026 proved the text search green while
+		     lying in both directions: `true` without quotes slipped past it, and a line
+		     commented out still satisfied it. -->
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- A real SMTP server, in this process. The portal's own mail is measured by
+		     speaking the protocol to it and reading back what actually arrived, rather
+		     than by asking a mock whether it was called. -->
+		<dependency>
+			<groupId>com.icegreen</groupId>
+			<artifactId>greenmail-junit5</artifactId>
+			<version>2.1.5</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
