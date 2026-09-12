@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import com.btl.portal.domain.account.SessionLife;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -218,19 +219,34 @@ class AuthenticationConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * THE FOUR NUMBERS THE OWNER CHOSE ARE IN THE SCHEMA, read back out of it.
+	 * THE NUMBERS THE OWNER CHOSE ARE IN THE SCHEMA, read back out of it, AND THE
+	 * CODE AGREES WITH THEM.
 	 *
 	 * <p>Thirty days for a session and one hour for a reset link are written as column
 	 * defaults rather than kept in a service, so that the next reader learns how long a
 	 * token lives without finding the class that writes it. This is what says they are
 	 * still what he chose.
+	 *
+	 * <p><b>And the second half is why this is not two assertions about one number.</b>
+	 * {@code SessionLife.LASTS} carries thirty days a second time, for the session it
+	 * RENEWS, and until a round on 12.09.2026 nothing joined the two: putting
+	 * {@code interval '45 days'} in the schema left every case about session life green,
+	 * and a renewed session and a fresh one would have quietly lived different lengths.
+	 * The schema is asked first and the class is measured against the answer, so moving
+	 * either one alone fails here.
 	 */
 	@Test
 	void aSessionLastsThirtyDaysAndAResetLinkOneHour() {
-		assertThat(db.sql("select extract(day from expires_at - created_at)::integer"
-				+ " from account_session where token_hash = " + A_TOKEN).query(Integer.class).single())
+		int howLongASessionLasts = db.sql("select extract(day from expires_at - created_at)::integer"
+				+ " from account_session where token_hash = " + A_TOKEN).query(Integer.class).single();
+
+		assertThat(howLongASessionLasts)
 				.as("a session no longer lasts the thirty days the owner chose")
 				.isEqualTo(30);
+		assertThat(SessionLife.LASTS.toDays())
+				.as("the schema hands out a session for %d days and the code renews it for another number",
+						howLongASessionLasts)
+				.isEqualTo(howLongASessionLasts);
 
 		assertThat(db.sql("select extract(hour from expires_at - created_at)::integer"
 				+ " from password_reset_token where token_hash = " + A_TOKEN).query(Integer.class).single())
