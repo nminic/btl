@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,20 +46,25 @@ class ResultApiTest {
 		member("000001", "Prvi", "Clan", "M", "1990-05-05", "00112233445566aa");
 		member("000002", "Druga", "Clanica", "F", "1978-11-20", "00112233445566bb");
 
-		event("maratonski-dan-2027", "Maratonski dan", "2027-05-05");
+		/* TWO EVENTS ON ONE DAY, and that is not decoration. The order asked for below
+		   is by the day and then by the key; every other field of the answer has to give
+		   a DIFFERENT list, or the case measures nothing. With both runs of the first day
+		   at one event, sorting by the event's name reproduced the order exactly. The
+		   same held for the race, for the member and for the points, each found a round
+		   later than the last, which is why `noOtherFieldWouldGiveThisOrder` now asks it
+		   of every field at once. */
 		event("kratki-dan-2027", "Kratki dan", "2027-03-01");
+		event("srednji-dan-2027", "Srednji dan", "2027-03-01");
+		event("maratonski-dan-2027", "Maratonski dan", "2027-05-05");
 
 		race("maratonski-dan-2027", "Maraton", "2027-05-05", 42.20);
+		race("srednji-dan-2027", "Polumaraton", "2027-03-01", 21.10);
 		race("kratki-dan-2027", "Desetka", "2027-03-01", 10.00);
 
-		run("000001", "Maraton", "2027-05-05", 42.20, 350, 410, 12000, 123.45);
-		run("000002", "Desetka", "2027-03-01", 10.00, 0, 5, 3000, 45.60);
-		/* Faster than the run written before it, and on the same day. That is what
-		   makes the order asked for below different from the order of the times: a
-		   query sorted by `seconds` answers 2400 first, and a query sorted by the day
-		   answers 3000 first. Without it the two are the same list and the case says
-		   nothing about which was asked for. */
-		run("000001", "Desetka", "2027-03-01", 10.00, 0, 5, 2400, 50.00);
+		run("000002", "Maraton", "2027-05-05", 42.20, 350, 410, 12000, 123.45);
+		run("000002", "Polumaraton", "2027-03-01", 21.10, 120, 60, 3000, 50.00);
+		/* Faster than the run written before it, and on the same day. */
+		run("000001", "Desetka", "2027-03-01", 10.00, 0, 5, 2400, 45.60);
 	}
 
 	private void member(String number, String first, String last, String gender, String born,
@@ -130,10 +136,17 @@ class ResultApiTest {
 	 */
 	@Test
 	void theHistoryComesBackInTheOrderItWasRun() throws Exception {
-		assertThat(StreamSupport.stream(answer().spliterator(), false)
-				.map(one -> one.path("seconds").asInt()).toList())
+		List<JsonNode> answered = StreamSupport.stream(answer().spliterator(), false).toList();
+
+		assertThat(answered.stream().map(one -> one.path("seconds").asInt()).toList())
 				.as("the history came back in some order other than the one it was run in")
 				.containsExactly(3000, 2400, 12000);
+
+		/* And the fixture can tell that order from every other one there is. Guessing
+		   which axes to separate cost two rounds of review on this one case: first the
+		   times rose with the days, then the points did. This asks the question of every
+		   field at once instead. */
+		Answers.noOtherFieldWouldGiveThisOrder("/api/results", answered, "date", "id");
 	}
 
 	/**

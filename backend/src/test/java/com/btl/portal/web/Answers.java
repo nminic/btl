@@ -8,6 +8,8 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.LinkedHashSet;
@@ -125,6 +127,55 @@ final class Answers {
 		assertThat(answeredFields)
 				.as("%s no longer answers with everything %s is read for", path, file)
 				.containsAll(mustBeAnswered);
+	}
+
+	/**
+	 * AND NO OTHER FIELD WOULD HAVE GIVEN THIS SAME ORDER.
+	 *
+	 * <p><b>This exists because guessing the axes cost two rounds of review on one
+	 * case</b> (12.09.2026). A case that says "the history comes back in the order it
+	 * was run" only says that if the fixture can TELL that order from every other one.
+	 * Round one: the times happened to rise with the days, so a query sorted by how
+	 * fast somebody ran answered the same list. Round two, after the times were fixed:
+	 * the points happened to rise with the days, so a query sorted by points answered
+	 * the same list. Both were one mistake, and a third axis would have been found the
+	 * same way.
+	 *
+	 * <p><b>So the axes are no longer guessed.</b> Every field the answer carries is
+	 * taken in turn, the records are sorted by it in both directions, and each of those
+	 * lists has to be a DIFFERENT list from the one the server gave. What comes out is
+	 * a statement about the fixture rather than about the code: if any field reproduces
+	 * the order, the case names that field instead of passing.
+	 *
+	 * @param theKey the fields the order really is by, which are the only ones allowed
+	 *               to reproduce it
+	 */
+	static void noOtherFieldWouldGiveThisOrder(String path, List<JsonNode> answered,
+			String... theKey) {
+		assertThat(answered)
+				.as("%s answered with fewer than two records, so it has no order at all", path)
+				.hasSizeGreaterThan(1);
+
+		for (String field : fieldsOf(answered.get(0))) {
+			if (List.of(theKey).contains(field)) {
+				continue;
+			}
+
+			Comparator<JsonNode> by = answered.get(0).path(field).isNumber()
+					? Comparator.comparing(one -> one.path(field).decimalValue())
+					: Comparator.comparing(one -> one.path(field).asString(""));
+
+			for (boolean backwards : new boolean[] {false, true}) {
+				List<JsonNode> sorted = new ArrayList<>(answered);
+				sorted.sort(backwards ? by.reversed() : by);
+
+				assertThat(sorted)
+						.as("the fixture of %s cannot tell its own order from a sort by %s%s,"
+										+ " so the case that asserts that order measures nothing",
+								path, field, backwards ? " backwards" : "")
+						.isNotEqualTo(answered);
+			}
+		}
 	}
 
 	/** AND NOTHING THE ANSWER CARRIES IS THE SAME IN EVERY RECORD. */
