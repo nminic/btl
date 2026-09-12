@@ -58,7 +58,12 @@ class DucatKindTest {
 
 		for (int band = 0; band < bands.length; band++) {
 			for (int which = 0; which < howMany[band]; which++) {
-				field.add(race("2027-03-0" + (which + 1), bands[band], "RS", "10.00", 100, 3000L, "5.00"));
+				/* THE SAME DAY FOR EVERY ONE, and that is the whole of the fifth draft. The
+				   races used to be dated 1, 2, 3 inside each band and to start again at 1 for
+				   the next, so the boundaries between bands could be read straight off the
+				   dates without ever touching `category`. A round on 12.09.2026 wrote exactly
+				   that and it passed. */
+				field.add(race("2027-03-01", bands[band], "RS", "10.00", 100, 3000L, "5.00"));
 			}
 		}
 
@@ -80,20 +85,28 @@ class DucatKindTest {
 	 * declared in, so {@code min(howMany, position)} passed;</li>
 	 * <li>three, five, one, four, two: shuffled against that order, but still ONE
 	 * distribution, so a constant kept per band - which the enum hands to
-	 * {@code inBand} itself - passed.</li>
+	 * {@code inBand} itself - passed;</li>
+	 *
+	 * <li>two fields, but with the races dated 1, 2, 3 inside each band and starting
+	 * again at 1 for the next: the boundaries could then be read off the DATES, and
+	 * an implementation that never touched {@code category} passed both.</li>
 	 * </ol>
 	 *
-	 * <p>The third round said the form was wrong rather than the numbers, and it
-	 * was: one field and an empty one are two points, and five constants fit two
-	 * points every time. What "reads the band" MEANS is that the answer follows the
-	 * field, so the case gives two fields whose bands differ and requires two
-	 * different answers. Nothing that ignores {@code category} can do that, however
-	 * it is written, because its answer cannot depend on something it does not read.
+	 * <p>The third round said the form was wrong rather than the numbers, and it was.
+	 * The fourth said the same of the CLAIM: "nothing which ignores the band can
+	 * answer two fields differently" was not true while something else in the field
+	 * still carried the band's shadow.
 	 *
-	 * <p><b>No band keeps its count between the two.</b> Written as reverses of each
-	 * other the middle one would have stayed at one, and a constant for that band
-	 * would still have passed - so the second is a rotation rather than a reversal,
-	 * and every one of the five moves.
+	 * <p><b>So the two fields are now the same list, of the same length, differing in
+	 * nothing whatever but the band.</b> Fifteen races each; the same day, distance,
+	 * climbing, time and country throughout. Anything that does not read
+	 * {@code category} therefore receives two IDENTICAL inputs and cannot answer them
+	 * differently, however it is written. The claim is no longer a hope about
+	 * implementations: it follows from the two inputs being the same.
+	 *
+	 * <p>And no band keeps its count between them. Written as reverses of each other
+	 * the middle one would have stayed at one, so the second is a rotation, and all
+	 * five move.
 	 */
 	@ParameterizedTest(name = "{0} = {1} then {2}")
 	@CsvSource({
