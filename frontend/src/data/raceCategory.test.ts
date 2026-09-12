@@ -7,6 +7,15 @@ const MOCK = join(process.cwd(), 'public/mock')
 
 type Served = { file: string; distanceKm: number; category: string }
 
+/** A served file is a list of records or a dictionary of them; `pages.json` is one. */
+function recordsOf(parsed: unknown): unknown[] {
+  if (Array.isArray(parsed)) {
+    return parsed
+  }
+
+  return typeof parsed === 'object' && parsed !== null ? Object.values(parsed) : []
+}
+
 /**
  * Every record the portal serves that carries a length AND a category, found by
  * reading the directory rather than by naming the files.
@@ -22,9 +31,8 @@ function everythingServedWithACategory(): Served[] {
     .filter((name) => name.endsWith('.json'))
     .flatMap((file) => {
       const parsed: unknown = JSON.parse(readFileSync(join(MOCK, file), 'utf-8'))
-      const records: unknown[] = Array.isArray(parsed) ? parsed : Object.values(parsed as object)
 
-      return records
+      return recordsOf(parsed)
         .filter(
           (one): one is { distanceKm: number; category: string } =>
             typeof one === 'object' && one !== null && 'distanceKm' in one && 'category' in one,
