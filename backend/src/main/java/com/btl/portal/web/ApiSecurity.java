@@ -41,12 +41,35 @@ class ApiSecurity {
 				.securityMatcher("/api/**")
 				.authorizeHttpRequests(routes -> routes
 						.requestMatchers("/api/places", "/api/countries").permitAll()
+						/* Signing in is open by necessity: nobody can be asked to be signed in
+						   in order to sign in. It is still the one open route that WRITES, and
+						   what stands in front of it is the CSRF token below and the fact that
+						   every wrong answer costs the guesser a miss. */
+						.requestMatchers("/api/sign-in").permitAll()
 						.anyRequest().authenticated())
-				/* No cookie is issued and no session is kept, so there is no session for
-				   anybody to ride: CSRF protection guards a browser that sends credentials
-				   it was given, and nothing here gives any. It comes back in the increment
-				   that signs somebody in, together with the cookie it is about. */
-				.csrf(csrf -> csrf.disable())
+				/* AND NOW THERE IS A COOKIE, SO CSRF PROTECTION IS BACK. This chain gave
+				   none until signing in existed, and the comment here said in as many words
+				   that it would return with the cookie it is about. It has.
+
+				   `csrf.spa()` and not a repository written out by hand, and a security round
+				   on 12.09.2026 is why. Setting only `CookieCsrfTokenRepository.withHttpOnlyFalse()`
+				   leaves the DEFAULT request handler in place, and that one expects the header to
+				   carry an XOR masked token, not the raw value from the cookie. So a script doing
+				   exactly what this comment described - read the cookie, echo it in a header -
+				   got 403 on every request, correct password included. Not an attack: a door
+				   nobody could open, and the test suite said the guard was proved.
+
+				   `spa()` sets the same cookie repository AND the handler that goes with it.
+				   The token is kept in a cookie rather than the session, which matters twice
+				   over: the server stays without session state, and the case saying nothing
+				   hands out a session keeps holding. The cookie is readable by script on
+				   purpose - that is the whole mechanism, because another site can make a
+				   browser send a request but cannot read a cookie from this origin.
+
+				   The session cookie itself is SameSite=Strict, so it is not sent from
+				   another site at all; the CSRF token is the second lock, on the reasoning
+				   that one lock which everything depends on is one mistake away from none. */
+				.csrf(csrf -> csrf.spa())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.httpBasic(basic -> basic.disable())
 				.formLogin(form -> form.disable())
