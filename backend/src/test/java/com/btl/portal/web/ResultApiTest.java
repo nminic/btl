@@ -53,7 +53,12 @@ class ResultApiTest {
 
 		run("000001", "Maraton", "2027-05-05", 42.20, 350, 410, 12000, 123.45);
 		run("000002", "Desetka", "2027-03-01", 10.00, 0, 5, 3000, 45.60);
-		run("000001", "Desetka", "2027-03-01", 10.00, 0, 5, 3600, 50.00);
+		/* Faster than the run written before it, and on the same day. That is what
+		   makes the order asked for below different from the order of the times: a
+		   query sorted by `seconds` answers 2400 first, and a query sorted by the day
+		   answers 3000 first. Without it the two are the same list and the case says
+		   nothing about which was asked for. */
+		run("000001", "Desetka", "2027-03-01", 10.00, 0, 5, 2400, 50.00);
 	}
 
 	private void member(String number, String first, String last, String gender, String born,
@@ -116,13 +121,19 @@ class ResultApiTest {
 	 * written is a different list from an answer in the order they were run. The two
 	 * runs of the same day are told apart by the key, which is the only thing left
 	 * once the day has decided.
+	 *
+	 * <p><b>And the times are deliberately not in the same order as the days.</b>
+	 * The second run of the first day is the fastest of the three, so sorting by
+	 * `seconds` answers a different list from sorting by the day. Written the other
+	 * way round the case would pass for a query sorted by the time somebody ran,
+	 * which is not what it claims to measure (found in review, 12.09.2026).
 	 */
 	@Test
 	void theHistoryComesBackInTheOrderItWasRun() throws Exception {
 		assertThat(StreamSupport.stream(answer().spliterator(), false)
 				.map(one -> one.path("seconds").asInt()).toList())
-				.as("the history came back in the order the rows were written")
-				.containsExactly(3000, 3600, 12000);
+				.as("the history came back in some order other than the one it was run in")
+				.containsExactly(3000, 2400, 12000);
 	}
 
 	/**

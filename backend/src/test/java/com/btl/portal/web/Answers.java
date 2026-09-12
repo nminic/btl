@@ -99,16 +99,30 @@ final class Answers {
 				.isTrue();
 
 		Set<String> served = servedFields(file);
+		Set<String> answeredFields = fieldsOf(answered.get(0));
 
-		assertThat(served)
-				.as("%s no longer serves %s, so leaving it out of %s hides nothing",
-						file, List.of(deliberatelyNotAnswered), path)
-				.containsAll(List.of(deliberatelyNotAnswered));
+		for (String left : deliberatelyNotAnswered) {
+			/* Both halves, because each catches the opposite failure and a name that
+			   does neither is decoration. The first: a name that the portal stopped
+			   serving would sit here forever, quietly excusing a field that went
+			   missing. The second: the field really has to be absent from the answer,
+			   which is the whole claim - without it, naming `birthYear` as left out
+			   would read the same whether the year leaves the server or not, and that
+			   is the field the privacy policy is about (found in review, 12.09.2026). */
+			assertThat(served)
+					.as("%s does not serve %s at all, so leaving it out of %s hides nothing",
+							file, left, path)
+					.contains(left);
+			assertThat(answeredFields)
+					.as("%s answers with %s, which this case says it deliberately leaves out",
+							path, left)
+					.doesNotContain(left);
+		}
 
 		Set<String> mustBeAnswered = new LinkedHashSet<>(served);
 		mustBeAnswered.removeAll(List.of(deliberatelyNotAnswered));
 
-		assertThat(fieldsOf(answered.get(0)))
+		assertThat(answeredFields)
 				.as("%s no longer answers with everything %s is read for", path, file)
 				.containsAll(mustBeAnswered);
 	}
