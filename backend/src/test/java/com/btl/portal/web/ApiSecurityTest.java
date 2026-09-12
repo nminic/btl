@@ -92,33 +92,23 @@ class ApiSecurityTest {
 	}
 
 	/**
-	 * NOTHING HANDS OUT A SESSION, on either chain, to anybody.
+	 * NOTHING HANDS OUT A SESSION: measured over a real socket, not here.
 	 *
-	 * <p>The configuration says in as many words that it keeps no session until
-	 * somebody signs in, and until a security round on 11.09.2026 that was true of
-	 * one of its two chains. The other carried CSRF protection, whose default token
-	 * repository lives IN THE SESSION, so an unsafe method arriving without a token
-	 * created one before anything had decided whether the path existed at all. A
-	 * POST to a made up address came back 403 with a fresh JSESSIONID, and two of
-	 * them came back with two different ones.
+	 * <p>That guard used to stand in this file and ask MockMvc. On 12.09.2026 it
+	 * turned out MockMvc was answering about itself: {@code .with(csrf())} reaches
+	 * into the shared filter chain of the cached context and swaps the token
+	 * repository for a test one that keeps the token in a session, and the swap
+	 * outlives the class that made it. Run after {@code SignInApiTest} in one JVM,
+	 * the guard went red on a plain read of the codebook, on a server that had done
+	 * nothing of the sort. It stayed green here and went red on CI for no reason
+	 * other than the order the two run their classes in.
 	 *
-	 * <p>Asked of the request rather than of the response: a session that was
-	 * created is what matters, and whether the servlet container got as far as
-	 * writing a cookie for it is a detail of how the request was carried. The four
-	 * paths are the two chains times the two kinds of method, because the chain
-	 * that leaked was the one nothing else in this file touches.
+	 * <p>It now lives in {@code SignInOverRealHttpTest}, where a real container
+	 * answers the question itself through an {@code HttpSessionListener}. Measured
+	 * before this one was removed: putting back the leak of 11.09.2026 - the second
+	 * chain carrying the default session backed CSRF repository again - turns the
+	 * new guard red, and so do two other ways of leaking one.
 	 */
-	@ParameterizedTest
-	@ValueSource(strings = {"/api/places", "/api/nema-ovoga", "/actuator/health", "/nema-ni-ovoga"})
-	void nothingHandsOutASessionToAnybody(String path) throws Exception {
-		assertThat(http.perform(get(path)).andReturn().getRequest().getSession(false))
-				.as("reading %s handed out a session", path)
-				.isNull();
-
-		assertThat(http.perform(post(path)).andReturn().getRequest().getSession(false))
-				.as("writing to %s handed out a session to somebody who is not signed in", path)
-				.isNull();
-	}
 
 	/**
 	 * The health check stays reachable, because the container's own probe calls it.
