@@ -332,6 +332,44 @@ class AccountConstraintsTest extends DatabaseTest {
 				.isOne();
 	}
 
+	/**
+	 * AN ACCOUNT WITH NO PASSWORD IS A REAL STATE, and nothing measured it.
+	 *
+	 * <p>{@code password_hash} is nullable on purpose and V18 writes out why: the
+	 * owner opens accounts for honorary members and for profiles that exist before
+	 * the portal launches, and those people set a password through the reset link
+	 * rather than at the moment the row is written. A NOT NULL would force every one
+	 * of them through a placeholder hash, which is a password nobody chose and
+	 * everybody could guess the shape of.
+	 *
+	 * <p>That was a decision with no guard at all: every case in this file either
+	 * writes a hash or writes a bad one, and not one wrote none. Found on
+	 * 12.09.2026 while re-running a mutation list that had been reporting nonsense -
+	 * the runner had never started the build, and a non-zero exit from a command
+	 * that does not exist reads exactly like a mutation being caught.
+	 *
+	 * <p><b>And a thing worth knowing about the constraint itself, measured on the
+	 * way.</b> Removing {@code password_hash is null or} from
+	 * {@code account_password_hash_shape} changes NOTHING: in SQL a comparison with
+	 * NULL is NULL, and a CHECK refuses only what is FALSE, so an absent hash goes
+	 * through either way. That clause is explanation, not enforcement, and nothing
+	 * can be measured against it. What CAN be measured is the column itself, and
+	 * both of the mutations that really move it fail here: the column made NOT NULL,
+	 * and the condition changed to demand that a hash be there.
+	 */
+	@Test
+	void anAccountWithNoPasswordIsARealState() {
+		assertThat(db.sql("insert into account (email, role_id) values ('bezlozinke@primer.rs', "
+				+ COMPETITOR + ")").update())
+				.as("an account could not be opened without a password, and that is how the owner opens them")
+				.isOne();
+
+		assertThat(db.sql("select password_hash from account where email = 'bezlozinke@primer.rs'")
+				.query(String.class).optional())
+				.as("something was written into the column that nobody put there")
+				.isEmpty();
+	}
+
 	@Test
 	void everyConstraintOnTheTwoTablesHasARowThatBreaksIt() {
 		String tables = TABLES.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
