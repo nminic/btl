@@ -15,17 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -40,8 +32,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class CalendarApiTest {
-
-	private static final Path MOCK = Path.of("..", "frontend", "public", "mock");
 
 	/** Every literal in a rule, which is what an enumerated rule is made of. */
 	private static final Pattern SPELLED_OUT = Pattern.compile("'([^']*)'");
@@ -171,23 +161,6 @@ class CalendarApiTest {
 				http.perform(get(path)).andReturn().getResponse().getContentAsString());
 	}
 
-	/** The names in one record of what the portal serves today. */
-	private static Set<String> servedFields(String file) {
-		try {
-			JsonNode all = new ObjectMapper()
-					.readTree(Files.readString(MOCK.resolve(file), StandardCharsets.UTF_8));
-
-			assertThat(all.isArray() && !all.isEmpty())
-					.as("%s is not a list of records, so there is nothing to compare", file)
-					.isTrue();
-
-			return all.get(0).properties().stream()
-					.map(Map.Entry::getKey).collect(Collectors.toSet());
-		} catch (IOException cannot) {
-			throw new UncheckedIOException(cannot);
-		}
-	}
-
 	/**
 	 * THE FIELDS ARE THE ONES THE PORTAL READS, and that is the floor for this
 	 * resource rather than the whole answer.
@@ -206,16 +179,7 @@ class CalendarApiTest {
 	@ParameterizedTest
 	@CsvSource({"/api/events, events.json", "/api/races, races.json"})
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith(String path, String file) throws Exception {
-		JsonNode answered = answer(path);
-
-		assertThat(answered.isArray() && !answered.isEmpty())
-				.as("%s answered with nothing, so there are no fields to compare", path)
-				.isTrue();
-
-		assertThat(answered.get(0).properties().stream()
-				.map(Map.Entry::getKey).collect(Collectors.toSet()))
-				.as("%s and %s no longer name the same fields", path, file)
-				.isEqualTo(servedFields(file));
+		Answers.everyFieldThePortalReadsIsAnswered(path, answer(path), file);
 	}
 
 	/**
@@ -347,22 +311,7 @@ class CalendarApiTest {
 	@ParameterizedTest
 	@CsvSource({"/api/events", "/api/races"})
 	void noFieldOfTheAnswerIsTheSameInEveryRecord(String path) throws Exception {
-		Map<String, Set<String>> seen = new LinkedHashMap<>();
-
-		for (JsonNode one : answer(path)) {
-			one.properties().forEach(field -> seen
-					.computeIfAbsent(field.getKey(), any -> new LinkedHashSet<>())
-					.add(field.getValue().toString()));
-		}
-
-		assertThat(seen)
-				.as("%s answered with nothing, so no field of it was compared", path)
-				.isNotEmpty();
-
-		seen.forEach((field, values) -> assertThat(values)
-				.as("every record of %s carries the same %s, so a constant would answer it",
-						path, field)
-				.hasSizeGreaterThan(1));
+		Answers.noFieldIsTheSameInEveryRecord(path, answer(path));
 	}
 
 }
