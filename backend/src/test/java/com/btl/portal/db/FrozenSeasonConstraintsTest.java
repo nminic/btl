@@ -112,8 +112,8 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
 				+ " first_season, admin_id) values ('drugi-zamrznut-tim', 'Drugi zamrznut tim', '', '', "
 				+ A_TOWN + ", null, null, null, 2027, null)").update();
-		db.sql("insert into league (slug, name, season, rules, prizes, admin_id) values ('zamrznuta-liga',"
-				+ " 'Zamrznuta liga', 2027, '', '', null)").update();
+		db.sql("insert into league (slug, name, season, rules, prizes) values ('zamrznuta-liga',"
+				+ " 'Zamrznuta liga', 2027, '', '')").update();
 
 		db.sql(rank("2027, 1, " + A_MEMBER + ", 'Prvi Zamrznuti', 'M', 'senior', 1240.55, 22")).update();
 		db.sql(team("2027, 1, " + A_TEAM + ", 'Zamrznut tim', 4820.10, 12")).update();
@@ -319,8 +319,8 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 						+ " among the men")
 				.isOne();
 
-		db.sql("insert into league (slug, name, season, rules, prizes, admin_id) values"
-				+ " ('druga-zamrznuta-liga', 'Druga zamrznuta liga', 2027, '', '', null)").update();
+		db.sql("insert into league (slug, name, season, rules, prizes) values"
+				+ " ('druga-zamrznuta-liga', 'Druga zamrznuta liga', 2027, '', '')").update();
 
 		assertThat(db.sql(standing("2027, (select id from league where slug = 'druga-zamrznuta-liga'),"
 				+ " 'Druga zamrznuta liga', 1, " + A_WOMAN + ", 'Prva Zamrznuta', 'M', 300")).update())

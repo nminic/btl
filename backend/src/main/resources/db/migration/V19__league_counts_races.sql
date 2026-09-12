@@ -74,9 +74,7 @@ create table league_race (
    count towards. The primary key already serves the league's side. */
 create index league_race_race_idx on league_race (race_id);
 
-comment on table league_race is
-    'Which races count towards which league. The season is in both foreign keys, so a league'
-        || ' of one year cannot count a race of another.';
+comment on table league_race is 'Which races count towards which league. The season is in both foreign keys, so a league of one year cannot count a race of another.';
 
 alter table league
     drop column admin_id;
