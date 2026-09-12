@@ -1,12 +1,13 @@
 /* Cloudflare Email Worker for no-reply@balkanskatrkackaliga.net
  *
  * The portal only sends from that address (ADL A48, 12.09.2026), and the hyphen is
- * part of it: that spelling is the one verified with the relay, and an address the
- * relay has not verified gets rewritten, so nothing ever actually arrives from the
- * unhyphenated form. Whatever guards `noreply@` guards nobody.
+ * part of it: that spelling is the one verified with the relay, and a sender the
+ * relay has not verified is rewritten before the message leaves. So a reply comes
+ * back to `no-reply@`, and a route left on the unhyphenated spelling is watching an
+ * address the portal never writes from.
  *
- * Nobody is meant to write to the address either, and whoever tries anyway has to
- * get a clear answer rather than silence.
+ * Nobody is meant to write to the address, and whoever tries anyway has to get a
+ * clear answer rather than silence.
  *
  * So the message is rejected at the SMTP level instead of being forwarded or
  * quietly dropped. The reason below goes into the bounce notice the sender's own
