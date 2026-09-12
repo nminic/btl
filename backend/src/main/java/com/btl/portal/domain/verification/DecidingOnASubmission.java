@@ -11,11 +11,26 @@ import java.util.Set;
  * comment, a photograph and a proposed team all arrive here, and the differences
  * between them are what the queue is called, not what a decision does.
  *
- * <p><b>A refusal carries its reason and an approval carries none.</b> The member
- * is told why he was refused (PDL 2593), and a refusal nobody can answer is a
- * decision nobody can appeal. There is nothing to explain about a yes, and a
- * reason beside one is a note nobody reads - which is why the schema does not
- * merely allow the absence but requires it.
+ * <p><b>A refusal carries its reason and an approval carries none.</b> PDL P21,
+ * under „Razlog odbijanja": „obavezan razlog stoji na svakom odbijanju, jer se
+ * sve odbijeno vraca clanu", and the moderator is asked for a precise
+ * instruction rather than „ne valja". A refusal nobody can answer is a decision
+ * nobody can appeal. There is nothing to explain about a yes, and a reason
+ * beside one is a note nobody reads - which is why the schema does not merely
+ * allow the absence but requires it.
+ *
+ * <p><b>And the one queue PDL exempts never reaches here.</b> The same sentence
+ * goes on: „Jedini red bez njega je red komentara, gde se ne odbija nego brise,
+ * a napomena je neobavezna i namenjena moderatorima." A comment is not refused,
+ * it is removed, so it never becomes a row in the state this class would have to
+ * put a reason on. Written down because it reads like a contradiction until
+ * somebody notices that the exception is about a queue that does not produce
+ * this outcome at all.
+ *
+ * <p>Cited by section and by its own words rather than by a line number: PDL
+ * says of itself that a copied number is one more place that drifts from the
+ * truth, and this sentence had already moved two hundred and seventy four lines
+ * away from the number first written here.
  *
  * <p><b>Deciding twice is not deciding.</b> A queue is a list two moderators can
  * have open at once, and a second answer arriving after the first must not
