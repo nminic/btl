@@ -1,5 +1,7 @@
 package com.btl.portal.domain.team;
 
+import com.btl.portal.domain.season.SeasonClock;
+
 import java.util.Objects;
 
 /**
@@ -19,8 +21,16 @@ import java.util.Objects;
  */
 public record Membership(long teamId, int seasonFrom, Integer seasonTo, String leftReason) {
 
-	/** The first season the league has, and nothing before it is a season at all. */
-	public static final int FIRST_SEASON = 2027;
+	/**
+	 * The first season the league has, and it is READ rather than repeated.
+	 *
+	 * <p>This carried its own 2027 until a round on 12.09.2026 moved
+	 * {@link SeasonClock#FIRST_SEASON} to another year and measured what happened
+	 * here: nothing. All ten cases stayed green while this class went on accepting a
+	 * season the rest of the portal had stopped having. One fact, two homes, and the
+	 * copy does not follow.
+	 */
+	public static final int FIRST_SEASON = SeasonClock.FIRST_SEASON;
 
 	public Membership {
 		if (seasonFrom < FIRST_SEASON) {
@@ -50,6 +60,25 @@ public record Membership(long teamId, int seasonFrom, Integer seasonTo, String l
 	/** Whether this membership is running in that season. */
 	public boolean covers(int season) {
 		return season >= seasonFrom && (seasonTo == null || season <= seasonTo);
+	}
+
+	/**
+	 * Whether this membership stands in the way of a new OPEN one starting then.
+	 *
+	 * <p>Not the same question as {@link #covers}, and a round on 12.09.2026 showed
+	 * why. Joining a team writes a membership with no end, so the schema sees the
+	 * range from that season to the largest integer there is, and
+	 * {@code team_membership_one_team_at_a_time} refuses anything that touches it.
+	 * A membership written AHEAD - say for 2029, while somebody joins for 2028 -
+	 * does not cover 2028 and does collide with it.
+	 *
+	 * <p>Asking the narrower question let this class answer yes where the database
+	 * would then answer with a constraint violation, which is the one thing it
+	 * exists to prevent. So the question is the schema's: does this end at or after
+	 * the season the new one begins.
+	 */
+	public boolean standsInTheWayOfJoiningIn(int season) {
+		return seasonTo == null || seasonTo >= season;
 	}
 
 	/** Whether he is still in the team. */

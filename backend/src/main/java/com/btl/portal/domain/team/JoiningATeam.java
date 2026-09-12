@@ -28,8 +28,16 @@ import java.util.Objects;
  * A team founded during a season stands in the table of new teams below the
  * standings, "tek toliko da neko može da se prijavi u njega za narednu godinu u
  * prelaznom roku" (owner). Which season that is is not decided here: it is
- * {@link SeasonClock#seasonBeingPaidFor}, the same answer the membership fee is
- * bought for, so a member cannot be in a team for a season he has not paid.
+ * {@link SeasonClock#seasonBeingPaidFor}, so the season somebody joins for is the
+ * same NUMBER the membership fee would be bought for.
+ *
+ * <p><b>That is a number, not a check.</b> This says nothing about whether the
+ * member has paid, and cannot: it is handed a history of memberships and a
+ * moment, and no fee appears in either. This sentence used to claim the
+ * consequence - "so a member cannot be in a team for a season he has not paid" -
+ * and a round on 12.09.2026 pointed out what that costs: a reader who believes it
+ * never writes the check at the place where it belongs. Whether a member has paid
+ * is the service layer's question, and it is still open.
  */
 public final class JoiningATeam {
 
@@ -72,7 +80,7 @@ public final class JoiningATeam {
 
 		int season = seasonHeWouldJoin(at);
 
-		return his.stream().anyMatch(one -> one.covers(season))
+		return his.stream().anyMatch(one -> one.standsInTheWayOfJoiningIn(season))
 				? Answer.ALREADY_IN_A_TEAM
 				: Answer.YES;
 	}

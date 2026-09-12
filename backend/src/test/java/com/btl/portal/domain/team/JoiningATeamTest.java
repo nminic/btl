@@ -46,14 +46,22 @@ class JoiningATeamTest {
 	}
 
 	/**
-	 * A membership that COVERS the season he would join stands in the way, and one
-	 * that does not, does not.
+	 * A membership that ENDS AT OR AFTER the season he would join stands in the way,
+	 * and one that ended before it does not.
 	 *
-	 * <p>The rows are the four shapes a history can take around one season: still
-	 * in a team; left before it; left during it; and written ahead for it. The
-	 * third and fourth are the ones a rule looking only at "is he in a team today"
-	 * gets wrong, and they are why the whole history is asked for rather than the
-	 * open membership alone.
+	 * <p><b>Ending at or after, not merely covering, and a round on 12.09.2026 is
+	 * why.</b> Joining writes a membership with no end, so the schema sees the range
+	 * from that season to the largest integer there is and
+	 * {@code team_membership_one_team_at_a_time} refuses anything that touches it.
+	 * The last row is the one that showed it: a membership written AHEAD for 2029,
+	 * while somebody joins for 2028, does not COVER 2028 and does collide with it.
+	 * This class answered yes and the database would then have answered with a
+	 * constraint violation - the one thing it exists to prevent.
+	 *
+	 * <p>The five rows are the shapes a history can take around one season: still in
+	 * a team; left before it; left during it; left in it; and written ahead of it.
+	 * The last three are what a rule looking only at "is he in a team today" gets
+	 * wrong, and they are why the whole history is asked for.
 	 */
 	@ParameterizedTest(name = "{0} to {1}: {2}")
 	@CsvSource({
@@ -61,9 +69,9 @@ class JoiningATeamTest {
 			"2027, 2027, YES",
 			"2027, 2028, ALREADY_IN_A_TEAM",
 			"2028, 2028, ALREADY_IN_A_TEAM",
-			"2029, 2029, YES",
+			"2029, 2029, ALREADY_IN_A_TEAM",
 	})
-	void aMembershipCoveringThatSeasonStandsInTheWay(int from, Integer to, Answer expected) {
+	void aMembershipEndingAtOrAfterThatSeasonStandsInTheWay(int from, Integer to, Answer expected) {
 		Membership his = to == null
 				? Membership.open(A_TEAM, from)
 				: new Membership(A_TEAM, from, to, "presao u drugi tim");
@@ -78,6 +86,16 @@ class JoiningATeamTest {
 	 * a version looking at one membership answers YES. Written the other way round
 	 * the case would pass whether the rest of the list were read or not.
 	 */
+	/** And a membership that ended BEFORE the season stands in the way of nothing,
+	 *  which is the other side of the rule above. */
+	@Test
+	void aMembershipThatEndedBeforeThatSeasonStandsInTheWayOfNothing() {
+		assertThat(JoiningATeam.mayJoin(
+				List.of(new Membership(A_TEAM, 2027, 2027, "raspao se tim")), IN_THE_WINDOW))
+				.as("a membership over and done with kept somebody out of a team")
+				.isEqualTo(Answer.YES);
+	}
+
 	@Test
 	void everyMembershipIsAskedAndNotTheFirst() {
 		List<Membership> his = List.of(
