@@ -17,11 +17,18 @@ import java.util.Objects;
  * decision that changes, and how it travels is a piece of infrastructure that
  * must not.
  *
- * <p><b>It sends from {@code noreply@}, and that address refuses everything
- * that comes back.</b> ADL-posta, 29.07.2026: {@code info@} is read by a person
- * and {@code noreply@} is what the portal writes from, rejecting incoming mail
+ * <p><b>It sends from {@code no-reply@}, and that address refuses everything
+ * that comes back.</b> ADL A48, 12.09.2026: {@code info@} is read by a person
+ * and {@code no-reply@} is what the portal writes from, rejecting incoming mail
  * at the SMTP level rather than swallowing it, because silence is worse than a
  * refusal - somebody who replies has to learn that nobody is reading.
+ *
+ * <p><b>And the hyphen is the whole address.</b> The relay lets through only a
+ * sender it has verified and rewrites every other one, so a portal configured
+ * with {@code noreply@} does not send late mail, it sends mail that arrives from
+ * a stranger. Which address it is belongs in {@code application.properties} and
+ * not in this class, and {@code PostmanTest} reads that file, so what is
+ * configured and what leaves cannot drift apart.
  *
  * <p><b>Nothing here holds a credential.</b> The relay, its port and its key
  * come out of the environment, through Spring's own {@code spring.mail.*}, and
