@@ -42,12 +42,36 @@ public class Postman {
 	private final String from;
 
 	/**
-	 * @param from the address the portal writes from. Configured rather than
-	 *             written here, because QA and production are two installations
-	 *             of one portal and the day they must differ is not this class's
-	 *             business
+	 * @param from        the address the portal writes from. Configured rather than
+	 *                    written here, because QA and production are two
+	 *                    installations of one portal and the day they must differ
+	 *                    is not this class's business
+	 * @param signsIn     whether the relay is given a name and a key
+	 * @param insistsOnTls whether STARTTLS is required rather than merely offered
 	 */
-	Postman(JavaMailSender relay, @Value("${btl.mail.from}") String from) {
+	Postman(JavaMailSender relay, @Value("${btl.mail.from}") String from,
+			@Value("${spring.mail.properties.mail.smtp.auth:false}") boolean signsIn,
+			@Value("${spring.mail.properties.mail.smtp.starttls.required:false}") boolean insistsOnTls) {
+
+		/* A KEY IS NEVER SENT DOWN A CONNECTION THAT MIGHT NOT BE ENCRYPTED, and
+		   this refuses to start rather than trusting anybody to remember.
+
+		   A security round on 12.09.2026 found the two switches apart: `starttls.enable`
+		   means "use it if the server offers it", so somebody on the wire who strips
+		   STARTTLS out of the greeting gets a connection in the clear, and with
+		   authentication on the relay's key follows it in Base64. `starttls.required`
+		   is the switch that refuses instead.
+
+		   Written as a line of configuration the fix would be one deployment away from
+		   being lost. Written here it is a server that does not come up, which is the
+		   loudest a mistake can be and the cheapest to find. Development authenticates
+		   against nothing and is untouched. */
+		if (signsIn && !insistsOnTls) {
+			throw new IllegalStateException("the portal is set to sign in to the mail relay without"
+					+ " requiring TLS, so its key would travel in the clear to anybody who strips"
+					+ " STARTTLS off the greeting: set spring.mail.properties.mail.smtp.starttls.required");
+		}
+
 		this.relay = relay;
 		this.from = from;
 	}

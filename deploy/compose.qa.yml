@@ -153,6 +153,11 @@ services:
       SPRING_MAIL_PASSWORD: ${QA_MAIL_PASSWORD:-}
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      # AND REQUIRED, which is a different switch. `enable` alone means "use it if
+      # offered", so a stripping attacker on the wire gets a clear connection and
+      # the relay's key with it. Brevo supports STARTTLS on 587, so requiring it
+      # costs nothing and buys the one thing that matters here.
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 4 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in

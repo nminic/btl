@@ -7,6 +7,10 @@ import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
 import com.icegreen.greenmail.util.ServerSetupTest;
 import jakarta.mail.internet.MimeMessage;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +20,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.context.TestPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -126,6 +131,132 @@ class PostmanTest {
 				.contains("važi");
 	}
 
+	/**
+	 * A KEY IS NEVER SENT DOWN A CONNECTION THAT MIGHT NOT BE ENCRYPTED.
+	 *
+	 * <p>`starttls.enable` means "use it if the server offers it", so a stripping
+	 * attacker on the wire gets a connection in the clear and, with authentication
+	 * on, the relay's key follows it in Base64. `starttls.required` is the switch
+	 * that refuses instead, and the two are separate.
+	 *
+	 * <p>The rule lives in the constructor rather than in a properties file because
+	 * a line of configuration is one deployment away from being lost. All four
+	 * combinations are here: only the dangerous one is refused, and it is refused
+	 * before the server is up rather than at the first message.
+	 */
+	@Test
+	void aPortalThatWouldSendItsKeyInTheClearDoesNotStart() {
+		assertThatThrownBy(() -> new Postman(anywhere(), from, true, false))
+				.as("the portal would sign in to the relay without requiring TLS")
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("starttls.required");
+
+		assertThatCode(() -> new Postman(anywhere(), from, true, true))
+				.as("signing in over required TLS is the arrangement QA and production use")
+				.doesNotThrowAnyException();
+		assertThatCode(() -> new Postman(anywhere(), from, false, false))
+				.as("development signs in to nothing and must keep working")
+				.doesNotThrowAnyException();
+		assertThatCode(() -> new Postman(anywhere(), from, false, true))
+				.doesNotThrowAnyException();
+	}
+
+	/**
+	 * AND THE SWITCH IS NOT DECORATION: WITH IT ON, NOTHING GOES OUT IN THE CLEAR.
+	 *
+	 * <p>GreenMail here offers no STARTTLS, which is exactly what a stripping
+	 * attacker leaves behind. Sent with `enable` alone the message arrives anyway;
+	 * with `required` the send fails and nothing reaches the server. The second
+	 * half is the one that matters and the first is why it had to be measured.
+	 */
+	@Test
+	void requiringTlsStopsTheMessageRatherThanSendingItInTheClear() throws Exception {
+		JavaMailSenderImpl insisting = new JavaMailSenderImpl();
+
+		insisting.setHost("127.0.0.1");
+		insisting.setPort(SMTP.getSmtp().getPort());
+		insisting.getJavaMailProperties().setProperty("mail.smtp.starttls.enable", "true");
+		insisting.getJavaMailProperties().setProperty("mail.smtp.starttls.required", "true");
+
+		assertThatThrownBy(() -> new Postman(insisting, from, false, true)
+				.send(new Said("Naslov", "Telo"), "clan@primer.rs"))
+				.as("the message went to a server offering no STARTTLS")
+				.isInstanceOf(org.springframework.mail.MailException.class);
+
+		assertThat(SMTP.waitForIncomingEmail(200, 1))
+				.as("something reached the server in the clear")
+				.isFalse();
+	}
+
+	/**
+	 * AND NOTHING TYPED INTO AN ADDRESS OR A SUBJECT BECOMES A HEADER.
+	 *
+	 * <p>A second recipient folded into the address, and a header folded into the
+	 * subject, are the two shapes of the same old trick. Both are refused today by
+	 * the library underneath, and that is precisely why this is here: nothing in
+	 * the portal said so, and a change of how the message is assembled would take
+	 * the protection away without a word.
+	 */
+	@Test
+	void nothingFoldedIntoAnAddressOrASubjectBecomesAHeader() throws Exception {
+		/* The fold is written as the two numbers rather than typed, for the same
+		   reason a thin space is: a carriage return inside a string literal is
+		   invisible, and a reader cannot tell it from a line somebody wrapped. */
+		String fold = "" + (char) 13 + (char) 10;
+
+		assertThatThrownBy(() -> postman.send(new Said("Naslov", "Telo"),
+				"clan@primer.rs" + fold + "Bcc: haker@zlo.rs"))
+				.as("a second recipient was folded into the address")
+				.isInstanceOf(org.springframework.mail.MailException.class);
+		assertThatThrownBy(() -> postman.send(new Said("Naslov", "Telo"),
+				"clan@primer.rs,haker@zlo.rs"))
+				.as("two addresses were accepted where one was asked for")
+				.isInstanceOf(org.springframework.mail.MailException.class);
+
+		postman.send(new Said("Naslov" + fold + "X-Ubaceno: da", "Telo"), "clan@primer.rs");
+
+		MimeMessage arrived = waitForOne();
+
+		assertThat(arrived.getHeader("X-Ubaceno"))
+				.as("a header folded into the subject arrived as a header")
+				.isNull();
+		assertThat(arrived.getAllRecipients()).hasSize(1);
+	}
+
+	/**
+	 * AND THE INSTALLATION THAT ACTUALLY SIGNS IN SETS BOTH SWITCHES.
+	 *
+	 * <p>The guard in the constructor stops a portal configured this way from
+	 * starting, which is the loud half. This is the quiet half: it reads the file
+	 * QA is deployed from and requires the pair to be together there, so the
+	 * mistake is caught by a red test rather than by a server that will not come
+	 * up in the middle of a deploy.
+	 *
+	 * <p>Read as a pair and not as two separate lines looked for: what is wrong is
+	 * not the absence of a switch but the two disagreeing.
+	 */
+	@Test
+	void theInstallationThatSignsInAlsoRequiresTls() throws Exception {
+		String deployed = Files.readString(Path.of("..", "deploy", "compose.qa.yml"),
+				StandardCharsets.UTF_8);
+
+		assertThat(deployed)
+				.as("the QA stack no longer configures mail at all, so this compares nothing")
+				.contains("SPRING_MAIL_USERNAME");
+
+		if (deployed.contains("SMTP_AUTH: \"true\"")) {
+			assertThat(deployed)
+					.as("QA signs in to the relay and does not require TLS, so its key can be"
+							+ " stripped onto a clear connection")
+					.contains("SMTP_STARTTLS_REQUIRED: \"true\"");
+		}
+	}
+
+	/** A sender that is never used, for the cases that only build a postman. */
+	private static JavaMailSenderImpl anywhere() {
+		return new JavaMailSenderImpl();
+	}
+
 	@Test
 	void aMessageWithNowhereToGoIsNotSent() {
 		Said said = new Said("Naslov", "Telo");
@@ -161,7 +292,7 @@ class PostmanTest {
 		nowhere.setPort(1);
 		nowhere.getJavaMailProperties().setProperty("mail.smtp.connectiontimeout", "2000");
 
-		assertThatThrownBy(() -> new Postman(nowhere, from).send(new Said("Naslov", "Telo"),
+		assertThatThrownBy(() -> new Postman(nowhere, from, false, false).send(new Said("Naslov", "Telo"),
 				"clan@primer.rs"))
 				.as("a message that could not be sent was reported as sent")
 				.isInstanceOf(org.springframework.mail.MailException.class);
