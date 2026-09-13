@@ -10,7 +10,7 @@ const person = (memberNumber: string): Competitor => ({
   gender: 'M',
   city: 'Beograd',
   country: 'RS',
-  birthYear: 1985,
+  ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2019,
   active: true,
@@ -261,10 +261,10 @@ describe('the way a competition splits its ranking', () => {
    *  bands for the season 2019. The bands are still here on purpose, because they
    *  are what says the split is by gender and by nothing else. */
   const field = [
-    { ...person('000001'), gender: 'M' as const, birthYear: 1985 },
-    { ...person('000002'), gender: 'M' as const, birthYear: 1955 },
-    { ...person('000003'), gender: 'F' as const, birthYear: 1985 },
-    { ...person('000004'), gender: 'F' as const, birthYear: 1955 },
+    { ...person('000001'), gender: 'M' as const, ageBand: '40-54' as const },
+    { ...person('000002'), gender: 'M' as const, ageBand: '55+' as const },
+    { ...person('000003'), gender: 'F' as const, ageBand: '40-54' as const },
+    { ...person('000004'), gender: 'F' as const, ageBand: '55+' as const },
   ]
 
   const rowsOf = (people: Competitor[]) =>
@@ -300,7 +300,7 @@ describe('the way a competition splits its ranking', () => {
     /* `leagueTable` ranks by the total and breaks a tie on the smaller member
        number. Splitting must not reorder anything: a block is a slice of that
        order, and a sort here would be a second ranking nobody asked for. */
-    const two = rowsOf([at(field, 0), { ...person('000000'), gender: 'M' as const, birthYear: 1985 }])
+    const two = rowsOf([at(field, 0), { ...person('000000'), gender: 'M' as const, ageBand: '40-54' as const }])
     const groups = leagueGroups(two)
 
     expect(first(groups).rows.map((one) => one.competitor.memberNumber)).toEqual([

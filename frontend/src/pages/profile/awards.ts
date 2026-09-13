@@ -70,13 +70,20 @@ export function awardsOf(
   return [...bySeason.entries()]
     .filter(([season]) => raced.has(season))
     .flatMap(([season, inSeason]) => {
-      /* Which board they stood on. Known to be imperfect: categoryOfMember reads
-         the stored "first season" flag and ignores the season it is handed
-         (src/data/categories.ts), so somebody who spent 2027 as a beginner is
-         filed under that band in every season. P7 says the band belongs to one
-         year alone; putting that right means changing what every table shows and
-         is not this change to make. */
-      const category = categoryOfMember(competitor, season)
+      /* Which board they stood on. Known to be imperfect, and since 13.09.2026
+         imperfect in the open: a member's category is stored rather than worked
+         out per season, so somebody is filed under today's band in every season
+         they ever raced. This note used to say the same of the „first season"
+         flag alone, with the age band still moving properly; now both halves are
+         fixed and `categoryOfMember` takes no season at all, which is why nothing
+         is handed one here.
+
+         P7 says the band belongs to one year alone, and that stays true. What
+         changed is that the portal cannot honour it: the band is worked out from a
+         date of birth, Član 74 forbids the portal a date of birth, and a band per
+         season hands the year straight back (measured: 25 of 32 members, see
+         `data/types.ts`). This is the half a public file can have. */
+      const category = categoryOfMember(competitor)
 
       /* The two boards one season is stood on, named rather than written into
          the loop, because the list is what says `kind` holds an award kind and

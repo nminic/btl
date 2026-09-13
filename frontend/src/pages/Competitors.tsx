@@ -5,7 +5,6 @@ import { monogramFor } from '../app/monogram'
 import { Resource } from '../components/Resource'
 import { hueFor } from './competitorFace'
 import { activeOnly, categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
-import { SEASON } from '../data/pricing'
 import type { Competitor, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { MEMBERS, recordsOf } from './admin/entityForms'
@@ -87,7 +86,7 @@ function CompetitorCards({
                 <span className="card__number">{competitor.memberNumber}</span>
 
                 <span className="card__meta">
-                  <span className="card__chip">{categoryLabel(categoryOfMember(competitor, SEASON), t)}</span>
+                  <span className="card__chip">{categoryLabel(categoryOfMember(competitor), t)}</span>
                   <span className="card__city">{competitor.city}</span>
                 </span>
 

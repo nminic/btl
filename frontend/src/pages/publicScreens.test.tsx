@@ -508,7 +508,7 @@ describe('Rankings', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
     const results = await loadResource<Result[]>('results')
     const empty = must(
-      categoriesOf(competitors, 'F', SPARSE).find(
+      categoriesOf(competitors, 'F').find(
         (code) =>
           rankingFor(competitors, results, { season: SPARSE, gender: 'F', categoryCode: code })
             .length === 0,

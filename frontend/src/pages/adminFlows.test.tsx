@@ -2627,13 +2627,13 @@ describe('the queue of memberships waiting to be activated', () => {
     for (const [label, value] of [
       ['Ime', 'Milica'],
       ['Prezime', 'Pavlović'],
-      ['Godina rođenja', '1991'],
       ['Mesto', 'Kraljevo'],
       ['U ligi od sezone', '2027'],
     ] as const) {
       await user.type(form.getByLabelText(new RegExp(`^${label}`)), value)
     }
     await user.selectOptions(form.getByLabelText(/^Pol/), 'F')
+    await user.selectOptions(form.getByLabelText(/^Uzrasna kategorija/), '25-39')
     await user.selectOptions(form.getByLabelText(/^Država/), 'RS')
     await user.selectOptions(form.getByLabelText(/^Osnov članstva/), 'payment')
     await user.click(form.getByRole('button', { name: 'Sačuvaj' }))

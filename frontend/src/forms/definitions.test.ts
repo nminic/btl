@@ -1,6 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { FORMS as EXPORTED, formDef } from './definitions'
+import { AGE_BANDS } from '../data/categories'
+import { must } from '../test/at'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 
@@ -232,6 +234,46 @@ describe('every form definition in the portal', () => {
     )
 
     expect(impossible).toEqual([])
+  })
+})
+
+describe('the age bands a form offers', () => {
+  /**
+   * THE SECOND HOME OF THE BANDS, HELD TO THE FIRST.
+   *
+   * <p>The member form asks an administrator which age band somebody is in, and it asks
+   * it as a list of four written into JSON (`admin-clan.form.json`). `AGE_BANDS` in
+   * `data/categories.ts` is the same four, and it is the one the rulebook fixes (PDL P7).
+   * Two copies of one list is exactly the thing that goes quietly apart.
+   *
+   * **Measured, not feared** (review, 13.09.2026): `55+` deleted from the form and `65+`
+   * invented in its place left all 2783 cases green. What that would have done is not
+   * cosmetic. `categoryLabel` hands an age band back unchanged, so `M65+` would have been
+   * drawn on the public tables as if it were a category, and administration would have
+   * had no way at all to file anybody over fifty five.
+   *
+   * **Both directions, and that is the whole point of it.** A band in the rulebook that
+   * the form cannot offer is somebody who cannot be entered; a band the form offers that
+   * the rulebook does not have is a category the league never agreed to.
+   */
+  const ageBand = must(
+    must(
+      FORMS.find(({ name }) => name === 'admin-clan.form.json'),
+      'the member form',
+    ).form.fields.find((field) => field.name === 'ageBand'),
+    'the field that asks which age band a member is in',
+  )
+
+  it('offers exactly the bands the rulebook fixes', () => {
+    expect((ageBand.options ?? []).map((one) => one.value)).toEqual([...AGE_BANDS])
+  })
+
+  it('asks it as a choice, so nothing outside those four can be typed in', () => {
+    /* The field was a number until 13.09.2026, the year of birth, and a number field
+       accepts whatever is typed. A band is one of four or it is nothing, and `select` is
+       what says so to the browser as well as to this case. */
+    expect(ageBand.type).toBe('select')
+    expect(ageBand.required).toBe(true)
   })
 })
 

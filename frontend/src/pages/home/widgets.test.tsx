@@ -41,7 +41,7 @@ const competitor = (memberNumber: string, active = true): Competitor => ({
   gender: 'M',
   city: 'Beograd',
   country: 'RS',
-  birthYear: 1985,
+  ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2027,
   membershipBasis: 'payment',

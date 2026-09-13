@@ -1,4 +1,11 @@
-import { daysBetween, PRICES, priceOn, registrationOpen, seasonBeingRenewed } from './pricing'
+import {
+  daysBetween,
+  juniorInSeason,
+  PRICES,
+  priceOn,
+  registrationOpen,
+  seasonBeingRenewed,
+} from './pricing'
 import { first, last } from '../test/at'
 
 describe('the four periods', () => {
@@ -97,5 +104,56 @@ describe('the season a renewal is for', () => {
     expect(seasonBeingRenewed('2025-11-01')).toBe(2027)
     expect(seasonBeingRenewed('2024-01-01')).toBe(2027)
     expect(seasonBeingRenewed('2026-11-01')).toBe(2027)
+  })
+})
+
+describe('who pays the junior fee', () => {
+  /* **Tested here directly since 13.09.2026, and nowhere else.** Until then no case
+     named this function: the only thing that ran it was the renewal screen, which
+     read a member's year of birth off their record and reached it that way. The year
+     has left the record because the record is served publicly and Clan 74 forbids one
+     on it (`data/types.ts`), so the screen no longer calls this and the rule would
+     have gone untested at the moment it stopped being applied.
+
+     **It is kept, uncalled, on purpose.** It is the only written form of PDL P8's
+     junior rule in this repository, the owner corrected its boundary by hand once
+     (13.08.2026), and the backend has to arrive at the same answer. It takes two
+     numbers rather than a record, so it asks nobody to put a year of birth back where
+     one may not be. What no longer exists is a caller, and that is a boundary written
+     up at `pages/member/Membership.tsx` and measured in `pages/memberFlows.test.tsx`. */
+
+  it('measures the season rather than the day, so fifteen in it still pays junior', () => {
+    /* Somebody born in 2012 turns fifteen during 2027 and was fourteen in January, so
+       the season holds a day on which they were fourteen. That is the owner's sentence
+       and it is why the test is `<= 15` and not `<= 14`. */
+    expect(juniorInSeason(2027, 2012)).toBe(true)
+    expect(juniorInSeason(2027, 2011)).toBe(false)
+  })
+
+  it('takes in everybody younger, because this is a ceiling and not a band', () => {
+    /* Unlike an age band, which sorts people into one of four, this has only an upper
+       edge: everybody below it is inside. A newborn pays the junior fee. */
+    expect(juniorInSeason(2027, 2027)).toBe(true)
+    expect(juniorInSeason(2027, 2020)).toBe(true)
+  })
+
+  it('moves with the season, so the same member ages out of it', () => {
+    /* The one member of the served thirty two this applies to is born in 2013: junior
+       in 2027 and 2028, and not in 2029. Read as three seasons against one year rather
+       than one season against three years, because the season is what moves. */
+    expect([2027, 2028, 2029].map((season) => juniorInSeason(season, 2013))).toEqual([
+      true,
+      true,
+      false,
+    ])
+  })
+
+  it('is not the sixteen of a parental signature', () => {
+    /* Two rules about young members and they are deliberately different numbers,
+       measured differently: this one through the season, the signature on the day the
+       form is filled in (PDL P23). Joined once, they were corrected apart on
+       12.08.2026. Somebody of sixteen in the season needs the signature question asked
+       and does not pay the junior fee. */
+    expect(juniorInSeason(2027, 2011)).toBe(false)
   })
 })

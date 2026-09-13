@@ -3,6 +3,8 @@
  * timed and free races have no fixed length.
  */
 
+import type { AgeBand } from './categories'
+
 export type Gender = 'M' | 'F'
 
 /**
@@ -97,8 +99,51 @@ export type Competitor = {
   gender: Gender
   city: string
   country: string
-  /** Never shown publicly (PDL P23); the age band is derived from it. */
-  birthYear: number
+  /**
+   * The age band this member competes in, which is the whole of what the portal
+   * is allowed to know about how old they are.
+   *
+   * **The band is stored and the year of birth is not, since 13.09.2026.** The
+   * record carried `birthYear` and the band was worked out from it. That is the
+   * right way round for a database and the wrong way round here: this record is
+   * served as a static file out of `public/mock`, so every field on it is public
+   * to anybody who asks for the address, signed in or not (ADL A8). Član 74 and
+   * the privacy policy both say the date of birth „se nikada ne prikazuje, ni u
+   * punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega
+   * proizlazi", and a year is the short form. So the portal now carries the
+   * thing that is public and not the thing it was derived from.
+   *
+   * **What that costs, measured rather than guessed.** The band moves with the
+   * calendar and this field does not: it is the band for `SEASON`. Counted over
+   * the served data on 13.09.2026, 25 of the 32 members change band somewhere
+   * between 2010 and 2027, so every screen that draws a category for an earlier
+   * season now draws today's band for them. Keeping that exact would mean a band
+   * per season, and that was measured too: from a band per season over 2010-2027
+   * the **exact** year of birth comes back for those same 25 members, because the
+   * season a band changes in fixes it. One band pins nobody: nought of the 32.
+   *
+   * **What one band does still give away, and the first draft of this got it
+   * wrong.** It said the narrowest set of years a band is consistent with is
+   * fifteen wide. That is true of the band READ ON ITS OWN and false of the record
+   * it sits in. Nobody enters a league, joins a club, runs a race or writes a
+   * comment before they are born, and all four of those are public and dated on
+   * the same file or beside it. Measured against the years this change removed,
+   * 000007's window is **eight** years wide (2003-2010, closed by a comment of his
+   * dated 2010-05-08) and six of the 32 come in under fifteen. Every one of the 32
+   * true years lies inside its window, so these are hard bounds and not a guess.
+   *
+   * **So the rule this field is under is not „the band gives nothing away".** It is
+   * that a window is not a year: eight candidates is not a date of birth, and Član
+   * 74 is about the date. What follows is a cost to weigh rather than a licence:
+   * every further public fact with a date on it narrows these windows again, so one
+   * is worth adding on its own merits and not on the grounds that the band already
+   * reveals nothing.
+   *
+   * So exactness through history and a private date of birth cannot both be had out
+   * of a public file, and this is the half the policy names. The other half is what
+   * the backend is for (ADL A8).
+   */
+  ageBand: AgeBand
   /**
    * Whether this member runs in the beginners' category rather than in the one
    * for their age (PDL P7).
@@ -154,13 +199,26 @@ export type Competitor = {
    * the question, and the default is „none" because both the policy and Član 74 already say the
    * exception is off unless chosen.
    *
-   * **`full` shows the year until the record carries a date.** The record holds `birthYear` and
-   * nothing finer; `birthDate` is collected at registration and is one of the thirteen fields
-   * with nowhere to live until the backend. The choice is kept from the first day so that
-   * nobody has to be asked twice when the date arrives.
+   * **No value of this shows anything at all, and since 13.09.2026 there is nothing left for
+   * one to show.** It was already so on the 12th, when the owner had the exception struck from
+   * Član 74 and from the privacy policy rather than rewritten: the birthday list it existed for
+   * was abolished on 06.09.2026, so the exception named a thing that did not exist. What stands
+   * is the rule with nothing beside it, „Datum rođenja se nikada ne prikazuje, ni u punom ni u
+   * skraćenom obliku", and `profile/profile.test.tsx` holds the card to it.
    *
-   * It hides the day, never the category: „Javna je samo kategorija koja iz njega proizlazi"
-   * (Član 74).
+   * This used to add that `full` would show the year, since the record held `birthYear` and
+   * nothing finer. It holds neither now. The year left the record on 13.09.2026 for the reason
+   * written on `ageBand`, and `birthDate` was never here: it is one of the thirteen registration
+   * fields with nowhere to live until the backend.
+   *
+   * **So why it is still a field.** The choice is a member's own and the portal has been asking
+   * for it since 06.09.2026; throwing the answers away would mean asking everybody again. It is
+   * also what makes the guard on the card mean anything: two members ask for a birthday to be
+   * shown, and the case can only measure „nothing is drawn" against a record that asked for
+   * something. What it must never become is a reason to put the data back.
+   *
+   * It hid the day, never the category: „Javna je samo kategorija koja iz njega proizlazi"
+   * (Član 74). That half is now the whole of what the record carries — see `ageBand`.
    */
   birthdayShown: BirthdayShown
   teamId: string | null
