@@ -100,8 +100,8 @@ It is **not** the same file as the QA one, which lives in `/opt/btl-qa/deploy/`.
 
 ```bash
 cd /opt/btl/deploy
-cp ../.env.example .env      # then edit: keep the PROD_* lines, set real values
-chmod 600 .env
+# umask first, so the file is never world readable, not even for a moment
+(umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines, set real values
 ```
 
 Seven names, and no value of any of them belongs in this repository or in any
@@ -223,7 +223,8 @@ checked; `free -h` on `btl-prod` answers it.
 
 ## The contract with the edge proxy
 
-Three things must stay true, or routing silently breaks with a 502:
+Three things must stay true. Two of them break loudly, with a 502. **The first
+one can break silently and cost data**, so read it as the expensive one:
 
 1. **The Compose network must be named `deploy_default`.** Compose derives it
    from the project name, which defaults to the directory holding the compose
@@ -232,6 +233,16 @@ Three things must stay true, or routing silently breaks with a 502:
    `--project-name` / `--project-directory` / `COMPOSE_PROJECT_NAME`.
    `compose.qa.yml` pins its project name with a top-level `name: qa` for exactly
    the opposite reason; **`compose.prod.yml` must never grow one.**
+
+   **What actually happens when it changes is worse than a 502.** The project
+   name also names the VOLUME. `docker compose -f compose.prod.yml -p btl up -d`
+   is a natural thing to type while chasing a 502, and it starts a stack on
+   `btl_postgres-data`: a brand new, empty database. Flyway builds the schema,
+   the portal looks healthy, members register into it, and the real data sits in
+   an orphaned volume that `docker volume prune` will eventually take. Measured:
+   `-p prod` gives `prod_postgres-data` and `prod_default`; the default gives
+   `deploy_postgres-data` and `deploy_default`. **If the site is 502, fix the
+   routing; never reach for `-p`.**
 2. **The service must stay reachable as `frontend` on port 80**, because that
    is the upstream the edge proxy dials.
 3. **The backend service must stay named `backend` and stay on port 8080**,
@@ -243,8 +254,21 @@ Three things must stay true, or routing silently breaks with a 502:
 **And the edge must never dial `backend` or `postgres` by bare name.** The edge
 container sits on `deploy_default` *and* on `qa_default`, and both projects now
 carry services under those two names, so Docker DNS would answer with whichever
-it likes. `frontend` and `qa-frontend` are distinct on purpose, and nothing else
-is routed from the edge.
+it likes.
+
+**`frontend` is not distinct either, and that is measured rather than assumed.**
+Both projects name the service `frontend`; QA additionally answers to
+`qa-frontend`, but a declared alias does not replace the service name. A
+container attached to both networks resolves `frontend` to exactly one address
+and gives no hint which, and which one wins is decided by the NETWORK NAME
+rather than by anything in this repository: `deploy_default` sorts before
+`qa_default`, so production wins today by the letter `d`. Add a third project
+whose network sorts earlier and it takes the name.
+
+So the edge dials `qa-frontend` for QA, and for production it relies on that
+sort order. Point 1 above is therefore not only about a 502: rename the
+production project and the edge may quietly serve the QA bundle, which is built
+with `VITE_DEV_TOOLS: "1"` and carries the role switch and the date switch.
 
 Verify after a deploy:
 
@@ -322,8 +346,8 @@ of `.env.example` in the repository root and set a real password:
 
 ```bash
 cd /opt/btl-qa/deploy
-cp ../.env.example .env      # then edit: keep the QA_* lines, set the password
-chmod 600 .env
+# umask first, so the file is never world readable, not even for a moment
+(umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines, set the password
 ```
 
 The names are `QA_POSTGRES_DB`, `QA_POSTGRES_USER` and `QA_POSTGRES_PASSWORD`,
@@ -489,15 +513,15 @@ is attached to.
   QA is different and stays different: it holds nothing that needs restoring, so
   `qa_postgres-data` is backed up by nothing on purpose and is rebuilt by
   dropping it and letting Flyway run again.
-- **Nothing measures `compose.prod.yml`.** `PostmanTest` reads `compose.qa.yml`
-  by name and requires that a stack carrying relay credentials also requires
-  STARTTLS; the production file now carries the same pair and no test opens it.
-  Measured rather than suspected: with
-  `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED` deleted from
-  `compose.prod.yml`, the whole backend suite stays green. What closes it is one
-  change of that test, reading every `deploy/compose*.yml` off the directory
-  instead of one path written into the class, so the next compose file is covered
-  the day it is added rather than the day somebody remembers.
+- **`compose.prod.yml` is measured, and it took a hole to get there.** `PostmanTest`
+  read `compose.qa.yml` BY NAME, so when this directory grew a second stack the new
+  one was covered by nothing: measured, deleting
+  `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED` from `compose.prod.yml` left
+  the whole backend suite green. It now reads every `deploy/compose*.yml` off the
+  directory, with a floor that there are at least two of them, so the next stack is
+  covered the day it is added rather than the day somebody remembers. Measured after
+  the change: deleting that line from either stack turns the suite red and the message
+  names the file.
 - **`proveri-qa.sh` has no production counterpart.** It asks the running QA stack
   what it is really serving, and compares the live schema against a reference
   database it builds from the migrations. Production is where a schema that has
