@@ -1,18 +1,11 @@
 package com.btl.portal.db;
 
-import org.flywaydb.core.api.Location;
-import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,9 +27,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * with the rows a league really holds, and then THE MIGRATION ITSELF is executed.
  * Not a copy of its statements: the file is the one Flyway resolved and applied,
  * found through Flyway's own configuration and the script name Flyway recorded,
- * so a migration edited or renamed is the one that runs here too. Everything
- * happens inside the test's transaction and is rolled back, the dropped table
- * with it.
+ * so a migration edited or renamed is the one that runs here too
+ * ({@link DatabaseTest#migrationSql}, which was written here and moved to the base
+ * class when {@link MembershipCarriedOverTest} came to need the same thing).
+ * Everything happens inside the test's transaction and is rolled back, the dropped
+ * table with it.
  *
  * <p><b>And the decision the migration was written to record is measured from
  * both sides.</b> {@code league_event} carries no season, so a league of one year
@@ -52,39 +47,6 @@ class LeagueRacesCarriedOverTest extends DatabaseTest {
 	JdbcTemplate jdbc;
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
-
-	/**
-	 * The SQL of one migration, asked of Flyway rather than written down here.
-	 *
-	 * <p>Flyway says where its migrations live and what the script of the version
-	 * that was applied is called, so nothing here is a second copy of a setting: a
-	 * file renamed, moved, or given a different location in the configuration is
-	 * still the file this reads. Only the VERSION is named, and that is the fact the
-	 * case is about.
-	 */
-	private String migration(String version) {
-		MigrationInfo applied = Arrays.stream(flyway.info().applied())
-				.filter(one -> one.getVersion() != null
-						&& version.equals(one.getVersion().getVersion()))
-				.findFirst()
-				.orElseThrow(() -> new AssertionError("no migration " + version + " was applied"));
-
-		String folder = Arrays.stream(flyway.getConfiguration().getLocations())
-				.map(Location::getPath)
-				.findFirst()
-				.orElseThrow(() -> new AssertionError("Flyway is configured with no location"));
-
-		try (InputStream sql = getClass().getClassLoader()
-				.getResourceAsStream(folder + "/" + applied.getScript())) {
-			assertThat(sql)
-					.as("%s is not under %s, where Flyway says its migrations are",
-							applied.getScript(), folder)
-					.isNotNull();
-			return new String(sql.readAllBytes(), StandardCharsets.UTF_8);
-		} catch (IOException cannot) {
-			throw new UncheckedIOException(cannot);
-		}
-	}
 
 	/**
 	 * {@code league_event} as V14 left it, put back so the migration has something to
@@ -190,7 +152,7 @@ class LeagueRacesCarriedOverTest extends DatabaseTest {
 						+ " row that is already exactly what it wants to write is not measured here")
 				.isNotEmpty();
 
-		jdbc.execute(migration("20"));
+		jdbc.execute(migrationSql("20"));
 
 		assertThat(countedBy("prenos-2027"))
 				.as("the league did not come out of the migration counting the three races of"
@@ -216,7 +178,7 @@ class LeagueRacesCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void everyCarriedRowCarriesASeasonTheKeysAdmit() {
-		jdbc.execute(migration("20"));
+		jdbc.execute(migrationSql("20"));
 
 		assertThat(db.sql("select distinct lr.season from league_race lr"
 						+ " join league l on l.id = lr.league_id where l.slug = 'prenos-2027'")
@@ -228,7 +190,7 @@ class LeagueRacesCarriedOverTest extends DatabaseTest {
 	/** And the table it read is gone, which is the other half of the migration. */
 	@Test
 	void theOldTableIsGoneAfterwards() {
-		jdbc.execute(migration("20"));
+		jdbc.execute(migrationSql("20"));
 
 		assertThat(tablesInTheSchema())
 				.as("the migration carried the rows over and left the table it read behind")
@@ -267,7 +229,7 @@ class LeagueRacesCarriedOverTest extends DatabaseTest {
 		race("dan-druge-godine", "Trka druge godine", "2028-08-08");
 		inTheLeague("prenos-2027", "dan-druge-godine");
 
-		assertThatThrownBy(() -> jdbc.execute(migration("20")))
+		assertThatThrownBy(() -> jdbc.execute(migrationSql("20")))
 				.as("a league of 2027 holding a day of 2028 was carried over quietly")
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.rootCause()
