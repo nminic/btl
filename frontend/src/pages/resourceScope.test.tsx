@@ -1,5 +1,5 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
-import type { ResourceName } from '../data/client'
+import { screen, waitFor, within } from '@testing-library/react'
+import { arrivedResource, type ResourceName } from '../data/client'
 import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
@@ -38,46 +38,52 @@ function breakResource(name: ResourceName) {
   }
 }
 
-/**
- * Serves every resource as usual, except the one named, which never arrives.
- *
- * **It also remembers the ones it DID serve, and that is not bookkeeping.** A review on
- * 13.09.2026 measured that every case built on this helper read the screen synchronously,
- * one line after the heading appeared, which is before any file could have come back. They
- * were therefore all measuring `the first render is empty` rather than `the screen is still
- * waiting`, and a component that stopped waiting on the stalled file kept them green.
- *
- * `arrived()` drains what the screen actually asked for: it awaits every response served so
- * far, and again for any the first round set off, until no new request appears. No timer, so
- * nothing here is a race that passes on a fast machine.
- */
+/** Serves every resource as usual, except the one named, which never arrives. */
 function stallResource(name: ResourceName) {
   const real = globalThis.fetch
-  const served: Promise<Response>[] = []
 
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
-    if (String(input).endsWith(`/${name}.json`)) {
-      return new Promise<Response>(() => {})
-    }
-
-    const answer = real(input)
-    served.push(answer)
-    return answer
-  })
+  globalThis.fetch = (async (input: RequestInfo | URL) =>
+    String(input).endsWith(`/${name}.json`)
+      ? new Promise<Response>(() => {})
+      : real(input))
 
   return {
     restore: () => {
       globalThis.fetch = real
     },
-    arrived: async () => {
-      for (let seen = -1; seen !== served.length; ) {
-        seen = served.length
-        await act(async () => {
-          await Promise.allSettled(served)
-        })
-      }
-    },
   }
+}
+
+/**
+ * WAITS UNTIL A FILE HAS REALLY LANDED, asked of the loader the screen renders from.
+ *
+ * **Three drafts, and the first two were the same mistake.** A case over a held file has
+ * only ABSENCES to assert - no digit, no word - so every way of getting the timing wrong
+ * fails green. The first draft read the screen one line after the heading, before any
+ * file could have come back, and therefore said `the first render is empty` while
+ * claiming `the screen is still waiting`. The second drained the fetch promises it had
+ * served, which is a step too early: the screen waits on fetch, then on the parsed body,
+ * then on a state change, and one macrotask in between put the case back where it
+ * started, silently.
+ *
+ * `arrivedResource` is what the screen itself reads at render time, set after the body is
+ * parsed. So this waits for the file the case does NOT hold, which is a POSITIVE anchor:
+ * if it never lands the case fails loudly here rather than passing on an absence.
+ *
+ * **And it HANDS BACK what landed, so that waiting is load bearing.** A review measured the
+ * version that returned nothing: emptied out, every case using it stayed green, because an
+ * absence is satisfied by the first render either way. Each caller now asserts over what
+ * came back, so a helper that stops waiting stops returning and the case says so.
+ */
+async function landed(first: ResourceName, ...rest: ResourceName[]): Promise<unknown[]> {
+  await waitFor(() => {
+    for (const name of [first, ...rest]) {
+      expect(arrivedResource(name), `${name} never landed, so nothing below was measured`)
+        .toBeDefined()
+    }
+  })
+
+  return arrivedResource<unknown[]>(first) ?? []
 }
 
 /* The other half of the same idea, from the other end: a screen that loads a
@@ -145,10 +151,21 @@ describe('a part of a screen waits without covering the page', () => {
     /* **Waited for what DID arrive, since 13.09.2026.** Read one line after the heading, this
        said only that the first render is empty, and a component that stopped waiting on the
        held file stayed green. Measured by a review on this very case. */
-    await stalled.arrived()
+    expect(
+      await landed('events', 'races', 'competitors'),
+      'nothing landed, so the assertions below are about the first render',
+    ).not.toHaveLength(0)
 
     expect(facts()).toContain('Učesnika:')
     expect(facts(), 'the number arrived while the file was held').not.toMatch(/Učesnika: \d/)
+    /* **And the third state, which this case went without until 13.09.2026.** Without it the
+       two early branches can be swapped: a member whose results file died would read
+       „Učesnika:" forever, told to wait for something that will never come, while
+       everybody else read „nepoznato" over a file that was simply on its way. The copy of
+       this case below was given the assertion and the original was not, so the class was
+       swept in one of its two homes. */
+    expect(facts(), 'a file still on its way was reported as one that will not come').not
+      .toContain('Učesnika: nepoznato')
   }, SLOW)
 
   it.each(BOTH)(
@@ -177,7 +194,10 @@ describe('a part of a screen waits without covering the page', () => {
       /* **And what DID arrive is waited for.** Read one line after the heading, this would say
          only that the first render is empty, and a component that stopped waiting on the held file
          would stay green. Measured by a review on this case, on 13.09.2026. */
-      await stalled.arrived()
+      expect(
+        await landed(name === 'races' ? 'events' : 'races'),
+        'nothing landed, so the assertions below are about the first render',
+      ).not.toHaveLength(0)
 
       expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
       expect(facts()).toContain('Događaja:')
@@ -199,6 +219,16 @@ describe('a part of a screen waits without covering the page', () => {
       renderAt('/sr/lige?sezona=2027')
 
       expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+
+      /* **The other file has to have landed first**, or the word below has two homes and this
+         case picks the wrong one. Measured on 13.09.2026: with the two branches swapped, a
+         file that NEVER arrives leaves the number saying nothing, and this case still passed
+         in 32 ms because the „nepoznato" it found came from the first render. */
+      expect(
+        await landed(name === 'races' ? 'events' : 'races'),
+        'nothing landed, so the assertions below are about the first render',
+      ).not.toHaveLength(0)
+
       await waitFor(() => {
         expect(facts()).toContain('Događaja: nepoznato')
       })
