@@ -63,7 +63,7 @@ function stallResource(name: ResourceName) {
     const answer = real(input)
     served.push(answer)
     return answer
-  }) as typeof globalThis.fetch
+  })
 
   return {
     restore: () => {
@@ -151,7 +151,7 @@ describe('a part of a screen waits without covering the page', () => {
     expect(facts(), 'the number arrived while the file was held').not.toMatch(/Učesnika: \d/)
   }, SLOW)
 
-  it.each([['races'], ['events']] as [ResourceName][])(
+  it.each(BOTH)(
     'leaves the number of days empty while %s is still on the way',
     async (name) => {
       /* **The guard that came with the precedent, and did not come with the copy.** The number of
@@ -190,7 +190,7 @@ describe('a part of a screen waits without covering the page', () => {
     SLOW,
   )
 
-  it.each([['races'], ['events']] as [ResourceName][])(
+  it.each(BOTH)(
     'says the number of days is unknown rather than nought when %s never arrives',
     async (name) => {
       /* The other half, over both files for the same reason. A count of none where the file failed
