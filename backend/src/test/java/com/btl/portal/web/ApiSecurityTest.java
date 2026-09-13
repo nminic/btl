@@ -5,10 +5,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.util.ServletRequestPathUtils;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,28 +38,143 @@ class ApiSecurityTest {
 	@Autowired
 	private MockMvc http;
 
+	/**
+	 * The dispatcher itself, asked which paths it answers, rather than a list written
+	 * again. Named, because the actuator registers a second mapping of this type and
+	 * the portal's own controllers live in the first.
+	 */
+	@Autowired
+	@Qualifier("requestMappingHandlerMapping")
+	private RequestMappingHandlerMapping mappings;
+
 	private int statusOf(String path) throws Exception {
 		return http.perform(get(path)).andReturn().getResponse().getStatus();
 	}
 
 	/**
-	 * A ROUTE NOBODY OPENED IS A ROUTE NOBODY CAN READ, even one that does not
-	 * exist.
+	 * A ROUTE WITH A VARIABLE IN IT, registered for this test and nowhere else.
 	 *
-	 * <p>This is the whole of the configuration in one case, and it is written
-	 * against a path that was never mapped on purpose: 401 rather than 404 is what
-	 * says the rule is "shut unless opened by name". Were it the other way round,
-	 * an endpoint added without a line in the configuration would be readable by
-	 * anybody, and it would be found by whoever read it.
+	 * <p>It is here because the case below cannot otherwise measure what it says. The
+	 * portal maps no such route today and the next one it writes will be a profile by
+	 * member number, so without this the first draft of that case would ship green and
+	 * go on being green while saying it had asked about every mapped route.
 	 *
-	 * <p>It is also the case that would fail first the day somebody writes
-	 * {@code permitAll()} across {@code /api/**} to make a test pass.
+	 * <p>It is deliberately NOT on the open list and its method is never reached, so
+	 * what it measures is the rule and not the handler.
+	 */
+	@TestConfiguration
+	static class ARouteWithAVariableInIt {
+
+		static final String PATTERN = "/api/one-with-a-variable/{id}";
+		static final String ASKED_AS = "/api/one-with-a-variable/1";
+
+		@RestController
+		static class Probe {
+			@GetMapping(PATTERN)
+			String read(@PathVariable String id) {
+				return id;
+			}
+		}
+	}
+
+	/**
+	 * EVERY ROUTE NOBODY OPENED IS A ROUTE NOBODY CAN READ.
+	 *
+	 * <p>This is the whole of the configuration in one case: 401 rather than 404 is
+	 * what says the rule is "shut unless opened by name". Were it the other way
+	 * round, an endpoint added without a line in the configuration would be readable
+	 * by anybody, and it would be found by whoever read it. It is also the case that
+	 * would fail first the day somebody writes {@code permitAll()} across
+	 * {@code /api/**} to make a test pass.
+	 *
+	 * <p><b>The route is not named here, it is asked of the dispatcher.</b> Until
+	 * 13.09.2026 this case named {@code /api/competitors}, which was shut. The day
+	 * that resource was opened the case went red, and had it instead been written
+	 * against a path that was about to be opened tomorrow, it would have gone green
+	 * and stopped measuring anything without a word. Naming a shut route is naming
+	 * something that changes; the thing that does not change is "mapped, and not on
+	 * the open list", and Spring already answers that question.
+	 *
+	 * <p>Today that leaves {@code /api/me}. Every resource opened from here on adds
+	 * itself to the list above, and every one added WITHOUT a rule adds itself here.
+	 *
+	 * <p><b>Patterns count too, and that is not an afterthought.</b> A first draft read
+	 * {@code getDirectPaths()}, which is empty for a mapping with a variable in it, so a
+	 * route like {@code /api/members/{number}} was in neither list and nothing asked
+	 * about it at all. The very next resource to be written is a profile by member
+	 * number. So the patterns are taken from the mapping itself and each variable is
+	 * asked with a sample value in its place.
 	 */
 	@Test
-	void aRouteNobodyOpenedIsARouteNobodyCanRead() throws Exception {
-		assertThat(statusOf("/api/competitors"))
-				.as("a route with no rule of its own answered somebody who is not signed in")
-				.isEqualTo(401);
+	void everyRouteNobodyOpenedIsARouteNobodyCanRead() throws Exception {
+		List<String> shut = mappings.getHandlerMethods().keySet().stream()
+				.filter(this::answersAGet)
+				.flatMap(this::pathsOf)
+				.filter(path -> path.startsWith("/api/"))
+				.filter(path -> !ApiSecurity.READ_BY_ANYBODY.contains(path))
+				.map(ApiSecurityTest::withASampleValue)
+				.distinct().sorted().toList();
+
+		assertThat(shut)
+				.as("every route the portal maps is on the open list, so this compares nothing")
+				.isNotEmpty();
+		assertThat(shut)
+				.as("a route with a variable in it was not asked about at all, which is how the"
+						+ " first draft of this case managed to say nothing and stay green")
+				.contains(ARouteWithAVariableInIt.ASKED_AS);
+
+		for (String path : shut) {
+			assertThat(reallyMapped(path))
+					.as("%s is not a path this server maps at all, so asking it about a rule measures"
+							+ " nothing; the pattern it was made from needs a sample value that fits", path)
+					.isTrue();
+			assertThat(statusOf(path))
+					.as("%s has no rule of its own and answered somebody who is not signed in", path)
+					.isEqualTo(401);
+		}
+	}
+
+	/** A mapping that names no method at all answers every one of them, GET included. */
+	private boolean answersAGet(RequestMappingInfo info) {
+		Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
+		return methods.isEmpty() || methods.contains(RequestMethod.GET);
+	}
+
+	/** Every spelling the mapping answers to, variables and all, asked of the mapping itself. */
+	private Stream<String> pathsOf(RequestMappingInfo info) {
+		PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
+		return patterns == null ? info.getDirectPaths().stream()
+				: patterns.getPatternValues().stream();
+	}
+
+	/**
+	 * A path is asked of the server, so a variable has to become something. Anything
+	 * does: the question is whether a rule lets it through, and no rule here is about
+	 * the value.
+	 */
+	private static String withASampleValue(String pattern) {
+		return pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1").replace("*", "1");
+	}
+
+	/**
+	 * AND THE PATH MADE THAT WAY IS ONE THE SERVER REALLY ANSWERS TO, asked of the
+	 * dispatcher rather than assumed.
+	 *
+	 * <p>Without this the case had a silent way to say nothing. A variable may carry a
+	 * pattern of its own, and a member number does: `{number:[0-9]{6}}`. Substituting
+	 * there produced `/api/members/1}`, which nothing maps, so the server answered 401
+	 * because the path did not exist and the case went green over a route that was in
+	 * fact wide open. A review measured exactly that, to a 200, on 13.09.2026.
+	 *
+	 * <p>So the sample value is still made the simple way, and then the dispatcher is
+	 * asked whether what came out is a path it handles. If it is not, the case fails and
+	 * says which pattern needs a value that fits, which is a question for whoever adds
+	 * the route and not for whoever reads this later.
+	 */
+	private boolean reallyMapped(String path) throws Exception {
+		MockHttpServletRequest asking = new MockHttpServletRequest("GET", path);
+		ServletRequestPathUtils.parseAndCache(asking);
+		return mappings.getHandler(asking) != null;
 	}
 
 	/**
