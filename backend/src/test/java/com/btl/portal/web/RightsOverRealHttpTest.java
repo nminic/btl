@@ -14,13 +14,20 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
+
+import java.lang.reflect.Method;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,7 +74,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import({TestcontainersConfiguration.class, ProbeRoutes.class,
-		ProbeRouteOutsideTheApi.class})
+		ProbeRoutesForTheWire.class})
 class RightsOverRealHttpTest {
 
 	private static final String HOLDS_THE_TICK = "sa-pravom-kroz-mrezu@primer.rs";
@@ -140,6 +147,25 @@ class RightsOverRealHttpTest {
 	 */
 	private String answerTo(String method, String path, String email, String token)
 			throws Exception {
+		return answerTo(method, path, email, token, "");
+	}
+
+	/**
+	 * @param extra whole header lines, each ending in CRLF, for the cases whose whole point
+	 *              is a header the mapping will not match
+	 */
+	private String answerTo(String method, String path, String email, String token, String extra)
+			throws Exception {
+		return answerTo(method, path, email, token, extra, "");
+	}
+
+	/**
+	 * @param body what to send after the headers; its length is measured rather than written,
+	 *             and it matters because a mapping that declares what it CONSUMES is only
+	 *             asked about the type when something was really sent
+	 */
+	private String answerTo(String method, String path, String email, String token, String extra,
+			String body) throws Exception {
 		String cookies = (token == null ? "" : "XSRF-TOKEN=" + token)
 				+ (email == null ? ""
 						: (token == null ? "" : "; ") + SessionCookie.NAME + "="
@@ -149,7 +175,10 @@ class RightsOverRealHttpTest {
 				+ "Host: localhost:" + port + "\r\n"
 				+ (cookies.isEmpty() ? "" : "Cookie: " + cookies + "\r\n")
 				+ (token == null ? "" : "X-XSRF-TOKEN: " + token + "\r\n")
-				+ "Connection: close\r\n\r\n";
+				+ extra
+				+ "Content-Length: " + body.getBytes(StandardCharsets.ISO_8859_1).length + "\r\n"
+				+ "Connection: close\r\n\r\n"
+				+ body;
 
 		try (Socket socket = new Socket("localhost", port)) {
 			socket.getOutputStream().write(asking.getBytes(StandardCharsets.ISO_8859_1));
@@ -165,6 +194,15 @@ class RightsOverRealHttpTest {
 	 * token. Nothing else is allowed to differ, and in particular the length is kept: the
 	 * chunk sizes and the body stay in, because the length was half of what gave the two
 	 * answers away.
+	 *
+	 * <p><b>A KNOWN BLIND SPOT, written down rather than left to be found.</b> Every {@code
+	 * Set-Cookie} line goes, and it goes before the length is taken - so an answer that sets
+	 * a cookie and one that does not look the same from here. That was measured on
+	 * 13.09.2026 and there is nothing to hide behind it today: with no {@code XSRF-TOKEN}
+	 * sent, both answers carry the same header and both are 493 bytes. It is left as it is
+	 * because a fresh token differs on every request and would make every comparison here
+	 * fail for a reason that says nothing. Whoever needs the cookies themselves compared
+	 * will have to tell the portal's own from the framework's, which this does not.
 	 */
 	private static String withoutTheClock(String answer) {
 		return answer.replaceAll("(?m)^Date:.*\r\n", "")
@@ -178,6 +216,18 @@ class RightsOverRealHttpTest {
 				.replace(path, "THE ADDRESS THAT WAS ASKED FOR");
 	}
 
+	/**
+	 * AN ADDRESS OF THE SAME LENGTH THAT MAPS NOTHING, built rather than counted.
+	 *
+	 * <p>The error document carries the path that was asked for, so two addresses of
+	 * different lengths differ by a length that says nothing about whether either exists.
+	 * These twins were written out by hand until 13.09.2026, and a character miscounted
+	 * there would have loosened a comparison without failing anything.
+	 */
+	private static String twinOf(String path) {
+		return "/" + "z".repeat(path.length() - 1);
+	}
+
 	private void answersTheSameWay(String method, String real, String notThere, String email)
 			throws Exception {
 		answersTheSameWay(method, real, notThere, email, A_TOKEN);
@@ -185,8 +235,18 @@ class RightsOverRealHttpTest {
 
 	private void answersTheSameWay(String method, String real, String notThere, String email,
 			String token) throws Exception {
-		String toTheReal = answerTo(method, real, email, token);
-		String toTheOther = answerTo(method, notThere, email, token);
+		answersTheSameWay(method, real, notThere, email, token, "");
+	}
+
+	private void answersTheSameWay(String method, String real, String notThere, String email,
+			String token, String extra) throws Exception {
+		answersTheSameWay(method, real, notThere, email, token, extra, "");
+	}
+
+	private void answersTheSameWay(String method, String real, String notThere, String email,
+			String token, String extra, String body) throws Exception {
+		String toTheReal = answerTo(method, real, email, token, extra, body);
+		String toTheOther = answerTo(method, notThere, email, token, extra, body);
 
 		assertThat(real.length())
 				.as("the two addresses are not the same length, so the error document each of"
@@ -220,7 +280,7 @@ class RightsOverRealHttpTest {
 						+ " addresses in this comparison are simply missing and it measures nothing")
 				.startsWith("HTTP/1.1 200");
 
-		answersTheSameWay(method, ProbeRoutes.NEEDS_A_RIGHT, ProbeRoutes.NEEDS_A_RIGHT_TWIN,
+		answersTheSameWay(method, ProbeRoutes.NEEDS_A_RIGHT, twinOf(ProbeRoutes.NEEDS_A_RIGHT),
 				WITHOUT_THE_TICK);
 	}
 
@@ -255,7 +315,7 @@ class RightsOverRealHttpTest {
 		   gets 401 for the twin and 404 for the real one and the two would differ for a
 		   reason that has nothing to do with this rule. The oracle belongs to somebody who
 		   is signed in, which is every member of the league. */
-		answersTheSameWay(method, ProbeRoutes.TAKES_ONLY_GET, ProbeRoutes.TAKES_ONLY_GET_TWIN,
+		answersTheSameWay(method, ProbeRoutes.TAKES_ONLY_GET, twinOf(ProbeRoutes.TAKES_ONLY_GET),
 				WITHOUT_THE_TICK);
 	}
 
@@ -283,7 +343,7 @@ class RightsOverRealHttpTest {
 						+ " address takes")
 				.doesNotContain("Allow:");
 
-		answersTheSameWay("GET", ProbeRoutes.TAKES_ONLY_POST, ProbeRoutes.TAKES_ONLY_POST_TWIN,
+		answersTheSameWay("GET", ProbeRoutes.TAKES_ONLY_POST, twinOf(ProbeRoutes.TAKES_ONLY_POST),
 				WITHOUT_THE_TICK, null);
 	}
 
@@ -315,12 +375,135 @@ class RightsOverRealHttpTest {
 	 */
 	@Test
 	void aMethodAnAddressOutsideTheApiDoesNotTakeAnswersTheSameWay() throws Exception {
-		assertThat(answerTo("GET", ProbeRouteOutsideTheApi.OUTSIDE_THE_API, null))
+		assertThat(answerTo("GET", ProbeRoutesForTheWire.OUTSIDE_THE_API, null))
 				.as("the route outside the api does not answer a plain read, so this compares two"
 						+ " addresses that are both missing")
 				.startsWith("HTTP/1.1 200");
 
-		answersTheSameWay("DELETE", ProbeRouteOutsideTheApi.OUTSIDE_THE_API, ProbeRouteOutsideTheApi.OUTSIDE_THE_API_TWIN,
+		answersTheSameWay("DELETE", ProbeRoutesForTheWire.OUTSIDE_THE_API, twinOf(ProbeRoutesForTheWire.OUTSIDE_THE_API),
 				null);
+	}
+
+	/**
+	 * A GUARDED ROUTE THAT MAKES A SPREADSHEET SAYS NOTHING TO SOMEBODY ASKING FOR JSON.
+	 *
+	 * <p>The third round shut the verb. The dispatcher has three more ways of saying the same
+	 * thing, and they all run in the same place, before any interceptor: a media type it will
+	 * not PRODUCE, one it will not CONSUME, and a parameter it insists on. Each of them names
+	 * something that exists - 406 came back carrying {@code Accept: text/csv}, which says
+	 * there is a route here and it makes spreadsheets - while an address mapping nothing
+	 * answered 404.
+	 *
+	 * <p>Not live in the portal today, because no route declares any of the three. It becomes
+	 * live on the first day one exports a spreadsheet, and nothing in the rights layer would
+	 * have noticed, because every case and every floor there reads {@code RightIsNeeded} and
+	 * not the conditions of a mapping.
+	 *
+	 * <p><b>Asked by the moderator who DOES hold the tick, and that is the setting rather
+	 * than a detail.</b> Asked by one who does not, the door refuses him 404 anyway, so a
+	 * working rule and a broken one come back as the same number and the case passes while
+	 * measuring nothing. That is not a worry, it happened: the first draft of these three
+	 * built the header and never sent it, and two of them stayed green on the door's refusal.
+	 * Asked by the holder, the only thing left that can refuse him is the mapping - and the
+	 * assertion above, that he really is answered 200, is what says the header arrived.
+	 */
+	@Test
+	void aGuardedRouteThatMakesASpreadsheetSaysNothingToSomebodyAskingForJson() throws Exception {
+		assertThat(answerTo("GET", ProbeRoutesForTheWire.MAKES_ONLY_A_CSV, HOLDS_THE_TICK,
+						A_TOKEN, "Accept: text/csv\r\n"))
+				.as("the route does not answer the moderator who holds its tick even when he asks"
+						+ " for what it makes, so this compares two addresses that are both missing")
+				.startsWith("HTTP/1.1 200");
+
+		answersTheSameWay("GET", ProbeRoutesForTheWire.MAKES_ONLY_A_CSV,
+				twinOf(ProbeRoutesForTheWire.MAKES_ONLY_A_CSV), HOLDS_THE_TICK, A_TOKEN,
+				"Accept: application/json\r\n");
+	}
+
+	/** AND ONE THAT ACCEPTS ONLY A SPREADSHEET SAYS NOTHING TO SOMEBODY SENDING JSON. */
+	@Test
+	void aGuardedRouteThatTakesOnlyASpreadsheetSaysNothingToSomebodySendingJson() throws Exception {
+		assertThat(answerTo("POST", ProbeRoutesForTheWire.TAKES_ONLY_A_CSV, HOLDS_THE_TICK,
+						A_TOKEN, "Content-Type: text/csv\r\n", "a;b;c"))
+				.as("the route does not accept a spreadsheet from the moderator who holds its"
+						+ " tick, so this compares two addresses that are both missing")
+				.startsWith("HTTP/1.1 200");
+
+		answersTheSameWay("POST", ProbeRoutesForTheWire.TAKES_ONLY_A_CSV,
+				twinOf(ProbeRoutesForTheWire.TAKES_ONLY_A_CSV), HOLDS_THE_TICK, A_TOKEN,
+				"Content-Type: application/json\r\n", "{}");
+	}
+
+	/** AND ONE THAT INSISTS ON A PARAMETER SAYS NOTHING WHEN IT IS MISSING. */
+	@Test
+	void aGuardedRouteThatInsistsOnAParameterSaysNothingWithoutIt() throws Exception {
+		assertThat(answerTo("GET", ProbeRoutesForTheWire.NEEDS_A_PARAMETER + "?"
+						+ ProbeRoutesForTheWire.THE_PARAMETER + "=2027", HOLDS_THE_TICK, A_TOKEN))
+				.as("the route does not answer the moderator who holds its tick even with the"
+						+ " parameter, so this compares two addresses that are both missing")
+				.startsWith("HTTP/1.1 200");
+
+		answersTheSameWay("GET", ProbeRoutesForTheWire.NEEDS_A_PARAMETER,
+				twinOf(ProbeRoutesForTheWire.NEEDS_A_PARAMETER), HOLDS_THE_TICK);
+	}
+
+	/**
+	 * AND AN ERROR IN WHAT WAS SENT IS STILL ANSWERED AS ONE.
+	 *
+	 * <p><b>This is the line in the other direction, and it had no case at all.</b> The
+	 * javadoc of the advice that used to do this work named its own mutation - widen the
+	 * catch and every failure in the portal becomes a bare 404 - and a review ran exactly
+	 * that: the whole suite stayed green. The cost is not today's exposure but tomorrow's
+	 * blindness: a portal that answers 404 to a malformed request cannot tell a member what
+	 * is wrong with it, and one that answers 404 to its own faults cannot be operated.
+	 *
+	 * <p>Signing in with nothing in the body is a request the portal must go on refusing with
+	 * 400, because that is a sentence about what was SENT and not about what exists.
+	 */
+	@Test
+	void anErrorInWhatWasSentIsStillAnsweredAsOne() throws Exception {
+		assertThat(answerTo("POST", ProbeRoutes.TAKES_ONLY_POST, null, A_TOKEN,
+						"Content-Type: application/json\r\n"))
+				.as("a request the portal cannot read was answered as though the address did not"
+						+ " exist, so nothing can tell the sender what is wrong with it")
+				.startsWith("HTTP/1.1 400");
+	}
+
+	/** AND A FAILURE WHILE ANSWERING IS STILL A FAILURE. */
+	@Test
+	void aFailureWhileAnsweringIsStillAFailure() throws Exception {
+		assertThat(answerTo("GET", ProbeRoutesForTheWire.FALLS_OVER, WITHOUT_THE_TICK))
+				.as("a route that fell over answered as though it were not there, so an outage"
+						+ " reads as a typo and nobody watching the portal can see it")
+				.startsWith("HTTP/1.1 500");
+	}
+
+	/**
+	 * EVERY WAY THE LOOKUP CAN REFUSE COMES OUT OF ONE DOOR, and that is why no branch is
+	 * named anywhere.
+	 *
+	 * <p>{@code NothingIsHereRatherThanAlmost} does not list the four reasons the dispatcher
+	 * can give; it takes whatever {@code handleNoMatch} throws. That is only complete while
+	 * the signature of that method allows nothing else, so the signature is read off the
+	 * class rather than believed - and the day a Spring release widens it, this goes red and
+	 * asks for a decision once, instead of a fifth round finding a fifth branch.
+	 */
+	@Test
+	void everyWayTheLookupCanRefuseComesOutOfOneDoor() throws Exception {
+		Method lookup = RequestMappingInfoHandlerMapping.class.getDeclaredMethod("handleNoMatch",
+				Set.class, String.class, HttpServletRequest.class);
+
+		List<Class<?>> waysOut = List.of(lookup.getExceptionTypes());
+
+		assertThat(waysOut)
+				.as("the dispatcher's lookup declares nothing it can throw, so catching what it"
+						+ " throws catches nothing and this floor is satisfied by itself")
+				.isNotEmpty();
+
+		assertThat(waysOut)
+				.as("the lookup can refuse in a way that is not a ServletException, so the"
+						+ " conversion no longer covers every branch of it and the reasons have"
+						+ " to be named again")
+				.containsExactly(ServletException.class);
 	}
 }

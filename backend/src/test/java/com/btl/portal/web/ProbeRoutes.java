@@ -2,6 +2,8 @@ package com.btl.portal.web;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -20,19 +22,17 @@ import org.springframework.web.bind.annotation.RestController;
  * shape of a refusal can be compared with the shape of an address that is not there. Two
  * copies of these routes would be two things to keep equal.
  *
- * <p><b>THE ADDRESSES ARE THE LENGTH THEY ARE ON PURPOSE.</b> Each one has a twin that
- * maps nothing and is the same number of characters long, so that two answers can be
- * compared byte for byte: the error body carries the path that was asked for, and paths of
- * different lengths would make two answers differ by a length that says nothing about
- * whether the address exists.
+ * <p><b>There are no twin addresses written down here any more.</b> Each comparison needs
+ * an address of the same length that maps nothing, and those were counted by hand until
+ * 13.09.2026 - a character miscounted would have loosened a comparison without failing
+ * anything. {@code RightsOverRealHttpTest.twinOf} builds one from the address itself, so
+ * it is the right length by construction.
  */
 @TestConfiguration
 class ProbeRoutes {
 
-	/** A route that needs a right, and the address of the same length that maps nothing. */
+	/** A route that needs a right. */
 	static final String NEEDS_A_RIGHT = "/api/one-that-needs-a-right";
-
-	static final String NEEDS_A_RIGHT_TWIN = "/api/one-that-isnt-here-xyz";
 
 	static final String THE_RIGHT_IT_NEEDS = "entity:members";
 
@@ -42,27 +42,17 @@ class ProbeRoutes {
 	static final String THE_OTHER_RIGHT = "queue:results";
 
 	/**
-	 * A route of the portal's own that takes only GET, with a twin of the same length.
+	 * A route of the portal's own that takes only GET, and one that takes only a write.
 	 *
-	 * <p>Used where a case is about a method an address does not take: {@code /api/teams}
-	 * is a real route, it is ten characters long, and {@code /api/nemax} maps nothing and
-	 * is ten characters long.
+	 * <p>Used where a case is about a method an address does not take. Signing in is the
+	 * only route today mapped for {@code POST} and nothing else, which makes it the one
+	 * place a plain read can be refused for the method alone - and a read never meets the
+	 * CSRF filter, so it is also where a case can show that no token is needed to run the
+	 * oracle.
 	 */
 	static final String TAKES_ONLY_GET = "/api/teams";
 
-	static final String TAKES_ONLY_GET_TWIN = "/api/nemax";
-
-	/**
-	 * And one of the portal's own that takes only a WRITE, with its twin.
-	 *
-	 * <p>Signing in is the only route today mapped for {@code POST} and nothing else, which
-	 * makes it the one place a plain read can be refused for the method alone - and a read
-	 * never meets the CSRF filter, so it is also where a case can show that no token is
-	 * needed to run the oracle. Twelve characters, and so is {@code /api/nemanem}.
-	 */
 	static final String TAKES_ONLY_POST = "/api/sign-in";
-
-	static final String TAKES_ONLY_POST_TWIN = "/api/nemanem";
 
 	@RestController
 	static class Probe {
@@ -79,37 +69,80 @@ class ProbeRoutes {
 		String two() {
 			return "through";
 		}
-
 	}
 }
 
 /**
- * AND ONE ROUTE OUTSIDE {@code /api}, in a configuration of its own.
+ * AND THE ROUTES ONLY THE WIRE NEEDS, in a configuration of its own.
  *
- * <p>It is separate on purpose. The floor that says every route either needs a right or is
- * named looks at everything the portal's controllers map, {@code /api} included and not
- * only that - which is the whole of the middling finding of 13.09.2026, because a route one
- * character outside {@code /api} had no interceptor, no chain and no floor over it. A probe
- * living outside {@code /api} would then have to be written into that snapshot beside the
- * portal's own routes, and a snapshot of decisions is the wrong place to keep a test's
- * scaffolding.
+ * <p>Separate on purpose, twice over.
  *
- * <p>So only the suite that needs it imports it: the one that asks a real server what a
- * verb an address does not take answers with, outside {@code /api} as well as inside.
+ * <p>First, the floor that says every route either needs a right or is named looks at
+ * everything the portal's controllers map, {@code /api} and outside it both - which is the
+ * middling finding of 13.09.2026, because a route one character outside {@code /api} had no
+ * interceptor, no chain and no floor over it. Probes that answer without a right would then
+ * have to be written into that snapshot beside the portal's own routes, and a snapshot of
+ * decisions is the wrong place to keep a test's scaffolding.
+ *
+ * <p>Second, what is here can only be seen on a socket. Each of these routes is one of the
+ * ways the dispatcher says "the path is right and something else is wrong" - a media type
+ * it will not produce, one it will not consume, a parameter it insists on - and each of
+ * those sentences names something that exists. The last one simply falls over, and it is
+ * here so that a case can hold the line the other way: a failure must STAY a failure.
  */
 @TestConfiguration
-class ProbeRouteOutsideTheApi {
+class ProbeRoutesForTheWire {
 
+	/** One outside {@code /api} altogether, so the reach of the rule is measured. */
 	static final String OUTSIDE_THE_API = "/proba-van-api-ja";
 
-	static final String OUTSIDE_THE_API_TWIN = "/proba-van-api-xx";
+	/** A guarded route that makes a spreadsheet, which is how this first becomes live. */
+	static final String MAKES_ONLY_A_CSV = "/api/probe-makes-a-csv";
+
+	/** A guarded route that accepts only a spreadsheet. */
+	static final String TAKES_ONLY_A_CSV = "/api/probe-takes-a-csv";
+
+	/** A guarded route that insists on a parameter. */
+	static final String NEEDS_A_PARAMETER = "/api/probe-needs-a-param";
+
+	static final String THE_PARAMETER = "sezona";
+
+	/** And one that fails while answering, which must never be mistaken for a missing one. */
+	static final String FALLS_OVER = "/api/probe-falls-over";
 
 	@RestController
 	static class Probe {
 
-		@GetMapping(OUTSIDE_THE_API)
+		@GetMapping(value = OUTSIDE_THE_API)
 		String outside() {
 			return "outside";
+		}
+
+		@GetMapping(value = MAKES_ONLY_A_CSV, produces = "text/csv")
+		@RightIsNeeded(ProbeRoutes.THE_RIGHT_IT_NEEDS)
+		String csv() {
+			return "a;b;c";
+		}
+
+		@PostMapping(value = TAKES_ONLY_A_CSV, consumes = "text/csv")
+		@RightIsNeeded(ProbeRoutes.THE_RIGHT_IT_NEEDS)
+		String takesCsv() {
+			return "taken";
+		}
+
+		@GetMapping(value = NEEDS_A_PARAMETER, params = THE_PARAMETER)
+		@RightIsNeeded(ProbeRoutes.THE_RIGHT_IT_NEEDS)
+		String withParameter(@RequestParam(THE_PARAMETER) String season) {
+			return season;
+		}
+
+		/**
+		 * Needs no right, because it has to be REACHED in order to fall over; a refusal
+		 * at the door would answer 404 and the case would pass while measuring nothing.
+		 */
+		@GetMapping(FALLS_OVER)
+		String fallsOver() {
+			throw new IllegalStateException("a probe that fails on purpose");
 		}
 	}
 }
