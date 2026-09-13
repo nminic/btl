@@ -213,7 +213,7 @@ describe('a record that is entered rather than changed', () => {
     await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), 'Milica')
     await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
-    await user.type(form.getByLabelText(labelled(t('admin.field.birthYear'))), '1991')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.ageBand'))), '25-39')
     await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
     await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
@@ -245,8 +245,20 @@ describe('a record that is entered rather than changed', () => {
     const row = within(must(list.getByText('000033').closest('tr'), 'tr'))
 
     expect(row.getByText('Milica Pavlović')).toBeVisible()
-    // The year of birth is on this screen and on no other (PDL P11, P23).
-    expect(row.getByText('1991')).toBeVisible()
+    /* The category she was entered under, which is the whole of what the portal
+       records about her age since 13.09.2026. This asked for „1991" and the note
+       beside it said the year of birth is on this screen and on no other (PDL P11,
+       P23). That was true of the screen and false of the portal: the row was drawn
+       from a file served to everybody, so the year was on every screen, and it has
+       left the record rather than the table (`data/types.ts`).
+
+       „Početnice" and not „Ž25-39": the box for the beginners' category is ticked a
+       few lines above, and a beginner carries that category instead of their band and
+       never both (owner, 03.08.2026). So this row also says the band she was entered
+       under is being read through `categoryOfMember` and the dictionary, rather than
+       printed raw. */
+    expect(row.getByText('Početnice')).toBeVisible()
+    expect(row.queryByText('Ž25-39')).not.toBeInTheDocument()
     expect(row.getByText('Kraljevo')).toBeVisible()
     expect(row.getByText(t('admin.basisValue.feeExempt'))).toBeVisible()
   })
@@ -400,7 +412,7 @@ describe('the identity of a record', () => {
     await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), firstName)
     await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
-    await user.type(form.getByLabelText(labelled(t('admin.field.birthYear'))), '1991')
+    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.ageBand'))), '25-39')
     await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
     await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
     await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')

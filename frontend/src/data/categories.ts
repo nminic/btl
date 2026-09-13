@@ -33,44 +33,39 @@ export function genderMark(gender: Gender): string {
 }
 
 /**
- * The age band for a season.
- *
- * The age used is the one reached during that calendar year, not the age on the
- * day: somebody who turns 40 in November is in the 40-54 band from 1 January.
- * This changed from the 2017 rulebook, where the band changed on the birthday
- * itself and points moved category mid-season.
- */
-export function ageBandFor(birthYear: number, season: number): AgeBand {
-  const age = season - birthYear
-
-  if (age <= 24) {
-    return '24-'
-  }
-
-  if (age <= 39) {
-    return '25-39'
-  }
-
-  return age <= 54 ? '40-54' : '55+'
-}
-
-/**
  * The category code shown on a profile and in the tables.
  *
  * A member in their first season carries that category instead of their age
  * band, and leaves it permanently once they pass the points threshold. Leaving
  * is one way only: a bad season never puts anybody back.
  */
-export function categoryCodeFor(
-  gender: Gender,
-  birthYear: number,
-  season: number,
-  firstSeason: boolean,
-): string {
-  return firstSeason
-    ? `${genderMark(gender)} ${FIRST_SEASON_BAND}`
-    : `${genderMark(gender)}${ageBandFor(birthYear, season)}`
+export function categoryCodeFor(gender: Gender, band: AgeBand, firstSeason: boolean): string {
+  return firstSeason ? `${genderMark(gender)} ${FIRST_SEASON_BAND}` : `${genderMark(gender)}${band}`
 }
+
+/* **Where the band itself comes from, and why it is not worked out here**
+   (13.09.2026).
+ *
+ * This file used to carry `ageBandFor(birthYear, season)`: the age reached during
+ * the calendar year rather than the age on the day, so somebody turning 40 in
+ * November is in the 40-54 band from 1 January (PDL P7, changed from the 2017
+ * rulebook where the band moved on the birthday itself and took that season's
+ * points with it).
+ *
+ * The arithmetic is unchanged and it is still the rule. What changed is that the
+ * portal no longer holds the number to do it with: a year of birth is the short
+ * form of a date of birth, Član 74 says that is never shown, and everything on a
+ * member's record is served publicly out of `public/mock` (ADL A8). So the band
+ * is worked out where the data is made and arrives already worked out, and the
+ * function that needed a year is gone rather than left standing with nothing to
+ * call it — a signature asking for a year of birth is an instruction to the next
+ * reader to put one back on the record.
+ *
+ * What stays here is the vocabulary: `AGE_BANDS` is the whole list of bands, and
+ * it is what a served band is held to (`data/servedAge.test.ts`). The rule that
+ * turns a date into one of them belongs with whoever still has the date, which is
+ * the backend.
+ */
 
 /** Whether the first season category is still open to somebody. */
 export function firstSeasonAllowed(points: number): boolean {

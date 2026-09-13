@@ -36,11 +36,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * WHO SAID THEY ARE COMING, read by members and by nobody else.
  *
- * <p>Closed the same way {@code CommentApiTest} (`b53-komentari`, PR 278, not yet
- * merged into this branch) closes {@code /api/comments}: this file measures that a
- * visitor is refused and a signed in member is not, plus the two questions that are
- * this resource's own: only a FUTURE event answers, and only a member in good standing
- * does.
+ * <p>Closed the same way {@link CommentApiTest} closes {@code /api/comments}: this
+ * file measures that a visitor is refused and a signed in member is not, plus the two
+ * questions that are this resource's own: only a FUTURE event answers, and only a
+ * member in good standing does.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

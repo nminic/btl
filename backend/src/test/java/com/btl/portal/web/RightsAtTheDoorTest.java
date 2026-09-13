@@ -75,17 +75,25 @@ class RightsAtTheDoorTest {
 	 * has already gone wrong, and a portal that asked for a right before it could report an
 	 * error would have nothing to report it with.
 	 *
-	 * <p><b>And {@code /api/attendance} joins it, on the same day and for the same shape of
-	 * reason.</b> It is neither public nor administrative either: „Tu listu ko je prijavljen
-	 * takođe vide samo ulogovani članovi" (owner, 11.08.2026), so it is absent from
+	 * <p><b>And {@code /api/comments} is the fourth, arriving on 13.09.2026 exactly the way
+	 * the last paragraph of this note says a fourth would.</b> It is the first route of this
+	 * portal that is neither public nor administrative. „Komentare vide samo prijavljeni
+	 * clanovi BTL. Drugim (posetiocima) se ne prikazuju" (owner, 11.08.2026), so it is not on
+	 * {@code READ_BY_ANYBODY} and the chain answers a visitor 401; and reading a comment is
+	 * not a moderator's action, so there is no box to tick for it and EVERY signed in account
+	 * reads it, a plain competitor included. That is the sentence the assertion below asks
+	 * somebody to write down, and it is written down here. What holds the other half - that a
+	 * visitor really is refused - is {@code CommentApiTest}, because this file measures what a
+	 * route DECLARES and not what the chain in front of it does.
+	 *
+	 * <p><b>And {@code /api/attendance} joins it, closed the identical way and for the
+	 * identical reason.</b> It is neither public nor administrative either: „Tu listu ko je
+	 * prijavljen takođe vide samo ulogovani članovi" (owner, 11.08.2026), so it is absent from
 	 * {@code READ_BY_ANYBODY} and a visitor is refused before this door is ever asked; and
 	 * reading who is going is not a moderator's action, so there is no box to tick for it and
-	 * every signed in account reads it, a plain competitor included. {@code /api/comments}
-	 * ({@code b53-komentari}, PR 278, not yet merged into this branch) is named this exact
-	 * way for this exact reason on its own branch; it is not on THIS set because its route
-	 * does not exist here yet, not because the two resources are closed any differently.
-	 * {@code AttendanceApiTest} holds the other half, that a visitor really is refused,
-	 * because this file only measures what a route DECLARES.
+	 * every signed in account reads it, a plain competitor included. {@code AttendanceApiTest}
+	 * holds the other half, that a visitor really is refused, because this file only measures
+	 * what a route DECLARES.
 	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a
@@ -103,7 +111,8 @@ class RightsAtTheDoorTest {
 	 * a rule.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
-			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/attendance", "/error");
+			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
+					"/api/attendance", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 

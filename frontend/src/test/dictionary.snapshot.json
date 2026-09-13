@@ -1106,7 +1106,7 @@
       "firstName": "Ime",
       "lastName": "Prezime",
       "gender": "Pol",
-      "birthYear": "Godina rođenja",
+      "ageBand": "Uzrasna kategorija",
       "city": "Mesto",
       "firstSeason": "U ligi od sezone",
       "firstSeason2027": "Početnička kategorija",
@@ -1142,7 +1142,11 @@
     },
     "value": {
       "genderM": "Muški",
-      "genderF": "Ženski"
+      "genderF": "Ženski",
+      "ageBand24": "24 i mlađi",
+      "ageBand2539": "25 do 39",
+      "ageBand4054": "40 do 54",
+      "ageBand55": "55 i stariji"
     },
     "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
     "period": "Period u godini",

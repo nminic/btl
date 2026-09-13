@@ -34,12 +34,28 @@
       ]
     },
     {
-      "name": "birthYear",
-      "type": "number",
-      "labelKey": "admin.field.birthYear",
+      "name": "ageBand",
+      "type": "select",
+      "labelKey": "admin.field.ageBand",
       "required": true,
-      "min": 1900,
-      "max": 2027
+      "options": [
+        {
+          "value": "24-",
+          "labelKey": "admin.value.ageBand24"
+        },
+        {
+          "value": "25-39",
+          "labelKey": "admin.value.ageBand2539"
+        },
+        {
+          "value": "40-54",
+          "labelKey": "admin.value.ageBand4054"
+        },
+        {
+          "value": "55+",
+          "labelKey": "admin.value.ageBand55"
+        }
+      ]
     },
     {
       "name": "city",

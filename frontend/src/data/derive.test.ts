@@ -48,7 +48,7 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   gender: 'M',
   city: 'Beograd',
   country: 'RS',
-  birthYear: 1985,
+  ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2027,
   active: true,
@@ -157,7 +157,7 @@ describe('rankingFor', () => {
   const competitors = [
     competitor('000001'),
     competitor('000002'),
-    competitor('000004', { birthYear: 1960, firstName: 'Vukašin' }),
+    competitor('000004', { ageBand: '55+', firstName: 'Vukašin' }),
     competitor('000003', { gender: 'F' }),
   ]
 
@@ -283,22 +283,36 @@ describe('withPlaces', () => {
 })
 
 describe('categoriesOf', () => {
-  it('lists the categories of one gender for a season, sorted', () => {
+  it('lists the categories of one gender, sorted, and leaves the other gender out', () => {
+    /* The member of the other gender is in the same band as one of these, so a
+       filter that had stopped working would come back with the same three codes
+       and this would still pass. She is `55+` against a man in `55+`, and the
+       answer names two codes rather than three. */
     const competitors = [
-      competitor('000001', { birthYear: 1960 }),
-      competitor('000002', { birthYear: 1990 }),
-      competitor('000004', { birthYear: 1990 }),
-      competitor('000003', { gender: 'F' }),
+      competitor('000001', { ageBand: '55+' }),
+      competitor('000002', { ageBand: '25-39' }),
+      competitor('000004', { ageBand: '25-39' }),
+      competitor('000003', { gender: 'F', ageBand: '55+' }),
     ]
 
-    expect(categoriesOf(competitors, 'M', 2027)).toEqual(['M25-39', 'M55+'])
+    expect(categoriesOf(competitors, 'M')).toEqual(['M25-39', 'M55+'])
   })
 
-  it('moves a member into the next band as the season turns', () => {
-    const competitors = [competitor('000001', { birthYear: 1987 })]
-
-    expect(categoriesOf(competitors, 'M', 2026)).toEqual(['M25-39'])
-    expect(categoriesOf(competitors, 'M', 2027)).toEqual(['M40-54'])
+  /* **A case that moved a member between bands as the season turned stood here
+     until 13.09.2026.** It handed the same member to 2026 and to 2027 and expected
+     `M25-39` then `M40-54`, which is PDL P7: the band follows the age reached in
+     the calendar year.
+   *
+     It cannot be asked any more, and not because it stopped mattering. The band is
+     now read off the record instead of worked out from a year of birth, because the
+     record is served publicly and a year of birth may not be (Član 74,
+     `data/types.ts`). `categoriesOf` takes no season, so there is no second season
+     to hand it. What the portal gives up by that is written where the field is. */
+  it('takes no season, so nothing it answers can turn on one', () => {
+    /* Read off the signature rather than from a second call with a different year:
+       a function that ignores an argument and one that does not take it look the
+       same from outside, and only one of them is honest about it. */
+    expect(categoriesOf).toHaveLength(2)
   })
 })
 

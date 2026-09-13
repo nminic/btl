@@ -150,7 +150,7 @@ function Standing({
             >
               {t('rankings.allCategories')}
             </button>
-            {categoriesOf(competitors, gender, season).map((code) => (
+            {categoriesOf(competitors, gender).map((code) => (
               <button
                 key={code}
                 type="button"
@@ -249,7 +249,7 @@ function Standing({
                     </NamePlate>{' '}
                     <span className="table__member-number">{row.competitor.memberNumber}</span>
                   </td>
-                  <td>{categoryLabel(categoryOfMember(row.competitor, season), t)}</td>
+                  <td>{categoryLabel(categoryOfMember(row.competitor), t)}</td>
                   <td className="table__hide-phone">{row.races}</td>
                   <td className="table__hide-phone">{formatNumber(row.kilometers, locale, 2)}</td>
                   <td className="table__hide-phone">{formatNumber(row.ascent, locale)}</td>

@@ -144,7 +144,7 @@ describe('monogramFor', () => {
     gender: 'M',
     city: 'Banja Luka',
     country: 'BA',
-    birthYear: 2007,
+    ageBand: '24-',
     firstSeason2027: false,
     firstSeason: 2015,
     active: true,

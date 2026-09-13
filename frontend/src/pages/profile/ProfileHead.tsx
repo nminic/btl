@@ -5,7 +5,6 @@ import { PartsNav } from '../../components/PartsNav'
 import { Portrait } from '../../components/Portrait'
 import { SeasonPicker } from '../../components/SeasonPicker'
 import { categoryOfMember } from '../../data/derive'
-import { SEASON } from '../../data/pricing'
 import type { Competitor, Team } from '../../data/types'
 import { Sentence } from '../../i18n/Sentence'
 import { useI18n } from '../../i18n/useI18n'
@@ -69,7 +68,7 @@ export function ProfileHead({
             {t('profile.memberNumberLabel', { number: competitor.memberNumber })}
           </span>
           {' · '}
-          {categoryLabel(categoryOfMember(competitor, SEASON), t)}
+          {categoryLabel(categoryOfMember(competitor), t)}
           {' · '}
           {/* **THE BIRTHDAY IS NOT HERE, and that is a decision and not an omission**
               (12.09.2026). It was drawn here from 06.09.2026, for a member who chose to show

@@ -10,7 +10,7 @@ const member: Competitor = {
   gender: 'F',
   city: 'Novi Sad',
   country: 'RS',
-  birthYear: 1990,
+  ageBand: '25-39',
   firstSeason2027: false,
   firstSeason: 2027,
   active: true,

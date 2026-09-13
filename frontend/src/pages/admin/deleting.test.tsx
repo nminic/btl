@@ -50,7 +50,7 @@ describe('a record entered under an identity a deletion had just freed', () => {
     await user.type(screen.getByLabelText(/^Ime/), 'Probni')
     await user.type(screen.getByLabelText(/^Prezime/), 'Novak')
     await user.selectOptions(screen.getByLabelText(/^Pol/), 'M')
-    await user.type(screen.getByLabelText(/^Godina rođenja/), '1990')
+    await user.selectOptions(screen.getByLabelText(/^Uzrasna kategorija/), '25-39')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/^U ligi od sezone/), '2027')

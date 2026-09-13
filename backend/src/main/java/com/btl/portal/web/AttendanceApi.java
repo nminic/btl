@@ -12,10 +12,9 @@ import java.util.List;
 /**
  * WHO SAID THEY ARE COMING, closed the way this portal closes a resource that members
  * read and a visitor does not: absence from {@link ApiSecurity#READ_BY_ANYBODY} rather
- * than a condition written into the handler. {@code /api/comments} is being built the
- * same way at the same time, on {@code b53-komentari} (PR 278, not yet merged into this
- * branch) - a sibling in shape, asking the identical question about a different
- * resource, not a class this one compiles against.
+ * than a condition written into the handler. {@link CommentApi} closes
+ * {@code /api/comments} the identical way, for the identical reason, about a
+ * different resource.
  *
  * <p><b>Read by members and by nobody else.</b> The owner, 11.08.2026: „Tu listu ko je
  * prijavljen takođe vide samo ulogovani članovi" ({@code PDL.md:294}). A visitor sees

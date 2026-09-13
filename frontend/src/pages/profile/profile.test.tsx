@@ -7,6 +7,7 @@ import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
 import sr from '../../i18n/sr.json'
 import { formatPoints } from '../../i18n/format'
+import type { AgeBand } from '../../data/categories'
 import type { Competitor, Result } from '../../data/types'
 import { awardsOf } from './awards'
 import { shortBio } from './bio'
@@ -288,14 +289,14 @@ describe('a season in which both a trophy and a plaque were taken', () => {
      be shown is one competitor on two boards in one season: the general standing
      of their gender, and their own category inside it. Both give out three
      (PDL P16), so somebody near the top of a small field takes both. */
-  const person = (memberNumber: string, birthYear: number) => ({
+  const person = (memberNumber: string, ageBand: AgeBand) => ({
     memberNumber,
     firstName: 'Probni',
     lastName: memberNumber,
     gender: 'M' as const,
     city: 'Čačak',
     country: 'RS',
-    birthYear,
+    ageBand,
     firstSeason2027: false,
     firstSeason: 2020,
     active: true,
@@ -326,8 +327,8 @@ describe('a season in which both a trophy and a plaque were taken', () => {
   })
 
   it('carries both, the better place first', () => {
-    const mine = person('000101', 1990)
-    const others = [person('000102', 1990), person('000103', 1955)]
+    const mine = person('000101', '25-39')
+    const others = [person('000102', '25-39'), person('000103', '55+')]
     const results = [
       race('000101', 100, 'a'),
       race('000102', 200, 'b'),
@@ -345,8 +346,8 @@ describe('a season in which both a trophy and a plaque were taken', () => {
   })
 
   it('carries nothing from a season the competitor was not in the top three of', () => {
-    const mine = person('000101', 1990)
-    const others = Array.from({ length: 5 }, (_, index) => person(`00020${index}`, 1990))
+    const mine = person('000101', '25-39')
+    const others = Array.from({ length: 5 }, (_, index) => person(`00020${index}`, '25-39'))
     const results = [
       race('000101', 1, 'a'),
       ...others.map((one, index) => race(one.memberNumber, 100 + index, `b${index}`)),
@@ -796,6 +797,13 @@ describe('who the profile is about, above everything else', () => {
        half-reverted screen conditioned on that one value would have published a year
        with every test green. The third answer, „ne prikazuj ništa", is held by
        `profilePrivacy.test.tsx` on a member entered in administration. */
+    /* What each of those two lines says today, written out. Read off the screen once
+       and pinned here; a change to any of it is a change somebody meant to make. */
+    const SAID: Record<string, string> = {
+      '000008': 'Članski broj 000008 · M55+ · Sarajevo · U ligi od 2016. · Bez tima',
+      '000007': 'Članski broj 000007 · M24- · Banja Luka · U ligi od 2015. · U klubu Dunavski trkači od 2021.',
+    }
+
     for (const number of ['000008', '000007']) {
       const asked = must(
         served.find((one) => one.memberNumber === number),
@@ -813,9 +821,23 @@ describe('who the profile is about, above everything else', () => {
 
       const line = must(document.querySelector('.profile__meta'), 'the line under the name')
 
-      expect(line.textContent, `the card of ${number} draws a year of birth`).not.toContain(
-        String(asked.birthYear),
-      )
+      /* **Held as the whole line rather than as the absence of one year**
+         (13.09.2026). This asked that the text not contain `String(asked.birthYear)`,
+         which was the right question while the record carried a year. The year has
+         gone from the record (`data/types.ts`), so that needle now reads „undefined",
+         and a card printing a year in any other form would have passed — as would one
+         printing this member's year taken from anywhere else.
+
+         The words the line says are held as they stand instead. It judges nothing, so
+         it cannot be wrong about a form of a date nobody has written yet: a day, a
+         month, an age, a decade or a year all change these strings, and so does
+         anything else arriving in that line. What it costs is that changing the line
+         on purpose is a deliberate act that comes here too, which is the point.
+
+         Two members and not one, and they differ in the answer they gave: 000008 asks
+         for the full date and 000007 for the year alone. Both are the only answers
+         that ever showed anything. */
+      expect(line.textContent, `the line under the name of ${number}`).toBe(SAID[number])
     }
 
     const line = must(document.querySelector('.profile__meta'), 'the line under the name')
