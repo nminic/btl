@@ -2,15 +2,24 @@ package com.btl.portal.db;
 
 import com.btl.portal.TestcontainersConfiguration;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.Location;
+import org.flywaydb.core.api.MigrationInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * What every test about the schema needs: a real PostgreSQL with the migrations
@@ -68,6 +77,46 @@ abstract class DatabaseTest {
 				.param(flywayTable())
 				.query(String.class)
 				.list();
+	}
+
+	/**
+	 * The SQL of one migration, asked of Flyway rather than written down here.
+	 *
+	 * <p>Flyway says where its migrations live and what the script of the version
+	 * that was applied is called, so nothing here is a second copy of a setting: a
+	 * file renamed, moved, or given a different location in the configuration is
+	 * still the file this reads. Only the VERSION is named, and that is the fact the
+	 * case asking for it is about.
+	 *
+	 * <p>It is here rather than in one test class because two of them execute a
+	 * migration over a fixture, which is the only way the DATA half of a migration
+	 * is ever measured: every test begins at an empty database, so a carry that
+	 * works and a carry that was deleted leave the same nothing behind. See
+	 * {@link LeagueRacesCarriedOverTest}, where it was written, and
+	 * {@link MembershipCarriedOverTest}.
+	 */
+	String migrationSql(String version) {
+		MigrationInfo applied = Arrays.stream(flyway.info().applied())
+				.filter(one -> one.getVersion() != null
+						&& version.equals(one.getVersion().getVersion()))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("no migration " + version + " was applied"));
+
+		String folder = Arrays.stream(flyway.getConfiguration().getLocations())
+				.map(Location::getPath)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Flyway is configured with no location"));
+
+		try (InputStream sql = getClass().getClassLoader()
+				.getResourceAsStream(folder + "/" + applied.getScript())) {
+			assertThat(sql)
+					.as("%s is not under %s, where Flyway says its migrations are",
+							applied.getScript(), folder)
+					.isNotNull();
+			return new String(sql.readAllBytes(), StandardCharsets.UTF_8);
+		} catch (IOException cannot) {
+			throw new UncheckedIOException(cannot);
+		}
 	}
 
 	/**

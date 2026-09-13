@@ -476,6 +476,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   se praznio; a `league_event` od V20 nema uopste, jer liga broji trke. */
 				"league_race.league_race_league_fk cascade",
 				"league_race.league_race_race_fk cascade",
+				/* V22. A membership is a fact ABOUT a member and means nothing without him, the
+				   same as his payment and his team membership, so it goes when he does. What
+				   survives him is the frozen season, which is hardcoded values carrying his name
+				   as text (A37) and no key at all. */
+				"membership.membership_competitor_fk cascade",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
 				"message.message_team_invitation_fk cascade",
