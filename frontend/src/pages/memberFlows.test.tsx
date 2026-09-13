@@ -394,15 +394,28 @@ describe('membership', () => {
     expect(screen.queryByText(/bar jedan dan 14 godina/)).not.toBeInTheDocument()
   })
 
-  it('puts the junior fee in the code a junior member scans', async () => {
-    /* The junior price was on this screen as a sentence and nowhere else. The
-       code carried the figure for a grown member, so somebody of fourteen read
-       „Do 14 godina članarina je 20 EUR, a iz Srbije 2.400 RSD" and then scanned
-       a request for 4.200. The year of birth was on the record the whole time.
+  it('quotes a junior the grown fee, because nothing on the record says who is a junior', async () => {
+    /* **This case held the opposite until 13.09.2026, and it is turned round on
+       purpose rather than deleted.** It used to say that the code a junior scans
+       carries the junior figure, which is what PDL P8 wants: „ko u sezoni za koju
+       plaća bar jedan dan ima 14 godina ili manje". The screen could do it because
+       the record carried a year of birth.
 
-       000031 is fourteen through the season being renewed, which is what PDL P8
-       measures: „ko u sezoni za koju plaća bar jedan dan ima 14 godina ili
-       manje". */
+       It does not any more. The year has gone from the record because the record is
+       served publicly and Član 74 forbids a year of birth on it (`data/types.ts`),
+       and the age band that replaced it cannot answer this: `24-` runs from a newborn
+       to somebody of twenty four and the junior fee stops at fifteen.
+
+       **What this is for.** The old fault is back for whoever is a junior, and a
+       regression that nothing measures is one nobody remembers. This says out loud
+       what the screen now does, so that putting the junior fee back — which needs
+       either a junior mark on a public record or a backend that knows who is signed
+       in — fails here and has to be decided rather than slipped in. The owner has the
+       question; the two ways out and what each costs are written at the call site in
+       `pages/member/Membership.tsx`.
+
+       000031 is the member it applies to: fourteen through the season being renewed,
+       and one of the three who actually pay. */
     renderFor('000031')
 
     const payload = must(
@@ -410,14 +423,19 @@ describe('membership', () => {
       'the payload the screen shows',
     )
 
-    expect(payload).toContain(`I:RSD${JUNIOR.rsd},00`)
-    expect(payload).not.toContain('I:RSD4200,00')
+    /* 4.800 is the standard fee on the day this case renders, which is the late part
+       of the renewal window. Worth noting that the case this replaced asserted the
+       payload was not 4.200: that figure is the fee earlier in the window and was
+       never what this render could have produced, so that half of it held nothing. */
+    expect(payload).toContain('I:RSD4800,00')
+    expect(payload).not.toContain(`I:RSD${JUNIOR.rsd},00`)
 
-    /* And written out, not only inside the code. The list beside it exists for
-       somebody typing the payment into their bank by hand, and it had no amount
-       at all: the only figure a junior could read was the grown one. */
-    expect(screen.getByText('2.400 RSD')).toBeVisible()
-    expect(screen.getByText(/Danas članarina košta 20 EUR, a iz Srbije 2.400 RSD/)).toBeVisible()
+    /* The sentence stays, and it is now the only place a junior is told what they
+       owe. It is also why this is a regression and not a rule change: the screen
+       says one figure in words and asks for another in the code. */
+    expect(
+      screen.getByText(/bar jedan dan 14 godina ili manje plaća 20 EUR, a iz Srbije 2.400 RSD/),
+    ).toBeVisible()
   })
 
   it('offers a member abroad no payment slip at all, in any form', async () => {

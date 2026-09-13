@@ -27,8 +27,8 @@ import type { Competitor } from '../../data/types'
  *  this until the guard above replaced it, and deleting it with the text left the
  *  tie-break unmeasured for a round (review, 31.08.2026).
  *
- *  **These five, and not „every category function":** a comparison written straight
- *  on `birthYear` reaches none of them, and a claim that no category can come back
+ *  **These four, and not „every category function":** a comparison written straight
+ *  on `ageBand` reaches none of them, and a claim that no category can come back
  *  at all would be wider than this holds. What holds that is the case below, where
  *  three orders disagree so only the one the table settled can produce the answer. */
 vi.mock('../../data/categories', async (real) => {
@@ -44,7 +44,6 @@ vi.mock('../../data/categories', async (real) => {
        code that names them is not this function. */
     genderMark: (gender: string) => (gender === 'M' ? 'PRVI' : 'DRUGI'),
     categoryCodeFor: refuse('categoryCodeFor'),
-    ageBandFor: refuse('ageBandFor'),
     categoryLabel: refuse('categoryLabel'),
   }
 })
@@ -68,7 +67,7 @@ const person = (memberNumber: string, gender: 'M' | 'F'): Competitor => ({
   gender,
   city: 'Beograd',
   country: 'RS',
-  birthYear: 1985,
+  ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2019,
   active: true,
@@ -119,26 +118,33 @@ describe('the name of a block of the standing', () => {
        arrival order changes nothing and is nothing to catch. A first draft had three
        level rows with the youngest first, and a threshold at forty then split them
        exactly where they already stood, so that rule passed (review, 31.08.2026). Five
-       level rows now, born in 1985, 1995, 1970, 1980 and 1989, which is an order no cut
-       by year of birth reproduces: **no threshold on age, in either direction, leaves
-       the list as it arrived**, and neither does the beginner flag, the number of races,
-       the season somebody joined or the best single score. Years rather than ages,
-       because an age is a year minus a season and no season is fixed here. The sum of the scores cannot be
-       such a rule at all, because the total **is** that sum here, as it is on the
-       portal. */
+       level rows now, in the bands `40-54`, `25-39`, `55+`, `40-54` and `25-39`, which
+       is an order no cut by age reproduces: the bands arrive interleaved rather than
+       grouped, so **no sort by band and no threshold across one, in either direction,
+       leaves the list as it arrived**. Neither does the beginner flag, the number of
+       races, the season somebody joined or the best single score. The sum of the scores
+       cannot be such a rule at all, because the total **is** that sum here, as it is on
+       the portal.
+
+       **Bands rather than years of birth, since 13.09.2026**, when the year left the
+       record (`data/types.ts`). The older note here explained that it used years and not
+       ages because an age is a year minus a season and no season is fixed in this
+       fixture. There is no year to reason from now, and the band is the age, so the
+       question the fixture has to answer is simply whether the bands arrive in an order
+       no rule about them would produce. They do. */
     const rows = [
-      { ...person('000007', 'M'), birthYear: 1985, firstSeason2027: false, scores: [50] },
+      { ...person('000007', 'M'), ageBand: '40-54' as const, firstSeason2027: false, scores: [50] },
       /* Three level with each other, so there is something a tie-break could move: with
          every total different there is no tie at all and a tie-break never fires, which
          was true of one earlier draft of this fixture. */
-      { ...person('000005', 'M'), birthYear: 1985, firstSeason: 2022, firstSeason2027: false, scores: [9, 8, 3] },
-      { ...person('000001', 'M'), birthYear: 1995, firstSeason: 2020, firstSeason2027: true, scores: [14, 6] },
-      { ...person('000003', 'M'), birthYear: 1970, firstSeason: 2021, firstSeason2027: false, scores: [7, 6, 5, 2] },
-      { ...person('000004', 'M'), birthYear: 1980, firstSeason: 2018, firstSeason2027: false, scores: [11, 6, 3] },
-      { ...person('000006', 'M'), birthYear: 1989, firstSeason: 2023, firstSeason2027: false, scores: [10, 5, 4, 1] },
+      { ...person('000005', 'M'), ageBand: '40-54' as const, firstSeason: 2022, firstSeason2027: false, scores: [9, 8, 3] },
+      { ...person('000001', 'M'), ageBand: '25-39' as const, firstSeason: 2020, firstSeason2027: true, scores: [14, 6] },
+      { ...person('000003', 'M'), ageBand: '55+' as const, firstSeason: 2021, firstSeason2027: false, scores: [7, 6, 5, 2] },
+      { ...person('000004', 'M'), ageBand: '40-54' as const, firstSeason: 2018, firstSeason2027: false, scores: [11, 6, 3] },
+      { ...person('000006', 'M'), ageBand: '25-39' as const, firstSeason: 2023, firstSeason2027: false, scores: [10, 5, 4, 1] },
       /* And a woman, so the blocks are two and the reading below has to cross one. */
-      { ...person('000009', 'F'), birthYear: 1992, firstSeason2027: false, scores: [30] },
-      { ...person('000002', 'F'), birthYear: 1988, firstSeason2027: false, scores: [12, 8] },
+      { ...person('000009', 'F'), ageBand: '25-39' as const, firstSeason2027: false, scores: [30] },
+      { ...person('000002', 'F'), ageBand: '25-39' as const, firstSeason2027: false, scores: [12, 8] },
     ].map(({ scores, ...competitor }) => ({
       competitor,
       points: new Map(scores.map((score, at) => [`race-${String(at)}`, score])),

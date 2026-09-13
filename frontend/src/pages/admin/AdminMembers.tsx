@@ -3,7 +3,6 @@ import { categoryLabel } from '../../data/categories'
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { categoryOfMember } from '../../data/derive'
-import { SEASON } from '../../data/pricing'
 import { useCompetitors } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
@@ -14,10 +13,17 @@ import { useOverlay } from './overlay'
 import { takenMemberNumbers } from './memberNumbers'
 import '../member/Member.css'
 
-/* The list of members, with the two things that are not public about them: the
- * year they were born and on what basis their membership is active. Both are kept
- * off every public screen and shown only here, to staff with rights over members
- * (PDL P8, P11, P23). */
+/* The list of members, with the one thing that is not public about them: on what
+ * basis their membership is active, which is kept off every public screen and
+ * shown only here, to staff with rights over members (PDL P8, P11, P23).
+ *
+ * **It was two until 13.09.2026**, the other being the year each member was born.
+ * That sentence was true about the screen and false about the portal, and the
+ * difference is the whole reason the column is gone: this screen reads the same
+ * `competitors` file as every public one, and that file is served to anybody who
+ * asks for its address, signed in or not (ADL A8). Drawing a field only behind a
+ * sign-in does not make it private when the record carrying it is public, so the
+ * year has left the record and not merely this table (`data/types.ts`). */
 export function AdminMembers() {
   const { t } = useI18n()
   const overlay = useOverlay()
@@ -83,8 +89,13 @@ export function AdminMembers() {
                   <thead>
                     <tr>
                       <th scope="col">{t('competitors.columns.member')}</th>
+                      {/* The category, and no column of years beside it. This table
+                          printed the year of birth of every member until 13.09.2026,
+                          and it was drawn from the same public file every other screen
+                          reads (ADL A8): administration was where it was shown, not
+                          where it was kept. Član 74 allows the category and nothing
+                          finer, so the category is the whole of what stands here. */}
                       <th scope="col">{t('competitors.columns.category')}</th>
-                      <th scope="col">{t('admin.field.birthYear')}</th>
                       <th scope="col">{t('competitors.columns.city')}</th>
                       <th scope="col">{t('admin.basis')}</th>
                       <th scope="col">{t('admin.form.record')}</th>
@@ -99,8 +110,7 @@ export function AdminMembers() {
                           </ProfileLink>{' '}
                           <span className="table__member-number">{one.memberNumber}</span>
                         </td>
-                        <td>{categoryLabel(categoryOfMember(one, SEASON), t)}</td>
-                        <td>{one.birthYear}</td>
+                        <td>{categoryLabel(categoryOfMember(one), t)}</td>
                         <td>
                           <EditableCell
                             id={one.memberNumber}

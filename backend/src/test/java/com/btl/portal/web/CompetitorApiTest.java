@@ -28,7 +28,37 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class CompetitorApiTest {
 
 	/** Named here with the reason, because a lost field and a withheld one look alike. */
-	private static final String THE_YEAR_OF_BIRTH = "birthYear";
+	/*
+	 * THE YEAR OF BIRTH IS NO LONGER NAMED HERE, because the portal no longer serves it
+	 * (B52, 13.09.2026). `Answers` refuses a name the file does not carry, and rightly:
+	 * leaving `birthYear` in this list would excuse nothing and quietly stand in for a
+	 * field that went missing for some other reason. What the file carries in its place
+	 * is the age band, below.
+	 *
+	 * The claim itself has not gone anywhere. The year cannot leave a server that is
+	 * never asked for it, and `noYearOfBirthLeavesTheServer` asks the whole answer as
+	 * text rather than by field name.
+	 */
+	/**
+	 * SERVED BUT NOT ANSWERED YET, AND THAT IS A DEBT RATHER THAN A REFUSAL.
+	 *
+	 * <p>This is the one name in this list that is not withheld on purpose. The four
+	 * below are fields Article 73 and Article 74 keep off a public answer for ever. The
+	 * age band is the opposite: it is exactly what Article 74 says IS public („Javna je
+	 * samo kategorija koja iz njega proizlazi"), the portal began serving it on
+	 * 13.09.2026, and this resource owes it.
+	 *
+	 * <p>It is not here yet for the reason written on {@link com.btl.portal.web.CompetitorApi}:
+	 * the band is worked out from the year and the season, a member in their first season
+	 * carries that category instead, and which of the two applies depends on their whole
+	 * history of points (PDL P7, owner 03.08. and 11.08.2026). That is its own increment
+	 * on this server, the same way the points are.
+	 *
+	 * <p><b>The debt clears itself.</b> `Answers` asserts that a name in this list really
+	 * is absent from the answer, so the day this resource starts answering with the band
+	 * this case fails and the name has to come out. It cannot be forgotten here.
+	 */
+	private static final String THE_AGE_BAND_THIS_RESOURCE_STILL_OWES = "ageBand";
 	private static final String THE_REFERRAL_CODE = "referralCode";
 	private static final String WHO_HANDED_OUT_THE_CODE = "referredBy";
 	private static final String HOW_THE_MEMBERSHIP_IS_HELD = "membershipBasis";
@@ -155,11 +185,13 @@ class CompetitorApiTest {
 	 * member's own screens and the administration at once. This is that backend.
 	 *
 	 * <ul>
-	 * <li><b>The year of birth</b> and <b>how the membership is held</b>: Article 74
-	 * says a date of birth is never shown „ni u punom ni u skracenom obliku", and the
-	 * year is the shortened form; the same sentence goes on „Isto vazi za adresu
+	 * <li><b>How the membership is held</b>: Article 74 goes on „Isto vazi za adresu
 	 * elektronske poste, adresu, sve u vezi sa clanarinom i privatne poruke", and the
-	 * basis says who is exempt from paying.</li>
+	 * basis says who is exempt from paying. The year of birth stood beside it here until
+	 * 13.09.2026, when the portal stopped serving it at all (B52); the constant at the
+	 * head of this class says what happened to it.</li>
+	 * <li><b>The age band</b>, and it is the odd one out: not withheld but owed. See the
+	 * constant that names it.</li>
 	 * <li><b>The referral code</b> and <b>who handed it out</b>: Article 73 lists what
 	 * is public and neither is on it. The second one hides behind its name: the portal
 	 * reads `referredBy` as the CODE, not as a member number, so answering with either
@@ -173,7 +205,7 @@ class CompetitorApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors", answer(), "competitors.json",
-				THE_YEAR_OF_BIRTH, THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
+				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
 
@@ -280,8 +312,10 @@ class CompetitorApiTest {
 	 * AND NOTHING IN THE ANSWER IS A DATE OF BIRTH, in any spelling.
 	 *
 	 * <p>This is the case the resource exists for and the reason it was written before
-	 * the easier ones: what the portal serves today carries the year for all thirty
-	 * two members, and the policy that forbids it takes effect on 15.09.2026.
+	 * the easier ones. The portal served the year for all thirty two members until
+	 * 13.09.2026, when B52 took it out of the file and put the age band there instead,
+	 * ahead of the policy taking effect on 15.09.2026. That closed the public file; this
+	 * closes the server, and the two are separate doors onto the same fact.
 	 *
 	 * <p>Asked of the whole answer as TEXT rather than of a field name, because a year
 	 * is a year whatever it is called: a field renamed to `born`, or a year folded into

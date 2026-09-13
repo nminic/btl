@@ -256,8 +256,7 @@ export function rankingFor(
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
       (competitor) =>
-        filter.categoryCode === undefined ||
-        categoryOfMember(competitor, filter.season) === filter.categoryCode,
+        filter.categoryCode === undefined || categoryOfMember(competitor) === filter.categoryCode,
     )
     .map((competitor) => ({
       competitor,
@@ -477,28 +476,36 @@ export function rankTeams(
   return withPlaces(rows, BY_TEAM, (row) => row.team.id)
 }
 
-/** The category a member competes in for a season, derived rather than stored:
- *  the age band moves with the year, so storing it would go stale. */
-export function categoryOfMember(competitor: Competitor, season: number): string {
-  return categoryCodeFor(
-    competitor.gender,
-    competitor.birthYear,
-    season,
-    competitor.firstSeason2027,
-  )
+/**
+ * The category a member competes in.
+ *
+ * **No season, since 13.09.2026, and that is a statement rather than an
+ * omission.** This used to take one and work the band out from a year of birth,
+ * with a comment saying the band moves with the year so storing it would go
+ * stale. Both halves of that were true and the portal is no longer allowed the
+ * input: a year of birth is the short form of a date of birth, Član 74 says that
+ * is never shown, and a member's record is served publicly (ADL A8, `types.ts`).
+ * So the band is stored, it is the band for `SEASON`, and a season handed in here
+ * could not change the answer.
+ *
+ * Taking the parameter away rather than ignoring it is the point. It was already
+ * half ignored — the first season flag is stored, so a member who spent 2027 as a
+ * beginner was filed under that category in every season, and `profile/awards.ts`
+ * carried a note saying so. A function that accepts a season and does nothing with
+ * it reads as one that honours it, and every caller then believes something the
+ * code does not do.
+ */
+export function categoryOfMember(competitor: Competitor): string {
+  return categoryCodeFor(competitor.gender, competitor.ageBand, competitor.firstSeason2027)
 }
 
 /** Category codes present in a gender's field, in a stable order. */
-export function categoriesOf(
-  competitors: Competitor[],
-  gender: Gender,
-  season: number,
-): string[] {
+export function categoriesOf(competitors: Competitor[], gender: Gender): string[] {
   return [
     ...new Set(
       competitors
         .filter((competitor) => competitor.gender === gender)
-        .map((competitor) => categoryOfMember(competitor, season)),
+        .map((competitor) => categoryOfMember(competitor)),
     ),
   ].sort()
 }
