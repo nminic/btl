@@ -63,7 +63,7 @@ const MEMBERS: Competitor[] = [
     gender: 'M',
     city: 'Novi Sad',
     country: 'RS',
-    birthYear: 1988,
+    ageBand: '25-39',
     firstSeason2027: false,
     firstSeason: 2019,
     active: true,

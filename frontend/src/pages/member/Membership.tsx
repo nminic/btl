@@ -23,7 +23,6 @@ import {
   PROCESSING_FEE_EUR,
   REFERRAL,
   REFERRAL_ROW,
-  juniorInSeason,
   priceOn,
   registrationOpen,
   seasonBeingRenewed,
@@ -166,13 +165,37 @@ export function Membership() {
            the list of members and still in the sum here. ADL A8 says deleting a
            record frees the identity from everything, not only from a list. */
         const members = recordsOf(MEMBERS, competitors, overlay)
-        /* What this member actually owes, which is not always what the calendar
-           says the fee is. The junior price was on this screen as a sentence and
-           nowhere else: the code a member scans carried the adult figure, so
-           somebody born in 2014 read „Do 14 godina članarina je 20 EUR" and then
-           scanned a request for 4.200 RSD. The year of birth was on the record
-           the whole time. */
-        const due = juniorInSeason(nextSeason, me.birthYear) ? junior : price
+        /* What this member actually owes.
+
+           **The junior fee is no longer applied here, and this is a boundary
+           rather than an oversight** (13.09.2026). It used to be: the record
+           carried a year of birth, `juniorInSeason` read it, and the code a
+           member scanned matched the sentence above it. Before that it did not,
+           and somebody born in 2014 read „Do 14 godina članarina je 20 EUR" and
+           then scanned a request for 4.200 RSD.
+
+           That fault is back, for whoever is a junior, and it is back on purpose.
+           The year of birth has left the record because this record is served
+           publicly and Član 74 forbids it (`data/types.ts`). What the record now
+           carries is the age band, and a band cannot answer this: `24-` runs from
+           a newborn to somebody of twenty four, and the junior fee stops at
+           fifteen. Nothing else on the record narrows it.
+
+           The two ways out both cost something and neither is mine to choose, so
+           the question is the owner's and it is written down rather than guessed
+           at. Putting a junior mark on the record would publish, of the one member
+           it applies to, that they are a child — on a file anybody may read, and
+           the very thing ADL A8 names as the sharpest edge of serving this file at
+           all. Leaving it as it is means one member of thirty two is quoted the
+           adult figure until the backend knows who they are.
+
+           `juniorInSeason` is left standing in `data/pricing.ts` with nothing
+           calling it. It is the rule, it is measured through the season rather
+           than on the day, and it is deliberately not the sixteen of a parental
+           signature (PDL P23) — a distinction the owner corrected by hand once
+           already. It takes two numbers and not a record, so it asks nobody to put
+           a year of birth back where one may not be. */
+        const due = price
         const methods = methodsFor(me.country)
         /* What the member scans and what the association books. It named the
            first season for ever, so from October 2027 the heading would have

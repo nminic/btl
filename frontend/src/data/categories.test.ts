@@ -1,36 +1,50 @@
 import { sources } from '../test/sources'
-import { ageBandFor, categoryCodeFor, categoryLabel, firstSeasonAllowed } from './categories'
+import { AGE_BANDS, categoryCodeFor, categoryLabel, firstSeasonAllowed } from './categories'
 
 /** The smallest number of drawn screens that can still be all of them. There are
  *  around a hundred and twenty today and the largest single folder holds under
  *  thirty, so this floor cannot be met by any one folder. */
 const SCREENS = 90
 
-describe('ageBandFor', () => {
-  it('uses the age reached during the season, not the age on the day', () => {
-    // Turns 40 in November 2027: in the 40-54 band from 1 January 2027.
-    expect(ageBandFor(1987, 2027)).toBe('40-54')
-    expect(ageBandFor(1987, 2026)).toBe('25-39')
-  })
-
-  it('holds the boundaries the rulebook fixes', () => {
-    expect(ageBandFor(2003, 2027)).toBe('24-')
-    expect(ageBandFor(2002, 2027)).toBe('25-39')
-    expect(ageBandFor(1988, 2027)).toBe('25-39')
-    expect(ageBandFor(1973, 2027)).toBe('40-54')
-    expect(ageBandFor(1972, 2027)).toBe('55+')
+describe('AGE_BANDS', () => {
+  /* **What used to stand here, and where it went** (13.09.2026).
+   *
+   * Two cases held `ageBandFor(birthYear, season)`: that the age counted is the one
+   * reached during the calendar year rather than the age on the day, so somebody
+   * turning 40 in November 2027 is in the 40-54 band from 1 January; and the four
+   * boundaries themselves, read off the rulebook.
+   *
+   * Both are still the rule (PDL P7) and neither is measured here any more, because
+   * the function is gone: it took a year of birth, and the portal is not allowed one
+   * (Član 74, `data/types.ts`). The arithmetic belongs with whoever still has the
+   * date, which is the backend and the tool that writes the served file.
+   *
+   * **This is written down rather than left to be noticed.** The bands are now data
+   * that arrives already chosen, so what the portal can still hold is that the list
+   * of them is closed and that nothing outside it is ever served. The first is here;
+   * the second is `data/servedAge.test.ts`, over the file itself.
+   */
+  it('is the four the rulebook fixes and nothing else', () => {
+    /* No band for under eighteen and none for over sixty five, and the owner has
+       refused both (PDL P7). A fifth arriving here is a decision, so it is one that
+       has to be made in the open rather than by adding a string. */
+    expect([...AGE_BANDS]).toEqual(['24-', '25-39', '40-54', '55+'])
   })
 })
 
 describe('categoryCodeFor', () => {
   it('writes the band with the gender mark', () => {
-    expect(categoryCodeFor('M', 1985, 2027, false)).toBe('M40-54')
-    expect(categoryCodeFor('F', 1995, 2027, false)).toBe('Ž25-39')
+    expect(categoryCodeFor('M', '40-54', false)).toBe('M40-54')
+    expect(categoryCodeFor('F', '25-39', false)).toBe('Ž25-39')
   })
 
   it('puts a first season member in their own category instead of a band', () => {
-    expect(categoryCodeFor('M', 1985, 2027, true)).toBe('M R')
-    expect(categoryCodeFor('F', 1995, 2027, true)).toBe('Ž R')
+    /* And the band they would otherwise have carried is not in the answer at all:
+       a beginner is in one category and not in two (owner, 03.08.2026). Handed a
+       band that differs between the two calls, so a code that leaked it would come
+       out differently and not merely look the same. */
+    expect(categoryCodeFor('M', '40-54', true)).toBe('M R')
+    expect(categoryCodeFor('F', '24-', true)).toBe('Ž R')
   })
 })
 
