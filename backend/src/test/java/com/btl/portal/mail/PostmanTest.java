@@ -13,10 +13,13 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -346,32 +349,22 @@ class PostmanTest {
 	}
 
 	/**
-	 * AND THE INSTALLATION THAT ACTUALLY SIGNS IN SETS BOTH SWITCHES.
+	 * A KEY FOR THE RELAY NEVER TRAVELS WITHOUT TLS, on EVERY installation this repo
+	 * deploys and not on the one somebody thought of.
 	 *
-	 * <p>The guard in the constructor stops a portal configured this way from
-	 * starting, which is the loud half. This is the quiet half: it reads the file QA
-	 * is deployed from and requires the pair to be together there, so the mistake is
-	 * caught by a red test rather than by a server that will not come up in the
-	 * middle of a deploy.
-	 *
-	 * <p><b>It PARSES the file rather than searching it, and a round on 12.09.2026
-	 * is why.</b> Written as a search for the text {@code SMTP_AUTH: "true"} it was
-	 * proven green while lying in both directions: the same setting written without
-	 * quotes is valid YAML, means the same thing to Compose, and slipped past it;
-	 * and a line commented out still satisfied it, because the text was still in the
-	 * file. Read as values, an unquoted true is a boolean and a commented line is
-	 * not a key at all.
-	 *
-	 * <p><b>And what it asks about is the CREDENTIALS</b>, not the {@code auth}
-	 * switch, for the same reason the constructor does: a name and a key are what
-	 * make Jakarta Mail sign in, and that switch has no say in it.
+	 * <p><b>The files are found, not named.</b> Until 13.09.2026 this read
+	 * {@code compose.qa.yml} by its name, and on that day production got a stack of its
+	 * own. Measured the same day: deleting {@code STARTTLS_REQUIRED} from the production
+	 * file left the whole suite green, because nothing opened it. A list of one name is a
+	 * list, and the file system already knows the answer.
 	 */
-	@Test
-	void theInstallationThatSignsInAlsoRequiresTls() throws Exception {
-		Map<String, Object> forTheBackend = deployedEnvironment();
+	@ParameterizedTest
+	@MethodSource("everyStackThisRepoDeploys")
+	void everyInstallationThatSignsInAlsoRequiresTls(Path stack) throws Exception {
+		Map<String, Object> forTheBackend = backendEnvironmentOf(stack);
 
 		assertThat(forTheBackend)
-				.as("the QA stack no longer configures mail at all, so this compares nothing")
+				.as("%s no longer configures mail at all, so this compares nothing", stack)
 				.containsKey("SPRING_MAIL_USERNAME");
 
 		boolean signsIn = Stream.of("SPRING_MAIL_USERNAME", "SPRING_MAIL_PASSWORD")
@@ -380,19 +373,46 @@ class PostmanTest {
 		if (signsIn) {
 			assertThat(String.valueOf(
 					forTheBackend.get("SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED")))
-					.as("QA carries a key for the relay and does not require TLS, so the key can be"
-							+ " stripped onto a clear connection")
+					.as("%s carries a key for the relay and does not require TLS, so the key can be"
+							+ " stripped onto a clear connection", stack)
 					.isEqualTo("true");
 		}
 	}
 
-	/** What the QA stack actually hands the backend, read as values and not as text. */
+	/**
+	 * Every compose file in `deploy`, asked of the folder rather than written here.
+	 *
+	 * <p>The floor under the floor: if the folder ever holds none, or holds only one when
+	 * the repo deploys two, the case below says so instead of quietly measuring less.
+	 */
+	private static Stream<Path> everyStackThisRepoDeploys() throws Exception {
+		try (Stream<Path> inside = Files.list(Path.of("..", "deploy"))) {
+			List<Path> stacks = inside
+					.filter(one -> one.getFileName().toString().startsWith("compose."))
+					.filter(one -> one.getFileName().toString().endsWith(".yml"))
+					.sorted().toList();
+
+			assertThat(stacks)
+					.as("deploy holds no compose file at all, so nothing was measured")
+					.hasSizeGreaterThanOrEqualTo(2);
+
+			return stacks.stream();
+		}
+	}
+
+	/** What one stack actually hands the backend, read as values and not as text. */
 	@SuppressWarnings("unchecked")
-	private static Map<String, Object> deployedEnvironment() throws Exception {
+	private static Map<String, Object> backendEnvironmentOf(Path stack) throws Exception {
 		Map<String, Object> compose = new Yaml()
-				.load(Files.readString(Path.of("..", "deploy", "compose.qa.yml"), StandardCharsets.UTF_8));
+				.load(Files.readString(stack, StandardCharsets.UTF_8));
 		Map<String, Object> services = (Map<String, Object>) compose.get("services");
 		Map<String, Object> backend = (Map<String, Object>) services.get("backend");
+
+		assertThat(backend)
+				.as("%s deploys no backend at all, so it hands it no settings; if that is on"
+						+ " purpose this case has to say which stacks carry one", stack)
+				.isNotNull();
+
 		Object environment = backend.get("environment");
 
 		/* Compose takes `environment` as a map or as a list of `KEY=value`, and this
@@ -401,13 +421,14 @@ class PostmanTest {
 		   person would be tempted to make the failure go away rather than to keep what
 		   it was guarding. So it says what it needs and why. */
 		assertThat(environment)
-				.as("the QA stack writes its settings as a list rather than a map, and this case"
-						+ " reads the map - rewrite it to read both rather than dropping it, because"
-						+ " what it holds is that a key for the relay never travels without TLS")
+				.as("%s writes its settings as a list rather than a map, and this case reads the"
+						+ " map - rewrite it to read both rather than dropping it, because what it"
+						+ " holds is that a key for the relay never travels without TLS", stack)
 				.isInstanceOf(Map.class);
 
 		return (Map<String, Object>) environment;
 	}
+
 
 	/** A sender that is never used, for the cases that only build a postman. */
 	private static JavaMailSenderImpl anywhere() {
