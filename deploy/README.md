@@ -121,11 +121,12 @@ message:
 a missing relay key must never keep the public site down, so the stack starts without them. What it
 does not do is send. No address is ever confirmed and no password is ever reset.
 
-**And there is no line in a log to find.** `Postman.send` throws to whoever asked for the message
-rather than swallowing it, and nothing catches it, so the failure reaches the member who pressed the
-button and nobody else. Looking for it in `docker compose logs backend` is looking for something
-that was never written. **Both or neither:** the key is shown by Brevo exactly once, so the moment
-to paste it is also the moment to paste the login beside it.
+**And nothing sends anything yet, which is the first thing to know.** No endpoint asks for a
+message: `Postman` has no caller in `backend/src/main`, only its own test. Pasting the key
+turns nothing on by itself. When a caller does exist, `Postman.send` throws to whoever asked
+rather than swallowing it, so the failure reaches the member who pressed the button and not
+a log. **Both or neither:** the key is shown by Brevo exactly once, so the moment to paste
+it is also the moment to paste the login beside it.
 
 `PROD_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
 anything and names the variable, rather than starting the production database
@@ -207,6 +208,34 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://balkanskatrkackaliga.net/api/
 # 502 means nginx reached nobody, so the backend is down or was never started.
 # 200 would mean this path had been opened to anybody, which it is not.
 ```
+
+### When a member says they cannot sign in
+
+Before looking at the backend at all, rule out the rate limit. Since 13.09.2026
+`frontend/nginx.conf` answers **429** to the seventh sign-in attempt in quick succession
+from one visitor, and it does so **without ever reaching the backend**.
+
+That makes the state look worse than it is: `docker compose ps` shows the backend and the
+database `Up (healthy)` and the frontend a plain `Up` (it carries no healthcheck, see above),
+and `docker compose logs backend` shows nothing at all, because the request never got there.
+Healthy containers and a silent log is the picture that looks most like a deep fault and is
+not one.
+
+```bash
+docker compose -f compose.prod.yml logs frontend --since 30m | grep 'limiting requests'
+```
+
+Nothing in that output means the limit is not what stopped them. A line there names the
+address that was limited.
+
+**One member refused is the limit doing its job. Every member refused at once is not.** The
+limit is keyed on the address the edge proxy forwards, so visitors are counted apart from
+each other - as long as they really arrive apart. Two ways they do not, and both point at
+`frontend/nginx.conf` rather than at the backend: the forwarded address stopped arriving at
+all, so everybody fell into one bucket; or many visitors share one rightmost forwarded
+address, which is what a CDN in proxy mode or a large NAT looks like from here. **The second
+has not been measured against this deployment** and is written down so that whoever meets it
+does not spend the night in the database.
 
 ### What production costs in memory
 
@@ -516,28 +545,6 @@ key.
 The same hard rules apply as in production: never bind ports 80 or 443, and
 never run `docker compose down`, because it deletes the network the edge proxy
 is attached to.
-
-
-### When a member says they cannot sign in
-
-Before looking at the backend at all, rule out the rate limit. Since 13.09.2026
-`frontend/nginx.conf` answers **429** to more than ten sign-in attempts a minute from
-one visitor, and it does so **without ever reaching the backend**, so `docker compose
-logs backend` shows nothing at all. Every container is `Up (healthy)` and the log is
-silent, which is the state that looks most like a deeper fault and is not one.
-
-```bash
-docker compose -f compose.prod.yml logs frontend --since 30m | grep 'limiting requests'
-```
-
-Nothing in that output means the limit is not what stopped them. A line there names the
-address that was limited.
-
-The limit is keyed on the address the edge proxy forwards, so one member being refused
-does not refuse anybody else. If EVERY member is refused at once, that is the failure
-the configuration warns about: the forwarded address stopped arriving, everybody fell
-into one bucket, and the file to look at is `frontend/nginx.conf` rather than the
-backend.
 
 ## Known gaps
 
