@@ -27,6 +27,11 @@ the frontend reaches them, so the edge proxy needs no change for either.
 
 ## Deploying a new version
 
+**The first time, `/opt/btl/deploy/.env` has to exist before any of this runs.**
+Without `PROD_POSTGRES_PASSWORD` in it, every `docker compose` command against
+this file refuses and names the variable. See "What the owner must put in `.env`"
+below.
+
 ```bash
 ssh root@btl-prod
 cd /opt/btl && git pull
@@ -57,8 +62,8 @@ docker compose -f compose.prod.yml up -d --build frontend
 
 ### Never run `docker compose down` on this project
 
-It was already the rule before there was a database, and the database makes the
-second half of it worse.
+It was already the rule before there was a database. The database adds a second
+way for it to go wrong, and that one is not an outage but a loss.
 
 **It takes the network with it.** The Compose network of this project,
 `deploy_default`, is the network the edge proxy attaches to as an external
@@ -140,11 +145,12 @@ cd /opt/btl/deploy
 docker compose -f compose.prod.yml ps
 ```
 
-All three must read `Up`, and `deploy-backend-1` must read `Up (healthy)`. That
-is the same question the container healthcheck asks rather than a second opinion:
-it curls `/actuator/health`, whose aggregate status includes Spring's DataSource
-indicator, so it goes red when the database is unreachable and not only when the
-process has died.
+All three must read `Up`. `deploy-postgres-1` and `deploy-backend-1` carry a
+healthcheck and must read `Up (healthy)`; `deploy-frontend-1` has none and reads
+a plain `Up`. That is the same question the backend's own healthcheck asks rather
+than a second opinion: it curls `/actuator/health`, whose aggregate status
+includes Spring's DataSource indicator, so it goes red when the database is
+unreachable and not only when the process has died.
 
 **`healthy` is not enough by itself, and this is where production differs from
 QA.** A backend that came up against an *empty* schema also answers `UP`, because
@@ -155,15 +161,19 @@ copy that line, so the question is put to the database instead, which is the
 better floor anyway:
 
 ```bash
-docker compose -f compose.prod.yml exec -T postgres \
-  psql -U btl -d btl -tAc \
-  "select count(*) from flyway_schema_history where success"
+docker compose -f compose.prod.yml exec -T postgres sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
+   "select count(*) from flyway_schema_history where success"'
 ls ../backend/src/main/resources/db/migration/V*__*.sql | wc -l
 ```
 
 **The two numbers must be equal.** They are the count of migrations Flyway has
-applied and the count of migration files this checkout carries; a number read off
-this page instead would be wrong the first time somebody merged a migration. If
+applied and the count of migration files this checkout carries; a number written
+on this page instead would be wrong the first time somebody merged a migration.
+The role and the database are read out of the container's own environment for the
+same reason, rather than written here: whatever `PROD_POSTGRES_USER` and
+`PROD_POSTGRES_DB` were set to on this host is what the container was started
+with, and that is the only copy that cannot be stale. If
 the first command errors because `flyway_schema_history` does not exist, Flyway
 never ran, and the backend log says why:
 
