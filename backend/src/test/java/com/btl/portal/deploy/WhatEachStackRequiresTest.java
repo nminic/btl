@@ -3,54 +3,68 @@ package com.btl.portal.deploy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.yaml.snakeyaml.Yaml;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
- * WHICH SETTINGS A STACK REFUSES TO DEPLOY WITHOUT, AND WHICH IT DEPLOYS WITHOUT ON
- * PURPOSE.
+ * WHICH SETTINGS A STACK REFUSES TO DEPLOY WITHOUT, ASKED OF COMPOSE ITSELF.
  *
- * <p><b>Why this exists at all.</b> Measured on 13.09.2026, on the tree as committed:
- * the whole deploy contract had no reader. Four mutations were written into
+ * <p><b>Why this exists at all.</b> Measured on 13.09.2026, on the tree as it then
+ * stood: the whole deploy contract had no reader. Four mutations were written into
  * {@code compose.prod.yml} one at a time and every one of them left both gates green -
  * making the mail login required, making the mail key required, taking the variable's
  * name out of the message that refuses the deploy, and the one that matters most,
- * <b>taking the {@code :?} off the production database password</b>. That last one is
- * the sentence the other three are written against, and nothing anywhere was holding
- * it. A precedent nobody measures is not a precedent, it is a habit.
+ * <b>taking the {@code :?} off the production database password</b>. A precedent nobody
+ * measures is not a precedent, it is a habit.
  *
- * <p><b>What the forms actually mean, because the difference is a deployment and not a
- * style.</b> Compose interpolates the WHOLE file before it looks at which services the
- * command named, which was measured on QA on 09.09.2026 and is written down in
- * {@code btl-produkt/ADL.md} A4a: a missing {@code :?} variable aborts
- * {@code up -d --build frontend}, a command that does not mention the database at all.
- * So {@code :?} does not merely stop a first boot. It stops EVERY command over that
- * file until somebody has pasted a value in. That is exactly right for a database
- * password, and it is a decision rather than an oversight for anything else.
+ * <p><b>Why it asks Compose instead of reading the file, which is the fourth answer to
+ * this question and the first one with a bottom.</b> Three drafts tried to recognise how
+ * an interpolation was WRITTEN, and review took all three apart, each time on a shape
+ * the previous draft had not imagined:
  *
- * <p><b>And the colon is not decoration, which a review measured on this very file.</b>
- * {@code :?} refuses when the variable is unset OR EMPTY; plain {@code ?} refuses only
- * when it is unset, and an empty one walks through. That distinction is the whole point
- * here rather than a detail: {@code .env.example} ships every password EMPTY on purpose
- * and the runbook says to copy it, so under {@code ?} production would start with a
- * blank superuser password - and {@code initdb} sets it only on an empty volume, so
- * editing the file afterwards does not change it. The first draft of this class folded
- * {@code :?} and {@code ?} into one value and a one-character mutation walked past it,
- * proven with {@code docker compose config}. Every operator is therefore held as
- * ITSELF, never as a category.
+ * <ol>
+ * <li>a table keyed on {@code :?} versus {@code :-}, which folded {@code :?} and plain
+ *     {@code ?} into one value - and those two differ on exactly the case this repo
+ *     ships, an EMPTY value;
+ * <li>a pattern for {@code ${...}}, which read {@code $${...}} - Compose's escape, a dead
+ *     literal - as a live requirement, and never saw bare {@code $NAME} at all;
+ * <li>a forward scanner, which took the first {@code &#125;} as the end and so walked
+ *     straight past {@code ${OUTER:-${INNER:?...}}}, where the inner one is live and can
+ *     turn the whole stack down.
+ * </ol>
+ *
+ * <p>The number of ways to write the same thing is not finite from where a reader of text
+ * stands. From where Compose stands it is one. So this runs
+ * {@code docker compose config} and asks the only question that matters: <b>does this
+ * stack refuse to come up when this setting has no value?</b>
+ *
+ * <p><b>And it asks that twice, unset and empty, because those are two questions.</b>
+ * {@code :?} refuses both; plain {@code ?} refuses only the first. Measured on Compose
+ * v5.3.1: {@code ${V?msg}} with {@code V=} renders {@code ""} and exits 0, while
+ * {@code ${V:?msg}} with the same {@code V=} exits 1 and names the variable. That is not
+ * a nicety - {@code .env.example} ships every password EMPTY on purpose and
+ * {@code deploy/README.md} says to copy it, so under {@code ?} production comes up with a
+ * blank superuser password, which {@code initdb} then keeps, because it sets one only on
+ * an empty volume.
+ *
+ * <p><b>What the file itself says is not even asked, and one measurement says why.</b>
+ * {@code docker-compose.yml} writes {@code POSTGRES_PASSWORD} twice, once as
+ * {@code :?} and once bare, and {@code docker compose config --variables} reports it
+ * REQUIRED=false - while Compose itself refuses the file. The column describes the text;
+ * the exit code describes the deployment. This holds the exit code.
  *
  * <p><b>What this therefore claims, exactly:</b> that nobody changes what a stack does
  * when a setting has no value WITHOUT MEANING TO. Either direction is a changed table,
@@ -63,454 +77,416 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <li>It does not know whether a classification is RIGHT. Whoever changes the table is
  *     the person who has to answer that, and the paragraphs above are what they should
  *     read first.
- * <li>It does not read the WORDING of the message a required variable refuses with, only
- *     that the message names the variable it is about. Prose does not converge. What the
- *     name is holding is a different hazard, and a live one: the two compose files are
- *     near-copies of each other and say so, so the message that travels with a
- *     copy-pasted line is the one that names the OTHER stack's variable.
- * <li>It cannot know what any {@code .env} on any host actually holds. That file is not
- *     in this repository and is never read from here.
+ * <li>It cannot know what any {@code .env} on any host holds. Every probe below runs with
+ *     {@code --env-file} pointed at an EMPTY file precisely so that a developer who has a
+ *     real one is not measured against it, and so that nothing here ever reads it.
+ * <li><b>It holds one of the five places this decision is written.</b> The other four are
+ *     prose and it does not read them: the comment beside the mail credentials in
+ *     {@code deploy/compose.prod.yml}, the same comment in {@code deploy/compose.qa.yml},
+ *     the table and two paragraphs in {@code deploy/README.md}, and the header above the
+ *     mail block in {@code .env.example}. Moving a setting here without rewriting those
+ *     four leaves four sentences claiming the opposite of what the stack does.
  * </ol>
  */
 class WhatEachStackRequiresTest {
 
-	/**
-	 * What a stack does with one setting when that setting has no value.
-	 *
-	 * <p>Compose's operators, one constant each, because the difference between two of
-	 * them is a blank production password. The set is closed - these seven are all there
-	 * are - which is what lets the reader below refuse an eighth shape by name instead of
-	 * skipping it.
-	 */
+	/** A value no deployment would ever hold, for the settings a probe is not asking about. */
+	private static final String PLACEHOLDER = "pr275-probe-placeholder";
+
+	/** What a stack does when one setting has no value, read off Compose's own exit code. */
 	private enum Asking {
-		/** {@code ${NAME}} or {@code $NAME} - comes up, and substitutes a blank. */
-		SUBSTITUTES_BLANK(""),
-		/** {@code :?} - refuses the whole file when unset OR empty. */
-		REFUSES_UNSET_OR_EMPTY(":?"),
-		/** {@code ?} - refuses only when unset; an EMPTY value walks through. */
-		REFUSES_UNSET_ONLY("?"),
-		/** {@code :-} - falls back to the default when unset or empty. */
-		DEFAULTS_UNSET_OR_EMPTY(":-"),
-		/** {@code -} - falls back only when unset; an empty value stays empty. */
-		DEFAULTS_UNSET_ONLY("-"),
-		/** {@code :+} - substitutes the alternate only when set and non-empty. */
-		ALTERNATE_IF_NON_EMPTY(":+"),
-		/** {@code +} - substitutes the alternate whenever set, empty included. */
-		ALTERNATE_IF_SET("+");
-
-		private final String operator;
-
-		Asking(String operator) {
-			this.operator = operator;
-		}
-
-		static Asking of(String operator) {
-			for (Asking one : values()) {
-				if (one.operator.equals(operator)) {
-					return one;
-				}
-			}
-
-			return null;
-		}
-	}
-
-	/** One {@code $...} the reader found, kept with its text so the message can be read. */
-	private record Occurrence(String name, Asking asking, String tail) { }
-
-	/**
-	 * What the table holds about one setting: how the stack asks, and IN HOW MANY PLACES.
-	 *
-	 * <p><b>The count is not bookkeeping, and a review measured why.</b> A password is
-	 * asked for twice - once for the database container and once for the backend that
-	 * dials it - and the table used to key on the name alone. So disarming ONE of the two
-	 * left the other one satisfying the table, and the gate stayed green. Measured with
-	 * {@code docker compose config}: writing {@code $$} in front of one of them turns that
-	 * requirement into a literal string, the deploy is no longer refused, and what reaches
-	 * the container is the raw template instead of the secret. Pasting a password straight
-	 * into one of the two lines has exactly the same shape, and the same count catches it.
-	 */
-	private record Held(Asking asking, int places) { }
-
-	private static Held asked(Asking asking, int places) {
-		return new Held(asking, places);
+		/** Refuses the whole file when the setting is unset AND when it is empty. */
+		REFUSES_UNSET_OR_EMPTY,
+		/** Refuses when unset, but an EMPTY value walks through. */
+		REFUSES_UNSET_ONLY,
+		/** Comes up either way, which for a credential is a decision and not an oversight. */
+		DEPLOYS_WITHOUT_IT
 	}
 
 	/**
-	 * THE TABLE, per stack and not per name, and the floor under it is the two cases that
-	 * make it close over the files in both directions.
+	 * THE TABLE, per stack, and the two cases below close it over the files both ways.
 	 *
 	 * <p>Written out rather than derived because what it holds cannot be derived - it is
-	 * the decision itself, one line per variable. The precedent for a hand-written table
+	 * the decision itself, one line per setting. The precedent for a hand-written table
 	 * with a derived floor beside it is
 	 * {@code frontend/src/test/pages/publicData.test.tsx}.
 	 *
 	 * <p><b>Keyed by the file as well as the name, and that is not tidiness.</b>
-	 * {@code compose.prod.yml:30-34} records the decision that the database, the role,
-	 * the password and the relay key must NOT be shared between the two stacks, and that
-	 * different names are what make that a property of the files instead of a rule
-	 * somebody has to remember. A table keyed by name alone lets a line copied from one
-	 * file into the other pass, which a review measured: production's healthcheck asking
-	 * for {@code QA_POSTGRES_USER} left the whole suite green, and on a server it is a
-	 * container that never turns healthy and a backend held down behind it.
+	 * {@code compose.prod.yml:30-34} records the decision that the two stacks must NOT
+	 * share a database, a role, a password or a relay key, and that different names are
+	 * what make that a property of the files instead of a rule somebody has to remember.
 	 *
-	 * <p><b>The two mail credentials are optional on both stacks on purpose, and that is
-	 * the oldest sentence in this table.</b> It is written in four places -
-	 * {@code compose.prod.yml}, {@code compose.qa.yml}, {@code deploy/README.md} and
-	 * {@code .env.example} - and it says: a portal that serves every page and cannot send
-	 * a confirmation mail is a smaller failure than a portal that is down. Read the
-	 * paragraph about A4a at the top of this file before moving either of them, because
-	 * moving them does not make production loud, it makes production undeployable while
-	 * the key is absent.
+	 * <p><b>The two mail credentials deploy without them on purpose, and that is the
+	 * oldest sentence in this table.</b> A portal that serves every page and cannot send a
+	 * confirmation mail is a smaller failure than a portal that is down. Before moving
+	 * either of them, read {@code btl-produkt/ADL.md} A4a: Compose interpolates the whole
+	 * file before it reads which services a command named, so a setting that refuses turns
+	 * down EVERY command over that file - the frontend-only deploy included. Moving these
+	 * does not make production loud, it makes production undeployable while the key is
+	 * absent.
 	 */
-	private static final Map<String, Map<String, Held>> HELD = held();
+	private static final Map<String, Map<String, Asking>> HELD = held();
 
-	private static Map<String, Map<String, Held>> held() {
-		Map<String, Map<String, Held>> table = new LinkedHashMap<>();
+	private static Map<String, Map<String, Asking>> held() {
+		Map<String, Map<String, Asking>> table = new LinkedHashMap<>();
 
-		/* The database name, the role and the password are each asked for by the postgres
-		   container AND by the backend that dials it, which is why the counts are not all
-		   one: the name and the role are also in the healthcheck. */
 		table.put("compose.prod.yml", Map.of(
-				"PROD_POSTGRES_DB", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 3),
-				"PROD_POSTGRES_USER", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 3),
-				"PROD_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2),
-				"PROD_MAIL_HOST", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1),
-				"PROD_MAIL_PORT", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1),
-				"PROD_MAIL_USERNAME", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1),
-				"PROD_MAIL_PASSWORD", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1)));
+				"PROD_POSTGRES_DB", Asking.DEPLOYS_WITHOUT_IT,
+				"PROD_POSTGRES_USER", Asking.DEPLOYS_WITHOUT_IT,
+				"PROD_POSTGRES_PASSWORD", Asking.REFUSES_UNSET_OR_EMPTY,
+				"PROD_MAIL_HOST", Asking.DEPLOYS_WITHOUT_IT,
+				"PROD_MAIL_PORT", Asking.DEPLOYS_WITHOUT_IT,
+				"PROD_MAIL_USERNAME", Asking.DEPLOYS_WITHOUT_IT,
+				"PROD_MAIL_PASSWORD", Asking.DEPLOYS_WITHOUT_IT));
 
 		table.put("compose.qa.yml", Map.of(
-				"QA_POSTGRES_DB", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 3),
-				"QA_POSTGRES_USER", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 3),
-				"QA_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2),
-				"QA_MAIL_HOST", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1),
-				"QA_MAIL_PORT", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1),
-				"QA_MAIL_USERNAME", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1),
-				"QA_MAIL_PASSWORD", asked(Asking.DEFAULTS_UNSET_OR_EMPTY, 1)));
+				"QA_POSTGRES_DB", Asking.DEPLOYS_WITHOUT_IT,
+				"QA_POSTGRES_USER", Asking.DEPLOYS_WITHOUT_IT,
+				"QA_POSTGRES_PASSWORD", Asking.REFUSES_UNSET_OR_EMPTY,
+				"QA_MAIL_HOST", Asking.DEPLOYS_WITHOUT_IT,
+				"QA_MAIL_PORT", Asking.DEPLOYS_WITHOUT_IT,
+				"QA_MAIL_USERNAME", Asking.DEPLOYS_WITHOUT_IT,
+				"QA_MAIL_PASSWORD", Asking.DEPLOYS_WITHOUT_IT));
+
+		/* The development stack in the repository root, which CLAUDE.md tells a developer
+		   to run as `docker compose up -d postgres`. Its password is required too, and it
+		   is the one whose REQUIRED column lies. */
+		table.put("docker-compose.yml", Map.of(
+				"POSTGRES_DB", Asking.DEPLOYS_WITHOUT_IT,
+				"POSTGRES_USER", Asking.DEPLOYS_WITHOUT_IT,
+				"POSTGRES_PASSWORD", Asking.REFUSES_UNSET_OR_EMPTY));
 
 		return Map.copyOf(table);
 	}
 
 	/**
-	 * EVERY SETTING A STACK ASKS FOR DOES WHAT THE TABLE SAYS WHEN IT HAS NO VALUE.
+	 * EVERY SETTING A STACK ASKS FOR BEHAVES THE WAY THE TABLE SAYS WHEN IT HAS NO VALUE.
 	 *
-	 * <p>Putting a {@code :?} on a mail credential, taking the one off a database
-	 * password, or weakening it to {@code ?}, changes a line here and stops by name.
+	 * <p>Measured by running Compose twice per setting - once with it unset, once with it
+	 * empty - with every other setting held at a placeholder, so the only thing missing is
+	 * the one being asked about.
 	 */
 	@ParameterizedTest
 	@MethodSource("everyStackThisRepoDeploys")
-	void everySettingIsAskedForExactlyAsItIsHeld(Path stack) throws Exception {
+	void everySettingBehavesExactlyAsItIsHeld(Path stack) throws Exception {
 		String named = stack.getFileName().toString();
-		Map<String, Held> expected = HELD.get(named);
+		Map<String, Asking> expected = HELD.get(named);
 
 		assertThat(expected)
-				.as("deploy/ carries %s and nothing says what any of its settings do when they"
-						+ " have no value; add a section for it to the table in this file, which is"
-						+ " the moment to decide", named)
+				.as("the repository carries %s and nothing says what any of its settings do when"
+						+ " they have no value; add a section for it to the table in this file,"
+						+ " which is the moment to decide", named)
 				.isNotNull();
 
-		Map<String, Held> found = askingOf(stack);
+		List<String> settings = settingsOf(stack);
 
-		assertThat(found)
+		assertThat(settings)
 				.as("%s asks the environment for nothing at all, so this measures nothing", named)
 				.isNotEmpty();
 
-		for (Map.Entry<String, Held> one : found.entrySet()) {
+		for (String setting : settings) {
 			assertThat(expected)
 					.as("%s asks for %s and nothing says what the stack does when it has no value;"
-							+ " add it to the table in this file. If it came from the other stack by"
-							+ " copy, the names are deliberately different so that the two cannot"
-							+ " share a database, a role, a password or a relay key", named,
-							one.getKey())
-					.containsKey(one.getKey());
+							+ " add it to the table in this file. If it came from another stack by"
+							+ " copy, the names are deliberately different so that no two stacks can"
+							+ " share a database, a role, a password or a relay key", named, setting)
+					.containsKey(setting);
 
-			assertThat(one.getValue().asking())
-					.as("%s changed what happens when %s has no value: it is held as %s and the file"
-							+ " now says %s. Compose interpolates the whole file before it reads"
+			Asking answered = behaviourOf(stack, settings, setting);
+
+			assertThat(answered)
+					.as("%s changed what it does when %s has no value: it is held as %s and Compose"
+							+ " now answers %s. Compose interpolates the whole file before it reads"
 							+ " which services a command named, so a setting that refuses turns down"
 							+ " EVERY command over this file, the frontend-only deploy included. And"
-							+ " the colon is not decoration: ':?' refuses an EMPTY value too, plain"
-							+ " '?' lets it through, and every password in .env.example ships empty",
-							named, one.getKey(), expected.get(one.getKey()).asking(),
-							one.getValue().asking())
-					.isEqualTo(expected.get(one.getKey()).asking());
-
-			assertThat(one.getValue().places())
-					.as("%s asks for %s in %d places and it is held as %d. A place that stopped"
-							+ " asking is a value that now comes from somewhere else - a literal"
-							+ " pasted in, or a '$$' that turned the requirement into dead text -"
-							+ " and the remaining places go on satisfying every other case here",
-							named, one.getKey(), one.getValue().places(),
-							expected.get(one.getKey()).places())
-					.isEqualTo(expected.get(one.getKey()).places());
+							+ " refusing an unset value is not the same as refusing an EMPTY one:"
+							+ " every password in .env.example ships empty and the runbook says to"
+							+ " copy it", named, setting, expected.get(setting), answered)
+					.isEqualTo(expected.get(setting));
 		}
 	}
 
 	/**
 	 * AND THE TABLE HOLDS THE STACKS AND NOTHING ELSE.
 	 *
-	 * <p>The floor under the table, without which it is only another list: a variable
-	 * deleted from a compose file leaves a line here that measures a file nobody reads,
-	 * and the next person reads the table as if it were true.
+	 * <p>The floor under the table, without which it is only another list: a setting
+	 * deleted from a stack leaves a line here that measures a file nobody reads, and the
+	 * next person reads the table as if it were true.
 	 */
 	@Test
 	void theTableNamesEverySettingTheStacksAskForAndNoOthers() throws Exception {
-		Set<String> everyStack = new TreeSet<>();
+		TreeSet<String> everyStack = new TreeSet<>();
 
 		for (Path stack : everyStackThisRepoDeploys().toList()) {
 			String named = stack.getFileName().toString();
 
 			everyStack.add(named);
 
-			Map<String, Held> expected = HELD.get(named);
+			Map<String, Asking> expected = HELD.get(named);
 
 			if (expected == null) {
 				continue;
 			}
 
-			assertThat(askingOf(stack).keySet())
+			assertThat(settingsOf(stack))
 					.as("the table says %s asks for settings it no longer asks for, so those lines"
 							+ " measure nothing; delete them or find out what the file lost", named)
 					.containsAll(expected.keySet());
 		}
 
 		assertThat(everyStack)
-				.as("the table holds a stack that is no longer in deploy/, so a whole section of it"
-						+ " measures nothing")
+				.as("the table holds a stack the repository no longer carries, so a whole section"
+						+ " of it measures nothing")
 				.containsAll(HELD.keySet());
 	}
 
 	/**
-	 * AND A SETTING THAT TURNS DOWN THE DEPLOY SAYS WHICH SETTING IT IS.
+	 * AND A SETTING THAT TURNS THE DEPLOY DOWN SAYS WHICH SETTING IT IS.
 	 *
-	 * <p>Compose prints its own sentence first - {@code required variable NAME is missing
-	 * a value} - so the name does reach whoever is standing on the server. What the text
-	 * after it adds is WHERE to put the value, and the hazard it guards is the live one:
-	 * the two compose files are near-copies and say so in their own headers, so a line
-	 * carried from one to the other arrives with the other stack's name in its message
-	 * and sends the reader to set a variable this stack never reads.
-	 *
-	 * <p>Every occurrence is read, not one. Compose refuses at the FIRST it reaches,
-	 * which is not the last one written: an earlier draft of this case kept only the last
-	 * and a mutation to the first walked past it.
+	 * <p>Compose prints its own sentence first, {@code required variable NAME is missing a
+	 * value}, so the name does reach whoever is standing on the server. What the text
+	 * AFTER it adds is where to put the value, and that is the half this reads: the two
+	 * deploy files are near-copies and say so in their own headers, so a line carried from
+	 * one to the other arrives with the other stack's name in its message and sends the
+	 * reader to set a variable this stack never reads.
 	 */
 	@ParameterizedTest
 	@MethodSource("everyStackThisRepoDeploys")
 	void everySettingThatTurnsDownTheDeployNamesItself(Path stack) throws Exception {
-		List<Occurrence> refusing = occurrencesIn(stack).stream()
-				.filter(one -> one.asking() == Asking.REFUSES_UNSET_OR_EMPTY
-						|| one.asking() == Asking.REFUSES_UNSET_ONLY)
-				.toList();
+		List<String> settings = settingsOf(stack);
+		List<String> refusing = new ArrayList<>();
+
+		for (String setting : settings) {
+			if (behaviourOf(stack, settings, setting) != Asking.DEPLOYS_WITHOUT_IT) {
+				refusing.add(setting);
+			}
+		}
 
 		assertThat(refusing)
-				.as("%s turns down the deploy for nothing, so this measures nothing; the database"
-						+ " password is required on every stack this repo deploys", stack)
+				.as("%s turns the deploy down for nothing, so this measures nothing; every stack"
+						+ " this repo deploys requires a database password", stack)
 				.isNotEmpty();
 
-		for (Occurrence one : refusing) {
-			assertThat(one.tail())
-					.as("%s turns the deploy down without %s and the message it prints does not name"
+		for (String setting : refusing) {
+			String marker = "required variable " + setting + " is missing a value: ";
+			String complaint = withoutOne(stack, settings, setting).errors();
+
+			assertThat(complaint)
+					.as("%s turns the deploy down without %s but does not say so in the shape"
+							+ " Compose is documented to print", stack, setting)
+					.contains(marker);
+
+			String itsOwnWords = complaint.substring(complaint.indexOf(marker) + marker.length());
+
+			assertThat(itsOwnWords)
+					.as("%s turns the deploy down without %s and the message it adds does not name"
 							+ " it, so it sends whoever reads it to set something else", stack,
-							one.name())
-					.contains(one.name());
+							setting)
+					.contains(setting);
 		}
 	}
 
 	/**
-	 * What one stack asks of the environment, and what it does when the answer is nothing.
+	 * Which settings a stack asks for, enumerated by Compose rather than by a reader.
 	 *
-	 * <p>Also the floor on the reading itself: one variable written twice in one file and
-	 * asked for two different ways is refused here, because what happens when it has no
-	 * value would then depend on which line Compose reaches first.
+	 * <p>This is the half that no pattern ever got right. Measured on v5.3.1:
+	 * {@code --variables} lists a variable nested inside another one's default, lists a
+	 * bare {@code $NAME}, and does NOT list one written {@code $${NAME}}, which is an
+	 * escape and asks for nothing. All three are shapes a previous draft got wrong.
 	 */
-	private static Map<String, Held> askingOf(Path stack) throws Exception {
-		Map<String, Held> asking = new LinkedHashMap<>();
-		Set<String> bothWays = new LinkedHashSet<>();
+	private static List<String> settingsOf(Path stack) throws Exception {
+		Ran listing = compose(stack, List.of("config", "--variables"), Map.of());
 
-		for (Occurrence one : occurrencesIn(stack)) {
-			Held already = asking.get(one.name());
+		assertThat(listing.code())
+				.as("docker compose could not even read %s, so nothing below measures anything:%n%s",
+						stack, listing.errors())
+				.isZero();
 
-			if (already == null) {
-				asking.put(one.name(), asked(one.asking(), 1));
-				continue;
+		List<String> names = new ArrayList<>();
+		String[] lines = listing.output().split("\\R");
+
+		for (int line = 1; line < lines.length; line++) {
+			String trimmed = lines[line].trim();
+
+			if (!trimmed.isEmpty()) {
+				names.add(trimmed.split("\\s+")[0]);
 			}
-
-			if (already.asking() != one.asking()) {
-				bothWays.add(one.name());
-			}
-
-			asking.put(one.name(), asked(already.asking(), already.places() + 1));
 		}
 
-		assertThat(bothWays)
-				.as("%s asks for the same setting twice and differently each time, so what happens"
-						+ " when it has no value depends on which line Compose reaches first", stack)
-				.isEmpty();
-
-		return asking;
+		return names;
 	}
 
+	/** What the stack does when this one setting has no value: asked twice, unset and empty. */
+	private static Asking behaviourOf(Path stack, List<String> settings, String setting)
+			throws Exception {
+
+		if (withoutOne(stack, settings, setting).code() == 0) {
+			return Asking.DEPLOYS_WITHOUT_IT;
+		}
+
+		Map<String, String> emptied = everythingSet(settings);
+
+		emptied.put(setting, "");
+
+		return compose(stack, List.of("config"), emptied).code() == 0
+				? Asking.REFUSES_UNSET_ONLY
+				: Asking.REFUSES_UNSET_OR_EMPTY;
+	}
+
+	/** One run with every setting held at a placeholder except this one, which is unset. */
+	private static Ran withoutOne(Path stack, List<String> settings, String setting)
+			throws Exception {
+
+		Map<String, String> held = everythingSet(settings);
+
+		held.remove(setting);
+
+		return compose(stack, List.of("config"), held);
+	}
+
+	private static Map<String, String> everythingSet(List<String> settings) {
+		Map<String, String> values = new LinkedHashMap<>();
+
+		settings.forEach(one -> values.put(one, PLACEHOLDER));
+
+		return values;
+	}
+
+	/** What one run of Compose answered. */
+	private record Ran(int code, String output, String errors) { }
+
 	/**
-	 * Every {@code $...} in a stack, read out of the PARSED file rather than off its text.
+	 * Answers already had from Compose, so one question is not asked twice.
 	 *
-	 * <p><b>The parser is why comments cannot lie here.</b> An earlier draft stripped
-	 * whole-line comments with a pattern and documented the leftover as a boundary; a
-	 * review measured the boundary backwards, and a trailing comment mentioning an old
-	 * variable failed the gate over text Compose never reads. YAML already knows which
-	 * bytes are a value, so this asks it instead of deciding for itself.
+	 * <p>Each probe is a process, and the cases below ask the same three things of each
+	 * setting. Without this the gate spends most of its time re-running a command whose
+	 * answer it already has; with it, it runs one per question. The key carries the stack,
+	 * so two files asking for a same-named setting are never confused.
 	 */
-	private static List<Occurrence> occurrencesIn(Path stack) throws Exception {
-		List<Occurrence> found = new ArrayList<>();
-
-		everyScalarIn(new Yaml().load(Files.readString(stack, StandardCharsets.UTF_8)),
-				scalar -> readInterpolations(stack, scalar, found));
-
-		return found;
-	}
-
-	/** Walks whatever YAML produced and hands every scalar over as text. */
-	private static void everyScalarIn(Object parsed, java.util.function.Consumer<String> onScalar) {
-		if (parsed instanceof Map<?, ?> map) {
-			map.forEach((key, value) -> {
-				everyScalarIn(key, onScalar);
-				everyScalarIn(value, onScalar);
-			});
-		} else if (parsed instanceof Iterable<?> many) {
-			many.forEach(one -> everyScalarIn(one, onScalar));
-		} else if (parsed != null) {
-			onScalar.accept(String.valueOf(parsed));
-		}
-	}
+	private static final Map<String, Ran> ALREADY_ASKED = new LinkedHashMap<>();
 
 	/**
-	 * Reads one value left to right, the way Compose does, rather than matching a shape.
+	 * Runs Compose over one stack with exactly the environment given and nothing else.
 	 *
-	 * <p><b>{@code $$} is consumed first, and a review proved why.</b> It is Compose's
-	 * escape: {@code $${NAME:?...}} is a literal string and asks for nothing. A pattern
-	 * that looks for {@code ${} finds one inside it, so the first draft read a dead
-	 * template as a live requirement - and the mutation that added one character to the
-	 * production database password left the suite green while
-	 * {@code docker compose config} accepted the file with the raw template as the
-	 * password. Scanning forwards cannot make that mistake, because the escape is read
-	 * before anything else can match it.
-	 *
-	 * <p>Both spellings are read, {@code ${NAME}} and bare {@code $NAME}, and a {@code $}
-	 * that begins neither stops the gate rather than being skipped.
+	 * <p>{@code --env-file} points at an empty file on purpose. Compose would otherwise
+	 * read the {@code .env} beside the stack, which on a developer's machine holds real
+	 * values and would answer these questions for it. Nothing here reads that file.
 	 */
-	private static void readInterpolations(Path stack, String value, List<Occurrence> into) {
-		int at = 0;
+	private static Ran compose(Path stack, List<String> verb, Map<String, String> values)
+			throws Exception {
 
-		while (at < value.length()) {
-			if (value.charAt(at) != '$') {
-				at++;
-				continue;
-			}
+		String question = stack + " " + verb + " " + values;
+		Ran answered = ALREADY_ASKED.get(question);
 
-			if (at + 1 < value.length() && value.charAt(at + 1) == '$') {
-				at += 2;
-				continue;
-			}
-
-			if (at + 1 < value.length() && value.charAt(at + 1) == '{') {
-				int closes = value.indexOf('}', at);
-
-				assertThat(closes)
-						.as("%s opens an interpolation and never closes it, in %s", stack, value)
-						.isNotEqualTo(-1);
-
-				into.add(readBody(stack, value.substring(at + 2, closes), value));
-				at = closes + 1;
-				continue;
-			}
-
-			int after = at + 1;
-
-			while (after < value.length() && isNameCharacter(value.charAt(after), after == at + 1)) {
-				after++;
-			}
-
-			assertThat(after)
-					.as("%s writes a '$' that begins neither ${NAME} nor $NAME, in %s, so what it"
-							+ " asks of the environment could not be read at all; if it is meant to"
-							+ " be a literal dollar it has to be written '$$'", stack, value)
-					.isNotEqualTo(at + 1);
-
-			into.add(new Occurrence(value.substring(at + 1, after), Asking.SUBSTITUTES_BLANK, ""));
-			at = after;
+		if (answered != null) {
+			return answered;
 		}
+
+		Ran ran = ask(stack, verb, values);
+
+		ALREADY_ASKED.put(question, ran);
+
+		return ran;
 	}
 
-	/** The inside of a {@code ${...}}, split into the name, the operator and the rest. */
-	private static Occurrence readBody(Path stack, String body, String whole) {
-		int after = 0;
+	private static Ran ask(Path stack, List<String> verb, Map<String, String> values)
+			throws Exception {
 
-		while (after < body.length() && isNameCharacter(body.charAt(after), after == 0)) {
-			after++;
-		}
+		List<String> command = new ArrayList<>(List.of("docker", "compose",
+				"-f", stack.toString(), "--env-file", nothing().toString()));
 
-		assertThat(after)
-				.as("%s interpolates something that does not begin with a variable name, in %s",
-						stack, whole)
-				.isNotEqualTo(0);
+		command.addAll(verb);
 
-		String name = body.substring(0, after);
-		String rest = body.substring(after);
+		ProcessBuilder starting = new ProcessBuilder(command);
 
-		if (rest.isEmpty()) {
-			return new Occurrence(name, Asking.SUBSTITUTES_BLANK, "");
-		}
+		/* Cleared rather than added to: a developer whose own shell exports PROD_MAIL_HOST
+		   would otherwise be measuring their shell instead of the file. */
+		starting.environment().keySet().removeIf(one -> HELD.values().stream()
+				.anyMatch(settings -> settings.containsKey(one)));
+		starting.environment().putAll(values);
 
-		/* Two characters when it starts with a colon, one otherwise - and a lone ":" falls
-		   through to Asking.of as itself rather than off the end of the string, so the
-		   case below says what is wrong instead of throwing an index. */
-		String operator = rest.startsWith(":") && rest.length() > 1
-				? rest.substring(0, 2)
-				: rest.substring(0, 1);
-		Asking asking = Asking.of(operator);
+		Process running = starting.start();
 
-		assertThat(asking)
-				.as("%s asks for %s with an operator this case has never heard of, in %s, so it"
-						+ " would have been read as something it is not; Compose's are"
-						+ " :- - :+ + :? ? and nothing else", stack, name, whole)
-				.isNotNull();
+		String output = new String(running.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+		String errors = new String(running.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
 
-		return new Occurrence(name, asking, rest.substring(operator.length()));
+		assertThat(running.waitFor(2, TimeUnit.MINUTES))
+				.as("docker compose did not answer within two minutes for %s", stack)
+				.isTrue();
+
+		return new Ran(running.exitValue(), output, errors);
 	}
 
-	private static boolean isNameCharacter(char one, boolean first) {
-		boolean letter = one == '_' || Character.isLetter(one);
+	private static Path nothing() throws IOException {
+		Path empty = Path.of(System.getProperty("java.io.tmpdir"), "pr275-empty.env");
 
-		return first ? letter : letter || Character.isDigit(one);
+		if (!Files.exists(empty)) {
+			Files.writeString(empty, "");
+		}
+
+		return empty;
 	}
 
 	/**
-	 * Every compose file in {@code deploy}, asked of the folder rather than written here.
+	 * Every stack this repository deploys, and the gate STOPS if Compose is not here.
 	 *
-	 * <p>Taken from {@code PostmanTest}, which had to learn it: until 13.09.2026 that one
-	 * read {@code compose.qa.yml} by its name, and on the day production got a stack of
-	 * its own, a deletion in the production file left the whole suite green because
-	 * nothing opened it. A list of one name is a list, and the file system already knows
-	 * the answer.
+	 * <p>A guard that cannot ask its tool has to go red, never quiet. Skipped, it would
+	 * report the same green as a stack whose contract is intact, which is the worst of the
+	 * three outcomes. The suite already needs a Docker daemon for Testcontainers; what
+	 * this adds is the compose plugin beside it.
 	 *
-	 * <p>{@code .yaml} counts as well as {@code .yml}. It is Compose's own preferred
-	 * spelling, and a review measured that a stack named that way was read by nobody
-	 * while the count below still passed on the two that were.
+	 * <p>The files are found rather than listed: everything in {@code deploy} that Compose
+	 * would recognise, plus the development stack in the root under any of the four names
+	 * the Compose specification gives it. That list of four is the specification's own and
+	 * is closed; the floor under it is the count below.
 	 */
 	private static Stream<Path> everyStackThisRepoDeploys() throws Exception {
+		Ran version = new Ran(0, "", "");
+
+		try {
+			ProcessBuilder asking = new ProcessBuilder("docker", "compose", "version");
+			Process running = asking.start();
+
+			running.getInputStream().readAllBytes();
+			running.waitFor(1, TimeUnit.MINUTES);
+			version = new Ran(running.exitValue(), "", "");
+		} catch (IOException cannot) {
+			fail("this gate asks `docker compose` what each stack refuses to deploy without, and"
+					+ " the command is not on this machine: " + cannot.getMessage() + ". The suite"
+					+ " already needs a Docker daemon for Testcontainers; this needs the compose"
+					+ " plugin beside it. It is not skipped when absent, because a skipped guard"
+					+ " reports the same green as an intact one.");
+		}
+
+		assertThat(version.code())
+				.as("`docker compose version` answered non-zero, so this gate cannot ask it what"
+						+ " any stack requires; it fails rather than skipping, because a skipped"
+						+ " guard reports the same green as an intact one")
+				.isZero();
+
+		List<Path> stacks = new ArrayList<>();
+
 		try (Stream<Path> inside = Files.list(Path.of("..", "deploy"))) {
-			List<Path> stacks = inside
-					.filter(one -> one.getFileName().toString().startsWith("compose."))
+			inside.filter(one -> one.getFileName().toString().startsWith("compose."))
 					.filter(one -> one.getFileName().toString().endsWith(".yml")
 							|| one.getFileName().toString().endsWith(".yaml"))
-					.sorted().toList();
-
-			assertThat(stacks)
-					.as("deploy holds fewer compose files than this repo deploys stacks, so"
-							+ " something was not measured at all")
-					.hasSizeGreaterThanOrEqualTo(2);
-
-			return stacks.stream();
+					.sorted().forEach(stacks::add);
 		}
+
+		for (String spelling : List.of("compose.yaml", "compose.yml",
+				"docker-compose.yaml", "docker-compose.yml")) {
+			Path root = Path.of("..", spelling);
+
+			if (Files.exists(root)) {
+				stacks.add(root);
+			}
+		}
+
+		assertThat(stacks)
+				.as("fewer stacks were found than this repository deploys, so something was not"
+						+ " measured at all")
+				.hasSizeGreaterThanOrEqualTo(3);
+
+		return stacks.stream();
 	}
 }
