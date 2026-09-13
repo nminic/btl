@@ -119,12 +119,29 @@ export type Competitor = {
    * between 2010 and 2027, so every screen that draws a category for an earlier
    * season now draws today's band for them. Keeping that exact would mean a band
    * per season, and that was measured too: from a band per season over 2010-2027
-   * the exact year of birth comes back for those same 25 members, because the
-   * season a band changes in fixes it. One band gives back nothing — the
-   * narrowest set of years it is consistent with is fifteen wide.
+   * the **exact** year of birth comes back for those same 25 members, because the
+   * season a band changes in fixes it. One band pins nobody: nought of the 32.
    *
-   * So the two cannot both be had out of a public file, and this is the half the
-   * policy names. The other half is what the backend is for (ADL A8).
+   * **What one band does still give away, and the first draft of this got it
+   * wrong.** It said the narrowest set of years a band is consistent with is
+   * fifteen wide. That is true of the band READ ON ITS OWN and false of the record
+   * it sits in. Nobody enters a league, joins a club, runs a race or writes a
+   * comment before they are born, and all four of those are public and dated on
+   * the same file or beside it. Measured against the years this change removed,
+   * 000007's window is **eight** years wide (2003-2010, closed by a comment of his
+   * dated 2010-05-08) and six of the 32 come in under fifteen. Every one of the 32
+   * true years lies inside its window, so these are hard bounds and not a guess.
+   *
+   * **So the rule this field is under is not „the band gives nothing away".** It is
+   * that a window is not a year: eight candidates is not a date of birth, and Član
+   * 74 is about the date. What follows is a cost to weigh rather than a licence:
+   * every further public fact with a date on it narrows these windows again, so one
+   * is worth adding on its own merits and not on the grounds that the band already
+   * reveals nothing.
+   *
+   * So exactness through history and a private date of birth cannot both be had out
+   * of a public file, and this is the half the policy names. The other half is what
+   * the backend is for (ADL A8).
    */
   ageBand: AgeBand
   /**
