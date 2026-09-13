@@ -114,8 +114,15 @@ message:
 | `PROD_POSTGRES_PASSWORD` | that role's password | **yes** |
 | `PROD_MAIL_HOST` | relay host | no, defaults to `smtp-relay.brevo.com` |
 | `PROD_MAIL_PORT` | relay port | no, defaults to `587` |
-| `PROD_MAIL_USERNAME` | Brevo SMTP login | no, empty by default |
-| `PROD_MAIL_PASSWORD` | Brevo SMTP key | no, empty by default |
+| `PROD_MAIL_USERNAME` | Brevo SMTP login | not to START, but see below |
+| `PROD_MAIL_PASSWORD` | Brevo SMTP key | not to START, but see below |
+
+**The two mail variables are the pair that fails quietly.** They are empty by default ON PURPOSE:
+a missing relay key must never keep the public site down, so the stack starts without them. What it
+does not do is send. No address is ever confirmed, no password is ever reset, and nothing anywhere
+says so, because a relay refusing a login is a line in a log nobody reads. **Both or neither:** the
+key is shown by Brevo exactly once, so the moment to paste it is also the moment to paste the login
+beside it.
 
 `PROD_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
 anything and names the variable, rather than starting the production database
@@ -193,6 +200,9 @@ the edge proxy:
 ```bash
 curl -sI https://balkanskatrkackaliga.net | head -1
 curl -sS -o /dev/null -w '%{http_code}\n' https://balkanskatrkackaliga.net/api/
+# 401 means healthy: the backend answered, and nothing under /api/ is open by name.
+# 502 means nginx reached nobody, so the backend is down or was never started.
+# 200 would mean this path had been opened to anybody, which it is not.
 ```
 
 ### What production costs in memory
@@ -423,9 +433,12 @@ To see the same thing from the database side, which also shows that Flyway ran:
 docker exec qa-postgres psql -U btl_qa -d btl_qa -c '\dt'
 ```
 
-It must list **four tables**: `country`, `place`, `price_row`, and Flyway's own
-`flyway_schema_history`. The backend log says `Migrating schema "public" to
-version "1"` and so on through version 4.
+It must list **every table the migrations create**, plus Flyway's own
+`flyway_schema_history`. The number is not written here on purpose: `main` carried four migrations
+when this was first written and carries twenty one now, and a number in a runbook is wrong the
+first time somebody adds one. What the backend log says is `Migrating schema "public" to version
+"1"` and so on up to the highest `V` file in
+`backend/src/main/resources/db/migration`, which is where to look for the number rather than here.
 
 **An empty schema is a fault, not a resting state.** It means Flyway found
 nothing on the classpath, and the four migrations that `main` carries were not
