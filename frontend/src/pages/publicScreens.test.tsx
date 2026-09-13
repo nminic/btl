@@ -2529,7 +2529,16 @@ describe('Leagues', () => {
     /* **The seats moved with the screens on 07.09.2026**, and the reason each one is
        here moved with them. What the owner took off the page of one competition — the
        terms, the prizes and the events that count — is read on the list of them, so the
-       branches that used to be reached one screen in are reached on the list now. */
+       branches that used to be reached one screen in are reached on the list now.
+
+       **Asked again on 12.09.2026 and answered the same way on the 13th**, so the seats stayed
+       where they are. What did arrive on the list on the 13th is the box of events and races.
+       It is folded when a seat opens, and its words are held here all the same: the panel is
+       hidden by the `hidden` attribute rather than taken out of the document, and `textContent`
+       reads a hidden node like any other. So every event of every competition on these seats,
+       and every race under it, is inside the text below. That it is **folded**, and that the
+       press opens its own box and no other, is measured where a press can be made
+       (`pages/details.test.tsx`). */
     const SCREENS = [
       ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
       /* The list through the eyes of somebody who may fill it in, which is where the
