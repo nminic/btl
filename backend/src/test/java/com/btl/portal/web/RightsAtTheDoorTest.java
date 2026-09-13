@@ -80,10 +80,12 @@ class RightsAtTheDoorTest {
 	 * takođe vide samo ulogovani članovi" (owner, 11.08.2026), so it is absent from
 	 * {@code READ_BY_ANYBODY} and a visitor is refused before this door is ever asked; and
 	 * reading who is going is not a moderator's action, so there is no box to tick for it and
-	 * every signed in account reads it, a plain competitor included - the same sentence
-	 * {@code /api/comments} is named here for. {@code AttendanceApiTest} holds the other half,
-	 * that a visitor really is refused, because this file only measures what a route
-	 * DECLARES.
+	 * every signed in account reads it, a plain competitor included. {@code /api/comments}
+	 * ({@code b53-komentari}, PR 278, not yet merged into this branch) is named this exact
+	 * way for this exact reason on its own branch; it is not on THIS set because its route
+	 * does not exist here yet, not because the two resources are closed any differently.
+	 * {@code AttendanceApiTest} holds the other half, that a visitor really is refused,
+	 * because this file only measures what a route DECLARES.
 	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a

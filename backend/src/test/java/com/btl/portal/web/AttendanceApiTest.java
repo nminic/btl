@@ -36,10 +36,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * WHO SAID THEY ARE COMING, read by members and by nobody else.
  *
- * <p>The second resource of this portal that is not public ({@link CommentApiTest} was
- * the first), so this file measures the same two things that one did - a visitor is
- * refused and a signed in member is not - plus the two questions that are this
- * resource's own: only a FUTURE event answers, and only a member in good standing does.
+ * <p>Closed the same way {@code CommentApiTest} (`b53-komentari`, PR 278, not yet
+ * merged into this branch) closes {@code /api/comments}: this file measures that a
+ * visitor is refused and a signed in member is not, plus the two questions that are
+ * this resource's own: only a FUTURE event answers, and only a member in good standing
+ * does.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -59,13 +60,34 @@ class AttendanceApiTest {
 	private static final String LAPSED = "000040";
 
 	/**
-	 * HALF PAST ELEVEN AT NIGHT IN UTC ON 14 SEPTEMBER, which is already past midnight -
-	 * the 15th - in Belgrade (CEST, UTC+2 in September). The clock this fixture hands
-	 * the server reports {@link ZoneOffset#UTC}, the same as {@code ResultApiTest}'s
-	 * does and for the same reason: the mutation this guards against is answering from
-	 * the machine's own zone instead of asking {@code SeasonClock} for the league's.
+	 * HALF PAST TEN AT NIGHT IN UTC ON 14 SEPTEMBER, chosen to fall where Belgrade and
+	 * London disagree and not only where Belgrade and UTC do.
+	 *
+	 * <p><b>Half past ELEVEN, the first draft's moment, could not tell Belgrade from
+	 * London and a review measured it rather than assuming it.</b> Both are ahead of
+	 * UTC in September (Belgrade CEST, UTC+2; London BST, UTC+1), and 23:30 UTC plus
+	 * either offset already crosses into the 15th - so a query reading
+	 * {@code Europe/London} passed every case here exactly as {@code Europe/Belgrade}
+	 * does, and so did the server's own default zone on a host that happens to sit at
+	 * UTC+2 in September, which is most of this codebase's own machines. Moved back one
+	 * hour, 22:30 UTC plus Belgrade's two hours crosses to 00:30 on the 15th while 22:30
+	 * plus London's one hour only reaches 23:30 on the 14th - so only the league's own
+	 * zone now answers with a different day than London or plain UTC do.
+	 *
+	 * <p><b>What this still cannot tell apart, and that is a floor rather than an
+	 * oversight.</b> Every zone this moment shares Belgrade's exact offset with in
+	 * September - {@code Europe/Paris}, {@code Europe/Berlin}, {@code Europe/Budapest},
+	 * and any other member of the EU's own daylight saving calendar - answers the same
+	 * day Belgrade does, because they ARE the same offset on the same dates. No fixed
+	 * instant can separate two zones that never disagree; that would take reading the
+	 * zone's own identifier, which is exactly the literal {@code SeasonClock.ZONE} this
+	 * class already reads and every other query in this package trusts by name rather
+	 * than by measuring it anew. The clock this fixture hands the server reports
+	 * {@link ZoneOffset#UTC} as ITS zone, the same as {@code ResultApiTest}'s does and
+	 * for the same reason: the mutation this guards against is answering from the
+	 * machine's own zone instead of asking {@code SeasonClock} for the league's.
 	 */
-	private static final Instant NOW = Instant.parse("2026-09-14T23:30:00Z");
+	private static final Instant NOW = Instant.parse("2026-09-14T22:30:00Z");
 
 	/** Still today by the server's own zone, and already yesterday in Belgrade. */
 	private static final String BELGRADE_YESTERDAY = "2026-09-14";
@@ -88,7 +110,8 @@ class AttendanceApiTest {
 	private SecretToken session;
 
 	/** Feeds the sixteen lowercase hexadecimal characters {@code referral_code} needs
-	 *  (V7's shape check), the same generator {@code CommentApiTest} uses. */
+	 *  (V7's shape check), the same generator {@code CommentApiTest} uses on
+	 *  {@code b53-komentari} (PR 278). */
 	private int issued;
 
 	/**
@@ -198,6 +221,27 @@ class AttendanceApiTest {
 				.params(eventSlug, memberNumber).update();
 	}
 
+	/**
+	 * WHETHER A ROW REALLY SITS IN {@code attending} FOR THIS PAIR, read from the
+	 * database rather than through the endpoint under test.
+	 *
+	 * <p>The floor every {@code doesNotContain} below needs and did not have: such an
+	 * assertion is satisfied equally by "the guard removed the row" and by "the row was
+	 * never written", and this file's own fixture is the only thing that tells the two
+	 * apart. Found by review on the PR: turning off any one of the three
+	 * {@code attending(...)} calls those cases are about left the whole file green,
+	 * because nothing had asked the database whether the row it expects to be filtering
+	 * OUT was ever really there to filter.
+	 */
+	private boolean announced(String eventSlug, String memberNumber) {
+		return db.sql("select count(*) from attending a"
+						+ " join btl_event e on e.id = a.event_id"
+						+ " join competitor c on c.id = a.competitor_id"
+						+ " where e.slug = ? and c.member_number = ?")
+				.params(eventSlug, memberNumber)
+				.query(Integer.class).single() == 1;
+	}
+
 	private MockHttpServletRequestBuilder asking() {
 		return get("/api/attendance").cookie(new Cookie(SessionCookie.NAME, session.secret()));
 	}
@@ -246,7 +290,8 @@ class AttendanceApiTest {
 	 *
 	 * <p><b>This case is why the route's absence from {@code READ_BY_ANYBODY} is
 	 * measured at all</b> - nothing else would catch it moving there, the same
-	 * reasoning {@code CommentApiTest} already carries for {@code /api/comments}.
+	 * reasoning {@code CommentApiTest} carries for {@code /api/comments} on
+	 * {@code b53-komentari} (PR 278).
 	 *
 	 * <p><b>Both halves.</b> Without the 200, a resource refusing everybody would pass
 	 * the refusal above it and say the rule held.
@@ -271,22 +316,37 @@ class AttendanceApiTest {
 	 * and {@code PDL.md:153} keeps the portal from ever turning that intention into a
 	 * record of what really happened: „DNF i nedolazak se ne evidentiraju".
 	 *
-	 * <p><b>Read in the league's own time, not the server's, which is the whole reason
-	 * the fixture crosses a midnight that the two zones disagree about.</b> The clock
-	 * this test hands the server reports UTC, where „today" is still the 14th; in
-	 * Belgrade it is already the 15th. An event dated the 14th is therefore future by
-	 * the server's own zone and past by the league's, and only the second answer is
-	 * the owner's.
+	 * <p><b>Read in the league's own time, not the server's nor any other zone ahead of
+	 * UTC, which is the whole reason the fixture's moment is the one it is.</b> The
+	 * clock this test hands the server reports UTC as ITS OWN zone, where „today" is
+	 * still the 14th; in {@code Europe/London}, one hour ahead, it is also still the
+	 * 14th; only in Belgrade, two hours ahead, is it already the 15th. An event dated
+	 * the 14th is therefore future by the server's zone AND by London's, and past only
+	 * by the league's - so this floor rules out both the earlier draft's blind spot
+	 * (reading UTC) and the one a review found next (reading any zone that is merely
+	 * "ahead of UTC" without being Belgrade's own).
 	 */
 	@Test
 	void onlyAFutureEventsAnnouncementsComeBack() throws Exception {
 		assertThat(db.sql("select (timestamptz '" + NOW + "' at time zone 'UTC')::date = date '"
 						+ BELGRADE_YESTERDAY + "'"
+						+ " and (timestamptz '" + NOW + "' at time zone 'Europe/London')::date"
+						+ " = date '" + BELGRADE_YESTERDAY + "'"
 						+ " and (timestamptz '" + NOW + "' at time zone 'Europe/Belgrade')::date"
 						+ " = date '" + BELGRADE_TODAY + "'")
 				.query(Boolean.class).single())
-				.as("the clock's moment does not really fall on two different calendar days in the"
-						+ " two zones, so the case below measures nothing about reading the wrong one")
+				.as("the clock's moment does not really separate Belgrade from both UTC and London,"
+						+ " so the case below measures nothing about reading the wrong one")
+				.isTrue();
+
+		assertThat(announced("prosli-dogadjaj", ACTIVE_ONE))
+				.as("the clearly past event's announcement was never written, so its absence below"
+						+ " proves nothing about the filter")
+				.isTrue();
+
+		assertThat(announced("juce-u-beogradu", ACTIVE_ONE))
+				.as("the Belgrade-yesterday event's announcement was never written, so its absence"
+						+ " below proves nothing about the filter or the zone")
 				.isTrue();
 
 		List<Row> rows = rows();
@@ -297,9 +357,9 @@ class AttendanceApiTest {
 				.doesNotContain(new Row(eventId("prosli-dogadjaj"), ACTIVE_ONE));
 
 		assertThat(rows)
-				.as("an event that is still \"today\" by the server's own UTC zone, and already"
-						+ " YESTERDAY in Belgrade, answered - so this read the machine's zone rather"
-						+ " than the league's")
+				.as("an event that is still \"today\" by the server's own UTC zone, and by London's,"
+						+ " and already YESTERDAY in Belgrade, answered - so this read a zone other"
+						+ " than the league's own")
 				.doesNotContain(new Row(eventId("juce-u-beogradu"), ACTIVE_ONE));
 
 		assertThat(rows)
@@ -331,6 +391,11 @@ class AttendanceApiTest {
 				.as("the fixture's lapsed member is not actually lapsed, so his absence below would"
 						+ " not be about his membership")
 				.isFalse();
+
+		assertThat(announced("buduci-dogadjaj-jedan", LAPSED))
+				.as("the lapsed member's announcement was never written, so its absence below proves"
+						+ " nothing about the membership filter")
+				.isTrue();
 
 		List<Row> rows = rows();
 		long future = eventId("buduci-dogadjaj-jedan");

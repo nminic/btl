@@ -10,17 +10,21 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * WHO SAID THEY ARE COMING, and the second resource of this portal that asks who is
- * reading (the first is {@link CommentApi}).
+ * WHO SAID THEY ARE COMING, closed the way this portal closes a resource that members
+ * read and a visitor does not: absence from {@link ApiSecurity#READ_BY_ANYBODY} rather
+ * than a condition written into the handler. {@code /api/comments} is being built the
+ * same way at the same time, on {@code b53-komentari} (PR 278, not yet merged into this
+ * branch) - a sibling in shape, asking the identical question about a different
+ * resource, not a class this one compiles against.
  *
  * <p><b>Read by members and by nobody else.</b> The owner, 11.08.2026: „Tu listu ko je
  * prijavljen takođe vide samo ulogovani članovi" ({@code PDL.md:294}). A visitor sees
  * the calendar and its results; who plans to be at one of them he does not.
  *
- * <p><b>Enforced by NOT being enforced here, exactly as {@link CommentApi} is.</b>
- * Everything under {@code /api} is shut and {@link ApiSecurity#READ_BY_ANYBODY} opens a
- * few things by name; this route is simply absent from it, so the chain answers 401
- * before this class ever runs. There is no condition in here about who is asking.
+ * <p><b>Enforced by NOT being enforced here.</b> Everything under {@code /api} is shut
+ * and {@link ApiSecurity#READ_BY_ANYBODY} opens a few things by name; this route is
+ * simply absent from it, so the chain answers 401 before this class ever runs. There is
+ * no condition in here about who is asking.
  *
  * <p><b>And it needs no {@link RightIsNeeded}, the same decision and for the same
  * reason.</b> Reading who is going is not a moderator's action - every signed in
@@ -55,9 +59,10 @@ import java.util.List;
  * <p><b>AND WITHOUT A MEMBERSHIP IN GOOD STANDING, AN INTENTION DOES NOT COME OUT OF
  * HERE EITHER - the fourth time this exact class of leak has been named, after pairs,
  * results and comments, all on 13.09.2026.</b> {@code PairApi}: „Ne postoji par onda,
- * raskida se" excludes both halves of a pair the same way; {@code CommentApi} withholds
- * only the number, because a comment carries a name to keep beside it
- * ({@code who}, V7's tombstone). {@code attending} carries no such second field -
+ * raskida se" excludes both halves of a pair the same way; {@code CommentApi}
+ * ({@code b53-komentari}, PR 278) withholds only the number, because a comment carries
+ * a name to keep beside it ({@code who}, V7's tombstone). {@code attending} carries no
+ * such second field -
  * {@code ADL.md} measured it directly: „attendance.json | 28 | 2 | nema ključ | tabela
  * attending; samo par (eventId, memberNumber)" - so there is nothing here for a lapsed
  * member's row to survive as. Leaving the bare number in would do exactly what
