@@ -125,16 +125,18 @@ comment on table membership is 'One row per person per season: which seasons som
  * that cannot arise, and it would hide the one that could - a duplicate meaning the key above no
  * longer says what it says.
  *
- * AND THE ONE THING THAT IS NOT CARRIED, named here because it is silent: a member whose
- * `competitor.membership_basis` is `feeExempt`. He has no payment, so this select does not reach
- * him, and there is no honest year to write him down for - the column he carries has no season
- * in it, which is the whole reason this table exists. Inventing one would be the migration
- * deciding something the owner decided differently on 13.09.2026: honorary membership is granted
- * "za svaku sezonu posebno", and he chose that direction against the other one knowing the cost
- * - "ko zaboravi da potvrdi, taj clan ispadne iz lige za tu sezonu: greska se vidi i ispravlja se
- * jednim potezom", where the opposite mistake leaves somebody a member forever with nothing
- * anywhere showing it. So an honorary membership is granted, once per season, by the screen that
- * does not exist yet, and this migration does not guess on its behalf.
+ * AND THE ONE THING THAT IS NOT CARRIED, named here because it is silent: somebody the
+ * association let in free. Having no recognised payment is what being let in free MEANS, so this
+ * select does not reach him - and if one day he does have one, being carried on it is right, not
+ * a leak. There is no honest year to write him down for otherwise: the column that says he is
+ * `feeExempt` carries no season at all, which is the whole reason this table exists. Inventing a
+ * year would be the migration deciding something the owner decided differently on 13.09.2026:
+ * honorary membership is granted "za svaku sezonu posebno", and he chose that direction against
+ * the other one knowing the cost - "ko zaboravi da potvrdi, taj clan ispadne iz lige za tu
+ * sezonu: greska se vidi i ispravlja se jednim potezom", where the opposite mistake leaves
+ * somebody a member forever with nothing anywhere showing it. So an honorary membership is
+ * granted, once per season, by the screen that does not exist yet, and this migration does not
+ * guess on its behalf.
  */
 insert into membership (competitor_id, season, basis)
 select p.competitor_id, p.season, 'payment'
