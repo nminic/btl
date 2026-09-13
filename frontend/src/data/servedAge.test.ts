@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { AGE_BANDS } from './categories'
 import { RESOURCE_NAMES } from './client'
+import { FIRST_SEASON } from './season'
 import served from '../test/servedFields.snapshot.json'
 
 /**
@@ -18,22 +19,9 @@ import served from '../test/servedFields.snapshot.json'
  *
  * The file it was in is **generated outside this repository**
  * (`btl-produkt/istorijski-podaci/napravi-mock.py`), so the next run of that tool can
- * put the field back with nobody typing it. That is the case this is written for: the
- * removal is a one line diff and its absence has to be held by something that runs.
+ * put the field back with nobody typing it. That is the case this is written for.
  *
- * **Two questions, and each is complete in its own direction.** What this asked in its
- * first draft was neither, and a review measured three ways past it on 13.09.2026:
- *
- * - A pattern over field NAMES. It knew a list of words, so `born` and `age` walked
- *   straight past it, and a list of words in a guard is the thing that needs a floor
- *   and never has one.
- * - A list of the fields a member may carry, read over `competitors.json` ALONE. The
- *   heading above it said „in any field, under any name" while it opened one file of
- *   thirteen, so `"born": 1968` and `"age": 58` written into `verification.json` —
- *   which is served just as publicly and already carries a name, an e-mail and a town
- *   — were invisible.
- *
- * So the name is not asked about at all any more. Instead:
+ * **Two questions, and each is complete in its own direction.**
  *
  * 1. **WHICH FIELDS ARE SERVED** is held as a snapshot of the whole set
  *    (`test/servedFields.snapshot.json`). It judges nothing, so it cannot be wrong
@@ -42,19 +30,20 @@ import served from '../test/servedFields.snapshot.json'
  *    already uses wherever a filter would have to enumerate (`leagueScreens`,
  *    `dictionary`), and it converges in one round instead of growing by one word per
  *    review.
- * 2. **WHAT THOSE FIELDS HOLD** is asked of the value and not of the name: every
- *    year-shaped value anywhere has to sit under one of six fields that are known to
- *    carry one, and the three that are seasons have to hold a season the league has
- *    actually had.
+ * 2. **WHAT THOSE FIELDS HOLD** is asked of the value, and in two different ways
+ *    depending on what the question really is. Where it is „does this look like a year
+ *    of birth", the value is filtered to year-shaped ones first. Where it is „is this
+ *    field still what it claims to be", as with the three seasons, **nothing is
+ *    filtered at all**, because the answer must not depend on the wrong answer looking
+ *    like the right one.
  *
- * **Where this stops, written down rather than left to be found.** An age is a bare
- * small integer and is indistinguishable from a count, a rating or a step, so nothing
- * here can recognise one by its value; what catches an age is the snapshot, because
- * an age has to arrive in a field, and a new field is what the snapshot refuses. A
- * year of birth moved INTO `ascentM`, `descentM` or `seconds` is likewise not caught
- * by its value, because those really do carry numbers of that size; it is caught only
- * if it arrives as a new field. And `places.json` is outside the sweep for the reason
- * given where it is dropped.
+ * **What the second half of that cost when it was got wrong** (review, 13.09.2026, and
+ * this is why it is spelt out). The season check used to run over values already
+ * filtered to `1900..2027`, so it could never see anything below 1900: `"teamSince": 58`
+ * on a member passed the whole suite, and the profile then drew „U klubu Dunavski
+ * trkači od 58." — a bare age, on a publicly served record. The guard this file
+ * replaced caught exactly that, and replacing it took the live half away. A prefilter
+ * belongs only where the question itself is about the shape of the value.
  */
 
 /** The served folder itself, which is the source of truth for every case here. */
@@ -71,46 +60,81 @@ const MOCK = join(process.cwd(), 'public', 'mock')
  */
 const NOT_READ = 'places.json'
 
-/** Every served file, parsed, with the name it is served under. */
-function servedFiles(): { name: string; body: unknown }[] {
-  return readdirSync(MOCK, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-    .map((entry) => {
-      const body: unknown = JSON.parse(readFileSync(join(MOCK, entry.name), 'utf-8'))
+/**
+ * Every served file, at any depth, named by its path below `public/mock`.
+ *
+ * **Depth matters and was measured** (review, 13.09.2026). This read one level while
+ * its own heading said „in any file", and `public/mock` already has a folder in it:
+ * `logo/`, which `teams.json` points into. Vite copies the whole of `public/` across
+ * verbatim, so a file one level down is served exactly as publicly as one at the top.
+ * A `logo/roster.json` carrying a year of birth and an age passed the whole suite.
+ */
+function servedFiles(dir = MOCK, prefix = ''): { name: string; body: unknown }[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const at = join(dir, entry.name)
+    const name = prefix === '' ? entry.name : `${prefix}/${entry.name}`
 
-      return { name: entry.name, body }
-    })
+    if (entry.isDirectory()) {
+      return servedFiles(at, name)
+    }
+
+    if (!entry.name.endsWith('.json')) {
+      return []
+    }
+
+    const body: unknown = JSON.parse(readFileSync(at, 'utf-8'))
+
+    return [{ name, body }]
+  })
 }
 
-/** Every field name anywhere inside one served file, however deeply nested. */
-function fieldsIn(body: unknown): string[] {
+/**
+ * Every field inside one served file, named by the PATH it sits at.
+ *
+ * **The path and not the bare name, and that too was measured** (review, 13.09.2026).
+ * Collected as bare names and flattened into one set per file, a name that exists
+ * nested covers the same name at the top of a record: `crop` carries `x`, `y` and
+ * `size`, so all three were already in the snapshot, and `"y": 58` written at the top
+ * of a record in `verification.json` changed nothing and passed. `crop.y` and `y` are
+ * different fields and are now written down as such.
+ *
+ * Arrays are transparent: every element of a list is the same shape, so `sections.body`
+ * is one field and not one per section.
+ */
+function fieldsIn(body: unknown, at = ''): string[] {
   if (Array.isArray(body)) {
-    return body.flatMap((one) => fieldsIn(one))
+    return body.flatMap((one) => fieldsIn(one, at))
   }
 
   if (typeof body === 'object' && body !== null) {
-    return Object.entries(body).flatMap(([key, value]) => [key, ...fieldsIn(value)])
+    return Object.entries(body).flatMap(([key, value]) => {
+      const path = at === '' ? key : `${at}.${key}`
+
+      return [path, ...fieldsIn(value, path)]
+    })
   }
 
   return []
 }
 
-/** Every value anywhere inside one served file, with the field it sits under. */
-function valuesIn(body: unknown, under: string): { under: string; value: unknown }[] {
+/** Every value inside one served file, with the path of the field it sits under. */
+function valuesIn(body: unknown, at = ''): { under: string; value: unknown }[] {
   if (Array.isArray(body)) {
-    return body.flatMap((one) => valuesIn(one, under))
+    return body.flatMap((one) => valuesIn(one, at))
   }
 
   if (typeof body === 'object' && body !== null) {
-    return Object.entries(body).flatMap(([key, value]) => valuesIn(value, key))
+    return Object.entries(body).flatMap(([key, value]) =>
+      valuesIn(value, at === '' ? key : `${at}.${key}`),
+    )
   }
 
-  return [{ under, value: body }]
+  return [{ under: at, value: body }]
 }
 
 const everything = servedFiles()
 const read = everything.filter((one) => one.name !== NOT_READ)
-const everyValue = read.flatMap((one) => valuesIn(one.body, '<the file itself>'))
+const everyValue = read.flatMap((one) => valuesIn(one.body))
 
 describe('the sweep itself', () => {
   /* **The floor, and the reason this describe is first.** A guard over a folder answers
@@ -131,6 +155,24 @@ describe('the sweep itself', () => {
     expect(everyValue.filter((one) => one.under === 'memberNumber').length).toBeGreaterThan(30)
   })
 
+  it('goes down into folders, so a file one level below is read like any other', () => {
+    /* Proved by running the sweep one folder higher, where `mock/` is itself a
+       subfolder holding every file above. If it descends there it descends anywhere,
+       and this needs no fixture written into the repository to say so.
+
+       Worth doing because `public/mock` already has a folder in it today — `logo/`,
+       which `teams.json` points into — and Vite copies the whole of `public/` across
+       verbatim, so a file one level down is served exactly as publicly as one at the
+       top. While this read a single level, `logo/roster.json` carrying a year of birth
+       and an age passed the whole suite (review, 13.09.2026). */
+    expect(readdirSync(MOCK, { withFileTypes: true }).some((one) => one.isDirectory())).toBe(true)
+
+    const deeper = servedFiles(join(process.cwd(), 'public')).map((one) => one.name)
+
+    expect(deeper).toContain('mock/competitors.json')
+    expect(deeper.length).toBeGreaterThanOrEqual(everything.length)
+  })
+
   it('drops the codebook of towns and nothing else', () => {
     /* So that the one exclusion stays a decision rather than a hole that quietly grows
        to cover whatever fails next. Both halves: it really is dropped, and everything
@@ -141,7 +183,7 @@ describe('the sweep itself', () => {
 })
 
 describe('which fields the portal serves', () => {
-  it('is the set that was written down, file by file', () => {
+  it('is the set that was written down, path by path', () => {
     /* **The whole set held as it stands**, which is what makes this complete: a field
        added anywhere under `public/mock`, whatever it is called and whatever it holds,
        is a field this does not recognise. `born`, `age`, `godiste`, `yearOfBirth`, `dob`
@@ -152,7 +194,8 @@ describe('which fields the portal serves', () => {
        is the same cost the dictionary and the drawn screens already pay, and it is the
        point. The snapshot is written by hand from the files it describes; there is no
        command that regenerates it, because a snapshot something else can rewrite is a
-       snapshot nobody reads. */
+       snapshot nobody reads. Rewriting it wholesale to make this pass is not a way round
+       the guard, it is the deliberate act the guard exists to put in front of a reader. */
     const now = Object.fromEntries(
       read.map((one) => [one.name, [...new Set(fieldsIn(one.body))].sort()]),
     )
@@ -162,66 +205,131 @@ describe('which fields the portal serves', () => {
 
   it('is a snapshot of something, so the case above is comparing two full sets', () => {
     /* Without this the comparison passes when both sides are empty, which is what a
-       broken read gives. Thirteen files and a hundred and forty one names on
-       13.09.2026. */
+       broken read gives. Thirteen files and a hundred and fifty three paths on
+       13.09.2026, of which twenty three are nested. */
     expect(Object.keys(served)).toHaveLength(13)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
+    expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
+      10,
+    )
   })
 })
 
 describe('what the portal serves about how old somebody is', () => {
   /**
-   * The six fields that carry a value shaped like a year, and the only ones that may.
+   * The three fields that name a season, and the rule they are held to.
    *
-   * Read off the files rather than remembered: these are every field under
-   * `public/mock` holding an integer between 1900 and 2027, measured on 13.09.2026.
-   * Three are seasons and three are a race's metres and seconds, which really do reach
-   * those sizes. Held in both directions by the case below, so it can neither grow
-   * quietly nor go stale.
+   * **Nothing is filtered before this.** Every value at these three paths is read,
+   * whatever it is, because the question is „is this still a season" and not „does this
+   * look like a year". A prefilter here is what let `58` through.
    */
-  const MAY_HOLD_A_YEAR = ['ascentM', 'descentM', 'firstSeason', 'seconds', 'season', 'teamSince']
-
-  /** The seasons among them, which have a floor that metres and seconds do not. */
   const SEASONS = ['firstSeason', 'season', 'teamSince']
 
   /** The league's earliest imported season (PDL P26). Nothing it serves is older. */
   const FIRST_LEAGUE_SEASON = 2010
 
-  const YEAR_SHAPED = /^-?\d+$/
+  /** And the latest it can name: the season being sold is the one after the first
+   *  official one, so a season past that is not one either. Read off the portal's own
+   *  constant rather than written here, so the two cannot drift. */
+  const LAST_LEAGUE_SEASON = FIRST_SEASON + 1
 
-  /** A value read as a year whether it arrived as a number or as text.
+  const WHOLE_NUMBER = /^-?\d+$/
+
+  /** A value read as a whole number whether it arrived as a number or as text.
    *
-   *  **Text matters, and that was measured.** Both halves of this used to ask
+   *  **Text matters, and that was measured.** The checks below used to ask
    *  `typeof value === 'number'` while a comment beside them claimed a year moved into
    *  `firstSeason` would be caught. A review wrote `"1975"` there — the very year this
    *  change had just taken off that member — and the whole suite stayed green
    *  (13.09.2026). JSON has no opinion about which of the two a number arrives as. */
-  function asYear(value: unknown): number | null {
+  function asWholeNumber(value: unknown): number | null {
     if (typeof value === 'number') {
       return Number.isInteger(value) ? value : null
     }
 
-    if (typeof value === 'string' && YEAR_SHAPED.test(value.trim())) {
+    if (typeof value === 'string' && WHOLE_NUMBER.test(value.trim())) {
       return Number(value.trim())
     }
 
     return null
   }
 
+  it('holds every season to a season the league has had, whatever the value looks like', () => {
+    /* **Read over every value at those three paths with no filter in front of it**, which
+       is the whole point: an age, a day of the month, a word or a year of birth in a
+       field that claims to be a season are all the same failure, and a guard that only
+       looks at values already shaped like a year sees none of them.
+
+       Null is a season nobody has: a member with no club has no year of joining one, and
+       the two travel together (`data/types.ts`).
+
+       **The boundary, written here rather than left for somebody to find.** A season and
+       a year of birth overlap between 2010 and today, so a recent year of birth written
+       into one of these three reads as a season and is not caught — the youngest member
+       served is inside that window. What closes it is the backend, not a wider guard: no
+       query over a public file can tell one 2013 from another. Everything OUTSIDE that
+       window is caught, and that includes a bare age, which is what this case was blind
+       to until 13.09.2026. */
+    const wrong = everyValue
+      .filter((one) => SEASONS.includes(one.under) && one.value !== null)
+      .flatMap((one) => {
+        const season = asWholeNumber(one.value)
+
+        return season === null || season < FIRST_LEAGUE_SEASON || season > LAST_LEAGUE_SEASON
+          ? [`${one.under}: ${JSON.stringify(one.value)}`]
+          : []
+      })
+
+    expect(wrong, 'a field that names a season is holding something that is not one').toEqual([])
+  })
+
+  /**
+   * The fields that carry a value shaped like a year, and the only ones that may.
+   *
+   * Read off the files rather than remembered: these are every path under `public/mock`
+   * holding a whole number between 1900 and 2027, measured on 13.09.2026. Three are
+   * seasons and three are a race's metres and seconds, which really do reach those
+   * sizes.
+   */
+  const MAY_HOLD_A_YEAR = ['ascentM', 'descentM', 'firstSeason', 'seconds', 'season', 'teamSince']
+
+  /**
+   * What to do when the two cases below fail, written here because the failure message
+   * is the only place the next person is standing.
+   *
+   * **Do not add the field to `MAY_HOLD_A_YEAR`.** It is the cheapest fix and it is the
+   * wrong one every time: adding a name here permits a year of birth under that name in
+   * every file at once. `value` is the one to watch, because it is three fields in three
+   * files (`comments.json`, `ducats.json`, `verification.json`) and a ducat is a round
+   * number a step away from this band — `duk-sezonski-km` stands at 1000 today and 2000
+   * is the next rung. `last` reaches 1000, `tierUpFrom` 500 and `step` 100.
+   *
+   * **What to do instead: look at the value.** If it is a year of birth or an age, it
+   * must not be served at all, and that is this guard working. If it is a genuine figure
+   * that has grown into this band, the honest fix is to say so in the same breath as
+   * widening the list, and to say which files that widens it in. By value alone a ducat
+   * of 2000 and a year of birth of 2000 cannot be told apart, and no guard here will
+   * ever tell them apart; what can be told apart is a decision somebody wrote down and
+   * one nobody did.
+   */
+  const READ_THIS_BEFORE_WIDENING_THE_LIST =
+    'do NOT add this field to MAY_HOLD_A_YEAR to make this pass: that permits a year of' +
+    ' birth under that name in every served file at once. Look at the value first. See' +
+    ' the note above MAY_HOLD_A_YEAR in this file.'
+
   const yearShaped = everyValue.flatMap((one) => {
-    const year = asYear(one.value)
+    const year = asWholeNumber(one.value)
 
     return year !== null && year >= 1900 && year <= 2027 ? [{ ...one, year }] : []
   })
 
   it('holds the list of fields that may carry a year to the files themselves', () => {
-    /* Both directions. A field added to the list without being in the files excuses
-       something that is not there; a field in the files and not on the list is what the
-       case after this is about, and it would find it, but this says which of the two
-       went wrong. */
+    /* Both directions. A field on the list that is not in the files excuses something
+       that is not there; a field in the files and not on the list is what the case after
+       this is about, and it would find it, but this says which of the two went wrong. */
     const carrying = [...new Set(yearShaped.map((one) => one.under))].sort()
 
-    expect(carrying).toEqual([...MAY_HOLD_A_YEAR].sort())
+    expect(carrying, READ_THIS_BEFORE_WIDENING_THE_LIST).toEqual([...MAY_HOLD_A_YEAR].sort())
   })
 
   it('carries no year-shaped value in any other field, in any file', () => {
@@ -231,24 +339,7 @@ describe('what the portal serves about how old somebody is', () => {
       .filter((one) => !MAY_HOLD_A_YEAR.includes(one.under))
       .map((one) => `${one.under}: ${String(one.year)}`)
 
-    expect(loose).toEqual([])
-  })
-
-  it('holds every season to a season the league has had', () => {
-    /* The other way a year of birth gets served without a new field: written into one of
-       the three that are allowed to hold a year. A season before the league's first is
-       not a season.
-
-       **The boundary, written here rather than left for somebody to find.** A season and
-       a year of birth overlap from 2010 on, so a year of birth between 2010 and today
-       written into one of these three reads as a season and is not caught. The youngest
-       member served is in that window. What closes it is the backend, not a wider guard:
-       no query over a public file can tell one 2013 from another. */
-    const wrong = yearShaped
-      .filter((one) => SEASONS.includes(one.under) && one.year < FIRST_LEAGUE_SEASON)
-      .map((one) => `${one.under}: ${String(one.year)}`)
-
-    expect(wrong).toEqual([])
+    expect(loose, READ_THIS_BEFORE_WIDENING_THE_LIST).toEqual([])
   })
 
   it('serves every member an age band, and only a band the rulebook has', () => {
