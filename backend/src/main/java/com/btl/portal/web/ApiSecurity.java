@@ -60,7 +60,8 @@ class ApiSecurity {
 	static final List<String> READ_BY_ANYBODY =
 			List.of("/api/places", "/api/countries", "/api/events", "/api/races",
 					"/api/leagues", "/api/results",
-					"/api/competitors");
+					"/api/competitors",
+					"/api/ducats");
 
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
