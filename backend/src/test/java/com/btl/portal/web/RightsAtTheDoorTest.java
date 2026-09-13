@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -17,8 +16,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -64,57 +61,37 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, ProbeRoutes.class})
 @Transactional
 class RightsAtTheDoorTest {
 
-	/** TWO ROUTES THAT NEED DIFFERENT RIGHTS, registered for this test and nowhere else. */
-	@TestConfiguration
-	static class TwoRoutesThatNeedDifferentRights {
-
-		static final String ONE = "/api/one-that-needs-a-right";
-
-		static final String ONE_NEEDS = "entity:members";
-
-		static final String TWO = "/api/another-that-needs-another-right";
-
-		static final String TWO_NEEDS = "queue:results";
-
-		@RestController
-		static class Probe {
-
-			/** Never reached by anybody who may not, so its body is one no refusal may carry. */
-			@GetMapping(ONE)
-			@RightIsNeeded(ONE_NEEDS)
-			String one() {
-				return "through";
-			}
-
-			@GetMapping(TWO)
-			@RightIsNeeded(TWO_NEEDS)
-			String two() {
-				return "through";
-			}
-		}
-	}
-
 	/**
-	 * ROUTES UNDER {@code /api} THAT ANSWER WITHOUT ASKING FOR A RIGHT.
+	 * ROUTES THE PORTAL ANSWERS WITHOUT ASKING FOR A RIGHT, wherever they are.
 	 *
-	 * <p>Three, and each of them a decision somebody made out loud. {@code /api/me} says
-	 * who the portal thinks is asking and is meaningless to anybody it is not about;
-	 * signing in and signing out are open by necessity and {@code ApiSecurity} says why
-	 * beside each of them.
+	 * <p>Each one a decision somebody made out loud. {@code /api/me} says who the portal
+	 * thinks is asking and is meaningless to anybody it is not about; signing in and signing
+	 * out are open by necessity and {@code ApiSecurity} says why beside each of them;
+	 * {@code /error} is the error document itself, reached by the container when something
+	 * has already gone wrong, and a portal that asked for a right before it could report an
+	 * error would have nothing to report it with.
 	 *
-	 * <p><b>This is a written list, and the floor under it is in the same file.</b>
-	 * {@code everyRouteUnderTheApiEitherNeedsARightOrIsNamedHere} reads the other side
+	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
+	 * It said {@code /api/} once, and a review measured what that was worth: a
+	 * {@code @GetMapping("/cenovnik")} written without the annotation answered 200 to
+	 * somebody who is not signed in at all, and the whole suite stayed green. One character
+	 * outside {@code /api} there is no interceptor, no chain that asks for a session and no
+	 * floor - so the floor now looks at everything the portal's controllers map, and
+	 * anything meant to answer without a right is named here with its reason.
+	 *
+	 * <p><b>It is a written list, and the floor under it is in the same file.</b>
+	 * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads the other side
 	 * off the dispatcher and compares the two EXACTLY, so a name that stops being a route
-	 * fails just as loudly as a route that is not named. Padding it to make a build pass
-	 * is therefore not possible quietly, which is the whole reason it is a snapshot
-	 * rather than a rule.
+	 * fails just as loudly as a route that is not named. Padding it to make a build pass is
+	 * therefore not possible quietly, which is the whole reason it is a snapshot rather than
+	 * a rule.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
-			Set.of("/api/me", "/api/sign-in", "/api/sign-out");
+			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 
@@ -160,8 +137,8 @@ class RightsAtTheDoorTest {
 		account(EVERYTHING, "superadmin");
 		account(A_MEMBER, "competitor");
 
-		ticked(HOLDS_THE_FIRST, TwoRoutesThatNeedDifferentRights.ONE_NEEDS, "queue:payments");
-		ticked(HOLDS_THE_SECOND, TwoRoutesThatNeedDifferentRights.TWO_NEEDS, "entity:events");
+		ticked(HOLDS_THE_FIRST, ProbeRoutes.THE_RIGHT_IT_NEEDS, "queue:payments");
+		ticked(HOLDS_THE_SECOND, ProbeRoutes.THE_OTHER_RIGHT, "entity:events");
 	}
 
 	private void account(String email, String role) {
@@ -215,7 +192,7 @@ class RightsAtTheDoorTest {
 	 */
 	@Test
 	void aModeratorWhoHoldsTheTickPasses() throws Exception {
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.ONE, HOLDS_THE_FIRST))
+		assertThat(statusOf(ProbeRoutes.NEEDS_A_RIGHT, HOLDS_THE_FIRST))
 				.as("a moderator was refused a right that has been ticked for him")
 				.isEqualTo(200);
 	}
@@ -233,20 +210,20 @@ class RightsAtTheDoorTest {
 	void aModeratorIsRefusedARightAnotherModeratorHolds() throws Exception {
 		assertThat(db.sql("select count(*) from account_admin_right g join account a"
 						+ " on a.id = g.account_id where a.email = ? and g.right_code = ?")
-				.params(HOLDS_THE_FIRST, TwoRoutesThatNeedDifferentRights.ONE_NEEDS)
+				.params(HOLDS_THE_FIRST, ProbeRoutes.THE_RIGHT_IT_NEEDS)
 				.query(Integer.class).single())
 				.as("nobody else holds this tick, so being refused it says nothing about whose"
 						+ " ticks were read")
 				.isOne();
 
 		MockHttpServletResponse answer =
-				asked(TwoRoutesThatNeedDifferentRights.ONE, HOLDS_THE_SECOND);
+				asked(ProbeRoutes.NEEDS_A_RIGHT, HOLDS_THE_SECOND);
 
 		assertThat(answer.getStatus())
 				.as("a moderator holding %s and entity:events was let through a door asking for"
 						+ " %s, which the moderator beside him holds",
-						TwoRoutesThatNeedDifferentRights.TWO_NEEDS,
-						TwoRoutesThatNeedDifferentRights.ONE_NEEDS)
+						ProbeRoutes.THE_OTHER_RIGHT,
+						ProbeRoutes.THE_RIGHT_IT_NEEDS)
 				.isEqualTo(404);
 
 		assertThat(answer.getStatus())
@@ -254,13 +231,14 @@ class RightsAtTheDoorTest {
 						+ " on 13.09.2026 precisely so that it would not")
 				.isNotEqualTo(403);
 
-		/* AND IT SAYS NOTHING. A body of any kind is something an address that is not
-		   there would not have, and a body naming the missing right is the one place on
-		   the portal that would tell a moderator an action he was not given exists
-		   (ADL A8, 30.07.2026). */
-		assertThat(answer.getContentAsString())
-				.as("the refusal carried a body, which an address that is not there would not")
-				.isEmpty();
+		/* WHAT THE REFUSAL LOOKS LIKE IS NOT ASKED HERE, and the case that used to ask it
+		   was wrong. It asserted the body was EMPTY, which is the opposite of what the
+		   owner's decision needs: an address that is not there answers with the error
+		   document the container writes, so a refusal that carries nothing is a refusal
+		   anybody can tell apart from it. Worse, the assertion could not have been right
+		   either way - MockMvc does not run the container's ERROR dispatch, so the body is
+		   empty here whatever the code does. It is measured in `RightsOverRealHttpTest`,
+		   off a socket, against the whole answer. */
 	}
 
 	/**
@@ -278,22 +256,22 @@ class RightsAtTheDoorTest {
 	 */
 	@Test
 	void eachModeratorPassesOnlyTheDoorHisOwnTickOpens() throws Exception {
-		assertThat(TwoRoutesThatNeedDifferentRights.ONE_NEEDS)
+		assertThat(ProbeRoutes.THE_RIGHT_IT_NEEDS)
 				.as("both routes ask for the same right, so crossing them compares nothing")
-				.isNotEqualTo(TwoRoutesThatNeedDifferentRights.TWO_NEEDS);
+				.isNotEqualTo(ProbeRoutes.THE_OTHER_RIGHT);
 
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.ONE, HOLDS_THE_FIRST))
+		assertThat(statusOf(ProbeRoutes.NEEDS_A_RIGHT, HOLDS_THE_FIRST))
 				.as("the moderator ticked for the first right was refused the first door")
 				.isEqualTo(200);
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.TWO, HOLDS_THE_FIRST))
+		assertThat(statusOf(ProbeRoutes.NEEDS_ANOTHER_RIGHT, HOLDS_THE_FIRST))
 				.as("the moderator ticked for the FIRST right opened the door asking for the"
 						+ " SECOND, so the door is not reading what the route declared")
 				.isEqualTo(404);
 
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.TWO, HOLDS_THE_SECOND))
+		assertThat(statusOf(ProbeRoutes.NEEDS_ANOTHER_RIGHT, HOLDS_THE_SECOND))
 				.as("the moderator ticked for the second right was refused the second door")
 				.isEqualTo(200);
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.ONE, HOLDS_THE_SECOND))
+		assertThat(statusOf(ProbeRoutes.NEEDS_A_RIGHT, HOLDS_THE_SECOND))
 				.as("the moderator ticked for the SECOND right opened the door asking for the"
 						+ " FIRST, so the door is not reading what the route declared")
 				.isEqualTo(404);
@@ -315,10 +293,10 @@ class RightsAtTheDoorTest {
 				.as("the superadmin was given ticks, so this case no longer says what it says")
 				.isZero();
 
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.ONE, EVERYTHING))
+		assertThat(statusOf(ProbeRoutes.NEEDS_A_RIGHT, EVERYTHING))
 				.as("the superadmin was refused, which is the matrix being read as the whole rule")
 				.isEqualTo(200);
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.TWO, EVERYTHING))
+		assertThat(statusOf(ProbeRoutes.NEEDS_ANOTHER_RIGHT, EVERYTHING))
 				.as("the superadmin passed one door and not the other")
 				.isEqualTo(200);
 	}
@@ -331,7 +309,7 @@ class RightsAtTheDoorTest {
 	 */
 	@Test
 	void aCompetitorIsRefusedAlthoughHeIsSignedIn() throws Exception {
-		assertThat(statusOf(TwoRoutesThatNeedDifferentRights.ONE, A_MEMBER))
+		assertThat(statusOf(ProbeRoutes.NEEDS_A_RIGHT, A_MEMBER))
 				.as("being signed in was enough to open an administrative door")
 				.isEqualTo(404);
 	}
@@ -346,7 +324,7 @@ class RightsAtTheDoorTest {
 	 */
 	@Test
 	void aRefusedModeratorIsToldNoMoreThanSomebodyAskingForNothing() throws Exception {
-		int refused = statusOf(TwoRoutesThatNeedDifferentRights.ONE, HOLDS_THE_SECOND);
+		int refused = statusOf(ProbeRoutes.NEEDS_A_RIGHT, HOLDS_THE_SECOND);
 		int nothingThere = statusOf(NOTHING_IS_THERE, HOLDS_THE_SECOND);
 
 		assertThat(refused)
@@ -373,7 +351,7 @@ class RightsAtTheDoorTest {
 	 */
 	@Test
 	void nobodySignedInIsAskedToSignInRatherThanRefused() throws Exception {
-		int answer = statusOf(TwoRoutesThatNeedDifferentRights.ONE, null);
+		int answer = statusOf(ProbeRoutes.NEEDS_A_RIGHT, null);
 
 		assertThat(answer).as("a stranger was not asked to sign in").isEqualTo(401);
 		assertThat(answer)
@@ -400,14 +378,14 @@ class RightsAtTheDoorTest {
 				.query(Long.class).single();
 
 		MockHttpServletResponse answer = http.perform(
-						carrying(get(TwoRoutesThatNeedDifferentRights.ONE), HOLDS_THE_SECOND)
+						carrying(get(ProbeRoutes.NEEDS_A_RIGHT), HOLDS_THE_SECOND)
 								.header("X-Account", his)
 								.header("X-Role", "superadmin")
 								.param("account", String.valueOf(his))
 								.param("role", "superadmin")
 								.contentType("application/json")
 								.content("{\"account\":" + his + ",\"role\":\"superadmin\",\"right\":\""
-										+ TwoRoutesThatNeedDifferentRights.ONE_NEEDS + "\"}"))
+										+ ProbeRoutes.THE_RIGHT_IT_NEEDS + "\"}"))
 				.andReturn().getResponse();
 
 		assertThat(answer.getStatus())
@@ -467,7 +445,7 @@ class RightsAtTheDoorTest {
 	@Test
 	void askingWhatAGuardedRouteTakesSaysNoMoreThanAskingForNothing() throws Exception {
 		MockHttpServletResponse guarded =
-				askedWhatItTakes(TwoRoutesThatNeedDifferentRights.ONE, A_MEMBER);
+				askedWhatItTakes(ProbeRoutes.NEEDS_A_RIGHT, A_MEMBER);
 
 		assertThat(guarded.getStatus())
 				.as("OPTIONS on a route he may not read answers differently from OPTIONS on an"
@@ -486,18 +464,31 @@ class RightsAtTheDoorTest {
 	}
 
 	/**
-	 * AND ASKING IT OF AN OPEN ROUTE IS LEFT ALONE.
+	 * AND ASKING IT OF AN OPEN ROUTE IS LEFT ALONE, of EVERY open route.
 	 *
-	 * <p>The other direction, and it is the one a blanket refusal would break. The six
-	 * open resources are opened by name above that rule in {@code ApiSecurity}, so nothing
-	 * about them changed; shutting {@code OPTIONS} across the whole of {@code /api} would
-	 * pass the case above this one and fail here.
+	 * <p>The other direction, and it is the one a blanket refusal would break. What is
+	 * opened by name is opened above that rule in {@code ApiSecurity}, so nothing about it
+	 * changed; shutting {@code OPTIONS} across the whole of {@code /api} would pass the case
+	 * above this one and fail here.
+	 *
+	 * <p><b>The list is read off the constant and not written again</b>, which is the shape
+	 * {@code ApiSecurityTest.noOpenRouteOpensAnythingBesideIt} already uses and the reason it
+	 * uses it: this case named {@code /api/places} alone, so a rule that shut {@code OPTIONS}
+	 * for nine of the open resources and left the tenth would have passed the whole suite.
+	 * Nothing here counts them either - a number in a comment is read as though somebody had
+	 * counted, so nobody counts again.
 	 */
 	@Test
 	void askingWhatAnOpenRouteTakesIsLeftAlone() throws Exception {
-		assertThat(askedWhatItTakes("/api/places", null).getStatus())
-				.as("a catalogue anybody may read stopped saying what it takes")
-				.isEqualTo(200);
+		assertThat(ApiSecurity.READ_BY_ANYBODY)
+				.as("nothing is open at all, so this asks about nothing")
+				.isNotEmpty();
+
+		for (String open : ApiSecurity.READ_BY_ANYBODY) {
+			assertThat(askedWhatItTakes(open, null).getStatus())
+					.as("%s is open to anybody and stopped saying what it takes", open)
+					.isEqualTo(200);
+		}
 	}
 
 	/**
@@ -582,25 +573,32 @@ class RightsAtTheDoorTest {
 	 *
 	 * <p>Compared exactly, both ways, which is what keeps the snapshot from being padded:
 	 * a name here that is not a route fails as loudly as a route that is not named.
+	 *
+	 * <p><b>And it looks at EVERYTHING the controllers map, not at {@code /api}.</b> Written
+	 * with that filter it closed the class only under {@code /api}, and one character outside
+	 * it there is no interceptor ({@code addPathPatterns("/api/**")}), no chain asking for a
+	 * session (the second one ends in {@code permitAll}) and, until this line changed, no
+	 * floor either. Measured on 13.09.2026: a route mapped at {@code /cenovnik} without the
+	 * annotation answered 200 to a stranger, and all 1572 cases stayed green.
 	 */
 	@Test
-	void everyRouteUnderTheApiEitherNeedsARightOrIsNamedHere() {
+	void everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere() {
 		List<String> withoutARight = mappings.getHandlerMethods().entrySet().stream()
 				.filter(one -> rightOf(one.getValue()) == null)
 				.flatMap(one -> pathsOf(one.getKey()))
-				.filter(path -> path.startsWith("/api/"))
 				.filter(path -> !ApiSecurity.READ_BY_ANYBODY.contains(path))
 				.distinct().sorted().toList();
 
 		assertThat(withoutARight)
-				.as("every route under /api is either open or needs a right, which cannot be true"
-						+ " while the portal serves who is asking")
+				.as("every route the portal maps is either open or needs a right, which cannot be"
+						+ " true while the portal serves who is asking")
 				.isNotEmpty();
 
 		assertThat(withoutARight)
-				.as("a route under /api neither opens itself by name nor asks for a right, so"
-						+ " every signed in account reads it - a competitor included; if that is"
-						+ " meant, it belongs in ANSWERS_WITHOUT_A_RIGHT with the reason beside it")
+				.as("a route neither opens itself by name nor asks for a right. Under /api that"
+						+ " means every signed in account reads it, a competitor included; OUTSIDE"
+						+ " /api it means anybody at all does, signed in or not. If that is meant,"
+						+ " it belongs in ANSWERS_WITHOUT_A_RIGHT with the reason beside it")
 				.containsExactlyInAnyOrderElementsOf(ANSWERS_WITHOUT_A_RIGHT);
 	}
 

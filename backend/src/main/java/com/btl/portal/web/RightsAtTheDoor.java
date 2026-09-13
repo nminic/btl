@@ -9,6 +9,8 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.io.IOException;
+
 /**
  * WHO MAY, ASKED BEFORE THE METHOD THAT WOULD ANSWER RUNS.
  *
@@ -89,7 +91,7 @@ class RightsAtTheDoor implements WebMvcConfigurer, HandlerInterceptor {
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
-			Object handler) {
+			Object handler) throws IOException {
 
 		/* NOT EVERYTHING UNDER /api IS A METHOD OF THIS PORTAL'S. A signed in member
 		   asking for an address nothing maps is dispatched to the handler that serves
@@ -103,9 +105,14 @@ class RightsAtTheDoor implements WebMvcConfigurer, HandlerInterceptor {
 		RightIsNeeded needed = method.getMethodAnnotation(RightIsNeeded.class);
 
 		/* A ROUTE THAT DECLARES NOTHING IS LEFT ALONE, and that is the whole of what
-		   this increment changes for what already exists. `/api/me` and the six open
-		   resources pass through here untouched; the day a route needs a right it says
-		   so on itself. */
+		   this increment changes for what already exists. `/api/me` and everything on the
+		   open list pass through here untouched; the day a route needs a right it says so
+		   on itself.
+
+		   NO COUNT IS WRITTEN HERE. One stood in this comment and said six while the list
+		   held ten, which is what a number in a comment is for: it reads as though somebody
+		   had counted, so nobody counts again. `ApiSecurity.READ_BY_ANYBODY` is the list,
+		   and whoever needs to know how many there are can read it. */
 		if (needed == null) {
 			return true;
 		}
@@ -119,7 +126,31 @@ class RightsAtTheDoor implements WebMvcConfigurer, HandlerInterceptor {
 		   guarded route in it and "the right this route asks for" and "the only right
 		   anywhere" were the same string. There are two routes now, asking for different
 		   rights, and `eachModeratorPassesOnlyTheDoorHisOwnTickOpens` crosses them. */
-		response.setStatus(HttpStatus.NOT_FOUND.value());
+
+		/* AND THE REFUSAL GOES DOWN THE SAME ROAD AS AN ADDRESS THAT IS NOT THERE, which
+		   is `sendError` and not a status written onto the response.
+
+		   The difference is the whole finding of 13.09.2026. Setting the status and
+		   returning false ends the request here: no body is ever written, no
+		   `Content-Type` is set, and the answer goes out 262 bytes long with
+		   `Content-Length: 0`. An address that is not there ends in `sendError` too - that
+		   is what `DefaultHandlerExceptionResolver` does with a `NoResourceFoundException`
+		   - so the container runs its ERROR dispatch to `/error`, `BasicErrorController`
+		   writes the JSON, and the answer goes out chunked and 412 bytes long. Two answers
+		   carrying the same NUMBER and nothing else the same, which is an oracle for
+		   whether an address exists, one request per guess, and a plain member is enough
+		   to run it.
+
+		   It is fixed by taking the same road rather than by dressing this one up to look
+		   like it. An imitation is a shape somebody has to keep equal by hand, and it
+		   comes apart at the first header nobody thought of; one call into the same
+		   machinery cannot come apart at all.
+
+		   Measured where it can be seen: `RightsOverRealHttpTest` reads both answers off a
+		   socket, byte for byte. MockMvc cannot see this and never could - it does not run
+		   the container's ERROR dispatch, so the two answers look alike to it whichever
+		   way this line is written. */
+		response.sendError(HttpStatus.NOT_FOUND.value());
 		return false;
 	}
 }
