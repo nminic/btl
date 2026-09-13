@@ -290,6 +290,10 @@ describe('a sentence with a value put into it', () => {
       'form.suggested',
       'home.moreRuns',
       'home.place',
+      /* The name of the competition inside the name of the control that opens its list of events
+         and races, and inside the wait under it. Nominative, because the competition is what the
+         box is about and nothing governs it: „Događaji i trke, RunTrace liga 2027". */
+      'leagues.countingOf',
       'leagues.season',
       'membership.active',
       'membership.byCountry',

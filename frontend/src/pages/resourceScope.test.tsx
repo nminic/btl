@@ -131,6 +131,27 @@ describe('a part of a screen waits without covering the page', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   }, SLOW)
 
+  it('names the competitions and reads their terms when the races cannot be loaded', async () => {
+    /* **The third file this screen touches, since 13.09.2026.** The box of events and races reads
+       the races (553 KB) and the events (373 KB); the names, the seasons, the terms and the
+       prizes come out of the one small file. Waited for, a races file that failed would replace
+       the whole screen with an error and take with it everything the owner moved here on
+       07.09.2026.
+
+       What the failed file costs is the inside of a box that is folded to begin with, so nothing
+       on the screen as it arrives even says so. */
+    restore = breakResource('races')
+    renderAt('/sr/lige?sezona=2027')
+
+    expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Propozicije' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' }),
+    ).toBeVisible()
+    expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  }, SLOW)
+
   it('keeps the front page readable while the president is still on his way', async () => {
     restore = stallResource('pages')
     renderAt('/sr')

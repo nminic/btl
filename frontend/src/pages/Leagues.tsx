@@ -19,6 +19,7 @@ import { useI18n } from '../i18n/useI18n'
 import { useMay } from './admin/rights'
 import { useSession } from '../session/useSession'
 import { EditableText } from './league/EditableText'
+import { LeagueEvents } from './league/LeagueEvents'
 import { leagueTable } from './league/leagueTable'
 import './Leagues.css'
 
@@ -81,6 +82,13 @@ function Entrants({ league }: { league: League }) {
  * 3 reda." What each box carries is the season, how many events count towards it, how many people
  * are in it, and what the organiser has written: the terms and the prizes, which used to live one
  * screen further in and are read here now.
+ *
+ * **And, since 13.09.2026, which events and races it counts**, in a box of its own that folds
+ * (`league/LeagueEvents.tsx`). The owner: „na pregledu svih liga ispisuje ono što i sad (naziv,
+ * opšti detalji, PROPOZICIJE, NAGRADE, pa onda ide i sekcijica DOGAĐAJI / TRKE koja se može
+ * ekspandovati tako da se vide sve označene." It was built for the page of a single competition
+ * the day before, on his word of 12.09.2026, and he corrected himself the next morning; the page
+ * of one competition is the standing and nothing else again.
  *
  * **The season is chosen beside the heading**, the same control the standing of the teams wears
  * and in the same place. The options are the seasons the competitions themselves are held in, so
@@ -164,6 +172,13 @@ export function Leagues() {
                         canEdit={may('entity:leagues')}
                         onSave={(text) => edit(league.id, 'prizes', text)}
                       />
+
+                      {/* And after the prizes, the events and races the competition counts, in a
+                          box that folds (owner, 13.09.2026: „pa onda ide i sekcijica DOGAĐAJI /
+                          TRKE koja se može ekspandovati tako da se vide sve označene").
+                          Read-only: what a moderator changes here is the terms and the prizes,
+                          and which events count is set in the administration. */}
+                      <LeagueEvents league={league} />
                     </li>
                   ))}
                 </ul>

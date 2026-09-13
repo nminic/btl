@@ -101,7 +101,8 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   /* One address since 07.09.2026, and no part to name. It was two, and the second
      (`/liga/:slug/rezultati`) named the same page as the first once the owner took the terms,
      the prizes and the events off this screen; two addresses for one page is what the portal
-     refuses everywhere else (P11), so it is gone rather than kept as an alias. */
+     refuses everywhere else (P11), so it is gone rather than kept as an alias. Asked again on
+     12.09.2026, answered the same way on the 13th, and still one address. */
   ['/sr/liga/runtrace-2027', 'RunTrace liga 2027', 'RunTrace liga 2027'],
   ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
   ['/sr/politika-privatnosti', 'Politika privatnosti', 'Politika privatnosti'],
