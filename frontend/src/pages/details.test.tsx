@@ -425,10 +425,21 @@ describe('LeagueDetail', () => {
     /* And at its own, not at a neighbour's. Three buttons pointing at one panel is the shape a
        constant id produces, and a reader following either of the other two lands on this box. */
     expect(new Set(panels).size).toBe(panels.length)
+
     for (const [index, panel] of panels.entries()) {
       const card = at(cards, index)
-      expect(within(card).getByRole('button', { name: /Događaji i trke/ })).toBe(
-        at(toggles, index),
+      const toggle = at(toggles, index)
+
+      /* **And the thing it points at is the thing that folds.** Without this the case is happy
+         with the button's own ancestor: move the id onto the section that wraps the button and
+         `aria-controls` becomes a circle, sending a reader to where they already are, while the
+         panel that actually folds carries no id at all. Measured by a review on 13.09.2026, which
+         made exactly that move and watched all 2766 cases stay green. */
+      expect(panel, 'the element aria-controls names is not the one that folds').toHaveAttribute(
+        'hidden',
+      )
+      expect(panel.contains(toggle), 'aria-controls points at an ancestor of the button').toBe(
+        false,
       )
       expect(card.contains(panel)).toBe(true)
     }

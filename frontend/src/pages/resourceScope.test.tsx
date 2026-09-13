@@ -115,6 +115,29 @@ describe('a part of a screen waits without covering the page', () => {
     expect(facts(), 'the number arrived while the file was held').not.toMatch(/Učesnika: \d/)
   }, SLOW)
 
+  it('leaves the number of days empty while its file is still on the way', async () => {
+    /* **The guard that came with the precedent, and did not come with the copy.** The number of
+       days was written on 13.09.2026 in the shape of `Entrants` two cases above: three states, not
+       two. The code was copied and this was not, and a review measured what that leaves open: the
+       waiting state and the failed state could be swapped, or the waiting one deleted outright,
+       and the whole suite stayed green.
+
+       Both of those are lies a member reads. Deleted, every card says „Događaja: 0" for the whole
+       load, so the portal claims no day counts towards any competition. Swapped, a member whose
+       races file failed sees nothing at all, and everybody else reads „nepoznato" while the file
+       is simply on its way. */
+    restore = stallResource('races')
+    renderAt('/sr/lige?sezona=2027')
+
+    expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+    expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+    expect(facts()).toContain('Događaja:')
+    expect(facts(), 'the number arrived while the file was held').not.toMatch(/Događaja: \d/)
+    expect(facts(), 'a file still on its way was reported as one that will not come').not.toContain(
+      'Događaja: nepoznato',
+    )
+  }, SLOW)
+
   it('says so rather than counting nought when that file never arrives', async () => {
     /* The other half of the same finding. A count of none where the file failed is a lie in the
        other direction, and the word for it has to be a word. */

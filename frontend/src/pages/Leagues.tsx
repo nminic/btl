@@ -45,6 +45,21 @@ import './Leagues.css'
  * list must not wait on two files of nearly two megabytes to draw a name. Three states and not
  * two - empty while the answer is coming, because a nought where the file has not arrived is the
  * card telling a lie; the word when it will not come at all.
+ *
+ * **WHAT THIS COSTS, NAMED AS A DECISION RATHER THAN LEFT AS A CONSEQUENCE.** The number used to
+ * come out of a file of 1,9 KB and appeared with the name of the competition; it now waits on the
+ * races (553 KB) and the events (373 KB), so on a slow connection the row reads „Događaja:" with
+ * nothing after it for as long as those take. That is the same bargain `Entrants` beside it
+ * already makes, and the same three states, so the screen itself still draws immediately.
+ *
+ * **And the difference that is being paid for is real even though today only the mock shows it.**
+ * `LeagueApi` builds `eventIds` by aggregating over the races it counts, so a server answer can
+ * never carry an event with no counted races; the mock's `brdska-2019` can, because its list was
+ * written by hand. Two readings follow, and the one taken here is deliberate: the row could have
+ * kept reading `eventIds` and been right again the day /mock is switched off, OR it can read what
+ * the box reads and be right on both sides of that day. The second is chosen because the first is
+ * right only while somebody remembers why, and a number that disagrees with the list under it is
+ * the kind of thing a member notices and nobody can explain.
  */
 function CountedEvents({ league }: { league: League }) {
   const { t } = useI18n()
