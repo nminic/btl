@@ -50,7 +50,7 @@
  *
  * WHY THE PAIR IS THE KEY AND THERE IS NO `id`.
  *
- * A46/O1 says a key is a bigserial, and it says it about a thing that HAS an identity of its own.
+ * A36/O1 says a key is a bigserial, and it says it about a thing that HAS an identity of its own.
  * This row has none: it is the person and the year, and nothing points at it. The schema already
  * carries that shape wherever the pair is the fact rather than a property of something -
  * `league_race_pk` over (league, race) in V19, `message_read_pk` over (message, member) in V13 -

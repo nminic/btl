@@ -243,7 +243,8 @@ class MembershipConstraintsTest extends DatabaseTest {
 		db.sql(GOOD_ANOTHER_MEMBER).update();
 
 		assertThat(db.sql("select count(*) from membership").query(Long.class).single())
-				.as("the probe wrote no memberships, so the delete below removes nothing")
+				.as("there are not two memberships standing on two different members, so what the"
+						+ " deletion below leaves behind says nothing about whose rows it took")
 				.isEqualTo(2L);
 
 		assertThat(db.sql("delete from competitor where member_number = '001000'").update())
