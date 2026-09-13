@@ -82,10 +82,14 @@ import java.util.List;
  * half it was.</b> „Par se raskida kad jedna strana ne produzi clanarinu" (PDL,
  * 11.08.2026, the owner in four words: „Ne postoji par onda, raskida se."). What
  * is NOT true, and was written here until 13.09.2026, is that the ending takes
- * the row with it: {@code racing_pair} is named in one migration and in this
- * class and nowhere else under {@code src/main}, so no trigger, no cascade and no
- * flow removes anything. The row stays and this reader is the only thing between
- * a pair that does not exist and a public answer. When the increment that really
+ * the row with it. A fee that lapses DELETES NOBODY: it lowers
+ * {@code competitor.active}, and the row in {@code racing_pair} is untouched.
+ * (Deleting the person is a different door and it does take the pair along, since
+ * V12 writes both of its keys {@code on delete cascade}; that door is not this
+ * one.) Nothing else writes the ending either - {@code racing_pair} is named in
+ * one migration and in this class and nowhere else under {@code src/main}, so no
+ * trigger and no flow breaks a pair. The row stays and this reader is the only
+ * thing between a pair that does not exist and a public answer. When the increment that really
  * breaks pairs lands, whoever writes it may take this condition out and say so;
  * until then a sentence promising it is an instruction to put the leak back.
  *
