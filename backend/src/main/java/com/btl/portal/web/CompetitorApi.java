@@ -13,18 +13,27 @@ import java.util.List;
  * reason this resource was written before the easier ones.</b> The published
  * privacy policy and Article 74 of the rulebook say it in one sentence: „Datum
  * rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku. Javna je
- * samo kategorija koja iz njega proizlazi." The year IS the shortened form. What
- * the portal serves today carries {@code birthYear} for all thirty two members,
- * which is the thing that had to stop before the policy takes effect on
- * 15.09.2026 (risk R4).
+ * samo kategorija koja iz njega proizlazi." The year IS the shortened form. The
+ * portal served {@code birthYear} for all thirty two members until 13.09.2026,
+ * when B52 removed it from {@code public/mock/competitors.json} and put the age
+ * band there instead; that was the thing that had to stop before the policy takes
+ * effect on 15.09.2026 (risk R4). This server is the other door onto the same
+ * fact, and it was shut first.
  *
  * <p><b>What replaces it is the category, and it is not here yet.</b> The age
  * band is worked out from the year and the season, and a member in their first
  * season carries that category instead, which depends on their whole history of
  * points (PDL P7, and the owner's decisions of 03.08. and 11.08.2026). That is
- * its own increment, on the server, the same way the points themselves are. Until
- * it lands the screens keep working it out from what they have; nothing reads
- * this resource yet.
+ * its own increment, on the server, the same way the points themselves are.
+ * Nothing reads this resource yet.
+ *
+ * <p><b>What changed on 13.09.2026, and what it means for that increment.</b> The
+ * screens no longer work the band out from what they have, because they no longer
+ * have it: B52 took the year off the served record and put the band itself there.
+ * So this resource now owes a field the portal really serves, rather than one it
+ * merely will. It is named in {@code CompetitorApiTest} as owed rather than
+ * withheld, and that name fails the moment this resource starts answering with it,
+ * so the debt cannot be forgotten.
  *
  * <p><b>And nothing about the membership fee leaves either.</b> The same article
  * of the rulebook goes on: „Datum rođenja se nikada ne prikazuje, ni u punom ni
