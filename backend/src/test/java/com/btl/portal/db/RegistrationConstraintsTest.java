@@ -93,12 +93,16 @@ class RegistrationConstraintsTest extends DatabaseTest {
 	private static final String CONSENT_INSERT = "insert into parental_consent"
 			+ " (competitor_id, guardian_name, relation, given_at, given_from) values (";
 	private static final String PHOTO_INSERT = "insert into photo"
-			+ " (media_type, byte_size, digest, crop_x, crop_y, crop_side) values (";
+			+ " (media_type, byte_size, digest, crop_x, crop_y, crop_diameter) values (";
 
 	private static final String GOOD_DOCUMENT = DOCUMENT_INSERT + OTHER_COMPETITOR + ", 'AB1234567')";
 	private static final String GOOD_CONSENT = CONSENT_INSERT + OTHER_COMPETITOR + ", 'Marija Probna', 'mother', "
 			+ AN_INSTANT + ", inet '192.0.2.10')";
-	private static final String GOOD_PHOTO = PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0, 0, 512)";
+	/* Three fractions and three DIFFERENT fractions (ADL A17, V21). Different
+	   because they are three separate numbers with three separate rules over them,
+	   and a row carrying the same value three times would let a case about one of
+	   them pass on another's. */
+	private static final String GOOD_PHOTO = PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 0.75, 0.5)";
 
 	/**
 	 * Two members, and two rather than one for the reason the workspace rules
@@ -121,7 +125,7 @@ class RegistrationConstraintsTest extends DatabaseTest {
 		/* And one photograph, because the key over its id can only be broken by a row that collides
 		   with one that is there: against an empty table the case below inserts nothing and proves
 		   nothing. */
-		db.sql(PHOTO_INSERT + "'image/png', 2048, '" + A_DIGEST + "', 4, 4, 256)").update();
+		db.sql(PHOTO_INSERT + "'image/png', 2048, '" + A_DIGEST + "', 0.1, 0.9, 0.4)").update();
 	}
 
 	private static String member(String number, String referralCode) {
@@ -185,50 +189,56 @@ class RegistrationConstraintsTest extends DatabaseTest {
 				   be missing: a row without a type or a digest describes a file the
 				   server could not verify. */
 				Violation.notNull("photo_media_type_not_null", "media_type",
-						PHOTO_INSERT + "null, 40960, '" + A_DIGEST + "', 0, 0, 512)"),
+						PHOTO_INSERT + "null, 40960, '" + A_DIGEST + "', 0.25, 0.75, 0.5)"),
 				/* A type the server cannot recognise by content, and one nobody may
 				   store by trusting the name a browser sent (ADL A12a, 1). */
 				Violation.of("photo_media_type_known",
-						PHOTO_INSERT + "'image/gif', 40960, '" + A_DIGEST + "', 0, 0, 512)"),
+						PHOTO_INSERT + "'image/gif', 40960, '" + A_DIGEST + "', 0.25, 0.75, 0.5)"),
 				Violation.notNull("photo_byte_size_not_null", "byte_size",
-						PHOTO_INSERT + "'image/jpeg', null, '" + A_DIGEST + "', 0, 0, 512)"),
+						PHOTO_INSERT + "'image/jpeg', null, '" + A_DIGEST + "', 0.25, 0.75, 0.5)"),
 				/* A file of no bytes is not a file. */
 				Violation.of("photo_byte_size_positive",
-						PHOTO_INSERT + "'image/jpeg', 0, '" + A_DIGEST + "', 0, 0, 512)"),
+						PHOTO_INSERT + "'image/jpeg', 0, '" + A_DIGEST + "', 0.25, 0.75, 0.5)"),
 				Violation.notNull("photo_digest_not_null", "digest",
-						PHOTO_INSERT + "'image/jpeg', 40960, null, 0, 0, 512)"),
+						PHOTO_INSERT + "'image/jpeg', 40960, null, 0.25, 0.75, 0.5)"),
 				/* Uppercase is not what a digest is written in here, and sixty three
 				   characters are not sixty four. Both are rows somebody would write
 				   by hand and neither is a digest this schema means. */
 				Violation.of("photo_digest_shape",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST.toUpperCase() + "', 0, 0, 512)"),
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST.toUpperCase() + "', 0.25, 0.75, 0.5)"),
 				Violation.of("photo_digest_shape",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST.substring(1) + "', 0, 0, 512)"),
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST.substring(1) + "', 0.25, 0.75, 0.5)"),
 				Violation.notNull("photo_crop_x_not_null", "crop_x",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', null, 0, 512)"),
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', null, 0.75, 0.5)"),
 				Violation.notNull("photo_crop_y_not_null", "crop_y",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0, null, 512)"),
-				Violation.notNull("photo_crop_side_not_null", "crop_side",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0, 0, null)"),
-				/* All three corners of the same rule, because one of them passing is
-				   not the other two passing: an offset may be zero but never negative,
-				   and a side is never nothing. */
-				Violation.of("photo_crop_inside",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', -1, 0, 512)"),
-				Violation.of("photo_crop_inside",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0, -1, 512)"),
-				Violation.of("photo_crop_inside",
-						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0, 0, 0)"),
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0.25, null, 0.5)"),
+				Violation.notNull("photo_crop_diameter_not_null", "crop_diameter",
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 0.75, null)"),
+				/* THE CROP IS THREE FRACTIONS BETWEEN 0 AND 1 (ADL A17, V21), and each
+				   of the three carries its own rule: a crop wrong across is not the same
+				   fault as a crop wrong down, and one of them holding is not the other
+				   two holding. One row each here, which is what this file's floor asks
+				   for; both ends of every range and the exact boundaries are
+				   CropIsThreeFractionsTest's. */
+				Violation.of("photo_crop_x_in_range",
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', -0.25, 0.75, 0.5)"),
+				Violation.of("photo_crop_y_in_range",
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 1.75, 0.5)"),
+				/* Nothing is not a circle. This is the half of V8's `photo_crop_inside`
+				   that was alive and stays alive under the new name: an offset may be
+				   zero, a diameter never. */
+				Violation.of("photo_crop_diameter_in_range",
+						PHOTO_INSERT + "'image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 0.75, 0)"),
 				Violation.notNull("photo_id_not_null", "id",
-						"insert into photo (id, media_type, byte_size, digest, crop_x, crop_y, crop_side)"
-								+ " values (null, 'image/jpeg', 40960, '" + A_DIGEST + "', 0, 0, 512)"),
+						"insert into photo (id, media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+								+ " values (null, 'image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 0.75, 0.5)"),
 				Violation.of("photo_pk",
-						"insert into photo (id, media_type, byte_size, digest, crop_x, crop_y, crop_side)"
-								+ " select id, 'image/png', 1024, '" + A_DIGEST + "', 0, 0, 256 from photo"
+						"insert into photo (id, media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+								+ " select id, 'image/png', 1024, '" + A_DIGEST + "', 0.3, 0.6, 0.45 from photo"
 								+ " limit 1"),
 				Violation.notNull("photo_uploaded_at_not_null", "uploaded_at",
-						"insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_side, uploaded_at)"
-								+ " values ('image/jpeg', 40960, '" + A_DIGEST + "', 0, 0, 512, null)"),
+						"insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter, uploaded_at)"
+								+ " values ('image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 0.75, 0.5, null)"),
 				Violation.notNull("competitor_document_written_at_not_null", "written_at",
 						"insert into competitor_document (competitor_id, document_number, written_at) values ("
 								+ OTHER_COMPETITOR + ", 'KL1112223', null)"));
