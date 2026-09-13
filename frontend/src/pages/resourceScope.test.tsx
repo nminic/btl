@@ -150,6 +150,14 @@ describe('a part of a screen waits without covering the page', () => {
     ).toBeVisible()
     expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    /* And the number of days says so rather than counting nought, the same way „Učesnika" does
+       two cases above. Since 13.09.2026 that number is worked out of the races as well, so a
+       races file that failed would otherwise have every competition on the screen claiming it
+       counts no days at all. */
+    await waitFor(() => {
+      expect(facts()).toContain('Događaja: nepoznato')
+    })
   }, SLOW)
 
   it('keeps the front page readable while the president is still on his way', async () => {

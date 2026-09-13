@@ -426,10 +426,11 @@ describe('LeagueDetail', () => {
        constant id produces, and a reader following either of the other two lands on this box. */
     expect(new Set(panels).size).toBe(panels.length)
     for (const [index, panel] of panels.entries()) {
-      expect(within(cards[index]).getByRole('button', { name: /Događaji i trke/ })).toBe(
-        toggles[index],
+      const card = at(cards, index)
+      expect(within(card).getByRole('button', { name: /Događaji i trke/ })).toBe(
+        at(toggles, index),
       )
-      expect(cards[index].contains(panel)).toBe(true)
+      expect(card.contains(panel)).toBe(true)
     }
   })
 
