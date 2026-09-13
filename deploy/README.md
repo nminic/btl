@@ -119,10 +119,13 @@ message:
 
 **The two mail variables are the pair that fails quietly.** They are empty by default ON PURPOSE:
 a missing relay key must never keep the public site down, so the stack starts without them. What it
-does not do is send. No address is ever confirmed, no password is ever reset, and nothing anywhere
-says so, because a relay refusing a login is a line in a log nobody reads. **Both or neither:** the
-key is shown by Brevo exactly once, so the moment to paste it is also the moment to paste the login
-beside it.
+does not do is send. No address is ever confirmed and no password is ever reset.
+
+**And there is no line in a log to find.** `Postman.send` throws to whoever asked for the message
+rather than swallowing it, and nothing catches it, so the failure reaches the member who pressed the
+button and nobody else. Looking for it in `docker compose logs backend` is looking for something
+that was never written. **Both or neither:** the key is shown by Brevo exactly once, so the moment
+to paste it is also the moment to paste the login beside it.
 
 `PROD_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
 anything and names the variable, rather than starting the production database
@@ -441,7 +444,7 @@ first time somebody adds one. What the backend log says is `Migrating schema "pu
 `backend/src/main/resources/db/migration`, which is where to look for the number rather than here.
 
 **An empty schema is a fault, not a resting state.** It means Flyway found
-nothing on the classpath, and the four migrations that `main` carries were not
+nothing on the classpath, and the migrations that `main` carries were not
 packaged into the jar. Read the log before anything else; a backend that came
 up against an empty schema will still answer `/actuator/health` with `UP`,
 because the database is reachable and that is all that indicator asks.
@@ -513,6 +516,28 @@ key.
 The same hard rules apply as in production: never bind ports 80 or 443, and
 never run `docker compose down`, because it deletes the network the edge proxy
 is attached to.
+
+
+### When a member says they cannot sign in
+
+Before looking at the backend at all, rule out the rate limit. Since 13.09.2026
+`frontend/nginx.conf` answers **429** to more than ten sign-in attempts a minute from
+one visitor, and it does so **without ever reaching the backend**, so `docker compose
+logs backend` shows nothing at all. Every container is `Up (healthy)` and the log is
+silent, which is the state that looks most like a deeper fault and is not one.
+
+```bash
+docker compose -f compose.prod.yml logs frontend --since 30m | grep 'limiting requests'
+```
+
+Nothing in that output means the limit is not what stopped them. A line there names the
+address that was limited.
+
+The limit is keyed on the address the edge proxy forwards, so one member being refused
+does not refuse anybody else. If EVERY member is refused at once, that is the failure
+the configuration warns about: the forwarded address stopped arriving, everybody fell
+into one bucket, and the file to look at is `frontend/nginx.conf` rather than the
+backend.
 
 ## Known gaps
 
