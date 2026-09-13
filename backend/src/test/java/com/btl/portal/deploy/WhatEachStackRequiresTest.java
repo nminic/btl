@@ -104,6 +104,28 @@ class WhatEachStackRequiresTest {
 	}
 
 	/**
+	 * What the table holds about one setting: what the stack does without it, and HOW MANY
+	 * RENDERED VALUES it actually reaches.
+	 *
+	 * <p><b>The second half is not bookkeeping, and two mutations say why.</b> A password
+	 * is asked for twice - once for the database container, once for the backend that
+	 * dials it - so disarming ONE of the two leaves the stack still refusing to deploy
+	 * without it, and every question above still gets the same answer. Both of these went
+	 * green without this: writing {@code $$} in front of one of the two, which is
+	 * Compose's escape and turns that one into a dead literal, and pasting a password
+	 * straight over one of the two lines.
+	 *
+	 * <p>So this counts how many values in the RENDERED configuration carry the setting -
+	 * which is to say, how many places would actually receive the secret. Compose does the
+	 * rendering, so it is once again the tool answering rather than a reader guessing.
+	 */
+	private record Held(Asking asking, int reaches) { }
+
+	private static Held asked(Asking asking, int reaches) {
+		return new Held(asking, reaches);
+	}
+
+	/**
 	 * THE TABLE, per stack, and the two cases below close it over the files both ways.
 	 *
 	 * <p>Written out rather than derived because what it holds cannot be derived - it is
@@ -125,36 +147,41 @@ class WhatEachStackRequiresTest {
 	 * does not make production loud, it makes production undeployable while the key is
 	 * absent.
 	 */
-	private static final Map<String, Map<String, Asking>> HELD = held();
+	private static final Map<String, Map<String, Held>> HELD = held();
 
-	private static Map<String, Map<String, Asking>> held() {
-		Map<String, Map<String, Asking>> table = new LinkedHashMap<>();
+	private static Map<String, Map<String, Held>> held() {
+		Map<String, Map<String, Held>> table = new LinkedHashMap<>();
 
+		/* The name, the role and the password each reach the postgres container AND the
+		   backend that dials it, which is why the counts are not all one; the name and the
+		   role reach the healthcheck as well. */
 		table.put("compose.prod.yml", Map.of(
-				"PROD_POSTGRES_DB", Asking.DEPLOYS_WITHOUT_IT,
-				"PROD_POSTGRES_USER", Asking.DEPLOYS_WITHOUT_IT,
-				"PROD_POSTGRES_PASSWORD", Asking.REFUSES_UNSET_OR_EMPTY,
-				"PROD_MAIL_HOST", Asking.DEPLOYS_WITHOUT_IT,
-				"PROD_MAIL_PORT", Asking.DEPLOYS_WITHOUT_IT,
-				"PROD_MAIL_USERNAME", Asking.DEPLOYS_WITHOUT_IT,
-				"PROD_MAIL_PASSWORD", Asking.DEPLOYS_WITHOUT_IT));
+				"PROD_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
+				"PROD_POSTGRES_USER", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
+				"PROD_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2),
+				"PROD_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				"PROD_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				"PROD_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				"PROD_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
 
 		table.put("compose.qa.yml", Map.of(
-				"QA_POSTGRES_DB", Asking.DEPLOYS_WITHOUT_IT,
-				"QA_POSTGRES_USER", Asking.DEPLOYS_WITHOUT_IT,
-				"QA_POSTGRES_PASSWORD", Asking.REFUSES_UNSET_OR_EMPTY,
-				"QA_MAIL_HOST", Asking.DEPLOYS_WITHOUT_IT,
-				"QA_MAIL_PORT", Asking.DEPLOYS_WITHOUT_IT,
-				"QA_MAIL_USERNAME", Asking.DEPLOYS_WITHOUT_IT,
-				"QA_MAIL_PASSWORD", Asking.DEPLOYS_WITHOUT_IT));
+				"QA_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
+				"QA_POSTGRES_USER", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
+				"QA_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2),
+				"QA_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				"QA_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				"QA_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				"QA_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
 
 		/* The development stack in the repository root, which CLAUDE.md tells a developer
 		   to run as `docker compose up -d postgres`. Its password is required too, and it
-		   is the one whose REQUIRED column lies. */
+		   is the one whose REQUIRED column lies. Its backend and frontend sit behind the
+		   "full" profile, which is why every probe here enables all profiles: without that
+		   the bare ${POSTGRES_PASSWORD} on the backend is rendered by nobody and counts 1. */
 		table.put("docker-compose.yml", Map.of(
-				"POSTGRES_DB", Asking.DEPLOYS_WITHOUT_IT,
-				"POSTGRES_USER", Asking.DEPLOYS_WITHOUT_IT,
-				"POSTGRES_PASSWORD", Asking.REFUSES_UNSET_OR_EMPTY));
+				"POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
+				"POSTGRES_USER", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
+				"POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2)));
 
 		return Map.copyOf(table);
 	}
@@ -170,7 +197,7 @@ class WhatEachStackRequiresTest {
 	@MethodSource("everyStackThisRepoDeploys")
 	void everySettingBehavesExactlyAsItIsHeld(Path stack) throws Exception {
 		String named = stack.getFileName().toString();
-		Map<String, Asking> expected = HELD.get(named);
+		Map<String, Held> expected = HELD.get(named);
 
 		assertThat(expected)
 				.as("the repository carries %s and nothing says what any of its settings do when"
@@ -183,6 +210,8 @@ class WhatEachStackRequiresTest {
 		assertThat(settings)
 				.as("%s asks the environment for nothing at all, so this measures nothing", named)
 				.isNotEmpty();
+
+		Map<String, Integer> reached = whatEachSettingReaches(stack, settings);
 
 		for (String setting : settings) {
 			assertThat(expected)
@@ -201,8 +230,17 @@ class WhatEachStackRequiresTest {
 							+ " EVERY command over this file, the frontend-only deploy included. And"
 							+ " refusing an unset value is not the same as refusing an EMPTY one:"
 							+ " every password in .env.example ships empty and the runbook says to"
-							+ " copy it", named, setting, expected.get(setting), answered)
-					.isEqualTo(expected.get(setting));
+							+ " copy it", named, setting, expected.get(setting).asking(), answered)
+					.isEqualTo(expected.get(setting).asking());
+
+			assertThat(reached.get(setting))
+					.as("%s renders %s into %d values and it is held as %d. A value that stopped"
+							+ " carrying it is a place now fed from somewhere else - a literal"
+							+ " pasted in, or a '$$' that turned the interpolation into dead text -"
+							+ " while every other question here still gets the same answer, because"
+							+ " the remaining places go on requiring it", named, setting,
+							reached.get(setting), expected.get(setting).reaches())
+					.isEqualTo(expected.get(setting).reaches());
 		}
 	}
 
@@ -222,7 +260,7 @@ class WhatEachStackRequiresTest {
 
 			everyStack.add(named);
 
-			Map<String, Asking> expected = HELD.get(named);
+			Map<String, Held> expected = HELD.get(named);
 
 			if (expected == null) {
 				continue;
@@ -316,6 +354,44 @@ class WhatEachStackRequiresTest {
 		return names;
 	}
 
+	/**
+	 * How many rendered values each setting actually reaches.
+	 *
+	 * <p>One run, with every setting held at a placeholder that carries its own name, so
+	 * two settings can never be mistaken for each other. Then the rendered configuration -
+	 * Compose's own output, after all interpolation - is counted.
+	 */
+	private static Map<String, Integer> whatEachSettingReaches(Path stack, List<String> settings)
+			throws Exception {
+
+		Map<String, String> distinct = new LinkedHashMap<>();
+
+		settings.forEach(one -> distinct.put(one, PLACEHOLDER + "-" + one));
+
+		Ran rendered = compose(stack, List.of("config"), distinct);
+
+		assertThat(rendered.code())
+				.as("%s could not be rendered even with every setting given a value, so nothing"
+						+ " below counts anything:%n%s", stack, rendered.errors())
+				.isZero();
+
+		Map<String, Integer> reaches = new LinkedHashMap<>();
+
+		settings.forEach(one -> reaches.put(one, howOften(rendered.output(), distinct.get(one))));
+
+		return reaches;
+	}
+
+	private static int howOften(String text, String looking) {
+		int many = 0;
+
+		for (int at = text.indexOf(looking); at != -1; at = text.indexOf(looking, at + 1)) {
+			many++;
+		}
+
+		return many;
+	}
+
 	/** What the stack does when this one setting has no value: asked twice, unset and empty. */
 	private static Asking behaviourOf(Path stack, List<String> settings, String setting)
 			throws Exception {
@@ -392,8 +468,11 @@ class WhatEachStackRequiresTest {
 	private static Ran ask(Path stack, List<String> verb, Map<String, String> values)
 			throws Exception {
 
+		/* Every profile is enabled, because a service behind one is still a service this
+		   repository deploys. Measured: without it, the root stack's backend is rendered by
+		   nobody, so the bare ${POSTGRES_PASSWORD} it carries is counted by nobody either. */
 		List<String> command = new ArrayList<>(List.of("docker", "compose",
-				"-f", stack.toString(), "--env-file", nothing().toString()));
+				"-f", stack.toString(), "--env-file", nothing().toString(), "--profile", "*"));
 
 		command.addAll(verb);
 
