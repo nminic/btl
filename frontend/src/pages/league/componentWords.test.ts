@@ -40,7 +40,13 @@ const FILES = sources()
      into `league/EditableText.tsx`, which draws them on the list of competitions. The words went
      with them and the sweep stopped reading them, silently: a component in the folder of a
      competition, drawing what a competition says, and outside every guard that exists for it.
-     The folder is as much a statement of what a file is about as its name. */
+     The folder is as much a statement of what a file is about as its name.
+
+     Measured again on 13.09.2026, when a third component was written in that folder
+     (`LeagueEvents.tsx`, the box of events and races that folds on the list of competitions): it
+     is read here the moment it exists, and nothing had to be added by hand. What that buys on
+     this one is more than usual, because the box is **folded** on arrival, so the snapshot of the
+     drawn screens holds its button and not a word of what it opens. */
   .filter((path) => path.endsWith('.tsx') && /league/i.test(path))
   .sort()
 

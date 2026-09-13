@@ -20,6 +20,19 @@ import './Profile.css'
  * changed; the events that count are the terms of the competition and are read
  * there too.
  *
+ * **Overturned on 12.09.2026 and put back on 13.09.2026, and the trace is kept here on
+ * purpose.** On the 12th the owner asked for the terms, the prizes and a two-level list of the
+ * events and races back on this page („treba da bude vidljiv boks za propozicije, pa za nagrade,
+ * i onda lista svih događaja koje spadaju pod tu ligu"); they were built and this page carried
+ * them for a day. On the 13th he corrected himself: „Pogrešio sam, ne vidi se na pojedinačnim
+ * stranama lige. Na pojedinačnim stranama ostaje samo tabela kako jeste. Nego se na pregledu svih
+ * liga ispisuje ono što i sad (naziv, opšti detalji, PROPOZICIJE, NAGRADE, pa onda ide i
+ * sekcijica DOGAĐAJI / TRKE koja se može ekspandovati tako da se vide sve označene."
+ *
+ * So the sentence of 07.09.2026 stands again, and the list of events and races is on the list of
+ * competitions, inside a section that folds (`league/LeagueEvents.tsx`). Whoever reads this a
+ * third time should know that the question has been answered twice the same way.
+ *
  * **So the page has one part and no nav.** It had two, and the second address
  * (`/liga/:slug/rezultati`) named the same page as the first once the parts
  * collapsed into one. Two addresses for one page is the thing this portal refuses

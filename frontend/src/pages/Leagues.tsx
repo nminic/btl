@@ -19,8 +19,68 @@ import { useI18n } from '../i18n/useI18n'
 import { useMay } from './admin/rights'
 import { useSession } from '../session/useSession'
 import { EditableText } from './league/EditableText'
+import { LeagueEvents } from './league/LeagueEvents'
+import { leagueRaces, racesByEvent } from './league/leagueCounting'
 import { leagueTable } from './league/leagueTable'
 import './Leagues.css'
+
+/**
+ * HOW MANY DAYS COUNT TOWARDS A COMPETITION, and it is the same number the box below the card
+ * lists, because it is the same call.
+ *
+ * `league.eventIds.length` is what stood here until 13.09.2026, and a review measured what that
+ * costs the moment the folding box arrived beside it: the row said „Događaja: 11" and the box
+ * listed ten. The eleventh is an event whose races have not been entered yet, and that is not a
+ * quirk of the mock. The owner decided on 23.08.2026 that an event is written before its
+ * distances are known, so production produces that difference by design, on every competition
+ * that has one.
+ *
+ * Which of the two numbers is right was already answered, and not here: `V20__league_reads_races`
+ * carries the league onto its RACES, and says in as many words that from then on a league's
+ * events ARE the events of its races. An event with none of them counted scores nothing and
+ * decides nothing. So the row follows the box rather than the other way round, and when the
+ * portal stops reading `/mock` the server will already be answering the same way.
+ *
+ * It asks for the events and the races itself, like `Entrants` above and for the same reason: the
+ * list must not wait on two files of nearly two megabytes to draw a name. Three states and not
+ * two - empty while the answer is coming, because a nought where the file has not arrived is the
+ * card telling a lie; the word when it will not come at all.
+ *
+ * **WHAT THIS COSTS, NAMED AS A DECISION RATHER THAN LEFT AS A CONSEQUENCE.** The number used to
+ * come out of a file of 1,9 KB and appeared with the name of the competition; it now waits on the
+ * races (553 KB) and the events (373 KB), so on a slow connection the row reads „Događaja:" with
+ * nothing after it for as long as those take. That is the same bargain `Entrants` beside it
+ * already makes, and the same three states, so the screen itself still draws immediately.
+ *
+ * **And the difference that is being paid for is real even though today only the mock shows it.**
+ * `LeagueApi` builds `eventIds` by aggregating over the races it counts, so a server answer can
+ * never carry an event with no counted races; the mock's `brdska-2019` can, because its list was
+ * written by hand. Two readings follow, and the one taken here is deliberate: the row could have
+ * kept reading `eventIds` and been right again the day /mock is switched off, OR it can read what
+ * the box reads and be right on both sides of that day. The second is chosen because the first is
+ * right only while somebody remembers why, and a number that disagrees with the list under it is
+ * the kind of thing a member notices and nobody can explain.
+ */
+function CountedEvents({ league }: { league: League }) {
+  const { t } = useI18n()
+  const eventsState = useEvents()
+  const racesState = useRaces()
+  const ready = eventsState.status === 'ready' && racesState.status === 'ready'
+
+  if (failed(eventsState, racesState)) {
+    return <>{t('leagues.unknown')}</>
+  }
+
+  if (!ready) {
+    return null
+  }
+
+  return (
+    <>
+      {racesByEvent(leagueRaces(league, dataOr(racesState, [])), dataOr(eventsState, [])).length}
+    </>
+  )
+}
 
 /**
  * How many people are placed in one competition.
@@ -82,6 +142,13 @@ function Entrants({ league }: { league: League }) {
  * are in it, and what the organiser has written: the terms and the prizes, which used to live one
  * screen further in and are read here now.
  *
+ * **And, since 13.09.2026, which events and races it counts**, in a box of its own that folds
+ * (`league/LeagueEvents.tsx`). The owner: „na pregledu svih liga ispisuje ono što i sad (naziv,
+ * opšti detalji, PROPOZICIJE, NAGRADE, pa onda ide i sekcijica DOGAĐAJI / TRKE koja se može
+ * ekspandovati tako da se vide sve označene." It was built for the page of a single competition
+ * the day before, on his word of 12.09.2026, and he corrected himself the next morning; the page
+ * of one competition is the standing and nothing else again.
+ *
  * **The season is chosen beside the heading**, the same control the standing of the teams wears
  * and in the same place. The options are the seasons the competitions themselves are held in, so
  * when the first real ones arrive they will all be 2027 and that is what the control will open on.
@@ -140,7 +207,7 @@ export function Leagues() {
                         {' · '}
                         {t('leagues.events')}
                         {': '}
-                        {league.eventIds.length}
+                        <CountedEvents league={league} />
                         {' · '}
                         {t('leagues.entrants')}
                         {': '}
@@ -164,6 +231,13 @@ export function Leagues() {
                         canEdit={may('entity:leagues')}
                         onSave={(text) => edit(league.id, 'prizes', text)}
                       />
+
+                      {/* And after the prizes, the events and races the competition counts, in a
+                          box that folds (owner, 13.09.2026: „pa onda ide i sekcijica DOGAĐAJI /
+                          TRKE koja se može ekspandovati tako da se vide sve označene").
+                          Read-only: what a moderator changes here is the terms and the prizes,
+                          and which events count is set in the administration. */}
+                      <LeagueEvents league={league} />
                     </li>
                   ))}
                 </ul>

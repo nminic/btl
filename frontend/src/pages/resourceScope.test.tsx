@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import type { ResourceName } from '../data/client'
+import { arrivedResource, type ResourceName } from '../data/client'
 import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
@@ -47,9 +47,43 @@ function stallResource(name: ResourceName) {
       ? new Promise<Response>(() => {})
       : real(input))
 
-  return () => {
-    globalThis.fetch = real
+  return {
+    restore: () => {
+      globalThis.fetch = real
+    },
   }
+}
+
+/**
+ * WAITS UNTIL A FILE HAS REALLY LANDED, asked of the loader the screen renders from.
+ *
+ * **Three drafts, and the first two were the same mistake.** A case over a held file has
+ * only ABSENCES to assert - no digit, no word - so every way of getting the timing wrong
+ * fails green. The first draft read the screen one line after the heading, before any
+ * file could have come back, and therefore said `the first render is empty` while
+ * claiming `the screen is still waiting`. The second drained the fetch promises it had
+ * served, which is a step too early: the screen waits on fetch, then on the parsed body,
+ * then on a state change, and one macrotask in between put the case back where it
+ * started, silently.
+ *
+ * `arrivedResource` is what the screen itself reads at render time, set after the body is
+ * parsed. So this waits for the file the case does NOT hold, which is a POSITIVE anchor:
+ * if it never lands the case fails loudly here rather than passing on an absence.
+ *
+ * **And it HANDS BACK what landed, so that waiting is load bearing.** A review measured the
+ * version that returned nothing: emptied out, every case using it stayed green, because an
+ * absence is satisfied by the first render either way. Each caller now asserts over what
+ * came back, so a helper that stops waiting stops returning and the case says so.
+ */
+async function landed(first: ResourceName, ...rest: ResourceName[]): Promise<unknown[]> {
+  await waitFor(() => {
+    for (const name of [first, ...rest]) {
+      expect(arrivedResource(name), `${name} never landed, so nothing below was measured`)
+        .toBeDefined()
+    }
+  })
+
+  return arrivedResource<unknown[]>(first) ?? []
 }
 
 /* The other half of the same idea, from the other end: a screen that loads a
@@ -69,7 +103,8 @@ describe('a part of a screen waits without covering the page', () => {
   })
 
   it('keeps the event readable while its races are still on their way', async () => {
-    restore = stallResource('races')
+    const stalled = stallResource('races')
+    restore = stalled.restore
     renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
 
     expect(await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })).toBeVisible()
@@ -78,7 +113,8 @@ describe('a part of a screen waits without covering the page', () => {
   })
 
   it('names each part it is waiting for rather than saying the same thing twice', async () => {
-    restore = stallResource('results')
+    const stalled = stallResource('results')
+    restore = stalled.restore
     renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026')
 
     await screen.findByRole('heading', { level: 1, name: /Jadovnički/ })
@@ -101,7 +137,8 @@ describe('a part of a screen waits without covering the page', () => {
 
        So the number waits and the screen does not. Empty while the answer is coming, because a
        nought where the file has not arrived is the table telling a lie. */
-    restore = stallResource('results')
+    const stalled = stallResource('results')
+    restore = stalled.restore
     renderAt('/sr/lige?sezona=2027')
 
     expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
@@ -111,9 +148,94 @@ describe('a part of a screen waits without covering the page', () => {
     expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
     /* Read off the line of facts as a whole, because the words and the number are two nodes: the
        word is a key of the dictionary and the number is a component that fills in behind it. */
+    /* **Waited for what DID arrive, since 13.09.2026.** Read one line after the heading, this
+       said only that the first render is empty, and a component that stopped waiting on the
+       held file stayed green. Measured by a review on this very case. */
+    expect(
+      await landed('events', 'races', 'competitors'),
+      'nothing landed, so the assertions below are about the first render',
+    ).not.toHaveLength(0)
+
     expect(facts()).toContain('Učesnika:')
     expect(facts(), 'the number arrived while the file was held').not.toMatch(/Učesnika: \d/)
+    /* **And the third state, which this case went without until 13.09.2026.** Without it the
+       two early branches can be swapped: a member whose results file died would read
+       „Učesnika:" forever, told to wait for something that will never come, while
+       everybody else read „nepoznato" over a file that was simply on its way. The copy of
+       this case below was given the assertion and the original was not, so the class was
+       swept in one of its two homes. */
+    expect(facts(), 'a file still on its way was reported as one that will not come').not
+      .toContain('Učesnika: nepoznato')
   }, SLOW)
+
+  it.each(BOTH)(
+    'leaves the number of days empty while %s is still on the way',
+    async (name) => {
+      /* **The guard that came with the precedent, and did not come with the copy.** The number of
+         days was written on 13.09.2026 in the shape of `Entrants` two cases above: three states,
+         not two. The code was copied and this was not, and a review measured what that leaves
+         open: the waiting state and the failed state could be swapped, or the waiting one deleted
+         outright, and the whole suite stayed green.
+
+         Both of those are lies a member reads. Deleted, every card says „Događaja: 0" for the
+         whole load, so the portal claims no day counts towards any competition. Swapped, a member
+         whose file failed sees nothing at all, while everybody else reads „nepoznato" over a file
+         that is simply on its way.
+
+         **Over BOTH files, since the next round.** The number is worked out of the races and the
+         events, and asking about one of them left the other unmeasured: dropping the events out of
+         the wait, or out of the failure, kept all 2767 cases green. */
+      const stalled = stallResource(name)
+      restore = stalled.restore
+      renderAt('/sr/lige?sezona=2027')
+
+      expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+
+      /* **And what DID arrive is waited for.** Read one line after the heading, this would say
+         only that the first render is empty, and a component that stopped waiting on the held file
+         would stay green. Measured by a review on this case, on 13.09.2026. */
+      expect(
+        await landed(name === 'races' ? 'events' : 'races'),
+        'nothing landed, so the assertions below are about the first render',
+      ).not.toHaveLength(0)
+
+      expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+      expect(facts()).toContain('Događaja:')
+      expect(facts(), 'the number arrived while the file was held').not.toMatch(/Događaja: \d/)
+      expect(
+        facts(),
+        'a file still on its way was reported as one that will not come',
+      ).not.toContain('Događaja: nepoznato')
+    },
+    SLOW,
+  )
+
+  it.each(BOTH)(
+    'says the number of days is unknown rather than nought when %s never arrives',
+    async (name) => {
+      /* The other half, over both files for the same reason. A count of none where the file failed
+         is the same lie in the other direction. */
+      restore = breakResource(name)
+      renderAt('/sr/lige?sezona=2027')
+
+      expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+
+      /* **The other file has to have landed first**, or the word below has two homes and this
+         case picks the wrong one. Measured on 13.09.2026: with the two branches swapped, a
+         file that NEVER arrives leaves the number saying nothing, and this case still passed
+         in 32 ms because the „nepoznato" it found came from the first render. */
+      expect(
+        await landed(name === 'races' ? 'events' : 'races'),
+        'nothing landed, so the assertions below are about the first render',
+      ).not.toHaveLength(0)
+
+      await waitFor(() => {
+        expect(facts()).toContain('Događaja: nepoznato')
+      })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
 
   it('says so rather than counting nought when that file never arrives', async () => {
     /* The other half of the same finding. A count of none where the file failed is a lie in the
@@ -131,8 +253,38 @@ describe('a part of a screen waits without covering the page', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   }, SLOW)
 
+  it('names the competitions and reads their terms when the races cannot be loaded', async () => {
+    /* **The third file this screen touches, since 13.09.2026.** The box of events and races reads
+       the races (553 KB) and the events (373 KB); the names, the seasons, the terms and the
+       prizes come out of the one small file. Waited for, a races file that failed would replace
+       the whole screen with an error and take with it everything the owner moved here on
+       07.09.2026.
+
+       What the failed file costs is the inside of a box that is folded to begin with, so nothing
+       on the screen as it arrives even says so. */
+    restore = breakResource('races')
+    renderAt('/sr/lige?sezona=2027')
+
+    expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Propozicije' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' }),
+    ).toBeVisible()
+    expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    /* And the number of days says so rather than counting nought, the same way „Učesnika" does
+       two cases above. Since 13.09.2026 that number is worked out of the races as well, so a
+       races file that failed would otherwise have every competition on the screen claiming it
+       counts no days at all. */
+    await waitFor(() => {
+      expect(facts()).toContain('Događaja: nepoznato')
+    })
+  }, SLOW)
+
   it('keeps the front page readable while the president is still on his way', async () => {
-    restore = stallResource('pages')
+    const stalled = stallResource('pages')
+    restore = stalled.restore
     renderAt('/sr')
 
     expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
@@ -211,7 +363,8 @@ describe('a screen waits only on the data it shows', () => {
        the deletion would leave them pointing at an event that is gone, each one
        still counting in the standing. The row says what it is waiting for
        instead of offering a button that does half the work. */
-    restore = stallResource('results')
+    const stalled = stallResource('results')
+    restore = stalled.restore
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
     const table = within(await screen.findByRole('table', { name: 'Događaji' }))
@@ -228,7 +381,8 @@ describe('a screen waits only on the data it shows', () => {
        (moveEvent). Until the races are here there is nothing to move them by,
        and the event alone is the half-move the decision exists to make whole:
        an event a week later than the races it is run with. */
-    restore = stallResource('races')
+    const stalled = stallResource('races')
+    restore = stalled.restore
     renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
 
     const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
@@ -270,7 +424,8 @@ describe('a screen waits only on the data it shows', () => {
        left: two reports of one change, and the races a week past the event they
        are run at. The queue holds both reports of the Beogradski maraton, which
        is what a reported change is made of. */
-    restore = stallResource('events')
+    const stalled = stallResource('events')
+    restore = stalled.restore
 
     const user = setupUser()
     renderAt('/sr/administracija/verifikacija/termini', 'superadmin')

@@ -1,7 +1,7 @@
 import { slugify } from './rulebookToc'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
-import type { BtlEvent, League } from '../data/types'
+import type { BtlEvent, League, Race } from '../data/types'
 import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
@@ -275,12 +275,14 @@ describe('LeagueDetail', () => {
      samo na listi svih liga), pa ni događaji koji ulaze u ligu, a ni dugme rezultati jer se odmah
      prikazuju rezultati."
 
-     Three cases went with that sentence rather than being rewritten: the table of events that
-     count, the column counting each event's races, and the nav between two parts. What the second
-     of them was really about — that a count is read off the races and never off a list an event
-     carries — is not lost: the standing itself is built that way (`league/leagueTable.ts`), and
-     the number of entrants on the list of competitions is read off the very rows that standing
-     draws. */
+     **Overturned on 12.09.2026 and put back on 13.09.2026.** For one day the terms, the prizes
+     and a two-level list of events and races stood on this page; then the owner corrected
+     himself: „Pogrešio sam, ne vidi se na pojedinačnim stranama lige. Na pojedinačnim stranama
+     ostaje samo tabela kako jeste. Nego se na pregledu svih liga ispisuje ono što i sad (naziv,
+     opšti detalji, PROPOZICIJE, NAGRADE, pa onda ide i sekcijica DOGAĐAJI / TRKE koja se može
+     ekspandovati tako da se vide sve označene." The cases below are written twice over the same
+     boundary on purpose: what this page does **not** carry, and what the list of competitions
+     does. */
 
   it('shows the rules and the prizes on the list of competitions, and not on the page', async () => {
     /* Owner, 07.09.2026: „Propozicije i Nagrade treba da se izlistavaju na ovoj strani, a ne kad
@@ -316,7 +318,30 @@ describe('LeagueDetail', () => {
     )
 
     expect(within(box).getByText(new RegExp(`Sezona 2019`))).toBeVisible()
-    expect(box.textContent).toContain(`Događaja: ${league.eventIds.length}`)
+    /* **The number of days is held against the BOX and not against `eventIds`**, since
+       13.09.2026. A review measured the two apart the day the folding box arrived beside the row:
+       the row said „Događaja: 11" and the box listed ten. The eleventh is an event whose races
+       have not been entered yet, which is not a quirk of the mock but what the owner decided on
+       23.08.2026, that an event is written before its distances are known.
+
+       Which of the two is right was answered by `V20__league_reads_races`: a league's events ARE
+       the events of its races. So the row follows the box. Written as a comparison of the two
+       rather than as a number, because a number written here would let them drift apart again and
+       the day it happened nobody would be told which one to believe. */
+    /* The box has to be opened first: its panel carries `hidden` while it is folded, which is
+       what keeps `aria-controls` pointing at something that exists, and a folded panel is not
+       part of the accessibility tree. Opening it is also the state the member compares the two
+       numbers in. */
+    await setupUser().click(
+      within(box).getByRole('button', { name: /Događaji i trke/ }),
+    )
+    const days = await within(box).findAllByRole('heading', { level: 4 })
+    expect(days.length).toBeGreaterThan(1)
+    expect(box.textContent).toContain(`Događaja: ${days.length}`)
+
+    /* And it is not the same as counting `eventIds`, which is what says the line above measures
+       something. `brdska-2019` holds an event with no races entered, on purpose. */
+    expect(days.length).toBeLessThan(league.eventIds.length)
 
     /* **Waited for, because it arrives after the box does** (review, 07.09.2026). „Učesnika" is
        worked out of the three heaviest files on the portal, and the list no longer waits on them:
@@ -360,6 +385,66 @@ describe('LeagueDetail', () => {
     expect(screen.queryAllByRole('heading', { name: 'Propozicije' })).toHaveLength(1)
   })
 
+  it('names the box it opens, from a heading, and names it apart from every other', async () => {
+    /* Three things the box's own documentation gives as the reason it is correct, and a review
+       on 13.09.2026 measured that none of them had a case: the whole suite stayed green with
+       `aria-controls` deleted, with the `h3` turned into a `div`, and with the panel id reduced
+       to a constant so that three buttons pointed at one panel.
+
+       They are measured together because they are one claim: a reader working by heading finds
+       this box, the control they land on is the one that opens it, and what it points at is this
+       box and not the one belonging to another competition.
+
+       2027 and not 2019, because 2019 holds one competition and a claim about telling two
+       apart needs two. `MAIN_LEAGUE_SLUG` is filtered off this screen, so what is left is
+       RunTrace and Planinska. */
+    renderAt('/sr/lige?sezona=2027')
+
+    const boxes = await screen.findAllByRole('heading', { level: 2, name: /liga/i })
+    expect(boxes.length).toBeGreaterThan(1)
+
+    const cards = boxes.map((one) => must(one.closest('li'), 'the box of a competition'))
+    const toggles = cards.map((card) =>
+      within(card).getByRole('button', { name: /Događaji i trke/ }),
+    )
+
+    /* From a heading, so the box is in a screen reader's list of them. */
+    for (const toggle of toggles) {
+      expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H3')
+    }
+
+    /* Pointing at something, and at something that is really there while the box is folded,
+       which is the reason the panel carries `hidden` rather than being taken out. */
+    const panels = toggles.map((toggle) => {
+      const id = toggle.getAttribute('aria-controls')
+      expect(id).toBeTruthy()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      return must(document.getElementById(String(id)), `the panel ${id} points at`)
+    })
+
+    /* And at its own, not at a neighbour's. Three buttons pointing at one panel is the shape a
+       constant id produces, and a reader following either of the other two lands on this box. */
+    expect(new Set(panels).size).toBe(panels.length)
+
+    for (const [index, panel] of panels.entries()) {
+      const card = at(cards, index)
+      const toggle = at(toggles, index)
+
+      /* **And the thing it points at is the thing that folds.** Without this the case is happy
+         with the button's own ancestor: move the id onto the section that wraps the button and
+         `aria-controls` becomes a circle, sending a reader to where they already are, while the
+         panel that actually folds carries no id at all. Measured by a review on 13.09.2026, which
+         made exactly that move and watched all 2766 cases stay green. */
+      expect(panel, 'the element aria-controls names is not the one that folds').toHaveAttribute(
+        'hidden',
+      )
+      expect(panel.contains(toggle), 'aria-controls points at an ancestor of the button').toBe(
+        false,
+      )
+      expect(card.contains(panel)).toBe(true)
+    }
+  })
+
   it('holds up for a league with no events yet', async () => {
     renderAt('/sr/liga/planinska-2027')
 
@@ -368,6 +453,169 @@ describe('LeagueDetail', () => {
       await screen.findByText('Na ovom takmičenju još nema nijednog rezultata.'),
     ).toBeVisible()
   })
+
+  it('keeps the events and races of a competition folded until somebody asks', async () => {
+    /* Owner, 13.09.2026: „pa onda ide i sekcijica DOGAĐAJI / TRKE koja se može ekspandovati tako
+       da se vide sve označene." Folded to begin with, because this screen carries every
+       competition of a season at once.
+
+       **What is folded is read off the control and off the document, not off one of them.**
+       `aria-expanded` alone would pass on a box whose content is drawn all the same, and a
+       missing name alone would pass on a box with no control at all. */
+    const user = setupUser()
+
+    renderAt('/sr/lige?sezona=2027')
+
+    const opens = await screen.findByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
+
+    expect(opens).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
+
+    await user.click(opens)
+
+    expect(opens).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
+
+    /* And it folds again on a second press, which is the half of a disclosure that a case
+       written only one way never meets. */
+    await user.click(opens)
+
+    expect(opens).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
+  }, SLOW)
+
+  it('opens the box of the competition it belongs to and of no other', async () => {
+    /* **Two competitions on the screen and the one asked for is the second**, which is the whole
+       of this case: a box reading `leagues[0]` instead of its own competition draws RunTrace's
+       eight events under Planinska's name, and every question about „is something listed" stays
+       green while the screen tells a lie. Planinska has no event at all, so what its box says is
+       a sentence the other box can never produce.
+
+       And the box that was not pressed stays shut: one piece of state for the whole screen would
+       open all of them together. */
+    const user = setupUser()
+
+    renderAt('/sr/lige?sezona=2027')
+
+    const mine = await screen.findByRole('button', {
+      name: 'Događaji i trke, Planinska liga 2027',
+    })
+    const other = screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
+
+    await user.click(mine)
+
+    expect(await screen.findByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
+    expect(other).toHaveAttribute('aria-expanded', 'false')
+  }, SLOW)
+
+  it('lists the events that count and, under each, the races of it that do', async () => {
+    /* Owner, 12.09.2026, the half of that day that survived his correction of the 13th: an event,
+       and under it the races that enter the competition by name, „da član vidi zašto mu neka trka
+       sa tog dana nije u tabeli."
+
+       **Built out of the races and not out of the events**, which is what the competition's own
+       data is arranged to measure: `brdska-2019` holds an event whose races have never been
+       entered (Vršački maraton mira, 23.3.2019). Built from `eventIds`, it would be a heading
+       with nothing under it; built from the races, it is not on the screen at all.
+
+       **Three of one event and one of another**, so „lists the races of the event" is not
+       satisfied by an event with a single race, and „lists one race per event" is not satisfied
+       either. BTL trening trek runs three on one morning. */
+    const [leagues, events, races] = await Promise.all([
+      loadResource<League[]>('leagues'),
+      loadResource<BtlEvent[]>('events'),
+      loadResource<Race[]>('races'),
+    ])
+    const league = must(
+      leagues.find((one) => one.slug === 'brdska-2019'),
+      'takmičenje brdska-2019',
+    )
+    const held = events.filter((one) => league.eventIds.includes(one.id))
+    const empty = must(
+      held.find((one) => !races.some((race) => race.eventId === one.id)),
+      'an event of the competition with no race of its own',
+    )
+    const three = must(
+      held.find((one) => races.filter((race) => race.eventId === one.id).length === 3),
+      'an event of the competition running three races',
+    )
+    const user = setupUser()
+
+    renderAt('/sr/lige?sezona=2019')
+
+    await user.click(
+      await screen.findByRole('button', { name: `Događaji i trke, ${league.name}` }),
+    )
+
+    const list = must(
+      (await screen.findByRole('link', { name: three.name })).closest('ul'),
+      'the list of events',
+    )
+    const named = within(list)
+      .getAllByRole('heading', { level: 4 })
+      .map((one) => one.textContent)
+
+    /* Every event of the competition that has a race, and only those. Held as the whole list
+       rather than as „does it hold X": a list drawn out of `eventIds` contains everything a
+       narrower question would ask about, and this is the assertion that parts the two. */
+    expect(named).toEqual(
+      held
+        .filter((one) => races.some((race) => race.eventId === one.id))
+        .sort((left, right) => left.date.localeCompare(right.date) || left.name.localeCompare(right.name))
+        .map((one) => one.name),
+    )
+    expect(named).not.toContain(empty.name)
+
+    /* **And the second level, counted over the whole list.** Every item of it is either an event
+       or a race of one, so what is left after taking the events away is the races, and there are
+       as many of them as the competition counts. That is the assertion a narrower one cannot
+       make: a list drawing the first race of each event, or every race of each event whether the
+       competition counts it or not, passes „the three are there" and fails this. */
+    const items = within(list).getAllByRole('listitem').length
+    const counted = races.filter((race) => held.some((one) => one.id === race.eventId)).length
+
+    expect(counted).toBeGreaterThan(named.length)
+    expect(items - named.length).toBe(counted)
+
+    /* And under the event that runs three, three lines that do not read alike. Every race in the
+       file starts out carrying its event's name, so a list written as the bare name would be one
+       sentence three times over and a reader could not say which race is which. */
+    const item = must(
+      within(list).getByRole('heading', { level: 4, name: three.name }).closest('li'),
+      'the item of the event',
+    )
+    const inside = within(item).getAllByRole('listitem')
+
+    expect(inside).toHaveLength(3)
+    expect(new Set(inside.map((one) => one.textContent)).size).toBe(3)
+
+    for (const one of inside) {
+      expect(one.textContent, 'a race is named under its own event').toContain(three.name)
+    }
+  }, SLOW)
+
+  it('leads from each event of that list to the page of the event', async () => {
+    /* The list is where the rest of an event is asked for: its distances, its climbs, who ran it.
+       The address is built off the record's own slug, which is the one this portal answers at. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const opening = must(
+      events.find((one) => one.id === 'evt-mrazijada-2019-01-05'),
+      'Mrazijada, the first event of brdska-2019',
+    )
+    const user = setupUser()
+
+    renderAt('/sr/lige?sezona=2019')
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Događaji i trke, Brdska liga 2019' }),
+    )
+
+    expect(await screen.findByRole('link', { name: opening.name })).toHaveAttribute(
+      'href',
+      `/sr/kalendar/${opening.slug}`,
+    )
+  }, SLOW)
 
   it('says so when nothing runs alongside the league', async () => {
     // Only the main league exists, and that one is never listed.
@@ -493,14 +741,24 @@ describe('a competition, on one page', () => {
 
   it('carries nothing but the name, the control and the standing', async () => {
     /* The whole of the owner's sentence of 07.09.2026, as one list of what is not here: no terms,
-       no prizes, no table of the events that count, and no nav between parts. */
+       no prizes, no list of the events that count, and no nav between parts.
+
+       **Asked of every heading on the page rather than of three chosen words**, since 13.09.2026.
+       The three chosen words were here for a day and passed while this page carried all three
+       boxes under other names; what the owner asked for is that nothing but the standing is on
+       it, and a page has exactly one heading when that is true. */
     renderAt(RUN)
 
     await screen.findByRole('table', { name: 'Poredak takmičenja' })
 
+    const page = within(screen.getByRole('main'))
+
+    expect(page.getAllByRole('heading').map((one) => one.textContent)).toEqual([
+      'Brdska liga 2019',
+    ])
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Nagrade' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('table', { name: 'Događaji koji ulaze u ligu' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Događaji i trke/ })).toBeNull()
     expect(screen.queryByRole('navigation', { name: 'Delovi takmičenja' })).toBeNull()
     /* And the one control that is here: which half of the field is being read. */
     expect(screen.getByRole('button', { name: 'Žene' })).toBeVisible()

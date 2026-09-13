@@ -11,6 +11,16 @@ import { useI18n } from '../../i18n/useI18n'
  * „Propozicije i Nagrade treba da se izlistavaju na ovoj strani, a ne kad se uđe u ligu… na strani
  * Lige ne postoje propozicije i nagrade (one se vide samo na listi svih liga)."
  *
+ * **Overturned on 12.09.2026, put back on 13.09.2026, and the trace is kept rather than tidied
+ * away.** On the 12th the owner asked for both boxes back on the page of a single competition,
+ * read-only, and they were built; on the 13th he corrected himself — „Pogrešio sam, ne vidi se na
+ * pojedinačnim stranama lige. Na pojedinačnim stranama ostaje samo tabela kako jeste" — and the
+ * sentence above stands again, unchanged. The reader who is about to move them a third time is
+ * looking at a question that has been answered the same way twice.
+ *
+ * What the 13th did keep of that day's work is on this same screen, one section further down: the
+ * events and races a competition counts, inside a box that folds (`league/LeagueEvents.tsx`).
+ *
  * **Changed where it is read, and not in a screen of its own.** Asked where a moderator should
  * edit it now that the page it lived on no longer has it, the owner chose the same place it is
  * read (07.09.2026). A screen that shows one thing and changes it somewhere else is a screen
