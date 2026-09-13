@@ -62,6 +62,7 @@ class ApiSecurity {
 					"/api/leagues", "/api/results",
 					"/api/competitors",
 					"/api/ducats",
+					"/api/pairs",
 					"/api/teams");
 
 	@Bean
