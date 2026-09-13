@@ -140,6 +140,34 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!--
+					  ZONA U KOJOJ SE TESTOVI PUSTAJU JE PRIBIJENA, I NIJE LIGINA.
+
+					  Liga je u Europe/Belgrade i to je jedini dom te cinjenice
+					  (`SeasonClock.ZONE`). Server sme da bude bilo gde, pa svako ko racuna
+					  koji je dan mora sam da procita trenutak u ligi. Slucaj koji to cuva
+					  ne moze da postoji na masini koja i sama stoji u Beogradu: izmereno
+					  13.09.2026, `atZone(ZoneId.systemDefault())` je lokalno bilo ZELENO, a
+					  na CI-ju bi palo samo zato sto `ubuntu-latest` nema postavljen `TZ`.
+					  To su dve razlicite kapije nad istim kodom.
+
+					  Zato je ovde pribijena zona koja nije ni ligina ni UTC: citanje u ligi,
+					  citanje u UTC-u i citanje na masini daju tri razlicita dana, pa slucaj
+					  meri ono po cemu se zove, a lokalna kapija postavlja isto pitanje kao
+					  CI. Koja je tacno zona nije vazno; vazno je da nije Europe/Belgrade,
+					  i `CommentApiTest` to proverava umesto da veruje.
+
+					  `@{argLine}` je ono sto jacoco postavi, i mora da ostane: napisano bez
+					  njega, ovo bi zamenilo agenta za pokrivenost i prag od sto odsto bi
+					  merio prazan izvestaj.
+					-->
+					<argLine>@{argLine} -Duser.timezone=America/Los_Angeles</argLine>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.13</version>

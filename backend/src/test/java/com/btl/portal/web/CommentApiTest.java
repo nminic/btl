@@ -20,8 +20,12 @@ import tools.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,19 +66,29 @@ class CommentApiTest {
 	private static final String APPROVED_BUT_NEVER_PUBLISHED = "Odobreno u redu a nigde upisano";
 
 	/**
-	 * AND THE DRAFT THAT WAS SENT BACK, which is the row that makes a bare join visible.
+	 * AND A SECOND COMMENT BY SOMEBODY WHO ALREADY HAS ONE HERE, which is the row that makes a
+	 * bare join visible.
 	 *
-	 * <p>A refused item returns to the member with its reason and he may send it again
-	 * ({@code PDL.md:3935}), so one author really can have several rows in this queue - and a
-	 * measured mutation is what put this here. A {@code left join} onto the queue that reads
-	 * NOTHING out of it changes no field and no order, so every refusal of queue text stays
-	 * green; what it does change is the LENGTH, because a comment whose author matches two
-	 * rows comes back twice. Without a second row for one author, the fixture could not tell
-	 * a query that touches the queue from one that does not.
+	 * <p>One author with two rows in this queue is what a {@code left join} onto it can be seen
+	 * by, and a measured mutation is what put this here: such a join reads nothing, changes no
+	 * field and no order, so every refusal of queue text stays green - what it changes is the
+	 * LENGTH, because the comment whose author matches twice comes back twice.
+	 *
+	 * <p><b>And it is a second comment WAITING rather than a refused one, which is the
+	 * correction of a fixture that stood on a state this portal does not have.</b> It was
+	 * first written as a draft refused and sent in again, citing the rule that a refused item
+	 * returns to its member ({@code PDL.md:3935}). That rule names the comment as its one
+	 * exception, in as many words: „Sve sto se odbije vraca se clanu... Izuzetak je jedino
+	 * komentar, koji se brise" ({@code PDL.md:3016}), „Komentar se ne vraca nego brise.
+	 * Moderator ga prihvati ili obrise, odmah. Clanu se ne salje nista" ({@code PDL.md:3017}),
+	 * and „odbijanje ne trazi razlog" ({@code PDL.md:3085}).
+	 *
+	 * <p>So a refused comment is not a row that waits with a reason on it - it is a row that is
+	 * gone. A floor resting on it would hold only until somebody wrote the queue the way the
+	 * owner decided it, and would then quietly fall to nothing. A member with a comment on two
+	 * events, both waiting, is the same floor and is the queue as it will really be.
 	 */
-	private static final String REFUSED_AND_SENT_BACK = "Vracen na doradu pa poslat ponovo";
-
-	private static final String WHY_IT_WAS_SENT_BACK = "Razlog koji vidi samo moderator";
+	private static final String A_SECOND_ONE_STILL_WAITING = "Jos jedan komentar istog clana";
 
 	private static final String THE_MODERATOR_WHO_DECIDED = "Milica Odlucila";
 
@@ -97,17 +111,25 @@ class CommentApiTest {
 	private SecretToken session;
 
 	/**
-	 * SEVEN PUBLISHED COMMENTS, AND NOT ONE OF THEM IS THE ONLY ONE OF ITS KIND.
+	 * NINE PUBLISHED COMMENTS, AND NOT ONE OF THEM IS THE ONLY ONE OF ITS KIND.
 	 *
 	 * <p>Each list below says which wrong answer it refuses:
 	 *
 	 * <ul>
-	 * <li><b>The order.</b> Written so that newest first is the list 6, 2, 7, 4, 3, 5, 1 - which
-	 * is neither the order they were written in, nor the key ascending, nor the key
+	 * <li><b>The order.</b> Written so that newest first is the list 6, 2, 7, 4, 8, 9, 3, 5, 1
+	 * - which is neither the order they were written in, nor the key ascending, nor the key
 	 * descending, nor oldest first, nor either event grouped together. Written in the order
 	 * they went out, „newest first" and „the key backwards" would be one list, and a resource
 	 * sorting by the key it came back with would pass.
-	 * <li><b>Whose it is.</b> Five authors are members in good standing, one let her fee
+	 * <li><b>Two of them published in the SAME instant, and carrying keys that do not follow
+	 * the order they were written in.</b> Both halves were measured rather than reasoned.
+	 * Without a tie there is nothing for the tie-break to break, and taking it out of the order
+	 * left the suite green. With a tie but with keys left to {@code bigserial}, it stayed green
+	 * anyway: this database's own answer for equal keys happened to be the same list the
+	 * tie-break produces, which PostgreSQL promises neither way. So the earlier of the two
+	 * carries the HIGHER key, the way a history imported from an older system does, and an
+	 * order with nothing to break the tie now answers them the other way round.
+	 * <li><b>Whose it is.</b> Seven authors are members in good standing, one let her fee
 	 * lapse, and one is gone from the record altogether. The last two are the two halves of
 	 * „is there a visible profile", which is the question of 07.08.2026, and they are
 	 * deliberately not the same row: an author who is GONE leaves a null in
@@ -118,9 +140,13 @@ class CommentApiTest {
 	 * that reached for {@code answer().get(0)} instead of the comment it names would be about
 	 * somebody else and would fail. The rule of 06.09.2026: never the only one of its kind,
 	 * and never first.
-	 * <li><b>The day.</b> One comment went out at half past eleven at night in UTC, which is
-	 * the next day in Belgrade. „The day it was published" and „the day the column says" are
-	 * therefore two different dates, and only one of them is the league's.
+	 * <li><b>The day, against two other zones rather than one.</b> One comment went out at half
+	 * past eleven at night in UTC, which is the next day in Belgrade; the two published in one
+	 * instant went out at a moment that is a different day again in the zone this suite pins
+	 * itself to. So the league's zone, UTC and the machine's own each answer differently, and a
+	 * resource reading any of the three passes or fails on its own account. Measured against
+	 * only the first of those, reading the MACHINE's zone was green on a machine that already
+	 * stands in Belgrade.
 	 * <li><b>Two events</b>, so a resource answering for one of them is the wrong length, and
 	 * {@code eventId} is a field that varies.
 	 * <li><b>A name that has changed since.</b> One member published under the surname she
@@ -138,17 +164,17 @@ class CommentApiTest {
 	 * that was really published, so a reader taking the body from the queue answers the wrong
 	 * sentence rather than none; one approved that was never written into
 	 * {@code event_comment} at all, so „approved" and „published" are two different sets and
-	 * the second is the one this resource is about; and one REFUSED, carrying its reason and
-	 * naming an author the queue already holds a row for.
+	 * the second is the one this resource is about; and a SECOND one waiting under an author
+	 * the queue already holds a row for.
 	 *
 	 * <p>That last one is the only thing a join which reads NOTHING out of the queue can be
 	 * seen by, and it was a measured mutation rather than a thought: such a join changes no
 	 * field and no order, so every refusal of queue text stays green - what it changes is the
-	 * LENGTH, because the comment whose author matches two rows comes back twice. A refused
-	 * draft sent in again is how one author really comes to have several ({@code PDL.md:3935}).
+	 * LENGTH, because the comment whose author matches two rows comes back twice. Nothing
+	 * about it is unusual: a member who wrote about two events has two comments waiting.
 	 */
 	@BeforeEach
-	void sevenThatWerePublishedAndThreeThatAreNot() {
+	void nineThatWerePublishedAndFourThatAreNot() {
 		account(A_MEMBER);
 
 		event("fruskogorski-maraton-2010", "2010-05-08");
@@ -160,6 +186,8 @@ class CommentApiTest {
 		member("'000040'", "Vuk", "Maric", "M", true);
 		member("'000050'", "Jelena", "Nikolic", "F", true);
 		member("'000060'", "Milica", "Petrovic", "F", true);
+		member("'000070'", "Lazar", "Ilic", "M", true);
+		member("'000080'", "Dunja", "Kostic", "F", true);
 
 		comment("Jovic", "fruskogorski-maraton-2010", "2010-05-09 09:00:00+00", 5, 4, 5,
 				"Staza je bila jasno obelezena.");
@@ -182,12 +210,27 @@ class CommentApiTest {
 				"Kisa je padala celim putem.");
 		comment("Nikolic", "ironman-st-polten-2010", "2010-06-02 11:00:00+00", 1, 3, 2,
 				"Start je kasnio sat vremena.");
+		/* AND TWO THAT WENT OUT IN THE SAME INSTANT, written in this order so that the key
+		   descending is the REVERSE of the order they were inserted in. Without a tie there
+		   is nothing for the tie-break to break, and it was measured: taking `c.id desc` out
+		   of the order left the whole suite green. With them, a sort that keeps the rows in
+		   the order it found them answers Ilic before Kostic and the case says so.
+
+		   THE INSTANT IS ALSO WHERE THE MACHINE'S ZONE PARTS FROM THE LEAGUE'S. Half past
+		   five in the morning UTC is the 18th in Belgrade and the 17th in the zone this
+		   suite pins itself to, so „the day in the league" and „the day on this machine" are
+		   two different answers here - which is what the case about the day needs and what
+		   the comment at half past eleven at night cannot give it. */
+		commentImportedUnderItsOwnKey(900002, "Ilic", "ironman-st-polten-2010",
+				"2010-05-18 05:30:00+00", 2, 5, 1, "Staza je izmerena kratko.");
+		commentImportedUnderItsOwnKey(900001, "Kostic", "fruskogorski-maraton-2010",
+				"2010-05-18 05:30:00+00", 3, 1, 4, "Nije bilo vode na petom kilometru.");
 
 		waitingInTheQueue("Ana Peric", WAITING_FOR_A_MODERATOR);
 		decidedInTheQueue("Vuk Maric", THE_QUEUE_SAYS_SOMETHING_ELSE);
 		decidedInTheQueue(SOMEBODY_ONLY_THE_QUEUE_KNOWS, APPROVED_BUT_NEVER_PUBLISHED);
 		/* AND A SECOND ROW FOR ONE OF THEM, which is what a bare join can be seen by. */
-		refusedInTheQueue("Vuk Maric", REFUSED_AND_SENT_BACK);
+		waitingInTheQueue("Vuk Maric", A_SECOND_ONE_STILL_WAITING);
 	}
 
 	private void account(String email) {
@@ -243,6 +286,38 @@ class CommentApiTest {
 	}
 
 	/**
+	 * A COMMENT WHOSE KEY DOES NOT FOLLOW THE ORDER IT WAS WRITTEN IN, which is what an
+	 * imported history looks like and the only shape that measures the tie-break.
+	 *
+	 * <p>The two comments written this way went out in the SAME instant, so what decides which
+	 * comes first is the key alone. Left to {@code bigserial} the keys ascend with the order
+	 * the rows were inserted, and this database's own answer for a tie happens to be the same
+	 * list the tie-break produces - measured, not guessed: taking {@code c.id desc} out of the
+	 * order left this case green. The order of equal keys is not something PostgreSQL promises
+	 * either way, so a fixture whose keys follow its insertions cannot tell an order that
+	 * decides ties from one that leaves them to whatever comes back.
+	 *
+	 * <p>So the earlier of the two is written with the HIGHER key. The resource must answer it
+	 * first, and an order with nothing to break the tie answers the other one first. Nothing
+	 * about that is contrived: V7 exists to carry a history imported from an older system, and
+	 * the note on this resource's order says in as many words that for such a history the key
+	 * follows nothing.
+	 *
+	 * <p>The keys are far above anything the sequence has handed out, so the sequence is left
+	 * where it was and nothing written afterwards collides with them.
+	 */
+	private void commentImportedUnderItsOwnKey(long key, String last, String eventSlug,
+			String published, int organisation, int value, int ambience, String body) {
+		db.sql("insert into event_comment (id, event_id, competitor_id, who, published_at,"
+						+ " rating_organisation, rating_value, rating_ambience, body)"
+						+ " values (?, (select id from btl_event where slug = ?),"
+						+ " (select id from competitor where last_name = ?),"
+						+ " (select first_name || ' ' || last_name from competitor where last_name = ?),"
+						+ " timestamptz '" + published + "', ?, ?, ?, ?)")
+				.params(key, eventSlug, last, last, organisation, value, ambience, body).update();
+	}
+
+	/**
 	 * A COMMENT WHOSE AUTHOR IS NO LONGER IN THE RECORD, which is the row V7 made the
 	 * tombstone for: {@code competitor_id} is null and {@code who} carries the name it went
 	 * out under.
@@ -279,12 +354,13 @@ class CommentApiTest {
 				.params(subject, body, THE_MODERATOR_WHO_DECIDED).update();
 	}
 
-	/** Refused, which carries its reason because the member is told why (V9). */
-	private void refusedInTheQueue(String subject, String body) {
-		db.sql("insert into verification (queue, subject, body, state, decided_at, decided_by_name,"
-						+ " reason) values ('comments', ?, ?, 'rejected', now(), ?, ?)")
-				.params(subject, body, THE_MODERATOR_WHO_DECIDED, WHY_IT_WAS_SENT_BACK).update();
-	}
+	/* NO REFUSED ROW IS WRITTEN ANYWHERE HERE, and that is a decision rather than a gap. V9
+	   gives `verification` a state of `rejected` that carries a reason, because that is what
+	   the other five queues do. The comments queue is the owner's one exception: „Komentar se
+	   ne vraca nego brise. Moderator ga prihvati ili obrise, odmah. Clanu se ne salje nista"
+	   (PDL 3017), and „odbijanje ne trazi razlog" (PDL 3085). So a refused comment is not a
+	   row in a state - it is a row that is gone, and a fixture writing one would be standing
+	   on something this portal is not allowed to have. */
 
 	private MockHttpServletRequestBuilder asking() {
 		return get("/api/comments").cookie(new Cookie(SessionCookie.NAME, session.secret()));
@@ -361,6 +437,103 @@ class CommentApiTest {
 						+ " total, which PDL 3733 says is worked out wherever it is drawn and never"
 						+ " stored")
 				.containsExactlyInAnyOrderElementsOf(served);
+	}
+
+	/**
+	 * AND THE THREE MARKS ARE THE THREE THAT WERE GIVEN, each in its own place.
+	 *
+	 * <p><b>The case above this one compares NAMES, and a review measured what that is worth:</b>
+	 * swapping two of the three columns in the query left the whole suite green. Seven comments
+	 * carried seven different triples and not one assertion looked at a number, so a member who
+	 * marked the organisation 5 and the value 4 would have had his card read „Organizacija: 4 od
+	 * 5" and „Vrednost za novac: 5 od 5" - his words under somebody else's marks.
+	 *
+	 * <p><b>Read off the rows and matched by key, rather than written out here.</b> That is the
+	 * precedent in {@code TeamApiTest} carried one step further: a list written into a case is a
+	 * list that has to be kept right by hand, and this compares every comment there is. A mark
+	 * answered as a constant, two columns exchanged, or the marks of one comment given to
+	 * another all fail it.
+	 *
+	 * <p><b>The floor is that a swap is visible at all.</b> With every comment marked the same
+	 * in two of its three, exchanging those two changes nothing anywhere, and this would pass on
+	 * a query that does. So the fixture is asked how many comments carry three marks that
+	 * differ from one another, in so many words.
+	 */
+	@Test
+	void everyCommentCarriesTheThreeMarksItsAuthorGave() throws Exception {
+		assertThat(db.sql("select count(*) from event_comment"
+						+ " where rating_organisation <> rating_value"
+						+ " and rating_value <> rating_ambience"
+						+ " and rating_organisation <> rating_ambience")
+				.query(Integer.class).single())
+				.as("no comment in the fixture carries three marks that differ from one another, so"
+						+ " two of the columns could be exchanged without changing any answer")
+				.isEqualTo(5);
+
+		Map<Long, String> given = db.sql("select id, rating_organisation || '/' || rating_value"
+						+ " || '/' || rating_ambience from event_comment")
+				.query((row, one) -> Map.entry(row.getLong(1), row.getString(2)))
+				.list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+		assertThat(given).as("no marks were read out of the database, so the loop below compares"
+				+ " nothing").hasSize(published());
+		assertThat(Set.copyOf(given.values()))
+				.as("two comments in the fixture carry the same three marks, so one could be"
+						+ " answered with the other's and this case would not see it")
+				.hasSize(published());
+
+		for (JsonNode one : answer()) {
+			JsonNode marks = one.path("rating");
+
+			assertThat(marks.path("organisation").asInt() + "/" + marks.path("value").asInt()
+					+ "/" + marks.path("ambience").asInt())
+					.as("the comment written by %s came back with marks that are not the ones its"
+							+ " author gave, in that order", one.path("who").asString())
+					.isEqualTo(given.get(one.path("id").asLong()));
+		}
+
+		/* AND ONE OF THEM WRITTEN OUT, which is the shape `TeamApiTest` uses. The loop above
+		   would hold just as well if the fixture and the answer were wrong together; this says
+		   what the numbers are. Not the first record of the answer, for the reason every case
+		   here avoids it. */
+		JsonNode hers = recordOf("Dunja Kostic").path("rating");
+
+		assertThat(List.of(hers.path("organisation").asInt(), hers.path("value").asInt(),
+				hers.path("ambience").asInt()))
+				.as("the three marks are not the ones written into the fixture for this comment")
+				.containsExactly(3, 1, 4);
+	}
+
+	/**
+	 * AND EVERY COMMENT COMES BACK UNDER ITS OWN KEY.
+	 *
+	 * <p><b>Measured in review: answering {@code id} with the EVENT's id passed everything.</b>
+	 * Nine comments then came back carrying two distinct keys between them, and
+	 * {@code EventComments.tsx} draws the list with {@code key={comment.id}} - so React keeps one
+	 * item per key and the page quietly loses every comment but one per event.
+	 *
+	 * <p>Both halves, because each catches the opposite failure. The set says the keys are the
+	 * comments' own and not another table's; the count says no two of them are the same, which
+	 * is the half a set comparison silently forgives.
+	 */
+	@Test
+	void everyCommentComesBackUnderItsOwnKey() throws Exception {
+		Set<Long> keys = db.sql("select id from event_comment").query(Long.class).list().stream()
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+
+		assertThat(keys).as("no comment was read out of the database, so the comparison below"
+				+ " compares nothing").hasSize(published());
+
+		List<Long> answered = StreamSupport.stream(answer().spliterator(), false)
+				.map(one -> one.path("id").asLong()).toList();
+
+		assertThat(answered)
+				.as("a comment came back under a key that is not its own; answered with the event's"
+						+ " id instead, the list collapses in the browser to one item per key")
+				.containsExactlyInAnyOrderElementsOf(keys);
+		assertThat(Set.copyOf(answered))
+				.as("two comments came back under one key, and the page keeps one item per key")
+				.hasSize(answered.size());
 	}
 
 	/**
@@ -457,8 +630,14 @@ class CommentApiTest {
 		   NOTHING out of it can be seen by. Measured before the review was called: a bare
 		   `left join` onto the queue changes no field and no order, so every refusal below
 		   stayed green; what it changes is the LENGTH, because the comment whose author
-		   matches twice comes back twice. A refused draft sent in again is how one author
-		   really comes to have several (PDL 3935), so this is the queue as it will be. */
+		   matches twice comes back twice.
+
+		   BOTH OF HIS ARE WAITING, and the first draft of this fixture had one of them
+		   REFUSED instead. That is a state the comments queue does not have: „Komentar se ne
+		   vraca nego brise... Clanu se ne salje nista" (PDL 3017). A floor standing on it
+		   would hold until somebody wrote the queue as the owner decided it and would then
+		   fall to nothing without a word. A member who wrote about two events has two
+		   comments waiting, and that is the same floor out of a state the portal really has. */
 		assertThat(db.sql("select count(*) from event_comment k where ("
 						+ " select count(*) from verification v"
 						+ " where v.queue = 'comments' and v.subject = k.who) > 1")
@@ -477,7 +656,7 @@ class CommentApiTest {
 
 		for (String fromTheQueue : List.of(THE_QUEUE_SAYS_SOMETHING_ELSE,
 				APPROVED_BUT_NEVER_PUBLISHED, THE_MODERATOR_WHO_DECIDED,
-				SOMEBODY_ONLY_THE_QUEUE_KNOWS, REFUSED_AND_SENT_BACK, WHY_IT_WAS_SENT_BACK)) {
+				SOMEBODY_ONLY_THE_QUEUE_KNOWS, A_SECOND_ONE_STILL_WAITING)) {
 			assertThat(whole)
 					.as("%s is written in the queue for approval and nowhere else, and it left the"
 							+ " server - which is the leak of 07.08.2026", fromTheQueue)
@@ -504,10 +683,32 @@ class CommentApiTest {
 	 */
 	@Test
 	void theNewestCommentComesFirstAndTheOldestLast() throws Exception {
+		assertThat(db.sql("select count(*) from event_comment a join event_comment b"
+						+ " on b.published_at = a.published_at and b.id > a.id")
+				.query(Integer.class).single())
+				.as("no two comments in the fixture went out in the same instant, so the tie-break"
+						+ " in the order breaks nothing and the list below holds without it")
+				.isOne();
+
+		assertThat(db.sql("select count(*) from event_comment a join event_comment b"
+						+ " on b.published_at = a.published_at and b.id > a.id"
+						/* AND THE HIGHER KEY IS THE ONE WRITTEN FIRST. Without this the keys of
+						   the tied pair ascend with the order they were inserted in, and this
+						   database's own answer for a tie is then the same list the tie-break
+						   produces - so the clause could be deleted with the suite staying green,
+						   which was measured. */
+						+ " where b.ctid < a.ctid")
+				.query(Integer.class).single())
+				.as("the tied pair's keys follow the order the rows were written in, so an order"
+						+ " that leaves ties to the database answers the same list as one that"
+						+ " breaks them and the list below holds either way")
+				.isOne();
+
 		assertThat(whoWrote())
-				.as("the comments came back in some order other than newest first")
+				.as("the comments came back in some order other than newest first, with the higher"
+						+ " key of two published in one instant ahead of the lower")
 				.containsExactly("Jelena Nikolic", "Sofija Lukic", FORMER_NAME, DEPARTED,
-						"Ana Peric", "Vuk Maric", "Nikola Jovic");
+						"Lazar Ilic", "Dunja Kostic", "Ana Peric", "Vuk Maric", "Nikola Jovic");
 	}
 
 	/**
@@ -566,6 +767,37 @@ class CommentApiTest {
 				.as("the day answered is the day in UTC rather than the day in Belgrade, and the"
 						+ " league is not in UTC")
 				.isEqualTo("2010-05-31");
+
+		/* AND THE SAME QUESTION AGAINST THE ZONE THIS MACHINE IS IN, which is a second
+		   comparison and not the same one said twice.
+
+		   The assertion above separates Belgrade from UTC and nothing else. Read as
+		   `ZoneId.systemDefault()` it was GREEN on a developer's machine, because that machine
+		   already stands in Belgrade - so the case was measuring „not UTC" while its name and
+		   the note on the resource both say „the league's zone". It would have gone red on CI
+		   for no better reason than that `ubuntu-latest` happens to leave `TZ` unset, which is
+		   the difference between a local gate and the real one.
+
+		   So the suite pins `user.timezone` (backend/pom.xml) to a zone that is NOT the
+		   league's, and this pair of comments went out at an instant where that zone and
+		   Belgrade fall on different days. Both readings are now wrong in a way this case can
+		   see, and the local gate asks the same question CI does. */
+		assertThat(db.sql("select count(*) from event_comment k"
+						+ " where k.who = 'Dunja Kostic'"
+						+ " and (k.published_at at time zone 'Europe/Belgrade')::date"
+						+ " <> (k.published_at at time zone ?)::date")
+				.param(ZoneId.systemDefault().getId())
+				.query(Integer.class).single())
+				.as("this machine stands in a zone that agrees with the league's about the day this"
+						+ " comment went out, so the assertion below cannot tell a resource reading"
+						+ " the league's zone from one reading the machine's. The zone is pinned in"
+						+ " backend/pom.xml precisely so that it does not")
+				.isOne();
+
+		assertThat(recordOf("Dunja Kostic").path("date").asString())
+				.as("the day answered is the day in this machine's zone rather than in the"
+						+ " league's, and the server may stand anywhere while the league does not")
+				.isEqualTo("2010-05-18");
 	}
 
 	/**
