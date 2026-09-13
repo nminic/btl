@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -85,6 +86,33 @@ class ApiSecurity {
 						   he cannot read, and only if he also holds the CSRF token; what the
 						   member gains is that signing out works in the one case he needs it. */
 						.requestMatchers("/api/sign-out").permitAll()
+						/* AND NOTHING ELSE UNDER /api ANSWERS `OPTIONS`. Measured on a running
+						   server on 13.09.2026, and it was a hole rather than an untidiness.
+
+						   Spring answers `OPTIONS` ITSELF, out of the methods a path maps, and
+						   never reaches the handler - so no annotation on that handler is read and
+						   nothing about rights is consulted. A route that needs a right answered
+						   200 with `Allow: GET,HEAD,OPTIONS` to a moderator who may not read it
+						   and to a plain member, while an address that maps nothing answered 404.
+						   That difference is a list of every administrative address, one request
+						   at a time, and `Allow` adds which methods each of them takes.
+
+						   It matters MORE now, not less: the refusal became 404 on 13.09.2026 so
+						   that an address would not say it exists, and `OPTIONS` said it anyway,
+						   whatever number a refused GET carried.
+
+						   Denied by PATH and not by what is behind it, which is the whole point:
+						   an address that exists and one that does not are refused by the same
+						   line and answer the same thing, so there is nothing to count. The
+						   routes opened above keep answering it, because their rule is matched
+						   first.
+
+						   THE DAY THIS APPLICATION CONFIGURES CORS, THIS LINE MOVES. A preflight
+						   is an `OPTIONS` a browser sends on its own, and CORS support answers it
+						   before this rule is reached only if it is configured to. There is no
+						   CORS anywhere today (the note on the token below says so), the portal
+						   is served from one origin, and nothing calls `OPTIONS` on purpose. */
+						.requestMatchers(HttpMethod.OPTIONS, "/api/**").denyAll()
 						.anyRequest().authenticated())
 				/* AND NOW THERE IS A COOKIE, SO CSRF PROTECTION IS BACK. This chain gave
 				   none until signing in existed, and the comment here said in as many words

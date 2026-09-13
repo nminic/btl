@@ -476,6 +476,18 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   se praznio; a `league_event` od V20 nema uopste, jer liga broji trke. */
 				"league_race.league_race_league_fk cascade",
 				"league_race.league_race_race_fk cascade",
+				/* V22. A membership is a fact ABOUT a member and means nothing without him, the
+				   same as his payment and his team membership, so both keys CASCADE. The receipt
+				   one does as well, and that is not a preference: deleting a member takes his
+				   payments and his memberships in the same statement, so a RESTRICT towards the
+				   payment would make that delete succeed or fail depending on which of the two
+				   cascades PostgreSQL walked first. Nothing else deletes a payment - a reversal is
+				   a state (V16) - so the two go together or not at all.
+				   What survives a deleted member is the frozen season, and it survives WITHOUT
+				   him: those four keys are `set null` below and the trigger of V17 empties the
+				   name beside them (FrozenSeasonConstraintsTest). */
+				"membership.membership_competitor_fk cascade",
+				"membership.membership_payment_fk cascade",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
 				"message.message_team_invitation_fk cascade",
