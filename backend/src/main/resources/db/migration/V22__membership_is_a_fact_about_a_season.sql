@@ -141,13 +141,19 @@ create table membership (
     constraint membership_competitor_fk foreign key (competitor_id) references competitor (id)
         on delete cascade,
 
-    /* And the receipt is HIS, for THIS season, said by the key and not by a service. CASCADE for
-       the same reason the two keys above cascade, and it is the only rule that does not fight
-       them: deleting a member takes his payments and his memberships in one statement, and a
-       RESTRICT here would turn that into a failure depending on which of the two the server got
-       to first. Nothing else ever deletes a payment - a reversal is a state and not a deletion
-       (V16) - so what this rule really says is that evidence and the membership it evidences go
-       together or not at all. */
+    /* And the receipt is HIS, for THIS season, said by the key and not by a service. CASCADE
+       because a membership on the basis of a payment NAMES that payment, and a row that names a
+       receipt which is no longer there is the one shape the constraint above forbids: evidence
+       and the membership it evidences go together or not at all.
+
+       WHAT RESTRICT WOULD AND WOULD NOT DO, measured on 13.09.2026 rather than reasoned about,
+       because the sentence that stood here until then was wrong. It said RESTRICT would turn the
+       deletion of a member into a failure "depending on which of the two the server got to
+       first". It would not: deleting a member SUCCEEDS under RESTRICT too, because PostgreSQL
+       runs the cascade into `membership` before the check over `payment` is ever reached. The
+       only thing RESTRICT would change is the direct deletion of a payment, and that is the door
+       CASCADE is chosen for. Nothing else ever deletes a payment - a reversal is a state and not
+       a deletion (V16). */
     constraint membership_payment_fk foreign key (payment_id, competitor_id, season)
         references payment (id, competitor_id, season) on delete cascade,
 
