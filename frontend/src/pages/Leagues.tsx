@@ -20,8 +20,52 @@ import { useMay } from './admin/rights'
 import { useSession } from '../session/useSession'
 import { EditableText } from './league/EditableText'
 import { LeagueEvents } from './league/LeagueEvents'
+import { leagueRaces, racesByEvent } from './league/leagueCounting'
 import { leagueTable } from './league/leagueTable'
 import './Leagues.css'
+
+/**
+ * HOW MANY DAYS COUNT TOWARDS A COMPETITION, and it is the same number the box below the card
+ * lists, because it is the same call.
+ *
+ * `league.eventIds.length` is what stood here until 13.09.2026, and a review measured what that
+ * costs the moment the folding box arrived beside it: the row said „Događaja: 11" and the box
+ * listed ten. The eleventh is an event whose races have not been entered yet, and that is not a
+ * quirk of the mock. The owner decided on 23.08.2026 that an event is written before its
+ * distances are known, so production produces that difference by design, on every competition
+ * that has one.
+ *
+ * Which of the two numbers is right was already answered, and not here: `V20__league_reads_races`
+ * carries the league onto its RACES, and says in as many words that from then on a league's
+ * events ARE the events of its races. An event with none of them counted scores nothing and
+ * decides nothing. So the row follows the box rather than the other way round, and when the
+ * portal stops reading `/mock` the server will already be answering the same way.
+ *
+ * It asks for the events and the races itself, like `Entrants` above and for the same reason: the
+ * list must not wait on two files of nearly two megabytes to draw a name. Three states and not
+ * two - empty while the answer is coming, because a nought where the file has not arrived is the
+ * card telling a lie; the word when it will not come at all.
+ */
+function CountedEvents({ league }: { league: League }) {
+  const { t } = useI18n()
+  const eventsState = useEvents()
+  const racesState = useRaces()
+  const ready = eventsState.status === 'ready' && racesState.status === 'ready'
+
+  if (failed(eventsState, racesState)) {
+    return <>{t('leagues.unknown')}</>
+  }
+
+  if (!ready) {
+    return null
+  }
+
+  return (
+    <>
+      {racesByEvent(leagueRaces(league, dataOr(racesState, [])), dataOr(eventsState, [])).length}
+    </>
+  )
+}
 
 /**
  * How many people are placed in one competition.
@@ -148,7 +192,7 @@ export function Leagues() {
                         {' · '}
                         {t('leagues.events')}
                         {': '}
-                        {league.eventIds.length}
+                        <CountedEvents league={league} />
                         {' · '}
                         {t('leagues.entrants')}
                         {': '}

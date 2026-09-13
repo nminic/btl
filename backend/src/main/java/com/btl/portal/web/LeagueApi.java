@@ -18,11 +18,20 @@ import java.util.List;
  * The owner, 12.09.2026: a league is assembled "selekcijom događaja, selektujem
  * automatski i sve njegove trke, a mogu i samo da selektujem neku od trka". So
  * what is counted is the RACE - a day with four distances may count one of them -
- * while what the league's page lists is still "lista svih događaja koje spadaju
- * pod tu ligu", and the results table's column "i dalje vidi samo datum sa
- * mouseoverom svih DOGAĐAJA iz kojih su trke u toj ligi". Two questions, one
- * answer: {@code raceIds} is what is counted and {@code eventIds} is what is
- * named, and the second is DERIVED from the first rather than stored beside it.
+ * while the days themselves are what a member is shown, and the results table's
+ * column "i dalje vidi samo datum sa mouseoverom svih DOGAĐAJA iz kojih su trke u
+ * toj ligi". Two questions, one answer: {@code raceIds} is what is counted and
+ * {@code eventIds} is what is named, and the second is DERIVED from the first
+ * rather than stored beside it.
+ *
+ * <p><b>Where those days are shown moved on 13.09.2026, and the answer here did
+ * not.</b> For one day this comment said the list belongs on the page of a single
+ * league. The owner corrected himself the next morning: "Pogrešio sam, ne vidi se
+ * na pojedinačnim stranama lige. Na pojedinačnim stranama ostaje samo tabela kako
+ * jeste. Nego se na pregledu svih liga ispisuje ono što i sad... pa onda ide i
+ * sekcijica DOGAĐAJI / TRKE koja se može ekspandovati." So the list lives on the
+ * overview of all leagues. It is named here because a comment that says WHERE a
+ * field is drawn is the first thing to rot, and this one had already rotted once.
  * An event on that list with none of its races counted would be a second fact
  * that could disagree with the first, which is the thing V19 took the whole
  * table apart to avoid.

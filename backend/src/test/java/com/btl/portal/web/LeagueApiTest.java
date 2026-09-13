@@ -236,10 +236,11 @@ class LeagueApiTest {
 	/**
 	 * AND IT NAMES THE DIFFERENT EVENTS OF THOSE RACES, EACH ONCE.
 	 *
-	 * <p>The owner, 12.09.2026: the league's page carries "lista svih događaja koje
-	 * spadaju pod tu ligu", and the results table's column "i dalje vidi samo datum
-	 * sa mouseoverom svih DOGAĐAJA iz kojih su trke u toj ligi". So the events are
-	 * the events OF THE COUNTED RACES and not a list of their own.
+	 * <p>The owner, 12.09.2026: the results table's column "i dalje vidi samo datum
+	 * sa mouseoverom svih DOGAĐAJA iz kojih su trke u toj ligi", and the days are
+	 * listed for the member as well - on the OVERVIEW of all leagues, which is where
+	 * he moved them on 13.09.2026 after one day on the page of a single league. So
+	 * the events are the events OF THE COUNTED RACES and not a list of their own.
 	 *
 	 * <p>{@code srednji} counts two races, which is what says "each once" is a claim
 	 * and not a coincidence, and the fixture's property is read out of the database
@@ -270,8 +271,8 @@ class LeagueApiTest {
 	 * <p>The owner, 12.09.2026: "selekcijom događaja, selektujem automatski i sve
 	 * njegove trke, a mogu i samo da selektujem neku od trka". So a day with three
 	 * distances may count one of them - the other two score towards nothing in this
-	 * league - and the day itself is still what the member sees on the league's page
-	 * and in the mouseover over the results column.
+	 * league - and the day itself is still what the member sees, in the mouseover over
+	 * the results column and in the folding box on the overview of all leagues.
 	 *
 	 * <p>Both halves are read out of the database rather than written down here: how
 	 * many races that event has, and how many of them the league counts. A fixture

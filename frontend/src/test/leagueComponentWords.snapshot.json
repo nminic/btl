@@ -38,6 +38,7 @@
     "./admin/rights",
     "./league/EditableText",
     "./league/LeagueEvents",
+    "./league/leagueCounting",
     "./league/leagueTable",
     "/",
     "/liga/",

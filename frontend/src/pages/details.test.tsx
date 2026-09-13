@@ -318,7 +318,30 @@ describe('LeagueDetail', () => {
     )
 
     expect(within(box).getByText(new RegExp(`Sezona 2019`))).toBeVisible()
-    expect(box.textContent).toContain(`Događaja: ${league.eventIds.length}`)
+    /* **The number of days is held against the BOX and not against `eventIds`**, since
+       13.09.2026. A review measured the two apart the day the folding box arrived beside the row:
+       the row said „Događaja: 11" and the box listed ten. The eleventh is an event whose races
+       have not been entered yet, which is not a quirk of the mock but what the owner decided on
+       23.08.2026, that an event is written before its distances are known.
+
+       Which of the two is right was answered by `V20__league_reads_races`: a league's events ARE
+       the events of its races. So the row follows the box. Written as a comparison of the two
+       rather than as a number, because a number written here would let them drift apart again and
+       the day it happened nobody would be told which one to believe. */
+    /* The box has to be opened first: its panel carries `hidden` while it is folded, which is
+       what keeps `aria-controls` pointing at something that exists, and a folded panel is not
+       part of the accessibility tree. Opening it is also the state the member compares the two
+       numbers in. */
+    await setupUser().click(
+      within(box).getByRole('button', { name: /Događaji i trke/ }),
+    )
+    const days = await within(box).findAllByRole('heading', { level: 4 })
+    expect(days.length).toBeGreaterThan(1)
+    expect(box.textContent).toContain(`Događaja: ${days.length}`)
+
+    /* And it is not the same as counting `eventIds`, which is what says the line above measures
+       something. `brdska-2019` holds an event with no races entered, on purpose. */
+    expect(days.length).toBeLessThan(league.eventIds.length)
 
     /* **Waited for, because it arrives after the box does** (review, 07.09.2026). „Učesnika" is
        worked out of the three heaviest files on the portal, and the list no longer waits on them:
@@ -360,6 +383,54 @@ describe('LeagueDetail', () => {
 
     await screen.findAllByRole('heading', { level: 2 })
     expect(screen.queryAllByRole('heading', { name: 'Propozicije' })).toHaveLength(1)
+  })
+
+  it('names the box it opens, from a heading, and names it apart from every other', async () => {
+    /* Three things the box's own documentation gives as the reason it is correct, and a review
+       on 13.09.2026 measured that none of them had a case: the whole suite stayed green with
+       `aria-controls` deleted, with the `h3` turned into a `div`, and with the panel id reduced
+       to a constant so that three buttons pointed at one panel.
+
+       They are measured together because they are one claim: a reader working by heading finds
+       this box, the control they land on is the one that opens it, and what it points at is this
+       box and not the one belonging to another competition.
+
+       2027 and not 2019, because 2019 holds one competition and a claim about telling two
+       apart needs two. `MAIN_LEAGUE_SLUG` is filtered off this screen, so what is left is
+       RunTrace and Planinska. */
+    renderAt('/sr/lige?sezona=2027')
+
+    const boxes = await screen.findAllByRole('heading', { level: 2, name: /liga/i })
+    expect(boxes.length).toBeGreaterThan(1)
+
+    const cards = boxes.map((one) => must(one.closest('li'), 'the box of a competition'))
+    const toggles = cards.map((card) =>
+      within(card).getByRole('button', { name: /Događaji i trke/ }),
+    )
+
+    /* From a heading, so the box is in a screen reader's list of them. */
+    for (const toggle of toggles) {
+      expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H3')
+    }
+
+    /* Pointing at something, and at something that is really there while the box is folded,
+       which is the reason the panel carries `hidden` rather than being taken out. */
+    const panels = toggles.map((toggle) => {
+      const id = toggle.getAttribute('aria-controls')
+      expect(id).toBeTruthy()
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      return must(document.getElementById(String(id)), `the panel ${id} points at`)
+    })
+
+    /* And at its own, not at a neighbour's. Three buttons pointing at one panel is the shape a
+       constant id produces, and a reader following either of the other two lands on this box. */
+    expect(new Set(panels).size).toBe(panels.length)
+    for (const [index, panel] of panels.entries()) {
+      expect(within(cards[index]).getByRole('button', { name: /Događaji i trke/ })).toBe(
+        toggles[index],
+      )
+      expect(cards[index].contains(panel)).toBe(true)
+    }
   })
 
   it('holds up for a league with no events yet', async () => {
