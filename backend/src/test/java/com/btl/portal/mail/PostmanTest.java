@@ -389,7 +389,13 @@ class PostmanTest {
 		try (Stream<Path> inside = Files.list(Path.of("..", "deploy"))) {
 			List<Path> stacks = inside
 					.filter(one -> one.getFileName().toString().startsWith("compose."))
-					.filter(one -> one.getFileName().toString().endsWith(".yml"))
+					/* And `.yaml` too, which is Compose's own preferred spelling. Measured
+					   on 13.09.2026 by a review of PR 275: a stack named that way was read
+					   by nobody, while the count below went on passing on the two that
+					   were - so the sentence this case holds, that a key for the relay
+					   never travels without TLS, would simply not have covered it. */
+					.filter(one -> one.getFileName().toString().endsWith(".yml")
+							|| one.getFileName().toString().endsWith(".yaml"))
 					.sorted().toList();
 
 			assertThat(stacks)
