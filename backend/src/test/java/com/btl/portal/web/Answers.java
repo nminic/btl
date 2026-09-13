@@ -94,6 +94,31 @@ final class Answers {
 	 */
 	static void everyFieldThePortalReadsIsAnswered(String path, JsonNode answered, String file,
 			String... deliberatelyNotAnswered) {
+		everyFieldThePortalReadsIsAnswered(path, answered, file, Set.of(), deliberatelyNotAnswered);
+	}
+
+	/**
+	 * AND NOTHING THE ANSWER CARRIES IS A NAME NOBODY READS, unless it is named here.
+	 *
+	 * <p><b>This half was added on 13.09.2026 and it corrects a reason, not a rule.</b>
+	 * The subset was chosen on 12.09.2026 over an equality, and the reason written down
+	 * was that „a name the server answers with and no screen reads costs nothing". A
+	 * review measured that it can cost everything: the competitors' resource had just
+	 * removed `membershipBasis` because Article 74 puts the fee beside the date of birth,
+	 * and answering instead with a boolean `exempt` - a name no screen reads - published
+	 * exactly the same fact and passed all 1493 cases.
+	 *
+	 * <p><b>The subset stays; the silence goes.</b> A server may still carry something
+	 * the served file never had, which is what the decision of 12.09.2026 was protecting
+	 * (the age category is coming and no mock has it). It just has to be NAMED, the same
+	 * way an omission is, and for the same reason: a field added on purpose and a field
+	 * that leaked look alike from here.
+	 *
+	 * @param alsoAnswered names this resource answers with although the portal does not
+	 *                     read them yet, each for a reason the caller states
+	 */
+	static void everyFieldThePortalReadsIsAnswered(String path, JsonNode answered, String file,
+			Set<String> alsoAnswered, String... deliberatelyNotAnswered) {
 		assertThat(answered.isArray() && !answered.isEmpty())
 				.as("%s answered with nothing, so there are no fields to compare", path)
 				.isTrue();
@@ -125,6 +150,28 @@ final class Answers {
 		assertThat(answeredFields)
 				.as("%s no longer answers with everything %s is read for", path, file)
 				.containsAll(mustBeAnswered);
+
+		for (String extra : alsoAnswered) {
+			/* Both halves again, and the first is the one that keeps this from rotting: a
+			   name listed here after the portal started serving it would excuse nothing and
+			   say nothing, so it has to really be absent from the file. */
+			assertThat(served)
+					.as("%s already serves %s, so naming it as something extra says nothing",
+							file, extra)
+					.doesNotContain(extra);
+			assertThat(answeredFields)
+					.as("%s does not answer with %s, which this case says it answers with on purpose",
+							path, extra)
+					.contains(extra);
+		}
+
+		Set<String> mayBeAnswered = new LinkedHashSet<>(served);
+		mayBeAnswered.addAll(alsoAnswered);
+
+		assertThat(answeredFields)
+				.as("%s answers with a name no screen reads and this case does not name it; a field"
+						+ " added on purpose and a field that leaked look alike from here", path)
+				.isSubsetOf(mayBeAnswered);
 	}
 
 	/** AND NOTHING THE ANSWER CARRIES IS THE SAME IN EVERY RECORD. */

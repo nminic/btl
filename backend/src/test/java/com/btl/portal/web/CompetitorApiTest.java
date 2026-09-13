@@ -14,6 +14,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +32,7 @@ class CompetitorApiTest {
 	private static final String THE_REFERRAL_CODE = "referralCode";
 	private static final String WHO_HANDED_OUT_THE_CODE = "referredBy";
 	private static final String HOW_THE_MEMBERSHIP_IS_HELD = "membershipBasis";
+	private static final String WHETHER_THE_FEE_IS_STANDING = "active";
 
 	@Autowired
 	private MockMvc http;
@@ -74,10 +76,10 @@ class CompetitorApiTest {
 	 * of them distinct at once.
 	 */
 	@BeforeEach
-	void threeMembers() {
+	void fourMembers() {
 		member("000012", "Milica", "Djurisic", "F", "1968-03-11",
 				"(select id from place where rank = 1)", "null", "null",
-				2014, false, false, "feeExempt", "Trcim od 2014.", "0a2b4c6d8e0f1102", "null",
+				2014, false, true, "feeExempt", "Trcim od 2014.", "0a2b4c6d8e0f1102", "null",
 				false, "none");
 		member("000045", "Strahinja", "Vukicevic", "M", "2007-01-30",
 				"(select id from place where rank = 2)", "null", "null",
@@ -88,11 +90,21 @@ class CompetitorApiTest {
 				2020, false, true, "payment", "", "b7f3a1c2d4e50601",
 				"(select id from competitor where member_number = '000012')", true, "year");
 
+		/* AND THE FOURTH, WHOSE FEE HAS LAPSED. His number sorts BETWEEN two of the
+		   three, so a list that lets him through is wrong in its order as well as in
+		   its length, and everything else about him is ordinary: he is not hidden, he
+		   is in no team, and he pays like two of the others. The only thing that keeps
+		   him out is the one thing being measured. */
+		member("000031", "Nenad", "Ilic", "M", "1979-05-20",
+				"(select id from place where rank = 1)", "null", "null",
+				2015, false, false, "payment", "Pauziram.", "c3d2e1f0a9b87704", "null",
+				false, "none");
+
 		team("probni-tim", "Probni tim", "000012");
 		team("drugi-tim", "Drugi tim", "000045");
 
-		membership("000045", "drugi-tim", 2027, "2027", "'Presao u drugi tim'");
-		membership("000045", "probni-tim", 2028, "null", "null");
+		membership("000012", "drugi-tim", 2027, "2027", "'Presao u drugi tim'");
+		membership("000012", "probni-tim", 2028, "null", "null");
 		membership("000007", "probni-tim", 2027, "2027", "'Prestao da trci za tim'");
 	}
 
@@ -162,7 +174,7 @@ class CompetitorApiTest {
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors", answer(), "competitors.json",
 				THE_YEAR_OF_BIRTH, THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
-				HOW_THE_MEMBERSHIP_IS_HELD);
+				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
 
 	/**
@@ -184,7 +196,7 @@ class CompetitorApiTest {
 
 		List<String> codes = db.sql("select referral_code from competitor").query(String.class).list();
 		assertThat(codes).as("no code was read out of the database, so the loop below asserts nothing")
-				.hasSize(3);
+				.hasSize(4);
 
 		for (String code : codes) {
 			assertThat(whole).as("a referral code (%s) left the server, which Clan 73 does not make"
@@ -196,20 +208,67 @@ class CompetitorApiTest {
 	/**
 	 * AND NOTHING IN THE ANSWER SAYS WHO PAYS AND WHO DOES NOT.
 	 *
-	 * <p>Also asked of the text, because the basis is a short word that could arrive
-	 * under any name, and because a boolean „is exempt" says the same thing as the word
-	 * does.
+	 * <p>Asked of the text and not of a field name, because the basis is a short word
+	 * that could arrive under any name at all.
+	 *
+	 * <p><b>The words are read off the schema, not written here.</b> Which words exist
+	 * is a CHECK on the column, so the day a third basis is added the rule grows and this
+	 * case grows with it. A list written by hand would have stayed two words long and
+	 * said nothing about the third.
+	 *
+	 * <p><b>The boundary, measured and written down rather than left to a review:</b> it
+	 * refuses the WORDS. It does not refuse the same fact answered as a boolean under a
+	 * neutral name, because a boolean carries no word to look for. What refuses that is
+	 * `Answers`: a name the portal does not read cannot be in the answer at all, whatever
+	 * type it carries.
 	 */
 	@Test
 	void nothingAboutTheMembershipFeeLeavesTheServer() throws Exception {
 		String whole = http.perform(get("/api/competitors")).andReturn().getResponse()
 				.getContentAsString();
 
-		for (String basis : List.of("feeExempt", "payment")) {
+		assertThat(whole).as("the answer carries nothing at all, so it says nothing about what it"
+				+ " leaves out").contains("000007", "000012", "000045");
+
+		String rule = db.sql("select pg_get_constraintdef(oid) from pg_constraint"
+						+ " where conname = ?").param("competitor_membership_basis_known")
+				.query(String.class).single();
+		List<String> everyBasis = Pattern.compile("'([a-zA-Z]+)'").matcher(rule).results()
+				.map(one -> one.group(1)).toList();
+		assertThat(everyBasis).as("the schema named no basis at all, so the loop below asserts"
+				+ " nothing; the rule it read was: %s", rule).hasSizeGreaterThan(1);
+
+		for (String basis : everyBasis) {
 			assertThat(whole).as("the basis a membership is held on (%s) left the server, and Clan 74"
-					+ " puts „sve u vezi sa clanarinom" + '"' + " beside the date of birth", basis)
+					+ " puts everything to do with the fee beside the date of birth", basis)
 					.doesNotContain(basis);
 		}
+	}
+
+	/**
+	 * AND A MEMBER WHOSE FEE HAS LAPSED IS NOT ON THE LIST AT ALL.
+	 *
+	 * <p>PDL P11: „Status clanarine se ne prikazuje na profilu. Prisustvo clana na sajtu
+	 * u tekucoj godini samo po sebi znaci da je clanarina aktivna; ko nije platio, ne vidi
+	 * se nigde osim u istorijskim godinama." Asked on 13.09.2026 which of the two shapes
+	 * that takes on the server, the owner chose this one over serving the flag: off the
+	 * list, rather than on it with the flag withheld.
+	 *
+	 * <p>His number sorts BETWEEN two of the three who are on it, so letting him through
+	 * is wrong in the order as well as in the length, and two cases go red instead of one.
+	 * Nothing else about him is unusual: not hidden, in no team, paying like two others.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsNotOnTheList() throws Exception {
+		assertThat(db.sql("select count(*) from competitor where not active")
+				.query(Integer.class).single())
+				.as("the fixture has nobody whose fee has lapsed, so this case asserts nothing")
+				.isEqualTo(1);
+
+		assertThat(StreamSupport.stream(answer().spliterator(), false)
+				.map(one -> one.path("memberNumber").asString()).toList())
+				.as("a member whose fee has lapsed came back on the public list of members")
+				.doesNotContain("000031");
 	}
 
 	@Test
@@ -247,14 +306,24 @@ class CompetitorApiTest {
 				.as("the answer carries nothing at all, so it says nothing about what it leaves out")
 				.contains("000007", "000012", "000045");
 
-		for (String year : List.of("1968", "1991", "2007")) {
+		/* Read out of the database rather than written here, so that a member added to the
+		   fixture tomorrow is measured without anybody remembering to add their year. */
+		List<String> years = db.sql("select distinct to_char(birth_date, 'YYYY') from competitor")
+				.query(String.class).list();
+		List<String> days = db.sql("select distinct to_char(birth_date, '-MM-DD') from competitor")
+				.query(String.class).list();
+		assertThat(years).as("no year was read out of the database, so the loops below assert"
+				+ " nothing").hasSize(4);
+		assertThat(days).as("no day was read out of the database").hasSize(4);
+
+		for (String year : years) {
 			assertThat(whole)
 					.as("a year of birth (%s) left the server, which Clan 74 and the privacy policy"
 							+ " both forbid in full and in short", year)
 					.doesNotContain(year);
 		}
 
-		for (String day : List.of("-03-11", "-07-02", "-01-30")) {
+		for (String day : days) {
 			assertThat(whole).as("a whole date of birth (%s) left the server", day)
 					.doesNotContain(day);
 		}
@@ -303,7 +372,7 @@ class CompetitorApiTest {
 	@Test
 	void theTeamIsTheOneTheMembershipHasNotEnded() throws Exception {
 		List<JsonNode> theOneInATeam = StreamSupport.stream(answer().spliterator(), false)
-				.filter(one -> one.path("memberNumber").asString().equals("000045")).toList();
+				.filter(one -> one.path("memberNumber").asString().equals("000012")).toList();
 
 		assertThat(theOneInATeam)
 				.as("the member who left one team and joined another came back more than once")
@@ -319,7 +388,7 @@ class CompetitorApiTest {
 				.filter(one -> one.path("teamId").isNull())
 				.map(one -> one.path("memberNumber").asString()).toList())
 				.as("a member who is in no team came back in one")
-				.containsExactly("000007", "000012");
+				.containsExactly("000007", "000045");
 	}
 
 	@Test

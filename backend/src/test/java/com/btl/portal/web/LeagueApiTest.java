@@ -14,6 +14,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -188,7 +189,12 @@ class LeagueApiTest {
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
-		Answers.everyFieldThePortalReadsIsAnswered("/api/leagues", answer(), "leagues.json");
+		/* `raceIds` is named here because no screen reads it YET: the portal still counts a
+		   league by its events, and the races are what replaced that in the database on
+		   13.09.2026 (V20). Naming it is the price of the floor added the same day, after a
+		   review measured that a name nobody reads can carry a fact nobody meant to publish. */
+		Answers.everyFieldThePortalReadsIsAnswered("/api/leagues", answer(), "leagues.json",
+				Set.of("raceIds"));
 	}
 
 	/** And in season order, oldest first, whatever order the rows were written in. */

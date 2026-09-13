@@ -35,6 +35,22 @@ import java.util.List;
  * member sees about their own fee is their own screen's business, once there is
  * a resource that answers only to them.
  *
+ * <p><b>And that is why the list itself is only the members whose fee is
+ * standing.</b> Whether it is standing is the fee's own status, and answering
+ * with it names, beside a full name and a member number, everybody who has not
+ * paid. PDL P11 decided that long before this resource existed: „Status
+ * članarine se ne prikazuje na profilu. Prisustvo člana na sajtu u tekućoj
+ * godini samo po sebi znači da je članarina aktivna; ko nije platio, ne vidi se
+ * nigde osim u istorijskim godinama." A review found the flag still leaving here
+ * after the basis had been removed, and the owner, asked on 13.09.2026 which of
+ * the two shapes P11 takes on the server, chose this one: <b>not on the list at
+ * all</b>, rather than on the list with the flag withheld.
+ *
+ * <p>What follows from that, and is owed: the profile and the historical tables
+ * of a member whose fee has lapsed need a resource that knows them, and it is
+ * not this one. Until it exists those screens have nothing to read, which is
+ * visible rather than silent, and that is the point.
+ *
  * <p><b>And neither the referral code nor who handed it out.</b> Article 73
  * lists what is public and neither is on it. This one is worth the extra
  * sentence, because the name hides it: the portal reads {@code referredBy} as the
@@ -51,15 +67,17 @@ import java.util.List;
  * side, the member's own screens and the administration at once. This is that
  * backend, and it must not repeat the file it replaces.
  *
- * <p>Both omissions are named at the call site in {@code CompetitorApiTest}, with
- * the reason, and each name is checked to be one the portal really serves. A
+ * <p>All five omissions are named at the call site in {@code CompetitorApiTest},
+ * with the reason, and each name is checked to be one the portal really serves. A
  * field that went missing by accident and one left out on purpose look the same
  * from a test; this is what tells them apart.
  *
  * <p><b>A hidden profile is still in this list.</b> Hiding a profile is about the
- * profile PAGE (PDL P23); the member number, the name and the standing stay
- * public, and the portal needs the flag in order to know what to draw. Deleting a
- * member is the other door and it takes the row with it.
+ * profile PAGE (PDL P23); the member number and the name stay public (Article
+ * 73), and the portal needs the flag in order to know what to draw. Deleting a
+ * member is the other door and it takes the row with it. A lapsed fee is a third
+ * door and it is the one above: it takes the member off the list without taking
+ * anything away from them.
  *
  * <p><b>In member number order</b>, which is the one order the portal speaks of
  * them in: it is printed on the card and it never changes.
@@ -74,14 +92,11 @@ class CompetitorApi {
 	}
 
 	/**
-	 * @param active           whether the membership is standing, which Article 73
-	 *                         makes public as the member's status; how it is held,
-	 *                         and what was paid for it, is not on that list
-	 * @param birthdayShown    what the member chose about their birthday, which the
-	 *                         portal needs in order to draw the card at all
+	 * @param birthdayShown what the member chose about their birthday, which the
+	 *                      portal needs in order to draw the card at all
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
-			String city, String country, boolean firstSeason2027, int firstSeason, boolean active,
+			String city, String country, boolean firstSeason2027, int firstSeason,
 			String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown) {
 	}
@@ -91,7 +106,7 @@ class CompetitorApi {
 		return db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
-						+ " c.first_season_2027, c.first_season, c.active,"
+						+ " c.first_season_2027, c.first_season,"
 						+ " c.bio, m.team_id, m.season_from as team_since,"
 						+ " c.profile_hidden, c.birthday_shown"
 						+ " from competitor c"
@@ -103,13 +118,20 @@ class CompetitorApi {
 						   club's name. */
 						+ " left join team_membership m on m.competitor_id = c.id"
 						+ "  and m.season_to is null"
+						/* AND ONLY THE MEMBERS WHOSE FEE IS STANDING, which is the whole of what
+						   this resource is allowed to say about a fee. PDL P11: „Status clanarine
+						   se ne prikazuje na profilu... ko nije platio, ne vidi se nigde osim u
+						   istorijskim godinama." Owner, 13.09.2026, asked which shape that takes
+						   here, chose this one over serving the flag: a member whose fee has
+						   lapsed is not on this list at all. */
+						+ " where c.active"
 						+ " order by c.member_number")
 				.query((row, one) -> new Competitor(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
-						row.getBoolean(7), row.getInt(8), row.getBoolean(9), row.getString(10),
-						row.getObject(11) == null ? null : row.getLong(11),
-						row.getObject(12) == null ? null : row.getInt(12),
-						row.getBoolean(13), row.getString(14)))
+						row.getBoolean(7), row.getInt(8), row.getString(9),
+						row.getObject(10) == null ? null : row.getLong(10),
+						row.getObject(11) == null ? null : row.getInt(11),
+						row.getBoolean(12), row.getString(13)))
 				.list();
 	}
 }

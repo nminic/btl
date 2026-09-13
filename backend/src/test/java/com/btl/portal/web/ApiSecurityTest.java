@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.util.ServletRequestPathUtils;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -122,6 +124,10 @@ class ApiSecurityTest {
 				.contains(ARouteWithAVariableInIt.ASKED_AS);
 
 		for (String path : shut) {
+			assertThat(reallyMapped(path))
+					.as("%s is not a path this server maps at all, so asking it about a rule measures"
+							+ " nothing; the pattern it was made from needs a sample value that fits", path)
+					.isTrue();
 			assertThat(statusOf(path))
 					.as("%s has no rule of its own and answered somebody who is not signed in", path)
 					.isEqualTo(401);
@@ -148,6 +154,27 @@ class ApiSecurityTest {
 	 */
 	private static String withASampleValue(String pattern) {
 		return pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1").replace("*", "1");
+	}
+
+	/**
+	 * AND THE PATH MADE THAT WAY IS ONE THE SERVER REALLY ANSWERS TO, asked of the
+	 * dispatcher rather than assumed.
+	 *
+	 * <p>Without this the case had a silent way to say nothing. A variable may carry a
+	 * pattern of its own, and a member number does: `{number:[0-9]{6}}`. Substituting
+	 * there produced `/api/members/1}`, which nothing maps, so the server answered 401
+	 * because the path did not exist and the case went green over a route that was in
+	 * fact wide open. A review measured exactly that, to a 200, on 13.09.2026.
+	 *
+	 * <p>So the sample value is still made the simple way, and then the dispatcher is
+	 * asked whether what came out is a path it handles. If it is not, the case fails and
+	 * says which pattern needs a value that fits, which is a question for whoever adds
+	 * the route and not for whoever reads this later.
+	 */
+	private boolean reallyMapped(String path) throws Exception {
+		MockHttpServletRequest asking = new MockHttpServletRequest("GET", path);
+		ServletRequestPathUtils.parseAndCache(asking);
+		return mappings.getHandler(asking) != null;
 	}
 
 	/**
