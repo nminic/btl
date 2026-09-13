@@ -86,6 +86,15 @@ class RightsAtTheDoorTest {
 	 * visitor really is refused - is {@code CommentApiTest}, because this file measures what a
 	 * route DECLARES and not what the chain in front of it does.
 	 *
+	 * <p><b>And {@code /api/attendance} joins it, closed the identical way and for the
+	 * identical reason.</b> It is neither public nor administrative either: „Tu listu ko je
+	 * prijavljen takođe vide samo ulogovani članovi" (owner, 11.08.2026), so it is absent from
+	 * {@code READ_BY_ANYBODY} and a visitor is refused before this door is ever asked; and
+	 * reading who is going is not a moderator's action, so there is no box to tick for it and
+	 * every signed in account reads it, a plain competitor included. {@code AttendanceApiTest}
+	 * holds the other half, that a visitor really is refused, because this file only measures
+	 * what a route DECLARES.
+	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a
 	 * {@code @GetMapping("/cenovnik")} written without the annotation answered 200 to
@@ -102,7 +111,8 @@ class RightsAtTheDoorTest {
 	 * a rule.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
-			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments", "/error");
+			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
+					"/api/attendance", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 
