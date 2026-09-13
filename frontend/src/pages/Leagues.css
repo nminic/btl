@@ -62,3 +62,78 @@
 .leagues__item .profile__text {
   margin: 0;
 }
+
+/* The box that folds: which events and races the competition counts (owner, 13.09.2026).
+
+   It wears the same distance above it as the terms and the prizes, because it is the third of
+   three boxes and not an afterthought under the second: `.leagues__item section` above sets that
+   distance on every one of them. */
+
+/* The button that opens it, dressed as the heading it stands inside so the three boxes read
+   alike, and drawn as something to press. No colour of its own: `.leagues__item h3` already says
+   what a heading here looks like, and `font: inherit` takes the rest from it rather than naming
+   it a second time. The focus ring is the portal's own (`index.css`, `:focus-visible`). */
+.leagues__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+/* The triangle that turns when the box opens. Drawn out of borders on an empty box rather than
+   written as a character: a character is text, and a reader working by ear would be told „black
+   right-pointing pointer" over a control whose state `aria-expanded` already says. */
+.leagues__toggle::before {
+  content: '';
+  inline-size: 0;
+  block-size: 0;
+  border-block: 0.3rem solid transparent;
+  border-inline-start: 0.45rem solid currentColor;
+}
+
+.leagues__toggle[aria-expanded='true']::before {
+  transform: rotate(90deg);
+}
+
+.leagues__events {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-14);
+}
+
+/* The name of the event, which is an h4 and keeps the size of one. What is set here is the
+   distance to the day under it and to the races under that, because those two lines are read with
+   it rather than after it. */
+.leagues__event-name {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.leagues__event-day {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* And the races themselves, indented under the event they belong to, so the two levels are told
+   apart by the eye as well as by the markup. `padding-inline-start` and not a margin, so the
+   marker of each item sits inside the indent rather than beside it.
+
+   `overflow-wrap` because a race carries whatever name an organiser gave it, and one unbroken
+   word is the single input that pushes a page sideways, which this portal never does. */
+.leagues__event-races {
+  margin: var(--space-4) 0 0;
+  padding-inline-start: var(--space-20);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}

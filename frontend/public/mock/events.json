@@ -7982,6 +7982,19 @@
     "copiedFrom": ""
   },
   {
+    "id": "evt-vrsacki-maraton-mira-2019-03-23",
+    "slug": "vrsacki-maraton-mira-2019",
+    "name": "Vršački maraton mira",
+    "date": "2019-03-23",
+    "city": "Vršac",
+    "country": "RS",
+    "kind": "race",
+    "featured": "no",
+    "description": "",
+    "link": "",
+    "copiedFrom": ""
+  },
+  {
     "id": "evt-novosadski-polumaraton-2019-03-24",
     "slug": "novosadski-polumaraton-2019",
     "name": "Novosadski polumaraton",
