@@ -469,10 +469,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   posiljaoca se PRAZNI: poruka prezivi svog posiljaoca isto kao komentar (V7) i
 				   odluka (V9), jer clan sme da trazi brisanje naloga a tudji sanducici se time ne
 				   prepravljaju. */
-				/* V14. Lista dogadjaja u ligi ide sa obe strane, a imenovani administrator se
-				   PRAZNI, isto kao timski: i on je clan i sme da trazi brisanje naloga. */
-				"league_event.league_event_event_fk cascade",
-				"league_event.league_event_league_fk cascade",
+				/* V19 i V20. Spisak trka koje liga broji ide sa obe strane, jer nijedna od njih
+				   nije cinjenica o toj vezi: brisanje trke ne sme da ostavi ligu koja je broji,
+				   a brisanje lige ne sme da ostavi red koji je imenuje. Imenovanog administratora
+				   nema od V19 ("NE POSTOJI ADMINISTRATOR PROPRATNE LIGE"), pa ni kljuca koji bi
+				   se praznio; a `league_event` od V20 nema uopste, jer liga broji trke. */
 				"league_race.league_race_league_fk cascade",
 				"league_race.league_race_race_fk cascade",
 				"message.message_from_fk set null",
