@@ -68,10 +68,49 @@
  * are what PDL P8 knows, and they are the two `competitor_membership_basis_known` already names,
  * word for word, so the two cannot drift apart while both exist.
  *
+ * AND THE BASIS IS NOT ENOUGH ON ITS OWN: THE PAYMENT IS NAMED. ADL A12, 03.08.2026, and it is
+ * quoted rather than summarised because both halves of it are constraints below:
+ *
+ *   "Clan se aktivira na dva nacina: evidentirana uplata i pocasno clanstvo. Prava su ista,
+ *    evidencija nije. Zato aktivacija nosi polje osnova I VEZU KA UPLATI KOJA SME BITI PRAZNA
+ *    SAMO KAD JE OSNOV POCASNI. Bez toga se u knjigovodstvu i u izvestaju o naplati pojavljuje
+ *    31 clan bez uplate i nema nacina da se objasni."
+ *
+ * So `payment_id` is here, and `membership_basis_says_whether_a_payment_is_named` says the rule in
+ * BOTH directions at once: a membership held on a payment must name one, and one held on a
+ * decision of the association must not. One direction alone is half a rule - the first would let
+ * an honorary membership carry somebody else's receipt, the second would let a paid one carry
+ * none, and the report A12 is about is wrong either way.
+ *
+ * AND THE PAYMENT IT NAMES IS HIS OWN, FOR THAT SEASON, which is not a rule anybody has to
+ * remember either. The key is composite - `(payment_id, competitor_id, season)` against
+ * `payment (id, competitor_id, season)` - so a row naming another member's receipt, or this
+ * member's receipt for another year, satisfies nothing and PostgreSQL refuses it. That is V19's
+ * trick word for word: it added `race_season_unique` and `league_season_unique` purely as targets
+ * so that `league_race` could say "a league of 2027 counts a race of 2027" in the schema instead
+ * of in a service, and `payment_competitor_season_unique` below is the same thing said about a
+ * receipt. It is created here rather than in V16 because V16 has merged and a migration is
+ * immutable from that day (A2).
+ *
+ * A NULL `payment_id` SATISFIES THAT KEY, and that is the default MATCH SIMPLE rather than an
+ * oversight: a composite foreign key with any column null is satisfied. It is exactly what an
+ * honorary membership needs, and it is why the biconditional above has to exist - the key alone
+ * would let every row leave the payment out.
+ *
  * AND NOTHING BEFORE 2027, the same sentence `payment_season_not_before_the_league` (V16),
  * `league_season_not_before_the_league` (V14) and `team_membership_season_from_not_before_the_league`
  * (V11) already carry: the league starts in 2027 and there is no season before it.
  */
+
+
+/* Not uniqueness, but the target the composite key below needs, which is the same sentence V19
+   wrote over `race` and `league` for the same reason. `payment_pk` already makes `id` unique, so
+   this adds no rule at all: it exists so that a membership can name a receipt AND whose it is AND
+   which season it is in one key. */
+alter table payment
+    add constraint payment_competitor_season_unique unique (id, competitor_id, season);
+
+
 create table membership (
     /* Who, and which year he is a member OF - not the year he paid in, which is `payment`'s
        business and a different number for everybody who joins in the transfer window. */
@@ -83,34 +122,72 @@ create table membership (
        member" has to have one answer for the man who pays and the man who is let in free. */
     basis         text    not null,
 
+    /* The receipt behind it, and empty exactly when there is none to name (A12). This is what the
+       book of accounts joins on, and it is a column rather than a natural join on the pair,
+       because a join nobody declared is a rule nobody can be refused by. */
+    payment_id    bigint,
+
     /* ONE ANSWER PER PERSON PER SEASON, and it is the key rather than a unique constraint beside
        a surrogate one, because there is nothing else the row could be identified by. */
     constraint membership_pk primary key (competitor_id, season),
 
     /* The membership goes with the person, which is what `payment_competitor_fk` (V16) and
        `team_membership_competitor_fk` (V11) both say about the rows hanging off a member. What
-       survives a deleted member is the frozen season (A37), which is its own tables of hardcoded
-       values and carries his name as text, so nothing here is the history PDL P23 protects. */
+       survives a deleted member is the frozen season, and it survives WITHOUT him: its keys into
+       `competitor` are all ON DELETE SET NULL and the trigger `competitor_deletion_forgets_the_name`
+       (V17) empties the name beside them, which is the promise the privacy policy makes and PDL
+       P23 gives. What is left is the row - the place, the numbers and the gender - and none of
+       that is a thing this table could keep for him. */
     constraint membership_competitor_fk foreign key (competitor_id) references competitor (id)
         on delete cascade,
 
+    /* And the receipt is HIS, for THIS season, said by the key and not by a service. CASCADE for
+       the same reason the two keys above cascade, and it is the only rule that does not fight
+       them: deleting a member takes his payments and his memberships in one statement, and a
+       RESTRICT here would turn that into a failure depending on which of the two the server got
+       to first. Nothing else ever deletes a payment - a reversal is a state and not a deletion
+       (V16) - so what this rule really says is that evidence and the membership it evidences go
+       together or not at all. */
+    constraint membership_payment_fk foreign key (payment_id, competitor_id, season)
+        references payment (id, competitor_id, season) on delete cascade,
+
     constraint membership_basis_known check (basis in ('payment', 'feeExempt')),
-    constraint membership_season_not_before_the_league check (season >= 2027)
+    constraint membership_season_not_before_the_league check (season >= 2027),
+
+    /* BOTH HALVES OF A12 IN ONE LINE, the shape `payment_recognised_says_when` (V16) already uses:
+       held on a payment means one is named, held on a decision means none is. */
+    constraint membership_basis_says_whether_a_payment_is_named
+        check ((basis = 'payment') = (payment_id is not null))
 );
 
 /* Everybody who was a member in one season, which is the side every table of a season is drawn
    from. The member's own side is already served by the key. */
 create index membership_season_idx on membership (season);
 
+/* And the receipt's side: "which membership does this payment stand behind", which is the join the
+   report of A12 is made of and the rows the cascade has to find when a payment goes. A foreign key
+   builds no index on the referencing side, and the key of this table begins with the member, so
+   without this line that question is a scan of the whole table. */
+create index membership_payment_idx on membership (payment_id);
+
 comment on table membership is 'One row per person per season: which seasons somebody was a member of, and on what basis. competitor.active answers only "now", and payment only ever exists for the people who pay.';
 
 
 /* WHAT IS CARRIED OVER, AND WHAT IS NOT, and the second half is the part that needs writing down.
  *
- * EVERY RECOGNISED PAYMENT BECOMES A MEMBERSHIP OF THE SEASON IT WAS FOR. That is the same
- * sentence the portal already lives by, written in the new shape: a recognised payment for a
- * season IS a membership of that season, and `payment.season` is already the season paid for
- * rather than the season paid in.
+ * EVERY RECOGNISED PAYMENT BECOMES A MEMBERSHIP OF THE SEASON IT WAS FOR, and it carries the
+ * receipt it came from. `payment.season` is already the season paid for rather than the season
+ * paid in, so nothing here has to work anything out.
+ *
+ * THIS IS THE BEST THE PORTAL CAN SAY TODAY, NOT A DEFINITION, and the difference is written down
+ * because somebody will otherwise read the line below as one. "There is a recognised payment for
+ * 2027" and "he was a member in 2027" are not the same sentence: PDL P8 lets a member withdraw
+ * for the current season WITHOUT a refund, and that leaves a recognised payment standing behind
+ * him. It cannot make this carry wrong today, because nothing writes `payment` at all - the
+ * screens that record money are their own increment - so on the rows that exist the two sentences
+ * cannot come apart. The day withdrawal gets a home, THIS TABLE is where it belongs, as the
+ * absence of a row rather than as a second flag; that is the whole point of membership being a
+ * fact with a season on it.
  *
  * A payment that is still `awaited` is not one. Nobody has recognised it, the member number has
  * not been handed out, and PDL P8 ties everything to the moment it is recognised. A `reversed`
@@ -138,7 +215,7 @@ comment on table membership is 'One row per person per season: which seasons som
  * granted, once per season, by the screen that does not exist yet, and this migration does not
  * guess on its behalf.
  */
-insert into membership (competitor_id, season, basis)
-select p.competitor_id, p.season, 'payment'
+insert into membership (competitor_id, season, basis, payment_id)
+select p.competitor_id, p.season, 'payment', p.id
 from payment p
 where p.state = 'recorded';

@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,6 +49,19 @@ class PaymentConstraintsTest extends DatabaseTest {
 
 	/** The one table V16 adds. */
 	static final List<String> TABLES = List.of("payment");
+
+	/**
+	 * Carried by the floor and not by a row, the same exemption {@link AxisConstraintsTest} holds
+	 * over {@code race_day_unique} and for the same reason.
+	 *
+	 * <p>V22 adds {@code payment_competitor_season_unique} over {@code (id, competitor_id, season)}
+	 * purely so that {@code membership} can name a receipt, whose it is and which season it is in
+	 * one key. It adds no rule: {@code payment_pk} is over {@code id} alone and fires first on
+	 * every row that could break it, so no row exists that this one refuses and nothing else does.
+	 * The floor below proves that rather than believing it.
+	 */
+	private static final Set<String> KEYS_THAT_ONLY_EXIST_AS_A_TARGET =
+			Set.of("payment_competitor_season_unique");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
@@ -236,9 +250,39 @@ class PaymentConstraintsTest extends DatabaseTest {
 				.list();
 
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
+		Set<String> answeredFor = new HashSet<>(covered);
+		answeredFor.addAll(KEYS_THAT_ONLY_EXIST_AS_A_TARGET);
 
 		assertThat(declared).isNotEmpty();
-		assertThat(covered).containsExactlyInAnyOrderElementsOf(declared);
+		assertThat(answeredFor).containsExactlyInAnyOrderElementsOf(declared);
+
+		/* And the exemption is one key rather than a place to put anything awkward: a constraint
+		   named there and also given a row would make the set above pass while saying nothing. */
+		assertThat(covered).doesNotContainAnyElementsOf(KEYS_THAT_ONLY_EXIST_AS_A_TARGET);
+
+		/* AND THE EXEMPTION ITSELF HAS A FLOOR, derived rather than trusted, the one
+		   AxisConstraintsTest carries. A name belongs there only if no row can break it, and that
+		   is true exactly when its columns strictly contain the columns of some OTHER unique key
+		   on the same table: the narrower one is checked first and always fires instead.
+
+		   DISTINCT, which the Axis copy does not need and this one does. The key here contains TWO
+		   narrower keys - `payment_pk` over (id) and `payment_one_a_season` over
+		   (competitor_id, season) - so the join matches it once per narrower key and the name came
+		   back twice. Measured rather than foreseen: without it this failed asking for a list that
+		   held one name to equal a list that held the same name twice, which says nothing about
+		   any key. A key that is unbreakable through two others is not more exempt than one. */
+		List<String> reallyUnbreakable = db
+				.sql("select distinct wide.conname from pg_constraint wide join pg_constraint narrow"
+						+ "   on narrow.conrelid = wide.conrelid and narrow.oid <> wide.oid"
+						+ " where wide.conrelid" + relations
+						+ "   and wide.contype in ('u', 'p') and narrow.contype in ('u', 'p')"
+						+ "   and narrow.conkey <@ wide.conkey and narrow.conkey <> wide.conkey")
+				.query(String.class)
+				.list();
+
+		assertThat(reallyUnbreakable)
+				.as("a key is exempted that some row could actually break, or one that could not is missing")
+				.containsExactlyInAnyOrderElementsOf(KEYS_THAT_ONLY_EXIST_AS_A_TARGET);
 	}
 
 	static List<String> legitimateRows() {

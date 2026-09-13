@@ -236,10 +236,16 @@ class KeysAndIndexesTest extends DatabaseTest {
 			/* V22. The one key in the schema that IS the whole row: a membership is the person
 			   and the year and has nothing else to be identified by, so there is no surrogate
 			   beside it that somebody could write a second row under. Same shape and same reason
-			   as `league_race_pk` and `message_read_pk`. */
+			   as `league_race_pk` and `message_read_pk`. Beside it, the target V19's trick needs:
+			   a membership names a receipt AND whose it is AND which season, all in one key, so a
+			   row cannot carry somebody else's. */
 			new Key("membership_pk", false,
 					"the member and the season together, which is what says he is a member of one"
 							+ " season once; looked up by the pair and carrying no order"),
+			new Key("payment_competitor_season_unique", false,
+					"it exists only to be pointed at: membership names (id, competitor_id, season) so"
+							+ " the database refuses a membership carrying another member's receipt or"
+							+ " another year's, and a deferrable key may be named by nothing"),
 
 			/* V17. Two surrogates and two keys that say what a PLACE is: one first among the
 			   men and one among the women, because the standings are drawn by gender and
@@ -381,8 +387,11 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("payment_season_state_idx", "everything still waiting for one season"),
 			/* V22. Asked from the season's side, which is how every table of a season is drawn.
 			   The member's side - in which seasons was he a member, the question V22 was written
-			   for - is already served by the key, whose first column he is. */
+			   for - is already served by the key, whose first column he is. The receipt's side is
+			   the join the book of accounts is made of (A12), and it is also what the cascade from
+			   `payment` has to find; a foreign key builds no index on the referencing side. */
 			new Index("membership_season_idx", "everybody who was a member in one season"),
+			new Index("membership_payment_idx", "the membership one receipt stands behind"),
 			/* V17. The first of each pair is the whole page - one season, read and drawn - and
 			   the rest are the ends of the keys that point out of a frozen row. */
 			new Index("season_competitor_season_idx", "the frozen standings of one season"),

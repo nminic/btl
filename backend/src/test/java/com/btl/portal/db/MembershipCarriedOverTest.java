@@ -54,9 +54,18 @@ class MembershipCarriedOverTest extends DatabaseTest {
 			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
-	/** The table V22 creates, taken away so the migration has something to create and fill. */
-	private void theTableV22Creates() {
+	/**
+	 * Everything V22 creates, taken away so it has something to create and fill.
+	 *
+	 * <p>The table and, after it, the key on {@code payment} that V22 adds purely so the table can
+	 * name a receipt together with whose it is. The order is forced: the key cannot go while the
+	 * foreign key naming it is still there. A fixture that got this wrong would fail the migration
+	 * rather than let it pass quietly, which is the same property {@link LeagueRacesCarriedOverTest}
+	 * relies on.
+	 */
+	private void whatV22Creates() {
 		jdbc.execute("drop table membership");
+		jdbc.execute("alter table payment drop constraint payment_competitor_season_unique");
 	}
 
 	private void competitor(String number, String last, String code, String basis, int firstSeason) {
@@ -77,10 +86,19 @@ class MembershipCarriedOverTest extends DatabaseTest {
 				.params(number, season, reference, state).update();
 	}
 
-	/** What the carry writes, read back through the member number rather than through a row id. */
+	/**
+	 * What the carry writes, read back by the names people use rather than by row ids.
+	 *
+	 * <p>The receipt is named by its REFERENCE, the digits off a bank statement, and not by
+	 * {@code payment_id}: two sequences that both start at one hand out the same numbers, so an
+	 * assertion about the id would be green against a carry that wrote the competitor's id into
+	 * that column. The reference belongs to one payment and to nothing else in the schema.
+	 */
 	private List<String> membershipsWritten() {
-		return db.sql("select c.member_number || ' ' || m.season || ' ' || m.basis from membership m"
+		return db.sql("select c.member_number || ' ' || m.season || ' ' || m.basis || ' '"
+						+ " || coalesce(p.reference, 'bez uplate') from membership m"
 						+ " join competitor c on c.id = m.competitor_id"
+						+ " left join payment p on p.id = m.payment_id"
 						+ " order by c.member_number, m.season")
 				.query(String.class).list();
 	}
@@ -95,7 +113,7 @@ class MembershipCarriedOverTest extends DatabaseTest {
 	 */
 	@BeforeEach
 	void whatThePortalHoldsBeforeV22() {
-		theTableV22Creates();
+		whatV22Creates();
 
 		db.sql("insert into account (email, role_id) values ('blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
@@ -123,6 +141,11 @@ class MembershipCarriedOverTest extends DatabaseTest {
 	 * widening the carry to every payment brings the man who is waiting and the man whose payment
 	 * was reversed in with it; reading the year out of {@code recorded_at} moves both seasons back
 	 * one; reading the basis off the member turns both rows into {@code feeExempt}.
+	 *
+	 * <p><b>And the receipt is carried with it</b>, which is ADL A12: a membership held on a
+	 * payment names the payment. Leaving {@code payment_id} out of the carry does not merely lose a
+	 * column - {@code membership_basis_says_whether_a_payment_is_named} refuses every row of it and
+	 * the migration stops, which is the right way for that to fail.
 	 */
 	@Test
 	void everyRecognisedPaymentBecomesAMembershipOfTheSeasonItWasPaidFor() {
@@ -135,8 +158,8 @@ class MembershipCarriedOverTest extends DatabaseTest {
 
 		assertThat(membershipsWritten())
 				.as("the recognised payments did not come out of the migration as memberships of"
-						+ " the seasons they were paid for")
-				.containsExactly("001000 2027 payment", "001000 2028 payment");
+						+ " the seasons they were paid for, each naming the receipt it came from")
+				.containsExactly("001000 2027 payment 20271000", "001000 2028 payment 20281000");
 	}
 
 	/**
