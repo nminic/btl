@@ -50,6 +50,19 @@ final class Answers {
 
 	/** The names in one record of what the portal serves today. */
 	static Set<String> servedFields(String file) {
+		return fieldsOf(servedRecord(file));
+	}
+
+	/**
+	 * ONE RECORD OF WHAT THE PORTAL SERVES TODAY, for a resource whose shape is not flat.
+	 *
+	 * <p>{@code servedFields} reads the names of a record and cannot see inside one of them, so
+	 * a resource answering with a nested object has a place a field can be added without the
+	 * floor above noticing - the marks on a comment are one. Such a case compares the nested
+	 * names itself, and it reads them from HERE rather than opening the file again: where the
+	 * portal keeps its own copies is one fact and belongs in one place.
+	 */
+	static JsonNode servedRecord(String file) {
 		try {
 			JsonNode all = new ObjectMapper()
 					.readTree(Files.readString(MOCK.resolve(file), StandardCharsets.UTF_8));
@@ -58,7 +71,7 @@ final class Answers {
 					.as("%s is not a list of records, so there is nothing to compare", file)
 					.isTrue();
 
-			return fieldsOf(all.get(0));
+			return all.get(0);
 		} catch (IOException cannot) {
 			throw new UncheckedIOException(cannot);
 		}
