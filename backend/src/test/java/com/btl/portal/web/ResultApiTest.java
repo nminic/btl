@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.domain.season.SeasonClock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
@@ -54,6 +56,17 @@ class ResultApiTest {
 
 	/** The same fixture, a year on, when 2028 is history like every season before it. */
 	private static final Instant A_YEAR_LATER = Instant.parse("2029-06-15T12:00:00Z");
+
+	/**
+	 * MID OCTOBER OF THE SEASON THAT IS STILL RUNNING, and the only moment in this
+	 * file where the two questions about "which season" give different numbers.
+	 *
+	 * <p>From 1 October the transfer window is open and {@code seasonBeingPaidFor}
+	 * answers with NEXT year, while the season a result belongs to is still the
+	 * calendar year it was run in. The two moments above both fall outside that
+	 * window, in January and in June, where the two functions agree.
+	 */
+	private static final Instant INSIDE_THE_TRANSFER_WINDOW = Instant.parse("2028-10-15T12:00:00Z");
 
 	@Autowired
 	private MockMvc http;
@@ -321,6 +334,48 @@ class ResultApiTest {
 				.as("a run of a member whose fee has lapsed was still withheld in a year that is"
 						+ " no longer the one it was run in")
 				.containsExactly(NEW_YEARS_EVE, NEW_YEARS_DAY);
+	}
+
+	/**
+	 * AND IT STAYS WITHHELD IN THE AUTUMN, WHEN THE SEASON AFTER IT IS ALREADY THE
+	 * ONE BEING PAID FOR.
+	 *
+	 * <p><b>Two functions answer "which season is it" and this is the only case that
+	 * tells them apart.</b> {@code SeasonClock.seasonBeingPaidFor} answers the question
+	 * a renewal screen asks, and from 1 October it answers with NEXT year; the season a
+	 * result belongs to is the calendar year it was run in. Those two numbers differ for
+	 * three months of every year and agree for the other nine, so a fixture whose clocks
+	 * all stand outside the transfer window lets the wrong one of the two pass.
+	 *
+	 * <p><b>Measured in review on 13.09.2026 rather than argued:</b> swapping this
+	 * resource's year for {@code seasonBeingPaidFor} left the whole package green, all
+	 * 1540 cases of it. What it costs is that from 1 October to 31 December a member
+	 * whose fee has lapsed gets the running season's runs served beside his member
+	 * number, while {@code /api/competitors} goes on leaving him off the list - which is
+	 * the difference between two public answers naming who has not paid, and is the
+	 * leak this whole change exists to close.
+	 *
+	 * <p><b>The floor asks {@code SeasonClock} itself instead of remembering when the
+	 * window is.</b> Moved out of it, this moment would quietly repeat the case above
+	 * instead of measuring anything, and the floor says so rather than passing.
+	 */
+	@Test
+	void andTheRunningSeasonStaysWithheldWhileTheNextOneIsAlreadyBeingPaidFor() throws Exception {
+		ZonedDateTime inTheAutumn = INSIDE_THE_TRANSFER_WINDOW.atZone(SeasonClock.ZONE);
+
+		assertThat(SeasonClock.seasonBeingPaidFor(inTheAutumn))
+				.as("the season being paid for and the calendar year are the same at this moment,"
+						+ " so this case measures nothing the two above it do not")
+				.isNotEqualTo(inTheAutumn.getYear());
+
+		clock.moveTo(INSIDE_THE_TRANSFER_WINDOW);
+
+		assertThat(daysServedFor(THE_LAPSED_MEMBER))
+				.as("a run from the season that is still running came back for a member whose fee"
+						+ " has lapsed, because the year was taken from the season being paid for,"
+						+ " which in October is already the next one, instead of from the calendar"
+						+ " year the run belongs to")
+				.containsExactly(NEW_YEARS_EVE);
 	}
 
 	/**

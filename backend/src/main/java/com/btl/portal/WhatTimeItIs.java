@@ -8,12 +8,20 @@ import java.time.Clock;
 /**
  * WHAT TIME IT IS, as a bean rather than as a call to a static method.
  *
- * <p>Nothing on this server had asked until now, and that is why the class did
- * not exist: {@code java.time.Clock} appeared nowhere in the source, and
- * everything that needed a moment was handed one by whoever called it.
- * {@code SeasonClock} is written that way on purpose - every one of its
- * questions takes the moment as an argument - so the whole of the league's
- * calendar has been measurable at any date since the day it was written.
+ * <p>No {@code java.time.Clock} appeared anywhere in this source until now, which
+ * is why the class did not exist. The league's own calendar never needed one:
+ * {@code SeasonClock} is written so that every one of its questions takes the
+ * moment as an argument, so it has been measurable at any date since the day it
+ * was written.
+ *
+ * <p><b>Two places do NOT come through here, and saying so is the point of this
+ * paragraph.</b> {@code SignInApi} and {@code WhoIsAsking} each take their moment
+ * from a static {@code Instant.now()}, so "what time it is on this server" has
+ * three homes and only one of them can be replaced in a case. Bringing those two
+ * onto this bean is its own change with its own guards - locking out after failed
+ * attempts and the life of a session are what they decide - and it is recorded as
+ * separate work rather than done in passing here. Until it happens, this javadoc
+ * is not describing the whole server.
  *
  * <p><b>It is here because of what the alternative costs a guard.</b> A query
  * that works out the season it is in from the database's {@code current_date},

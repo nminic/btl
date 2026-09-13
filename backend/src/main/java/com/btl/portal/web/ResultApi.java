@@ -124,11 +124,21 @@ class ResultApi {
 	 * hour is the one this whole rule is about. {@code SeasonClock} says the same
 	 * sentence about freezing a season and owns the zone; this reads it.
 	 *
-	 * <p><b>And it is the plain calendar year, never lifted to the first season there
-	 * is.</b> {@code SeasonClock.seasonBeingPaidFor} answers a different question and
-	 * lifts its answer to 2027, which is right for somebody renewing in 2026 and wrong
-	 * here: through 2026 no season is running, so nobody's result is the running
-	 * season's, and lifting it would start hiding 2027 before 2027 had begun.
+	 * <p><b>And it is the plain calendar year, never
+	 * {@code SeasonClock.seasonBeingPaidFor}.</b> That one answers the question a
+	 * renewal screen asks, and it differs from this one in two ways: it lifts its
+	 * answer to 2027 (right for somebody renewing in 2026, wrong here, because through
+	 * 2026 no season is running and lifting it would hide 2027 before 2027 began), and
+	 * from 1 October it answers with NEXT year, which for three months of every year
+	 * would stop withholding the season that is still being run.
+	 *
+	 * <p><b>That second half was found by review on 13.09.2026 and it was found because
+	 * nothing measured it:</b> both clocks in the cases stood outside the transfer
+	 * window, where the two functions agree, so the swap passed all 1540 of them. The
+	 * case that holds it now is
+	 * {@code ResultApiTest.andTheRunningSeasonStaysWithheldWhileTheNextOneIsAlreadyBeingPaidFor},
+	 * and its own floor asks {@code SeasonClock} whether the moment it uses still lies
+	 * where the two disagree.
 	 */
 	private int theSeasonRunning() {
 		return LocalDate.now(clock.withZone(SeasonClock.ZONE)).getYear();
