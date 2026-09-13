@@ -124,10 +124,12 @@ services:
       #
       # MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS is deliberately NOT set here.
       # compose.qa.yml sets it to "always" and says in the same breath that this
-      # file must not copy the line: QA is not routed from the edge and sits
-      # behind basic auth, and production is neither. What that detail buys is
-      # asked of the database instead, the way deploy/README.md describes under
-      # "Checking that production really came up".
+      # file must not copy the line. What makes it safe there is that /actuator is
+      # not routed from the edge and the whole of QA sits behind basic auth;
+      # production has the first of those and not the second, so the line does not
+      # cross over. What that detail buys is asked of the database instead, the
+      # way deploy/README.md describes under "Checking that production really came
+      # up".
       #
       # THE RELAY. Brevo on 587 with STARTTLS, which the application's own
       # properties do NOT turn on: the development default points at a local
