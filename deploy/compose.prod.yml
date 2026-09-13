@@ -1,6 +1,10 @@
 # Production stack for this repository. See deploy/README.md before changing
 # anything here or deploying.
 #
+# It runs from /opt/btl on btl-prod. QA is a SECOND working copy, /opt/btl-qa,
+# with its own compose file next to this one, so pulling on QA never moves
+# production and the two can sit on different commits.
+#
 # TLS and public routing are NOT handled here. The host runs a shared edge
 # proxy outside this repository (/opt/edge on btl-prod) that owns ports 80
 # and 443. Never add a service that binds those ports: it will collide with
@@ -14,9 +18,165 @@
 # -p / --project-name / --project-directory / COMPOSE_PROJECT_NAME. Any of
 # those silently breaks public routing.
 #
-# Deploy with: docker compose -f compose.prod.yml up -d --build frontend
-# Never run "docker compose down" here: it deletes the shared network.
+# THAT IS WHY THERE IS NO "name:" HERE while compose.qa.yml has one. QA pins its
+# project name so its network is always "qa_default" wherever the checkout
+# lives; production must NOT, because the edge proxy already declares
+# "deploy_default" as external and a rename leaves it unable to start.
+#
+# Secrets come from "deploy/.env" in THIS checkout, which Compose reads because
+# the deploy command is run from this directory. That file is gitignored and is
+# NOT the same file as the QA one: production runs out of /opt/btl and QA out of
+# /opt/btl-qa, so the two never see each other's values. The template is
+# ".env.example" in the repository root. Every variable below is PROD_-prefixed
+# for the same reason QA's are QA_-prefixed: the database, the role, the password
+# and the relay key must not be shared between the two stacks, and different
+# names make that a property of the files instead of a rule somebody has to
+# remember while copying an .env around on one host.
+#
+# Deploy with two commands, not one, because "up --build" builds in parallel and
+# the Maven and npm builds together peak at more memory than this host can spare
+# next to the running site:
+#   docker compose -f compose.prod.yml build backend
+#   docker compose -f compose.prod.yml up -d --build frontend backend
+# Never run "docker compose down" here: it deletes the shared network the edge
+# proxy is attached to. To restart one service, use "restart <service>".
+#
+# Memory: the host has 4 GB in total and also carries the edge proxy and the
+# whole QA stack. The two services added here therefore carry an explicit
+# mem_limit, the same numbers QA measured, so a runaway JVM heap cannot take the
+# public site down with it. The arithmetic is in deploy/README.md, under "What
+# production costs in memory".
 services:
   frontend:
+    # No build args on purpose. compose.qa.yml passes VITE_DEV_TOOLS=1, which
+    # shows the role switch and the switch that moves the day the portal is read
+    # as. Production must ship neither, and an unset ARG is how the Dockerfile
+    # already expects to be told so.
     build: ../frontend
     restart: unless-stopped
+    # No "ports:" either. compose.qa.yml publishes 127.0.0.1:8081 for an SSH
+    # tunnel, so QA can be reviewed when TLS on the reviewer's own machine is
+    # broken by antivirus or a proxy. Production is reached over its public name
+    # through the edge proxy and needs no second door.
+
+  # Kept as "postgres" because that is what the root docker-compose.yml and
+  # compose.qa.yml both call it, so the three files can be read against each
+  # other. It is only reachable inside the "deploy_default" network: no "ports:"
+  # here on purpose, since a published port would put the production database on
+  # the host, and that host also serves unrelated sites.
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PROD_POSTGRES_DB:-btl}
+      POSTGRES_USER: ${PROD_POSTGRES_USER:-btl}
+      # No default, and that is the guard: with it unset Compose refuses to do
+      # anything and names the variable, rather than starting the production
+      # database without a password.
+      POSTGRES_PASSWORD: ${PROD_POSTGRES_PASSWORD:?set PROD_POSTGRES_PASSWORD in deploy/.env, copied from .env.example}
+    volumes:
+      # postgres:18 keeps its data under /var/lib/postgresql/18/docker and
+      # declares /var/lib/postgresql as the volume, so the mount is the parent
+      # directory and not the .../data path used by images up to 17. Compose
+      # prefixes the volume with the project name, so this is
+      # "deploy_postgres-data" on the host and cannot collide with QA's
+      # "qa_postgres-data". Being a NAMED volume is what makes the rows survive
+      # "up --build", which replaces the container underneath them.
+      - postgres-data:/var/lib/postgresql
+    # The default 64 MB of /dev/shm is not enough for parallel query workers,
+    # and the failure shows up as a query error rather than as a container that
+    # will not start.
+    shm_size: 128mb
+    mem_limit: 512m
+    healthcheck:
+      # -h 127.0.0.1 forces a TCP connection. Without it pg_isready talks over
+      # the unix socket, which exists during the image's own bootstrap phase
+      # while the server is still refusing real connections.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${PROD_POSTGRES_USER:-btl} -d ${PROD_POSTGRES_DB:-btl}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  # Must stay named "backend" on port 8080: frontend/nginx.conf proxies /api/ to
+  # http://backend:8080 and resolves that name at runtime through Docker DNS.
+  # Not published to the host either, for the same reason as the database.
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Spring's relaxed binding: these three override spring.datasource.* with
+      # no properties file involved. The "local" profile is deliberately not
+      # activated, because application-local.properties points at localhost,
+      # which inside this container is the container itself.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${PROD_POSTGRES_DB:-btl}
+      SPRING_DATASOURCE_USERNAME: ${PROD_POSTGRES_USER:-btl}
+      SPRING_DATASOURCE_PASSWORD: ${PROD_POSTGRES_PASSWORD:?set PROD_POSTGRES_PASSWORD in deploy/.env, copied from .env.example}
+      # Flyway needs no configuration: Spring Boot runs the migrations from
+      # classpath:db/migration on startup, before JPA is handed the DataSource,
+      # so a migration merged to main is applied by the next build of this
+      # service and there is no separate step. An empty schema is a fault, not a
+      # resting state: it means Flyway found nothing on the classpath.
+      #
+      # MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS is deliberately NOT set here.
+      # compose.qa.yml sets it to "always" and says in the same breath that this
+      # file must not copy the line: QA is not routed from the edge and sits
+      # behind basic auth, and production is neither. What that detail buys is
+      # asked of the database instead, the way deploy/README.md describes under
+      # "Checking that production really came up".
+      #
+      # THE RELAY. Brevo on 587 with STARTTLS, which the application's own
+      # properties do NOT turn on: the development default points at a local
+      # catcher with no authentication, and these four lines are what make it
+      # real.
+      #
+      # The key is never in the repository. It comes from deploy/.env on the
+      # host, which is gitignored, and is generated in the Brevo panel where it
+      # is shown exactly once.
+      SPRING_MAIL_HOST: ${PROD_MAIL_HOST:-smtp-relay.brevo.com}
+      SPRING_MAIL_PORT: ${PROD_MAIL_PORT:-587}
+      # Empty by default and NOT `:?` like the database ones, and on production
+      # the reason is stronger than on QA: `:?` would keep the PUBLIC site from
+      # coming up until somebody had pasted a key in. A portal that serves every
+      # page and cannot send a confirmation mail is a smaller failure than a
+      # portal that is down. Unset, the relay refuses the login and the send
+      # throws, loudly, to whoever asked for the message.
+      SPRING_MAIL_USERNAME: ${PROD_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${PROD_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      # AND REQUIRED, which is a different switch. `enable` alone means "use it
+      # if offered", so a stripping attacker on the wire gets a clear connection
+      # and the relay's key with it. Brevo supports STARTTLS on 587, so requiring
+      # it costs nothing and buys the one thing that matters here. Postman
+      # refuses to start when credentials are configured without it, so dropping
+      # this line does not quietly weaken production: it stops the backend from
+      # coming up at all.
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
+      # The JVM sizes the heap from the cgroup limit below, not from the host's
+      # 4 GB, so this is what keeps it from taking a quarter of the machine.
+      # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
+      # native memory next to the heap.
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=55 -XX:+UseSerialGC -Xss512k"
+    mem_limit: 640m
+    healthcheck:
+      # /actuator/health is the one endpoint Spring Boot exposes by default and
+      # the one ManagementWebSecurityAutoConfiguration leaves unauthenticated,
+      # even with spring-boot-starter-security on the classpath. Its aggregate
+      # status includes the DataSource indicator, so this goes red when the
+      # database is unreachable and not only when the process has died. curl -f
+      # turns the 503 that a DOWN status returns into a non-zero exit.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      # Flyway plus the Spring context take tens of seconds on a 2 vCPU host,
+      # and failures inside this window do not count against retries.
+      start_period: 90s
+
+volumes:
+  postgres-data:
