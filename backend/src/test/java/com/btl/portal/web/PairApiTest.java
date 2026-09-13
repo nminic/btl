@@ -133,15 +133,25 @@ class PairApiTest {
 	 *               a missing member number is the thing being written
 	 */
 	private void member(String number, String first, String last, String gender) {
+		member(number, first, last, gender, true);
+	}
+
+	/**
+	 * @param feeStanding whether the membership was renewed, which is the pair's business and
+	 *                    not only the member's: „Par se raskida kad jedna strana ne produzi
+	 *                    clanarinu" (PDL, 11.08.2026)
+	 */
+	private void member(String number, String first, String last, String gender,
+			boolean feeStanding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, first_season_2027, active, membership_basis,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (" + number + ", ?, ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, ?, 'payment',"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(first, last, gender, String.format("%016x", ++issued))
+				.params(first, last, gender, feeStanding, String.format("%016x", ++issued))
 				.update();
 	}
 
@@ -417,6 +427,84 @@ class PairApiTest {
 				.as("the pair whose second half has no member number yet did not come back, or came"
 						+ " back as something other than a missing number")
 				.containsExactly("000050");
+	}
+
+	/**
+	 * AND A PAIR WHOSE HALF DID NOT RENEW IS NOT SERVED, WHICHEVER HALF IT WAS.
+	 *
+	 * <p>„Par se raskida kad jedna strana ne produzi clanarinu" (PDL, 11.08.2026, the owner
+	 * in four words: „Ne postoji par onda, raskida se."). Nothing writes that yet -
+	 * {@code racing_pair} is named in one migration and in the resource and nowhere else
+	 * under {@code src/main}, so no trigger and no cascade takes the row away - and until
+	 * the increment that breaks pairs arrives, the reader is the only thing between a pair
+	 * that does not exist and a public answer.
+	 *
+	 * <p><b>And the number leaving here would name whoever has not paid.</b>
+	 * {@code /api/competitors} keeps such a member off its list altogether (owner,
+	 * 13.09.2026), so a number that is in this answer and not in that one says, through the
+	 * DIFFERENCE between two answers rather than through any field in either, the one thing
+	 * Article 74 puts beside the date of birth. That is why the refusal below is asked of
+	 * the whole answer as TEXT: the leak is the number leaving at all, not the shape it
+	 * leaves in.
+	 *
+	 * <p><b>Three pairs, alike in everything but which half let the fee lapse.</b>
+	 * {@code man.active} on its own passes a fixture where only men ever lapse, and
+	 * {@code woman.active} on its own passes the mirror of it, so one of each is the least
+	 * that measures the condition by the name it carries. The third is the anchor: written
+	 * the same way, with both fees standing, it comes back - so an answer that lost all
+	 * three is not leaving the other two out over a membership.
+	 *
+	 * <p><b>Written here rather than in the fixture every case shares</b>, because two of
+	 * the three must never reach the answer, and a pair the answer must not carry changes
+	 * what „as many records as there are pairs" means for every case that counts them.
+	 */
+	@Test
+	void aPairWhoseHalfDidNotRenewTheFeeIsNotServed() throws Exception {
+		member("'000201'", "Ostoja", "Cvetkovic", "M", true);
+		member("'000202'", "Mina", "Ristic", "F", true);
+		member("'000203'", "Relja", "Andric", "M", false);
+		member("'000204'", "Lena", "Popovic", "F", true);
+		member("'000205'", "Uros", "Babic", "M", true);
+		member("'000206'", "Tara", "Zivkovic", "F", false);
+
+		pair(2030, "Cvetkovic", "Ristic", "2029-12-30");
+		pair(2030, "Andric", "Popovic", "2029-12-30");
+		pair(2030, "Babic", "Zivkovic", "2029-12-30");
+
+		List<String> didNotRenew = List.of("000203", "000206");
+
+		assertThat(db.sql("select c.member_number from competitor c"
+						+ " where not c.active and exists (select 1 from racing_pair p"
+						+ "   where p.man_id = c.id or p.woman_id = c.id)"
+						+ " order by c.member_number").query(String.class).list())
+				.as("the numbers refused below are not the numbers of the halves that did not"
+						+ " renew, so whatever this case refuses is missing for another reason")
+				.containsExactlyElementsOf(didNotRenew);
+		assertThat(db.sql("select count(*) from racing_pair").query(Integer.class).single())
+				.as("the three pairs written above did not reach the database at all")
+				.isEqualTo(8);
+
+		String whole = whole();
+
+		assertThat(whole).as("the pair written the same way with both fees standing did not come"
+						+ " back either, so what the answer leaves out is not the membership")
+				.contains("000201", "000202");
+
+		/* Before the count below, and on purpose: asked in the other order, a condition
+		   narrowed to one half of the pair is reported as a length and never names the half
+		   it kept, so the two sides of the condition stop being two measurements. */
+		for (String who : didNotRenew) {
+			assertThat(whole).as("%s is half of a pair and did not renew, so by the owner's"
+					+ " decision of 11.08.2026 there is no pair - and that number leaving here"
+					+ " while /api/competitors keeps it off names, by subtraction, whoever has"
+					+ " not paid", who).doesNotContain(who);
+		}
+
+		assertThat(answer().size())
+				.as("some number of pairs other than the two whose half did not renew was left"
+						+ " out, so what went is not the pair but something about the number in"
+						+ " it")
+				.isEqualTo(6);
 	}
 
 	/**

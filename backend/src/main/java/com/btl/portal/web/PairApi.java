@@ -78,11 +78,25 @@ import java.util.List;
  * business besides: the portal does not draw an invitation on anybody else's
  * profile (PDL, 07.09.2026), and this resource is read by anybody at all.
  *
- * <p><b>A member whose fee has lapsed is not filtered out here, and that is not
- * an oversight.</b> „Par se raskida kad jedna strana ne produzi clanarinu" (PDL
- * P13, 11.08.2026): the pair ENDS, so there is no row left to leave out. Ending
- * it is a write and belongs to the increment that makes and breaks pairs; a
- * reader that also decided it would be a second answer to the same question.
+ * <p><b>AND A PAIR WHOSE HALF DID NOT RENEW DOES NOT COME OUT OF HERE, whichever
+ * half it was.</b> „Par se raskida kad jedna strana ne produzi clanarinu" (PDL,
+ * 11.08.2026, the owner in four words: „Ne postoji par onda, raskida se."). What
+ * is NOT true, and was written here until 13.09.2026, is that the ending takes
+ * the row with it: {@code racing_pair} is named in one migration and in this
+ * class and nowhere else under {@code src/main}, so no trigger, no cascade and no
+ * flow removes anything. The row stays and this reader is the only thing between
+ * a pair that does not exist and a public answer. When the increment that really
+ * breaks pairs lands, whoever writes it may take this condition out and say so;
+ * until then a sentence promising it is an instruction to put the leak back.
+ *
+ * <p><b>And leaving it in would name, by subtraction, whoever has not paid.</b> A
+ * member whose fee has lapsed is not on {@code /api/competitors} at all (owner,
+ * 13.09.2026, choosing that shape over serving the flag). So a member number that
+ * leaves HERE and not THERE says the one thing Article 74 puts beside the date of
+ * birth - „sve u vezi sa clanarinom" - through the DIFFERENCE between two
+ * answers rather than through any field in either. That is why the case in
+ * {@code PairApiTest} reads the whole answer as text: it is the number leaving at
+ * all that is the leak, not the shape it leaves in.
  *
  * <p><b>And a member number may be missing, which is why the two of them are not
  * gathered with {@code List.of}.</b> Since V16 a row in {@code competitor} is a
@@ -124,6 +138,18 @@ class PairApi {
 						   refuses to store otherwise. */
 						+ " join competitor man on man.id = p.man_id"
 						+ " join competitor woman on woman.id = p.woman_id"
+						/* AND BOTH OF THEM STILL HAVE A MEMBERSHIP, because a pair whose
+						   half has lapsed is not a pair that is hidden - it is a pair that
+						   does not exist. The owner decided that on 11.08.2026 in four
+						   words: „Ne postoji par onda, raskida se."
+
+						   AND WITHOUT THIS THE ANSWER WOULD TELL, BY SUBTRACTION, THE ONE
+						   THING THE OWNER CLOSED ON 13.09.2026. A member whose fee has
+						   lapsed is not on /api/competitors at all; a number that leaves
+						   here and not there says why, through the DIFFERENCE between two
+						   answers rather than through any one field. Both halves, because
+						   either of them can be the one who did not renew. */
+						+ " where man.active and woman.active"
 						+ " order by p.season, man.member_number, p.id")
 				.query((row, one) -> new RacingPair(row.getLong(1), row.getInt(2),
 						/* Not `List.of`: a member number is nullable since V16 and `List.of`
