@@ -85,6 +85,28 @@ public record AdminRights(Mode mode, Set<String> granted) {
 	}
 
 	/**
+	 * Whether he holds every right there is BECAUSE OF HIS ROLE, which today is the
+	 * superadmin and nobody else.
+	 *
+	 * <p><b>Not the same question as {@link #may(String)} asked over every code in the
+	 * matrix, and the difference is the whole of PDL P28a.</b> A moderator with all
+	 * twelve boxes ticked answers yes to every code and still answers no here: he holds
+	 * what was GIVEN him, one box at a time, and the boxes are the moderator's matrix.
+	 * The one thing that is not in the matrix at all - who the moderators are and what
+	 * they may do ({@code PDL.md:4403}) - is exactly what this question guards, so
+	 * asking it as "does he hold all twelve" would hand the portal to whoever was
+	 * trusted with all twelve.
+	 *
+	 * <p><b>And not the same as reading the name of a role.</b> V5 puts the mode on the
+	 * role and adds a partial unique index so that at most one role can carry
+	 * {@link Mode#ALL}; a comparison against the word {@code superadmin} would be a
+	 * second home for that fact, and the schema guards only the first one.
+	 */
+	public boolean holdsEveryRightThereIs() {
+		return mode == Mode.ALL;
+	}
+
+	/**
 	 * Whether he may do any administrative thing at all, which is what decides
 	 * whether the administration is drawn for him.
 	 *

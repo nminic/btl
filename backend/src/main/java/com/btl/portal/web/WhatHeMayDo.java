@@ -58,6 +58,22 @@ class WhatHeMayDo {
 	}
 
 	/**
+	 * Whether the member this request belongs to holds every right there is, which is
+	 * the question {@link OnlyTheSuperadmin} asks and the only other question this
+	 * place answers.
+	 *
+	 * <p>It reads the same two statements {@link #may(String)} does rather than one of
+	 * its own, so "who is asking" and "what does his role grant" stay one answer from
+	 * one place - ADL A8's second requirement. The ticks are read and thrown away here,
+	 * which is not waste: what is asked of the ROLE is the whole answer, and a shorter
+	 * statement that read the mode alone would be a second way to work out what
+	 * somebody holds.
+	 */
+	boolean holdsEveryRightThereIs() {
+		return rightsOf(asking().account()).holdsEveryRightThereIs();
+	}
+
+	/**
 	 * What one account holds, in the shape {@link AdminRights} answers from.
 	 *
 	 * <p>The mode comes off the ROLE and the ticks off the account. Both halves are

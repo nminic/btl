@@ -556,20 +556,65 @@ class RightsAtTheDoorTest {
 	 * Written as a branch it could never be reached, and a branch nothing reaches is a
 	 * branch nothing measures. So the precondition is measured over every route carrying a
 	 * right rather than assumed in a comment.
+	 *
+	 * <p><b>Over every route the DOOR decides and not only over those that name a right</b>
+	 * (14.09.2026). {@code /api/moderators} is guarded by {@code OnlyTheSuperadmin} and
+	 * declares no right at all, and the precondition this case holds up is the same one
+	 * for it: {@code WhatHeMayDo.holdsEveryRightThereIs} takes the session without asking
+	 * whether there is one.
 	 */
 	@Test
 	void everyRouteThatNeedsARightIsShutToSomebodyWhoIsNotSignedIn() throws Exception {
-		List<String> guarded = routesThatNeedARight();
+		List<String> guarded = routesTheDoorDecides();
 
 		assertThat(guarded)
-				.as("no route needs a right at all, so this asks about nothing")
+				.as("no route is decided at the door at all, so this asks about nothing")
 				.isNotEmpty();
 
 		for (String path : guarded) {
 			assertThat(statusOf(path, null))
-					.as("%s needs a right and answered somebody who is not signed in; the code that"
-							+ " reads the session takes it without asking whether there is one", path)
+					.as("%s is decided at the door and answered somebody who is not signed in; the"
+							+ " code that reads the session takes it without asking whether there"
+							+ " is one", path)
 					.isEqualTo(401);
+		}
+	}
+
+	/**
+	 * AND EVERY ROUTE THE DOOR DECIDES IS SHUT TO A PLAIN MEMBER, although he is signed in.
+	 *
+	 * <p><b>This is the floor under the MARK, and it closes the one gap the mark could
+	 * otherwise open.</b> {@code AskedAtTheDoor} says that an annotation is one the door
+	 * asks about, and the floor below counts guarded routes by it - but carrying the mark
+	 * does not make {@code RightsAtTheDoor} ask anything. An annotation marked and not
+	 * wired into {@code preHandle} would be a guard that guards nothing, and the route
+	 * wearing it would quietly answer every signed in account while this file went on
+	 * calling it guarded.
+	 *
+	 * <p>So it is measured rather than trusted, over every such route and by asking the
+	 * person a portal has thousands of: a competitor whose role holds nothing and can hold
+	 * nothing. A door defended by „is there a session" reads exactly like one defended by
+	 * a right until this case is written, and a mark with nothing behind it reads exactly
+	 * like a guard.
+	 *
+	 * <p><b>Derived from the dispatcher, so it has no list either</b>, and it names no
+	 * annotation - the route added tomorrow under a guard nobody here has heard of is
+	 * asked on the day it is mapped.
+	 */
+	@Test
+	void everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn() throws Exception {
+		List<String> guarded = routesTheDoorDecides();
+
+		assertThat(guarded)
+				.as("no route is decided at the door at all, so this asks about nothing")
+				.isNotEmpty();
+
+		for (String path : guarded) {
+			assertThat(statusOf(path, A_MEMBER))
+					.as("%s is decided at the door and being signed in was enough to open it; a"
+							+ " guard annotation the door does not actually ask about looks exactly"
+							+ " like one it does", path)
+					.isEqualTo(404);
 		}
 	}
 
@@ -601,25 +646,43 @@ class RightsAtTheDoorTest {
 	 * session (the second one ends in {@code permitAll}) and, until this line changed, no
 	 * floor either. Measured on 13.09.2026: a route mapped at {@code /cenovnik} without the
 	 * annotation answered 200 to a stranger, and all 1572 cases stayed green.
+	 *
+	 * <p><b>AND "GUARDED" IS NO LONGER THE SAME SENTENCE AS "CARRIES
+	 * {@code RightIsNeeded}", which is the correction of 14.09.2026.</b>
+	 * {@code /api/moderators} is guarded and declares no right, because there is no tick
+	 * that opens it and the owner refused to invent one („Ne treba ni da postoji kolona
+	 * moderatori jer samo superadmin ima ta prava", 13.08.2026, {@code PDL.md:4403}). Read
+	 * as before, this floor would have forced that route into the snapshot above as one
+	 * that answers WITHOUT a guard, which is the exact opposite of the truth and would be
+	 * a lie sitting inside the floor.
+	 *
+	 * <p><b>And it is not repaired with a list of the two annotation types.</b> That is
+	 * the shape the repo measured and rejected on 05.09.2026: a list inside a floor is
+	 * another thing somebody has to remember to extend, and the day a third kind of guard
+	 * arrived this floor would go on passing while demanding that its routes be declared
+	 * unguarded. What the question binds to instead is something the language already
+	 * says - {@link #theDoorDecides} asks each annotation whether it is itself marked
+	 * {@link AskedAtTheDoor} - so a third kind is counted on the day it is written, and
+	 * nothing here names either of the two that exist.
 	 */
 	@Test
 	void everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere() {
-		List<String> withoutARight = mappings.getHandlerMethods().entrySet().stream()
-				.filter(one -> rightOf(one.getValue()) == null)
+		List<String> withoutAGuard = mappings.getHandlerMethods().entrySet().stream()
+				.filter(one -> !theDoorDecides(one.getValue()))
 				.flatMap(one -> pathsOf(one.getKey()))
 				.filter(path -> !ApiSecurity.READ_BY_ANYBODY.contains(path))
 				.distinct().sorted().toList();
 
-		assertThat(withoutARight)
-				.as("every route the portal maps is either open or needs a right, which cannot be"
-						+ " true while the portal serves who is asking")
+		assertThat(withoutAGuard)
+				.as("every route the portal maps is either open or decided at the door, which"
+						+ " cannot be true while the portal serves who is asking")
 				.isNotEmpty();
 
-		assertThat(withoutARight)
-				.as("a route neither opens itself by name nor asks for a right. Under /api that"
-						+ " means every signed in account reads it, a competitor included; OUTSIDE"
-						+ " /api it means anybody at all does, signed in or not. If that is meant,"
-						+ " it belongs in ANSWERS_WITHOUT_A_RIGHT with the reason beside it")
+		assertThat(withoutAGuard)
+				.as("a route neither opens itself by name nor is decided at the door. Under /api"
+						+ " that means every signed in account reads it, a competitor included;"
+						+ " OUTSIDE /api it means anybody at all does, signed in or not. If that is"
+						+ " meant, it belongs in ANSWERS_WITHOUT_A_RIGHT with the reason beside it")
 				.containsExactlyInAnyOrderElementsOf(ANSWERS_WITHOUT_A_RIGHT);
 	}
 
@@ -633,9 +696,9 @@ class RightsAtTheDoorTest {
 	}
 
 	/** And the addresses those routes answer to, with a sample value where a variable stands. */
-	private List<String> routesThatNeedARight() {
+	private List<String> routesTheDoorDecides() {
 		return mappings.getHandlerMethods().entrySet().stream()
-				.filter(one -> rightOf(one.getValue()) != null)
+				.filter(one -> theDoorDecides(one.getValue()))
 				.map(Map.Entry::getKey)
 				.flatMap(RightsAtTheDoorTest::pathsOf)
 				.map(pattern -> pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1"))
@@ -644,6 +707,29 @@ class RightsAtTheDoorTest {
 
 	private static RightIsNeeded rightOf(HandlerMethod method) {
 		return method.getMethodAnnotation(RightIsNeeded.class);
+	}
+
+	/**
+	 * WHETHER THIS ROUTE IS ONE THE DOOR DECIDES, ASKED OF THE ANNOTATIONS THEMSELVES.
+	 *
+	 * <p><b>There is no list of guard annotations here, and that is the whole of this
+	 * method.</b> Until 14.09.2026 „guarded" and „carries {@code RightIsNeeded}" were the
+	 * same sentence, because there was one kind of guard. {@code OnlyTheSuperadmin} is the
+	 * second - {@code /api/moderators} is opened by no tick at all (owner, 13.08.2026,
+	 * {@code PDL.md:4403}), so it can declare no right - and the obvious repair, a list of
+	 * the two annotation types, is the shape the repo measured and rejected on 05.09.2026:
+	 * a list inside a floor is another thing somebody has to remember to extend, and the
+	 * day a third kind of guard is written this floor would go on passing while demanding
+	 * that its routes be declared as answering WITHOUT a guard.
+	 *
+	 * <p>So what is asked is what the language already says. Each annotation on the method
+	 * is asked whether it is itself marked {@code AskedAtTheDoor}, which is the mark
+	 * {@code RightIsNeeded} and {@code OnlyTheSuperadmin} both carry and which a third kind
+	 * carries by being written at all. Nothing here names either of them.
+	 */
+	private static boolean theDoorDecides(HandlerMethod method) {
+		return Stream.of(method.getMethod().getAnnotations())
+				.anyMatch(one -> one.annotationType().isAnnotationPresent(AskedAtTheDoor.class));
 	}
 
 	private static Stream<String> pathsOf(RequestMappingInfo info) {
