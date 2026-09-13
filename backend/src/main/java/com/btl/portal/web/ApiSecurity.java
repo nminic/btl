@@ -61,7 +61,8 @@ class ApiSecurity {
 			List.of("/api/places", "/api/countries", "/api/events", "/api/races",
 					"/api/leagues", "/api/results",
 					"/api/competitors",
-					"/api/ducats");
+					"/api/ducats",
+					"/api/teams");
 
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
