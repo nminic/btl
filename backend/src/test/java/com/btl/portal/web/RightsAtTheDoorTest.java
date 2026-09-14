@@ -95,6 +95,26 @@ class RightsAtTheDoorTest {
 	 * holds the other half, that a visitor really is refused, because this file only measures
 	 * what a route DECLARES.
 	 *
+	 * <p><b>AND {@code /api/verification} IS THE SIXTH, AND IT IS HERE FOR A REASON
+	 * NEITHER OF THE OTHER TWO HAS: THE PRIVILEGE IS DECIDED BY THE ROW AND NOT BY THE
+	 * ROUTE.</b> {@link RightIsNeeded} names ONE code, and the verification screen has SIX
+	 * queues with one right apiece ({@code PDL.md:3906}, V5's six {@code queue:} rows).
+	 * The question that resource answers is not „may he" but „which of the six may he",
+	 * because a moderator holding {@code queue:comments} and nothing else must be served
+	 * the comments and must not learn that a payments queue exists (owner, 30.07.2026,
+	 * {@code PDL.md:4308}: „Ne skriva se samo ekran nego i saznanje da ekran postoji").
+	 * One code written on the route could only be one of the six, so it would shut the
+	 * route to five moderators out of six or open all six queues to any one of them.
+	 *
+	 * <p><b>Which means this floor stops asserting anything about that address, and the
+	 * two guards it would have given it are owed elsewhere.</b> Said plainly because a
+	 * name on this list reads as „every signed in account reads it" and for this one that
+	 * is FALSE: a competitor is refused, and so is a moderator with no queue ticked. What
+	 * holds that is {@code VerificationApiTest}, which asks as a competitor and demands
+	 * 404, and {@code RightsOverRealHttpTest.theQueueSaysNothingToSomebodyWithNoQueueOfHisOwn},
+	 * which compares his refusal with the answer to an address that does not exist, byte
+	 * for byte, off a socket - the only place the container's ERROR dispatch runs.
+	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a
 	 * {@code @GetMapping("/cenovnik")} written without the annotation answered 200 to
@@ -112,7 +132,7 @@ class RightsAtTheDoorTest {
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
-					"/api/attendance", "/error");
+					"/api/attendance", "/api/verification", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 
