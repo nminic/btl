@@ -130,9 +130,13 @@ class PricingApi {
 						   come out alphabetically, which puts the junior level between `early`
 						   and `late`; ordered by the amount it would open with the processing
 						   fee. Both are orders nobody chose. `sort_order` is the one that was
-						   chosen, and `PricingApiTest` moves a row within it so that this line
-						   cannot be confused with the order the rows were inserted in - which,
-						   against V4's seven rows alone, is the same answer. */
+						   chosen, and `PricingApiTest` moves a row to the FRONT of it so that
+						   this line cannot be confused with the order the rows were inserted in
+						   - which, against V4's seven rows alone, is the same answer - nor with
+						   no order at all, which a moved row would otherwise have agreed with
+						   too. That comment is worth its length: the first draft of that case
+						   moved a row to the end instead, and dropping this whole clause left
+						   the suite green. */
 						+ " from price_row order by sort_order")
 				.query((row, one) -> new Price(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4),

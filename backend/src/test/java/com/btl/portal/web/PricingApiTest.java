@@ -258,26 +258,52 @@ class PricingApiTest {
 	 * has updated - all come back the same list. Every other case in this file would
 	 * stay green on any of the three.
 	 *
-	 * <p>So one row is MOVED within the order and the answer is asked again. The early
-	 * price opens the list because the selling year opens on 1 October; put last, it
-	 * has to come back last, and a query sorting by the row's age or by its key or by
-	 * nothing cannot do that. It also settles the other half at the same time: the
-	 * answer is read out of the schema on each request rather than out of a list
-	 * written in the handler, because a written list could not have moved.
+	 * <p>So one row is MOVED within the order and the answer is asked again.
 	 *
-	 * <p>The move is rolled back with the transaction, and 8 is free of V4's 1 to 7 so
-	 * the unique constraint - which is checked where the statement is written, being
-	 * {@code initially immediate} - has nothing to refuse.
+	 * <p><b>AND IT IS MOVED TO THE FRONT, WHICH IS THE WHOLE OF WHY THE SHIFT BELOW IS
+	 * HERE.</b> The first draft of this case moved a row to the END of the order, and a
+	 * mutation measured what that was worth: dropping {@code order by} altogether left
+	 * it green. An {@code UPDATE} in PostgreSQL writes a NEW version of the row and the
+	 * new version goes to the end of the table, so a scan with no order returns the
+	 * moved row last - which is exactly where {@code sort_order} had just put it. Right
+	 * and wrong gave the same list, and the case said nothing about order at all. That
+	 * is the fault of 06.09.2026 in its own words: name the other place this value
+	 * could have come from, and make the setup disagree with it.
+	 *
+	 * <p>Moved to the FRONT the two cannot agree: whatever an {@code UPDATE} does to
+	 * where a row physically sits, it does not put it first. Nor does its age
+	 * ({@code id} does not change when a row is updated) and nor does its key
+	 * (alphabetically {@code referral} is fifth of the seven). One move, three orders
+	 * ruled out.
+	 *
+	 * <p>Getting a free place at the front takes the shift, because 1 is taken and
+	 * {@code price_row_sort_order_positive} refuses nought. Every row moves up by ten
+	 * first, which collides with nothing at any point in the statement - so the unique
+	 * constraint has nothing to refuse even though it is checked where the statement is
+	 * written, being {@code initially immediate}. Both statements roll back with the
+	 * transaction.
+	 *
+	 * <p>It settles the other half at the same time: the answer is read out of the
+	 * schema on each request rather than out of a list written in the handler, because
+	 * a written list could not have moved.
 	 */
 	@Test
 	void theOrderIsTheOneSomebodyDecidedAndNotTheOneTheRowsWereWrittenIn() throws Exception {
 		List<String> before = keysOf(answer());
 
 		assertThat(before)
-				.as("the early price no longer opens the list, so moving it measures something else")
-				.startsWith("early");
+				.as("the referral no longer closes the list, so moving it to the front measures"
+						+ " something else")
+				.endsWith("referral");
 
-		int moved = db.sql("update price_row set sort_order = 8 where key = 'early'").update();
+		int shifted = db.sql("update price_row set sort_order = sort_order + 10").update();
+
+		assertThat(shifted)
+				.as("the shift that frees a place at the front of the order did not touch the whole"
+						+ " price list, so the move below is not the move this case describes")
+				.isEqualTo(ROWS);
+
+		int moved = db.sql("update price_row set sort_order = 1 where key = 'referral'").update();
 
 		assertThat(moved)
 				.as("the row this case moves is not in the price list, so nothing was moved and the"
@@ -287,21 +313,21 @@ class PricingApiTest {
 		List<String> after = keysOf(answer());
 
 		assertThat(after)
-				.as("the early price was moved to the end of the order and the answer did not move"
+				.as("the referral was moved to the front of the order and the answer did not move"
 						+ " with it: the rows are coming back in the order they were written, or by"
 						+ " their key, or in no order at all")
-				.endsWith("early");
+				.startsWith("referral");
 		assertThat(after)
 				.as("the answer is the same list after a row was moved within the order, so it is not"
 						+ " being read from the price list at all")
 				.isNotEqualTo(before);
 
 		/* AND THE REST KEPT THEIR ORDER, which is what tells a move from a shuffle. An
-		   answer sorted by the key would also have put `early` somewhere else, and
-		   `endsWith` alone would not have said which of the two happened. */
-		assertThat(after.subList(0, after.size() - 1))
+		   answer sorted by the key would also have put `referral` somewhere else, and
+		   `startsWith` alone would not have said which of the two happened. */
+		assertThat(after.subList(1, after.size()))
 				.as("the other six rows changed order too, so what moved was not one row")
-				.isEqualTo(before.subList(1, before.size()));
+				.isEqualTo(before.subList(0, before.size() - 1));
 	}
 
 	/**
