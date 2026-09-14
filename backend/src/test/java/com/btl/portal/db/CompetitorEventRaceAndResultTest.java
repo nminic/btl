@@ -417,6 +417,19 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				.list();
 
 		assertThat(rules).containsExactly(
+				/* V23. SET NULL, and it is the answer of the second kind rather than of the
+				   first: what IS one of a member's rows goes with him (A42, and every cascade
+				   below), and what merely NAMES him keeps its own existence and loses the
+				   pointer - `event_comment.competitor_id` beside `who`, `verification.decided_by`
+				   beside `decided_by_name`, `team.admin_id`, `league.admin_id`, and every key of
+				   the frozen season. An account is that shape: it exists before anybody is a
+				   member (V6), and since 14.09.2026 it may belong to somebody who never was one.
+				   What makes SET NULL honest here is that the same migration put the name ON the
+				   account, so the row still says whose it is with the member gone.
+				   CASCADE would turn the deletion of a MEMBER into the deletion of a LOGIN, and
+				   with it the account's live links and its pointer in every verification it ever
+				   decided. RESTRICT would refuse the one deletion PDL P23 gives him a right to. */
+				"account.account_competitor_fk set null",
 				// V6, and its cascade is the one place a link may not outlive its account
 				"account.account_role_fk no action",
 				/* V18. Sesija i pravo idu SA nalogom, jer bez naloga ne znace nista; ali pravo

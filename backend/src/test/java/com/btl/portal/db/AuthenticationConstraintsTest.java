@@ -79,7 +79,7 @@ class AuthenticationConstraintsTest extends DatabaseTest {
 	 */
 	@BeforeEach
 	void probe() {
-		db.sql("insert into account (email, role_id, password_hash) values ('prijava@primer.rs',"
+		db.sql("insert into account (first_name, last_name, email, role_id, password_hash) values ('Probni', 'Probic', 'prijava@primer.rs',"
 				+ " (select id from role where code = 'moderator'), " + A_HASH + ")").update();
 
 		db.sql(session(AN_ACCOUNT + ", " + A_TOKEN)).update();
@@ -301,7 +301,7 @@ class AuthenticationConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void anAccountWithNoPasswordIsAStateAndNotARowTheSchemaRefuses() {
-		assertThat(db.sql("insert into account (email, role_id) values ('bezclanarine@primer.rs',"
+		assertThat(db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'bezclanarine@primer.rs',"
 				+ " (select id from role where code = 'competitor'))").update())
 				.as("the owner could not open an account for somebody who has never typed a password")
 				.isOne();
@@ -319,9 +319,11 @@ class AuthenticationConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void aPasswordWithoutAnAlgorithmInFrontOfItIsRefused() {
-		assertThatThrownBy(() -> db.sql("insert into account (email, role_id, password_hash) values"
-				+ " ('bez@primer.rs', (select id from role where code = 'competitor'),"
-				+ " '$2a$10$abcdefghijklmnopqrstuv')").update())
+		assertThatThrownBy(() -> db
+				.sql("insert into account (first_name, last_name, email, role_id, password_hash) values"
+						+ " ('Probni', 'Probic', 'bez@primer.rs', (select id from role where code = 'competitor'),"
+						+ " '$2a$10$abcdefghijklmnopqrstuv')")
+				.update())
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining("account_password_hash_shape");
 	}

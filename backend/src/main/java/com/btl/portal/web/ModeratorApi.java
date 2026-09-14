@@ -64,19 +64,26 @@ import java.util.List;
  * shape {@link LeagueApi} already uses for a league nothing counts towards yet and for
  * the same sentence: an empty list, not nothing.
  *
- * <p><b>WHAT THIS DELIBERATELY DOES NOT ANSWER WITH, and it is a decision with a reason
- * rather than a field that went missing.</b> The portal's {@code Moderator} type carries
- * {@code firstName} and {@code lastName} and the prototype's file fills them in. The
- * SCHEMA has nowhere to hold them: {@code account} is id, email, role and the moment the
- * address was confirmed, and names live on {@code competitor}. Nothing joins the two in
- * either direction, and that is V7's decision rather than an omission - {@link MeApi}
- * states it outright for the same reason, „because how many accounts one member may have
- * is not decided. Inventing the join here is how that decision would quietly get made by
- * whoever wrote this line." It is one of the three questions waiting for the owner's word
- * ({@code btl-produkt/PENDING.md}, „Veza naloga i takmicara"). So the two names are left
- * out and the omission is NAMED in a case with this reason
- * ({@code ModeratorApiTest.everyFieldThePortalReadsIsOneTheServerAnswersWith}), because
- * a silent omission and a lost field look the same from outside.
+ * <p><b>THE NAME COMES OFF THE ACCOUNT AND NEVER OFF THE COMPETITOR, and that is the
+ * whole of what changed on 14.09.2026.</b> B55 answered without {@code firstName} and
+ * {@code lastName} because the schema had nowhere to hold them, and named the omission in
+ * a case rather than leaving it silent. The owner then decided: „Ime i prezime nosi sam
+ * nalog, i moderator ne mora da bude clan" ({@code PDL.md:4459}), V23 put
+ * {@code first_name} and {@code last_name} on {@code account}, and the case that named the
+ * omission now says the names really come out.
+ *
+ * <p><b>Off the ACCOUNT is not a detail of where the column happens to sit.</b> It is the
+ * reason the decision was needed at all: a moderator does not have to be a member, so
+ * there is no {@code competitor} row to read a name from for anybody on this screen who
+ * does not race, and the portal draws him as initials („A. M.-S.", the role switcher of
+ * 30.07.2026) which cannot be got out of an address of electronic mail. Reading the name
+ * through {@code account.competitor_id} instead would drop every moderator who is not a
+ * member - or hand back nothing for him - and would answer with a DIFFERENT name for the
+ * ones who are, because the register of members holds the name the law on sport asks for
+ * (PDL P32) and the account holds the one its owner signed up under. The two are two facts
+ * and this resource wants the first. {@code ModeratorApiTest} keeps a moderator of each
+ * kind, with the two names deliberately different for the one who is both, so that reading
+ * the wrong table cannot pass.
  *
  * <p><b>The shapes are the schema's and not the file's</b> - the decision
  * {@link CalendarApi} took on 12.09.2026 and {@link AttendanceApi} repeats: {@code id}
@@ -99,17 +106,24 @@ class ModeratorApi {
 	}
 
 	/**
-	 * @param rights the codes the superadmin has ticked for this one account, as
-	 *               {@code admin_right.code} generates them; empty for a moderator who
-	 *               has just been made and may do nothing yet
+	 * @param firstName the name on the ACCOUNT, which every account has and which is not
+	 *                  the name in the register of members even for a moderator who is
+	 *                  also one (V23)
+	 * @param rights    the codes the superadmin has ticked for this one account, as
+	 *                  {@code admin_right.code} generates them; empty for a moderator who
+	 *                  has just been made and may do nothing yet
 	 */
-	record Moderator(long id, String email, List<String> rights) {
+	record Moderator(long id, String firstName, String lastName, String email, List<String> rights) {
 	}
 
 	@GetMapping("/api/moderators")
 	@OnlyTheSuperadmin
 	List<Moderator> moderators() {
-		return db.sql("select a.id, a.email,"
+		/* `a.first_name` AND NOT A JOIN TO `competitor`, and the header says at length why.
+		   The short of it: a moderator need not be a member, so the join answers with
+		   nothing for him, and where it does answer it answers with the other of the two
+		   names this portal keeps. */
+		return db.sql("select a.id, a.first_name, a.last_name, a.email,"
 						/* GATHERED IN THE DATABASE AND NAMED BY ACCOUNT, the shape LeagueApi
 						   already uses for the races a league counts. The condition on
 						   `account_id` is the whole of the statement: without it this is one
@@ -134,8 +148,8 @@ class ModeratorApi {
 						+ " join role r on r.id = a.role_id"
 						+ " where r.code = 'moderator'"
 						+ " order by a.email")
-				.query((row, one) -> new Moderator(row.getLong(1), row.getString(2),
-						List.of((String[]) row.getArray(3).getArray())))
+				.query((row, one) -> new Moderator(row.getLong(1), row.getString(2), row.getString(3),
+						row.getString(4), List.of((String[]) row.getArray(5).getArray())))
 				.list();
 	}
 }

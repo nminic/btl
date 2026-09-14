@@ -115,7 +115,7 @@ class MembershipCarriedOverTest extends DatabaseTest {
 	void whatThePortalHoldsBeforeV22() {
 		whatV22Creates();
 
-		db.sql("insert into account (email, role_id) values ('blagajnik@primer.rs',"
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
 
 		competitor("001001", "Ceka", "00112233445566a1", "payment", 2027);

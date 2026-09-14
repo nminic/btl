@@ -82,7 +82,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("19", "V19__league_counts_races.sql", 537350301),
 			new Applied("20", "V20__league_reads_races.sql", 1786309952),
 			new Applied("21", "V21__crop_is_a_circle.sql", 2045503899),
-			new Applied("22", "V22__membership_is_a_fact_about_a_season.sql", -1073658510));
+			new Applied("22", "V22__membership_is_a_fact_about_a_season.sql", -1073658510),
+			new Applied("23", "V23__the_account_carries_its_name_and_its_member.sql", -1387908885));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

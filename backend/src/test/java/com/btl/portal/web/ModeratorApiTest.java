@@ -58,6 +58,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li><b>The reader is not one of the read.</b> Every request below is made by the
  * superadmin, whose own address must not appear in the answer - so „the address on the
  * session" and „an address off the table" cannot be the same string.
+ * <li><b>One moderator IS a member and three are not</b>, which is the axis V23 added on
+ * 14.09.2026. „Moderator ne mora da bude clan" (owner), so a fixture in which every
+ * moderator had a {@code competitor} row would let this resource read the name out of the
+ * register of members and pass; and a fixture in which none did would let it pass with a
+ * join that answers with nothing.
+ * <li><b>And the one who is both carries a DIFFERENT name on his account from the one on
+ * his member record.</b> Without that, „the name on the account" and „the name on the
+ * competitor" are the same string for him and the case below measures nothing at all,
+ * which is the rule of 06.09.2026 about two sources of one value.
  * </ul>
  */
 @SpringBootTest
@@ -84,6 +93,15 @@ class ModeratorApiTest {
 	/** Signed in and holding nothing, which is most of the portal. */
 	private static final String A_MEMBER = "takmicar@primer.rs";
 
+	/** The member record of the one moderator who also races, named here so both sides read it. */
+	private static final String HER_MEMBER_NUMBER = "001000";
+
+	/** What her ACCOUNT says, which is what this resource must answer with. */
+	private static final String HER_NAME_ON_THE_ACCOUNT = "Vesna Vukic";
+
+	/** And what her MEMBER record says, which is the wrong answer that would otherwise pass. */
+	private static final String HER_NAME_ON_THE_MEMBER_RECORD = "Vesna Devojacko";
+
 	private static final String FIRST_OF_TWO = "entity:members";
 
 	private static final String SECOND_OF_TWO = "queue:payments";
@@ -107,21 +125,50 @@ class ModeratorApiTest {
 	 */
 	@BeforeEach
 	void sixAccountsAcrossThreeRoles() {
-		account(EVERYTHING, "superadmin");
-		account(TWO_TICKS, "moderator");
-		account(NO_TICKS, "moderator");
-		account(A_MEMBER, "competitor");
-		account(EVERY_TICK, "moderator");
-		account(ONE_TICK, "moderator");
+		account(EVERYTHING, "superadmin", "Nikola", "Minic");
+		account(TWO_TICKS, "moderator", "Vesna", "Vukic");
+		account(NO_TICKS, "moderator", "Novak", "Novic");
+		account(A_MEMBER, "competitor", "Takmicar", "Trkacki");
+		account(EVERY_TICK, "moderator", "Iskusni", "Iskic");
+		account(ONE_TICK, "moderator", "Bojan", "Bojic");
+
+		/* AND ONE OF THE FOUR MODERATORS ALSO RACES, under a name that is not the one on
+		   her account. Both halves are the measurement: a moderator who is NOT a member is
+		   the ordinary case since 14.09.2026, and the one who is both is the only row on
+		   which „the name off the account" and „the name off the member record" can be
+		   told apart at all. Her surname differs because a woman may compete under the one
+		   the register of members carries (PDL P32) and sign in under the one she uses. */
+		competitor(HER_MEMBER_NUMBER, "Vesna", "Devojacko");
+		belongsTo(TWO_TICKS, HER_MEMBER_NUMBER);
 
 		ticked(TWO_TICKS, FIRST_OF_TWO, SECOND_OF_TWO);
 		ticked(ONE_TICK, THE_ONLY_ONE);
 		ticked(EVERY_TICK, everyRightThereIs().toArray(String[]::new));
 	}
 
-	private void account(String email, String role) {
-		db.sql("insert into account (email, role_id) values (?, (select id from role where code = ?))")
-				.params(email, role).update();
+	/** A member, in the shape the schema's own files already write one. */
+	private void competitor(String number, String first, String last) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
+						+ " city, country_id, first_season, first_season_2027, active, membership_basis,"
+						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown, father_name,"
+						+ " address, shirt_size, health_statement_at)"
+						+ " values (?, ?, ?, 'F', date '1984-03-03', (select id from place where rank = 1),"
+						+ " null, null, 2027, false, true, 'feeExempt', ?, null, '', false, 'none', 'Otac',"
+						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, first, last, "00112233445566" + number.substring(4))
+				.update();
+	}
+
+	/** The link V23 wrote down: this account IS that member, and at most one account may be. */
+	private void belongsTo(String email, String memberNumber) {
+		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
+				+ " where email = ?").params(memberNumber, email).update();
+	}
+
+	private void account(String email, String role, String first, String last) {
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values (?, ?, ?, (select id from role where code = ?))")
+				.params(first, last, email, role).update();
 
 		SecretToken session = SecretToken.fresh();
 		Instant now = Instant.now();
@@ -209,35 +256,84 @@ class ModeratorApiTest {
 	}
 
 	/**
-	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE TWO THE SCHEMA HAS NOWHERE TO
-	 * HOLD, and those are named here with the reason.
+	 * EVERY FIELD THE PORTAL READS IS ANSWERED, AND THERE IS NO LONGER AN EXCEPTION.
 	 *
-	 * <p><b>{@code firstName} and {@code lastName} are not withheld, they are not
-	 * there.</b> {@code account} is an id, an address, a role and the moment the address
-	 * was confirmed (V6); names live on {@code competitor}, and NOTHING joins an account
-	 * to a competitor in either direction. That is a decision and not an oversight - V7
-	 * and {@code MeApi} both say so in as many words, „because how many accounts one
-	 * member may have is not decided. Inventing the join here is how that decision would
-	 * quietly get made by whoever wrote this line" - and it is one of the three questions
-	 * waiting for the owner's word ({@code btl-produkt/PENDING.md}, „Veza naloga i
-	 * takmicara").
+	 * <p><b>This case used to name two fields that were deliberately left out, and the
+	 * change is the whole of B56.</b> B55 answered without {@code firstName} and
+	 * {@code lastName} because the schema had nowhere to hold them: {@code account} was an
+	 * id, an address, a role and the moment the address was confirmed, names lived on
+	 * {@code competitor}, and nothing joined the two. It named the omission here rather
+	 * than in a comment, by the rule of ADL P-javno of 13.09.2026 - „izostavljena polja se
+	 * imenuju u samom slucaju sa razlogom, da izostavljanje bude odluka a ne propust" -
+	 * precisely so that the day the answer changed, this case would have to change with
+	 * it instead of going on quietly excusing a gap.
 	 *
-	 * <p><b>So this case is where that omission is written down, rather than a comment.</b>
-	 * The rule is ADL P-javno's, of 13.09.2026: „izostavljena polja se imenuju u samom
-	 * slucaju sa razlogom, da izostavljanje bude odluka a ne propust". {@code Answers}
-	 * checks both halves of each name - that the portal really serves it, so a stale name
-	 * cannot quietly excuse a field that went missing for another reason, and that the
-	 * answer really leaves it out, so naming it here is a claim rather than a wish.
+	 * <p><b>That day is 14.09.2026.</b> „Ime i prezime nosi sam nalog, i moderator ne mora
+	 * da bude clan" ({@code PDL.md:4459}), V23 put the two columns on {@code account}, and
+	 * the assertion is now the plain one: the portal reads five fields and the server
+	 * answers with all five. {@code Answers} refuses both directions at once, so this also
+	 * says the answer carries nothing the portal does not read.
 	 *
-	 * <p><b>What the portal will do about it is not this increment's to decide.</b> The
-	 * screen that draws moderators is not switched to this endpoint here (A50: the portal
-	 * changes files once, together, when every resource exists), so nothing wired today
-	 * goes blank for the want of a name.
+	 * <p><b>Where the names come FROM is a separate question and has its own case</b>
+	 * ({@link #theNameComesOffTheAccountAndNotOffTheMemberRecord()}), because this one
+	 * would be satisfied by the wrong table just as well as by the right one.
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
-		Answers.everyFieldThePortalReadsIsAnswered("/api/moderators", answer(), "moderators.json",
-				"firstName", "lastName");
+		Answers.everyFieldThePortalReadsIsAnswered("/api/moderators", answer(), "moderators.json");
+	}
+
+	/**
+	 * THE NAME COMES OFF THE ACCOUNT AND NEVER OFF THE MEMBER RECORD.
+	 *
+	 * <p>The one case this increment exists for, and the two halves below are the two ways
+	 * of getting it wrong rather than one claim written twice.
+	 *
+	 * <p><b>First half: the moderator who does not race is served, with his own name.</b>
+	 * „Moderator ne mora da bude clan" (owner, 14.09.2026) is why the name went onto the
+	 * account at all. A resource reading the name through {@code account.competitor_id}
+	 * with an inner join drops him out of the list entirely; with an outer join it hands
+	 * back nothing where his name should be. Both are caught here, and neither would be
+	 * caught by counting the rows, because three of the four moderators are in his
+	 * position and a query that lost all three still answers with one record.
+	 *
+	 * <p><b>Second half: the moderator who DOES race is served the name on her account,
+	 * which is not the name on her member record.</b> Without this the first half would be
+	 * satisfied by a resource that reads {@code competitor} wherever it can and falls back
+	 * to {@code account} where it cannot, which is exactly the shape somebody writes while
+	 * fixing the first half. The two strings are different by construction - the fixture
+	 * gives her one surname on the account and another in the register of members - so
+	 * „read the wrong table" and „read the right one" cannot produce the same answer.
+	 *
+	 * <p><b>And the wrong name is asserted against, not merely the right one asserted
+	 * for.</b> Naming the value that must NOT come out is what makes this a measurement of
+	 * the SOURCE rather than of the string: an assertion that only demanded „Vesna Vukic"
+	 * would go on passing if somebody later made the two records agree, and the case would
+	 * then be measuring the fixture.
+	 */
+	@Test
+	void theNameComesOffTheAccountAndNotOffTheMemberRecord() throws Exception {
+		assertThat(nameServedTo(NO_TICKS))
+				.as("a moderator with no member record lost his name, or lost his row")
+				.isEqualTo("Novak Novic");
+
+		assertThat(nameServedTo(TWO_TICKS))
+				.as("the name was read off the member record instead of off the account")
+				.isEqualTo(HER_NAME_ON_THE_ACCOUNT)
+				.isNotEqualTo(HER_NAME_ON_THE_MEMBER_RECORD);
+
+		/* And the fixture really does hold two different names for her, so the line above is
+		   a claim about the server and not about two strings that happen to be equal. */
+		assertThat(db.sql("select first_name || ' ' || last_name from competitor where member_number = ?")
+				.param(HER_MEMBER_NUMBER).query(String.class).single())
+				.as("her member record carries the same name as her account, so nothing above is measured")
+				.isEqualTo(HER_NAME_ON_THE_MEMBER_RECORD);
+	}
+
+	/** The name this resource answers with for one address, as one string. */
+	private String nameServedTo(String email) throws Exception {
+		JsonNode one = served(email);
+		return one.path("firstName").asString() + " " + one.path("lastName").asString();
 	}
 
 	@Test

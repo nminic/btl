@@ -23,8 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * answered on 11.08.2026: membership may be activated before the address is
  * confirmed. Neither follows from the other, in either direction.</li>
  *
- * <li><b>An account is not a member.</b> A competitor is eighteen fields and a
- * member number; an account is four columns and exists before any of them.</li>
+ * <li><b>An account is not a member, and since V23 it may NAME one without being
+ * one.</b> A competitor is a member number, a register of members and a season;
+ * an account is a login that exists before any of that and, for a moderator who
+ * does not race, instead of it.</li>
  *
  * <li><b>The link is stored as a digest and never as itself</b> (ADL A8), so
  * whoever reads this table can activate nobody.</li>
@@ -60,19 +62,27 @@ class AccountAndVerificationTest extends DatabaseTest {
 	private static final String AN_INSTANT = "timestamptz '2027-01-01 00:00:00+00'";
 
 	/**
-	 * The account carries its address, its role and whether the address is
-	 * confirmed, and nothing else.
+	 * The account carries its address, its role, whether the address is confirmed,
+	 * what signing in needs, the name of whoever owns it and the member he is, and
+	 * nothing else.
 	 *
 	 * This is the guard against the two activations being collapsed into one row,
 	 * and it is complete by construction rather than by a list of forbidden
-	 * names: a member number, a paid flag, an activated_at, a name, a date of
-	 * birth, anything at all added to this table fails here, whatever it is
+	 * names: a member number, a paid flag, an activated_at, a date of birth,
+	 * anything at all added to this table fails here, whatever it is
 	 * called. Membership activation gives out the member number and belongs to
 	 * the member, which is a table this migration does not write.
 	 *
-	 * The boundary, said here rather than left for a review: the day the member
-	 * table arrives, holding the two apart becomes a statement about two tables
-	 * and this one will have to grow a second half.
+	 * The boundary that stood here from the beginning has now been crossed and the
+	 * sentence is rewritten rather than left to be read the old way. It said: the
+	 * day the member table arrives, holding the two apart becomes a statement about
+	 * two tables and this one will have to grow a second half. That day is
+	 * 14.09.2026. The two are still apart and the statement below is still about
+	 * this table alone, because what V23 added is a POINTER and a NAME, not the
+	 * member's own fields: no member number, no date of birth, no basis of
+	 * membership, nothing that {@code competitor} answers for. The second half is
+	 * {@link #theAccountMayBelongToNobodyAndKeepsItsOwnNameWhenTheMemberGoes()},
+	 * which is where the pointer is measured as behaviour.
 	 */
 	@Test
 	void theAccountCarriesItsAddressItsRoleAndItsConfirmationAndNothingElse() {
@@ -81,7 +91,12 @@ class AccountAndVerificationTest extends DatabaseTest {
 						/* V18, and all three of these are about signing in rather than about who
 						   somebody is: what the password hashes to, how many tries have missed
 						   since the last one that did not, and until when the account is shut. */
-						"password_hash", "failed_sign_ins", "locked_until");
+						"password_hash", "failed_sign_ins", "locked_until",
+						/* V23. „Ime i prezime nosi sam nalog" (owner, 14.09.2026): the name of
+						   whoever owns the login, which is not the same fact as the name in the
+						   register of members and does not replace it. And the member this
+						   account belongs to, if there is one at all. */
+						"first_name", "last_name", "competitor_id");
 	}
 
 	/**
@@ -114,9 +129,9 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 */
 	@Test
 	void anAccountIsBornWithItsAddressUnconfirmed() {
-		db.sql("insert into account (email, role_id, email_confirmed_at) values ('stari@primer.rs', " + COMPETITOR
+		db.sql("insert into account (first_name, last_name, email, role_id, email_confirmed_at) values ('Probni', 'Probic', 'stari@primer.rs', " + COMPETITOR
 				+ ", " + AN_INSTANT + ")").update();
-		db.sql("insert into account (email, role_id) values ('nov@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'nov@primer.rs', " + COMPETITOR + ")").update();
 
 		assertThat(db.sql("select email_confirmed_at is null from account where email = 'nov@primer.rs'")
 				.query(Boolean.class)
@@ -179,10 +194,10 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 */
 	@Test
 	void confirmingTheAddressAndTheRoleDoNotFollowEachOther() {
-		db.sql("insert into account (email, role_id) values ('ceka@primer.rs', " + COMPETITOR + ")").update();
-		db.sql("insert into account (email, role_id, email_confirmed_at) values ('gost@primer.rs', " + VISITOR + ", "
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'ceka@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id, email_confirmed_at) values ('Probni', 'Probic', 'gost@primer.rs', " + VISITOR + ", "
 				+ AN_INSTANT + ")").update();
-		db.sql("insert into account (email, role_id) values ('drugi@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'drugi@primer.rs', " + COMPETITOR + ")").update();
 
 		assertThat(waiting("email_confirmed_at is null"))
 				.containsExactly("ceka@primer.rs competitor", "drugi@primer.rs competitor");
@@ -256,7 +271,7 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 */
 	@Test
 	void aLinkWrittenWithoutAnEndLastsTwentyFourHoursAndOneWrittenWithAnEndKeepsIt() {
-		db.sql("insert into account (email, role_id) values ('rok@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'rok@primer.rs', " + COMPETITOR + ")").update();
 
 		issueWithoutAnEnd("rok@primer.rs", ONE_HASH);
 		issue("rok@primer.rs", ANOTHER_HASH);
@@ -300,8 +315,8 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 */
 	@Test
 	void oneAccountMayHaveMoreThanOneLinkWaiting() {
-		db.sql("insert into account (email, role_id) values ('ponovo@primer.rs', " + COMPETITOR + ")").update();
-		db.sql("insert into account (email, role_id) values ('jednom@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'ponovo@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'jednom@primer.rs', " + COMPETITOR + ")").update();
 
 		issue("ponovo@primer.rs", ONE_HASH);
 		issue("ponovo@primer.rs", ANOTHER_HASH);
@@ -321,8 +336,8 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 */
 	@Test
 	void aLinkDoesNotOutliveTheAccountItOpens() {
-		db.sql("insert into account (email, role_id) values ('odlazi@primer.rs', " + COMPETITOR + ")").update();
-		db.sql("insert into account (email, role_id) values ('ostaje@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'odlazi@primer.rs', " + COMPETITOR + ")").update();
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'ostaje@primer.rs', " + COMPETITOR + ")").update();
 
 		issue("odlazi@primer.rs", ONE_HASH);
 		issue("odlazi@primer.rs", ANOTHER_HASH);
@@ -341,6 +356,137 @@ class AccountAndVerificationTest extends DatabaseTest {
 	private void issue(String email, String hash) {
 		db.sql("insert into email_verification_token (account_id, token_hash, expires_at) values ("
 				+ "(select id from account where email = '" + email + "'), '" + hash + "', " + AN_INSTANT + ")")
+				.update();
+	}
+
+	/**
+	 * AN ACCOUNT MAY BELONG TO NOBODY, AND WHEN THE MEMBER GOES IT KEEPS ITS OWN NAME.
+	 *
+	 * <p>Both halves of V23's foreign key, and neither of them is a refusal, so neither
+	 * can live in AccountConstraintsTest. What that file holds is the pair of rules that
+	 * say no: a member who is not there, and a second account on a member somebody already
+	 * has. What is here is what the key ALLOWS, which is the half a reviewer never sees
+	 * fail.
+	 *
+	 * <p><b>The moderator who does not race.</b> „Jedan nalog je tacno jedan clan" means
+	 * at most one, not exactly one - the owner said so in the same breath, on 14.09.2026,
+	 * and the whole reason the name went onto the account is that a moderator may have no
+	 * competitor record at all. So the column is nullable, and this is the case that fails
+	 * the moment somebody writes NOT NULL on it: {@code moderator@primer.rs} could not be
+	 * opened, and the screen this increment serves would have nobody on it.
+	 *
+	 * <p><b>And ON DELETE SET NULL, which is a decision with two alternatives that both
+	 * run.</b> CASCADE would take the login away with the member - and with it his live
+	 * confirmation links and his pointer in every verification he ever decided - so
+	 * deleting a MEMBER would silently delete an ADMINISTRATOR. RESTRICT would refuse the
+	 * one deletion the member has a right to (PDL P23). The assertion that tells the three
+	 * apart is not that the member is gone, which is true under all three: it is that the
+	 * ACCOUNT IS STILL THERE, still signs in, and still says whose it is out of its own two
+	 * columns rather than out of the row that has just been deleted. That last part is what
+	 * makes SET NULL honest here at all, and it is why the name and the pointer arrived in
+	 * one migration.
+	 *
+	 * <p><b>Two members and two accounts, so that nothing read back is the only one of its
+	 * kind.</b> The account that keeps its member is what keeps a cascade emptying the
+	 * whole column from passing as "the pointer was cleared", and the member who is not
+	 * deleted is what keeps a delete of every competitor from passing as "his member was
+	 * deleted". The name on the account is different from the name on his competitor
+	 * record on purpose: with one name in the fixture, an account that had somehow been
+	 * reading the member's name would answer identically.
+	 */
+	@Test
+	void theAccountMayBelongToNobodyAndKeepsItsOwnNameWhenTheMemberGoes() {
+		competitor("001000", "Trkacki", "Zapis");
+		competitor("001001", "Drugi", "Trkac");
+
+		/* The moderator who does not race, and he goes in with no member at all. */
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values ('Moderatorka', 'Bez Trke', 'moderator@primer.rs',"
+						+ " (select id from role where code = 'moderator'))")
+				.update();
+
+		account("trci@primer.rs", "Nalogovo", "Ime", "001000");
+		account("ostaje@primer.rs", "Treci", "Nalog", "001001");
+
+		assertThat(db.sql("select count(*) from account where competitor_id is null").query(Long.class).single())
+				.as("an account with no member could not be written, and that is the moderator who does not race")
+				.isEqualTo(1);
+
+		db.sql("delete from competitor where member_number = '001000'").update();
+
+		/* The account is still there, and it still says whose it is. Read as one string so
+		   that a row which survived with an emptied NAME cannot pass for a row that kept
+		   it. */
+		assertThat(db.sql("select first_name || ' ' || last_name from account where email = 'trci@primer.rs'")
+				.query(String.class).optional())
+				.as("deleting the member took the account with it, or emptied the name on it")
+				.contains("Nalogovo Ime");
+
+		assertThat(db.sql("select competitor_id from account where email = 'trci@primer.rs'")
+				.query(Long.class).optional())
+				.as("the account still points at a member who has been deleted")
+				.isEmpty();
+
+		/* And the other account did not lose its member, which is what separates SET NULL
+		   from a cascade that emptied the column. */
+		assertThat(db.sql("select c.member_number from account a join competitor c on c.id = a.competitor_id"
+				+ " where a.email = 'ostaje@primer.rs'").query(String.class).optional())
+				.as("an account that names another member lost him too")
+				.contains("001001");
+	}
+
+	/**
+	 * AND THE NAME ON THE ACCOUNT SORTS BY THE SERBIAN ALPHABET, on both columns.
+	 *
+	 * <p>ADL A36 O21 is one decision about names and not one about {@code competitor}, so
+	 * the day an account carries a name it carries the tailoring too. Without it the two
+	 * tables would sort their names differently from each other, which is worse than
+	 * either answer on its own.
+	 *
+	 * <p><b>Both columns, because the collation is written per column and a mutation that
+	 * drops it from one leaves the other answering.</b> The two rows are arranged so that
+	 * ordering by the given name and ordering by the surname give OPPOSITE orders: under
+	 * {@code sr_latn} C and C-with-caron are two letters and every C word comes first,
+	 * while under the ICU root and under libc they are one letter and the next character
+	 * decides. So each of the two assertions flips on its own the moment its column loses
+	 * the tailoring, and neither can be satisfied by the other's column.
+	 *
+	 * <p>Measured with data rather than with {@code information_schema}, for the reason
+	 * {@link ConventionsTest} gives: asking the catalogue only proves a name was written
+	 * beside a column.
+	 */
+	@Test
+	void theNameOnTheAccountSortsByTheSerbianAlphabet() {
+		account("cvetko@primer.rs", "Cvetko", "Čolić", null);
+		account("cedomir@primer.rs", "Čedomir", "Cvetković", null);
+
+		assertThat(db.sql("select email from account order by first_name").query(String.class).list())
+				.as("given names sort by the ICU root or by libc, where C-with-caron is an accented C")
+				.containsExactly("cvetko@primer.rs", "cedomir@primer.rs");
+
+		assertThat(db.sql("select email from account order by last_name").query(String.class).list())
+				.as("surnames sort by the ICU root or by libc, where C-with-caron is an accented C")
+				.containsExactly("cedomir@primer.rs", "cvetko@primer.rs");
+	}
+
+	/** An account, with the name it carries itself and the member it belongs to or none. */
+	private void account(String email, String first, String last, String memberNumber) {
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values (?, ?, ?, "
+						+ COMPETITOR + ", (select id from competitor where member_number = ?))")
+				.params(first, last, email, memberNumber)
+				.update();
+	}
+
+	/** A member, in the shape MembershipConstraintsTest already writes one. */
+	private void competitor(String number, String first, String last) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
+						+ " city, country_id, first_season, first_season_2027, active, membership_basis,"
+						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown, father_name,"
+						+ " address, shirt_size, health_statement_at)"
+						+ " values (?, ?, ?, 'M', date '1982-02-02', (select id from place where rank = 1),"
+						+ " null, null, 2027, false, true, 'feeExempt', ?, null, '', false, 'none', 'Otac',"
+						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, first, last, "00112233445566" + number.substring(4))
 				.update();
 	}
 

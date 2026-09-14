@@ -132,10 +132,17 @@ final class WhoIsAsking extends OncePerRequestFilter {
 	/**
 	 * Who the portal has decided is asking.
 	 *
-	 * <p>The account and its role, and deliberately not a member number: V7 says in
-	 * as many words that nothing joins an account to a competitor in either
-	 * direction, because how many accounts one member may have is not decided. A
-	 * field invented here would be the place that decision quietly got made.
+	 * <p>The account and its role, and deliberately not a member number. Until
+	 * 14.09.2026 the reason was that there was nothing to read one through; since
+	 * V23 there is, because the owner decided „jedan nalog je tacno jedan clan"
+	 * ({@code PDL.md:2987}) and the link is a column on {@code account}.
+	 *
+	 * <p><b>What keeps it out now is what this record is for.</b> It is what the
+	 * guard hands to every controller on every request, so anything in it is
+	 * fetched on every request whether or not the route wants it, and a resource
+	 * that needs the member reads him by the account it already has. The link is
+	 * also empty for anybody who does not race, so the field would be null on the
+	 * requests of a moderator and every reader would carry a branch for it.
 	 */
 	record Member(long account, String role) {
 	}

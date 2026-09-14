@@ -18,11 +18,22 @@ import org.springframework.web.bind.annotation.RestController;
  * deciding what being signed in means, and the day it disagreed with the chain
  * the portal would show a member a page the server then refuses to fill.
  *
- * <p><b>What it does NOT carry is a member number</b>, and that is a decision
- * with a reason rather than an oversight. V7 says in as many words that nothing
- * joins an account to a competitor in either direction, because how many
- * accounts one member may have is not decided. Inventing the join here is how
- * that decision would quietly get made by whoever wrote this line.
+ * <p><b>What it does NOT carry is a member number</b>, and that is still a
+ * decision with a reason rather than an oversight - but the reason changed on
+ * 14.09.2026 and this paragraph changed with it. Until then there was no link at
+ * all to read one through, and this class said so. Now there is: V23 gives
+ * {@code account} a {@code competitor_id}, because „jedan nalog je tacno jedan
+ * clan" (owner, {@code PDL.md:2987}). What keeps the number out of here is
+ * therefore no longer that it cannot be found but that nothing has asked for it.
+ * A field this record carries is a field every screen may read, and each one
+ * added is a promise about what the portal answers before anybody has said which
+ * screen needs it.
+ *
+ * <p><b>And it would not be the harmless field it looks like.</b> The link is
+ * empty for anybody who does not race - a moderator has no member record at all,
+ * by the decision of the same day - so a member number here would be null for a
+ * real signed in administrator, and every screen reading it would need the branch
+ * whether it wanted one or not.
  */
 @RestController
 class MeApi {
