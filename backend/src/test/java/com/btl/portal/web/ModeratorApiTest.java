@@ -71,6 +71,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * found the gap it left open: a query reading the first name off {@code competitor} and
  * the surname off {@code account} served her true full name anyway, because the shared
  * first name hid the wrong source (found in review, B56, 14.09.2026).
+ * <li><b>And her account id is forced away from her competitor id, for the identical
+ * reason.</b> {@code id} is a third field this resource reads off {@code account} rather
+ * than through {@code account.competitor_id}, and the two are bigserials out of
+ * independent sequences that could otherwise coincide by chance. Until this case the
+ * fixture left that to whatever the two sequences happened to be at, and {@code id} was
+ * checked only for the two moderators with no competitor row at all, where a coalesce onto
+ * {@code competitor} could never show - so the one row on which the two sources actually
+ * differ went unmeasured (found in review, B56, 14.09.2026).
  * </ul>
  */
 @SpringBootTest
@@ -99,6 +107,18 @@ class ModeratorApiTest {
 
 	/** The member record of the one moderator who also races, named here so both sides read it. */
 	private static final String HER_MEMBER_NUMBER = "001000";
+
+	/**
+	 * Her competitor id, forced far above anything {@code competitor_id_seq} has handed out in
+	 * this run - the device {@code CommentApiTest} already uses for {@code event_comment} ids
+	 * and {@code AxisConstraintsTest} for another {@code competitor} row - so that it cannot
+	 * coincide with her {@code account.id} by chance. The two are bigserials out of independent
+	 * sequences that both start at one ({@code MembershipCarriedOverTest} names the identical
+	 * risk for {@code payment_id}), and a query answering {@code id} with
+	 * {@code coalesce(competitor.id, account.id)} instead of {@code account.id} alone would read
+	 * back this number for her, not her account's.
+	 */
+	private static final long HER_COMPETITOR_ID = 900001;
 
 	/** Her first name on the ACCOUNT, which is what this resource must answer with. */
 	private static final String HER_FIRST_NAME_ON_THE_ACCOUNT = "Vesna";
@@ -166,7 +186,7 @@ class ModeratorApiTest {
 		   coalesce that fell back to `account` solely for a first name the two rows
 		   happened to share still served her true name, and the fixture now makes that
 		   impossible (found in review, B56, 14.09.2026). */
-		competitor(HER_MEMBER_NUMBER, HER_FIRST_NAME_ON_THE_MEMBER_RECORD,
+		competitor(HER_COMPETITOR_ID, HER_MEMBER_NUMBER, HER_FIRST_NAME_ON_THE_MEMBER_RECORD,
 				HER_LAST_NAME_ON_THE_MEMBER_RECORD);
 		belongsTo(TWO_TICKS, HER_MEMBER_NUMBER);
 
@@ -175,16 +195,20 @@ class ModeratorApiTest {
 		ticked(EVERY_TICK, everyRightThereIs().toArray(String[]::new));
 	}
 
-	/** A member, in the shape the schema's own files already write one. */
-	private void competitor(String number, String first, String last) {
-		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
-						+ " city, country_id, first_season, first_season_2027, active, membership_basis,"
-						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown, father_name,"
-						+ " address, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, 'F', date '1984-03-03', (select id from place where rank = 1),"
+	/**
+	 * A member, in the shape the schema's own files already write one, under a chosen id
+	 * instead of the sequence's next one - see {@link #HER_COMPETITOR_ID} for why the one
+	 * caller below needs to choose.
+	 */
+	private void competitor(long id, String number, String first, String last) {
+		db.sql("insert into competitor (id, member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, city, country_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
+						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
+						+ " values (?, ?, ?, ?, 'F', date '1984-03-03', (select id from place where rank = 1),"
 						+ " null, null, 2027, false, true, 'feeExempt', ?, null, '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, "00112233445566" + number.substring(4))
+				.params(id, number, first, last, "00112233445566" + number.substring(4))
 				.update();
 	}
 
@@ -624,7 +648,8 @@ class ModeratorApiTest {
 	}
 
 	/**
-	 * AND THE IDENTIFIER IS THE ACCOUNT'S OWN KEY, not the slug the prototype file used.
+	 * AND THE IDENTIFIER IS THE ACCOUNT'S OWN KEY, not the slug the prototype file used, AND
+	 * NOT THE COMPETITOR'S EITHER.
 	 *
 	 * <p>The decision {@code CalendarApi} took on 12.09.2026 and {@code AttendanceApi}
 	 * repeats: the shapes are the schema's and not the file's, so this answers with
@@ -634,6 +659,16 @@ class ModeratorApiTest {
 	 * „the first id in the table" are the same number, and a resource answering with a
 	 * constant or with the wrong row would pass. The two are read by ADDRESS, so the
 	 * pairing is what is measured rather than the presence of a number.
+	 *
+	 * <p><b>And read for the moderator who is also a member, which the first two cannot
+	 * measure at all.</b> {@link #ONE_TICK} and {@link #NO_TICKS} hold no {@code competitor}
+	 * row, so {@code coalesce(competitor.id, account.id)} would answer {@code account.id} for
+	 * them exactly as {@code account.id} alone does, and a resource reading the wrong column
+	 * would pass unnoticed (found in review, B56, 14.09.2026). {@link #TWO_TICKS} is the one
+	 * row on which the two sources can differ, so her account id is forced away from her
+	 * competitor id in the fixture rather than left to two independent sequences that could
+	 * coincide, and both numbers are read back out of the database rather than trusted from
+	 * this file's own constants.
 	 */
 	@Test
 	void theIdentifierIsTheAccountsOwnKeyAndNotTheFilesSlug() throws Exception {
@@ -647,6 +682,21 @@ class ModeratorApiTest {
 		assertThat(served(NO_TICKS).path("id").asLong())
 				.as("the newly made moderator answered with somebody else's account id")
 				.isEqualTo(accountOf(NO_TICKS));
+
+		assertThat(served(TWO_TICKS).path("id").asLong())
+				.as("the moderator who is also a member answered with her competitor id"
+						+ " instead of her account id")
+				.isEqualTo(accountOf(TWO_TICKS));
+
+		/* And the fixture really does hold two different numbers for her, so the assertion
+		   above is a claim about the source and not about numbers that happen not to collide -
+		   read out of the database rather than trusted from HER_COMPETITOR_ID, the same shape
+		   theNameComesOffTheAccountAndNotOffTheMemberRecord closes with for the two names. */
+		assertThat(db.sql("select id from competitor where member_number = ?")
+						.param(HER_MEMBER_NUMBER).query(Long.class).single())
+				.as("her account id and her competitor id are the same number, so nothing above"
+						+ " is measured")
+				.isNotEqualTo(accountOf(TWO_TICKS));
 	}
 
 	/**

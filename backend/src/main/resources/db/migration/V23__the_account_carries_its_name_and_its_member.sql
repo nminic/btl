@@ -42,11 +42,15 @@
  * THIS IS THAT MIGRATION. Neither of those two files is touched, because a migration is immutable
  * from the day it merges (ADL A2) and rewriting a comment moves the checksum exactly as rewriting
  * a statement does - Flyway compares the file, not the SQL in it. So the sentence that has been
- * overturned is left standing where it was written, and the answer to it lives here, where V6's
- * own last line sends the reader. What DOES get deleted in this commit is the same sentence
- * wherever it stands in code that may be edited: `MeApi`, `WhoIsAsking` and `ModeratorApi` each
- * carried it in a javadoc, and a sentence asserting an overturned decision is an instruction to
- * the next reader to put it back.
+ * overturned is left standing where it was written, and this file has to name where the answer
+ * lives rather than editing either of them to say so. V6's own last line sends the reader on to
+ * „the migration that adds the member" - V7, not this one - and V7 (line 137) only repeats the
+ * same question, „still not decided anywhere ... exactly as V6 leaves it" (line 139), without
+ * naming anyone further. Neither of them can be made to name V23, because both are immutable;
+ * this file is where the chain actually ends, and it says so here because V6 and V7 cannot. What
+ * DOES get deleted in this commit is the same overturned sentence wherever it stands in code that
+ * may be edited: `MeApi`, `WhoIsAsking` and `ModeratorApi` each carried it in a javadoc, and a
+ * sentence asserting an overturned decision is an instruction to the next reader to put it back.
  *
  *
  * WHAT IS DELIBERATELY ABSENT HERE TOO.
@@ -90,12 +94,17 @@
  * NOT NULL IN ONE STEP AND NOT IN THREE, which is V8's move on `competitor` and rests on the same
  * measurement. V8: „Measured before writing this: `competitor` holds zero rows on QA and no other
  * database of this schema exists... That is also why the columns below arrive NOT NULL in one step
- * instead of three." The same count was made over this repository before this file was written:
- * NOTHING WRITES `account` AT ALL. No migration inserts one - V5 loads the roles and the rights
- * and stops there - and no line under `backend/src/main` does either; `SignInApi` reads accounts
- * and writes only `account_session`. There is no registration path yet, which is precisely the
- * thing the decision above was blocking (PDL.md:2987: „bez odgovora na pitanje ciji je ovo profil
- * ne postoji nijedan ekran na kom clan nesto unosi").
+ * instead of three." The count made over this repository before this file was written is not „nothing
+ * writes `account`" - something does: `SignInApi` runs two `UPDATE`s against it, one that clears
+ * `failed_sign_ins` and `locked_until` back to their rest state after a successful sign-in and one
+ * that sets both after a miss. Neither statement names `first_name` or `last_name`, and that is
+ * exactly why they cannot be the failure a NOT NULL column fails on: a column with no default fails
+ * an INSERT that omits it, or an UPDATE that sets it to null outright, and does nothing at all to a
+ * row an UPDATE never touches. So the fact this migration actually rests on is narrower and it holds:
+ * NOTHING INSERTS A ROW INTO `account`. No migration does - V5 loads the roles and the rights and
+ * stops there - and no line under `backend/src/main` does either. There is no registration path yet,
+ * which is precisely the thing the decision above was blocking (PDL.md:2987: „bez odgovora na pitanje
+ * ciji je ovo profil ne postoji nijedan ekran na kom clan nesto unosi").
  *
  * AND WHAT HAPPENS IF THAT IS EVER WRONG, said here rather than left to a deploy. `ALTER TABLE`
  * refuses outright - `column "first_name" of relation "account" contains null values` - the
