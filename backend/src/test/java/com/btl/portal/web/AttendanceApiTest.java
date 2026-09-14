@@ -169,7 +169,7 @@ class AttendanceApiTest {
 	}
 
 	private void account(String email) {
-		db.sql("insert into account (email, role_id) values (?,"
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', ?,"
 				+ " (select id from role where code = 'competitor'))").param(email).update();
 
 		session = SecretToken.fresh();

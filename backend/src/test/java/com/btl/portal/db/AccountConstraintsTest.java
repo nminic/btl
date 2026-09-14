@@ -107,7 +107,14 @@ class AccountConstraintsTest extends DatabaseTest {
 	   AccountAndVerificationTest's. */
 	private static final String AN_INSTANT = "timestamptz '2027-01-01 00:00:00+00'";
 
-	private static final String ACCOUNT_INSERT = "insert into account (email, role_id) values (";
+	/* V23 put the owner's name on the account itself and both columns are NOT NULL, so
+	   every row below has to carry one. They are written INTO the prefix rather than
+	   passed by each caller because not one of the rows below is about a name: each
+	   spoils a single field and the name has to be the same uninteresting pair in all of
+	   them, so that what fails is the field and not the fixture. The two rows that ARE
+	   about a name write their own. */
+	private static final String ACCOUNT_INSERT =
+			"insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', ";
 	private static final String TOKEN_INSERT =
 			"insert into email_verification_token (account_id, token_hash, expires_at) values (";
 
@@ -119,26 +126,58 @@ class AccountConstraintsTest extends DatabaseTest {
 	private static final String GOOD_TOKEN = TOKEN_INSERT + PROBE_ACCOUNT + ", '" + THIRD_HASH + "', " + AN_INSTANT
 			+ ")";
 
+	/* The member the probe account belongs to since V23, looked up by the number the
+	   helper below writes rather than by an id out of the sequence. */
+	private static final String PROBE_MEMBER = "(select id from competitor where member_number = '001000')";
+
+	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
+			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " father_name, address, shirt_size, health_statement_at";
+
+	private static final String A_TOWN = "(select id from place where rank = 1)";
+
 	/**
 	 * One account and one link on it, so the rows below have something to collide
 	 * with.
 	 *
 	 * The class is transactional and rolled back, so this is written afresh for
 	 * every case and leaves nothing behind.
+	 *
+	 * <p><b>Since V23 the probe account also NAMES a member</b>, which is what the row
+	 * breaking {@code account_competitor_unique} has to collide with. The member is
+	 * written first because the account points at him and not the other way round, and he
+	 * carries a different name from the account on purpose: this file never reads a name
+	 * back, but the fixture it hands to a reader should not be the one shape in which the
+	 * two could be confused.
 	 */
 	@BeforeEach
 	void probe() {
-		db.sql(ACCOUNT_INSERT + "'" + PROBE_EMAIL + "', " + COMPETITOR + ")").update();
+		competitor("001000", "Clanski", "Zapis");
+
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id)"
+						+ " values ('Probni', 'Probic', '" + PROBE_EMAIL + "', " + COMPETITOR + ", "
+						+ PROBE_MEMBER + ")")
+				.update();
 		db.sql(TOKEN_INSERT + PROBE_ACCOUNT + ", '" + PROBE_HASH + "', " + AN_INSTANT + ")").update();
+	}
+
+	/** A member, in the shape MembershipConstraintsTest already writes one. */
+	private void competitor(String number, String first, String last) {
+		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, ?, ?, 'M',"
+						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true,"
+						+ " 'feeExempt', ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, first, last, "00112233445566" + number.substring(4)).update();
 	}
 
 	static List<Violation> violations() {
 		return List.of(
 				// ---------------------------------------------------------------- account
 				Violation.of("account_pk",
-						"insert into account (id, email, role_id) "
-								+ "select id, 'drugi@primer.rs', role_id from account where email = '" + PROBE_EMAIL
-								+ "'"),
+						"insert into account (id, first_name, last_name, email, role_id) "
+								+ "select id, first_name, last_name, 'drugi@primer.rs', role_id from account"
+								+ " where email = '" + PROBE_EMAIL + "'"),
 				/* A role that is not there. The four are loaded by V5 and nothing
 				   deletes one, so the id one past the highest is the only way to ask
 				   this without inventing a number. */
@@ -160,30 +199,36 @@ class AccountConstraintsTest extends DatabaseTest {
 				/* V18. Cetiri koja stizu sa autentikacijom, i sva cetiri stoje ovde jer `account`
 				   pripada ovom fajlu a njegov pod cita katalog. */
 				Violation.of("account_password_hash_shape",
-						"insert into account (email, role_id, password_hash) values ('oblik@primer.rs', "
+						"insert into account (first_name, last_name, email, role_id, password_hash)"
+								+ " values ('Probni', 'Probic', 'oblik@primer.rs', "
 								+ COMPETITOR + ", '$2a$10$bez-prefiksa')"),
 				/* `noop` is a real id of the same delegating encoder, and ITS encoder hands the
 				   input straight back - so this row is not a badly shaped hash, it is the password
 				   itself. Found by a security round on 11.09.2026, which wrote `{noop}hunter2` and
 				   read it back word for word. */
 				Violation.of("account_password_hash_shape",
-						"insert into account (email, role_id, password_hash) values ('noop@primer.rs', "
+						"insert into account (first_name, last_name, email, role_id, password_hash)"
+								+ " values ('Probni', 'Probic', 'noop@primer.rs', "
 								+ COMPETITOR + ", '{noop}hunter2')"),
 				/* And an algorithm that is well formed but broken. It happened to be refused before
 				   as well, but only because the old pattern wanted lowercase; `{sha256}` would have
 				   gone through. */
 				Violation.of("account_password_hash_shape",
-						"insert into account (email, role_id, password_hash) values ('sha@primer.rs', "
+						"insert into account (first_name, last_name, email, role_id, password_hash)"
+								+ " values ('Probni', 'Probic', 'sha@primer.rs', "
 								+ COMPETITOR + ", '{sha256}5f4dcc3b5aa765d61d8327deb882cf99')"),
 				Violation.notNull("account_failed_sign_ins_not_null", "failed_sign_ins",
-						"insert into account (email, role_id, failed_sign_ins) values ('prazno@primer.rs', "
+						"insert into account (first_name, last_name, email, role_id, failed_sign_ins)"
+								+ " values ('Probni', 'Probic', 'prazno@primer.rs', "
 								+ COMPETITOR + ", null)"),
 				Violation.of("account_failed_sign_ins_not_negative",
-						"insert into account (email, role_id, failed_sign_ins) values ('minus@primer.rs', "
+						"insert into account (first_name, last_name, email, role_id, failed_sign_ins)"
+								+ " values ('Probni', 'Probic', 'minus@primer.rs', "
 								+ COMPETITOR + ", -1)"),
 				/* Zakljucan bez ijednog promasaja iza sebe. */
 				Violation.of("account_locked_only_after_enough_failures",
-						"insert into account (email, role_id, locked_until) values ('kljuc@primer.rs', "
+						"insert into account (first_name, last_name, email, role_id, locked_until)"
+								+ " values ('Probni', 'Probic', 'kljuc@primer.rs', "
 								+ COMPETITOR + ", timestamptz '2027-01-01 10:00:00+00')"),
 				Violation.of("account_email_shape", account("'probaprimer.rs', " + COMPETITOR)),
 				Violation.of("account_email_shape", account("' proba@primer.rs', " + COMPETITOR)),
@@ -218,8 +263,49 @@ class AccountConstraintsTest extends DatabaseTest {
 				Violation.of("account_email_shape",
 						account("'prob' || chr(1072) || '@primer.rs', " + COMPETITOR)),
 
+				/* V23, and the same reason the four above stand here: `account` is this
+				   file's table whichever migration wrote the column.
+
+				   THE NAME OF WHOEVER OWNS THE ACCOUNT. NOT NULL is one rule and „not
+				   only spaces" is another, and the second is the one a reviewer skips:
+				   NOT NULL takes a single blank happily, and a blank name draws as
+				   nothing on the moderator screen and makes the initials „ ." for the
+				   role switcher, which is the one thing the owner's decision of
+				   14.09.2026 named the column for. */
+				Violation.notNull("account_first_name_not_null", "first_name",
+						"insert into account (first_name, last_name, email, role_id)"
+								+ " values (null, 'Probic', 'bezimena@primer.rs', " + COMPETITOR + ")"),
+				Violation.notNull("account_last_name_not_null", "last_name",
+						"insert into account (first_name, last_name, email, role_id)"
+								+ " values ('Probni', null, 'bezprezimena@primer.rs', " + COMPETITOR + ")"),
+				Violation.of("account_first_name_not_blank",
+						"insert into account (first_name, last_name, email, role_id)"
+								+ " values ('   ', 'Probic', 'prazna@primer.rs', " + COMPETITOR + ")"),
+				Violation.of("account_last_name_not_blank",
+						"insert into account (first_name, last_name, email, role_id)"
+								+ " values ('Probni', '   ', 'prazno@primer.rs', " + COMPETITOR + ")"),
+
+				/* AND THE MEMBER THE ACCOUNT NAMES. A member who is not there: the id one
+				   past the highest, the same way the role above is asked for, so that
+				   nothing here depends on which numbers the sequence handed out. */
+				Violation.of("account_competitor_fk",
+						"insert into account (first_name, last_name, email, role_id, competitor_id)"
+								+ " values ('Probni', 'Probic', 'nepostoji@primer.rs', " + COMPETITOR
+								+ ", (select max(id) + 1 from competitor))"),
+				/* And a SECOND account on the member the probe already names, which is the
+				   half of „jedan nalog je tacno jedan clan" that looks at the member's
+				   side. Without the unique key one man could hang off two logins, and
+				   which of them is his would be a question with two answers. The other
+				   half - that an account may name NOBODY - is behaviour rather than a
+				   refusal and is AccountAndVerificationTest's. */
+				Violation.of("account_competitor_unique",
+						"insert into account (first_name, last_name, email, role_id, competitor_id)"
+								+ " values ('Drugi', 'Nalog', 'dvostruki@primer.rs', " + COMPETITOR + ", "
+								+ PROBE_MEMBER + ")"),
+
 				Violation.notNull("account_id_not_null", "id",
-						"insert into account (id, email, role_id) values (null, 'drugi@primer.rs', " + COMPETITOR
+						"insert into account (id, first_name, last_name, email, role_id)"
+								+ " values (null, 'Probni', 'Probic', 'drugi@primer.rs', " + COMPETITOR
 								+ ")"),
 				Violation.notNull("account_email_not_null", "email", account("null, " + COMPETITOR)),
 				Violation.notNull("account_role_id_not_null", "role_id", account("'drugi@primer.rs', null")),
@@ -326,8 +412,8 @@ class AccountConstraintsTest extends DatabaseTest {
 	void theHashThePortalItselfWritesIsAHashTheColumnTakes() {
 		String written = new com.btl.portal.domain.account.StoredPassword().of("dvanaest1234sasvim");
 
-		assertThat(db.sql("insert into account (email, role_id, password_hash)"
-				+ " values ('koder@primer.rs', " + COMPETITOR + ", ?)").param(written).update())
+		assertThat(db.sql("insert into account (first_name, last_name, email, role_id, password_hash)"
+				+ " values ('Probni', 'Probic', 'koder@primer.rs', " + COMPETITOR + ", ?)").param(written).update())
 				.as("the column refuses the very hash the portal writes, so nobody could sign in")
 				.isOne();
 	}
@@ -359,7 +445,8 @@ class AccountConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void anAccountWithNoPasswordIsARealState() {
-		assertThat(db.sql("insert into account (email, role_id) values ('bezlozinke@primer.rs', "
+		assertThat(db.sql("insert into account (first_name, last_name, email, role_id)"
+				+ " values ('Probni', 'Probic', 'bezlozinke@primer.rs', "
 				+ COMPETITOR + ")").update())
 				.as("an account could not be opened without a password, and that is how the owner opens them")
 				.isOne();

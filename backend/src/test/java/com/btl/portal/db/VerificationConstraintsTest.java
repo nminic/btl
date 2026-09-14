@@ -128,7 +128,7 @@ class VerificationConstraintsTest extends DatabaseTest {
 				+ " date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
 				+ " '00112233445566d0', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
-		db.sql("insert into account (email, role_id) values ('moderator@primer.rs',"
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'moderator@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
 		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter) values"
 				+ " ('image/jpeg', 40960, '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',"

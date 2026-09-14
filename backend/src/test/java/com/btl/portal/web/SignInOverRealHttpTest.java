@@ -119,7 +119,7 @@ class SignInOverRealHttpTest {
 	@BeforeEach
 	void anAccountToSignInTo() {
 		forget();
-		db.sql("insert into account (email, role_id, password_hash) values (?,"
+		db.sql("insert into account (first_name, last_name, email, role_id, password_hash) values ('Probni', 'Probic', ?,"
 						+ " (select id from role where code = 'competitor'), ?)")
 				.params(ADDRESS, new StoredPassword().of(RIGHT))
 				.update();

@@ -173,12 +173,12 @@ class VerificationApiTest {
 	 */
 	@BeforeEach
 	void sixAccountsAndSixTabs() {
-		account(TWO_QUEUES, "moderator");
-		account(OTHER_QUEUES, "moderator");
-		account(ONLY_ENTITIES, "moderator");
-		account(NO_TICKS, "moderator");
-		account(A_COMPETITOR, "competitor");
-		account(THE_SUPERADMIN, "superadmin");
+		account(TWO_QUEUES, "moderator", "Vesna", "Vasic");
+		account(OTHER_QUEUES, "moderator", "Bojan", "Peric");
+		account(ONLY_ENTITIES, "moderator", "Milica", "Ilic");
+		account(NO_TICKS, "moderator", "Novak", "Nedic");
+		account(A_COMPETITOR, "competitor", "Tijana", "Takic");
+		account(THE_SUPERADMIN, "superadmin", "Sanja", "Simic");
 
 		ticked(TWO_QUEUES, "queue:" + COMMENTS, "queue:" + RESULTS);
 		ticked(OTHER_QUEUES, "queue:" + TEAMS, "queue:" + PROFILES);
@@ -212,9 +212,10 @@ class VerificationApiTest {
 		waitingAboutNobodyInParticular(PAYMENTS, "Gordana Goric", "", "2026-08-20 06:00:00+00");
 	}
 
-	private void account(String email, String role) {
-		db.sql("insert into account (email, role_id) values (?, (select id from role where code = ?))")
-				.params(email, role).update();
+	private void account(String email, String role, String first, String last) {
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values (?, ?, ?, (select id from role where code = ?))")
+				.params(first, last, email, role).update();
 
 		SecretToken session = SecretToken.fresh();
 		Instant now = Instant.now();

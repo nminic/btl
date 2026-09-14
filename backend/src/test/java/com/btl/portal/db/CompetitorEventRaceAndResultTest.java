@@ -417,6 +417,17 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				.list();
 
 		assertThat(rules).containsExactly(
+				/* V23, and it is the one RESTRICT on this whole list that guards a PERSON rather
+				   than a codebook. „Baza odbija brisanje clana dok se njegov nalog ne resi."
+				   (owner, 14.09.2026). All three answers passed the suite, so it was a question
+				   about meaning and went to him with the cost of each: CASCADE would take the
+				   ADMINISTRATIVE account of a moderator who also races on the day his competitor
+				   record goes, and SET NULL would leave his first name, his last name and his
+				   address alive on a row nothing distinguishes from a moderator who never raced -
+				   against „na mestima gde se pominje bice anonimizovan" (11.08.2026, ADL A12).
+				   The price he bought: deleting a member is always two steps, and the database is
+				   what makes the first one impossible to forget. */
+				"account.account_competitor_fk restrict",
 				// V6, and its cascade is the one place a link may not outlive its account
 				"account.account_role_fk no action",
 				/* V18. Sesija i pravo idu SA nalogom, jer bez naloga ne znace nista; ali pravo

@@ -106,6 +106,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"a right is looked up by the key the portal writes it down under, entity:members"),
 			new Key("account_pk", false,
 					"a surrogate key nothing outside the portal sees, and the token table points at it"),
+			new Key("account_competitor_unique", false,
+					"one member hangs off at most one account: a link that is looked up, never counted "
+							+ "from one end, and nulls stay distinct so any number of accounts may name nobody"),
 			new Key("email_verification_token_pk", false,
 					"a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("email_verification_token_hash_unique", false,

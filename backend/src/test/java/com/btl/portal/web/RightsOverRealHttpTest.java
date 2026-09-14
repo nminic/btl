@@ -162,7 +162,7 @@ class RightsOverRealHttpTest {
 	}
 
 	private void account(String email, String role) {
-		db.sql("insert into account (email, role_id) values (?, (select id from role where code = ?))")
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', ?, (select id from role where code = ?))")
 				.params(email, role).update();
 
 		SecretToken session = SecretToken.fresh();
