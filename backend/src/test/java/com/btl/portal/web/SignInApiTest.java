@@ -37,10 +37,23 @@ class SignInApiTest {
 	@Autowired
 	private JdbcClient db;
 
+	/**
+	 * AN ACCOUNT TO SIGN IN TO, AND ITS ADDRESS IS CONFIRMED.
+	 *
+	 * <p><b>The confirmation is not decoration and it is not the default</b>: V6 gives
+	 * {@code email_confirmed_at} no default precisely so that an account is born
+	 * unconfirmed, and since B58 {@code SignIn} refuses such an account in the same
+	 * breath as one that is locked (owner, 31.07.2026: „Dok adresa nije potvrdjena, nema
+	 * pristupa portalu ni placanja"). Every case in this file is about something else -
+	 * the cookie, the misses, the token - so each of them needs an account that gets
+	 * past that first condition, and {@code anAddressNobodyHasConfirmedIsNotAWayIn}
+	 * below is the one that measures the condition itself.
+	 */
 	@BeforeEach
 	void anAccountToSignInTo() {
-		db.sql("insert into account (first_name, last_name, email, role_id, password_hash) values ('Probni', 'Probic', ?,"
-						+ " (select id from role where code = 'competitor'), ?)")
+		db.sql("insert into account (first_name, last_name, email, role_id, password_hash,"
+						+ " email_confirmed_at) values ('Probni', 'Probic', ?,"
+						+ " (select id from role where code = 'competitor'), ?, now())")
 				.params(ADDRESS, new StoredPassword().of(RIGHT))
 				.update();
 	}
@@ -114,19 +127,28 @@ class SignInApiTest {
 	/**
 	 * EVERY NO IS THE SAME NO.
 	 *
-	 * <p>Four ways of not getting in, and nothing in any of them says whether the
+	 * <p>Five ways of not getting in, and nothing in any of them says whether the
 	 * address exists: same status, same empty body, and no cookie. This is the case
 	 * that fails the day somebody adds a helpful message.
 	 */
 	@Test
 	void everyNoIsTheSameNo() throws Exception {
-		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'bezlozinke@primer.rs',"
-				+ " (select id from role where code = 'competitor'))").update();
+		db.sql("insert into account (first_name, last_name, email, role_id, email_confirmed_at)"
+				+ " values ('Probni', 'Probic', 'bezlozinke@primer.rs',"
+				+ " (select id from role where code = 'competitor'), now())").update();
+		/* AND THE FIFTH WAY, which arrived with B58: an account somebody registered and
+		   has not confirmed. Its password is the right one, so what refuses it is the
+		   confirmation and nothing else. */
+		db.sql("insert into account (first_name, last_name, email, role_id, password_hash)"
+						+ " values ('Probni', 'Probic', 'nepotvrdjena@primer.rs',"
+						+ " (select id from role where code = 'competitor'), ?)")
+				.param(new StoredPassword().of(RIGHT)).update();
 		db.sql("update account set failed_sign_ins = 10, locked_until = now() + interval '15 minutes'"
 				+ " where email = ?").param(ADDRESS).update();
 
 		for (String[] way : new String[][] {
 				{"nema@primer.rs", RIGHT}, {"bezlozinke@primer.rs", RIGHT},
+				{"nepotvrdjena@primer.rs", RIGHT},
 				{ADDRESS, RIGHT}, {ADDRESS, "pogresna"}}) {
 			MockHttpServletResponse answer = typed(way[0], way[1]);
 
@@ -134,6 +156,38 @@ class SignInApiTest {
 			assertThat(answer.getContentAsString()).isEmpty();
 			assertThat(answer.getCookie(SessionCookie.NAME)).isNull();
 		}
+	}
+
+	/**
+	 * AN ADDRESS NOBODY HAS CONFIRMED IS NOT A WAY IN, END TO END.
+	 *
+	 * <p>The rule is measured without a database in {@code SignInTest}; this is the half
+	 * that says the endpoint really reads the column. The account is the one this file's
+	 * fixture makes, with the confirmation taken back off it and nothing else touched -
+	 * same row, same hash, same count - so the only thing that can be deciding is the
+	 * confirmation.
+	 *
+	 * <p><b>Three assertions and not one.</b> He is refused; NO SESSION ROW IS WRITTEN,
+	 * which is what a 401 with a session quietly opened behind it would look like from
+	 * the status alone; and no miss is counted, or ten posts at a registered address
+	 * would shut an account its owner has not yet been able to use once.
+	 */
+	@Test
+	void anAddressNobodyHasConfirmedIsNotAWayIn() throws Exception {
+		db.sql("update account set email_confirmed_at = null where email = ?")
+				.param(ADDRESS).update();
+
+		MockHttpServletResponse answer = typed(ADDRESS, RIGHT);
+
+		assertThat(answer.getStatus()).isEqualTo(401);
+		assertThat(answer.getCookie(SessionCookie.NAME)).isNull();
+		assertThat(db.sql("select count(*) from account_session").query(Integer.class).single())
+				.as("a session was opened for an address nobody has confirmed")
+				.isZero();
+		assertThat(missesAt(ADDRESS))
+				.as("a miss was counted at an account nobody can sign in to, so anybody could"
+						+ " shut it before its owner ever used it")
+				.isZero();
 	}
 
 	@Test

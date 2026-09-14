@@ -158,6 +158,18 @@ services:
       # the relay's key with it. Brevo supports STARTTLS on 587, so requiring it
       # costs nothing and buys the one thing that matters here.
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
+      # AND WHERE THIS INSTALLATION OF THE PORTAL LIVES, which is what every link the
+      # portal mails hangs off. `application.properties` carries the PRODUCTION address,
+      # so without this line QA would confirm its testers' addresses by mailing them
+      # links into production - where their accounts do not exist and the token means
+      # nothing.
+      #
+      # Written out rather than taken from the environment, and that is deliberate: it
+      # is not a secret and not an operator's choice, it is what this stack IS. A
+      # variable here would be one more thing that has to be set in deploy/.env before
+      # QA sends a usable link, and one more line in the table
+      # WhatEachStackRequiresTest holds.
+      BTL_PORTAL_ADDRESS: https://qa.balkanskatrkackaliga.net
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 4 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in

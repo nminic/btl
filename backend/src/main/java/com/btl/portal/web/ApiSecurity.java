@@ -86,6 +86,31 @@ class ApiSecurity {
 						   he cannot read, and only if he also holds the CSRF token; what the
 						   member gains is that signing out works in the one case he needs it. */
 						.requestMatchers("/api/sign-out").permitAll()
+						/* AND REGISTERING IS OPEN FOR THE SAME REASON SIGNING IN IS: nobody
+						   can be asked to be a member in order to become one. PDL:
+						   „Registracija se radi iskljucivo na sajtu. Niko ne moze tehnicki da
+						   se registruje mimo sistema", so this is the one door there is, and a
+						   door only members may open would be a portal that cannot gain any.
+
+						   IT IS THE FIRST OPEN ROUTE THAT MAKES SOMETHING, and it is worth
+						   saying what stands in front of it, because it is less than what
+						   stands in front of signing in. There, every wrong answer costs the
+						   guesser one of ten misses; here there is nothing to guess at, and
+						   what a caller spends is the server's: a full bcrypt, two rows and a
+						   round trip to the relay, all inside one transaction. The CSRF token
+						   below is not that guard and the note on it says why - it stops a
+						   browser made to send a request from another site, and nothing else.
+
+						   WHAT IS MISSING, NAMED HERE RATHER THAN LEFT TO BE FOUND: a rate
+						   limit. `frontend/nginx.conf` gives `/api/sign-in` an exact-match
+						   `limit_req` and writes out at length why an anonymous request that
+						   costs a bcrypt inside a transaction can stop the whole portal; every
+						   word of that applies here, and registering adds one of its own -
+						   unlimited, it is a way of making the portal send mail to any address
+						   anybody names, which is how a relay gets blacklisted. That line
+						   belongs in nginx beside the one it copies, and PDL's „bot provera na
+						   prijavi takmicara" belongs with it. Neither is in this increment. */
+						.requestMatchers("/api/registration").permitAll()
 						/* AND NOTHING ELSE UNDER /api ANSWERS `OPTIONS`. Measured on a running
 						   server on 13.09.2026, and it was a hole rather than an untidiness.
 
