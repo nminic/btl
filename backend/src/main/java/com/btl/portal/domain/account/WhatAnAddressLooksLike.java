@@ -1,5 +1,6 @@
 package com.btl.portal.domain.account;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
@@ -64,8 +65,8 @@ public final class WhatAnAddressLooksLike {
 	}
 
 	/**
-	 * The address with the spaces around it taken off, which is the ONE thing done to
-	 * an address on its way in.
+	 * The address with the spaces around it taken off, which is what is done to an
+	 * address SOMEBODY TYPED before it is compared with anything.
 	 *
 	 * <p><b>It is a decision and not a convenience.</b> A space is below 0x21 and so is
 	 * refused by the shape above, which means an address pasted out of a mail client
@@ -73,6 +74,11 @@ public final class WhatAnAddressLooksLike {
 	 * the space is invisible and he would retype the same thing. Taking it off is safe
 	 * in the one way that matters: uniqueness is over {@code lower(email)}, and folding
 	 * two spellings into one can only ever refuse a second account, never admit one.
+	 *
+	 * <p><b>This is the half that signing in uses, and {@link #asItIsStored} is the half
+	 * that registering uses.</b> The difference is deliberate and is written out there:
+	 * the row is written folded, and what somebody types at a form is compared against
+	 * it by the database's own {@code lower()} rather than by a second fold in Java.
 	 *
 	 * <p><b>And it takes off only what {@link Character#isWhitespace} knows</b>, which
 	 * is not every invisible character there is - by specification it says no to
@@ -85,5 +91,55 @@ public final class WhatAnAddressLooksLike {
 	 */
 	public static String withoutTheSpacesAround(String address) {
 		return address.strip();
+	}
+
+	/**
+	 * THE ADDRESS AS THE ROW CARRIES IT: the spaces off, and folded to lower case.
+	 *
+	 * <p><b>The fold is not a new decision; it is the one V6 already took, moved to
+	 * where it can be true.</b> The owner, 08.09.2026: one address is one account, and
+	 * the uniqueness that holds him to it is written over {@code lower(email)} and not
+	 * over {@code email}, "because a plain unique key would let Petar@primer.rs and
+	 * petar@primer.rs both in and the same person would hold two accounts". A portal
+	 * that has decided those two are ONE PERSON cannot go on storing them as two
+	 * spellings and hope every later reader remembers which.
+	 *
+	 * <p><b>What it cost while it was not done, measured 14.09.2026.</b> Registration
+	 * wrote the address as it was typed and signing in looked for it literally, so
+	 * somebody who registered as {@code Novi.Clan@primer.rs} - which is what a telephone
+	 * keyboard offers first - confirmed the address, typed it back in lower case, and
+	 * was told 401. He then tried to register again and was told 409, the address is
+	 * taken. Both answers were correct and together they are a person who can neither
+	 * get in nor start again, at an address nobody else can ever use. Nothing but the
+	 * owner's own hand gets him out of there.
+	 *
+	 * <p><b>Folded here, on the way in, and NOT in every query afterwards.</b> The other
+	 * shape of this fix is to leave the row as typed and write {@code lower(email)} into
+	 * every statement that ever looks for one - which is a rule somebody has to remember
+	 * on a route that does not exist yet, and the day he forgets looks exactly like the
+	 * fault above. Stored folded, {@code email = ?} is right by construction for every
+	 * row this portal writes; {@link com.btl.portal.web.SignInApi} asks through
+	 * {@code lower()} as well, and that is the floor under any row written some other
+	 * way - by a migration, by a hand at the console, or by a route written before this
+	 * sentence.
+	 *
+	 * <p><b>What the fold costs, said here rather than found later.</b> A mailbox whose
+	 * local part really is case sensitive - the RFC permits one, and no major provider
+	 * has one - would be written down folded and mailed to folded. That cost is already
+	 * inside V6's decision: a portal that refuses {@code Petar@} because {@code petar@}
+	 * exists has already declared those the same mailbox, and this only makes the row
+	 * say so too.
+	 *
+	 * <p><b>And the shape is judged AFTER the fold</b>, by whoever calls
+	 * {@link #itDoes}, which is what keeps the fold from being a way in. Folding can
+	 * turn a character outside the range into one inside it - U+212A, the Kelvin sign,
+	 * lowercases to an ordinary {@code k} - and that is the safe direction and the only
+	 * one: it makes a homoglyph collide with the address it imitates, so the unique
+	 * index refuses it as a second account instead of admitting it as a new one.
+	 *
+	 * @param address what somebody typed, never null
+	 */
+	public static String asItIsStored(String address) {
+		return withoutTheSpacesAround(address).toLowerCase(Locale.ROOT);
 	}
 }

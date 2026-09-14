@@ -52,10 +52,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p>GreenMail is an SMTP server and not a mock, the same arrangement
  * {@code PostmanTest} uses: the message is handed to Spring, Spring opens a socket,
- * and what is read back is what actually travelled. It is needed here rather than
- * optional, because this route sends its message INSIDE the transaction that writes
- * the rows - so with nothing listening, every registration would fail and every case
- * in this file would be about a relay rather than about registering.
+ * and what is read back is what actually travelled.
+ *
+ * <p><b>It is needed here rather than optional, and what it is needed FOR changed on
+ * 14.09.2026.</b> The message used to go out inside the transaction that writes the
+ * rows, so with nothing listening every registration failed and every case in this file
+ * would have been about a relay. It now goes out after the commit and a refusal is
+ * swallowed, so a missing relay would leave every case here green and every message
+ * unsent - which is worse, not better. The server is what keeps the cases that read a
+ * message honest, and {@code RegistrationOverRealHttpTest} is where what happens when
+ * it is gone is measured, because that question is about a commit and this class cannot
+ * see one.
  *
  * <p><b>The portal's own address is overridden for this class on purpose.</b>
  * {@code application.properties} carries the production one, and a case comparing the
@@ -405,9 +412,14 @@ class RegistrationApiTest {
 	}
 
 	private MockHttpServletResponse signIn() throws Exception {
+		return signInTyping(ADDRESS);
+	}
+
+	/** Signing in with the address spelt however the person spelt it. */
+	private MockHttpServletResponse signInTyping(String email) throws Exception {
 		return http.perform(post("/api/sign-in").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + ADDRESS + "\",\"password\":\"" + PASSWORD + "\"}"))
+						.content("{\"email\":\"" + email + "\",\"password\":\"" + PASSWORD + "\"}"))
 				.andReturn().getResponse();
 	}
 
@@ -488,6 +500,190 @@ class RegistrationApiTest {
 
 		assertThat(register(pasted).getStatus()).isEqualTo(204);
 		assertThat(theAccountAt(ADDRESS).get("email")).isEqualTo(ADDRESS);
+	}
+
+	/**
+	 * AND IT IS STORED FOLDED, SO THAT SIGNING IN FINDS IT HOWEVER HE TYPES IT BACK.
+	 *
+	 * <p><b>The fault this closes, measured on 14.09.2026.</b> Registering wrote the
+	 * address exactly as it was typed and signing in looked for it literally, while V6's
+	 * unique index has always been over {@code lower(email)}. So a person who registered
+	 * as {@code Novi.Clan@Primer.rs} - which is the first thing a telephone keyboard
+	 * offers - confirmed his address, typed it back in lower case, and was told 401; tried
+	 * to register again and was told 409, the address is taken. Both answers correct,
+	 * together a person who can neither get in nor start again, at an address nobody else
+	 * can ever use. That is the same dead end this route's own javadoc names as the reason
+	 * the message used to be sent inside the transaction.
+	 *
+	 * <p><b>THE ADDRESS REGISTERED HERE CARRIES CAPITALS ON PURPOSE.</b> Written in lower
+	 * case it would be stored identically whether the fold happened or not, and every
+	 * assertion below would be satisfied by the fault - the value would have two possible
+	 * sources and the case would say nothing.
+	 *
+	 * <p><b>Three spellings and not one, because the fix has three ways of being half
+	 * done.</b> Folding on the way in without asking through {@code lower()} leaves the
+	 * lower case spelling refused for rows written some other way; asking through {@code
+	 * lower()} without folding on the way in leaves the row disagreeing with itself; and
+	 * neither of the two takes the spaces off, which is the third thing a person pastes.
+	 */
+	@Test
+	void theAddressIsStoredFoldedAndSigningInFindsItHoweverItIsTypedBack() throws Exception {
+		String asHeTypedIt = "Novi.Clan@Primer.rs";
+
+		assertThat(asHeTypedIt.toLowerCase(java.util.Locale.ROOT))
+				.as("this case is written around one address in two spellings and these are two"
+						+ " different addresses, so it measures nothing")
+				.isEqualTo(ADDRESS);
+
+		Map<String, Object> shouting = aGrownUp();
+
+		shouting.put("email", asHeTypedIt);
+
+		assertThat(register(shouting).getStatus()).isEqualTo(204);
+		assertThat(db.sql("select email from account").query(String.class).single())
+				.as("the row holds the address as it was typed, so every statement that ever"
+						+ " looks for one has to remember to fold - and the day one forgets is"
+						+ " the fault this closes")
+				.isEqualTo(ADDRESS);
+
+		/* AND THE MESSAGE GOES TO THE ROW'S ADDRESS AND NOT TO WHAT WAS TYPED, which is a
+		   difference only a case registering in a different spelling can see: with the two
+		   the same, „the address out of the request" and „the address off the row" are one
+		   value and a route reading either passes. Every later message this portal sends is
+		   addressed from the row, so a confirmation sent anywhere else is a member confirming
+		   at one address and being written to at another. */
+		assertThat(waitForOne().getAllRecipients()[0].toString())
+				.as("the confirmation went to the address as he typed it rather than to the one"
+						+ " his account carries")
+				.isEqualTo(ADDRESS);
+
+		db.sql("update account set email_confirmed_at = now()").update();
+
+		for (String typedBack : List.of(asHeTypedIt, ADDRESS, "  " + ADDRESS + "  ")) {
+			assertThat(signInTyping(typedBack).getStatus())
+					.as("signing in with '%s' was refused, at an address he cannot register"
+							+ " again either", typedBack)
+					.isEqualTo(204);
+		}
+	}
+
+	/**
+	 * A MEMBER WHO ARRIVED BY SOMEBODY'S LINK IS CREDITED TO THAT SOMEBODY.
+	 *
+	 * <p><b>Why this is not a nicety.</b> The programme pays when the new member's own
+	 * membership is first activated (owner, 12.08.2026); registration opens 01.10.2026 and
+	 * the programme works from that same day. A registration that arrives by a link and
+	 * writes nothing in {@code referred_by} is a payment nobody can ever be made, and it
+	 * cannot be repaired afterwards because who brought whom is written down nowhere else.
+	 * {@code Registration.tsx} has been reading the code out of {@code ?preporuka=} and
+	 * telling the visitor it has been recorded since before this route existed.
+	 *
+	 * <p><b>THE ONE WHO BROUGHT HIM IS NEITHER THE ONLY MEMBER NOR THE FIRST ONE</b>, and
+	 * that is the whole setup rather than decoration. With one member in the register,
+	 * "the member whose code this is" and "the only row in the table" are the same number
+	 * and a route that wrote either would pass; with him written first, "the first row"
+	 * joins them. Two are written, the credit is claimed with the SECOND one's code, and
+	 * the assertion is against that row's own key - so a route reading any row but his
+	 * fails, and so does one writing the new member's own key, which the schema would
+	 * refuse anyway.
+	 */
+	@Test
+	void aMemberWhoArrivedByALinkIsCreditedToWhoeverBroughtHim() throws Exception {
+		long aBystander = aMemberWhoseCodeIs("aaaaaaaaaaaaaaaa");
+		long whoBroughtHim = aMemberWhoseCodeIs("bbbbbbbbbbbbbbbb");
+
+		Map<String, Object> arrivedByALink = aGrownUp();
+
+		arrivedByALink.put("referredBy", "bbbbbbbbbbbbbbbb");
+
+		assertThat(register(arrivedByALink).getStatus()).isEqualTo(204);
+
+		Map<String, Object> registered = theCompetitorBehind(ADDRESS);
+
+		assertThat(registered.get("referred_by"))
+				.as("the member who brought him was not credited, so the one payment the whole"
+						+ " programme rests on can never be made and nothing else records it")
+				.isEqualTo(whoBroughtHim);
+		assertThat(registered.get("referred_by"))
+				.as("he was credited to somebody who did not bring him")
+				.isNotEqualTo(aBystander)
+				.isNotEqualTo(registered.get("id"));
+		assertThat(registered.get("referral_code"))
+				.as("the code he arrived by was written as his OWN code, so his link is somebody"
+						+ " else's")
+				.isNotEqualTo("bbbbbbbbbbbbbbbb");
+	}
+
+	/**
+	 * AND A CODE NOBODY HOLDS IS NO CREDIT AND NO REFUSAL.
+	 *
+	 * <p><b>Both halves matter and the second is the one worth arguing about.</b> Refusing
+	 * would shut the door on somebody whose link lost its code passing through a chat
+	 * application, which is not his doing - and it would answer differently for a code
+	 * that exists than for one that does not, which turns an anonymous route into a way of
+	 * finding out whose codes are real, one request at a time. ADL of 13.08.2026 decided
+	 * the opposite about this very code: it is handed out and never derived, „jer bi svako
+	 * mogao da sastavi tudji link".
+	 *
+	 * <p>Five spellings, each at its own address because the second registration at one
+	 * address is refused for a different reason entirely: nothing at all, an empty string,
+	 * a run of spaces, a code of exactly the right shape that belongs to nobody, and
+	 * rubbish.
+	 */
+	@Test
+	void aCodeNobodyHoldsIsNoCreditAndNoRefusal() throws Exception {
+		long theOnlyMemberThereIs = aMemberWhoseCodeIs("cccccccccccccccc");
+		Map<String, String> spellings = new LinkedHashMap<>();
+
+		spellings.put("nikakav@primer.rs", null);
+		spellings.put("prazan@primer.rs", "");
+		spellings.put("razmaci@primer.rs", "   ");
+		spellings.put("tudji@primer.rs", "0123456789abcdef");
+		spellings.put("smece@primer.rs", "ovo-nije-kod");
+
+		for (Map.Entry<String, String> one : spellings.entrySet()) {
+			Map<String, Object> carrying = aGrownUp();
+
+			carrying.put("email", one.getKey());
+			carrying.put("firstName", "Bez");
+
+			if (one.getValue() != null) {
+				carrying.put("referredBy", one.getValue());
+			}
+
+			assertThat(register(carrying).getStatus())
+					.as("a registration carrying '%s' was refused over a referral code, which is"
+							+ " a door shut on somebody whose link lost its code", one.getValue())
+					.isEqualTo(204);
+			assertThat(theCompetitorBehind(one.getKey()).get("referred_by"))
+					.as("'%s' credited somebody, and the only member there is is the one nobody"
+							+ " named", one.getValue())
+					.isNull();
+		}
+
+		assertThat(db.sql("select count(*) from competitor where referred_by = ?")
+				.param(theOnlyMemberThereIs).query(Integer.class).single())
+				.as("the member who brought nobody was credited with somebody")
+				.isZero();
+	}
+
+	/**
+	 * A member already in the register, carrying the code a link would arrive with.
+	 *
+	 * <p>Written through SQL rather than through the route, because what it has to be is a
+	 * row with a KNOWN code - and a registration draws its own at random.
+	 */
+	private long aMemberWhoseCodeIs(String code) {
+		return db.sql("insert into competitor (first_name, last_name, gender, birth_date,"
+						+ " city, country_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, bio, profile_hidden, father_name,"
+						+ " address, shirt_size, health_statement_at)"
+						+ " values ('Stari', 'Clanovic', 'M', ?,"
+						+ " 'Beograd', (select id from country where code = ?), 2027, false, true,"
+						+ " 'payment', ?, '', false, 'Otac', 'Ulica 1', 'M', now())"
+						+ " returning id")
+				.params(java.sql.Date.valueOf(today.minusYears(40)), theCountryThatTownIsIn, code)
+				.query(Long.class).single();
 	}
 
 	/**

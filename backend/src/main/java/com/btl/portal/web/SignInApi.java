@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.account.SignIn;
+import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpHeaders;
@@ -75,10 +76,29 @@ class SignInApi {
 		   row this request is about. Read as a column, `SignIn` decides - which is where
 		   every other rule about getting in already lives, and the only place a case can
 		   measure this one without a database. */
+		/* AND IT IS `lower(email)` ON BOTH SIDES, WHICH IS THE INDEX'S OWN QUESTION.
+		   `account_email_unique` is written over `lower(email)` because the owner decided
+		   on 08.09.2026 that one address is one account whatever case it is typed in -
+		   so asking `email = ?` here was asking a DIFFERENT question from the one that
+		   decides whether a second account may exist, and the gap between the two is a
+		   person with nowhere to go. Measured 14.09.2026: registered as
+		   `Novi.Clan@primer.rs` and typed back in lower case, this answered 401; asked to
+		   register again, the other route answered 409. Both correct, and together a
+		   locked door at an address nobody else can ever have.
+
+		   `RegistrationApi` now writes the address folded, so for every row this portal
+		   makes `email = ?` would have been enough. This is the floor under the rows it
+		   did not make - a migration, a hand at the console, a route written before that
+		   sentence - and it is the database's own `lower()` rather than a second fold
+		   written in Java, so it cannot disagree with the index by one character.
+
+		   The spaces come off for the same reason `WhatAnAddressLooksLike` takes them off
+		   at registration: a pasted address carrying one is invisible to the person, who
+		   would retype the same thing and be refused again. */
 		Optional<Found> found = db.sql("select id, password_hash, failed_sign_ins, locked_until,"
 						+ " email_confirmed_at"
-						+ " from account where email = ? for update")
-				.param(typed.email())
+						+ " from account where lower(email) = lower(?) for update")
+				.param(WhatAnAddressLooksLike.withoutTheSpacesAround(typed.email()))
 				.query((row, one) -> new Found(row.getLong(1), row.getString(2), row.getInt(3),
 						row.getTimestamp(4) == null ? null : row.getTimestamp(4).toInstant(),
 						row.getTimestamp(5) == null ? null : row.getTimestamp(5).toInstant()))

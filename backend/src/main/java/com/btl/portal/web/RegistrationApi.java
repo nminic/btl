@@ -14,10 +14,13 @@ import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import com.btl.portal.mail.Postman;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.mail.MailException;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,7 +56,9 @@ import java.util.regex.Pattern;
  * state anybody could repair from outside, and neither is a state this route can
  * leave behind: the account is written FIRST, so that the one thing that can
  * legitimately stop a registration - the address being taken - stops it before there
- * is anything to undo, and everything after it is inside the same transaction.
+ * is anything to undo, and every row after it is inside the same transaction. The
+ * MESSAGE is not, and {@link #writeThenSend} is where that boundary is drawn and what
+ * it was measured to cost when it was drawn the other way.
  *
  * <p><b>THE ADDRESS IS NOT CONFIRMED, AND THE ACCOUNT IS THEREFORE NOT A WAY IN.</b>
  * PDL, owner, 31.07.2026: „Potvrda adrese elektronske poste je prva, i uslov za sve
@@ -131,11 +136,32 @@ import java.util.regex.Pattern;
  *     dictation, while a date and the opening words of a decision are what finds it in
  *     five years. V23 says the same thing about itself.
  * <li><b>The check against false registrations.</b> PDL: „Protiv laznih registracija i
- *     spama ide bot provera na prijavi takmicara." There is none, here or anywhere,
- *     and this route is an anonymous write that costs a full bcrypt and an SMTP round
- *     trip. {@code frontend/nginx.conf} is where signing in got its rate limit, for the
- *     reason written beside it, and this route has no such line - which is its own
- *     increment and is recorded as one rather than done in passing here.
+ *     spama ide bot provera na prijavi takmicara." There is none, here or anywhere, and
+ *     this route is an anonymous write that costs a full bcrypt and an SMTP round trip.
+ *     What it does now have is a rate limit: {@code frontend/nginx.conf} gives
+ *     {@code /api/registration} its own {@code limit_req}, in the shape signing in
+ *     already had eight lines above it and for the same reason. A limit is not the bot
+ *     check and does not pretend to be one - it slows a machine down, it does not tell
+ *     one from a person - so the sentence above stays open and stays its own increment.
+ * <li><b>THE PERSON WHOSE MESSAGE NEVER WENT OUT.</b> Since the message is sent after
+ *     the commit (see {@link #write}), a relay that is down leaves a real account, a
+ *     real member and a real token, and answers 204. He is told to look in his unwanted
+ *     mail and sees nothing, because nothing was sent - and this route cannot tell him
+ *     so, because by the time it knows, the answer is already true: he IS registered.
+ *     <p><b>What gets him out is asking for the link again, and that is B59.</b> The
+ *     screen after registering has carried the control since PDL of 29.07.2026 - „plus
+ *     dugme za ponovno slanje potvrde" - and it does nothing yet; the token is already
+ *     in {@code email_verification_token} for it to act on. Until B59 writes it, the way
+ *     out is the owner's own hand, and that is the cost of this arrangement, named here
+ *     rather than discovered by the first member it happens to.
+ *     <p><b>What is NOT the cost is the thing this replaced.</b> Sent inside the
+ *     transaction, the same relay left him with nothing, which reads kinder and is
+ *     worse: no account, no token, nothing to resend, and one connection to the database
+ *     held for the whole five seconds the relay took to not answer - measured at 5,15 s
+ *     a request, ten of them enough to take every connection in the pool, and 202 other
+ *     people's requests answered 500 during one such minute. A person waiting for a
+ *     letter is a person the portal can still help; a portal with no connections left
+ *     helps nobody at all.
  * </ul>
  *
  * <p><b>THE RULES ARE ASKED OF THE TYPES THAT HOLD THEM, never written again.</b>
@@ -148,6 +174,17 @@ import java.util.regex.Pattern;
  */
 @RestController
 class RegistrationApi {
+
+	/**
+	 * The one thing on this server that writes a line to a file, and it writes exactly
+	 * one: a confirmation message the relay would not take.
+	 *
+	 * <p>Nothing else under {@code backend/src/main} logs anything, which is deliberate
+	 * and stays that way - a portal that logs what it does is a portal whose disk holds
+	 * what its members did. This is the single place where something fails, nobody is
+	 * told, and the failure would otherwise leave no trace at all.
+	 */
+	private static final Logger LOG = LoggerFactory.getLogger(RegistrationApi.class);
 
 	/**
 	 * Everything the form asks for that could not have come through it.
@@ -220,6 +257,17 @@ class RegistrationApi {
 
 	private final Clock clock;
 
+	/**
+	 * THE TRANSACTION, ASKED FOR BY HAND RATHER THAN PUT ON THE METHOD.
+	 *
+	 * <p>{@code @Transactional} on {@link #register} would make the whole request one
+	 * transaction, and the message goes out AFTER it - which is the whole of the fix
+	 * {@link #write} describes. Written by hand, the boundary is a pair of braces
+	 * somebody has to open and close on purpose, and what is outside them is outside
+	 * them visibly, in the same method, rather than by the absence of an annotation.
+	 */
+	private final TransactionTemplate inOneTransaction;
+
 	private final PasswordPolicy passwords;
 
 	private final StoredPassword keeping;
@@ -240,11 +288,13 @@ class RegistrationApi {
 	 *                relay's key.
 	 */
 	RegistrationApi(JdbcClient db, Postman postman, Clock clock,
+			TransactionTemplate inOneTransaction,
 			@Value("${btl.portal.address}") String address) {
 
 		this.db = db;
 		this.postman = postman;
 		this.clock = clock;
+		this.inOneTransaction = inOneTransaction;
 		this.portal = new Portal(address);
 
 		/* READ ONCE, HERE, AND NOT ON EVERY REGISTRATION. The controller is a singleton,
@@ -287,12 +337,22 @@ class RegistrationApi {
 	 *                registration was refused without it, which collided with the
 	 *                portal's own privacy policy; corrected 12.08.2026, and PDL says in
 	 *                as many words that „prijava prolazi i bez njega"
+	 * @param referredBy who brought this member, which is the ONE field here that does
+	 *                not come from the form at all. {@code Registration.tsx} reads it out
+	 *                of the address the visitor arrived by ({@code ?preporuka=}), which
+	 *                is why {@link WhatRegistrationAsksFor} has never heard of it and why
+	 *                the floor that holds every other field to being collected does not
+	 *                reach it - measured, and it is the reason this arrived late. Over
+	 *                the wire it is the CODE, sixteen lowercase hexadecimal characters;
+	 *                in the row it is a key, which is V7's own distinction: „the code is
+	 *                the public half and lives in its own column; who it belongs to is a
+	 *                row, and a row is what a foreign key points at"
 	 */
 	record Typed(String firstName, String lastName, String fatherName, String birthDate,
 			String gender, Boolean firstSeason2027, String email, String password,
 			String passwordRepeat, String address, Long placeId, String city, String country,
 			String idNumber, String phone, String shirtSize, String bio, Boolean healthStatement,
-			String parentConsent, String parentRelation) {
+			String parentConsent, String parentRelation, String referredBy) {
 	}
 
 	/** Why a registration was refused, and never which field. */
@@ -304,7 +364,6 @@ class RegistrationApi {
 	}
 
 	@PostMapping("/api/registration")
-	@Transactional
 	ResponseEntity<Refused> register(@RequestBody Typed typed, HttpServletRequest asking) {
 		/* No check for the whole form being absent, for the reason `SignInApi` gives at
 		   the same point: `@RequestBody` is required, so a request with no body is turned
@@ -322,7 +381,13 @@ class RegistrationApi {
 		   maps and a name with no country are both "no town", and both have to be refused
 		   before the INSERT rather than by it. */
 		Town town = theTown(typed);
-		String address = WhatAnAddressLooksLike.withoutTheSpacesAround(
+		/* AS THE ROW WILL CARRY IT, which is folded and not merely stripped.
+		   `WhatAnAddressLooksLike.asItIsStored` says at length why, and what it cost
+		   while it was only stripped: signing in looked for the address literally, so
+		   `Novi.Clan@primer.rs` registered and `novi.clan@primer.rs` typed back was 401,
+		   and registering again was 409. The fold is judged by `itDoes` below, like every
+		   other address, so nothing reaches a column that the shape would refuse. */
+		String address = WhatAnAddressLooksLike.asItIsStored(
 				typed.email() == null ? "" : typed.email());
 
 		/* WHICH FIELDS THIS PERSON HAS TO HAVE FILLED IN, ASKED OF THE TYPE THAT DECIDES
@@ -360,12 +425,97 @@ class RegistrationApi {
 		return switch (passwords.judge(typed.password())) {
 			case BREACHED -> no(THE_PASSWORD_HAS_LEAKED);
 			case TOO_SHORT -> no(THE_FORM_IS_NOT_COMPLETE);
-			case FINE -> write(typed, born, town, address, today, asking);
+			case FINE -> writeThenSend(typed, born, town, address, today, asking);
 		};
 	}
 
 	/**
-	 * THE WRITING, AND IT IS ONE TRANSACTION FROM THE FIRST ROW TO THE MESSAGE.
+	 * THE TWO HALVES, IN THIS ORDER, AND THE ORDER IS THE WHOLE OF IT: everything that
+	 * touches the database inside one transaction, and the message to the relay after it
+	 * has committed.
+	 *
+	 * <p><b>What the other order cost, measured against a real relay on 14.09.2026.</b>
+	 * Sent inside, one registration held ONE CONNECTION OF THE POOL for 5,15 seconds
+	 * while the relay did not answer - not because the portal was busy, but because it
+	 * was waiting for somebody else's machine with a transaction open. The pool is
+	 * HikariCP's default of ten. Ten such requests take all ten; at twenty, three
+	 * unrelated routes ({@code /api/competitors}, {@code /api/sign-in},
+	 * {@code /api/places}) were blocked about 4,4 seconds each; and a steady twelve
+	 * requests every two seconds answered a member's legitimate sign in with HTTP 500
+	 * after 30,02 seconds, the server saying {@code Connection is not available, request
+	 * timed out after 30011ms (total=10, active=10, idle=0, waiting=147)}. 202 other
+	 * people's requests were answered with a hard error during that one test. The
+	 * attacker is anybody on the network, signed in to nothing, and the precondition is
+	 * not an attack at all - it is a slow relay, which is an ordinary Tuesday for
+	 * somebody else's SMTP service.
+	 *
+	 * <p><b>And it is the arrangement ADL O14 already decided for the other route that
+	 * does this.</b> The transactional boundaries of verifying a result: „U transakciji
+	 * su rezultat, trka i dogadjaj ako nastaju, i dodela dukata. Van nje su obavestenje i
+	 * sve sto ide spolja." Registering is the same sentence with different rows. The
+	 * portal had one place that wrote it down and one place that did the opposite; this
+	 * makes them agree.
+	 *
+	 * <p><b>What the author's arrangement was protecting is kept, and it is worth saying
+	 * exactly what it is.</b> A person must never end up holding an address that is taken
+	 * and an account that is no use - and that is still true, by a different road: the
+	 * token is written in the same transaction as the account, so the account he holds is
+	 * one a resend can rescue. What is given up is the other direction, and it is small:
+	 * a message that goes out for a registration whose commit then fails cannot happen
+	 * here, because the commit happens FIRST.
+	 *
+	 * @return what the answer is, and what is left to be sent
+	 */
+	private ResponseEntity<Refused> writeThenSend(Typed typed, LocalDate born, Town town,
+			String address, LocalDate today, HttpServletRequest asking) {
+
+		Made made = inOneTransaction.execute(
+				committing -> write(typed, born, town, address, today, asking));
+
+		if (made.link() != null) {
+			send(made);
+		}
+
+		return made.answer();
+	}
+
+	/**
+	 * THE MESSAGE, SENT AFTER THE COMMIT AND THEREFORE UNABLE TO UNDO IT.
+	 *
+	 * <p><b>A relay that does not take it is not an error the person can act on, so he is
+	 * not told about one.</b> He has an account, he has a member, and he has a token; the
+	 * only thing missing is a letter, and nothing he can do at this screen produces one.
+	 * Answering 500 would say the opposite of what is true - „nothing happened" - to
+	 * somebody for whom everything happened, and would send him to register again at an
+	 * address that would now answer 409.
+	 *
+	 * <p><b>{@link Postman} throws rather than swallowing precisely so that this decision
+	 * is taken here</b>, by the route that knows what a member should see, and it is a
+	 * different answer for a confirmation link than it would be for a reminder. This is
+	 * that answer. The boundary it leaves - a person waiting for a letter that is not
+	 * coming, and B59 being what gets him out - is written out in the class's own list of
+	 * boundaries rather than left here as a shrug.
+	 *
+	 * <p><b>What is logged is the account and never the address.</b> An address of
+	 * electronic mail is a personal datum and a log is read by whoever can read the disk;
+	 * the number is enough to find the row, and ADL A12 is why it is not the address.
+	 */
+	private void send(Made made) {
+		try {
+			postman.send(
+					WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, portal, made.link()),
+					made.address());
+		} catch (MailException theRelayDidNotTakeIt) {
+			LOG.warn("the confirmation message for account {} did not go out, so nobody has"
+					+ " told him his address; the token is written and asking for the link"
+					+ " again is what gets him out of it (B59)",
+					made.account(), theRelayDidNotTakeIt);
+		}
+	}
+
+	/**
+	 * THE WRITING, AND IT IS ONE TRANSACTION FROM THE FIRST ROW TO THE LAST - WHICH IS
+	 * THE TOKEN, AND NOT THE MESSAGE.
 	 *
 	 * <p><b>The account is written first and the address is decided by the unique index
 	 * rather than by a question asked beforehand.</b> {@code select ... where email = ?}
@@ -384,18 +534,17 @@ class RegistrationApi {
 	 * answering 409 with a body. Written first, the one refusal that can arrive this late
 	 * arrives before anything exists.
 	 *
-	 * <p><b>And the message goes out INSIDE the transaction, which is the deliberate half
-	 * of a choice with two bad halves.</b> Sent after the commit, a relay that is down
-	 * leaves a person holding an account he can neither confirm nor sign in to, whose
-	 * address is now taken, so registering again is refused and no screen can help him -
-	 * an end from which nothing but the owner's hand recovers. Sent inside, a relay that
-	 * is down throws, everything rolls back, nothing is taken and he tries again in a
-	 * minute. What it costs is the other direction: a message that leaves and a commit
-	 * that then fails is a link to a token nobody holds, and that costs him one more
-	 * registration. {@link Postman} throws rather than swallowing precisely so that
-	 * whoever asked can make this choice, and this is the choice.
+	 * <p><b>And NOTHING HERE SPEAKS TO THE OUTSIDE WORLD.</b> ~~The message goes out
+	 * inside the transaction~~ was the shape until 14.09.2026, on the reasoning that a
+	 * relay which is down should roll the whole registration back rather than leave a
+	 * person with an account he cannot use. The reasoning was right about the person and
+	 * wrong about the price: a request that waits on somebody else's SMTP server with a
+	 * transaction open holds a connection of a pool of ten, and {@link #writeThenSend}
+	 * carries what that was measured to do to everybody else. What this method builds
+	 * instead is {@link Made} - the answer, and what the message will need - and the
+	 * sending happens after the commit.
 	 */
-	private ResponseEntity<Refused> write(Typed typed, LocalDate born, Town town, String address,
+	private Made write(Typed typed, LocalDate born, Town town, String address,
 			LocalDate today, HttpServletRequest asking) {
 
 		Optional<Long> account = db.sql("insert into account"
@@ -426,15 +575,16 @@ class RegistrationApi {
 				.optional();
 
 		if (account.isEmpty()) {
-			return ResponseEntity.status(409).body(new Refused(THE_ADDRESS_IS_TAKEN));
+			return new Made(ResponseEntity.status(409).body(new Refused(THE_ADDRESS_IS_TAKEN)),
+					0, null, null);
 		}
 
 		Timestamp now = Timestamp.from(clock.instant());
 		long competitor = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
 						+ "  first_season, first_season_2027, active, membership_basis,"
-						+ "  referral_code, bio, profile_hidden, birth_date, father_name,"
-						+ "  address, phone, shirt_size, health_statement_at)"
+						+ "  referral_code, referred_by, bio, profile_hidden, birth_date,"
+						+ "  father_name, address, phone, shirt_size, health_statement_at)"
 						/* `member_number` IS NOT WRITTEN AND `member_number_seq` IS NOT ASKED.
 						   `active` is false and `membership_basis` is 'payment': the basis says
 						   HOW this membership will be held, and 'feeExempt' is honorary
@@ -443,14 +593,19 @@ class RegistrationApi {
 						   member's own later choice, and `birthday_shown` is left out
 						   altogether so that V7's default - none unless he chooses otherwise,
 						   which is what the privacy policy and article 74 already say - is what
-						   decides it. */
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, false, ?, ?,"
-						+ "  ?, ?, ?, ?)"
+						   decides it.
+
+						   `referred_by` IS A KEY THIS ROUTE LOOKED UP, never the code that
+						   arrived. `whoBrought` is where the looking up is, and why an
+						   unknown code is not a refusal. */
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, ?, false, ?,"
+						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),
 						town.placeId(), town.city(), town.countryId(),
 						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
-						typed.firstSeason2027(), ReferralCode.fresh().written(), theBio(typed),
+						typed.firstSeason2027(), ReferralCode.fresh().written(),
+						whoBrought(typed), theBio(typed),
 						java.sql.Date.valueOf(born), typed.fatherName().strip(),
 						typed.address().strip(), thePhone(typed), typed.shirtSize(), now)
 				.query(Long.class)
@@ -501,14 +656,60 @@ class RegistrationApi {
 					.update();
 		}
 
-		sendTheLink(account.orElseThrow());
-
-		return ResponseEntity.noContent().build();
+		return theLinkToSend(account.orElseThrow());
 	}
 
 	/**
-	 * THE MESSAGE THAT MAKES THE ADDRESS WORTH ANYTHING, and it goes to the address in the
-	 * ROW.
+	 * WHO BROUGHT THIS MEMBER, as a key, or nothing when the answer is nothing.
+	 *
+	 * <p><b>An unknown code is not a refusal, and that is the decision here.</b> Three
+	 * things arrive at this line and only one of them is a referral: a code somebody
+	 * really holds, a code that is the right shape and belongs to nobody, and rubbish. The
+	 * last two are one answer - no credit - because the query answers them with one
+	 * answer, and that is honest as well as short: „who does this belong to" has no row.
+	 *
+	 * <p><b>Refusing the registration instead would be the loud shape, and it is the
+	 * wrong one for two separate reasons.</b> The first is the person: a link that lost
+	 * its code on the way through somebody's chat application is not his fault, and being
+	 * told his registration is incomplete over it is a door shut for nothing. The second
+	 * is the code: it is a secret of the kind ADL of 13.08.2026 decided must be handed
+	 * out and never derived, „jer bi svako mogao da sastavi tudji link" - and a route that
+	 * answered differently for a code that exists would be a machine for finding out
+	 * which codes exist, one anonymous request at a time.
+	 *
+	 * <p><b>What is NOT checked here, and why there is nothing to check.</b> That the
+	 * code is not this member's own: his own is drawn one statement later and has never
+	 * left this machine, so there is nothing he could have typed. {@code
+	 * competitor_not_referred_by_itself} is the floor under the day that stops being
+	 * true.
+	 *
+	 * <p><b>Why the credit matters more than the size of this method suggests.</b> The
+	 * programme pays when this member's own membership is first activated (owner,
+	 * 12.08.2026), registration opens 01.10.2026 and the programme works from the same
+	 * day - so every registration between those two events with this column left empty is
+	 * a payment nobody can ever be made, and it cannot be repaired afterwards, because
+	 * who brought whom is not written down anywhere else. {@code Registration.tsx} has
+	 * been reading the code out of the address and telling the visitor „Prijava je
+	 * zabelezena kao preporuka" since before this route existed.
+	 */
+	private Long whoBrought(Typed typed) {
+		if (isNothing(typed.referredBy())) {
+			return null;
+		}
+
+		return db.sql("select id from competitor where referral_code = ?")
+				.param(typed.referredBy().strip()).query(Long.class).optional().orElse(null);
+	}
+
+	/**
+	 * THE TOKEN THAT MAKES THE ADDRESS WORTH ANYTHING, WRITTEN HERE AND SENT LATER.
+	 *
+	 * <p><b>The row goes in inside the transaction and the message does not, which is the
+	 * point of the split.</b> A token written beside the account is a token a resend can
+	 * use, so the person whose message did not go out is holding something rather than
+	 * nothing. What this returns is the secret half, which exists nowhere else - not in
+	 * the row, which holds only its hash - and it exists only long enough for
+	 * {@link #send} to put it in a letter.
 	 *
 	 * <p><b>Read back rather than carried along, and that is not ceremony.</b> What was
 	 * typed and what was stored are two values, and this route makes them differ on
@@ -527,7 +728,7 @@ class RegistrationApi {
 	 * hours, which is the owner's decision of 08.09.2026 and the number
 	 * {@code HowLongALinkLastsMatchesTheSchemaTest} ties the message's own wording to.
 	 */
-	private void sendTheLink(long account) {
+	private Made theLinkToSend(long account) {
 		SecretToken link = SecretToken.fresh();
 
 		db.sql("insert into email_verification_token (account_id, token_hash) values (?, ?)")
@@ -536,8 +737,34 @@ class RegistrationApi {
 		String stored = db.sql("select email from account where id = ?")
 				.param(account).query(String.class).single();
 
-		postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, portal, link.secret()),
-				stored);
+		return new Made(ResponseEntity.noContent().build(), account, stored, link.secret());
+	}
+
+	/**
+	 * WHAT ONE COMMITTED REGISTRATION LEAVES BEHIND FOR THE MESSAGE TO BE BUILT FROM.
+	 *
+	 * <p>It exists so that the sending can happen OUTSIDE the transaction without the
+	 * sending having to ask the database anything: everything the relay needs is read
+	 * while the rows are being written, and afterwards this route touches no connection
+	 * at all. That is the difference the whole arrangement turns on - a request waiting
+	 * on a relay must be a request holding nothing.
+	 *
+	 * @param answer  what goes back to whoever asked, which is decided before the message
+	 *                is attempted and is not changed by how the attempt goes
+	 * @param account the row the message is about, for the one line written when it does
+	 *                not go out. The account and never the address: a log is read by
+	 *                whoever can read the disk, and an address is a personal datum
+	 * @param address where the message goes, READ BACK OFF THE ROW rather than carried
+	 *                along from what was typed. The two differ on purpose - the address
+	 *                is stripped and folded on the way in - and a message sent to what
+	 *                was typed would go somewhere the account does not live
+	 * @param link    the secret half of the token, which exists only in this object and
+	 *                in the message; the row holds what it hashes to and nothing else.
+	 *                Null when there is nothing to send, which is the refused
+	 *                registration, and that null is what {@link #writeThenSend} asks
+	 */
+	private record Made(ResponseEntity<Refused> answer, long account, String address,
+			String link) {
 	}
 
 	/**
