@@ -54,7 +54,10 @@ Ništa se ne predlaže ni ne odlučuje u sukobu sa tim fajlovima, a svaka nova o
 ## Bezbednost (obavezno)
 
 - Nikad kredencijali, tajne ili tokeni u kodu ili commitima; sve kroz env varijable (`.env` je gitignorisan, `.env.example` bez pravih vrednosti).
-- Svaki novi endpoint mora imati definisana pravila autorizacije i test autorizacije (401/403 slučajevi).
+- Svaki novi endpoint mora imati definisana pravila autorizacije i test autorizacije. **Brojevi su
+  401 i 404, ne 403** (ADL A8, odluka vlasnika od 13.09.2026): neprijavljen dobija 401, a prijavljen
+  kome pravo nedostaje dobija **404**, isti odgovor kao da adresa ne postoji, jer ne sme ni da sazna
+  da radnja postoji. ~~401/403 slučajevi.~~
 - Sav korisnički unos se validira na backendu (Bean Validation); upiti isključivo kroz JPA/parametrizovane upite.
 - Lozinke: BCrypt/Argon2. Tokeni: httpOnly kolačići, nikad localStorage.
 
