@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -55,6 +56,31 @@ class WhatHeMayDo {
 	 */
 	boolean may(String right) {
 		return rightsOf(asking().account()).may(right);
+	}
+
+	/**
+	 * WHICH OF THESE he may do, in the order they were given.
+	 *
+	 * <p><b>Asked as one question because the answer has to be one answer.</b>
+	 * {@link VerificationApi} needs six of these at once - „Moderator vidi samo redove
+	 * i entitete za koje ima pravo" (owner, 30.07.2026, {@code PDL.md:4308}) - and
+	 * asking {@link #may(String)} six times would read the role and the ticks six
+	 * times, so a tick taken away between the third and the fourth reading would leave
+	 * one answer describing two different moderators. Read once, the answer is a
+	 * snapshot of one account at one moment.
+	 *
+	 * <p><b>It is here and not at the caller, because this is where „may he" is
+	 * answered</b> (ADL A8: „Odgovara jedno mesto"). It asks nothing
+	 * {@link #may(String)} does not ask and adds no rule of its own: the same
+	 * {@link AdminRights} answers every code, so a caller cannot arrive at a different
+	 * verdict by asking in bulk.
+	 *
+	 * @param rights codes as {@code admin_right.code} generates them
+	 */
+	List<String> whichOf(List<String> rights) {
+		AdminRights his = rightsOf(asking().account());
+
+		return rights.stream().filter(his::may).toList();
 	}
 
 	/**

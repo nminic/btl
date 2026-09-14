@@ -112,7 +112,7 @@ class PaymentConstraintsTest extends DatabaseTest {
 				+ " '00112233445566e2', null, '', false, 'none', 'Otac', 'Ulica 2', 'L',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 
-		db.sql("insert into account (email, role_id) values ('blagajnik@primer.rs',"
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
 
 		db.sql(payment(A_MEMBER + ", 2027, '20271000', " + A_PRICE_ROW + ", 35.00, 'EUR', 3.00, 'card',"

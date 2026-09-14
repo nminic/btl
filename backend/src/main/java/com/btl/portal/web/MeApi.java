@@ -18,11 +18,41 @@ import org.springframework.web.bind.annotation.RestController;
  * deciding what being signed in means, and the day it disagreed with the chain
  * the portal would show a member a page the server then refuses to fill.
  *
- * <p><b>What it does NOT carry is a member number</b>, and that is a decision
- * with a reason rather than an oversight. V7 says in as many words that nothing
- * joins an account to a competitor in either direction, because how many
- * accounts one member may have is not decided. Inventing the join here is how
- * that decision would quietly get made by whoever wrote this line.
+ * <p><b>What it does NOT carry is a member number</b>, and that is still a
+ * decision with a reason rather than an oversight - but the reason changed on
+ * 14.09.2026 and this paragraph changed with it. Until then there was no link at
+ * all to read one through, and this class said so. Now there is: V23 gives
+ * {@code account} a {@code competitor_id}, because „jedan nalog je tacno jedan
+ * clan" (owner, {@code PDL.md:2987}). What keeps the number out of here is
+ * therefore no longer that it cannot be found but that nothing has asked for it.
+ * A field this record carries is a field every screen may read, and each one
+ * added is a promise about what the portal answers before anybody has said which
+ * screen needs it.
+ *
+ * <p><b>And it would not be the harmless field it looks like.</b> The link is
+ * empty for anybody who does not race - a moderator has no member record at all,
+ * by the decision of the same day - so a member number here would be null for a
+ * real signed in administrator, and every screen reading it would need the branch
+ * whether it wanted one or not.
+ *
+ * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
+ * COMFORTABLE: nothing in this repository measures the paragraphs above.</b> Three
+ * files carried the sentence that said the cardinality was undecided - this one,
+ * {@link WhoIsAsking} and {@link ModeratorApi} - and all three were rewritten in
+ * the commit that put the column into the schema, by the rule that a sentence
+ * asserting an overturned decision is an instruction to the next reader to put it
+ * back. Measured on 14.09.2026 by doing exactly that: the old sentence was
+ * restored here and {@code AccountAndVerificationTest}, {@code ModeratorApiTest}
+ * and {@code AccountConstraintsTest} were run, sixty six cases, all green. Prose
+ * has no guard and cannot be given one that converges - a pattern over English
+ * has to be right about sentences nobody has written yet.
+ *
+ * <p><b>What IS guarded is the thing the prose is about,</b> and that is the whole
+ * of why this is a boundary and not a hole: {@code account.competitor_id} exists,
+ * refuses a second account on one member, accepts an account on no member at all,
+ * and empties rather than cascades when the member goes. Three cases say those,
+ * and a reader who believes this paragraph and checks the schema is told the truth
+ * by the schema.
  */
 @RestController
 class MeApi {

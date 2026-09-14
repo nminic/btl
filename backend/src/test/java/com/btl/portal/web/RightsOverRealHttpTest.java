@@ -94,6 +94,16 @@ class RightsOverRealHttpTest {
 	/** The one account {@code /api/moderators} answers, and the anchor of the case below. */
 	private static final String THE_SUPERADMIN = "superadmin-kroz-mrezu@primer.rs";
 
+	/**
+	 * The one route of the portal whose refusal is written by the RESOURCE and not by the
+	 * door, because the privilege is decided by the row.
+	 *
+	 * <p>No probe can stand in for it, for the reason {@link ProbeRoutes#NO_TICK_OPENS}
+	 * gives about the other unguarded shape: what the comparison is about is the address,
+	 * and the address whose existence must not leak is this one.
+	 */
+	private static final String THE_QUEUE = "/api/verification";
+
 	/** The token is any value at all, which is the point of it being sent twice. */
 	private static final String A_TOKEN = "11111111-2222-3333-4444-555555555555";
 
@@ -152,7 +162,7 @@ class RightsOverRealHttpTest {
 	}
 
 	private void account(String email, String role) {
-		db.sql("insert into account (email, role_id) values (?, (select id from role where code = ?))")
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', ?, (select id from role where code = ?))")
 				.params(email, role).update();
 
 		SecretToken session = SecretToken.fresh();
@@ -467,6 +477,53 @@ class RightsOverRealHttpTest {
 
 		answersTheSameWay("GET", ProbeRoutes.NO_TICK_OPENS, twinOf(ProbeRoutes.NO_TICK_OPENS),
 				asking);
+	}
+
+	/**
+	 * AND SO DOES THE QUEUE, WHOSE REFUSAL IS DECIDED BY NO GUARD AT THE DOOR AT ALL.
+	 *
+	 * <p><b>A third shape of the same thing, and the first that {@link RightsAtTheDoor} does
+	 * not write.</b> {@code /api/verification} carries neither {@link RightIsNeeded} nor
+	 * {@link OnlyTheSuperadmin}, because the verification screen has SIX queues with one right
+	 * apiece ({@code PDL.md:3906}) and the question it answers is „which of the six may he"
+	 * rather than „may he" - so the refusal is written by the resource itself, and every
+	 * sentence the long note in {@code RightsAtTheDoor} makes about the SHAPE of a refusal has
+	 * to be true of a second caller of {@code sendError}, measured rather than trusted.
+	 *
+	 * <p><b>What a status alone would cost here is exactly what it cost there</b>: an oracle
+	 * saying „this address is there", one request per guess, and the address it names is the
+	 * administrative one the owner decided must not say so (13.09.2026, {@code ADL.md:783}).
+	 * MockMvc cannot see it - no ERROR dispatch - so {@code VerificationApiTest} can compare
+	 * the numbers and nothing else.
+	 *
+	 * <p><b>Asked by two people who are refused for different reasons.</b>
+	 * {@link #A_COMPETITOR} holds nothing at all, which is every member of the league.
+	 * {@link #HOLDS_THE_TICK} is a MODERATOR holding {@code entity:members} - a right, just
+	 * not a queue - and he is the one who separates „holds a queue" from „holds anything":
+	 * a resource written the second way serves him every queue there is.
+	 *
+	 * <p><b>And {@link #WITHOUT_THE_TICK} is the anchor</b>, because he holds
+	 * {@code queue:results}. Without him a route that was simply broken would be missing for
+	 * everybody and both comparisons would hold while measuring nothing.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {A_COMPETITOR, HOLDS_THE_TICK})
+	void theQueueSaysNothingToSomebodyWithNoQueueOfHisOwn(String asking) throws Exception {
+		assertThat(answerTo("GET", THE_QUEUE, WITHOUT_THE_TICK))
+				.as("%s does not answer the moderator who holds a queue tick, so both addresses in"
+						+ " this comparison are simply missing and it measures nothing", THE_QUEUE)
+				.startsWith("HTTP/1.1 200");
+
+		assertThat(ticksOf(HOLDS_THE_TICK))
+				.as("the moderator who is meant to hold a right that is not a queue holds none, so"
+						+ " his refusal says nothing about entity rights")
+				.isEqualTo(1);
+		assertThat(List.of(roleOf(A_COMPETITOR), roleOf(HOLDS_THE_TICK)))
+				.as("the two askers are not the two kinds this case is about, so it runs one"
+						+ " setting twice")
+				.containsExactly("competitor", "moderator");
+
+		answersTheSameWay("GET", THE_QUEUE, twinOf(THE_QUEUE), asking);
 	}
 
 	/**

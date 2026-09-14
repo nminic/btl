@@ -121,7 +121,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 		competitor("001000", "Probni", "Clan", "00112233445566f1", "feeExempt");
 		competitor("001001", "Drugi", "Clan", "00112233445566f2", "payment");
 
-		db.sql("insert into account (email, role_id) values ('blagajnik@primer.rs',"
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
 
 		payment("001000", 2027, "20271000");

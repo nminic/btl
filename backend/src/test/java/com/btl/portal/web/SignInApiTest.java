@@ -39,7 +39,7 @@ class SignInApiTest {
 
 	@BeforeEach
 	void anAccountToSignInTo() {
-		db.sql("insert into account (email, role_id, password_hash) values (?,"
+		db.sql("insert into account (first_name, last_name, email, role_id, password_hash) values ('Probni', 'Probic', ?,"
 						+ " (select id from role where code = 'competitor'), ?)")
 				.params(ADDRESS, new StoredPassword().of(RIGHT))
 				.update();
@@ -120,7 +120,7 @@ class SignInApiTest {
 	 */
 	@Test
 	void everyNoIsTheSameNo() throws Exception {
-		db.sql("insert into account (email, role_id) values ('bezlozinke@primer.rs',"
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'bezlozinke@primer.rs',"
 				+ " (select id from role where code = 'competitor'))").update();
 		db.sql("update account set failed_sign_ins = 10, locked_until = now() + interval '15 minutes'"
 				+ " where email = ?").param(ADDRESS).update();
