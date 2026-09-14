@@ -35,9 +35,18 @@ import java.util.regex.Pattern;
  * <p>So what it does is written plainly instead. {@link Portal} refuses
  * everything that is not the shape of a portal address, which is a narrow shape
  * and is swept rather than listed. What it does NOT do is know which portal;
- * that belongs to the single bean that reads the address out of configuration
- * and hands it on, and until that bean exists this is a boundary rather than a
- * guard. The type still earns its place: an address can only enter through one
+ * that belongs to whoever reads the address out of configuration and hands it on.
+ *
+ * <p><b>AND SINCE B58 THAT PLACE EXISTS AND IS ONE.</b> This said "until that bean
+ * exists this is a boundary rather than a guard", and the boundary is closed:
+ * {@code btl.portal.address} in {@code application.properties} is the only source,
+ * {@code RegistrationApi}'s constructor is the only line that builds a {@code Portal}
+ * out of it, and it builds it at start up - so an installation configured with an
+ * address of the wrong shape does not come up at all, rather than sending links
+ * nobody can use. Nothing that arrives over the wire can reach that constructor,
+ * which is the whole of what the paragraph above is about.
+ *
+ * <p>The type still earns its place: an address can only enter through one
  * constructor, so there is exactly one line in the portal to look at, and a
  * method that needs a {@code Portal} cannot be quietly handed a {@code String}
  * somebody sent in.

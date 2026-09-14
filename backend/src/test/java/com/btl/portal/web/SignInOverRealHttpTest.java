@@ -119,8 +119,13 @@ class SignInOverRealHttpTest {
 	@BeforeEach
 	void anAccountToSignInTo() {
 		forget();
-		db.sql("insert into account (first_name, last_name, email, role_id, password_hash) values ('Probni', 'Probic', ?,"
-						+ " (select id from role where code = 'competitor'), ?)")
+		/* THE ADDRESS IS CONFIRMED, because since B58 an account whose address is not is
+		   refused before the password is ever compared (owner, 31.07.2026). Every case in
+		   this file is about the token that proves the request came from the portal, so
+		   each of them needs an account that gets past that first condition. */
+		db.sql("insert into account (first_name, last_name, email, role_id, password_hash,"
+						+ " email_confirmed_at) values ('Probni', 'Probic', ?,"
+						+ " (select id from role where code = 'competitor'), ?, now())")
 				.params(ADDRESS, new StoredPassword().of(RIGHT))
 				.update();
 	}

@@ -12,7 +12,8 @@ import java.util.Objects;
  *
  * <p><b>Nothing the answer carries says whether the address exists.</b> An
  * account nobody has, an account with the wrong password, an account with no
- * password at all and a locked account all come back the same way. Told apart,
+ * password at all, an account whose address nobody has confirmed and a locked
+ * account all come back the same way. Told apart,
  * the sign in form becomes a way of asking the portal who its members are, which
  * is a question it must not answer to somebody who is not one.
  *
@@ -57,9 +58,19 @@ public final class SignIn {
 	private SignIn() {
 	}
 
-	/** An account as this needs to see it: what it can be compared against, and
-	 *  what has happened at it lately. */
-	public record Account(String passwordHash, int failedSignIns, Instant lockedUntil) {
+	/**
+	 * An account as this needs to see it: what it can be compared against, what has
+	 * happened at it lately, and whether its address has been confirmed at all.
+	 *
+	 * @param addressConfirmedAt the moment the member clicked the link out of the
+	 *                           message, or null while he has not. Held as the moment
+	 *                           rather than as a boolean beside it because that is
+	 *                           what {@code account.email_confirmed_at} is, and two
+	 *                           shapes of one fact are two facts the day one of them
+	 *                           is worked out wrongly
+	 */
+	public record Account(String passwordHash, int failedSignIns, Instant lockedUntil,
+			Instant addressConfirmedAt) {
 
 		public Account {
 			if (failedSignIns < 0) {
@@ -101,6 +112,38 @@ public final class SignIn {
 		   there is none. This is also why a stranger cannot lock somebody out of an
 		   account that does not exist - there is nothing to lock. */
 		if (account == null) {
+			passwords.matches(typed, NOTHING_TO_COMPARE_AGAINST);
+			return Outcome.DO_NOTHING;
+		}
+
+		/* AND AN ADDRESS NOBODY HAS CONFIRMED IS NOT A WAY IN, which is the first
+		   condition of all and not one of several.
+
+		   PDL, owner, 31.07.2026: "Potvrda adrese elektronske poste je prva, i uslov za
+		   sve ostalo. Dok adresa nije potvrdjena, nema pristupa portalu ni placanja."
+		   And PDL P22, in one line: "Potvrda mejla je obavezan uslov za aktivaciju
+		   naloga." Registration writes an account whose `email_confirmed_at` is empty,
+		   so without this line B58 would have handed anybody who typed a password a way
+		   into the portal at an address he had never shown he reads.
+
+		   WHAT IT IS NOT is anything about MEMBERSHIP, and the two are one word apart in
+		   Serbian. V6 spells the difference out and quotes the owner of 11.08.2026 on it:
+		   "Clanstvo sme da se aktivira i pre nego sto je adresa potvrdjena." Activating
+		   the membership is a payment being recorded and it is nothing to do with this
+		   line; nothing here reads the member number, the fee or the `active` flag, and
+		   nothing may be made to.
+
+		   NO MISS IS COUNTED, for the reason written over the account with no password:
+		   a miss counted at an account nobody can yet sign in to would let a stranger
+		   shut it for ever, before its owner had once used it. He learns nothing by it
+		   either - every one of these answers is DO_NOTHING, so a right password and a
+		   wrong one at an unconfirmed address are the same no.
+
+		   THE ORDER AMONG THE THREE STATE CHECKS IS NOT OBSERVABLE and is not claimed to
+		   be: all three answer DO_NOTHING and all three compare against nothing, so a
+		   case cannot tell which of them decided. It is written first because that is
+		   the order the decision is written in, not because anything measures it. */
+		if (account.addressConfirmedAt() == null) {
 			passwords.matches(typed, NOTHING_TO_COMPARE_AGAINST);
 			return Outcome.DO_NOTHING;
 		}

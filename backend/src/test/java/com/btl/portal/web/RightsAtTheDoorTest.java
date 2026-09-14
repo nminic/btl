@@ -115,6 +115,16 @@ class RightsAtTheDoorTest {
 	 * which compares his refusal with the answer to an address that does not exist, byte
 	 * for byte, off a socket - the only place the container's ERROR dispatch runs.
 	 *
+	 * <p><b>AND {@code /api/registration} IS THE SEVENTH, AND IT IS THE FIRST ON THIS LIST
+	 * THAT MAKES SOMETHING.</b> Signing in and signing out are open by necessity and
+	 * neither creates a person; registering does, and it is open for the same shape of
+	 * reason - nobody can be asked to be a member in order to become one, and PDL says
+	 * there is no other door („Registracija se radi iskljucivo na sajtu. Niko ne moze
+	 * tehnicki da se registruje mimo sistema"). It carries no right because there is no box
+	 * anybody could tick that would let a visitor in; {@code ApiSecurity} opens it by name
+	 * beside the other two, with the reason written there, and with what is NOT in front of
+	 * it written there too.
+	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a
 	 * {@code @GetMapping("/cenovnik")} written without the annotation answered 200 to
@@ -132,7 +142,7 @@ class RightsAtTheDoorTest {
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
-					"/api/attendance", "/api/verification", "/error");
+					"/api/attendance", "/api/verification", "/api/registration", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 
