@@ -2,7 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
-import com.icegreen.greenmail.util.ServerSetupTest;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,13 +51,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(TestcontainersConfiguration.class)
 @TestPropertySource(properties = {
 		"spring.mail.host=127.0.0.1",
-		"spring.mail.port=3025",
+		"spring.mail.port=3326",
 		"spring.mail.properties.mail.smtp.auth=false",
 		"btl.portal.address=https://probni-portal.primer.rs"})
 class RegistrationOverRealHttpTest {
 
+	/** Its own port again, and not the one {@code RegistrationApiTest} binds. */
 	@RegisterExtension
-	static final GreenMailExtension SMTP = new GreenMailExtension(ServerSetupTest.SMTP);
+	static final GreenMailExtension SMTP = new GreenMailExtension(MailServerForACase.on(3326));
 
 	private static final String ADDRESS = "kroz-mrezu-registracija@primer.rs";
 

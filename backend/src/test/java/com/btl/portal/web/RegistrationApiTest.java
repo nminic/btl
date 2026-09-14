@@ -10,7 +10,7 @@ import com.btl.portal.domain.registration.WhatRegistrationAsksFor;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
-import com.icegreen.greenmail.util.ServerSetupTest;
+
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,15 +71,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Import(TestcontainersConfiguration.class)
 @TestPropertySource(properties = {
 		"spring.mail.host=127.0.0.1",
-		"spring.mail.port=3025",
+		"spring.mail.port=3325",
 		"spring.mail.properties.mail.smtp.auth=false",
 		"btl.portal.address=https://probni-portal.primer.rs"})
 @Transactional
 class RegistrationApiTest {
 
-	/** Port 3025 is GreenMail's own for SMTP, and the properties above name it. */
+	/**
+	 * This class's own mail server, on a port nothing else in the suite binds.
+	 *
+	 * <p>{@link MailServerForACase} says why it is not GreenMail's default 3025 and why
+	 * it is given longer to come up: measured on 14.09.2026, under twenty-one builds back
+	 * to back, every one of this class's cases errored with {@code Could not start mail
+	 * server} and the run still looked like a mutation being caught.
+	 */
 	@RegisterExtension
-	static final GreenMailExtension SMTP = new GreenMailExtension(ServerSetupTest.SMTP);
+	static final GreenMailExtension SMTP = new GreenMailExtension(MailServerForACase.on(3325));
 
 	private static final String ADDRESS = "novi.clan@primer.rs";
 
