@@ -34,6 +34,25 @@ import org.springframework.web.bind.annotation.RestController;
  * by the decision of the same day - so a member number here would be null for a
  * real signed in administrator, and every screen reading it would need the branch
  * whether it wanted one or not.
+ *
+ * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
+ * COMFORTABLE: nothing in this repository measures the paragraphs above.</b> Three
+ * files carried the sentence that said the cardinality was undecided - this one,
+ * {@link WhoIsAsking} and {@link ModeratorApi} - and all three were rewritten in
+ * the commit that put the column into the schema, by the rule that a sentence
+ * asserting an overturned decision is an instruction to the next reader to put it
+ * back. Measured on 14.09.2026 by doing exactly that: the old sentence was
+ * restored here and {@code AccountAndVerificationTest}, {@code ModeratorApiTest}
+ * and {@code AccountConstraintsTest} were run, sixty six cases, all green. Prose
+ * has no guard and cannot be given one that converges - a pattern over English
+ * has to be right about sentences nobody has written yet.
+ *
+ * <p><b>What IS guarded is the thing the prose is about,</b> and that is the whole
+ * of why this is a boundary and not a hole: {@code account.competitor_id} exists,
+ * refuses a second account on one member, accepts an account on no member at all,
+ * and empties rather than cascades when the member goes. Three cases say those,
+ * and a reader who believes this paragraph and checks the schema is told the truth
+ * by the schema.
  */
 @RestController
 class MeApi {

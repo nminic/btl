@@ -444,12 +444,22 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 * either answer on its own.
 	 *
 	 * <p><b>Both columns, because the collation is written per column and a mutation that
-	 * drops it from one leaves the other answering.</b> The two rows are arranged so that
-	 * ordering by the given name and ordering by the surname give OPPOSITE orders: under
-	 * {@code sr_latn} C and C-with-caron are two letters and every C word comes first,
-	 * while under the ICU root and under libc they are one letter and the next character
-	 * decides. So each of the two assertions flips on its own the moment its column loses
-	 * the tailoring, and neither can be satisfied by the other's column.
+	 * drops it from one leaves the other answering.</b> The rows are arranged so that
+	 * ordering by the given name and ordering by the surname give DIFFERENT orders, so
+	 * each of the two assertions moves on its own and neither can be satisfied by the
+	 * other's column.
+	 *
+	 * <p><b>Three rows and not two, and the third is what tells the tailoring apart from
+	 * every other collation rather than only from the untailored ones.</b> The first two
+	 * separate {@code sr_latn} from the ICU root and from libc: in the Serbian Latin
+	 * alphabet C and C-with-caron are two letters, so every C word comes first, while
+	 * under the root and under {@code en_US} the caron is an accent and the next character
+	 * decides. Measured on 14.09.2026, that pair alone was not enough: the column declared
+	 * {@code collate "C"} - byte order - answers identically, because in UTF-8 the letter C
+	 * is one byte below 0x80 and C-with-caron begins at 0xC4. The third row is a name typed
+	 * in lower case, which byte order puts after every capital and a letter ordering puts
+	 * first. With it, the three collations give three different answers to each of the two
+	 * questions below, and no other named collation can slip between them unnoticed.
 	 *
 	 * <p>Measured with data rather than with {@code information_schema}, for the reason
 	 * {@link ConventionsTest} gives: asking the catalogue only proves a name was written
@@ -459,14 +469,15 @@ class AccountAndVerificationTest extends DatabaseTest {
 	void theNameOnTheAccountSortsByTheSerbianAlphabet() {
 		account("cvetko@primer.rs", "Cvetko", "Čolić", null);
 		account("cedomir@primer.rs", "Čedomir", "Cvetković", null);
+		account("anka@primer.rs", "anka", "anić", null);
 
 		assertThat(db.sql("select email from account order by first_name").query(String.class).list())
-				.as("given names sort by the ICU root or by libc, where C-with-caron is an accented C")
-				.containsExactly("cvetko@primer.rs", "cedomir@primer.rs");
+				.as("given names sort by byte order, by the ICU root or by libc, and not by the alphabet")
+				.containsExactly("anka@primer.rs", "cvetko@primer.rs", "cedomir@primer.rs");
 
 		assertThat(db.sql("select email from account order by last_name").query(String.class).list())
-				.as("surnames sort by the ICU root or by libc, where C-with-caron is an accented C")
-				.containsExactly("cedomir@primer.rs", "cvetko@primer.rs");
+				.as("surnames sort by byte order, by the ICU root or by libc, and not by the alphabet")
+				.containsExactly("anka@primer.rs", "cedomir@primer.rs", "cvetko@primer.rs");
 	}
 
 	/** An account, with the name it carries itself and the member it belongs to or none. */
