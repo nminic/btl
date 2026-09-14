@@ -153,63 +153,93 @@ alter table account
  * identity and an address is a way of reaching somebody.
  *
  *
- * WHAT HAPPENS WHEN THE MEMBER IS DELETED: SET NULL, and the reason is a precedent rather than a
- * preference.
+ * WHAT HAPPENS WHEN THE MEMBER IS DELETED: THE DATABASE REFUSES. ON DELETE RESTRICT, and it is
+ * the owner's own answer rather than a reading of the precedents around it.
  *
- * THE SCHEMA ALREADY SORTS ITS REFERENCES TO A MEMBER INTO TWO KINDS, and the question is only
- * which kind this one is.
+ * THE DECISION, 14.09.2026, IN HIS WORDS: „Baza odbija brisanje clana dok se njegov nalog ne
+ * resi." It went to him rather than being settled here because ALL THREE ANSWERS RAN GREEN
+ * THROUGH THE WHOLE SUITE, which is the mark of a question about MEANING rather than of a fault
+ * to be measured (ADL A32): where two opposite statements both pass, somebody decides, and it is
+ * not the person writing the migration. He was given the three with the cost of each beside it.
  *
- *   - What IS one of his rows goes with him: `verification.competitor_id` (V9), `registration` and
- *     `consent` (V8), `pair` and `pair_invite` (V12), `message.to_id` (V13), `membership` (V22) -
- *     all ON DELETE CASCADE. ADL A42, 11.09.2026, is the owner's decision behind that word and it
- *     names the cost he accepted: a member's rows go with him, as his results do.
+ * THE CASE THAT PUT THE QUESTION AND REFUSES BOTH ALTERNATIVES: THE MODERATOR WHO ALSO RACES HAS
+ * ONE LOGIN FOR BOTH THINGS. Delete his competitor record - which is exactly what disqualification
+ * does („Diskvalifikacija brise kompletne rezultate i profil takmicara", PDL) - and:
  *
- *   - What merely NAMES him, while being a row about something else, keeps its own existence and
- *     loses the pointer: `event_comment.competitor_id` (V7) beside `who text not null`,
- *     `verification.decided_by` (V9) beside `decided_by_name`, `team.admin_id` (V11),
- *     `league.admin_id` (V14), `message.from_id` (V13), and every key of the frozen season (V17)
- *     beside the name the trigger empties. All ON DELETE SET NULL.
+ *   - CASCADE TAKES HIS ADMINISTRATIVE ACCOUNT along with his racing record, and with it three
+ *     further things nobody reading the DELETE could see: the account's live confirmation links
+ *     (V6 cascades), its pointer in every verification it ever decided (V9 empties that and keeps
+ *     the name for exactly this reason), and his way of signing in at all. A man stops being a
+ *     competitor; that is not the same event as a man stopping being a moderator.
  *
- * AN ACCOUNT IS THE SECOND KIND, AND FROM TODAY IT IS MORE PLAINLY SO THAN IT WAS YESTERDAY. It
- * exists before anybody is a member (V6 says so in as many words), it outlives a membership, and
- * since the decision above it may belong to somebody who was never a member at all. And the two
- * columns added higher up in this same file are exactly what `event_comment.who` and
- * `decided_by_name` are: the row's own copy of the name, so that when the member goes the account
- * still says whose it is instead of having to fetch it from a row that is no longer there. That is
- * what makes SET NULL available here at all, and it is why the two halves of this migration belong
- * in one file.
+ *   - SET NULL KEEPS THE ROW AND EMPTIES ONLY THE POINTER, and the row that is left still carries
+ *     THE FIRST NAME, THE LAST NAME AND THE ELECTRONIC ADDRESS OF THE DELETED MAN. Measured with
+ *     a probe before this was written: after `delete from competitor ...` the account read back
+ *     `trci@primer.rs | Nalogovo Ime`. That is not an emptied reference, it is his personal data
+ *     still being held, and the row is now indistinguishable from a moderator who never raced. It
+ *     collides head on with the decision of 11.08.2026: „Ili ce biti skriven profil jer nema
+ *     aktivno clanstvo, ili ce biti obrisan zauvek sa svim svojim profilom i rezultatima, a na
+ *     mestima gde se pominje bice anonimizovan." (PDL, in five places; ADL A12.) An account is a
+ *     place where he is mentioned, and SET NULL anonymises nothing.
  *
- * WHAT IS LEFT BEHIND IS NOT A DAMAGED ROW. An account pointing at nobody is the shape this
- * increment created on purpose - the moderator who does not race - so nothing that reads accounts
- * has to learn a new state, and `/api/moderators` answers about him out of his own columns without
- * a branch.
+ * WHAT RESTRICT COSTS, WRITTEN DOWN BECAUSE HE BOUGHT IT KNOWINGLY: DELETING A MEMBER IS FROM
+ * TODAY ALWAYS TWO STEPS. First somebody decides what happens to his account - it is anonymised,
+ * or it is deleted - and only then may the member go. The procedure is longer, and that is the
+ * whole of the price. What it buys is that NOBODY CAN FORGET, BECAUSE THE DATABASE REFUSES. Under
+ * either other answer, whoever writes the deletion path half a year from now would have to
+ * REMEMBER to anonymise the account, and on the day he forgot, nothing at all would break.
  *
- * CASCADE IS REFUSED, and it is the tempting one because so many neighbours use it. It would make
- * the deletion of a MEMBER into the deletion of a LOGIN, and then into three more things that
- * nobody reading the DELETE could see: the account's live confirmation links go (V6 cascades),
- * every decision that account ever made in the verification queue loses its `decided_by` (V9 sets
- * it null and keeps the name for exactly this reason), and a moderator who also happens to race
- * would lose his administrative account the day his competitor record is deleted - which is what
- * disqualification does („Diskvalifikacija brise kompletne rezultate i profil takmicara", PDL).
- * Whether the login goes when the member does is a question about ACCOUNTS, and it belongs to the
- * increment that writes actions over accounts, beside the refusal to delete the last superadmin.
- * A foreign key action is the one place that decision must not be taken silently.
+ * AND PDL P23 IS NOT OVERTURNED BY THIS, which has to be said out loud because ten merged
+ * migrations quote it. A member may still ask to be deleted. What is refused is not his request
+ * but CARRYING IT OUT IN ONE STATEMENT while his login still names him; emptying `competitor_id`
+ * first is the first of the two steps, and the moment it is done the delete goes through.
  *
- * RESTRICT IS REFUSED TOO, and more simply: it would break the one deletion a member has a right
- * to. PDL P23 lets him ask to be deleted, and under RESTRICT his own account would be what refuses
- * it. Deleting the account first and the member second would work, but that is an order of
- * statements somebody has to remember, and a rule kept by remembering is not kept.
+ * THIS IS THE ONLY RESTRICT IN THE SCHEMA THAT GUARDS A PERSON, AND THAT IS WHY IT NEEDS A
+ * SENTENCE THE OTHER KEYS DO NOT. Counted over every migration in this repository before this
+ * line was written: every other ON DELETE RESTRICT points at `place`, `country`, `price_row`,
+ * `ducat`, `ducat_kind` or `admin_right` (V7, V9, V10, V11, V15, V16, V18) - codebooks, all of
+ * them - and there the word means „a codebook does not vanish under a row that names it". Here it
+ * means something else entirely: A PERSON DOES NOT GO UNTIL SOMEBODY HAS DECIDED ABOUT HIS LOGIN.
+ * A reader who knows the schema's other RESTRICTs will read this one as the codebook rule and be
+ * wrong. The list of every key in the schema with its action, this one included, is
+ * `CompetitorEventRaceAndResultTest.everyDeletionRuleInTheSchemaIsNamed`.
+ *
+ * WHAT THIS DOES TO THE SCHEMA'S TWO KINDS OF REFERENCE TO A MEMBER, since those two were the
+ * whole of the argument before he answered and remain true of every other key. What IS one of his
+ * rows goes with him - `verification.competitor_id` (V9), `registration` and `consent` (V8),
+ * `pair` and `pair_invite` (V12), `message.to_id` (V13), `membership` (V22), all CASCADE, and ADL
+ * A42 of 11.09.2026 is the owner's decision behind that word. What merely NAMES him keeps its own
+ * existence and loses the pointer - `event_comment.competitor_id` (V7) beside `who text not null`,
+ * `verification.decided_by` (V9) beside `decided_by_name`, `team.admin_id` (V11),
+ * `league.admin_id` (V14), `message.from_id` (V13), every key of the frozen season (V17) - all SET
+ * NULL. AN ACCOUNT IS NEITHER, and that is what sorting it into the second kind missed: those rows
+ * keep a name that was always THEIRS to keep, the league's record of who did a thing that was
+ * done. An account holds THE LIVING MAN'S OWN NAME AND HIS ADDRESS, as the thing he signs in with,
+ * and a login is a historical record of nothing. So it is a THIRD kind - a row that must be DEALT
+ * WITH before the member goes, rather than one that follows him or one that outlives him - and it
+ * is the only member of that kind in the schema today.
+ *
+ * WHY THE NAME ON THE ACCOUNT IS STILL RIGHT, AND WHY IT IS NO LONGER WHAT LETS THE MEMBER GO. The
+ * two columns added higher up in this file are a fact about the account (decision 1 at the top),
+ * and the moderator who never raced needs them whatever this key says. What they are NOT, any
+ * more, is the thing that makes a member's deletion safe: a name that outlives its man is the
+ * damage here, not the repair.
  *
  * AND THE OTHER DIRECTION NEEDS NO WORDS AND HAS NONE: nothing points from `competitor` at
- * `account`, so deleting an account cannot reach a member. His results are the league's history
- * and do not belong to his login.
+ * `account`, so deleting an ACCOUNT cannot reach a member and this refusal runs one way only. His
+ * results are the league's history and do not belong to his login.
+ *
+ * WHAT IS DELIBERATELY NOT IN THIS FILE: the deletion path itself. Anonymising an account, or
+ * deleting it, is written with the increment that writes actions over accounts, beside the refusal
+ * to delete the last superadmin named at the top. This key is only the thing that makes one of
+ * those two compulsory before a member may go.
  */
 alter table account
     add column competitor_id bigint;
 
 alter table account
     add constraint account_competitor_fk foreign key (competitor_id) references competitor (id)
-        on delete set null,
+        on delete restrict,
     add constraint account_competitor_unique unique (competitor_id);
 
-comment on column account.competitor_id is 'The member this account belongs to, if there is one. Empty for a moderator who does not race, which is the ordinary case and not a fault (owner, 14.09.2026). Unique, so no member hangs off two accounts.';
+comment on column account.competitor_id is 'The member this account belongs to, if there is one. Empty for a moderator who does not race, which is the ordinary case and not a fault (owner, 14.09.2026). Unique, so no member hangs off two accounts. ON DELETE RESTRICT: the member cannot be deleted while this column still names him, so deleting a member is always two steps - first decide what happens to his account, anonymise it or delete it, and only then may he go (owner, 14.09.2026). The only RESTRICT in this schema that guards a person rather than a codebook.';

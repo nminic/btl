@@ -1,18 +1,21 @@
 package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * What the account and the confirmation link do, as opposed to what they refuse.
  *
- * AccountConstraintsTest owns the refusals, one row per constraint. This file
- * owns the four sentences the owner and PDL wrote that no single constraint can
- * carry, and each one is here because reverting it would otherwise leave the
- * suite green:
+ * AccountConstraintsTest owns the refusals of a WRITE, one bad row per
+ * constraint. This file owns the sentences the owner and PDL wrote that no such
+ * row can carry - what the schema allows, and the one refusal that answers a
+ * DELETE rather than an INSERT and needs several members to mean anything - and
+ * each is here because reverting it would otherwise leave the suite green:
  *
  * <ul>
  * <li><b>Two things are called activation and they are not the same thing.</b>
@@ -81,8 +84,8 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 * this table alone, because what V23 added is a POINTER and a NAME, not the
 	 * member's own fields: no member number, no date of birth, no basis of
 	 * membership, nothing that {@code competitor} answers for. The second half is
-	 * {@link #theAccountMayBelongToNobodyAndKeepsItsOwnNameWhenTheMemberGoes()},
-	 * which is where the pointer is measured as behaviour.
+	 * {@link #theMemberCannotGoWhileHisAccountStillNamesHim()}, which is where the
+	 * pointer is measured as behaviour.
 	 */
 	@Test
 	void theAccountCarriesItsAddressItsRoleAndItsConfirmationAndNothingElse() {
@@ -360,44 +363,62 @@ class AccountAndVerificationTest extends DatabaseTest {
 	}
 
 	/**
-	 * AN ACCOUNT MAY BELONG TO NOBODY, AND WHEN THE MEMBER GOES IT KEEPS ITS OWN NAME.
+	 * AN ACCOUNT MAY BELONG TO NOBODY, AND A MEMBER MAY NOT GO WHILE ONE STILL NAMES HIM.
 	 *
-	 * <p>Both halves of V23's foreign key, and neither of them is a refusal, so neither
-	 * can live in AccountConstraintsTest. What that file holds is the pair of rules that
-	 * say no: a member who is not there, and a second account on a member somebody already
-	 * has. What is here is what the key ALLOWS, which is the half a reviewer never sees
-	 * fail.
+	 * <p>Both halves of V23's foreign key. The first is what the key ALLOWS, which is the
+	 * half a reviewer never sees fail. The second is a refusal, and it is here rather than
+	 * in AccountConstraintsTest because that file's shape is one bad INSERT per constraint
+	 * and this one answers a DELETE: it needs four members who differ in whether an account
+	 * names them, and it means nothing read one row at a time.
 	 *
-	 * <p><b>The moderator who does not race.</b> „Jedan nalog je tacno jedan clan" means
-	 * at most one, not exactly one - the owner said so in the same breath, on 14.09.2026,
-	 * and the whole reason the name went onto the account is that a moderator may have no
+	 * <p><b>The moderator who does not race.</b> „Jedan nalog je tacno jedan clan" means at
+	 * most one, not exactly one - the owner said so in the same breath, on 14.09.2026, and
+	 * the whole reason the name went onto the account is that a moderator may have no
 	 * competitor record at all. So the column is nullable, and this is the case that fails
 	 * the moment somebody writes NOT NULL on it: {@code moderator@primer.rs} could not be
 	 * opened, and the screen this increment serves would have nobody on it.
 	 *
-	 * <p><b>And ON DELETE SET NULL, which is a decision with two alternatives that both
-	 * run.</b> CASCADE would take the login away with the member - and with it his live
-	 * confirmation links and his pointer in every verification he ever decided - so
-	 * deleting a MEMBER would silently delete an ADMINISTRATOR. RESTRICT would refuse the
-	 * one deletion the member has a right to (PDL P23). The assertion that tells the three
-	 * apart is not that the member is gone, which is true under all three: it is that the
-	 * ACCOUNT IS STILL THERE, still signs in, and still says whose it is out of its own two
-	 * columns rather than out of the row that has just been deleted. That last part is what
-	 * makes SET NULL honest here at all, and it is why the name and the pointer arrived in
-	 * one migration.
+	 * <p><b>And ON DELETE RESTRICT, which is the owner's decision of 14.09.2026 and not a
+	 * reading of the keys around it.</b> „Baza odbija brisanje clana dok se njegov nalog ne
+	 * resi." All three answers ran green through the suite, so it was a question about
+	 * meaning rather than a fault, and it went to him with the cost of each. CASCADE would
+	 * take the login with the member, so deleting a COMPETITOR would silently delete an
+	 * ADMINISTRATOR - the moderator who also races has one account for both. SET NULL would
+	 * leave that account holding the first name, the last name and the address of a man who
+	 * has been deleted, indistinguishable from a moderator who never raced, against „na
+	 * mestima gde se pominje bice anonimizovan" (11.08.2026, ADL A12). What he bought is a
+	 * longer procedure - deleting a member is always two steps - and what it buys back is
+	 * that the first step cannot be forgotten.
 	 *
-	 * <p><b>Two members and two accounts, so that nothing read back is the only one of its
-	 * kind.</b> The account that keeps its member is what keeps a cascade emptying the
-	 * whole column from passing as "the pointer was cleared", and the member who is not
-	 * deleted is what keeps a delete of every competitor from passing as "his member was
-	 * deleted". The name on the account is different from the name on his competitor
-	 * record on purpose: with one name in the fixture, an account that had somehow been
-	 * reading the member's name would answer identically.
+	 * <p><b>Three deletes and not one, because RESTRICT written as „nothing is ever deleted"
+	 * would pass a single refusal.</b> A member nobody's account names still goes, and the
+	 * two who stay say that the delete took HIM rather than the table. A member whose
+	 * account has just been emptied goes too, and that is the two step procedure itself:
+	 * the refusal LIFTS the moment the first step is done, which is the whole difference
+	 * between this key and a member who cannot be deleted at all. Only then the refusal.
+	 *
+	 * <p><b>The refusal is last because it aborts the transaction</b> - PostgreSQL ignores
+	 * every further statement in it - which is the shape
+	 * {@code DucatConstraintsTest.aBadgeSomebodyHasWonCannotBeDeleted} already uses. So the
+	 * member it names is deliberately NOT the last one standing: {@code 001003} is still
+	 * there, still deletable, and a case that reached for him instead would pass no
+	 * assertion at all.
+	 *
+	 * <p><b>The boundary, written down rather than patched.</b> What is measured here is
+	 * that the DELETE is refused and that {@code account_competitor_fk} is the reason. It
+	 * does NOT tell RESTRICT from NO ACTION: PostgreSQL refuses both at the same moment with
+	 * the same message, the difference being only that NO ACTION may be deferred, and this
+	 * key is not deferrable. The catalogue is what tells the two apart, and it is asked in
+	 * {@code CompetitorEventRaceAndResultTest.everyDeletionRuleInTheSchemaIsNamed}, which
+	 * reads {@code pg_constraint.confdeltype} and carries this key with the word
+	 * {@code restrict} beside it.
 	 */
 	@Test
-	void theAccountMayBelongToNobodyAndKeepsItsOwnNameWhenTheMemberGoes() {
+	void theMemberCannotGoWhileHisAccountStillNamesHim() {
 		competitor("001000", "Trkacki", "Zapis");
 		competitor("001001", "Drugi", "Trkac");
+		competitor("001002", "Bez", "Naloga");
+		competitor("001003", "Cetvrti", "Trkac");
 
 		/* The moderator who does not race, and he goes in with no member at all. */
 		db.sql("insert into account (first_name, last_name, email, role_id)"
@@ -412,27 +433,32 @@ class AccountAndVerificationTest extends DatabaseTest {
 				.as("an account with no member could not be written, and that is the moderator who does not race")
 				.isEqualTo(1);
 
-		db.sql("delete from competitor where member_number = '001000'").update();
+		/* A member no account names goes, and the others stay: a key that refused every
+		   deletion of a competitor would answer this one the same way otherwise. */
+		assertThat(db.sql("delete from competitor where member_number = '001002'").update())
+				.as("a member no account names could not be deleted either")
+				.isOne();
+		assertThat(db.sql("select member_number from competitor order by member_number")
+				.query(String.class).list())
+				.as("the delete reached members it was not aimed at")
+				.containsExactly("001000", "001001", "001003");
 
-		/* The account is still there, and it still says whose it is. Read as one string so
-		   that a row which survived with an emptied NAME cannot pass for a row that kept
-		   it. */
-		assertThat(db.sql("select first_name || ' ' || last_name from account where email = 'trci@primer.rs'")
-				.query(String.class).optional())
-				.as("deleting the member took the account with it, or emptied the name on it")
-				.contains("Nalogovo Ime");
+		/* And the two step procedure itself: resolve the account, then the member may go.
+		   This is what says the refusal below is about the POINTER and not about the man. */
+		db.sql("update account set competitor_id = null where email = 'ostaje@primer.rs'").update();
+		assertThat(db.sql("delete from competitor where member_number = '001001'").update())
+				.as("the member could not go even after his account stopped naming him,"
+						+ " which leaves no way to delete anybody who ever had one")
+				.isOne();
 
-		assertThat(db.sql("select competitor_id from account where email = 'trci@primer.rs'")
-				.query(Long.class).optional())
-				.as("the account still points at a member who has been deleted")
-				.isEmpty();
-
-		/* And the other account did not lose its member, which is what separates SET NULL
-		   from a cascade that emptied the column. */
-		assertThat(db.sql("select c.member_number from account a join competitor c on c.id = a.competitor_id"
-				+ " where a.email = 'ostaje@primer.rs'").query(String.class).optional())
-				.as("an account that names another member lost him too")
-				.contains("001001");
+		/* Last, because a refused statement aborts the transaction and nothing may follow
+		   it. 001003 is still there and has no account, so a case that deleted the wrong
+		   member would find nothing thrown. */
+		assertThatThrownBy(() -> db.sql("delete from competitor where member_number = '001000'").update())
+				.as("the member was deleted while his account still named him, and that account"
+						+ " now holds the name and the address of a man who is gone")
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("account_competitor_fk");
 	}
 
 	/**

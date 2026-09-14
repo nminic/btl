@@ -417,19 +417,17 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				.list();
 
 		assertThat(rules).containsExactly(
-				/* V23. SET NULL, and it is the answer of the second kind rather than of the
-				   first: what IS one of a member's rows goes with him (A42, and every cascade
-				   below), and what merely NAMES him keeps its own existence and loses the
-				   pointer - `event_comment.competitor_id` beside `who`, `verification.decided_by`
-				   beside `decided_by_name`, `team.admin_id`, `league.admin_id`, and every key of
-				   the frozen season. An account is that shape: it exists before anybody is a
-				   member (V6), and since 14.09.2026 it may belong to somebody who never was one.
-				   What makes SET NULL honest here is that the same migration put the name ON the
-				   account, so the row still says whose it is with the member gone.
-				   CASCADE would turn the deletion of a MEMBER into the deletion of a LOGIN, and
-				   with it the account's live links and its pointer in every verification it ever
-				   decided. RESTRICT would refuse the one deletion PDL P23 gives him a right to. */
-				"account.account_competitor_fk set null",
+				/* V23, and it is the one RESTRICT on this whole list that guards a PERSON rather
+				   than a codebook. „Baza odbija brisanje clana dok se njegov nalog ne resi."
+				   (owner, 14.09.2026). All three answers passed the suite, so it was a question
+				   about meaning and went to him with the cost of each: CASCADE would take the
+				   ADMINISTRATIVE account of a moderator who also races on the day his competitor
+				   record goes, and SET NULL would leave his first name, his last name and his
+				   address alive on a row nothing distinguishes from a moderator who never raced -
+				   against „na mestima gde se pominje bice anonimizovan" (11.08.2026, ADL A12).
+				   The price he bought: deleting a member is always two steps, and the database is
+				   what makes the first one impossible to forget. */
+				"account.account_competitor_fk restrict",
 				// V6, and its cascade is the one place a link may not outlive its account
 				"account.account_role_fk no action",
 				/* V18. Sesija i pravo idu SA nalogom, jer bez naloga ne znace nista; ali pravo
