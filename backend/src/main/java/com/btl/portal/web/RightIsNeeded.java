@@ -30,10 +30,16 @@ import java.lang.annotation.Target;
  * in every test somebody thought to write with a moderator, and stands open for the
  * one account that can do the most damage. {@code everyRightARouteAsksForIsOneTheMatrixHolds}
  * compares what the routes ask for with what the matrix holds, read off the database.
+ *
+ * <p><b>And it is no longer the only kind of guard, which is what {@link AskedAtTheDoor}
+ * is for.</b> {@link OnlyTheSuperadmin} guards the one entity no tick opens. Both wear
+ * that mark, so the floor that counts guarded routes asks the annotation about itself
+ * rather than holding a list of two names that a third kind would quietly fall out of.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
+@AskedAtTheDoor
 @interface RightIsNeeded {
 
 	/** The code of the box the superadmin ticks, {@code scope:target}. */

@@ -14,10 +14,21 @@ import java.io.IOException;
 /**
  * WHO MAY, ASKED BEFORE THE METHOD THAT WOULD ANSWER RUNS.
  *
- * <p>This is where {@link RightIsNeeded} is applied. It sits in front of every route
- * under {@code /api}, so a route added tomorrow is covered by whatever it declares
- * without anybody remembering this file exists - which is the point of ADL A8 and the
- * reason the rule is not written inside each handler.
+ * <p>This is where {@link RightIsNeeded} is applied, and since 14.09.2026 where
+ * {@link OnlyTheSuperadmin} is too. It sits in front of every route under {@code /api},
+ * so a route added tomorrow is covered by whatever it declares without anybody
+ * remembering this file exists - which is the point of ADL A8 and the reason the rule is
+ * not written inside each handler.
+ *
+ * <p><b>TWO KINDS OF GUARD AND ONE REFUSAL.</b> A right is a box the superadmin ticks;
+ * {@link OnlyTheSuperadmin} is the one entity there is no box for, because the owner
+ * decided on 13.08.2026 that moderators have no column in the matrix
+ * ({@code PDL.md:4403}, {@code ADL.md:802}). They are asked separately and they end in
+ * the same line, so the second kind takes the road the first one takes by construction
+ * rather than by a copy somebody has to keep equal - which matters because the SHAPE of
+ * the refusal is the thing the note below is about. Both wear {@link AskedAtTheDoor},
+ * which is what lets the floors count guarded routes without holding a list of the
+ * kinds.
  *
  * <p><b>Nothing about the resource is read before the answer.</b> The question is
  * settled in {@code preHandle}, so a refusal costs the account's role and its ticks
@@ -104,6 +115,15 @@ class RightsAtTheDoor implements WebMvcConfigurer, HandlerInterceptor {
 
 		RightIsNeeded needed = method.getMethodAnnotation(RightIsNeeded.class);
 
+		/* AND THE SECOND KIND OF GUARD, which asks for no code because there is no code
+		   to ask for. `OnlyTheSuperadmin` says why: the owner decided on 13.08.2026 that
+		   moderators have no column in the matrix, so nothing anybody can tick opens
+		   `/api/moderators`, and a made up code here would refuse every moderator and
+		   let the superadmin through - which reads as a shut door in every case written
+		   with a moderator. What is asked instead is the MODE, which V5 lets exactly one
+		   role carry. */
+		OnlyTheSuperadmin onlyHim = method.getMethodAnnotation(OnlyTheSuperadmin.class);
+
 		/* A ROUTE THAT DECLARES NOTHING IS LEFT ALONE, and that is the whole of what
 		   this increment changes for what already exists. `/api/me` and everything on the
 		   open list pass through here untouched; the day a route needs a right it says so
@@ -113,11 +133,19 @@ class RightsAtTheDoor implements WebMvcConfigurer, HandlerInterceptor {
 		   held ten, which is what a number in a comment is for: it reads as though somebody
 		   had counted, so nobody counts again. `ApiSecurity.READ_BY_ANYBODY` is the list,
 		   and whoever needs to know how many there are can read it. */
-		if (needed == null) {
+		if (needed == null && onlyHim == null) {
 			return true;
 		}
 
-		if (mayHe.may(needed.value())) {
+		/* EVERY GUARD ON THE METHOD HAS TO SAY YES, rather than the first one found
+		   deciding. No route wears both today and none is planned to, but written as an
+		   `else if` the day one did would be the day the second guard silently stopped
+		   being asked - and that is a rule about the SHAPE of the check, which is the
+		   thing that cannot be measured after the fact. Each half is measured on its own:
+		   a route that declares only a right never evaluates the second, and
+		   `/api/moderators` never evaluates the first. */
+		if ((needed == null || mayHe.may(needed.value()))
+				&& (onlyHim == null || mayHe.holdsEveryRightThereIs())) {
 			return true;
 		}
 

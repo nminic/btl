@@ -35,6 +35,59 @@ class AdminRightsTest {
 		assertThat(rights.may(ANOTHER_RIGHT)).isTrue();
 		assertThat(rights.may("entity:something-nobody-has-invented-yet")).isTrue();
 		assertThat(rights.mayDoAnything()).isTrue();
+		assertThat(rights.holdsEveryRightThereIs()).isTrue();
+	}
+
+	/**
+	 * AND HOLDING EVERY TICK IS NOT THE SAME AS HOLDING EVERY RIGHT THERE IS.
+	 *
+	 * <p><b>This is the difference {@code OnlyTheSuperadmin} is built on, and it cannot
+	 * be seen by asking {@link AdminRights#may(String)} over the matrix one code at a
+	 * time.</b> A moderator ticked for everything answers yes to every code there is, and
+	 * still answers no here: what he holds was GIVEN him, one box at a time, and the one
+	 * thing that is not in the matrix at all is who the moderators are (PDL P28a,
+	 * {@code PDL.md:4403}). A guard written as „does he hold all of them" would hand the
+	 * portal to whoever was trusted with all of them, and „Bez te granice moderator bi sam
+	 * sebi mogao da dodeli prava, pa granularna prava ne bi značila ništa" (owner,
+	 * 30.07.2026).
+	 *
+	 * <p>Both sides are read in one case on purpose, because the claim is a comparison:
+	 * the same set of codes, the same answers to {@code may}, and two different answers
+	 * here.
+	 */
+	@Test
+	void aModeratorWithEveryTickStillDoesNotHoldEveryRightThereIs() {
+		Set<String> everyTick = Set.of(A_RIGHT, ANOTHER_RIGHT);
+
+		AdminRights ticked = new AdminRights(AdminRights.Mode.GRANTED, everyTick);
+		AdminRights owner = new AdminRights(AdminRights.Mode.ALL, everyTick);
+
+		for (String right : everyTick) {
+			assertThat(ticked.may(right))
+					.as("the fixture's fully ticked moderator does not hold %s, so the two below"
+							+ " differ in what was ticked rather than in the mode", right)
+					.isTrue();
+			assertThat(owner.may(right)).isTrue();
+		}
+
+		assertThat(ticked.holdsEveryRightThereIs())
+				.as("a moderator ticked for every right there is was taken for the superadmin, and"
+						+ " the screen he would then open is the one that ticks boxes")
+				.isFalse();
+		assertThat(owner.holdsEveryRightThereIs())
+				.as("the superadmin does not hold every right there is, so nothing opens the one"
+						+ " route no tick opens")
+				.isTrue();
+	}
+
+	/** And nobody else does either, whatever is ticked. */
+	@Test
+	void nobodyWhoseRoleGrantsNothingHoldsEveryRightThereIs() {
+		assertThat(new AdminRights(AdminRights.Mode.NONE, Set.of(A_RIGHT, ANOTHER_RIGHT))
+				.holdsEveryRightThereIs())
+				.as("a tick on somebody whose role grants nothing made him the superadmin")
+				.isFalse();
+		assertThat(AdminRights.none().holdsEveryRightThereIs()).isFalse();
 	}
 
 	/** Exactly what was ticked, and nothing beside it. */

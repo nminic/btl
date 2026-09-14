@@ -13,6 +13,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.util.ServletRequestPathUtils;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -81,6 +85,15 @@ class RightsOverRealHttpTest {
 
 	private static final String WITHOUT_THE_TICK = "bez-prava-kroz-mrezu@primer.rs";
 
+	/** Signed in and holding nothing whatever, which is every member of the league. */
+	private static final String A_COMPETITOR = "takmicar-kroz-mrezu@primer.rs";
+
+	/** And every box in the matrix ticked, which is the moderator who knows the most. */
+	private static final String EVERY_TICK = "sve-kucice-kroz-mrezu@primer.rs";
+
+	/** The one account {@code /api/moderators} answers, and the anchor of the case below. */
+	private static final String THE_SUPERADMIN = "superadmin-kroz-mrezu@primer.rs";
+
 	/** The token is any value at all, which is the point of it being sent twice. */
 	private static final String A_TOKEN = "11111111-2222-3333-4444-555555555555";
 
@@ -90,25 +103,52 @@ class RightsOverRealHttpTest {
 	@Autowired
 	private JdbcClient db;
 
+	/** Both of {@link ApiSecurity}'s chains, so a twin's can be compared with its own. */
+	@Autowired
+	private List<SecurityFilterChain> chains;
+
 	private final Map<String, String> sessions = new HashMap<>();
 
+	/**
+	 * FIVE ACCOUNTS ACROSS THREE ROLES.
+	 *
+	 * <p>The two moderators are what the first kind of guard needs: one holding the tick a
+	 * probe asks for and one holding two others, so that no fixed code satisfies both.
+	 *
+	 * <p>The other three are what the SECOND kind needs, and each of them is a different
+	 * thing. {@link #A_COMPETITOR} is the ordinary attacker: signed in, which is all it
+	 * takes to run the oracle. {@link #EVERY_TICK} is the one the guard is really about,
+	 * because nothing the superadmin can tick opens that route and a moderator holding
+	 * everything is refused exactly as one holding nothing is. {@link #THE_SUPERADMIN} is
+	 * the anchor, and without him a route that was simply broken would satisfy every
+	 * comparison below by being missing for everybody.
+	 */
 	@BeforeEach
-	void twoModerators() {
+	void fiveAccountsAcrossThreeRoles() {
 		account(HOLDS_THE_TICK, "moderator");
 		account(WITHOUT_THE_TICK, "moderator");
+		account(A_COMPETITOR, "competitor");
+		account(EVERY_TICK, "moderator");
+		account(THE_SUPERADMIN, "superadmin");
 
 		ticked(HOLDS_THE_TICK, ProbeRoutes.THE_RIGHT_IT_NEEDS);
 		ticked(WITHOUT_THE_TICK, ProbeRoutes.THE_OTHER_RIGHT, "entity:events");
+		ticked(EVERY_TICK, everyRightThereIs().toArray(String[]::new));
 	}
 
 	/**
 	 * Cleaned up by hand, because a real server answers on its own connection and a
 	 * transaction around this thread would roll back nothing it can see.
+	 *
+	 * <p><b>Taken from what was really made rather than from a list written here.</b> A
+	 * list is a second place the fixture is spelt, and an account added above and forgotten
+	 * here would stay in the database for every suite that runs after this one.
 	 */
 	@AfterEach
 	void takeThemBackOut() {
-		db.sql("delete from account where email in (?, ?)")
-				.params(HOLDS_THE_TICK, WITHOUT_THE_TICK).update();
+		for (String email : sessions.keySet()) {
+			db.sql("delete from account where email = ?").param(email).update();
+		}
 	}
 
 	private void account(String email, String role) {
@@ -133,6 +173,23 @@ class RightsOverRealHttpTest {
 							+ " values ((select id from account where email = ?), ?)")
 					.params(email, right).update();
 		}
+	}
+
+	/** Every box the matrix holds, read off the schema rather than written out here. */
+	private List<String> everyRightThereIs() {
+		return db.sql("select code from admin_right order by code").query(String.class).list();
+	}
+
+	private int ticksOf(String email) {
+		return db.sql("select count(*) from account_admin_right where account_id ="
+						+ " (select id from account where email = ?)")
+				.param(email).query(Integer.class).single();
+	}
+
+	private String roleOf(String email) {
+		return db.sql("select r.code from account a join role r on r.id = a.role_id"
+						+ " where a.email = ?")
+				.param(email).query(String.class).single();
 	}
 
 	/** The whole answer, headers and body and chunk sizes, exactly as it came off the wire. */
@@ -195,18 +252,61 @@ class RightsOverRealHttpTest {
 	 * chunk sizes and the body stay in, because the length was half of what gave the two
 	 * answers away.
 	 *
-	 * <p><b>A KNOWN BLIND SPOT, written down rather than left to be found.</b> Every {@code
-	 * Set-Cookie} line goes, and it goes before the length is taken - so an answer that sets
-	 * a cookie and one that does not look the same from here. That was measured on
-	 * 13.09.2026 and there is nothing to hide behind it today: with no {@code XSRF-TOKEN}
-	 * sent, both answers carry the same header and both are 493 bytes. It is left as it is
-	 * because a fresh token differs on every request and would make every comparison here
-	 * fail for a reason that says nothing. Whoever needs the cookies themselves compared
-	 * will have to tell the portal's own from the framework's, which this does not.
+	 * <p><b>WHY {@code Set-Cookie} STILL GOES, measured on 14.09.2026 rather than carried
+	 * over.</b> The twin used to be built outside {@code /api} and this line was throwing
+	 * away the 69 bytes by which the two chains differed - so it was hiding the fault in
+	 * the comparison itself, and the note here called that a blind spot and left it. With
+	 * the twin a sibling ({@link #twinOf}) that reason is gone, and what is left was
+	 * measured on a running server, both addresses of each pair asked in turn:
+	 *
+	 * <ul>
+	 * <li>with the token sent, NOTHING under {@code /api} sets a cookie at all - zero
+	 * {@code Set-Cookie} lines on both answers, 375 bytes against 375;
+	 * <li>with no token sent, every answer under {@code /api} sets exactly one and it is
+	 * 69 bytes long (444 against 375), because the repository mints a fresh one when the
+	 * request carries none;
+	 * <li>outside {@code /api} the CSRF filter is not in the chain and none is ever set.
+	 * </ul>
+	 *
+	 * <p>So the line stays for one reason and it is the VALUE: a fresh {@code XSRF-TOKEN}
+	 * is a different random string on every request, and two cases here send no token at
+	 * all. Throwing the value away is not throwing the cookie away, and the difference is
+	 * no longer left to a sentence - {@link #answersTheSameWay} compares the NAMES of the
+	 * cookies each answer sets before this runs, so an answer that sets one the other does
+	 * not is a failure rather than a blind spot.
 	 */
 	private static String withoutTheClock(String answer) {
 		return answer.replaceAll("(?m)^Date:.*\r\n", "")
 				.replaceAll("(?m)^Set-Cookie:.*\r\n", "");
+	}
+
+	/** The NAMES of the cookies an answer sets, which is what is NOT thrown away above. */
+	private static List<String> setCookiesIn(String answer) {
+		return answer.lines().filter(line -> line.startsWith("Set-Cookie:"))
+				.map(line -> line.substring("Set-Cookie:".length()).trim().split("=")[0])
+				.sorted().toList();
+	}
+
+	/**
+	 * WHICH OF {@link ApiSecurity}'s CHAINS WOULD CONSIDER AN ADDRESS, asked of the chains
+	 * themselves rather than worked out from the path.
+	 *
+	 * <p>The shape is {@code ApiSecurityTest.reallyMapped}'s, for the same reason: a
+	 * question about what the server does with a path is asked of the thing that decides
+	 * it. The positions rather than the chains are answered because a chain prints every
+	 * filter in it, and a failure here has to be readable.
+	 *
+	 * <p>Asked with the METHOD the case is really asking with, and not with a {@code GET}
+	 * written here. Neither chain looks at the method today, and a question that quietly
+	 * answered about a different request than the one being compared would be the same kind
+	 * of fault as the twin this floor exists to catch.
+	 */
+	private List<Integer> chainsConsidering(String method, String path) {
+		MockHttpServletRequest asking = new MockHttpServletRequest(method, path);
+		ServletRequestPathUtils.parseAndCache(asking);
+
+		return IntStream.range(0, chains.size())
+				.filter(at -> chains.get(at).matches(asking)).boxed().toList();
 	}
 
 	/** And without the two values inside the body that name the moment and the address. */
@@ -217,15 +317,34 @@ class RightsOverRealHttpTest {
 	}
 
 	/**
-	 * AN ADDRESS OF THE SAME LENGTH THAT MAPS NOTHING, built rather than counted.
+	 * AN ADDRESS OF THE SAME LENGTH, BEHIND THE SAME CHAIN, THAT MAPS NOTHING - built
+	 * rather than counted.
 	 *
 	 * <p>The error document carries the path that was asked for, so two addresses of
 	 * different lengths differ by a length that says nothing about whether either exists.
 	 * These twins were written out by hand until 13.09.2026, and a character miscounted
 	 * there would have loosened a comparison without failing anything.
+	 *
+	 * <p><b>A SIBLING, which is the half that was wrong until 14.09.2026.</b> The twin used
+	 * to be built at the root, so the twin of {@code /api/one-that-needs-a-right} was
+	 * {@code /zzz...} - an address behind the OTHER chain {@link ApiSecurity} declares,
+	 * where CSRF is disabled and no {@code XSRF-TOKEN} cookie is ever set. Measured on a
+	 * running server: a {@code GET} under {@code /api} carried 353 bytes of headers and one
+	 * of the same length outside carried 284, and all 69 bytes of the difference were the
+	 * {@code Set-Cookie} line that {@link #withoutTheClock} throws away. The comparisons
+	 * passed, and what they compared was an answer written by one chain against an answer
+	 * written by another.
+	 *
+	 * <p>A sibling is matched by whatever matched the original - both chains here are
+	 * decided on a path prefix, and a sibling changes nothing before the last {@code /} -
+	 * so it needs no list of prefixes and no condition naming {@code /api}. The one case
+	 * whose address really is outside {@code /api} gets a twin outside it too, by the same
+	 * line and without asking for an exception.
 	 */
 	private static String twinOf(String path) {
-		return "/" + "z".repeat(path.length() - 1);
+		String sameParent = path.substring(0, path.lastIndexOf('/') + 1);
+
+		return sameParent + "z".repeat(path.length() - sameParent.length());
 	}
 
 	private void answersTheSameWay(String method, String real, String notThere, String email)
@@ -248,10 +367,30 @@ class RightsOverRealHttpTest {
 		String toTheReal = answerTo(method, real, email, token, extra, body);
 		String toTheOther = answerTo(method, notThere, email, token, extra, body);
 
+		assertThat(real)
+				.as("the two addresses in this comparison are ONE address, so everything below is"
+						+ " satisfied by an answer being equal to itself and measures nothing")
+				.isNotEqualTo(notThere);
+
 		assertThat(real.length())
 				.as("the two addresses are not the same length, so the error document each of"
 						+ " them carries makes them differ by a length that means nothing")
 				.isEqualTo(notThere.length());
+
+		assertThat(chains)
+				.as("there is one SecurityFilterChain, so every address is considered by the same"
+						+ " one and the floor below cannot fail whatever the twin is")
+				.hasSizeGreaterThan(1);
+		assertThat(chainsConsidering(method, notThere))
+				.as("%s and %s are considered by DIFFERENT SecurityFilterChains, so this compares"
+						+ " an answer one chain wrote against an answer another wrote - which is"
+						+ " what a twin built at the root did until 14.09.2026", real, notThere)
+				.isEqualTo(chainsConsidering(method, real));
+
+		assertThat(setCookiesIn(toTheOther))
+				.as("one answer set a cookie the other did not, and every Set-Cookie line is"
+						+ " thrown away below - so that difference would go unseen")
+				.isEqualTo(setCookiesIn(toTheReal));
 
 		assertThat(withoutTheClock(toTheReal).length())
 				.as("%s %s and %s %s came back different LENGTHS, which is an oracle for whether"
@@ -282,6 +421,52 @@ class RightsOverRealHttpTest {
 
 		answersTheSameWay(method, ProbeRoutes.NEEDS_A_RIGHT, twinOf(ProbeRoutes.NEEDS_A_RIGHT),
 				WITHOUT_THE_TICK);
+	}
+
+	/**
+	 * AND SO DOES THE ROUTE NO TICK OPENS, WHICH IS THE OTHER KIND OF GUARD.
+	 *
+	 * <p><b>This had no case at all until 14.09.2026, and what that cost was measured
+	 * rather than supposed.</b> {@link RightIsNeeded} and {@link OnlyTheSuperadmin} end in
+	 * one {@code sendError} today, and the case above measures the first of them - so a
+	 * line put in front of that call for the second kind alone was invisible: the whole
+	 * suite stayed green at 1660 cases while, on a socket, {@code /api/moderators} came
+	 * back with {@code Content-Length: 0} and no {@code Content-Type} and an address that
+	 * maps nothing came back chunked with 98 bytes of JSON. That is the finding of
+	 * 13.09.2026 returned for another door: an oracle saying „this address is there", one
+	 * request per guess, and the map it enumerates is the administrative one.
+	 *
+	 * <p><b>Asked by two people, because „may not" has two shapes here.</b> A plain
+	 * competitor is all it takes to run the oracle. A moderator with every one of the ticks
+	 * is the one the guard is really about - no box opens this route ({@code PDL.md:4403}),
+	 * so he is refused exactly as one holding none is, and he is the attacker who already
+	 * knows the most about the portal. The superadmin answering 200 is the anchor: without
+	 * it a route that was simply broken would be missing for everybody and both comparisons
+	 * would hold while measuring nothing.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {A_COMPETITOR, EVERY_TICK})
+	void aRouteNoTickOpensAnswersExactlyLikeAnAddressThatIsNotThere(String asking)
+			throws Exception {
+		assertThat(answerTo("GET", ProbeRoutes.NO_TICK_OPENS, THE_SUPERADMIN))
+				.as("%s does not answer the superadmin either, so both addresses in this"
+						+ " comparison are simply missing and it measures nothing",
+						ProbeRoutes.NO_TICK_OPENS)
+				.startsWith("HTTP/1.1 200");
+
+		assertThat(everyRightThereIs()).as("the matrix holds no ticks at all, so holding every"
+				+ " tick is holding none and one of the two askers is not a setting").isNotEmpty();
+		assertThat(ticksOf(EVERY_TICK))
+				.as("this moderator does not really hold every tick there is, so his refusal says"
+						+ " nothing about a tick not opening this route")
+				.isEqualTo(everyRightThereIs().size());
+		assertThat(List.of(roleOf(A_COMPETITOR), roleOf(EVERY_TICK)))
+				.as("the two askers are not the two kinds this case is about, so it runs one"
+						+ " setting twice")
+				.containsExactly("competitor", "moderator");
+
+		answersTheSameWay("GET", ProbeRoutes.NO_TICK_OPENS, twinOf(ProbeRoutes.NO_TICK_OPENS),
+				asking);
 	}
 
 	/**

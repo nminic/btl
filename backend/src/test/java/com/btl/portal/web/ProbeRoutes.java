@@ -26,7 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
  * an address of the same length that maps nothing, and those were counted by hand until
  * 13.09.2026 - a character miscounted would have loosened a comparison without failing
  * anything. {@code RightsOverRealHttpTest.twinOf} builds one from the address itself, so
- * it is the right length by construction.
+ * it is the right length by construction - and since 14.09.2026 a SIBLING of it, so it is
+ * behind the same {@code SecurityFilterChain} by construction too.
  */
 @TestConfiguration
 class ProbeRoutes {
@@ -53,6 +54,18 @@ class ProbeRoutes {
 	static final String TAKES_ONLY_GET = "/api/teams";
 
 	static final String TAKES_ONLY_POST = "/api/sign-in";
+
+	/**
+	 * The one route of the portal guarded by the SECOND kind of guard, and no probe can
+	 * stand in for it.
+	 *
+	 * <p>{@link OnlyTheSuperadmin} asks the MODE, which V5 lets exactly one role carry, so
+	 * a probe wearing it would be shut to exactly the same people and would measure the
+	 * same line. What cannot be stood in for is the address: the shape of the refusal is
+	 * what the wire case is about, and the address whose existence must not leak is
+	 * {@code /api/moderators} and not a probe nobody can reach from outside a test.
+	 */
+	static final String NO_TICK_OPENS = "/api/moderators";
 
 	@RestController
 	static class Probe {
