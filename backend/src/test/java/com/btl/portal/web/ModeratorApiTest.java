@@ -64,9 +64,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * register of members and pass; and a fixture in which none did would let it pass with a
  * join that answers with nothing.
  * <li><b>And the one who is both carries a DIFFERENT name on his account from the one on
- * his member record.</b> Without that, „the name on the account" and „the name on the
- * competitor" are the same string for him and the case below measures nothing at all,
- * which is the rule of 06.09.2026 about two sources of one value.
+ * his member record, in BOTH the first name and the surname.</b> Without that, „the name
+ * on the account" and „the name on the competitor" are the same string for him and the
+ * case below measures nothing at all, which is the rule of 06.09.2026 about two sources
+ * of one value. A fixture that varied only the surname was tried first, and a mutation
+ * found the gap it left open: a query reading the first name off {@code competitor} and
+ * the surname off {@code account} served her true full name anyway, because the shared
+ * first name hid the wrong source (found in review, B56, 14.09.2026).
  * </ul>
  */
 @SpringBootTest
@@ -96,11 +100,29 @@ class ModeratorApiTest {
 	/** The member record of the one moderator who also races, named here so both sides read it. */
 	private static final String HER_MEMBER_NUMBER = "001000";
 
-	/** What her ACCOUNT says, which is what this resource must answer with. */
-	private static final String HER_NAME_ON_THE_ACCOUNT = "Vesna Vukic";
+	/** Her first name on the ACCOUNT, which is what this resource must answer with. */
+	private static final String HER_FIRST_NAME_ON_THE_ACCOUNT = "Vesna";
+
+	/** Her last name on the ACCOUNT, which is what this resource must answer with. */
+	private static final String HER_LAST_NAME_ON_THE_ACCOUNT = "Vukic";
+
+	/**
+	 * Her first name in the register of members - different from
+	 * {@link #HER_FIRST_NAME_ON_THE_ACCOUNT} and not only her last name, so that a source
+	 * bug reading just the first name off the wrong table cannot hide behind a first name
+	 * the two records happen to share (the rule of 06.09.2026 about two sources of one
+	 * value). B56's own review found exactly this gap: {@code coalesce(c.first_name,
+	 * a.first_name)} served her account's true last name beside the member record's first
+	 * name, and a fixture where the two first names coincided could not tell the two apart.
+	 */
+	private static final String HER_FIRST_NAME_ON_THE_MEMBER_RECORD = "Snezana";
+
+	/** Her last name in the register of members, which is the wrong answer that would otherwise pass. */
+	private static final String HER_LAST_NAME_ON_THE_MEMBER_RECORD = "Devojacko";
 
 	/** And what her MEMBER record says, which is the wrong answer that would otherwise pass. */
-	private static final String HER_NAME_ON_THE_MEMBER_RECORD = "Vesna Devojacko";
+	private static final String HER_NAME_ON_THE_MEMBER_RECORD =
+			HER_FIRST_NAME_ON_THE_MEMBER_RECORD + " " + HER_LAST_NAME_ON_THE_MEMBER_RECORD;
 
 	private static final String FIRST_OF_TWO = "entity:members";
 
@@ -126,7 +148,7 @@ class ModeratorApiTest {
 	@BeforeEach
 	void sixAccountsAcrossThreeRoles() {
 		account(EVERYTHING, "superadmin", "Nikola", "Minic");
-		account(TWO_TICKS, "moderator", "Vesna", "Vukic");
+		account(TWO_TICKS, "moderator", HER_FIRST_NAME_ON_THE_ACCOUNT, HER_LAST_NAME_ON_THE_ACCOUNT);
 		account(NO_TICKS, "moderator", "Novak", "Novic");
 		account(A_MEMBER, "competitor", "Takmicar", "Trkacki");
 		account(EVERY_TICK, "moderator", "Iskusni", "Iskic");
@@ -136,9 +158,16 @@ class ModeratorApiTest {
 		   her account. Both halves are the measurement: a moderator who is NOT a member is
 		   the ordinary case since 14.09.2026, and the one who is both is the only row on
 		   which „the name off the account" and „the name off the member record" can be
-		   told apart at all. Her surname differs because a woman may compete under the one
-		   the register of members carries (PDL P32) and sign in under the one she uses. */
-		competitor(HER_MEMBER_NUMBER, "Vesna", "Devojacko");
+		   told apart at all. BOTH her first name and her surname differ, because the
+		   register of members and the account are two independent facts (PDL.md:4460) and
+		   the Statute's book of members asks for a first name and a surname of its own
+		   (PDL P32) regardless of what either says - a woman may be registered under a name
+		   she does not sign in under. Only the surname used to differ until this case; a
+		   coalesce that fell back to `account` solely for a first name the two rows
+		   happened to share still served her true name, and the fixture now makes that
+		   impossible (found in review, B56, 14.09.2026). */
+		competitor(HER_MEMBER_NUMBER, HER_FIRST_NAME_ON_THE_MEMBER_RECORD,
+				HER_LAST_NAME_ON_THE_MEMBER_RECORD);
 		belongsTo(TWO_TICKS, HER_MEMBER_NUMBER);
 
 		ticked(TWO_TICKS, FIRST_OF_TWO, SECOND_OF_TWO);
@@ -301,9 +330,12 @@ class ModeratorApiTest {
 	 * which is not the name on her member record.</b> Without this the first half would be
 	 * satisfied by a resource that reads {@code competitor} wherever it can and falls back
 	 * to {@code account} where it cannot, which is exactly the shape somebody writes while
-	 * fixing the first half. The two strings are different by construction - the fixture
-	 * gives her one surname on the account and another in the register of members - so
-	 * „read the wrong table" and „read the right one" cannot produce the same answer.
+	 * fixing the first half. The two strings are different by construction, in BOTH the
+	 * first name and the surname - the fixture gives her one first name and one surname on
+	 * the account and a different first name and a different surname in the register of
+	 * members - so „read the wrong table" and „read the right one" cannot produce the same
+	 * answer for either field, and neither field can pass by coincidentally sharing its
+	 * value with the other source.
 	 *
 	 * <p><b>And the wrong name is asserted against, not merely the right one asserted
 	 * for.</b> Naming the value that must NOT come out is what makes this a measurement of
@@ -317,13 +349,27 @@ class ModeratorApiTest {
 				.as("a moderator with no member record lost his name, or lost his row")
 				.isEqualTo("Novak Novic");
 
-		assertThat(nameServedTo(TWO_TICKS))
-				.as("the name was read off the member record instead of off the account")
-				.isEqualTo(HER_NAME_ON_THE_ACCOUNT)
-				.isNotEqualTo(HER_NAME_ON_THE_MEMBER_RECORD);
+		/* Read as two fields and not as one joined string. A single assertion over
+		   "firstName + ' ' + lastName" passes whenever the two joined strings happen to
+		   match even if only one of the two fields is actually right - which is exactly
+		   the shape B56's review found: the first name coincided between the two sources,
+		   so a coalesce onto `competitor` for the first name alone still served her true
+		   full name, because `lastName` alone was read correctly. Each field is therefore
+		   its own assertion, against both the right value and the wrong one. */
+		JsonNode her = served(TWO_TICKS);
 
-		/* And the fixture really does hold two different names for her, so the line above is
-		   a claim about the server and not about two strings that happen to be equal. */
+		assertThat(her.path("firstName").asString())
+				.as("the first name was read off the member record instead of off the account")
+				.isEqualTo(HER_FIRST_NAME_ON_THE_ACCOUNT)
+				.isNotEqualTo(HER_FIRST_NAME_ON_THE_MEMBER_RECORD);
+		assertThat(her.path("lastName").asString())
+				.as("the last name was read off the member record instead of off the account")
+				.isEqualTo(HER_LAST_NAME_ON_THE_ACCOUNT)
+				.isNotEqualTo(HER_LAST_NAME_ON_THE_MEMBER_RECORD);
+
+		/* And the fixture really does hold two different names for her, so the two
+		   assertions above are a claim about the server and not about strings that happen
+		   to be equal. */
 		assertThat(db.sql("select first_name || ' ' || last_name from competitor where member_number = ?")
 				.param(HER_MEMBER_NUMBER).query(String.class).single())
 				.as("her member record carries the same name as her account, so nothing above is measured")
