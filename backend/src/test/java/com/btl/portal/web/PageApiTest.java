@@ -241,6 +241,13 @@ class PageApiTest {
 	 * izvora, jedna vrednost` asks for elsewhere: were {@code included_page_id} read in
 	 * numeric or insertion order instead of {@code position}, this case would still see
 	 * two includes and could not tell the fault from success.
+	 *
+	 * <p><b>And the rows are written in the order that disagrees with their positions,
+	 * while a SECOND page takes in a different list.</b> The first draft of this case had
+	 * neither: the two rows went in position order, so ordering by {@code id} or by
+	 * nothing answered the same list, and only one page had includes at all, so a server
+	 * handing every page whichever list it had answered identically. Measured on review -
+	 * three mutations, all green.
 	 */
 	@Test
 	void aPageCanTakeInAnotherInOrderAndAPageWithNoSectionAnswersWithAnEmptyList() throws Exception {
@@ -252,10 +259,23 @@ class PageApiTest {
 				+ " ((select id from static_page where slug = 'temp-higher-id-included-first'),"
 				+ "  1, 'Only section', 'Text')")
 				.update();
+		/* WRITTEN IN THE ORDER THAT DISAGREES WITH THE POSITIONS. The row carrying
+		   position 2 goes in FIRST, so it takes the lower `id` of the two. A query
+		   ordering by `id`, or by nothing at all, then answers them the other way round
+		   and this case says so. Written the tidy way - position 1 first - insertion
+		   order and position order are the same list and neither one is being measured.
+
+		   AND A SECOND PAGE TAKES IN SOMETHING ELSE. With includes on one page only, a
+		   server handing every page whichever list it happens to have answers identically,
+		   which is what „dva izvora, jedna vrednost" is about: the terms of use take in
+		   one page and the rulebook takes in two, so a list attached to the wrong page is
+		   the wrong list and not the same one. */
 		db.sql("insert into static_page_include (page_id, position, included_page_id) values"
+				+ " ((select id from static_page where slug = 'pravilnik'), 2,"
+				+ "  (select id from static_page where slug = 'temp-lower-id-included-second')),"
 				+ " ((select id from static_page where slug = 'pravilnik'), 1,"
 				+ "  (select id from static_page where slug = 'temp-higher-id-included-first')),"
-				+ " ((select id from static_page where slug = 'pravilnik'), 2,"
+				+ " ((select id from static_page where slug = 'uslovi-koriscenja'), 1,"
 				+ "  (select id from static_page where slug = 'temp-lower-id-included-second'))")
 				.update();
 
@@ -276,9 +296,27 @@ class PageApiTest {
 			includes.add(one.asString());
 		}
 		assertThat(includes)
-				.as("the rulebook's includes are not the two just written, in the order they were"
-						+ " written")
+				.as("the rulebook's includes are not the two just written, in the order their"
+						+ " positions give rather than the order the rows were written in")
 				.containsExactly("temp-higher-id-included-first", "temp-lower-id-included-second");
+
+		assertThat(slugsIncludedBy(ours, "uslovi-koriscenja"))
+				.as("the terms of use came back with somebody else's includes, so a list attached"
+						+ " to the wrong page would read the same as one attached to the right one")
+				.containsExactly("temp-lower-id-included-second");
+
+		assertThat(slugsIncludedBy(ours, "politika-privatnosti"))
+				.as("a page that takes in nothing came back with includes anyway")
+				.isEmpty();
+	}
+
+	/** The addresses one page takes in, in the order it answers them. */
+	private List<String> slugsIncludedBy(JsonNode ours, String slug) {
+		List<String> out = new ArrayList<>();
+		for (JsonNode one : pageNamed(ours, slug).path("includes")) {
+			out.add(one.asString());
+		}
+		return out;
 	}
 
 	/**
