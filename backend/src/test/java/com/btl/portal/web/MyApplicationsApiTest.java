@@ -447,6 +447,37 @@ class MyApplicationsApiTest {
 				.doesNotContain(SOMEONE_ELSE, THIRD_PARTY);
 	}
 
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS NOT NAMED, AND THE INVITE ITSELF STAYS.
+	 *
+	 * <p><b>Why the number goes and the row does not.</b> {@code /api/competitors} stops
+	 * carrying a member the day his fee lapses, so a number that is HERE and missing
+	 * THERE is the difference between two answers, and that difference says he did not
+	 * renew - „sve u vezi sa clanarinom" is what Article 74 shuts. The row is his own
+	 * and he is the one who withdraws it, so it stays; the person behind it stops being
+	 * named. Owner, 13.09.2026: „Kad je sporno, polje se IZOSTAVLJA i izostavljanje se
+	 * imenuje sa razlogom."
+	 *
+	 * <p><b>The two sides are set up differently on purpose.</b> The lapsed member is the
+	 * one I INVITED and the active one is the one who invited ME, so an answer that read
+	 * the wrong side of the invite would put the null on the wrong row and this case
+	 * would say so. A case where both sides lapsed, or where the lapsed one sat on the
+	 * side the query happens to read first, would pass either way.
+	 */
+	@Test
+	void aPairInviteToSomebodyWhoDidNotRenewKeepsTheRowAndDropsTheName() throws Exception {
+		db.sql("update competitor set active = false where member_number = ?")
+				.param(PAIR_TO).update();
+
+		List<Invite> mine = pairInvites(answer());
+
+		assertThat(mine)
+				.as("the invite disappeared with the member, or the member is still named")
+				.containsExactly(
+						new Invite("", true, "2026-08-15"),
+						new Invite(PAIR_FROM, false, "2026-08-28"));
+	}
+
 	/** NO FIELD OF ANY OF THE FOUR LISTS IS THE SAME IN EVERY RECORD OF IT. */
 	@Test
 	void noFieldOfAnyListIsTheSameInEveryRecord() throws Exception {

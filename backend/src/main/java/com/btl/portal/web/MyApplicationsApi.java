@@ -263,8 +263,25 @@ class MyApplicationsApi {
 
 	private List<PairInvite> pairInvites(long me) {
 		return db.sql("select pi.id, pi.sent_at,"
-						/* THE OTHER ONE, whichever side this competitor stands on. */
-						+ " case when pi.from_id = :me then to_c.member_number else from_c.member_number end,"
+						/* THE OTHER ONE, whichever side this competitor stands on - AND ONLY
+						   WHILE HE IS STILL A MEMBER. The inner CASE is the sixth place this
+						   portal answers one question, and it answers it the way the other five
+						   do: `CompetitorApi` with `where c.active`, `AttendanceApi` with
+						   `and c.active`, `PairApi` with `where man.active and woman.active`,
+						   `CommentApi` with this very shape - `case when author.active then
+						   author.member_number end`.
+
+						   Why it is not merely tidy: `/api/competitors` stops carrying a member
+						   the day his fee lapses, so a number that is HERE and missing THERE is
+						   the difference between two answers, and that difference says he did
+						   not renew. Article 74 shuts everything about the fee, and the owner,
+						   13.09.2026: „Kad je sporno, polje se IZOSTAVLJA i izostavljanje se
+						   imenuje sa razlogom." The invite row itself stays - it is his own, and
+						   he is the one who withdraws it - but the person behind it stops being
+						   named. */
+						+ " case when (case when pi.from_id = :me then to_c.active else from_c.active end)"
+						+ "      then (case when pi.from_id = :me then to_c.member_number else from_c.member_number end)"
+						+ " end,"
 						+ " pi.from_id = :me"
 						+ " from pair_invite pi"
 						+ " join competitor from_c on from_c.id = pi.from_id"
