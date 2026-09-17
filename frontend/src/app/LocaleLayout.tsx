@@ -4,7 +4,9 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import { Shell } from './Shell'
 import { ThemeProvider } from './ThemeProvider'
 
-/* Every address carries the language (ADL A2). Anything that does not start
+/* Every address carries the language
+ * (PDL P18, „Adrese nose **jezički prefiks za sve jezike, uključujući srpski**").
+ * Anything that does not start
  * with a known language is treated as a path in the default language, so
  * /kalendar keeps working and lands on /sr/kalendar. */
 export function LocaleLayout() {

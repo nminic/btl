@@ -23,7 +23,8 @@ export const SITE_ORIGIN = 'https://balkanskatrkackaliga.net'
 
 /* Open Graph wants a language and a region, joined by an underscore. It follows
  * the language the text is actually written in, exactly like the lang
- * attribute, and not the language in the address (ADL A2). */
+ * attribute, and not the language in the address
+ * (ADL A7, ODLUKA 30.07.2026, „Dok engleski rečnik ne postoji, engleska grana se"). */
 const OG_LOCALES: Record<Locale, string> = {
   sr: 'sr_RS',
   en: 'en_GB',
