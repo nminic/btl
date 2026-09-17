@@ -211,8 +211,13 @@ class InboxApiTest {
 						+ " team_invitation_id, pair_invite_id) values ("
 						+ "(select id from competitor where member_number = ?),"
 						+ " (select id from competitor where member_number = ?),"
-						+ " ?, ?, 'Tekst poruke.', timestamptz '" + sentAt + "', ?, ?)")
-				.params(toNumber, fromNumber, fromName, subject, teamInvitationId, pairInviteId)
+						/* THE BODY IS THE SUBJECT AGAIN PLUS A LINE, and never one string for
+						   every message. A fixture where every body is the same makes the floor
+						   below unable to tell `body` from any other field that repeats, and a
+						   query answering the body in place of the sender would pass. */
+						+ " ?, ?, ?, timestamptz '" + sentAt + "', ?, ?)")
+				.params(toNumber, fromNumber, fromName, subject,
+						"Tekst poruke: " + subject + ".", teamInvitationId, pairInviteId)
 				.update();
 	}
 
@@ -442,5 +447,26 @@ class InboxApiTest {
 		assertThat(Answers.fieldsOf(item("ja@primer.rs", TO_ME_READ)))
 				.containsExactlyInAnyOrder("id", "from", "subject", "body", "date", "read",
 						"teamInvitationId", "pairInviteId");
+	}
+
+	/**
+	 * AND NO FIELD OF THE ANSWER IS THE SAME IN EVERY MESSAGE, which is the floor every
+	 * other list of this API stands on and this one was delivered without.
+	 *
+	 * <p><b>What its absence let through, measured rather than imagined.</b> A query
+	 * answering {@code 0} for every {@code id} and the BODY in place of the sender
+	 * passed the whole gate, 1787 cases green. A member would then see every message
+	 * under one identifier - each row leading to the same screen, and a read mark
+	 * written against message zero - and read the text of the message where the sender's
+	 * name belongs. P23 is what makes that name load-bearing: the pointer empties, the
+	 * name does not.
+	 *
+	 * <p>The case above compares the NAMES of the fields and this one their VALUES, and
+	 * neither one stands for the other: names cannot see a column read for another
+	 * column, and values cannot see a field that stopped being answered at all.
+	 */
+	@Test
+	void noFieldOfTheInboxIsTheSameInEveryMessage() throws Exception {
+		Answers.noFieldIsTheSameInEveryRecord("/api/inbox", answer("ja@primer.rs"));
 	}
 }

@@ -527,6 +527,29 @@ class RightsOverRealHttpTest {
 	}
 
 	/**
+	 * AND A RESOURCE THAT REFUSES AN ACCOUNT WITH NO MEMBER ANSWERS LIKE AN ADDRESS THAT
+	 * IS NOT THERE.
+	 *
+	 * <p><b>Why this is measured here and not where the two routes live.</b> Both of them
+	 * already carry a case asserting the refusal has an empty body, and both of those
+	 * cases run through {@code MockMvc}, which - as {@code VerificationApi} writes down in
+	 * as many words - never runs the container's ERROR dispatch and so cannot see what an
+	 * address that is not there actually sends. Measured 17.09.2026: swapping
+	 * {@code sendError} for {@code setStatus} on both routes left 48 cases green, while
+	 * over a real socket the two answers then differ in LENGTH - and a length that differs
+	 * is an oracle for whether an address exists, even when both say 404.
+	 *
+	 * <p>The twin is a sibling of the real address by {@link #twinOf}, so no list of
+	 * prefixes is needed and nothing has to be kept equal by hand.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"/api/inbox", "/api/me/notifications"})
+	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String path)
+			throws Exception {
+		answersTheSameWay("GET", path, twinOf(path), A_COMPETITOR);
+	}
+
+	/**
 	 * AND A METHOD AN ADDRESS DOES NOT TAKE ANSWERS THE SAME WAY TOO.
 	 *
 	 * <p>Shutting {@code OPTIONS} shut one door of five. Spring works out from the mapped
