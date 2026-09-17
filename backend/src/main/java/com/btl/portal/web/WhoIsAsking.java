@@ -135,7 +135,8 @@ final class WhoIsAsking extends OncePerRequestFilter {
 	 * <p>The account and its role, and deliberately not a member number. Until
 	 * 14.09.2026 the reason was that there was nothing to read one through; since
 	 * V23 there is, because the owner decided „jedan nalog je tacno jedan clan"
-	 * ({@code PDL.md:2987}) and the link is a column on {@code account}.
+	 * (PDL P21, 14.09.2026, „Jedan nalog je tacno jedan clan") and the link is a column on {@code
+	 * account}.
 	 *
 	 * <p><b>What keeps it out now is what this record is for.</b> It is what the
 	 * guard hands to every controller on every request, so anything in it is

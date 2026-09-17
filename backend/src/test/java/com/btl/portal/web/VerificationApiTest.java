@@ -39,7 +39,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p>This is the resource that has already caused the worst leak of the project - a public
  * page read the queue to find approved comments and handed every visitor „adrese
  * neaktiviranih članova i tekstove neodobrenih komentara" (owner, 07.08.2026,
- * {@code PDL.md:3815}) - so most of this file is about who does NOT get what.
+ * PDL P28a, 07.08.2026, „Javne strane ne smeju da preuzimaju red") - so most of this file is
+ * about who does NOT get what.
  *
  * <p><b>NOBODY HERE IS THE ONLY ONE OF HIS KIND, on any axis an assertion below reads a
  * value along</b> (the rule of 06.09.2026 and its correction the same afternoon, that the
@@ -404,9 +405,9 @@ class VerificationApiTest {
 	 *
 	 * <p><b>401 and not 404, and that boundary is measured in both directions.</b> „Zatvorena
 	 * vrata ne kažu ništa" made the refusal for a missing right 404 (owner, 13.09.2026,
-	 * {@code ADL.md:783}), and the same decision keeps 401 where it is: „401 ne govori ništa
-	 * o tome šta iza adrese stoji, nego kaže da se treba prijaviti". The case below is the
-	 * other direction.
+	 * ADL A8, 13.09.2026, „Server odbija moderatora bez privilegije sa 404"), and the same decision
+	 * keeps 401 where it is: „401 ne govori ništa o tome šta iza adrese stoji, nego kaže da se treba
+	 * prijaviti". The case below is the other direction.
 	 *
 	 * <p><b>Both halves.</b> Without the 200, a resource refusing everybody would satisfy the
 	 * refusal and say the rule held.
@@ -427,11 +428,12 @@ class VerificationApiTest {
 	/**
 	 * AND SOMEBODY SIGNED IN WITH NO QUEUE OF HIS OWN IS TOLD THE ADDRESS IS NOT THERE.
 	 *
-	 * <p>The owner, 13.09.2026 ({@code ADL.md:783}): „Server odbija moderatora bez
-	 * privilegije sa 404, ne sa 403", because the administration draws no screen he may open
-	 * and the server must not be the one place that says the address exists.
-	 * {@code PDL.md:4379} says it for this section: its address opens „prvi red... koji ta
-	 * osoba sme, a naslovnu kad ne sme nijedan".
+	 * <p>The owner (ADL A8, 13.09.2026, „Server odbija moderatora bez privilegije sa
+	 * 404"): „Server odbija moderatora bez privilegije sa 404, ne sa 403", because the
+	 * administration draws no screen he may open and the server must not be the one place that says
+	 * the address exists. PDL P28a, 30.07.2026, „Odeljci Verifikacija i Entiteti nemaju sopstvenu"
+	 * says it for this section: its address opens „prvi red... koji ta osoba sme, a naslovnu kad ne
+	 * sme nijedan".
 	 *
 	 * <p><b>Three people, and each of them is a different thing.</b> A plain competitor is
 	 * the ordinary case and is most of the portal. A moderator holding only ENTITY rights is
@@ -474,8 +476,9 @@ class VerificationApiTest {
 	/**
 	 * EACH MODERATOR IS SERVED HIS OWN QUEUES AND NOT THE OTHER'S.
 	 *
-	 * <p>The owner, 30.07.2026 ({@code PDL.md:4308}): „Moderator vidi samo redove i entitete
-	 * za koje ima pravo... Ne skriva se samo ekran nego i saznanje da ekran postoji."
+	 * <p>The owner (PDL P28a, 30.07.2026, „Moderator vidi samo redove i entitete"):
+	 * „Moderator vidi samo redove i entitete za koje ima pravo... Ne skriva se samo ekran nego i
+	 * saznanje da ekran postoji."
 	 *
 	 * <p><b>The two sets are disjoint, which is what makes this measure the filter rather
 	 * than the fixture.</b> Overlapping, a query that forgot to name the account would hand
@@ -562,9 +565,9 @@ class VerificationApiTest {
 	/**
 	 * A TAB WORKED TO THE BOTTOM IS A TAB WITH NOTHING IN IT, NOT A TAB THAT HAS GONE.
 	 *
-	 * <p>The owner, 29.08.2026 ({@code PDL.md:3960}): „Prazan red ostaje u navigaciji i
-	 * pokazuje nulu. Neka ipak ne nestaju stavke iz Verifikacije kad se odobre. Neka ostane
-	 * vidljiva i neka piše 0."
+	 * <p>The owner (PDL P28a, 29.08.2026, „Prazan red ostaje u navigaciji"): „Prazan red
+	 * ostaje u navigaciji i pokazuje nulu. Neka ipak ne nestaju stavke iz Verifikacije kad se
+	 * odobre. Neka ostane vidljiva i neka piše 0."
 	 *
 	 * <p><b>Both ways of being empty, because they break differently.</b> The results tab has
 	 * been answered to the bottom - every row in it is decided - and an INNER join from the
@@ -612,8 +615,9 @@ class VerificationApiTest {
 	/**
 	 * WHAT HAS BEEN DECIDED IS NOT IN THE ANSWER, IN ANY SHAPE.
 	 *
-	 * <p>The owner, 06.08.2026 ({@code PDL.md:3983}): „Sekcija „Rešeno" se ukida. Red pokazuje
-	 * samo ono što čeka; šta je rešeno nije posao koji stoji pred moderatorom."
+	 * <p>The owner (PDL P28a, 06.08.2026, „Red pokazuje samo ono što čeka"): „Sekcija
+	 * „Rešeno" se ukida. Red pokazuje samo ono što čeka; šta je rešeno nije posao koji stoji pred
+	 * moderatorom."
 	 *
 	 * <p><b>Asked of a tab that also holds waiting rows</b>, so „only what waits" is a
 	 * subtraction rather than a whole tab that happens to be missing - which is what the
@@ -654,9 +658,9 @@ class VerificationApiTest {
 	 * <p>This resource leans on V9's {@code verification_decided_keeps_no_photo} - „state =
 	 * 'waiting' or photo_id is null" - and the lean is worth saying out loud: it is the reason
 	 * the mutation that lets decided rows into this answer cannot carry a picture out with
-	 * them. PDL 900 („dokaz se briše posle verifikacije") and ADL A36 O11 are where it comes
-	 * from, and the constraint is the one thing that makes it true of every writer rather than
-	 * of the ones somebody remembered.
+	 * them. PDL P9, „briše sa portala posle verifikacije" („dokaz se briše posle verifikacije") and
+	 * ADL A36 O11 are where it comes from, and the constraint is the one thing that makes it true of
+	 * every writer rather than of the ones somebody remembered.
 	 *
 	 * <p><b>Measured against the fixture's own decided row rather than a fresh bad one</b>,
 	 * which is what keeps this from being a second copy of
@@ -681,10 +685,10 @@ class VerificationApiTest {
 	 * THE SUPERADMIN IS SERVED EVERY TAB THERE IS, WITH NO TICK ANYWHERE.
 	 *
 	 * <p>V5 gives his role {@code rights_mode = 'all'} and PDL P28a says he „ne pojavljuje se
-	 * u ovoj tabeli kao neko kome se prava dodeljuju" ({@code PDL.md:4422}). Read as the ticks
-	 * alone - which is what a condition written into the SQL of this resource would be - he is
-	 * served nothing at all, and the administration is shut to the one account that may do
-	 * everything.
+	 * u ovoj tabeli kao neko kome se prava dodeljuju" (PDL P28a, 30.07.2026, „Superadmin nema
+	 * kućice"). Read as the ticks alone - which is what a condition written into the SQL of this
+	 * resource would be - he is served nothing at all, and the administration is shut to the one
+	 * account that may do everything.
 	 *
 	 * <p><b>The tabs are compared with the rights matrix and not with a list written here</b>,
 	 * so a seventh queue granted tomorrow is in this answer on the day it is inserted. That is
@@ -799,7 +803,8 @@ class VerificationApiTest {
 	 * reader is the moderator holding that tab's tick - and the queue exists in order to be
 	 * worked: filtering on {@code competitor.active} would hide from a moderator exactly the
 	 * work a lapsed membership creates, and would empty the payments tab, which is about
-	 * people whose fee is not recorded ({@code PDL.md:3906}, „Uplate i aktivacija članova").
+	 * people whose fee is not recorded (PDL P28a, 24.08.2026, „Verifikacija ima šest redova",
+	 * „Uplate i aktivacija članova").
 	 *
 	 * <p>Written as a case rather than as a comment, because this is the fifth time the
 	 * question has been asked and the first time the answer is the other way round, so
@@ -833,7 +838,8 @@ class VerificationApiTest {
 	 * <ul>
 	 * <li>{@code queue} is not missing: it is on the TAB, which is the row this item stands
 	 * in. Written on both it would be one fact in two places, which is the rule
-	 * {@code PDL.md:4314} states about numbers and this resource follows about its tabs.
+	 * PDL P28a, 30.07.2026, „Nijedan broj na portalu ne stoji na dva mesta" states about numbers and
+	 * this resource follows about its tabs.
 	 * <li>{@code kind} - which sort of thing an item is, where one tab holds two (a biography
 	 * against a picture, a new team against a change to one). No column, and the distinction
 	 * is the screen's.

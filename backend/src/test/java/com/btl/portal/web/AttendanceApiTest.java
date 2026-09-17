@@ -311,9 +311,10 @@ class AttendanceApiTest {
 	/**
 	 * ONLY A FUTURE EVENT'S ANNOUNCEMENTS COME BACK.
 	 *
-	 * <p>„Prijavljen član najavljuje odlazak na BUDUĆI događaj" ({@code PDL.md:288}),
-	 * and {@code PDL.md:153} keeps the portal from ever turning that intention into a
-	 * record of what really happened: „DNF i nedolazak se ne evidentiraju".
+	 * <p>„Prijavljen član najavljuje odlazak na BUDUĆI događaj" (PDL P6, 11.08.2026, „Prijavljen
+	 * član najavljuje odlazak na budući"), and PDL P5, „DNF i nedolazak se ne evidentiraju" keeps
+	 * the portal from ever turning that intention into a record of what really happened: „DNF i
+	 * nedolazak se ne evidentiraju".
 	 *
 	 * <p><b>Read in the league's own time, not the server's nor any other zone ahead of
 	 * UTC, which is the whole reason the fixture's moment is the one it is.</b> The
@@ -351,7 +352,8 @@ class AttendanceApiTest {
 		List<Row> rows = rows();
 
 		assertThat(rows)
-				.as("the clearly past event answered, and PDL.md:153 keeps a past intention from"
+				.as("the clearly past event answered, and"
+						+ " PDL P5, „DNF i nedolazak se ne evidentiraju\" keeps a past intention from"
 						+ " becoming a record of what happened")
 				.doesNotContain(new Row(eventId("prosli-dogadjaj"), ACTIVE_ONE));
 
