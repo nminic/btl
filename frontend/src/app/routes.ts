@@ -44,8 +44,10 @@ export type NavSection = RouteDef & {
   staffOnly?: boolean
 }
 
-/* The slugs stay Serbian in every language (ADL A2 writes the English route as
- * /en/kalendar). One address per screen, whichever language is shown. */
+/* The slugs stay Serbian in every language
+ * (PDL P18, „Adrese nose **jezički prefiks za sve jezike, uključujući srpski**"),
+ * which is why the decision writes the English route as /en/kalendar rather than
+ * /en/calendar. One address per screen, whichever language is shown. */
 export const NAV: NavSection[] = [
   { id: 'rules', labelKey: 'nav.rules', path: 'pravilnik', seoKey: 'rulebook' },
   { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
