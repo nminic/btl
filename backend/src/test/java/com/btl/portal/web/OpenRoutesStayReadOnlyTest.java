@@ -9,11 +9,13 @@ import org.springframework.http.server.PathContainer;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.function.support.RouterFunctionMapping;
+import org.springframework.web.servlet.handler.AbstractUrlHandlerMapping;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
 import org.springframework.web.util.pattern.PathPattern;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -21,8 +23,20 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * NOTHING ON THE OPEN LIST MAY FINISH A WRITE, asked of the dispatcher and not of
- * whether a particular annotation was typed onto a method.
+ * NO MAPPING PUTS A WRITE ON THE OPEN LIST, asked of the mapping and not of whether a
+ * particular annotation was typed onto a method.
+ *
+ * <p><b>The title says „no mapping" and not „nothing", and the difference was paid
+ * for.</b> An earlier draft of this file promised that nothing on the open list can
+ * finish a write. That promise has no floor in a case built on mappings: a servlet
+ * filter can do the write and answer 200 without the request ever reaching one.
+ * Measured 17.09.2026 - a filter deleting a row of {@code price_row} on
+ * {@code POST /api/pricing} left this case and all of {@code ApiSecurityTest},
+ * {@code RightsAtTheDoorTest}, {@code RightsOverRealHttpTest}, {@code PricingApiTest}
+ * and {@code WhoIsAskingTest} green, 56 cases in all. The portal already holds a filter
+ * over {@code /api/**} ({@code WhoIsAsking}), so the shape is not hypothetical. **That
+ * is a real gap and this is where it is written down**; what this case does hold is
+ * every route that goes through a mapping, which is every route the portal has.
  *
  * <p><b>The finding, 17.09.2026.</b> {@link ApiSecurity#READ_BY_ANYBODY} opens a path
  * for reading, and nothing in the repository asked the dispatcher what ELSE that same
@@ -91,6 +105,11 @@ class OpenRoutesStayReadOnlyTest {
 	private static final Set<RequestMethod> BESIDE_READING =
 			EnumSet.complementOf(EnumSet.copyOf(READING));
 
+	/** What the dispatcher registers by URL today, as a snapshot rather than as a rule. */
+	private static final List<String> SNIMAK_ADRESA_PO_IMENU = List.of(
+			"SimpleUrlHandlerMapping /**",
+			"SimpleUrlHandlerMapping /webjars/**");
+
 	/**
 	 * EVERY handler mapping the dispatcher holds, not the one this file happens to know.
 	 *
@@ -118,19 +137,62 @@ class OpenRoutesStayReadOnlyTest {
 				.as("the open list is empty, so this checks nothing")
 				.isNotEmpty();
 
-		/* AND EVERY ROUTE THE DISPATCHER HOLDS IS ONE THIS CASE CAN SEE. The loop below
-		   walks annotated mappings, which is every route this portal has today. A
-		   `RouterFunction` bean would be answered by `RouterFunctionMapping` and would be
-		   invisible to that walk, so the day one appears this case fails and somebody
-		   decides how to read it, instead of the case quietly measuring less. */
+		/* AND THE DISPATCHER HOLDS NOTHING THIS CASE CANNOT READ, compared as a WHOLE
+		   SNAPSHOT rather than one kind at a time.
+
+		   The draft before this one named the class and then closed a single instance of
+		   it: it had one assertion about `RouterFunctionMapping` and skipped every other
+		   kind in silence. Measured - the dispatcher holds NINE mappings, this case read
+		   two of them, and `@Bean("/api/pricing")` of type `HttpRequestHandler` answered
+		   POST through `BeanNameUrlHandlerMapping`, deleted a row of `price_row` and
+		   returned 200 to a caller with no session, with the case green.
+
+		   A list of kinds cannot be finished by thinking about kinds - that is measured on
+		   this project and written down. A snapshot can: it converges in one round, and
+		   the tenth kind that appears tomorrow fails here and gets decided once, instead
+		   of waiting for somebody to notice it is missing. The floor under the snapshot is
+		   the live context, not memory. */
+		assertThat(everyMapping.stream().map(m -> m.getClass().getSimpleName()).sorted().toList())
+				.as("the dispatcher holds a kind of mapping this case has never been told about;"
+						+ " read it, decide whether it can carry a route, then move this snapshot")
+				.containsExactly(
+						"AdditionalHealthEndpointPathsWebMvcHandlerMapping",
+						"BeanNameUrlHandlerMapping",
+						"ControllerEndpointHandlerMapping",
+						"Lookup",
+						"RouterFunctionMapping",
+						"SimpleUrlHandlerMapping",
+						"WebMvcEndpointHandlerMapping",
+						"WelcomePageHandlerMapping",
+						"WelcomePageNotAcceptableHandlerMapping");
+
+		/* AND WHAT CAN CARRY A ROUTE WITHOUT BEING WALKED BELOW CARRIES ONLY WHAT IT
+		   ALWAYS HAS. A route registered by URL - `@Bean("/api/pricing")` of type
+		   `HttpRequestHandler` is the cheap way - answers every verb and is not a
+		   mapping, so the walk below cannot see it. Measured: exactly that bean deleted a
+		   row of `price_row` and returned 200 to a caller with no session, with this case
+		   green. The two Spring registers by itself serve static files and answer reading
+		   only; they are here as a snapshot so a tenth entry has to be looked at. */
+		List<String> registeredByUrl = new ArrayList<>();
+
 		for (HandlerMapping mapping : everyMapping) {
 			if (mapping instanceof RouterFunctionMapping router) {
 				assertThat(router.getRouterFunction())
 						.as("the portal now registers routes as router functions, which this case"
-								+ " does not walk; it measures annotated mappings only")
+								+ " does not walk; it measures mapping-held routes only")
 						.isNull();
 			}
+
+			if (mapping instanceof AbstractUrlHandlerMapping byUrl) {
+				byUrl.getHandlerMap().keySet().forEach(
+						one -> registeredByUrl.add(mapping.getClass().getSimpleName() + " " + one));
+			}
 		}
+
+		assertThat(registeredByUrl.stream().sorted().toList())
+				.as("a route is registered by URL rather than by mapping; it answers every verb"
+						+ " and nothing below walks it, so read it and decide before moving this")
+				.isEqualTo(SNIMAK_ADRESA_PO_IMENU);
 
 		for (String open : ApiSecurity.READ_BY_ANYBODY) {
 			Set<RequestMethod> mapped = verbsMappedOnto(open);
@@ -179,7 +241,7 @@ class OpenRoutesStayReadOnlyTest {
 		Set<RequestMethod> found = EnumSet.noneOf(RequestMethod.class);
 
 		for (HandlerMapping mapping : everyMapping) {
-			if (!(mapping instanceof RequestMappingHandlerMapping annotated)) {
+			if (!(mapping instanceof RequestMappingInfoHandlerMapping annotated)) {
 				continue;
 			}
 
@@ -196,13 +258,27 @@ class OpenRoutesStayReadOnlyTest {
 		return found;
 	}
 
-	/** Whether this mapping covers the address, decided by the pattern and not by its spelling. */
+	/**
+	 * Whether this mapping covers the address, decided by the pattern and not by its
+	 * spelling.
+	 *
+	 * <p><b>There is no fallback to string comparison, and that is deliberate.</b> The
+	 * draft before this one fell back on {@code getDirectPaths()} when the pattern
+	 * condition was absent, which is a comparison of text - the very thing that killed
+	 * the first draft, and weaker still: {@code getDirectPaths()} is EMPTY for any
+	 * pattern with a wildcard. Measured: one line,
+	 * {@code spring.mvc.pathmatch.matching-strategy=ant-path-matcher}, makes that branch
+	 * the only one that runs, and a write on {@code /api/pricing/&#42;&#42;} goes
+	 * invisible again. So the condition is asserted instead: the day the strategy moves,
+	 * this case fails and says so.
+	 */
 	private static boolean covers(RequestMappingInfo info, PathContainer address) {
 		PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
 
-		if (patterns == null) {
-			return info.getDirectPaths().contains(address.value());
-		}
+		assertThat(patterns)
+				.as("%s is matched by the old ant strategy, where this case would compare text"
+						+ " instead of patterns and a wildcard write would go unseen", info)
+				.isNotNull();
 
 		for (PathPattern pattern : patterns.getPatterns()) {
 			if (pattern.matches(address)) {
