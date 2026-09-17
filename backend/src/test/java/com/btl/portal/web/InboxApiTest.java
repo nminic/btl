@@ -67,6 +67,9 @@ class InboxApiTest {
 	 *  not race, the ordinary case since 14.09.2026. */
 	private static final String NO_MEMBER = "mod@primer.rs";
 
+	/** Runs the bodies apart from one another and from every subject. */
+	private int bodies = 1;
+
 	private static final String TO_ME_READ = "Za mene, procitana";
 
 	private static final String TO_ME_UNREAD = "Za mene, jos neprocitana";
@@ -216,8 +219,16 @@ class InboxApiTest {
 						   below unable to tell `body` from any other field that repeats, and a
 						   query answering the body in place of the sender would pass. */
 						+ " ?, ?, ?, timestamptz '" + sentAt + "', ?, ?)")
+				/* THE BODY IS ITS OWN TEXT AND NOT THE SUBJECT REPHRASED. An earlier draft
+				   built it as "Tekst poruke: " + subject, which made `body` vary only
+				   because `subject` varied - two names for one source, so a query reading
+				   the subject where the body belongs still gave a list where no field was
+				   constant. The floor below cannot see that; only a comparison against
+				   text nobody else carries can. The number is arbitrary and deliberately
+				   unlike anything in the subject. */
 				.params(toNumber, fromNumber, fromName, subject,
-						"Tekst poruke: " + subject + ".", teamInvitationId, pairInviteId)
+						"Telo " + (bodies++) + ", i ono nije naslov.", teamInvitationId,
+						pairInviteId)
 				.update();
 	}
 
@@ -468,5 +479,40 @@ class InboxApiTest {
 	@Test
 	void noFieldOfTheInboxIsTheSameInEveryMessage() throws Exception {
 		Answers.noFieldIsTheSameInEveryRecord("/api/inbox", answer("ja@primer.rs"));
+	}
+
+	/**
+	 * AND EACH OF THE THREE IS THE COLUMN IT SAYS IT IS, compared with text nothing else
+	 * in the answer carries.
+	 *
+	 * <p><b>Why the floor above is not enough, measured rather than argued.</b> It says
+	 * only that no field is a CONSTANT. With it in place, {@code from := body} still
+	 * passed the whole gate, 1790 cases green: a member would read the text of the
+	 * message where the sender's name belongs, on both screens that draw it. The floor
+	 * cannot see a column read for another column; it never asks whose value a field
+	 * carries.
+	 *
+	 * <p>So this case names them. {@code from} is a person, {@code subject} is a title
+	 * and {@code body} is a text that is neither - three sources that cannot stand in for
+	 * one another, which is why the fixture stopped deriving the body from the subject in
+	 * the same commit. {@code CommentApiTest} compares its body against literal text for
+	 * the identical reason.
+	 */
+	@Test
+	void theSenderTheTitleAndTheTextAreEachTheirOwnColumn() throws Exception {
+		JsonNode one = item("ja@primer.rs", TO_ME_READ);
+
+		assertThat(one.path("from").asString())
+				.as("`from` does not carry the name of whoever sent it")
+				.isEqualTo("Druga Clanica");
+		assertThat(one.path("subject").asString())
+				.as("`subject` does not carry the title of the message")
+				.isEqualTo(TO_ME_READ);
+		assertThat(one.path("body").asString())
+				.as("`body` does not carry the text of the message; a column is being read"
+						+ " in place of another")
+				.startsWith("Telo ")
+				.endsWith(", i ono nije naslov.")
+				.doesNotContain(TO_ME_READ);
 	}
 }
