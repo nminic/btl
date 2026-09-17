@@ -63,11 +63,11 @@ class WhatHeMayDo {
 	 *
 	 * <p><b>Asked as one question because the answer has to be one answer.</b>
 	 * {@link VerificationApi} needs six of these at once - „Moderator vidi samo redove
-	 * i entitete za koje ima pravo" (owner, 30.07.2026, {@code PDL.md:4308}) - and
-	 * asking {@link #may(String)} six times would read the role and the ticks six
-	 * times, so a tick taken away between the third and the fourth reading would leave
-	 * one answer describing two different moderators. Read once, the answer is a
-	 * snapshot of one account at one moment.
+	 * i entitete za koje ima pravo" (owner, PDL P28a, 30.07.2026, „Moderator vidi samo
+	 * redove i entitete") - and asking {@link #may(String)} six times would read the role and the
+	 * ticks six times, so a tick taken away between the third and the fourth reading would leave one
+	 * answer describing two different moderators. Read once, the answer is a snapshot of one account
+	 * at one moment.
 	 *
 	 * <p><b>It is here and not at the caller, because this is where „may he" is
 	 * answered</b> (ADL A8: „Odgovara jedno mesto"). It asks nothing

@@ -77,11 +77,12 @@ class CommentApiTest {
 	 * <p><b>And it is a second comment WAITING rather than a refused one, which is the
 	 * correction of a fixture that stood on a state this portal does not have.</b> It was
 	 * first written as a draft refused and sent in again, citing the rule that a refused item
-	 * returns to its member ({@code PDL.md:3935}). That rule names the comment as its one
-	 * exception, in as many words: „Sve sto se odbije vraca se clanu... Izuzetak je jedino
-	 * komentar, koji se brise" ({@code PDL.md:3016}), „Komentar se ne vraca nego brise.
-	 * Moderator ga prihvati ili obrise, odmah. Clanu se ne salje nista" ({@code PDL.md:3017}),
-	 * and „odbijanje ne trazi razlog" ({@code PDL.md:3085}).
+	 * returns to its member (PDL P22, 06.08.2026, „Sve što se odbije vraća se članu"). That rule
+	 * names the comment as its one exception, in as many words: „Sve sto se odbije vraca se clanu...
+	 * Izuzetak je jedino komentar, koji se brise" (PDL P22, 06.08.2026, „Izuzetak je jedino
+	 * komentar"), „Komentar se ne vraca nego brise. Moderator ga prihvati ili obrise, odmah. Clanu
+	 * se ne salje nista" (PDL P22, 06.08.2026, „Komentar se ne vraća nego briše"), and „odbijanje ne
+	 * trazi razlog" (PDL P23, 30.07.2026, „odbijanje ne traži razlog").
 	 *
 	 * <p>So a refused comment is not a row that waits with a reason on it - it is a row that is
 	 * gone. A floor resting on it would hold only until somebody wrote the queue the way the
@@ -358,8 +359,9 @@ class CommentApiTest {
 	   gives `verification` a state of `rejected` that carries a reason, because that is what
 	   the other five queues do. The comments queue is the owner's one exception: „Komentar se
 	   ne vraca nego brise. Moderator ga prihvati ili obrise, odmah. Clanu se ne salje nista"
-	   (PDL 3017), and „odbijanje ne trazi razlog" (PDL 3085). So a refused comment is not a
-	   row in a state - it is a row that is gone, and a fixture writing one would be standing
+	   (PDL P22, 06.08.2026, „Komentar se ne vraća nego briše"), and „odbijanje ne trazi razlog" (PDL
+	   P23, 30.07.2026, „odbijanje ne traži razlog"). So a refused comment is not a row in a state -
+	   it is a row that is gone, and a fixture writing one would be standing
 	   on something this portal is not allowed to have. */
 
 	private MockHttpServletRequestBuilder asking() {
@@ -416,9 +418,9 @@ class CommentApiTest {
 	 * <p>{@code Answers} reads the names of a record and would not see a fourth mark added
 	 * INSIDE {@code rating}, which is the one place a field can be added to this answer
 	 * without it noticing. The field it would be is known by name: „Ukupna ocena se ne cuva
-	 * nego se racuna gde god se prikaze" ({@code PDL.md:3733}, 07.08.2026), because a number
-	 * derived from three others has no fourth place to live and the first rounding somebody
-	 * changed would leave two different answers on one portal.
+	 * nego se racuna gde god se prikaze" (PDL P28a, 07.08.2026, „Ukupna ocena se ne čuva nego se
+	 * računa", 07.08.2026), because a number derived from three others has no fourth place to live
+	 * and the first rounding somebody changed would leave two different answers on one portal.
 	 *
 	 * <p><b>Read off the file the portal serves and not written out here</b>, for the reason
 	 * every list in this repository is: a list of three written into a case is a list that
@@ -434,7 +436,8 @@ class CommentApiTest {
 
 		assertThat(Answers.fieldsOf(answer().get(0).path("rating")))
 				.as("the marks answered are not the ones the portal reads; a mark ADDED here is the"
-						+ " total, which PDL 3733 says is worked out wherever it is drawn and never"
+						+ " total, which PDL P28a, 07.08.2026, „Ukupna ocena se ne čuva nego se računa\""
+						+ " says is worked out wherever it is drawn and never"
 						+ " stored")
 				.containsExactlyInAnyOrderElementsOf(served);
 	}
@@ -571,10 +574,11 @@ class CommentApiTest {
 	/**
 	 * ONLY WHAT A MODERATOR LET OUT IS ANSWERED.
 	 *
-	 * <p>„Komentari idu kroz odobrenje pre objave" ({@code PDL.md:2886}) and „prikazuju se na
-	 * dnu strane dogadjaja i to tek kad ih moderator odobri" ({@code PDL.md:3740}). In this
-	 * schema that is a table rather than a column: {@code event_comment} is the record of what
-	 * was published and what is still waiting is a row in {@code verification}.
+	 * <p>„Komentari idu kroz odobrenje pre objave" (PDL P18, „Komentari idu kroz odobrenje pre
+	 * objave") and „prikazuju se na dnu strane dogadjaja i to tek kad ih moderator odobri" (PDL
+	 * P28a, 06.08.2026, „Komentari se prikazuju na dnu strane"). In this schema that is a table
+	 * rather than a column: {@code event_comment} is the record of what was published and what is
+	 * still waiting is a row in {@code verification}.
 	 *
 	 * <p><b>Two measurements, because each catches the opposite failure.</b> The text says a
 	 * particular unapproved sentence did not come out; the length says the answer is exactly
@@ -634,9 +638,10 @@ class CommentApiTest {
 
 		   BOTH OF HIS ARE WAITING, and the first draft of this fixture had one of them
 		   REFUSED instead. That is a state the comments queue does not have: „Komentar se ne
-		   vraca nego brise... Clanu se ne salje nista" (PDL 3017). A floor standing on it
-		   would hold until somebody wrote the queue as the owner decided it and would then
-		   fall to nothing without a word. A member who wrote about two events has two
+		   vraca nego brise... Clanu se ne salje nista" (PDL P22, 06.08.2026, „Komentar se ne vraća nego
+		   briše"). A floor standing on it would hold until somebody wrote the queue as the owner
+		   decided it and would then fall to nothing without a word. A member who wrote about two events
+		   has two
 		   comments waiting, and that is the same floor out of a state the portal really has. */
 		assertThat(db.sql("select count(*) from event_comment k where ("
 						+ " select count(*) from verification v"
@@ -715,8 +720,8 @@ class CommentApiTest {
 	 * AND THE NAME IS THE ONE THE COMMENT WENT OUT UNDER, not the one its author has now.
 	 *
 	 * <p>„Komentar clana koji je napustio ligu ostaje sa imenom pod kojim je objavljen"
-	 * ({@code PDL.md:3740}, 06.08.2026), and V7 makes {@code who} a column of the comment
-	 * rather than a join for exactly that reason.
+	 * (PDL P28a, 06.08.2026, „Komentari se prikazuju na dnu strane"), and V7 makes
+	 * {@code who} a column of the comment rather than a join for exactly that reason.
 	 *
 	 * <p><b>This is the only row in the fixture where the two names differ, and without it the
 	 * column is measured by nothing.</b> Read off the member instead, every other comment here
@@ -805,14 +810,15 @@ class CommentApiTest {
 	 *
 	 * <p><b>Why it comes back at all.</b> It is published prose and the owner kept it:
 	 * „Komentar clana koji je napustio ligu ostaje sa imenom pod kojim je objavljen"
-	 * ({@code PDL.md:3740}, 06.08.2026). What changes is the link, not the comment.
+	 * (PDL P28a, 06.08.2026, „Komentari se prikazuju na dnu strane"). What changes is
+	 * the link, not the comment.
 	 *
 	 * <p><b>Why the number does not.</b> „Komentar clana koji je napustio ligu nema vezu ka
 	 * profilu, pa ni kad je taj clan i dalje u zapisu", and the reason recorded on 07.08.2026
 	 * is that the code asked the wrong question: „ima li zapisa" umesto „ima li vidljivog
-	 * profila" ({@code PDL.md:3756}). A member who did not renew is still in the record and
-	 * has no visible profile - {@code /api/competitors} keeps him off its list altogether
-	 * (owner, 13.09.2026) - and the number IS the profile link.
+	 * profila" (PDL P28a, 07.08.2026, „Komentar člana koji je napustio ligu nema vezu"). A member
+	 * who did not renew is still in the record and has no visible profile - {@code /api/competitors}
+	 * keeps him off its list altogether (owner, 13.09.2026) - and the number IS the profile link.
 	 *
 	 * <p><b>And leaving it in would name, by subtraction, whoever has not paid.</b> That is
 	 * the sentence {@code PairApi} carries from the same day: a number that is in this answer

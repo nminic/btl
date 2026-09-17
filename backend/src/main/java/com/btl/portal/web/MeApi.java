@@ -23,11 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
  * 14.09.2026 and this paragraph changed with it. Until then there was no link at
  * all to read one through, and this class said so. Now there is: V23 gives
  * {@code account} a {@code competitor_id}, because „jedan nalog je tacno jedan
- * clan" (owner, {@code PDL.md:2987}). What keeps the number out of here is
- * therefore no longer that it cannot be found but that nothing has asked for it.
- * A field this record carries is a field every screen may read, and each one
- * added is a promise about what the portal answers before anybody has said which
- * screen needs it.
+ * clan" (owner, PDL P21, 14.09.2026, „Jedan nalog je tacno jedan clan"). What keeps the number
+ * out of here is therefore no longer that it cannot be found but that nothing has asked for it. A
+ * field this record carries is a field every screen may read, and each one added is a promise
+ * about what the portal answers before anybody has said which screen needs it.
  *
  * <p><b>And it would not be the harmless field it looks like.</b> The link is
  * empty for anybody who does not race - a moderator has no member record at all,

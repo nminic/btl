@@ -50,9 +50,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * account hands each of them the other's and fails, rather than handing back a set that
  * happens to be right.
  * <li><b>Two accounts that are NOT moderators</b>, one of each remaining kind that can
- * hold a session: the superadmin, whom {@code PDL.md:4422} keeps out of this table, and
- * a plain competitor. A condition that dropped only one of the two passes half of this
- * file and fails the other half.
+ * hold a session: the superadmin, whom PDL P28a, 30.07.2026, „Superadmin nema kućice" keeps out of
+ * this table, and a plain competitor. A condition that dropped only one of the two passes half of
+ * this file and fails the other half.
  * <li><b>The address order is not the insertion order</b>, so a query with no
  * {@code order by} answers in an order the last case does not accept.
  * <li><b>The reader is not one of the read.</b> Every request below is made by the
@@ -179,12 +179,12 @@ class ModeratorApiTest {
 		   the ordinary case since 14.09.2026, and the one who is both is the only row on
 		   which „the name off the account" and „the name off the member record" can be
 		   told apart at all. BOTH her first name and her surname differ, because the
-		   register of members and the account are two independent facts (PDL.md:4460) and
-		   the Statute's book of members asks for a first name and a surname of its own
-		   (PDL P32) regardless of what either says - a woman may be registered under a name
-		   she does not sign in under. Only the surname used to differ until this case; a
-		   coalesce that fell back to `account` solely for a first name the two rows
-		   happened to share still served her true name, and the fixture now makes that
+		   register of members and the account are two independent facts (PDL P28a, 14.09.2026, „Ime i
+		   prezime nosi sam nalog") and the Statute's book of members asks for a first name and a surname of
+		   its own (PDL P32) regardless of what either says - a woman may be registered under a name she
+		   does not sign in under. Only the surname used to differ until this case; a coalesce that fell
+		   back to `account` solely for a first name the two rows happened to share still served her true
+		   name, and the fixture now makes that
 		   impossible (found in review, B56, 14.09.2026). */
 		competitor(HER_COMPETITOR_ID, HER_MEMBER_NUMBER, HER_FIRST_NAME_ON_THE_MEMBER_RECORD,
 				HER_LAST_NAME_ON_THE_MEMBER_RECORD);
@@ -322,10 +322,10 @@ class ModeratorApiTest {
 	 * it instead of going on quietly excusing a gap.
 	 *
 	 * <p><b>That day is 14.09.2026.</b> „Ime i prezime nosi sam nalog, i moderator ne mora
-	 * da bude clan" ({@code PDL.md:4459}), V23 put the two columns on {@code account}, and
-	 * the assertion is now the plain one: the portal reads five fields and the server
-	 * answers with all five. {@code Answers} refuses both directions at once, so this also
-	 * says the answer carries nothing the portal does not read.
+	 * da bude clan" (PDL P28a, 14.09.2026, „Ime i prezime nosi sam nalog"), V23 put the two columns on
+	 * {@code account}, and the assertion is now the plain one: the portal reads five fields and the
+	 * server answers with all five. {@code Answers} refuses both directions at once, so this also says
+	 * the answer carries nothing the portal does not read.
 	 *
 	 * <p><b>Where the names come FROM is a separate question and has its own case</b>
 	 * ({@link #theNameComesOffTheAccountAndNotOffTheMemberRecord()}), because this one
@@ -417,7 +417,8 @@ class ModeratorApiTest {
 	 *
 	 * <p>Nothing about moderators is public: ADL P-javno, 13.09.2026, names this resource
 	 * among the seven the rule covers and the rule is „javno je ono sto Clan 73 nabraja, i
-	 * nista vise" ({@code ADL.md:3206}). Article 73 lists nothing whatever about them.
+	 * nista vise" (ADL P-javno, 13.09.2026, „javno je ono sto Clan 73 nabraja"). Article 73 lists
+	 * nothing whatever about them.
 	 *
 	 * <p><b>401 and not 404, which is the distinction {@code RightsAtTheDoor} exists to
 	 * keep.</b> A browser that gets 404 cannot tell „your session ran out" from „wrong
@@ -451,11 +452,11 @@ class ModeratorApiTest {
 	 * this route's guard rather than an edge of it.
 	 *
 	 * <p>The owner, 30.07.2026: „Ekran sa moderatorima vidi samo Superadmin"
-	 * ({@code PDL.md:4438}), and the reason with it - „Bez te granice moderator bi sam
-	 * sebi mogao da dodeli prava, pa granularna prava ne bi značila ništa." So no tick
-	 * opens this, which is why there is no column for it in the matrix („Ne treba ni da
-	 * postoji kolona moderatori jer samo superadmin ima ta prava", 13.08.2026,
-	 * {@code PDL.md:4403}).
+	 * (PDL P28a, 30.07.2026, „Ekran sa moderatorima vidi samo Superadmin"), and the reason with it -
+	 * „Bez te granice moderator bi sam sebi mogao da dodeli prava, pa granularna prava ne bi značila
+	 * ništa." So no tick opens this, which is why there is no column for it in the matrix („Ne treba ni
+	 * da postoji kolona moderatori jer samo superadmin ima ta prava", PDL P28a, 13.08.2026,
+	 * „Moderatori nemaju kolonu").
 	 *
 	 * <p><b>The ticks are read off {@code admin_right} and not written out here</b>, so
 	 * the thirteenth right added tomorrow is on this moderator the day it exists. A list
@@ -463,8 +464,9 @@ class ModeratorApiTest {
 	 * „twelve of thirteen", and a guard reading „does he hold them all" would then let
 	 * him through with nothing failing.
 	 *
-	 * <p><b>The refusal is 404 and not 403</b> (owner, 13.09.2026, {@code ADL.md:783}):
-	 * the server must not be the one place that says the address is there.
+	 * <p><b>The refusal is 404 and not 403</b> (owner, ADL A8, 13.09.2026, „Server odbija
+	 * moderatora bez privilegije sa 404"): the server must not be the one place that says the address is
+	 * there.
 	 *
 	 * <p><b>And the superadmin's 200 in the same case is the anchor</b> - without it a
 	 * route that was simply broken would pass this.
@@ -503,10 +505,9 @@ class ModeratorApiTest {
 	 * NEITHER THE SUPERADMIN NOR A PLAIN MEMBER IS AMONG THE MODERATORS.
 	 *
 	 * <p>„Superadmin nema kućice. On sme sve, uvek, i ne pojavljuje se u ovoj tabeli kao
-	 * neko kome se prava dodeljuju" ({@code PDL.md:4422}). Serving him would put on the
-	 * screen a row whose empty list of ticks reads as „may do nothing" about the one
-	 * account that may do everything, and a box beside it that means nothing whichever
-	 * way it is left.
+	 * neko kome se prava dodeljuju" (PDL P28a, 30.07.2026, „Superadmin nema kućice"). Serving him would
+	 * put on the screen a row whose empty list of ticks reads as „may do nothing" about the one account
+	 * that may do everything, and a box beside it that means nothing whichever way it is left.
 	 *
 	 * <p><b>Two accounts and not one, because they fail different mistakes.</b> A
 	 * condition written as „his role is not the one that holds everything" drops the
@@ -535,7 +536,7 @@ class ModeratorApiTest {
 
 		assertThat(answered)
 				.as("the superadmin came out of the list of people whose rights are given to them,"
-						+ " and PDL.md:4422 keeps him out of it")
+						+ " and PDL P28a, 30.07.2026, „Superadmin nema kućice\" keeps him out of it")
 				.doesNotContain(EVERYTHING);
 		assertThat(answered)
 				.as("an account with no administrative standing at all came out of the list of"
