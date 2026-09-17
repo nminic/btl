@@ -49,6 +49,12 @@ class ApiSecurity {
 	 * portal for, and somebody deciding whether to join reads a league's rules before
 	 * anything else. Who RAN a race is a different resource and is not opened here.
 	 *
+	 * <p><b>And the price list, which the owner opened by name.</b> 04.08.2026,
+	 * deleting the page that used to carry it: „cene su javne u Clanu 14 Pravilnika",
+	 * and the fee beside them „se prikazuje svima, samo je ne placaju svi". It is what
+	 * somebody reads BEFORE registering, so a price list behind a sign-in would be the
+	 * portal asking to be joined before it says what joining costs.
+	 *
 	 * <p><b>It is a constant rather than four arguments because the guard reads
 	 * it.</b> `ApiSecurityTest` takes every route on this list and asks whether a
 	 * sub-path, a different spelling of it and a trailing slash are still shut, and
@@ -64,7 +70,8 @@ class ApiSecurity {
 					"/api/competitors",
 					"/api/ducats",
 					"/api/pairs",
-					"/api/teams");
+					"/api/teams",
+					"/api/pricing");
 
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
