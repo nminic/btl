@@ -17,8 +17,9 @@ import java.util.List;
  * different resource.
  *
  * <p><b>Read by members and by nobody else.</b> The owner, 11.08.2026: „Tu listu ko je
- * prijavljen takođe vide samo ulogovani članovi" ({@code PDL.md:294}). A visitor sees
- * the calendar and its results; who plans to be at one of them he does not.
+ * prijavljen takođe vide samo ulogovani članovi" (PDL P6, 11.08.2026, „Spisak najavljenih vide
+ * samo prijavljeni"). A visitor sees the calendar and its results; who plans to be at one of them
+ * he does not.
  *
  * <p><b>Enforced by NOT being enforced here.</b> Everything under {@code /api} is shut
  * and {@link ApiSecurity#READ_BY_ANYBODY} opens a few things by name; this route is
@@ -32,13 +33,13 @@ import java.util.List;
  * nobody was ever going to be given.
  *
  * <p><b>ONLY A FUTURE EVENT, which is the noun the owner's decision is built on.</b>
- * „Prijavljen član najavljuje odlazak na BUDUĆI događaj" ({@code PDL.md:288}), and PDL
- * P10 has said from the start that saying so is „samo iskazana namera, ne obaveza" -
- * an intention, not a memory. {@code PDL.md:153} is the other half of the same sentence:
- * „DNF i nedolazak se ne evidentiraju", so the portal never turns an intention into a
- * record of what really happened. A row in {@code attending} does not delete itself the
- * day its event is run, so without this filter every event ever held would keep
- * answering with whoever last said they meant to go to it.
+ * „Prijavljen član najavljuje odlazak na BUDUĆI događaj" (PDL P6, 11.08.2026, „Prijavljen član
+ * najavljuje odlazak na budući"), and PDL P10 has said from the start that saying so is „samo
+ * iskazana namera, ne obaveza" - an intention, not a memory. PDL P5, „DNF i nedolazak se ne
+ * evidentiraju" is the other half of the same sentence: „DNF i nedolazak se ne evidentiraju", so
+ * the portal never turns an intention into a record of what really happened. A row in {@code
+ * attending} does not delete itself the day its event is run, so without this filter every event
+ * ever held would keep answering with whoever last said they meant to go to it.
  *
  * <p><b>The boundary is the database's schema and not `current_date`, and for the
  * reason {@code WhatTimeItIs} gives: a server kept in UTC is still living in yesterday
@@ -132,7 +133,8 @@ class AttendanceApi {
 						   that still exist. */
 						+ " join btl_event e on e.id = a.event_id"
 						+ " join competitor c on c.id = a.competitor_id"
-						/* ONLY A FUTURE EVENT (PDL.md:288, „budući događaj"), read in the
+						/* ONLY A FUTURE EVENT (PDL P6, 11.08.2026, „Prijavljen član najavljuje odlazak na budući",
+						„budući događaj"), read in the
 						   league's own time and not the server's. */
 						+ " where e.date >= :today"
 						/* AND ONLY A MEMBERSHIP IN GOOD STANDING, for the reason PairApi

@@ -45,10 +45,10 @@ class AdminRightsTest {
 	 * be seen by asking {@link AdminRights#may(String)} over the matrix one code at a
 	 * time.</b> A moderator ticked for everything answers yes to every code there is, and
 	 * still answers no here: what he holds was GIVEN him, one box at a time, and the one
-	 * thing that is not in the matrix at all is who the moderators are (PDL P28a,
-	 * {@code PDL.md:4403}). A guard written as „does he hold all of them" would hand the
-	 * portal to whoever was trusted with all of them, and „Bez te granice moderator bi sam
-	 * sebi mogao da dodeli prava, pa granularna prava ne bi značila ništa" (owner,
+	 * thing that is not in the matrix at all is who the moderators are
+	 * (PDL P28a, 13.08.2026, „Moderatori nemaju kolonu"). A guard written as „does he hold all of
+	 * them" would hand the portal to whoever was trusted with all of them, and „Bez te granice
+	 * moderator bi sam sebi mogao da dodeli prava, pa granularna prava ne bi značila ništa" (owner,
 	 * 30.07.2026).
 	 *
 	 * <p>Both sides are read in one case on purpose, because the claim is a comparison:

@@ -22,22 +22,21 @@ import java.util.Map;
  * depends on which rights the asker holds rather than on whether he holds one.
  *
  * <p><b>„Red za proveru" is not a thing any more; Verifikacija is</b> ({@code
- * PDL.md:3903}): „prestaje da postoji kao zasebna stavka i postaje deo veće celine
- * Verifikacija, jer moderator odobrava mnogo više od rezultata". It has six queues
- * ({@code PDL.md:3906}, eight then seven then six) and they are not written down here -
- * V5 already carries them as the six {@code queue:} rows of the rights matrix, and V9
- * generates {@code verification.right_code} out of the tab so that a row cannot exist in
- * a tab nobody has the right to moderate. This class reads that matrix and never a list
- * of its own.
+ * PDL P28a, „prestaje da postoji kao zasebna stavka"}): „prestaje da postoji kao zasebna stavka i
+ * postaje deo veće celine Verifikacija, jer moderator odobrava mnogo više od rezultata". It has
+ * six queues (PDL P28a, 24.08.2026, „Verifikacija ima šest redova", eight then seven then six)
+ * and they are not written down here - V5 already carries them as the six {@code queue:} rows of
+ * the rights matrix, and V9 generates {@code verification.right_code} out of the tab so that a
+ * row cannot exist in a tab nobody has the right to moderate. This class reads that matrix and
+ * never a list of its own.
  *
  * <p><b>THIS RESOURCE HAS LEAKED ONCE ALREADY, AND IT WAS THE WORST LEAK OF THE
- * PROJECT.</b> The owner, 07.08.2026 ({@code PDL.md:3815}): „Javne strane ne smeju da
- * preuzimaju red za verifikaciju. Strana događaja ga je čitala da bi našla odobrene
- * komentare, pa je svaki posetilac dobijao u pregledač adrese neaktiviranih članova i
- * tekstove neodobrenih komentara, uključujući i onaj sa reklamom za tuđi link."
- * {@link CommentApi} is the other half of that decision and names {@code verification}
- * nowhere at all; this is the half that DOES serve the queue, so everything below is
- * about who gets it.
+ * PROJECT.</b> The owner (PDL P28a, 07.08.2026, „Javne strane ne smeju da preuzimaju
+ * red"): „Javne strane ne smeju da preuzimaju red za verifikaciju. Strana događaja ga je čitala
+ * da bi našla odobrene komentare, pa je svaki posetilac dobijao u pregledač adrese neaktiviranih
+ * članova i tekstove neodobrenih komentara, uključujući i onaj sa reklamom za tuđi link." {@link
+ * CommentApi} is the other half of that decision and names {@code verification} nowhere at all;
+ * this is the half that DOES serve the queue, so everything below is about who gets it.
  *
  * <p><b>NOTHING HERE IS PUBLIC.</b> ADL P-javno, the owner on 13.09.2026: „javno je ono
  * što Član 73 nabraja, i ništa više", and it names verification among the seven
@@ -66,15 +65,16 @@ import java.util.Map;
  * the answer to an address that does not exist.
  *
  * <p><b>SOMEBODY WITH NO QUEUE AT ALL IS TOLD 404, THE SAME AS AN ADDRESS THAT IS NOT
- * THERE.</b> The owner, 13.09.2026 ({@code ADL.md:783}): „Server odbija moderatora bez
- * privilegije sa 404, ne sa 403", his reason being that the administration draws no
- * screen a moderator may not open, so the server must not be the one place that says the
- * address is there. {@code PDL.md:4379} says the same about this section from the
- * screen's side: „Odeljci Verifikacija i Entiteti nemaju sopstvenu stranu. Njihove adrese
- * otvaraju prvi red odnosno prvi entitet koji ta osoba sme, a naslovnu kad ne sme
- * nijedan." A plain competitor and a moderator with no tick on any queue are the same
- * case here and get the same answer - and so is a moderator who holds entity rights only,
- * because an entity is not a queue and this section is queues.
+ * THERE.</b> The owner (ADL A8, 13.09.2026, „Server odbija moderatora bez privilegije
+ * sa 404"): „Server odbija moderatora bez privilegije sa 404, ne sa 403", his reason being that
+ * the administration draws no screen a moderator may not open, so the server must not be the one
+ * place that says the address is there. PDL P28a, 30.07.2026, „Odeljci Verifikacija i Entiteti
+ * nemaju sopstvenu" says the same about this section from the screen's side: „Odeljci
+ * Verifikacija i Entiteti nemaju sopstvenu stranu. Njihove adrese otvaraju prvi red odnosno prvi
+ * entitet koji ta osoba sme, a naslovnu kad ne sme nijedan." A plain competitor and a moderator
+ * with no tick on any queue are the same case here and get the same answer - and so is a
+ * moderator who holds entity rights only, because an entity is not a queue and this section is
+ * queues.
  *
  * <p><b>The refusal is {@code sendError} and never a status written onto the
  * response</b>, and that is not a style: {@link RightsAtTheDoor} measured on 13.09.2026
@@ -97,38 +97,38 @@ import java.util.Map;
  * answers cannot disagree with one another.
  *
  * <p><b>AN EMPTY QUEUE IS A ROW WITH AN EMPTY LIST, NOT A ROW THAT IS MISSING.</b> The
- * owner, 29.08.2026 ({@code PDL.md:3960}): „Prazan red ostaje u navigaciji i pokazuje
- * nulu. Neka ipak ne nestaju stavke iz Verifikacije kad se odobre. Neka ostane vidljiva i
- * neka piše 0." That is the same shape {@link ModeratorApi} has for a moderator with no
- * ticks and says out loud - „An empty list is not a broken record" - and it is why the
- * queue is reached by an OUTER join from the rights matrix rather than by an inner join
- * from the rows: a tab whose every item has been decided is precisely the tab this
- * decision is about, and an inner join drops it without a word. For the same reason the
- * state is tested in the JOIN and not in the WHERE - moved there, a tab holding nothing
- * but decided rows disappears again, by a different spelling of the same mistake.
+ * owner (PDL P28a, 29.08.2026, „Prazan red ostaje u navigaciji"): „Prazan red ostaje
+ * u navigaciji i pokazuje nulu. Neka ipak ne nestaju stavke iz Verifikacije kad se odobre. Neka
+ * ostane vidljiva i neka piše 0." That is the same shape {@link ModeratorApi} has for a moderator
+ * with no ticks and says out loud - „An empty list is not a broken record" - and it is why the
+ * queue is reached by an OUTER join from the rights matrix rather than by an inner join from the
+ * rows: a tab whose every item has been decided is precisely the tab this decision is about, and
+ * an inner join drops it without a word. For the same reason the state is tested in the JOIN and
+ * not in the WHERE - moved there, a tab holding nothing but decided rows disappears again, by a
+ * different spelling of the same mistake.
  *
- * <p><b>AND ONLY WHAT IS WAITING COMES OUT.</b> {@code PDL.md:3983}: „Sekcija „Rešeno" se
- * ukida. Red pokazuje samo ono što čeka; šta je rešeno nije posao koji stoji pred
- * moderatorom." So {@code state = 'waiting'}, and what was approved or refused is not in
- * this answer in any shape - not the decision, not who made it, not the reason, and not
- * the state itself. The state would be the string {@code waiting} in every record, which
- * is a field a constant could answer; {@code Answers.noFieldIsTheSameInEveryRecord}
- * refuses exactly that, so leaving it out is measured rather than remembered.
+ * <p><b>AND ONLY WHAT IS WAITING COMES OUT.</b> PDL P28a, 06.08.2026, „Red pokazuje samo ono što
+ * čeka": „Sekcija „Rešeno" se ukida. Red pokazuje samo ono što čeka; šta je rešeno nije posao
+ * koji stoji pred moderatorom." So {@code state = 'waiting'}, and what was approved or refused is
+ * not in this answer in any shape - not the decision, not who made it, not the reason, and not
+ * the state itself. The state would be the string {@code waiting} in every record, which is a
+ * field a constant could answer; {@code Answers.noFieldIsTheSameInEveryRecord} refuses exactly
+ * that, so leaving it out is measured rather than remembered.
  *
  * <p><b>THE NUMBER BESIDE A QUEUE IS NOT A FIELD OF THIS ANSWER, AND THAT IS A DECISION
- * WITH TWO WRITTEN REASONS.</b> {@code PDL.md:4294} asks for a number beside every queue
- * and says how it must be arrived at: „Broji se kroz isto mesto kroz koje broji i brojač
- * u zaglavlju, pa se tri broja ne mogu razići", and „Broj se ne osvežava dolaskom na neku
- * stranu nego u istom trenutku u kom se odluka donese". {@code PDL.md:4314} is the rule
- * behind it: „Nijedan broj na portalu ne stoji na dva mesta." A count served beside the
- * list would be a second place the same fact lives - and a STALE one the instant a
- * moderator decides something, because the portal subtracts what this visit has answered
- * before it counts ({@code pages/admin/pending.ts}, {@code waitingIn}) and a number
- * computed on the server knows nothing of that. So the row carries its items and the
- * count is the reader's arithmetic, which is the shape the portal already has
- * ({@code countFor} in {@code pages/admin/queues.ts}) and the same subtraction
- * {@link CommentApi} makes for the overall mark: „Ukupna ocena se ne čuva nego se računa
- * gde god se prikaže" ({@code PDL.md:3733}).
+ * WITH TWO WRITTEN REASONS.</b> PDL P28a, 30.07.2026, „Uz svaki red verifikacije stoji broj" asks
+ * for a number beside every queue and says how it must be arrived at: „Broji se kroz isto mesto
+ * kroz koje broji i brojač u zaglavlju, pa se tri broja ne mogu razići", and „Broj se ne osvežava
+ * dolaskom na neku stranu nego u istom trenutku u kom se odluka donese". PDL P28a, 30.07.2026,
+ * „Nijedan broj na portalu ne stoji na dva mesta" is the rule behind it: „Nijedan broj na portalu
+ * ne stoji na dva mesta." A count served beside the list would be a second place the same fact
+ * lives - and a STALE one the instant a moderator decides something, because the portal subtracts
+ * what this visit has answered before it counts ({@code pages/admin/pending.ts}, {@code
+ * waitingIn}) and a number computed on the server knows nothing of that. So the row carries its
+ * items and the count is the reader's arithmetic, which is the shape the portal already has
+ * ({@code countFor} in {@code pages/admin/queues.ts}) and the same subtraction {@link CommentApi}
+ * makes for the overall mark: „Ukupna ocena se ne čuva nego se računa gde god se prikaže" (PDL
+ * P28a, 07.08.2026, „Ukupna ocena se ne čuva nego se računa").
  *
  * <p><b>The tab is on the ROW and not on the item, for that same rule.</b> A queue is
  * what the item is standing in; written on both it could disagree with itself.
@@ -140,9 +140,9 @@ import java.util.Map;
  * answers, „sve u vezi sa članarinom" - which Article 74 puts beside the date of birth.
  * There is no such subtraction to make here: nothing in this answer is public, the only
  * reader is the one moderator holding that tab's tick, and the payments tab exists
- * precisely for people whose fee is not recorded ({@code PDL.md:3906}, „Uplate i
- * aktivacija članova"). Filtering on {@code competitor.active} would empty the tab this
- * queue was built for. This is written down because it is the fifth place the same
+ * precisely for people whose fee is not recorded (PDL P28a, 24.08.2026, „Verifikacija ima šest
+ * redova", „Uplate i aktivacija članova"). Filtering on {@code competitor.active} would empty the
+ * tab this queue was built for. This is written down because it is the fifth place the same
  * question has been asked and the first place the answer is the other way round.
  *
  * <p><b>WHAT THE SCHEMA HAS NOWHERE TO HOLD IS LEFT OUT AND NAMED, never invented.</b> V9
@@ -254,8 +254,9 @@ class VerificationApi {
 		List<String> his = mayHe.whichOf(everyQueueThereIs());
 
 		/* NOTHING TO SHOW HIM IS THE SAME AS NOTHING BEING HERE (owner, 13.09.2026,
-		   ADL.md:783; PDL.md:4379 says the section opens „naslovnu kad ne sme nijedan").
-		   This is a plain competitor, and it is equally a moderator who holds entity
+		   ADL A8, 13.09.2026, „Server odbija moderatora bez privilegije sa 404"; PDL P28a, 30.07.2026,
+		   „Odeljci Verifikacija i Entiteti nemaju sopstvenu" says the section opens „naslovnu kad ne
+		   sme nijedan"). This is a plain competitor, and it is equally a moderator who holds entity
 		   rights and no queue.
 
 		   Read off the SAME list the answer is built from, so „he may see no queue" and
