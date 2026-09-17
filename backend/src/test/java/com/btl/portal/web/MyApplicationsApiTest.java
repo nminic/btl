@@ -316,8 +316,18 @@ class MyApplicationsApiTest {
 			   „the field was left out" from „the field was served empty". The decision of
 			   13.09.2026 is about leaving it OUT, and `CommentApiTest` asserts exactly
 			   that with `isNull()`. */
-			JsonNode number = one.path("memberNumber");
-			out.add(new Invite(number.isMissingNode() || number.isNull() ? null : number.asString(),
+			/* A KEY THAT IS NOT THERE IS NOT THE SAME AS ONE THAT IS null, and an earlier
+			   draft folded them together with `isMissingNode() ||`. The wire carries
+			   `"memberNumber":null` today; dropping the key instead - one annotation on
+			   the record does it - changes what the portal promises, and the reader has
+			   to be able to say so. `CommentApiTest` reads it this way for the same
+			   reason. */
+			JsonNode number = one.get("memberNumber");
+			assertThat(number)
+					.as("the answer stopped carrying `memberNumber` at all, which is a different"
+							+ " promise from carrying it empty")
+					.isNotNull();
+			out.add(new Invite(number.isNull() ? null : number.asString(),
 					one.path("sentByMe").asBoolean(), one.path("date").asString()));
 		}
 		return out;
@@ -488,14 +498,20 @@ class MyApplicationsApiTest {
 
 		List<Invite> mine = pairInvites(answer());
 
-		assertThat(mine.stream().map(Invite::memberNumber))
-				.as("the member who did not renew is still named, or somebody else stopped being")
-				.containsExactly(lapsed.equals(PAIR_TO) ? null : PAIR_TO,
-						lapsed.equals(PAIR_FROM) ? null : PAIR_FROM);
-
-		assertThat(mine.stream().map(Invite::date))
-				.as("an invite disappeared with the member; the row is his own and stays")
-				.containsExactly("2026-08-15", "2026-08-28");
+		/* THE WHOLE RECORD, and `sentByMe` with it. An earlier draft compared two
+		   projections - the numbers and the days - and by splitting them it dropped the
+		   third column out of every case in the file: `sentByMe` was then measured only
+		   where both sides are active. Measured on review, and it was a guard this file
+		   HAD and this change had killed: a query putting the fee guard around `sentByMe`
+		   too answers `false` for the lapsed row, so an invite the member SENT is drawn
+		   as one he RECEIVED, and the screen reads the whole meaning of the row from that
+		   field. */
+		assertThat(mine)
+				.as("the member who did not renew is still named, somebody else stopped being,"
+						+ " an invite disappeared with its member, or a direction was turned round")
+				.containsExactly(
+						new Invite(lapsed.equals(PAIR_TO) ? null : PAIR_TO, true, "2026-08-15"),
+						new Invite(lapsed.equals(PAIR_FROM) ? null : PAIR_FROM, false, "2026-08-28"));
 
 		assertThat(answer().toString())
 				.as("the number of the member who did not renew is still somewhere in the answer")
