@@ -6,14 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
-import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.web.util.ServletRequestPathUtils;
 
 import java.util.EnumSet;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -80,6 +80,14 @@ class OpenRoutesStayReadOnlyTest {
 	private static final Set<RequestMethod> READING =
 			EnumSet.of(RequestMethod.GET, RequestMethod.HEAD, RequestMethod.OPTIONS);
 
+	/**
+	 * And everything that is not reading, derived rather than listed, so a method
+	 * added to {@code RequestMethod} tomorrow is asked about without anybody
+	 * remembering to add it here.
+	 */
+	private static final Set<RequestMethod> BESIDE_READING =
+			EnumSet.complementOf(EnumSet.copyOf(READING));
+
 	/** The dispatcher, asked which methods it maps, rather than a pattern read off a spelling. */
 	@Autowired
 	@Qualifier("requestMappingHandlerMapping")
@@ -94,58 +102,65 @@ class OpenRoutesStayReadOnlyTest {
 	 * maps is a subset of {@link #READING}.
 	 */
 	@Test
-	void everyOpenRouteAnswersOnlyToReading() {
+	void everyOpenRouteAnswersOnlyToReading() throws Exception {
 		assertThat(ApiSecurity.READ_BY_ANYBODY)
 				.as("the open list is empty, so this checks nothing")
 				.isNotEmpty();
 
 		for (String open : ApiSecurity.READ_BY_ANYBODY) {
-			Set<RequestMethod> answered = methodsMappedTo(open);
-
-			assertThat(answered)
-					.as("%s is on the open list but the dispatcher maps nothing to it, so asking"
+			assertThat(answeredAt(open, READING))
+					.as("%s is on the open list but the dispatcher resolves nothing there, so asking"
 							+ " what it answers beside reading measures nothing", open)
 					.isNotEmpty();
 
-			Set<RequestMethod> besideReading = EnumSet.copyOf(answered);
-			besideReading.removeAll(READING);
-
-			assertThat(besideReading)
-					.as("%s is open to anybody to read and the dispatcher also maps %s onto it, so a"
-							+ " write with a self-chosen CSRF cookie and header, no session at all,"
-							+ " finishes there", open, besideReading)
+			assertThat(answeredAt(open, BESIDE_READING))
+					.as("%s is open to anybody to read and the dispatcher also finishes %s there, so"
+							+ " a write with a self-chosen CSRF cookie and header, no session at"
+							+ " all, finishes there", open, answeredAt(open, BESIDE_READING))
 					.isEmpty();
 		}
 	}
 
 	/**
-	 * EVERY METHOD THE DISPATCHER MAPS TO THIS PATH, gathered across every mapping that
-	 * answers to it - a second controller mapping the same address would add an entry
-	 * here rather than silently winning or losing against the first.
+	 * WHICH OF THESE METHODS ACTUALLY FINISH AT THIS ADDRESS, asked by handing the
+	 * dispatcher a request and letting it RESOLVE, never by reading a pattern.
 	 *
-	 * <p>A mapping that names no method at all answers every one there is, POST
-	 * included, the same reading {@code ApiSecurityTest.answersAGet} gives that
-	 * condition for GET.
+	 * <p><b>The first draft of this file compared the text of each mapping's pattern
+	 * with the entry on the open list, and that was a high finding on its own
+	 * review.</b> A pattern is a spelling, and one address has many: a write mapped as
+	 * {@code /api/pricing/&#42;&#42;} or as {@code /api/&#123;whatever&#125;} answers
+	 * {@code POST /api/pricing} just as surely as a write mapped on the literal string,
+	 * and neither one equals it as text. Both were measured: a probe deleting a row of
+	 * {@code price_row} answered 200 to a caller with no session, and this case stayed
+	 * green. Worse, with a right declared on the probe the other two guards went green
+	 * too, so nothing in the suite was holding the line.
+	 *
+	 * <p><b>The repository already knew how to ask.</b> {@code ApiSecurityTest.reallyMapped}
+	 * builds a request, calls {@code ServletRequestPathUtils.parseAndCache} and asks
+	 * {@code getHandler}. That is the half of the precedent this file had to copy; it
+	 * had copied the other half. The number of ways to WRITE a mapping is not finite
+	 * from a guard's point of view, and is exactly one from the dispatcher's.
+	 *
+	 * <p>A path that is answered but not under this method raises
+	 * {@code HttpRequestMethodNotSupportedException}, and that is the answer „no",
+	 * not an error: it means the address exists and the dispatcher refuses this verb
+	 * before any handler is reached.
 	 */
-	private Set<RequestMethod> methodsMappedTo(String path) {
+	private Set<RequestMethod> answeredAt(String path, Set<RequestMethod> asking) throws Exception {
 		Set<RequestMethod> found = EnumSet.noneOf(RequestMethod.class);
 
-		for (RequestMappingInfo info : mappings.getHandlerMethods().keySet()) {
-			if (pathsOf(info).noneMatch(path::equals)) {
-				continue;
+		for (RequestMethod method : asking) {
+			MockHttpServletRequest request = new MockHttpServletRequest(method.name(), path);
+			ServletRequestPathUtils.parseAndCache(request);
+			try {
+				if (mappings.getHandler(request) != null) {
+					found.add(method);
+				}
+			} catch (HttpRequestMethodNotSupportedException refusedBeforeAnyHandler) {
+				// The address is answered, just not under this verb. That is the answer.
 			}
-
-			Set<RequestMethod> declared = info.getMethodsCondition().getMethods();
-			found.addAll(declared.isEmpty() ? EnumSet.allOf(RequestMethod.class) : declared);
 		}
 
 		return found;
-	}
-
-	/** Every spelling a mapping answers to, asked of the mapping itself. */
-	private static Stream<String> pathsOf(RequestMappingInfo info) {
-		PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
-		return patterns == null ? info.getDirectPaths().stream()
-				: patterns.getPatternValues().stream();
 	}
 }
