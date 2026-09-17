@@ -6,6 +6,8 @@ import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -308,8 +310,15 @@ class MyApplicationsApiTest {
 	private List<Invite> pairInvites(JsonNode whole) {
 		List<Invite> out = new ArrayList<>();
 		for (JsonNode one : whole.path("pairInvites")) {
-			out.add(new Invite(one.path("memberNumber").asString(), one.path("sentByMe").asBoolean(),
-					one.path("date").asString()));
+			/* A MISSING NUMBER COMES BACK AS null AND NOT AS "". `asString()` folds three
+			   different answers - the field absent, the field null, and the field served
+			   as an empty string - into one value, so a case built on it cannot tell
+			   „the field was left out" from „the field was served empty". The decision of
+			   13.09.2026 is about leaving it OUT, and `CommentApiTest` asserts exactly
+			   that with `isNull()`. */
+			JsonNode number = one.path("memberNumber");
+			out.add(new Invite(number.isMissingNode() || number.isNull() ? null : number.asString(),
+					one.path("sentByMe").asBoolean(), one.path("date").asString()));
 		}
 		return out;
 	}
@@ -458,24 +467,39 @@ class MyApplicationsApiTest {
 	 * named. Owner, 13.09.2026: „Kad je sporno, polje se IZOSTAVLJA i izostavljanje se
 	 * imenuje sa razlogom."
 	 *
-	 * <p><b>The two sides are set up differently on purpose.</b> The lapsed member is the
-	 * one I INVITED and the active one is the one who invited ME, so an answer that read
-	 * the wrong side of the invite would put the null on the wrong row and this case
-	 * would say so. A case where both sides lapsed, or where the lapsed one sat on the
-	 * side the query happens to read first, would pass either way.
+	 * <p><b>BOTH SIDES, and that is the whole reason this case is parameterised.</b> The
+	 * first draft lapsed only the member I had INVITED, so „did not renew" and „an invite
+	 * I sent" were ONE AXIS: an answer dropping the name by DIRECTION rather than by
+	 * membership gave the same list, and {@code else true} on the other branch passed the
+	 * suite green. Measured on review, and it is the class this project has written down
+	 * four times over - if the expected value can arrive from two places, the case
+	 * measures neither.
+	 *
+	 * <p>So the same case runs twice with the sides swapped. Whichever one lapses is the
+	 * one that loses its name, and the other keeps it; a query reading the wrong side
+	 * fails on one of the two runs, and a query ignoring membership fails on both.
 	 */
-	@Test
-	void aPairInviteToSomebodyWhoDidNotRenewKeepsTheRowAndDropsTheName() throws Exception {
+	@ParameterizedTest
+	@ValueSource(strings = {PAIR_TO, PAIR_FROM})
+	void aPairInviteToSomebodyWhoDidNotRenewKeepsTheRowAndDropsTheName(String lapsed)
+			throws Exception {
 		db.sql("update competitor set active = false where member_number = ?")
-				.param(PAIR_TO).update();
+				.param(lapsed).update();
 
 		List<Invite> mine = pairInvites(answer());
 
-		assertThat(mine)
-				.as("the invite disappeared with the member, or the member is still named")
-				.containsExactly(
-						new Invite("", true, "2026-08-15"),
-						new Invite(PAIR_FROM, false, "2026-08-28"));
+		assertThat(mine.stream().map(Invite::memberNumber))
+				.as("the member who did not renew is still named, or somebody else stopped being")
+				.containsExactly(lapsed.equals(PAIR_TO) ? null : PAIR_TO,
+						lapsed.equals(PAIR_FROM) ? null : PAIR_FROM);
+
+		assertThat(mine.stream().map(Invite::date))
+				.as("an invite disappeared with the member; the row is his own and stays")
+				.containsExactly("2026-08-15", "2026-08-28");
+
+		assertThat(answer().toString())
+				.as("the number of the member who did not renew is still somewhere in the answer")
+				.doesNotContain(lapsed);
 	}
 
 	/** NO FIELD OF ANY OF THE FOUR LISTS IS THE SAME IN EVERY RECORD OF IT. */
