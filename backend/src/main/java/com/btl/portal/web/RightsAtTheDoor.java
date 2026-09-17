@@ -23,12 +23,12 @@ import java.io.IOException;
  * <p><b>TWO KINDS OF GUARD AND ONE REFUSAL.</b> A right is a box the superadmin ticks;
  * {@link OnlyTheSuperadmin} is the one entity there is no box for, because the owner
  * decided on 13.08.2026 that moderators have no column in the matrix
- * ({@code PDL.md:4403}, {@code ADL.md:802}). They are asked separately and they end in
- * the same line, so the second kind takes the road the first one takes by construction
- * rather than by a copy somebody has to keep equal - which matters because the SHAPE of
- * the refusal is the thing the note below is about. Both wear {@link AskedAtTheDoor},
- * which is what lets the floors count guarded routes without holding a list of the
- * kinds.
+ * (PDL P28a, 13.08.2026, „Moderatori nemaju kolonu", ADL A8, 30.07.2026, „Entitet koji nijedan
+ * moderator ne sme da otvori"). They are asked separately and they end in the same line, so the
+ * second kind takes the road the first one takes by construction rather than by a copy somebody
+ * has to keep equal - which matters because the SHAPE of the refusal is the thing the note below
+ * is about. Both wear {@link AskedAtTheDoor}, which is what lets the floors count guarded routes
+ * without holding a list of the kinds.
  *
  * <p><b>Nothing about the resource is read before the answer.</b> The question is
  * settled in {@code preHandle}, so a refusal costs the account's role and its ticks
@@ -41,8 +41,9 @@ import java.io.IOException;
  * the right already lands him on the front page, and that the administration draws no
  * screen he may not open - so the server has no business being the one place that says
  * the address is there at all. That is ADL A8 of 30.07.2026 ("Zatvorena vrata ne kazu
- * nista") and {@code PDL.md:4172} ("Ne treba ni da budu svesni moderatori da postoje
- * akcije koje im nisu dodeljene") applied to the API rather than to a screen.
+ * nista") and PDL P28a, 30.07.2026, „Moderator vidi samo redove i entitete" ("Ne treba ni da budu
+ * svesni moderatori da postoje akcije koje im nisu dodeljene") applied to the API rather than to
+ * a screen.
  *
  * <p>What it costs is known: a refusal and a typo now read the same from outside, so a
  * broken address and a missing tick look alike to whoever is debugging. That is the

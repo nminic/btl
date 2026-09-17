@@ -35,13 +35,13 @@ import java.util.List;
  * added quietly in either direction.
  *
  * <p><b>ONLY WHAT A MODERATOR LET OUT, and in this schema that is not a condition but a
- * table.</b> „Komentari idu kroz odobrenje pre objave" ({@code PDL.md:2886}) and
- * „prikazuju se na dnu strane dogadjaja i to tek kad ih moderator odobri"
- * ({@code PDL.md:3740}). V7 answers that by making {@code event_comment} the record of
- * what WAS published - the row is written when the approval happens, and what is still
- * waiting is a row in {@code verification} and nothing else. So „only the approved ones"
- * is the table this query names, and an unapproved comment is not filtered out here: it
- * was never in what this reads.
+ * table.</b> „Komentari idu kroz odobrenje pre objave" (PDL P18, „Komentari idu kroz odobrenje
+ * pre objave") and „prikazuju se na dnu strane dogadjaja i to tek kad ih moderator odobri" (PDL
+ * P28a, 06.08.2026, „Komentari se prikazuju na dnu strane"). V7 answers that by making {@code
+ * event_comment} the record of what WAS published - the row is written when the approval happens,
+ * and what is still waiting is a row in {@code verification} and nothing else. So „only the
+ * approved ones" is the table this query names, and an unapproved comment is not filtered out
+ * here: it was never in what this reads.
  *
  * <p><b>NOTHING IN THIS QUERY TOUCHES THE QUEUE FOR APPROVAL, and that has been a leak
  * once already.</b> The owner, 07.08.2026: „Javne strane ne smeju da preuzimaju red za
@@ -55,19 +55,20 @@ import java.util.List;
  *
  * <p><b>THE NAME IS THE ONE THE COMMENT WENT OUT UNDER, always.</b> {@code who} is V7's
  * tombstone and it is NOT NULL: „Komentar clana koji je napustio ligu ostaje sa imenom
- * pod kojim je objavljen" ({@code PDL.md:3740}). It is not read off the member's row and
- * must not be, because a comment whose author is gone has no row to read one off - the
- * reference is {@code on delete set null} precisely so the comment survives him.
+ * pod kojim je objavljen" (PDL P28a, 06.08.2026, „Komentari se prikazuju na dnu strane"). It is
+ * not read off the member's row and must not be, because a comment whose author is gone has no
+ * row to read one off - the reference is {@code on delete set null} precisely so the comment
+ * survives him.
  *
  * <p><b>AND THE MEMBER NUMBER IS THERE ONLY WHILE THERE IS A PROFILE TO READ, which is
  * the same question the portal already asks and the answer to the one thing this
  * increment had to decide.</b> „Komentar clana koji je napustio ligu nema vezu ka
  * profilu, pa ni kad je taj clan i dalje u zapisu", and the reason given on 07.08.2026
  * is that the code asked the wrong question: „ima li zapisa" umesto „ima li vidljivog
- * profila" ({@code PDL.md:3756}). A member whose fee has lapsed is still in the record
- * and has no visible profile - {@code /api/competitors} keeps him off its list
- * altogether (owner, 13.09.2026) - and {@code EventComments.tsx} says the same sentence
- * from the browser's side in as many words.
+ * profila" (PDL P28a, 07.08.2026, „Komentar člana koji je napustio ligu nema vezu"). A member
+ * whose fee has lapsed is still in the record and has no visible profile - {@code
+ * /api/competitors} keeps him off its list altogether (owner, 13.09.2026) - and {@code
+ * EventComments.tsx} says the same sentence from the browser's side in as many words.
  *
  * <p>So a comment of a member who did not renew DOES come back: it is published prose
  * and the decision above keeps it, with the name written on the day standing where the
@@ -80,13 +81,13 @@ import java.util.List;
  * is no profile.
  *
  * <p><b>THE TOTAL MARK IS NOT ANSWERED, because it is not stored and must not be.</b>
- * „Ukupna ocena se ne cuva nego se racuna gde god se prikaze" ({@code PDL.md:3733},
- * 07.08.2026), and the reason is that a number derived from three others has no fourth
- * place to live: the first rounding somebody changed would leave two different answers
- * on one portal. The three marks are three columns (V7, PDL P6) and the total is the
- * reader's arithmetic ({@code OverallMark.tsx}). A fourth mark arriving inside
- * {@code rating} is what {@code CommentApiTest} refuses, against the file the portal
- * serves rather than against a list written here.
+ * „Ukupna ocena se ne cuva nego se racuna gde god se prikaze" (PDL P28a, 07.08.2026, „Ukupna
+ * ocena se ne čuva nego se računa", 07.08.2026), and the reason is that a number derived from
+ * three others has no fourth place to live: the first rounding somebody changed would leave two
+ * different answers on one portal. The three marks are three columns (V7, PDL P6) and the total
+ * is the reader's arithmetic ({@code OverallMark.tsx}). A fourth mark arriving inside {@code
+ * rating} is what {@code CommentApiTest} refuses, against the file the portal serves rather than
+ * against a list written here.
  *
  * <p><b>THE DAY IS THE DAY IN BELGRADE.</b> V7 stores {@code published_at} as a
  * timestamptz and says why: the day a race is run is a DAY, and a comment going out is a

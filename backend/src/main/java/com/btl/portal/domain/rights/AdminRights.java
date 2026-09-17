@@ -93,9 +93,9 @@ public record AdminRights(Mode mode, Set<String> granted) {
 	 * twelve boxes ticked answers yes to every code and still answers no here: he holds
 	 * what was GIVEN him, one box at a time, and the boxes are the moderator's matrix.
 	 * The one thing that is not in the matrix at all - who the moderators are and what
-	 * they may do ({@code PDL.md:4403}) - is exactly what this question guards, so
-	 * asking it as "does he hold all twelve" would hand the portal to whoever was
-	 * trusted with all twelve.
+	 * they may do (PDL P28a, 13.08.2026, „Moderatori nemaju kolonu") - is exactly what this question
+	 * guards, so asking it as "does he hold all twelve" would hand the portal to whoever was trusted
+	 * with all twelve.
 	 *
 	 * <p><b>And not the same as reading the name of a role.</b> V5 puts the mode on the
 	 * role and adds a partial unique index so that at most one role can carry

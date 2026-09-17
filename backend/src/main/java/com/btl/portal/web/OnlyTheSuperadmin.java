@@ -16,12 +16,12 @@ import java.lang.annotation.Target;
  * this names the one thing there is no box for.
  *
  * <p><b>The owner, 13.08.2026, in as many words: „Ne treba ni da postoji kolona
- * moderatori jer samo superadmin ima ta prava" ({@code PDL.md:4403}).</b> So the matrix
- * has six entity columns against seven entities, and moderators are the seventh. ADL A8
- * says the same fact as a technical rule: „Entitet koji nijedan moderator ne sme da
- * otvori nema kolonu u matrici" ({@code ADL.md:802}), and it says what the column would
- * have been - a box the superadmin could tick, a row that then read one right more, and
- * a moderator who got the same refusal as before.
+ * moderatori jer samo superadmin ima ta prava" (PDL P28a, 13.08.2026, „Moderatori nemaju
+ * kolonu").</b> So the matrix has six entity columns against seven entities, and moderators are
+ * the seventh. ADL A8 says the same fact as a technical rule: „Entitet koji nijedan moderator ne
+ * sme da otvori nema kolonu u matrici" (ADL A8, 30.07.2026, „Entitet koji nijedan moderator ne
+ * sme da otvori"), and it says what the column would have been - a box the superadmin could tick,
+ * a row that then read one right more, and a moderator who got the same refusal as before.
  *
  * <p><b>Which is why this could not be {@code @RightIsNeeded("entity:moderators")}.</b>
  * There is no such right and V5 does not insert one. A code the matrix does not hold is
@@ -44,12 +44,12 @@ import java.lang.annotation.Target;
  *
  * <p><b>And a moderator holding EVERY box is still refused, which is the whole point.</b>
  * PDL P21: „Superadmin kreira moderatore i uređuje im prava... Van toga, Superadmin i
- * Moderator mogu isto" ({@code PDL.md:2967}) - this is that one thing, and the owner
- * gave the reason on 30.07.2026: „Bez te granice moderator bi sam sebi mogao da dodeli
- * prava, pa granularna prava ne bi značila ništa" ({@code PDL.md:4438}). A guard that
- * let a fully ticked moderator through would read as correct in every fixture that
- * happens to hold a moderator with something missing, so the case that holds it ticks
- * every row of {@code admin_right} rather than a list of twelve written by hand
+ * Moderator mogu isto" (PDL P21, „Superadmin kreira moderatore") - this is that one thing, and
+ * the owner gave the reason on 30.07.2026: „Bez te granice moderator bi sam sebi mogao da dodeli
+ * prava, pa granularna prava ne bi značila ništa" (PDL P28a, 30.07.2026, „Ekran sa moderatorima
+ * vidi samo Superadmin"). A guard that let a fully ticked moderator through would read as correct
+ * in every fixture that happens to hold a moderator with something missing, so the case that
+ * holds it ticks every row of {@code admin_right} rather than a list of twelve written by hand
  * ({@code ModeratorApiTest.aModeratorHoldingEveryTickThereIsIsStillRefused}).
  *
  * <p><b>The refusal is 404 and not 403, and it is not written here.</b> It goes down the
