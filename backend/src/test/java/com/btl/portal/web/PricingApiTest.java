@@ -10,7 +10,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -62,9 +63,25 @@ class PricingApiTest {
 	@Autowired
 	private JdbcClient db;
 
+	/**
+	 * THE ANSWER AS IT CAME OFF THE WIRE, AMOUNTS INCLUDED.
+	 *
+	 * <p><b>The reader is told to keep an amount as a {@code BigDecimal}, and that is
+	 * the whole point of building a mapper here instead of taking the default one.</b>
+	 * Measured 17.09.2026: the portal really does write {@code "eur":35.00}, so the
+	 * scale {@code numeric(10,2)} carries is on the wire and correct - and the DEFAULT
+	 * reader then hands it back as {@code 35.0}, because a JSON decimal becomes a
+	 * double unless somebody says otherwise. Every case below compares the answer with
+	 * the schema, so a reader that drops the scale makes those comparisons blind to
+	 * exactly the fault ADL A12 exists to stop: an amount that took a trip through a
+	 * binary float on the way out.
+	 */
 	private JsonNode answer() throws Exception {
-		return new ObjectMapper().readTree(http.perform(get("/api/pricing"))
-				.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+		return JsonMapper.builder()
+				.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+				.build()
+				.readTree(http.perform(get("/api/pricing"))
+						.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
 	}
 
 	private static List<String> keysOf(JsonNode rows) {
@@ -75,17 +92,24 @@ class PricingApiTest {
 	/**
 	 * One value as text, whatever JSON type carries it.
 	 *
-	 * <p>An amount is {@code numeric(10,2)} and comes back as {@code 35.00} on one
-	 * side and as a {@code BigDecimal} of the same scale on the other; a null is a
-	 * null. Normalised the same way on both sides, which is the move
-	 * {@code DucatApiTest} makes over the same column type and for the same reason.
+	 * <p>An amount is {@code numeric(10,2)} on both sides and is compared AT ITS OWN
+	 * SCALE; a null is a null.
+	 *
+	 * <p><b>It used to strip trailing zeros, and that was the whole guard's blind
+	 * spot.</b> {@code DucatApiTest} strips them because its other side is a JSON file
+	 * where, in its own words, the scale is „a scale nobody decided". Here the other
+	 * side is the SCHEMA, where {@code numeric(10,2)} is exactly what was decided and
+	 * exactly what is being asserted. The move was copied and its reason was not: with
+	 * the zeros stripped, {@code round(eur)} and {@code cast(eur as double precision)}
+	 * both answered {@code 35} and both passed the full gate, although ADL A12 forbids
+	 * an amount that has been through a float by name. Both fall over now.
 	 */
 	private static String saidAs(JsonNode value) {
 		if (value.isNull()) {
 			return null;
 		}
 
-		return value.isNumber() ? value.decimalValue().stripTrailingZeros().toPlainString()
+		return value.isNumber() ? value.decimalValue().toPlainString()
 				: value.asString();
 	}
 
@@ -95,7 +119,7 @@ class PricingApiTest {
 		}
 
 		return value instanceof java.math.BigDecimal amount
-				? amount.stripTrailingZeros().toPlainString()
+				? amount.toPlainString()
 				: value.toString();
 	}
 
@@ -113,9 +137,12 @@ class PricingApiTest {
 	 *
 	 * <p>Derived and not written out. The expected side is its own query against
 	 * {@code price_row}, so a SELECT that reads one column for another, that drops a
-	 * row, or that rounds an amount on the way out fails here while the rows in the
-	 * database sit untouched - which is exactly the class of fault
-	 * {@code PriceListRowsTest} cannot see, because it never asks the server anything.
+	 * row, that answers one row twice, or that rounds an amount on the way out fails
+	 * here while the rows in the database sit untouched - which is exactly the class of
+	 * fault {@code PriceListRowsTest} cannot see, because it never asks the server
+	 * anything. Each of those four is held by a different line: the column by the field
+	 * comparison, the dropped and the doubled row by the list of keys, and the rounding
+	 * by a reader that keeps the scale.
 	 *
 	 * <p><b>That it can see a column read for another one is not assumed</b>, it is
 	 * the case below: no two fields of this answer carry the same value in all seven
@@ -133,6 +160,22 @@ class PricingApiTest {
 				.as("the price list is four periods, one level, one fee and one referral, and the"
 						+ " answer carries a different number of rows")
 				.isEqualTo(ROWS);
+
+		/* AND THEY ARE THE ROWS THE SCHEMA HOLDS, EACH ONCE, WHICH THE COUNT ALONE DOES
+		   NOT SAY. Every comparison below looks the expected row up by the key it read
+		   OUT OF THE ANSWER, so an answer that carries `early` twice and never carries
+		   `late` compares `early` with itself twice and is never asked about `late`: the
+		   count is still seven, the four kinds still come out 4/1/1/1, and every field
+		   still matches. Measured 17.09.2026, by a query whose rows branch: the suite
+		   stayed green and the December price - 50 EUR, the one somebody paying between
+		   Christmas and New Year is charged - simply fell out of the public price list.
+		   `DucatApiTest` already holds this line (`idsOf(ours).isEqualTo(idsOf(theirs))`);
+		   this file had copied the shape of its comparison but not that assertion. */
+		assertThat(keysOf(ours))
+				.as("the answer is not the price list the schema holds: a row is missing from it,"
+						+ " or stands in it twice, or is not in the price list at all")
+				.isEqualTo(db.sql("select key from price_row order by sort_order")
+						.query(String.class).list());
 
 		int compared = 0;
 
