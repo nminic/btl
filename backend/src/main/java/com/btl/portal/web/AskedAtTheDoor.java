@@ -20,10 +20,10 @@ import java.lang.annotation.Target;
  * demands that whatever is left be named in a snapshot of routes that answer WITHOUT a
  * guard, each with its reason. Until 14.09.2026 "guarded" and "carries
  * {@link RightIsNeeded}" were the same sentence, because there was one kind of guard.
- * {@code /api/moderators} is the second kind - no tick opens it (PDL.md:4403), so it
- * carries no right - and written against the old floor it would have had to be listed
- * as a route that answers without a guard, which is the exact opposite of the truth and
- * would be a lie sitting inside the floor.
+ * {@code /api/moderators} is the second kind - no tick opens it (PDL P28a, 13.08.2026,
+ * „Moderatori nemaju kolonu"), so it carries no right - and written against the old floor it
+ * would have had to be listed as a route that answers without a guard, which is the exact
+ * opposite of the truth and would be a lie sitting inside the floor.
  *
  * <p><b>And why a mark rather than a list of the two annotation types.</b> A list is a
  * thing somebody has to remember to extend, and the day a third kind of guard is written

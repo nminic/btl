@@ -98,13 +98,13 @@ class RightsAtTheDoorTest {
 	 * <p><b>AND {@code /api/verification} IS THE SIXTH, AND IT IS HERE FOR A REASON
 	 * NEITHER OF THE OTHER TWO HAS: THE PRIVILEGE IS DECIDED BY THE ROW AND NOT BY THE
 	 * ROUTE.</b> {@link RightIsNeeded} names ONE code, and the verification screen has SIX
-	 * queues with one right apiece ({@code PDL.md:3906}, V5's six {@code queue:} rows).
-	 * The question that resource answers is not „may he" but „which of the six may he",
-	 * because a moderator holding {@code queue:comments} and nothing else must be served
-	 * the comments and must not learn that a payments queue exists (owner, 30.07.2026,
-	 * {@code PDL.md:4308}: „Ne skriva se samo ekran nego i saznanje da ekran postoji").
-	 * One code written on the route could only be one of the six, so it would shut the
-	 * route to five moderators out of six or open all six queues to any one of them.
+	 * queues with one right apiece (PDL P28a, 24.08.2026, „Verifikacija ima šest redova", V5's six
+	 * {@code queue:} rows). The question that resource answers is not „may he" but „which of the six
+	 * may he", because a moderator holding {@code queue:comments} and nothing else must be served
+	 * the comments and must not learn that a payments queue exists (owner, 30.07.2026, PDL P28a,
+	 * 30.07.2026, „Moderator vidi samo redove i entitete": „Ne skriva se samo ekran nego i saznanje
+	 * da ekran postoji"). One code written on the route could only be one of the six, so it would
+	 * shut the route to five moderators out of six or open all six queues to any one of them.
 	 *
 	 * <p><b>Which means this floor stops asserting anything about that address, and the
 	 * two guards it would have given it are owed elsewhere.</b> Said plainly because a
@@ -702,10 +702,10 @@ class RightsAtTheDoorTest {
 	 * {@code RightIsNeeded}", which is the correction of 14.09.2026.</b>
 	 * {@code /api/moderators} is guarded and declares no right, because there is no tick
 	 * that opens it and the owner refused to invent one („Ne treba ni da postoji kolona
-	 * moderatori jer samo superadmin ima ta prava", 13.08.2026, {@code PDL.md:4403}). Read
-	 * as before, this floor would have forced that route into the snapshot above as one
-	 * that answers WITHOUT a guard, which is the exact opposite of the truth and would be
-	 * a lie sitting inside the floor.
+	 * moderatori jer samo superadmin ima ta prava", PDL P28a, 13.08.2026, „Moderatori
+	 * nemaju kolonu"). Read as before, this floor would have forced that route into the snapshot
+	 * above as one that answers WITHOUT a guard, which is the exact opposite of the truth and would
+	 * be a lie sitting inside the floor.
 	 *
 	 * <p><b>And it is not repaired with a list of the two annotation types.</b> That is
 	 * the shape the repo measured and rejected on 05.09.2026: a list inside a floor is
@@ -767,11 +767,11 @@ class RightsAtTheDoorTest {
 	 * method.</b> Until 14.09.2026 „guarded" and „carries {@code RightIsNeeded}" were the
 	 * same sentence, because there was one kind of guard. {@code OnlyTheSuperadmin} is the
 	 * second - {@code /api/moderators} is opened by no tick at all (owner, 13.08.2026,
-	 * {@code PDL.md:4403}), so it can declare no right - and the obvious repair, a list of
-	 * the two annotation types, is the shape the repo measured and rejected on 05.09.2026:
-	 * a list inside a floor is another thing somebody has to remember to extend, and the
-	 * day a third kind of guard is written this floor would go on passing while demanding
-	 * that its routes be declared as answering WITHOUT a guard.
+	 * PDL P28a, 13.08.2026, „Moderatori nemaju kolonu"), so it can declare no right - and the
+	 * obvious repair, a list of the two annotation types, is the shape the repo measured and
+	 * rejected on 05.09.2026: a list inside a floor is another thing somebody has to remember to
+	 * extend, and the day a third kind of guard is written this floor would go on passing while
+	 * demanding that its routes be declared as answering WITHOUT a guard.
 	 *
 	 * <p>So what is asked is what the language already says. Each annotation on the method
 	 * is asked whether it is itself marked {@code AskedAtTheDoor}, which is the mark

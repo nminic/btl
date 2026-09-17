@@ -11,12 +11,12 @@ import java.util.List;
  * nobody else at all.
  *
  * <p><b>The owner, 30.07.2026: „Ekran sa moderatorima vidi samo Superadmin"</b>
- * ({@code PDL.md:4438}). His reason is written with it and it is the reason this is the
- * one route of the portal that is guarded without asking for a right: „Bez te granice
- * moderator bi sam sebi mogao da dodeli prava, pa granularna prava ne bi značila
- * ništa." PDL P21 says the same from the other side - „Superadmin kreira moderatore i
- * uređuje im prava pojedinačno... Van toga, Superadmin i Moderator mogu isto"
- * ({@code PDL.md:2967}) - so this resource is literally the whole of „van toga", the
+ * (PDL P28a, 30.07.2026, „Ekran sa moderatorima vidi samo Superadmin"). His reason is written
+ * with it and it is the reason this is the one route of the portal that is guarded without asking
+ * for a right: „Bez te granice moderator bi sam sebi mogao da dodeli prava, pa granularna prava
+ * ne bi značila ništa." PDL P21 says the same from the other side - „Superadmin kreira moderatore
+ * i uređuje im prava pojedinačno... Van toga, Superadmin i Moderator mogu isto" (PDL P21,
+ * „Superadmin kreira moderatore") - so this resource is literally the whole of „van toga", the
  * single thing in which the two roles differ.
  *
  * <p><b>Shut twice over, and the two shuttings answer different people.</b> A visitor
@@ -24,27 +24,27 @@ import java.util.List;
  * {@link ApiSecurity#READ_BY_ANYBODY} - the same way {@link AttendanceApi} and
  * {@link CommentApi} are closed, and for the reason ADL P-javno gives about all seven
  * remaining resources: „javno je ono sto Clan 73 nabraja, i nista vise"
- * ({@code ADL.md:3206}). Article 73 lists nothing whatever about moderators, so nothing
- * here is public. There is no condition in this class about who is asking, and there
- * must not be one.
+ * (ADL P-javno, 13.09.2026, „javno je ono sto Clan 73 nabraja"). Article 73 lists nothing
+ * whatever about moderators, so nothing here is public. There is no condition in this class about
+ * who is asking, and there must not be one.
  *
  * <p><b>And everybody else who IS signed in is refused by {@link OnlyTheSuperadmin},
  * which is a second kind of guard and not a second spelling of the first.</b> Every
  * other guarded route carries {@link RightIsNeeded} with the code of a box the
  * superadmin ticks. There is no box for this one and there must not be: „Ne treba ni da
  * postoji kolona moderatori jer samo superadmin ima ta prava" (owner, 13.08.2026,
- * {@code PDL.md:4403}), which is why the matrix has six entity columns against seven
- * entities. So a moderator holding every one of the twelve ticks is refused here
- * exactly as one holding none is, and that is the whole point rather than an edge case.
+ * PDL P28a, 13.08.2026, „Moderatori nemaju kolonu"), which is why the matrix has six entity
+ * columns against seven entities. So a moderator holding every one of the twelve ticks is refused
+ * here exactly as one holding none is, and that is the whole point rather than an edge case.
  *
  * <p><b>THE SUPERADMIN HIMSELF DOES NOT COME OUT OF THIS LIST.</b> „Superadmin nema
  * kućice. On sme sve, uvek, i ne pojavljuje se u ovoj tabeli kao neko kome se prava
- * dodeljuju" ({@code PDL.md:4422}). The screen the prototype draws says the same
- * sentence out loud to its reader. What makes it true here is the condition on the
- * ROLE: a query over every account, or over every account with any administrative
- * standing at all, answers with him - and he is the one row on which a tick means
- * nothing, so serving him would publish a row whose empty rights list reads as "may do
- * nothing" about the account that may do everything.
+ * dodeljuju" (PDL P28a, 30.07.2026, „Superadmin nema kućice"). The screen the prototype draws
+ * says the same sentence out loud to its reader. What makes it true here is the condition on the
+ * ROLE: a query over every account, or over every account with any administrative standing at
+ * all, answers with him - and he is the one row on which a tick means nothing, so serving him
+ * would publish a row whose empty rights list reads as "may do nothing" about the account that
+ * may do everything.
  *
  * <p><b>THE TICKS ARE READ PER ACCOUNT, and {@link WhatHeMayDo} already carries this
  * warning beside the statement it is about.</b> Without the condition naming the
@@ -68,9 +68,9 @@ import java.util.List;
  * whole of what changed on 14.09.2026.</b> B55 answered without {@code firstName} and
  * {@code lastName} because the schema had nowhere to hold them, and named the omission in
  * a case rather than leaving it silent. The owner then decided: „Ime i prezime nosi sam
- * nalog, i moderator ne mora da bude clan" ({@code PDL.md:4459}), V23 put
- * {@code first_name} and {@code last_name} on {@code account}, and the case that named the
- * omission now says the names really come out.
+ * nalog, i moderator ne mora da bude clan" (PDL P28a, 14.09.2026, „Ime i prezime nosi sam
+ * nalog"), V23 put {@code first_name} and {@code last_name} on {@code account}, and the case that
+ * named the omission now says the names really come out.
  *
  * <p><b>Off the ACCOUNT is not a detail of where the column happens to sit.</b> It is the
  * reason the decision was needed at all: a moderator does not have to be a member, so
@@ -142,8 +142,8 @@ class ModeratorApi {
 						+ " ), '{}') as rights"
 						+ " from account a"
 						/* THE MODERATORS AND NOBODY ELSE. The superadmin „ne pojavljuje se u
-						   ovoj tabeli kao neko kome se prava dodeljuju" (PDL.md:4422), and
-						   neither does a competitor or a visitor. Read as "any account" or as
+						   ovoj tabeli kao neko kome se prava dodeljuju" (PDL P28a, 30.07.2026, „Superadmin nema
+						   kućice"), and neither does a competitor or a visitor. Read as "any account" or as
 						   "any account with administrative standing", this answers with him. */
 						+ " join role r on r.id = a.role_id"
 						+ " where r.code = 'moderator'"

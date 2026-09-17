@@ -448,11 +448,11 @@ class RightsOverRealHttpTest {
 	 *
 	 * <p><b>Asked by two people, because „may not" has two shapes here.</b> A plain
 	 * competitor is all it takes to run the oracle. A moderator with every one of the ticks
-	 * is the one the guard is really about - no box opens this route ({@code PDL.md:4403}),
-	 * so he is refused exactly as one holding none is, and he is the attacker who already
-	 * knows the most about the portal. The superadmin answering 200 is the anchor: without
-	 * it a route that was simply broken would be missing for everybody and both comparisons
-	 * would hold while measuring nothing.
+	 * is the one the guard is really about - no box opens this route (PDL P28a, 13.08.2026,
+	 * „Moderatori nemaju kolonu"), so he is refused exactly as one holding none is, and he is the
+	 * attacker who already knows the most about the portal. The superadmin answering 200 is the
+	 * anchor: without it a route that was simply broken would be missing for everybody and both
+	 * comparisons would hold while measuring nothing.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {A_COMPETITOR, EVERY_TICK})
@@ -485,16 +485,16 @@ class RightsOverRealHttpTest {
 	 * <p><b>A third shape of the same thing, and the first that {@link RightsAtTheDoor} does
 	 * not write.</b> {@code /api/verification} carries neither {@link RightIsNeeded} nor
 	 * {@link OnlyTheSuperadmin}, because the verification screen has SIX queues with one right
-	 * apiece ({@code PDL.md:3906}) and the question it answers is „which of the six may he"
-	 * rather than „may he" - so the refusal is written by the resource itself, and every
-	 * sentence the long note in {@code RightsAtTheDoor} makes about the SHAPE of a refusal has
-	 * to be true of a second caller of {@code sendError}, measured rather than trusted.
+	 * apiece (PDL P28a, 24.08.2026, „Verifikacija ima šest redova") and the question it answers is
+	 * „which of the six may he" rather than „may he" - so the refusal is written by the resource
+	 * itself, and every sentence the long note in {@code RightsAtTheDoor} makes about the SHAPE of a
+	 * refusal has to be true of a second caller of {@code sendError}, measured rather than trusted.
 	 *
 	 * <p><b>What a status alone would cost here is exactly what it cost there</b>: an oracle
 	 * saying „this address is there", one request per guess, and the address it names is the
-	 * administrative one the owner decided must not say so (13.09.2026, {@code ADL.md:783}).
-	 * MockMvc cannot see it - no ERROR dispatch - so {@code VerificationApiTest} can compare
-	 * the numbers and nothing else.
+	 * administrative one the owner decided must not say so (ADL A8, 13.09.2026, „Server
+	 * odbija moderatora bez privilegije sa 404"). MockMvc cannot see it - no ERROR dispatch - so
+	 * {@code VerificationApiTest} can compare the numbers and nothing else.
 	 *
 	 * <p><b>Asked by two people who are refused for different reasons.</b>
 	 * {@link #A_COMPETITOR} holds nothing at all, which is every member of the league.

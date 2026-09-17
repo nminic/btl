@@ -47,6 +47,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * gives every other resource is not available to this one, and the field NAMES are
  * held by the record in {@code PricingApi} and by its Javadoc rather than by a
  * comparison. That is a real gap and this is where it is written down.
+ *
+ * <p><b>AND A SECOND GAP, in the amounts, which is narrower than it reads.</b> The
+ * comparison below is told to keep the scale a {@code numeric(10,2)} carries, so
+ * {@code round(eur)} answering {@code 35} and {@code cast(eur as double precision)}
+ * answering {@code 35.0} both fail against {@code 35.00}. But an amount that goes
+ * THROUGH a binary double and is then put back on scale 2 -
+ * {@code BigDecimal.valueOf(row.getDouble(5)).setScale(2)} - comes out as
+ * {@code 35.00} again and passes, although ADL A12, „Iznosi se čuvaju u `NUMERIC`, nikad u `double`" forbids exactly that trip.
+ *
+ * <p><b>That it is caught at all today is a property of the DATA, not of this
+ * file.</b> All eleven amounts V4 holds are whole, and a whole number changes its
+ * text on the way through a double. Measured 17.09.2026: {@code 35.25} and
+ * {@code 35.75} do NOT change, so the first price the owner sets with 25 or 75 para
+ * closes this eye without a single case going red. The guard that would hold it has
+ * to read the TYPE the column has rather than the value it happens to carry, and
+ * that is a different question from the one this file asks.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
