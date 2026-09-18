@@ -258,6 +258,31 @@ class EmailConfirmationApiTest {
 				.isEqualTo(firstMoment);
 	}
 
+	/**
+	 * AN EXPIRED LINK ON AN ALREADY CONFIRMED ADDRESS SAYS "ALREADY DONE", NOT
+	 * "ASK FOR ANOTHER" - the ordering {@code EmailConfirmation.decide} has always
+	 * stated (confirmed is asked before expired, see its own class comment) and
+	 * this route did not, until its security review (PR 292) named the same
+	 * mistake {@code PasswordResetApi} made of judging a link's liveness in SQL
+	 * instead of asking the domain class. A member who confirms through one live
+	 * link and later opens an older message and clicks ITS - by then expired -
+	 * link must not be sent off to ask for a link he does not need.
+	 */
+	@Test
+	void anExpiredLinkOnAnAlreadyConfirmedAddressIsAlreadyDone() throws Exception {
+		long account = anAccount(aFreshAddress());
+		String stillLive = aValidToken(account);
+		String nowExpired = anExpiredToken(account);
+
+		assertThat(confirm(stillLive).getStatus()).isEqualTo(204);
+		assertThat(isConfirmed(account)).isTrue();
+
+		assertThat(confirm(nowExpired).getStatus())
+				.as("an expired link on an address confirmed through a different, still live link"
+						+ " was told to ask for another instead of being told it was already done")
+				.isEqualTo(204);
+	}
+
 	@Test
 	void aRequestWithNoFormAtAllNeverReachesUs() throws Exception {
 		MockHttpServletResponse answer = http.perform(post("/api/email-confirmation").with(csrf())

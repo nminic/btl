@@ -1,5 +1,7 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.account.EmailConfirmation;
+import com.btl.portal.domain.account.EmailConfirmation.Outcome;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -122,6 +125,13 @@ class EmailConfirmationApi {
 	}
 
 	/**
+	 * A link and the account it names, read together so {@link EmailConfirmation}
+	 * can see both halves of its own question at once.
+	 */
+	private record Confirmable(long account, EmailConfirmation.Link link) {
+	}
+
+	/**
 	 * THE LINK ITSELF: a token, and nothing that names an account.
 	 *
 	 * <p><b>No session comes out of this either</b>, for the same reason
@@ -141,28 +151,45 @@ class EmailConfirmationApi {
 		   that is actually in the table. */
 		String hash = SecretToken.hashOf(typed.token());
 
-		/* EXPIRY IS ASKED OF POSTGRES'S OWN CLOCK, not a Java one carried in for the
-		   purpose. `expires_at` is a column the schema itself stamps relative to its
-		   own `now()` (V6's default), so a comparison against that same `now()` cannot
-		   disagree with the moment the row believes it was born at, and no `Clock`
-		   bean has to travel through a constructor that would otherwise have no other
-		   use for one. */
-		Optional<Long> account = db.sql("select account_id from email_verification_token"
-						+ " where token_hash = ? and expires_at > now()")
-				.param(hash).query(Long.class).optional();
+		/* THE ACCOUNT'S OWN `email_confirmed_at` TRAVELS WITH THE LINK, joined in
+		   rather than asked in a second query, because `EmailConfirmation.decide`
+		   has to see it BEFORE it asks whether this particular link has run out -
+		   see the class comment there for why an address already confirmed through
+		   some OTHER, still-live link must be told "already done" rather than "ask
+		   for another", even on a link whose own day has since passed. Judging
+		   expiry first, the way a query filtering on `expires_at > now()` alone
+		   does, is the identical mistake `PasswordResetApi`'s security review named
+		   for its own link: a rule this route's own domain class already states
+		   correctly, rewritten one field short in SQL. */
+		Optional<Confirmable> found = db.sql(
+						"select t.account_id, t.expires_at, a.email_confirmed_at"
+								+ " from email_verification_token t"
+								+ " join account a on a.id = t.account_id"
+								+ " where t.token_hash = ?")
+				.param(hash)
+				.query((row, i) -> new Confirmable(row.getLong(1),
+						new EmailConfirmation.Link(row.getTimestamp(2).toInstant(),
+								row.getTimestamp(3) == null ? null : row.getTimestamp(3).toInstant())))
+				.optional();
 
-		if (account.isEmpty()) {
+		Outcome outcome = EmailConfirmation.decide(found.map(Confirmable::link).orElse(null), Instant.now());
+
+		if (outcome != Outcome.CONFIRM_IT && outcome != Outcome.ALREADY_DONE) {
 			return no();
 		}
 
-		/* AND ONLY WHILE IT IS STILL EMPTY. Confirming twice - the same link clicked
-		   twice, or two live links for one account, which V6 explicitly allows - is not
-		   an error and answers 204 either way; what this guards is the MOMENT on the
-		   row, which is a historical fact and not one a second, later click should be
-		   allowed to overwrite with itself. */
-		db.sql("update account set email_confirmed_at = now()"
-						+ " where id = ? and email_confirmed_at is null")
-				.param(account.orElseThrow()).update();
+		if (outcome == Outcome.CONFIRM_IT) {
+			/* AND ONLY WHILE IT IS STILL EMPTY. `decide` has already refused a link
+			   whose account was confirmed by the time this query read it, but that
+			   read and this write are two round trips to the database with nothing
+			   between them holding the row - two requests racing two different, both
+			   still-unconfirmed-when-read live links must not both write the moment.
+			   What guards that is the same it always was: the column, checked again,
+			   atomically, right here. */
+			db.sql("update account set email_confirmed_at = now()"
+							+ " where id = ? and email_confirmed_at is null")
+					.param(found.orElseThrow().account()).update();
+		}
 
 		return ResponseEntity.noContent().build();
 	}

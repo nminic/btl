@@ -8,6 +8,7 @@ import com.btl.portal.domain.token.SecretToken;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
 
 import jakarta.mail.internet.MimeMessage;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -131,6 +134,32 @@ class PasswordResetApiTest {
 	private String passwordHashOf(long account) {
 		return db.sql("select password_hash from account where id = ?")
 				.param(account).query(String.class).optional().orElse(null);
+	}
+
+	/** A live session for that account, opened directly the way {@code WhoIsAskingTest}
+	 *  opens its own - this class has no sign in of its own to open one through. */
+	private SecretToken aSessionFor(long account) {
+		SecretToken session = SecretToken.fresh();
+
+		db.sql("insert into account_session (account_id, token_hash) values (?, ?)")
+				.params(account, session.hash()).update();
+
+		return session;
+	}
+
+	/** Whether a session opened by {@link #aSessionFor} still has a row at all - what
+	 *  {@code WhoIsAsking} reads to decide who is asking. */
+	private boolean sessionStillExists(SecretToken session) {
+		return db.sql("select count(*) from account_session where token_hash = ?")
+				.param(session.hash()).query(Integer.class).single() > 0;
+	}
+
+	/** Whichever cookie a browser carries after signing in, asking the one route every
+	 *  session in this portal is read by - the same probe the VISOK 1 finding itself
+	 *  used to measure the gap this class now closes. */
+	private MockHttpServletResponse me(SecretToken carrying) throws Exception {
+		return http.perform(get("/api/me").cookie(new Cookie(SessionCookie.NAME, carrying.secret())))
+				.andReturn().getResponse();
 	}
 
 	private MockHttpServletResponse request(String email) throws Exception {
@@ -480,5 +509,166 @@ class PasswordResetApiTest {
 		assertThat(http.perform(post("/api/password-reset").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON))
 				.andReturn().getResponse().getStatus()).isEqualTo(400);
+	}
+
+	/**
+	 * A SESSION SURVIVES A PASSWORD RESET - VISOK 1, security review of PR 292.
+	 *
+	 * <p>V18 names "a member changes his password" as the first of the three reasons
+	 * a session is a row and not a signed token. Whoever is holding a cookie this
+	 * member did not just mint - a borrowed computer, a copied browser profile - must
+	 * stop being let in the instant this member proves he can still read his own
+	 * mailbox and picks a new password; a row nobody deleted at that moment leaves
+	 * the reset unable to do the one thing it exists for.
+	 */
+	@Test
+	void resettingEndsEverySessionOfTheAccount() throws Exception {
+		long account = anAccount(aFreshAddress());
+		String token = aValidToken(account);
+		SecretToken session = aSessionFor(account);
+
+		assertThat(me(session).getStatus())
+				.as("the session was not even live before the reset, so this proves nothing")
+				.isEqualTo(200);
+
+		assertThat(reset(token, NEW_PASSWORD, NEW_PASSWORD).getStatus()).isEqualTo(204);
+
+		assertThat(me(session).getStatus())
+				.as("a cookie minted before the password was reset still signed somebody in"
+						+ " afterwards")
+				.isEqualTo(401);
+		assertThat(sessionStillExists(session))
+				.as("the session row survived a password reset")
+				.isFalse();
+	}
+
+	/**
+	 * AND ONLY THIS ACCOUNT'S SESSIONS - the same shape {@code SignOutApiTest} demands
+	 * of signing out: a fix broad enough to end every session in the table would pass
+	 * every case above, which never has a second account's session to lose.
+	 */
+	@Test
+	void resettingLeavesAnotherAccountsSessionAlone() throws Exception {
+		long account = anAccount(aFreshAddress());
+		String token = aValidToken(account);
+		SecretToken theirs = aSessionFor(anAccount(aFreshAddress()));
+
+		assertThat(reset(token, NEW_PASSWORD, NEW_PASSWORD).getStatus()).isEqualTo(204);
+
+		assertThat(me(theirs).getStatus())
+				.as("resetting one account's password signed a different account out")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * A FINISHED RESET RETIRES EVERY OTHER LIVE LINK OF THE SAME ACCOUNT - VISOK 2,
+	 * security review of PR 292. Without this, an old link still sitting in a mail
+	 * archive or a forwarded message sets the password again after the member who
+	 * asked for this reset believes he is done, undoing it with nothing left to show
+	 * that anything happened.
+	 */
+	@Test
+	void resettingRetiresEveryOtherLiveTokenOfTheSameAccount() throws Exception {
+		long account = anAccount(aFreshAddress());
+		String first = aValidToken(account);
+		String second = aValidToken(account);
+
+		assertThat(reset(first, NEW_PASSWORD, NEW_PASSWORD).getStatus()).isEqualTo(204);
+
+		String secondPassword = "drugi.token.pokusaj.2027";
+		MockHttpServletResponse answer = reset(second, secondPassword, secondPassword);
+
+		assertThat(answer.getStatus())
+				.as("a second live token for the very same account still worked after the first"
+						+ " reset had already finished")
+				.isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.isEqualTo("{\"reason\":\"" + PasswordResetApi.THE_LINK_IS_NOT_VALID + "\"}");
+		assertThat(new StoredPassword().matches(secondPassword, passwordHashOf(account)))
+				.as("a token that should have been retired overwrote the password the first one set")
+				.isFalse();
+	}
+
+	/**
+	 * AND ONLY THIS ACCOUNT'S OTHER TOKENS - the same axis
+	 * {@code resettingLeavesAnotherAccountsSessionAlone} counts for VISOK 1. A fix
+	 * broad enough to retire every live {@code password_reset_token} row in the
+	 * table, not only this account's, would still pass the case above, which never
+	 * has a second account's token to lose.
+	 */
+	@Test
+	void resettingLeavesAnotherAccountsLiveTokenAlone() throws Exception {
+		long account = anAccount(aFreshAddress());
+		String token = aValidToken(account);
+		long another = anAccount(aFreshAddress());
+		String theirToken = aValidToken(another);
+
+		assertThat(reset(token, NEW_PASSWORD, NEW_PASSWORD).getStatus()).isEqualTo(204);
+
+		String theirPassword = "njihova.sopstvena.lozinka.2027";
+		MockHttpServletResponse answer = reset(theirToken, theirPassword, theirPassword);
+
+		assertThat(answer.getStatus())
+				.as("resetting one account's password retired a different account's still live token")
+				.isEqualTo(204);
+		assertThat(new StoredPassword().matches(theirPassword, passwordHashOf(another))).isTrue();
+	}
+
+	/**
+	 * THE MESSAGE GOES TO THE ROW'S OWN SPELLING, NOT TO WHAT WAS TYPED - SREDNJI 3,
+	 * security review of PR 292. The same property {@code RegistrationApiTest
+	 * .theAddressIsStoredFoldedAndSigningInFindsItHoweverItIsTypedBack} measures for
+	 * registration's own send, asked again here because a reset link is a second,
+	 * independent place this portal addresses a message by an account.
+	 *
+	 * <p>Capitals and not a trailing space, unlike that other case: {@code
+	 * withoutTheSpacesAround} already takes a space off before either spelling is
+	 * compared, so a space could not tell the two apart. Case can, because
+	 * {@code lower(email) = lower(?)} finds the same row whichever case asked, and
+	 * only one of the two spellings is the mailbox the account was ever confirmed at.
+	 */
+	@Test
+	void requestSendsToTheRowsOwnSpellingNotToWhatWasTyped() throws Exception {
+		String stored = aFreshAddress();
+		anAccount(stored);
+
+		String typedInCapitals = stored.toUpperCase(Locale.ROOT);
+
+		assertThat(typedInCapitals)
+				.as("this case is written around two different spellings of one address, and"
+						+ " capitalising it must actually produce a different string or it measures"
+						+ " nothing")
+				.isNotEqualTo(stored);
+
+		assertThat(request(typedInCapitals).getStatus()).isEqualTo(204);
+
+		assertThat(waitForOne().getAllRecipients()[0].toString())
+				.as("the reset link went to the address as it was typed on the form rather than to"
+						+ " the one the account itself carries")
+				.isEqualTo(stored);
+	}
+
+	/**
+	 * THE LINK IS JUDGED BEFORE THE PASSWORD - SREDNJI 4, security review of PR 292.
+	 * {@code PasswordResetTest.theLinkIsJudgedBeforeThePassword} already proves this
+	 * of the domain class; this proves the route actually asks it. Without this fix,
+	 * an empty token turned this route into a way to run any password past the breach
+	 * list for free: a breached password and a fine one, held against no token at
+	 * all, read apart from each other and neither reading said anything about a link
+	 * that was never there.
+	 */
+	@Test
+	void aDeadLinkSaysTheSameThingWhicheverThePasswordIs() throws Exception {
+		String leaked = theFirstLeakedPasswordTheListHolds();
+
+		MockHttpServletResponse withALeakedPassword = reset(null, leaked, leaked);
+		MockHttpServletResponse withAFinePassword = reset(null, NEW_PASSWORD, NEW_PASSWORD);
+
+		assertThat(withALeakedPassword.getStatus())
+				.as("an empty token told a leaked password apart from a fine one")
+				.isEqualTo(withAFinePassword.getStatus());
+		assertThat(withALeakedPassword.getContentAsString())
+				.isEqualTo(withAFinePassword.getContentAsString())
+				.isEqualTo("{\"reason\":\"" + PasswordResetApi.THE_LINK_IS_NOT_VALID + "\"}");
 	}
 }

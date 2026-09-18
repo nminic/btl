@@ -2,7 +2,8 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.account.BreachedPasswords;
 import com.btl.portal.domain.account.PasswordPolicy;
-import com.btl.portal.domain.account.PasswordPolicy.Verdict;
+import com.btl.portal.domain.account.PasswordReset;
+import com.btl.portal.domain.account.PasswordReset.Outcome;
 import com.btl.portal.domain.account.StoredPassword;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -139,6 +141,16 @@ class PasswordResetApi {
 	private record ToSend(long account, String address, String link) {
 	}
 
+	/**
+	 * An account by the address somebody typed, and the address as the row
+	 * actually carries it - the same split {@code EmailConfirmationApi.Found}
+	 * makes for its own resend, and for the identical reason: the two can differ
+	 * (case, a fold Postgres and Java do not agree on for every code point) and
+	 * only the row's own spelling is a mailbox anybody can read.
+	 */
+	private record Found(long id, String email) {
+	}
+
 	private ToSend write(RequestTyped typed) {
 		if (typed.email() == null || typed.email().isBlank()) {
 			return null;
@@ -149,10 +161,12 @@ class PasswordResetApi {
 		   reset is not conditioned on `email_confirmed_at` in either direction. */
 		String address = WhatAnAddressLooksLike.withoutTheSpacesAround(typed.email());
 
-		Optional<Long> account = db.sql("select id from account where lower(email) = lower(?)")
-				.param(address).query(Long.class).optional();
+		Optional<Found> found = db.sql("select id, email from account where lower(email) = lower(?)")
+				.param(address)
+				.query((row, i) -> new Found(row.getLong(1), row.getString(2)))
+				.optional();
 
-		if (account.isEmpty()) {
+		if (found.isEmpty()) {
 			return null;
 		}
 
@@ -162,9 +176,15 @@ class PasswordResetApi {
 		   either (V18), for the same reason V6 gives for the confirmation token: a
 		   second link must be issuable without retiring the first. */
 		db.sql("insert into password_reset_token (account_id, token_hash) values (?, ?)")
-				.params(account.orElseThrow(), link.hash()).update();
+				.params(found.orElseThrow().id(), link.hash()).update();
 
-		return new ToSend(account.orElseThrow(), address, link.secret());
+		/* SENT TO THE ROW'S OWN SPELLING, NOT TO WHAT WAS TYPED - the same choice
+		   `RegistrationApi.theLinkToSend` makes and for the same reason, stated
+		   there at length: a message addressed to what was typed rather than to
+		   what the account carries can end up at a mailbox the account does not
+		   live at, which is a message this portal sent to nowhere on request
+		   rather than a member's own mistake. */
+		return new ToSend(found.orElseThrow().id(), found.orElseThrow().email(), link.secret());
 	}
 
 	private void send(ToSend made) {
@@ -179,6 +199,14 @@ class PasswordResetApi {
 	}
 
 	/**
+	 * A live token, read as {@link PasswordReset} needs to see it, together with
+	 * the account it opens - the account is not part of the domain question and
+	 * is carried here only so this route has it once {@code decide} says yes.
+	 */
+	private record LiveToken(long account, PasswordReset.Link link) {
+	}
+
+	/**
 	 * SETTING THE NEW PASSWORD, which hands back no session - see the class comment
 	 * for why "prijava bez lozinke se ne uvodi" rules that out on its own.
 	 */
@@ -190,38 +218,60 @@ class PasswordResetApi {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		Verdict verdict = passwords.judge(typed.password());
-
-		if (verdict == Verdict.TOO_SHORT) {
-			return no(THE_FORM_IS_NOT_COMPLETE);
-		}
-		if (verdict == Verdict.BREACHED) {
-			return no(THE_PASSWORD_HAS_LEAKED);
-		}
-
-		if (typed.token() == null || typed.token().isBlank()) {
-			return no(THE_LINK_IS_NOT_VALID);
-		}
-
-		String hash = SecretToken.hashOf(typed.token());
+		boolean noToken = typed.token() == null || typed.token().isBlank();
 
 		/* FOR UPDATE, the same guard `SignInApi` puts on the row it reads before
 		   deciding whether to spend it: two requests racing the same token must not
-		   both read `used_at is null` and both spend it. PostgreSQL re-evaluates the
-		   WHERE clause against the latest committed row once the lock is released, so
-		   the second request to unblock sees the first one's `used_at` and correctly
-		   finds nothing. */
-		Optional<Long> account = db.sql("select account_id from password_reset_token"
-						+ " where token_hash = ? and expires_at > now() and used_at is null"
-						+ " for update")
-				.param(hash).query(Long.class).optional();
+		   both read a live link and both spend it. PostgreSQL re-evaluates a second
+		   transaction's own read once the lock is released, so the request that
+		   unblocks second sees the first one's `used_at` and `PasswordReset.decide`
+		   correctly refuses it.
 
-		if (account.isEmpty()) {
+		   NOTHING IN THIS QUERY'S OWN `WHERE` JUDGES WHETHER THE LINK IS LIVE, unlike
+		   the query this replaced. `expires_at` and `used_at` are read exactly as the
+		   row holds them and handed to `PasswordReset.decide` whole, because that
+		   class and not a second copy of its rule in SQL is what decides whether a
+		   link still opens anything - see the class comment on why writing the same
+		   rule twice is how it fell out of the cascade the first time. */
+		Optional<LiveToken> found = noToken ? Optional.empty()
+				: db.sql("select account_id, expires_at, used_at from password_reset_token"
+								+ " where token_hash = ? for update")
+						.param(SecretToken.hashOf(typed.token()))
+						.query((row, i) -> new LiveToken(row.getLong(1), new PasswordReset.Link(
+								row.getTimestamp(2).toInstant(),
+								row.getTimestamp(3) == null ? null : row.getTimestamp(3).toInstant())))
+						.optional();
+
+		/* THE LINK IS JUDGED BEFORE THE PASSWORD - `PasswordReset.decide` says so
+		   and this route now asks it rather than judging the password first and the
+		   link second, which used to let anybody run a password past the breach
+		   list with no token at all: a dead link and a leaked password answered
+		   differently from a dead link and a fine one, and neither answer said
+		   anything about the link. */
+		Outcome outcome = PasswordReset.decide(found.map(LiveToken::link).orElse(null),
+				typed.password(), passwords, Instant.now());
+
+		if (outcome == Outcome.THE_LINK_IS_NO_GOOD) {
 			return no(THE_LINK_IS_NOT_VALID);
 		}
+		if (outcome == Outcome.THE_PASSWORD_IS_TOO_SHORT) {
+			return no(THE_FORM_IS_NOT_COMPLETE);
+		}
+		if (outcome == Outcome.THE_PASSWORD_HAS_BEEN_BREACHED) {
+			return no(THE_PASSWORD_HAS_LEAKED);
+		}
 
-		db.sql("update password_reset_token set used_at = now() where token_hash = ?")
-				.param(hash).update();
+		long account = found.orElseThrow().account();
+
+		/* EVERY LIVE TOKEN OF THIS ACCOUNT IS SPENT HERE, NOT ONLY THE ONE THAT WAS
+		   USED. A second link mailed earlier - or a minute later by somebody racing
+		   this same request - and never opened is exactly as good as this one until
+		   this moment; left alone it would still set a password after this request
+		   already has, which is one finished reset undoing another rather than a
+		   member's own second thought. */
+		db.sql("update password_reset_token set used_at = now()"
+						+ " where account_id = ? and used_at is null")
+				.param(account).update();
 
 		/* THE LOCK IS LIFTED HERE TOO, and that is a choice this route makes rather
 		   than a rule the schema states. A reset link is mailed to the same address a
@@ -232,7 +282,17 @@ class PasswordResetApi {
 		   not already win the moment he could complete this request at all. */
 		db.sql("update account set password_hash = ?, failed_sign_ins = 0, locked_until = null"
 						+ " where id = ?")
-				.params(keeping.of(typed.password()), account.orElseThrow()).update();
+				.params(keeping.of(typed.password()), account).update();
+
+		/* EVERY SESSION OF THIS ACCOUNT ENDS HERE. V18 names this the first of the
+		   three reasons a session is a row and not a signed token: "a member changes
+		   his password". Whoever is holding a cookie this member did not just mint -
+		   a borrowed computer, a copied profile - stops being let in the moment this
+		   member proves he can still read his own mailbox and picks a new password;
+		   a reset is the one defence a member locked out by a stolen cookie has; it
+		   bought him nothing while a row nobody deleted kept answering 200. */
+		db.sql("delete from account_session where account_id = ?")
+				.param(account).update();
 
 		return ResponseEntity.noContent().build();
 	}
