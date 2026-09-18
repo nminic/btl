@@ -595,6 +595,21 @@ class PasswordResetApiTest {
 	 * the WHOLE gate, 1872 cases at a hundred percent, while leaving the token the
 	 * member had just clicked alive for the hour V18 gives it. Whoever reaches a
 	 * forwarded copy of that link in the meantime sets the password again.
+	 *
+	 * <p><b>AND BOTH HALVES ARE ASKED FOR A REASON RATHER THAN A STATUS.</b> 400 alone
+	 * did not say the link had been refused: swapping {@code againWithFirst} for a
+	 * password under {@link PasswordPolicy#SHORTEST} makes {@code decide} refuse the
+	 * PASSWORD, which is a 400 as well, so the old-token half read the same green while
+	 * the link stayed live. Measured: that swap together with narrowing the spend to
+	 * the newest row passed this whole class. The reason is compared now, the way the
+	 * second half below already did it.
+	 *
+	 * <p>The same for what the password ends up being. "Not the attacker's" is also
+	 * satisfied by there being no password at all: measured, having the {@code
+	 * THE_LINK_IS_NO_GOOD} branch of {@link PasswordResetApi} clear {@code
+	 * password_hash} before it refuses left this class green, because {@code
+	 * StoredPassword.matches} of anything against a null row is false. What the first
+	 * token set is named now, and not only what it is not.
 	 */
 	@Test
 	void resettingRetiresEveryOtherLiveTokenOfTheSameAccount() throws Exception {
@@ -611,9 +626,15 @@ class PasswordResetApiTest {
 				.as("the very token this reset was completed with still worked a second time,"
 						+ " while the account had another live one")
 				.isEqualTo(400);
+		assertThat(used.getContentAsString())
+				.isEqualTo("{\"reason\":\"" + PasswordResetApi.THE_LINK_IS_NOT_VALID + "\"}");
 		assertThat(new StoredPassword().matches(againWithFirst, passwordHashOf(account)))
 				.as("the token that had just been used overwrote the password it had itself set")
 				.isFalse();
+		assertThat(new StoredPassword().matches(NEW_PASSWORD, passwordHashOf(account)))
+				.as("the password the first token set is not there any more, so the line above"
+						+ " was reading \"not the attacker's\" off no password at all")
+				.isTrue();
 
 		String secondPassword = "drugi.token.pokusaj.2027";
 		MockHttpServletResponse answer = reset(second, secondPassword, secondPassword);

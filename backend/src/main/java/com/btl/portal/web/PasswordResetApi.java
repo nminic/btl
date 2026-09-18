@@ -284,13 +284,54 @@ class PasswordResetApi {
 						+ " where id = ?")
 				.params(keeping.of(typed.password()), account).update();
 
-		/* EVERY SESSION OF THIS ACCOUNT ENDS HERE. V18 names this the first of the
-		   three reasons a session is a row and not a signed token: "a member changes
-		   his password". Whoever is holding a cookie this member did not just mint -
-		   a borrowed computer, a copied profile - stops being let in the moment this
-		   member proves he can still read his own mailbox and picks a new password;
-		   a reset is the one defence a member locked out by a stolen cookie has; it
-		   bought him nothing while a row nobody deleted kept answering 200. */
+		/* EVERY SESSION OF THIS ACCOUNT ENDS HERE, AND IT ENDS AFTER THE PASSWORD IS
+		   WRITTEN. THE ORDER OF THESE TWO STATEMENTS IS LOAD BEARING AND NOTHING
+		   MEASURES IT - this sentence is all there is, and it says so rather than
+		   pretending otherwise. Moving this delete above the update three lines up
+		   passes the whole gate: measured 18.09.2026, 1909 cases, no failures, "All
+		   coverage checks have been met".
+
+		   WHY THE ORDER CARRIES ANYTHING. `SignInApi` is the only place under
+		   `src/main` that mints an `account_session` row, and it mints one after
+		   reading `password_hash`. This route is one transaction (`@Transactional`)
+		   against PostgreSQL at its default `read committed` - nothing in this portal
+		   sets an isolation level anywhere - so a sign in racing it reads whichever of
+		   the two states has committed, never a half of this one. Written in this
+		   order, an attacker still holding the old password either signs in before this
+		   transaction commits, in which case his row is already there for the delete
+		   below to take, or reads the new hash and is not let in at all. In the other
+		   order there is a window with no cover: he reads the OLD hash, this delete
+		   runs and finds nothing of his, and his session row commits AFTER it. That row
+		   then outlives the reset it was supposed to end, and it does not age out on
+		   its own either: `SessionLife.LASTS` runs thirty days from the LAST use, and
+		   `WhoIsAsking` renews that whenever a use is more than `RENEW_AFTER` (one day)
+		   since the last renewal - so a cookie used once a day never expires at all.
+		   That is precisely the case V18 says a session is a row for.
+
+		   AND WHY THERE IS NO GUARD, which is a price rather than an oversight, and
+		   worth stating exactly. It is NOT that the portal cannot run two transactions
+		   at once: `PaymentNumberConcurrencyTest` already does, with two threads, a
+		   `CyclicBarrier`, a class deliberately outside the test transaction and a
+		   `finally` that deletes its own rows. That arrangement reaches a race between
+		   two requests. This one is inside THIS transaction, between two of its
+		   statements, and no barrier a test can hold reaches in here: measuring it means
+		   taking a lock on the `account` row from a second connection so this route
+		   blocks on the update, waiting on `pg_stat_activity` until it really is
+		   blocked, inserting a session in that gap and only then letting go. That is a
+		   fixture with more moving parts than the statement it watches, and one that
+		   reads as flaky on a slower machine, where flaky gets muted. So the cost is
+		   written down instead: whoever swaps these two statements gets a green build,
+		   and this comment is the only thing in his way. If it is ever worth a case,
+		   the lock-and-wait above is the shape, and the file named is where its
+		   scaffolding already lives.
+
+		   V18 names this the first of the three reasons a session is a row and not a
+		   signed token: "a member changes his password". Whoever is holding a cookie
+		   this member did not just mint - a borrowed computer, a copied profile -
+		   stops being let in the moment this member proves he can still read his own
+		   mailbox and picks a new password; a reset is the one defence a member
+		   locked out by a stolen cookie has; it bought him nothing while a row nobody
+		   deleted kept answering 200. */
 		db.sql("delete from account_session where account_id = ?")
 				.param(account).update();
 
