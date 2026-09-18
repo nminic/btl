@@ -5,7 +5,6 @@ import com.btl.portal.domain.event.WhatAnEventCarries;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.team.JoiningATeam;
 import com.btl.portal.domain.team.Membership;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -319,19 +317,9 @@ class TeamWriteApi {
 	record Made(long id, String name) {
 	}
 
-	/**
-	 * @param response asked for so that a refusal can go down the same road an address that
-	 *                 is not there takes, which is {@link VerificationApi}'s own reason for
-	 *                 asking: a status written onto the response comes back with
-	 *                 {@code Content-Length: 0} while an address that maps nothing comes
-	 *                 back longer and chunked, and the difference is an oracle for whether
-	 *                 an address exists, one request per guess. MockMvc cannot see it - it
-	 *                 does not run the container's ERROR dispatch - so what holds it is
-	 *                 {@code RightsOverRealHttpTest}, off a socket.
-	 */
 	@PostMapping(path = "/api/teams", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> propose(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@RequestBody Proposed typed, HttpServletResponse response) throws IOException {
+			@RequestBody Proposed typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -339,7 +327,7 @@ class TeamWriteApi {
 		   moderator who does not race. There is nobody to file a proposal under, and the
 		   answer is the one InboxApi and NotificationApi already give him. */
 		if (me == null) {
-			return away(response);
+			return away();
 		}
 
 		/* AND THE TWO QUESTIONS JoiningATeam ALREADY ANSWERS, asked before anything about
@@ -348,7 +336,7 @@ class TeamWriteApi {
 		   apart, for the reason written at the top of this class. */
 		if (JoiningATeam.mayJoin(membershipsOf(me), ZonedDateTime.now(clock))
 				!= JoiningATeam.Answer.YES) {
-			return away(response);
+			return away();
 		}
 
 		if (isNothing(typed.name())) {
@@ -496,29 +484,33 @@ class TeamWriteApi {
 	}
 
 	/**
-	 * THE ANSWER FOR SOMEBODY THIS ADDRESS IS NOT FOR, DOWN THE ROAD AN ADDRESS THAT IS NOT
-	 * THERE ALREADY TAKES.
+	 * THE ANSWER FOR SOMEBODY THIS ADDRESS IS NOT FOR, which carries nothing at all.
 	 *
-	 * <p>The owner deleted the sentence that used to explain this refusal (PDL P13,
-	 * 05.09.2026), so there is nothing to put in a body; what is left is which SHAPE the
-	 * nothing has, and {@code sendError} rather than a status on the response is
-	 * {@link InboxApi}'s and {@link VerificationApi}'s answer to the identical question -
-	 * {@link InboxApi} for the very case of an account that names no member.
+	 * <p>The shape {@link EventWriteApi} and {@link ModeratorWriteApi} answer a caller they
+	 * refuse with, and the reason for the empty body is the one written at the top of this
+	 * class: the owner deleted the sentence that used to explain this, so there is nothing
+	 * to put in one.
 	 *
-	 * <p><b>Measured rather than copied.</b> Written as {@code ResponseEntity.status(404)},
-	 * this route answered a signed in moderator 262 bytes with {@code Content-Length: 0}
-	 * while {@code POST} on an address mapping nothing answered longer and chunked, and
-	 * {@code RightsOverRealHttpTest} went red on the difference. Written this way the body,
-	 * the headers and the length are produced by the same code rather than kept equal by
-	 * hand.
+	 * <p><b>IT IS NOT THE SAME BYTES AS AN ADDRESS THAT IS NOT THERE, AND THAT IS WRITTEN
+	 * DOWN HERE RATHER THAN LEFT TO BE FOUND.</b> A status on the response comes back with
+	 * {@code Content-Length: 0} while an address mapping nothing comes back longer and
+	 * chunked, which is the oracle {@link VerificationApi} answers with {@code sendError}
+	 * to avoid. That oracle is about ADMINISTRATIVE addresses a refused person must not
+	 * learn the existence of; this one is on {@link ApiSecurity#READ_BY_ANYBODY}, answers
+	 * {@code GET} 200 to a visitor, and says out loud through {@code OPTIONS} that a write
+	 * lives here - a price {@code ApiSecurity} weighed and accepted on 18.09.2026 for
+	 * exactly the paths a visitor is invited to. There is nothing left for the shape of
+	 * this 404 to hide.
 	 *
-	 * @return null, which is how a handler says the answer has already been written. Spring
-	 *         marks the request handled and writes nothing over it.
+	 * <p><b>Written the other way round it was measured and nothing moved</b>, which is why
+	 * this is a decision and not an oversight: {@code sendError} here leaves the whole gate
+	 * green, {@code RightsOverRealHttpTest} included, because the one request that reaches
+	 * this line over a socket is one carrying real JSON from a signed in member - and a
+	 * request that is NOT this route never gets here at all, since the mapping says what it
+	 * consumes.
 	 */
-	private static ResponseEntity<?> away(HttpServletResponse response) throws IOException {
-		response.sendError(HttpStatus.NOT_FOUND.value());
-
-		return null;
+	private static ResponseEntity<?> away() {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {
