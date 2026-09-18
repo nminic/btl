@@ -84,10 +84,60 @@ class ApiSecurity {
 
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
+		String[] open = READ_BY_ANYBODY.toArray(String[]::new);
+
 		return http
 				.securityMatcher("/api/**")
 				.authorizeHttpRequests(routes -> routes
-						.requestMatchers(READ_BY_ANYBODY.toArray(String[]::new)).permitAll()
+						/* WHAT IS OPEN IS OPEN FOR READING, AND SINCE 18.09.2026 THAT IS SAID
+						   IN METHODS AND NOT ONLY IN THE NAME OF THE LIST.
+
+						   Until this increment the rule above carried no method, so a path on
+						   this list was open to every verb there is. Nothing measured it,
+						   because no open path had ever mapped anything but a GET: the two
+						   guarded routes on the portal, `/api/moderators` and `/api/payments`,
+						   are both off this list. `/api/events` is the first path that is read
+						   by anybody AND written by somebody, and it is what made the gap
+						   visible rather than what created it.
+
+						   WHAT THE GAP WAS, measured rather than argued. `WhatHeMayDo` casts
+						   the principal to `WhoIsAsking.Member` and says in its own javadoc why
+						   it does not ask whether there is one: a route that needs a right is a
+						   route this file has not opened, so the chain answers 401 first. That
+						   sentence stops being true the moment a guarded route sits on an open
+						   path. A POST arriving here with no session is anonymous, its
+						   principal is the string "anonymousUser", and the cast is a
+						   ClassCastException - so the answer is 500, which is a THIRD answer
+						   on /api that says "this address exists and takes a POST" while an
+						   address mapping nothing goes on saying 404.
+
+						   Shut by narrowing what is opened rather than by naming the verbs that
+						   write, which is the same direction the whole file is written in: a
+						   method nobody thought of is shut by this shape and open by the other
+						   one. `OpenRoutesStayReadOnlyTest` holds the behaviour over a real
+						   socket, and `anOpenPathIsOpenForReadingAndNotForWriting` holds the
+						   rule itself. */
+						.requestMatchers(HttpMethod.GET, open).permitAll()
+						/* AND HEAD, which is the same read without the body. Spring serves it
+						   off the GET handler, so leaving it out would not shut a route - it
+						   would make the calendar answer 401 to the one verb that asks whether
+						   it has changed. */
+						.requestMatchers(HttpMethod.HEAD, open).permitAll()
+						/* AND OPTIONS, which is NOT a read and is opened anyway, one line above
+						   the rule that shuts it everywhere else. What is open by name has
+						   nothing to hide about which verbs it takes, and
+						   `askingWhatAnOpenRouteTakesIsLeftAlone` measures exactly that over
+						   the whole list.
+
+						   THE PRICE, named here rather than left to be found: `Allow` on an
+						   open path now lists the writes that path maps, so OPTIONS on
+						   /api/events says a POST lives there. That is a real sentence about a
+						   real route, and it is accepted because this path is one a visitor is
+						   invited to - the leak the rule below exists against is the
+						   enumeration of addresses nobody could guess, and /api/events is not
+						   one of those. Shutting it instead would overturn a decision measured
+						   on 13.09.2026, which is not this increment's to overturn. */
+						.requestMatchers(HttpMethod.OPTIONS, open).permitAll()
 						/* Signing in is open by necessity: nobody can be asked to be signed in
 						   in order to sign in. It is still the one open route that WRITES, and
 						   what stands in front of it is that every wrong answer costs the guesser
