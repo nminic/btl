@@ -125,6 +125,26 @@ class RightsAtTheDoorTest {
 	 * beside the other two, with the reason written there, and with what is NOT in front of
 	 * it written there too.
 	 *
+	 * <p><b>AND {@code /api/inbox} IS THE EIGHTH, AND LIKE {@code /api/verification} IT
+	 * MAKES THIS FLOOR ASSERT LESS THAN ITS NAME SUGGESTS.</b> A message may be private to
+	 * one member (V13: „empty means everybody", so a named addressee means somebody in
+	 * particular), so it is absent from {@code READ_BY_ANYBODY} and a visitor is refused
+	 * before this door runs at all. But unlike {@code /api/comments} and
+	 * {@code /api/attendance}, „every signed in account reads it" is not quite true here
+	 * either: an account naming no member - a moderator who does not race - is refused 404
+	 * by the controller itself, the identical shape {@code /api/verification} already has
+	 * for a moderator with no queue ticked. There is no box to tick for having an inbox at
+	 * all; it is not a privilege a superadmin grants, it is a consequence of being a member,
+	 * so the check lives in {@code InboxApi} (through {@code MemberOfAccount}) rather than
+	 * behind {@link RightIsNeeded}. {@code InboxApiTest} holds both halves: a visitor is
+	 * refused, and so is a signed in account with no member behind it.
+	 *
+	 * <p><b>AND {@code /api/me/notifications} IS THE NINTH, CLOSED THE IDENTICAL WAY AND
+	 * FOR THE IDENTICAL REASON.</b> A member's own six switches over the bell's mail (PDL
+	 * P22) are exactly as personal as his inbox, and an account with no member behind it is
+	 * refused the same 404, off the same {@code MemberOfAccount} lookup. {@code NotificationApiTest}
+	 * holds both halves for this route the way {@code InboxApiTest} does for the other.
+	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a
 	 * {@code @GetMapping("/cenovnik")} written without the annotation answered 200 to
@@ -151,8 +171,8 @@ class RightsAtTheDoorTest {
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
-					"/api/attendance", "/api/verification", "/api/registration",
-					"/api/me/applications", "/error");
+					"/api/attendance", "/api/verification", "/api/registration", "/error",
+					"/api/inbox", "/api/me/notifications", "/api/me/applications");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 

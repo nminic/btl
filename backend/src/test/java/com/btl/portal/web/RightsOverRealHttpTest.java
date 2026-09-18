@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
@@ -28,10 +29,15 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
+
+import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -116,6 +122,11 @@ class RightsOverRealHttpTest {
 	/** Both of {@link ApiSecurity}'s chains, so a twin's can be compared with its own. */
 	@Autowired
 	private List<SecurityFilterChain> chains;
+
+	/** The dispatcher, asked whether an address is mapped at all. */
+	@Autowired
+	@Qualifier("requestMappingHandlerMapping")
+	private RequestMappingHandlerMapping mappings;
 
 	private final Map<String, String> sessions = new HashMap<>();
 
@@ -351,6 +362,18 @@ class RightsOverRealHttpTest {
 	 * whose address really is outside {@code /api} gets a twin outside it too, by the same
 	 * line and without asking for an exception.
 	 */
+	/** Every address the dispatcher maps, asked of it rather than assumed. */
+	private Set<String> mapped() {
+		Set<String> out = new HashSet<>();
+		for (RequestMappingInfo info : mappings.getHandlerMethods().keySet()) {
+			PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
+			if (patterns != null) {
+				out.addAll(patterns.getPatternValues());
+			}
+		}
+		return out;
+	}
+
 	private static String twinOf(String path) {
 		String sameParent = path.substring(0, path.lastIndexOf('/') + 1);
 
@@ -524,6 +547,60 @@ class RightsOverRealHttpTest {
 				.containsExactly("competitor", "moderator");
 
 		answersTheSameWay("GET", THE_QUEUE, twinOf(THE_QUEUE), asking);
+	}
+
+	/**
+	 * AND A RESOURCE THAT REFUSES AN ACCOUNT WITH NO MEMBER ANSWERS LIKE AN ADDRESS THAT
+	 * IS NOT THERE.
+	 *
+	 * <p><b>Why this is measured here and not where the two routes live.</b> Both of them
+	 * already carry a case asserting the refusal has an empty body, and both of those
+	 * cases run through {@code MockMvc}, which - as {@code VerificationApi} writes down in
+	 * as many words - never runs the container's ERROR dispatch and so cannot see what an
+	 * address that is not there actually sends. Measured 17.09.2026: swapping
+	 * {@code sendError} for {@code setStatus} on both routes left 48 cases green, while
+	 * over a real socket the two answers then differ in LENGTH - and a length that differs
+	 * is an oracle for whether an address exists, even when both say 404.
+	 *
+	 * <p>The twin is a sibling of the real address by {@link #twinOf}, so no list of
+	 * prefixes is needed and nothing has to be kept equal by hand.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"/api/inbox", "/api/me/notifications"})
+	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String path)
+			throws Exception {
+		/* AND THE ROUTE IS REALLY THERE, which the three cases beside this one all assert
+		   first and for the reason they each write down: a route that was simply broken
+		   would be missing for everybody, the twin and the original would be two absent
+		   places, and the comparison would hold having measured nothing. Measured on
+		   review - renaming both mappings to addresses nobody maps left this case green.
+
+		   The anchor is the ANONYMOUS answer rather than a 200, because this resource
+		   refuses even a signed-in account that names no member, which is the very thing
+		   being compared below. `/api/...` answers 401 to somebody not signed in and the
+		   twin does too, so that pair says nothing; what says something is that the
+		   dispatcher maps the real path at all, and a path it maps refuses a WRITE with
+		   405 while a path it does not map answers 404. */
+		/* AND THE ROUTE IS REALLY THERE, which the three cases beside this one all assert
+		   first, each writing down why: a route that was simply broken would be missing
+		   for everybody, the twin and the original would be two absent places, and the
+		   comparison would hold having measured nothing. Measured on review - renaming
+		   both mappings to addresses nobody maps left this case green.
+
+		   The anchor cannot be an answer, and that is worth writing down. Everything
+		   under `/api` that is not open answers 401 to somebody not signed in, mapped or
+		   not - measured: DELETE, OPTIONS and GET all give 401 on both the real path and
+		   the twin. And this resource refuses even a signed-in account that names no
+		   member, which is the very thing compared below. So the anchor asks the
+		   DISPATCHER whether it maps the address at all, which is a question about the
+		   route rather than about any one answer. */
+		assertThat(mapped())
+				.as("%s is not mapped at all, so this comparison is between two addresses that"
+						+ " are both missing and it measures nothing", path)
+				.contains(path)
+				.doesNotContain(twinOf(path));
+
+		answersTheSameWay("GET", path, twinOf(path), A_COMPETITOR);
 	}
 
 	/**
