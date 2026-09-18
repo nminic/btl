@@ -503,39 +503,85 @@ class InboxApiTest {
 		JsonNode whole = answer("ja@primer.rs");
 
 		assertThat(whole.size())
-				.as("the inbox came back empty, so this loop measures nothing")
-				.isGreaterThan(1);
-
-		int checked = 0;
+				.as("the inbox did not answer with every message this member has, so whatever"
+						+ " the loop below walks is not the whole of it")
+				.isEqualTo(db.sql("select count(*) from message"
+								+ " where to_id = (select competitor_id from account where email = ?)"
+								+ " or to_id is null")
+						.param("ja@primer.rs")
+						.query(Long.class).single().intValue());
 
 		for (JsonNode one : whole) {
 			long id = one.path("id").asLong();
-			Map<String, Object> row = db.sql("select from_name, subject, body, sent_at"
-							+ " from message where id = ?")
-					.param(id)
+			Map<String, Object> row = db.sql("select m.*,"
+							/* THE ONE FIELD THAT IS NOT A COLUMN, and it is computed here the
+							   way the answer is supposed to compute it: against the ASKING
+							   member and nobody else. */
+							+ " exists (select 1 from message_read r where r.message_id = m.id"
+							+ "          and r.competitor_id = ("
+							+ "              select competitor_id from account where email = ?))"
+							+ "        as read"
+							+ " from message m where m.id = ?")
+					.params("ja@primer.rs", id)
 					.query()
 					.singleRow();
 
-			assertThat(one.path("from").asString())
-					.as("the message answered under id %s does not carry its own sender", id)
-					.isEqualTo(row.get("from_name"));
-			assertThat(one.path("subject").asString())
-					.as("the message answered under id %s does not carry its own title", id)
-					.isEqualTo(row.get("subject"));
-			assertThat(one.path("body").asString())
-					.as("the message answered under id %s does not carry its own text", id)
-					.isEqualTo(row.get("body"));
-			assertThat(one.path("date").asString())
-					.as("the message answered under id %s does not carry the Belgrade day it was"
-							+ " sent on", id)
-					.isEqualTo(((java.sql.Timestamp) row.get("sent_at")).toInstant()
-							.atZone(SeasonClock.ZONE).toLocalDate().toString());
-			checked++;
+			for (String field : Answers.fieldsOf(one)) {
+				assertThat(row)
+						.as("the answer carries `%s`, and nothing in `message` accounts for it -"
+								+ " a field is being served that no column and no named rule"
+								+ " stands behind", field)
+						.containsKey(COLUMN_OF.get(field));
+
+				assertThat(saidAs(one.get(field)))
+						.as("the message answered under id %s does not carry its own `%s`", id, field)
+						.isEqualTo(saidAs(row.get(COLUMN_OF.get(field))));
+			}
+		}
+	}
+
+	/**
+	 * WHICH COLUMN EACH FIELD OF THE ANSWER CLAIMS TO BE, and the floor under it is that
+	 * the loop above walks the FIELDS OF THE RECORD rather than this map.
+	 *
+	 * <p><b>Why a map and not a list of four names.</b> The draft before this one selected
+	 * {@code from_name, subject, body, sent_at} - a list written by hand, which covered
+	 * exactly the four fields earlier rounds had already found and left the other three
+	 * measured the old way, by choosing a message. Three mutations lived in that gap and
+	 * two of them broke recorded decisions: a message carrying a question came back marked
+	 * READ, which PDL:6486 forbids („Brojac nepročitanih ne sme da se promeni time sto
+	 * poruka nosi odluku"), and a broadcast came back carrying a pair invitation, which
+	 * PDL:6484 names as the likeliest fault of all and asks for its own case.
+	 *
+	 * <p>A ninth column the answer starts serving tomorrow has no entry here, so the first
+	 * assertion of the loop fails and somebody decides what it is - instead of the field
+	 * quietly going unmeasured, which is how the last four rounds happened.
+	 */
+	private static final Map<String, String> COLUMN_OF = Map.of(
+			"id", "id",
+			"from", "from_name",
+			"subject", "subject",
+			"body", "body",
+			"date", "sent_at",
+			"read", "read",
+			"teamInvitationId", "team_invitation_id",
+			"pairInviteId", "pair_invite_id");
+
+	/** One value as text, whatever JSON or JDBC type carries it; a null is a null. */
+	private static String saidAs(Object value) {
+		if (value == null || (value instanceof JsonNode node && node.isNull())) {
+			return null;
 		}
 
-		assertThat(checked)
-				.as("fewer messages were compared with their own rows than the answer carried")
-				.isEqualTo(whole.size());
+		if (value instanceof java.sql.Timestamp when) {
+			return when.toInstant().atZone(SeasonClock.ZONE).toLocalDate().toString();
+		}
+
+		if (value instanceof JsonNode node) {
+			return node.isNumber() ? node.decimalValue().toPlainString() : node.asString();
+		}
+
+		return String.valueOf(value);
 	}
 
 	/**
