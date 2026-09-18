@@ -849,13 +849,36 @@ class RightsAtTheDoorTest {
 	 * which is the shape this file rejected on 05.09.2026 and again in
 	 * {@link #theDoorDecides}.
 	 */
+	/**
+	 * WHAT STANDS WHERE A PATH VARIABLE DOES, and it is not a number on purpose.
+	 *
+	 * <p>The sweep below asks every guarded route what a plain member gets, and reads 404
+	 * as the door having refused him. With a NUMBER in that place those are not the same
+	 * question: a route that looks the row up and answers 404 because it is not there says
+	 * 404 whether the door decided or not, so the assertion is empty for it.
+	 *
+	 * <p>Measured 18.09.2026, and it was a real hole. Knocking the door out FOR DELETE
+	 * ALONE left this whole class green, 17 cases, while every delete on the portal stood
+	 * open to any signed-in member. The same mutation for PUT did fall, but by accident:
+	 * the probe sends no body, so Spring answers 400 before the handler, which is not this
+	 * file measuring anything either.
+	 *
+	 * <p>A word that cannot be a key changes the question. The door runs in
+	 * {@code preHandle}, BEFORE any path variable is bound, so it still answers 404 to
+	 * somebody it refuses; everything downstream answers 400, because nothing turns this
+	 * into the {@code long} the method asks for. Refused and not-there stop being the same
+	 * number, and the sweep goes back to measuring the door.
+	 */
+	private static final String NOT_AN_ID = "nije-kljuc";
+
 	private List<Route> routesTheDoorDecides() {
 		return mappings.getHandlerMethods().entrySet().stream()
 				.filter(one -> theDoorDecides(one.getValue()))
 				.flatMap(one -> methodsOf(one.getKey())
 						.flatMap(how -> pathsOf(one.getKey())
 								.map(pattern -> new Route(how,
-										pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1")))))
+										pattern.replaceAll("\\{[^/}]*\\}", NOT_AN_ID)
+											.replace("**", NOT_AN_ID)))))
 				.distinct().sorted(Route.BY_ADDRESS).toList();
 	}
 
