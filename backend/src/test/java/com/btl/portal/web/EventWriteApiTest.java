@@ -79,6 +79,9 @@ class EventWriteApiTest {
 
 	private String session;
 
+	/** A moderator who holds a tick, just not this one. */
+	private String anotherSession;
+
 	private long acted;
 
 	private long another;
@@ -107,7 +110,7 @@ class EventWriteApiTest {
 		result(runner, raceCalled("Tudja"));
 
 		session = account(MODERATOR, "moderator");
-		account(ANOTHER_MODERATOR, "moderator");
+		anotherSession = account(ANOTHER_MODERATOR, "moderator");
 
 		ticked(MODERATOR, "entity:events");
 		ticked(ANOTHER_MODERATOR, "entity:teams");
@@ -173,14 +176,14 @@ class EventWriteApiTest {
 				.params(email, right).update();
 	}
 
-	private MockHttpServletResponse add(EventWriteApi.Upsert typed, String cookie) throws Exception {
+	private MockHttpServletResponse add(Form typed, String cookie) throws Exception {
 		return http.perform(post("/api/events").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(json(typed))
 						.cookie(new Cookie(SessionCookie.NAME, cookie)))
 				.andReturn().getResponse();
 	}
 
-	private MockHttpServletResponse change(long id, EventWriteApi.Upsert typed) throws Exception {
+	private MockHttpServletResponse change(long id, Form typed) throws Exception {
 		return http.perform(put("/api/events/" + id).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(json(typed))
 						.cookie(new Cookie(SessionCookie.NAME, session)))
@@ -193,13 +196,62 @@ class EventWriteApiTest {
 				.andReturn().getResponse();
 	}
 
-	private String json(EventWriteApi.Upsert typed) {
+	private String json(Form typed) {
 		return new ObjectMapper().writeValueAsString(typed);
 	}
 
 	/** A complete form, out of the codebook, which every case then spoils in one way. */
-	private static EventWriteApi.Upsert aForm() {
-		return new EventWriteApi.Upsert("Novi maraton", LocalDate.parse("2028-04-18"), 1L, null,
+	/**
+	 * A FORM UNDER CONSTRUCTION, and it lives here rather than on
+	 * {@link EventWriteApi.Upsert} on purpose. The six withers below exist so a case can
+	 * say what it changes and stay silent about the eight fields it does not; nothing in
+	 * production ever calls one. Put on the request record itself they would be six methods
+	 * the portal never uses, sitting in the class a reader opens to learn what an event
+	 * carries.
+	 *
+	 * <p>{@link #withPlace} and {@link #withTypedTown} each clear the other's fields,
+	 * because a town comes from the codebook or is typed and never both - that is the rule
+	 * the schema itself holds. A case that wants the forbidden combination therefore cannot
+	 * reach it by chaining, and says so by building the record whole, which is what
+	 * {@code bothTowns} does below.
+	 */
+	private record Form(String name, LocalDate date, Long placeId, String city, String country,
+			String kind, Boolean featured, String description, String link) {
+
+		EventWriteApi.Upsert typed() {
+			return new EventWriteApi.Upsert(name, date, placeId, city, country, kind, featured,
+					description, link);
+		}
+
+		Form withPlace(long fromTheCodebook) {
+			return new Form(name, date, fromTheCodebook, null, null, kind, featured, description,
+					link);
+		}
+
+		Form withTypedTown(String typedCity, String itsCountry) {
+			return new Form(name, date, null, typedCity, itsCountry, kind, featured, description,
+					link);
+		}
+
+		Form withName(String called) {
+			return new Form(called, date, placeId, city, country, kind, featured, description, link);
+		}
+
+		Form withDay(LocalDate held) {
+			return new Form(name, held, placeId, city, country, kind, featured, description, link);
+		}
+
+		Form withKind(String asked) {
+			return new Form(name, date, placeId, city, country, asked, featured, description, link);
+		}
+
+		Form withLink(String at) {
+			return new Form(name, date, placeId, city, country, kind, featured, description, at);
+		}
+	}
+
+	private static Form aForm() {
+		return new Form("Novi maraton", LocalDate.parse("2028-04-18"), 1L, null,
 				null, "race", false, "", "");
 	}
 
@@ -218,15 +270,15 @@ class EventWriteApiTest {
 				+ " order by date").param(event).query(String.class).list();
 	}
 
-	private String reasonIn(MockHttpServletResponse answer) {
+	private String reasonIn(MockHttpServletResponse answer) throws Exception {
 		return new ObjectMapper().readTree(answer.getContentAsString()).path("reason").asString();
 	}
 
-	private long writtenId(MockHttpServletResponse answer) {
+	private long writtenId(MockHttpServletResponse answer) throws Exception {
 		return new ObjectMapper().readTree(answer.getContentAsString()).path("id").asLong();
 	}
 
-	private String writtenSlug(MockHttpServletResponse answer) {
+	private String writtenSlug(MockHttpServletResponse answer) throws Exception {
 		return new ObjectMapper().readTree(answer.getContentAsString()).path("slug").asString();
 	}
 
@@ -392,17 +444,17 @@ class EventWriteApiTest {
 				.isEqualTo(before);
 	}
 
-	private EventWriteApi.Upsert spoiledIn(String how) {
-		EventWriteApi.Upsert good = aForm().withPlace(aKnownTown());
+	private Form spoiledIn(String how) {
+		Form good = aForm().withPlace(aKnownTown());
 
 		return switch (how) {
 			case "noName" -> good.withName("   ");
 			case "noDay" -> good.withDay(null);
-			case "noTown" -> new EventWriteApi.Upsert(good.name(), good.date(), null, null, null,
+			case "noTown" -> new Form(good.name(), good.date(), null, null, null,
 					"race", false, "", "");
-			case "bothTowns" -> new EventWriteApi.Upsert(good.name(), good.date(), aKnownTown(),
+			case "bothTowns" -> new Form(good.name(), good.date(), aKnownTown(),
 					"Kruševac", "RS", "race", false, "", "");
-			case "countryBesideACodebookTown" -> new EventWriteApi.Upsert(good.name(), good.date(),
+			case "countryBesideACodebookTown" -> new Form(good.name(), good.date(),
 					aKnownTown(), null, "RS", "race", false, "", "");
 			case "typedTownWithNoCountry" -> good.withTypedTown("Kruševac", null);
 			case "aTownNobodyHas" -> good.withPlace(-1L);
@@ -448,7 +500,7 @@ class EventWriteApiTest {
 	 */
 	@Test
 	void anEventMovedInsideItsYearKeepsItsAddress() throws Exception {
-		MockHttpServletResponse answer = change(acted, new EventWriteApi.Upsert("Trka drugi-2027",
+		MockHttpServletResponse answer = change(acted, new Form("Trka drugi-2027",
 				LocalDate.parse("2027-09-15"), null, "Kruševac", "RS", "race", false, "", ""));
 
 		assertThat(answer.getStatus()).isEqualTo(200);
@@ -540,7 +592,7 @@ class EventWriteApiTest {
 	@Test
 	void anEditOntoATakenAddressIsRefusedAndOneThatChangesNothingIsNot() throws Exception {
 		MockHttpServletResponse onto = change(acted, aForm().withPlace(aKnownTown())
-				.withName("Trka treci-2027").withDay(LocalDate.parse("2027-09-03")));
+				.withName("Treci").withDay(LocalDate.parse("2027-09-03")));
 
 		assertThat(onto.getStatus())
 				.as("an event was moved onto an address another event already answers at")
@@ -634,12 +686,8 @@ class EventWriteApiTest {
 	@Test
 	void aModeratorHoldingAnotherTickIsRefused() throws Exception {
 		long before = howManyEvents();
-		String his = db.sql("select token_hash from account_session limit 0")
-				.query(String.class).optional().orElse(null);
 
-		assertThat(his).isNull();
-
-		MockHttpServletResponse answer = add(aForm().withPlace(aKnownTown()), sessionOf(ANOTHER_MODERATOR));
+		MockHttpServletResponse answer = add(aForm().withPlace(aKnownTown()), anotherSession);
 
 		assertThat(answer.getStatus())
 				.as("a moderator without entity:events wrote an event")
@@ -647,13 +695,4 @@ class EventWriteApiTest {
 		assertThat(howManyEvents()).isEqualTo(before);
 	}
 
-	private String sessionOf(String email) {
-		return theSessions.get(email);
-	}
-
-	private final java.util.Map<String, String> theSessions = new java.util.HashMap<>();
-
-	private Optional<Long> unusedHook() {
-		return Optional.empty();
-	}
 }
