@@ -81,6 +81,33 @@ Ništa se ne predlaže ni ne odlučuje u sukobu sa tim fajlovima, a svaka nova o
 - Backend lokalno protiv compose baze: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 - Produkcijski deploy: `cd /opt/btl/deploy && docker compose -f compose.prod.yml up -d --build frontend` na hostu. Portove 80/443 drži zajednički edge proxy van ovog repoa; nikad ne dodavati servis koji ih zauzima i nikad ne pokretati `docker compose down` nad tim projektom. Detalji: `deploy/README.md`.
 
+## Mutacije: dve zamke koje su u istom satu uhvatile dva nezavisna agenta (18.09.2026)
+
+Ko dokazuje nalaz mutacijom, prvo pročita ovo. Obe zamke **izgledaju kao uspešno merenje**, pa se ne
+vide dok se ne potraže.
+
+- **`mvnw.cmd` bez `./` se ne pokreće uopšte.** `cmd /c mvnw.cmd ...` ne traži program u radnom
+  direktorijumu: vraća nenulti izlazni kod i log od stotinak bajtova, što je **isto** što vidi i
+  uhvaćena mutacija. Jednom agentu je tako dalo **22 lažna prolaza**. Hvata se samo tako što se
+  **prvo pusti prolaz BEZ mutacije** i traži **izlazni kod nula i red `Tests run:`**. Iz `bash` se
+  zove `./mvnw`.
+- **Vraćanje mutacije iz `git show HEAD:` prevodi fajl na LF.** Repo je na CRLF
+  (`.gitattributes` + `core.autocrlf=true`), a blob je LF, pa vraćanje sirovih bajtova prepiše
+  **svaki red**. `git status` i `git diff --numstat` o tome **ćute**, jer git normalizuje pri
+  poređenju. Posledica nije kozmetička: **sledeća mutacija iz iste serije više ne nađe svoj obrazac**
+  i serija stane na pola, a izgleda kao da je prošla. Vraća se kroz
+  `blob.replace(b"
+", b"
+").replace(b"
+", b"
+")`.
+- **Uz to i dalje važi:** vraćanje ide u `finally`, polazno stanje se čita **iz gita** a ne iz radnog
+  stabla, čita se i piše **binarno** (`text=True` na Windowsu dekodira cp1252 i tiho kvari srpska
+  slova), i posle serije se gleda `git status` i `git diff --numstat`, ne samo da li je paket zelen.
+- **Kad mutacija „padne", gleda se i ZAŠTO pada.** Poruka o dizanju kontejnera, portu, vezi ili
+  isteku nije merenje nego infrastruktura. `Errors:` jednak broju `Tests run:` je skoro uvek
+  infrastruktura, a **ista mutacija puštena dvaput mora da da isti broj**.
+
 ## Proces
 
 - **Nikad `git add -A` dok recenzija radi u istom radnom direktorijumu.** Recenzent dokazuje nalaz tako što namerno pokvari fajl, pokrene test i vrati ga. Ako se u tom prozoru zapiše sve što je izmenjeno, tuđa privremena mutacija ulazi u commit i CI pada na nečemu što u kodu ne postoji. Desilo se 13.08.2026: član `000004` je za jedan prolaz testa postao platiša i tako gurnut na granu. Zapisuju se **imenovane putanje** onoga što je stvarno menjano, ili recenzija dobija svoj worktree.
