@@ -83,29 +83,70 @@ Ništa se ne predlaže ni ne odlučuje u sukobu sa tim fajlovima, a svaka nova o
 
 ## Mutacije: dve zamke koje su u istom satu uhvatile dva nezavisna agenta (18.09.2026)
 
-Ko dokazuje nalaz mutacijom, prvo pročita ovo. Obe zamke **izgledaju kao uspešno merenje**, pa se ne
-vide dok se ne potraže.
+Ko dokazuje nalaz mutacijom, prvo pročita ovo. Obe zamke **izgledaju kao uspešno merenje**, pa se
+ne vide dok se ne potraže. Sve brojke niže su izmerene, ne procenjene.
 
-- **`mvnw.cmd` bez `./` se ne pokreće uopšte.** `cmd /c mvnw.cmd ...` ne traži program u radnom
-  direktorijumu: vraća nenulti izlazni kod i log od stotinak bajtova, što je **isto** što vidi i
-  uhvaćena mutacija. Jednom agentu je tako dalo **22 lažna prolaza**. Hvata se samo tako što se
-  **prvo pusti prolaz BEZ mutacije** i traži **izlazni kod nula i red `Tests run:`**. Iz `bash` se
-  zove `./mvnw`.
-- **Vraćanje mutacije iz `git show HEAD:` prevodi fajl na LF.** Repo je na CRLF
-  (`.gitattributes` + `core.autocrlf=true`), a blob je LF, pa vraćanje sirovih bajtova prepiše
-  **svaki red**. `git status` i `git diff --numstat` o tome **ćute**, jer git normalizuje pri
-  poređenju. Posledica nije kozmetička: **sledeća mutacija iz iste serije više ne nađe svoj obrazac**
-  i serija stane na pola, a izgleda kao da je prošla. Vraća se kroz
-  `blob.replace(b"
-", b"
-").replace(b"
-", b"
-")`.
-- **Uz to i dalje važi:** vraćanje ide u `finally`, polazno stanje se čita **iz gita** a ne iz radnog
-  stabla, čita se i piše **binarno** (`text=True` na Windowsu dekodira cp1252 i tiho kvari srpska
-  slova), i posle serije se gleda `git status` i `git diff --numstat`, ne samo da li je paket zelen.
-- **Kad mutacija „padne", gleda se i ZAŠTO pada.** Poruka o dizanju kontejnera, portu, vezi ili
-  isteku nije merenje nego infrastruktura. `Errors:` jednak broju `Tests run:` je skoro uvek
+### 1. `mvnw.cmd` bez `./` ne krene, a log izgleda isto kao uhvaćena mutacija
+
+Iz Git Bash-a poziv `cmd /c mvnw.cmd ...` vrati **izlazni kod 1, prazan stdout i 99 bajtova na
+stderr** (`'mvnw.cmd' is not recognized...`). To je isto što vidi i uhvaćena mutacija, pa je
+jednom agentu dalo **22 lažna prolaza**.
+
+**Uzrok nije `cmd.exe` nego okruženje.** `cmd.exe` inače traži program u radnom direktorijumu;
+ovde ga sprečava `NoDefaultCurrentDirectoryInExePath=1`, koju **Git Bash postavlja**. Isti poziv
+iz PowerShell-a ili sa CI runnera uspeva (izlazni kod 0, 434 bajta). Zato „ne radi" nije svojstvo
+komande nego onoga odakle se zove.
+
+**Šta se radi:** iz bash-a se zove `./mvnw`. I bez obzira na shell, **prvo se pusti prolaz BEZ
+mutacije** i traži se **izlazni kod nula i red `Tests run:`**. To je jedino što ovu klasu hvata u
+svakom okruženju.
+
+### 2. Vraćanje iz `git show HEAD:` bajtova menja prelom reda, i to tiho
+
+Repo je pretežno CRLF (`core.autocrlf=true`, `* text=auto`), a blob je LF, pa vraćanje **sirovih**
+blob bajtova prepiše svaki red fajla.
+
+**Šta o tome govori a šta ćuti, izmereno tri puta na tri fajla:**
+
+- `git status --porcelain` **progovori**: vraća ` M <put>`. Ne ćuti.
+- `git diff` i `git diff --numstat` **ćute**, jer git normalizuje pre poređenja.
+- `git ls-files --eol -- <put>` **imenuje stvar**: pređe sa `w/crlf` na `w/lf`.
+
+Dakle ` M` uz prazan `git diff` **nije** zaostala mutacija nego promenjen prelom reda, i obrnuto se
+ne sme pretpostaviti: kad ` M` jednom jeste prava zaostala mutacija, ovo razlikovanje je jedino što
+to razdvaja.
+
+**Zašto to nije kozmetika:** obrazac koji prelazi preko preloma reda posle konverzije **više se ne
+nađe**, pa serija stane na pola a izgleda kao da je prošla. Jednolinijski obrasci se i dalje nalaze,
+pa serija ume da se nastavi nad fajlom koji je već prepisan; izmereno na jednom fajlu, isti obrazac
+9 puta jednolinijski a 0 puta produžen preko preloma.
+
+**Prelom reda NIJE isti za ceo repo, i slepo prevođenje u CRLF kvari 25 fajlova.**
+`backend/.gitattributes` drži `/mvnw` i **`src/main/resources/db/migration/*.sql` na `eol=lf`**, sa
+zapisanim razlogom: generisana migracija mora bajt za bajt da bude ono što je
+`backend/tools/generate_reference_migrations.py` napisao. Za te fajlove je blob **jednak** radnom
+stablu i sirovi bajti su tačno ono što treba.
+
+Broj se **pita gitu, ne pamti**: `git ls-files --eol | grep -c "attr/text eol=lf"` daje danas **25**
+(`backend/mvnw` i 24 migracije). Pita se **`attr/` kolona, a ne `w/`**, i to je merena razlika:
+`w/` kaže šta je na disku **ovog trenutka**, pa dva radna stabla istog commita daju različite brojeve
+(izmereno isti dan: 717 naspram 694 `w/crlf`, uz isti ukupan broj fajlova). `attr/` kaže šta
+`.gitattributes` **propisuje**, i to je isto svuda.
+
+**Postupak koji važi za oba slučaja:** polazno stanje se i dalje čita **iz gita** a ne iz radnog
+stabla (da zatečena mutacija ne postane osnova), a prelom reda se **pita gitu za taj fajl**
+(`git ls-files --eol`), pa se blob prevede u ono što taj fajl na disku stvarno nosi. Ko ne želi da
+grana kod: blob se normalizuje na LF, pa prevede u CRLF **samo ako** je taj fajl `w/crlf`.
+
+**Provera posle serije:** `git status --porcelain` mora da bude **prazan**. Ako prijavi ` M` a
+`git diff` je prazan, sadržaj je tačan a prelom reda nije, i `git ls-files --eol` kaže koji je.
+
+### I dalje važi, i nalazi se ovde da se ne traži na dva mesta
+
+- Vraćanje ide u `finally`, da pad skripte ne ostavi mutaciju za sobom.
+- Čita se i piše **binarno**; `text=True` na Windowsu dekodira cp1252 i tiho kvari srpska slova.
+- **Kad mutacija „padne", gleda se i ZAŠTO.** Poruka o dizanju kontejnera, portu, vezi ili isteku
+  nije merenje nego infrastruktura. `Errors:` jednak broju `Tests run:` je skoro uvek
   infrastruktura, a **ista mutacija puštena dvaput mora da da isti broj**.
 
 ## Proces
