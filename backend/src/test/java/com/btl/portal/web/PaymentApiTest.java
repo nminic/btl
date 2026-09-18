@@ -162,7 +162,7 @@ class PaymentApiTest {
 		long id = competitor("a1", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -209,7 +209,7 @@ class PaymentApiTest {
 		long id = competitor("a2", "005005", false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "RSD", "slip", "20280055")), moderatorCookie);
+				new PaymentApi.Confirm(id, "RSD", "slip", "20280055")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -232,7 +232,7 @@ class PaymentApiTest {
 		long id = competitor("a3", null, false, "2015-05-05");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "EUR", "paypal", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -253,7 +253,7 @@ class PaymentApiTest {
 	@Test
 	void confirmingTheSamePaymentTwiceIsHarmless() throws Exception {
 		long id = competitor("a4", null, false, "1990-05-15");
-		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, 2028, "EUR", "card", null);
+		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, "EUR", "card", null);
 
 		MockHttpServletResponse first = confirm(json(typed), moderatorCookie);
 		PaymentApi.Confirmed firstBody =
@@ -266,6 +266,49 @@ class PaymentApiTest {
 
 		assertThat(second.getStatus())
 				.as("a second confirmation of the same payment was not answered as harmless")
+				.isEqualTo(200);
+
+		PaymentApi.Confirmed secondBody =
+				mapper.readValue(second.getContentAsString(), PaymentApi.Confirmed.class);
+
+		assertThat(secondBody.paymentId()).isEqualTo(firstBody.paymentId());
+		assertThat(secondBody.memberNumber()).isEqualTo(firstBody.memberNumber());
+
+		assertThat(paymentCount()).as("the same payment was recorded twice").isEqualTo(paymentsBefore);
+		assertThat(membershipCount()).as("the same membership was written twice")
+				.isEqualTo(membershipsBefore);
+	}
+
+	/**
+	 * RECORDING THE SAME PAYMENT TWICE IS STILL HARMLESS WHEN IT CARRIES A
+	 * REFERENCE, WHICH IS THE POPULATION A RENEWAL ACTUALLY BELONGS TO.
+	 *
+	 * <p>V16: a first payment's reference is always null, so the case above never
+	 * exercises the „is this reference taken" check at all. A renewal's does - PDL
+	 * P8, „uplata bez poziva na broj uvek trazi coveka" is why one is written on it in
+	 * the first place - and this is the mutation guard for a bug the reference check
+	 * used to have: run before the outcome was known, it found the payment's OWN
+	 * reference already sitting on its OWN row and refused the second click with 409
+	 * as though a stranger had taken it.
+	 */
+	@Test
+	void confirmingTheSamePaymentTwiceIsHarmlessWhenItCarriesAReference() throws Exception {
+		long id = competitor("b1", "005010", false, "1990-05-15");
+		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, "RSD", "slip", "20280051");
+
+		MockHttpServletResponse first = confirm(json(typed), moderatorCookie);
+		PaymentApi.Confirmed firstBody =
+				mapper.readValue(first.getContentAsString(), PaymentApi.Confirmed.class);
+
+		long paymentsBefore = paymentCount();
+		long membershipsBefore = membershipCount();
+
+		MockHttpServletResponse second = confirm(json(typed), moderatorCookie);
+
+		assertThat(second.getStatus())
+				.as("a second confirmation of a payment carrying a reference was refused"
+						+ " as though the reference belonged to somebody else: "
+						+ second.getContentAsString())
 				.isEqualTo(200);
 
 		PaymentApi.Confirmed secondBody =
@@ -299,7 +342,7 @@ class PaymentApiTest {
 				.param(id).update();
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -333,7 +376,7 @@ class PaymentApiTest {
 				.query(Timestamp.class).optional()).isEmpty();
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 	}
@@ -348,16 +391,43 @@ class PaymentApiTest {
 				.isEqualTo(PaymentApi.THE_FORM_IS_NOT_COMPLETE);
 	}
 
+	/**
+	 * A SEASON SENT IN THE BODY CHANGES NOTHING, because the body has no season.
+	 *
+	 * <p><b>This case used to say the opposite.</b> It asserted that a form without a
+	 * season is refused, which was true while the moderator chose one. The owner's
+	 * decision of 13.09.2026 says the season is a function of the day a payment is
+	 * booked - „prozor za placanje sezone S ide od 1. oktobra godine S-1 do 30. septembra
+	 * godine S" - so the field is gone and the day decides. Written the old way this case
+	 * now fails against correct code, which is how it was noticed.
+	 *
+	 * <p>What is worth a case is the other half: a body that still carries a season is
+	 * not an error and is not obeyed either. Jackson drops a field the record does not
+	 * have, so a moderator who sends 2027 on a day that buys 2028 gets 2028 - and if the
+	 * field ever comes back, this goes red.
+	 */
 	@Test
-	void theFormMustNameASeason() throws Exception {
+	void aSeasonSentInTheBodyIsIgnoredAndTheDayDecides() throws Exception {
 		long id = competitor("a7", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(
-				"{\"competitorId\":" + id + ",\"currency\":\"EUR\",\"method\":\"card\"}", moderatorCookie);
+				"{\"competitorId\":" + id + ",\"season\":2027,\"currency\":\"EUR\","
+						+ "\"method\":\"card\"}", moderatorCookie);
 
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-				.isEqualTo(PaymentApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(answer.getStatus())
+				.as("a body naming a season was refused, so the field is back on the form")
+				.isEqualTo(201);
+
+		assertThat(db.sql("select season from payment where competitor_id = ?")
+						.param(id).query(Integer.class).single())
+				.as("the season the moderator typed was obeyed instead of the one the booking"
+						+ " day gives")
+				/* THE LITERAL YEAR, and not the same function the handler calls. Asked through
+				   `seasonBeingPaidFor` both sides would be wrong together the day that
+				   function is. The clock of this file stands on 3 October 2027, and the
+				   owner's decision of 13.09.2026 says the window for season S runs from 1
+				   October of S-1, so that day buys 2028. */
+				.isEqualTo(2028);
 	}
 
 	/** An empty string and a missing key are the same "nothing", so this covers that branch. */
@@ -387,23 +457,11 @@ class PaymentApiTest {
 	}
 
 	@Test
-	void theSeasonMustNotBeBeforeTheLeague() throws Exception {
-		long id = competitor("aa", null, false, "1990-05-15");
-
-		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2026, "EUR", "card", null)), moderatorCookie);
-
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-				.isEqualTo(PaymentApi.THE_SEASON_IS_NOT_VALID);
-	}
-
-	@Test
 	void theCurrencyMustBeOneOfTheTwo() throws Exception {
 		long id = competitor("ab", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "USD", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "USD", "card", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -415,7 +473,7 @@ class PaymentApiTest {
 		long id = competitor("ac", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "EUR", "bitcoin", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "bitcoin", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -427,7 +485,7 @@ class PaymentApiTest {
 		long id = competitor("ad", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "EUR", "card", "2028-070")), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "card", "2028-070")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -439,10 +497,10 @@ class PaymentApiTest {
 		long first = competitor("ae", "009009", false, "1990-05-15");
 		long second = competitor("af", null, false, "1990-05-15");
 
-		confirm(json(new PaymentApi.Confirm(first, 2028, "EUR", "card", "20280090")), moderatorCookie);
+		confirm(json(new PaymentApi.Confirm(first, "EUR", "card", "20280090")), moderatorCookie);
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(second, 2029, "EUR", "card", "20280090")), moderatorCookie);
+				new PaymentApi.Confirm(second, "EUR", "card", "20280090")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -452,7 +510,7 @@ class PaymentApiTest {
 	@Test
 	void theCompetitorMustExist() throws Exception {
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(999999L, 2028, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(999999L, "EUR", "card", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -471,7 +529,7 @@ class PaymentApiTest {
 		long id = competitor("b0", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, 2028, "EUR", "card", null)), noRightsCookie);
+				new PaymentApi.Confirm(id, "EUR", "card", null)), noRightsCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(404);
 		assertThat(paymentCount()).isZero();

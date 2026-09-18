@@ -7,8 +7,11 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -16,9 +19,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -55,6 +60,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * suite shares (`DatabaseTest`'s own note: „rolled back rather than cleaned up"),
  * so the {@code finally} block below deletes every row it made, by id, whether the
  * assertion above it passed or not.
+ *
+ * <p><b>THE CLOCK IS FIXED HERE TOO, AND ON PURPOSE A DIFFERENT DAY FROM
+ * {@code PaymentApiTest}.</b> {@code PaymentApi} no longer takes a season from the
+ * request; it reads {@link com.btl.portal.domain.season.SeasonClock#seasonBeingPaidFor}
+ * off the booking day instead (PDL, POTVRDJENO 13.09.2026). {@code PaymentApiTest}
+ * fixes {@code NOW} inside the transfer window, where the season sold happens to be
+ * one number a bug could also produce by accident (a hardcoded constant, say, or the
+ * request body this route used to read). Fixing a SECOND, unrelated day here - before
+ * the window opens, where the season sold is the calendar year rather than the year
+ * after it - is what tells the two apart: the assertion below is the one case in the
+ * whole suite that would fail if the season written still came from anywhere but the
+ * clock.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -79,6 +96,19 @@ class PaymentNumberConcurrencyTest {
 
 	@Autowired
 	private ObjectMapper mapper;
+
+	/** 11:00 in Belgrade on 30 September, the day before the transfer window opens (V8, `SeasonClock`). */
+	private static final Instant NOW = Instant.parse("2027-09-30T09:00:00Z");
+
+	@TestConfiguration(proxyBeanMethods = false)
+	static class TheClockThisFileUses {
+
+		@Bean
+		@Primary
+		Clock aClockOutsideTheTransferWindow() {
+			return Clock.fixed(NOW, ZoneOffset.UTC);
+		}
+	}
 
 	private String cookie;
 
@@ -114,9 +144,9 @@ class PaymentNumberConcurrencyTest {
 				.query(Long.class).single();
 	}
 
-	private MockHttpServletResponse confirm(long competitorId, int season) throws Exception {
+	private MockHttpServletResponse confirm(long competitorId) throws Exception {
 		String json = mapper.writeValueAsString(
-				new PaymentApi.Confirm(competitorId, season, "EUR", "card", null));
+				new PaymentApi.Confirm(competitorId, "EUR", "card", null));
 
 		return http.perform(post("/api/payments").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, cookie))
@@ -137,11 +167,11 @@ class PaymentNumberConcurrencyTest {
 		try {
 			Callable<MockHttpServletResponse> approveFirst = () -> {
 				bothReady.await();
-				return confirm(first, 2028);
+				return confirm(first);
 			};
 			Callable<MockHttpServletResponse> approveSecond = () -> {
 				bothReady.await();
-				return confirm(second, 2028);
+				return confirm(second);
 			};
 
 			Future<MockHttpServletResponse> outcomeOne = pool.submit(approveFirst);
@@ -166,6 +196,17 @@ class PaymentNumberConcurrencyTest {
 					.params(first, second).query(Long.class).single())
 					.as("the database itself shows one number written for two different men")
 					.isEqualTo(2L);
+
+			/* THE DISCRIMINATING ASSERTION OF THE CLASS COMMENT ABOVE: 2027, not 2028.
+			   Both payments were booked on 30 September, the day this class fixes the
+			   clock to and PaymentApiTest never touches, so this number can only have
+			   come from SeasonClock reading THIS class's own clock. */
+			assertThat(db.sql("select distinct season from payment where competitor_id in (?, ?)")
+					.params(first, second).query(Integer.class).single())
+					.as("a payment booked outside the transfer window should be filed under the"
+							+ " calendar year of its booking day, not the season PaymentApiTest's"
+							+ " fixture inside the window sells")
+					.isEqualTo(2027);
 		} finally {
 			pool.shutdownNow();
 

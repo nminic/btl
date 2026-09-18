@@ -19,6 +19,7 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.MonthDay;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -85,22 +86,18 @@ import java.util.regex.Pattern;
  * paid for, exactly as {@link PricingApi} already reads the same seven rows for the
  * public list.
  *
- * <p><b>NOTHING HERE GATES ON THE ADDRESS BEING CONFIRMED, AND THAT IS A CONFLICT
- * IN THE JOURNAL RESOLVED RATHER THAN GUESSED AT.</b> Two live entries answer the
- * same question two different ways. The earlier, PDL 31.07.2026: „Potvrda adrese
- * elektronske poste je prva, i uslov za sve ostalo. Dok adresa nije potvrdjena,
- * nema pristupa portalu ni placanja." The later, PDL 11.08.2026, naming this exact
- * case: „Clanstvo sme da se aktivira i pre nego sto je adresa potvrdjena... Uplata
- * sme da stigne pre nego sto covek klikne na vezu iz poruke, i to je ne zaustavlja."
- * Neither is struck through; the second is the one this route obeys, both because
- * it is later and because it is the one written about payment by name rather than
- * about „pristup portalu" in general. The two are not even in tension once „pristup
- * portalu" is read as {@link SignInApi} reads it - a login {@link
- * com.btl.portal.domain.account.SignIn} refuses on an unconfirmed account - because
- * confirming a payment is a MODERATOR's action against a bank statement; the paying
- * member is never signed in to do it. This is flagged for the owner to reconcile
- * the journal itself; nothing here should be read as quietly overruling either
- * entry.
+ * <p><b>NOTHING HERE GATES ON THE ADDRESS BEING CONFIRMED, AND THE JOURNAL NO
+ * LONGER HOLDS TWO ANSWERS TO WHY.</b> PDL 31.07.2026 once read „Dok adresa nije
+ * potvrdjena, nema pristupa portalu ni placanja." PDL 11.08.2026 named this exact
+ * case instead: „Clanstvo sme da se aktivira i pre nego sto je adresa potvrdjena...
+ * Uplata sme da stigne pre nego sto covek klikne na vezu iz poruke, i to je ne
+ * zaustavlja." The two stood side by side until PDL 18.09.2026 struck the „ni
+ * placanja" half of the earlier entry and kept only „pristup portalu" on it, so
+ * what follows is not this route quietly picking a side - it is the one the
+ * journal itself now names. „Pristup portalu" is read as {@link SignInApi} reads
+ * it - a login {@link com.btl.portal.domain.account.SignIn} refuses on an
+ * unconfirmed account - because confirming a payment is a MODERATOR's action
+ * against a bank statement; the paying member is never signed in to do it.
  *
  * <p><b>WHAT IS DELIBERATELY NOT GUARDED HERE, EACH ONE NAMED RATHER THAN
  * DISCOVERED:</b>
@@ -122,14 +119,19 @@ import java.util.regex.Pattern;
  * SAME payment to be idempotent under true simultaneity, only that two DIFFERENT
  * people never receive the same number; catching that race and folding it back
  * into {@code ALREADY_RECORDED} is a real improvement and a separate one.
+ * <li>A {@code payment} row already sitting as {@code awaited} for this
+ * (competitor, season) - which nothing on this portal writes today, but which
+ * V16's own {@code default 'awaited'} leaves room for - is read exactly like no
+ * row at all and then {@code insert}ed as though it were one, which collides with
+ * {@code payment_one_a_season} and answers 500 rather than completing it. Turning
+ * that {@code insert} into an update of the row already there is real work with
+ * its own guard, and nothing writes the row it would protect yet.
  * </ul>
  */
 @RestController
 class PaymentApi {
 
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
-
-	static final String THE_SEASON_IS_NOT_VALID = "theSeasonIsNotValid";
 
 	static final String THE_CURRENCY_IS_NOT_KNOWN = "theCurrencyIsNotKnown";
 
@@ -172,13 +174,19 @@ class PaymentApi {
 	}
 
 	/**
+	 * <p><b>THERE IS NO {@code season} HERE, AND THAT IS THE POINT RATHER THAN AN
+	 * OMISSION.</b> PDL, POTVRDJENO 13.09.2026: which season a payment buys is fixed
+	 * by the day it is booked - „prozor za placanje sezone S ide od 1. oktobra godine
+	 * S-1 do 30. septembra godine S" - and {@link SeasonClock#seasonBeingPaidFor}
+	 * already computes exactly that, the same call {@link RegistrationApi} makes for
+	 * the season somebody registers into. Asking the form instead would let one
+	 * keystroke buy the wrong year and, worse, burn a member number on it: nothing
+	 * here needs a moderator to know which season he is looking at, only which
+	 * competitor and how the money arrived.
+	 *
 	 * @param competitorId {@code competitor.id}, never the member number - the
 	 *                     population this route exists for is exactly the one that
 	 *                     may not have one yet
-	 * @param season       which season the money was for, never guessed at: the
-	 *                     transfer window lets a payment be for the season running or
-	 *                     the one after it, and only the moderator reading the
-	 *                     statement knows which
 	 * @param currency     which of the association's two accounts the money is in,
 	 *                     {@code EUR} or {@code RSD} - a fact about the bank
 	 *                     statement, not a choice of price
@@ -187,7 +195,7 @@ class PaymentApi {
 	 *                     a first payment, which has no number yet to write on a slip
 	 *                     (V16)
 	 */
-	record Confirm(Long competitorId, Integer season, String currency, String method, String reference) {
+	record Confirm(Long competitorId, String currency, String method, String reference) {
 	}
 
 	/** Why a confirmation was refused. */
@@ -214,13 +222,8 @@ class PaymentApi {
 	ResponseEntity<?> confirm(@RequestBody Confirm typed,
 			@AuthenticationPrincipal WhoIsAsking.Member asking) {
 
-		if (typed.competitorId() == null || typed.season() == null
-				|| isNothing(typed.currency()) || isNothing(typed.method())) {
+		if (typed.competitorId() == null || isNothing(typed.currency()) || isNothing(typed.method())) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
-		}
-
-		if (typed.season() < SeasonClock.FIRST_SEASON) {
-			return no(HttpStatus.BAD_REQUEST, THE_SEASON_IS_NOT_VALID);
 		}
 
 		if (!CURRENCIES.contains(typed.currency())) {
@@ -252,18 +255,15 @@ class PaymentApi {
 			return no(HttpStatus.BAD_REQUEST, THE_COMPETITOR_DOES_NOT_EXIST);
 		}
 
-		if (reference != null) {
-			boolean taken = Boolean.TRUE.equals(db.sql("select exists(select 1 from payment where reference = ?)")
-					.param(reference).query(Boolean.class).single());
-
-			if (taken) {
-				return no(HttpStatus.CONFLICT, THE_REFERENCE_IS_TAKEN);
-			}
-		}
+		/* THE DAY THE MONEY IS BOOKED, NEVER A DAY ANYBODY TYPES: PDL, POTVRDJENO
+		   13.09.2026. Read once here so the lookup below and the row {@code recordIt}
+		   writes both name the same season {@link RegistrationApi} would compute for
+		   this same instant. */
+		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 
 		Optional<ExistingPayment> existing = db.sql(
 						"select id, state from payment where competitor_id = ? and season = ?")
-				.params(competitor.get().id(), typed.season())
+				.params(competitor.get().id(), season)
 				.query((row, i) -> new ExistingPayment(row.getLong(1), row.getString(2)))
 				.optional();
 
@@ -276,9 +276,28 @@ class PaymentApi {
 		return switch (outcome) {
 			case A_REVERSAL_IS_NOT_UNDONE_HERE -> no(HttpStatus.CONFLICT, THE_PAYMENT_WAS_REVERSED);
 			case ALREADY_RECORDED -> alreadyRecorded(existing.orElseThrow(), competitor.get());
-			case RECORD_IT, RECORD_IT_AND_NUMBER_HIM ->
-					recordIt(typed, reference, competitor.get(), asking, outcome == Outcome.RECORD_IT_AND_NUMBER_HIM);
+			case RECORD_IT, RECORD_IT_AND_NUMBER_HIM -> {
+				/* THE REFERENCE IS CHECKED HERE, ONLY ONCE THE OUTCOME IS KNOWN, AND
+				   THAT ORDER IS DELIBERATE. Checked before the outcome, a SECOND
+				   confirmation of a payment that already carries this exact reference
+				   found its own row and refused itself with 409: the reference a
+				   renewal repeats is by construction already written on the very row
+				   {@code ALREADY_RECORDED} is about to answer with, never on a
+				   stranger's. Only a genuinely NEW row can collide with somebody
+				   else's, so only this branch, which is the only one that inserts
+				   one, asks. */
+				if (reference != null && referenceIsTaken(reference)) {
+					yield no(HttpStatus.CONFLICT, THE_REFERENCE_IS_TAKEN);
+				}
+				yield recordIt(typed, season, reference, competitor.get(), asking,
+						outcome == Outcome.RECORD_IT_AND_NUMBER_HIM);
+			}
 		};
+	}
+
+	private boolean referenceIsTaken(String reference) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from payment where reference = ?)")
+				.param(reference).query(Boolean.class).single());
 	}
 
 	/**
@@ -299,13 +318,13 @@ class PaymentApi {
 				amounts.fee(), amounts.currency()));
 	}
 
-	private ResponseEntity<?> recordIt(Confirm typed, String reference, CompetitorRow competitor,
+	private ResponseEntity<?> recordIt(Confirm typed, int season, String reference, CompetitorRow competitor,
 			WhoIsAsking.Member asking, boolean numbering) {
 
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 		List<MembershipPrice.Row> rows = priceRows();
 		MembershipPrice.Price price = MembershipPrice.on(rows, MonthDay.from(today),
-				competitor.birthDate().getYear(), typed.season(), "EUR".equals(typed.currency()));
+				competitor.birthDate().getYear(), season, "EUR".equals(typed.currency()));
 
 		long priceRowId = db.sql("select id from price_row where key = ?")
 				.param(price.key()).query(Long.class).single();
@@ -329,12 +348,12 @@ class PaymentApi {
 						+ " amount, currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
 						+ " values (?, ?, ?, ?, ?, ?, ?, ?, 'recorded', ?, ?, ?)"
 						+ " returning id")
-				.params(competitor.id(), typed.season(), reference, priceRowId, price.amount(),
+				.params(competitor.id(), season, reference, priceRowId, price.amount(),
 						typed.currency(), price.fee(), typed.method(), now, asking.account(), recordedByName)
 				.query(Long.class).single();
 
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, ?, 'payment', ?)")
-				.params(competitor.id(), typed.season(), paymentId).update();
+				.params(competitor.id(), season, paymentId).update();
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Confirmed(paymentId, memberNumber, price.amount(), price.fee(), typed.currency()));
