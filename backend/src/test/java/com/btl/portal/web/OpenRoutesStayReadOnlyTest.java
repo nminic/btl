@@ -6,16 +6,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.server.PathContainer;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.servlet.HandlerMapping;
-import org.springframework.web.servlet.function.support.RouterFunctionMapping;
-import org.springframework.web.servlet.handler.AbstractUrlHandlerMapping;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
+import org.springframework.web.servlet.resource.ResourceHttpRequestHandler;
+import org.springframework.web.util.ServletRequestPathUtils;
 import org.springframework.web.util.pattern.PathPattern;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * over {@code /api/**} ({@code WhoIsAsking}), so the shape is not hypothetical. **That
  * is a real gap and this is where it is written down**; what this case does hold is
  * every route that goes through a mapping, which is every route the portal has.
+ *
+ * <p><b>And a second thing beside the filter, written down for the same reason: a
+ * {@code @GetMapping} that writes.</b> „Reading" in this file is a question about which
+ * VERB a method is annotated with, asked before any handler is ever invoked; it is not
+ * a question about what the method's body then does. A controller answering
+ * {@code @GetMapping("/api/places")} by also running an {@code update} against
+ * {@code price_row} would pass every assertion below, because every one of them stops
+ * at "which verbs are mapped" and none of them calls the method to see. What this case
+ * holds is that no SEPARATE verb is mapped beside reading; that a route mapped as
+ * reading is honestly read-only inside is trusted to review and to that handler's own
+ * tests, the same place the portal already trusts it for the routes that carry a right
+ * instead of appearing here at all.
  *
  * <p><b>The finding, 17.09.2026.</b> {@link ApiSecurity#READ_BY_ANYBODY} opens a path
  * for reading, and nothing in the repository asked the dispatcher what ELSE that same
@@ -88,6 +101,47 @@ import static org.assertj.core.api.Assertions.assertThat;
  * maps, without ever reaching a handler. A fourth method appearing on the open list
  * tomorrow is not something this case widens itself to allow; it is a decision for
  * whoever opens it, reported rather than absorbed.
+ *
+ * <p><b>Four drafts asked what a mapping carries by looking at where a mapping keeps
+ * things, and all four shared the same blind spot: a mapping keeps things in more than
+ * one place, and the list of places is not closed either.</b> The first compared the
+ * TEXT of a pattern with the open list; the second built a request and asked for
+ * resolution, guessing at headers a real write handler need not carry; the third walked
+ * a single {@code RequestMappingHandlerMapping} and missed every route held by any other
+ * kind of mapping, {@code RouterFunctionMapping} among them; the fourth walked every
+ * mapping's {@code getHandlerMap()} plus a snapshot of which kinds of mapping exist, and
+ * was defeated by {@code @Bean("/*")} of type {@code HttpRequestHandler} - measured
+ * 18.09.2026, that bean deletes a row of {@code price_row} on {@code POST /api/pricing}
+ * while the fourth draft's walk of {@code getHandlerMap()} sees nothing, because Spring
+ * keeps a bean named {@code "/*"} in a different field, documented in
+ * {@code AbstractUrlHandlerMapping} as checked "after all other handlers... within
+ * {@code getHandlerInternal}" and never returned by {@code getHandlerMap()} at all.
+ *
+ * <p><b>So this fifth shape stops asking a mapping where it keeps a registration and
+ * asks it what it answers, through {@link HandlerMapping#getHandler} itself - the one
+ * method every mapping must answer and the one method the dispatcher actually calls,
+ * regardless of which private field a registration happens to sit in.</b> The full
+ * reasoning, what it catches and what it costs, is on
+ * {@link #noOtherMappingAnswersBesideReading} rather than repeated here; in short, it is
+ * asked only of mappings {@link #verbsMappedOnto} does not already cover - a
+ * {@link RequestMappingInfoHandlerMapping} stays with that method, for the reason
+ * {@link #covers} already gives - and what it accepts back is narrower than "nothing",
+ * because Spring's own static file server answers {@code getHandler} for every path
+ * there is, open or not, and a case demanding silence would be red today over a fault
+ * that does not exist.
+ *
+ * <p><b>Which is also why the snapshot of mapping kinds and the snapshot of
+ * URL-registered addresses are gone rather than carried forward.</b> Both used to exist
+ * so that a kind of mapping, or an address registered by name, arriving tomorrow would
+ * not pass unnoticed. Asking {@code getHandler} makes that unnecessary rather than
+ * unsafe to remove: every object in {@code everyMapping} either is a
+ * {@code RequestMappingInfoHandlerMapping}, asked by the first half above, or is not,
+ * asked by the second - a split Java's own type system makes complete, with no third
+ * case a tenth kind of mapping could fall into unseen. Naming the nine kinds that exist
+ * today bought nothing this draft still needs, and it was blind to
+ * {@code wildcardHandler} regardless of how many kinds it named; naming the two
+ * addresses {@code /**} and {@code /webjars/**} bought less still, since it never asked
+ * whether either one stayed a file server, only whether it kept the same name.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -104,11 +158,6 @@ class OpenRoutesStayReadOnlyTest {
 	 */
 	private static final Set<RequestMethod> BESIDE_READING =
 			EnumSet.complementOf(EnumSet.copyOf(READING));
-
-	/** What the dispatcher registers by URL today, as a snapshot rather than as a rule. */
-	private static final List<String> SNIMAK_ADRESA_PO_IMENU = List.of(
-			"SimpleUrlHandlerMapping /**",
-			"SimpleUrlHandlerMapping /webjars/**");
 
 	/**
 	 * EVERY handler mapping the dispatcher holds, not the one this file happens to know.
@@ -129,70 +178,14 @@ class OpenRoutesStayReadOnlyTest {
 	 * <p>Two assertions per path and neither one skippable: first that the dispatcher
 	 * maps SOMETHING there at all, because a path on the open list that nothing answers
 	 * would let the second assertion pass having asked nothing; then that whatever it
-	 * maps is a subset of {@link #READING}.
+	 * maps is a subset of {@link #READING}. A third question follows for the same path,
+	 * put to every mapping the first two never touch.
 	 */
 	@Test
-	void everyOpenRouteAnswersOnlyToReading() {
+	void everyOpenRouteAnswersOnlyToReading() throws Exception {
 		assertThat(ApiSecurity.READ_BY_ANYBODY)
 				.as("the open list is empty, so this checks nothing")
 				.isNotEmpty();
-
-		/* AND THE DISPATCHER HOLDS NOTHING THIS CASE CANNOT READ, compared as a WHOLE
-		   SNAPSHOT rather than one kind at a time.
-
-		   The draft before this one named the class and then closed a single instance of
-		   it: it had one assertion about `RouterFunctionMapping` and skipped every other
-		   kind in silence. Measured - the dispatcher holds NINE mappings, this case read
-		   two of them, and `@Bean("/api/pricing")` of type `HttpRequestHandler` answered
-		   POST through `BeanNameUrlHandlerMapping`, deleted a row of `price_row` and
-		   returned 200 to a caller with no session, with the case green.
-
-		   A list of kinds cannot be finished by thinking about kinds - that is measured on
-		   this project and written down. A snapshot can: it converges in one round, and
-		   the tenth kind that appears tomorrow fails here and gets decided once, instead
-		   of waiting for somebody to notice it is missing. The floor under the snapshot is
-		   the live context, not memory. */
-		assertThat(everyMapping.stream().map(m -> m.getClass().getSimpleName()).sorted().toList())
-				.as("the dispatcher holds a kind of mapping this case has never been told about;"
-						+ " read it, decide whether it can carry a route, then move this snapshot")
-				.containsExactly(
-						"AdditionalHealthEndpointPathsWebMvcHandlerMapping",
-						"BeanNameUrlHandlerMapping",
-						"ControllerEndpointHandlerMapping",
-						"Lookup",
-						"RouterFunctionMapping",
-						"SimpleUrlHandlerMapping",
-						"WebMvcEndpointHandlerMapping",
-						"WelcomePageHandlerMapping",
-						"WelcomePageNotAcceptableHandlerMapping");
-
-		/* AND WHAT CAN CARRY A ROUTE WITHOUT BEING WALKED BELOW CARRIES ONLY WHAT IT
-		   ALWAYS HAS. A route registered by URL - `@Bean("/api/pricing")` of type
-		   `HttpRequestHandler` is the cheap way - answers every verb and is not a
-		   mapping, so the walk below cannot see it. Measured: exactly that bean deleted a
-		   row of `price_row` and returned 200 to a caller with no session, with this case
-		   green. The two Spring registers by itself serve static files and answer reading
-		   only; they are here as a snapshot so a tenth entry has to be looked at. */
-		List<String> registeredByUrl = new ArrayList<>();
-
-		for (HandlerMapping mapping : everyMapping) {
-			if (mapping instanceof RouterFunctionMapping router) {
-				assertThat(router.getRouterFunction())
-						.as("the portal now registers routes as router functions, which this case"
-								+ " does not walk; it measures mapping-held routes only")
-						.isNull();
-			}
-
-			if (mapping instanceof AbstractUrlHandlerMapping byUrl) {
-				byUrl.getHandlerMap().keySet().forEach(
-						one -> registeredByUrl.add(mapping.getClass().getSimpleName() + " " + one));
-			}
-		}
-
-		assertThat(registeredByUrl.stream().sorted().toList())
-				.as("a route is registered by URL rather than by mapping; it answers every verb"
-						+ " and nothing below walks it, so read it and decide before moving this")
-				.isEqualTo(SNIMAK_ADRESA_PO_IMENU);
 
 		for (String open : ApiSecurity.READ_BY_ANYBODY) {
 			Set<RequestMethod> mapped = verbsMappedOnto(open);
@@ -206,10 +199,12 @@ class OpenRoutesStayReadOnlyTest {
 			beside.retainAll(BESIDE_READING);
 
 			assertThat(beside)
-					.as("%s is open to anybody to read and a mapping also puts %s on it, so a write"
-							+ " with a self-chosen CSRF cookie and header, no session at all,"
-							+ " finishes there", open, beside)
+					.as("%s is open to anybody to read and an annotated mapping also puts %s on"
+							+ " it, so a write with a self-chosen CSRF cookie and header, no"
+							+ " session at all, finishes there", open, beside)
 					.isEmpty();
+
+			noOtherMappingAnswersBesideReading(open);
 		}
 	}
 
@@ -287,5 +282,96 @@ class OpenRoutesStayReadOnlyTest {
 		}
 
 		return false;
+	}
+
+	/**
+	 * AND NOTHING OUTSIDE THE ANNOTATED MAPPINGS ANSWERS BESIDE READING EITHER, asked the
+	 * way that costs nothing to keep complete: {@link HandlerMapping#getHandler}, the one
+	 * method the dispatcher itself calls, on every mapping {@link #verbsMappedOnto} does
+	 * not already cover.
+	 *
+	 * <p><b>The draft before this one asked this by walking a field instead, and a field
+	 * is not where the answer always lives.</b> {@code AbstractUrlHandlerMapping.
+	 * getHandlerMap()} returns exactly one of the places such a mapping keeps a
+	 * registration. Spring's own comment on a second one says so in as many words - the
+	 * field is called {@code wildcardHandler}, and it is documented as "Handler for
+	 * \"/*\", to be checked after all other handlers... processed at our level, within
+	 * {@code getHandlerInternal} where the request is available." Measured 18.09.2026:
+	 * {@code @Bean("/*")} of type {@code HttpRequestHandler} answers
+	 * {@code POST /api/pricing} and deletes a row of {@code price_row}, while a walk of
+	 * {@code getHandlerMap()} sees nothing at all - not because it looked and found
+	 * nothing, but because the registration was never in that map to begin with, by the
+	 * framework's own design.
+	 *
+	 * <p><b>So this stops asking a mapping where it keeps a registration and asks it
+	 * what it answers.</b> Inside {@code AbstractUrlHandlerMapping}, one call to
+	 * {@code getHandler} already consults its pattern map, its root handler, its wildcard
+	 * handler and its default handler, in that order, before saying no - all four places
+	 * this draft's predecessor had to be told about individually, asked here through a
+	 * method that needs none of their names. A fifth place to keep a registration, if one
+	 * is ever added, is asked by this same line the day it is written.
+	 *
+	 * <p><b>The annotated mappings are excluded here on purpose, for the reason
+	 * {@link #covers} already gives.</b> Calling {@code getHandler} on a
+	 * {@code RequestMappingInfoHandlerMapping} means building a request that satisfies
+	 * whatever {@code consumes}, {@code headers} or {@code params} condition it carries,
+	 * which is the exact guess that killed the second draft. A mapping that is not
+	 * annotated carries none of those conditions - there is nothing case-specific left to
+	 * guess for it - so {@code getHandler} costs nothing here that {@link #verbsMappedOnto}
+	 * did not already pay for the annotated half.
+	 *
+	 * <p><b>And the answer accepted here is not "nothing", because measurably something
+	 * always answers, on a portal with nothing wrong with it.</b> Measured 18.09.2026:
+	 * {@code getHandler} for {@code POST /api/places} against
+	 * {@code SimpleUrlHandlerMapping} - the mapping Spring Boot itself registers for
+	 * {@code /**}, to serve whatever sits under {@code classpath:/static/} and its
+	 * neighbours - returns a handler rather than null, and it returns the same kind of
+	 * answer for a path nothing maps at all. That is not a fact about
+	 * {@code /api/places}; it is a fact about {@code /**}, which matches every path on
+	 * every method, because {@code AbstractUrlHandlerMapping} matches a pattern against a
+	 * path and never once reads {@code request.getMethod()} anywhere in its own source.
+	 * Asserting plain absence here would be red today, against an address that has never
+	 * served anything but a file from disk.
+	 *
+	 * <p><b>So what is asserted is narrower than "absent", and it has a floor "absent"
+	 * does not: whatever answers is Spring's own file server and nothing else.</b>
+	 * {@link ResourceHttpRequestHandler} is asked for by class, because a class is what
+	 * {@code getHandler} actually hands back, and because that one class's whole
+	 * contract - stated in the framework's own documentation and unchanged across its
+	 * history - stops at serving bytes from a location fixed in configuration, nowhere
+	 * near a row of {@code price_row} and nowhere a request body could reach even if the
+	 * class wanted it to. Anything else this loop finds is, by definition, not that.
+	 *
+	 * <p><b>Nothing here asks in which order the mappings run.</b> Every non-annotated
+	 * mapping is asked the same question regardless of what would have answered first in
+	 * a real dispatch, which is stricter than the dispatcher itself needs to be: a
+	 * mapping nothing can reach today because something earlier always answers first is
+	 * one reordering away from being reachable tomorrow, and this does not wait for that
+	 * day before it starts asking.
+	 */
+	private void noOtherMappingAnswersBesideReading(String path) throws Exception {
+		for (RequestMethod verb : BESIDE_READING) {
+			MockHttpServletRequest asking = new MockHttpServletRequest(verb.name(), path);
+			ServletRequestPathUtils.parseAndCache(asking);
+
+			for (HandlerMapping mapping : everyMapping) {
+				if (mapping instanceof RequestMappingInfoHandlerMapping) {
+					continue;
+				}
+
+				HandlerExecutionChain chain = mapping.getHandler(asking);
+
+				if (chain == null) {
+					continue;
+				}
+
+				assertThat(chain.getHandler())
+						.as("%s %s is answered by %s through %s, which is not the portal's own"
+										+ " static file server and is free to do anything at all with"
+										+ " the request",
+								verb, path, mapping.getClass().getSimpleName(), chain.getHandler())
+						.isInstanceOf(ResourceHttpRequestHandler.class);
+			}
+		}
 	}
 }
