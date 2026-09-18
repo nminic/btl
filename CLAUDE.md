@@ -93,8 +93,12 @@ stderr** (`'mvnw.cmd' is not recognized...`). To je isto što vidi i uhvaćena m
 jednom agentu dalo **22 lažna prolaza**.
 
 **Uzrok nije `cmd.exe` nego okruženje.** `cmd.exe` inače traži program u radnom direktorijumu;
-ovde ga sprečava `NoDefaultCurrentDirectoryInExePath=1`, koju **Git Bash postavlja**. Isti poziv
-iz PowerShell-a na ovoj mašini uspeva (izlazni kod 0, 434 bajta). **CI se ovde ne pominje namerno:**
+ovde ga sprečava **nasleđena promenljiva** `NoDefaultCurrentDirectoryInExePath=1`. Izmereno u obe
+ljuske i u oba smera, isti `cwd`: sa promenljivom `cmd` i `powershell` daju izlazni kod 1, nula
+bajtova na stdout i 99 na stderr; bez nje oba daju izlazni kod 0 i 434 bajta. **Dakle ne odlučuje
+ljuska nego promenljiva**, i ranija rečenica da „iz PowerShell-a uspeva" je bila netačna. Odakle je
+nasleđena nije utvrđeno: nema je ni u registru pod `User` ni pod `Machine`, a `bash.exe` pokrenut
+sam je ne postavlja. **CI se ovde ne pominje namerno:**
 oba posla u `.github/workflows/verify.yml` rade na `ubuntu-latest` i backend zove
 `./mvnw --batch-mode verify`, nikad `mvnw.cmd`, pa se tamo ništa od ovoga ni ne javlja. (Da `cmd`
 na tom runneru ne postoji je verovatno, ali se sa ove mašine ne može izmeriti, pa se i ne tvrdi.) Zato „ne radi" nije svojstvo
@@ -136,41 +140,36 @@ Broj se **pita gitu, ne pamti**: `git ls-files --eol | grep -c "attr/text eol=lf
 (izmereno isti dan: 717 naspram 694 `w/crlf`, uz isti ukupan broj fajlova). `attr/` kaže šta
 `.gitattributes` **propisuje**, i to je isto svuda.
 
-**Klasa nisu dve nego četiri.** Pored `w/crlf` (717) i prikovanih `w/lf` (25), `git ls-files --eol`
-prijavljuje i `w/-text` (10) i `w/none` (1), a poreklo im **nije isto** i ne sme se pripisati jednom
-uzroku: devet od deset `w/-text` nosi `attr/-text` pravo iz korenskog `.gitattributes`
-(`*.png binary` i slično) i to su binarni fajlovi sa NUL bajtovima; `w/none` je
-`frontend/public/mock/places.json`, koji **jeste** u tekstualnoj klasi a nema nijedan prelom reda
-uopšte (jedan red od 1.277.008 bajtova); i tek jedan jedini, `frontend/src/components/TeamMark.tsx`,
-je tamo zato što nosi usamljen `CR`. Za sve njih, kao i za prikovane, **blob je bajt u bajt jednak
-disku**, i to je izmereno nad svih 36.
+**Vraćanje se NE PIŠE RUKOM. Pita se git, jednom komandom, bez ijedne grane:**
 
-**Postupak, i ima tačno jednu granu, na vrednosti koju git sam izgovara:** polazno stanje se čita
-**iz gita** a ne iz radnog stabla (da zatečena mutacija ne postane osnova), a grana se bira po
-`git ls-files --eol -- <put>`:
+```
+git checkout -- <put>
+```
 
-- ako je `w/crlf`, blob se prevede iz LF u CRLF;
-- **u svakom drugom slučaju** (`w/lf`, `w/-text`, `w/none`, `w/mixed`) blob se piše **sirovo**.
+**Ovo je četvrti oblik ovog pasusa i prva tri su pala iz istog razloga:** svaki je pokušavao da
+**rekonstruiše** ono što git ionako ume da uradi. Prvi je normalizovao „za svaki slučaj" i time
+kvario fajlove sa usamljenim `CR`. Drugi je granao po `git ls-files --eol` i promašivao, jer ta
+kolona opisuje **disk ovog trenutka**. Treći je istu kolonu čitao **pre** mutacije, pa i dalje
+promašivao kad na disku zatekne **tuđu zaostalu** mutaciju iz serije koja je ranije pukla. Klasa je
+jedna: prelom reda nije svojstvo koje se pogađa nego odluka koju git donosi iz `.gitattributes`,
+`core.autocrlf` i sadržaja, i **jedini koji je pouzdano zna je git**.
 
-**`w/` SE OČITA PRE MUTACIJE I ZAPAMTI. Posle mutacije ta kolona više ne opisuje fajl nego
-mutaciju.** To je jedini deo ovog odeljka koji se ne sme preskočiti, i pao je baš tu: `w/` kaže šta
-je na disku **ovog trenutka**, pa čim se mutacija upiše iz blob bajtova, isti fajl prijavljuje
-`w/lf` umesto `w/crlf`. Grana se tada izabere pogrešno, blob se upiše sirovo, i fajl ostane **2200
-umesto 2264 bajta** — `git status` kaže ` M`, `git diff` **0 bajtova**, dakle tačno tiho stanje
-zbog kog ceo ovaj odeljak i postoji. I ne popravlja se ponavljanjem: posle neuspelog vraćanja `w/`
-je i dalje `w/lf`, pa svaki sledeći pokušaj daje isti pogrešan rezultat. Izmereno na
-`frontend/src/app/AccountMenu.tsx`; pogađa 717 od 753 fajla. Delimična mutacija koja u `w/crlf`
-fajl upiše i jedan `
-` daje `w/mixed`, sa istim ishodom.
+**Izmereno po jednim fajlom iz svake klase koju repo ima** (`w/crlf`, prikovan `w/lf`, `w/-text`,
+`w/none`), i to **iz najgoreg stanja**, zaostala tuđa mutacija pa nova preko nje: vraćeno
+bajt-tačno u sva četiri, 2264, 4643, 3690 i 1.277.008 bajtova, izlazni kod nula i `git status`
+prazan.
 
-**Nikad se ne normalizuje „za svaki slučaj".** Merenje: recept koji blob prvo svede na LF pa vrati
-u CRLF samo za `w/crlf` **kvari** `w/-text` fajlove, jer im prvi korak uništi usamljene `CR`.
-Izmereno na `TeamMark.tsx`: 3690 bajtova pre, **3686** posle, i `git diff` od 1162 bajta. Olakšanje
-je što za tu klasu `git diff` **nije** prazan, pa provera niže tu štetu vidi; tihi je samo CRLF
-slučaj zbog kog ovaj odeljak i postoji.
+**Jedina opasnost, i zato stoji ovde a ne u fusnoti:** `git checkout -- <put>` **briše svaki
+neupisan rad nad tim fajlom**. Zato se pušta **isključivo nad putanjom koju je serija sama
+mutirala** i nikad nad fajlom u kom stoji nešto što nije commitovano. Ko to ne može da garantuje,
+commituje pre serije. I još jedna razlika koja ume da iznenadi: `git checkout --` vadi iz
+**indeksa**, a ne iz `HEAD`; ako je nešto stejdžovano, to su dve različite stvari.
 
-**Provera posle serije:** `git status --porcelain` mora da bude **prazan**. Ako prijavi ` M` a
-`git diff` je prazan, sadržaj je tačan a prelom reda nije, i `git ls-files --eol` kaže koji je.
+**Sadržaj i dalje dolazi iz gita a ne sa diska**, i sada je to isto merenje: komanda iznad ne gleda
+radno stablo uopšte, pa zatečena mutacija ne može da postane osnova.
+
+**Provera posle serije:** `git status --porcelain` mora da bude **prazan**. To je jedina provera
+koja hvata i sadržaj i prelom reda, jer `git diff` o prelomu reda ćuti.
 
 ### I dalje važi, i nalazi se ovde da se ne traži na dva mesta
 
