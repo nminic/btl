@@ -342,6 +342,37 @@ class OpenRoutesStayReadOnlyTest {
 	 * near a row of {@code price_row} and nowhere a request body could reach even if the
 	 * class wanted it to. Anything else this loop finds is, by definition, not that.
 	 *
+	 * <p><b>The type is compared EXACTLY, and that word was bought.</b> Written as „is an
+	 * instance of", a class extending Spring's file server passed - and a subclass
+	 * overrides {@code handleRequest} with whatever it likes. Measured: a bean of such a
+	 * subclass named {@code /api/pricing} deleted a row of {@code price_row} and answered
+	 * 200 to a caller with no session, while this case and 56 others stayed green. The
+	 * exact comparison is green on the untouched portal - for every open address and
+	 * every verb that is not reading, exactly one mapping answers and it is exactly that
+	 * class, never a subclass - so the wider form bought nothing and opened everything.
+	 *
+	 * <p><b>And EVERY mapping is asked, annotated ones included.</b> An earlier draft
+	 * skipped {@code RequestMappingInfoHandlerMapping} here on the grounds that the walk
+	 * above already covers it. It covers what that mapping REGISTERS; it does not cover
+	 * what that same mapping ANSWERS out of {@code AbstractHandlerMapping.defaultHandler},
+	 * a slot {@code getHandlerMethods()} never returns - the same shape as the
+	 * {@code wildcardHandler} slot that beat the draft before it. Measured: a default
+	 * handler set on the portal's own {@code Lookup} answered POST on an open address,
+	 * deleted a row, and left 58 cases green. There is nothing to guess for a default
+	 * handler, because it answers regardless of any condition.
+	 *
+	 * <p><b>AND A THIRD BOUNDARY, which this cannot close and therefore names.</b> A
+	 * mapping answers with a {@code HandlerExecutionChain}, and this reads the handler
+	 * off it. The chain also carries INTERCEPTORS, and an interceptor whose
+	 * {@code preHandle} writes and returns {@code false} finishes the request itself,
+	 * with a status it chooses. Measured: such an interceptor on {@code /api/**} deleted
+	 * a row of {@code price_row} and answered 200, with this case green. It cannot be
+	 * closed by asserting the chain carries none, because the live chain for
+	 * {@code POST /api/pricing} already carries six - {@code RightsAtTheDoor} and five of
+	 * Spring's own. What an interceptor on an open address may do is a decision nobody
+	 * has taken, and until somebody does, this is where it is written down rather than
+	 * implied away.
+	 *
 	 * <p><b>Nothing here asks in which order the mappings run.</b> Every non-annotated
 	 * mapping is asked the same question regardless of what would have answered first in
 	 * a real dispatch, which is stricter than the dispatcher itself needs to be: a
@@ -355,10 +386,6 @@ class OpenRoutesStayReadOnlyTest {
 			ServletRequestPathUtils.parseAndCache(asking);
 
 			for (HandlerMapping mapping : everyMapping) {
-				if (mapping instanceof RequestMappingInfoHandlerMapping) {
-					continue;
-				}
-
 				HandlerExecutionChain chain = mapping.getHandler(asking);
 
 				if (chain == null) {
@@ -370,7 +397,7 @@ class OpenRoutesStayReadOnlyTest {
 										+ " static file server and is free to do anything at all with"
 										+ " the request",
 								verb, path, mapping.getClass().getSimpleName(), chain.getHandler())
-						.isInstanceOf(ResourceHttpRequestHandler.class);
+						.isExactlyInstanceOf(ResourceHttpRequestHandler.class);
 			}
 		}
 	}
