@@ -11,11 +11,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -24,6 +26,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +35,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /**
  * WHO MAY, and what somebody who may not is told.
@@ -271,6 +276,23 @@ class RightsAtTheDoorTest {
 
 	private int statusOf(String path, String email) throws Exception {
 		return asked(path, email).getStatus();
+	}
+
+	/**
+	 * AND ONE ASKED BY ITS OWN METHOD, which is what a route is.
+	 *
+	 * <p><b>It carries a CSRF token, and without one it would measure the wrong filter.</b>
+	 * {@code CsrfFilter} stands in front of {@code AuthorizationFilter}, so a {@code POST}
+	 * sent without a token is answered 403 before anything has decided who is asking - and
+	 * both floors below would pass on that 403 while the door behind it was wide open. This
+	 * is not a theory: {@code OpenRoutesStayReadOnlyTest} says in as many words that
+	 * {@code ApiSecurityTest.nothingOpenForReadingIsOpenForWriting} is refused by the CSRF
+	 * filter rather than by any rule about rights. A {@code GET} carrying one is unchanged,
+	 * since the filter does not ask about safe methods at all.
+	 */
+	private int statusOf(Route route, String email) throws Exception {
+		return http.perform(carrying(request(route.how(), route.where()).with(csrf()), email))
+				.andReturn().getResponse().getStatus();
 	}
 
 	private MockHttpServletResponse askedWhatItTakes(String path, String email) throws Exception {
@@ -638,17 +660,18 @@ class RightsAtTheDoorTest {
 	 */
 	@Test
 	void everyRouteThatNeedsARightIsShutToSomebodyWhoIsNotSignedIn() throws Exception {
-		List<String> guarded = routesTheDoorDecides();
+		List<Route> guarded = routesTheDoorDecides();
 
 		assertThat(guarded)
 				.as("no route is decided at the door at all, so this asks about nothing")
 				.isNotEmpty();
 
-		for (String path : guarded) {
-			assertThat(statusOf(path, null))
+		for (Route route : guarded) {
+			assertThat(statusOf(route, null))
 					.as("%s is decided at the door and answered somebody who is not signed in; the"
 							+ " code that reads the session takes it without asking whether there"
-							+ " is one", path)
+							+ " is one, so what comes back is a ClassCastException rather than a"
+							+ " refusal", route)
 					.isEqualTo(401);
 		}
 	}
@@ -676,17 +699,17 @@ class RightsAtTheDoorTest {
 	 */
 	@Test
 	void everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn() throws Exception {
-		List<String> guarded = routesTheDoorDecides();
+		List<Route> guarded = routesTheDoorDecides();
 
 		assertThat(guarded)
 				.as("no route is decided at the door at all, so this asks about nothing")
 				.isNotEmpty();
 
-		for (String path : guarded) {
-			assertThat(statusOf(path, A_MEMBER))
+		for (Route route : guarded) {
+			assertThat(statusOf(route, A_MEMBER))
 					.as("%s is decided at the door and being signed in was enough to open it; a"
 							+ " guard annotation the door does not actually ask about looks exactly"
-							+ " like one it does", path)
+							+ " like one it does", route)
 					.isEqualTo(404);
 		}
 	}
@@ -768,14 +791,65 @@ class RightsAtTheDoorTest {
 				.distinct().sorted().toList();
 	}
 
-	/** And the addresses those routes answer to, with a sample value where a variable stands. */
-	private List<String> routesTheDoorDecides() {
+	/**
+	 * AND THE ROUTES THOSE ARE, each as the METHOD it answers to and the address it
+	 * answers at, with a sample value where a variable stands.
+	 *
+	 * <p><b>The method is part of a route, and until 18.09.2026 this file said it was
+	 * not.</b> It gathered paths and asked every one of them with a {@code GET}, which was
+	 * true of the portal exactly while no guarded route shared a path with anything else:
+	 * the two that existed, {@code /api/moderators} and {@code /api/payments}, each had a
+	 * path to themselves. {@code /api/events} is read by anybody and written by somebody,
+	 * so a {@code GET} sent at it reaches the CALENDAR - and the two floors below would
+	 * have been measuring the open route while reporting on the guarded one. Asked of
+	 * {@code /api/events/1}, where only {@code PUT} and {@code DELETE} live, a {@code GET}
+	 * is worse than wrong: {@code NothingIsHereRatherThanAlmost} turns the dispatcher's 405
+	 * into a 404, which is the very number
+	 * {@link #everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn} demands, so
+	 * that floor would have passed on a route it never reached.
+	 *
+	 * <p><b>Asked of the dispatcher rather than worked out from the annotation.</b>
+	 * {@code RequestMappingInfo} already holds the methods a route answers to; reading
+	 * {@code @PostMapping} and friends would be a list of annotation types inside a floor,
+	 * which is the shape this file rejected on 05.09.2026 and again in
+	 * {@link #theDoorDecides}.
+	 */
+	private List<Route> routesTheDoorDecides() {
 		return mappings.getHandlerMethods().entrySet().stream()
 				.filter(one -> theDoorDecides(one.getValue()))
-				.map(Map.Entry::getKey)
-				.flatMap(RightsAtTheDoorTest::pathsOf)
-				.map(pattern -> pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1"))
-				.distinct().sorted().toList();
+				.flatMap(one -> methodsOf(one.getKey())
+						.flatMap(how -> pathsOf(one.getKey())
+								.map(pattern -> new Route(how,
+										pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1")))))
+				.distinct().sorted(Route.BY_ADDRESS).toList();
+	}
+
+	/** One route: the method it answers to and the address it answers at. */
+	private record Route(HttpMethod how, String where) {
+
+		private static final Comparator<Route> BY_ADDRESS =
+				Comparator.comparing(Route::where).thenComparing(one -> one.how().name());
+
+		@Override
+		public String toString() {
+			return how + " " + where;
+		}
+	}
+
+	/**
+	 * The methods a route answers to, or {@code GET} for one that limits none.
+	 *
+	 * <p>A mapping with no method condition answers every verb there is, so any of them
+	 * would do and {@code GET} is the one the rest of this file already speaks. It is a
+	 * real shape - {@code @RequestMapping} without a method writes it - and no guarded
+	 * route on the portal has it today, which is why it is an answer here rather than a
+	 * branch somebody has to remember.
+	 */
+	private static Stream<HttpMethod> methodsOf(RequestMappingInfo info) {
+		Set<RequestMethod> declared = info.getMethodsCondition().getMethods();
+
+		return declared.isEmpty() ? Stream.of(HttpMethod.GET)
+				: declared.stream().map(one -> HttpMethod.valueOf(one.name()));
 	}
 
 	private static RightIsNeeded rightOf(HandlerMethod method) {

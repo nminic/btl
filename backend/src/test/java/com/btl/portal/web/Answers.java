@@ -63,6 +63,22 @@ final class Answers {
 	 * portal keeps its own copies is one fact and belongs in one place.
 	 */
 	static JsonNode servedRecord(String file) {
+		return servedRecords(file).get(0);
+	}
+
+	/**
+	 * AND ALL OF THEM, for a floor that is about the VALUES rather than the names.
+	 *
+	 * <p>{@code servedRecord} answers the question "what shape is a record of this",
+	 * which one record settles. A rule the server works out for itself - the address an
+	 * event answers at is the only one today - is a different question: it is right or
+	 * wrong once per record, and the shipped file is the largest body of real names
+	 * anybody has. {@code EventAddressTest} rebuilds all 1167 of them.
+	 *
+	 * <p>It reads the file from HERE and not from a path of its own, for the reason
+	 * written over {@link #MOCK}: where the portal keeps its own copies is one fact.
+	 */
+	static JsonNode servedRecords(String file) {
 		try {
 			JsonNode all = new ObjectMapper()
 					.readTree(Files.readString(MOCK.resolve(file), StandardCharsets.UTF_8));
@@ -71,7 +87,7 @@ final class Answers {
 					.as("%s is not a list of records, so there is nothing to compare", file)
 					.isTrue();
 
-			return all.get(0);
+			return all;
 		} catch (IOException cannot) {
 			throw new UncheckedIOException(cannot);
 		}
