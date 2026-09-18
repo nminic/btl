@@ -533,9 +533,37 @@ class InboxApiTest {
 								+ " stands behind", field)
 						.containsKey(COLUMN_OF.get(field));
 
-				assertThat(saidAs(one.get(field)))
+				/* AND OF THE SAME KIND, which is a question seven rounds of review never
+				   asked. Comparing both sides as text erases the JSON type, so `read`
+				   could turn from `false` into the string „false" and nothing would
+				   fall - while in a browser that string is TRUTHY, so the unread
+				   counter reads nought, every message draws as read, and nothing is
+				   ever marked read again. That is the counter `PDL.md:6486` is about.
+
+				   The expectation is not a list: it comes off the value the database
+				   holds, so a column that changes type tomorrow asks the question by
+				   itself. */
+				Object held = row.get(COLUMN_OF.get(field));
+				JsonNode served = one.get(field);
+
+				if (held instanceof Boolean) {
+					assertThat(served.isBoolean())
+							.as("`%s` is answered as %s rather than as a true or false, and a"
+									+ " string is truthy in a browser however it reads",
+									field, served.getClass().getSimpleName())
+							.isTrue();
+				}
+
+				if (held instanceof Number) {
+					assertThat(served.isNumber())
+							.as("`%s` is answered as %s rather than as a number", field,
+									served.getClass().getSimpleName())
+							.isTrue();
+				}
+
+				assertThat(saidAs(served))
 						.as("the message answered under id %s does not carry its own `%s`", id, field)
-						.isEqualTo(saidAs(row.get(COLUMN_OF.get(field))));
+						.isEqualTo(saidAs(held));
 			}
 		}
 	}
