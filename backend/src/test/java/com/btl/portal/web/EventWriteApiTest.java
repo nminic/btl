@@ -176,6 +176,14 @@ class EventWriteApiTest {
 				.params(email, right).update();
 	}
 
+	/** The same write with no cookie at all, which is not the same as a cookie with nothing
+	 *  in it: the second is a state no browser and no container can produce. */
+	private MockHttpServletResponse addWithNobodyAsking(Form typed) throws Exception {
+		return http.perform(post("/api/events").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(json(typed)))
+				.andReturn().getResponse();
+	}
+
 	private MockHttpServletResponse add(Form typed, String cookie) throws Exception {
 		return http.perform(post("/api/events").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(json(typed))
@@ -437,6 +445,42 @@ class EventWriteApiTest {
 						.query((row, one) -> List.of(row.getString(1), row.getString(2))).single())
 				.as("a description and a link left out did not land as empty")
 				.containsExactly("", "");
+	}
+
+	/**
+	 * NOBODY AT ALL IS ANSWERED 401, AND THAT IS WHAT HOLDS THE NARROWING IN
+	 * {@code ApiSecurity}.
+	 *
+	 * <p>`/api/events` is the first path in this portal that ANYBODY may read and only
+	 * somebody may write, and until this increment the open list carried no method at all -
+	 * so a path on it was open to every verb there is. Nothing measured that, because no
+	 * open path had ever mapped anything but a GET.
+	 *
+	 * <p>What the narrowing prevents is not a write. It is a 500: opened to POST, the
+	 * request reaches {@code WhatHeMayDo}, which casts the principal to a member and says
+	 * in its own javadoc why it does not check first - a route needing a right is a route
+	 * this file has not opened. An anonymous caller is the string `anonymousUser`, the cast
+	 * throws, and the answer becomes a THIRD reply on `/api` that tells a stranger this
+	 * address exists and takes a POST, while an address mapping nothing goes on saying 404.
+	 *
+	 * <p>Measured before this case was written: reverting the narrowing left BOTH
+	 * `EventWriteApiTest` and `OpenRoutesStayReadOnlyTest` green. The second cannot see it
+	 * by construction - 500 is not 2xx and the database does not change, which is all it
+	 * asks. So the narrowing had no guard anywhere, and this is it.
+	 */
+	@Test
+	void aWriteFromNobodyIsAnsweredUnauthorisedAndNotAsAServerFault() throws Exception {
+		long before = howManyEvents();
+
+		MockHttpServletResponse answer = addWithNobodyAsking(aForm().withPlace(aKnownTown()));
+
+		assertThat(answer.getStatus())
+				.as("an anonymous write to an open path was not answered 401, and a 500 here tells"
+						+ " a stranger the address exists and takes a POST")
+				.isEqualTo(401);
+		assertThat(howManyEvents())
+				.as("nobody was refused and an event was written anyway")
+				.isEqualTo(before);
 	}
 
 	/**
