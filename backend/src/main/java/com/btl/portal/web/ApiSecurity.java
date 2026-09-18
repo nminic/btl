@@ -55,6 +55,14 @@ class ApiSecurity {
 	 * somebody reads BEFORE registering, so a price list behind a sign-in would be the
 	 * portal asking to be joined before it says what joining costs.
 	 *
+	 * <p><b>And the written pages, which the portal must be able to show before anybody
+	 * signs in at all.</b> A privacy policy and terms of use only a member could read
+	 * would be the portal asking somebody to accept them before they can be read
+	 * (`PDL.md`:3094, „moraju postojati pre lansiranja"), the rulebook is what those
+	 * same terms point a prospective member at for the price of joining, and the
+	 * president's address is drawn on the front page, which is the first thing a
+	 * visitor sees.
+	 *
 	 * <p><b>It is a constant rather than four arguments because the guard reads
 	 * it.</b> `ApiSecurityTest` takes every route on this list and asks whether a
 	 * sub-path, a different spelling of it and a trailing slash are still shut, and
@@ -71,7 +79,8 @@ class ApiSecurity {
 					"/api/ducats",
 					"/api/pairs",
 					"/api/teams",
-					"/api/pricing");
+					"/api/pricing",
+					"/api/pages");
 
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
