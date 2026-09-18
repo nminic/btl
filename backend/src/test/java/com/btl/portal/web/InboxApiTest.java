@@ -526,6 +526,19 @@ class InboxApiTest {
 	void theIdTheSenderTheTitleAndTheTextAreEachTheirOwnColumn() throws Exception {
 		JsonNode one = item("ja@primer.rs", TO_ME_READ);
 
+		/* THE KEY IS ASKED OF A MESSAGE HE HAS NOT READ, and that is the whole point of
+		   the second subject below. Asked only of `TO_ME_READ` - the one message of his
+		   that HAS a row in `message_read` - `m.id` and `mr.message_id` carry the same
+		   value, so reading the key off the left join answered correctly here and gave
+		   ZERO for the other five. The screen builds the address of a message and writes
+		   the read mark out of this field, so all five unread ones would lead to
+		   `/poruke/0` and mark message zero as read. Measured: the whole gate stayed
+		   green, 1800 cases. One unread message is what tells the two columns apart. */
+		assertThat(item("ja@primer.rs", TO_ME_UNREAD).path("id").asLong())
+				.as("`id` is read off the read-mark join rather than off the message, so every"
+						+ " message he has not read carries nothing")
+				.isEqualTo(messageId(TO_ME_UNREAD));
+
 		assertThat(one.path("id").asLong())
 				.as("`id` does not carry this message's own primary key")
 				.isEqualTo(messageId(TO_ME_READ));
@@ -538,6 +551,13 @@ class InboxApiTest {
 		assertThat(one.path("body").asString())
 				.as("`body` does not carry this message's own text; a column is being read"
 						+ " in place of another, possibly this same row's neighbour")
-				.isEqualTo(bodyOf(TO_ME_READ));
+				.isEqualTo(bodyOf(TO_ME_READ))
+				/* AND THE TEXT IS STILL SOMETHING NO SUBJECT CARRIES. Both sides of the
+				   comparison above come out of the same row, so between them they cannot
+				   see the fixture stop telling a body from a title - and an earlier draft
+				   of this file built the body as „Tekst poruke: " plus the subject, which
+				   is exactly that. With the fixture back in that shape, `body := subject`
+				   goes green again. Measured, and this clause is what holds it. */
+				.doesNotContain(TO_ME_READ);
 	}
 }
