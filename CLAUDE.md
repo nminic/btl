@@ -95,8 +95,9 @@ jednom agentu dalo **22 lažna prolaza**.
 **Uzrok nije `cmd.exe` nego okruženje.** `cmd.exe` inače traži program u radnom direktorijumu;
 ovde ga sprečava `NoDefaultCurrentDirectoryInExePath=1`, koju **Git Bash postavlja**. Isti poziv
 iz PowerShell-a na ovoj mašini uspeva (izlazni kod 0, 434 bajta). **CI se ovde ne pominje namerno:**
-oba posla u `.github/workflows/verify.yml` rade na `ubuntu-latest`, gde `cmd` ne postoji i
-`mvnw.cmd` je batch fajl, pa se tamo ništa od ovoga ni ne javlja. Zato „ne radi" nije svojstvo
+oba posla u `.github/workflows/verify.yml` rade na `ubuntu-latest` i backend zove
+`./mvnw --batch-mode verify`, nikad `mvnw.cmd`, pa se tamo ništa od ovoga ni ne javlja. (Da `cmd`
+na tom runneru ne postoji je verovatno, ali se sa ove mašine ne može izmeriti, pa se i ne tvrdi.) Zato „ne radi" nije svojstvo
 komande nego onoga odakle se zove.
 
 **Šta se radi:** iz bash-a se zove `./mvnw`. I bez obzira na shell, **prvo se pusti prolaz BEZ
@@ -135,18 +136,32 @@ Broj se **pita gitu, ne pamti**: `git ls-files --eol | grep -c "attr/text eol=lf
 (izmereno isti dan: 717 naspram 694 `w/crlf`, uz isti ukupan broj fajlova). `attr/` kaže šta
 `.gitattributes` **propisuje**, i to je isto svuda.
 
-**Klasa nisu dve nego tri, i treća se ne vidi iz `.gitattributes`.** Pored `w/crlf` i prikovanih
-`w/lf`, `git ls-files --eol` prijavljuje i `w/-text` odnosno `w/none`: fajlove koje je git **sam**
-svrstao van tekstualne klase, jer nose usamljen `CR` ili `CR CR LF`. Takav je
-`frontend/src/components/TeamMark.tsx`, i to je baš fajl koji korenski `.gitattributes` opisuje u
-svom komentaru. Za njih, kao i za prikovane, **blob je bajt u bajt jednak disku**.
+**Klasa nisu dve nego četiri.** Pored `w/crlf` (717) i prikovanih `w/lf` (25), `git ls-files --eol`
+prijavljuje i `w/-text` (10) i `w/none` (1), a poreklo im **nije isto** i ne sme se pripisati jednom
+uzroku: devet od deset `w/-text` nosi `attr/-text` pravo iz korenskog `.gitattributes`
+(`*.png binary` i slično) i to su binarni fajlovi sa NUL bajtovima; `w/none` je
+`frontend/public/mock/places.json`, koji **jeste** u tekstualnoj klasi a nema nijedan prelom reda
+uopšte (jedan red od 1.277.008 bajtova); i tek jedan jedini, `frontend/src/components/TeamMark.tsx`,
+je tamo zato što nosi usamljen `CR`. Za sve njih, kao i za prikovane, **blob je bajt u bajt jednak
+disku**, i to je izmereno nad svih 36.
 
 **Postupak, i ima tačno jednu granu, na vrednosti koju git sam izgovara:** polazno stanje se čita
-**iz gita** a ne iz radnog stabla (da zatečena mutacija ne postane osnova), pa se pita
+**iz gita** a ne iz radnog stabla (da zatečena mutacija ne postane osnova), a grana se bira po
 `git ls-files --eol -- <put>`:
 
 - ako je `w/crlf`, blob se prevede iz LF u CRLF;
 - **u svakom drugom slučaju** (`w/lf`, `w/-text`, `w/none`, `w/mixed`) blob se piše **sirovo**.
+
+**`w/` SE OČITA PRE MUTACIJE I ZAPAMTI. Posle mutacije ta kolona više ne opisuje fajl nego
+mutaciju.** To je jedini deo ovog odeljka koji se ne sme preskočiti, i pao je baš tu: `w/` kaže šta
+je na disku **ovog trenutka**, pa čim se mutacija upiše iz blob bajtova, isti fajl prijavljuje
+`w/lf` umesto `w/crlf`. Grana se tada izabere pogrešno, blob se upiše sirovo, i fajl ostane **2200
+umesto 2264 bajta** — `git status` kaže ` M`, `git diff` **0 bajtova**, dakle tačno tiho stanje
+zbog kog ceo ovaj odeljak i postoji. I ne popravlja se ponavljanjem: posle neuspelog vraćanja `w/`
+je i dalje `w/lf`, pa svaki sledeći pokušaj daje isti pogrešan rezultat. Izmereno na
+`frontend/src/app/AccountMenu.tsx`; pogađa 717 od 753 fajla. Delimična mutacija koja u `w/crlf`
+fajl upiše i jedan `
+` daje `w/mixed`, sa istim ishodom.
 
 **Nikad se ne normalizuje „za svaki slučaj".** Merenje: recept koji blob prvo svede na LF pa vrati
 u CRLF samo za `w/crlf` **kvari** `w/-text` fajlove, jer im prvi korak uništi usamljene `CR`.
