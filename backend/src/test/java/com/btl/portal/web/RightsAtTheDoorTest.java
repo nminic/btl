@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
@@ -297,6 +298,10 @@ class RightsAtTheDoorTest {
 
 	private MockHttpServletResponse askedWhatItTakes(String path, String email) throws Exception {
 		return http.perform(carrying(options(path), email)).andReturn().getResponse();
+	}
+
+	private MockHttpServletResponse askedWhetherItChanged(String path) throws Exception {
+		return http.perform(head(path)).andReturn().getResponse();
 	}
 
 	/**
@@ -594,6 +599,36 @@ class RightsAtTheDoorTest {
 	 * Nothing here counts them either - a number in a comment is read as though somebody had
 	 * counted, so nobody counts again.
 	 */
+	/**
+	 * AND ASKING AN OPEN ROUTE WHETHER IT CHANGED IS LEFT ALONE TOO.
+	 *
+	 * <p>{@code HEAD} is the same read without the body, and Spring serves it off the
+	 * {@code GET} handler, so it is opened on its own line beside {@code GET} and
+	 * {@code OPTIONS}. Of those three, two were already held - {@code GET} by
+	 * {@code ApiSecurityTest.noOpenRouteOpensAnythingBesideIt} and {@code OPTIONS} by the
+	 * case above - and {@code HEAD} by nothing at all.
+	 *
+	 * <p>Measured 18.09.2026, which is why this exists: deleting the {@code HEAD} line
+	 * from {@code ApiSecurity} took the WHOLE gate green, 1977 cases, while every one of
+	 * the open paths began answering 401 to it. The calendar is the page a visitor comes
+	 * for, and a browser asking whether it changed would have been turned away with
+	 * nothing measuring the turn.
+	 *
+	 * <p>The list is read off the constant for the same reason the case above reads it.
+	 */
+	@Test
+	void askingWhetherAnOpenRouteChangedIsLeftAlone() throws Exception {
+		assertThat(ApiSecurity.READ_BY_ANYBODY)
+				.as("nothing is open at all, so this asks about nothing")
+				.isNotEmpty();
+
+		for (String open : ApiSecurity.READ_BY_ANYBODY) {
+			assertThat(askedWhetherItChanged(open).getStatus())
+					.as("%s is open to anybody and stopped answering whether it changed", open)
+					.isEqualTo(200);
+		}
+	}
+
 	@Test
 	void askingWhatAnOpenRouteTakesIsLeftAlone() throws Exception {
 		assertThat(ApiSecurity.READ_BY_ANYBODY)

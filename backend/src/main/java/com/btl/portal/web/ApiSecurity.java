@@ -115,7 +115,7 @@ class ApiSecurity {
 						   write, which is the same direction the whole file is written in: a
 						   method nobody thought of is shut by this shape and open by the other
 						   one. `OpenRoutesStayReadOnlyTest` holds the behaviour over a real
-						   socket, and `anOpenPathIsOpenForReadingAndShutForWriting` holds the
+						   socket, and `anOpenPathIsOpenForReadingAndNotForWriting` holds the
 						   rule itself. */
 						.requestMatchers(HttpMethod.GET, open).permitAll()
 						/* AND HEAD, which is the same read without the body. Spring serves it

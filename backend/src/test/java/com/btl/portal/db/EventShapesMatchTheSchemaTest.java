@@ -153,6 +153,18 @@ class EventShapesMatchTheSchemaTest extends DatabaseTest {
 			/* A space is the one the schema spells as [^[:space:]] and Java as \\S, which
 			   is the disagreement this whole file exists to catch. */
 			"https://btl.rs/a trka",
+			/* AND THE THREE THE TWO DIALECTS DISAGREED ABOUT UNTIL 18.09.2026. Java's \S is
+			   ASCII, PostgreSQL's [:space:] is not, so each of these passed the code and
+			   then died on the insert as a 500. They stand here as code points rather than
+			   pasted, because pasted they are invisible and the next reader would take them
+			   for an ordinary space. */
+			"https://btl.rs/a\u2003trka",
+			"https://btl.rs/a\u3000trka",
+			"https://btl.rs/a\u2028trka",
+			/* And two the dialects already agreed about, kept so the fix cannot quietly
+			   widen into refusing what the table holds. */
+			"https://btl.rs/a\u00a0trka",
+			"https://btl.rs/a\u0085trka",
 			"https://btl.rs/trka\ttab",
 			/* And the shapes that are not a web address at all. */
 			"btl.rs/trka",

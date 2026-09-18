@@ -44,7 +44,16 @@ public final class WhatAnEventCarries {
 	/**
 	 * {@code btl_event_link_shape}, V7: empty, or a web address with no whitespace in it.
 	 *
-	 * <p>Spelt with {@code \S} where the schema spells {@code [^[:space:]]}, which is why
+	 * <p><b>Whitespace is asked of the CODE POINT, not of {@code \S}.</b> Java's
+ * {@code \S} is ASCII and knows six characters; the schema spells
+ * {@code [^[:space:]]}, which PostgreSQL reads over the whole of Unicode. The gap is not
+ * theoretical: measured 18.09.2026, a link carrying {@code U+2003} (em space),
+ * {@code U+3000} (ideographic space) or {@code U+2028} (line separator) passed this check
+ * and then died on the insert as a 500, which is the very fault this class exists to turn
+ * into a sentence. {@link Character#isWhitespace} answers for those three and agrees with
+ * the table on {@code U+00A0} and {@code U+0085}, where the two dialects already did.
+ *
+ * <p>The floor still asks PostgreSQL rather than comparing the two texts, which is why
 	 * the floor asks PostgreSQL rather than comparing the two texts: they are two
 	 * dialects and reading them side by side proves nothing.
 	 */
@@ -55,6 +64,8 @@ public final class WhatAnEventCarries {
 
 	/** Whether this is a link the table would hold. Empty is one, and is not a link. */
 	public static boolean linkIsShaped(String link) {
-		return link.isEmpty() || A_LINK.matcher(link).matches();
+		return link.isEmpty()
+				|| (A_LINK.matcher(link).matches()
+						&& link.codePoints().noneMatch(Character::isWhitespace));
 	}
 }

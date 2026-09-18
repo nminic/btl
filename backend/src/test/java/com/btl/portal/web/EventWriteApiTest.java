@@ -198,6 +198,12 @@ class EventWriteApiTest {
 				.andReturn().getResponse();
 	}
 
+	private MockHttpServletResponse remove(long id, String cookie) throws Exception {
+		return http.perform(delete("/api/events/" + id).with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookie)))
+				.andReturn().getResponse();
+	}
+
 	private MockHttpServletResponse remove(long id) throws Exception {
 		return http.perform(delete("/api/events/" + id).with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, session)))
@@ -448,6 +454,40 @@ class EventWriteApiTest {
 	}
 
 	/**
+	 * A DELETE FROM SOMEBODY WITHOUT THE RIGHT IS REFUSED, AND THE EVENT IS STILL THERE
+	 * AFTERWARDS.
+	 *
+	 * <p>The second half is the whole case. This route answers 404 to a row that is not
+	 * there AND to a caller who may not touch it - on purpose, ADL A8 applied to a row -
+	 * so the number alone says nothing. The only guard that stood over this route before
+	 * asked `DELETE /api/events/1` of a database holding no row with that id, so "refused"
+	 * and "not there" were the same answer and the case could not tell them apart.
+	 *
+	 * <p>Measured rather than argued: knocking the door out FOR DELETE ALONE left the
+	 * whole gate green, 1977 cases. The same mutation for PUT fell, so the measurement
+	 * does separate the two and the hole was only here. What it costs in the field is an
+	 * event gone with all of its races, results, intentions and comments, by the cascades
+	 * V7 writes, at the hand of any signed-in member.
+	 */
+	@Test
+	void aDeleteFromAModeratorWithoutTheRightLeavesTheEventStanding() throws Exception {
+		long before = howManyEvents();
+
+		MockHttpServletResponse answer = remove(acted, anotherSession);
+
+		assertThat(answer.getStatus())
+				.as("a moderator holding another tick deleted an event")
+				.isEqualTo(404);
+		assertThat(howManyEvents())
+				.as("the delete was refused and an event disappeared anyway")
+				.isEqualTo(before);
+		assertThat(db.sql("select count(*) from btl_event where id = ?").param(acted)
+						.query(Integer.class).single())
+				.as("the very event the refused delete named is gone")
+				.isOne();
+	}
+
+	/**
 	 * NOBODY AT ALL IS ANSWERED 401, AND THAT IS WHAT HOLDS THE NARROWING IN
 	 * {@code ApiSecurity}.
 	 *
@@ -548,6 +588,7 @@ class EventWriteApiTest {
 			throws Exception {
 
 		String addressBefore = slugOf(acted);
+		List<String> daysBefore = daysOfRacesOn(acted);
 		long before = howManyEvents();
 
 		MockHttpServletResponse answer = change(acted, spoiledIn(spoiled));
@@ -565,6 +606,15 @@ class EventWriteApiTest {
 		assertThat(howManyEvents())
 				.as("%s was refused on the edit route and an event appeared", spoiled)
 				.isEqualTo(before);
+		/* AND THE RACES ARE ASKED TOO, because the event row is not the whole of what an
+		   edit touches: moving the day moves every race under it by the same number of
+		   days. A refusal that had already done that half would answer 400, leave the
+		   address alone, and change the calendar - measured before this line, a mutation
+		   that shifted the race days inside the refusing branch took the whole gate
+		   green, 1977 cases. */
+		assertThat(daysOfRacesOn(acted))
+				.as("%s was refused and the races under that event moved anyway", spoiled)
+				.isEqualTo(daysBefore);
 	}
 
 	private Form spoiledIn(String how) {
@@ -630,6 +680,16 @@ class EventWriteApiTest {
 		assertThat(writtenSlug(answer))
 				.as("an event put off three months was given a new address, and everything joined"
 						+ " to the old one is now joined to nothing")
+				.isEqualTo("drugi-2027");
+
+		/* AND THE SAME ASKED OF THE ROW, not only of the answer. The two can disagree, and
+		   the answer is the half nobody would notice: a server that tells the administrator
+		   the address was kept while writing a different one leaves every joined thing
+		   pointing at nothing, and says it went well. Measured before this line existed -
+		   passing the rebuilt address to the update while leaving the kept one in the answer
+		   took the WHOLE gate green, 1977 cases. */
+		assertThat(slugOf(acted))
+				.as("the answer said the address was kept and the row says otherwise")
 				.isEqualTo("drugi-2027");
 	}
 
