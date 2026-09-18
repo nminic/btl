@@ -53,9 +53,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code TransactionSynchronization}.
  * <li>THAT ANY REQUEST REACHED THE DISPATCHER: neither says so, a 403 from early refusal
  * satisfying both as a 404 does. ADL A46's regression ({@code withHttpOnlyFalse()} for
- * {@code csrf.spa()}) answers {@code withHeader=403} for a {@code 404} and leaves this
- * green; {@code SignInOverRealHttpTest} goes red on it alone, not on another early
- * refusal like the rate limit {@code ApiSecurity}'s note wants before two open routes.
+ * {@code csrf.spa()}) answers 403 where a 404 belongs and leaves this green;
+ * {@code SignInOverRealHttpTest} goes red on it alone, not on another early refusal like
+ * the rate limit {@code ApiSecurity}'s note wants before two open routes.
  * </ul>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
