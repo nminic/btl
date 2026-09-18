@@ -182,6 +182,15 @@ class PaymentApiTest {
 								+ row.getString(3)).single())
 				.isEqualTo("2028 recorded null");
 
+		/* THE ROW ITSELF, NOT JUST THE ANSWER: a response that echoes the right amount
+		   while a different one is written is the more dangerous of the two ways this
+		   could go wrong, and only a query against the table the moderator's decision
+		   is billed from can tell the two apart. */
+		assertThat(db.sql("select amount, fee, currency from payment where id = ?").param(body.paymentId())
+						.query((row, i) -> row.getBigDecimal(1) + " " + row.getBigDecimal(2) + " "
+								+ row.getString(3)).single())
+				.isEqualTo("35.00 3.00 EUR");
+
 		assertThat(db.sql("select basis, payment_id from membership where competitor_id = ? and season = 2028")
 						.param(id).query((row, i) -> row.getString(1) + " " + row.getLong(2)).single())
 				.isEqualTo("payment " + body.paymentId());
