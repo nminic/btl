@@ -15,8 +15,9 @@ import java.util.Map;
  *
  * <p><b>It is public, and that is not a convenience.</b> A privacy policy and terms of
  * use that only a member could read would ask somebody to accept them before they can
- * be read, and PDL.md says in as many words that both „moraju postojati pre
- * lansiranja" (3094) - before there is anybody signed in to read them any other way.
+ * be read, and PDL P23, „Politika privatnosti i uslovi korišćenja moraju postojati pre
+ * lansiranja", says so in as many words - before there is anybody signed in to read them
+ * any other way.
  * The rulebook is what the terms of use themselves point a prospective member at for
  * the price of joining ({@code uslovi-koriscenja}, section 3), and the president's
  * address is drawn on the front page, which is the first thing a visitor sees.
@@ -27,7 +28,8 @@ import java.util.Map;
  * of its own blocks - there is one column and one renderer for it
  * ({@code Markdown.tsx}), so there is nothing else to serve.
  *
- * <p><b>No revision history, and that is a boundary rather than a gap</b> (ADL.md:957).
+ * <p><b>No revision history, and that is a boundary rather than a gap</b> (ADL A12,
+ * „Revizioni trag, da se ne traži tamo gde ga nema").
  * The schema carries exactly three things standing in for a trail nobody keeps: a
  * result's own last-edit stamp, the balance ledger's immutable rows, and mail as the
  * log. A written page is none of the three, so editing one overwrites its text and
@@ -46,10 +48,12 @@ class PageApi {
 	 * One block of a page's own text, in the order it is read.
 	 *
 	 * @param gallery the named drawing this block carries, {@code ducats} or
-	 *                {@code prices}; null on a block that carries none (ADL.md:558).
-	 *                Where the drawing stands within {@code body} is a line holding
-	 *                nothing but {@code [[gallery]]} (ADL.md:559) - the frontend's own
-	 *                concern, so it travels inside the text rather than as a field here
+	 *                {@code prices}; null on a block that carries none (ADL A7,
+	 *                04.08.2026, „Pisana strana sme da nosi imenovan crtež"). Where the
+	 *                drawing stands within {@code body} is a line holding nothing but
+	 *                {@code [[gallery]]} (ADL A7, 21.08.2026, „Sekcija kaže i gde crtež
+	 *                stoji") - the frontend's own concern, so it travels inside the text
+	 *                rather than as a field here
 	 */
 	record Section(String heading, String body, String gallery) {
 	}
@@ -58,13 +62,15 @@ class PageApi {
 	 * One written page: its own address, its own text, and the pages it takes in.
 	 *
 	 * @param slug     the address a human typed, and the one identity this schema still
-	 *                 checks for being taken (ADL.md:359) - every other identity in this
-	 *                 portal is constructed and this one is not
+	 *                 checks for being taken (ADL A4d, 31.07.2026, „Dodela broja je
+	 *                 `nextMemberNumber(taken)`") - every other identity in this portal
+	 *                 is constructed and this one is not
 	 * @param sections this page's own blocks, in the order they are read; empty on a
 	 *                 page that has none yet
 	 * @param includes the addresses of other pages whose sections are read above this
-	 *                 one's own, in that order (ADL.md:595); empty where this page
-	 *                 takes nothing in, which is every page today
+	 *                 one's own, in that order (ADL A7, 30.07.2026, „Pisana strana sme
+	 *                 da preuzme drugu pisanu stranu"); empty where this page takes
+	 *                 nothing in, which is every page today
 	 */
 	record Page(String slug, String title, List<Section> sections, List<String> includes) {
 	}

@@ -538,11 +538,14 @@ class InboxApiTest {
 				   could turn from `false` into the string „false" and nothing would
 				   fall - while in a browser that string is TRUTHY, so the unread
 				   counter reads nought, every message draws as read, and nothing is
-				   ever marked read again. That is the counter `PDL.md:6486` is about.
+				   ever marked read again. That is the counter PDL P32, „Brojač
+				   nepročitanih u sandučetu", is about.
 
 				   The expectation is not a list: it comes off the value the database
-				   holds, so a column that changes type tomorrow asks the question by
-				   itself. */
+				   holds, so a column that turns into a true or false, or into a number,
+				   asks the question by itself. A column that turns into text or into a
+				   date does not: those two kinds are the only ones asked about here, and
+				   anything else is left to the equality below, which compares as text. */
 				Object held = row.get(COLUMN_OF.get(field));
 				JsonNode served = one.get(field);
 
@@ -577,9 +580,9 @@ class InboxApiTest {
 	 * exactly the four fields earlier rounds had already found and left the other three
 	 * measured the old way, by choosing a message. Three mutations lived in that gap and
 	 * two of them broke recorded decisions: a message carrying a question came back marked
-	 * READ, which PDL:6486 forbids („Brojac nepročitanih ne sme da se promeni time sto
-	 * poruka nosi odluku"), and a broadcast came back carrying a pair invitation, which
-	 * PDL:6484 names as the likeliest fault of all and asks for its own case.
+	 * READ, which PDL P32, „Brojač nepročitanih u sandučetu", forbids, and a broadcast came
+	 * back carrying a pair invitation, which PDL P32, „Svaka zatečena poruka nema polje o
+	 * kom pita", names as the likeliest fault of all and asks for its own case.
 	 *
 	 * <p>A ninth column the answer starts serving tomorrow has no entry here, so the first
 	 * assertion of the loop fails and somebody decides what it is - instead of the field
