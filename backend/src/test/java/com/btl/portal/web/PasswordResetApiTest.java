@@ -520,25 +520,44 @@ class PasswordResetApiTest {
 	 * stop being let in the instant this member proves he can still read his own
 	 * mailbox and picks a new password; a row nobody deleted at that moment leaves
 	 * the reset unable to do the one thing it exists for.
+	 *
+	 * <p>TWO sessions of the one account, and each of them asked about by name. An
+	 * account holding a single row cannot tell "every session of this account" from
+	 * "some one row of this account", so a delete carrying a {@code limit} would end
+	 * the member's own cookie, leave the copied one alive - and pass. Whichever of
+	 * the two such a delete chose to keep, it is named below.
 	 */
 	@Test
 	void resettingEndsEverySessionOfTheAccount() throws Exception {
 		long account = anAccount(aFreshAddress());
 		String token = aValidToken(account);
-		SecretToken session = aSessionFor(account);
+		SecretToken older = aSessionFor(account);
+		SecretToken newer = aSessionFor(account);
 
-		assertThat(me(session).getStatus())
-				.as("the session was not even live before the reset, so this proves nothing")
+		assertThat(me(older).getStatus())
+				.as("the older session was not even live before the reset, so this proves"
+						+ " nothing")
+				.isEqualTo(200);
+		assertThat(me(newer).getStatus())
+				.as("the newer session was not even live before the reset, so this proves"
+						+ " nothing")
 				.isEqualTo(200);
 
 		assertThat(reset(token, NEW_PASSWORD, NEW_PASSWORD).getStatus()).isEqualTo(204);
 
-		assertThat(me(session).getStatus())
+		assertThat(me(older).getStatus())
 				.as("a cookie minted before the password was reset still signed somebody in"
 						+ " afterwards")
 				.isEqualTo(401);
-		assertThat(sessionStillExists(session))
-				.as("the session row survived a password reset")
+		assertThat(me(newer).getStatus())
+				.as("the second of this account's two cookies still signed somebody in after"
+						+ " the reset")
+				.isEqualTo(401);
+		assertThat(sessionStillExists(older))
+				.as("the older of this account's two session rows survived a password reset")
+				.isFalse();
+		assertThat(sessionStillExists(newer))
+				.as("the newer of this account's two session rows survived a password reset")
 				.isFalse();
 	}
 
