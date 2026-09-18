@@ -81,6 +81,104 @@ Ništa se ne predlaže ni ne odlučuje u sukobu sa tim fajlovima, a svaka nova o
 - Backend lokalno protiv compose baze: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 - Produkcijski deploy: `cd /opt/btl/deploy && docker compose -f compose.prod.yml up -d --build frontend` na hostu. Portove 80/443 drži zajednički edge proxy van ovog repoa; nikad ne dodavati servis koji ih zauzima i nikad ne pokretati `docker compose down` nad tim projektom. Detalji: `deploy/README.md`.
 
+## Mutacije: dve zamke koje su u istom satu uhvatile dva nezavisna agenta (18.09.2026)
+
+Ko dokazuje nalaz mutacijom, prvo pročita ovo. Obe zamke **izgledaju kao uspešno merenje**, pa se
+ne vide dok se ne potraže. Sve brojke niže su izmerene, ne procenjene.
+
+### 1. `mvnw.cmd` bez `./` ne krene, a log izgleda isto kao uhvaćena mutacija
+
+Iz Git Bash-a poziv `cmd /c mvnw.cmd ...` vrati **izlazni kod 1, prazan stdout i 99 bajtova na
+stderr** (`'mvnw.cmd' is not recognized...`). To je isto što vidi i uhvaćena mutacija, pa je
+jednom agentu dalo **22 lažna prolaza**.
+
+**Uzrok nije `cmd.exe` nego okruženje.** `cmd.exe` inače traži program u radnom direktorijumu;
+ovde ga sprečava **nasleđena promenljiva** `NoDefaultCurrentDirectoryInExePath=1`. Izmereno u obe
+ljuske i u oba smera, isti `cwd`: sa promenljivom `cmd` i `powershell` daju izlazni kod 1, nula
+bajtova na stdout i 99 na stderr; bez nje oba daju izlazni kod 0 i 434 bajta. **Dakle ne odlučuje
+ljuska nego promenljiva**, i ranija rečenica da „iz PowerShell-a uspeva" je bila netačna. Odakle je
+nasleđena nije utvrđeno: nema je ni u registru pod `User` ni pod `Machine`, a `bash.exe` pokrenut
+sam je ne postavlja. **CI se ovde ne pominje namerno:**
+oba posla u `.github/workflows/verify.yml` rade na `ubuntu-latest` i backend zove
+`./mvnw --batch-mode verify`, nikad `mvnw.cmd`, pa se tamo ništa od ovoga ni ne javlja. (Da `cmd`
+na tom runneru ne postoji je verovatno, ali se sa ove mašine ne može izmeriti, pa se i ne tvrdi.) Zato „ne radi" nije svojstvo
+komande nego onoga odakle se zove.
+
+**Šta se radi:** iz bash-a se zove `./mvnw`. I bez obzira na shell, **prvo se pusti prolaz BEZ
+mutacije** i traži se **izlazni kod nula i red `Tests run:`**. To je jedino što ovu klasu hvata u
+svakom okruženju.
+
+### 2. Vraćanje iz `git show HEAD:` bajtova menja prelom reda, i to tiho
+
+Repo je pretežno CRLF (`core.autocrlf=true`, `* text=auto`), a blob je LF, pa vraćanje **sirovih**
+blob bajtova prepiše svaki red fajla.
+
+**Šta o tome govori a šta ćuti, izmereno tri puta na tri fajla:**
+
+- `git status --porcelain` **progovori**: vraća ` M <put>`. Ne ćuti.
+- `git diff` i `git diff --numstat` **ćute**, jer git normalizuje pre poređenja.
+- `git ls-files --eol -- <put>` **imenuje stvar**: pređe sa `w/crlf` na `w/lf`.
+
+Dakle ` M` uz prazan `git diff` **nije** zaostala mutacija nego promenjen prelom reda, i obrnuto se
+ne sme pretpostaviti: kad ` M` jednom jeste prava zaostala mutacija, ovo razlikovanje je jedino što
+to razdvaja.
+
+**Zašto to nije kozmetika:** obrazac koji prelazi preko preloma reda posle konverzije **više se ne
+nađe**, pa serija stane na pola a izgleda kao da je prošla. Jednolinijski obrasci se i dalje nalaze,
+pa serija ume da se nastavi nad fajlom koji je već prepisan; izmereno na jednom fajlu, isti obrazac
+9 puta jednolinijski a 0 puta produžen preko preloma.
+
+**Prelom reda NIJE isti za ceo repo, i slepo prevođenje u CRLF kvari 25 fajlova.**
+`backend/.gitattributes` drži `/mvnw` i **`src/main/resources/db/migration/*.sql` na `eol=lf`**, sa
+zapisanim razlogom: generisana migracija mora bajt za bajt da bude ono što je
+`backend/tools/generate_reference_migrations.py` napisao. Za te fajlove je blob **jednak** radnom
+stablu i sirovi bajti su tačno ono što treba.
+
+Broj se **pita gitu, ne pamti**: `git ls-files --eol | grep -c "attr/text eol=lf"` daje danas **25**
+(`backend/mvnw` i 24 migracije). Pita se **`attr/` kolona, a ne `w/`**, i to je merena razlika:
+`w/` kaže šta je na disku **ovog trenutka**, pa dva radna stabla istog commita daju različite brojeve
+(izmereno isti dan: 717 naspram 694 `w/crlf`, uz isti ukupan broj fajlova). `attr/` kaže šta
+`.gitattributes` **propisuje**, i to je isto svuda.
+
+**Vraćanje se NE PIŠE RUKOM. Pita se git, jednom komandom, bez ijedne grane:**
+
+```
+git checkout -- <put>
+```
+
+**Ovo je četvrti oblik ovog pasusa i prva tri su pala iz istog razloga:** svaki je pokušavao da
+**rekonstruiše** ono što git ionako ume da uradi. Prvi je normalizovao „za svaki slučaj" i time
+kvario fajlove sa usamljenim `CR`. Drugi je granao po `git ls-files --eol` i promašivao, jer ta
+kolona opisuje **disk ovog trenutka**. Treći je istu kolonu čitao **pre** mutacije, pa i dalje
+promašivao kad na disku zatekne **tuđu zaostalu** mutaciju iz serije koja je ranije pukla. Klasa je
+jedna: prelom reda nije svojstvo koje se pogađa nego odluka koju git donosi iz `.gitattributes`,
+`core.autocrlf` i sadržaja, i **jedini koji je pouzdano zna je git**.
+
+**Izmereno po jednim fajlom iz svake klase koju repo ima** (`w/crlf`, prikovan `w/lf`, `w/-text`,
+`w/none`), i to **iz najgoreg stanja**, zaostala tuđa mutacija pa nova preko nje: vraćeno
+bajt-tačno u sva četiri, 2264, 4643, 3690 i 1.277.008 bajtova, izlazni kod nula i `git status`
+prazan.
+
+**Jedina opasnost, i zato stoji ovde a ne u fusnoti:** `git checkout -- <put>` **briše svaki
+neupisan rad nad tim fajlom**. Zato se pušta **isključivo nad putanjom koju je serija sama
+mutirala** i nikad nad fajlom u kom stoji nešto što nije commitovano. Ko to ne može da garantuje,
+commituje pre serije. I još jedna razlika koja ume da iznenadi: `git checkout --` vadi iz
+**indeksa**, a ne iz `HEAD`; ako je nešto stejdžovano, to su dve različite stvari.
+
+**Sadržaj i dalje dolazi iz gita a ne sa diska**, i sada je to isto merenje: komanda iznad ne gleda
+radno stablo uopšte, pa zatečena mutacija ne može da postane osnova.
+
+**Provera posle serije:** `git status --porcelain` mora da bude **prazan**. To je jedina provera
+koja hvata i sadržaj i prelom reda, jer `git diff` o prelomu reda ćuti.
+
+### I dalje važi, i nalazi se ovde da se ne traži na dva mesta
+
+- Vraćanje ide u `finally`, da pad skripte ne ostavi mutaciju za sobom.
+- Čita se i piše **binarno**; `text=True` na Windowsu dekodira cp1252 i tiho kvari srpska slova.
+- **Kad mutacija „padne", gleda se i ZAŠTO.** Poruka o dizanju kontejnera, portu, vezi ili isteku
+  nije merenje nego infrastruktura. `Errors:` jednak broju `Tests run:` je skoro uvek
+  infrastruktura, a **ista mutacija puštena dvaput mora da da isti broj**.
+
 ## Proces
 
 - **Nikad `git add -A` dok recenzija radi u istom radnom direktorijumu.** Recenzent dokazuje nalaz tako što namerno pokvari fajl, pokrene test i vrati ga. Ako se u tom prozoru zapiše sve što je izmenjeno, tuđa privremena mutacija ulazi u commit i CI pada na nečemu što u kodu ne postoji. Desilo se 13.08.2026: član `000004` je za jedan prolaz testa postao platiša i tako gurnut na granu. Zapisuju se **imenovane putanje** onoga što je stvarno menjano, ili recenzija dobija svoj worktree.
