@@ -21,9 +21,9 @@ import java.util.List;
  * screen asks.
  *
  * <p><b>FOUR TABLES, BECAUSE V11 AND V12 ALREADY SAY THEY ARE FOUR DIFFERENT
- * FACTS.</b> {@code PDL.md:2218}: "Ucanjenje ide u oba smera kroz portal: takmicar
- * salje administratoru tima zahtev na odobrenje, ili administrator salje
- * takmicaru poziv" - an application is a member offering himself, an invitation is
+ * FACTS.</b> PDL P13, „Učlanjenje ide u oba smera kroz portal: takmičar šalje
+ * administratoru tima zahtev na odobrenje, ili administrator šalje takmičaru
+ * poziv" - an application is a member offering himself, an invitation is
  * a team offering itself, and V12's own note says a single table with a direction
  * column would make every reader remember which way to look. A proposed team is a
  * third fact again (V11: naming a team that does not exist yet, or a change to one
@@ -59,9 +59,9 @@ import java.util.List;
  * STATE COLUMN TO FILTER ON, BECAUSE V12 SAYS THERE IS NONE ON PURPOSE.</b> "An
  * answer is not a column here: accepting an application writes a row in
  * {@code team_membership} and removes this one, refusing removes it... A state
- * column would be a second answer to 'is he in the team'." {@code PDL.md:6265} is
- * the product side of the same fact: "Ni prijava ni poziv ne idu u moderatorski
- * red za verifikaciju" - neither ever touches {@code verification} at all. So a
+ * column would be a second answer to 'is he in the team'." PDL P32, 05.09.2026,
+ * „Ni prijava ni poziv ne idu u moderatorski red za verifikaciju" is the product
+ * side of the same fact - neither ever touches {@code verification} at all. So a
  * row in {@code team_application} or {@code team_invitation} naming this
  * competitor IS a waiting question; there is no third state to exclude and
  * nothing to join.
@@ -128,14 +128,14 @@ import java.util.List;
  * proposal's {@code teamId} is null), and {@code teamId} is kept because an
  * EDIT's identity is nothing else. Nothing beyond those two is invented here.
  *
- * <p><b>ONE DECISION NAMED RATHER THAN SILENTLY COPIED: {@code PDL.md:6410}
- * ("Prijava clana koji je u medjuvremenu dobio tim se timu ne prikazuje") DOES
+ * <p><b>ONE DECISION NAMED RATHER THAN SILENTLY COPIED: PDL P32, 06.09.2026,
+ * „Prijava člana koji je u međuvremenu dobio tim se timu ne prikazuje" DOES
  * NOT REACH THIS CLASS, AND THE LINE RIGHT AFTER IT IS WHY.</b> That decision
  * hides a stale application from the TEAM'S queue, because a team admin accepting
  * it would pull the member out of a squad he has since joined without asking him
- * - a safeguard on the door the team's own future resource opens. {@code
- * PDL.md:6413} draws the boundary in as many words: "Prijava u oba slucaja ostaje
- * NJEGOVA DA JE POVUCE, pa i dalje ima kraj koji ne zavisi ni od koga drugog" -
+ * - a safeguard on the door the team's own future resource opens. PDL P32,
+ * „Prijava u oba slučaja ostaje njegova da je povuče, pa i dalje ima kraj koji ne
+ * zavisi ni od koga drugog" draws the boundary in as many words -
  * the application stays HIS to withdraw either way, with an ending that depends
  * on nobody else. So the row is hidden from the team and left standing for the
  * applicant, which is exactly this resource's reader. A row in

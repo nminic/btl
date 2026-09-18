@@ -114,8 +114,9 @@ class StaticPageConstraintsTest extends DatabaseTest {
 				Violation.of("static_page_section_heading_not_blank",
 						"insert into static_page_section (page_id, position, heading, body) "
 								+ "select id, 900, '   ', 'Tekst' from static_page where slug = 'pravilnik'"),
-				/* `statute` existed for one day, 22.08.2026 (ADL.md:558), and left with its own
-				   branch; it is exactly the value most likely to be typed back in by mistake. */
+				/* `statute` existed for one day, 22.08.2026 (ADL A7, 04.08.2026, „Pisana strana
+				   sme da nosi imenovan crtež"), and left with its own branch; it is exactly the
+				   value most likely to be typed back in by mistake. */
 				Violation.of("static_page_section_gallery_known",
 						"insert into static_page_section (page_id, position, heading, body, gallery) "
 								+ "select id, 900, 'Proba', 'Tekst', 'statute' from static_page "

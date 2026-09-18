@@ -20,43 +20,42 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * NOTHING ON THE OPEN LIST MAY FINISH A WRITE, asked by sending one and then measuring
- * the database.
+ * NOTHING ON THE OPEN LIST MAY FINISH A WRITE: one is sent, then one schema measured.
  *
  * <p><b>What it asks.</b> For every path in {@link ApiSecurity#READ_BY_ANYBODY}, over a
  * real socket, with no session and with a CSRF cookie and header the caller invents - one
- * value in both halves, which {@code ApiSecurity}'s own note says any direct caller can
- * pick: {@code POST}, {@code PUT}, {@code PATCH}, {@code DELETE}. Each must be answered
- * outside 2xx, and the fingerprint of the whole database must be equal before and after
- * each one.
+ * value in both halves, which {@code ApiSecurity}'s note says any caller may pick:
+ * {@code POST}, {@code PUT}, {@code PATCH}, {@code DELETE}. Each must be answered outside
+ * 2xx, and the fingerprint of the ONE SCHEMA {@code current_schema()} names cannot move.
  *
- * <p><b>Behaviour and not registration, which is the whole of the change.</b> Six drafts
- * of this file asked WHERE a handler is registered and WHAT TYPE it is, and each was
- * broken by a shape the one before it did not know about. A write that finished is a fact
- * about the database, and the database is where every shape has to arrive. The socket
- * rather than MockMvc is ADL A46 of 12.09.2026: what the SERVER does is measured where
- * the test framework's helpers are not. Neither floor on main asks this -
- * {@code ApiSecurityTest.nothingOpenForReadingIsOpenForWriting} posts without a CSRF
- * token and is refused before the dispatcher is asked anything, and
- * {@code RightsAtTheDoorTest} filters the open list OUT on purpose - and neither is
- * repaired here.
+ * <p><b>Behaviour and not registration.</b> Six drafts asked WHERE a handler is
+ * registered and WHAT TYPE it is, each broken by a shape the last missed; a write that
+ * finished is a fact about the database, where every shape arrives. Socket and not
+ * MockMvc is ADL A46; no floor on main asks it, {@code ApiSecurityTest} posting without a
+ * CSRF token and {@code RightsAtTheDoorTest} filtering the open list OUT.
  *
- * <p><b>The fingerprint is derived, and compared whole rather than item by item.</b>
- * Tables come out of {@code information_schema} for this connection's schema, less
- * Flyway's history table, whose name is asked of Flyway rather than written down a second
- * time ({@code DatabaseTest.tablesInTheSchema} is the precedent). Each gives a count AND
- * an md5 over its rows, so a row changed in place moves it as much as one added or
- * removed.
- *
- * <p><b>WHAT IT STILL DOES NOT SEE</b>, both measured on 18.09.2026 and left as a
- * boundary rather than patched over:
+ * <p><b>WHAT IT DOES NOT SEE</b>, measured on 18.09.2026 and written down rather than
+ * patched over: none is reachable without a change of our own code, and this is draft 7.
  *
  * <ul>
- * <li>A {@code GET} that writes. An {@code update} put inside {@code PricingApi.pricing}
- * leaves this case green, because no {@code GET} is sent.
- * <li>A write that happens only after a body of its own has parsed. Every request carries
- * {@code Content-Type: application/json} and an empty object, which reaches a handler
- * taking no body and one declaring it consumes JSON, and no further.
+ * <li>A {@code GET} that writes: an {@code update} inside {@code PricingApi.pricing}
+ * leaves this green, because no {@code GET} is sent.
+ * <li>A write needing a body of its own parsed first: every request carries an empty JSON
+ * object, reaching a handler taking no body and one consuming JSON, and no further.
+ * <li>A WRITE INTO ANY OTHER SCHEMA, the mark asking {@code current_schema()} alone: a
+ * filter making {@code schema shadow} per non-GET and writing there leaves this green
+ * twice over, 44 writes unseen on the day the open list held 11 paths; and with
+ * {@code search_path} = {@code "$user", public}, a schema named for the user moves it.
+ * <li>A WRITE LANDING AFTER THE ANSWER, the mark taken with the status in hand: a
+ * filter's thread writing four seconds later leaves 0 rows right after the answer and 1
+ * ten seconds later. Dead, not open: in 70 files {@code backend/src/main} has ZERO
+ * {@code @Async}, {@code CompletableFuture}, {@code new Thread}, {@code TaskExecutor} or
+ * {@code TransactionSynchronization}.
+ * <li>THAT ANY REQUEST REACHED THE DISPATCHER: neither says so, a 403 from early refusal
+ * satisfying both as a 404 does. ADL A46's regression ({@code withHttpOnlyFalse()} for
+ * {@code csrf.spa()}) answers 403 where a 404 belongs and leaves this green;
+ * {@code SignInOverRealHttpTest} goes red on it alone, not on another early refusal like
+ * the rate limit {@code ApiSecurity}'s note wants before two open routes.
  * </ul>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -127,18 +126,18 @@ class OpenRoutesStayReadOnlyTest {
 	}
 
 	/**
-	 * A COUNT AND AN MD5 OVER EVERY ROW OF EVERY TABLE, in one query and one round trip.
+	 * A COUNT AND AN MD5 OVER EVERY ROW OF EVERY TABLE IN ONE SCHEMA, less Flyway's history
+	 * table ({@code DatabaseTest.tablesInTheSchema} asks Flyway for its name the same way).
+	 * The md5 is why a row changed in place moves the mark as much as one added.
 	 *
-	 * <p>The table list is read again on every call rather than once, so a mutation that
-	 * CREATES a table moves the fingerprint too; and its non-emptiness is asserted here
-	 * rather than at the top of the case, so it is asked of every measurement instead of
-	 * the first.
+	 * <p>The table list is read again on every call, so a mutation that CREATES a table
+	 * moves the mark too; and its non-emptiness is asserted here and not at the top of the
+	 * case, so it is asked of every measurement and not just the first.
 	 *
 	 * <p>The names go into the query as text because no dialect parameterises a
 	 * {@code from} clause. They come out of the catalogue of the database being read, so
-	 * there is nothing here that anything arriving over the wire can reach -
-	 * {@code CompetitorEventRaceAndResultTest} and {@code DeltaMigrationAppliesTest} name
-	 * a table the same way and for the same reason.
+	 * nothing arriving over the wire can reach them - {@code DeltaMigrationAppliesTest} and
+	 * {@code CompetitorEventRaceAndResultTest} name a table the same way, for that reason.
 	 */
 	private List<Mark> fingerprint() {
 		List<String> tables = db
@@ -171,12 +170,12 @@ class OpenRoutesStayReadOnlyTest {
 	}
 
 	/**
-	 * One write, sent the way somebody writing his own request writes it.
+	 * One write, sent the way somebody writing his own request writes it: no session
+	 * cookie, which is the caller this is about, and a CSRF cookie and header carrying one
+	 * value he chose himself, so the CSRF filter has no reason of its own to refuse.
 	 *
-	 * <p>No session cookie, which is the caller this is about; and the CSRF cookie and
-	 * header carry one value he chose himself, so the request is not refused by the CSRF
-	 * filter before anything has decided whether a handler exists. Without that, every
-	 * answer here would be 403 and the case would be measuring the filter.
+	 * <p>WHETHER IT REFUSED ANYWAY IS NOT ASKED: this hands back a status code and the case
+	 * reads it, neither ever saying that a handler was reached.
 	 */
 	private int answerTo(String method, String path) throws Exception {
 		return client.send(
