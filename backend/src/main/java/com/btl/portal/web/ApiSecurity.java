@@ -55,6 +55,14 @@ class ApiSecurity {
 	 * somebody reads BEFORE registering, so a price list behind a sign-in would be the
 	 * portal asking to be joined before it says what joining costs.
 	 *
+	 * <p><b>And the written pages, which the portal must be able to show before anybody
+	 * signs in at all.</b> A privacy policy and terms of use only a member could read
+	 * would be the portal asking somebody to accept them before they can be read
+	 * (`PDL.md`:3094, „moraju postojati pre lansiranja"), the rulebook is what those
+	 * same terms point a prospective member at for the price of joining, and the
+	 * president's address is drawn on the front page, which is the first thing a
+	 * visitor sees.
+	 *
 	 * <p><b>It is a constant rather than four arguments because the guard reads
 	 * it.</b> `ApiSecurityTest` takes every route on this list and asks whether a
 	 * sub-path, a different spelling of it and a trailing slash are still shut, and
@@ -71,7 +79,8 @@ class ApiSecurity {
 					"/api/ducats",
 					"/api/pairs",
 					"/api/teams",
-					"/api/pricing");
+					"/api/pricing",
+					"/api/pages");
 
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
@@ -118,6 +127,27 @@ class ApiSecurity {
 						   belongs in nginx beside the one it copies, and PDL's „bot provera na
 						   prijavi takmicara" belongs with it. Neither is in this increment. */
 						.requestMatchers("/api/registration").permitAll()
+						/* B66: CONFIRMING AN ADDRESS AND ASKING FOR A FORGOTTEN PASSWORD, open for
+						   the same reason signing in is - whoever is asking has, by definition,
+						   no session yet. PDL, owner, 31.07.2026: confirming the address is "uslov
+						   za sve ostalo", so requiring the very thing it is a precondition of would
+						   leave nobody able to satisfy it. PDL of 5284: a forgotten password is
+						   asked for by "standardnim postupkom", which starts from a member who
+						   cannot sign in - that is the whole reason he is here.
+
+						   WHAT STANDS IN FRONT OF EACH ONE, named the way `/api/registration`'s own
+						   note names it. `/api/email-confirmation` and `/api/password-reset` ask
+						   for a 256 bit token nobody can guess at any rate a lock would help
+						   against, so neither needs one. `/api/email-confirmation/resend` and
+						   `/api/password-reset/request` ask only for an address and, like
+						   `/api/registration`, cost this server a database round trip and, when an
+						   account answers, a trip to the relay - so the same rate limit
+						   `frontend/nginx.conf` gives registration belongs beside these two, and is
+						   not in this increment either. */
+						.requestMatchers("/api/email-confirmation").permitAll()
+						.requestMatchers("/api/email-confirmation/resend").permitAll()
+						.requestMatchers("/api/password-reset").permitAll()
+						.requestMatchers("/api/password-reset/request").permitAll()
 						/* AND NOTHING ELSE UNDER /api ANSWERS `OPTIONS`. Measured on a running
 						   server on 13.09.2026, and it was a hole rather than an untidiness.
 

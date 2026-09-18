@@ -279,7 +279,29 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("password_reset_token_hash_unique", false,
 					"the digest a link hashes to, which is how a reset is found at all"),
 			new Key("account_admin_right_pk", false,
-					"one tick of the matrix: this account has this right, and the pair is the key"));
+					"one tick of the matrix: this account has this right, and the pair is the key"),
+
+			/* V24. A page is looked up by its address, like a team or a league. Its own
+			   blocks are looked up by nothing outside the portal, so the surrogate is not
+			   deferrable, but their ORDER is a decision (which block is read first) and
+			   moves the same way place.rank and price_row.sort_order do. The include table
+			   repeats the split: a surrogate for identity, and its own order deferrable for
+			   the same reason. */
+			new Key("static_page_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("static_page_slug_unique", false,
+					"a page is looked up by its address, the same rule an event, a team and a league follow"),
+			new Key("static_page_section_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("static_page_section_position_unique", true,
+					"the order a page's own blocks are read in: a block inserted between two moves the rest"),
+			new Key("static_page_include_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("static_page_include_position_unique", false,
+					"an order in principle (ADL.md:595), but not deferred: no row of this table exists"
+							+ " yet to move, and the day an admin screen reorders one is the day this becomes"
+							+ " one too, against data that can prove it"),
+			new Key("static_page_include_once_per_page", false,
+					"whether one page already takes another in is looked up, not counted from one end"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -409,7 +431,10 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("account_session_account_idx", "every session one account has open"),
 			new Index("account_session_expires_idx", "the sessions that have run out, which is what gets swept"),
 			new Index("password_reset_token_account_idx", "every reset link one account has asked for"),
-			new Index("account_admin_right_right_idx", "everybody who has been given one right"));
+			new Index("account_admin_right_right_idx", "everybody who has been given one right"),
+			/* V24, the other end of static_page_include_included_fk: which pages take one
+			   page in, the same shape league_race_race_idx serves for league_race. */
+			new Index("static_page_include_included_idx", "every page that takes one page in"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says
@@ -477,6 +502,28 @@ class KeysAndIndexesTest extends DatabaseTest {
 		return KEYS.stream().filter(Key::deferrable).toList();
 	}
 
+	/**
+	 * The subset of those that cover exactly one column.
+	 *
+	 * {@link #aRangeOfTheOrderMovesInOneStatement(Key)} and
+	 * {@link #andAStatementThatEndsWithTwoRowsInOnePositionIsRefused(Key)} each build
+	 * their statement by naming ONE column in a plain {@code set} and {@code where},
+	 * and this file already says why neither guesses at more: "a deferrable key over
+	 * more than one column needs a shift written for it, not guessed". V24's
+	 * {@code static_page_section_position_unique} is the first composite deferrable
+	 * key the schema has and needs exactly that - written by hand, over real seeded
+	 * rows, in {@code StaticPageConstraintsTest} instead of here.
+	 *
+	 * <p>{@link #noForeignKeyMayPointAtADeferrableKey(Key)} is not filtered this way:
+	 * {@code pointingAt} already builds a composite foreign key from as many columns
+	 * as a key has, so it needs nothing written by hand and answers for all of them.
+	 */
+	static List<Key> singleColumnOrderKeys() {
+		return orderKeys().stream()
+				.filter(key -> !key.constraint().equals("static_page_section_position_unique"))
+				.toList();
+	}
+
 	/** And the ones it says may not, which are the ones anything may point at. */
 	static List<Key> lookedUpKeys() {
 		return KEYS.stream().filter(key -> !key.deferrable()).toList();
@@ -498,7 +545,7 @@ class KeysAndIndexesTest extends DatabaseTest {
 	 * flag: it was that the work could not be done.
 	 */
 	@ParameterizedTest
-	@MethodSource("orderKeys")
+	@MethodSource("singleColumnOrderKeys")
 	void aRangeOfTheOrderMovesInOneStatement(Key key) {
 		Map<String, Object> row = catalogue(key);
 		String table = (String) row.get("table_name");
@@ -527,7 +574,7 @@ class KeysAndIndexesTest extends DatabaseTest {
 	 * lost its UNIQUE lets it through for good.
 	 */
 	@ParameterizedTest
-	@MethodSource("orderKeys")
+	@MethodSource("singleColumnOrderKeys")
 	void andAStatementThatEndsWithTwoRowsInOnePositionIsRefused(Key key) {
 		Map<String, Object> row = catalogue(key);
 		String table = (String) row.get("table_name");

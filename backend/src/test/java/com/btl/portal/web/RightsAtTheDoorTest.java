@@ -125,6 +125,26 @@ class RightsAtTheDoorTest {
 	 * beside the other two, with the reason written there, and with what is NOT in front of
 	 * it written there too.
 	 *
+	 * <p><b>AND {@code /api/inbox} IS THE EIGHTH, AND LIKE {@code /api/verification} IT
+	 * MAKES THIS FLOOR ASSERT LESS THAN ITS NAME SUGGESTS.</b> A message may be private to
+	 * one member (V13: „empty means everybody", so a named addressee means somebody in
+	 * particular), so it is absent from {@code READ_BY_ANYBODY} and a visitor is refused
+	 * before this door runs at all. But unlike {@code /api/comments} and
+	 * {@code /api/attendance}, „every signed in account reads it" is not quite true here
+	 * either: an account naming no member - a moderator who does not race - is refused 404
+	 * by the controller itself, the identical shape {@code /api/verification} already has
+	 * for a moderator with no queue ticked. There is no box to tick for having an inbox at
+	 * all; it is not a privilege a superadmin grants, it is a consequence of being a member,
+	 * so the check lives in {@code InboxApi} (through {@code MemberOfAccount}) rather than
+	 * behind {@link RightIsNeeded}. {@code InboxApiTest} holds both halves: a visitor is
+	 * refused, and so is a signed in account with no member behind it.
+	 *
+	 * <p><b>AND {@code /api/me/notifications} IS THE NINTH, CLOSED THE IDENTICAL WAY AND
+	 * FOR THE IDENTICAL REASON.</b> A member's own six switches over the bell's mail (PDL
+	 * P22) are exactly as personal as his inbox, and an account with no member behind it is
+	 * refused the same 404, off the same {@code MemberOfAccount} lookup. {@code NotificationApiTest}
+	 * holds both halves for this route the way {@code InboxApiTest} does for the other.
+	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a
 	 * {@code @GetMapping("/cenovnik")} written without the annotation answered 200 to
@@ -132,6 +152,26 @@ class RightsAtTheDoorTest {
 	 * outside {@code /api} there is no interceptor, no chain that asks for a session and no
 	 * floor - so the floor now looks at everything the portal's controllers map, and
 	 * anything meant to answer without a right is named here with its reason.
+	 *
+	 * <p><b>AND {@code /api/me/applications} IS THE EIGHTH, CLOSED THE IDENTICAL WAY AND
+	 * FOR THE IDENTICAL REASON {@code /api/attendance} IS.</b> ADL P-javno keeps it off
+	 * {@code READ_BY_ANYBODY} - it answers nobody but the one competitor it is about, so a
+	 * visitor is refused 401 before this door is ever asked - and reading what you yourself
+	 * are waiting on is not a moderator's action, so there is no box to tick for it and
+	 * every signed in account reads it, a plain competitor included.
+	 * {@code MyApplicationsApiTest} holds the other half, that a visitor really is refused,
+	 * because this file only measures what a route DECLARES.
+	 *
+	 * <p><b>AND B66 ADDS FOUR MORE, EACH OPEN FOR THE IDENTICAL REASON
+	 * {@code /api/registration} IS.</b> {@code /api/email-confirmation} and
+	 * {@code /api/password-reset} ask for a 256 bit token out of a link in a message, never
+	 * for a session; {@code /api/email-confirmation/resend} and
+	 * {@code /api/password-reset/request} ask only for an address, from somebody who is, by
+	 * construction, not signed in - a member who could sign in would not be confirming his
+	 * address or resetting a password he has forgotten. There is no box anybody could tick
+	 * that would let such a person in, which is the same sentence written above about
+	 * registering, and {@code ApiSecurity} opens all four by name with the reason written
+	 * there.
 	 *
 	 * <p><b>It is a written list, and the floor under it is in the same file.</b>
 	 * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads the other side
@@ -142,7 +182,10 @@ class RightsAtTheDoorTest {
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
-					"/api/attendance", "/api/verification", "/api/registration", "/error");
+					"/api/attendance", "/api/verification", "/api/registration",
+					"/api/inbox", "/api/me/notifications", "/api/me/applications",
+					"/api/email-confirmation", "/api/email-confirmation/resend",
+					"/api/password-reset", "/api/password-reset/request", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 

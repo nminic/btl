@@ -545,6 +545,14 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"season_league_standing.season_league_standing_competitor_fk set null",
 				"season_league_standing.season_league_standing_league_fk set null",
 				"season_team.season_team_fk set null",
+				/* V24. Both CASCADE: nothing writes to this table yet (no page uses `includes`
+				   today), and a page that takes another in, or is taken in, is not a person -
+				   deleting either side of the relation is PDL.md:4376's own "administrator
+				   deletes a page" reaching a row that only ever names two pages. */
+				"static_page_include.static_page_include_included_fk cascade",
+				"static_page_include.static_page_include_page_fk cascade",
+				// V24. A page's own blocks go with it; nothing keeps a section past its page.
+				"static_page_section.static_page_section_page_fk cascade",
 				"team.team_admin_fk set null",
 				"team.team_country_fk restrict",
 				"team.team_logo_fk set null",
