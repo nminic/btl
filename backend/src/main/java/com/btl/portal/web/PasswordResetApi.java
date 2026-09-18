@@ -284,9 +284,37 @@ class PasswordResetApi {
 						+ " where id = ?")
 				.params(keeping.of(typed.password()), account).update();
 
-		/* EVERY SESSION OF THIS ACCOUNT ENDS HERE. V18 names this the first of the
-		   three reasons a session is a row and not a signed token: "a member changes
-		   his password". Whoever is holding a cookie this member did not just mint -
+		/* EVERY SESSION OF THIS ACCOUNT ENDS HERE, AND IT ENDS AFTER THE PASSWORD IS
+		   WRITTEN. THE ORDER OF THESE TWO STATEMENTS IS LOAD BEARING AND NOTHING
+		   MEASURES IT - this sentence is all there is, and it says so rather than
+		   pretending otherwise. Moving this delete above the update three lines up
+		   passes the whole gate, every case at a hundred percent.
+
+		   WHY THE ORDER CARRIES ANYTHING. `SignInApi` is the only place in the portal
+		   that mints an `account_session` row, and it mints one after reading
+		   `password_hash`. This route is one transaction (`@Transactional`) against a
+		   `read committed` database, so a sign in racing it reads whichever of the two
+		   states has committed - never a half of this one. Written in this order, an
+		   attacker still holding the old password either signs in before this
+		   transaction commits, in which case his row is already there for the delete
+		   below to take, or reads the new hash and is not let in at all. In the other
+		   order there is a window with no cover: he reads the OLD hash, this delete
+		   runs and finds nothing of his, and his session row commits AFTER it. That row
+		   then outlives the reset it was supposed to end, and `WhoIsAsking` pushes its
+		   `expires_at` out on every single use, so it does not age out on its own
+		   either - which is precisely the case V18 says a session is a row for.
+
+		   AND WHY THERE IS NO GUARD, deliberately rather than by oversight. Losing that
+		   race on purpose needs two connections, a committed state between them and a
+		   barrier holding one of them inside the window; that is a great deal of
+		   machinery for the position of one statement, and machinery that goes flaky on
+		   a slower machine, where flaky reads as "somebody else's problem" and gets
+		   muted. The cost of not having it is written down here instead: whoever swaps
+		   these two statements gets a green build, and only this comment stands between
+		   him and the window above.
+
+		   V18 names this the first of the three reasons a session is a row and not a
+		   signed token: "a member changes his password". Whoever is holding a cookie this member did not just mint -
 		   a borrowed computer, a copied profile - stops being let in the moment this
 		   member proves he can still read his own mailbox and picks a new password;
 		   a reset is the one defence a member locked out by a stolen cookie has; it
