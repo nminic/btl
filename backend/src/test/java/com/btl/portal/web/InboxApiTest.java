@@ -201,6 +201,22 @@ class InboxApiTest {
 		return db.sql("select id from pair_invite").query(Long.class).single();
 	}
 
+	/** The database's own key for the message of this subject, compared rather than
+	 *  trusted, the same reason {@link #teamInvitationId()} and {@link #pairInviteId()}
+	 *  are read off the row instead of remembered. */
+	private long messageId(String subject) {
+		return db.sql("select id from message where subject = ?").param(subject)
+				.query(Long.class).single();
+	}
+
+	/** The database's own text for the message of this subject, so a comparison can ask
+	 *  whether the answer carries THIS row's body rather than merely something shaped
+	 *  like one. */
+	private String bodyOf(String subject) {
+		return db.sql("select body from message where subject = ?").param(subject)
+				.query(String.class).single();
+	}
+
 	/**
 	 * @param toNumber   who it is for, or {@code null} for the whole league - a
 	 *                   {@code member_number} that matches no row is exactly what a null
@@ -214,10 +230,6 @@ class InboxApiTest {
 						+ " team_invitation_id, pair_invite_id) values ("
 						+ "(select id from competitor where member_number = ?),"
 						+ " (select id from competitor where member_number = ?),"
-						/* THE BODY IS THE SUBJECT AGAIN PLUS A LINE, and never one string for
-						   every message. A fixture where every body is the same makes the floor
-						   below unable to tell `body` from any other field that repeats, and a
-						   query answering the body in place of the sender would pass. */
 						+ " ?, ?, ?, timestamptz '" + sentAt + "', ?, ?)")
 				/* THE BODY IS ITS OWN TEXT AND NOT THE SUBJECT REPHRASED. An earlier draft
 				   built it as "Tekst poruke: " + subject, which made `body` vary only
@@ -340,8 +352,8 @@ class InboxApiTest {
 		assertThat(whole("ja@primer.rs"))
 				.as("the body of a message that is never his sat in his answer as text, even if no"
 						+ " field of the served shape happened to carry it")
-				.doesNotContain(TO_HER)
-				.doesNotContain(TO_A_THIRD);
+				.doesNotContain(bodyOf(TO_HER))
+				.doesNotContain(bodyOf(TO_A_THIRD));
 	}
 
 	/**
@@ -482,26 +494,41 @@ class InboxApiTest {
 	}
 
 	/**
-	 * AND EACH OF THE THREE IS THE COLUMN IT SAYS IT IS, compared with text nothing else
-	 * in the answer carries.
+	 * AND EACH OF THE FOUR IS THE COLUMN IT SAYS IT IS, {@code id} compared with the
+	 * database's own key for this row and the rest with text nothing else in the answer
+	 * carries.
 	 *
 	 * <p><b>Why the floor above is not enough, measured rather than argued.</b> It says
 	 * only that no field is a CONSTANT. With it in place, {@code from := body} still
 	 * passed the whole gate, 1790 cases green: a member would read the text of the
 	 * message where the sender's name belongs, on both screens that draw it. The floor
 	 * cannot see a column read for another column; it never asks whose value a field
-	 * carries.
+	 * carries. {@code id} fell through the same gap a different way: {@code id :=
+	 * team_invitation_id} answers {@code 0} for five of his six messages and the one
+	 * invitation's own id for the sixth, and two distinct values already satisfy "not a
+	 * constant" - the whole gate stayed green, 1791 cases.
 	 *
-	 * <p>So this case names them. {@code from} is a person, {@code subject} is a title
-	 * and {@code body} is a text that is neither - three sources that cannot stand in for
-	 * one another, which is why the fixture stopped deriving the body from the subject in
-	 * the same commit. {@code CommentApiTest} compares its body against literal text for
-	 * the identical reason.
+	 * <p>So this case names them. {@code id} is the row's own primary key, {@code from}
+	 * is a person, {@code subject} is a title and {@code body} is a text that is none of
+	 * those three - four sources that cannot stand in for one another, which is why the
+	 * fixture stopped deriving the body from the subject in the commit that first wrote
+	 * three of these four comparisons. {@code id} is compared with the database's own key
+	 * for this exact row, the same way
+	 * {@link #aMessageThatAsksCarriesTheBareIdentityOfWhatItAsksAbout} compares
+	 * {@code teamInvitationId} and {@code pairInviteId} rather than trusting a shape.
+	 * {@code body} is compared the identical way now and not by its shape any more: a
+	 * query that reads a neighbouring row's body still spells "Telo N, i ono nije
+	 * naslov." for some other N, so {@code startsWith}/{@code endsWith} could not tell
+	 * one member's own text from the row beside it. {@code CommentApiTest} compares its
+	 * body against literal text for the identical reason.
 	 */
 	@Test
-	void theSenderTheTitleAndTheTextAreEachTheirOwnColumn() throws Exception {
+	void theIdTheSenderTheTitleAndTheTextAreEachTheirOwnColumn() throws Exception {
 		JsonNode one = item("ja@primer.rs", TO_ME_READ);
 
+		assertThat(one.path("id").asLong())
+				.as("`id` does not carry this message's own primary key")
+				.isEqualTo(messageId(TO_ME_READ));
 		assertThat(one.path("from").asString())
 				.as("`from` does not carry the name of whoever sent it")
 				.isEqualTo("Druga Clanica");
@@ -509,10 +536,8 @@ class InboxApiTest {
 				.as("`subject` does not carry the title of the message")
 				.isEqualTo(TO_ME_READ);
 		assertThat(one.path("body").asString())
-				.as("`body` does not carry the text of the message; a column is being read"
-						+ " in place of another")
-				.startsWith("Telo ")
-				.endsWith(", i ono nije naslov.")
-				.doesNotContain(TO_ME_READ);
+				.as("`body` does not carry this message's own text; a column is being read"
+						+ " in place of another, possibly this same row's neighbour")
+				.isEqualTo(bodyOf(TO_ME_READ));
 	}
 }
