@@ -288,7 +288,8 @@ class PasswordResetApi {
 		   WRITTEN. THE ORDER OF THESE TWO STATEMENTS IS LOAD BEARING AND NOTHING
 		   MEASURES IT - this sentence is all there is, and it says so rather than
 		   pretending otherwise. Moving this delete above the update three lines up
-		   passes the whole gate, every case at a hundred percent.
+		   passes the whole gate: measured 18.09.2026, 1909 cases, no failures, "All
+		   coverage checks have been met".
 
 		   WHY THE ORDER CARRIES ANYTHING. `SignInApi` is the only place under
 		   `src/main` that mints an `account_session` row, and it mints one after
@@ -301,9 +302,11 @@ class PasswordResetApi {
 		   below to take, or reads the new hash and is not let in at all. In the other
 		   order there is a window with no cover: he reads the OLD hash, this delete
 		   runs and finds nothing of his, and his session row commits AFTER it. That row
-		   then outlives the reset it was supposed to end, and `WhoIsAsking` pushes its
-		   `expires_at` out on every single use, so it does not age out on its own
-		   either - which is precisely the case V18 says a session is a row for.
+		   then outlives the reset it was supposed to end, and it does not age out on
+		   its own either: `SessionLife.LASTS` runs thirty days from the LAST use, and
+		   `WhoIsAsking` renews that whenever a use is more than `RENEW_AFTER` (one day)
+		   since the last renewal - so a cookie used once a day never expires at all.
+		   That is precisely the case V18 says a session is a row for.
 
 		   AND WHY THERE IS NO GUARD, which is a price rather than an oversight, and
 		   worth stating exactly. It is NOT that the portal cannot run two transactions
