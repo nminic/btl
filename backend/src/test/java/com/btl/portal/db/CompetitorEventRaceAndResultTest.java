@@ -547,8 +547,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"season_team.season_team_fk set null",
 				/* V24. Both CASCADE: nothing writes to this table yet (no page uses `includes`
 				   today), and a page that takes another in, or is taken in, is not a person -
-				   deleting either side of the relation is PDL.md:4376's own "administrator
-				   deletes a page" reaching a row that only ever names two pages. */
+				   deleting either side of the relation is the administrator deleting a page,
+				   which is PDL P28a, 06.08.2026, „Podaci drže sedam stavki" (Statične strane
+				   among them) plus PDL P28a, 30.07.2026, „Svaki red u entitetima ima dugme za
+				   brisanje", reaching a row that only ever names two pages. */
 				"static_page_include.static_page_include_included_fk cascade",
 				"static_page_include.static_page_include_page_fk cascade",
 				// V24. A page's own blocks go with it; nothing keeps a section past its page.

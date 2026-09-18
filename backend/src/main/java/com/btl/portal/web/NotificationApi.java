@@ -34,8 +34,8 @@ import java.io.IOException;
  * The screen still binds to {@code NOTIFICATION_KEYS = ['resultApproved', 'resultChanged',
  * 'newsletter']} ({@code session/context.ts}), which is the prototype's own mock and is
  * two mandatory mails P22 forbids switching off, plus a newsletter P22 never mentions and
- * {@code PDL.md:3039} explicitly removed the one thing close to it („obavestenja o
- * predstojecem dogadjaju nema uopste"). Mock data is provisional and is not carried into
+ * PDL P22, 11.08.2026, „obaveštenja o predstojećem događaju nema uopšte" explicitly
+ * removed the one thing close to it. Mock data is provisional and is not carried into
  * the backend on its own say-so; the schema is what actually encodes the settled P22
  * decision, six columns matching six sentences of it exactly, and this answers with
  * those six under their own names. Wiring {@code Settings.tsx} to them is a front end
