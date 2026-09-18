@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
@@ -70,6 +71,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"spring.mail.host=127.0.0.1",
 		"spring.mail.port=3326",
 		"spring.mail.properties.mail.smtp.auth=false",
+		/* THIS CONTEXT'S OWN NAME ON EVERY CONNECTION IT OPENS, so the case below can count
+		   the portal's backends and nobody else's. Every test class shares one Testcontainers
+		   database, so `pg_stat_activity` over the whole of it answers for strangers too. */
+		"spring.datasource.hikari.data-source-properties.ApplicationName=btl-registration-over-real-http",
 		"btl.portal.address=https://probni-portal.primer.rs"})
 class RegistrationOverRealHttpTest {
 
@@ -341,11 +346,60 @@ class RegistrationOverRealHttpTest {
 		}
 	}
 
-	/** How many backends of this database are sitting inside a transaction doing nothing. */
+	/**
+	 * The name this context puts on its connections, read back from the very property that
+	 * set it. Written out a second time as a constant it would be two sources for one
+	 * value, and the day somebody edited one of them the count below would quietly answer
+	 * about nobody.
+	 */
+	@Value("${spring.datasource.hikari.data-source-properties.ApplicationName}")
+	private String thisContextOnTheDatabase;
+
+	/**
+	 * How many backends OF THIS CONTEXT are sitting inside a transaction doing nothing.
+	 *
+	 * <p>Of this context, and that word is the whole point. One Testcontainers database is
+	 * shared by every test class in the suite, so a count over `pg_stat_activity` as a whole
+	 * answers 1 whenever ANY other context happens to hold a transaction - and the sentence
+	 * this case asserts, that the portal held a connection while somebody else's relay hung,
+	 * would then be true and false for the same number. Measured 18.09.2026: green on its
+	 * own, red inside the full suite, and the difference was two new contexts a different
+	 * branch had added.
+	 *
+	 * <p>The floor under the name is {@link #theNameReachesTheDatabase}: a property that
+	 * never arrives would leave every row unnamed, this count would answer 0 forever, and
+	 * the case would pass having measured nothing at all.
+	 */
 	private int backendsIdleInTransaction() {
 		return db.sql("select count(*) from pg_stat_activity"
-						+ " where datname = current_database() and state = 'idle in transaction'")
-				.query(Integer.class).single();
+						+ " where datname = current_database() and state = 'idle in transaction'"
+						+ " and application_name = ?")
+				.param(thisContextOnTheDatabase).query(Integer.class).single();
+	}
+
+	/**
+	 * THE NAME REALLY REACHES THE DATABASE, which is what lets the count above mean
+	 * anything. The connection this very statement runs on belongs to the same context, so
+	 * it is itself the proof; if the property were dropped on the way, this answers 0.
+	 */
+	@Test
+	void theNameReachesTheDatabase() {
+		/* BLANK IS A NAME THE DATABASE REPORTS QUITE HAPPILY, and it is the name every
+		   context that sets none reports too - so a blank one separates this context from
+		   nobody. Measured: with the property emptied, the half below still answered
+		   positive and this case passed while the count it protects had stopped telling
+		   anyone apart. */
+		assertThat(thisContextOnTheDatabase)
+				.as("this context has no name of its own on the database, so counting by name"
+						+ " counts every other context in the suite as well")
+				.isNotBlank();
+
+		assertThat(db.sql("select count(*) from pg_stat_activity"
+						+ " where datname = current_database() and application_name = ?")
+				.param(thisContextOnTheDatabase).query(Integer.class).single())
+				.as("no backend of this database carries this context's name, so the count of"
+						+ " connections idle in a transaction answers 0 whatever the portal does")
+				.isPositive();
 	}
 
 	/**

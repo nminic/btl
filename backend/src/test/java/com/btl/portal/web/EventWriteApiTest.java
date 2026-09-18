@@ -409,6 +409,37 @@ class EventWriteApiTest {
 	}
 
 	/**
+	 * A FORM THAT LEAVES OUT THE DESCRIPTION AND THE LINK IS WRITTEN, AND THEY LAND AS
+	 * EMPTY RATHER THAN AS NOTHING.
+	 *
+	 * <p>V7 holds both columns NOT NULL and lets them be empty, so the two are not the same
+	 * answer: left as null the insert would be refused by the database and reach an
+	 * administrator as a 500 after he filled the form in, which is the fault the case below
+	 * exists against one column along. Neither field is required of him - an event without
+	 * a page of its own is ordinary - so the form arriving without them is the common road
+	 * and not the odd one.
+	 *
+	 * <p>Both at once and not one at a time, because the code turns them over with one
+	 * sentence each: a case that sent only one would leave the other's turn unmeasured.
+	 */
+	@Test
+	void aFormWithoutADescriptionOrALinkIsWrittenWithBothEmpty() throws Exception {
+		Form withoutEither = new Form("Trka bez strane", LocalDate.parse("2028-05-20"),
+				aKnownTown(), null, null, "race", false, null, null);
+
+		MockHttpServletResponse answer = add(withoutEither, session);
+
+		assertThat(answer.getStatus())
+				.as("an event with no description and no link of its own was refused")
+				.isEqualTo(201);
+		assertThat(db.sql("select description, link from btl_event where id = ?")
+						.param(writtenId(answer))
+						.query((row, one) -> List.of(row.getString(1), row.getString(2))).single())
+				.as("a description and a link left out did not land as empty")
+				.containsExactly("", "");
+	}
+
+	/**
 	 * EVERY WAY A FORM CAN BE WRONG IS ANSWERED AS A SENTENCE, NEVER AS A SERVER FAULT.
 	 *
 	 * <p>Each row here is a rule V7 also holds. Left to the database every one of them
@@ -441,6 +472,54 @@ class EventWriteApiTest {
 				.isEqualTo(reason);
 		assertThat(howManyEvents())
 				.as("%s was refused and an event was written anyway", spoiled)
+				.isEqualTo(before);
+	}
+
+	/**
+	 * AND AN EDIT IS JUDGED BY THE SAME RULES AS A WRITE, row for row.
+	 *
+	 * <p>The same nine spoiled forms, sent to the other route. This is one case and not
+	 * nine because the rule it holds is that there is ONE judgement and not two: a portal
+	 * that grew a second, looser answer on the edit would let an administrator walk every
+	 * rule above by writing a good event and then changing it into a bad one. Measured
+	 * rather than assumed - before this case, both refusals on the edit route were lines no
+	 * test ever reached, and a line nothing reaches is a line nothing holds.
+	 *
+	 * <p>The row is asked for afterwards, because a refusal that had already written half of
+	 * itself would answer 400 and still leave the event changed.
+	 */
+	@ParameterizedTest
+	@CsvSource(nullValues = "-", value = {
+			"noName, theFormIsNotComplete",
+			"noDay, theFormIsNotComplete",
+			"noTown, theTownIsNotSaidOnce",
+			"bothTowns, theTownIsNotSaidOnce",
+			"countryBesideACodebookTown, theCountryBelongsToATypedTown",
+			"typedTownWithNoCountry, aTypedTownNamesItsCountry",
+			"aTownNobodyHas, theTownIsNotKnown",
+			"aCountryNobodyHas, theCountryIsNotKnown",
+			"aLinkThatIsNotOne, theLinkIsNotShaped",
+	})
+	void anEditIsAnsweredWithWhatIsWrongWithItTheSameWay(String spoiled, String reason)
+			throws Exception {
+
+		String addressBefore = slugOf(acted);
+		long before = howManyEvents();
+
+		MockHttpServletResponse answer = change(acted, spoiledIn(spoiled));
+
+		assertThat(answer.getStatus())
+				.as("%s was accepted on the edit route although the write route refuses it", spoiled)
+				.isEqualTo(400);
+		assertThat(reasonIn(answer))
+				.as("%s was refused on the edit route for a different reason than on the write"
+						+ " route", spoiled)
+				.isEqualTo(reason);
+		assertThat(slugOf(acted))
+				.as("%s was refused and the event was changed anyway", spoiled)
+				.isEqualTo(addressBefore);
+		assertThat(howManyEvents())
+				.as("%s was refused on the edit route and an event appeared", spoiled)
 				.isEqualTo(before);
 	}
 
