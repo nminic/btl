@@ -750,6 +750,44 @@ class TeamWriteApiTest {
 				.isOne();
 	}
 
+	/**
+	 * AND A WRITE THAT NAMES NO TYPE IS AN ADDRESS THAT IS NOT THERE, NOT AN ADDRESS THAT
+	 * WANTS A DIFFERENT TYPE.
+	 *
+	 * <p>415 says „this address is here and takes something else", which is the same
+	 * sentence as saying it is there - the leak {@code NothingIsHereRatherThanAlmost} exists
+	 * against, and the one branch of it that class says it cannot close, because a media
+	 * type refused while a handler is already running is raised far from
+	 * {@code handleNoMatch}. Declared on the mapping instead, the request never matches and
+	 * the dispatcher raises it where the portal's rule can turn it into „no handler".
+	 *
+	 * <p><b>Asked of a signed in member</b>, because a stranger is refused 401 by the chain
+	 * before any of this and would pass whatever the mapping said.
+	 *
+	 * <p>What this case cannot see is whether the two answers are the same BYTES: MockMvc
+	 * does not run the container's ERROR dispatch. That half is
+	 * {@code RightsOverRealHttpTest}, off a socket, and it is the case that found this.
+	 */
+	@Test
+	void aWriteThatNamesNoTypeIsAnAddressThatIsNotThere() throws Exception {
+		MockHttpServletResponse answer = http.perform(post("/api/teams").with(csrf())
+						.content(naming("  Tim bez tipa  "))
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(ME))))
+				.andReturn().getResponse();
+
+		assertThat(answer.getStatus())
+				.as("a write with no content type was told which type this address wants, which"
+						+ " is the same sentence as telling him the address is there")
+				.isEqualTo(404);
+
+		assertThat(http.perform(post("/api/zzzzzz").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(ME))))
+				.andReturn().getResponse().getStatus())
+				.as("an address that maps nothing no longer answers 404, so there is nothing"
+						+ " being compared here")
+				.isEqualTo(answer.getStatus());
+	}
+
 	private long countryKey() {
 		return db.sql("select id from country where code = 'RS'").query(Long.class).single();
 	}
