@@ -153,6 +153,15 @@ class RightsAtTheDoorTest {
 	 * floor - so the floor now looks at everything the portal's controllers map, and
 	 * anything meant to answer without a right is named here with its reason.
 	 *
+	 * <p><b>AND {@code /api/me/applications} IS THE EIGHTH, CLOSED THE IDENTICAL WAY AND
+	 * FOR THE IDENTICAL REASON {@code /api/attendance} IS.</b> ADL P-javno keeps it off
+	 * {@code READ_BY_ANYBODY} - it answers nobody but the one competitor it is about, so a
+	 * visitor is refused 401 before this door is ever asked - and reading what you yourself
+	 * are waiting on is not a moderator's action, so there is no box to tick for it and
+	 * every signed in account reads it, a plain competitor included.
+	 * {@code MyApplicationsApiTest} holds the other half, that a visitor really is refused,
+	 * because this file only measures what a route DECLARES.
+	 *
 	 * <p><b>It is a written list, and the floor under it is in the same file.</b>
 	 * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads the other side
 	 * off the dispatcher and compares the two EXACTLY, so a name that stops being a route
@@ -163,7 +172,7 @@ class RightsAtTheDoorTest {
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
 					"/api/attendance", "/api/verification", "/api/registration", "/error",
-					"/api/inbox", "/api/me/notifications");
+					"/api/inbox", "/api/me/notifications", "/api/me/applications");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 
