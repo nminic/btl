@@ -473,6 +473,72 @@ class InboxApiTest {
 	}
 
 	/**
+	 * EVERY MESSAGE CARRIES ITS OWN ROW, asked of all six at once rather than of one
+	 * chosen message.
+	 *
+	 * <p><b>This case exists because choosing a message is how four rounds of review went
+	 * by.</b> Each one found a field read off the wrong row, each fix named that field,
+	 * and the next round found the next field on the same list: the key, then the text,
+	 * then the day, then the sender. The list was written by hand, and a hand-written
+	 * list cannot be finished by thinking about the list - which is a rule this
+	 * repository already carries.
+	 *
+	 * <p><b>What made every one of them survive was the same arithmetic.</b> The subject
+	 * they were all asked about is {@code TO_ME_READ}, the one message of his that has a
+	 * row in {@code message_read}. Anything read through that join - {@code mr.message_id}
+	 * for the key, a sub-select on it for the body, {@code coalesce(mr.read_at, …)} for
+	 * the day, a {@code case when mr.competitor_id is not null} for the sender - answers
+	 * correctly for exactly that message and empty for the other five, and a case that
+	 * only ever looks at that one cannot tell the difference.
+	 *
+	 * <p><b>So the subject is not chosen at all.</b> The loop walks whatever the server
+	 * answered, reads each record's OWN row back by the key that record carries, and
+	 * compares every field against it. It cannot be incomplete per field, because it takes
+	 * the fields off the record rather than off a list somebody remembered to keep. That
+	 * is the twin of {@code Answers.noFieldIsTheSameInEveryRecord}, which asks whether
+	 * values differ; this one asks whose they are.
+	 */
+	@Test
+	void everyMessageCarriesTheColumnsOfItsOwnRow() throws Exception {
+		JsonNode whole = answer("ja@primer.rs");
+
+		assertThat(whole.size())
+				.as("the inbox came back empty, so this loop measures nothing")
+				.isGreaterThan(1);
+
+		int checked = 0;
+
+		for (JsonNode one : whole) {
+			long id = one.path("id").asLong();
+			Map<String, Object> row = db.sql("select from_name, subject, body, sent_at"
+							+ " from message where id = ?")
+					.param(id)
+					.query()
+					.singleRow();
+
+			assertThat(one.path("from").asString())
+					.as("the message answered under id %s does not carry its own sender", id)
+					.isEqualTo(row.get("from_name"));
+			assertThat(one.path("subject").asString())
+					.as("the message answered under id %s does not carry its own title", id)
+					.isEqualTo(row.get("subject"));
+			assertThat(one.path("body").asString())
+					.as("the message answered under id %s does not carry its own text", id)
+					.isEqualTo(row.get("body"));
+			assertThat(one.path("date").asString())
+					.as("the message answered under id %s does not carry the Belgrade day it was"
+							+ " sent on", id)
+					.isEqualTo(((java.sql.Timestamp) row.get("sent_at")).toInstant()
+							.atZone(SeasonClock.ZONE).toLocalDate().toString());
+			checked++;
+		}
+
+		assertThat(checked)
+				.as("fewer messages were compared with their own rows than the answer carried")
+				.isEqualTo(whole.size());
+	}
+
+	/**
 	 * AND NO FIELD OF THE ANSWER IS THE SAME IN EVERY MESSAGE, which is the floor every
 	 * other list of this API stands on and this one was delivered without.
 	 *
