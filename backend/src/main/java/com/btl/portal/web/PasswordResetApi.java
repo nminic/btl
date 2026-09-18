@@ -326,11 +326,12 @@ class PasswordResetApi {
 		   scaffolding already lives.
 
 		   V18 names this the first of the three reasons a session is a row and not a
-		   signed token: "a member changes his password". Whoever is holding a cookie this member did not just mint -
-		   a borrowed computer, a copied profile - stops being let in the moment this
-		   member proves he can still read his own mailbox and picks a new password;
-		   a reset is the one defence a member locked out by a stolen cookie has; it
-		   bought him nothing while a row nobody deleted kept answering 200. */
+		   signed token: "a member changes his password". Whoever is holding a cookie
+		   this member did not just mint - a borrowed computer, a copied profile -
+		   stops being let in the moment this member proves he can still read his own
+		   mailbox and picks a new password; a reset is the one defence a member
+		   locked out by a stolen cookie has; it bought him nothing while a row nobody
+		   deleted kept answering 200. */
 		db.sql("delete from account_session where account_id = ?")
 				.param(account).update();
 
