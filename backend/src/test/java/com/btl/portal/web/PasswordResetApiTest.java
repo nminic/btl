@@ -585,6 +585,16 @@ class PasswordResetApiTest {
 	 * archive or a forwarded message sets the password again after the member who
 	 * asked for this reset believes he is done, undoing it with nothing left to show
 	 * that anything happened.
+	 *
+	 * <p>AND THE ONE THE RESET WAS COMPLETED WITH IS RETIRED TOO - VISOK 1, security
+	 * review round 3. That half is asked here and not in
+	 * {@link #aUsedTokenCannotBeUsedTwice}, because that case gives its account a
+	 * single token: with one row, "the token that was used is spent" and "some one row
+	 * of this account is spent" are the same sentence, and neither case could tell them
+	 * apart. Measured - narrowing the spend to {@code order by id desc limit 1} passed
+	 * the WHOLE gate, 1872 cases at a hundred percent, while leaving the token the
+	 * member had just clicked alive for the hour V18 gives it. Whoever reaches a
+	 * forwarded copy of that link in the meantime sets the password again.
 	 */
 	@Test
 	void resettingRetiresEveryOtherLiveTokenOfTheSameAccount() throws Exception {
@@ -593,6 +603,17 @@ class PasswordResetApiTest {
 		String second = aValidToken(account);
 
 		assertThat(reset(first, NEW_PASSWORD, NEW_PASSWORD).getStatus()).isEqualTo(204);
+
+		String againWithFirst = "opet.prvi.token.2027";
+		MockHttpServletResponse used = reset(first, againWithFirst, againWithFirst);
+
+		assertThat(used.getStatus())
+				.as("the very token this reset was completed with still worked a second time,"
+						+ " while the account had another live one")
+				.isEqualTo(400);
+		assertThat(new StoredPassword().matches(againWithFirst, passwordHashOf(account)))
+				.as("the token that had just been used overwrote the password it had itself set")
+				.isFalse();
 
 		String secondPassword = "drugi.token.pokusaj.2027";
 		MockHttpServletResponse answer = reset(second, secondPassword, secondPassword);
