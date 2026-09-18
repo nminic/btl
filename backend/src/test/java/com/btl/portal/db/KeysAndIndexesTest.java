@@ -297,9 +297,10 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("static_page_include_pk", false,
 					"a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("static_page_include_position_unique", false,
-					"an order in principle (ADL.md:595), but not deferred: no row of this table exists"
-							+ " yet to move, and the day an admin screen reorders one is the day this becomes"
-							+ " one too, against data that can prove it"),
+					"an order in principle (ADL A7, 30.07.2026, „Pisana strana sme da preuzme\"), but"
+							+ " not deferred: no row of this table exists yet to move, and the day an admin"
+							+ " screen reorders one is the day this becomes one too, against data that can"
+							+ " prove it"),
 			new Key("static_page_include_once_per_page", false,
 					"whether one page already takes another in is looked up, not counted from one end"));
 

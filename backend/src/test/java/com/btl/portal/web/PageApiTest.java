@@ -226,8 +226,9 @@ class PageApiTest {
 	 * A PAGE CAN TAKE IN ANOTHER, IN THE ORDER THE INCLUDES ARE WRITTEN, AND A PAGE WITH
 	 * NO SECTION YET ANSWERS WITH AN EMPTY LIST RATHER THAN NOTHING AT ALL.
 	 *
-	 * <p>No page V24 seeds uses {@code includes} today. ADL.md:595 is the only decision
-	 * that asks for the field, and the one page it names, the president's address, is
+	 * <p>No page V24 seeds uses {@code includes} today. ADL A7, 30.07.2026, „Pisana strana
+	 * sme da preuzme drugu pisanu stranu" is the only decision that asks for the field,
+	 * and the one page it names, the president's address, is
 	 * taken in by the FRONT PAGE component directly rather than by another written
 	 * page's {@code includes} (`frontend/src/data/pages.ts`, {@code DRAWN_BY_A_SCREEN}).
 	 * Left untested, {@code includesByPage}'s loop body and a page's own
