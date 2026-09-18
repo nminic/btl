@@ -142,6 +142,17 @@ class RightsAtTheDoorTest {
 	 * {@code MyApplicationsApiTest} holds the other half, that a visitor really is refused,
 	 * because this file only measures what a route DECLARES.
 	 *
+	 * <p><b>AND B66 ADDS FOUR MORE, EACH OPEN FOR THE IDENTICAL REASON
+	 * {@code /api/registration} IS.</b> {@code /api/email-confirmation} and
+	 * {@code /api/password-reset} ask for a 256 bit token out of a link in a message, never
+	 * for a session; {@code /api/email-confirmation/resend} and
+	 * {@code /api/password-reset/request} ask only for an address, from somebody who is, by
+	 * construction, not signed in - a member who could sign in would not be confirming his
+	 * address or resetting a password he has forgotten. There is no box anybody could tick
+	 * that would let such a person in, which is the same sentence written above about
+	 * registering, and {@code ApiSecurity} opens all four by name with the reason written
+	 * there.
+	 *
 	 * <p><b>It is a written list, and the floor under it is in the same file.</b>
 	 * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads the other side
 	 * off the dispatcher and compares the two EXACTLY, so a name that stops being a route
@@ -152,7 +163,9 @@ class RightsAtTheDoorTest {
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
 					"/api/attendance", "/api/verification", "/api/registration",
-					"/api/me/applications", "/error");
+					"/api/me/applications", "/api/email-confirmation",
+					"/api/email-confirmation/resend", "/api/password-reset",
+					"/api/password-reset/request", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 

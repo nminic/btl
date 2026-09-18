@@ -40,11 +40,19 @@ import java.util.regex.Pattern;
  * <p><b>AND SINCE B58 THAT PLACE EXISTS AND IS ONE.</b> This said "until that bean
  * exists this is a boundary rather than a guard", and the boundary is closed:
  * {@code btl.portal.address} in {@code application.properties} is the only source,
- * {@code RegistrationApi}'s constructor is the only line that builds a {@code Portal}
- * out of it, and it builds it at start up - so an installation configured with an
- * address of the wrong shape does not come up at all, rather than sending links
- * nobody can use. Nothing that arrives over the wire can reach that constructor,
- * which is the whole of what the paragraph above is about.
+ * and every constructor that reads it builds a {@code Portal} out of it at start up -
+ * so an installation configured with an address of the wrong shape does not come up
+ * at all, rather than sending links nobody can use. Nothing that arrives over the
+ * wire can reach any of those constructors, which is the whole of what the paragraph
+ * above is about.
+ *
+ * <p><b>"The only line" stopped being literally one line on B66</b>, when
+ * {@code EmailConfirmationApi} and {@code PasswordResetApi} each gained a constructor
+ * doing exactly what {@code RegistrationApi}'s already did. What did not change is the
+ * property that sentence actually stood for - one source, refused at start up rather
+ * than at a member's expense - and that is what is asserted here rather than a count
+ * of call sites, which is exactly the kind of number a fourth sender would make stale
+ * again for no reason.
  *
  * <p>The type still earns its place: an address can only enter through one
  * constructor, so there is exactly one line in the portal to look at, and a

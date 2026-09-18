@@ -127,6 +127,27 @@ class ApiSecurity {
 						   belongs in nginx beside the one it copies, and PDL's „bot provera na
 						   prijavi takmicara" belongs with it. Neither is in this increment. */
 						.requestMatchers("/api/registration").permitAll()
+						/* B66: CONFIRMING AN ADDRESS AND ASKING FOR A FORGOTTEN PASSWORD, open for
+						   the same reason signing in is - whoever is asking has, by definition,
+						   no session yet. PDL, owner, 31.07.2026: confirming the address is "uslov
+						   za sve ostalo", so requiring the very thing it is a precondition of would
+						   leave nobody able to satisfy it. PDL of 5284: a forgotten password is
+						   asked for by "standardnim postupkom", which starts from a member who
+						   cannot sign in - that is the whole reason he is here.
+
+						   WHAT STANDS IN FRONT OF EACH ONE, named the way `/api/registration`'s own
+						   note names it. `/api/email-confirmation` and `/api/password-reset` ask
+						   for a 256 bit token nobody can guess at any rate a lock would help
+						   against, so neither needs one. `/api/email-confirmation/resend` and
+						   `/api/password-reset/request` ask only for an address and, like
+						   `/api/registration`, cost this server a database round trip and, when an
+						   account answers, a trip to the relay - so the same rate limit
+						   `frontend/nginx.conf` gives registration belongs beside these two, and is
+						   not in this increment either. */
+						.requestMatchers("/api/email-confirmation").permitAll()
+						.requestMatchers("/api/email-confirmation/resend").permitAll()
+						.requestMatchers("/api/password-reset").permitAll()
+						.requestMatchers("/api/password-reset/request").permitAll()
 						/* AND NOTHING ELSE UNDER /api ANSWERS `OPTIONS`. Measured on a running
 						   server on 13.09.2026, and it was a hole rather than an untidiness.
 
