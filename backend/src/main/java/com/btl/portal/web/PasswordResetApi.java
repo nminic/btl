@@ -290,12 +290,13 @@ class PasswordResetApi {
 		   pretending otherwise. Moving this delete above the update three lines up
 		   passes the whole gate, every case at a hundred percent.
 
-		   WHY THE ORDER CARRIES ANYTHING. `SignInApi` is the only place in the portal
-		   that mints an `account_session` row, and it mints one after reading
-		   `password_hash`. This route is one transaction (`@Transactional`) against a
-		   `read committed` database, so a sign in racing it reads whichever of the two
-		   states has committed - never a half of this one. Written in this order, an
-		   attacker still holding the old password either signs in before this
+		   WHY THE ORDER CARRIES ANYTHING. `SignInApi` is the only place under
+		   `src/main` that mints an `account_session` row, and it mints one after
+		   reading `password_hash`. This route is one transaction (`@Transactional`)
+		   against PostgreSQL at its default `read committed` - nothing in this portal
+		   sets an isolation level anywhere - so a sign in racing it reads whichever of
+		   the two states has committed, never a half of this one. Written in this
+		   order, an attacker still holding the old password either signs in before this
 		   transaction commits, in which case his row is already there for the delete
 		   below to take, or reads the new hash and is not let in at all. In the other
 		   order there is a window with no cover: he reads the OLD hash, this delete
@@ -304,14 +305,22 @@ class PasswordResetApi {
 		   `expires_at` out on every single use, so it does not age out on its own
 		   either - which is precisely the case V18 says a session is a row for.
 
-		   AND WHY THERE IS NO GUARD, deliberately rather than by oversight. Losing that
-		   race on purpose needs two connections, a committed state between them and a
-		   barrier holding one of them inside the window; that is a great deal of
-		   machinery for the position of one statement, and machinery that goes flaky on
-		   a slower machine, where flaky reads as "somebody else's problem" and gets
-		   muted. The cost of not having it is written down here instead: whoever swaps
-		   these two statements gets a green build, and only this comment stands between
-		   him and the window above.
+		   AND WHY THERE IS NO GUARD, which is a price rather than an oversight, and
+		   worth stating exactly. It is NOT that the portal cannot run two transactions
+		   at once: `PaymentNumberConcurrencyTest` already does, with two threads, a
+		   `CyclicBarrier`, a class deliberately outside the test transaction and a
+		   `finally` that deletes its own rows. That arrangement reaches a race between
+		   two requests. This one is inside THIS transaction, between two of its
+		   statements, and no barrier a test can hold reaches in here: measuring it means
+		   taking a lock on the `account` row from a second connection so this route
+		   blocks on the update, waiting on `pg_stat_activity` until it really is
+		   blocked, inserting a session in that gap and only then letting go. That is a
+		   fixture with more moving parts than the statement it watches, and one that
+		   reads as flaky on a slower machine, where flaky gets muted. So the cost is
+		   written down instead: whoever swaps these two statements gets a green build,
+		   and this comment is the only thing in his way. If it is ever worth a case,
+		   the lock-and-wait above is the shape, and the file named is where its
+		   scaffolding already lives.
 
 		   V18 names this the first of the three reasons a session is a row and not a
 		   signed token: "a member changes his password". Whoever is holding a cookie this member did not just mint -
