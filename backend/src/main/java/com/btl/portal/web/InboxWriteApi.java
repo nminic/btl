@@ -189,41 +189,47 @@ import java.util.Optional;
  * nullable precisely because „The portal itself is a sender too, and it has no row in
  * {@code competitor} at all", while every row THIS class writes fills it and names a
  * member. Nothing here is a second home for any of them.
- * <li><b>WHETHER A MEMBER WHOSE FEE HAS LAPSED MAY WRITE AT ALL. THIS IS AN OPEN QUESTION
- * AND IT IS THE OWNER'S, NOT THIS CLASS'S.</b> The paragraph above answers what an answer may
- * NAME, which is what PDL's rule of 13.09.2026 decides. Whether such a member may ACT is a
- * different question and nothing written answers it.
+ * <li><b>REFUSING A MEMBER WHOSE FEE HAS LAPSED. THE OWNER DECIDED IT ON 19.09.2026 AND IT IS
+ * NOT ENFORCED HERE, WHICH IS ITSELF THE POINT OF THE DECISION.</b> His words: „Zelim da od
+ * svih mesta clan kojem je istekla clanarina moze da pristupa SAMO strani za obnovu clanarine,
+ * dok ga verifikator ne odobri. Do tada ionako niko nema i ne treba da ima nacin da ga
+ * kontaktira recimo porukom, jer se SVE AKCIJE ZA NJEGA BRANE." So he may not write - and he
+ * may not do anything else either.
  * <ul>
- *   <li><b>And one half of it IS decided, which is what makes the rest a question rather than
- *   an oversight.</b> Signing in ignores {@code active} ON PURPOSE, and
- *   {@link com.btl.portal.domain.account.SignIn} says so in as many words: „nothing here reads
- *   the member number, the fee or the {@code active} flag, AND NOTHING MAY BE MADE TO", with
- *   V6's reason behind it and the owner's sentence of 11.08.2026 that membership and a
- *   confirmed address are two different things. So such a member holds a session BY DECISION
- *   rather than by omission, and refusing him here would be the first place this portal takes
- *   something away from him AFTER letting him in. Today this route accepts his message and his
- *   name lands in an active member's inbox.
- *   <li><b>Every place on this portal that reads {@code active} reads it about somebody being
- *   NAMED in an answer</b>, never about whoever is asking: {@link CompetitorApi}
+ *   <li><b>Which is why a condition in this class would be the wrong shape for a rule this
+ *   wide.</b> „Od svih mesta" and „sve akcije" are one rule at every route's door, and the
+ *   thing it replaces is exactly a habit of scattered checks. A seventh scattered one written
+ *   here would be something the general increment then has to take out, and until it did, this
+ *   route would refuse him while every other route let him through - which is the state the
+ *   decision exists to end. It is its own increment.
+ *   <li><b>And the state it is about is not reachable today, which is measured rather than
+ *   assumed.</b> Nothing in {@code backend/src/main} takes {@code active} from true to false:
+ *   the only two statements that write it at all are {@link PaymentApi}'s, and both set it
+ *   TRUE. A fee that lapses needs the renewal and the expiry that arrive with that same
+ *   increment.
+ *   <li><b>A NEIGHBOURING state IS reachable, though, and it is named here rather than left to
+ *   be found.</b> {@link RegistrationApi} CREATES a competitor with {@code active} false -
+ *   somebody who registered and has not paid - and links him to his account, so today such a
+ *   person reaches this route with a member behind his account and writes a message. He is not
+ *   a member whose fee has LAPSED; he is one who has never had one, and the owner's sentence is
+ *   about the first. Whether one rule covers both is that increment's question and not this
+ *   route's, and it is written down here so that it is asked rather than discovered.
+ *   <li><b>Signing in is the half that was already decided the other way, and it stays.</b>
+ *   {@link com.btl.portal.domain.account.SignIn}: „nothing here reads the member number, the
+ *   fee or the {@code active} flag, AND NOTHING MAY BE MADE TO", with V6's reason and the
+ *   owner's sentence of 11.08.2026 behind it. So the door that gives him a session is not the
+ *   door that is meant to stop him; what the decision of 19.09.2026 asks for is a refusal AFTER
+ *   he is signed in, at every route, pointing him at one page.
+ *   <li><b>Every place on this portal that reads {@code active} today reads it about somebody
+ *   being NAMED in an answer</b>, never about whoever is asking: {@link CompetitorApi}
  *   („where c.active"), {@link AttendanceApi}, {@link PairApi}, {@link CommentApi} (the number
  *   alone), {@link ResultApi} (the season alone), {@link MyApplicationsApi} (the other half).
- *   <li><b>The one route that does ask it of the asker says why, and the why is not general.</b>
- *   {@link PairWriteApi} reads it on both sides because of a decision about PAIRS - owner,
- *   11.08.2026, „Par se raskida kad jedna strana ne produzi clanarinu. Ne postoji par onda,
- *   raskida se" - and its own note corrects an earlier attempt to derive a general rule from it.
- *   <li><b>And the freshest member-written route does not ask it at all.</b>
- *   {@link TeamWriteApi}, merged 19.09.2026 for a member founding a team, reads
- *   {@code active} nowhere. So the portal has not decided this; it has not come up.
- *   <li><b>What is known about the consequence, for whoever decides:</b> such a member is on no
- *   list {@link CompetitorApi} serves, and this route names the addressee by a member number,
- *   so a message from him is one the recipient cannot answer. PDL P22 says only „Skriven
- *   profil, jer clanstvo nije aktivno... profil se ne prikazuje", and PDL P10 built the inbox
- *   for „ponuda i trazenje prevoza za trku", which is exactly the sort of thing somebody
- *   between two paid seasons would write.
+ *   {@link PairWriteApi} is the one that asks it of the asker, and its own note says the reason
+ *   is about PAIRS rather than general. That list is what the new rule replaces.
  * </ul>
- * The rule itself says what to do with a question that cannot be derived: „pita se vlasnik, ne
- * pogadja se." So nothing is refused here and nothing is decided here, and this bullet is the
- * question rather than an answer.
+ * None of this touches the paragraph above it: what an ANSWER may name is PDL's rule of
+ * 13.09.2026, the second form applies, and it is satisfied by the schema whatever is decided
+ * about who may act.
  * <li><b>A LENGTH.</b> V13 caps neither {@code subject} nor {@code body}, the portal has no
  * form for writing a message at all - there is no {@code *.form.json} for one and no screen
  * that sends - and no other writing route on this server invents a length either
