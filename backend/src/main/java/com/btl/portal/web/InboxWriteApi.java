@@ -572,11 +572,10 @@ class InboxWriteApi {
 	 * dispatch at all, so it cannot tell them apart however this line is written.
 	 *
 	 * <p>The one place on this portal that measures it is {@code RightsOverRealHttpTest}, and
-	 * for {@code /api/inbox} it asks only the {@code GET}. A case for this verb belongs beside
-	 * that one; it is not written here because that file is held by another branch in review,
-	 * and a copy of its machinery made in this one would be the imitation the note above is
-	 * about. So: the SHAPE of this refusal is argued, not measured, and that is the exact
-	 * extent of what is claimed.
+	 * for {@code /api/inbox} it now asks this verb beside the {@code GET}. A copy of its
+	 * machinery made here would only be the imitation the note above is about, so none is
+	 * needed: the SHAPE of this refusal is measured, not argued, and that is the exact extent
+	 * of what is claimed.
 	 *
 	 * <p>Returning {@code null} afterwards is how {@link InboxApi} says the same thing: the
 	 * error has been committed and there is no body left to write.
