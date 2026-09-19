@@ -563,20 +563,19 @@ class InboxWriteApi {
 	 * account could tell the two verbs apart by the shape of the refusal and learn from the
 	 * difference that writing lives at an address the portal never offered him.
 	 *
-	 * <p><b>AND NO CASE ON THIS BRANCH CAN FALL WHEN THIS LINE IS TURNED INTO
-	 * {@code setStatus}, WHICH IS A BOUNDARY AND IS WRITTEN DOWN RATHER THAN LEFT TO BE
-	 * FOUND.</b> Measured on this branch: the swap leaves the suite green with exit code 0.
+	 * <p><b>AND A CASE ON THIS BRANCH DOES FALL WHEN THIS LINE IS TURNED INTO
+	 * {@code setStatus}</b> (found on review: the old claim held only until the
+	 * case below grew to cover this address). The swap measures 370 against 225, twice.
 	 * The difference between the two is only visible over a REAL SOCKET - {@link RightsAtTheDoor}
 	 * measured it at 262 bytes against 412, because {@code sendError} runs the container's ERROR
 	 * dispatch and a status written onto the response does not - and MockMvc runs no ERROR
 	 * dispatch at all, so it cannot tell them apart however this line is written.
 	 *
 	 * <p>The one place on this portal that measures it is {@code RightsOverRealHttpTest}, and
-	 * for {@code /api/inbox} it asks only the {@code GET}. A case for this verb belongs beside
-	 * that one; it is not written here because that file is held by another branch in review,
-	 * and a copy of its machinery made in this one would be the imitation the note above is
-	 * about. So: the SHAPE of this refusal is argued, not measured, and that is the exact
-	 * extent of what is claimed.
+	 * for {@code /api/inbox} it now asks this verb beside the {@code GET}. A copy of its
+	 * machinery made here would only be the imitation the note above is about, so none is
+	 * needed: the SHAPE of this refusal is measured, not argued, and that is the exact extent
+	 * of what is claimed.
 	 *
 	 * <p>Returning {@code null} afterwards is how {@link InboxApi} says the same thing: the
 	 * error has been committed and there is no body left to write.
