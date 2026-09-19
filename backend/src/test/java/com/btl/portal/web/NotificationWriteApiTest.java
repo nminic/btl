@@ -216,6 +216,14 @@ class NotificationWriteApiTest {
 	 * {@code OpenRoutesStayReadOnlyTest} green too - the sentence was in the javadoc and
 	 * nothing held it.
 	 *
+	 * <p><b>AND ITS FIRST DRAFT MEASURED ITSELF, which was caught the same way.</b> That
+	 * draft rested the whole claim on {@code typeless} agreeing with {@code nowhere}, and a
+	 * mutation pointing BOTH sides at the real address left it green: the assertion had
+	 * become {@code x isEqualTo x}, and nothing else in the case would have noticed. The
+	 * claim is now the literal 404 with an empty body, which no partner can satisfy on its
+	 * behalf, and the comparison stayed as what it always was - corroboration that this 404
+	 * is the same 404 an absent address answers with.
+	 *
 	 * <p>Signed in, because an unauthenticated caller is refused 401 at both addresses and
 	 * the two would then agree for a reason that has nothing to do with this rule. <b>The
 	 * anchor is asked LAST, on purpose:</b> a proper write moves the row, and a row moved
@@ -227,14 +235,25 @@ class NotificationWriteApiTest {
 		MockHttpServletResponse typeless = untyped(HE_CHOOSES, PATH);
 		MockHttpServletResponse nowhere = untyped(HE_CHOOSES, NOTHING_IS_THERE);
 
-		assertThat(nowhere.getStatus())
-				.as("an address nothing maps did not answer 404 to a typeless write either, so"
-						+ " there is nothing here to compare against")
-				.isEqualTo(404);
-
+		/* THE CLAIM IS THIS LITERAL AND NOT THE COMPARISON BELOW IT, which is a correction
+		   rather than a preference: written the other way round, with the whole claim resting
+		   on `typeless` agreeing with `nowhere`, a mutation that points BOTH sides at the real
+		   address left the case green - the assertion had become `x isEqualTo x`. 415 is what
+		   a mapping without `consumes` answers here and 404 is what an address mapping nothing
+		   answers, so the number itself is the measurement. */
 		assertThat(List.of(typeless.getStatus(), typeless.getContentAsString()))
 				.as("a write with no Content-Type was told this address is here and wants a"
 						+ " different type, which an address that is not there never says")
+				.isEqualTo(List.of(404, ""));
+
+		assertThat(nowhere.getStatus())
+				.as("an address nothing maps did not answer 404 to a typeless write either, so"
+						+ " the 404 above is not what an absent address looks like on this server")
+				.isEqualTo(404);
+
+		assertThat(List.of(typeless.getStatus(), typeless.getContentAsString()))
+				.as("the two answers are both 404 and still differ, so one of them says"
+						+ " something about the address the other does not")
 				.isEqualTo(List.of(nowhere.getStatus(), nowhere.getContentAsString()));
 
 		assertThat(rowOf(HE_CHOOSES))
