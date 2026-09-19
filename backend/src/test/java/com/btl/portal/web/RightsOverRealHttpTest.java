@@ -712,7 +712,7 @@ class RightsOverRealHttpTest {
 	 * <p>The twin is a sibling of the real address by {@link #twinOf}, so no list of
 	 * prefixes is needed and nothing has to be kept equal by hand.
 	 *
-	 * <p><b>The four pairs below are written by hand, and that boundary is a decision and
+	 * <p><b>The five pairs below are written by hand, and that boundary is a decision and
 	 * not an oversight (found on review, recorded rather than left for the next reader to
 	 * question).</b> A floor over WHICH pairs belong on this list would have to track a
 	 * value through the code to answer "does this route refuse a member-less account", the
@@ -724,7 +724,7 @@ class RightsOverRealHttpTest {
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "GET /api/me/notifications",
-			"PUT /api/me"})
+			"PUT /api/me/notifications", "PUT /api/me"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way
