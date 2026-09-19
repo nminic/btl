@@ -424,7 +424,20 @@ class RightsOverRealHttpTest {
 				.map(Map.Entry::getKey).toList();
 	}
 
-	/** A route registered only while a case is asking, which is what a probe is. */
+	/**
+	 * A route registered only while a case is asking, which is what a probe is.
+	 *
+	 * <p><b>It changes nothing today, and that is measured rather than hoped.</b> Taking it
+	 * out on 19.09.2026 left both cases green: the {@code GET} order is narrowed to the open
+	 * list, which holds no probe, and the first address in the {@code POST} order is
+	 * {@code /api/email-confirmation}, which sorts ahead of the one probe that takes only a
+	 * {@code POST}. So this is a precaution and not a repair, written down as one - it is
+	 * here for the day a probe does sort first, which is the day the case would stop being
+	 * about the portal and start being about the test's own scaffolding, with nothing to say
+	 * so. What DOES fall when the derivation finds nothing is measured beside it: asked for a
+	 * verb no address takes alone, both methods below fail on their own sentence rather than
+	 * settling for the nearest address.
+	 */
 	private static boolean isAProbe(HandlerMethod handler) {
 		Class<?> nestedIn = handler.getBeanType().getEnclosingClass();
 
