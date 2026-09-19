@@ -50,16 +50,19 @@ public final class WhatARaceCarries {
 	/**
 	 * The most a distance can be, and the last place it may be cut.
 	 *
-	 * <p>{@code distance_km numeric(6,2)}, V7: four digits before the point and two after
-	 * it. Both are held against the catalogue rather than trusted, in
+	 * <p>{@code distance_km numeric(8,4)}, V25: four digits before the point and four
+	 * after it. Both are held against the catalogue rather than trusted, in
 	 * {@code RaceShapesMatchTheSchemaTest}, which reads {@code numeric_precision} and
 	 * {@code numeric_scale} off {@code information_schema} and rebuilds this number from
 	 * them.
+	 *
+	 * <p>The digits BEFORE the point are the ones V7 had; V25 widened the column without
+	 * moving the ceiling's order of magnitude, so a distance that fitted before fits now.
 	 */
-	private static final BigDecimal MOST_A_DISTANCE_CAN_BE = new BigDecimal("9999.99");
+	private static final BigDecimal MOST_A_DISTANCE_CAN_BE = new BigDecimal("9999.9999");
 
 	/** The digits after the point the column keeps, and the rest is not kept at all. */
-	private static final int DIGITS_KEPT_AFTER_THE_POINT = 2;
+	private static final int DIGITS_KEPT_AFTER_THE_POINT = 4;
 
 	private WhatARaceCarries() {
 	}
@@ -73,16 +76,30 @@ public final class WhatARaceCarries {
 	 * posledica he called deliberate: „uneto {@code 42.195} nije maraton nego „duze trke",
 	 * a {@code 21.0975} nije polumaraton nego „krace trke"."</b>
 	 *
-	 * <p>That sentence and {@code numeric(6,2)} cannot both be obeyed by accepting the
-	 * value: PostgreSQL does not refuse {@code 42.195}, it ROUNDS it to {@code 42.20}, and
-	 * {@code race.category} is generated as {@code marathon} the moment it does. So a
-	 * distance the owner decided is "duze trke" would be stored as a marathon, silently,
-	 * and no constraint anywhere would have been broken. A third decimal is therefore
-	 * refused rather than kept, because a value that is changed on the way in is not the
-	 * value that was entered.
+	 * <p><b>Whatever the column would silently CHANGE on the way in is refused, and the
+	 * line moved on 19.09.2026 because the column did.</b> Until V25 the column was
+	 * {@code numeric(6,2)} and a third decimal was refused: PostgreSQL does not reject
+	 * {@code 42.195}, it ROUNDS it to {@code 42.20}, and {@code race.category} is
+	 * generated as {@code marathon} the moment it does - a distance the owner decided is
+	 * "duze trke", stored as a marathon, silently, with no constraint anywhere broken.
+	 * Refusing it kept the portal honest and left an administrator unable to write down a
+	 * length he had really measured, so the owner settled it the other way: „Hocu da mogu
+	 * da unosim tacnu duzinu, ali se prikazuje zaokruzeno na dve ili manje decimala. Dakle
+	 * 42.203 treba da zaokruzi na 42.2, ali da vodi kao ultramaraton." V25 widened the
+	 * column to {@code numeric(8,4)} and {@code 42.195} is now kept exactly and
+	 * categorised {@code long}, which is what P5 asked for all along.
+	 *
+	 * <p><b>The QUESTION did not change, only the answer.</b> This still asks whether the
+	 * column would keep the value AS IT WAS TYPED, and a FIFTH decimal is refused today
+	 * for precisely the reason a third was refused yesterday. That is why the scale is a
+	 * constant held against {@code information_schema} rather than a number chosen here:
+	 * the day a migration widens the column again, the floor moves this with it instead of
+	 * leaving the two to disagree.
 	 *
 	 * <p>And the ceiling for the other reason: {@code 99999} is not rounded but overflows,
 	 * which reaches an administrator as a 500 rather than as a sentence about his form.
+	 * That half is untouched by V25, which added digits after the point and none before
+	 * it.
 	 *
 	 * <p>Negative is refused here too, so that {@code race_distance_not_negative} is a
 	 * sentence as well. Zero is a real answer and is not judged here: it is what a race
