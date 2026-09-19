@@ -33,9 +33,12 @@ import java.util.Optional;
  * annotation names a box the superadmin ticks for a moderator, and there is no box anybody
  * could tick that would let one member write to another: it is a consequence of being a
  * member, the identical sentence {@code RightsAtTheDoorTest} already writes about
- * {@code /api/inbox} on the reading side. The path is on that file's
- * {@code ANSWERS_WITHOUT_A_RIGHT} snapshot because of the {@code GET}, and that snapshot is
- * compared by PATH, so this verb needs no name of its own there. It is absent from
+ * {@code /api/inbox} on the reading side. <b>AND THIS VERB CARRIES ITS OWN NAME IN THAT
+ * FILE'S {@code ANSWERS_WITHOUT_A_RIGHT}, {@code POST /api/inbox}.</b> Since 19.09.2026 the
+ * snapshot is keyed by the PAIR and not by the path - „a path is not a route" - so the
+ * {@code GET}'s entry excuses the {@code GET} and nothing else. Taken out of that list, this
+ * route fails {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere}; measured,
+ * not argued. It is absent from
  * {@link ApiSecurity#READ_BY_ANYBODY}, so a caller who is not signed in is answered 401 by
  * the chain before this class runs, and there is no condition here about whether anybody
  * is signed in - a branch nothing can reach is a branch nothing can measure.
@@ -207,13 +210,18 @@ import java.util.Optional;
  *   the only two statements that write it at all are {@link PaymentApi}'s, and both set it
  *   TRUE. A fee that lapses needs the renewal and the expiry that arrive with that same
  *   increment.
- *   <li><b>A NEIGHBOURING state IS reachable, though, and it is named here rather than left to
- *   be found.</b> {@link RegistrationApi} CREATES a competitor with {@code active} false -
- *   somebody who registered and has not paid - and links him to his account, so today such a
- *   person reaches this route with a member behind his account and writes a message. He is not
- *   a member whose fee has LAPSED; he is one who has never had one, and the owner's sentence is
- *   about the first. Whether one rule covers both is that increment's question and not this
- *   route's, and it is written down here so that it is asked rather than discovered.
+ *   <li><b>AND A NEIGHBOURING STATE IS REACHABLE TODAY, WHICH IS A FAULT AND NOT A
+ *   QUESTION.</b> {@link RegistrationApi} creates a competitor with {@code active} false and
+ *   links him to his account, so somebody who registered and NEVER paid writes a message here
+ *   - measured on this branch: 201, and the row really enters {@code message}. That overturns
+ *   PDL P8, „Pre placanja clan sme da otvori nalog, ali nigde nije vidljiv i NE MOZE NISTA DA
+ *   RADI U SISTEMU", and PDL P21, „„Registrovan a neplacen" nije uloga nego stanje Takmicara:
+ *   ima nalog, nigde nije vidljiv i ne moze nista". It is not repaired in this increment by
+ *   the owner's decision of 19.09.2026 above: the same hole already stands on {@code main} -
+ *   {@link TeamWriteApi} reads {@code active} nowhere, so an unpaid registrant may put a team
+ *   forward - and one rule at every door replaces the scattered checks rather than adding
+ *   another. It is a debt waiting for that sweep, named here so nobody reads this route's
+ *   silence as permission.
  *   <li><b>Signing in is the half that was already decided the other way, and it stays.</b>
  *   {@link com.btl.portal.domain.account.SignIn}: „nothing here reads the member number, the
  *   fee or the {@code active} flag, AND NOTHING MAY BE MADE TO", with V6's reason and the
@@ -252,9 +260,10 @@ import java.util.Optional;
  * iz tudjeg sandučeta je brisanje istorije." Marking one read is {@code message_read}, which
  * {@link InboxApi} READS and nothing writes - so the portal's unread counter (PDL P32) can
  * never fall. It is left out of this increment for a reason that is about the repository
- * rather than about the feature: the smallest shape it can take is a route of its own, at a
- * path {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT} would have to name, and that
- * snapshot is a file two other branches in review already share.
+ * rather than about the feature: the smallest shape it can take is a route of its own, and
+ * since 19.09.2026 a new route owes its OWN {@code VERB PATH} entry in
+ * {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT}. Sharing this path with the two verbs
+ * already named there buys it nothing, which is the whole point of the pair.
  * <li><b>A REPLY, BLOCKING AND REPORTING.</b> PDL P18 puts „blokiranje i prijava
  * neprikladnog ponasanja" in the same sentence as private messages, and neither has a table,
  * a column or a screen. Until one exists, ANY active member may be written to by any member,
