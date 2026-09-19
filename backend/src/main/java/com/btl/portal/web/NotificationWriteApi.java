@@ -163,9 +163,18 @@ class NotificationWriteApi {
 	 * A switch the form did not send, which is the only refusal here that is not a 404.
 	 *
 	 * <p>ADL A54, 19.09.2026, owner, on three offered outcomes: „`PUT` koji ne posalje neko
-	 * polje odbija se sa 400, i kaze se sta fali. Isto na svakoj upisnoj ruti portala, bez
-	 * izuzetka." Spelt the same word {@link RaceWriteApi} and {@link TeamWriteApi} spell it,
-	 * because it is one sentence about a different form.
+	 * polje odbija se sa 400, i kaze se sta fali." Spelt the same word {@link RaceWriteApi}
+	 * and {@link TeamWriteApi} spell it, because it is one sentence about a different form.
+	 *
+	 * <p><b>„Isto na svakoj upisnoj ruti portala, bez izuzetka" is not part of that owner
+	 * sentence</b>, and was corrected 19.09.2026 when an independent review of PR 309 found
+	 * it standing here in his voice without being his: it was this codebase's own extension
+	 * of a choice made for one route into a rule for the whole portal. What A54 actually
+	 * settles for every route, the owner's own words the same day and also on three offered
+	 * outcomes, is narrower: „izostavljeno polje nikad ne sme tiho da promeni vrednost; sme
+	 * da znaci 'ne diraj', nikad 'vrati na podrazumevano'." A route picks which of the two a
+	 * left-out field means and says which; this one, like {@link RaceWriteApi}, picks
+	 * refusal.
 	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 

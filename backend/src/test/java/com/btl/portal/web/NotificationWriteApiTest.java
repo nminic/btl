@@ -184,6 +184,16 @@ class NotificationWriteApiTest {
 		MockHttpServletResponse nowhere = sentBy(MODERATOR_WHO_DOES_NOT_RACE, NOTHING_IS_THERE,
 				body(WHAT_HE_CHOOSES));
 
+		/* THE CLAIM IS THIS LITERAL AND NOT THE COMPARISON BELOW IT, for the same reason
+		   `aWriteCarryingNoContentTypeIsAnsweredLikeAnAddressThatIsNotThere` states it:
+		   written the other way round, with the whole claim resting on `refused` agreeing
+		   with `nowhere`, a mutation that points NOTHING_IS_THERE at PATH leaves the case
+		   green - the assertion had become `x isEqualTo x`. */
+		assertThat(List.of(refused.getStatus(), refused.getContentAsString()))
+				.as("an account naming no member was not answered like an address that is not"
+						+ " there, which is 404 with an empty body")
+				.isEqualTo(List.of(404, ""));
+
 		assertThat(nowhere.getStatus())
 				.as("the address nothing maps did not answer 404, so comparing the refusal with"
 						+ " it says nothing about what the refusal hides")
@@ -242,6 +252,25 @@ class NotificationWriteApiTest {
 		MockHttpServletResponse toNoMemberMalformed =
 				sentBy(MODERATOR_WHO_DOES_NOT_RACE, PATH, notJson);
 		MockHttpServletResponse toNoMemberEmpty = sentBy(MODERATOR_WHO_DOES_NOT_RACE, PATH, "");
+
+		/* THE CLAIM IS THIS LITERAL AND NOT THE COMPARISON BELOW IT, for the same reason
+		   `aWriteCarryingNoContentTypeIsAnsweredLikeAnAddressThatIsNotThere` states it:
+		   written the other way round, with the whole claim resting on `toNoMember*`
+		   agreeing with `nowhere*`, a mutation that points NOTHING_IS_THERE at PATH leaves
+		   the case green - the assertion had become `x isEqualTo x`. The member check runs
+		   before the body is ever read (`change`'s own javadoc), so both bodies answer
+		   identically here regardless of what they carry. */
+		assertThat(List.of(toNoMemberMalformed.getStatus(),
+				toNoMemberMalformed.getContentAsString()))
+				.as("an account naming no member was not answered like an address that is not"
+						+ " there, which is 404 with an empty body, for a body the portal"
+						+ " cannot parse")
+				.isEqualTo(List.of(404, ""));
+		assertThat(List.of(toNoMemberEmpty.getStatus(), toNoMemberEmpty.getContentAsString()))
+				.as("an account naming no member was not answered like an address that is not"
+						+ " there, which is 404 with an empty body, for a body carrying"
+						+ " nothing at all")
+				.isEqualTo(List.of(404, ""));
 
 		assertThat(List.of(toNoMemberMalformed.getStatus(),
 				toNoMemberMalformed.getContentAsString()))
