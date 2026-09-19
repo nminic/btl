@@ -179,6 +179,20 @@ class RightsAtTheDoorTest {
 	 * registering, and {@code ApiSecurity} opens all four by name with the reason written
 	 * there.
 	 *
+	 * <p><b>AND B77 ADDS ONE, WHICH IS THE FIRST ROUTE A MEMBER WRITES AT A SUB-PATH.</b>
+	 * {@code PUT /api/pairs/{id}} is somebody answering a question that was put to HIM, and
+	 * there is no box anybody could tick that would open it: pairing up is what every member
+	 * may do, which is the sentence {@code /api/comments} and {@code /api/me/applications} are
+	 * on this list for. <b>What stands in place of a right is the invitation itself.</b> A
+	 * {@code pair_invite} names the one person who may answer it, so the thing that protects
+	 * this address is not a privilege somebody holds but the row's own {@code to_id}:
+	 * {@code PairWriteApi} asks for the question AND its addressee in one statement, and
+	 * {@code PairWriteApiTest} measures that a question belonging to somebody else answers
+	 * exactly what a question that does not exist answers. The path cannot go on
+	 * {@link ApiSecurity#READ_BY_ANYBODY} instead, because that list GRANTS reading to a
+	 * visitor and nothing at this address may be read at all - {@code /api/pairs} is on it and
+	 * this is a different path.
+	 *
 	 * <p><b>It is a written list, and the floor under it is in the same file.</b>
 	 * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads the other side
 	 * off the dispatcher and compares the two EXACTLY, so a name that stops being a route
@@ -191,7 +205,8 @@ class RightsAtTheDoorTest {
 					"/api/attendance", "/api/verification", "/api/registration",
 					"/api/inbox", "/api/me/notifications", "/api/me/applications",
 					"/api/email-confirmation", "/api/email-confirmation/resend",
-					"/api/password-reset", "/api/password-reset/request", "/error");
+					"/api/password-reset", "/api/password-reset/request",
+					"/api/pairs/{id}", "/error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 

@@ -159,33 +159,63 @@ import java.util.Optional;
  * another for the next keeps both, which is PDL P13, 07.09.2026 („Od 1. januara clan sme da
  * drzi dva: onaj u kom trci sezonu koja tece, i onaj napravljen za sledecu").
  *
- * <p><b>WHAT IS NOT ASKED ABOUT EITHER OF THEM, AND IT IS A BOUNDARY RATHER THAN AN
- * OVERSIGHT: WHETHER THE FEE IS PAID.</b> „Par se raskida kad jedna strana ne produzi
- * clanarinu" (owner, 11.08.2026, „Ne postoji par onda, raskida se") is enforced by the READER
- * and not here: {@link PairApi} serves no pair whose half has lapsed and says in its own
- * javadoc that it „is the only thing between a pair that does not exist and a public answer".
- * Asking it HERE would be asking the wrong question, and that is measured rather than felt:
- * {@code competitor.active} answers about the season that is RUNNING, while a pair is formed
- * for the one that is NOT, and the table that knows membership by season
+ * <p><b>THREE THINGS BELOW ARE DERIVED AND NOT DICTATED, AND EACH SAYS SO AND NAMES WHAT IT
+ * IS DERIVED FROM.</b> The owner confirmed all three on 19.09.2026, and the reason they are
+ * marked is a fault this repo has already paid for: a constraint somebody reasons out, written
+ * in the same tone as one copied from the journal, later reads as the owner's own decision and
+ * quietly overturns it. None of the three is in {@code PDL.md} or {@code ADL.md} as a sentence
+ * of his.
+ *
+ * <p><b>DERIVED 1: WHETHER THE FEE IS PAID IS NOT ASKED ABOUT EITHER OF THEM.</b> Two sources,
+ * both named:
+ *
+ * <ul>
+ * <li><b>PDL P13 about every change of side:</b> one „se sme zatraziti bilo kad tokom godine",
+ * and only „stupa na snagu tek 1. januara naredne sezone, i to samo ako su clanarine
+ * izmirene". The fee is a condition on the EFFECT, and the effect is not this route's.
+ * <li><b>{@link PairApi} already enforces the other sentence on the way out.</b> „Par se
+ * raskida kad jedna strana ne produzi clanarinu" (owner, 11.08.2026, „Ne postoji par onda,
+ * raskida se"): that reader serves no pair whose half has lapsed and says in its own javadoc
+ * that it „is the only thing between a pair that does not exist and a public answer".
+ * </ul>
+ *
+ * <p>And asking it HERE would be asking the WRONG QUESTION, which is measured rather than
+ * felt: {@code competitor.active} answers about the season that is RUNNING, while a pair is
+ * formed for the one that is NOT, and the table that knows membership by season
  * ({@code membership (competitor_id, season, basis)}, PDL, B50) has no row for the season
  * being formed until it goes on sale on 1 October - so a condition over either column would
- * refuse EVERY pair agreed between January and September. PDL P13 points the same way about
- * every change of side: one „se sme zatraziti bilo kad tokom godine", and only „stupa na
- * snagu tek 1. januara naredne sezone, i to samo ako su clanarine izmirene" - the fee is a
- * condition on the EFFECT and the effect is the reader's. {@link TeamWriteApi} asks nothing
+ * refuse EVERY pair agreed between January and September. {@link TeamWriteApi} asks nothing
  * about the fee either, for a team put forward under the same rules. The day forming really
- * depends on membership, it is one decision in one place and this paragraph is where it
- * lands.
+ * depends on membership, it is one decision in one place and this paragraph is where it lands.
  *
- * <p><b>And two more things this class deliberately does not refuse.</b> A member who has
- * REGISTERED but has no member number yet (V16 made the column nullable) cannot be INVITED,
- * because the question names him by his number and a row without one matches nothing - a
- * consequence of the address the screen has and not a rule anybody wrote; he may still
- * ACCEPT, and {@link PairApi} already answers a pair with a missing number rather than
- * failing over it. And a member who joined during a running season is not refused either:
- * „Clan koji se prijavi tokom aktivne sezone ne ulazi u plasmane te sezone... ni u parove"
- * (owner, 31.07.2026) is a sentence about STANDINGS in THAT season, and the pair this route
- * makes is for a season that has not begun.
+ * <p><b>DERIVED 2: A MEMBER WITH NO NUMBER YET MAY ACCEPT, AND CANNOT BE ASKED.</b> Since V16
+ * a row in {@code competitor} is a person who REGISTERED and a member is a row whose number is
+ * there. Not being askable is not a rule anybody wrote: the question names its target BY THE
+ * NUMBER ON HIS CARD, and a row without one matches no number at all, so it follows from the
+ * address the screen has in its hand. <b>The source is that the question was left to this
+ * increment by name:</b> {@code PairApiTest} says „Whether somebody without one may be in a
+ * pair is a question for the flow that makes pairs and not for a reader", and this route is
+ * that flow. It is answered by a case ({@code aMemberWithNoNumberYetMayStillAnswerAQuestion})
+ * and not by the reasoning in this paragraph, which is the difference between a boundary and
+ * an opinion.
+ *
+ * <p><b>DERIVED 3: A QUESTION STANDING IN THE OTHER DIRECTION REFUSES A NEW ONE, WHICH IS
+ * STRICTER THAN THE SCHEMA.</b> V12 refuses only the same direction and names the other as a
+ * decision somebody else makes: „the screen hides the button when a question stands either
+ * way, but that is the screen deciding". {@code pages/profile/InviteToPair.tsx} is that
+ * screen, and it compares a SET of the two of them. <b>Stricter is not the same as a different
+ * answer, and that is the whole of why it is allowed:</b> every row this refuses is one the
+ * database would have stored and one the screen would never have sent, so nothing that the
+ * portal can produce is turned away, and no question that DOES stand is answered differently
+ * from the way V12 describes. What it buys is that one pair cannot become two questions in two
+ * inboxes with two answers. What it costs is named too: {@code pair_invite_asked_once} is
+ * never reached through this route.
+ *
+ * <p><b>And one thing that is not derived at all, because a recorded sentence settles it.</b>
+ * A member who joined during a running season is not refused: „Clan koji se prijavi tokom
+ * aktivne sezone ne ulazi u plasmane te sezone... ni u parove" (owner, 31.07.2026) is a
+ * sentence about STANDINGS in THAT season, and the pair this route makes is for a season that
+ * has not begun.
  */
 @RestController
 class PairWriteApi {
@@ -349,14 +379,11 @@ class PairWriteApi {
 			return no(HttpStatus.CONFLICT, THE_PAIR_WOULD_NOT_BE_MIXED);
 		}
 
-		/* IN EITHER DIRECTION, WHICH IS STRICTER THAN THE SCHEMA AND DELIBERATELY SO. V12
-		   refuses only the same question asked twice („one open question between two people,
-		   IN THAT DIRECTION") and says why the other direction is a row of its own: „the
-		   screen hides the button when a question stands either way, but that is the screen
-		   deciding". This is the server making the same decision the screen makes
-		   (`profile/InviteToPair.tsx`, over a set of the two of them), so two questions about
-		   one pair cannot sit in two inboxes with two answers. It also means
-		   `pair_invite_asked_once` is never reached through this route. */
+		/* IN EITHER DIRECTION, WHICH IS STRICTER THAN THE SCHEMA AND DELIBERATELY SO. This is
+		   DERIVED 3 at the top of this class: V12 refuses only the same question asked twice
+		   and names the other direction as the screen's decision, and this is the server
+		   making the screen's decision. The argument for why stricter is allowed, and what it
+		   costs, is written there rather than twice. */
 		if (aQuestionStandsBetween(me, other.get().id())) {
 			return no(HttpStatus.CONFLICT, A_QUESTION_ALREADY_STANDS);
 		}
@@ -397,10 +424,27 @@ class PairWriteApi {
 	 * addresses ADL A8's 404 was written for, there is nothing about this one to keep from
 	 * him.
 	 *
-	 * <p><b>The id is the QUESTION's, not the PAIR's.</b> {@code GET /api/pairs} answers
-	 * {@code racing_pair.id} at the same path, and these are two tables' keys; a caller
-	 * putting a pair's id here reaches an unrelated question or, far more often, the 404
-	 * above. Said out loud because the two are a single character apart in an address bar.
+	 * <p><b>THE ID IS THE QUESTION'S AND NOT THE PAIR'S, AND THAT IS A DECISION OF 19.09.2026
+	 * RATHER THAN A CURIOSITY.</b> {@code GET /api/pairs} answers {@code racing_pair.id} and
+	 * this write takes a {@code pair_invite.id}, so two tables' keys meet at one address. The
+	 * address stays as it is, for two reasons:
+	 *
+	 * <ul>
+	 * <li><b>The portal already has this shape and it is fresh.</b> {@code POST /api/teams}
+	 * makes no team either: it writes a {@code team_proposal}, which is what will BECOME a
+	 * team if somebody approves it. A pair and a team are deliberately alike here, which is
+	 * the owner's decision of 07.09.2026: „Kako se par pravi na ekranu: isto kao poziv u tim."
+	 * <li><b>No address serves two meanings at once, because {@code GET /api/pairs/{id}} does
+	 * not exist.</b> The collision is between one read of the COLLECTION and one write of a
+	 * MEMBER of a different collection, and nothing dispatches on the two together.
+	 * </ul>
+	 *
+	 * <p><b>THE BOUNDARY, WRITTEN AS PART OF THE DECISION: the day {@code GET /api/pairs/{id}}
+	 * is wanted, this decision is reopened.</b> From that moment one address would carry a
+	 * pair's key on the read and an invitation's key on the write, and no javadoc could keep a
+	 * caller from putting one where the other belongs. It is not a thing to patch then; it is
+	 * the question of what {@code /api/pairs/{id}} names, and it gets decided before that
+	 * route is written.
 	 */
 	@PutMapping(path = "/api/pairs/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> answer(@AuthenticationPrincipal WhoIsAsking.Member asking,
