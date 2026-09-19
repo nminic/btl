@@ -48,11 +48,18 @@ import java.util.Optional;
  * <p><b>AND IT IS WRITTEN BY A MEMBER, WHICH IS WHY IT CARRIES NO {@link RightIsNeeded}.</b>
  * That annotation names a box the superadmin ticks for a moderator, and no box anybody
  * could tick would let one member edit another's profile: editing his own is what every
- * member does, and it is the whole of what this route offers. {@code /api/me} is therefore
- * named in {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT} already, and it is named
- * there as a PATH - so this method needs nothing added to that snapshot and nothing in
- * that file is touched here. The day the snapshot becomes pairs of a method and a path,
- * {@code PUT /api/me} is the line it will want.
+ * member does, and it is the whole of what this route offers. So it is named in
+ * {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT}, and since 19.09.2026 that snapshot
+ * keys by the METHOD and the path together, so {@code PUT /api/me} is a line of its own
+ * beside the {@code GET} that was already there.
+ *
+ * <p><b>That line is the correction of the same day paying for itself, and it is worth a
+ * sentence because the first draft of this class said the opposite.</b> Written as bare
+ * paths, the snapshot would have excused this write by a name put there for a read: the
+ * address was already named, so nothing would have asked anybody about a verb added to it.
+ * The line is held in BOTH directions by one case rather than two, because that snapshot is
+ * compared exactly: taking the pair out fails it, and so does putting in a pair no
+ * controller maps. Both were run before this was opened.
  *
  * <p><b>And it is not on {@link ApiSecurity#READ_BY_ANYBODY}</b>, so a request arriving
  * with no session is answered 401 by the chain before this class runs. There is no
