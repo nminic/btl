@@ -35,11 +35,10 @@ import java.util.Optional;
  * </ul>
  *
  * <p><b>A SEPARATE CLASS FROM {@link MeApi} AND NOT A SECOND METHOD ON IT</b>, which is
- * the split the portal already makes four times over - {@link TeamApi} and
- * {@link TeamWriteApi}, {@link PairApi} and {@link PairWriteApi}, {@link EventApi} and
- * {@link EventWriteApi}, {@link ModeratorApi} and {@link ModeratorWriteApi}. A read that
- * answers who is asking and a write that reaches two tables inside a transaction share a
- * path and nothing else.
+ * the split the portal already makes three times over - {@link TeamApi} and
+ * {@link TeamWriteApi}, {@link PairApi} and {@link PairWriteApi}, {@link ModeratorApi} and
+ * {@link ModeratorWriteApi}. A read that answers who is asking and a write that reaches two
+ * tables inside a transaction share a path and nothing else.
  *
  * <p><b>AND IT IS WRITTEN BY A MEMBER, WHICH IS WHY IT CARRIES NO {@link RightIsNeeded}.</b>
  * That annotation names a box the superadmin ticks for a moderator, and no box anybody
@@ -77,7 +76,9 @@ import java.util.Optional;
  * This 404 is told to the caller about the caller's OWN account; {@code GET /api/me}
  * answers the same caller 200 at the same address, so the address's existence is not a
  * thing this answer could hide from him, and no other person's existence is behind it.
- * {@link TeamWriteApi} wrote the same paragraph for the same reason.
+ * {@link TeamWriteApi} weighed the same question for its own 404 and came to the same
+ * answer by a different road: its path is open to visitors and says out loud through
+ * {@code OPTIONS} that a write lives there.
  *
  * <p><b>THE MAPPING SAYS WHAT IT CONSUMES</b>, which {@link TeamWriteApi} measured on
  * 19.09.2026: without it, a request arriving with no {@code Content-Type} reaches the
