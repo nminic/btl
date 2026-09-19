@@ -59,7 +59,7 @@ import java.util.List;
  * STATE COLUMN TO FILTER ON, BECAUSE V12 SAYS THERE IS NONE ON PURPOSE.</b> "An
  * answer is not a column here: accepting an application writes a row in
  * {@code team_membership} and removes this one, refusing removes it... A state
- * column would be a second answer to 'is he in the team'." PDL P32, 05.09.2026,
+ * column would be a second answer to 'is he in the team'." PDL „Inkrement 134", 05.09.2026,
  * „Ni prijava ni poziv ne idu u moderatorski red za verifikaciju" is the product
  * side of the same fact - neither ever touches {@code verification} at all. So a
  * row in {@code team_application} or {@code team_invitation} naming this
@@ -128,12 +128,12 @@ import java.util.List;
  * proposal's {@code teamId} is null), and {@code teamId} is kept because an
  * EDIT's identity is nothing else. Nothing beyond those two is invented here.
  *
- * <p><b>ONE DECISION NAMED RATHER THAN SILENTLY COPIED: PDL P32, 06.09.2026,
+ * <p><b>ONE DECISION NAMED RATHER THAN SILENTLY COPIED: PDL „Inkrement 134", 06.09.2026,
  * „Prijava člana koji je u međuvremenu dobio tim se timu ne prikazuje" DOES
  * NOT REACH THIS CLASS, AND THE LINE RIGHT AFTER IT IS WHY.</b> That decision
  * hides a stale application from the TEAM'S queue, because a team admin accepting
  * it would pull the member out of a squad he has since joined without asking him
- * - a safeguard on the door the team's own future resource opens. PDL P32,
+ * - a safeguard on the door the team's own future resource opens. PDL „Inkrement 134",
  * „Prijava u oba slučaja ostaje njegova da je povuče, pa i dalje ima kraj koji ne
  * zavisi ni od koga drugog" draws the boundary in as many words -
  * the application stays HIS to withdraw either way, with an ending that depends
