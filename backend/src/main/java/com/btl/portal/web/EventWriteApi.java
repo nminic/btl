@@ -127,7 +127,20 @@ class EventWriteApi {
 	 * does not build.
 	 *
 	 * @param placeId a town out of the world codebook, which carries its own country
-	 *                (owner, 11.08.2026) - so a country may not be sent beside it
+	 *                (owner, 11.08.2026) - so a country may not be sent beside it. IT IS
+	 *                THE NUMBER {@code /api/places} SERVES, which is GeoNames' own and NOT
+	 *                {@code place.id}: {@link PlaceApi} selects {@code place.geonames_id},
+	 *                so the key is a number no caller has ever been given, and
+	 *                {@link RegistrationApi} writes the same sentence beside its own
+	 *                {@code placeId}. Until 19.09.2026 this route looked the number up as a
+	 *                key, and what that cost was measured over {@code V3__place.sql}: the
+	 *                codebook ships 47,016 towns, so a key runs from 1 to 47,016 while a
+	 *                mark runs from 362 to 13,697,165. For 46,989 towns an administrator
+	 *                was told {@link #THE_TOWN_IS_NOT_KNOWN} about a town the codebook has;
+	 *                for the other 27, whose mark falls inside the keys, nothing was said
+	 *                at all and ANOTHER town was written down - choosing Shahrak-e Qods
+	 *                (mark 362) wrote Kharkiv, Lavāsān (490) wrote Bijie, Alvand (10570)
+	 *                wrote Ferencváros
 	 * @param city    a town typed by hand instead, which then names its country
 	 * @param country the code of that country, {@code RS}, never its key - the same
 	 *                spelling {@link CalendarApi} answers with
@@ -153,8 +166,16 @@ class EventWriteApi {
 	private record Standing(long id, String slug, String name, LocalDate date) {
 	}
 
-	/** Everything about a request that has already been judged good. */
-	private record Checked(String kind, Long placeId, String city, Long countryId,
+	/**
+	 * Everything about a request that has already been judged good.
+	 *
+	 * @param placeKey the ROW of the codebook, and deliberately not called {@code placeId}
+	 *                 like the field it came from: the request carries GeoNames' mark and
+	 *                 the column is a key, and the two being one word is how they came to
+	 *                 be mistaken for each other. {@code countryId} beside it is a key for
+	 *                 the same reason and has always been one
+	 */
+	private record Checked(String kind, Long placeKey, String city, Long countryId,
 			boolean featured, String description, String link) {
 	}
 
@@ -186,7 +207,7 @@ class EventWriteApi {
 							+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 							+ " on conflict (slug) do nothing"
 							+ " returning id")
-					.params(address, typed.name().strip(), typed.date(), checked.placeId(),
+					.params(address, typed.name().strip(), typed.date(), checked.placeKey(),
 							checked.city(), checked.countryId(), checked.kind(), checked.featured(),
 							checked.description(), checked.link())
 					.query(Long.class).optional();
@@ -267,7 +288,7 @@ class EventWriteApi {
 			db.sql("update btl_event set slug = ?, name = ?, date = ?, place_id = ?, city = ?,"
 							+ " country_id = ?, kind = ?, featured = ?, description = ?, link = ?"
 							+ " where id = ?")
-					.params(address, typed.name().strip(), typed.date(), checked.placeId(),
+					.params(address, typed.name().strip(), typed.date(), checked.placeKey(),
 							checked.city(), checked.countryId(), checked.kind(), checked.featured(),
 							checked.description(), checked.link(), id)
 					.update();
@@ -345,7 +366,7 @@ class EventWriteApi {
 				return no(HttpStatus.BAD_REQUEST, THE_COUNTRY_BELONGS_TO_A_TYPED_TOWN);
 			}
 
-			return townExists(typed.placeId()) ? null
+			return placeKey(typed.placeId()).isPresent() ? null
 					: no(HttpStatus.BAD_REQUEST, THE_TOWN_IS_NOT_KNOWN);
 		}
 
@@ -362,7 +383,7 @@ class EventWriteApi {
 		boolean fromTheCodebook = typed.placeId() != null;
 
 		return new Checked(kindOf(typed),
-				typed.placeId(),
+				fromTheCodebook ? placeKey(typed.placeId()).orElseThrow() : null,
 				fromTheCodebook ? null : typed.city().strip(),
 				fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
 				Boolean.TRUE.equals(typed.featured()),
@@ -375,9 +396,26 @@ class EventWriteApi {
 		return isNothing(typed.kind()) ? WhatAnEventCarries.A_RACE : typed.kind();
 	}
 
-	private boolean townExists(long placeId) {
-		return Boolean.TRUE.equals(db.sql("select exists(select 1 from place where id = ?)")
-				.param(placeId).query(Boolean.class).single());
+	/**
+	 * THE ROW OF THE CODEBOOK A MARK NAMES, and nothing when the codebook has no such town.
+	 *
+	 * <p><b>Written exactly like {@link #countryKey} below, and asked in exactly the same
+	 * two places</b>, because it answers the same kind of question: a request names a row
+	 * of a codebook by the spelling that codebook publishes, and what goes into the column
+	 * is the key. {@link RegistrationApi} resolves the same field the same way
+	 * ({@code select id from place where geonames_id = ?}), and the owner settled on
+	 * 11.08.2026 that it must: „Mesto i drzava na registraciji rade isto kao na formi
+	 * dogadjaja ... Jedna kontrola i jedno pravilo za ceo portal, ne dva slicna."
+	 *
+	 * <p><b>Asked twice rather than carried, which is the shape {@link #countryKey} already
+	 * had here.</b> Once to say whether the form is wrong at all, and once to build the row;
+	 * between them sits a transaction and nothing that could change the answer. Threading
+	 * the first answer through to the second would make {@link #whatIsWrongWith} return
+	 * something other than "what is wrong", and that method has two callers.
+	 */
+	private Optional<Long> placeKey(long mark) {
+		return db.sql("select id from place where geonames_id = ?")
+				.param(mark).query(Long.class).optional();
 	}
 
 	private Optional<Long> countryKey(String code) {

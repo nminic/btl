@@ -53,6 +53,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * give different answers; two races on the event acted on and one on another, so "its
  * races" and "the races" differ; a result on each, so a move that carried the wrong ones
  * shows; and two moderators, each holding the tick the other is refused.
+ *
+ * <p><b>AND SINCE 19.09.2026 A TOWN IS TWO NUMBERS HERE AND NEVER ONE.</b> What travels is
+ * {@code place.geonames_id}, which is what {@link PlaceApi} serves; what the column holds is
+ * {@code place.id}. Until that day this file sent the KEY, so the route and this file agreed
+ * with each other and neither agreed with the portal - which is why the three cases about it
+ * name both numbers and assert that they differ before they measure anything.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -269,9 +275,74 @@ class EventWriteApiTest {
 				null, "race", false, "", "");
 	}
 
-	/** The key of a town that really is in the codebook, since 1 need not be. */
+	/**
+	 * THE NUMBER THE FORM REALLY SENDS FOR A TOWN, which is the codebook's own mark.
+	 *
+	 * <p>{@code /api/places} serves {@code place.geonames_id} ({@link PlaceApi}), so what
+	 * comes back over the wire is GeoNames' number and never {@code place.id} - the same
+	 * sentence {@link RegistrationApi} writes beside its own {@code placeId}, and the same
+	 * number {@code RegistrationApiTest} sends. Read out of a row rather than written down
+	 * here, because 1 is not a mark any town has: the smallest in the codebook is 362.
+	 */
 	private long aKnownTown() {
-		return db.sql("select id from place where rank = 1").query(Long.class).single();
+		return db.sql("select geonames_id from place where rank = 1").query(Long.class).single();
+	}
+
+	/**
+	 * A TOWN AS THE PORTAL SEES IT FROM BOTH SIDES: the number that travels and the row it
+	 * means.
+	 *
+	 * <p>The two are kept as a pair rather than as two longs because every case below has
+	 * to say which of them it is talking about, and a bare number called "the town" is
+	 * exactly how the two came to be mistaken for each other.
+	 */
+	private record Town(long mark, long key, String name) {
+	}
+
+	private Town aTown(String which, Object... params) {
+		return db.sql("select geonames_id, id, name from place where " + which)
+				.params(params)
+				.query((row, one) -> new Town(row.getLong(1), row.getLong(2), row.getString(3)))
+				.single();
+	}
+
+	/**
+	 * A TOWN WHOSE MARK IS THE KEY OF NO ROW AT ALL, which is all but twenty seven of them.
+	 *
+	 * <p>Measured over {@code V3__place.sql} on 19.09.2026: the codebook ships 47,016 towns,
+	 * so a key runs from 1 to 47,016 while a mark runs from 362 to 13,697,165. For 46,989
+	 * towns the mark falls outside the keys altogether, and a route reading the mark as a
+	 * key finds nothing and says so.
+	 *
+	 * <p>Never the first town by rank, because the fixture's own events sit on the first
+	 * two: "the town that was chosen" and "the town that was already there" have to be
+	 * different rows or an edit that wrote neither would still look right.
+	 */
+	private Town aTownWhoseMarkIsNobodysKey() {
+		return aTown("geonames_id > (select max(id) from place) and rank > 2 order by rank"
+				+ " limit 1");
+	}
+
+	/**
+	 * AND ONE WHOSE MARK IS ANOTHER TOWN'S KEY, which is the twenty seven.
+	 *
+	 * <p>This is the half that says nothing out loud: the route finds a row, writes it, and
+	 * answers 201. Measured the same day, three of them by name: choosing Shahrak-e Qods
+	 * (mark 362) wrote Kharkiv, Lavāsān (490) wrote Bijie, Alvand (10570) wrote Ferencváros.
+	 */
+	private Town aTownWhoseMarkIsSomebodyElsesKey() {
+		return aTown("geonames_id <= (select max(id) from place) and geonames_id <> id"
+				+ " order by rank limit 1");
+	}
+
+	/** The row a number names when it is read as a key, which is the wrong reading. */
+	private Town theTownKeyedBy(long key) {
+		return aTown("id = ?", key);
+	}
+
+	private long placeKeyOf(long event) {
+		return db.sql("select place_id from btl_event where id = ?").param(event)
+				.query(Long.class).single();
 	}
 
 	private String slugOf(long id) {
@@ -362,6 +433,117 @@ class EventWriteApiTest {
 						+ " where e.id = ?").param(written).query(String.class).single())
 				.as("the country beside a typed town is not the one that was typed")
 				.isEqualTo("HR");
+	}
+
+	/**
+	 * A TOWN IS FOUND BY THE MARK THE PORTAL SERVES, AND NOT BY THE KEY IT NEVER SHOWS.
+	 *
+	 * <p><b>The contract, written down one class along:</b> {@code placeId} is the number
+	 * {@code /api/places} serves, which is GeoNames' own and NOT {@code place.id} - the
+	 * portal has never seen the latter and must not start to
+	 * ({@link RegistrationApi}, beside its own {@code placeId}). {@link PlaceApi} is the
+	 * other half of it: what that route selects is {@code place.geonames_id}, so the key is
+	 * a number no caller can have.
+	 *
+	 * <p><b>This is the loud half of what a route reading it as a key does</b>, and it is
+	 * almost all of the codebook: for 46,989 of 47,016 towns the mark is the key of no row,
+	 * so an administrator choosing a town out of the list was told the town is not known.
+	 *
+	 * <p>The row is read out of the database rather than off the answer, because the answer
+	 * carries the address and never the town: a route that resolved nothing would say 201
+	 * and the same address either way.
+	 */
+	@Test
+	void aTownIsFoundByTheMarkThePortalServesAndNotByTheKeyItNeverShows() throws Exception {
+		Town chosen = aTownWhoseMarkIsNobodysKey();
+
+		assertThat(chosen.mark())
+				.as("the town this case picked carries one number for both, so reading the mark"
+						+ " and reading the key give the same row and nothing is measured")
+				.isNotEqualTo(chosen.key());
+
+		MockHttpServletResponse answer = add(aForm().withPlace(chosen.mark()), session);
+
+		assertThat(answer.getStatus())
+				.as("%s is in the codebook and was refused, because the number the form sends"
+						+ " was looked up as a key", chosen.name())
+				.isEqualTo(201);
+
+		assertThat(placeKeyOf(writtenId(answer)))
+				.as("the event was written against a row other than the one %s is",
+						chosen.name())
+				.isEqualTo(chosen.key());
+	}
+
+	/**
+	 * AND WHERE THE MARK HAPPENS TO BE ANOTHER TOWN'S KEY, THE TOWN THAT WAS CHOSEN IS THE
+	 * ONE WRITTEN DOWN.
+	 *
+	 * <p><b>This is the half nothing says out loud, and it is the reason this pair is two
+	 * cases rather than one.</b> Twenty seven of the codebook's marks fall inside the range
+	 * the keys occupy, and for those a route reading the mark as a key finds a row, writes
+	 * it, and answers 201. Measured on 19.09.2026: choosing Shahrak-e Qods wrote Kharkiv,
+	 * Lavāsān wrote Bijie, Alvand wrote Ferencváros.
+	 *
+	 * <p>Both towns are named in the fixture and asserted to be different rows, because
+	 * "the town that was chosen" and "the town a key of that number names" are the two
+	 * sources this case exists to tell apart.
+	 */
+	@Test
+	void aMarkThatIsAlsoAnotherTownsKeyStillWritesTheTownThatWasChosen() throws Exception {
+		Town chosen = aTownWhoseMarkIsSomebodyElsesKey();
+		Town mistaken = theTownKeyedBy(chosen.mark());
+
+		assertThat(mistaken.key())
+				.as("the fixture picked a town whose mark is nobody's key, so the silent half of"
+						+ " the fault cannot happen in this setting at all")
+				.isEqualTo(chosen.mark());
+		assertThat(mistaken.key())
+				.as("the town chosen and the town its mark names are one row, so being right and"
+						+ " being wrong write the same number")
+				.isNotEqualTo(chosen.key());
+
+		MockHttpServletResponse answer = add(aForm().withPlace(chosen.mark()), session);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+
+		assertThat(placeKeyOf(writtenId(answer)))
+				.as("%s was chosen and %s was written down, and the administrator was told the"
+						+ " event went in", chosen.name(), mistaken.name())
+				.isEqualTo(chosen.key());
+	}
+
+	/**
+	 * AND AN EDIT RESOLVES IT THE SAME WAY, which is the second door of the same action.
+	 *
+	 * <p>Asked of the town whose mark is somebody else's key, because that is the reading an
+	 * edit can do in silence: the event already carries a town, so a route that wrote the
+	 * wrong one leaves a row that looks filled in. The event being edited starts on the
+	 * codebook's first town and neither of the two this case names, so a route that wrote
+	 * nothing at all fails here too.
+	 */
+	@Test
+	void anEditFindsTheTownByItsMarkAsAWriteDoes() throws Exception {
+		Town chosen = aTownWhoseMarkIsSomebodyElsesKey();
+		Town mistaken = theTownKeyedBy(chosen.mark());
+
+		assertThat(mistaken.key())
+				.as("the town chosen and the town its mark names are one row, so the edit has"
+						+ " nothing to get wrong")
+				.isNotEqualTo(chosen.key());
+		assertThat(placeKeyOf(acted))
+				.as("the event being edited already stands on %s, so an edit that left the town"
+						+ " alone would pass this case", chosen.name())
+				.isNotEqualTo(chosen.key());
+
+		assertThat(change(acted, aForm().withPlace(chosen.mark()).withName("Trka drugi-2027")
+				.withDay(ITS_DAY)).getStatus())
+				.as("an edit naming %s was refused", chosen.name())
+				.isEqualTo(200);
+
+		assertThat(placeKeyOf(acted))
+				.as("the edit was told %s and left %s in the row", chosen.name(), mistaken.name())
+				.isEqualTo(chosen.key());
 	}
 
 	/**
