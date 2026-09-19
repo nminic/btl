@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.web.access.WebInvocationPrivilegeEvaluator;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -185,13 +186,27 @@ class RightsAtTheDoorTest {
 	 * fails just as loudly as a route that is not named. Padding it to make a build pass is
 	 * therefore not possible quietly, which is the whole reason it is a snapshot rather than
 	 * a rule.
+	 *
+	 * <p><b>AND EACH NAME CARRIES ITS VERB SINCE 19.09.2026, because a path is not a
+	 * route.</b> Written as bare paths, a name here excused an address for EVERY method it
+	 * maps: {@code /api/comments} standing for a {@code GET} would have gone on standing for
+	 * a {@code POST} added to the same address tomorrow, and nothing would have said so. The
+	 * floor keys by the pair, so the two sides can only be compared as pairs, and a verb
+	 * added to an address already named arrives here and asks for a decision once.
+	 *
+	 * <p>{@code ANY /error} is the one entry that names no verb, because the mapping names
+	 * none: {@code BasicErrorController} limits nothing and answers whatever the container
+	 * dispatches to it. It is written as the word rather than as eight lines, and the floor
+	 * never treats it as an excuse for a verb, because a mapping that limits no verb cannot
+	 * be excused by the open list at all.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
-			Set.of("/api/me", "/api/sign-in", "/api/sign-out", "/api/comments",
-					"/api/attendance", "/api/verification", "/api/registration",
-					"/api/inbox", "/api/me/notifications", "/api/me/applications",
-					"/api/email-confirmation", "/api/email-confirmation/resend",
-					"/api/password-reset", "/api/password-reset/request", "/error");
+			Set.of("GET /api/me", "POST /api/sign-in", "POST /api/sign-out",
+					"GET /api/comments", "GET /api/attendance", "GET /api/verification",
+					"POST /api/registration", "GET /api/inbox", "GET /api/me/notifications",
+					"GET /api/me/applications", "POST /api/email-confirmation",
+					"POST /api/email-confirmation/resend", "POST /api/password-reset",
+					"POST /api/password-reset/request", "ANY /error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 
@@ -213,6 +228,32 @@ class RightsAtTheDoorTest {
 	@Autowired
 	@Qualifier("requestMappingHandlerMapping")
 	private RequestMappingHandlerMapping mappings;
+
+	/**
+	 * THE CHAIN ITSELF, ASKED WHETHER IT WOULD LET A STRANGER DO THIS AT THIS ADDRESS.
+	 *
+	 * <p><b>This is here instead of the three verbs written out again.</b>
+	 * {@code ApiSecurity.READ_BY_ANYBODY} says WHICH addresses are open and says nothing
+	 * about the methods; the methods are three lines inside the chain's lambda, and until
+	 * 18.09.2026 there were none at all - a path on that list was open to every verb there
+	 * is. Copied here as a set of names, they would be a second home of that fact, and the
+	 * day the chain opened a fourth verb or dropped one, the two would disagree with nothing
+	 * to say so.
+	 *
+	 * <p>{@link WebInvocationPrivilegeEvaluator} is the question asked of the thing that
+	 * answers it. Spring Security builds one per {@code SecurityFilterChain} out of the very
+	 * rules {@code ApiSecurity} writes, and {@code isAllowed(path, method, null)} is "would
+	 * an unauthenticated caller be authorised for this". There is no list to keep, and no
+	 * spelling of a rule to recognise.
+	 *
+	 * <p>What it is NOT is a way of asking whether a route is reachable: everything the
+	 * chain opens by name - signing in, registering, the two links out of a message - is
+	 * allowed to a stranger too, and each of those is a decision that belongs in the
+	 * snapshot above rather than one that excuses itself. So the excuse below is the
+	 * CONJUNCTION: on the open list, and granted this verb.
+	 */
+	@Autowired
+	private WebInvocationPrivilegeEvaluator privileges;
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -795,13 +836,36 @@ class RightsAtTheDoorTest {
 	 * says - {@link #theDoorDecides} asks each annotation whether it is itself marked
 	 * {@link AskedAtTheDoor} - so a third kind is counted on the day it is written, and
 	 * nothing here names either of the two that exist.
+	 *
+	 * <p><b>AND IT KEYS BY THE PAIR AND NOT BY THE PATH, which is the correction of
+	 * 19.09.2026 and was a hole rather than an untidiness.</b> The excuse used to be
+	 * {@code READ_BY_ANYBODY.contains(path)}, which threw away the METHOD - so a route
+	 * WRITING to an address anybody may read was excused by the address. Measured before the
+	 * correction, on this branch: {@code @RightIsNeeded} taken off {@code POST /api/events},
+	 * which is every signed in competitor writing the league's calendar, left this class and
+	 * {@code ApiSecurityTest} and {@code OpenRoutesStayReadOnlyTest} all green - 28 cases,
+	 * BUILD SUCCESS. Taken off {@code POST /api/races} it did the same.
+	 *
+	 * <p><b>Where the hole came from is worth a line, because half of it was repaired and
+	 * the half in the guard was not.</b> Until 18.09.2026 the open list really did open every
+	 * verb, and this filter was a true sentence about it. PR 295 narrowed the chain to
+	 * {@code GET}, {@code HEAD} and {@code OPTIONS} on the day {@code /api/events} became the
+	 * first address read by anybody and written by somebody. The chain stopped agreeing with
+	 * this line that day, and nothing was measuring the difference.
+	 *
+	 * <p><b>And the verbs are not copied here.</b> {@link #privileges} asks the chain
+	 * {@code ApiSecurity} built, so what is excused is exactly what is granted, and a fourth
+	 * verb opened tomorrow needs no edit here. What the guard under this one holds is the
+	 * other direction: that the answer is still reading and nothing else.
 	 */
 	@Test
 	void everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere() {
 		List<String> withoutAGuard = mappings.getHandlerMethods().entrySet().stream()
 				.filter(one -> !theDoorDecides(one.getValue()))
-				.flatMap(one -> pathsOf(one.getKey()))
-				.filter(path -> !ApiSecurity.READ_BY_ANYBODY.contains(path))
+				.flatMap(one -> declaredMethodsOf(one.getKey())
+						.flatMap(how -> pathsOf(one.getKey())
+								.filter(path -> !anybodyMayDoThis(how, path))
+								.map(path -> how + " " + path)))
 				.distinct().sorted().toList();
 
 		assertThat(withoutAGuard)
@@ -815,6 +879,70 @@ class RightsAtTheDoorTest {
 						+ " OUTSIDE /api it means anybody at all does, signed in or not. If that is"
 						+ " meant, it belongs in ANSWERS_WITHOUT_A_RIGHT with the reason beside it")
 				.containsExactlyInAnyOrderElementsOf(ANSWERS_WITHOUT_A_RIGHT);
+	}
+
+	/**
+	 * AND WHAT THE OPEN LIST GRANTS IS READING, WHICH IS THE FLOOR UNDER THE LINE ABOVE.
+	 *
+	 * <p>The excuse above asks {@link #privileges} rather than a list, and that is only worth
+	 * anything while the evaluator really distinguishes one verb from another. An evaluator
+	 * wired to the wrong chain, or answering yes to everything, would excuse every route on
+	 * the open list - writes included - and the floor above would go back to passing on the
+	 * very mutation it exists for, silently. Measured rather than assumed, and this is the
+	 * case that measures it.
+	 *
+	 * <p><b>It is a snapshot of THREE VERBS and it is the only place they are written in this
+	 * file.</b> Nothing reads it; it asserts. {@code ApiSecurity} is the one home of the
+	 * decision, this says out loud what that home currently says, and the day it opens a
+	 * fourth verb or drops one this fails and somebody writes down why once - instead of the
+	 * floor above quietly excusing a verb nobody decided to open.
+	 *
+	 * <p>The verbs it asks about are {@link HttpMethod#values()}, which is the language's own
+	 * enumeration rather than a fourth list; asserted non-trivial first, because a set of
+	 * verbs holding no write would make every line below true while asking nothing.
+	 */
+	@Test
+	void whatTheOpenListGrantsIsReadingAndNothingElse() {
+		List<String> everyVerbThereIs =
+				Stream.of(HttpMethod.values()).map(HttpMethod::name).sorted().toList();
+
+		assertThat(everyVerbThereIs)
+				.as("the verbs asked about hold no write, so nothing below could fail")
+				.contains("POST", "PUT", "PATCH", "DELETE");
+
+		assertThat(ApiSecurity.READ_BY_ANYBODY)
+				.as("nothing is open at all, so this asks about nothing")
+				.isNotEmpty();
+
+		for (String open : ApiSecurity.READ_BY_ANYBODY) {
+			assertThat(everyVerbThereIs.stream().filter(how -> anybodyMayDoThis(how, open)).toList())
+					.as("%s is open for something other than reading, or has stopped being open"
+							+ " for it; whichever it is, the line that excuses routes on the open"
+							+ " list is no longer excusing what somebody decided to open", open)
+					.containsExactly("GET", "HEAD", "OPTIONS");
+		}
+	}
+
+	/**
+	 * WHETHER A STRANGER MAY DO THIS VERB AT THIS ADDRESS BECAUSE THE ADDRESS IS OPEN.
+	 *
+	 * <p>Both halves are needed and each without the other is wrong. Without the list, every
+	 * route {@code ApiSecurity} opens by name - signing in, registering, the two links out of
+	 * a message - would excuse itself, and the snapshot above would lose the decisions it
+	 * exists to hold; outside {@code /api} the second chain permits everything, so
+	 * {@code /error} and anything mapped beside it would drop out too, which is exactly the
+	 * hole of 13.09.2026 reopened. Without the evaluator, a write to an address anybody may
+	 * READ is excused by the address, which is the hole this whole case is about.
+	 *
+	 * <p><b>A mapping that limits no verb is never excused</b>, and the word rather than a
+	 * method is what says so. {@code BasicErrorController} is that shape: it answers every
+	 * verb there is, so no single grant could stand for it, and the honest thing is to make
+	 * it name itself in the snapshot instead of borrowing a {@code GET}'s excuse.
+	 */
+	private boolean anybodyMayDoThis(String how, String path) {
+		return !LIMITS_NO_VERB.equals(how)
+				&& ApiSecurity.READ_BY_ANYBODY.contains(path)
+				&& privileges.isAllowed(null, path, how, null);
 	}
 
 	/** What the routes declare, asked of the dispatcher as objects rather than read as text. */
@@ -908,6 +1036,26 @@ class RightsAtTheDoorTest {
 
 		return declared.isEmpty() ? Stream.of(HttpMethod.GET)
 				: declared.stream().map(one -> HttpMethod.valueOf(one.name()));
+	}
+
+	/** What a mapping that limits no verb is called where routes are keyed by one. */
+	private static final String LIMITS_NO_VERB = "ANY";
+
+	/**
+	 * The verbs a mapping LIMITS ITSELF TO, as names, or {@link #LIMITS_NO_VERB} for one
+	 * that limits none.
+	 *
+	 * <p><b>It is not {@link #methodsOf} and the difference is the whole point.</b> That one
+	 * answers "which verb shall I send at this route" and a mapping limiting none may be
+	 * asked with any, so it says {@code GET}. This one answers "which verbs does this route
+	 * ANSWER", and {@code GET} would be a lie for a mapping that answers eight - the kind of
+	 * lie that would let a {@code GET} named in a snapshot excuse the other seven.
+	 */
+	private static Stream<String> declaredMethodsOf(RequestMappingInfo info) {
+		Set<RequestMethod> declared = info.getMethodsCondition().getMethods();
+
+		return declared.isEmpty() ? Stream.of(LIMITS_NO_VERB)
+				: declared.stream().map(RequestMethod::name);
 	}
 
 	private static RightIsNeeded rightOf(HandlerMethod method) {
