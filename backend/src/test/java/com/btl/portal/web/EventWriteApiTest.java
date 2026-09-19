@@ -53,6 +53,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * give different answers; two races on the event acted on and one on another, so "its
  * races" and "the races" differ; a result on each, so a move that carried the wrong ones
  * shows; and two moderators, each holding the tick the other is refused.
+ *
+ * <p><b>AND SINCE 19.09.2026 A TOWN IS TWO NUMBERS HERE AND NEVER ONE.</b> What travels is
+ * {@code place.geonames_id}, which is what {@link PlaceApi} serves; what the column holds is
+ * {@code place.id}. Until that day this file sent the KEY, so the route and this file agreed
+ * with each other and neither agreed with the portal - which is why the three cases about it
+ * name both numbers and assert that they differ before they measure anything.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
