@@ -1476,6 +1476,51 @@ class ModeratorWriteApiTest {
 	}
 
 	/**
+	 * A POST TO THIS PATH CARRYING NO CONTENT TYPE SAYS NOTHING TO ANYBODY WHO MAY NOT ASK,
+	 * AND THAT IS WHY THE MAPPING DOES NOT DECLARE WHAT IT CONSUMES.
+	 *
+	 * <p><b>{@link TeamWriteApi} declares {@code consumes} and measured why</b>, on
+	 * 19.09.2026, the day a write first shared a path with a read: without it a
+	 * {@code POST} carrying no {@code Content-Type} gets past the mapping, is refused by the
+	 * argument resolver, and comes back 415 - „this address is here and takes something
+	 * else" - where an unmapped address answers 404. That is the leak
+	 * {@link NothingIsHereRatherThanAlmost} exists to close, arriving through the one door
+	 * it cannot.
+	 *
+	 * <p><b>This route shares its path with a read too, and the leak does not reach it -
+	 * which is measured here rather than argued from the guard's name.</b> The difference
+	 * is who the door lets through: {@code /api/teams} opens to any member, so the 415 was
+	 * readable by anybody signed in, and {@link OnlyTheSuperadmin} opens this to one
+	 * account, which already reads the whole list of moderators at this very path. So the
+	 * only caller who can see a number other than 404 is the one for whom the address is
+	 * not a secret.
+	 *
+	 * <p><b>The moderator holding every tick is the one asked</b>, for the reason the rest
+	 * of this file uses him: if any tick could open this, his would.
+	 *
+	 * <p><b>Measured over MockMvc and not over a socket</b>, which is a boundary and is
+	 * named: {@code RightsOverRealHttpTest} is where the shape of a refusal is compared
+	 * byte for byte on the wire, and this case is about which number the dispatcher
+	 * produces rather than about the bytes around it.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {EVERY_TICK, A_MEMBER})
+	void aPostWithNoContentTypeSaysNothingToAnybodyWhoMayNotAsk(String asking) throws Exception {
+		MockHttpServletResponse withNothing = http.perform(post("/api/moderators").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(asking).secret())))
+				.andReturn().getResponse();
+
+		assertThat(withNothing.getStatus())
+				.as("%s learned that this address takes a POST, and the whole of ADL A8 of"
+						+ " 13.09.2026 is that a refusal says nothing an unmapped address would"
+						+ " not", asking)
+				.isEqualTo(404);
+		assertThat(withNothing.getContentAsString())
+				.as("the refusal carried a body, which is something 404 would not have")
+				.isEmpty();
+	}
+
+	/**
 	 * A RELAY THAT WILL NOT TAKE THE INVITATION STILL LEAVES THE MODERATOR AND HIS LINK
 	 * BEHIND.
 	 *

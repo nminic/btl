@@ -339,6 +339,17 @@ class ModeratorWriteApi {
 	 * column stays empty, V23 says that is the ordinary case, and {@link #remove} reads
 	 * exactly that column to decide what he becomes when his moderatorship goes.
 	 *
+	 * <p><b>THE MAPPING DOES NOT SAY WHAT IT CONSUMES, unlike {@link TeamWriteApi}'s own
+	 * {@code POST}, and the difference was measured rather than assumed.</b> That route
+	 * declares it because a request with no {@code Content-Type} would otherwise be
+	 * answered 415 - „this address is here and takes something else" - where an unmapped
+	 * address answers 404, and its door opens to any member, so anybody signed in could
+	 * read that sentence. This door opens to one account, which already reads the whole
+	 * list of moderators at this very path, and
+	 * {@code ModeratorWriteApiTest.aPostWithNoContentTypeSaysNothingToAnybodyWhoMayNotAsk}
+	 * is where that is a number rather than this paragraph: a moderator holding every tick
+	 * there is and a plain member are both answered 404 with an empty body.
+	 *
 	 * <p><b>The write and the message are in this order and the order is the whole of
 	 * it</b>, which is {@code RegistrationApi.writeThenSend}'s measurement and not a habit:
 	 * a request that waits on somebody else's SMTP server with a transaction open holds one
