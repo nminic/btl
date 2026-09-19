@@ -1293,6 +1293,12 @@ class ModeratorWriteApiTest {
 				.as("the account was born with a password, and «nalog do tog trenutka nema"
 						+ " lozinku» is the owner's own half of the same sentence")
 				.isNull();
+		assertThat(made.addressConfirmedAt())
+				.as("the portal wrote down that this man reads that mailbox at the moment nobody"
+						+ " had read anything. The owner decided on 19.09.2026 that the"
+						+ " confirmation is written where the TOKEN IS SPENT, and refused this"
+						+ " moment by name")
+				.isNull();
 		assertThat(made.competitorId())
 				.as("the new moderator was made to name a member, and «moderator ne mora da bude"
 						+ " clan» (owner, 14.09.2026) is why there was a decision to take at all")
@@ -1339,12 +1345,15 @@ class ModeratorWriteApiTest {
 	 * dobija svoj slucaj, jer je ovo prvi put da takav nalog postoji namerno."
 	 *
 	 * <p><b>The second half is what makes the first half mean anything</b>, and without it
-	 * this case is satisfied by an account that can NEVER sign in - which is precisely what
-	 * the route would produce if it left the address unconfirmed, because
-	 * {@code SignIn.decide} asks after {@code email_confirmed_at} before it asks after the
-	 * password and {@code PasswordResetApi} „asks nothing about it in either direction".
-	 * So the man follows his link, sets his password, and gets in, and the cookie is read
-	 * at {@code /api/me} rather than merely being present.
+	 * this case is satisfied by an account that can NEVER sign in, which is an invitation
+	 * that is a road to a wall. So the man follows his link, sets his password, and gets
+	 * in, and the cookie is read at {@code /api/me} rather than merely being present.
+	 *
+	 * <p><b>Both of the two things that shut him are read at each end</b>, which is what
+	 * changed on 19.09.2026: the account is born with no password AND with no confirmation
+	 * („Potvrda adrese se upisuje u trenutku kad se TOKEN POTROSI", owner), and spending
+	 * the link writes both. Read as one, this case would pass over a route that wrote the
+	 * confirmation where no proof had arrived.
 	 *
 	 * <p><b>And what he is when he gets in is read too</b>: {@code moderator}, so the
 	 * account he ends up holding is the one the superadmin meant to make rather than
@@ -1356,6 +1365,10 @@ class ModeratorWriteApiTest {
 		assertThat(make("Nova", "Moderatorka", INVITED).getStatus()).isEqualTo(201);
 		assertThat(rowOf(INVITED_AS_STORED).passwordHash())
 				.as("the account this case guesses at already has a password")
+				.isNull();
+		assertThat(rowOf(INVITED_AS_STORED).addressConfirmedAt())
+				.as("the account this case guesses at is already confirmed, so the refusal below"
+						+ " could be about the confirmation rather than about the password")
 				.isNull();
 
 		MockHttpServletResponse refused = signIn(INVITED_AS_STORED, guessed);
@@ -1374,6 +1387,11 @@ class ModeratorWriteApiTest {
 						.matches(THE_PASSWORD_HE_PICKS, rowOf(INVITED_AS_STORED).passwordHash()))
 				.as("following the link did not write the password he typed")
 				.isTrue();
+		assertThat(rowOf(INVITED_AS_STORED).addressConfirmedAt())
+				.as("he spent the link that was mailed to his own address and the portal still"
+						+ " holds no proof that he reads it, which is the moment the owner chose"
+						+ " on 19.09.2026 for writing one")
+				.isNotNull();
 
 		MockHttpServletResponse welcome = signIn(INVITED_AS_STORED, THE_PASSWORD_HE_PICKS);
 
@@ -1384,6 +1402,84 @@ class ModeratorWriteApiTest {
 		assertThat(roleIn(me(welcome.getCookie(SessionCookie.NAME).getValue())))
 				.as("he got in as somebody other than the moderator he was made")
 				.isEqualTo("moderator");
+	}
+
+	/**
+	 * AND AN INVITED MODERATOR WHO NEVER SPENDS HIS LINK GETS IN BY NO ROAD AT ALL.
+	 *
+	 * <p><b>This is the boundary the owner's decision of 19.09.2026 opened, and it is the
+	 * one a previous round of this branch got wrong.</b> The route used to write the
+	 * confirmation at the moment the account was made, on the reasoning that nothing else
+	 * would ever write it. An independent review measured that premise and it was false:
+	 * {@code POST /api/email-confirmation/resend} asks for {@code email_confirmed_at is
+	 * null} and for nothing else - not a password, not a role - so this man has always been
+	 * able to confirm his own address.
+	 *
+	 * <p><b>So the case is the whole of that road rather than the sign-in alone.</b> He
+	 * asks for a confirmation link, gets one, spends it, and his address really is
+	 * confirmed - and he still cannot sign in, because the OTHER of the two things that
+	 * shut him is untouched by that road. Without the middle of it this measures a man who
+	 * did nothing.
+	 *
+	 * <p><b>And his invitation is untouched at the end</b>, so the second road is not one
+	 * that quietly burns the first: the link the superadmin sent still sets his password.
+	 */
+	@Test
+	void anInvitedModeratorWhoNeverSpendsHisLinkGetsInByNoRoadAtAll() throws Exception {
+		assertThat(make("Nova", "Moderatorka", INVITED).getStatus()).isEqualTo(201);
+
+		Row made = rowOf(INVITED_AS_STORED);
+
+		assertThat(made.addressConfirmedAt()).isNull();
+		assertThat(made.passwordHash()).isNull();
+
+		assertThat(signIn(INVITED_AS_STORED, THE_PASSWORD_HE_PICKS).getStatus())
+				.as("a man who has done nothing at all signed in")
+				.isEqualTo(401);
+
+		/* THE OTHER ROAD TO A CONFIRMATION, asked for and spent, because it is the road the
+		   review found and the one this case exists for. */
+		assertThat(http.perform(post("/api/email-confirmation/resend").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(new ObjectMapper()
+								.writeValueAsString(Map.of("email", INVITED_AS_STORED))))
+				.andReturn().getResponse().getStatus()).isEqualTo(204);
+
+		String confirming = theTokenInside(theLastMessage().getContent().toString());
+
+		assertThat(http.perform(post("/api/email-confirmation").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(new ObjectMapper().writeValueAsString(Map.of("token", confirming))))
+				.andReturn().getResponse().getStatus())
+				.as("the invited moderator could not confirm his own address, so nothing below"
+						+ " is about a man who has confirmed it")
+				.isEqualTo(204);
+		assertThat(rowOf(INVITED_AS_STORED).addressConfirmedAt())
+				.as("the confirmation road answered 204 and wrote nothing")
+				.isNotNull();
+
+		assertThat(signIn(INVITED_AS_STORED, THE_PASSWORD_HE_PICKS).getStatus())
+				.as("a man who confirmed his address but never set a password signed in, so the"
+						+ " invitation is not the only way into the account it made")
+				.isEqualTo(401);
+		assertThat(rowOf(INVITED_AS_STORED).passwordHash())
+				.as("confirming an address wrote a password")
+				.isNull();
+
+		assertThat(theTokenIsStillUnspent(SOMEBODY_ELSES_TOKEN))
+				.as("this road spent a token of another account's")
+				.isTrue();
+	}
+
+	/** The message that arrived last, for the one case here that makes the portal send two. */
+	private static MimeMessage theLastMessage() {
+		assertThat(SMTP.waitForIncomingEmail(5000, 2))
+				.as("the second message never reached the mail server in five seconds")
+				.isTrue();
+
+		MimeMessage[] all = SMTP.getReceivedMessages();
+
+		return all[all.length - 1];
 	}
 
 	/**
@@ -1429,7 +1525,7 @@ class ModeratorWriteApiTest {
 	}
 
 	/**
-	 * A FORM THAT IS MISSING ANYTHING IS REFUSED, AND SO IS AN ADDRESS THAT IS NOT ONE.
+	 * A FORM THAT IS MISSING ANYTHING IS REFUSED, AND THE ANSWER SAYS WHICH FIELDS.
 	 *
 	 * <p>„Superadmin upise ime, prezime i adresu elektronske poste" is three fields, and
 	 * {@code account_first_name_not_blank}, {@code account_last_name_not_blank} and
@@ -1437,23 +1533,27 @@ class ModeratorWriteApiTest {
 	 * comes back to the superadmin as a 500 after he has filled it in, and on PostgreSQL
 	 * the error aborts the transaction the 409 above would have to be answered from.
 	 *
+	 * <p><b>The LIST is read and not only the reason</b>, which is ADL A54's second half
+	 * („i kaze se sta fali", owner, 19.09.2026). The last row leaves out TWO fields and
+	 * names both, so „the list is built" and „the list holds the first thing that was
+	 * wrong" are different answers.
+	 *
 	 * <p>The row after each refusal is counted, because a refusal that had already written
 	 * half of itself leaves a moderator nobody can reach.
 	 */
 	@ParameterizedTest
 	@CsvSource(nullValues = "-", value = {
-			"-, Moderatorka, nova@primer.rs",
-			"Nova, -, nova@primer.rs",
-			"Nova, Moderatorka, -",
-			"'', Moderatorka, nova@primer.rs",
-			"'   ', Moderatorka, nova@primer.rs",
-			"Nova, '', nova@primer.rs",
-			"Nova, Moderatorka, ''",
-			"Nova, Moderatorka, nijeadresa",
-			"Nova, Moderatorka, dva@znaka@primer.rs",
+			"-, Moderatorka, nova@primer.rs, firstName",
+			"Nova, -, nova@primer.rs, lastName",
+			"Nova, Moderatorka, -, email",
+			"'', Moderatorka, nova@primer.rs, firstName",
+			"'   ', Moderatorka, nova@primer.rs, firstName",
+			"Nova, '', nova@primer.rs, lastName",
+			"Nova, Moderatorka, '', email",
+			"-, Moderatorka, '', firstName email",
 	})
-	void aFormThatIsMissingAnythingIsRefusedAndNobodyIsMade(String first, String last, String email)
-			throws Exception {
+	void aFormThatIsMissingAnythingIsRefusedAndTheAnswerSaysWhich(String first, String last,
+			String email, String named) throws Exception {
 
 		long before = howManyAccounts();
 
@@ -1463,12 +1563,76 @@ class ModeratorWriteApiTest {
 				.as("«%s / %s / %s» was accepted as a moderator", first, last, email)
 				.isEqualTo(400);
 		assertThat(reasonIn(answer)).isEqualTo(ModeratorWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(missingIn(answer))
+				.as("the refusal did not say what the superadmin has to go back and fill in,"
+						+ " which is the half of ADL A54 a route written after 19.09.2026 is"
+						+ " born with")
+				.containsExactly(named.split(" "));
 		assertThat(howManyAccounts())
 				.as("the form was refused and an account was written anyway")
 				.isEqualTo(before);
 		assertThat(SMTP.getReceivedMessages())
 				.as("the form was refused and a message went out anyway")
 				.isEmpty();
+	}
+
+	/**
+	 * AND AN ADDRESS THAT IS THERE AND IS NOT AN ADDRESS IS A DIFFERENT SENTENCE.
+	 *
+	 * <p><b>They were one answer until this round and a review named it.</b> A field the
+	 * superadmin forgot and a field he typed wrongly are two different mistakes with two
+	 * different fixes, and answered with one word the screen can only say „the form is not
+	 * complete" over a form in which every field is filled in.
+	 *
+	 * <p><b>And the list is read as empty rather than left unread</b>, because a refusal
+	 * naming {@code email} as missing would be the old answer wearing the new shape: it is
+	 * not missing, it is wrong.
+	 *
+	 * <p>The last two rows are the ones {@code WhatAnAddressLooksLike} refuses for reasons
+	 * V6 gives at length - a Cyrillic letter that draws the same picture as ours, and an
+	 * invisible character that {@code Character.isWhitespace} has never heard of - so this
+	 * is the sentence the superadmin gets for an address that LOOKS right.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"nijeadresa", "dva@znaka@primer.rs", "@primer.rs", "nova@",
+			"nova@primer.rs extra",
+			/* Written as escapes and never as the characters themselves: the first is a
+			   Cyrillic „o" inside a Latin word and the second a zero width space, and
+			   neither can be seen in a diff. */
+			"nоva@primer.rs", "nova​@primer.rs"})
+	void anAddressThatIsNotAnAddressIsADifferentSentence(String email) throws Exception {
+		long before = howManyAccounts();
+
+		MockHttpServletResponse answer = make("Nova", "Moderatorka", email);
+
+		assertThat(answer.getStatus())
+				.as("«%s» was accepted as an address of electronic mail", email)
+				.isEqualTo(400);
+		assertThat(reasonIn(answer))
+				.as("«%s» was refused with the sentence for a field nobody filled in, and it is"
+						+ " filled in", email)
+				.isEqualTo(ModeratorWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+		assertThat(missingIn(answer))
+				.as("the refusal named a missing field for a form in which every field is there")
+				.isEmpty();
+		assertThat(howManyAccounts())
+				.as("the address was refused and an account was written anyway")
+				.isEqualTo(before);
+		assertThat(SMTP.getReceivedMessages())
+				.as("the address was refused and a message went out anyway")
+				.isEmpty();
+	}
+
+	/** Which fields a refusal names, which is a different place from its reason. */
+	private static List<String> missingIn(MockHttpServletResponse answer) throws Exception {
+		List<String> out = new ArrayList<>();
+
+		for (JsonNode one : new ObjectMapper().readTree(answer.getContentAsString())
+				.path("missing")) {
+			out.add(one.asString());
+		}
+
+		return out;
 	}
 
 	private long howManyAccounts() {

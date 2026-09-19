@@ -93,6 +93,61 @@ class HowLongALinkLastsMatchesTheSchemaTest extends DatabaseTest {
 	}
 
 	/**
+	 * AND TWO MESSAGES POINT AT ONE SCREEN EXACTLY WHEN THEIR LINKS LIVE IN ONE ROW.
+	 *
+	 * <p><b>This is the question {@code WhatTheMessageSaysTest} used to answer with „no two
+	 * messages point at the same place", and it answers it here because this is where the
+	 * fact it needs already lives.</b> That rule was true until 18.09.2026 and only because
+	 * every message was its own road; the owner then decided that a new moderator gets his
+	 * link „istim mehanizmom koji obnova lozinke vec nosi" (PDL P28a), so two messages
+	 * share a screen ON PURPOSE and a rule demanding distinct paths is a rule against that
+	 * decision.
+	 *
+	 * <p><b>What it must not stop catching is a message aimed at somebody ELSE's screen</b>,
+	 * and that is not a theory: give {@link Message#SET_A_NEW_PASSWORD} the path
+	 * {@code /potvrda-adrese} and every link the portal mails to a member who has forgotten
+	 * his password lands on the screen that confirms an address, where his token means
+	 * nothing. Measured 19.09.2026: that mutation passes the whole gate, 2171 cases, exit
+	 * 0, while the rule it replaced caught it.
+	 *
+	 * <p><b>The two questions are one question, and that is why this is a biconditional
+	 * rather than a list of which paths may repeat.</b> A screen is the thing that SPENDS a
+	 * token, so „which screen this message points at" and „which table its link lives in"
+	 * are the same fact read twice: two messages whose links live in one row must land
+	 * where that row is spent, and two whose links live in different rows must not. Written
+	 * as a list of allowed collisions it would be a second thing to remember; written this
+	 * way, a fourth message is judged on the day it is added by the entry it already has to
+	 * have above.
+	 *
+	 * <p><b>Both directions are read and both are live.</b> The other one says that a
+	 * message whose link lives in {@code password_reset_token} may not be sent to a screen
+	 * of its own without somebody saying what spends its token there - which stops the
+	 * invitation from quietly growing a path nothing serves.
+	 */
+	@Test
+	void twoMessagesShareAScreenExactlyWhenTheirLinksShareARow() {
+		for (Message one : Message.values()) {
+			for (Message other : Message.values()) {
+				if (one.ordinal() >= other.ordinal()) {
+					continue;
+				}
+
+				assertThat(one.path().equals(other.path()))
+						.as("%s points at %s and %s at %s, while their links live in %s and %s."
+								+ " Two messages land on one screen exactly when that screen is"
+								+ " the one that spends their row: sharing a path with a"
+								+ " different row is a member sent where his token means"
+								+ " nothing, and sharing a row without sharing a path is a link"
+								+ " nothing has been said to serve",
+								one, one.path(), other, other.path(),
+								WHERE_THE_LINK_LIVES.get(one), WHERE_THE_LINK_LIVES.get(other))
+						.isEqualTo(WHERE_THE_LINK_LIVES.get(one)
+								.equals(WHERE_THE_LINK_LIVES.get(other)));
+			}
+		}
+	}
+
+	/**
 	 * And the two links do not last the same, which is a decision and not an
 	 * accident.
 	 *

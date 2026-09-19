@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -213,6 +214,15 @@ class ModeratorWriteApi {
 	 */
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
+	/**
+	 * Told apart from {@link #THE_FORM_IS_NOT_COMPLETE} because they are different
+	 * mistakes, which is the shape {@code THE_LINK_IS_NOT_SHAPED} and
+	 * {@code THE_REFERENCE_IS_NOT_SHAPED} already use one resource along: a field that is
+	 * not there is one the superadmin goes back and fills in, and a field that is there and
+	 * wrong is one he has to look at.
+	 */
+	static final String THE_ADDRESS_IS_NOT_SHAPED = "theAddressIsNotShaped";
+
 	private final JdbcClient db;
 
 	private final Postman postman;
@@ -312,27 +322,28 @@ class ModeratorWriteApi {
 	 * that is locked - which is the boundary ADL A53 says must be MEASURED rather than
 	 * assumed, because this is the first time such an account exists on purpose.
 	 *
-	 * <p><b>AND THE ADDRESS IS WRITTEN CONFIRMED, WHICH IS DERIVED AND IS THE ONE THING
-	 * HERE THE OWNER DID NOT SAY IN SO MANY WORDS.</b> It is derived from the second half
-	 * of his own sentence: „Nalog DO TOG TRENUTKA nema lozinku i ne moze da se prijavi" is
-	 * a claim about what changes when he follows the link, and
-	 * {@code email_confirmed_at} is a condition {@code SignIn.decide} asks BEFORE the
-	 * password. Left empty it would never be filled by anything - the invitation is a
-	 * password link and {@link PasswordResetApi} deliberately „asks nothing about
-	 * {@code account.email_confirmed_at} in either direction" - so the man would set his
-	 * password and still never get in, and the decision would be delivered as a road that
-	 * ends at a wall.
+	 * <p><b>AND THE ADDRESS IS NOT CONFIRMED HERE, WHICH IS THE OWNER'S DECISION OF
+	 * 19.09.2026 AND REPLACES WHAT THIS ROUTE DID FOR ONE ROUND.</b> In his words, on three
+	 * offered outcomes: „Potvrda adrese se upisuje u trenutku kad se TOKEN POTROSI.
+	 * Moderator otvori vezu iz pozivnice i postavi lozinku; tog trenutka je dokazao da cita
+	 * tu postu, pa se adresa obelezava potvrdjenom." He refused confirming it at this
+	 * moment, because the portal would be writing down a proof that has not happened and
+	 * „potvrda adrese je prva, i uslov za sve ostalo" (PDL, 31.07.2026); and he refused a
+	 * second message that only confirms, because that is two letters per account for six
+	 * people.
 	 *
-	 * <p><b>What it costs is smaller than it reads, and it is worth saying exactly why.</b>
-	 * Confirming an address is „the member proved he reads this mailbox" (V6), and the
-	 * proof here is not skipped but MOVED: the only way to a password is the token, the
-	 * token is in the message, and the message goes to that mailbox and nowhere else. Until
-	 * it is used the account is shut by the empty password, so the confirmed flag on its
-	 * own opens nothing - {@code email_confirmed_at} is read as a condition in exactly one
-	 * place in this portal, and that place also reads the password. What it buys is the
-	 * other direction: if the message is lost, the address is one that
-	 * {@code POST /api/password-reset/request} will send another link to, and that link
-	 * works.
+	 * <p><b>The round this replaced is worth keeping, because the reasoning was wrong in a
+	 * way that reads as careful.</b> This route wrote {@code email_confirmed_at = now()} on
+	 * the argument that nothing would ever fill it in, so the man would set his password
+	 * and still never get in. An independent review measured the premise and it was false:
+	 * {@code POST /api/email-confirmation/resend} asks for {@code email_confirmed_at is
+	 * null} and nothing else - not a password, not a role - so the invited moderator could
+	 * always have confirmed his own address. The argument was not weighed against a
+	 * measurement, and a confirmation written where no proof arrived is a record of
+	 * something that did not happen.
+	 *
+	 * <p><b>So until his token is spent the account is shut twice over</b>, and both are
+	 * read by {@code SignIn.decide}: no confirmation, and no password.
 	 *
 	 * <p><b>Nothing here writes {@code competitor_id}</b>, which is „moderator ne mora da
 	 * bude clan" (owner, 14.09.2026) said as a statement rather than as a comment: the
@@ -359,9 +370,20 @@ class ModeratorWriteApi {
 	@PostMapping("/api/moderators")
 	@OnlyTheSuperadmin
 	ResponseEntity<?> add(@RequestBody Invited typed) {
-		if (isNothing(typed.firstName()) || isNothing(typed.lastName())
-				|| isNothing(typed.email())) {
-			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
+		/* WHICH FIELDS ARE MISSING AND NOT ONLY THAT SOMETHING IS, which is the second half
+		   of ADL A54 („`PUT` koji ne posalje neko polje odbija se sa 400, i KAZE SE STA
+		   FALI. Isto na svakoj upisnoj ruti portala, bez izuzetka", owner, 19.09.2026). The
+		   shape is `RaceWriteApi`'s, down to `reason` standing first so that a caller
+		   reading a refusal by its reason reads this one unchanged.
+
+		   A ROUTE WRITTEN AFTER THAT DECISION IS BORN WITH IT. The outstanding work on the
+		   other routes is about bringing the ones that came BEFORE it into line, and a new
+		   one that answered a bare reason would be one more of them. */
+		List<String> missing = whatTheFormLeftOut(typed);
+
+		if (!missing.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(new NotComplete(THE_FORM_IS_NOT_COMPLETE, missing));
 		}
 
 		/* FOLDED ON THE WAY IN, never left as typed and asked about through `lower()`
@@ -378,8 +400,13 @@ class ModeratorWriteApi {
 		   address with no @ in it would reach INSERT, fire the check, and come back to the
 		   superadmin as a 500 - and on PostgreSQL an error aborts the transaction, so the
 		   409 the next lines want to answer with could not be written from there either. */
+		/* AND A DIFFERENT SENTENCE FROM THE ONE ABOVE, because they are different mistakes
+		   and the superadmin fixes them differently: a field he forgot is one he goes back
+		   and fills in, and an address that is not an address is one he has already typed
+		   and has to look at. Answered with the same word, the screen can only say „the
+		   form is not complete" over a form in which every field is filled. */
 		if (!WhatAnAddressLooksLike.itDoes(address)) {
-			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
+			return no(HttpStatus.BAD_REQUEST, THE_ADDRESS_IS_NOT_SHAPED);
 		}
 
 		Written written = inOneTransaction.execute(committing -> write(typed, address));
@@ -409,14 +436,21 @@ class ModeratorWriteApi {
 		   constraint this table has - it does not fall through to the other one, it fails
 		   outright. */
 		Optional<Made> made = db.sql("insert into account"
-						+ " (first_name, last_name, email, role_id, email_confirmed_at)"
+						+ " (first_name, last_name, email, role_id)"
 						/* THE ROLE IS WRITTEN HERE AND NEVER TAKEN OFF THE REQUEST - see
 						   `Invited`. And it is `moderator` rather than anything else because
 						   that is the one role this screen makes: „Pozivnica vazi samo za
 						   moderatore" (ADL A53), and the superadmin „se i dalje ne pravi kroz
 						   portal nego se imenuje adresom u podesavanjima servera" (owner,
 						   14.09.2026, PDL P21). */
-						+ " values (?, ?, ?, (select id from role where code = 'moderator'), now())"
+						/* AND `email_confirmed_at` IS NOT IN THAT LIST EITHER, which is the
+						   owner's decision of 19.09.2026 and replaces what this route did for
+						   one round. V6 gives the column no default so that an account is born
+						   unconfirmed, and being MADE is not being confirmed: the proof this
+						   column stands for is that a man reads that mailbox, and at this
+						   moment nobody has read anything. See `PasswordResetApi`, where the
+						   proof arrives and the column is written. */
+						+ " values (?, ?, ?, (select id from role where code = 'moderator'))"
 						+ " on conflict ((lower(email))) do nothing"
 						+ " returning id, email")
 				.params(typed.firstName().strip(), typed.lastName().strip(), address)
@@ -462,9 +496,10 @@ class ModeratorWriteApi {
 	 * The account is there, the token is there, and nothing he can press at this screen
 	 * produces a letter; answering 500 would tell him nothing happened when everything did,
 	 * and send him to type the address again at a form that would now answer 409. What
-	 * rescues it is the same road one occasion along: the address is written confirmed, so
-	 * {@code POST /api/password-reset/request} mails another link to the same mailbox and
-	 * that link sets the same password.
+	 * rescues it is the same road one occasion along: {@code POST /api/password-reset/request}
+	 * asks nothing about a role or a confirmation, so it mails another link to the same
+	 * mailbox, and spending THAT one sets the password and confirms the address exactly as
+	 * spending this one would have.
 	 */
 	private void send(Written written) {
 		try {
@@ -475,6 +510,33 @@ class ModeratorWriteApi {
 					+ " address is what gets him another link", written.to(),
 					theRelayDidNotTakeIt);
 		}
+	}
+
+	/**
+	 * Which of the three the superadmin did not fill in, by the names the JSON uses.
+	 *
+	 * <p>Blank, empty and absent are one answer here, because the fix is one thing - type
+	 * it in - and because the schema treats them as one too: {@code first_name} is
+	 * {@code not null} AND {@code btrim(first_name) <> ''} (V23), so a name of one space is
+	 * refused by the table exactly as an absent one is. A route that told them apart would
+	 * be saying something the database does not.
+	 *
+	 * <p>The order is the order of {@link Invited}, which is the order of the form.
+	 */
+	private static List<String> whatTheFormLeftOut(Invited typed) {
+		List<String> missing = new ArrayList<>();
+
+		if (isNothing(typed.firstName())) {
+			missing.add("firstName");
+		}
+		if (isNothing(typed.lastName())) {
+			missing.add("lastName");
+		}
+		if (isNothing(typed.email())) {
+			missing.add("email");
+		}
+
+		return missing;
 	}
 
 	/** Blank, empty or absent, which the form treats as one thing because the fix is one
@@ -501,6 +563,23 @@ class ModeratorWriteApi {
 
 	/** Why a row of boxes could not be written. */
 	record Refused(String reason) {
+	}
+
+	/**
+	 * A refusal that also says WHICH fields are missing, which is ADL A54's second half
+	 * („i kaze se sta fali", owner, 19.09.2026).
+	 *
+	 * <p>{@code reason} stands first and carries the same word a {@link Refused} would, so
+	 * a caller that reads a refusal by its reason reads this one unchanged: the list is
+	 * what is added and not what is swapped. This is {@link RaceWriteApi}'s shape, named
+	 * rather than reinvented, and {@code missing} carries the components of {@link Invited}
+	 * so the names that come back are the names the JSON uses.
+	 *
+	 * <p><b>Only {@link #add} sends it, and {@link #change} still answers a bare reason.</b>
+	 * That is the outstanding half of A54 over routes written BEFORE the decision, carried
+	 * as separate work; this one was written after it and is born with it.
+	 */
+	record NotComplete(String reason, List<String> missing) {
 	}
 
 	/**
