@@ -321,8 +321,16 @@ class RaceWriteApi {
 	 *
 	 * <p><b>A FIELD LEFT OUT IS REFUSED HERE, AND THAT IS THE ONE PLACE THIS ROUTE IS NOT
 	 * {@link #add}.</b> ADL A54, owner, 19.09.2026, on three offered outcomes: „`PUT` koji
-	 * ne posalje neko polje odbija se sa 400, i kaze se sta fali. Isto na svakoj upisnoj
-	 * ruti portala, bez izuzetka."
+	 * ne posalje neko polje odbija se sa 400, i kaze se sta fali."
+	 *
+	 * <p><b>„Isto na svakoj upisnoj ruti portala, bez izuzetka" is not part of that owner
+	 * sentence</b>, and was corrected 19.09.2026 when an independent review of PR 309 found
+	 * it standing here in his voice without being his: it was this codebase's own extension
+	 * of a choice made for one route into a rule for the whole portal. What A54 actually
+	 * settles for every route, the owner's own words the same day and also on three offered
+	 * outcomes, is narrower: „izostavljeno polje nikad ne sme tiho da promeni vrednost; sme
+	 * da znaci 'ne diraj', nikad 'vrati na podrazumevano'." A route picks which of the two a
+	 * left-out field means and says which; this route picks refusal.
 	 *
 	 * <p><b>THIS IS THE FIRST ROUTE THAT CARRIES A54 IN FULL, and saying otherwise is the
 	 * mistake this very decision is about.</b> {@link EventWriteApi#change} BEGAN the
