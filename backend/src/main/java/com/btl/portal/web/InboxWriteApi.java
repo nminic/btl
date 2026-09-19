@@ -109,7 +109,7 @@ import java.util.Optional;
  *
  * <h2>AND THE SENDER, WHICH IS PDL'S RULE OF 13.09.2026 ANSWERED IN THE SHAPE IT DEMANDS</h2>
  *
- * <p>PDL P11, „[PRAVILO 13.09.2026, izvedeno cetiri puta pa zapisano jednom] Nijedan javni
+ * <p>PDL P28a, „[PRAVILO 13.09.2026, izvedeno cetiri puta pa zapisano jednom] Nijedan javni
  * odgovor ne sme da imenuje clana kome je clanarina istekla, NI POSREDNO", with the check
  * every new resource owes: „koji od ova tri oblika vazi ovde, i zasto bas taj? Ako se odgovor
  * ne moze izvesti iz zapisanog, pita se vlasnik, ne pogadja se."
@@ -256,8 +256,8 @@ import java.util.Optional;
  * ({@code MessageDetail.tsx}), and the two things they point at are written by other
  * increments; a member writing to a member asks nothing the portal can answer for him.
  * <li><b>DELETING, EDITING AND MARKING READ.</b> Nothing here removes or changes a message:
- * PDL P13, 06.09.2026, „Poruka sa pozivom ostaje u sandusetu... Ne brise se: brisanje poruke
- * iz tudjeg sandučeta je brisanje istorije." Marking one read is {@code message_read}, which
+ * PDL P32, 06.09.2026, „Ne briše se: brisanje poruke iz tuđeg sandučeta je brisanje
+ * istorije". Marking one read is {@code message_read}, which
  * {@link InboxApi} READS and nothing writes - so the portal's unread counter (PDL P32) can
  * never fall. It is left out of this increment for a reason that is about the repository
  * rather than about the feature: the smallest shape it can take is a route of its own, and

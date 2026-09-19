@@ -51,7 +51,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p><b>AND A SECOND GAP, in the amounts, which is narrower than it reads.</b> The
  * comparison below is told to keep the scale a {@code numeric(10,2)} carries, so
  * {@code round(eur)} answering {@code 35} and {@code cast(eur as double precision)}
- * answering {@code 35.0} both fail against {@code 35.00}. But an amount that goes
+ * answering {@code 35} both fail against {@code 35.00}. But an amount that goes
  * THROUGH a binary double and is then put back on scale 2 -
  * {@code BigDecimal.valueOf(row.getDouble(5)).setScale(2)} - comes out as
  * {@code 35.00} again and passes, although ADL A12, „Iznosi se čuvaju u `NUMERIC`, nikad u `double`" forbids exactly that trip.

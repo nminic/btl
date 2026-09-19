@@ -62,8 +62,8 @@ class PageApi {
 	 * One written page: its own address, its own text, and the pages it takes in.
 	 *
 	 * @param slug     the address a human typed, and the one identity this schema still
-	 *                 checks for being taken (ADL A4d, 31.07.2026, „Dodela broja je
-	 *                 `nextMemberNumber(taken)`") - every other identity in this portal
+	 *                 checks for being taken (ADL A4d, „identitet i dalje kuca čovek:
+	 *                 adresa statične strane") - every other identity in this portal
 	 *                 is constructed and this one is not
 	 * @param sections this page's own blocks, in the order they are read; empty on a
 	 *                 page that has none yet

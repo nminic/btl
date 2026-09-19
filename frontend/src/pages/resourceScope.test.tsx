@@ -19,12 +19,12 @@ import { setupUser } from '../test/user'
 /** The two resources a screen may lose without the screen itself going. */
 const BOTH: [ResourceName][] = [['races'], ['events']]
 
-/** Serves every resource off disk as usual, except the one named, which fails. */
 /** The one line of facts under the name of a competition, whole. The words and the number are two
  *  nodes, so a query for either says nothing about the other. */
 const facts = () =>
   must(document.querySelector('.leagues__facts'), 'the line of facts').textContent ?? ''
 
+/** Serves every resource off disk as usual, except the one named, which fails. */
 function breakResource(name: ResourceName) {
   const real = globalThis.fetch
 
