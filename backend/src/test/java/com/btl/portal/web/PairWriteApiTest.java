@@ -37,6 +37,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -450,8 +451,13 @@ class PairWriteApiTest {
 						+ " wrong one answers correctly anyway")
 				.containsExactly(BEING_FORMED, STILL_RUNNING, BEING_FORMED, STILL_RUNNING);
 
-		assertThat(SeasonClock.transfersTakeEffect(
-				Instant.parse("2026-12-31T11:00:00Z").atZone(SeasonClock.ZONE)))
+		/* READ OFF THE ROW AND NOT OFF A DAY WRITTEN HERE, which is the difference between a
+		   floor and an ornament: the fact this asserts about lives in `pair_invite.sent_at`,
+		   so a fixture that moved `ASKED_ON` onto the day of the answer would kill the axis
+		   while a hand-written instant went on agreeing with itself. */
+		assertThat(SeasonClock.transfersTakeEffect(db.sql("select sent_at from pair_invite"
+						+ " where id = ?").param(questionFrom(HE_ASKED_HER, SHE_ANSWERS))
+				.query(Timestamp.class).single().toInstant().atZone(SeasonClock.ZONE)))
 				.as("the question was sent on a day that answers with the same season as the day"
 						+ " it is answered on, so reading the deadline off the question and off the"
 						+ " confirmation are one answer here")
@@ -1114,49 +1120,199 @@ class PairWriteApiTest {
 	}
 
 	/**
-	 * A FEE THAT HAS LAPSED REFUSES NEITHER THE QUESTION NOR THE ANSWER, AND THAT IS A
-	 * BOUNDARY WITH A CASE RATHER THAN A SENTENCE IN A COMMENT.
+	 * A MEMBER WHOSE FEE HAS LAPSED IS ANSWERED EXACTLY LIKE A NUMBER NOBODY CARRIES.
 	 *
-	 * <p>„Par se raskida kad jedna strana ne produzi clanarinu" (owner, 11.08.2026, „Ne
-	 * postoji par onda, raskida se") is enforced by the READER and not here:
-	 * {@code PairApiTest.aPairWhoseHalfDidNotRenewTheFeeIsNotServed} holds that half over the
-	 * public list, and this is the other half.
+	 * <p>PDL, 13.09.2026: „Nijedan javni odgovor ne sme da imenuje clana kome je clanarina
+	 * istekla, NI POSREDNO", and the first of its three forms is the one this resource is
+	 * named in: „Ceo red izlazi kad je clanski broj jedino sto red o coveku nosi. Tako rade
+	 * PAROVI i najave dolaska: nema polovicnog odgovora, red ulazi ili ne ulazi."
 	 *
-	 * <p><b>Asked here it would be a question about the wrong season.</b>
-	 * {@code competitor.active} speaks about the season being RUN while a pair is made for the
-	 * one that is not, and {@code membership (competitor_id, season, basis)} has no row for the
-	 * season being formed until it goes on sale on 1 October - so a condition over either
-	 * column would refuse EVERY pair agreed between January and September, and this fixture
-	 * stands in March. PDL P13 points the same way: a change „se sme zatraziti bilo kad tokom
-	 * godine" and only „stupa na snagu tek 1. januara ... i to samo ako su clanarine izmirene".
+	 * <p><b>THE THREE ANSWERS ARE COMPARED WITH EACH OTHER AND NOT WITH A NUMBER WRITTEN
+	 * HERE</b>, because that is the whole of the leak: told apart at all, the difference
+	 * between them is a list of who has not paid, gathered by walking consecutive member
+	 * numbers. So one request goes out three times - at a number nobody carries, at a lapsed
+	 * member of the WRONG gender (who was told 409 and had his gender named), and at a lapsed
+	 * member of the RIGHT gender (who was answered 201 BY NUMBER) - and all three must be one
+	 * status and one body.
 	 *
-	 * <p><b>Both halves lapse in turn</b>, because a condition written about the member who is
-	 * asked passes one written about the member who asks, and they are one sentence read twice.
+	 * <p><b>And the anchor is that the same request works while the fee stands</b>, so what is
+	 * measured is the fee and not a route that refuses everybody.
 	 */
 	@Test
-	void aFeeThatHasLapsedRefusesNeitherTheQuestionNorTheAnswer() throws Exception {
+	void aMemberWhoseFeeHasLapsedIsAnsweredLikeANumberNobodyCarries() throws Exception {
+		assertThat(askAs(HE_ASKS, asking(SHE_IS_ASKED)).getStatus())
+				.as("the ordinary question is refused even while the fee stands, so the three"
+						+ " refusals below would not be about a fee")
+				.isEqualTo(201);
+
 		lapsed(SHE_IS_ASKED);
-		lapsed(HE_ASKED_HER);
+		lapsed(FIRST_MAN);
 
 		assertThat(db.sql("select count(*) from competitor where not active")
 				.query(Long.class).single())
-				.as("nobody in this fixture has let a fee lapse, so both halves below are about"
+				.as("nobody in this fixture has let a fee lapse, so the answers below are about"
 						+ " nothing at all")
 				.isEqualTo(2);
 
-		assertThat(askAs(HE_ASKS, asking(SHE_IS_ASKED)).getStatus())
-				.as("a member was refused because the one he asked had not renewed, which is a"
-						+ " question about the season being run and not the one being formed")
-				.isEqualTo(201);
+		MockHttpServletResponse nobody = askAs(HE_ASKS, asking(NOBODY));
+		MockHttpServletResponse wrongGender = askAs(HE_ASKS, asking(FIRST_MAN));
+		MockHttpServletResponse rightGender = askAs(HE_ASKS, asking(SHE_IS_ASKED));
+
+		assertThat(List.of(wrongGender.getStatus(), rightGender.getStatus()))
+				.as("a lapsed member is told apart from a number nobody carries, and the difference"
+						+ " between those answers over consecutive numbers is a list of who has not"
+						+ " paid")
+				.containsExactly(nobody.getStatus(), nobody.getStatus());
+
+		assertThat(List.of(wrongGender.getContentAsString(), rightGender.getContentAsString()))
+				.as("the three refusals differ in their bodies, and one of them names the member")
+				.containsExactly(nobody.getContentAsString(), nobody.getContentAsString());
+
+		assertThat(nobody.getStatus()).isEqualTo(404);
+		assertThat(nobody.getContentAsString()).isEmpty();
+	}
+
+	/**
+	 * AND A MEMBER WHOSE OWN FEE HAS LAPSED REACHES NEITHER DOOR, WHICH IS THE OTHER SIDE OF
+	 * THE SAME PAIR.
+	 *
+	 * <p>„Ne postoji par onda, raskida se" does not ask WHICH of the two stopped paying, so a
+	 * route reading it of one of them would write a pair {@link PairApi} refuses to serve from
+	 * the moment it existed. Both doors, because a condition written on one passes the other.
+	 */
+	@Test
+	void aMemberWhoseOwnFeeHasLapsedReachesNeitherDoor() throws Exception {
+		lapsed(HE_ASKS);
+		lapsed(SHE_ANSWERS);
+
+		MockHttpServletResponse asked = askAs(HE_ASKS, asking(SHE_IS_ASKED));
+
+		assertThat(asked.getStatus())
+				.as("a member whose own fee has lapsed wrote a question, and the pair it could make"
+						+ " is one the portal would never serve")
+				.isEqualTo(404);
+		assertThat(asked.getContentAsString()).isEmpty();
 
 		assertThat(answerAs(SHE_ANSWERS, questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true))
 				.getStatus())
-				.as("a member was refused because the one who asked him had not renewed")
+				.as("a member whose own fee has lapsed accepted, and a pair that does not exist was"
+						+ " written")
+				.isEqualTo(404);
+
+		assertThat(howManyPairs()).as("one of the two refusals wrote something anyway").isEqualTo(4);
+		assertThat(howManyQuestions()).isEqualTo(3);
+	}
+
+	/**
+	 * THE READER AND THIS ROUTE AGREE ON WHICH PAIRS STILL HOLD, WHICH IS THE FLOOR UNDER ONE
+	 * FACT LIVING IN TWO PLACES.
+	 *
+	 * <p>{@link PairApi} answers „Par se raskida kad jedna strana ne produzi clanarinu" with
+	 * {@code where man.active and woman.active}, inside a query that also joins for member
+	 * numbers and orders the whole list, so there is no form of it this route can call. Two
+	 * homes for one fact drift; this is what stops them.
+	 *
+	 * <p><b>The case the review measured, end to end.</b> {@link #THE_THIRD} holds a pair for
+	 * the season being formed and her partner stops paying. From that moment the pair is off
+	 * {@code GET /api/pairs} - so she must be able to make a new one, and counting the raw row
+	 * refused her FROM BOTH DIRECTIONS with no {@code DELETE} in this increment to let her out.
+	 *
+	 * <p><b>The anchor comes first:</b> while the fee stands she IS refused, so what the
+	 * assertions below measure is the lapse and not a condition that never fires.
+	 */
+	@Test
+	void theReaderAndThisRouteAgreeOnWhichPairsStillHold() throws Exception {
+		assertThat(askAs(THE_THIRD, asking(FIRST_MAN)).getStatus())
+				.as("a member holding a pair that still holds was allowed to make another, so the"
+						+ " condition this case is about never fires")
+				.isEqualTo(409);
+
+		assertThat(publicPairs())
+				.as("the pair this case is about is not on the public list to begin with")
+				.contains(THE_THIRD);
+
+		lapsed(HE_ASKED_HER);
+
+		assertThat(publicPairs())
+				.as("the pair whose half stopped paying is still on the public list, so the two"
+						+ " sides being compared here have not parted at all")
+				.doesNotContain(THE_THIRD);
+
+		assertThat(askAs(THE_THIRD, asking(FIRST_MAN)).getStatus())
+				.as("she was refused a new pair over one the portal itself no longer serves, and"
+						+ " this increment has no way for her to end it")
+				.isEqualTo(201);
+	}
+
+	/**
+	 * AND IT IS READ FROM THE OTHER SIDE OF THE PAIR TOO.
+	 *
+	 * <p>A condition joined on the man's column alone answers the case above and refuses this
+	 * one, so the mirror is its own case: here the WOMAN is the half that stopped paying and
+	 * the member who needs a new pair is the man.
+	 */
+	@Test
+	void aPairThatStoppedHoldingIsReadFromTheOtherSideToo() throws Exception {
+		assertThat(askAs(UNTOUCHED_MAN, asking(SHE_IS_ASKED)).getStatus())
+				.as("he was not refused while his pair still held, so the lapse below changes"
+						+ " nothing and this case measures nothing")
+				.isEqualTo(409);
+
+		lapsed(UNTOUCHED_WOMAN);
+
+		assertThat(publicPairs()).doesNotContain(UNTOUCHED_MAN);
+		assertThat(askAs(UNTOUCHED_MAN, asking(SHE_IS_ASKED)).getStatus())
+				.as("asked FROM the member whose partner lapsed, the same pair still stood in the"
+						+ " way, so the condition is read on one side of the pair only")
+				.isEqualTo(201);
+	}
+
+	/**
+	 * AND ACCEPTING STILL BREAKS A PAIR THAT HAS STOPPED HOLDING, WHICH IS THE OPPOSITE
+	 * CONDITION TO THE TWO CASES ABOVE AND IS DELIBERATE.
+	 *
+	 * <p>The two questions are not one. „Does a pair still hold" is a fact about the league,
+	 * answered with {@code active}, and it decides who may ask. „What rows stand in the way of
+	 * this INSERT" is answered by {@code racing_pair_one_man_a_season}, which is an index: it
+	 * sees every row there is and reads no flag at all.
+	 *
+	 * <p>So the delete must reach a row whose other half has lapsed, and if it were filtered
+	 * the same way as the reader, that row would survive and then refuse the insert - and the
+	 * member would meet a server fault where a pair belongs. {@link #THE_THIRD} lapses here,
+	 * which takes {@link #HE_ASKED_HER}'s pair off the public list while leaving the row
+	 * exactly where it is.
+	 */
+	@Test
+	void acceptingBreaksAPairThatHasAlreadyStoppedHolding() throws Exception {
+		lapsed(THE_THIRD);
+
+		/* Asked of HER number and not of his: he is also in the pair of the season being RUN,
+		   which still holds, so his number is on that list either way and would say nothing. */
+		assertThat(publicPairs())
+				.as("the stale pair is still served, so the row this case is about is an ordinary"
+						+ " one and the asymmetry it measures does not arise")
+				.doesNotContain(THE_THIRD);
+		assertThat(howManyPairsOf(HE_ASKED_HER, THE_THIRD, BEING_FORMED))
+				.as("the row went when the fee lapsed, so there is nothing left to stand in the"
+						+ " way of the insert")
+				.isOne();
+
+		assertThat(answerAs(SHE_ANSWERS, questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true))
+				.getStatus())
+				.as("the stale row survived the break and then refused the insert, so a member"
+						+ " met a server fault where a pair belongs")
 				.isEqualTo(200);
 
-		assertThat(howManyPairsOf(HE_ASKED_HER, SHE_ANSWERS, BEING_FORMED))
-				.as("the pair was not written, so what this case measured is not the fee")
-				.isOne();
+		assertThat(howManyPairsOf(HE_ASKED_HER, THE_THIRD, BEING_FORMED))
+				.as("the stale row is still there, and one member now holds two pairs in one"
+						+ " season")
+				.isZero();
+		assertThat(howManyPairsOf(HE_ASKED_HER, SHE_ANSWERS, BEING_FORMED)).isOne();
+	}
+
+	/** What the public list really serves, asked of that resource rather than of this one. */
+	private String publicPairs() throws Exception {
+		return http.perform(get("/api/pairs")).andReturn().getResponse().getContentAsString();
 	}
 
 	/**

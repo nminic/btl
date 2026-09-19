@@ -137,9 +137,13 @@ import java.util.Optional;
  * formed.</b> PDL P13, 07.09.2026 lists the conditions under which the button is drawn at
  * all, and this is one of them: „nijedno od njih dvoje nema trkacki par za sezonu koja se
  * formira". {@code pages/profile/InviteToPair.tsx} is the portal's own half of it and refuses
- * on exactly this, and the owner's rule of 05.09.2026 about a member who already has a team
- * gives the server its share: „adresa koju clan ne sme da otvori nije strana sa objasnjenjem
- * nego adresa koje za njega nema", which is why the refusal below carries no body.
+ * on exactly this. <b>This refusal DOES carry a reason, unlike the ones above it, and the
+ * line between them is what the answer would give away.</b> An empty 404 is for a caller who
+ * must not learn that anything is there at all; here the conflict is a RACING PAIR, and a
+ * racing pair is public - Article 73 names it, {@code GET /api/pairs} serves it to a visitor,
+ * and since the condition now counts only pairs that still hold, the ones it can be about are
+ * exactly the ones already on that list. Naming it reveals nothing the portal does not answer
+ * anyway, and refusing without a word would leave a member pressing a button nothing explains.
  * <li><b>Answering is NOT refused for it; it BREAKS the old pair on both sides.</b> PDL P13,
  * 07.09.2026, on a review finding: „Prihvatanje raskida par na OBE strane, ne samo kod onoga
  * ko je pitao... prihvatanje izvodi OBA clana iz onoga u cemu su za tu sezonu." The two rules
@@ -166,27 +170,42 @@ import java.util.Optional;
  * quietly overturns it. None of the three is in {@code PDL.md} or {@code ADL.md} as a sentence
  * of his.
  *
- * <p><b>DERIVED 1: WHETHER THE FEE IS PAID IS NOT ASKED ABOUT EITHER OF THEM.</b> Two sources,
- * both named:
+ * <p><b>DERIVED 1: A MEMBER WHOSE FEE HAS LAPSED IS NOBODY TO THIS ROUTE, IN BOTH ANSWERS AND
+ * ON BOTH SIDES.</b> „Par se raskida kad jedna strana ne produzi clanarinu" (owner,
+ * 11.08.2026, „Ne postoji par onda, raskida se"), and {@link PairApi} already serves no pair
+ * whose half has lapsed. This route asks the same question, in three places:
+ * {@link #halfNumbered} so that a lapsed member cannot be named, {@link #half} so that neither
+ * side of a pair can be one, and {@link #eitherHoldsAPairIn} so that a pair that no longer
+ * holds does not stand in anybody's way.
  *
- * <ul>
- * <li><b>PDL P13 about every change of side:</b> one „se sme zatraziti bilo kad tokom godine",
- * and only „stupa na snagu tek 1. januara naredne sezone, i to samo ako su clanarine
- * izmirene". The fee is a condition on the EFFECT, and the effect is not this route's.
- * <li><b>{@link PairApi} already enforces the other sentence on the way out.</b> „Par se
- * raskida kad jedna strana ne produzi clanarinu" (owner, 11.08.2026, „Ne postoji par onda,
- * raskida se"): that reader serves no pair whose half has lapsed and says in its own javadoc
- * that it „is the only thing between a pair that does not exist and a public answer".
- * </ul>
+ * <p><b>This paragraph said the OPPOSITE until 19.09.2026 and the reason it was wrong is worth
+ * more than the rule it replaced.</b> It argued that the fee must not be asked here because
+ * „a condition over either column would refuse EVERY pair agreed between January and
+ * September". That is true of {@code membership (competitor_id, season, basis)}, which carries
+ * a season and has no row for the one being formed until it goes on sale on 1 October. <b>It
+ * is false of {@code competitor.active}</b>, and V22 says so in as many words: „`competitor.
+ * active` (V7) is one boolean with no season in it. It answers „is he a member NOW"." Two
+ * columns were read as one fact, the wrong half of the sentence was carried over to the other,
+ * and a whole rule was derived from it. What the review then measured is what that cost: a
+ * member whose partner stopped paying was refused a new pair FROM BOTH DIRECTIONS, over a pair
+ * the portal itself no longer serves, with no way out because this increment has no
+ * {@code DELETE}.
  *
- * <p>And asking it HERE would be asking the WRONG QUESTION, which is measured rather than
- * felt: {@code competitor.active} answers about the season that is RUNNING, while a pair is
- * formed for the one that is NOT, and the table that knows membership by season
- * ({@code membership (competitor_id, season, basis)}, PDL, B50) has no row for the season
- * being formed until it goes on sale on 1 October - so a condition over either column would
- * refuse EVERY pair agreed between January and September. {@link TeamWriteApi} asks nothing
- * about the fee either, for a team put forward under the same rules. The day forming really
- * depends on membership, it is one decision in one place and this paragraph is where it lands.
+ * <p><b>And the form of it is PDL's own, not a choice made here.</b> PDL, 13.09.2026: „Nijedan
+ * javni odgovor ne sme da imenuje clana kome je clanarina istekla, NI POSREDNO", with the
+ * check every new resource must answer - „koji od ova tri oblika vazi ovde, i zasto bas taj".
+ * The first form applies and the rule NAMES this resource while describing it: „Ceo red izlazi
+ * kad je clanski broj jedino sto red o coveku nosi. Tako rade PAROVI i najave dolaska." The
+ * whole of what these answers carry about the other person is his member number, so there is
+ * no half answer available; he is answered for, or he is not there. {@link #halfNumbered} has
+ * the three answers this used to give instead, and why counting consecutive numbers turned the
+ * difference between them into a list of who had not paid.
+ *
+ * <p><b>What is still NOT asked, and this half of the old paragraph stands.</b> Nothing here
+ * reads {@code membership}, so nobody is refused for not having paid the season the pair is
+ * being made FOR - which nobody can have done before 1 October. The day forming really depends
+ * on the season's own membership rather than on „is he a member now", it is one decision in one
+ * place and this paragraph is where it lands.
  *
  * <p><b>DERIVED 2: A MEMBER WITH NO NUMBER YET MAY ACCEPT, AND CANNOT BE ASKED.</b> Since V16
  * a row in {@code competitor} is a person who REGISTERED and a member is a row whose number is
@@ -223,7 +242,8 @@ class PairWriteApi {
 	/**
 	 * A required field nobody filled in, and the only 400 here.
 	 *
-	 * <p>The three below are 409 and that is the same line {@link TeamWriteApi} draws: 400 is
+	 * <p>The three below are 409, and the line between the two numbers is the one every
+	 * writing route on this portal draws: 400 is
 	 * about the SHAPE of what was sent, which the caller can correct by sending something
 	 * else, while these three are conflicts with rows already in the database - two people's
 	 * stored genders, a question already standing, a pair already held - and no rewriting of
@@ -258,7 +278,7 @@ class PairWriteApi {
 
 	/**
 	 * Written by hand rather than left on the method, the same choice {@link EventWriteApi}
-	 * and {@link TeamWriteApi} made and for the same reason: accepting is three statements
+	 * and every other writing route made, and for the same reason: accepting is three statements
 	 * that must all happen or none of them. The old pairs are deleted BEFORE the new one is
 	 * written, because the schema allows one pair per person per season and the insert would
 	 * otherwise be refused; a transaction that stopped between the two would leave both of
@@ -362,18 +382,25 @@ class PairWriteApi {
 	}
 
 	private ResponseEntity<?> ask(long me, String memberNumber) {
+		Optional<Half> mine = half(me);
 		Optional<Half> other = halfNumbered(memberNumber);
 
-		/* NOBODY OF THAT NUMBER, AND NOBODY BUT HIMSELF, ANSWERED ALIKE. V12 refuses the
-		   second outright („Nobody invites himself", `pair_invite_two_people`) and the screen
-		   never offers either, so neither is a form somebody filled in wrongly - it is an
-		   address that is not there for him, which is the shape TeamWriteApi answers a member
-		   the portal would have turned away with. */
-		if (other.isEmpty() || other.get().id() == me) {
+		/* FOUR PEOPLE GET THIS ONE ANSWER, AND THAT IS THE POINT OF IT. Nobody of that
+		   number; a number whose member has not renewed; himself; and himself after HIS OWN
+		   fee has lapsed. None of them is a form filled in wrongly - V12 refuses one of them
+		   outright („Nobody invites himself", `pair_invite_two_people`) and the screen offers
+		   none of them - so all four are one address that is not there for him, which is the
+		   shape every write on this portal answers a caller it turns away with.
+
+		   THE LAPSED ONES ARE IN THIS LIST AND NOT BELOW IT, which is PDL's rule of
+		   13.09.2026 read as `halfNumbered` explains: told apart from a number nobody carries,
+		   they would answer 409 or 201 where this answers 404, and the difference between
+		   those answers over consecutive numbers is a list of who has not paid. */
+		if (mine.isEmpty() || other.isEmpty() || other.get().id() == me) {
 			return away();
 		}
 
-		Optional<Mixed> mixed = mixed(half(me), other.get());
+		Optional<Mixed> mixed = mixed(mine.get(), other.get());
 
 		if (mixed.isEmpty()) {
 			return no(HttpStatus.CONFLICT, THE_PAIR_WOULD_NOT_BE_MIXED);
@@ -484,7 +511,24 @@ class PairWriteApi {
 			return ResponseEntity.noContent().build();
 		}
 
-		Optional<Mixed> mixed = mixed(half(whoAsked.get()), half(me));
+		Optional<Half> asker = half(whoAsked.get());
+		Optional<Half> answerer = half(me);
+
+		/* AND EITHER OF THEM MAY HAVE STOPPED PAYING BETWEEN THE QUESTION AND THE ANSWER,
+		   which is the whole reason the two are read again here rather than trusted from the
+		   row. „Ne postoji par onda, raskida se" (owner, 11.08.2026): a pair made now with a
+		   half who is no longer a member is a pair `PairApi` refuses to serve from the moment
+		   it is written, and this route would be the only thing that ever created one.
+
+		   The answer is the one an unanswerable question gets, and it tells the member
+		   nothing he could not already see: `/api/me/applications` stops naming a counterpart
+		   whose fee has lapsed by the same rule (`case when ... active then member_number`),
+		   so the question had already gone nameless on his own screen. */
+		if (asker.isEmpty() || answerer.isEmpty()) {
+			return away();
+		}
+
+		Optional<Mixed> mixed = mixed(asker.get(), answerer.get());
 
 		/* ASKED AGAIN HERE AND NOT ONLY WHERE THE QUESTION WAS SENT, because the two are
 		   different moments and V12 keeps no gender key on `pair_invite` on purpose: „a
@@ -502,7 +546,16 @@ class PairWriteApi {
 		   07.09.2026: „prihvatanje izvodi OBA clana iz onoga u cemu su za tu sezonu", and the
 		   boundary beside it, „par iz sezone koja je prosla se NIKAD ne dira". Written before
 		   the insert rather than after it, because one person holds one pair a season and the
-		   schema would refuse the new row while the old one stood. */
+		   schema would refuse the new row while the old one stood.
+
+		   AND THIS ONE COUNTS THE RAW ROW WHILE `eitherHoldsAPairIn` DOES NOT, WHICH IS AN
+		   ASYMMETRY ON PURPOSE. They ask two different questions. That one asks whether a
+		   pair still HOLDS, which is a fact about the league and is the reader's answer, so a
+		   half who stopped paying makes it no. This one asks what rows stand in the way of an
+		   INSERT, and `racing_pair_one_man_a_season` is an index: it sees every row there is
+		   and does not read `competitor.active` at all. Filtered the same way, a stale row
+		   whose other half had lapsed would survive the delete and then refuse the insert,
+		   and the member would meet a server fault instead of a pair. */
 		db.sql("delete from racing_pair where season = ?"
 						+ " and (man_id in (?, ?) or woman_id in (?, ?))")
 				.params(season, mixed.get().man(), mixed.get().woman(), mixed.get().man(),
@@ -562,27 +615,55 @@ class PairWriteApi {
 		return SeasonClock.transfersTakeEffect(ZonedDateTime.now(clock));
 	}
 
-	/** Somebody named by the number on his card, or nobody. */
+	/**
+	 * SOMEBODY NAMED BY THE NUMBER ON HIS CARD, OR NOBODY - AND A MEMBER WHOSE FEE HAS LAPSED
+	 * IS NOBODY.
+	 *
+	 * <p>This is PDL's rule of 13.09.2026 answered for this resource in the shape it demands
+	 * of every new one: „Nijedan javni odgovor ne sme da imenuje clana kome je clanarina
+	 * istekla, NI POSREDNO", with the check „koji od ova tri oblika vazi ovde, i zasto bas
+	 * taj". <b>The first form applies, and the rule names this very resource when it describes
+	 * it:</b> „Ceo red izlazi kad je clanski broj jedino sto red o coveku nosi. Tako rade
+	 * PAROVI i najave dolaska: nema polovicnog odgovora, red ulazi ili ne ulazi." The only
+	 * thing either answer of this route carries about the other person is his member number
+	 * ({@link Asking}), so there is no half answer to give: he is answered for, or he is not
+	 * there at all.
+	 *
+	 * <p><b>What it was before, and what that cost.</b> Read without {@code active}, this
+	 * route told three different stories about three people: a number nobody carries answered
+	 * 404 with an empty body, a lapsed member of the wrong gender answered 409 and named his
+	 * gender, and a lapsed member of the right gender answered 201 and named HIM. Member
+	 * numbers are consecutive, so walking them turned the difference between those answers
+	 * into a countable list of who had not paid - which is the rule's own reason for existing:
+	 * such a member „nije na spisku takmicara uopste", so any other answer that names him says
+	 * it by the DIFFERENCE between two answers rather than by any field in either.
+	 */
 	private Optional<Half> halfNumbered(String memberNumber) {
-		return db.sql("select id, gender from competitor where member_number = ?")
+		return db.sql("select id, gender from competitor where member_number = ? and active")
 				.param(memberNumber)
 				.query((row, one) -> new Half(row.getLong(1), row.getString(2)))
 				.optional();
 	}
 
 	/**
-	 * Somebody the portal has already resolved, by key.
+	 * Somebody the portal has already resolved, by key, and only while he is still a member.
 	 *
-	 * <p>{@code single()} rather than {@code optional()}: every caller here holds an id that
-	 * came out of {@code account.competitor_id} or out of {@code pair_invite.from_id}, both of
-	 * which are foreign keys into this table, so a missing row would be a broken database and
-	 * not a case.
+	 * <p>{@code optional()} rather than {@code single()}, and the empty case is not a broken
+	 * database: the id itself always names a row - it came out of {@code account.competitor_id}
+	 * or {@code pair_invite.from_id}, both foreign keys into this table - but the row stops
+	 * matching the moment the fee lapses, and that is a state this route has to answer rather
+	 * than throw on.
+	 *
+	 * <p><b>Both sides, because a pair has two and the rule is about the PAIR.</b> „Ne postoji
+	 * par onda, raskida se" does not ask which of the two stopped paying, and a route that
+	 * asked it of one of them would make a pair {@link PairApi} refuses to serve from the
+	 * moment it was written.
 	 */
-	private Half half(long who) {
-		return db.sql("select id, gender from competitor where id = ?")
+	private Optional<Half> half(long who) {
+		return db.sql("select id, gender from competitor where id = ? and active")
 				.param(who)
 				.query((row, one) -> new Half(row.getLong(1), row.getString(2)))
-				.single();
+				.optional();
 	}
 
 	private boolean aQuestionStandsBetween(long one, long other) {
@@ -593,9 +674,37 @@ class PairWriteApi {
 				.single());
 	}
 
+	/**
+	 * WHETHER EITHER OF THEM IS IN A PAIR THAT STILL HOLDS, WHICH IS NOT THE SAME AS A ROW
+	 * IN {@code racing_pair}.
+	 *
+	 * <p>„Par se raskida kad jedna strana ne produzi clanarinu" (owner, 11.08.2026, „Ne
+	 * postoji par onda, raskida se"), and nothing deletes the row when that happens: a fee
+	 * that lapses lowers {@code competitor.active} and removes nobody. So the row outlives
+	 * the pair, and {@link PairApi} is where the portal already turns one into the other,
+	 * with {@code where man.active and woman.active}.
+	 *
+	 * <p><b>Counting the raw row instead was a measured fault and not a nicety.</b> A member
+	 * whose partner stopped paying would be told {@code A_PAIR_ALREADY_HOLDS} from BOTH
+	 * directions - when he asks and when he is asked - over a pair that the portal itself no
+	 * longer serves, and with no {@code DELETE} in this increment he would have no way out
+	 * except somebody else's payment.
+	 *
+	 * <p><b>THE SAME CONDITION LIVES IN TWO PLACES AND THAT IS WRITTEN DOWN RATHER THAN
+	 * HIDDEN.</b> {@link PairApi} carries it inside one query that also joins for member
+	 * numbers and orders the whole list; there is no form of it that can be called from here
+	 * without rewriting that reader, which is a resource this increment does not touch.
+	 * <b>What keeps the two from drifting is a case and not a promise:</b>
+	 * {@code PairWriteApiTest.theReaderAndThisRouteAgreeOnWhichPairsStillHold} lapses one
+	 * half and asserts that the pair leaves the public answer AND stops standing in the way
+	 * here, so a change to either side alone turns it red.
+	 */
 	private boolean eitherHoldsAPairIn(int season, long one, long other) {
-		return Boolean.TRUE.equals(db.sql("select exists(select 1 from racing_pair"
-						+ " where season = ? and (man_id in (?, ?) or woman_id in (?, ?)))")
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from racing_pair p"
+						+ " join competitor man on man.id = p.man_id"
+						+ " join competitor woman on woman.id = p.woman_id"
+						+ " where p.season = ? and man.active and woman.active"
+						+ " and (p.man_id in (?, ?) or p.woman_id in (?, ?)))")
 				.params(season, one, other, one, other)
 				.query(Boolean.class)
 				.single());
@@ -614,7 +723,7 @@ class PairWriteApi {
 	 * Whether a field was filled in at all.
 	 *
 	 * <p>Absent, empty and a run of spaces are one answer and not three, which is the list of
-	 * shapes {@link RegistrationApi} and {@link TeamWriteApi} both keep: JSON has a null, a
+	 * shapes {@link RegistrationApi} keeps for the same reason: JSON has a null, a
 	 * form has an empty box and a person has a space bar.
 	 */
 	private static boolean isNothing(String value) {
@@ -624,7 +733,7 @@ class PairWriteApi {
 	/**
 	 * THE ANSWER FOR SOMEBODY THIS ADDRESS IS NOT FOR, which carries nothing at all.
 	 *
-	 * <p>The shape {@link EventWriteApi} and {@link TeamWriteApi} answer a caller they refuse
+	 * <p>The shape {@link EventWriteApi} answers a caller it refuses
 	 * with, and the reason for the empty body is the owner's of 05.09.2026: „adresa koju clan
 	 * ne sme da otvori nije strana sa objasnjenjem nego adresa koje za njega nema."
 	 */
