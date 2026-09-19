@@ -3,6 +3,7 @@ package com.btl.portal.deploy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -85,13 +86,30 @@ import static org.assertj.core.api.Assertions.fail;
  *     {@code deploy/compose.prod.yml}, the same comment in {@code deploy/compose.qa.yml},
  *     the table and two paragraphs in {@code deploy/README.md}, and the header above the
  *     mail block in {@code .env.example}. Moving a setting here without rewriting those
- *     four leaves four sentences claiming the opposite of what the stack does.
+ *     four leaves four sentences claiming the opposite of what the stack does. It does
+ *     open the last of those files, but for a different question and not for its prose:
+ *     whether every setting a stack asks for has a LINE there at all, which is what the
+ *     runbook's {@code cp .env.example .env} turns into a value on a host.
  * </ol>
  */
 class WhatEachStackRequiresTest {
 
 	/** A value no deployment would ever hold, for the settings a probe is not asking about. */
 	private static final String PLACEHOLDER = "pr275-probe-placeholder";
+
+	/**
+	 * The one setting this file is also asked about BY NAME, and the reason the question
+	 * below had to be added at all.
+	 *
+	 * <p>Everything else here answers „what does this stack do when a setting has no
+	 * value", which is a question about the file. Measured 20.09.2026: that question is
+	 * blind to the NAME the backend is handed. Renaming the key on the left of
+	 * {@code BTL_SUPERADMIN_EMAIL: ${BTL_SUPERADMIN_EMAIL:-}} in both stacks, leaving the
+	 * interpolation alone, left every case in this file green - the variable is still
+	 * asked for, still deploys without it, still reaches one value - while the backend was
+	 * handed a name nothing in it reads and the portal had no superadmin on either stack.
+	 */
+	private static final String SUPERADMIN = "BTL_SUPERADMIN_EMAIL";
 
 	/** What a stack does when one setting has no value, read off Compose's own exit code. */
 	private enum Asking {
@@ -288,6 +306,170 @@ class WhatEachStackRequiresTest {
 				.as("the table holds a stack the repository no longer carries, so a whole section"
 						+ " of it measures nothing")
 				.containsAll(HELD.keySet());
+	}
+
+	/**
+	 * AND THE STACKS THAT NAME A SUPERADMIN HAND THAT NAME TO THE BACKEND THAT READS IT.
+	 *
+	 * <p><b>A different question from every other one in this file, and that is why it is
+	 * here.</b> The table answers „what does the stack do when this setting has no value",
+	 * which is about the variable on the RIGHT of the colon. Which key the backend
+	 * receives is the name on the LEFT, and nothing was asking about it: renaming that
+	 * half alone left this whole file green while the portal lost its superadmin on both
+	 * stacks. {@code PostmanTest#everyInstallationThatSignsInAlsoRequiresTls} is the
+	 * precedent - it reads what a stack hands its backend and asks of that.
+	 *
+	 * <p><b>Both halves are asked in one breath, and each catches a different mutation.</b>
+	 * The key must be there, which renaming it breaks; and its value must be the
+	 * placeholder the setting was given, which a literal pasted over the line or a
+	 * {@code $$} that turns the interpolation into dead text breaks - the same two shapes
+	 * the count of rendered values was written for.
+	 *
+	 * <p><b>Which stacks are asked is derived, not listed:</b> every stack found on the
+	 * file system whose settings include this one. The floor under that is the count at
+	 * the end - a name that vanished from both deploy files would leave this case
+	 * measuring nothing and reporting green, which is the failure this whole file exists
+	 * to refuse.
+	 *
+	 * <p><b>What it does not claim,</b> written here rather than left to be found: nothing
+	 * says the OTHER settings reach the backend under the names it reads. Those are
+	 * {@code SPRING_}-prefixed, Spring's own relaxed binding answers for them, and no
+	 * mutation has yet shown that question to be live. This one is, and it is the one
+	 * asked.
+	 */
+	@Test
+	void everyStackThatNamesASuperadminHandsThatNameToItsBackend() throws Exception {
+		List<Path> naming = new ArrayList<>();
+
+		for (Path stack : everyStackThisRepoDeploys().toList()) {
+			List<String> settings = settingsOf(stack);
+
+			if (!settings.contains(SUPERADMIN)) {
+				continue;
+			}
+
+			naming.add(stack);
+
+			Map<String, String> distinct = new LinkedHashMap<>();
+
+			settings.forEach(one -> distinct.put(one, PLACEHOLDER + "-" + one));
+
+			Ran rendered = compose(stack, List.of("config"), distinct);
+
+			assertThat(rendered.code())
+					.as("%s could not be rendered even with every setting given a value, so"
+							+ " nothing below reads anything:%n%s", stack, rendered.errors())
+					.isZero();
+
+			Map<String, Object> backend = backendEnvironmentOf(rendered.output(), stack);
+
+			assertThat(backend)
+					.as("%s asks for %s and then hands its backend no such setting, so the"
+							+ " address sits in deploy/.env and reaches nothing: the portal comes"
+							+ " up, serves every page, and has no superadmin. The name on the LEFT"
+							+ " of the colon is what Spring binds to btl.superadmin.email",
+							stack, SUPERADMIN)
+					.containsKey(SUPERADMIN);
+
+			assertThat(String.valueOf(backend.get(SUPERADMIN)))
+					.as("%s hands its backend a %s that no longer comes from the setting of that"
+							+ " name - a value pasted straight over the line, or a '$$' that turned"
+							+ " the interpolation into dead text. The key is there and the .env is"
+							+ " read by nobody", stack, SUPERADMIN)
+					.isEqualTo(distinct.get(SUPERADMIN));
+		}
+
+		assertThat(naming)
+				.as("no stack in this repository asks for %s any more, so this case measured"
+						+ " nothing at all and reported green. Both deploy stacks carry it because"
+						+ " the same person administers QA and production", SUPERADMIN)
+				.hasSizeGreaterThanOrEqualTo(2);
+	}
+
+	/**
+	 * AND EVERY SETTING EVERY STACK ASKS FOR HAS A LINE IN THE FILE THE RUNBOOK SAYS TO
+	 * COPY.
+	 *
+	 * <p><b>Measured 20.09.2026 on this very increment.</b> {@code deploy/README.md} tells
+	 * whoever raises a stack to run {@code cp ../.env.example .env} and then fill it in. A
+	 * setting added to a stack and not to that file therefore reaches the host as a line
+	 * nobody knows to write: the stack comes up - every setting here that deploys without
+	 * a value comes up - and the thing it configures is silently absent, with nothing
+	 * anywhere saying why.
+	 *
+	 * <p><b>Nothing is listed here.</b> The names come from Compose, over every stack
+	 * found on the file system, which is the same floor the rest of this file stands on. A
+	 * setting that arrives tomorrow is measured the day it arrives.
+	 *
+	 * <p><b>What it claims is that a line EXISTS, not that its value is right</b> - every
+	 * password in that file ships empty on purpose, and the header there says why.
+	 */
+	@Test
+	void everySettingEveryStackAsksForHasALineInTheFileTheRunbookSaysToCopy() throws Exception {
+		List<String> lines = Files.readAllLines(Path.of("..", ".env.example"),
+						StandardCharsets.UTF_8).stream()
+				.map(String::strip)
+				.toList();
+
+		int asked = 0;
+
+		for (Path stack : everyStackThisRepoDeploys().toList()) {
+			for (String setting : settingsOf(stack)) {
+				assertThat(lines)
+						.as("%s asks for %s and .env.example carries no line for it, while"
+								+ " deploy/README.md says to raise a stack by copying that file."
+								+ " Whoever follows the runbook gets a stack that comes up with"
+								+ " that setting silently unset", stack, setting)
+						.anyMatch(line -> line.startsWith(setting + "="));
+
+				asked++;
+			}
+		}
+
+		assertThat(asked)
+				.as("no stack asks the environment for anything at all, so this compared nothing")
+				.isNotZero();
+	}
+
+	/**
+	 * What one stack hands its backend, read off COMPOSE'S OWN rendered configuration.
+	 *
+	 * <p>The shape is {@code PostmanTest}'s, with one difference that matters here: it
+	 * reads the rendered output rather than the file, so interpolation has already
+	 * happened and the value seen is the value the container would get. Reading the text
+	 * instead would put this back among the three drafts the header above describes.
+	 */
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> backendEnvironmentOf(String rendered, Path stack) {
+		Map<String, Object> configured = new Yaml().load(rendered);
+		Map<String, Object> services = (Map<String, Object>) configured.get("services");
+
+		assertThat(services)
+				.as("%s renders no services at all, so it hands nothing to anything", stack)
+				.isNotNull();
+
+		Map<String, Object> backend = (Map<String, Object>) services.get("backend");
+
+		assertThat(backend)
+				.as("%s deploys no backend at all, so it hands it no settings; if that is on"
+						+ " purpose this case has to say which stacks carry one", stack)
+				.isNotNull();
+
+		Object environment = backend.get("environment");
+
+		/* Compose takes `environment` as a map or as a list of `KEY=value`, and this reads
+		   the map, which is what `docker compose config` normalises to. Written as a bare
+		   cast it would fail with a ClassCastException naming neither the superadmin nor
+		   the stack, and the next person would be tempted to make the failure go away
+		   rather than to keep what it was guarding. */
+		assertThat(environment)
+				.as("%s renders its backend settings as a list rather than a map, and this case"
+						+ " reads the map - rewrite it to read both rather than dropping it,"
+						+ " because what it holds is that the superadmin's address reaches the"
+						+ " backend at all", stack)
+				.isInstanceOf(Map.class);
+
+		return (Map<String, Object>) environment;
 	}
 
 	/**

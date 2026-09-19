@@ -40,12 +40,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * produces. {@code /api/moderators} is the door: it carries {@link OnlyTheSuperadmin},
  * which no tick can open.
  *
- * <p><b>The setting is a made up address and never the owner's own.</b> His lives in
- * {@code deploy/.env} and in no file this repository carries (PDL P21: „adresa stoji u
- * deploy/.env"), and nothing here needs it to be real - only that one address is named
- * and another is not.
+ * <p><b>The setting below is made up, and not because the owner's own address is a
+ * secret.</b> It is not one: an address is an identity, his stands in the author header
+ * of every commit this public repository carries, and an address on its own opens
+ * nothing. What opens everything is the password beside it - „superadminski nalog vidi
+ * spisak prava svih administratora i sve licne podatke, pa ko dodje do te lozinke dolazi
+ * do svega" (PDL P21, 14.09.2026). His real one belongs in {@code deploy/.env} because
+ * that is where the decision put it („adresa stoji u deploy/.env"), and nothing here
+ * needs it: what these cases need is that some addresses are named and another is not.
+ *
+ * <p><b>THE SETTING IS WRITTEN AS THE LINE AN OPERATOR ACTUALLY TYPES, and that is the
+ * half no unit test can reach.</b> Two addresses, one comma, capitals and stray spaces
+ * around both - so what is measured here is not only that this portal answers correctly
+ * but that the property binder cuts that line into members at all. Cut by nobody, the
+ * whole line matches no row and EVERY case below goes red, which is the shape the fault
+ * of 20.09.2026 had: two addresses in the settings and no superadmin anywhere.
  */
-@SpringBootTest(properties = "btl.superadmin.email=Imenovani@Primer.rs ")
+@SpringBootTest(properties = "btl.superadmin.email=Imenovani@Primer.rs , Drugi@Primer.rs ")
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
@@ -54,13 +65,23 @@ class SuperadminIsNamedByAnAddressTest {
 	/**
 	 * The address the settings name, as a ROW carries it: folded.
 	 *
-	 * <p>The setting above is deliberately spelled with capitals and a trailing space,
-	 * which is what a person editing {@code deploy/.env} by hand actually produces. That
-	 * the two are one address is the property {@code TheNamedSuperadminTest} measures
-	 * directly; carrying the difference here as well means the whole path would fail if
-	 * the fold were ever dropped between the setting and the row.
+	 * <p>Both members of the setting above are deliberately spelled with capitals, and
+	 * with a stray space on either side of the comma, which is what a person editing
+	 * {@code deploy/.env} by hand actually produces. That such a spelling and this row are
+	 * one address is the property {@code TheNamedSuperadminTest} measures directly;
+	 * carrying the difference here as well means the whole path would fail if the fold
+	 * were ever dropped between the setting and the row.
 	 */
 	private static final String NAMED = "imenovani@primer.rs";
+
+	/**
+	 * The SECOND address the settings name, and the reason the case below is not a
+	 * repetition of the first.
+	 *
+	 * <p>It exists only on the far side of a comma, so no reading that takes the setting
+	 * as one address can ever produce it: it is the member the operator's line would lose.
+	 */
+	private static final String ALSO_NAMED = "drugi@primer.rs";
 
 	private static final String SOMEBODY_ELSE = "neimenovani@primer.rs";
 
@@ -71,13 +92,14 @@ class SuperadminIsNamedByAnAddressTest {
 	private JdbcClient db;
 
 	@BeforeEach
-	void twoAccountsAndNeitherOfThemIsAnythingSpecial() {
-		/* BOTH ARE `competitor` IN THE ROW, which is the point rather than the fixture
-		   being lazy: the role the owner holds is not written anywhere, so an account
-		   that carried `superadmin` in its row would measure the old world and pass
-		   whatever this code did. Registration writes `competitor` for him too, and
-		   `theRowStillSaysCompetitor` holds that. */
+	void threeAccountsAndNoneOfThemIsAnythingSpecial() {
+		/* ALL THREE ARE `competitor` IN THE ROW, which is the point rather than the
+		   fixture being lazy: the role the owner holds is not written anywhere, so an
+		   account that carried `superadmin` in its row would measure the old world and
+		   pass whatever this code did. Registration writes `competitor` for him too, and
+		   `theRoleIsNeverWrittenIntoTheRow` holds that. */
 		member(NAMED, "competitor");
+		member(ALSO_NAMED, "competitor");
 		member(SOMEBODY_ELSE, "competitor");
 	}
 
@@ -85,6 +107,15 @@ class SuperadminIsNamedByAnAddressTest {
 		db.sql("insert into account (first_name, last_name, email, role_id)"
 						+ " values ('Probni', 'Probic', ?, (select id from role where code = ?))")
 				.params(email, role).update();
+	}
+
+	/**
+	 * Which account a row is, so that an answer about a role can be pinned to the account
+	 * it is about rather than to any account that happens to hold the same role.
+	 */
+	private long idOf(String email) {
+		return db.sql("select id from account where email = ?")
+				.param(email).query(Long.class).single();
 	}
 
 	/** Marks the address confirmed, which is the second half of the owner's sentence. */
@@ -133,6 +164,49 @@ class SuperadminIsNamedByAnAddressTest {
 		assertThat(asking("/api/moderators", his).getStatus())
 				.as("the portal called him the superadmin and then shut the one door only a"
 						+ " superadmin opens, which is an administration drawn and not real")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * AND SO IS THE SECOND ADDRESS ON THE SAME LINE, which is the decision this setting
+	 * carries out rather than a capability nobody asked for.
+	 *
+	 * <p>„Odluka od istog dana da superadminskih naloga <b>sme da bude vise</b> ostaje
+	 * tacna i sprovodi se <b>brojem adresa u podesavanjima</b>, ne kucicama u portalu",
+	 * and „danas je u podesavanjima jedna adresa. <b>Portal to ne ogranicava</b>, ali ni ne
+	 * nudi ekran za dodavanje" (PDL P21, 14.09.2026). ADL says the same from the schema's
+	 * side: {@code role_only_one_holds_every_right} fixes one ROLE holding every right,
+	 * while „broj naloga sa tom ulogom nije njime ogranicen <b>i ne sme da bude</b>".
+	 *
+	 * <p><b>This is the case that measures the cutting, and no other one can.</b> The
+	 * address it asks about is the one that exists only after a comma: a portal that took
+	 * the whole setting as a single address would answer it {@code competitor} - and would
+	 * answer the FIRST address that way too, which is exactly how the fault of 20.09.2026
+	 * read from the outside. Both halves are asked, the screen list and the door, for the
+	 * reason the class javadoc gives: a role drawn and a role granted must be one.
+	 *
+	 * <p><b>The answer is pinned to the account it is about, and that is not decoration.</b>
+	 * „superadmin" would be answered by the FIRST named account just as readily, so a case
+	 * that only read the role would be satisfied by a session opened for the wrong one and
+	 * would measure the address it was written to measure - the second - not at all.
+	 * Reading the account back off the same response is what separates the two.
+	 */
+	@Test
+	void twoNamedAddressesAreTwoSuperadmins() throws Exception {
+		confirm(ALSO_NAMED);
+
+		SecretToken his = openFor(ALSO_NAMED);
+
+		assertThat(asking("/api/me", his).getContentAsString())
+				.as("a second address was named in the settings and the portal called that"
+						+ " account an ordinary member, which limits in code a number the"
+						+ " settings are meant to decide")
+				.contains("\"role\":\"superadmin\"")
+				.contains("\"account\":" + idOf(ALSO_NAMED));
+
+		assertThat(asking("/api/moderators", his).getStatus())
+				.as("the portal called the second named account a superadmin and then shut the"
+						+ " one door only a superadmin opens")
 				.isEqualTo(200);
 	}
 

@@ -85,17 +85,27 @@ class ApiSecurity {
 					"/api/pages");
 
 	/**
-	 * @param namedSuperadmin the address {@code deploy/.env} names, EMPTY BY DEFAULT so
-	 *                        that an installation which names nobody starts and serves
-	 *                        normally - „Portal mora da radi normalno, bez superadmina, i
-	 *                        bez pada". The default is the whole of that requirement: a
-	 *                        {@code @Value} without one refuses to build the context, so
-	 *                        every developer machine and every test would have to carry a
-	 *                        setting in order to start
+	 * @param namedSuperadmins the addresses {@code deploy/.env} names, taken as an ARRAY so
+	 *                         that the property binder does the splitting - it is the thing
+	 *                         that already decides what a list-valued property looks like,
+	 *                         and it decides it the same way for this file, for a
+	 *                         {@code -D} on the command line and for the environment
+	 *                         variable the deploy stacks set. More than one is the point
+	 *                         rather than a nicety: „superadminskih naloga sme da bude vise
+	 *                         ... sprovodi se brojem adresa u podesavanjima" (PDL P21).
+	 *                         <p>WHAT CARRIES „Portal mora da radi normalno, bez
+	 *                         superadmina, i bez pada" IS NOT THIS DEFAULT but the
+	 *                         {@code btl.superadmin.email=} line in
+	 *                         {@code application.properties}, and that is measured rather
+	 *                         than believed: with the {@code :} taken off this placeholder
+	 *                         the context still starts, because the key is declared there.
+	 *                         The default is a second floor under a context assembled
+	 *                         without that file - it costs a character and it is not what
+	 *                         the requirement rests on
 	 */
 	@Bean
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db,
-			@Value("${btl.superadmin.email:}") String namedSuperadmin) throws Exception {
+			@Value("${btl.superadmin.email:}") String[] namedSuperadmins) throws Exception {
 		String[] open = READ_BY_ANYBODY.toArray(String[]::new);
 
 		return http
@@ -286,7 +296,7 @@ class ApiSecurity {
 				   member would be answered 401 by a chain that was about to know who he
 				   is. `ApiSecurityTest` measures that a member reaches a route that asks
 				   for him. */
-				.addFilterBefore(new WhoIsAsking(db, new TheNamedSuperadmin(namedSuperadmin)),
+				.addFilterBefore(new WhoIsAsking(db, new TheNamedSuperadmin(namedSuperadmins)),
 						AuthorizationFilter.class)
 				.exceptionHandling(handling -> handling
 						.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
