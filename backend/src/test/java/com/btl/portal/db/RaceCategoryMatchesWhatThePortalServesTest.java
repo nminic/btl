@@ -206,10 +206,17 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 	 * here.</b> This swept to a hundred kilometres until a second round pointed out
 	 * that a hundred was mine and nobody else's: the portal already serves races up
 	 * to 529.93 km, and a branch turning above the swept bound would be unreachable
-	 * to this case while being perfectly reachable in the portal. So the bound comes
-	 * off the column itself - {@code numeric(6,2)} holds up to 9999.99 in steps of a
-	 * hundredth - which is the largest distance that can ever be stored and needs
-	 * nobody to keep it up to date.
+	 * to this case while being perfectly reachable in the portal. So the bound and the
+	 * step both come off the column itself, which is the largest distance that can ever
+	 * be stored and needs nobody to keep it up to date.
+	 *
+	 * <p><b>And that is not free, which is measured rather than guessed.</b> V25 widened
+	 * {@code race.distance_km} from {@code numeric(6,2)} to {@code numeric(8,4)}, so the
+	 * sweep over that table went from a million values to a hundred million - 0.95s to
+	 * 35s against postgres:18. {@code result.distance_km} is still {@code numeric(6,2)}
+	 * and still sweeps a million. The cost is left where it is on purpose: a bound picked
+	 * to be cheap is a bound somebody chose, and the two rounds above are what that costs
+	 * when it is wrong.
 	 *
 	 * <p>Neither side is typed out here: one comes off the file the portal serves,
 	 * the other off what the database answered, and the domain off the catalogue.
