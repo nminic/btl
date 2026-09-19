@@ -372,9 +372,19 @@ class ModeratorWriteApi {
 	ResponseEntity<?> add(@RequestBody Invited typed) {
 		/* WHICH FIELDS ARE MISSING AND NOT ONLY THAT SOMETHING IS, which is the second half
 		   of ADL A54 („`PUT` koji ne posalje neko polje odbija se sa 400, i KAZE SE STA
-		   FALI. Isto na svakoj upisnoj ruti portala, bez izuzetka", owner, 19.09.2026). The
-		   shape is `RaceWriteApi`'s, down to `reason` standing first so that a caller
-		   reading a refusal by its reason reads this one unchanged.
+		   FALI", owner, 19.09.2026). The shape is `RaceWriteApi`'s, down to `reason`
+		   standing first so that a caller reading a refusal by its reason reads this one
+		   unchanged.
+
+		   „Isto na svakoj upisnoj ruti portala, bez izuzetka" is NOT part of that owner
+		   sentence, and was corrected 19.09.2026 when an independent review of PR 309 found
+		   it standing here in his voice without being his: it was this codebase's own
+		   extension of a choice made for one route into a rule for the whole portal. What
+		   A54 actually settles for every route, the owner's own words the same day and also
+		   on three offered outcomes, is narrower: „izostavljeno polje nikad ne sme tiho da
+		   promeni vrednost; sme da znaci 'ne diraj', nikad 'vrati na podrazumevano'". A
+		   route picks which of the two a left-out field means and says which; this one,
+		   like `RaceWriteApi`, picks refusal.
 
 		   A ROUTE WRITTEN AFTER THAT DECISION IS BORN WITH IT. The outstanding work on the
 		   other routes is about bringing the ones that came BEFORE it into line, and a new

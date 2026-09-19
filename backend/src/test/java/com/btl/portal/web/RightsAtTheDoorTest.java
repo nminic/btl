@@ -297,6 +297,16 @@ class RightsAtTheDoorTest {
 	 * {@code READ_BY_ANYBODY}, so read by the path alone this route was excused by the
 	 * address and this line would never have been written. It was invisible for the length of
 	 * one merge.
+	 *
+	 * <p><b>AND {@code PUT /api/me/notifications} IS B84'S WRITE OF THAT SAME RESOURCE, AND
+	 * NEEDS NO NEW REASON - ONLY A NEW NAME.</b> It is done by a MEMBER, changing his OWN
+	 * settings, which is the identical sentence the paragraph above already gives for the
+	 * {@code GET}: no privilege protects choosing your own mail, the same way none protects
+	 * reading your own comments or your own applications. What is new is only that this verb
+	 * now has to be named on its own: until B80's correction the path stood BARE here, which
+	 * excused every verb it mapped, so this write was invisible under the very entry that
+	 * already carried its {@code GET}. It arrives here the way B80's own note says a verb
+	 * added to an already-named address would.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("GET /api/me", "POST /api/sign-in", "POST /api/sign-out",
@@ -306,7 +316,8 @@ class RightsAtTheDoorTest {
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams",
-					"POST /api/pairs", "PUT /api/pairs/{id}", "ANY /error");
+					"POST /api/pairs", "PUT /api/pairs/{id}", "PUT /api/me/notifications",
+					"ANY /error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 

@@ -1153,8 +1153,16 @@ class RaceWriteApiTest {
 	 * AN EDIT THAT LEAVES A FIELD OUT IS REFUSED, THE FIELD IS NAMED, AND NOTHING MOVES.
 	 *
 	 * <p><b>Owner, ADL A54, 19.09.2026, on three offered outcomes:</b> „`PUT` koji ne
-	 * posalje neko polje odbija se sa 400, i kaze se sta fali. Isto na svakoj upisnoj ruti
-	 * portala, bez izuzetka."
+	 * posalje neko polje odbija se sa 400, i kaze se sta fali."
+	 *
+	 * <p><b>The clause that followed it here, „Isto na svakoj upisnoj ruti portala, bez
+	 * izuzetka", was never his.</b> An independent review of PR 309 found it in his voice
+	 * on 19.09.2026 and traced it to this codebase's own extension of a choice made for the
+	 * race edit into a rule for every route. What he decided instead, the same day and also
+	 * on three offered outcomes, is narrower and leaves the choice to the route:
+	 * „izostavljeno polje nikad ne sme tiho da promeni vrednost; sme da znaci 'ne diraj',
+	 * nikad 'vrati na podrazumevano'." {@link RaceWriteApi#change} picks refusal, which is
+	 * what this case measures.
 	 *
 	 * <p><b>The fields are not typed out here.</b> They are the components of
 	 * {@link RaceWriteApi.Upsert} less {@link #AN_EDIT_NEED_NOT_SEND}, read off the record
