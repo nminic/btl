@@ -229,6 +229,14 @@ class RaceWriteApi {
 	 * is what is added, not what is swapped. The names in it are the components of
 	 * {@link Upsert}, which are the names the JSON uses, so what comes back is the name of
 	 * the field the caller failed to send rather than a translation of it.
+	 *
+	 * <p><b>AND TODAY ONLY {@code /api/races/{id}} SENDS IT, which is measured and not an
+	 * intention.</b> {@code PUT /api/events/{id}} and {@code PUT /api/moderators/{id}}
+	 * answer a bare {@code {"reason": ...}} with no list at all, so a client written
+	 * against this shape must not assume the other two carry it. That half of A54 is
+	 * outstanding on those two routes and is carried as separate work; because
+	 * {@code reason} is common to both shapes, a client that reads only the reason works
+	 * against all three in the meantime.
 	 */
 	record NotComplete(String reason, List<String> missing) {
 	}
@@ -314,9 +322,25 @@ class RaceWriteApi {
 	 * <p><b>A FIELD LEFT OUT IS REFUSED HERE, AND THAT IS THE ONE PLACE THIS ROUTE IS NOT
 	 * {@link #add}.</b> ADL A54, owner, 19.09.2026, on three offered outcomes: „`PUT` koji
 	 * ne posalje neko polje odbija se sa 400, i kaze se sta fali. Isto na svakoj upisnoj
-	 * ruti portala, bez izuzetka." {@link EventWriteApi#change} already answers this way
-	 * and this now really is the same choice - until 19.09.2026 this javadoc said it was
-	 * while the code did the opposite.
+	 * ruti portala, bez izuzetka."
+	 *
+	 * <p><b>THIS IS THE FIRST ROUTE THAT CARRIES A54 IN FULL, and saying otherwise is the
+	 * mistake this very decision is about.</b> {@link EventWriteApi#change} BEGAN the
+	 * precedent and does not finish it: measured 19.09.2026 on PR 304, it asks for two of
+	 * its nine fields, {@code name} and {@code date}, and still overwrites the other four
+	 * with defaults written for ENTRY - a {@code PUT /api/events/{id}} carrying only
+	 * {@code name}, {@code date} and {@code placeId} answers 200 and turns a
+	 * {@code training} into a {@code race}, drops {@code featured}, and empties the
+	 * description and the link. Until that measurement this javadoc claimed the precedent
+	 * already answered this way, which was untrue in the one direction that matters: a
+	 * sentence claiming a precedent that exists only in part is an instruction to the next
+	 * reader to make the same mistake, which is what A54 says in as many words. ADL A54
+	 * carries the correction and the numbers.
+	 *
+	 * <p><b>So the other two writing routes are NOT aligned yet.</b>
+	 * {@code PUT /api/events/{id}} and {@code PUT /api/moderators/{id}} are carried as a
+	 * separate piece of work and are not this branch's to fix. Whoever reads this before
+	 * that work has landed should expect them to differ, not copy them.
 	 *
 	 * <p><b>What was wrong with taking the defaults, and it is why this is a decision and
 	 * not a tidy-up.</b> The defaults in {@link #checked} are written for ENTRY: a race

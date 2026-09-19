@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
@@ -338,11 +339,20 @@ class RaceWriteApiTest {
 		}
 
 		/**
-		 * THE SAME FORM WITH ONE FIELD NOT SENT AT ALL, named as the JSON names it.
+		 * THE SAME FORM WITH ONE FIELD EMPTIED, named as the JSON names it.
 		 *
-		 * <p>Not "sent empty": left out of the body, which is the shape ADL A54 is about.
-		 * A record with a null component serialises to a JSON object without that key,
-		 * which is exactly what a screen that forgot a field would send.
+		 * <p>Not "sent empty" in the sense of blank text: the component is null, and
+		 * {@code null} is what {@link RaceWriteApi.Upsert} then holds, which is the state
+		 * ADL A54 is about.
+		 *
+		 * <p><b>What this actually puts on the wire is a key with a null value, and that
+		 * is worth saying because this javadoc said the opposite until 19.09.2026.</b> A
+		 * record with a null component serialises to {@code "date": null}, NOT to an
+		 * object without the key: Jackson's default inclusion is ALWAYS. The two bodies
+		 * are different bytes that the route today reads the same way, and
+		 * {@link #anEditThatOMITSTheKeyEntirelyIsRefusedTheSameWay} is what holds them
+		 * equal - without it a {@code Nulls.SKIP} or a default on the record would part
+		 * them without a single case failing.
 		 *
 		 * <p><b>The default is the floor's teeth.</b> The names come from
 		 * {@link #everyFieldAnEditMustSend}, which reads them off
@@ -1193,6 +1203,72 @@ class RaceWriteApiTest {
 				.as("an edit with no %s was refused and the cascade rewrote a result's day"
 						+ " anyway", field)
 				.isEqualTo(THE_MIDDLE_DAY.toString());
+	}
+
+	/**
+	 * AND A BODY THAT DOES NOT CARRY THE KEY AT ALL IS REFUSED IN EXACTLY THE SAME WORDS.
+	 *
+	 * <p><b>Two different bodies, and until 19.09.2026 this file thought they were one.</b>
+	 * {@code Form#without} nulls a component, and a record with a null component
+	 * serialises to {@code "date": null} - Jackson includes the key. A screen that simply
+	 * never wrote the field sends an object with no {@code date} in it. Those are
+	 * different bytes, and every case above sends only the first of them.
+	 *
+	 * <p><b>The route reads them the same, which is right, and nothing held it.</b> That
+	 * is the whole reason for this case: a {@code @JsonSetter(nulls = Nulls.SKIP)} or a
+	 * default filled in by a compact constructor would part the two shapes, and the suite
+	 * would stay green while a form that omitted a field silently took a default again -
+	 * which is the exact fault ADL A54 was written about.
+	 *
+	 * <p>The second body is DERIVED from the first rather than typed out, so the one key
+	 * is the only difference between them, and the removal is checked to have actually
+	 * happened: a key that was not there to remove would send the same bytes twice and
+	 * make the comparison below true about nothing.
+	 */
+	@ParameterizedTest
+	@MethodSource("everyFieldAnEditMustSend")
+	void anEditThatOmitsTheKeyEntirelyIsRefusedTheSameWay(String field) throws Exception {
+		MockHttpServletResponse nulled = change(theMiddleRace, anEdit().without(field));
+		MockHttpServletResponse absent = changeSending(theMiddleRace, aBodyWithNo(field));
+
+		assertThat(absent.getStatus())
+				.as("a body carrying no %s key at all was not refused", field)
+				.isEqualTo(400);
+		assertThat(missingIn(absent))
+				.as("a body carrying no %s key at all did not say that is what was missing",
+						field)
+				.containsExactly(field);
+
+		assertThat(List.of(absent.getStatus(), absent.getContentAsString()))
+				.as("`\"%s\": null` and a body with no `%s` at all are answered differently, so"
+						+ " the two shapes have parted and only one of them is measured", field,
+						field)
+				.isEqualTo(List.of(nulled.getStatus(), nulled.getContentAsString()));
+	}
+
+	/**
+	 * A complete edit's body with one KEY taken out of it, rather than set to null.
+	 *
+	 * <p>Built by serialising {@link #anEdit} and removing the key, so the body is byte for
+	 * byte what the route is sent everywhere else less exactly one key.
+	 */
+	private String aBodyWithNo(String field) throws Exception {
+		ObjectNode body = (ObjectNode) new ObjectMapper().readTree(json(anEdit()));
+
+		assertThat(body.remove(field))
+				.as("the body carries no key called %s to begin with, so this would send the"
+						+ " same bytes twice and compare nothing", field)
+				.isNotNull();
+
+		return body.toString();
+	}
+
+	/** The same edit request, with a body handed over as it stands rather than as a form. */
+	private MockHttpServletResponse changeSending(long id, String body) throws Exception {
+		return http.perform(put("/api/races/" + id).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(body)
+						.cookie(new Cookie(SessionCookie.NAME, session)))
+				.andReturn().getResponse();
 	}
 
 	/**
