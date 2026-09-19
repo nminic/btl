@@ -41,7 +41,7 @@ import java.lang.annotation.Target;
  * annotation marked here and not wired into {@link RightsAtTheDoor#preHandle} would be
  * a guard that guards nothing - which is the gap this mark could otherwise open, and it
  * is closed by measurement rather than by care:
- * {@code everyRouteTheDoorAsksAboutIsShutToACompetitorAlthoughHeIsSignedIn} asks every
+ * {@code everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn} asks every
  * route carrying any marked annotation, as a plain competitor, and fails on anything but
  * a refusal. That case is derived from the dispatcher, so it has no list either.
  */

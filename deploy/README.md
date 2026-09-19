@@ -239,7 +239,7 @@ does not spend the night in the database.
 
 ### What production costs in memory
 
-The host has 4 GB in total and carries the edge proxy, the whole QA stack and
+The host has 3.7 GB in total and carries the edge proxy, the whole QA stack and
 this one. The two services added here therefore carry an explicit `mem_limit`,
 the same numbers QA measured at rest, so a runaway JVM cannot take the public
 site down with it. The JVM reads that limit, not the host's total, and sizes its
@@ -483,7 +483,7 @@ the next `up -d --build backend`, with no separate step.
 
 ### What QA costs in memory
 
-The host has 4 GB in total and already carries the edge proxy, the production
+The host has 3.7 GB in total and already carries the edge proxy, the production
 frontend and the QA frontend. Both new services therefore carry an explicit
 `mem_limit`, so a runaway JVM cannot take the public site down with it. The JVM
 reads that limit, not the host's total, and sizes its heap from it.

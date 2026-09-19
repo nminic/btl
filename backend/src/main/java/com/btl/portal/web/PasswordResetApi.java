@@ -297,8 +297,8 @@ class PasswordResetApi {
 		   member signs in with, so completing one is at least as strong a proof of who
 		   is asking as the ten guesses `SignIn.ENOUGH_MISSES_TO_LOCK` was ever meant to
 		   stop; leaving the lock in place would tell a member who just proved exactly
-		   that to come back in fifteen minutes anyway. It costs nothing an attacker did
-		   not already win the moment he could complete this request at all. */
+		   that to come back in fifteen minutes anyway. What stops that race is
+		   `SignInApi.signIn`'s `for update`, not this paragraph. */
 		/* AND AN ACCOUNT THAT HAD NO PASSWORD AT ALL HAS ITS ADDRESS CONFIRMED BY THIS,
 		   which is the owner's decision of 19.09.2026 and the only line of this route that
 		   moved for it: „Potvrda adrese se upisuje u trenutku kad se TOKEN POTROSI.

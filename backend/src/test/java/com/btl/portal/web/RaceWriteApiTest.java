@@ -350,7 +350,7 @@ class RaceWriteApiTest {
 		 * record with a null component serialises to {@code "date": null}, NOT to an
 		 * object without the key: Jackson's default inclusion is ALWAYS. The two bodies
 		 * are different bytes that the route today reads the same way, and
-		 * {@link #anEditThatOMITSTheKeyEntirelyIsRefusedTheSameWay} is what holds them
+		 * {@link #anEditThatOmitsTheKeyEntirelyIsRefusedTheSameWay} is what holds them
 		 * equal - without it a {@code Nulls.SKIP} or a default on the record would part
 		 * them without a single case failing.
 		 *
