@@ -40,13 +40,32 @@ import java.util.Optional;
  * on why {@code password_hash} is nullable: the owner opens accounts for honorary
  * members himself, and "those people never registered, so nobody ever typed a
  * password for them; they set one through the reset link, which is exactly what the
- * table below is for." So this route asks nothing about
- * {@code account.email_confirmed_at} in either direction - not to require it, not to
- * set it - because confirming an address and proving you can read a mailbox well
- * enough to be handed a reset link are two different facts, and V6 already keeps them
- * apart for registration's own reasons. An account this route hands a fresh password
- * to is not, by that alone, one {@code SignIn} will let in: the address still has to
- * be confirmed on its own road, exactly as it does for every other account.
+ * table below is for." <b>Since 18.09.2026 a second kind of account comes in by this
+ * road</b>: „Nov moderator dobija pozivnicu na mejl, a lozinku postavlja sam... istim
+ * mehanizmom koji obnova lozinke vec nosi" (owner, PDL P28a), so an invitation is a
+ * row in the same table with another occasion behind it (ADL A53), and the screen and
+ * the request that spend it are these.
+ *
+ * <p><b>THIS ROUTE ASKS NOTHING ABOUT {@code email_confirmed_at} WHEN IT DECIDES, AND
+ * WRITES IT IN ONE CASE WHEN IT IS DONE.</b> ~~An account this route hands a fresh
+ * password to is not, by that alone, one {@code SignIn} will let in: the address still
+ * has to be confirmed on its own road, exactly as it does for every other account.~~
+ * That was true until 19.09.2026 and the owner overturned it, on three offered
+ * outcomes: „Potvrda adrese se upisuje u trenutku kad se TOKEN POTROSI. Moderator
+ * otvori vezu iz pozivnice i postavi lozinku; tog trenutka je dokazao da cita tu
+ * postu, pa se adresa obelezava potvrdjenom." So:
+ *
+ * <ul>
+ * <li><b>Nothing here REQUIRES a confirmation</b>, unlike
+ * {@code EmailConfirmationApi.resend}'s own lookup, and that half is unchanged: asking
+ * for a link and having proved you read the mailbox are two different facts, and V6
+ * keeps them apart for registration's own reasons.
+ * <li><b>And when a link is spent on an account that had NO PASSWORD AT ALL, the
+ * address is confirmed by that act</b>, because for such an account this is the first
+ * proof anybody has of the mailbox rather than a second one. The condition is written
+ * on the password and never on a role; the note beside the statement says why, and
+ * says what it deliberately does not change.
+ * </ul>
  *
  * <p><b>REQUESTING A RESET NEVER SAYS WHETHER THE ADDRESS BELONGS TO ANYBODY</b>, for
  * the reasons {@link EmailConfirmationApi} gives at the same point about its own
@@ -280,7 +299,38 @@ class PasswordResetApi {
 		   stop; leaving the lock in place would tell a member who just proved exactly
 		   that to come back in fifteen minutes anyway. It costs nothing an attacker did
 		   not already win the moment he could complete this request at all. */
-		db.sql("update account set password_hash = ?, failed_sign_ins = 0, locked_until = null"
+		/* AND AN ACCOUNT THAT HAD NO PASSWORD AT ALL HAS ITS ADDRESS CONFIRMED BY THIS,
+		   which is the owner's decision of 19.09.2026 and the only line of this route that
+		   moved for it: „Potvrda adrese se upisuje u trenutku kad se TOKEN POTROSI.
+		   Moderator otvori vezu iz pozivnice i postavi lozinku; tog trenutka je dokazao da
+		   cita tu postu, pa se adresa obelezava potvrdjenom."
+
+		   WHY IT IS `password_hash is null` AND NOT A WORD ABOUT MODERATORS. What the
+		   column records is that somebody reads that mailbox, and spending a link is that
+		   proof whoever holds it. The reason it is not written for EVERY reset is that a
+		   reset is asked for by somebody who already has a password and has already been
+		   through his own road; the accounts with no password are the ones V18 names -
+		   „the owner opens accounts for honorary members... they set one through the reset
+		   link, which is exactly what the table below is for" - and since 18.09.2026 the
+		   invited moderator, for whom this IS that road. A condition naming a role would
+		   put a rule about moderators inside a resource that has never heard of them, and
+		   would refuse the same proof from the honorary member for a reason that has
+		   nothing to do with the proof.
+
+		   WHAT IT DOES NOT CHANGE, and it is measured rather than asserted
+		   (`PasswordResetApiTest.aPlainResetLeavesAnUnconfirmedAddressUnconfirmed`): for an
+		   account that HAS a password the expression below reads it and writes nothing, so
+		   an ordinary forgotten password goes through this route exactly as it did before,
+		   down to the column.
+
+		   `coalesce` AND NOT A BARE `now()`: an address already confirmed keeps the moment
+		   it was confirmed at, so this can never move a fact that is already recorded. The
+		   old value is read here and not the new one - PostgreSQL evaluates every SET
+		   expression against the row as it stands - so the password being written in the
+		   same statement does not make the condition false underneath itself. */
+		db.sql("update account set password_hash = ?, failed_sign_ins = 0, locked_until = null,"
+						+ " email_confirmed_at = case when password_hash is null"
+						+ "   then coalesce(email_confirmed_at, now()) else email_confirmed_at end"
 						+ " where id = ?")
 				.params(keeping.of(typed.password()), account).update();
 
