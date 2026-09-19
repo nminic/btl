@@ -36,6 +36,13 @@ stopped being a route. The same control is what holds SPRINGS_OWN below.
 Neither the snapshot nor the open list is written here. Both are read out of the
 ref, because a copy of either in this file would be the very fault the branch
 that produced it was written to close.
+
+HOW TO READ A REPORT ON A BRANCH THAT IS BEHIND. Each ref is compared against
+the snapshot as it stands on the FIRST argument, so a branch that has not been
+brought up to date shows every entry merged since it forked under "named but NOT
+A ROUTE" - which says the branch is behind and nothing about its own routes.
+Only "would have to be NAMED" is about what that branch ADDS. To read both
+halves, bring the branch up to date first, or point this at the merge.
 """
 import os
 import re
