@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.web.SecurityFilterChain;
@@ -379,6 +380,40 @@ class RightsOverRealHttpTest {
 	}
 
 	/**
+	 * THE MAPPING FOR ONE VERB AT ONE ADDRESS, asked of the dispatcher as a PAIR rather than
+	 * of the path alone.
+	 *
+	 * <p><b>Found on review, and {@code mapped()} above cannot answer it.</b> Since the merge
+	 * that gave three of the portal's addresses a second class - a read beside a write,
+	 * {@code MeApi} beside {@code MeWriteApi}, {@code InboxApi} beside {@code InboxWriteApi},
+	 * {@code NotificationApi} beside {@code NotificationWriteApi} - a path stays mapped
+	 * whether or not the ONE VERB a case is about is the one answering it. {@code mapped()}
+	 * would say {@code /api/me} exists even the day its {@code PUT} does not, because the
+	 * {@code GET} still would.
+	 *
+	 * <p>Built the way {@link #takesOnly} reads the dispatcher: off
+	 * {@code mappings.getHandlerMethods()}, matching the path condition and the method
+	 * condition on the same {@link RequestMappingInfo} rather than two lists compared by
+	 * hand.
+	 */
+	private RequestMappingInfo mappingFor(String method, String path) {
+		for (Map.Entry<RequestMappingInfo, HandlerMethod> entry
+				: mappings.getHandlerMethods().entrySet()) {
+			RequestMappingInfo info = entry.getKey();
+			PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
+
+			boolean answersThisPath = patterns != null && patterns.getPatternValues().contains(path);
+			boolean answersThisMethod = info.getMethodsCondition().getMethods().stream()
+					.anyMatch(one -> one.name().equals(method));
+
+			if (answersThisPath && answersThisMethod) {
+				return info;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * THE PORTAL'S OWN ADDRESSES THAT ANSWER THIS VERB AND NO OTHER, in one order, asked of
 	 * the dispatcher.
 	 *
@@ -665,9 +700,9 @@ class RightsOverRealHttpTest {
 	 * AND A RESOURCE THAT REFUSES AN ACCOUNT WITH NO MEMBER ANSWERS LIKE AN ADDRESS THAT
 	 * IS NOT THERE.
 	 *
-	 * <p><b>Why this is measured here and not where the two routes live.</b> Both of them
-	 * already carry a case asserting the refusal has an empty body, and both of those
-	 * cases run through {@code MockMvc}, which - as {@code VerificationApi} writes down in
+	 * <p><b>Why this is measured here and not where the three routes live.</b> All three of
+	 * them already carry a case asserting the refusal has an empty body, and all three of
+	 * those cases run through {@code MockMvc}, which - as {@code VerificationApi} writes down in
 	 * as many words - never runs the container's ERROR dispatch and so cannot see what an
 	 * address that is not there actually sends. Measured 17.09.2026: swapping
 	 * {@code sendError} for {@code setStatus} on both routes left 48 cases green, while
@@ -676,11 +711,28 @@ class RightsOverRealHttpTest {
 	 *
 	 * <p>The twin is a sibling of the real address by {@link #twinOf}, so no list of
 	 * prefixes is needed and nothing has to be kept equal by hand.
+	 *
+	 * <p><b>The three pairs below are written by hand, and that boundary is a decision and
+	 * not an oversight (found on review, recorded rather than left for the next reader to
+	 * question).</b> A floor over WHICH pairs belong on this list would have to track a
+	 * value through the code to answer "does this route refuse a member-less account", the
+	 * exact shape that has failed here before; nobody writes that floor by reading a
+	 * dispatcher. What a floor CAN hold is narrower and it holds it: since
+	 * {@link #mappingFor}, every pair named here is asked of the dispatcher and fails loudly
+	 * if it is not really mapped, so a typo or a renamed route cannot pass in silence even
+	 * though the choice of which pairs to list stays a human one.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = {"/api/inbox", "/api/me/notifications"})
-	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String path)
+	@ValueSource(strings = {"GET /api/inbox", "GET /api/me/notifications", "PUT /api/me"})
+	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
+		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way
+		   RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT has been since 19.09.2026: a write
+		   added to an address already named here for a read must arrive as its own name
+		   rather than borrow the verb the first entry happened to use. */
+		String method = pair.substring(0, pair.indexOf(' '));
+		String path = pair.substring(pair.indexOf(' ') + 1);
+
 		/* AND THE ROUTE IS REALLY THERE, which the three cases beside this one all assert
 		   first and for the reason they each write down: a route that was simply broken
 		   would be missing for everybody, the twin and the original would be two absent
@@ -705,14 +757,45 @@ class RightsOverRealHttpTest {
 		   the twin. And this resource refuses even a signed-in account that names no
 		   member, which is the very thing compared below. So the anchor asks the
 		   DISPATCHER whether it maps the address at all, which is a question about the
-		   route rather than about any one answer. */
+		   route rather than about any one answer.
+
+		   AND ASKED AS THE PAIR, NOT THE PATH ALONE, since the merge that gave /api/me,
+		   /api/inbox and /api/me/notifications a second class apiece (found on review): a
+		   path stays mapped on the strength of its GET whether or not the verb this case
+		   is actually about still answers there. */
+		RequestMappingInfo mapping = mappingFor(method, path);
+
+		assertThat(mapping)
+				.as("%s %s is not mapped at all, so this comparison is between two addresses"
+						+ " that are both missing and it measures nothing", method, path)
+				.isNotNull();
 		assertThat(mapped())
-				.as("%s is not mapped at all, so this comparison is between two addresses that"
-						+ " are both missing and it measures nothing", path)
-				.contains(path)
+				.as("%s is mapped, so this comparison is between two addresses that are both"
+						+ " there and it measures nothing", twinOf(path))
 				.doesNotContain(twinOf(path));
 
-		answersTheSameWay("GET", path, twinOf(path), A_COMPETITOR);
+		/* THE MEDIA TYPE IS READ OFF THIS ROUTE rather than written here by hand (found on
+		   review): a hand-written "application/json" agreed with every route that happened
+		   to ask for exactly that and would have stayed green the day one asked for another
+		   type, or none. The consumable types of the very mapping the anchor just confirmed
+		   cannot disagree with the route, because they ARE the route.
+
+		   AND WHY THIS DERIVATION DOES NOT MAKE THE GUARD BELOW CATCH A WRONG VALUE, written
+		   down rather than left for the next reader to reach for the same wrong reason this
+		   round did. The paragraph this replaced claimed a missing type would be measured
+		   as a 415 the framework answers on its own; measured instead: for a WRITE THAT
+		   CARRIES NO BODY, dropping the header changes nothing at all, because
+		   {@link NothingIsHereRatherThanAlmost} turns every near miss the dispatcher can
+		   raise at mapping time - a wrong method, a wrong media type - into the same "no
+		   handler" answer a nonexistent address gets, on purpose, so that neither can be
+		   told apart from an address that is not there. That is the class this route's own
+		   404 already belongs to, not a gap beside it: the derivation above is correct
+		   because it agrees with the route, not because disagreeing would be caught here. */
+		Set<MediaType> consumes = mapping.getConsumesCondition().getConsumableMediaTypes();
+		String extra = consumes.isEmpty() ? ""
+				: "Content-Type: " + consumes.iterator().next() + "\r\n";
+
+		answersTheSameWay(method, path, twinOf(path), A_COMPETITOR, A_TOKEN, extra);
 	}
 
 	/**
