@@ -23,14 +23,19 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.lang.reflect.RecordComponent;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,22 +52,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * below reads a value along:
  *
  * <ul>
- * <li><b>Four competitors, and the one who proposes is written THIRD</b>, so „the member
+ * <li><b>Five competitors, and the one who proposes is written THIRD</b>, so „the member
  * asking" and „the first member" are different keys and a statement that lost its condition
  * answers differently.
- * <li><b>Somebody in the fixture IS in a team, and he is refused</b>, which is the one axis
- * a fixture where nobody has a team cannot separate at all: with only members who have none,
- * a route that never asked the question passes every case here.
- * <li><b>The team he is in is not the team whose name is taken</b>, so „a team exists" and
- * „his team" are two rows.
- * <li><b>His membership begins in a season that has NOT started</b> (2029, while the clock
- * reads 2027 and the season being joined is 2028), which is the owner's own case of
- * 05.09.2026 and the one that tells „he has a team on the record" from „he is in a team this
- * season" apart. Read by season he has none and must still be refused.
- * <li><b>Three different years, never one.</b> The clock's year is 2027, the season a
- * membership would begin in is 2028, and every team in the fixture carries
- * {@code first_season} 2030 - so „derived from the window" and „today's year" can never
- * hand back the same number.
+ * <li><b>TWO of them are in a team, and BOTH are refused</b>, which is the axis a fixture
+ * where nobody has a team cannot separate at all - and the axis a fixture with only ONE of
+ * them separates only halfway. {@link #HAS_A_TEAM} joined for a season that has not begun
+ * and {@link #IN_A_TEAM_NOW} for one that has; a rule reading the season instead of the
+ * record answers one of them correctly and the other not, which is what a round on
+ * 19.09.2026 measured.
+ * <li><b>The two teams they are in are two different rows, and neither is the team whose
+ * name is taken</b>, so „a team exists", „his team" and „the taken name" are three things
+ * and not one.
+ * <li><b>Four different years, never one.</b> The clock's year is 2027, the season a
+ * membership would begin in is 2028, {@link #HAS_A_TEAM} joined for 2029 and every team
+ * carries {@code first_season} 2030 - so „derived from the window" and „today's year" can
+ * never hand back the same number. {@link #IN_A_TEAM_NOW}'s 2027 is the clock's year ON
+ * PURPOSE, because being in a team NOW is what it means.
  * <li><b>Somebody else has a proposal and a queue row of the identical shape</b>, waiting,
  * written first, so „the proposal this request made" is never „the only proposal" and never
  * „the first one".
@@ -91,7 +97,12 @@ class TeamWriteApiTest {
 	/** Written first, has no team, and never asks for anything. */
 	private static final String FIRST_WRITTEN = "000100";
 
-	/** In a team, and the one member this route has to refuse. */
+	/**
+	 * In a team from a season that has NOT begun, and refused for it.
+	 *
+	 * <p>The easier half of the axis, and the one a rule reading the season gets right by
+	 * accident; {@link #IN_A_TEAM_NOW} is the other half.
+	 */
 	private static final String HAS_A_TEAM = "000200";
 
 	/** The member every case asks with, written third. */
@@ -99,6 +110,19 @@ class TeamWriteApiTest {
 
 	/** Has a proposal and a queue row already waiting, neither of which may move. */
 	private static final String SOMEONE_ELSE = "000400";
+
+	/**
+	 * IN A TEAM RIGHT NOW, which is the half of the axis a round on 19.09.2026 found
+	 * measured by nothing at all.
+	 *
+	 * <p>His membership is what an approval writes ({@code Membership.open}): it begins in
+	 * a season that HAS begun and it has no end. With only {@link #HAS_A_TEAM} in the
+	 * fixture, narrowing {@code membershipsOf} to {@code season_from > 2028} left the whole
+	 * gate green - 2035 cases - while every member who really is in a team today could
+	 * found a second one, and the approval would then break
+	 * {@code team_membership_one_team_at_a_time}.
+	 */
+	private static final String IN_A_TEAM_NOW = "000500";
 
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
@@ -109,6 +133,15 @@ class TeamWriteApiTest {
 
 	/** And the team {@link #HAS_A_TEAM} is in, which no case proposes the name of. */
 	private static final String HIS_TEAM = "sava-runners";
+
+	/**
+	 * And a THIRD team, which is {@link #IN_A_TEAM_NOW}'s.
+	 *
+	 * <p>A third row rather than a second member of the same one, so „a team exists",
+	 * „the team whose name is taken" and „the team each refused member is in" are four
+	 * different rows and no assertion below can be satisfied by whichever came first.
+	 */
+	private static final String THE_OTHER_TEAM = "timocki-tim";
 
 	/**
 	 * The season every team in the fixture collects from.
@@ -126,6 +159,27 @@ class TeamWriteApiTest {
 	 * the question is „imas li tim" and not „da li si bio u timu ove sezone".
 	 */
 	private static final int A_SEASON_STILL_TO_COME = 2029;
+
+	/**
+	 * The season {@link #IN_A_TEAM_NOW}'s membership begins in, which HAS begun.
+	 *
+	 * <p>2027 and not a choice: {@code team_membership_season_from_not_before_the_league}
+	 * refuses anything earlier, and the league's first season is the only one that has
+	 * begun while this file's clock reads 2027. It is the clock's year on purpose - being
+	 * in a team NOW is what it means - and the other three numbers in this fixture are all
+	 * different from it, so nothing below can read the wrong one and still be right.
+	 */
+	private static final int A_SEASON_ALREADY_RUNNING = 2027;
+
+	/**
+	 * The member's own form, read off the working tree rather than described.
+	 *
+	 * <p>The same place {@code WhatRegistrationAsksForTest} reads the registration's form
+	 * from, for the same reason: what a screen asks for is a fact about a file, and a
+	 * sentence in a comment claiming to know it is worth nothing.
+	 */
+	private static final Path THE_MEMBERS_FORM =
+			Path.of("..", "frontend", "src", "forms", "definitions", "predlog-tima.form.json");
 
 	/** No country is served under it, and the fixture says so out loud below. */
 	private static final String A_COUNTRY_NOBODY_SERVES = "QQ";
@@ -201,20 +255,23 @@ class TeamWriteApiTest {
 		competitor(HAS_A_TEAM);
 		competitor(ME);
 		competitor(SOMEONE_ELSE);
+		competitor(IN_A_TEAM_NOW);
 
 		team(TAKEN_ADDRESS, TAKEN_NAME);
 		team(HIS_TEAM, "Sava Runners");
+		team(THE_OTHER_TEAM, "Timocki tim");
 
-		db.sql("insert into team_membership (competitor_id, team_id, season_from)"
-						+ " values ((select id from competitor where member_number = ?),"
-						+ " (select id from team where slug = ?), ?)")
-				.params(HAS_A_TEAM, HIS_TEAM, A_SEASON_STILL_TO_COME)
-				.update();
+		/* BOTH HALVES OF ONE AXIS, and the two rows differ in nothing but the season they
+		   begin in: one has not begun and one has. A rule that reads the season instead of
+		   the record answers one of them correctly and the other not. */
+		inATeam(HAS_A_TEAM, HIS_TEAM, A_SEASON_STILL_TO_COME);
+		inATeam(IN_A_TEAM_NOW, THE_OTHER_TEAM, A_SEASON_ALREADY_RUNNING);
 
 		account("prvi@primer.rs", FIRST_WRITTEN);
 		account("ima-tim@primer.rs", HAS_A_TEAM);
 		account("ja@primer.rs", ME);
 		account("neko-drugi@primer.rs", SOMEONE_ELSE);
+		account("u-timu-sada@primer.rs", IN_A_TEAM_NOW);
 		moderatorWithNoCompetitor(MODERATOR_WHO_DOES_NOT_RACE);
 
 		proposalWaitingFor(SOMEONE_ELSE, "Timocki trkaci");
@@ -246,6 +303,15 @@ class TeamWriteApiTest {
 						+ " values (?, ?, '', '', (select id from place where rank = 1), null, null,"
 						+ " null, ?, null)")
 				.params(slug, name, A_SEASON_NO_CASE_COMPUTES).update();
+	}
+
+	/** An open membership, which is what an approval writes ({@code Membership.open}). */
+	private void inATeam(String memberNumber, String teamSlug, int seasonFrom) {
+		db.sql("insert into team_membership (competitor_id, team_id, season_from)"
+						+ " values ((select id from competitor where member_number = ?),"
+						+ " (select id from team where slug = ?), ?)")
+				.params(memberNumber, teamSlug, seasonFrom)
+				.update();
 	}
 
 	/** Somebody else's proposal, queued exactly the way V11 and V9 queue one together. */
@@ -318,13 +384,14 @@ class TeamWriteApiTest {
 	}
 
 	/** The ordinary request every case starts from, with one field replaced. */
-	private String form(String name, String bio, String link, String city, String country) {
+	private String form(String name, String note, String bio, String link, String city,
+			String country) {
 		return mapper.writeValueAsString(
-				new TeamWriteApi.Proposed(name, bio, link, city, country));
+				new TeamWriteApi.Proposed(name, note, bio, link, city, country));
 	}
 
 	private String naming(String name) {
-		return form(name, null, null, "  Novi Sad  ", "RS");
+		return form(name, null, null, null, "  Novi Sad  ", "RS");
 	}
 
 	private String reasonIn(MockHttpServletResponse answer) throws Exception {
@@ -377,12 +444,27 @@ class TeamWriteApiTest {
 	 */
 	@Test
 	void theFixtureSeparatesTheAxesItSaysItSeparates() {
-		assertThat(db.sql("select count(*) from team_membership m join competitor c"
-						+ " on c.id = m.competitor_id where c.member_number = ? and m.season_to is null")
-				.param(HAS_A_TEAM).query(Long.class).single())
-				.as("nobody in this fixture is in a team, so every case below is green whether or"
-						+ " not the route ever asks")
-				.isOne();
+		int joined = SeasonClock.seasonBeingPaidFor(INSIDE_THE_WINDOW.atZone(SeasonClock.ZONE));
+
+		assertThat(db.sql("select c.member_number, m.season_from from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " where m.season_to is null and m.season_from > ?"
+						+ " order by c.member_number")
+				.param(joined)
+				.query((row, one) -> row.getString(1)).list())
+				.as("nobody in this fixture is in a team for a season still to come, so the half"
+						+ " of the axis the owner's own example is about measures nothing")
+				.containsExactly(HAS_A_TEAM);
+
+		assertThat(db.sql("select c.member_number from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " where m.season_to is null and m.season_from <= ?"
+						+ " order by c.member_number")
+				.param(joined)
+				.query(String.class).list())
+				.as("nobody in this fixture is in a team ALREADY, so narrowing the lookup to"
+						+ " memberships that have not begun leaves every case below green")
+				.containsExactly(IN_A_TEAM_NOW);
 
 		assertThat(db.sql("select count(*) from team_membership m join competitor c"
 						+ " on c.id = m.competitor_id where c.member_number = ?")
@@ -392,12 +474,15 @@ class TeamWriteApiTest {
 
 		int year = INSIDE_THE_WINDOW.atZone(SeasonClock.ZONE).getYear();
 
-		assertThat(List.of(year, SeasonClock.seasonBeingPaidFor(
-						INSIDE_THE_WINDOW.atZone(SeasonClock.ZONE)), A_SEASON_NO_CASE_COMPUTES,
-						A_SEASON_STILL_TO_COME))
-				.as("two of the four years this fixture uses are the same number, so a route"
-						+ " reading the wrong one answers correctly anyway")
+		assertThat(List.of(year, joined, A_SEASON_NO_CASE_COMPUTES, A_SEASON_STILL_TO_COME))
+				.as("two of the four years this fixture tells apart are the same number, so a"
+						+ " route reading the wrong one answers correctly anyway")
 				.doesNotHaveDuplicates();
+
+		assertThat(A_SEASON_ALREADY_RUNNING)
+				.as("the membership that is meant to have BEGUN begins after the season being"
+						+ " joined, so it is a second copy of the other half of the axis")
+				.isLessThan(joined);
 
 		assertThat(db.sql("select count(*) from country where code = ?")
 				.param(A_COUNTRY_NOBODY_SERVES).query(Long.class).single())
@@ -427,7 +512,8 @@ class TeamWriteApiTest {
 		long proposalsBefore = howManyProposals();
 
 		MockHttpServletResponse answer = proposeAs(ME,
-				form("  Dunavski   TRKAČ  ", "  Trcimo zajedno  ", null, "  Novi Sad  ", "RS"));
+				form("  Dunavski   TRKAČ  ", "  Zato sto trcimo zajedno  ",
+						"  Ekipa sa Dunava  ", null, "  Novi Sad  ", "RS"));
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -437,24 +523,27 @@ class TeamWriteApiTest {
 
 		assertThat(proposalNamed("Dunavski   TRKAČ"))
 				.as("the row does not hold what was sent: the town, the description and the link"
-						+ " are the four columns an approval builds the team out of, and `team_id`"
-						+ " being empty is what makes this a NEW team rather than a change to one")
-				.containsExactly(competitorId(ME), "null", "Dunavski   TRKAČ", "Trcimo zajedno", "",
-						"null", "Novi Sad", String.valueOf(countryKey()), "null");
+						+ " are the columns an approval builds the team out of, `team_id` being empty"
+						+ " is what makes this a NEW team rather than a change to one, and the NOTE is"
+						+ " not here at all because this table has no column for it")
+				.containsExactly(competitorId(ME), "null", "Dunavski   TRKAČ",
+						"Ekipa sa Dunava", "", "null", "Novi Sad", String.valueOf(countryKey()), "null");
 
 		assertThat(theQueueRowFor("Dunavski   TRKAČ"))
 				.as("the queue row does not carry the proposal, the member it is about, the name"
-						+ " and the description, in the tab that is the only one V11 lets a proposal"
-						+ " stand in")
-				.containsExactly("teams", competitorId(ME), "Dunavski   TRKAČ", "Trcimo zajedno",
-						"waiting", proposalIdNamed("Dunavski   TRKAČ"), "null", "null");
+						+ " and the NOTE, in the tab that is the only one V11 lets a proposal stand"
+						+ " in. The description is not what a moderator reads here: the two are sent"
+						+ " as different words and must land in different places")
+				.containsExactly("teams", competitorId(ME), "Dunavski   TRKAČ",
+						"Zato sto trcimo zajedno", "waiting", proposalIdNamed("Dunavski   TRKAČ"),
+						"null", "null");
 
 		assertThat(howManyTeams())
 				.as("a team was written, and nobody has decided on this proposal yet")
-				.isEqualTo(2);
+				.isEqualTo(3);
 		assertThat(howManyMemberships())
 				.as("somebody was put into a team, and nobody has decided on this proposal yet")
-				.isOne();
+				.isEqualTo(2);
 	}
 
 	/**
@@ -489,25 +578,33 @@ class TeamWriteApiTest {
 	}
 
 	/**
-	 * A MEMBER WHO IS ALREADY IN A TEAM IS SENT AWAY, AND HIS MEMBERSHIP BEGINS IN A SEASON
-	 * THAT HAS NOT STARTED.
+	 * A MEMBER WHO IS ALREADY IN A TEAM IS SENT AWAY, AND THE QUESTION IS ASKED OF BOTH
+	 * HALVES OF THE AXIS.
 	 *
-	 * <p>That last half is the whole case rather than a detail of it. PDL P13, 05.09.2026:
-	 * „„Nema tim" se cita sa zapisa ({@code teamId}), ne po sezoni", with the owner's own
-	 * example of a member the portal does not count in his team today and still refuses,
-	 * because founding one now would leave him in two on 1 January. A condition comparing his
-	 * membership's season with the one being joined lets him through, and every other case in
-	 * this file stays green.
+	 * <p>PDL P13, 05.09.2026: „„Nema tim" se cita sa zapisa ({@code teamId}), ne po
+	 * sezoni". The owner's own example is a member the portal does not count in his team
+	 * today and still refuses, because founding one now would leave him in two on
+	 * 1 January - that is {@link #HAS_A_TEAM}, whose membership begins in 2029.
+	 *
+	 * <p><b>And the ordinary member, who is in a team RIGHT NOW, is the half a round on
+	 * 19.09.2026 found measured by nothing.</b> With only the first of the two in the
+	 * fixture, narrowing {@code membershipsOf} to {@code season_from > 2028} passed the
+	 * WHOLE gate, 2035 cases, while every member who really is in a team could found a
+	 * second one - and the approval would then break
+	 * {@code team_membership_one_team_at_a_time} with the member holding a proposal nobody
+	 * could ever decide. Two halves, two rows, and they differ in nothing but the season
+	 * their membership begins in.
 	 */
-	@Test
-	void aMemberWhoseTeamStartsNextSeasonIsStillAMemberWithATeam() throws Exception {
+	@ParameterizedTest
+	@ValueSource(strings = {HAS_A_TEAM, IN_A_TEAM_NOW})
+	void aMemberWhoIsInATeamOnTheRecordIsSentAway(String memberNumber) throws Exception {
 		long proposalsBefore = howManyProposals();
 		long waitingBefore = howManyWaitingInTheTeamsQueue();
 
-		MockHttpServletResponse answer = proposeAs(HAS_A_TEAM, naming("  Novi tim  "));
+		MockHttpServletResponse answer = proposeAs(memberNumber, naming("  Novi tim  "));
 
 		assertThat(answer.getStatus())
-				.as("a member already in a team founded a second one")
+				.as("%s is already in a team on the record and founded a second one", memberNumber)
 				.isEqualTo(404);
 		assertThat(answer.getContentAsString())
 				.as("the refusal explains itself, and the owner deleted the sentence that did"
@@ -668,7 +765,7 @@ class TeamWriteApiTest {
 			"Dobar tim, Novi Sad, NIC", "Dobar tim, Novi Sad, ''", "Dobar tim, Novi Sad, '   '"})
 	void aFormMissingSomethingIsRefused(String name, String city, String country) throws Exception {
 		MockHttpServletResponse answer =
-				proposeAs(ME, form(name, null, null, city, country));
+				proposeAs(ME, form(name, null, null, null, city, country));
 
 		assertThat(answer.getStatus())
 				.as("name=[%s] city=[%s] country=[%s] was accepted", name, city, country)
@@ -687,7 +784,7 @@ class TeamWriteApiTest {
 	@Test
 	void aCountryNobodyServesIsRefused() throws Exception {
 		MockHttpServletResponse answer = proposeAs(ME,
-				form("  Timski tim  ", null, null, "  Novi Sad  ", A_COUNTRY_NOBODY_SERVES));
+				form("  Timski tim  ", null, null, null, "  Novi Sad  ", A_COUNTRY_NOBODY_SERVES));
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(reasonIn(answer)).isEqualTo(TeamWriteApi.THE_COUNTRY_IS_NOT_KNOWN);
@@ -707,7 +804,7 @@ class TeamWriteApiTest {
 	@ValueSource(strings = {"primer.rs/tim", "ftp://primer.rs", "https://", "https://a.rs/b c"})
 	void aLinkThatIsNotOneIsRefused(String link) throws Exception {
 		MockHttpServletResponse answer = proposeAs(ME,
-				form("  Linkovani tim  ", "", link, "  Novi Sad  ", "RS"));
+				form("  Linkovani tim  ", "", "", link, "  Novi Sad  ", "RS"));
 
 		assertThat(answer.getStatus())
 				.as("'%s' was accepted as a link", link)
@@ -722,7 +819,7 @@ class TeamWriteApiTest {
 	 */
 	@Test
 	void aLinkThatIsOneIsKept() throws Exception {
-		assertThat(proposeAs(ME, form("  Linkovani tim  ", "", "  https://primer.rs/tim  ",
+		assertThat(proposeAs(ME, form("  Linkovani tim  ", "", "", "  https://primer.rs/tim  ",
 				"  Novi Sad  ", "RS")).getStatus()).isEqualTo(201);
 
 		assertThat(db.sql("select link from team_proposal where name = ?").param("Linkovani tim")
@@ -786,6 +883,98 @@ class TeamWriteApiTest {
 				.as("an address that maps nothing no longer answers 404, so there is nothing"
 						+ " being compared here")
 				.isEqualTo(answer.getStatus());
+	}
+
+	/**
+	 * EVERY FIELD THE MEMBER'S FORM DEFINES IS ONE THIS ROUTE UNDERSTANDS, AND EVERY NAME
+	 * THE ROUTE TAKES BESIDES IS ONE THE FORM REALLY DOES NOT ASK FOR.
+	 *
+	 * <p><b>Neither side is written here.</b> The form is read off the working tree, the
+	 * shape of the request is read off the record's own components, and the only list is
+	 * {@link TeamWriteApi#ASKED_FOR_BEFORE_THE_FORM_ASKS}, which this case holds to being
+	 * true in both directions - so a field added to the form tomorrow fails the build until
+	 * somebody decides where it goes, and a name that starts being asked for cannot sit on
+	 * that list excusing nothing. It is the shape {@code WhatRegistrationAsksForTest}
+	 * already uses for the registration's own form file.
+	 *
+	 * <p><b>It exists because the comparison was made by eye and was wrong.</b> The record
+	 * said it was „what the form sends and nothing besides" while differing from that file
+	 * in two of five names, and a member sending the form's own {@code note} was answered
+	 * 201 with a queue card that had nothing on it: Jackson drops a field nothing is named
+	 * for. A sentence claiming a file says something is worth exactly as much as whatever
+	 * reads the file.
+	 */
+	@Test
+	void everyFieldTheFormDefinesIsOneThisRouteUnderstands() throws Exception {
+		List<String> onTheForm = new ArrayList<>();
+
+		for (JsonNode field : mapper.readTree(Files.readString(THE_MEMBERS_FORM)).path("fields")) {
+			onTheForm.add(field.path("name").asString());
+		}
+
+		assertThat(onTheForm)
+				.as("%s defines no field at all, so this compares nothing", THE_MEMBERS_FORM)
+				.isNotEmpty();
+
+		List<String> theRouteTakes = new ArrayList<>();
+
+		for (RecordComponent one : TeamWriteApi.Proposed.class.getRecordComponents()) {
+			theRouteTakes.add(one.getName());
+		}
+
+		assertThat(theRouteTakes)
+				.as("a field the member's form asks for is one this route has no name for, so"
+						+ " Jackson drops it and he is answered 201 with it thrown away")
+				.containsAll(onTheForm);
+
+		assertThat(TeamWriteApi.ASKED_FOR_BEFORE_THE_FORM_ASKS)
+				.as("a name excused as one the form does not ask for is one the form DOES ask"
+						+ " for, so the list is excusing nothing")
+				.doesNotContainAnyElementsOf(onTheForm)
+				.allSatisfy(named -> assertThat(theRouteTakes)
+						.as("%s is excused as a field this route takes before the form asks for"
+								+ " it, and this route does not take it at all", named)
+						.contains(named));
+
+		assertThat(theRouteTakes)
+				.as("this route takes a field that is neither on the member's form nor named as"
+						+ " one the form does not ask for yet")
+				.allMatch(one -> onTheForm.contains(one)
+						|| TeamWriteApi.ASKED_FOR_BEFORE_THE_FORM_ASKS.contains(one));
+	}
+
+	/**
+	 * AND WHAT THE FORM REALLY SENDS REACHES THE MODERATOR.
+	 *
+	 * <p>The body below is written out with the form's own four names and nothing else -
+	 * not built from {@code Proposed}, because a request built from the record would agree
+	 * with the record whatever either of them said. That is the measurement the floor above
+	 * cannot make: the floor says the names line up, this says the words arrive.
+	 *
+	 * <p>„Zasto ovaj tim" is what {@code teams.proposeNote} asks him, and
+	 * {@code teams.proposeBody} draws it on the card. Answered 201 with it dropped, the
+	 * member would be told his proposal was sent and the moderator would be shown a name
+	 * and nothing else.
+	 */
+	@Test
+	void whatTheFormSendsIsWhatTheModeratorReads() throws Exception {
+		MockHttpServletResponse answer = proposeAs(ME, "{\"name\": \"  Pancevacki trkaci  \","
+				+ " \"city\": \"  Pancevo  \", \"country\": \"RS\","
+				+ " \"note\": \"  Trcimo svake subote i hocemo svoj tim  \"}");
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select v.body from verification v join team_proposal tp"
+						+ " on tp.id = v.team_proposal_id where tp.name = ?")
+				.param("Pancevacki trkaci").query(String.class).single())
+				.as("what the member wrote to whoever decides did not reach the queue card")
+				.isEqualTo("Trcimo svake subote i hocemo svoj tim");
+
+		assertThat(db.sql("select bio from team_proposal where name = ?")
+				.param("Pancevacki trkaci").query(String.class).single())
+				.as("the note was written into the team's own description as well, which is a"
+						+ " second home for it and a description nobody wrote")
+				.isEmpty();
 	}
 
 	private long countryKey() {

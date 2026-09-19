@@ -19,6 +19,7 @@ import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * A MEMBER PUTTING A TEAM FORWARD, WHICH IS THE FIRST WRITE ON THIS PORTAL THAT ENDS IN
@@ -87,6 +88,16 @@ import java.util.Optional;
  * {@code handleNoMatch}, and the portal's existing rule turns it into the 404 every
  * unmapped address answers. {@code RightsOverRealHttpTest} is what found this, off a
  * socket, on the day this route became the first write to share a path with a read.
+ *
+ * <p><b>The other two writes on open paths do not do this, and the difference is measured
+ * rather than asserted.</b> A {@code POST} carrying no {@code Content-Type}, 19.09.2026:
+ * {@code /api/teams} answers 404 to a superadmin and 404 to a moderator with no tick, the
+ * same as {@code /api/zzzzzz}; {@code /api/events} and {@code /api/races} answer 404 to
+ * the moderator - their door refuses him before any argument is resolved - and <b>400</b>
+ * to the superadmin, because {@code @RequestBody} finds no body at all. So the sentence
+ * „this address takes a POST" is still there to be read on those two, by somebody who
+ * already holds the right. It is not fixed here: those are other files, one of them merged
+ * the same day, and a route reaching into them would be this increment deciding for them.
  *
  * <p><b>The boundary in the other direction, said out loud because a route that refused
  * everybody would satisfy every sentence above.</b> A signed in member with a competitor
@@ -213,16 +224,21 @@ import java.util.Optional;
  * otvoriti." Empty, the first such team would answer at {@code /tim/} and every one after
  * it would be told its name is taken though the two share nothing.
  *
- * <p><b>THE QUEUE ROW CARRIES THE NAME AND THE DESCRIPTION, AND THEY ARE WRITTEN IN THE
- * SAME STATEMENT AS THE PROPOSAL RATHER THAN COPIED FROM IT LATER.</b> V9 makes
- * {@code subject} NOT NULL because it „carries the name in every case" and {@code body}
- * NOT NULL and blankable because it is „what was written or proposed"; the schema leaves
- * nothing else to put there. So the two values go into both tables from one set of
- * arguments inside one transaction, and there is no moment at which they could be made to
- * disagree - nothing on this portal edits a proposal, and the increment that does will
- * write both. The town does NOT go into {@code body}: it has columns of its own on the
- * proposal, and a sentence built out of it here would be the server writing the portal's
- * Serbian.
+ * <p><b>THE QUEUE ROW CARRIES THE NAME AND THE NOTE, AND THE NOTE IS NOT THE
+ * DESCRIPTION.</b> V9 makes {@code subject} NOT NULL because it „carries the name in
+ * every case" and {@code body} NOT NULL and blankable because it is „what was written or
+ * proposed". What is written to a MODERATOR is {@code teams.proposeNote}, „Zasto ovaj
+ * tim", which the portal draws as the one piece of text on a queue card
+ * ({@code teams.proposeBody}); the description belongs to the team and stays on the
+ * proposal, for an approval to copy across. A round on 19.09.2026 measured the cost of
+ * having those two the wrong way round: a member sending what his own form defines was
+ * answered 201 and the moderator was shown a card with nothing on it.
+ *
+ * <p>The name goes into both tables from one set of arguments inside one transaction, so
+ * there is no moment at which the two could be made to disagree - nothing on this portal
+ * edits a proposal, and the increment that does will write both. The town does NOT go
+ * into {@code body}: it has columns of its own on the proposal, and a sentence built out
+ * of it here would be the server writing the portal's Serbian.
  *
  * <p><b>Everything else about that row is the schema's and is not written here.</b>
  * {@code state} is {@code waiting} by V9's default, {@code raised_at} is V9's
@@ -262,6 +278,33 @@ class TeamWriteApi {
 	 */
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
+	/**
+	 * WHAT THIS ROUTE TAKES THAT THE MEMBER'S FORM DOES NOT YET ASK FOR, named rather than
+	 * silent.
+	 *
+	 * <p>A field the form does not have and a field that went missing look exactly alike
+	 * from inside a handler, which is the reason this is a constant and not a sentence.
+	 * PDL P13, 11.08.2026 says a member fills in „naziv tima, opis (ograniceni unos) i
+	 * neobavezni link" and V11 gives {@code team_proposal} a column for each of the two;
+	 * {@code predlog-tima.form.json} asks for neither.
+	 *
+	 * <p>{@code TeamWriteApiTest} reads that file and demands that every field on it be a
+	 * component of {@link Proposed}, and that every name on this list really is one the
+	 * form does NOT ask for - so a field added to the form tomorrow fails the build until
+	 * somebody decides where it goes, and a name that starts being asked for cannot sit
+	 * here excusing nothing. That is {@link RegistrationApi#NOT_COLLECTED_YET}'s shape,
+	 * inverted: there the form asks and the route does not collect, here the route collects
+	 * and the form does not yet ask.
+	 *
+	 * <p><b>It exists because the other direction was measured and was wrong.</b> This
+	 * record once said it was „what the form sends and nothing besides" while differing
+	 * from that file in two of five names, and a request carrying the form's own
+	 * {@code note} was answered 201 with the queue row left blank - Jackson drops a field
+	 * nothing is named for, and nothing in {@code backend/src/main/resources} configures it
+	 * otherwise.
+	 */
+	static final Set<String> ASKED_FOR_BEFORE_THE_FORM_ASKS = Set.of("bio", "link");
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
@@ -274,6 +317,17 @@ class TeamWriteApi {
 	 * row that carries it are one thing. A proposal with no queue row is one nobody can
 	 * decide and one {@link MyApplicationsApi} drops on purpose, so the member would be
 	 * waiting on something that reaches nobody and shows nowhere.
+	 *
+	 * <p><b>And that is a claim with a case behind it since 19.09.2026, which it was not
+	 * when it was first written.</b> Taking this out left {@code TeamWriteApiTest} green at
+	 * 37 cases, because a test-managed transaction swallows the question:
+	 * {@code TransactionTemplate} joins whatever is already open, so a route with no
+	 * transaction of its own is still inside the test's.
+	 * {@code TeamProposalAndItsQueueRowAreOneThingTest} is therefore NOT
+	 * {@code @Transactional}, and it makes the second write fail with nothing stubbed - the
+	 * note is the one field that goes only into {@code verification}, so a note
+	 * {@code text} cannot hold is a request whose first statement succeeds and whose second
+	 * does not.
 	 */
 	private final TransactionTemplate inOneTransaction;
 
@@ -287,21 +341,46 @@ class TeamWriteApi {
 	}
 
 	/**
-	 * WHAT THE FORM SENDS, which is what {@code predlog-tima.form.json} asks for and what
-	 * PDL P13 says a member fills in: „naziv tima, opis (ograniceni unos) i neobavezni
-	 * link", plus the town both team forms carry.
+	 * WHAT ARRIVES, AND EVERY FIELD OF IT NAMES ITS OWN SOURCE, because two different
+	 * sources disagree about what a proposal carries and a round measured what pretending
+	 * otherwise costs.
+	 *
+	 * <p><b>Four of these are {@code predlog-tima.form.json}'s own names</b> -
+	 * {@code name}, {@code city}, {@code country} and {@code note} - and
+	 * {@link #ASKED_FOR_BEFORE_THE_FORM_ASKS} is the floor that keeps that true in both
+	 * directions.
+	 *
+	 * <p><b>{@code note} IS NOT THE TEAM'S DESCRIPTION, AND CONFUSING THE TWO IS THE
+	 * MISTAKE THIS PARAGRAPH EXISTS TO NOT MAKE.</b> Its label is {@code teams.proposeNote},
+	 * „Zasto ovaj tim", and the portal puts it in front of whoever decides:
+	 * {@code teams.proposeBody} is „{city}, {country}. {note}", which is the one piece of
+	 * text a queue card draws. So it goes into {@code verification.body} and into no column
+	 * of {@code team_proposal}, which has none for it - a sentence addressed to a moderator
+	 * is not a thing the team would afterwards carry. The town is NOT built into that
+	 * sentence here: it has columns of its own on the proposal, and a server writing the
+	 * portal's Serbian would be a second home for both.
+	 *
+	 * <p><b>{@code bio} and {@code link} are the other source, and they are PDL's.</b> PDL
+	 * P13, 11.08.2026: „Korisnik popunjava naziv tima, opis (ograniceni unos) i neobavezni
+	 * link", and V11 gives {@code team_proposal} a column for each „so an approval can copy
+	 * them across without deciding anything on the way". The form has neither field today,
+	 * which is why they are named on {@link #ASKED_FOR_BEFORE_THE_FORM_ASKS} rather than
+	 * left to look like fields that went missing.
 	 *
 	 * <p>There is no {@code teamId}, no {@code firstSeason} and no {@code logo}, each for
 	 * its own reason given above; and no {@code placeId}, because the town arrives typed.
 	 *
-	 * @param bio     what the member wrote about the team, which may be empty - the same
+	 * @param note    why this team, in the member's own words, for whoever decides. Empty
+	 *                where he wrote none, and then the card draws the name and the town
+	 * @param bio     what the team would say about itself, which may be empty - the same
 	 *                shape {@code competitor.bio} and {@code btl_event.description} have
 	 * @param link    the team's own page, optional and empty where there is none
 	 * @param city    the town, typed by hand, which then names its country
 	 * @param country the code of that country, {@code RS}, never its key - the same
 	 *                spelling {@link TeamApi} answers with
 	 */
-	record Proposed(String name, String bio, String link, String city, String country) {
+	record Proposed(String name, String note, String bio, String link, String city,
+			String country) {
 	}
 
 	/** Why a team could not be put forward. */
@@ -397,18 +476,19 @@ class TeamWriteApi {
 		}
 
 		String name = typed.name().strip();
-		String bio = orEmpty(typed.bio());
 
 		/* `team_id` IS NOT IN THIS LIST, and its absence is the mark: V11 tells a new team
 		   from a change to one that exists by whether the column is filled, and this route
 		   writes new teams only. `place_id` and `country_id` are the town in the shape the
-		   member sent it, which is the second of the two V11 allows. */
+		   member sent it, which is the second of the two V11 allows. And `note` is not in
+		   it either, because this table has no column for it: what a member writes TO A
+		   MODERATOR is not a thing the team would carry afterwards. */
 		long proposal = db.sql("insert into team_proposal"
 						+ " (competitor_id, name, bio, link, city, country_id)"
 						+ " values (?, ?, ?, ?, ?, ?)"
 						+ " returning id")
-				.params(me, name, bio, orEmpty(typed.link()), typed.city().strip(),
-						country.orElseThrow())
+				.params(me, name, orEmpty(typed.bio()), orEmpty(typed.link()),
+						typed.city().strip(), country.orElseThrow())
 				.query(Long.class)
 				.single();
 
@@ -419,7 +499,14 @@ class TeamWriteApi {
 		   home for what time it is. */
 		db.sql("insert into verification (queue, competitor_id, subject, body, team_proposal_id)"
 						+ " values ('teams', ?, ?, ?, ?)")
-				.params(me, name, bio, proposal)
+				/* THE NOTE AND NOT THE DESCRIPTION, which is the whole of what a round on
+				   19.09.2026 found: this carried `bio`, and a member sending what his own
+				   form defines was answered 201 with a card nobody could read anything off.
+				   V9 makes `body` NOT NULL and blankable because it is „what was written or
+				   proposed", and what is written HERE, to a moderator, is `teams.proposeNote`
+				   - „Zasto ovaj tim". The description is the team's and stays on the
+				   proposal, where an approval copies it from. */
+				.params(me, name, orEmpty(typed.note()), proposal)
 				.update();
 
 		return ResponseEntity.status(HttpStatus.CREATED)
