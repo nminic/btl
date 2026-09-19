@@ -42,18 +42,21 @@ class ProbeRoutes {
 
 	static final String THE_OTHER_RIGHT = "queue:results";
 
-	/**
-	 * A route of the portal's own that takes only GET, and one that takes only a write.
+	/*
+	 * THE TWO ROUTES "THAT TAKE ONLY ONE VERB" USED TO BE WRITTEN HERE, AND SINCE
+	 * 19.09.2026 THEY ARE ASKED OF THE DISPATCHER INSTEAD.
 	 *
-	 * <p>Used where a case is about a method an address does not take. Signing in is the
-	 * only route today mapped for {@code POST} and nothing else, which makes it the one
-	 * place a plain read can be refused for the method alone - and a read never meets the
-	 * CSRF filter, so it is also where a case can show that no token is needed to run the
-	 * oracle.
+	 * They were `/api/teams` and `/api/sign-in`, two facts about the portal in a file that
+	 * declares probes - and both are facts with a date on them. `/api/teams` is mapped for
+	 * `GET` alone until the increment that gives teams a `POST`, and on that day the case
+	 * whose whole subject is "a verb this address does not take" would have gone on
+	 * passing while measuring "a media type this address does not take", with nothing to
+	 * say the subject had changed underneath it.
+	 *
+	 * `RightsOverRealHttpTest.takesOnly` reads it off `RequestMappingHandlerMapping`, which
+	 * is where the answer already is, and says so out loud when there is no such route
+	 * rather than settling for whichever one is nearest.
 	 */
-	static final String TAKES_ONLY_GET = "/api/teams";
-
-	static final String TAKES_ONLY_POST = "/api/sign-in";
 
 	/**
 	 * The one route of the portal guarded by the SECOND kind of guard, and no probe can
