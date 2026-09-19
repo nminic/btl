@@ -236,6 +236,31 @@ class RightsAtTheDoorTest {
 	 * while their branches were still in review, which is the alternative to finding them one
 	 * at a time on a red gate.
 	 *
+	 * <p><b>AND B82 IS THE FIRST ENTRY THIS LIST GAINED AFTER THAT RULE WAS WRITTEN, WHICH IS
+	 * THE BILL BEING PAID RATHER THAN A NEW KIND.</b> {@code POST /api/inbox} is a member
+	 * writing a private message to another member, and there is no box a superadmin could tick
+	 * that would open it: having an inbox is a consequence of being a member, which is the
+	 * sentence {@code GET /api/inbox} is already on this list for, and a verb changes nothing
+	 * about that. <b>What stands in place of a right is the ADDRESSEE.</b> V13 gives a message
+	 * one {@code to_id} or none at all, and {@code InboxWriteApi} fills it on every row it
+	 * writes, out of a member number the portal serves publicly - so what protects this address
+	 * is not a privilege somebody holds but the fact that a message belongs to the one person
+	 * it names, exactly as {@code PUT /api/pairs/{id}} is protected by the invitation's own
+	 * {@code to_id} rather than by a tick.
+	 *
+	 * <p>It arrives by a THIRD road, which neither of the two above took. {@code /api/inbox} is
+	 * NOT on {@link ApiSecurity#READ_BY_ANYBODY} - an inbox is nobody's to read but its
+	 * owner's - so the old shape would not have excused this write by an open address, the way
+	 * it excused both halves of B77. It would have excused it by the BARE PATH ALREADY
+	 * STANDING HERE for the read: a verb added to an address this list already names, which is
+	 * the case the note on verbs describes in the abstract and this is it happening. The tool
+	 * above named it while this branch was still in review - one entry, nothing over and
+	 * nothing under - and the floor below was run against this name in BOTH directions before
+	 * it was committed: taken out of the list it fails as a route nobody named, and written as
+	 * {@code DELETE /api/inbox} it fails as a name that is not a route. An exact comparison can
+	 * be wrong by an entry too few and by an entry too many, and one of those two is the
+	 * direction a list somebody padded would go.
+	 *
 	 * <p><b>It is a written list, and the floor under it is in the same file.</b>
 	 * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads the other side
 	 * off the dispatcher and compares the two EXACTLY, so a name that stops being a route
@@ -276,7 +301,8 @@ class RightsAtTheDoorTest {
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("GET /api/me", "POST /api/sign-in", "POST /api/sign-out",
 					"GET /api/comments", "GET /api/attendance", "GET /api/verification",
-					"POST /api/registration", "GET /api/inbox", "GET /api/me/notifications",
+					"POST /api/registration", "GET /api/inbox", "POST /api/inbox",
+					"GET /api/me/notifications",
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams",
