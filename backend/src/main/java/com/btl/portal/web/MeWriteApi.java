@@ -727,15 +727,17 @@ class MeWriteApi {
 	 * address the portal never offered him. {@link InboxWriteApi} came to the same answer on
 	 * the same week.
 	 *
-	 * <p><b>AND NO CASE ON THIS BRANCH CAN FALL WHEN THIS LINE IS TURNED INTO
-	 * {@code setStatus}, WHICH IS A BOUNDARY AND IS WRITTEN DOWN RATHER THAN LEFT TO BE
-	 * FOUND.</b> MockMvc runs no ERROR dispatch at all, so it cannot tell the two apart
-	 * however this line is written; {@link RightsAtTheDoor} measured the real difference over
-	 * a socket at 262 bytes against 412. The one file on this portal that measures it is
-	 * {@code RightsOverRealHttpTest}, and it is held by other branches, so a copy of its
-	 * machinery made here would be two places answering one question. The STATUS of this
-	 * refusal is measured on this branch; the SHAPE is argued, and that is the exact extent
-	 * of what is claimed.
+	 * <p><b>AND A CASE ON THIS BRANCH DOES FALL WHEN THIS LINE IS TURNED INTO
+	 * {@code setStatus}</b> (found on review: the paragraph used to claim none could, and
+	 * that held only until the case below grew to cover this address). {@code RightsOverRealHttpTest}
+	 * asks {@code PUT /api/me} of a real socket, byte for byte against its twin, in
+	 * {@code aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere}, and the
+	 * swap measures 367 against 225 - the same two numbers on two separate runs. MockMvc could
+	 * never have shown this: it runs no ERROR dispatch at all, so a status and a
+	 * {@code sendError} look alike to it, but a real socket does not agree, because
+	 * {@code sendError} runs the container's ERROR dispatch and a status written onto the
+	 * response does not. Both the STATUS and the SHAPE of this refusal are measured on this
+	 * branch; neither is argued.
 	 *
 	 * <p>Returning {@code null} afterwards is how {@link InboxApi} says the same thing: the
 	 * error has been committed and there is no body left to write.
