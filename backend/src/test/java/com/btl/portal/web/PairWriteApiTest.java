@@ -774,6 +774,59 @@ class PairWriteApiTest {
 	}
 
 	/**
+	 * AND NO DAY A PAIR WAS MADE LEAVES THROUGH THIS DOOR EITHER, IN EITHER SPELLING.
+	 *
+	 * <p>Owner, 13.09.2026: „Dan kad je par nastao se ne prikazuje NIKOME. Server ga ne
+	 * vraca." {@code PairApiTest} holds that over the public list; this is the other door the
+	 * same column could leave through, and it is the one that WRITES it, so the value is in
+	 * hand here and costs nothing to hand back.
+	 *
+	 * <p>Asked of the whole answer as TEXT and not of a field name, for the reason
+	 * {@code PairApiTest} gives: a field renamed to something no screen reads walks past a
+	 * check that only reads names. Both spellings a timestamp arrives in are refused - the
+	 * day, which is what a configured Jackson writes, and the seconds since the epoch, which
+	 * is what an unconfigured one writes - and both are read out of the database.
+	 *
+	 * <p><b>And the field names are compared whole</b>, in both answers, because the other way
+	 * a moment leaves is under a name nobody thought to refuse.
+	 */
+	@Test
+	void noDayAPairWasMadeLeavesThroughThisDoor() throws Exception {
+		MockHttpServletResponse asked = askAs(HE_ASKS, asking(SHE_IS_ASKED));
+
+		assertThat(mapper.readTree(asked.getContentAsString()).propertyNames())
+				.as("the answer to a question carries some field other than the two it is about")
+				.containsExactlyInAnyOrder("id", "memberNumber");
+
+		MockHttpServletResponse made = answerAs(SHE_ANSWERS,
+				questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true));
+
+		assertThat(mapper.readTree(made.getContentAsString()).propertyNames())
+				.as("the answer to an acceptance carries some field other than the pair and its"
+						+ " season, and the day of forming is the one that must never be among"
+						+ " them")
+				.containsExactlyInAnyOrder("id", "season");
+
+		String whole = made.getContentAsString();
+
+		assertThat(whole).as("the answer carries nothing at all, so it says nothing about what it"
+				+ " leaves out").contains(String.valueOf(BEING_FORMED));
+
+		String day = db.sql("select to_char(made_at at time zone 'UTC', 'YYYY-MM-DD')"
+						+ " from racing_pair where id = ?").param(idIn(made))
+				.query(String.class).single();
+		String instant = db.sql("select extract(epoch from made_at)::bigint::text"
+						+ " from racing_pair where id = ?").param(idIn(made))
+				.query(String.class).single();
+
+		assertThat(whole).as("the day the pair was made (%s) left the server, and Clan 73 names a"
+				+ " day only for a verified result", day).doesNotContain(day);
+		assertThat(whole).as("the day the pair was made left the server as an instant (%s), which"
+				+ " is what a timestamp answers with when nobody asks it for a shape", instant)
+				.doesNotContain(instant);
+	}
+
+	/**
 	 * AND THE MAN GOES IN THE MAN'S COLUMN WHICHEVER OF THE TWO ASKED.
 	 *
 	 * <p>The case above is answered by a woman whose asker was a man, so „the man" and „the one
