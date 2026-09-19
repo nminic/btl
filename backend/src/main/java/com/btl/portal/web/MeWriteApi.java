@@ -176,13 +176,13 @@ import java.util.Optional;
  * OTHERWISE.</b> PDL P22 says it must: „Biografija se odbija i vraca clanu, kao i sve
  * ostalo: uz obavezan razlog, koji stize u sanduce", and PDL P11 gives the picture's half
  * the same shape - „Odbijena slika se vraca sa preciznom instrukcijom u inboks". Two
- * things stand between that sentence and this portal, and both are named rather than left
- * to be assumed: <b>{@code POST /api/inbox} is written and not merged</b> (PR 307,
- * {@code InboxWriteApi}), so there is no route that puts a message in a member's box; and
- * <b>a moderator's decision in the queue is the December block</b>, so there is nothing
- * that would send one. This route writes no {@code message} and no notification, invents
- * no table and no address, and says so here. A sentence claiming somebody was told when
- * he was not is worse than the missing half.
+ * things stood between that sentence and this portal when this was written, and both were
+ * named rather than left to be assumed: <b>{@code POST /api/inbox} was merged</b> (PR 307,
+ * {@code InboxWriteApi}), so a route that puts a message in a member's box now exists; and
+ * <b>a moderator's decision in the queue is the December block</b>, so there is still
+ * nothing that would send one. This route writes no {@code message} and no notification,
+ * invents no table and no address, and says so here. A sentence claiming somebody was
+ * told when he was not is worse than the missing half.
  *
  * <h2>ADL A54, AND WHICH OF ITS TWO MEANINGS LEAVING A FIELD OUT HAS HERE</h2>
  *

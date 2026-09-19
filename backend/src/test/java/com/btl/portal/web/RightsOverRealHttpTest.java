@@ -665,9 +665,9 @@ class RightsOverRealHttpTest {
 	 * AND A RESOURCE THAT REFUSES AN ACCOUNT WITH NO MEMBER ANSWERS LIKE AN ADDRESS THAT
 	 * IS NOT THERE.
 	 *
-	 * <p><b>Why this is measured here and not where the two routes live.</b> Both of them
-	 * already carry a case asserting the refusal has an empty body, and both of those
-	 * cases run through {@code MockMvc}, which - as {@code VerificationApi} writes down in
+	 * <p><b>Why this is measured here and not where the three routes live.</b> All three of
+	 * them already carry a case asserting the refusal has an empty body, and all three of
+	 * those cases run through {@code MockMvc}, which - as {@code VerificationApi} writes down in
 	 * as many words - never runs the container's ERROR dispatch and so cannot see what an
 	 * address that is not there actually sends. Measured 17.09.2026: swapping
 	 * {@code sendError} for {@code setStatus} on both routes left 48 cases green, while
@@ -678,9 +678,16 @@ class RightsOverRealHttpTest {
 	 * prefixes is needed and nothing has to be kept equal by hand.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = {"/api/inbox", "/api/me/notifications"})
-	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String path)
+	@ValueSource(strings = {"GET /api/inbox", "GET /api/me/notifications", "PUT /api/me"})
+	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
+		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way
+		   RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT has been since 19.09.2026: a write
+		   added to an address already named here for a read must arrive as its own name
+		   rather than borrow the verb the first entry happened to use. */
+		String method = pair.substring(0, pair.indexOf(' '));
+		String path = pair.substring(pair.indexOf(' ') + 1);
+
 		/* AND THE ROUTE IS REALLY THERE, which the three cases beside this one all assert
 		   first and for the reason they each write down: a route that was simply broken
 		   would be missing for everybody, the twin and the original would be two absent
@@ -712,7 +719,15 @@ class RightsOverRealHttpTest {
 				.contains(path)
 				.doesNotContain(twinOf(path));
 
-		answersTheSameWay("GET", path, twinOf(path), A_COMPETITOR);
+		/* A WRITE NEEDS THE MEDIA TYPE ON THE WIRE, a GET does not. MeWriteApi#change is
+		   mapped with consumes = APPLICATION_JSON_VALUE, and a request naming none is
+		   matched to APPLICATION_OCTET_STREAM by the dispatcher and never reaches the
+		   handler at all - so the guard below would be measuring a 415 the framework
+		   answers on its own rather than the sendError this case exists to prove. The two
+		   GET cases carry no body and ask for none of this. */
+		String extra = method.equals("GET") ? "" : "Content-Type: application/json\r\n";
+
+		answersTheSameWay(method, path, twinOf(path), A_COMPETITOR, A_TOKEN, extra);
 	}
 
 	/**
