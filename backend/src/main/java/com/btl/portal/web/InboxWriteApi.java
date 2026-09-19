@@ -256,9 +256,9 @@ import java.util.Optional;
  * ({@code MessageDetail.tsx}), and the two things they point at are written by other
  * increments; a member writing to a member asks nothing the portal can answer for him.
  * <li><b>DELETING, EDITING AND MARKING READ.</b> Nothing here removes or changes a message:
- * PDL, „Inkrement 134", 06.09.2026, „Ne briše se: brisanje poruke iz tuđeg sandučeta je
+ * PDL „Inkrement 134", 06.09.2026, „Ne briše se: brisanje poruke iz tuđeg sandučeta je
  * brisanje istorije". Marking one read is {@code message_read}, which
- * {@link InboxApi} READS and nothing writes - so the portal's unread counter (PDL P32) can
+ * {@link InboxApi} READS and nothing writes - so the portal's unread counter (PDL „Inkrement 134", „Brojač nepročitanih u sandučetu") can
  * never fall. It is left out of this increment for a reason that is about the repository
  * rather than about the feature: the smallest shape it can take is a route of its own, and
  * since 19.09.2026 a new route owes its OWN {@code VERB PATH} entry in
