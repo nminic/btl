@@ -774,15 +774,23 @@ class RightsOverRealHttpTest {
 						+ " there and it measures nothing", twinOf(path))
 				.doesNotContain(twinOf(path));
 
-		/* A WRITE NEEDS THE MEDIA TYPE ON THE WIRE, a GET does not, and which type is read
-		   off THIS route rather than written here by hand (found on review). A request
-		   naming none is matched to APPLICATION_OCTET_STREAM by the dispatcher and never
-		   reaches the handler at all, so the guard below would be measuring a 415 the
-		   framework answers on its own rather than the sendError this case exists to
-		   prove; a hand-written "application/json" agreed with every route that happened
-		   to ask for exactly that and would have stayed green the day one asked for
-		   another type, or none. The consumable types of the very mapping the anchor just
-		   confirmed cannot disagree with the route, because they ARE the route. */
+		/* THE MEDIA TYPE IS READ OFF THIS ROUTE rather than written here by hand (found on
+		   review): a hand-written "application/json" agreed with every route that happened
+		   to ask for exactly that and would have stayed green the day one asked for another
+		   type, or none. The consumable types of the very mapping the anchor just confirmed
+		   cannot disagree with the route, because they ARE the route.
+
+		   AND WHY THIS DERIVATION DOES NOT MAKE THE GUARD BELOW CATCH A WRONG VALUE, written
+		   down rather than left for the next reader to reach for the same wrong reason this
+		   round did. The paragraph this replaced claimed a missing type would be measured
+		   as a 415 the framework answers on its own; measured instead: for a WRITE THAT
+		   CARRIES NO BODY, dropping the header changes nothing at all, because
+		   {@link NothingIsHereRatherThanAlmost} turns every near miss the dispatcher can
+		   raise at mapping time - a wrong method, a wrong media type - into the same "no
+		   handler" answer a nonexistent address gets, on purpose, so that neither can be
+		   told apart from an address that is not there. That is the class this route's own
+		   404 already belongs to, not a gap beside it: the derivation above is correct
+		   because it agrees with the route, not because disagreeing would be caught here. */
 		Set<MediaType> consumes = mapping.getConsumesCondition().getConsumableMediaTypes();
 		String extra = consumes.isEmpty() ? ""
 				: "Content-Type: " + consumes.iterator().next() + "\r\n";
