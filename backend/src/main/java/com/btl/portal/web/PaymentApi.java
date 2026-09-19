@@ -114,8 +114,8 @@ import java.util.regex.Pattern;
  * instant, both reading no existing row before either writes, both draw two
  * DIFFERENT numbers - the sequence guarantees that much and is what the case in
  * {@code PaymentApiTest} measures - but the second {@code insert} then loses to
- * {@code payment_one_a_season} and answers 500 rather than the tidy 200 a second
- * click a moment later would get. Nothing in this increment's brief asks the
+ * {@code payment_one_a_season} and answers 500, its drawn number already spent
+ * for good. Nothing in this increment's brief asks the
  * SAME payment to be idempotent under true simultaneity, only that two DIFFERENT
  * people never receive the same number; catching that race and folding it back
  * into {@code ALREADY_RECORDED} is a real improvement and a separate one.
