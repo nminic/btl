@@ -194,9 +194,15 @@ import java.util.Optional;
  * NAME, which is what PDL's rule of 13.09.2026 decides. Whether such a member may ACT is a
  * different question and nothing written answers it.
  * <ul>
- *   <li><b>Measured rather than felt.</b> {@code SignInApi} does not read {@code active}, so
- *   a member whose fee has lapsed holds a session; today this route accepts his message and
- *   his name lands in an active member's inbox.
+ *   <li><b>And one half of it IS decided, which is what makes the rest a question rather than
+ *   an oversight.</b> Signing in ignores {@code active} ON PURPOSE, and
+ *   {@link com.btl.portal.domain.account.SignIn} says so in as many words: „nothing here reads
+ *   the member number, the fee or the {@code active} flag, AND NOTHING MAY BE MADE TO", with
+ *   V6's reason behind it and the owner's sentence of 11.08.2026 that membership and a
+ *   confirmed address are two different things. So such a member holds a session BY DECISION
+ *   rather than by omission, and refusing him here would be the first place this portal takes
+ *   something away from him AFTER letting him in. Today this route accepts his message and his
+ *   name lands in an active member's inbox.
  *   <li><b>Every place on this portal that reads {@code active} reads it about somebody being
  *   NAMED in an answer</b>, never about whoever is asking: {@link CompetitorApi}
  *   („where c.active"), {@link AttendanceApi}, {@link PairApi}, {@link CommentApi} (the number
@@ -391,12 +397,13 @@ class InboxWriteApi {
 	 *
 	 * <p><b>AND IT IS NOT {@code @RequestBody(required = false)}, WHICH WAS THE FIRST DRAFT AND
 	 * WAS MEASURED WRONG THE SAME HOUR.</b> That annotation does two things, and only one of
-	 * them is wanted: it stops an absent body being an exception, and it also tells
-	 * {@code ConsumesRequestCondition} that the body is optional - after which the condition
-	 * SKIPS ITSELF for any request that carries no body at all
-	 * ({@code if (!hasBody(request) && !this.bodyRequired) return EMPTY_CONDITION}). So
-	 * {@code consumes} stopped guarding the very door it was added for, and a {@code POST} with
-	 * no {@code Content-Type} went from 404 to 400.
+	 * them is wanted: it stops an absent body being an exception, and it also sets
+	 * {@code ConsumesRequestCondition}'s own {@code bodyRequired} flag to false - after which
+	 * that condition, which asks {@code hasBody(request)} for itself, stops applying to a
+	 * request that carries no body at all. Both members are real (read off the jar rather than
+	 * remembered) and the consequence is measured rather than reasoned: {@code consumes}
+	 * stopped guarding the very door it was added for, and a {@code POST} with no
+	 * {@code Content-Type} went from 404 to 400.
 	 * {@code anAddressThatWantsJsonAndIsSentNoneIsAnAddressThatIsNotThere} is what caught it.
 	 *
 	 * <p>Taking the request instead leaves that flag at its default of {@code true}, so
