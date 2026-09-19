@@ -133,6 +133,19 @@ import java.util.Optional;
  * the moment it is asked for. The day the switch above exists and somebody turns it on, the
  * mail it produces is „drustveno i sporedno" by P22, which is the side A4c's own point 6
  * protects the quota from: „Zvono je podrazumevano, mejl je izuzetak."
+ * <li><b>THE PORTAL'S OWN NOTICES, WHICH SHARE THIS TABLE AND NOTHING ELSE.</b> PDL P9
+ * decides that a member „UVEK dobija obavestenje o izmeni, bez izuzetka i bez kvacice koju
+ * administrator moze da iskljuci", that such a notice „mora da sadrzi staru vrednost"
+ * because „Mejl je dnevnik" and nothing else keeps the old one, and that „skrivena kopija
+ * svakog takvog obavestenja ide na administrativnu adresu lige, i ista poruka ide u
+ * portalski inboks". Every word of that is about a message the PORTAL writes when an
+ * administrator edits, deletes or overwrites somebody's RESULT, and it belongs to the
+ * increment that does those things; so does the team's own („Tim ciji je poziv ostao
+ * neodgovoren dobija poruku u sandusetu portala", PDL P13, 06.09.2026). What those senders
+ * will share with this one is the TABLE and nothing else: V13 makes {@code from_id}
+ * nullable precisely because „The portal itself is a sender too, and it has no row in
+ * {@code competitor} at all", while every row THIS class writes fills it and names a
+ * member. Nothing here is a second home for any of them.
  * <li><b>A LENGTH.</b> V13 caps neither {@code subject} nor {@code body}, the portal has no
  * form for writing a message at all - there is no {@code *.form.json} for one and no screen
  * that sends - and no other writing route on this server invents a length either
