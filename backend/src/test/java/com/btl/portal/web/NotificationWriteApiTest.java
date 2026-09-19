@@ -200,6 +200,58 @@ class NotificationWriteApiTest {
 	}
 
 	/**
+	 * AND A WRITE CARRYING NO {@code Content-Type} IS ANSWERED LIKE AN ADDRESS THAT IS NOT
+	 * THERE, WHICH IS WHAT {@code consumes} ON THE MAPPING BUYS.
+	 *
+	 * <p>Without it the path and the method still match, the request reaches the argument
+	 * resolver, and the answer is <b>415</b> - a number that says „this address is here and
+	 * wants a different type", while an address mapping nothing goes on saying 404. Declared
+	 * on the mapping, the same request never matches at all, the dispatcher raises it from
+	 * {@code handleNoMatch}, and {@code NothingIsHereRatherThanAlmost} turns it into the 404
+	 * every unmapped address answers.
+	 *
+	 * <p><b>This case exists because its absence was measured.</b> Taking {@code consumes}
+	 * off the mapping left every other case in this file green, and left
+	 * {@code RightsAtTheDoorTest}, {@code RightsOverRealHttpTest} and
+	 * {@code OpenRoutesStayReadOnlyTest} green too - the sentence was in the javadoc and
+	 * nothing held it.
+	 *
+	 * <p>Signed in, because an unauthenticated caller is refused 401 at both addresses and
+	 * the two would then agree for a reason that has nothing to do with this rule. <b>The
+	 * anchor is asked LAST, on purpose:</b> a proper write moves the row, and a row moved
+	 * before the typeless request is measured would hold the very values that request
+	 * carries, so „nothing was written" and „this was written" would be one row.
+	 */
+	@Test
+	void aWriteCarryingNoContentTypeIsAnsweredLikeAnAddressThatIsNotThere() throws Exception {
+		MockHttpServletResponse typeless = untyped(HE_CHOOSES, PATH);
+		MockHttpServletResponse nowhere = untyped(HE_CHOOSES, NOTHING_IS_THERE);
+
+		assertThat(nowhere.getStatus())
+				.as("an address nothing maps did not answer 404 to a typeless write either, so"
+						+ " there is nothing here to compare against")
+				.isEqualTo(404);
+
+		assertThat(List.of(typeless.getStatus(), typeless.getContentAsString()))
+				.as("a write with no Content-Type was told this address is here and wants a"
+						+ " different type, which an address that is not there never says")
+				.isEqualTo(List.of(nowhere.getStatus(), nowhere.getContentAsString()));
+
+		assertThat(rowOf(HE_CHOOSES))
+				.as("a request the dispatcher never matched moved the row anyway")
+				.isEqualTo(WHERE_HE_STARTS);
+
+		/* AND THE ADDRESS REALLY IS THERE, asked after everything above rather than before
+		   it: a route that was simply broken would be missing for everybody, the two answers
+		   compared above would be two absent places, and the comparison would hold having
+		   measured nothing. */
+		assertThat(sent(HE_CHOOSES, body(WHAT_HE_CHOOSES)).getStatus())
+				.as("this address does not answer a proper write at all, so comparing a typeless"
+						+ " one with a missing address measures nothing")
+				.isEqualTo(200);
+	}
+
+	/**
 	 * HIS OWN SWITCHES MOVE, THE ROW HOLDS WHAT HE SENT, AND HIS NEIGHBOUR'S ROW DOES NOT
 	 * MOVE.
 	 *
@@ -709,6 +761,17 @@ class NotificationWriteApiTest {
 
 		return http.perform(email == null ? asking
 						: asking.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse();
+	}
+
+	/**
+	 * The same write with a body and NO {@code Content-Type} at all, which is not the same
+	 * request with an empty type but a request whose header is absent.
+	 */
+	private MockHttpServletResponse untyped(String memberNumber, String path) throws Exception {
+		return http.perform(put(path).with(csrf()).content(body(WHAT_HE_CHOOSES))
+						.cookie(new Cookie(SessionCookie.NAME,
+								sessions.get(memberNumber + "@primer.rs").secret())))
 				.andReturn().getResponse();
 	}
 
