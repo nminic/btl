@@ -34,10 +34,23 @@ import java.util.Optional;
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
- * <li><b>Races.</b> An event holds races and this increment does not write them: there
- * is no {@code POST /api/races} yet, and the owner's rule that an event's date is the
- * day of its first race (PDL, 10.08.2026) is honoured from the one side that exists
- * here - moving the event moves its races with it, see {@link #change}.
+ * <li><b>Races.</b> An event holds races and this class does not write them:
+ * {@link RaceWriteApi} does, and the owner's rule that an event's date is the day of its
+ * first race (PDL, 10.08.2026) is honoured from both sides since then. This one is the
+ * side where the EVENT moves and takes its races with it, see {@link #change}; the other
+ * is where a race moves and takes the event's day - and its address - with it.
+ * <li><b>Renaming an event onto the races that still carry its name.</b> Owner,
+ * 23.08.2026: a race that still carries the default name follows its event when the event
+ * is renamed, one renamed by hand keeps what it was given, and that is what
+ * {@code race.renamed} records. {@link RaceWriteApi} writes the field; nothing here reads
+ * it, so an event renamed on this server leaves every race under it called what it was.
+ * The screen does it ({@code frontend/src/pages/admin/EventRaces.tsx}) and this server
+ * does not, which is a hole in THIS route rather than in the one that writes races.
+ * <li><b>Deleting the races of an event turned into a gathering.</b> The other half of
+ * the same owner's sentence of 23.08.2026, „Skup i Trening nemaju trke": the screen takes
+ * the section away and deletes them on the press, and {@link #change} does not. Until it
+ * does, {@link RaceWriteApi} refuses to enter a race under such an event, so the two can
+ * only disagree about rows that are already there.
  * <li><b>Copying an event.</b> PDL, 03.08.2026 gives it its own screen and its own
  * rules, including that a copy is never featured (PDL, 11.08.2026), and none of it is
  * written here. {@code copied_from} is therefore only ever null on a row this class
@@ -247,7 +260,7 @@ class EventWriteApi {
 			String address = EventAddress.keptOrRebuilt(typed.name(), typed.date(),
 					before.get().name(), before.get().date(), before.get().slug());
 
-			if (addressIsTakenBySomebodyElse(address, id)) {
+			if (addressIsTakenBySomebodyElse(db, address, id)) {
 				return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
 			}
 
@@ -378,8 +391,16 @@ class EventWriteApi {
 	 * <p>{@code id <> ?} is the whole of it and is why this is not the same question as
 	 * the one {@link #add} asks: an edit that changes nothing about the address finds its
 	 * own row, and refusing there would make an event impossible to save twice.
+	 *
+	 * <p><b>Static, and {@link RaceWriteApi} asks it too rather than asking its own.</b>
+	 * Whether an address is free is one question about one unique index
+	 * ({@code btl_event_slug_unique}), and it is asked from two places since a race can
+	 * move its event's year and with it the address the rule builds. Written twice, the
+	 * day one of them learnt about a second table the other would go on answering the old
+	 * way, and the one that was wrong would be answering about a collision nobody sees
+	 * until a result cannot find its event.
 	 */
-	private boolean addressIsTakenBySomebodyElse(String address, long id) {
+	static boolean addressIsTakenBySomebodyElse(JdbcClient db, String address, long id) {
 		return Boolean.TRUE.equals(db.sql(
 						"select exists(select 1 from btl_event where slug = ? and id <> ?)")
 				.params(address, id).query(Boolean.class).single());
