@@ -318,6 +318,59 @@ class PasswordResetApiTest {
 		assertThat(new StoredPassword().matches(NEW_PASSWORD, passwordHashOf(account))).isTrue();
 	}
 
+	/**
+	 * AND A PLAIN RESET LEAVES AN UNCONFIRMED ADDRESS EXACTLY AS UNCONFIRMED AS IT WAS.
+	 *
+	 * <p><b>This is the half of the owner's decision of 19.09.2026 that says what did NOT
+	 * change.</b> „Potvrda adrese se upisuje u trenutku kad se TOKEN POTROSI" is about an
+	 * account that has no password at all - the honorary members V18 names, and since
+	 * 18.09.2026 the invited moderator, for whom spending the link is the FIRST proof
+	 * anybody has of that mailbox. A member who is renewing a password he already has has
+	 * been down his own road, and this route must not write a second answer about it.
+	 *
+	 * <p><b>The account is deliberately unconfirmed AND has a password</b>, which is the
+	 * only setting in which the two rules can be told apart: confirmed, every rule leaves
+	 * the column alone and the case says nothing; without a password, the other rule is the
+	 * one being read.
+	 *
+	 * <p>The floor under it is the reset really happening - the new password is read back
+	 * out of the row - so „the column did not move" is a claim about a request that worked
+	 * rather than about one that was refused.
+	 */
+	@Test
+	void aPlainResetLeavesAnUnconfirmedAddressUnconfirmed() throws Exception {
+		String email = aFreshAddress();
+		long account = anAccount(email);
+
+		db.sql("update account set password_hash = ? where id = ?")
+				.params(new StoredPassword().of("stara.lozinka.iz.2026"), account).update();
+
+		assertThat(confirmedAt(account))
+				.as("the account is already confirmed, so nothing below could have written it")
+				.isNull();
+		assertThat(passwordHashOf(account))
+				.as("the account has no password, which is the OTHER rule and not this one")
+				.isNotNull();
+
+		assertThat(reset(aValidToken(account), NEW_PASSWORD, NEW_PASSWORD).getStatus())
+				.isEqualTo(204);
+
+		assertThat(new StoredPassword().matches(NEW_PASSWORD, passwordHashOf(account)))
+				.as("the reset did not happen at all, so the column below stood still for a"
+						+ " reason that has nothing to do with this rule")
+				.isTrue();
+		assertThat(confirmedAt(account))
+				.as("renewing a password confirmed an address nobody had confirmed, and «dok"
+						+ " adresa nije potvrdjena, nema pristupa portalu» (owner, 31.07.2026)"
+						+ " is a road this route does not get to shorten")
+				.isNull();
+	}
+
+	private Instant confirmedAt(long account) {
+		return db.sql("select email_confirmed_at from account where id = ?")
+				.param(account).query(Instant.class).optional().orElse(null);
+	}
+
 	@Test
 	void resettingHandsOutNoSession() throws Exception {
 		long account = anAccount(aFreshAddress());
