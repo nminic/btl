@@ -80,7 +80,9 @@ import java.util.List;
  * {@code OPTIONS} that a write lives there, so „there is nothing left for the shape of this
  * 404 to hide". Here there is. {@link NotificationApi#notifications} answers the SAME
  * ACCOUNT on the SAME PATH with {@code sendError}, and {@code RightsOverRealHttpTest}
- * measured on 17.09.2026 what the difference costs over a real socket: a status set on the
+ * measured on 17.09.2026 what the difference costs over a real socket - and since
+ * 19.09.2026 THIS VERB IS ON THAT LIST TOO, so the sentence below is measured for the
+ * {@code PUT} and not only argued from the {@code GET} beside it: a status set on the
  * response comes back with {@code Content-Length: 0} while an address mapping nothing comes
  * back longer and chunked, and that length is an oracle even when both say 404. Built any
  * other way, a member-less account could tell this verb from the one beside it and learn from
