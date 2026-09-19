@@ -200,6 +200,89 @@ class NotificationWriteApiTest {
 	}
 
 	/**
+	 * A BODY NOBODY CAN READ SAYS NOTHING TO AN ACCOUNT THIS ADDRESS IS NOT FOR, AND STILL
+	 * SAYS WHAT IS MISSING TO ONE IT IS FOR.
+	 *
+	 * <p><b>The leak this closes.</b> With the switches declared as {@code @RequestBody}, a
+	 * body was read while ARGUMENTS WERE RESOLVED - before the first line of {@code change} -
+	 * so a signed in account with no member behind it sent a body Jackson could not parse and
+	 * was answered 400, while the identical request to an address that maps nothing answered
+	 * 404. One request, and the difference said „a PUT with a body lives here", which is
+	 * exactly what the note at the top of {@link NotificationWriteApi} claims cannot happen.
+	 *
+	 * <p><b>Both directions, because one of them alone is satisfied by a route that refuses
+	 * everybody.</b> The first half demands the member-less account be told nothing; a
+	 * handler answering 404 to every unreadable body would pass it and would take away the
+	 * only sentence the portal owes a member whose own request really is broken. The second
+	 * half is that sentence, and the last status comparison says the two answers are not the
+	 * same one.
+	 *
+	 * <p>The empty body is asked for the same reason absent and blank are asked of every
+	 * field: „no body at all" and „a body that will not parse" are one answer, and both have
+	 * to reach the same refusal.
+	 */
+	@Test
+	void aBodyNobodyCanReadIsRefusedAfterWhoIsAskingAndNotBefore() throws Exception {
+		String notJson = "{oops";
+
+		MockHttpServletResponse nowhereMalformed =
+				sentBy(MODERATOR_WHO_DOES_NOT_RACE, NOTHING_IS_THERE, notJson);
+		MockHttpServletResponse nowhereEmpty =
+				sentBy(MODERATOR_WHO_DOES_NOT_RACE, NOTHING_IS_THERE, "");
+
+		assertThat(nowhereMalformed.getStatus())
+				.as("the address nothing maps did not answer 404 to a malformed body, so"
+						+ " comparing the refusal with it says nothing about what the refusal"
+						+ " hides")
+				.isEqualTo(404);
+		assertThat(nowhereEmpty.getStatus())
+				.as("the address nothing maps did not answer 404 to an empty body either")
+				.isEqualTo(404);
+
+		MockHttpServletResponse toNoMemberMalformed =
+				sentBy(MODERATOR_WHO_DOES_NOT_RACE, PATH, notJson);
+		MockHttpServletResponse toNoMemberEmpty = sentBy(MODERATOR_WHO_DOES_NOT_RACE, PATH, "");
+
+		assertThat(List.of(toNoMemberMalformed.getStatus(),
+				toNoMemberMalformed.getContentAsString()))
+				.as("an account naming no member was told something other than what an address"
+						+ " mapping nothing answers, so a body the portal cannot parse tells him"
+						+ " a PUT lives at this address")
+				.isEqualTo(List.of(nowhereMalformed.getStatus(),
+						nowhereMalformed.getContentAsString()));
+		assertThat(List.of(toNoMemberEmpty.getStatus(), toNoMemberEmpty.getContentAsString()))
+				.as("an account naming no member was told something other than what an address"
+						+ " mapping nothing answers, for a body carrying nothing at all")
+				.isEqualTo(List.of(nowhereEmpty.getStatus(), nowhereEmpty.getContentAsString()));
+
+		MockHttpServletResponse toAMember = sent(HE_CHOOSES, notJson);
+
+		assertThat(toAMember.getStatus())
+				.as("a member this address really is for was not told his request is unusable")
+				.isEqualTo(400);
+		assertThat(reasonIn(toAMember))
+				.as("a member whose body could not be read at all was refused for some other"
+						+ " reason")
+				.isEqualTo(NotificationWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(missingIn(toAMember))
+				.as("a member whose body could not be read at all was not told every switch was"
+						+ " missing")
+				.containsExactlyElementsOf(switchesAsTheFormNamesThem());
+		assertThat(toAMember.getStatus())
+				.as("the two are one answer, so this route refuses everybody alike and the half"
+						+ " above measures nothing")
+				.isNotEqualTo(toNoMemberMalformed.getStatus());
+
+		assertThat(rowOf(HE_CHOOSES))
+				.as("a body nobody could read moved the row anyway")
+				.isEqualTo(WHERE_HE_STARTS);
+		assertThat(howManyRows())
+				.as("a row was written for an account naming no member, or for a body nobody"
+						+ " could read")
+				.isEqualTo(3);
+	}
+
+	/**
 	 * AND A WRITE CARRYING NO {@code Content-Type} IS ANSWERED LIKE AN ADDRESS THAT IS NOT
 	 * THERE, WHICH IS WHAT {@code consumes} ON THE MAPPING BUYS.
 	 *

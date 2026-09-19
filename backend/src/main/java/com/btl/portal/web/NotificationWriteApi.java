@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -7,8 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,7 +33,7 @@ import java.util.List;
  * default a state a member could leave and never return to.
  *
  * <p><b>ITS OWN CLASS, WHICH IS THE SHAPE THIS REPOSITORY ALREADY HAS FOR EVERY RESOURCE
- * THAT IS BOTH READ AND WRITTEN.</b> {@link InboxApi} and {@code InboxWriteApi},
+ * THAT IS BOTH READ AND WRITTEN.</b> {@link InboxApi} and {@code POST /api/inbox},
  * {@link PairApi} and {@link PairWriteApi}, {@link TeamApi} and {@link TeamWriteApi}. So
  * {@link NotificationApi} is not touched by this increment at all, and the reading half goes
  * on saying exactly what it said before.
@@ -103,12 +105,21 @@ import java.util.List;
  * {@link ApiSecurity#READ_BY_ANYBODY}, so the only person who can ever read it is the member
  * himself. There is no difference between two answers here out of which anybody could count
  * who has not paid.
- * <li><b>The two precedents ask it about the OTHER person, and there is no other person
- * here.</b> {@link PairWriteApi} asks {@code active} on both halves because „Par se raskida
- * kad jedna strana ne produzi clanarinu" (owner, 11.08.2026) and a pair made with a lapsed
- * half is one {@link PairApi} refuses to serve from the moment it is written.
- * {@code InboxWriteApi} asks it of the ADDRESSEE and never of the sender. This route has
- * neither a counterpart nor an addressee.
+ * <li><b>Every precedent that asks {@code active} about a SECOND person asks it of that
+ * person, and there is no second person here.</b> {@link PairWriteApi} asks it on both
+ * halves because „Par se raskida kad jedna strana ne produzi clanarinu" (owner,
+ * 11.08.2026) and a pair made with a lapsed half is one {@link PairApi} refuses to serve
+ * from the moment it is written. {@code POST /api/inbox} asks it of the ADDRESSEE and never
+ * of the sender. This route has neither a counterpart nor an addressee.
+ * <li><b>AND THE ONE ROUTE WHERE A MEMBER WRITES FOR HIMSELF ALONE, THE SAME SHAPE THIS
+ * ROUTE IS, ASKS ABOUT {@code active} NOWHERE EITHER - THOUGH THAT IS AN OBSERVATION AND
+ * NOT A FIFTH REASON.</b> {@code POST /api/teams} lets any member propose a team, and
+ * neither it nor {@code JoiningATeam#mayJoin} - the class it asks whether he may join -
+ * looks at whether he has paid. That class's own note says the question was taken OUT of
+ * it on 12.09.2026 and calls where it now belongs „still open", so its silence is a gap
+ * being carried, not a decision being repeated. What it does say is that the four reasons
+ * above are not contradicted anywhere else a member writes for himself alone, which absence
+ * from an unrelated file would not have shown.
  * <li><b>And P22's own reason points the same way.</b> „Mejl zamor ubija dostavljivost" is
  * why the default is off; a member whose fee has lapsed is exactly the person the portal
  * should still be able to stop mailing.
@@ -158,13 +169,35 @@ class NotificationWriteApi {
 	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
+	/**
+	 * A BODY NOBODY COULD READ, TREATED AS ONE THAT NAMED NONE OF THE SIX.
+	 *
+	 * <p>Absent, empty and unreadable are one answer and not three, the same principle
+	 * already kept on {@code POST /api/inbox} - because none of them carries a single switch
+	 * this route could act on. Routing it through {@link #whatTheFormLeftOut(Switches)}
+	 * rather than a branch of its own means a body nobody can parse is refused in exactly the
+	 * words an empty JSON object already is.
+	 */
+	private static final Switches NOTHING_ARRIVED =
+			new Switches(null, null, null, null, null, null);
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
 
-	NotificationWriteApi(JdbcClient db, MemberOfAccount memberOfAccount) {
+	/**
+	 * The one the rest of this application reads bodies with, asked for rather than made.
+	 *
+	 * <p>A mapper built here would be a second set of rules about what a request may carry -
+	 * unknown fields, dates, nulls - free to disagree with the one every other route uses,
+	 * and the disagreement would show up as a field silently not arriving.
+	 */
+	private final ObjectMapper json;
+
+	NotificationWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, ObjectMapper json) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.json = json;
 	}
 
 	/**
@@ -211,13 +244,52 @@ class NotificationWriteApi {
 	}
 
 	/**
+	 * WHAT ARRIVES, READ AS BYTES AND ONLY AFTER „HAS HE A MEMBER" IS ANSWERED, AND THAT
+	 * ORDER IS THE WHOLE OF WHY THIS SIGNATURE IS NOT {@code @RequestBody Switches}.
+	 *
+	 * <p><b>Measured, not foreseen.</b> Written the ordinary way, a signed in account with no
+	 * member behind it sent {@code Content-Type: application/json} and a body Jackson
+	 * refuses, and was answered <b>400</b>, while the identical request to an address that
+	 * maps nothing answered <b>404</b>. The body is read while ARGUMENTS ARE RESOLVED, which
+	 * is before the first line of this method, so the refusal below never ran. One request,
+	 * and the difference says „a PUT with a body lives at this address" - the exact leak
+	 * already measured on {@code POST /api/inbox}, and the one the note at the top of this
+	 * class claims cannot happen.
+	 *
+	 * <p><b>Why it is not solved at the door, said out loud because that IS the portal's
+	 * shape for this.</b> {@link RightsAtTheDoor} decides in {@code preHandle}, before any
+	 * argument is resolved, which is why a route wearing {@link RightIsNeeded} answers 404
+	 * to the same probes. But it knows exactly two kinds of guard - a box the superadmin
+	 * ticks, and {@link OnlyTheSuperadmin} - and „does this account name a member" is
+	 * neither: {@code RightsAtTheDoorTest} says in as many words that having an inbox, or
+	 * switches of his own to write, is not a privilege a superadmin grants but a consequence
+	 * of being a member. A third kind would wear {@link AskedAtTheDoor}, and that mark means
+	 * „a right decides here" to every floor that counts guarded routes, so
+	 * {@code everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn} would then
+	 * demand a plain member be REFUSED this route - the opposite of what it is for. So the
+	 * door is not widened; the order inside this method is fixed instead.
+	 *
+	 * <p><b>AND IT IS NOT {@code @RequestBody(required = false)}, WHICH WAS MEASURED WRONG
+	 * ON {@code POST /api/inbox} THE SAME HOUR IT WAS FIRST TRIED.</b> That annotation does
+	 * two things and only one of them is wanted: it stops an absent body being an exception,
+	 * and it also sets {@code ConsumesRequestCondition}'s own {@code bodyRequired} flag to
+	 * false - after which that condition, which asks {@code hasBody(request)} for itself,
+	 * stops applying to a request that carries no body at all. {@code consumes} would then
+	 * stop guarding the very door it was declared for, and a {@code PUT} with no
+	 * {@code Content-Type} would move from 404 to 400. Taking the request instead leaves
+	 * that flag at its default of {@code true}, so {@code consumes} goes on refusing before
+	 * anything is dispatched, and nothing is read from the body until this method asks for
+	 * it.
+	 *
+	 * @param request  the request, whose body is not touched until „has he a member" is
+	 *                 answered
 	 * @param response asked for so a refusal can go down the same road an address that is not
 	 *                 there takes, exactly as {@link NotificationApi#notifications} does on
 	 *                 the other verb of this same path
 	 */
 	@PutMapping(path = "/api/me/notifications", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@RequestBody Switches typed, HttpServletResponse response) throws IOException {
+			HttpServletRequest request, HttpServletResponse response) throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -225,7 +297,8 @@ class NotificationWriteApi {
 			return away(response);
 		}
 
-		List<String> missing = whatTheFormLeftOut(typed);
+		Switches typed = read(request.getInputStream().readAllBytes());
+		List<String> missing = whatTheFormLeftOut(typed == null ? NOTHING_ARRIVED : typed);
 
 		if (!missing.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -235,6 +308,22 @@ class NotificationWriteApi {
 		write(me, typed);
 
 		return ResponseEntity.ok(switchesWrittenDown(me));
+	}
+
+	/**
+	 * WHAT ARRIVED, TURNED INTO THE FORM, OR NOTHING AT ALL.
+	 *
+	 * <p>The application's own {@link ObjectMapper} and not one made here, so a body is read
+	 * exactly as {@code @RequestBody} would have read it - unknown fields dropped and all -
+	 * and the only thing this increment changed about reading it is WHEN.
+	 */
+	private Switches read(byte[] sent) {
+		try {
+			return json.readValue(sent, Switches.class);
+		}
+		catch (JacksonException cannot) {
+			return null;
+		}
 	}
 
 	/**
@@ -252,7 +341,7 @@ class NotificationWriteApi {
 	 * then insert or update" it would be two statements with a window between them in which
 	 * two requests of his own could both find no row and both insert, and the second would
 	 * meet {@code notification_setting_pk} as a server fault rather than as an answer. One
-	 * statement has no such moment, which is {@code InboxWriteApi}'s own reason for holding
+	 * statement has no such moment, which is {@code POST /api/inbox}'s own reason for holding
 	 * no {@code TransactionTemplate}: there is nothing here that can be half done.
 	 *
 	 * <p><b>The boundary in both directions, because „create a row when there is none" is a
@@ -292,7 +381,7 @@ class NotificationWriteApi {
 	 * stored exactly as they arrive - there is no {@code strip} here, no address worked out
 	 * of a name, nothing the table changes on the way in - so an answer built out of the
 	 * REQUEST instead of out of the row would be identical on every request that got this
-	 * far. {@link TeamWriteApi} and {@code InboxWriteApi} can measure their own read-back
+	 * far. {@link TeamWriteApi} and {@code POST /api/inbox} can measure their own read-back
 	 * because what they write is transformed; that reason does not carry over, and a case
 	 * claiming it here would be a case about nothing. It is read off the row anyway, because
 	 * the day a column gains a default, a trigger or a check that rewrites, this answer is
