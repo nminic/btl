@@ -272,9 +272,25 @@ class RightsAtTheDoorTest {
 	 * {@code READ_BY_ANYBODY}, so read by the path alone this route was excused by the
 	 * address and this line would never have been written. It was invisible for the length of
 	 * one merge.
+	 *
+	 * <p><b>AND {@code PUT /api/me} IS THE FIRST LINE THE PAIRS BOUGHT, which is the
+	 * correction above paying for itself within the day.</b> {@code /api/me} was already
+	 * named here for its {@code GET}, so under bare paths a write added to that same address
+	 * would have been excused by a line written about a read, and nobody would have been
+	 * asked anything. Keyed by the pair, it arrives as its own name.
+	 *
+	 * <p>What it is: a member editing his own profile - the text about himself, which goes
+	 * to a moderator, and whether visitors who are not signed in may reach his page, which
+	 * does not. There is no box a superadmin could tick that would open it, because editing
+	 * one's own profile is not a privilege anybody grants; {@link RightIsNeeded} could only
+	 * name one that shut it to the people it is for. Whose profile is changed is not in the
+	 * request at all - {@code MeWriteApi} reads it off the session, the way {@link WhatHeMayDo}
+	 * reads a privilege - so there is nothing here for a door to decide. An account with no
+	 * member behind it is refused by the route, before it reads a byte of the body, and is
+	 * answered exactly what an address that is not there answers.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
-			Set.of("GET /api/me", "POST /api/sign-in", "POST /api/sign-out",
+			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
 					"GET /api/comments", "GET /api/attendance", "GET /api/verification",
 					"POST /api/registration", "GET /api/inbox", "GET /api/me/notifications",
 					"GET /api/me/applications", "POST /api/email-confirmation",

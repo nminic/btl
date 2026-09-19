@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Timestamp;
@@ -34,6 +35,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -155,6 +157,12 @@ class MeWriteApiTest {
 			Path.of("..", "frontend", "src", "forms", "definitions", "registracija.form.json");
 
 	private static final String THE_PROFILES_TAB = "profiles";
+
+	/**
+	 * An address of the same shape that maps nothing, which every refusal here is compared
+	 * against rather than compared with a number written down.
+	 */
+	private static final String NOTHING_IS_THERE = "/api/nema-ovoga";
 
 	@Autowired
 	private MockMvc http;
@@ -823,20 +831,46 @@ class MeWriteApiTest {
 	}
 
 	/**
-	 * AN ACCOUNT THAT NAMES NO MEMBER IS ANSWERED AS THOUGH THE ADDRESS WERE NOT THERE.
+	 * AN ACCOUNT THAT NAMES NO MEMBER IS ANSWERED AS THOUGH THE ADDRESS WERE NOT THERE, AND
+	 * THAT IS ASKED WITH THREE DIFFERENT BODIES BECAUSE ONE OF THEM USED TO ANSWER
+	 * DIFFERENTLY.
 	 *
 	 * <p>V23: {@code account.competitor_id} is null for „a moderator who does not race,
 	 * which is the ordinary case and not a fault". ADL A8, 13.09.2026: „Server odbija bez
 	 * privilegije sa 404, ne sa 403."
+	 *
+	 * <p><b>Why three bodies and not one, and this is the whole of a finding of
+	 * 19.09.2026.</b> With the body read while arguments are resolved, a request this portal
+	 * cannot parse never reached the refusal at all and was answered 400 by the container,
+	 * while the same request to an address that maps nothing answered 404. One request, and
+	 * the difference said „a write lives at this address" to somebody the portal offers that
+	 * write on no screen. A case sending only valid JSON is green either way, which is why
+	 * this route had the leak with twenty three cases standing.
+	 *
+	 * <p><b>Compared against an address that really is not there</b>, with the identical
+	 * body, so the claim is „these answer alike" rather than „this answers 404" - the shape
+	 * {@code VerificationApiTest} and {@code RightsAtTheDoorTest} both use. What this cannot
+	 * see is whether the two are alike ON THE WIRE, because MockMvc runs no ERROR dispatch;
+	 * that half is {@code RightsOverRealHttpTest}'s and is named in {@link MeWriteApi} rather
+	 * than imitated here.
 	 */
-	@Test
-	void anAccountThatNamesNoMemberIsSentAway() throws Exception {
+	@ParameterizedTest
+	@ValueSource(strings = {"{\"bio\": \"Moderator pise o sebi.\", \"profileHidden\": true}",
+			"{oops", ""})
+	void anAccountThatNamesNoMemberIsSentAwayWhateverHeSent(String body) throws Exception {
 		long before = howManyRowsInTheQueue();
+		Cookie his = new Cookie(SessionCookie.NAME,
+				sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret());
 
-		MockHttpServletResponse answer = sent(change("  Moderator pise o sebi.  ", true),
-				new Cookie(SessionCookie.NAME, sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret()));
+		MockHttpServletResponse answer = sent(body, his);
 
-		assertThat(answer.getStatus()).isEqualTo(404);
+		assertThat(answer.getStatus())
+				.as("an account with no member behind it was told something about this address"
+						+ " that an address which is not there would not have told him")
+				.isEqualTo(http.perform(put(NOTHING_IS_THERE).with(csrf())
+								.contentType(MediaType.APPLICATION_JSON).content(body).cookie(his))
+						.andReturn().getResponse().getStatus());
+
 		assertThat(answer.getContentAsString())
 				.as("the refusal carries a body, which is a sentence about an address that is"
 						+ " meant to answer as though it were not there")
@@ -854,48 +888,270 @@ class MeWriteApiTest {
 				.isEqualTo(3);
 	}
 
-	/** A body that changes nothing at all is a form nobody filled in. */
+	/**
+	 * AND WHAT OPTIONS SAYS ABOUT THIS ADDRESS IS MEASURED RATHER THAN ASSUMED AWAY.
+	 *
+	 * <p>The refusal above is built to keep a member-less account from learning that a write
+	 * lives here. A claim like that is worth nothing if another verb says it out loud, which
+	 * is what {@code NothingIsHereRatherThanAlmost} keeps {@code OPTIONS} able to do: it
+	 * calls the dispatcher's own lookup precisely so an address can still answer what it
+	 * takes.
+	 *
+	 * <p><b>MEASURED, AND THE ANSWER IS THAT IT SAYS NOTHING.</b> {@code ApiSecurity} shuts
+	 * {@code OPTIONS} on every path under {@code /api} that is not on the open list, in as
+	 * many words and for this very reason - „an address that exists and one that does not
+	 * are refused by the same line and answer the same thing, so there is nothing to count".
+	 * {@code /api/me} is not on that list, so the verbs it maps are not spoken anywhere. The
+	 * sentence in {@link MeWriteApi} therefore stands as written.
+	 *
+	 * <p><b>Both halves, because a case asserting only the refusal would pass on an address
+	 * that answered nothing at all.</b> The same request to an open path is answered, and
+	 * its {@code Allow} really does name verbs - so what is measured here is a difference
+	 * between two paths and not a server that refuses {@code OPTIONS} outright.
+	 *
+	 * <p>The day CORS is configured this line moves, which {@code ApiSecurity} says of
+	 * itself; this case is what would notice.
+	 */
 	@Test
-	void aRequestThatNamesNeitherHalfIsRefused() throws Exception {
+	void optionsSaysNothingAboutTheVerbsThisAddressTakes() throws Exception {
+		Cookie his = new Cookie(SessionCookie.NAME,
+				sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret());
+
+		MockHttpServletResponse shut = http.perform(options("/api/me").cookie(his))
+				.andReturn().getResponse();
+
+		assertThat(shut.getHeader("Allow"))
+				.as("OPTIONS named the verbs this address takes to an account that is refused the"
+						+ " write, which is the thing the refusal above is built to keep from him")
+				.isNull();
+
+		MockHttpServletResponse open = http.perform(options("/api/teams").cookie(his))
+				.andReturn().getResponse();
+
+		assertThat(open.getHeader("Allow"))
+				.as("no path on this portal answers OPTIONS at all, so the silence above is the"
+						+ " server's habit rather than a rule about this address")
+				.contains("GET");
+
+		assertThat(shut.getStatus())
+				.as("this address answers OPTIONS exactly as the open one does, so nothing"
+						+ " separates them")
+				.isNotEqualTo(open.getStatus());
+	}
+
+	/**
+	 * A BODY THAT NAMES NEITHER FIELD IS A FORM NOBODY FILLED IN, AND IT SAYS WHAT IS
+	 * MISSING.
+	 *
+	 * <p>ADL A54's second half, which has no exception on any route: „kad se forma odbije,
+	 * kaze se sta fali." A 400 that names nothing leaves a caller with a full form and no
+	 * idea which box the server could not see.
+	 *
+	 * <p><b>And a body this portal cannot read is the same answer</b>, because neither
+	 * carries a single value this route could act on. That case is here rather than in a
+	 * file of its own because it is the same sentence about the same request.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"{}", "{\"bio\": null, \"profileHidden\": null}",
+			"{\"memberNumber\": \"000100\"}", "{oops", ""})
+	void aBodyThatNamesNeitherFieldIsRefusedAndSaysWhatIsMissing(String body) throws Exception {
 		long before = howManyRowsInTheQueue();
 
-		MockHttpServletResponse answer = changeAs(ME, "{}");
+		MockHttpServletResponse answer = changeAs(ME, body);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(reasonIn(answer))
+				.as("the reason moved when the list was added beside it, so every caller reading"
+						+ " a refusal by its reason stopped working")
+				.isEqualTo(MeWriteApi.THE_FORM_IS_NOT_COMPLETE);
+
+		List<String> missing = new ArrayList<>();
+
+		for (JsonNode one : answerIn(answer).path("missing")) {
+			missing.add(one.asString());
+		}
+
+		assertThat(missing)
+				.as("the refusal does not say which fields the server could not see, which ADL"
+						+ " A54 asks for on every route without exception")
+				.isEqualTo(MeWriteApi.WHAT_THIS_ROUTE_TAKES);
 
 		assertThat(profileOf(ME)).isEqualTo(List.of(THE_TEXT_ON_MY_PROFILE, false));
 		assertThat(howManyRowsInTheQueue()).isEqualTo(before);
 	}
 
 	/**
-	 * AND A BOX WITH NOTHING IN IT IS REFUSED RATHER THAN QUEUED OR APPLIED.
+	 * AND WHAT IT CALLS MISSING IS EVERY FIELD THIS ROUTE REALLY TAKES, asked of the record
+	 * rather than of the list beside it.
 	 *
-	 * <p>Absent, empty and a run of spaces are TWO answers and not three: the first says „I
-	 * am not changing my words", and the other two say „I wrote nothing". V9 makes
-	 * {@code body} blank for „a tab that proposes nothing", so a blank one here is
-	 * indistinguishable from an item proposing no text at all. Emptying a biography that
-	 * already stands is the half of PDL P11 that was shelved to F5 and nobody has decided
-	 * for the text.
+	 * <p>The floor under {@link MeWriteApi#WHAT_THIS_ROUTE_TAKES}, in the same commit as the
+	 * list, which is {@code RaceWriteApiTest.anEditMustSendEveryFieldTheFormHas}'s own
+	 * arrangement. A third field added to {@link MeWriteApi.Change} tomorrow fails the build
+	 * until somebody decides whether leaving it out is a refusal, instead of quietly not
+	 * being named in one.
+	 */
+	@Test
+	void whatThisRouteSaysIsMissingIsEveryFieldItTakes() {
+		List<String> onTheRecord = new ArrayList<>();
+
+		for (RecordComponent one : MeWriteApi.Change.class.getRecordComponents()) {
+			onTheRecord.add(one.getName());
+		}
+
+		assertThat(onTheRecord)
+				.as("the request record carries no components at all, so this compares nothing")
+				.isNotEmpty();
+
+		assertThat(MeWriteApi.WHAT_THIS_ROUTE_TAKES)
+				.as("a field this route takes is one its refusal never names, or it names one it"
+						+ " does not take")
+				.containsExactlyInAnyOrderElementsOf(onTheRecord);
+	}
+
+	/**
+	 * A BLANK TEXT REMOVES WHAT STANDS, AND IT DOES IT AT ONCE.
+	 *
+	 * <p>Owner, PDL P11, 19.09.2026: „Prazan tekst znaci BRISANJE biografije, i stupa odmah,
+	 * bez moderacije. „Skloni moju biografiju" je pravo clana nad sopstvenim podatkom, ne
+	 * predlog, isto kao sto je 12.08.2026 odluceno za sliku." His reason for not sending it
+	 * through moderation is in the same entry: „prazno ne moze da bude neprikladno", and V9
+	 * already uses a blank {@code body} to mean something else.
+	 *
+	 * <p><b>The first draft of this route REFUSED a blank text</b>, and that was an agent's
+	 * boundary rather than anybody's decision; it was reported as one and the owner settled
+	 * it the other way. This is the case that keeps it settled.
+	 *
+	 * <p>Asked with three shapes of nothing, because a guard written against one of them
+	 * lets the other two through - the list {@link RegistrationApi} keeps for the same
+	 * reason.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"", " ", "   \t\n  "})
-	void aBoxWithNothingInItIsRefused(String nothing) throws Exception {
+	void aBlankTextRemovesWhatStandsAndDoesItAtOnce(String nothing) throws Exception {
 		long before = howManyRowsInTheQueue();
 
 		MockHttpServletResponse answer = changeAs(ME, nothing, null);
 
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(answer.getStatus()).isEqualTo(200);
 
 		assertThat(profileOf(ME))
-				.as("a member emptied his own biography through a route that is meant to propose"
-						+ " one, and nobody approved it")
-				.isEqualTo(List.of(THE_TEXT_ON_MY_PROFILE, false));
+				.as("a member asked for his own words to come down and they are still standing,"
+						+ " or his switch moved with them")
+				.isEqualTo(List.of("", false));
+
+		assertThat(answerIn(answer).path("bio").asString())
+				.as("the answer still hands back the words the profile no longer carries")
+				.isEmpty();
 
 		assertThat(howManyRowsInTheQueue())
-				.as("a card with nothing written on it is standing in front of a moderator")
+				.as("removing his own text put a card in front of a moderator, and the owner's"
+						+ " reason for not doing that is that nothing empty can be unsuitable")
 				.isEqualTo(before);
+
+		assertThat(answerIn(answer).path("waiting").isNull())
+				.as("the answer names a waiting text although this member has none")
+				.isTrue();
+	}
+
+	/**
+	 * AND REMOVING WHAT STANDS IS NOT REFUSED BECAUSE A PROPOSAL OF HIS IS UNDECIDED.
+	 *
+	 * <p>The guard that answers 409 asks whether a TEXT was sent and not whether the field
+	 * was. Asked the second way, a member wanting his own words taken down would be refused
+	 * on account of somebody else's queue - a right withheld until a moderator gets round to
+	 * a different question.
+	 *
+	 * <p><b>And the boundary that follows is measured here rather than argued:</b> the
+	 * waiting text stays waiting. Nothing decided that removing what stands withdraws what
+	 * was proposed, and the two decisions of 19.09.2026 are about different things.
+	 */
+	@Test
+	void removingWhatStandsIsNotRefusedWhileAProposalOfHisWaits() throws Exception {
+		MockHttpServletResponse answer = changeAs(WHOSE_TEXT_WAITS, "", null);
+
+		assertThat(answer.getStatus())
+				.as("a member was refused the removal of his own biography because a proposal of"
+						+ " his is standing in a queue")
+				.isEqualTo(200);
+
+		assertThat(profileOf(WHOSE_TEXT_WAITS).get(0))
+				.as("his words are still on the profile")
+				.isEqualTo("");
+
+		assertThat(textsWaitingFor(WHOSE_TEXT_WAITS))
+				.as("removing what stands took the waiting text with it, which is a withdrawal"
+						+ " nobody decided")
+				.containsExactly(THE_TEXT_ALREADY_WAITING);
+
+		assertThat(answerIn(answer).path("waiting").asLong())
+				.as("the answer stopped naming the text that is still with a moderator")
+				.isEqualTo(db.sql("select id from verification where competitor_id = ?"
+								+ " and queue = ? and state = 'waiting'")
+						.params(competitorId(WHOSE_TEXT_WAITS), THE_PROFILES_TAB)
+						.query(Long.class).single());
+	}
+
+	/**
+	 * THE SWITCH AND THE REMOVAL TRAVEL TOGETHER, WHICH IS ONE STATEMENT AND NOT TWO.
+	 *
+	 * <p>Both are immediate and both are columns of {@code competitor}, so {@link MeWriteApi}
+	 * writes them with a single {@code update} and there is no moment at which one could
+	 * have happened and the other not.
+	 *
+	 * <p><b>WHAT THIS CASE CANNOT DO, said plainly rather than left looking like an
+	 * oversight.</b> It cannot make half of that statement fail, because nothing about a
+	 * boolean or an empty string can be refused by {@code competitor}'s constraints - V7
+	 * bounds the member number, the names, the gender, the basis, the birthday choice, the
+	 * referral code and the town, and says nothing about these two columns. So „together or
+	 * not at all" rests on there being one statement, and what this case holds is the other
+	 * half of that claim: that one request really does move both. The pair that CAN come
+	 * apart is the immediate write and the queue row, and
+	 * {@code TheSwitchAndTheTextAreOneThingTest} is where that is measured.
+	 */
+	@Test
+	void theSwitchAndTheRemovalTravelTogether() throws Exception {
+		assertThat(profileOf(ALREADY_HIDDEN))
+				.as("the member this asks about is already where the request would put him, so"
+						+ " nothing below could move")
+				.isEqualTo(List.of("Biografija onoga ko je vec skriven.", true));
+
+		MockHttpServletResponse answer = changeAs(ALREADY_HIDDEN, "  ", false);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+
+		assertThat(profileOf(ALREADY_HIDDEN))
+				.as("one half of the request landed and the other did not")
+				.isEqualTo(List.of("", false));
+	}
+
+	/**
+	 * A MEMBER WHOSE TEXT IS WAITING IS TOLD SO EVEN WHEN HE ONLY FLICKS THE SWITCH.
+	 *
+	 * <p>{@code waiting} is read off the queue and not off what THIS request wrote, and
+	 * until this case nothing held that. Filled only when the request queued something, the
+	 * Settings screen would be handed {@code waiting: null} while a text of his really is
+	 * with a moderator; {@code ProfileBio.tsx} hides the button on exactly that field, so it
+	 * would draw one, the member would send a second text, and the 409 he then meets
+	 * explains nothing to him.
+	 */
+	@Test
+	void aMemberWhoseTextWaitsIsToldSoWhenHeOnlyFlicksTheSwitch() throws Exception {
+		MockHttpServletResponse answer = changeAs(WHOSE_TEXT_WAITS, null, true);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(profileOf(WHOSE_TEXT_WAITS).get(1)).isEqualTo(true);
+
+		assertThat(answerIn(answer).path("waiting").asLong())
+				.as("a request that queued nothing answered that nothing of his is waiting, while"
+						+ " his words are in front of a moderator")
+				.isEqualTo(db.sql("select id from verification where competitor_id = ?"
+								+ " and queue = ? and state = 'waiting'")
+						.params(competitorId(WHOSE_TEXT_WAITS), THE_PROFILES_TAB)
+						.query(Long.class).single());
+
+		assertThat(textsWaitingFor(WHOSE_TEXT_WAITS))
+				.as("flicking the switch disturbed the text that was waiting")
+				.containsExactly(THE_TEXT_ALREADY_WAITING);
 	}
 
 	/**
