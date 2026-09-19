@@ -210,4 +210,86 @@ class SeasonClockTest {
 				.as("every season answered as the first one, which is the other way to be wrong")
 				.isEqualTo(2031);
 	}
+
+	/**
+	 * A CHANGE OF SIDE AGREED TODAY TAKES EFFECT NEXT YEAR, ON EVERY DAY OF THIS ONE.
+	 *
+	 * <p>PDL P13, 07.09.2026: „Poziv poslat 31.12.2026 i prihvacen 02.01.2027 pravi par za
+	 * 2028, ne za 2027, jer 2027 tada vec tece." Both of the owner's own two days are here
+	 * and they are a day apart across a New Year, which is the one place the two readings
+	 * of „the deadline" part company.
+	 *
+	 * <p><b>And the month in the middle is what tells this apart from
+	 * {@link SeasonClock#seasonBeingPaidFor}.</b> Inside the transfer window the two agree,
+	 * so a fixture built only of October days cannot see the difference at all; in March
+	 * they differ by a whole season, and that is the month the case below asks about.
+	 */
+	@Test
+	void aChangeAgreedTodayTakesEffectInTheSeasonThatHasNotBegun() {
+		assertThat(SeasonClock.transfersTakeEffect(
+				ZonedDateTime.of(2026, 12, 31, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("a pair confirmed on 31 December did not hold for the season that follows")
+				.isEqualTo(2027);
+
+		assertThat(SeasonClock.transfersTakeEffect(
+				ZonedDateTime.of(2027, 1, 2, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("a pair confirmed two days later was made for a season already being run")
+				.isEqualTo(2028);
+
+		ZonedDateTime march = ZonedDateTime.of(2027, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.transfersTakeEffect(march))
+				.isEqualTo(2028);
+		assertThat(SeasonClock.seasonBeingPaidFor(march))
+				.as("what is on sale in March and what a change agreed in March takes effect in"
+						+ " are the same number, so either answer would do and this case measures"
+						+ " neither")
+				.isEqualTo(2027);
+	}
+
+	/**
+	 * AND IT IS NEVER A SEASON THE LEAGUE DOES NOT HAVE, which is a measured fault rather
+	 * than tidiness.
+	 *
+	 * <p>Without the clamp a clock set to 2025 wrote a membership starting in 2026 (review,
+	 * 06.09.2026). On this side the answer would reach {@code racing_pair_season_not_before
+	 * _the_league} and come back as a server fault.
+	 *
+	 * <p>Both sides of the clamp, so a version that always answered {@link
+	 * SeasonClock#FIRST_SEASON} fails on the second half.
+	 */
+	@Test
+	void aChangeIsNeverAgreedIntoASeasonBeforeTheFirst() {
+		assertThat(SeasonClock.transfersTakeEffect(
+				ZonedDateTime.of(2025, 7, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("a change was written into season 2026, which the league does not have")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+
+		assertThat(SeasonClock.transfersTakeEffect(
+				ZonedDateTime.of(2031, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("every change answered as the first season, which is the other way to be wrong")
+				.isEqualTo(2032);
+	}
+
+	/**
+	 * AND THE YEAR IS THE LEAGUE'S, WHEREVER THE CALLER IS.
+	 *
+	 * <p>The same hole {@link #andTheYearIsTheLeaguesTooWhereverTheCallerIs} measures one
+	 * method along, and it is worth its own case here because this answer is built out of
+	 * the year and nothing else: read off the caller there is no month left to be right
+	 * about. Half past eleven on 31 December in Belgrade is already half past seven on 1
+	 * January in Tokyo, so a pair confirmed from Tokyo would be written for 2029.
+	 */
+	@Test
+	void andTheYearAChangeIsAgreedInIsTheLeaguesToo() {
+		ZonedDateTime newYearsEveHere = ZonedDateTime.of(2027, 12, 31, 23, 30, 0, 0, SeasonClock.ZONE);
+
+		assertThat(newYearsEveHere.withZoneSameInstant(TOKYO).getYear())
+				.as("it is not already next year in Tokyo, so this case measures nothing")
+				.isEqualTo(2028);
+
+		assertThat(SeasonClock.transfersTakeEffect(newYearsEveHere.withZoneSameInstant(TOKYO)))
+				.as("a pair confirmed from Tokyo was written for a season two years out")
+				.isEqualTo(2028);
+	}
 }

@@ -180,6 +180,62 @@ class RightsAtTheDoorTest {
 	 * registering, and {@code ApiSecurity} opens all four by name with the reason written
 	 * there.
 	 *
+	 * <p><b>AND B77 ADDS ONE, WHICH IS THE FIRST ROUTE A MEMBER WRITES AT A SUB-PATH.</b>
+	 * {@code PUT /api/pairs/{id}} is somebody answering a question that was put to HIM, and
+	 * there is no box anybody could tick that would open it: pairing up is what every member
+	 * may do, which is the sentence {@code /api/comments} and {@code /api/me/applications} are
+	 * on this list for. <b>What stands in place of a right is the invitation itself.</b> A
+	 * {@code pair_invite} names the one person who may answer it, so the thing that protects
+	 * this address is not a privilege somebody holds but the row's own {@code to_id}:
+	 * {@code PairWriteApi} asks for the question AND its addressee in one statement, and
+	 * {@code PairWriteApiTest} measures that a question belonging to somebody else answers
+	 * exactly what a question that does not exist answers. The path cannot go on
+	 * {@link ApiSecurity#READ_BY_ANYBODY} instead, because that list GRANTS reading to a
+	 * visitor and nothing at this address may be read at all - {@code /api/pairs} is on it and
+	 * this is a different path.
+	 *
+	 * <p><b>AND B77's OTHER HALF, {@code POST /api/pairs}, WHICH NOBODY HAD TO NAME UNTIL
+	 * 19.09.2026 BECAUSE THE FLOOR THREW IT AWAY BY ADDRESS.</b> Putting the question is the
+	 * same sentence as answering it - „pairing up is what every member may do" - and it is
+	 * guarded by the same thing, the row rather than a privilege: the invitation names one
+	 * addressee and {@code PairWriteApi} refuses a member who is already paired, so what
+	 * stops a stranger is that there is nobody for him to be. It is written here in its own
+	 * paragraph and not folded into the one above, because the two arrive by DIFFERENT
+	 * roads: {@code /api/pairs/{id}} was always visible to this floor and was named the day
+	 * it was written, while {@code /api/pairs} is on {@link ApiSecurity#READ_BY_ANYBODY} -
+	 * pairs are read publicly (Pravilnik, Clan 73) - and a floor keyed by path alone excused
+	 * every verb at that address, writing included.
+	 *
+	 * <p><b>AND THAT IS THE MEASUREMENT THIS SNAPSHOT'S SHAPE COST, AND WHY THE COST WAS
+	 * TAKEN.</b> Until 18.09.2026 every write on this portal was a moderator's, and a bare
+	 * path was enough because a write could not hide behind a read. In one day that went from
+	 * none to three: {@code POST /api/teams}, {@code POST /api/pairs} and
+	 * {@code PUT /api/pairs/{id}}, with more already in review behind them. EVERY ONE of the
+	 * three would have been invisible to the old floor - two excused by an address on the
+	 * open list, the third by a bare path standing in for every verb it maps. The old shape
+	 * was cheaper to write and blind to a whole KIND of action rather than to one route;
+	 * whoever grumbles at this list in a year is reading the bill for that.
+	 *
+	 * <p>The number is measured and not an impression: the seven writes this list carried
+	 * before that day - signing in and out, registering, and the four links out of a message
+	 * - are all on the routes {@code ApiSecurity} opens BY NAME to a stranger, because nobody
+	 * can be asked to be signed in in order to sign in. Not one of them is a member acting as
+	 * a member, and every one of the three above is.
+	 *
+	 * <p><b>WHICH MEANS, FROM 19.09.2026, WHAT EVERY FUTURE WRITE OWES.</b> Any route the
+	 * portal adds must either carry a guard or be named HERE with its VERB, and there is no
+	 * third way out: a bare path no longer covers a verb nobody considered. It is a line of
+	 * work per route, and it falls exactly where the decision is - on whoever knows why the
+	 * route answers without a right.
+	 *
+	 * <p><b>And what this list will say after a merge can be asked BEFORE the merge.</b>
+	 * {@code backend/tools/what_the_door_will_say.py} reads the controllers, the open list
+	 * and this snapshot straight out of git for a ref it never checks out, and prints the
+	 * pairs the floor would list; it refuses to report at all unless it first reproduces this
+	 * snapshot exactly over the ref that carries it. It found all three of the entries above
+	 * while their branches were still in review, which is the alternative to finding them one
+	 * at a time on a red gate.
+	 *
 	 * <p><b>It is a written list, and the floor under it is in the same file.</b>
 	 * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads the other side
 	 * off the dispatcher and compares the two EXACTLY, so a name that stops being a route
@@ -223,7 +279,8 @@ class RightsAtTheDoorTest {
 					"POST /api/registration", "GET /api/inbox", "GET /api/me/notifications",
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
-					"POST /api/password-reset/request", "POST /api/teams", "ANY /error");
+					"POST /api/password-reset/request", "POST /api/teams",
+					"POST /api/pairs", "PUT /api/pairs/{id}", "ANY /error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";
 

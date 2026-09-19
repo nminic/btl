@@ -111,4 +111,40 @@ public final class SeasonClock {
 
 		return Math.max(calendar, FIRST_SEASON);
 	}
+
+	/**
+	 * THE SEASON A CHANGE OF SIDE AGREED AT THIS MOMENT TAKES EFFECT IN, which is next
+	 * year on every day of this one.
+	 *
+	 * <p>PDL P13: „Promena se sme zatraziti bilo kad tokom godine, ali stupa na snagu tek
+	 * 1. januara naredne sezone", and „Sve rotacije moraju biti zavrsene do 31. decembra
+	 * da bi vazile u novoj sezoni". A racing pair is one of those rotations, and the owner
+	 * settled on 07.09.2026 which day the question is asked ON: „Rok od 31. decembra visi
+	 * o POTVRDI, ne o pozivu... Poziv poslat 31.12.2026 i prihvacen 02.01.2027 pravi par
+	 * za 2028, ne za 2027, jer 2027 tada vec tece."
+	 *
+	 * <p><b>THIS IS NOT {@link #seasonBeingPaidFor} AND THE DIFFERENCE IS NINE MONTHS OF
+	 * THE YEAR.</b> The two look alike and are two questions: what is on sale in September
+	 * is the season that is RUNNING, because that is the membership somebody is buying,
+	 * while a side agreed in September cannot be joined until the next one. The portal
+	 * measured exactly that confusion on its own side on 06.09.2026 - a team proposal sent
+	 * in December and approved on 5 January wrote the RUNNING season, and the team counted
+	 * that member's results from the middle of it - and split the two answers apart. This
+	 * is the backend's half of that split, under the same name the frontend gives it
+	 * ({@code data/season.ts}, {@code transfersTakeEffect}), so the two cannot drift into
+	 * different answers about one act.
+	 *
+	 * <p><b>And the clamp is a measured fault rather than tidiness.</b> Before the league
+	 * has a season there is nothing to join, so the answer is never earlier than
+	 * {@link #FIRST_SEASON}; without it a clock set to 2025 wrote a membership starting in
+	 * 2026, a season the league does not have (review, 06.09.2026). On this side the
+	 * database would refuse such a row outright - {@code racing_pair_season_not_before_the
+	 * _league} - so the member would meet a server fault instead of an answer.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's,
+	 *           which is ADL A36 O2 („sezona se racuna u zoni Europe/Belgrade")
+	 */
+	public static int transfersTakeEffect(ZonedDateTime at) {
+		return Math.max(at.withZoneSameInstant(ZONE).getYear() + 1, FIRST_SEASON);
+	}
 }

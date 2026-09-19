@@ -28,12 +28,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code RaceWriteApi} does not know is one the calendar can hold and nobody can enter.
  *
  * <p><b>THE DISTANCE IS THE HALF THE SCHEMA CANNOT REFUSE AT ALL, and that is the whole
- * reason it is here.</b> {@code distance_km numeric(6,2)} does not reject {@code 42.195},
- * it ROUNDS it, and {@code race.category} is then generated as {@code marathon} - which
- * is the exact opposite of the owner's decision that „uneto 42.195 nije maraton nego
- * „duze trke"". There is no constraint to compare against, so what is compared is the
- * COLUMN: its precision and scale come out of {@code information_schema} and the ceiling
- * {@link WhatARaceCarries} holds is rebuilt from them.
+ * reason it is here.</b> A distance with more decimals than the column keeps is not
+ * rejected by PostgreSQL, it is ROUNDED, and {@code race.category} is then generated out
+ * of a number nobody typed. There is no constraint to compare against, so what is
+ * compared is the COLUMN: its precision and scale come out of {@code information_schema}
+ * and the ceiling {@link WhatARaceCarries} holds is rebuilt from them.
+ *
+ * <p><b>Which is why this file did not have to be rewritten when the column moved.</b>
+ * Until 19.09.2026 the column was {@code numeric(6,2)} and the value that made the point
+ * was {@code 42.195}: rounded to {@code 42.20} and generated as {@code marathon}, the
+ * exact opposite of „uneto 42.195 nije maraton nego „duze trke"". V25 widened the column
+ * to {@code numeric(8,4)} on the owner's decision that the exact length is to be KEPT, and
+ * every question below moved with it because every one of them is asked of the catalogue.
+ * {@code 42.195} is now a value both sides accept, and what the cases reach for instead is
+ * a fifth decimal.
  */
 class RaceShapesMatchTheSchemaTest extends DatabaseTest {
 
@@ -142,10 +150,12 @@ class RaceShapesMatchTheSchemaTest extends DatabaseTest {
 	/**
 	 * THE CEILING THE CODE REFUSES IS THE ONE THE COLUMN HAS, rebuilt from the catalogue.
 	 *
-	 * <p>{@code numeric(6,2)} holds at most {@code 9999.99}: six digits of which two are
-	 * after the point. Both numbers are read off {@code information_schema} and the
-	 * largest value is worked out from them, so a migration that widened the column would
-	 * fail this rather than leave the code refusing a distance the table would have kept.
+	 * <p>{@code numeric(8,4)} holds at most {@code 9999.9999}: eight digits of which four
+	 * are after the point. Both numbers are read off {@code information_schema} and the
+	 * largest value is worked out from them, so a migration that widens the column fails
+	 * this rather than leaving the code refusing a distance the table would have kept.
+	 * V25 is exactly that migration, and this is the case that made it move the constants
+	 * in {@link WhatARaceCarries} in the same commit.
 	 */
 	@Test
 	void theCeilingTheCodeHoldsIsTheColumnsOwn() {
@@ -181,20 +191,30 @@ class RaceShapesMatchTheSchemaTest extends DatabaseTest {
 	 *
 	 * <p>{@code race_distance_not_negative} is a CHECK and is asked as one, its own
 	 * expression out of the catalogue. Whether the value survives the COLUMN is not a
-	 * check at all and no constraint says anything about it: {@code 42.195} is refused by
-	 * nothing, it is silently rounded to {@code 42.20}, and the generated
-	 * {@code race.category} then says {@code marathon} where the owner decided „duze
-	 * trke". So that half is asked of the type instead, rounded to the column's own scale
-	 * and held under its own precision, both read off the catalogue.
+	 * check at all and no constraint says anything about it: a value with one decimal too
+	 * many is refused by nothing, it is silently rounded, and the generated
+	 * {@code race.category} is then worked out of the rounded number. So that half is
+	 * asked of the type instead, rounded to the column's own scale and held under its own
+	 * precision, both read off the catalogue.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"0", "0.00", "10", "10.5", "21.1", "42.2", "9999.99",
-			/* The three decimals the owner named himself, and the one he named beside it. */
+			/* The two the owner named himself, and since V25 they are values the column
+			   KEEPS rather than values it rounds. That the two sides agree about them is
+			   the same assertion it always was; what the two sides agree ON has moved. */
 			"42.195", "21.0975",
-			/* And a fourth that is not near a category boundary, so this is about the
-			   column and not about the two numbers the owner happened to mention. */
+			/* And the one from his sentence of 19.09.2026, „42.203 ... ali da vodi kao
+			   ultramaraton", which is a third decimal away from a category boundary. */
+			"42.203",
+			/* A fourth that is not near a boundary at all, so this is about the column and
+			   not about the numbers the owner happened to mention. */
 			"7.125",
+			/* One decimal past what the column keeps, which is where the rule now turns:
+			   rounded on the way in, and a category worked out of a number nobody typed. */
+			"42.19512", "21.09751", "7.12345",
+			/* The widened ceiling itself, and one step over it. */
+			"9999.9999", "9999.99991",
 			/* Over the ceiling, which overflows rather than rounding. */
 			"10000", "10000.00", "99999.99",
 			/* And below nought, which the code refuses and `race_distance_not_negative`
@@ -214,11 +234,13 @@ class RaceShapesMatchTheSchemaTest extends DatabaseTest {
 	/**
 	 * Whether that value would go into the column and come back the same number.
 	 *
-	 * <p>Asked as a ROUNDING rather than as a cast into {@code numeric(6,2)}, on purpose: a
+	 * <p>Asked as a ROUNDING rather than as a cast into the column's type, on purpose: a
 	 * cast that overflows aborts the transaction, and every statement after it in the same
 	 * case then fails over something that is not what the case is about. Rounded to the
 	 * column's own scale and held under its own precision, both read off the catalogue, so
-	 * this cannot go on asking about {@code numeric(6,2)} after a migration has widened it.
+	 * this cannot go on asking about {@code numeric(6,2)} after a migration has widened it
+	 * - which V25 did, and this went on measuring the widened column without a line
+	 * changing.
 	 */
 	private boolean theColumnKeepsItUnchanged(BigDecimal asked) {
 		int precision = numberOf("numeric_precision");
