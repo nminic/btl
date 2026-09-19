@@ -49,23 +49,52 @@ class WhatTheMessageSaysTest {
 	}
 
 	/**
-	 * AND THE TWO MESSAGES ARE NOT THE SAME MESSAGE.
+	 * AND NO TWO MESSAGES ARE THE SAME MESSAGE.
 	 *
 	 * <p>Two kinds answered with one text would pass every case above, so the
-	 * subjects and the paths are required to differ. The day a third message is
+	 * subjects and the bodies are required to differ. The day a fourth message is
 	 * added, this counts it in without being edited.
+	 *
+	 * <p><b>THE BODIES AND NOT ONLY THE SUBJECTS, which is the half that was missing
+	 * and is now the whole of the claim.</b> Two messages can be given two headings
+	 * over one text, and what a member acts on is the text; asked of subjects alone
+	 * this passes while every reader of either message is being told the same thing.
+	 *
+	 * <p><b>AND THE PATHS ARE NO LONGER REQUIRED TO DIFFER, which is a decision of
+	 * the owner's rather than a guard given up.</b> Until 18.09.2026 they did differ,
+	 * and only because each message was its own road. „Nov moderator dobija pozivnicu
+	 * na mejl... istim mehanizmom koji obnova lozinke vec nosi" (owner, PDL P28a,
+	 * 18.09.2026) makes the invitation land on the reset's own screen on purpose -
+	 * „isti put sa drugim povodom" (ADL A53) - so a rule demanding distinct paths is
+	 * a rule against that decision. What it was really protecting is the sentence
+	 * above it, and the sentence above it is now asked of the whole text.
+	 *
+	 * <p><b>What replaces it is a claim about the SHAPE of a path rather than about
+	 * how many there are</b>, and it is the one thing the builder needs: the path is
+	 * appended to the portal's address and the token is hung on it as the FIRST
+	 * parameter, so a path that began without a slash would fuse with the host and
+	 * one already carrying a {@code ?} would produce a link with two.
 	 */
 	@Test
-	void noTwoMessagesSayTheSameThingOrPointAtTheSamePlace() {
+	void noTwoMessagesSayTheSameThing() {
 		assertThat(Stream.of(Message.values())
 				.map(one -> WhatTheMessageSays.about(one, PORTAL, TOKEN).subject())
 				.collect(Collectors.toSet()))
 				.as("two messages share a subject, so one of them is not being looked at")
 				.hasSize(Message.values().length);
 
-		assertThat(Stream.of(Message.values()).map(Message::path).collect(Collectors.toSet()))
-				.as("two messages point at the same place")
+		assertThat(Stream.of(Message.values())
+				.map(one -> WhatTheMessageSays.about(one, PORTAL, TOKEN).body())
+				.collect(Collectors.toSet()))
+				.as("two messages share their whole text, so one of them is not being written")
 				.hasSize(Message.values().length);
+
+		for (Message message : Message.values()) {
+			assertThat(message.path())
+					.as("%s points at something that is not a path of this portal at all", message)
+					.startsWith("/")
+					.doesNotContain("?");
+		}
 	}
 
 	/**

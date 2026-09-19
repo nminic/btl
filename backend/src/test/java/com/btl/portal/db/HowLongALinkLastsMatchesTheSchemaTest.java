@@ -41,7 +41,14 @@ class HowLongALinkLastsMatchesTheSchemaTest extends DatabaseTest {
 	 */
 	private static final Map<Message, String> WHERE_THE_LINK_LIVES = Map.of(
 			Message.CONFIRM_THE_ADDRESS, "email_verification_token",
-			Message.SET_A_NEW_PASSWORD, "password_reset_token");
+			Message.SET_A_NEW_PASSWORD, "password_reset_token",
+			/* AND THE INVITATION'S LINK LIVES IN THE SAME ROW AS A RESET'S, which is the
+			   whole of „Pozivnica je isti put sa drugim povodom... jedan povod vise, ne
+			   druga tabela i drugi razred" (ADL A53, 18.09.2026). Two messages naming one
+			   table is therefore expected here rather than a mistake, and it is why the
+			   sentence below asks after the TABLE's default rather than after a number
+			   written beside the message. */
+			Message.INVITED_AS_A_MODERATOR, "password_reset_token");
 
 	/** How long the column's own default actually gives, asked of PostgreSQL. */
 	private Duration whatTheSchemaGives(String table) {
