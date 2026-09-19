@@ -69,9 +69,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * one number a bug could also produce by accident (a hardcoded constant, say, or the
  * request body this route used to read). Fixing a SECOND, unrelated day here - before
  * the window opens, where the season sold is the calendar year rather than the year
- * after it - is what tells the two apart: the assertion below is the one case in the
- * whole suite that would fail if the season written still came from anywhere but the
- * clock.
+ * after it - is what tells the two apart.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -199,8 +197,7 @@ class PaymentNumberConcurrencyTest {
 
 			/* THE DISCRIMINATING ASSERTION OF THE CLASS COMMENT ABOVE: 2027, not 2028.
 			   Both payments were booked on 30 September, the day this class fixes the
-			   clock to and PaymentApiTest never touches, so this number can only have
-			   come from SeasonClock reading THIS class's own clock. */
+			   clock to and PaymentApiTest never touches. */
 			assertThat(db.sql("select distinct season from payment where competitor_id in (?, ?)")
 					.params(first, second).query(Integer.class).single())
 					.as("a payment booked outside the transfer window should be filed under the"
