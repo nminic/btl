@@ -563,9 +563,9 @@ class InboxWriteApi {
 	 * account could tell the two verbs apart by the shape of the refusal and learn from the
 	 * difference that writing lives at an address the portal never offered him.
 	 *
-	 * <p><b>AND NO CASE ON THIS BRANCH CAN FALL WHEN THIS LINE IS TURNED INTO
-	 * {@code setStatus}, WHICH IS A BOUNDARY AND IS WRITTEN DOWN RATHER THAN LEFT TO BE
-	 * FOUND.</b> Measured on this branch: the swap leaves the suite green with exit code 0.
+	 * <p><b>AND A CASE ON THIS BRANCH DOES FALL WHEN THIS LINE IS TURNED INTO
+	 * {@code setStatus}</b> (found on review: the old claim held only until the
+	 * case below grew to cover this address). The swap measures 370 against 225, twice.
 	 * The difference between the two is only visible over a REAL SOCKET - {@link RightsAtTheDoor}
 	 * measured it at 262 bytes against 412, because {@code sendError} runs the container's ERROR
 	 * dispatch and a status written onto the response does not - and MockMvc runs no ERROR
