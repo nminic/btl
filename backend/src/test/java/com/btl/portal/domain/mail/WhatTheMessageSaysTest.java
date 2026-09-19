@@ -49,23 +49,59 @@ class WhatTheMessageSaysTest {
 	}
 
 	/**
-	 * AND THE TWO MESSAGES ARE NOT THE SAME MESSAGE.
+	 * AND NO TWO MESSAGES ARE THE SAME MESSAGE.
 	 *
 	 * <p>Two kinds answered with one text would pass every case above, so the
-	 * subjects and the paths are required to differ. The day a third message is
+	 * subjects and the bodies are required to differ. The day a fourth message is
 	 * added, this counts it in without being edited.
+	 *
+	 * <p><b>THE BODIES AND NOT ONLY THE SUBJECTS, which is the half that was missing
+	 * and is now the whole of the claim.</b> Two messages can be given two headings
+	 * over one text, and what a member acts on is the text; asked of subjects alone
+	 * this passes while every reader of either message is being told the same thing.
+	 *
+	 * <p><b>AND THE PATHS ARE NO LONGER ASKED ABOUT HERE AT ALL, which is a move and not
+	 * a rule given up - the first draft of this change got that wrong and said so.</b>
+	 * „No two messages point at the same place" was true until 18.09.2026 and only because
+	 * every message was its own road; „istim mehanizmom koji obnova lozinke vec nosi"
+	 * (owner, PDL P28a, 18.09.2026) makes the invitation land on the reset's own screen ON
+	 * PURPOSE, so that rule had become a rule against a decision.
+	 *
+	 * <p><b>But what it caught is real and had to go somewhere, and for one round it went
+	 * nowhere.</b> Give {@link Message#SET_A_NEW_PASSWORD} the path {@code /potvrda-adrese}
+	 * and every password link the portal mails lands on the screen that confirms an
+	 * address; measured 19.09.2026, that passes the whole gate. The question now stands in
+	 * {@code HowLongALinkLastsMatchesTheSchemaTest}, where the fact it needs already lives:
+	 * two messages share a screen exactly when their links share a row, because a screen is
+	 * the thing that spends a token.
+	 *
+	 * <p><b>What is left here about a path is a claim about the LINK BUILDER and nothing
+	 * else</b>, and it is not a substitute for the sentence above: the path is appended to
+	 * the portal's address and the token is hung on it as the first parameter, so a path
+	 * that began without a slash would fuse with the host and one already carrying a
+	 * {@code ?} would produce a link with two. It says nothing whatever about which screen
+	 * a message is aimed at.
 	 */
 	@Test
-	void noTwoMessagesSayTheSameThingOrPointAtTheSamePlace() {
+	void noTwoMessagesSayTheSameThing() {
 		assertThat(Stream.of(Message.values())
 				.map(one -> WhatTheMessageSays.about(one, PORTAL, TOKEN).subject())
 				.collect(Collectors.toSet()))
 				.as("two messages share a subject, so one of them is not being looked at")
 				.hasSize(Message.values().length);
 
-		assertThat(Stream.of(Message.values()).map(Message::path).collect(Collectors.toSet()))
-				.as("two messages point at the same place")
+		assertThat(Stream.of(Message.values())
+				.map(one -> WhatTheMessageSays.about(one, PORTAL, TOKEN).body())
+				.collect(Collectors.toSet()))
+				.as("two messages share their whole text, so one of them is not being written")
 				.hasSize(Message.values().length);
+
+		for (Message message : Message.values()) {
+			assertThat(message.path())
+					.as("%s points at something that is not a path of this portal at all", message)
+					.startsWith("/")
+					.doesNotContain("?");
+		}
 	}
 
 	/**

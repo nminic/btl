@@ -8,10 +8,10 @@ import java.util.ResourceBundle;
 import java.util.regex.Pattern;
 
 /**
- * THE TWO MESSAGES THE PORTAL SENDS TO SOMEBODY WHO IS NOT SIGNED IN, and the
+ * THE MESSAGES THE PORTAL SENDS TO SOMEBODY WHO IS NOT SIGNED IN, and the
  * links in them.
  *
- * <p>Both carry a link and nothing else of value, and both links are the only
+ * <p>Each carries a link and nothing else of value, and the link is the only
  * secret in the message: whoever holds one can confirm an address or set a
  * password. That is why the address they point at is built HERE, out of
  * {@link Portal}, and never out of anything that came in with a request.
@@ -170,19 +170,52 @@ public final class WhatTheMessageSays {
 	}
 
 	/**
-	 * The two of them, each with the path it points at and how long it is good for.
+	 * Each of them, with the path it points at and how long it is good for.
 	 *
 	 * <p>The durations are the owner's, taken from the schema and not invented
 	 * here: twenty four hours for confirming an address ([ODLUKA 08.09.2026], long
 	 * enough that somebody opening his mail next morning still gets in) and one
 	 * hour for a password link, which is the shorter because it is the one that
 	 * hands over an account.
+	 *
+	 * <p><b>TWO OF THEM NOW POINT AT THE SAME PLACE, AND THAT IS A DECISION RATHER
+	 * THAN A COLLISION.</b> „Nov moderator dobija pozivnicu na mejl, a lozinku
+	 * postavlja sam... istim mehanizmom koji obnova lozinke vec nosi" (owner, PDL
+	 * P28a, 18.09.2026), and ADL A53 of the same day says what „istim mehanizmom"
+	 * costs and buys: „Pozivnica je isti put sa drugim povodom, i pise se kao JEDAN
+	 * POVOD VISE, ne kao druga tabela i drugi razred." The road is
+	 * {@code password_reset_token}, {@code PasswordReset} and the one screen that
+	 * takes a token and sets a password; what is new is the OCCASION, and an
+	 * occasion is exactly what this enum holds. So the invitation is a constant
+	 * here and not a second machinery, and it shares
+	 * {@link #SET_A_NEW_PASSWORD}'s path because it is meant to land on the very
+	 * same screen.
+	 *
+	 * <p><b>What it may NOT share is its words</b>, and that is where the two
+	 * occasions really differ: {@code setANewPassword} tells its reader that a
+	 * request arrived and that his password has not changed and is still the one he
+	 * knows. Both halves are false for a man who never asked and has no password,
+	 * and the last paragraph of that text tells him in as many words to do nothing -
+	 * which, sent as an invitation, is the portal instructing its new moderator to
+	 * ignore the only way he has of getting in.
 	 */
 	public enum Message {
 
 		CONFIRM_THE_ADDRESS("confirmTheAddress", "/potvrda-adrese", Duration.ofHours(24)),
 
-		SET_A_NEW_PASSWORD("setANewPassword", "/nova-lozinka", Duration.ofHours(1));
+		SET_A_NEW_PASSWORD("setANewPassword", "/nova-lozinka", Duration.ofHours(1)),
+
+		/**
+		 * The superadmin has made somebody a moderator and the portal is handing him
+		 * the account, which is the same link with the other reason behind it.
+		 *
+		 * <p>One hour, the same as the link it travels by, because it IS that link:
+		 * the row it is minted into is a {@code password_reset_token} and the column's
+		 * own default is what ends it. A number written here that the schema did not
+		 * give would be a message promising what the table does not do, which is the
+		 * one thing {@code HowLongALinkLastsMatchesTheSchemaTest} exists to refuse.
+		 */
+		INVITED_AS_A_MODERATOR("invitedAsAModerator", "/nova-lozinka", Duration.ofHours(1));
 
 		private final String key;
 
