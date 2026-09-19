@@ -18,6 +18,8 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -176,8 +178,12 @@ class RaceWriteApi {
 	 * Kategorija kolona ipak". Asking for it would be a second answer to a question the
 	 * table already answers.
 	 *
-	 * <p>Every field but {@code eventId} may be left out, and each default is the owner's
-	 * rather than a convenience:
+	 * <p><b>The defaults below are {@link #add}'s, and since ADL A54 they are ONLY
+	 * {@link #add}'s.</b> On entry every field but {@code eventId} may be left out and
+	 * each default is the owner's rather than a convenience. On {@link #change} a field
+	 * left out is refused instead, because a default that fills a blank when a race is
+	 * entered overwrites a fact when one is edited; that method's javadoc says which
+	 * fields and why the other three are not among them.
 	 *
 	 * @param eventId       which event this race is one of. Required by {@link #add} and,
 	 *                      on {@link #change}, either left out or the event the race is
@@ -208,6 +214,31 @@ class RaceWriteApi {
 
 	/** Why a race could not be written. */
 	record Refused(String reason) {
+	}
+
+	/**
+	 * The same refusal, SAYING WHICH FIELDS WERE LEFT OUT.
+	 *
+	 * <p>ADL A54 asks for both halves and not just the first: „`PUT` koji ne posalje neko
+	 * polje odbija se sa 400, i kaze se sta fali." A 400 that does not name the field
+	 * leaves an administrator with a full form and no idea which box the server could not
+	 * see.
+	 *
+	 * <p>{@code reason} is first and carries the same word a {@link Refused} would, so
+	 * every caller that reads a refusal by its reason reads this one unchanged; the list
+	 * is what is added, not what is swapped. The names in it are the components of
+	 * {@link Upsert}, which are the names the JSON uses, so what comes back is the name of
+	 * the field the caller failed to send rather than a translation of it.
+	 *
+	 * <p><b>AND TODAY ONLY {@code /api/races/{id}} SENDS IT, which is measured and not an
+	 * intention.</b> {@code PUT /api/events/{id}} and {@code PUT /api/moderators/{id}}
+	 * answer a bare {@code {"reason": ...}} with no list at all, so a client written
+	 * against this shape must not assume the other two carry it. That half of A54 is
+	 * outstanding on those two routes and is carried as separate work; because
+	 * {@code reason} is common to both shapes, a client that reads only the reason works
+	 * against all three in the meantime.
+	 */
+	record NotComplete(String reason, List<String> missing) {
 	}
 
 	/**
@@ -288,16 +319,74 @@ class RaceWriteApi {
 	 * the day on every result and every submission the moment a race is moved. Written any
 	 * other way, the reference would be violated and an administrator would meet a 500.
 	 *
-	 * <p><b>Everything is as sent, which is what a PUT means here.</b> The same choice
-	 * {@link EventWriteApi#change} made: a field left out takes its default, and the
-	 * defaults are the same ones {@link #add} uses, so a race is judged by one set of rules
-	 * whichever door it came through. A portal that grew a second, looser answer on the
-	 * edit would let an administrator walk every rule by writing a good race and then
-	 * changing it into a bad one.
+	 * <p><b>A FIELD LEFT OUT IS REFUSED HERE, AND THAT IS THE ONE PLACE THIS ROUTE IS NOT
+	 * {@link #add}.</b> ADL A54, owner, 19.09.2026, on three offered outcomes: „`PUT` koji
+	 * ne posalje neko polje odbija se sa 400, i kaze se sta fali. Isto na svakoj upisnoj
+	 * ruti portala, bez izuzetka."
+	 *
+	 * <p><b>THIS IS THE FIRST ROUTE THAT CARRIES A54 IN FULL, and saying otherwise is the
+	 * mistake this very decision is about.</b> {@link EventWriteApi#change} BEGAN the
+	 * precedent and does not finish it: measured 19.09.2026 on PR 304, it asks for two of
+	 * its nine fields, {@code name} and {@code date}, and still overwrites the other four
+	 * with defaults written for ENTRY - a {@code PUT /api/events/{id}} carrying only
+	 * {@code name}, {@code date} and {@code placeId} answers 200 and turns a
+	 * {@code training} into a {@code race}, drops {@code featured}, and empties the
+	 * description and the link. Until that measurement this javadoc claimed the precedent
+	 * already answered this way, which was untrue in the one direction that matters: a
+	 * sentence claiming a precedent that exists only in part is an instruction to the next
+	 * reader to make the same mistake, which is what A54 says in as many words. ADL A54
+	 * carries the correction and the numbers.
+	 *
+	 * <p><b>So the other two writing routes are NOT aligned yet.</b>
+	 * {@code PUT /api/events/{id}} and {@code PUT /api/moderators/{id}} are carried as a
+	 * separate piece of work and are not this branch's to fix. Whoever reads this before
+	 * that work has landed should expect them to differ, not copy them.
+	 *
+	 * <p><b>What was wrong with taking the defaults, and it is why this is a decision and
+	 * not a tidy-up.</b> The defaults in {@link #checked} are written for ENTRY: a race
+	 * with no name is called after its event, a race with no day runs on its event's day.
+	 * Applied to an EDIT they do not fill a blank, they OVERWRITE something. A PUT that
+	 * left out {@code date} moved the race onto the event's morning and said 200; and
+	 * because {@code result_race_fk} and {@code result_submission_race_fk} are
+	 * {@code on update cascade} over {@code (race_id, race_date)}, the database rewrote the
+	 * day of every result and every submission of that race along with it. A PUT that left
+	 * out {@code name} renamed the race to its event and set {@code renamed} back to false.
+	 * Neither said so.
+	 *
+	 * <p><b>Why this was settled by the owner rather than fixed.</b> The review of PR 300
+	 * ran two OPPOSITE mutations - „a race keeps its own day" and „a race takes its event's
+	 * day" - and the whole suite passed on both. Two opposite behaviours that both pass is
+	 * a question about what the portal MEANS, not a fault in it, so it went to the owner.
+	 *
+	 * <p><b>Which fields, and why not all nine.</b> Everything {@link #checked} would
+	 * otherwise default: {@code name}, {@code renamed}, {@code date}, {@code kind},
+	 * {@code ascentM} and {@code descentM}. {@code eventId} is not one, because not naming
+	 * an event is the ordinary shape of this form (the event is the page above it) and
+	 * naming a DIFFERENT one has its own refusal. {@code limitSeconds} and
+	 * {@code distanceKm} are not either, and that is the older decision rather than an
+	 * exception to this one: V7 pairs each of them to a kind with a biconditional, so each
+	 * is sent exactly when its kind calls for it and REFUSED when it does not. Demanding
+	 * them unconditionally would refuse every race of a length for not sending a limit.
+	 *
+	 * <p><b>Everything else is as sent, which is what a PUT means here.</b> The rules a
+	 * form is judged by are the same ones {@link #add} uses, in the same method, so a race
+	 * is judged one way whichever door it came through. A portal that grew a second, looser
+	 * answer on the edit would let an administrator walk every rule by writing a good race
+	 * and then changing it into a bad one.
 	 */
 	@PutMapping("/api/races/{id}")
 	@RightIsNeeded("entity:events")
 	ResponseEntity<?> change(@PathVariable long id, @RequestBody Upsert typed) {
+		/* BEFORE THE ROW IS LOOKED FOR, which is the order `EventWriteApi#change` keeps:
+		   a form that could not be written is answered the same whether the key exists or
+		   not, so this says nothing about which races there are. */
+		List<String> missing = whatTheEditLeftOut(typed);
+
+		if (!missing.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(new NotComplete(THE_FORM_IS_NOT_COMPLETE, missing));
+		}
+
 		if (blank(typed.name())) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
@@ -543,6 +632,13 @@ class RaceWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_DISTANCE_BELONGS_TO_A_RACE_OF_A_LENGTH);
 		}
 
+		/* THE ONE RULE HERE THAT IS NOT A CONSTRAINT, because there is no constraint that
+		   could be written: a distance the column cannot keep is not refused by PostgreSQL,
+		   it is silently ROUNDED, and `race.category` is generated off the rounded value.
+		   Since V25 the column keeps four decimals, so what this refuses is a fifth - the
+		   owner's „tacna duzina" is kept and what would still be CHANGED on the way in is
+		   turned away. The scale itself lives in `WhatARaceCarries` and is held against
+		   `information_schema` by `RaceShapesMatchTheSchemaTest`. */
 		if (typed.distanceKm() != null
 				&& !WhatARaceCarries.distanceIsKeptExactly(typed.distanceKm())) {
 			return no(HttpStatus.BAD_REQUEST, THE_DISTANCE_IS_NOT_KEPT_EXACTLY);
@@ -559,6 +655,44 @@ class RaceWriteApi {
 		}
 
 		return null;
+	}
+
+	/**
+	 * WHAT AN EDIT LEFT OUT, in the order {@link Upsert} carries the fields.
+	 *
+	 * <p>Every field {@link #checked} would otherwise fill in with an ENTRY default, and
+	 * the three that are missing from this list are missing on purpose - the javadoc on
+	 * {@link #change} says which and why.
+	 *
+	 * <p><b>The list is written out by hand and it has a floor in the same commit.</b>
+	 * {@code RaceWriteApiTest.anEditMustSendEveryFieldTheFormHas} reads the components of
+	 * {@link Upsert} off the record itself, takes the three away, and drives one case per
+	 * field that is left. A tenth field added to the form tomorrow is a case that fails
+	 * the day it is added rather than a field nobody remembered to require.
+	 */
+	private static List<String> whatTheEditLeftOut(Upsert typed) {
+		List<String> missing = new ArrayList<>();
+
+		if (typed.name() == null) {
+			missing.add("name");
+		}
+		if (typed.renamed() == null) {
+			missing.add("renamed");
+		}
+		if (typed.date() == null) {
+			missing.add("date");
+		}
+		if (typed.kind() == null) {
+			missing.add("kind");
+		}
+		if (typed.ascentM() == null) {
+			missing.add("ascentM");
+		}
+		if (typed.descentM() == null) {
+			missing.add("descentM");
+		}
+
+		return missing;
 	}
 
 	/** The request as it goes into the row, once nothing about it is wrong any more. */

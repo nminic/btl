@@ -2,12 +2,14 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -17,14 +19,20 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -95,6 +103,33 @@ class RaceWriteApiTest {
 
 	/** The address it answers at, which no rule here would build out of its name. */
 	private static final String ITS_ADDRESS = "drugi-2027";
+
+	/**
+	 * A name no event and no race in the fixture carries.
+	 *
+	 * <p>So that an edit which does not say what the race is called cannot read the same as
+	 * one that left the name alone, nor as one that took its event's.
+	 */
+	private static final String A_NAME_OF_ITS_OWN = "Trka pod svojim imenom";
+
+	/**
+	 * THE THREE FIELDS AN EDIT MAY LEAVE OUT, and every other component of
+	 * {@link RaceWriteApi.Upsert} is one it must send.
+	 *
+	 * <p>Written as the exceptions rather than as the list of what is required, which is
+	 * what lets {@link #everyFieldAnEditMustSend} derive the rest off the record: a field
+	 * added to the form tomorrow is required the day it is added instead of being the one
+	 * nobody remembered.
+	 *
+	 * <p><b>Each of the three is an older decision and not an exception to A54.</b>
+	 * {@code eventId} is not asked for by this form at all - the event is the page the form
+	 * opens under (owner, 11.08.2026) - and naming a DIFFERENT one has its own refusal.
+	 * {@code limitSeconds} and {@code distanceKm} are tied to the kind by a biconditional
+	 * in V7, so each is sent exactly when its kind calls for it and refused when it is not;
+	 * demanding them here would refuse every race of a length for carrying no time limit.
+	 */
+	private static final Set<String> AN_EDIT_NEED_NOT_SEND =
+			Set.of("eventId", "limitSeconds", "distanceKm");
 
 	@Autowired
 	private MockMvc http;
@@ -302,11 +337,72 @@ class RaceWriteApiTest {
 			return new Form(eventId, name, renamed, date, kind, limitSeconds, distanceKm, climb,
 					fall);
 		}
+
+		/**
+		 * THE SAME FORM WITH ONE FIELD EMPTIED, named as the JSON names it.
+		 *
+		 * <p>Not "sent empty" in the sense of blank text: the component is null, and
+		 * {@code null} is what {@link RaceWriteApi.Upsert} then holds, which is the state
+		 * ADL A54 is about.
+		 *
+		 * <p><b>What this actually puts on the wire is a key with a null value, and that
+		 * is worth saying because this javadoc said the opposite until 19.09.2026.</b> A
+		 * record with a null component serialises to {@code "date": null}, NOT to an
+		 * object without the key: Jackson's default inclusion is ALWAYS. The two bodies
+		 * are different bytes that the route today reads the same way, and
+		 * {@link #anEditThatOMITSTheKeyEntirelyIsRefusedTheSameWay} is what holds them
+		 * equal - without it a {@code Nulls.SKIP} or a default on the record would part
+		 * them without a single case failing.
+		 *
+		 * <p><b>The default is the floor's teeth.</b> The names come from
+		 * {@link #everyFieldAnEditMustSend}, which reads them off
+		 * {@link RaceWriteApi.Upsert}; a field added to that record and not added here
+		 * stops the case rather than passing it quietly.
+		 */
+		Form without(String field) {
+			return switch (field) {
+				case "name" -> new Form(eventId, null, renamed, date, kind, limitSeconds,
+						distanceKm, ascentM, descentM);
+				case "renamed" -> new Form(eventId, name, null, date, kind, limitSeconds,
+						distanceKm, ascentM, descentM);
+				case "date" -> new Form(eventId, name, renamed, null, kind, limitSeconds,
+						distanceKm, ascentM, descentM);
+				case "kind" -> new Form(eventId, name, renamed, date, null, limitSeconds,
+						distanceKm, ascentM, descentM);
+				case "ascentM" -> new Form(eventId, name, renamed, date, kind, limitSeconds,
+						distanceKm, null, descentM);
+				case "descentM" -> new Form(eventId, name, renamed, date, kind, limitSeconds,
+						distanceKm, ascentM, null);
+				default -> throw new IllegalArgumentException(
+						"the form has a field this case cannot leave out: " + field);
+			};
+		}
 	}
 
 	/** A race of a length under the event every case acts on, which each case then spoils. */
 	private Form aForm() {
 		return new Form(acted, null, null, null, null, null, new BigDecimal("10.00"), null, null);
+	}
+
+	/**
+	 * WHAT AN EDIT SENDS, WHICH IS EVERY FIELD THE FORM HAS.
+	 *
+	 * <p>Since ADL A54 (owner, 19.09.2026) a {@code PUT} that leaves a field out is refused
+	 * rather than filled in with an entry default, so an edit that means to change one
+	 * thing still carries the other eight. A case then says the one field it is about and
+	 * stays silent about the rest, exactly as {@link #aForm} lets a write do.
+	 *
+	 * <p><b>The name and the day are not the event's, and that is the whole reason they are
+	 * written out here.</b> The event „Drugi maraton" begins on {@link #ITS_DAY} and the
+	 * defaults this route used to apply were the event's name and the event's day. A case
+	 * built on a race that already carried those two could not tell "the field was
+	 * required" from "the field was filled in with the default", because both leave the
+	 * same row behind. {@link #theMiddleRace} runs on {@link #THE_MIDDLE_DAY} and is called
+	 * „Srednja", and this form carries a third name again, so the three answers stay apart.
+	 */
+	private Form anEdit() {
+		return new Form(acted, A_NAME_OF_ITS_OWN, true, THE_MIDDLE_DAY,
+				WhatARaceCarries.OF_A_LENGTH, null, new BigDecimal("10.00"), 0, 0);
 	}
 
 	private String slugOf(long event) {
@@ -345,6 +441,18 @@ class RaceWriteApiTest {
 
 	private String reasonIn(MockHttpServletResponse answer) throws Exception {
 		return new ObjectMapper().readTree(answer.getContentAsString()).path("reason").asString();
+	}
+
+	/** The fields the refusal says were missing, which is A54's „kaze se sta fali". */
+	private List<String> missingIn(MockHttpServletResponse answer) throws Exception {
+		List<String> named = new ArrayList<>();
+
+		for (JsonNode field : new ObjectMapper().readTree(answer.getContentAsString())
+				.path("missing")) {
+			named.add(field.asString());
+		}
+
+		return named;
 	}
 
 	private long writtenId(MockHttpServletResponse answer) throws Exception {
@@ -494,7 +602,7 @@ class RaceWriteApiTest {
 	@Test
 	void movingTheFirstRaceAwayMovesTheEventOntoTheOneThatIsNowFirst() throws Exception {
 		MockHttpServletResponse answer =
-				change(raceCalled("Duga"), aForm().on(THE_LAST_DAY.plusDays(6)));
+				change(raceCalled("Duga"), anEdit().on(THE_LAST_DAY.plusDays(6)));
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(answeredDay(answer))
@@ -518,7 +626,7 @@ class RaceWriteApiTest {
 	void movingARaceOntoAnEarlierMorningMovesTheEventBackWithIt() throws Exception {
 		LocalDate earlier = ITS_DAY.minusDays(9);
 
-		assertThat(change(theMiddleRace, aForm().on(earlier)).getStatus()).isEqualTo(200);
+		assertThat(change(theMiddleRace, anEdit().on(earlier)).getStatus()).isEqualTo(200);
 
 		assertThat(dayOf(acted))
 				.as("a race moved before every other one left its event beginning after it")
@@ -534,7 +642,7 @@ class RaceWriteApiTest {
 	 */
 	@Test
 	void movingAMiddleRaceInsideTheEventLeavesTheDayAlone() throws Exception {
-		assertThat(change(theMiddleRace, aForm().on(THE_LAST_DAY.plusDays(1))).getStatus())
+		assertThat(change(theMiddleRace, anEdit().on(THE_LAST_DAY.plusDays(1))).getStatus())
 				.isEqualTo(200);
 
 		assertThat(dayOf(acted))
@@ -552,7 +660,7 @@ class RaceWriteApiTest {
 	 */
 	@Test
 	void aRaceChangedIsWrittenAsItWasSent() throws Exception {
-		MockHttpServletResponse answer = change(theMiddleRace, aForm()
+		MockHttpServletResponse answer = change(theMiddleRace, anEdit()
 				.called("Sest sati", true)
 				.on(THE_MIDDLE_DAY)
 				.ofKind("time", 21600, null)
@@ -568,7 +676,8 @@ class RaceWriteApiTest {
 						String.valueOf(row.getInt(7)), row.getString(8))).single())
 				.as("a race turned into a timed one did not come back one, or kept the length it"
 						+ " no longer runs to")
-				.containsExactly("Sest sati", "true", "time", "21600", "0.00", "350", "410",
+				/* Nought at the column's own scale, four decimals since V25. */
+				.containsExactly("Sest sati", "true", "time", "21600", "0.0000", "350", "410",
 						"short");
 	}
 
@@ -588,7 +697,7 @@ class RaceWriteApiTest {
 	@Test
 	void theResultsTravelWithTheRaceTheyWereRunAt() throws Exception {
 		assertThat(change(raceCalled("Duga"),
-				aForm().called("Duga", true).on(ITS_DAY.plusDays(20))).getStatus())
+				anEdit().called("Duga", true).on(ITS_DAY.plusDays(20))).getStatus())
 				.isEqualTo(200);
 
 		assertThat(dayOfResultOn("Duga"))
@@ -615,7 +724,7 @@ class RaceWriteApiTest {
 	@Test
 	void aRaceThatTakesItsEventIntoAnotherYearTakesTheAddressToo() throws Exception {
 		MockHttpServletResponse answer =
-				change(raceCalled("Duga"), aForm().on(LocalDate.parse("2026-12-30")));
+				change(raceCalled("Duga"), anEdit().on(LocalDate.parse("2026-12-30")));
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(answeredAddress(answer))
@@ -638,7 +747,7 @@ class RaceWriteApiTest {
 	@Test
 	void aRaceMovedInsideTheYearLeavesTheEventsAddressAlone() throws Exception {
 		MockHttpServletResponse answer =
-				change(raceCalled("Duga"), aForm().on(LocalDate.parse("2027-01-20")));
+				change(raceCalled("Duga"), anEdit().on(LocalDate.parse("2027-01-20")));
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(answeredAddress(answer)).isEqualTo(ITS_ADDRESS);
@@ -673,7 +782,7 @@ class RaceWriteApiTest {
 
 		MockHttpServletResponse answer = how.equals("add")
 				? add(aForm().on(LocalDate.parse("2026-12-30")))
-				: change(raceCalled("Duga"), aForm().on(LocalDate.parse("2026-12-30")));
+				: change(raceCalled("Duga"), anEdit().on(LocalDate.parse("2026-12-30")));
 
 		assertThat(answer.getStatus())
 				.as("%s moved an event onto an address another event already answers at", how)
@@ -835,7 +944,7 @@ class RaceWriteApiTest {
 	void aRaceCountedByALeagueMayNotLeaveItsSeasonAndMayMoveInsideIt() throws Exception {
 		countedByALeagueOf(2027, theMiddleRace);
 
-		MockHttpServletResponse out = change(theMiddleRace, aForm().on(LocalDate.parse("2028-02-02")));
+		MockHttpServletResponse out = change(theMiddleRace, anEdit().on(LocalDate.parse("2028-02-02")));
 
 		assertThat(out.getStatus())
 				.as("a race counted by a league of 2027 was moved into 2028")
@@ -846,7 +955,7 @@ class RaceWriteApiTest {
 				.as("the move was refused and the race moved anyway")
 				.containsExactly("2027-06-02", "2027-06-03", "2027-06-04");
 
-		assertThat(change(theMiddleRace, aForm().on(LocalDate.parse("2027-02-02"))).getStatus())
+		assertThat(change(theMiddleRace, anEdit().on(LocalDate.parse("2027-02-02"))).getStatus())
 				.as("a race counted by a league could not be moved inside its own season")
 				.isEqualTo(200);
 	}
@@ -856,7 +965,7 @@ class RaceWriteApiTest {
 	void aRaceNoLeagueCountsMayLeaveTheYearAltogether() throws Exception {
 		countedByALeagueOf(2027, theMiddleRace);
 
-		assertThat(change(raceCalled("Kratka"), aForm().on(LocalDate.parse("2028-02-02")))
+		assertThat(change(raceCalled("Kratka"), anEdit().on(LocalDate.parse("2028-02-02")))
 				.getStatus())
 				.as("a race no league counts was refused because another race is in one")
 				.isEqualTo(200);
@@ -878,7 +987,7 @@ class RaceWriteApiTest {
 	 */
 	@Test
 	void aRaceCannotBeMovedToAnotherEventAndNamingItsOwnIsNotMovingIt() throws Exception {
-		MockHttpServletResponse away = change(theMiddleRace, aForm().under(another));
+		MockHttpServletResponse away = change(theMiddleRace, anEdit().under(another));
 
 		assertThat(away.getStatus())
 				.as("a race was moved onto another event")
@@ -888,11 +997,11 @@ class RaceWriteApiTest {
 				.as("the move was refused and the race arrived anyway")
 				.containsExactly("Tudja");
 
-		assertThat(change(theMiddleRace, aForm().under(acted)).getStatus())
+		assertThat(change(theMiddleRace, anEdit().under(acted)).getStatus())
 				.as("a race could not be saved under the event it is already on")
 				.isEqualTo(200);
 
-		assertThat(change(theMiddleRace, aForm().under(null).called("Bez dogadjaja", true))
+		assertThat(change(theMiddleRace, anEdit().under(null).called("Bez dogadjaja", true))
 				.getStatus())
 				.as("an edit that does not name an event at all was read as one moving the race")
 				.isEqualTo(200);
@@ -921,7 +1030,7 @@ class RaceWriteApiTest {
 
 		MockHttpServletResponse answer = how.equals("add")
 				? add(aForm().under(another))
-				: change(raceCalled("Tudja"), aForm().under(another));
+				: change(raceCalled("Tudja"), anEdit().under(another));
 
 		assertThat(answer.getStatus())
 				.as("a race was %sed under a %s", how, kind)
@@ -939,11 +1048,12 @@ class RaceWriteApiTest {
 	 * them would reach an administrator as a 500 after he had filled the form in, which is
 	 * the fault {@code LinkShapeMatchesTheSchemaTest} exists against one column along.
 	 *
-	 * <p>The one that is not a constraint is {@code aDistanceNothingCanKeep}: PostgreSQL
-	 * does not refuse {@code 42.195}, it rounds it to {@code 42.20} and generates
-	 * {@code category = marathon}, which is the exact opposite of the owner's „uneto 42.195
-	 * nije maraton nego „duze trke"". {@code RaceShapesMatchTheSchemaTest} holds the rule
-	 * against the column itself.
+	 * <p>The one that is not a constraint is {@code aDistanceNothingCanKeep}: a distance
+	 * with more decimals than the column keeps is not refused by PostgreSQL, it is silently
+	 * ROUNDED, and the generated {@code race.category} is then worked out of a number
+	 * nobody typed. Since V25 the column keeps four decimals, so the row that measures this
+	 * sends five. {@code RaceShapesMatchTheSchemaTest} holds the rule against the column
+	 * itself, so the two move together the next time a migration widens it.
 	 */
 	@ParameterizedTest
 	@CsvSource(nullValues = "-", value = {
@@ -1039,8 +1149,204 @@ class RaceWriteApiTest {
 				.isEqualTo(ITS_ADDRESS);
 	}
 
+	/**
+	 * AN EDIT THAT LEAVES A FIELD OUT IS REFUSED, THE FIELD IS NAMED, AND NOTHING MOVES.
+	 *
+	 * <p><b>Owner, ADL A54, 19.09.2026, on three offered outcomes:</b> „`PUT` koji ne
+	 * posalje neko polje odbija se sa 400, i kaze se sta fali. Isto na svakoj upisnoj ruti
+	 * portala, bez izuzetka."
+	 *
+	 * <p><b>The fields are not typed out here.</b> They are the components of
+	 * {@link RaceWriteApi.Upsert} less {@link #AN_EDIT_NEED_NOT_SEND}, read off the record
+	 * itself, so a tenth field added to the form arrives in this case on the day it is
+	 * added. {@code Form#without} throws on a name it does not know, which is what stops
+	 * the derived list and the hand written switch from drifting apart in silence.
+	 *
+	 * <p><b>What each row proves is not the 400 but the row that did not change.</b> Until
+	 * this decision an edit with no {@code date} took the event's day and answered 200, and
+	 * {@code result_race_fk} being {@code on update cascade} over
+	 * {@code (race_id, race_date)} rewrote the day of every result of that race with it.
+	 * So a result is put on the race first and its day is read afterwards: the race runs on
+	 * {@link #THE_MIDDLE_DAY} and its event begins on {@link #ITS_DAY}, which are different
+	 * mornings, so "the day was kept" and "the day was taken from the event" cannot come
+	 * back as the same date.
+	 *
+	 * <p>The name is read for the same reason and it is the same trap one field along: the
+	 * race is „Srednja", its event is „Drugi maraton", and the form carries a third name
+	 * again, so none of the three answers can stand in for another.
+	 */
+	@ParameterizedTest
+	@MethodSource("everyFieldAnEditMustSend")
+	void anEditThatLeavesAFieldOutIsRefusedAndNothingIsWritten(String field) throws Exception {
+		result(competitor("000902", "0011223344556602"), theMiddleRace);
+
+		MockHttpServletResponse answer = change(theMiddleRace, anEdit().without(field));
+
+		assertThat(answer.getStatus())
+				.as("an edit with no %s was accepted", field)
+				.isEqualTo(400);
+		assertThat(reasonIn(answer))
+				.as("an edit with no %s was refused for some other reason", field)
+				.isEqualTo(RaceWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(missingIn(answer))
+				.as("the refusal did not say that %s was what was missing", field)
+				.containsExactly(field);
+
+		assertThat(namesOfRacesOn(acted))
+				.as("an edit with no %s was refused and the race was renamed anyway", field)
+				.containsExactly("Duga", "Srednja", "Kratka");
+		assertThat(daysOfRacesOn(acted))
+				.as("an edit with no %s was refused and the race moved anyway", field)
+				.containsExactly(ITS_DAY.toString(), THE_MIDDLE_DAY.toString(),
+						THE_LAST_DAY.toString());
+		assertThat(dayOfResultOn("Srednja"))
+				.as("an edit with no %s was refused and the cascade rewrote a result's day"
+						+ " anyway", field)
+				.isEqualTo(THE_MIDDLE_DAY.toString());
+	}
+
+	/**
+	 * AND A BODY THAT DOES NOT CARRY THE KEY AT ALL IS REFUSED IN EXACTLY THE SAME WORDS.
+	 *
+	 * <p><b>Two different bodies, and until 19.09.2026 this file thought they were one.</b>
+	 * {@code Form#without} nulls a component, and a record with a null component
+	 * serialises to {@code "date": null} - Jackson includes the key. A screen that simply
+	 * never wrote the field sends an object with no {@code date} in it. Those are
+	 * different bytes, and every case above sends only the first of them.
+	 *
+	 * <p><b>The route reads them the same, which is right, and nothing held it.</b> That
+	 * is the whole reason for this case: a {@code @JsonSetter(nulls = Nulls.SKIP)} or a
+	 * default filled in by a compact constructor would part the two shapes, and the suite
+	 * would stay green while a form that omitted a field silently took a default again -
+	 * which is the exact fault ADL A54 was written about.
+	 *
+	 * <p>The second body is DERIVED from the first rather than typed out, so the one key
+	 * is the only difference between them, and the removal is checked to have actually
+	 * happened: a key that was not there to remove would send the same bytes twice and
+	 * make the comparison below true about nothing.
+	 */
+	@ParameterizedTest
+	@MethodSource("everyFieldAnEditMustSend")
+	void anEditThatOmitsTheKeyEntirelyIsRefusedTheSameWay(String field) throws Exception {
+		MockHttpServletResponse nulled = change(theMiddleRace, anEdit().without(field));
+		MockHttpServletResponse absent = changeSending(theMiddleRace, aBodyWithNo(field));
+
+		assertThat(absent.getStatus())
+				.as("a body carrying no %s key at all was not refused", field)
+				.isEqualTo(400);
+		assertThat(missingIn(absent))
+				.as("a body carrying no %s key at all did not say that is what was missing",
+						field)
+				.containsExactly(field);
+
+		assertThat(List.of(absent.getStatus(), absent.getContentAsString()))
+				.as("`\"%s\": null` and a body with no `%s` at all are answered differently, so"
+						+ " the two shapes have parted and only one of them is measured", field,
+						field)
+				.isEqualTo(List.of(nulled.getStatus(), nulled.getContentAsString()));
+	}
+
+	/**
+	 * A complete edit's body with one KEY taken out of it, rather than set to null.
+	 *
+	 * <p>Built by serialising {@link #anEdit} and removing the key, so the body is byte for
+	 * byte what the route is sent everywhere else less exactly one key.
+	 */
+	private String aBodyWithNo(String field) throws Exception {
+		ObjectNode body = (ObjectNode) new ObjectMapper().readTree(json(anEdit()));
+
+		assertThat(body.remove(field))
+				.as("the body carries no key called %s to begin with, so this would send the"
+						+ " same bytes twice and compare nothing", field)
+				.isNotNull();
+
+		return body.toString();
+	}
+
+	/** The same edit request, with a body handed over as it stands rather than as a form. */
+	private MockHttpServletResponse changeSending(long id, String body) throws Exception {
+		return http.perform(put("/api/races/" + id).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(body)
+						.cookie(new Cookie(SessionCookie.NAME, session)))
+				.andReturn().getResponse();
+	}
+
+	/**
+	 * The fields an edit must send, taken off {@link RaceWriteApi.Upsert} rather than
+	 * listed.
+	 */
+	private static List<String> everyFieldAnEditMustSend() {
+		return Arrays.stream(RaceWriteApi.Upsert.class.getRecordComponents())
+				.map(RecordComponent::getName)
+				.filter(field -> !AN_EDIT_NEED_NOT_SEND.contains(field))
+				.toList();
+	}
+
+	/**
+	 * THE EXACT LENGTH IS WHAT IS KEPT, AND THE CATEGORY IS WORKED OUT OF THAT.
+	 *
+	 * <p><b>Owner, PDL, 19.09.2026, in his own words:</b> „Hocu da mogu da unosim tacnu
+	 * duzinu, ali se prikazuje zaokruzeno na dve ili manje decimala. Dakle 42.203 treba da
+	 * zaokruzi na 42.2, ali da vodi kao ultramaraton."
+	 *
+	 * <p><b>The first three rows are the whole decision and they are three rows on
+	 * purpose.</b> 42.203, 42.2 and 42.195 all SHOW as „42,2 km" - the rounding is the
+	 * browser's and is not on this server at all - and they are an ultramarathon, a
+	 * marathon and a „duza trka". A portal that kept two decimals would store one number
+	 * for all three and call all three a marathon, which is what V25 was written to end.
+	 * The last two are the same turn one category down, where the owner's own example is
+	 * the true half marathon: „21.0975 nije polumaraton nego „krace trke"".
+	 *
+	 * <p><b>Read out of the ROW and never off the answer.</b> What comes back in the
+	 * response is what the caller handed in; the question here is what the DATABASE made of
+	 * it, and the category is a generated column that only the database can answer for.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"42.203,   42.2030,   ultra",
+			"42.2,     42.2000,   marathon",
+			"42.195,   42.1950,   long",
+			"21.1,     21.1000,   half",
+			"21.0975,  21.0975,   short",
+			/* And the ceiling the widened column carries, which is a length and not a
+			   boundary of the rule: four digits before the point, exactly as before V25. */
+			"9999.9999, 9999.9999, ultra",
+	})
+	void theExactLengthIsKeptAndTheCategoryIsWorkedOutOfIt(String typed, String kept,
+			String category) throws Exception {
+
+		MockHttpServletResponse answer = change(theMiddleRace,
+				anEdit().ofKind(WhatARaceCarries.OF_A_LENGTH, null, typed));
+
+		assertThat(answer.getStatus())
+				.as("%s was refused, although the owner decided an exact length is kept", typed)
+				.isEqualTo(200);
+
+		assertThat(lengthAndCategoryOf(theMiddleRace))
+				.as("%s was not kept as it was typed, or was put in the wrong category", typed)
+				.containsExactly(kept, category);
+	}
+
+	/** What the row really holds, both halves of it, as the database answers them. */
+	private List<String> lengthAndCategoryOf(long race) {
+		return db.sql("select distance_km, category from race where id = ?").param(race)
+				.query((row, one) -> List.of(row.getBigDecimal(1).toPlainString(),
+						row.getString(2)))
+				.single();
+	}
+
+	/**
+	 * A form with one thing wrong with it and nothing else.
+	 *
+	 * <p>Built on {@link #anEdit} rather than on {@link #aForm} since ADL A54, and that is
+	 * the difference between measuring what each row says it measures and measuring the
+	 * same refusal fourteen times: a sparse form is now refused for being incomplete BEFORE
+	 * anything else is looked at, so every row below would have come back
+	 * {@code theFormIsNotComplete} and twelve of them would have stopped saying anything at
+	 * all. Complete but for the one spoiled field, each row reaches the rule it names.
+	 */
 	private Form spoiledIn(String how) {
-		Form good = aForm();
+		Form good = anEdit();
 
 		return switch (how) {
 			case "noEvent" -> good.under(null);
@@ -1053,7 +1359,10 @@ class RaceWriteApiTest {
 			case "aRaceOfALengthWithNoLength" -> good.ofKind("length", null, null);
 			case "aRaceOfALengthOfNought" -> good.ofKind("length", null, "0.00");
 			case "aLengthOnAFreeRace" -> good.ofKind("free", null, "10.00");
-			case "aDistanceNothingCanKeep" -> good.ofKind("length", null, "42.195");
+			/* A FIFTH decimal, because since V25 the column keeps four. This was „42.195"
+			   until 19.09.2026, when the owner decided that value is to be KEPT and led as
+			   „duze trke" rather than refused; the rule did not move, the column did. */
+			case "aDistanceNothingCanKeep" -> good.ofKind("length", null, "42.19512");
 			case "aDistanceOverTheCeiling" -> good.ofKind("length", null, "10000.00");
 			case "aClimbBelowNought" -> good.withProfile(-500, 0);
 			default -> good.withProfile(0, -900);
@@ -1079,7 +1388,9 @@ class RaceWriteApiTest {
 						row.getBigDecimal(3).toPlainString(), String.valueOf(row.getInt(4)),
 						String.valueOf(row.getInt(5)))).single())
 				.as("a free race was written with a limit, a length, or a profile of its own")
-				.containsExactly("free", "0", "0.00", "0", "0");
+				/* Nought at the column's own scale, which V25 took from two decimals to
+				   four. The number did not change and the text it is stored as did. */
+				.containsExactly("free", "0", "0.0000", "0", "0");
 	}
 
 	/**
@@ -1092,7 +1403,7 @@ class RaceWriteApiTest {
 	 */
 	@Test
 	void changingOrDeletingSomethingThatIsNotThereSaysNothingAboutIt() throws Exception {
-		MockHttpServletResponse changed = change(-1, aForm());
+		MockHttpServletResponse changed = change(-1, anEdit());
 
 		assertThat(changed.getStatus()).isEqualTo(404);
 		assertThat(changed.getContentAsString())
@@ -1195,7 +1506,7 @@ class RaceWriteApiTest {
 				.isEqualTo(201);
 		assertThat(dayOf(another)).isEqualTo("2019-04-06");
 
-		assertThat(change(theMiddleRace, aForm().on(LocalDate.parse("2018-05-05"))).getStatus())
+		assertThat(change(theMiddleRace, anEdit().on(LocalDate.parse("2018-05-05"))).getStatus())
 				.as("a race could not be moved into the past")
 				.isEqualTo(200);
 		assertThat(dayOf(acted)).isEqualTo("2018-05-05");
