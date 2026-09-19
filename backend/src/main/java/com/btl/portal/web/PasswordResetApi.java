@@ -298,7 +298,7 @@ class PasswordResetApi {
 		   is asking as the ten guesses `SignIn.ENOUGH_MISSES_TO_LOCK` was ever meant to
 		   stop; leaving the lock in place would tell a member who just proved exactly
 		   that to come back in fifteen minutes anyway. What stops that race is
-		   `SignInApi.java:100`'s `for update`, not this paragraph. */
+		   `SignInApi.signIn`'s `for update`, not this paragraph. */
 		/* AND AN ACCOUNT THAT HAD NO PASSWORD AT ALL HAS ITS ADDRESS CONFIRMED BY THIS,
 		   which is the owner's decision of 19.09.2026 and the only line of this route that
 		   moved for it: „Potvrda adrese se upisuje u trenutku kad se TOKEN POTROSI.

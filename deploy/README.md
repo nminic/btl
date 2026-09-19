@@ -163,9 +163,6 @@ than a second opinion: it curls `/actuator/health`, whose aggregate status
 includes Spring's DataSource indicator, so it goes red when the database is
 unreachable and not only when the process has died.
 
-Right after `up`, expect `(health: starting)` for up to the backend's own 90s
-`start_period` before it reads `(healthy)`.
-
 **`healthy` is not enough by itself, and this is where production differs from
 QA.** A backend that came up against an *empty* schema also answers `UP`, because
 the database is reachable and that is all that indicator asks. On QA the `db`
@@ -199,9 +196,7 @@ docker compose -f compose.prod.yml logs backend | head -50
 nothing on the classpath and the migrations were not packaged into the jar.
 
 Flyway runs at backend startup, so a migration merged to `main` is applied by the
-next `up -d --build backend`, with no separate step. If it fails there,
-`restart: unless-stopped` retries the same failing one forever rather than
-leaving the container down.
+next `up -d --build backend`, with no separate step.
 
 Finally, that the site itself answers, which is the only check that goes through
 the edge proxy:
@@ -423,9 +418,6 @@ already built and only builds the frontend.
 Compose starts it first, waiting for its healthcheck before the backend is even
 created.
 
-Run `sh proveri-qa.sh` after every deploy, per its own header, to confirm the
-stack is really serving the new schema.
-
 Deploying only the frontend, the way it worked before there was a backend, still
 works and still touches nothing else:
 
@@ -565,8 +557,7 @@ is attached to.
   next thing this directory needs.
   QA is different and stays different: it holds nothing that needs restoring, so
   `qa_postgres-data` is backed up by nothing on purpose and is rebuilt by
-  dropping it and letting Flyway run again. That means removing the named
-  volume directly; `docker compose down` stays forbidden here too.
+  dropping it and letting Flyway run again.
 - **`compose.prod.yml` is measured, and it took a hole to get there.** `PostmanTest`
   read `compose.qa.yml` BY NAME, so when this directory grew a second stack the new
   one was covered by nothing: measured, deleting

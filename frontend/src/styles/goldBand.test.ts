@@ -403,7 +403,9 @@ describe('the line under a row whose first cell is its heading', () => {
        same pixel, with no sideways scroll of the page.
 
        Only the width is written, so a table that wants another colour or style under a row heading
-       still says so. Read the sheet: jsdom's cascade skips width (ADL A33). */
+       still says so. Read from disk, since vitest's `test` block never turns on `css` and nothing
+       here is in the document on its own; read as text below, since jsdom's parser will not turn
+       the shorthand's `var()` token into a longhand. */
     const css = read('src/styles/table.css')
     /* The width, however the rule writes it. Two of the three write the shorthand and give it a
        token for the colour, which no parser can take apart into longhands, so the width is the
