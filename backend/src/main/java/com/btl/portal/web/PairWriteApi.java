@@ -169,7 +169,10 @@ import java.util.Optional;
  * for the one that is NOT, and the table that knows membership by season
  * ({@code membership (competitor_id, season, basis)}, PDL, B50) has no row for the season
  * being formed until it goes on sale on 1 October - so a condition over either column would
- * refuse EVERY pair agreed between January and September. {@link TeamWriteApi} asks nothing
+ * refuse EVERY pair agreed between January and September. PDL P13 points the same way about
+ * every change of side: one „se sme zatraziti bilo kad tokom godine", and only „stupa na
+ * snagu tek 1. januara naredne sezone, i to samo ako su clanarine izmirene" - the fee is a
+ * condition on the EFFECT and the effect is the reader's. {@link TeamWriteApi} asks nothing
  * about the fee either, for a team put forward under the same rules. The day forming really
  * depends on membership, it is one decision in one place and this paragraph is where it
  * lands.
@@ -187,7 +190,15 @@ import java.util.Optional;
 @RestController
 class PairWriteApi {
 
-	/** A required field nobody filled in. */
+	/**
+	 * A required field nobody filled in, and the only 400 here.
+	 *
+	 * <p>The three below are 409 and that is the same line {@link TeamWriteApi} draws: 400 is
+	 * about the SHAPE of what was sent, which the caller can correct by sending something
+	 * else, while these three are conflicts with rows already in the database - two people's
+	 * stored genders, a question already standing, a pair already held - and no rewriting of
+	 * the request changes any of them.
+	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
 	/** Two people of one gender, which is the one placement {@code racing_pair} has no room for. */

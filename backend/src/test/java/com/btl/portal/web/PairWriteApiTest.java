@@ -152,6 +152,9 @@ class PairWriteApiTest {
 
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
+	/** Somebody who registered and has no member number yet, which V16 made a real row. */
+	private static final String NO_NUMBER = "bez-broja@primer.rs";
+
 	/** A number nobody in the fixture carries, and the fixture says so out loud. */
 	private static final String NOBODY = "999999";
 
@@ -1108,5 +1111,111 @@ class PairWriteApiTest {
 
 		assertThat(howManyQuestions()).isEqualTo(3);
 		assertThat(howManyPairs()).isEqualTo(4);
+	}
+
+	/**
+	 * A FEE THAT HAS LAPSED REFUSES NEITHER THE QUESTION NOR THE ANSWER, AND THAT IS A
+	 * BOUNDARY WITH A CASE RATHER THAN A SENTENCE IN A COMMENT.
+	 *
+	 * <p>„Par se raskida kad jedna strana ne produzi clanarinu" (owner, 11.08.2026, „Ne
+	 * postoji par onda, raskida se") is enforced by the READER and not here:
+	 * {@code PairApiTest.aPairWhoseHalfDidNotRenewTheFeeIsNotServed} holds that half over the
+	 * public list, and this is the other half.
+	 *
+	 * <p><b>Asked here it would be a question about the wrong season.</b>
+	 * {@code competitor.active} speaks about the season being RUN while a pair is made for the
+	 * one that is not, and {@code membership (competitor_id, season, basis)} has no row for the
+	 * season being formed until it goes on sale on 1 October - so a condition over either
+	 * column would refuse EVERY pair agreed between January and September, and this fixture
+	 * stands in March. PDL P13 points the same way: a change „se sme zatraziti bilo kad tokom
+	 * godine" and only „stupa na snagu tek 1. januara ... i to samo ako su clanarine izmirene".
+	 *
+	 * <p><b>Both halves lapse in turn</b>, because a condition written about the member who is
+	 * asked passes one written about the member who asks, and they are one sentence read twice.
+	 */
+	@Test
+	void aFeeThatHasLapsedRefusesNeitherTheQuestionNorTheAnswer() throws Exception {
+		lapsed(SHE_IS_ASKED);
+		lapsed(HE_ASKED_HER);
+
+		assertThat(db.sql("select count(*) from competitor where not active")
+				.query(Long.class).single())
+				.as("nobody in this fixture has let a fee lapse, so both halves below are about"
+						+ " nothing at all")
+				.isEqualTo(2);
+
+		assertThat(askAs(HE_ASKS, asking(SHE_IS_ASKED)).getStatus())
+				.as("a member was refused because the one he asked had not renewed, which is a"
+						+ " question about the season being run and not the one being formed")
+				.isEqualTo(201);
+
+		assertThat(answerAs(SHE_ANSWERS, questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true))
+				.getStatus())
+				.as("a member was refused because the one who asked him had not renewed")
+				.isEqualTo(200);
+
+		assertThat(howManyPairsOf(HE_ASKED_HER, SHE_ANSWERS, BEING_FORMED))
+				.as("the pair was not written, so what this case measured is not the fee")
+				.isOne();
+	}
+
+	/**
+	 * AND A MEMBER WHO HAS REGISTERED BUT HAS NO NUMBER YET MAY STILL ANSWER A QUESTION.
+	 *
+	 * <p>{@code PairApiTest} left this open in as many words - „Whether somebody without one
+	 * may be in a pair is a question for the flow that makes pairs and not for a reader" - and
+	 * this route IS that flow, so it is answered here with a case rather than asked again.
+	 * Since V16 a row in {@code competitor} is a person who REGISTERED and a member is a row
+	 * whose number is there, so such a row really exists, and {@link PairApi} already answers a
+	 * pair with a missing number rather than failing over it.
+	 *
+	 * <p><b>The other direction is not a rule but an address:</b> nobody can ASK him, because
+	 * the question names its target by the number on his card and a row without one matches no
+	 * number at all. Written down here so that nobody later reads it as a decision.
+	 */
+	@Test
+	void aMemberWithNoNumberYetMayStillAnswerAQuestion() throws Exception {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+						+ " shirt_size, health_statement_at)"
+						+ " values (null, 'Bez', 'Broja', 'F', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-01-01 10:00:00+00')")
+				.param(String.format("%016x", ++issued))
+				.update();
+
+		long her = db.sql("select id from competitor where last_name = 'Broja'")
+				.query(Long.class).single();
+
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
+						+ " ('Bez', 'Broja', ?, (select id from role where code = 'competitor'), ?)")
+				.params(NO_NUMBER, her).update();
+		openSession(NO_NUMBER);
+
+		db.sql("insert into pair_invite (from_id, to_id) values (?, ?)")
+				.params(competitorId(FIRST_MAN), her).update();
+
+		long question = db.sql("select id from pair_invite where to_id = ?").param(her)
+				.query(Long.class).single();
+
+		assertThat(sent(put("/api/pairs/" + question), answering(true),
+				new Cookie(SessionCookie.NAME, sessions.get(NO_NUMBER).secret())).getStatus())
+				.as("a member who has registered and has no number yet was refused a pair, which"
+						+ " is a rule nobody wrote")
+				.isEqualTo(200);
+
+		assertThat(db.sql("select count(*) from racing_pair where man_id = ? and woman_id = ?"
+						+ " and season = ?")
+				.params(competitorId(FIRST_MAN), her, BEING_FORMED).query(Long.class).single())
+				.as("the pair was not written")
+				.isOne();
+	}
+
+	/** Somebody who did not renew, which lowers a flag and deletes nobody. */
+	private void lapsed(String memberNumber) {
+		db.sql("update competitor set active = false where member_number = ?")
+				.param(memberNumber).update();
 	}
 }
