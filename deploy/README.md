@@ -42,7 +42,7 @@ docker compose -f compose.prod.yml up -d --build frontend backend
 
 The build is split in two on purpose, exactly as on QA. `up --build` builds
 services in parallel, and the Maven build and the npm build together peak at
-more memory than this 4 GB host has to spare next to the running site. Building
+more memory than this 3.7 GB host has to spare next to the running site. Building
 the backend first makes the two peaks consecutive; the second command then finds
 the backend image already built and only builds the frontend.
 
@@ -252,7 +252,7 @@ heap from it.
 
 That is 1152 MB of ceiling here and another 1152 MB on QA, against roughly
 450 MB for the OS and Docker and some 55 MB for the edge proxy and the nginx
-containers: about 2.8 GB of 4 GB if every limit were reached at once, which they
+containers: about 2.8 GB of 3.7 GB if every limit were reached at once, which they
 are not, since QA measured 350 MB at rest for the same pair. The limits are
 ceilings, not reservations.
 
@@ -410,7 +410,7 @@ docker compose -f compose.qa.yml up -d --build frontend backend
 
 The build is split in two on purpose. `up --build` builds services in parallel,
 and the Maven build and the npm build together peak at more memory than this
-4 GB host has to spare next to the running site. Building the backend first
+3.7 GB host has to spare next to the running site. Building the backend first
 makes the two peaks consecutive; the second command then finds the backend image
 already built and only builds the frontend.
 
@@ -574,7 +574,7 @@ is attached to.
   less. It is not a copy of that script: a second copy would drift from the first,
   and the honest form is one script that takes the stack as a parameter, measured
   on the host rather than here. The reference database it builds is a throwaway
-  `postgres:18` container, which on this 4 GB host next to the live site is a
+  `postgres:18` container, which on this 3.7 GB host next to the live site is a
   decision of its own.
 - Security headers are set only at the edge. Setting the non-TLS ones
   (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) in

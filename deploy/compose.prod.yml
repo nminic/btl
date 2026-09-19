@@ -41,7 +41,7 @@
 # Never run "docker compose down" here: it deletes the shared network the edge
 # proxy is attached to. To restart one service, use "restart <service>".
 #
-# Memory: the host has 4 GB in total and also carries the edge proxy and the
+# Memory: the host has 3.7 GB in total and also carries the edge proxy and the
 # whole QA stack. The two services added here therefore carry an explicit
 # mem_limit, the same numbers QA measured, so a runaway JVM heap cannot take the
 # public site down with it. The arithmetic is in deploy/README.md, under "What
@@ -160,7 +160,7 @@ services:
       # coming up at all.
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
       # The JVM sizes the heap from the cgroup limit below, not from the host's
-      # 4 GB, so this is what keeps it from taking a quarter of the machine.
+      # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
       # native memory next to the heap.
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=55 -XX:+UseSerialGC -Xss512k"
