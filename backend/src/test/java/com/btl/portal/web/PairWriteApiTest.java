@@ -1204,6 +1204,40 @@ class PairWriteApiTest {
 	}
 
 	/**
+	 * AND A QUESTION FROM SOMEBODY WHO STOPPED PAYING AFTER HE ASKED CANNOT BE ACCEPTED.
+	 *
+	 * <p>The case above lapses the member who ANSWERS; this one lapses the member who ASKED,
+	 * and the two are the only reason the fee is read again at the moment of the answer rather
+	 * than trusted from the row. A question outlives the state it was asked in - that is the
+	 * whole of PDL's decision of 07.09.2026 about accepting - so between the two moments either
+	 * of them may have stopped being a member, and the pair this would write is one
+	 * {@link PairApi} would refuse to serve from the instant it existed.
+	 *
+	 * <p>The question itself is left standing, which is the same answer an impossible one gets:
+	 * nothing decided that a lapse closes somebody else's question for him.
+	 */
+	@Test
+	void aQuestionFromSomebodyWhoStoppedPayingCannotBeAccepted() throws Exception {
+		long question = questionFrom(HE_ASKED_HER, SHE_ANSWERS);
+
+		lapsed(HE_ASKED_HER);
+
+		MockHttpServletResponse answer = answerAs(SHE_ANSWERS, question, answering(true));
+
+		assertThat(answer.getStatus())
+				.as("the member who asked stopped paying after he asked, and the pair was written"
+						+ " anyway")
+				.isEqualTo(404);
+		assertThat(answer.getContentAsString()).isEmpty();
+
+		assertThat(howManyPairsOf(HE_ASKED_HER, SHE_ANSWERS, BEING_FORMED)).isZero();
+		assertThat(db.sql("select count(*) from pair_invite where id = ?").param(question)
+				.query(Long.class).single())
+				.as("the question was closed although nothing was decided about it")
+				.isOne();
+	}
+
+	/**
 	 * THE READER AND THIS ROUTE AGREE ON WHICH PAIRS STILL HOLD, WHICH IS THE FLOOR UNDER ONE
 	 * FACT LIVING IN TWO PLACES.
 	 *
