@@ -321,6 +321,65 @@ class InboxWriteApiTest {
 	}
 
 	/**
+	 * A BODY NOBODY CAN READ SAYS NOTHING TO AN ACCOUNT THIS ADDRESS IS NOT FOR, AND STILL
+	 * SAYS WHAT IS WRONG TO ONE IT IS FOR.
+	 *
+	 * <p><b>Round two of review measured the leak this closes.</b> With the body declared as
+	 * the record, it was read while ARGUMENTS WERE RESOLVED - before the first line of the
+	 * handler - so a signed in account with no member behind it sent
+	 * {@code Content-Type: application/json} and the single character <code>{</code> and was
+	 * answered 400, while the same request to an address that maps nothing answered 404. One
+	 * request, and the difference says „a POST with a body lives here".
+	 *
+	 * <p><b>Both directions, because one of them alone is satisfied by a route that refuses
+	 * everybody.</b> The first half demands that the member-less account be told nothing; a
+	 * handler answering 404 to every malformed body would pass it and would take away the only
+	 * sentence the portal owes somebody whose request really is broken. The second half is
+	 * that sentence, and the last assertion says the two answers are not the same one.
+	 *
+	 * <p>The empty body is here for the same reason absent and blank are asked of every field:
+	 * „no body at all" and „a body that will not parse" are one answer, and both have to reach
+	 * it.
+	 */
+	@Test
+	void aBodyNobodyCanReadIsRefusedAfterWhoIsAskingAndNotBefore() throws Exception {
+		String notJson = "{";
+
+		MockHttpServletResponse toNoMember = writing(NO_MEMBER, notJson);
+		MockHttpServletResponse nothingIsThere = http.perform(post(NOTHING_IS_THERE).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(notJson)
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(NO_MEMBER).secret())))
+				.andReturn().getResponse();
+
+		assertThat(toNoMember.getStatus())
+				.as("an account with no member behind it was answered something other than what an"
+						+ " address that maps nothing answers, so a body the portal cannot read"
+						+ " tells him a POST lives at this address")
+				.isEqualTo(nothingIsThere.getStatus());
+		assertThat(toNoMember.getContentAsString())
+				.isEqualTo(nothingIsThere.getContentAsString());
+
+		MockHttpServletResponse toAMember = writing(SENDER_SIGNS_IN, notJson);
+
+		assertThat(toAMember.getStatus())
+				.as("a member this address really is for was not told his request is unusable")
+				.isEqualTo(400);
+		assertThat(toAMember.getContentAsString())
+				.contains(InboxWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(toAMember.getStatus())
+				.as("the two are one answer, so this route refuses everybody alike and the half"
+						+ " above measures nothing")
+				.isNotEqualTo(toNoMember.getStatus());
+
+		assertThat(writing(SENDER_SIGNS_IN, "").getStatus())
+				.as("a request carrying no body at all was answered differently from one carrying"
+						+ " a body that cannot be read")
+				.isEqualTo(400);
+
+		assertThat(messages()).as("something was written from a body nobody could read").isEqualTo(3);
+	}
+
+	/**
 	 * IT LANDS IN HIS INBOX, AND IN NOBODY ELSE'S - NOT THE SENDER'S AND NOT A THIRD
 	 * MEMBER'S.
 	 *

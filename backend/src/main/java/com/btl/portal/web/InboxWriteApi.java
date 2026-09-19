@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.inbox.WhoseMessageItIs;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -8,8 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -102,6 +104,45 @@ import java.util.Optional;
  * member is a list this portal hands to anybody who asks, signed in or not. A refusal that
  * said nothing would only cost the member an unexplained silence.
  *
+ * <h2>AND THE SENDER, WHICH IS PDL'S RULE OF 13.09.2026 ANSWERED IN THE SHAPE IT DEMANDS</h2>
+ *
+ * <p>PDL P11, „[PRAVILO 13.09.2026, izvedeno cetiri puta pa zapisano jednom] Nijedan javni
+ * odgovor ne sme da imenuje clana kome je clanarina istekla, NI POSREDNO", with the check
+ * every new resource owes: „koji od ova tri oblika vazi ovde, i zasto bas taj? Ako se odgovor
+ * ne moze izvesti iz zapisanog, pita se vlasnik, ne pogadja se."
+ *
+ * <p><b>THE SECOND FORM APPLIES, and the rule names the resource it was drawn from while
+ * describing it.</b> „Izostaje samo broj kad red nosi i nesto sto po odluci mora da ostane.
+ * Tako rade komentari: ime ostaje, jer komentar „ostaje sa imenom pod kojim je objavljen", a
+ * broj je veza ka profilu koji taj covek nema."
+ *
+ * <ul>
+ * <li><b>What the answer carries about the sender is a NAME and nothing else.</b>
+ * {@link InboxApi.Item} serves {@code from}, which is {@code message.from_name}; there is no
+ * field for his number and {@code from_id} never leaves, exactly as {@code to_id} never does.
+ * <li><b>And the name is one that by decision must stay</b>, in V13's own words and in the
+ * same breath as the comment the rule cites: „A message outlives its sender for the same
+ * reason a decision outlives the moderator who made it (V9) and a comment outlives its author
+ * (V7): the member may ask to be deleted (PDL P23) and what he wrote does not go with him.
+ * The pointer empties, the name does not."
+ * <li><b>So the form is satisfied by the SCHEMA and not by a condition in this class.</b>
+ * {@link CommentApi} needs {@code case when author.active then author.member_number end}
+ * because {@code event_comment} serves a number; {@code message} has no such column at all,
+ * so there is no number here to leave out.
+ * <li><b>The other two forms do not fit, and that is why rather than a preference.</b> The
+ * first („ceo red izlazi kad je clanski broj jedino sto red o coveku nosi. Tako rade PAROVI i
+ * najave dolaska") is what {@link PairWriteApi} answers, and it turns on those answers
+ * carrying the number and nothing else - the opposite of this one. The third („krije se samo
+ * tekuca sezona") is for a row bound to a season, which {@link ResultApi} is and a message is
+ * not: {@code message} has no season and a message is not undone by a New Year.
+ * <li><b>And the leak the rule exists against cannot be run here.</b> Its own reason is that
+ * such a member „nije na spisku takmicara uopste", so another answer naming him says who has
+ * not paid BY THE DIFFERENCE between two lists - and {@link PairWriteApi} spells out how that
+ * is walked: „member numbers are consecutive, so walking them turned the difference between
+ * those answers into a countable list". There is no number in this answer to walk, and the
+ * answer goes to one member's own inbox rather than to anybody who asks.
+ * </ul>
+ *
  * <p><b>THE SHAPE OF THE NUMBER IS NOT CHECKED HERE.</b> {@code competitor_member_number_shape}
  * is six digits and the lookup is an equality against that column, so anything that is not a
  * member number matches nothing and takes the one refusal above. A pattern written here
@@ -118,7 +159,9 @@ import java.util.Optional;
  * INBOKSU)", with the reason beside it - „mejl zamor ubija dostavljivost... Tisina na
  * sporednom je ono sto stiti vazno." The switch itself is {@code notification_setting}, which
  * V13 built in this same migration with {@code inbox_mail boolean not null default false},
- * and the increment that writes it is a separate item of the September block. So there is no
+ * and the increment that writes it is <b>item 5 of the September block, which since 19.09.2026
+ * exists: {@code PUT /api/me/notifications} (B84)</b>. Until it is merged and a member has
+ * actually turned {@code inbox_mail} on, no member on this portal has chosen mail. So there is no
  * member on this portal who has chosen mail, this class reads no switch, and it invents no
  * default: the default is already written down, in the schema, by whoever decided it.
  * <li><b>WHICH KIND OF MESSAGE THIS IS BY A4c, ASKED BECAUSE THE ANSWER DECIDES WHEN IT
@@ -146,6 +189,35 @@ import java.util.Optional;
  * nullable precisely because „The portal itself is a sender too, and it has no row in
  * {@code competitor} at all", while every row THIS class writes fills it and names a
  * member. Nothing here is a second home for any of them.
+ * <li><b>WHETHER A MEMBER WHOSE FEE HAS LAPSED MAY WRITE AT ALL. THIS IS AN OPEN QUESTION
+ * AND IT IS THE OWNER'S, NOT THIS CLASS'S.</b> The paragraph above answers what an answer may
+ * NAME, which is what PDL's rule of 13.09.2026 decides. Whether such a member may ACT is a
+ * different question and nothing written answers it.
+ * <ul>
+ *   <li><b>Measured rather than felt.</b> {@code SignInApi} does not read {@code active}, so
+ *   a member whose fee has lapsed holds a session; today this route accepts his message and
+ *   his name lands in an active member's inbox.
+ *   <li><b>Every place on this portal that reads {@code active} reads it about somebody being
+ *   NAMED in an answer</b>, never about whoever is asking: {@link CompetitorApi}
+ *   („where c.active"), {@link AttendanceApi}, {@link PairApi}, {@link CommentApi} (the number
+ *   alone), {@link ResultApi} (the season alone), {@link MyApplicationsApi} (the other half).
+ *   <li><b>The one route that does ask it of the asker says why, and the why is not general.</b>
+ *   {@link PairWriteApi} reads it on both sides because of a decision about PAIRS - owner,
+ *   11.08.2026, „Par se raskida kad jedna strana ne produzi clanarinu. Ne postoji par onda,
+ *   raskida se" - and its own note corrects an earlier attempt to derive a general rule from it.
+ *   <li><b>And the freshest member-written route does not ask it at all.</b>
+ *   {@link TeamWriteApi}, merged 19.09.2026 for a member founding a team, reads
+ *   {@code active} nowhere. So the portal has not decided this; it has not come up.
+ *   <li><b>What is known about the consequence, for whoever decides:</b> such a member is on no
+ *   list {@link CompetitorApi} serves, and this route names the addressee by a member number,
+ *   so a message from him is one the recipient cannot answer. PDL P22 says only „Skriven
+ *   profil, jer clanstvo nije aktivno... profil se ne prikazuje", and PDL P10 built the inbox
+ *   for „ponuda i trazenje prevoza za trku", which is exactly the sort of thing somebody
+ *   between two paid seasons would write.
+ * </ul>
+ * The rule itself says what to do with a question that cannot be derived: „pita se vlasnik, ne
+ * pogadja se." So nothing is refused here and nothing is decided here, and this bullet is the
+ * question rather than an answer.
  * <li><b>A LENGTH.</b> V13 caps neither {@code subject} nor {@code body}, the portal has no
  * form for writing a message at all - there is no {@code *.form.json} for one and no screen
  * that sends - and no other writing route on this server invents a length either
@@ -234,9 +306,19 @@ class InboxWriteApi {
 
 	private final MemberOfAccount memberOfAccount;
 
-	InboxWriteApi(JdbcClient db, MemberOfAccount memberOfAccount) {
+	/**
+	 * The one the rest of this application reads bodies with, asked for rather than made.
+	 *
+	 * <p>A mapper built here would be a second set of rules about what a request may carry -
+	 * unknown fields, dates, nulls - free to disagree with the one every other route uses,
+	 * and the disagreement would show up as a field silently not arriving.
+	 */
+	private final ObjectMapper json;
+
+	InboxWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, ObjectMapper json) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.json = json;
 	}
 
 	/**
@@ -274,24 +356,75 @@ class InboxWriteApi {
 	}
 
 	/**
+	 * THE BODY ARRIVES AS BYTES AND IS READ ONLY AFTER „MAY HE" IS ANSWERED, AND THAT ORDER
+	 * IS THE WHOLE OF WHY THIS SIGNATURE IS NOT {@code @RequestBody Written}.
+	 *
+	 * <p><b>Measured, not foreseen.</b> Written the ordinary way, a signed in account with no
+	 * member behind it sent {@code Content-Type: application/json} and the single character
+	 * <code>{</code> and was answered <b>400</b>, while the same request to an address that
+	 * maps nothing answered <b>404</b>. The body is read while ARGUMENTS ARE RESOLVED, which
+	 * is before the first line of this method, so the refusal below never ran. One request,
+	 * and the difference says „a POST with a body lives at this address" - which is exactly
+	 * what the note at the top of this class claims is impossible, and what ADL A8 forbids:
+	 * „Zatvorena vrata ne kazu nista."
+	 *
+	 * <p><b>Why it is not solved at the door, said out loud because that IS the portal's
+	 * shape for this.</b> {@link RightsAtTheDoor} decides in {@code preHandle}, before any
+	 * argument is resolved, which is why a route wearing {@link RightIsNeeded} answers 404 to
+	 * the same three probes. But it knows exactly two kinds of guard - a box the superadmin
+	 * ticks, and {@link OnlyTheSuperadmin} - and „does this account name a member" is neither.
+	 * It is not a privilege at all: {@code RightsAtTheDoorTest} says in as many words that
+	 * „there is no box to tick for having an inbox at all; it is not a privilege a superadmin
+	 * grants, it is a consequence of being a member." A third kind would be a new annotation
+	 * wearing {@link AskedAtTheDoor}, and that mark means „a right decides here" to every
+	 * floor that counts guarded routes - so {@code everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn}
+	 * would demand that a plain member be REFUSED this route, which is the opposite of what
+	 * it is for. So the door is not widened; the order inside this method is fixed instead.
+	 *
+	 * <p><b>What that costs, named rather than left to be found.</b> A body this portal cannot
+	 * read is answered by this class instead of by the container: the STATUS is the same 400
+	 * Spring answered before, and what changes is that the body now carries this class's own
+	 * {@link #THE_FORM_IS_NOT_COMPLETE} rather than the error document. The two are one answer
+	 * here on purpose - a request whose body cannot be read is one in which no field arrived at
+	 * all - and a caller who sees it is, by the line above, always somebody this address really
+	 * is for.
+	 *
+	 * <p><b>AND IT IS NOT {@code @RequestBody(required = false)}, WHICH WAS THE FIRST DRAFT AND
+	 * WAS MEASURED WRONG THE SAME HOUR.</b> That annotation does two things, and only one of
+	 * them is wanted: it stops an absent body being an exception, and it also tells
+	 * {@code ConsumesRequestCondition} that the body is optional - after which the condition
+	 * SKIPS ITSELF for any request that carries no body at all
+	 * ({@code if (!hasBody(request) && !this.bodyRequired) return EMPTY_CONDITION}). So
+	 * {@code consumes} stopped guarding the very door it was added for, and a {@code POST} with
+	 * no {@code Content-Type} went from 404 to 400.
+	 * {@code anAddressThatWantsJsonAndIsSentNoneIsAnAddressThatIsNotThere} is what caught it.
+	 *
+	 * <p>Taking the request instead leaves that flag at its default of {@code true}, so
+	 * {@code consumes} goes on refusing before anything is dispatched, and nothing is read from
+	 * the body until this method asks for it.
+	 *
+	 * @param request  the request, whose body is not touched until „may he" is answered
 	 * @param response asked for so a refusal can go down the same road an address that is
 	 *                 not there takes, exactly as {@link InboxApi#inbox} does on the other
 	 *                 verb of this same path
 	 */
 	@PostMapping(path = "/api/inbox", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> write(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@RequestBody Written typed, HttpServletResponse response) throws IOException {
+			HttpServletRequest request, HttpServletResponse response) throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race. There is nobody to send a message FROM, and the
-		   answer is the one InboxApi already gives him on the reading side. */
+		   answer is the one InboxApi already gives him on the reading side. ASKED FIRST,
+		   before a byte of what he sent is looked at, for the reason above. */
 		if (me == null) {
 			return away(response);
 		}
 
-		if (isNothing(typed.to()) || isNothing(typed.subject())) {
+		Written typed = read(request.getInputStream().readAllBytes());
+
+		if (typed == null || isNothing(typed.to()) || isNothing(typed.subject())) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -310,6 +443,33 @@ class InboxWriteApi {
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Sent(written, subjectWrittenDown(written)));
+	}
+
+	/**
+	 * WHAT WAS SENT, TURNED INTO THE RECORD, OR NOTHING AT ALL.
+	 *
+	 * <p>The application's own {@link ObjectMapper} and not one made here, so a body is read
+	 * exactly as {@code @RequestBody} would have read it - unknown fields dropped and all -
+	 * and the only thing this increment changed about reading it is WHEN.
+	 *
+	 * <p>Absent, empty and unreadable are one answer and not three, for the same reason
+	 * {@link #isNothing} makes three shapes of a blank field into one: none of them carries a
+	 * single value this route could act on, and the caller who sees the refusal is by then
+	 * always somebody the address is really for.
+	 *
+	 * <p><b>Written with no condition of its own, and that is deliberate rather than terse.</b>
+	 * {@code readAllBytes} answers an empty array for a request that carried nothing, so a
+	 * check for one would be a branch beside a road that already goes where it should: Jackson
+	 * refuses empty input exactly as it refuses input it cannot parse, and both are the one
+	 * answer this route has for a request with nothing in it.
+	 */
+	private Written read(byte[] sent) {
+		try {
+			return json.readValue(sent, Written.class);
+		}
+		catch (JacksonException cannot) {
+			return null;
+		}
 	}
 
 	/**
@@ -380,6 +540,21 @@ class InboxWriteApi {
 	 * answers the identical account with {@code sendError}. Built any other way, a member-less
 	 * account could tell the two verbs apart by the shape of the refusal and learn from the
 	 * difference that writing lives at an address the portal never offered him.
+	 *
+	 * <p><b>AND NO CASE ON THIS BRANCH CAN FALL WHEN THIS LINE IS TURNED INTO
+	 * {@code setStatus}, WHICH IS A BOUNDARY AND IS WRITTEN DOWN RATHER THAN LEFT TO BE
+	 * FOUND.</b> Measured on this branch: the swap leaves the suite green with exit code 0.
+	 * The difference between the two is only visible over a REAL SOCKET - {@link RightsAtTheDoor}
+	 * measured it at 262 bytes against 412, because {@code sendError} runs the container's ERROR
+	 * dispatch and a status written onto the response does not - and MockMvc runs no ERROR
+	 * dispatch at all, so it cannot tell them apart however this line is written.
+	 *
+	 * <p>The one place on this portal that measures it is {@code RightsOverRealHttpTest}, and
+	 * for {@code /api/inbox} it asks only the {@code GET}. A case for this verb belongs beside
+	 * that one; it is not written here because that file is held by another branch in review,
+	 * and a copy of its machinery made in this one would be the imitation the note above is
+	 * about. So: the SHAPE of this refusal is argued, not measured, and that is the exact
+	 * extent of what is claimed.
 	 *
 	 * <p>Returning {@code null} afterwards is how {@link InboxApi} says the same thing: the
 	 * error has been committed and there is no body left to write.
