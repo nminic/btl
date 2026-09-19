@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -33,8 +34,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -374,6 +378,114 @@ class RightsOverRealHttpTest {
 		return out;
 	}
 
+	/**
+	 * THE PORTAL'S OWN ADDRESSES THAT ANSWER THIS VERB AND NO OTHER, in one order, asked of
+	 * the dispatcher.
+	 *
+	 * <p><b>Written down by hand until 19.09.2026, and each of them was a fact with a date
+	 * on it.</b> {@code ProbeRoutes} named {@code /api/teams} as the address that takes only
+	 * a {@code GET}; teams get a {@code POST} in the increment beside this one, and on that
+	 * day the case below would have gone on passing while its subject changed underneath it -
+	 * from "a verb this address does not take" to "a media type this address does not take",
+	 * which is a different sentence with the same green tick. Nothing would have said so.
+	 *
+	 * <p><b>The methods are read off the mapping and not off the annotation</b>, the way
+	 * {@code RightsAtTheDoorTest} reads them, so a route written with
+	 * {@code @RequestMapping(method = ...)} counts exactly as one written with
+	 * {@code @GetMapping}. A mapping that limits no verb has an empty condition and matches
+	 * no single verb here, which is right: it answers all of them.
+	 *
+	 * <p><b>And probes are left out, asked of the annotation rather than of a list of their
+	 * addresses.</b> Both probe configurations are imported into this context and both map
+	 * routes nobody outside a test can reach; a case that says "one of the portal's own
+	 * routes" must not quietly move onto one of them the day it happens to sort first. What
+	 * marks them is that their controller is nested inside a {@code @TestConfiguration},
+	 * which is what being a probe IS - there is nothing else to recognise and no name to
+	 * keep.
+	 */
+	private List<String> takesOnly(String verb) {
+		Map<String, Set<String>> verbs = new TreeMap<>();
+
+		mappings.getHandlerMethods().forEach((info, handler) -> {
+			if (!isAProbe(handler)) {
+				PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
+				Set<String> answers = info.getMethodsCondition().getMethods().stream()
+						.map(Enum::name).collect(Collectors.toSet());
+
+				for (String path : patterns == null ? info.getDirectPaths()
+						: patterns.getPatternValues()) {
+					verbs.computeIfAbsent(path, any -> new HashSet<>()).addAll(answers);
+				}
+			}
+		});
+
+		return verbs.entrySet().stream()
+				.filter(one -> one.getValue().equals(Set.of(verb)))
+				.map(Map.Entry::getKey).toList();
+	}
+
+	/**
+	 * A route registered only while a case is asking, which is what a probe is.
+	 *
+	 * <p><b>It changes nothing today, and that is measured rather than hoped.</b> Taking it
+	 * out on 19.09.2026 left both cases green: the {@code GET} order is narrowed to the open
+	 * list, which holds no probe, and the first address in the {@code POST} order is
+	 * {@code /api/email-confirmation}, which sorts ahead of the one probe that takes only a
+	 * {@code POST}. So this is a precaution and not a repair, written down as one - it is
+	 * here for the day a probe does sort first, which is the day the case would stop being
+	 * about the portal and start being about the test's own scaffolding, with nothing to say
+	 * so. What DOES fall when the derivation finds nothing is measured beside it: asked for a
+	 * verb no address takes alone, both methods below fail on their own sentence rather than
+	 * settling for the nearest address.
+	 */
+	private static boolean isAProbe(HandlerMethod handler) {
+		Class<?> nestedIn = handler.getBeanType().getEnclosingClass();
+
+		return nestedIn != null && nestedIn.isAnnotationPresent(TestConfiguration.class);
+	}
+
+	/**
+	 * AND THE ONE THE CASES BELOW USE, which is the first in that order and is asserted to
+	 * exist rather than assumed.
+	 *
+	 * <p>The anchor of the {@code GET} case is that a stranger reading the address is
+	 * answered 200, so the address has to be one anybody may read - {@code ApiSecurity}'s own
+	 * open list, and not a guess. Without that condition the first address in the order would
+	 * be one the chain refuses, the anchor would fail, and the case would be reporting a
+	 * broken fixture instead of a rule.
+	 */
+	private String takesOnlyGet() {
+		List<String> only = takesOnly("GET").stream()
+				.filter(ApiSecurity.READ_BY_ANYBODY::contains).toList();
+
+		assertThat(only)
+				.as("the portal maps no open address for GET alone, so there is nothing to ask"
+						+ " about a verb an address does not take; this needs a decision rather"
+						+ " than the nearest address")
+				.isNotEmpty();
+
+		return only.getFirst();
+	}
+
+	/**
+	 * AND THE SAME QUESTION FOR THE ONE THAT TAKES ONLY A WRITE.
+	 *
+	 * <p>No condition about the open list here, and there could not be one: the open list is
+	 * about reading, and an address that answers nothing but a {@code POST} is on it by
+	 * accident or not at all. What the case below needs of it is only that a {@code POST}
+	 * reaches something - anything but a 404 - which every mapped address satisfies.
+	 */
+	private String takesOnlyPost() {
+		List<String> only = takesOnly("POST");
+
+		assertThat(only)
+				.as("the portal maps no address for POST alone, so there is nothing to ask about"
+						+ " a read of a route that only takes a write")
+				.isNotEmpty();
+
+		return only.getFirst();
+	}
+
 	private static String twinOf(String path) {
 		String sameParent = path.substring(0, path.lastIndexOf('/') + 1);
 
@@ -612,19 +724,24 @@ class RightsOverRealHttpTest {
 	 * {@code Allow: GET} and {@code DELETE /api/sign-in} answered 405 with {@code Allow:
 	 * POST}, while {@code DELETE} on an address mapping nothing answered 404.
 	 *
-	 * <p>Asked of {@code /api/teams}, one of the portal's own routes rather than a probe,
-	 * and with the token, so that the CSRF filter is not what is being measured.
+	 * <p>Asked of one of the portal's own routes rather than a probe, and with the token, so
+	 * that the CSRF filter is not what is being measured. WHICH route is asked of the
+	 * dispatcher by {@link #takesOnlyGet()} rather than written here, and that changed on
+	 * 19.09.2026: it used to be the word {@code /api/teams}, which is mapped for {@code GET}
+	 * alone only until the increment that gives teams a {@code POST}.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"DELETE", "PUT", "PATCH", "POST"})
 	void aMethodAnAddressDoesNotTakeAnswersLikeAnAddressThatIsNotThere(String method)
 			throws Exception {
-		assertThat(answerTo("GET", ProbeRoutes.TAKES_ONLY_GET, null))
+		String onlyGet = takesOnlyGet();
+
+		assertThat(answerTo("GET", onlyGet, null))
 				.as("%s is not a route that answers a plain read, so this comparison is between"
-						+ " two addresses that are both missing", ProbeRoutes.TAKES_ONLY_GET)
+						+ " two addresses that are both missing", onlyGet)
 				.startsWith("HTTP/1.1 200");
 
-		assertThat(answerTo(method, ProbeRoutes.TAKES_ONLY_GET, WITHOUT_THE_TICK))
+		assertThat(answerTo(method, onlyGet, WITHOUT_THE_TICK))
 				.as("the answer listed which methods the address takes, which is the same"
 						+ " sentence as saying it is there")
 				.doesNotContain("Allow:");
@@ -634,8 +751,7 @@ class RightsOverRealHttpTest {
 		   gets 401 for the twin and 404 for the real one and the two would differ for a
 		   reason that has nothing to do with this rule. The oracle belongs to somebody who
 		   is signed in, which is every member of the league. */
-		answersTheSameWay(method, ProbeRoutes.TAKES_ONLY_GET, twinOf(ProbeRoutes.TAKES_ONLY_GET),
-				WITHOUT_THE_TICK);
+		answersTheSameWay(method, onlyGet, twinOf(onlyGet), WITHOUT_THE_TICK);
 	}
 
 	/**
@@ -646,24 +762,27 @@ class RightsOverRealHttpTest {
 	 * never meets that filter, so a {@code GET} of a route mapped only for {@code POST}
 	 * answered 405 with {@code Allow: POST} to somebody carrying nothing but a session.
 	 *
-	 * <p>Signing in is the one route in the portal today that takes only a {@code POST}, and
-	 * it is asked here without a token on purpose, so that nothing but the rule about
-	 * methods can be what makes the two answers alike.
+	 * <p>Asked here without a token on purpose, so that nothing but the rule about methods
+	 * can be what makes the two answers alike. WHICH route it is asked of comes off the
+	 * dispatcher by {@link #takesOnlyPost()}, for the reason written over that method: the
+	 * portal has several addresses that take nothing but a {@code POST}, the one that was
+	 * written down here was signing in, and a name in a case is a fact with a date on it.
 	 */
 	@Test
 	void aReadOfARouteThatOnlyTakesAWriteAnswersLikeAnAddressThatIsNotThere() throws Exception {
-		assertThat(answerTo("POST", ProbeRoutes.TAKES_ONLY_POST, null))
+		String onlyPost = takesOnlyPost();
+
+		assertThat(answerTo("POST", onlyPost, null))
 				.as("%s does not take a POST at all, so this compares two addresses that are"
-						+ " both missing", ProbeRoutes.TAKES_ONLY_POST)
+						+ " both missing", onlyPost)
 				.doesNotStartWith("HTTP/1.1 404");
 
-		assertThat(answerTo("GET", ProbeRoutes.TAKES_ONLY_POST, WITHOUT_THE_TICK, null))
+		assertThat(answerTo("GET", onlyPost, WITHOUT_THE_TICK, null))
 				.as("a plain read, carrying no token whatsoever, was told which methods the"
 						+ " address takes")
 				.doesNotContain("Allow:");
 
-		answersTheSameWay("GET", ProbeRoutes.TAKES_ONLY_POST, twinOf(ProbeRoutes.TAKES_ONLY_POST),
-				WITHOUT_THE_TICK, null);
+		answersTheSameWay("GET", onlyPost, twinOf(onlyPost), WITHOUT_THE_TICK, null);
 	}
 
 	/**
@@ -778,10 +897,17 @@ class RightsOverRealHttpTest {
 	 *
 	 * <p>Signing in with nothing in the body is a request the portal must go on refusing with
 	 * 400, because that is a sentence about what was SENT and not about what exists.
+	 *
+	 * <p><b>Signing in BY NAME, and it is the one place here that names an address on
+	 * purpose.</b> The two cases above want any address that takes a write and ask the
+	 * dispatcher for one; this one is about signing in - the request with a body the portal
+	 * must read, sent by somebody who is not signed in and so has nothing else to try. Any
+	 * other write would be a different sentence that happened to answer 400 as well, which is
+	 * a case measuring a number rather than a route.
 	 */
 	@Test
 	void anErrorInWhatWasSentIsStillAnsweredAsOne() throws Exception {
-		assertThat(answerTo("POST", ProbeRoutes.TAKES_ONLY_POST, null, A_TOKEN,
+		assertThat(answerTo("POST", "/api/sign-in", null, A_TOKEN,
 						"Content-Type: application/json\r\n"))
 				.as("a request the portal cannot read was answered as though the address did not"
 						+ " exist, so nothing can tell the sender what is wrong with it")
