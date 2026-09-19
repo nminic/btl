@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -165,9 +166,9 @@ class EveryRouteFindsATownByItsMarkTest {
 		for (Map.Entry<String, Probe> route : probes().entrySet()) {
 			for (Town town : theTwoTownsThatTellTheTwoReadingsApart()) {
 				assertThat(route.getValue().theKeyWrittenFor(town))
-						.as("%s was sent %s, by the mark %d that /api/places serves, and the row it"
-										+ " wrote names the town keyed %d instead of %s",
-								route.getKey(), town.name(), town.mark(), town.key(), town.key())
+						.as("%s was sent %s by the mark %d, which is what /api/places serves, and"
+										+ " the row it wrote does not name that town - whose key is %d",
+								route.getKey(), town.name(), town.mark(), town.key())
 						.isEqualTo(town.key());
 			}
 		}
@@ -261,7 +262,7 @@ class EveryRouteFindsATownByItsMarkTest {
 		form.put("firstName", "Petar");
 		form.put("lastName", "Petrovic");
 		form.put("fatherName", "Milorad");
-		form.put("birthDate", LocalDate.now().minusYears(30).toString());
+		form.put("birthDate", LocalDate.now(SeasonClock.ZONE).minusYears(30).toString());
 		form.put("gender", "M");
 		form.put("firstSeason2027", true);
 		form.put("email", address);
@@ -408,13 +409,21 @@ class EveryRouteFindsATownByItsMarkTest {
 	/**
 	 * A route as the METHOD it answers to and the address it answers at, which is how the
 	 * two files that already walk the dispatcher name one.
+	 *
+	 * <p><b>A mapping that declares no method answers EVERY verb there is</b> - plain
+	 * {@code @RequestMapping} writes that shape - and such a route is named {@code ANY} here
+	 * rather than dropped. Dropped, it would leave the floor silent about exactly the widest
+	 * route the portal could have; named, it does not match any row of the table and the
+	 * floor asks for a decision. No route on the portal has that shape today.
 	 */
 	private static Stream<String> namesOf(RequestMappingInfo info) {
 		Set<RequestMethod> declared = info.getMethodsCondition().getMethods();
 		PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
 		Set<String> paths = patterns == null ? info.getDirectPaths() : patterns.getPatternValues();
+		Stream<String> methods = declared.isEmpty() ? Stream.of("ANY")
+				: declared.stream().map(RequestMethod::name);
 
-		return declared.stream().flatMap(method -> paths.stream().map(path -> method + " " + path));
+		return methods.flatMap(method -> paths.stream().map(path -> method + " " + path));
 	}
 
 	private String account(String email) {
