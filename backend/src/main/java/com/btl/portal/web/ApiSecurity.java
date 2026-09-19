@@ -1,5 +1,7 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.rights.TheNamedSuperadmin;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -82,8 +84,18 @@ class ApiSecurity {
 					"/api/pricing",
 					"/api/pages");
 
+	/**
+	 * @param namedSuperadmin the address {@code deploy/.env} names, EMPTY BY DEFAULT so
+	 *                        that an installation which names nobody starts and serves
+	 *                        normally - „Portal mora da radi normalno, bez superadmina, i
+	 *                        bez pada". The default is the whole of that requirement: a
+	 *                        {@code @Value} without one refuses to build the context, so
+	 *                        every developer machine and every test would have to carry a
+	 *                        setting in order to start
+	 */
 	@Bean
-	SecurityFilterChain api(HttpSecurity http, JdbcClient db) throws Exception {
+	SecurityFilterChain api(HttpSecurity http, JdbcClient db,
+			@Value("${btl.superadmin.email:}") String namedSuperadmin) throws Exception {
 		String[] open = READ_BY_ANYBODY.toArray(String[]::new);
 
 		return http
@@ -274,7 +286,8 @@ class ApiSecurity {
 				   member would be answered 401 by a chain that was about to know who he
 				   is. `ApiSecurityTest` measures that a member reaches a route that asks
 				   for him. */
-				.addFilterBefore(new WhoIsAsking(db), AuthorizationFilter.class)
+				.addFilterBefore(new WhoIsAsking(db, new TheNamedSuperadmin(namedSuperadmin)),
+						AuthorizationFilter.class)
 				.exceptionHandling(handling -> handling
 						.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 				.build();

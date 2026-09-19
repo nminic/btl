@@ -162,7 +162,14 @@ class WhatEachStackRequiresTest {
 				"PROD_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
 				"PROD_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
 				"PROD_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"PROD_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
+				"PROD_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				/* The superadmin's address, and the only setting here that is not
+				   stack-prefixed: it names the same person on both stacks, so the files
+				   share the NAME while their .env files keep their own values. It
+				   deploys without it on purpose - a portal with no superadmin is a
+				   smaller failure than a portal that will not come up - and it reaches
+				   exactly one value, the backend that reads it. */
+				"BTL_SUPERADMIN_EMAIL", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
 
 		table.put("compose.qa.yml", Map.of(
 				"QA_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
@@ -171,7 +178,12 @@ class WhatEachStackRequiresTest {
 				"QA_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
 				"QA_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
 				"QA_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"QA_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
+				"QA_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+				/* The same address on this stack, spelled the same way, and the reason
+				   is written beside it in both files: the owner administers QA and
+				   production alike, so this is the one thing the two stacks are meant
+				   to agree about. */
+				"BTL_SUPERADMIN_EMAIL", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
 
 		/* The development stack in the repository root, which CLAUDE.md tells a developer
 		   to run as `docker compose up -d postgres`. Its password is required too, and it
