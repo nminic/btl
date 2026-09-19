@@ -22,6 +22,8 @@ import { Teams } from '../pages/Teams'
 import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
 import { Registration } from '../pages/Registration'
+import { ConfirmAddress } from '../pages/account/ConfirmAddress'
+import { NewPassword } from '../pages/account/NewPassword'
 import { StaticPage } from '../pages/StaticPage'
 import { Admin } from '../pages/admin/Admin'
 import { Entities } from '../pages/admin/Entities'
@@ -64,6 +66,8 @@ const SCREENS: Record<string, ReactElement> = {
   lige: <Leagues />,
   registracija: <Registration />,
   prijava: <SignIn />,
+  'nova-lozinka': <NewPassword />,
+  'potvrda-adrese': <ConfirmAddress />,
   'moj-profil': <MyProfile />,
   'moji-rezultati': <MyResults />,
   'moja-clanarina': <Membership />,

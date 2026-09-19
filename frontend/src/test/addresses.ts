@@ -116,6 +116,19 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
     'Registracija još nije otvorena',
   ],
   ['/sr/prijava', 'Prijava', 'Prijava'],
+  /* The two screens a link out of a message lands on, read WITH a token on the address,
+     because that is the only state in which they speak to the server at all: opened
+     without one they draw a sentence and ask for nothing, which is a row that would
+     sweep an empty room. The token is any string; what these rows are worth is that
+     whatever these screens fetch, it is not somebody else's.
+
+     Their heading does not move with what the server answered, and that is on purpose
+     rather than convenient: under this sweep there is no server, every request is a 404
+     off the disc reader in `test/setup.ts`, and a screen whose name changed with the
+     answer would make this row a reading of one failure. What the answer changes is the
+     sentence under the heading, which `pages/account` reads case by case. */
+  ['/sr/nova-lozinka?token=nesto', 'Nova lozinka', 'Nova lozinka'],
+  ['/sr/potvrda-adrese?token=nesto', 'Potvrda adrese', 'Potvrda adrese'],
   ['/sr/moj-profil', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
   ['/sr/moji-rezultati', 'Za ovo treba prijava', 'Moji rezultati'],
   ['/sr/moja-clanarina', 'Za ovo treba prijava', 'Moja članarina'],

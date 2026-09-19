@@ -83,6 +83,14 @@
       "title": "Prijava na BTL nalog",
       "description": "Prijava na članski nalog portala Balkanske trkačke lige."
     },
+    "newPassword": {
+      "title": "Nova lozinka",
+      "description": "Postavljanje nove lozinke preko veze koju je portal poslao na adresu elektronske pošte."
+    },
+    "confirmAddress": {
+      "title": "Potvrda adrese",
+      "description": "Potvrda adrese elektronske pošte preko veze iz poruke koju portal pošalje po registraciji."
+    },
     "admin": {
       "title": "Administracija",
       "description": "Ulaz u administrativni deo portala, sa redovima čekanja i svim entitetima lige."
@@ -222,6 +230,8 @@
     "terms": "Uslovi korišćenja",
     "login": "Prijava",
     "register": "Registracija",
+    "newPassword": "Nova lozinka",
+    "confirmAddress": "Potvrda adrese",
     "myProfile": "Moj profil",
     "myResults": "Moji rezultati",
     "membership": "Moja članarina",
@@ -871,6 +881,33 @@
     "needed": "Za ovo treba prijava",
     "neededText": "Ovaj deo portala vide samo članovi.",
     "needsSomebody": "Izaberi člana da bi mogao da se prijaviš."
+  },
+  "newPassword": {
+    "title": "Nova lozinka",
+    "intro": "Upiši novu lozinku za svoj nalog i ponovi je.",
+    "password": "Nova lozinka",
+    "passwordRepeat": "Ponovi novu lozinku",
+    "submit": "Postavi lozinku",
+    "sending": "Šalje se",
+    "done": "Lozinka je postavljena. Sada možeš da se prijaviš.",
+    "noToken": "Ova adresa ne nosi vezu iz poruke, pa nema šta da se postavi. Otvori vezu iz poruke koju ti je portal poslao.",
+    "linkIsNotValid": "Veza je istekla ili je već iskorišćena. Zatraži novu sa strane za prijavu.",
+    "formIsNotComplete": "Obe lozinke moraju da budu popunjene, iste i duge najmanje {count} znakova.",
+    "passwordHasLeaked": "Ova lozinka se već našla u javno objavljenim provalama, pa je portal ne prima. Izaberi drugu."
+  },
+  "confirmAddress": {
+    "title": "Potvrda adrese",
+    "working": "Potvrđujemo adresu, samo trenutak.",
+    "done": "Adresa je potvrđena. Sada možeš da se prijaviš.",
+    "noToken": "Ova adresa ne nosi vezu iz poruke, pa nema šta da se potvrdi. Otvori vezu iz poruke koju ti je portal poslao.",
+    "linkIsNotValid": "Veza je istekla ili je već iskorišćena. Zatraži novu sa strane za prijavu."
+  },
+  "server": {
+    "signIn": "Prijava",
+    "refused": "Server je odbio zahtev uz razlog {reason}, koji ovaj ekran ne prepoznaje.",
+    "rejected": "Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.",
+    "wrong": "Server je odgovorio brojem {status} i ništa nije promenjeno. Pokušaj ponovo za koji minut.",
+    "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo."
   },
   "myProfile": {
     "signOut": "Odjavi se",
