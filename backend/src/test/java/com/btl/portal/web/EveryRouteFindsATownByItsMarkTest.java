@@ -164,7 +164,7 @@ class EveryRouteFindsATownByItsMarkTest {
 	void everyRouteThatTakesATownWritesDownTheOneThatWasChosen() throws Exception {
 		for (Map.Entry<String, Probe> route : probes().entrySet()) {
 			for (Town town : theTwoTownsThatTellTheTwoReadingsApart()) {
-				assertThat(route.getValue().theKeyWrittenFor(town.mark()))
+				assertThat(route.getValue().theKeyWrittenFor(town))
 						.as("%s was sent %s, by the mark %d that /api/places serves, and the row it"
 										+ " wrote names the town keyed %d instead of %s",
 								route.getKey(), town.name(), town.mark(), town.key(), town.key())
@@ -173,11 +173,17 @@ class EveryRouteFindsATownByItsMarkTest {
 		}
 	}
 
-	/** One route, exercised with a mark, answering with the key that ended up in the row. */
+	/**
+	 * One route, exercised with a town, answering with the key that ended up in the row.
+	 *
+	 * <p>It is handed the whole town and not only the mark, because a probe has a setting of
+	 * its own to assert before it sends anything: {@link #anEventEdited} has to know that the
+	 * row it starts from does NOT already stand on the town it is about to name.
+	 */
 	@FunctionalInterface
 	private interface Probe {
 
-		long theKeyWrittenFor(long mark) throws Exception;
+		long theKeyWrittenFor(Town town) throws Exception;
 	}
 
 	/**
@@ -201,46 +207,54 @@ class EveryRouteFindsATownByItsMarkTest {
 		return table;
 	}
 
-	private long anEventWritten(long mark) throws Exception {
+	private long anEventWritten(Town town) throws Exception {
 		MockHttpServletResponse answer = http.perform(post("/api/events").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(anEventNamed("Upisana " + mark, mark)))
+						.content(json(anEventNamed("Upisana " + town.mark(), town.mark())))
 						.cookie(new Cookie(SessionCookie.NAME, session)))
 				.andReturn().getResponse();
 
 		assertThat(answer.getStatus())
-				.as("an event naming a town of the codebook by its mark was not written")
+				.as("an event naming %s by the mark /api/places serves was not written",
+						town.name())
 				.isEqualTo(201);
 
-		return placeKeyOfEvent(new ObjectMapper().readTree(answer.getContentAsString())
-				.path("id").asLong());
+		return placeKeyOfEvent(writtenId(answer));
 	}
 
 	/**
-	 * The edit is given an event that already stands on a THIRD town, so that a route which
-	 * wrote no town at all fails here as loudly as one that wrote the wrong one.
+	 * The edit is given an event that already stands on a THIRD town, and that the third is
+	 * really a third is asserted rather than hoped for: started on the town it is about to be
+	 * told, a route that wrote no town at all would answer this probe correctly.
 	 */
-	private long anEventEdited(long mark) throws Exception {
+	private long anEventEdited(Town town) throws Exception {
 		long standing = writtenId(http.perform(post("/api/events").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(anEventNamed("Izmenjena " + mark, aThirdTown(mark))))
+						.content(json(anEventNamed("Izmenjena " + town.mark(),
+								aTownOtherThan(town.mark()))))
 						.cookie(new Cookie(SessionCookie.NAME, session)))
 				.andReturn().getResponse());
 
+		assertThat(placeKeyOfEvent(standing))
+				.as("the event this edit starts from already stands on %s, so an edit that left"
+						+ " the town alone would answer correctly", town.name())
+				.isNotEqualTo(town.key());
+
 		MockHttpServletResponse answer = http.perform(put("/api/events/" + standing).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(anEventNamed("Izmenjena " + mark, mark)))
+						.content(json(anEventNamed("Izmenjena " + town.mark(), town.mark())))
 						.cookie(new Cookie(SessionCookie.NAME, session)))
 				.andReturn().getResponse();
 
 		assertThat(answer.getStatus())
-				.as("an edit naming a town of the codebook by its mark was refused")
+				.as("an edit naming %s by the mark /api/places serves was refused", town.name())
 				.isEqualTo(200);
 
 		return placeKeyOfEvent(standing);
 	}
 
-	private long aMemberRegistered(long mark) throws Exception {
+	private long aMemberRegistered(Town town) throws Exception {
+		long mark = town.mark();
 		String address = "clan" + mark + "@primer.rs";
 		Map<String, Object> form = new LinkedHashMap<>();
 
@@ -337,8 +351,8 @@ class EveryRouteFindsATownByItsMarkTest {
 		return List.of(unmistakable, mistakable);
 	}
 
-	/** A town neither of the two above is, so an edit that kept its own town still fails. */
-	private long aThirdTown(long mark) {
+	/** Some other town of the codebook, so an edit that kept its own town still fails. */
+	private long aTownOtherThan(long mark) {
 		return db.sql("select geonames_id from place where geonames_id <> ? order by rank limit 1")
 				.param(mark).query(Long.class).single();
 	}

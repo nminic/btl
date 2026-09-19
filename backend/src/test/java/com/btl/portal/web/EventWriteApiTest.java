@@ -525,6 +525,10 @@ class EventWriteApiTest {
 				.as("the town chosen and the town its mark names are one row, so the edit has"
 						+ " nothing to get wrong")
 				.isNotEqualTo(chosen.key());
+		assertThat(placeKeyOf(acted))
+				.as("the event being edited already stands on %s, so an edit that left the town"
+						+ " alone would pass this case", chosen.name())
+				.isNotEqualTo(chosen.key());
 
 		assertThat(change(acted, aForm().withPlace(chosen.mark()).withName("Trka drugi-2027")
 				.withDay(ITS_DAY)).getStatus())
