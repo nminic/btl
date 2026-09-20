@@ -49,14 +49,68 @@ describe('the list of resources', () => {
     ])
   })
 
-  it('is matched by a file under public/mock for every one of them', () => {
-    /* The other half: a name in the contract with no file behind it is a screen
-       that fails on a request nobody can answer. */
-    const served = readdirSync(join(process.cwd(), 'public', 'mock'))
+  it('is answered by a route on the backend for every one of them', () => {
+    /* The other half: a name in the contract nothing answers for is a screen that
+       fails on a request nobody can serve.
 
-    expect(RESOURCE_NAMES.filter((name) => !served.includes(`${name}.json`))).toEqual([])
+       Until 20.09.2026 this asked for a file under `public/mock` instead. That
+       question was the right one while the files were the only thing there was,
+       and it dies the day they stop being: a name with a file and no route reads
+       as kept, and a name with a route and no file reads as broken. Both are
+       backwards now. The backend is what has to answer for the contract, so the
+       backend is what is asked.
+
+       Whole addresses, never a prefix. `/api/events/{id}` is a different address
+       from `/api/events`, and a comparison that let the first stand for the second
+       would report a resource as served by a route that answers about one row. */
+    expect(RESOURCE_NAMES.filter((name) => !readRoutes().has(`/api/${name}`))).toEqual([])
+  })
+
+  it('reads the backend, so the line above is looking at something', () => {
+    /* The floor, and it is derived rather than written down: the backend answers
+       reads at more addresses than the contract names, so a sweep that has stopped
+       recognising the annotation - moved folder, reformatted across two lines,
+       renamed verb - collapses to a number under this one and says so, instead of
+       passing over nothing.
+
+       A sweep that reads no file at all fails the line above as well, because an
+       empty set matches no name; this one catches the quieter half, where the form
+       still matches often enough to cover the fourteen and nothing else.
+
+       **Where this stops, said rather than left to be found.** It reads the
+       annotation as it is written, which is the one thing a guard on this side of
+       the repo can do: there is no Java compiler in this run to ask instead, and
+       the routes are gathered the same way `btl-produkt/odluke-za-resurs.py`
+       gathers them. So it holds that an address is DECLARED, never that the answer
+       at it has the shape the screens read. That second half is a real gap, it is
+       measured, and it is what keeps `BASE` on `/mock` - see the head of
+       `data/client.ts`. */
+    const routes = readRoutes()
+
+    expect(routes.size).toBeGreaterThan(RESOURCE_NAMES.length)
   })
 })
+
+/**
+ * Every address under `/api` the backend answers a read at, off its own source.
+ *
+ * Gathered rather than listed, so a route that is renamed or deleted is a route
+ * this file stops seeing on the same day. `@GetMapping` alone: the contract is
+ * about reading a resource, and a resource that only accepts writes answers no
+ * screen.
+ */
+function readRoutes(): Set<string> {
+  const java = under(join(process.cwd(), '..', 'backend', 'src', 'main', 'java'), '', ['.java'])
+  const found = new Set<string>()
+
+  for (const { code } of java) {
+    for (const [, address] of code.matchAll(/@GetMapping\("(\/api\/[^"]*)"\)/g)) {
+      found.add(address ?? '')
+    }
+  }
+
+  return found
+}
 
 describe('the screens that draw a section of a written page', () => {
   /* Three of them: the rulebook, the written pages, and the card on the front

@@ -1,9 +1,40 @@
 /* The only module that knows where THE DATA comes from.
  *
- * Today it fetches generated JSON from /mock. When the backend exists, BASE
- * becomes '/api' and nothing else in the application changes. That is the whole
- * point of this file: no screen that draws a resource calls fetch, and none of
- * them knows that mock data exists at all.
+ * Today it fetches generated JSON from /mock. That is the whole point of this
+ * file: no screen that draws a resource calls fetch, and none of them knows that
+ * mock data exists at all.
+ *
+ * **THIS SAID „BASE BECOMES '/api' AND NOTHING ELSE IN THE APPLICATION CHANGES"
+ * UNTIL 20.09.2026, AND THAT SENTENCE WAS MEASURED AND FOUND FALSE.** It is
+ * corrected here rather than left standing, because a sentence promising that the
+ * switch is one constant is what somebody plans the switch by.
+ *
+ * ADL already corrected it twice and the correction never reached this file: once
+ * on 31.07.2026 („Prelazak na `/api` nije promena te konstante"), and again on
+ * 12.09.2026 („Zamena je jedna konstanta važi za šifarnike, ne za sve").
+ *
+ * What was measured on 20.09.2026, over all fourteen:
+ *
+ * All fourteen names have a GET route, which `contract.test.ts` holds. **A
+ * declared address is not an answer a screen can read**, and none of the fourteen
+ * answers in the shape read here. Ten carry a text identity in the file where the
+ * schema says `bigserial` (A36 O1); `events.featured` and `races.renamed` carry
+ * „yes" and „no" where it says `boolean`; `pages` is a record keyed by address
+ * here and a list there; `verification` is one flat list here and a list of
+ * queues there. And five resources answer with fewer fields than the screens
+ * read: `competitors` without `active`, `ageBand`, `membershipBasis`,
+ * `referralCode` and `referredBy`, `teams` without `logo` and
+ * `organizerMemberNumber`, `pairs` without `since`, `ducats` without seven of its
+ * sixteen.
+ *
+ * **Those fields are withheld on purpose and no backend work brings them back
+ * here:** P-javno, 13.09.2026, puts everything Article 73 does not list behind a
+ * resource that knows who is asking, and that resource does not exist yet. So
+ * A50's own condition is not met, and switching today is not a half-empty QA -
+ * which is the cost A50 accepted - but a broken one. Two measured examples:
+ * `profile/visible.ts` reads `competitor.active`, which would arrive undefined
+ * and turn every profile invisible, and `usePages` reads a record keyed by
+ * address, which a list answers with nothing on every written page.
  *
  * **This said „no component calls fetch" until 19.09.2026, and that sentence is
  * corrected here rather than left to be walked past.** `pages/account` speaks to
@@ -99,8 +130,21 @@ const arrived = new Map<ResourceName, unknown>()
  * comes back out is `unknown` and the caller's `T` has to be put back on it.
  *
  * Not written round with `any`, which would let the same claim through in
- * silence. Left visible, named, and refused by default, so the day the backend
- * arrives and the shapes are known by name this is the place that changes.
+ * silence. Left visible, named, and refused by default.
+ *
+ * **This promised that the day the backend arrived and the shapes were known by
+ * name, this was the place that changed. That day came on 20.09.2026 and the
+ * three stay, so the promise is replaced by what was measured.** The shapes are
+ * known by name now, and they are not these: the head of this file lists where
+ * the fourteen answers differ from what the screens read. An assertion is
+ * removable when a name can be given a type that is true; naming these would mean
+ * writing down the file's shape and calling it the server's, which is the one
+ * thing worth less than the assertion, because it reads as checked.
+ *
+ * So what has to happen first is not here. Either the screens come to the shapes
+ * the schema serves, or a resource that knows who is asking answers for the
+ * fields Article 73 keeps back (P-javno, 13.09.2026). On the day after that one,
+ * this is still the place that changes.
  *
  * `arrivedResource` is the one of the three that a table of shapes by resource
  * name would actually remove, because an object typed `{ [K in ResourceName]?:
