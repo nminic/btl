@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -368,11 +369,17 @@ class PhotoApiTest {
 	 * A DIGEST SPELT IN CAPITALS IS NOBODY, and the case is written over a picture that is
 	 * REALLY THERE.
 	 *
-	 * <p>That is the whole strength of it. Written over a digest nobody wrote, „capitals are
-	 * refused" and „that digest is not in the database" would be the same answer and the case
-	 * would measure the second while claiming the first. Here the row is there, the file is
-	 * there, and the only thing wrong is the spelling - so a server that accepted a capital
-	 * letter answers a picture and this falls.
+	 * <p>The row is there and the file is there, and the only thing wrong is the spelling,
+	 * which is why the lower case spelling is asked for first: without that line the case
+	 * would be satisfied by a picture that is not in the database at all.
+	 *
+	 * <p><b>WHAT HOLDS IT IS THE SCHEMA AND NOT THE PATTERN IN {@link PhotoApi}, and this
+	 * case does not claim otherwise.</b> Measured by widening that pattern to accept
+	 * capitals: this stayed green, because {@code photo_digest_shape} (V8) refuses an
+	 * uppercase digest in the column, so there is no row any other spelling could find. The
+	 * sentence being kept here is the one a reader of the portal cares about - a digest spelt
+	 * in capitals is not a picture - and it is true of the server whichever of the two
+	 * refuses it. The note on {@code PhotoApi.A_DIGEST} says what the pattern is kept for.
 	 */
 	@Test
 	void aDigestSpeltInCapitalsIsNobody() throws Exception {
@@ -500,10 +507,20 @@ class PhotoApiTest {
 	 * wrongly makes the second request an anonymous one carrying a string nobody knows, the
 	 * two answers agree because they are the same request twice, and „a member is answered
 	 * as a visitor" passes while never having had a member in it. So the same cookie is
-	 * first sent at {@code /api/me}, which is shut to everybody who is not signed in.
+	 * first sent at {@code /api/me}, which is shut to everybody who is not signed in - and
+	 * the request this case calls a member's is asked whether it carries a cookie at all,
+	 * which is the other half of the same hole: a case comparing two answers passes when one
+	 * side quietly becomes the other, and neither the assertion below nor any answer would
+	 * say so.
 	 */
 	@Test
 	void whoIsAskingChangesNothing() throws Exception {
+		assertThat(asking(WEBP.digest(), A_MEMBER).buildRequest(new MockServletContext())
+				.getCookies())
+				.as("the request this case calls a member's carries no cookie, so both halves"
+						+ " below are the same visitor asked twice")
+				.isNotEmpty();
+
 		assertThat(http.perform(get("/api/me")
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(A_MEMBER).secret())))
 				.andReturn().getResponse().getStatus())

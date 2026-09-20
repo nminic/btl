@@ -123,11 +123,22 @@ class PhotoApi {
 	 * server: the second costs no round trip, and a name carrying a dot, a slash or a
 	 * percent never reaches anything that could be asked to resolve it.
 	 *
-	 * <p><b>LOWERCASE, and that is the whole of it.</b> PostgreSQL compares text exactly,
-	 * so an uppercased spelling of a digest that really exists finds no row anyway; what
-	 * this adds is that the two spellings take the same road rather than two, and
-	 * {@code aDigestSpeltInCapitalsIsNobody} measures it against a digest whose row and
-	 * whose file are both there.
+	 * <p><b>AND NO ANSWER CAN TELL THIS APART FROM THE LOOKUP, which is written down here
+	 * rather than left for somebody to find.</b> Measured before this was committed, by
+	 * widening the pattern to accept capitals: every case stayed green. The reason is the
+	 * schema. {@code photo_digest_shape} refuses an uppercase digest in the column, so no
+	 * spelling but the lower case one can ever match a row, and a name of any other shape
+	 * finds nothing whether it was refused here or asked about in vain. <b>So no case here
+	 * claims to measure this line</b>; what
+	 * {@code PhotoApiTest.aDigestSpeltInCapitalsIsNobody} measures is the sentence a reader
+	 * cares about - that a digest spelt in capitals is not served - and the schema is what
+	 * holds it.
+	 *
+	 * <p><b>What it is kept for, then, since it buys no answer:</b> a string that arrived
+	 * over the wire never becomes a query, and rubbish costs this server nothing rather than
+	 * a round trip to the database each time. Removing it was the alternative and it was
+	 * considered: the answers would be identical, and the database would be asked about
+	 * every name anybody cared to invent.
 	 */
 	private static final Pattern A_DIGEST = Pattern.compile("^[0-9a-f]{64}$");
 
