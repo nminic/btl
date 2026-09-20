@@ -101,10 +101,28 @@ It is **not** the same file as the QA one, which lives in `/opt/btl-qa/deploy/`.
 ```bash
 cd /opt/btl/deploy
 # umask first, so the file is never world readable, not even for a moment
-(umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines, set real values
+(umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines, set real values; leave BTL_SUPERADMIN_EMAIL empty for now, see below
 ```
 
-Seven names, and no value of any of them belongs in this repository or in any
+**BEFORE that address goes into `.env`, REGISTER IT AND CONFIRM IT.** Owner decision,
+20.09.2026 (PDL P21). Raise the stack with `BTL_SUPERADMIN_EMAIL` still empty, register
+through the portal like any member, click the link in the mail, and only then put the
+address into `.env` and run `docker compose -f compose.prod.yml up -d backend` to apply
+it. **`restart` does not reread `.env`:** it restarts the container's existing process,
+which still carries whatever environment it was created with, so a plain restart here
+would leave the stack believing the address is still empty. Only recreating the
+container, which `up -d` does, picks up the new value. The role is derived, so it
+attaches to that account the moment the setting names it.
+
+The order is the whole protection, and it was measured rather than assumed: with the
+setting already in place, anyone who knows the address can register it FIRST with his own
+password. The portal then mails the confirmation to the owner, who clicks it because he is
+expecting exactly that mail - and the attacker signs in as superadmin with the password he
+chose. Confirming proves somebody READS that mailbox, not that whoever holds the password
+owns it.
+
+
+Eight names, and no value of any of them belongs in this repository or in any
 message:
 
 | name | what it is | required |
@@ -116,16 +134,23 @@ message:
 | `PROD_MAIL_PORT` | relay port | no, defaults to `587` |
 | `PROD_MAIL_USERNAME` | Brevo SMTP login | not to START, but see below |
 | `PROD_MAIL_PASSWORD` | Brevo SMTP key | not to START, but see below |
+| `BTL_SUPERADMIN_EMAIL` | address that carries the superadmin role (PDL P21) | not to START, but the portal has no superadmin without it |
 
 **The two mail variables are the pair that fails quietly.** They are empty by default ON PURPOSE:
 a missing relay key must never keep the public site down, so the stack starts without them. What it
 does not do is send. No address is ever confirmed and no password is ever reset.
 
-**And nothing sends anything yet, which is the first thing to know.** No endpoint asks for a
-message: `Postman` has no caller in `backend/src/main`, only its own test. Pasting the key
-turns nothing on by itself. When a caller does exist, `Postman.send` throws to whoever asked
-rather than swallowing it, so the failure reaches the member who pressed the button and not
-a log. **Both or neither:** the key is shown by Brevo exactly once, so the moment to paste
+**FOUR ENDPOINTS NOW SEND, so an empty key is no longer harmless.** This paragraph used to say
+`Postman` had no caller in `backend/src/main`; measured on 20.09.2026 it has **four** -
+`RegistrationApi`, `EmailConfirmationApi`, `PasswordResetApi` and `ModeratorWriteApi`. The
+sentence was true when it was written and is not any more.
+
+What that changes for you: `RegistrationApi.send` catches `MailException` and writes
+`LOG.warn` rather than failing the request, so with the key blank a member registers,
+gets 204, and waits for a message that never arrives. His address stays unconfirmed - and
+since the superadmin role hangs on a CONFIRMED address (PDL P21), raising production with
+these two blank leaves the portal with **no superadmin** and no screen saying why. **Both or
+neither** still holds, but now it has to be done BEFORE the owner registers, not after. **Both or neither:** the key is shown by Brevo exactly once, so the moment to paste
 it is also the moment to paste the login beside it.
 
 `PROD_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
@@ -383,14 +408,28 @@ for either of them.
 
 The database name, role and password come from `/opt/btl-qa/deploy/.env`, which
 is gitignored and never committed. Compose reads the `.env` of the directory the
-deploy command runs from, and that is `deploy/`. Copy the three `QA_*` lines out
+deploy command runs from, and that is `deploy/`. Copy the seven `QA_*` lines (three `QA_POSTGRES_*` and four `QA_MAIL_*`) out
 of `.env.example` in the repository root and set a real password:
 
 ```bash
 cd /opt/btl-qa/deploy
 # umask first, so the file is never world readable, not even for a moment
-(umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines, set the password
+(umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines, set the password; leave BTL_SUPERADMIN_EMAIL empty for now, see below
 ```
+
+**ON QA THIS ORDER DOES NOT PROTECT YOU, and the decision says so.** PDL P21 records the
+cost the owner accepted: the measure "leans on discipline at every new stack and does NOT
+protect QA, where the database is wiped". Refreshing QA drops `qa_postgres-data` and replays
+Flyway (see below) WITHOUT touching `.env`, so the moment the database is empty the setting
+already names an address that no account holds - which is the open window itself. Doing the
+order here also means pasting `QA_MAIL_USERNAME` and `QA_MAIL_PASSWORD` before anybody
+registers - **Both or neither**, the same as production, and before rather than after:
+`RegistrationApi.send` swallows a relay failure into a 204 and a log line, so a blank key
+leaves the confirmation mail unsent, the address unconfirmed, and the stored token holding
+only a hash nothing can recover a link from. So: raise QA with the setting blank AND the
+mail key already pasted, register, confirm, and only then put the address back; the refresh
+procedure below does not do any of that on its own.
+
 
 The names are `QA_POSTGRES_DB`, `QA_POSTGRES_USER` and `QA_POSTGRES_PASSWORD`,
 deliberately different from the `POSTGRES_*` names the root `docker-compose.yml`
@@ -398,6 +437,14 @@ uses, so that QA and production cannot end up on the same database, role or
 password by someone copying one env file over the other on this shared host.
 `QA_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
 anything and names the variable, rather than starting a database without one.
+
+**Four more names this stack reads, and they were missing from this paragraph until
+20.09.2026:** `QA_MAIL_HOST`, `QA_MAIL_PORT`, `QA_MAIL_USERNAME` and `QA_MAIL_PASSWORD`.
+They behave like their `PROD_MAIL_*` counterparts - empty by default on purpose, so a
+stack raised without them comes up and simply sends nothing. They were not listed here
+while Compose asked for them, which is the same quiet gap `BTL_SUPERADMIN_EMAIL` fell
+into; the case `everySettingEveryStackAsksForIsNamedInTheRunbookThatTellsTheOwnerWhatToKeep`
+now fails the build for any name a stack reads and this file does not mention.
 
 ### Deploying
 
