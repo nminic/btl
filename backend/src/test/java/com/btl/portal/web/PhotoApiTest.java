@@ -494,9 +494,23 @@ class PhotoApiTest {
 	 * quietly served more to a session would be a second set of rules nobody wrote down. The
 	 * two requests differ in exactly one thing - the cookie - and the answer is compared
 	 * whole.
+	 *
+	 * <p><b>And the cookie is proved to be a live session before anything is compared.</b>
+	 * Without that this case has a silent way of saying nothing: a session row written
+	 * wrongly makes the second request an anonymous one carrying a string nobody knows, the
+	 * two answers agree because they are the same request twice, and „a member is answered
+	 * as a visitor" passes while never having had a member in it. So the same cookie is
+	 * first sent at {@code /api/me}, which is shut to everybody who is not signed in.
 	 */
 	@Test
 	void whoIsAskingChangesNothing() throws Exception {
+		assertThat(http.perform(get("/api/me")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(A_MEMBER).secret())))
+				.andReturn().getResponse().getStatus())
+				.as("the cookie this case sends is not a session the server knows, so the two"
+						+ " requests below are one request asked twice")
+				.isNotEqualTo(401);
+
 		MockHttpServletResponse toAVisitor = http.perform(asking(WEBP.digest(), null))
 				.andReturn().getResponse();
 		MockHttpServletResponse toAMember = http.perform(asking(WEBP.digest(), A_MEMBER))
