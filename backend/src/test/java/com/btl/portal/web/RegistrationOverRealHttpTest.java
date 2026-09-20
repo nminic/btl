@@ -295,9 +295,38 @@ class RegistrationOverRealHttpTest {
 	 * registrations to make that visible, and a case that starts twenty threads to prove
 	 * one sentence is a case that fails on a loaded machine for reasons of its own.
 	 *
+	 * <p><b>THE WINDOW IS THE RELAY'S AND NOT THE WHOLE REQUEST, and that is a correction
+	 * rather than a preference.</b> Sampled from the moment the request goes out, this case
+	 * answers 1 for a registration that is behaving perfectly. The writing is one
+	 * transaction of six statements, and a backend sitting between two statements of a
+	 * transaction is {@code idle in transaction} - the same three words PostgreSQL uses for
+	 * a connection held across a network call, and a different thing entirely.
+	 *
+	 * <p>Measured 19.09.2026, eight registrations sampled every 3 ms, thirteen thousand
+	 * samples in all: SEVENTEEN of them found a backend of this context idle inside a
+	 * transaction. Every one of the seventeen fell BEFORE the relay had been reached, and
+	 * every one named a statement of the writing itself - {@code insert into account},
+	 * {@code insert into competitor}, {@code update account set competitor_id},
+	 * {@code insert into competitor_document},
+	 * {@code insert into email_verification_token}, {@code select email from account}. Not
+	 * one fell in the four and nine tenths seconds of the wait this sentence is about.
+	 * About 7 ms of every registration is legitimately spent that way, which at one sample
+	 * each 100 ms is roughly one run in fourteen failing for being right: seen once in a
+	 * full gate on a machine holding several parallel sessions, and not once in twelve
+	 * narrow runs and twelve full gates afterwards on a quiet one.
+	 *
+	 * <p><b>So the sampling begins when the relay has taken the portal's connection, and
+	 * the gate is a fact rather than a delay.</b> That moment exists in both arrangements
+	 * and it sits on the right side of the commit in only one of them: written as it is,
+	 * the send happens after the transaction has closed, so there is nothing of the writing
+	 * left to count; sent from inside the transaction, which is the arrangement this case
+	 * exists to refuse, the relay is reached with the transaction still open and every
+	 * sample from then on answers 1.
+	 *
 	 * <p><b>The floor under it is the count of samples.</b> A request that finished at once
 	 * would be sampled never and would pass this by not being looked at, so the case
-	 * demands that it really was looked at while it really was waiting.
+	 * demands that it really was looked at while the relay really was holding it - which
+	 * is also what stops the gate above from quietly switching the measurement off.
 	 */
 	@Test
 	void aRelayThatHangsHoldsNoConnectionWhileItHangs() throws Exception {
@@ -316,8 +345,11 @@ class RegistrationOverRealHttpTest {
 			int worst = 0;
 
 			while (!registering.isDone()) {
-				worst = Math.max(worst, backendsIdleInTransaction());
-				looked++;
+				if (silent.hasBeenReached()) {
+					worst = Math.max(worst, backendsIdleInTransaction());
+					looked++;
+				}
+
 				Thread.sleep(100);
 			}
 
@@ -329,8 +361,8 @@ class RegistrationOverRealHttpTest {
 							+ " measured the fast refusal instead", tookMillis)
 					.isGreaterThan(3_000);
 			assertThat(looked)
-					.as("the request was never sampled while it was in flight, so nothing here"
-							+ " was measured at all")
+					.as("nothing was sampled while the relay was holding the portal's connection,"
+							+ " so nothing here was measured at all")
 					.isGreaterThan(5);
 			assertThat(worst)
 					.as("a connection sat idle inside an open transaction while the portal waited"
@@ -417,6 +449,21 @@ class RegistrationOverRealHttpTest {
 
 		private final List<Socket> taken = new ArrayList<>();
 
+		/**
+		 * WHETHER THE PORTAL HAS REACHED THIS RELAY YET, which is the case's own clock and
+		 * not a duration anybody chose.
+		 *
+		 * <p>Set once and never unset, on the accepting thread and read on the sampling one,
+		 * hence {@code volatile}. What it buys is written out beside the case: the writing
+		 * is a transaction of six statements and is therefore {@code idle in transaction}
+		 * between them, so a count taken before this turns true is a count of the writing
+		 * rather than of the wait. It cannot open too EARLY, which is the only direction
+		 * that would matter: the send is made by the request's own thread after
+		 * {@code TransactionTemplate} has returned, so the socket cannot be accepted before
+		 * the commit, whatever the machine is doing.
+		 */
+		private volatile boolean reached;
+
 		private final Thread accepting;
 
 		private ARelayThatSaysNothing(ServerSocket listening) {
@@ -458,10 +505,17 @@ class RegistrationOverRealHttpTest {
 					synchronized (taken) {
 						taken.add(listening.accept());
 					}
+
+					reached = true;
 				} catch (IOException weAreDone) {
 					return;
 				}
 			}
+		}
+
+		/** Whether the portal has opened its connection here and is now waiting on it. */
+		boolean hasBeenReached() {
+			return reached;
 		}
 
 		@Override
