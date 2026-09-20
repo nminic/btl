@@ -142,8 +142,20 @@ class MeApi {
 	 *                     (V7). The season-by-season fact V22 added is a different
 	 *                     question and „no resource reads it yet", in that migration's
 	 *                     own words
-	 * @param teamId       ABSENT for a member in no team. One team at a time (V11), so
-	 *                     the membership that has not ended is one row or none
+	 * @param teamId       the team of the membership that has NOT ENDED, and ABSENT for a
+	 *                     member who has none. <b>That is not the same question as „which
+	 *                     team is he in this season", and the difference is measured rather
+	 *                     than assumed</b>: V11 calls {@code season_to} „the last season he
+	 *                     is in it", PDL of 20.08.2026 lets a member leave „od 1. januara
+	 *                     naredne godine", and {@code SeasonClock.transfersTakeEffect}
+	 *                     always answers next year - so between a transfer being agreed and
+	 *                     1 January a member has a CLOSED membership in the team he is in
+	 *                     and an OPEN one in the team he is going to, and this answers the
+	 *                     second. <b>It is written this way on purpose</b>: the identical
+	 *                     clause is {@link CompetitorApi}'s, so the portal answers one thing
+	 *                     rather than two, and moving it is one increment over both together
+	 *                     - with a product decision behind it, because no decision anywhere
+	 *                     says which of the two a member's own page draws in October
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -186,10 +198,14 @@ class MeApi {
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
 						+ " left join country typed_country on typed_country.id = c.country_id"
-						/* The membership that has not ended, which is the one the portal draws
-						   beside the club's name. Without `season_to is null` a member who has
-						   changed clubs has two rows and the answer is whichever one the
-						   database hands back first. */
+						/* The membership that has not ended. Without this clause a member who has
+						   changed clubs has two rows and `single()` refuses the answer outright,
+						   which is measured rather than argued.
+
+						   WHAT IT DOES NOT SAY is which team he is in THIS season; see the note
+						   on `teamId`. The clause is `CompetitorApi`'s word for word so that the
+						   portal answers one thing rather than two, and the day that question
+						   gets its decision both change together. */
 						+ " left join team_membership m on m.competitor_id = c.id"
 						+ "  and m.season_to is null"
 						+ " where c.id = :me")

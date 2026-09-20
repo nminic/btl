@@ -62,9 +62,9 @@ class MeApiTest {
 
 	/**
 	 * THE CALLER. Third competitor written, first account written, so neither „the first
-	 * member" nor „the first account" is him. Freed of the fee, in a team he moved to,
-	 * racing since 2014, living in a town out of the codebook, and the one who brought two
-	 * others in.
+	 * member" nor „the first account" is him. Freed of the fee, holding a closed membership
+	 * in one team and an open one in another, racing since 2014, living in a town out of the
+	 * codebook, and the one who brought another member in.
 	 */
 	private static final String ME = "000012";
 
@@ -140,8 +140,9 @@ class MeApiTest {
 		competitor(LAPSED, "Nenad", "Ilic", "(select id from place where rank = 1)", "null",
 				"null", 2015, false, "payment", "null");
 		/* Abroad, and reached by the OTHER road V7 allows: a typed town naming its own
-		   country. So a `coalesce` written the wrong way round answers nothing for him and
-		   the caller both. */
+		   country. Exactly one of the two roads is open on any row, so the order inside the
+		   `coalesce` changes no answer at all - what this row measures is that the second
+		   road is read AT ALL, which is a case and not a comment. */
 		competitor(ABROAD, "Strahinja", "Vukicevic", "null", "'Podgorica'",
 				"(select id from country where code = 'ME')", 2027, true, "payment", "null");
 		/* THE CALLER, third. Freed of the fee, which is the other half of the basis: the
@@ -224,8 +225,39 @@ class MeApiTest {
 				.as("the season HE started in, and no two members here started in the same one")
 				.isEqualTo(2014);
 		assertThat(mine.path("teamId").asLong())
-				.as("the team he is in NOW, not the one he left in 2027")
+				/* THE MEMBERSHIP THAT HAS NOT ENDED, and the sentence is worth getting right
+				   because the first draft of it said „the team he is in NOW" and that is a
+				   different fact. V11 calls `season_to` „the last season he is in it", PDL of
+				   20.08.2026 lets a member leave „od 1. januara naredne godine", and
+				   `SeasonClock.transfersTakeEffect` always answers next year. So this member is
+				   in `probni-tim` through 2027 and in `drugi-tim` from 2028, and what the route
+				   answers is the second. It is `CompetitorApi`'s clause word for word; the
+				   difference between the two questions is named on `MyOwnRecord.teamId` and
+				   belongs to one increment over both resources. */
+				.as("the membership that has not ended is the one he left, so the clause that"
+						+ " picks it is gone and any of his rows will do")
 				.isEqualTo(teamIdOf("drugi-tim"));
+	}
+
+	/**
+	 * AND A MEMBER WHOSE TOWN WAS TYPED IS HANDED ITS COUNTRY TOO.
+	 *
+	 * <p>V7 leaves exactly two roads to a country open and closes the other two
+	 * ({@code competitor_town_is_from_the_codebook_or_typed}, {@code competitor_typed_town_names_its_country}):
+	 * a town out of the codebook carries its own country, and a town somebody typed names
+	 * one beside it. The case above rides the first road. <b>Without this one the second is
+	 * live code nothing measures</b> - and the coverage figure cannot say so, because the
+	 * choice between them is made in SQL, where a Java branch counter sees nothing at all.
+	 *
+	 * <p>The member here lives abroad, so this also says the country is HIS and not the one
+	 * every other row happens to carry.
+	 */
+	@Test
+	void aMemberWhoseTownWasTypedIsHandedItsCountry() throws Exception {
+		assertThat(answerFor(HER_ACCOUNT).path("member").path("country").asString())
+				.as("the country a typed town names did not come back, which is one of the two"
+						+ " roads every member's country arrives by")
+				.isEqualTo("ME");
 	}
 
 	/**
@@ -237,24 +269,32 @@ class MeApiTest {
 	 * A resource answering the first row, or the row of whoever signed in first, or every
 	 * row, fails here on the value.
 	 *
-	 * <p><b>The team is asked in the case above and not here</b>, and that is deliberate
-	 * rather than an oversight: a team's key is a small whole number and so is an account's,
-	 * so looking for one in the text would go red the day the two sequences happened to
-	 * agree. Compared as a number against the team he moved TO, it says the same thing and
-	 * cannot say it by accident.
+	 * <p><b>WHICH OF THE FOUR IS ASKED OF THE TEXT AND WHICH OF THE FIELD IS ITSELF
+	 * MEASURED, and the line between them is whether a bare number can collide.</b> A member
+	 * number is six digits with leading zeroes and cannot be anything else in this answer, so
+	 * it is looked for in the text and would catch a second record leaking under any name at
+	 * all. A season and a team key are bare whole numbers sitting beside {@code "account":N},
+	 * whose {@code bigserial} climbs through the whole suite because a sequence does not roll
+	 * back: {@code "account":2027} is a matter of time, not of code, and a case that went red
+	 * on it would be a case nobody could fix. Those two are compared on the field.
 	 */
 	@Test
 	void andNothingOfAnybodyElses() throws Exception {
-		String whole = whole(MY_ACCOUNT);
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
 
-		assertThat(whole).as("his own record is not in the answer at all, so what follows says"
-				+ " nothing about what is left out").contains(ME);
+		assertThat(whole(MY_ACCOUNT)).as("his own record is not in the answer at all, so what"
+				+ " follows says nothing about what is left out").contains(ME);
 
-		assertThat(whole).as("another member's number left with his").doesNotContain(ABROAD, LAPSED);
-		assertThat(whole).as("the season another member started in left with his")
-				.doesNotContain("2015", "2027");
-		assertThat(whole).as("the country another member lives in left with his")
-				.doesNotContain("\"ME\"");
+		assertThat(whole(MY_ACCOUNT)).as("another member's number left with his")
+				.doesNotContain(ABROAD, LAPSED);
+		assertThat(mine.path("firstSeason").asInt())
+				.as("the season another member started in was answered as his")
+				.isNotIn(2015, 2027);
+		assertThat(mine.path("country").asString())
+				.as("the country another member lives in was answered as his").isNotEqualTo("ME");
+		assertThat(mine.path("teamId").asLong())
+				.as("the team of the OTHER member in a team was answered as his")
+				.isNotEqualTo(teamIdOf("probni-tim"));
 	}
 
 	/**
