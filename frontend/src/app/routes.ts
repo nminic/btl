@@ -108,9 +108,11 @@ const UNLISTED_ROUTES: RouteDef[] = [
      already sent carries one of them. Reached from a link in a message and from
      nowhere on the portal, which is why they are here and not in the navigation.
 
-     What holds the two sides together is not this sentence but
-     `APostedAddressHasAScreenTest`, which asks `Message.values()` what it posts and
-     fails if any of it has no row here. Deleting a row below is therefore loud.
+     What holds the two sides together is not this sentence but two cases that meet on
+     `postedAddresses.json`: `APostedAddressHasAScreenTest` asks `Message.values()` what
+     goes out and pins that file to it, and `routes.test.ts` requires every address in it
+     to be among the paths `routeObjects` actually serves. Removing, commenting out or
+     moving a row below is therefore loud, and so is editing the file to match.
 
      The link in a message carries no language, because the server does not know
      which one the reader wants. `LocaleLayout` is what makes that work: a first

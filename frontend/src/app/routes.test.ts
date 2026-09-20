@@ -1,3 +1,4 @@
+import POSTED_ADDRESSES from './postedAddresses.json'
 import { routeObjects } from './routeObjects'
 import {
   ACCOUNT_ROUTES,
@@ -189,5 +190,49 @@ describe('seoKeyFor', () => {
     const keys = [...ROUTES, ...EXTRA_ADDRESSES].map((address) => address.seoKey)
 
     expect(new Set(keys).size).toBe(keys.length)
+  })
+})
+
+/**
+ * THE OTHER HALF OF THE FLOOR UNDER THE ADDRESSES THE SERVER POSTS IN A MESSAGE.
+ *
+ * `WhatTheMessageSays.Message` hangs a path on the portal's own address and posts it, so
+ * every message already in somebody's mailbox carries that exact path. If no route answers
+ * there, `navigation.test.tsx` documents what the reader gets: the FRONT PAGE, with no error
+ * and no sentence. The invitation is quietly dead.
+ *
+ * MEASURED, TWICE, AND BOTH TIMES AGAINST A DRAFT THAT LOOKED FINE. A single case cannot
+ * hold this, because the two homes are in two languages and neither side can execute the
+ * other. A case that read the Java as text missed a path moved into a constant. A case in
+ * Java that read THIS table as text missed a route commented out, a route moved into
+ * `EXTRA_ADDRESSES` (which is deliberately not routes), and even the whole of
+ * `UNLISTED_ROUTES` dropped out of `ROUTES` - all three left it green while the portal
+ * mailed links nobody was served.
+ *
+ * SO EACH HALF EXECUTES ITS OWN SIDE AND THEY MEET ON `postedAddresses.json`.
+ * `APostedAddressHasAScreenTest` asks `Message.values()` what goes out and requires that file
+ * to say exactly that. This asks `servedPaths()`, which reads the ROUTER OBJECT, and requires
+ * every address in that file to be among them. The file is pinned from both ends, so editing
+ * it to hide a mismatch only moves the failure to the other side.
+ */
+describe('every address the server posts in a message', () => {
+  it('is one the router object itself serves', () => {
+    const served = servedPaths()
+
+    expect(
+      POSTED_ADDRESSES,
+      'postedAddresses.json is empty, so this compared nothing. The Java half is what fills'
+        + ' it; an empty file means that half is failing too, and this one says so rather'
+        + ' than passing quietly.',
+    ).not.toHaveLength(0)
+
+    for (const posted of POSTED_ADDRESSES) {
+      expect(
+        served,
+        `WhatTheMessageSays posts ${posted}, and no entry of the router table answers there.`
+          + ' Every message already sent carries that address; a reader who clicks it lands'
+          + ' on the front page with nothing said, so the invitation is dead and silent.',
+      ).toContain(posted.replace(/^\//, ''))
+    }
   })
 })
