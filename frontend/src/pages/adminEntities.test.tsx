@@ -1465,26 +1465,6 @@ describe('the races of an event', () => {
     await screen.findByRole('status', { name: 'Sačuvano' })
   }
 
-  /** The row of the race of that length, which is the only thing about a row this
-   *  screen lets a test name.
-   *
-   *  By the length and never by where the row sits: the rows are lined up by the
-   *  day and by the length inside it, so „the last one" is whichever race is
-   *  longest, and on the first event that is the one out of the file. Measured by
-   *  a mutation, which is the only reason it is written this way: the case below
-   *  meant to rename a race it had just entered, renamed the file's own instead,
-   *  and passed with the fault it exists for left in the code. */
-  function rowWithLength(km: number) {
-    return within(
-      must(
-        rowsOfRaces().find(
-          (row) => inputElement(within(row).getByLabelText(/^Dužina/)).value === String(km),
-        ),
-        `the row of the ${String(km)} km race`,
-      ),
-    )
-  }
-
   it('hands every race made in a press a number nothing else answers to', async () => {
     /* THE COUNTER GOES DOWN, and a press that makes more than one race has to go
        down with it (`admin/raceIds.ts`, `nextIdentity`). Stepped up by one, the
@@ -1537,25 +1517,24 @@ describe('the races of an event', () => {
     expect(made.filter((one) => served.has(one)), 'a made race took a served number').toEqual([])
   })
 
-  it('leaves a race renamed in the table the only one carrying that name', async () => {
-    /* The same fault from the side somebody would meet it on, and the one that
-       says why it matters: the overlay of changes is keyed by the number
-       (`session/context.ts`, `recordKey`), so two races under one number are one
-       record to every change, and renaming either renames both.
+  it('leaves every race entered over two presses standing as its own race', async () => {
+    /* The same fault from the side somebody would meet it on, and the one that says
+       why the number matters at all: the overlay of changes is keyed by it
+       (`session/context.ts`, `recordKey`), so two races under one number are ONE
+       record to every change there is. Save the event once more and whatever the
+       screen holds for either of them is written over both.
 
-       Two presses of two, which is the shortest way to a number handed out twice,
-       then a third that gives one row a name of its own.
+       **Read off the lengths, which is what the four were entered with and the one
+       thing about a race this screen lets a case name.** Measured under the fault:
+       two presses of two, and what comes back is 31, 31, 32, 41 - the second race
+       of the second press has lost the length somebody typed into it and answers as
+       a copy of a race from the press before. The name is the same fault one field
+       along, which is where review met it: a race renamed in the table renames two.
 
-       **The 42 km race and not „the last row", and the lengths are what tells the
-       four apart.** The rows are lined up by the day and by the length inside it,
-       and the event out of the file has a race of its own which is longer than any
-       of these, so „the last row" is that one, whose number nothing shares. Written
-       that way first, this case passed with the fault in the code (measured
-       20.09.2026), which is what a row picked by where it sits is worth.
-
-       It is the second race of the second press, which is the one that is handed a
-       number already given out, and it is written to `edits` after the race that
-       holds it, so what comes back under that number is this name. */
+       **Held against the lengths the event had before, not against a number written
+       down here.** The event out of the file brings a race of its own; what is being
+       asked is that four presses of „Nova trka" leave four more races, each still
+       its own. */
     const user = setupUser()
 
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
@@ -1564,22 +1543,20 @@ describe('the races of an event', () => {
 
     await user.click(within(at(listed.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }))
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const lengths = () =>
+      rowsOfRaces()
+        .map((row) => inputElement(within(row).getByLabelText(/^Dužina/)).value)
+        .sort()
+
+    const before = lengths()
+
     await addRaces(user, 2, 31)
     await openAgain(user)
     await addRaces(user, 2, 41)
     await openAgain(user)
 
-    const named = 'Preimenovana trka'
-
-    await user.clear(rowWithLength(42).getByLabelText(/^Trka,/))
-    await user.type(rowWithLength(42).getByLabelText(/^Trka,/), named)
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await screen.findByRole('status', { name: 'Sačuvano' })
-    await openAgain(user)
-
-    const names = screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value)
-
-    expect(names.filter((one) => one === named)).toHaveLength(1)
+    expect(lengths()).toEqual([...before, '31', '32', '41', '42'].sort())
   })
 })
 
