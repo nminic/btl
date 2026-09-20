@@ -60,38 +60,54 @@ import org.springframework.web.bind.annotation.RestController;
  * historical tables of a member whose fee has lapsed need a resource that knows
  * them, and it is not this one." It is this one.
  *
- * <p><b>TWO FIELDS THE SCREEN READS ARE DELIBERATELY NOT HERE, and each omission
- * is held by a case rather than by this paragraph.</b> ADL P-javno, 13.09.2026:
- * „Kad je sporno, polje se IZOSTAVLJA i izostavljanje se imenuje sa razlogom, pa
- * se vlasniku javi. Nikad se ne servira 'za svaki slucaj'."
+ * <p><b>AND THREE FIELDS THAT ARE HIS OWN BUSINESS AND NOBODY ELSE'S, each here
+ * because a decision or a measurement put it here.</b> Two of them were refused on
+ * 20.09.2026 and both refusals are gone for different reasons: the first was
+ * settled by the owner, the second was MEASURED AND FOUND FALSE.
  *
  * <ul>
- * <li><b>The basis the membership is held on.</b> PDL P8, 28.07.2026: „Osnov
- * clanstva se nikad ne prikazuje javno. Ni na profilu, ni u tabelama, nigde.
- * <b>Vide ga samo Superadmin i moderatori sa pravom nad clanovima.</b>" The
- * member is not on that list, and the same sentence is quoted twice more in this
- * repository as the reason for something already carried out - over
- * {@code membership.basis} in V22 („Never shown publicly, to anybody, on any
- * screen") and in {@link CompetitorApi}. Against it stands a MEASUREMENT rather
- * than a decision, PDL of 06.09.2026: „`membershipBasis` nosi oslobodjenje od
- * clanarine, i clanu i administraciji", and {@code pages/member/Membership.tsx}
- * reads it about itself today. Two opposite answers both pass a full suite, so it
- * is the meaning of a term and not a fault, and the owner decides it before the
- * code does.</li>
- * <li><b>The referral code, and who the caller brought in.</b> Not withheld -
- * ANSWERED ALREADY, by {@link CompetitorApi} since 20.09.2026, on the caller's own
- * row and nobody else's, as {@code referralCode} and as {@code referredCount}. A
- * second home for one fact is the thing that makes two answers able to disagree,
- * so this route does not become one.</li>
+ * <li><b>The basis his membership is held on.</b> Owner, 20.09.2026, asked outright
+ * with three outcomes offered and one chosen: „Clan vidi SVOJ osnov clanstva; tudji
+ * ne vidi niko osim administracije." PDL P8 of 28.07.2026 - „Osnov clanstva se
+ * nikad ne prikazuje javno. Ni na profilu, ni u tabelama, nigde" - is about
+ * SOMEBODY ELSE'S basis, and the owner's reason for saying so is that a man who is
+ * not being charged has to know it, „inace ne razume zasto mu portal ne trazi
+ * uplatu". That also settles what stood against P8 as a measurement rather than a
+ * decision, PDL of 06.09.2026: „`membershipBasis` nosi oslobodjenje od clanarine, i
+ * clanu i administraciji." <b>Somebody else's basis still leaves nowhere</b>, and
+ * what holds that is the shape rather than this paragraph: the query below reads
+ * one row and the row is his.</li>
+ * <li><b>His referral code, and the count of who he has brought in.</b> These were
+ * left out with the sentence „ANSWERED ALREADY, by {@link CompetitorApi}, on the
+ * caller's own row", and that sentence does not survive a probe. That route
+ * computes both inside a query that ends {@code where c.active}, so a member whose
+ * fee has lapsed is not among its rows at all and his row never reaches the
+ * {@code case} that would have filled them in: signed in with his own cookie he
+ * asks {@code /api/competitors} and gets back neither field, while an active member
+ * gets both. He is exactly the person V24 section 6 promises them to - „a koji vam
+ * stoji ispisan na vasoj strani 'Moja clanarina', uz sam link" - and that page is
+ * where he goes to renew. It is also the case this class makes for itself two
+ * paragraphs up: this route exists BECAUSE {@link CompetitorApi} leaves him off.</li>
  * </ul>
+ *
+ * <p><b>AND THE BOUNDARY THAT COMES WITH THE SECOND ONE, named here rather than
+ * left for a review to find: for a member whose fee is standing those two facts now
+ * have TWO HOMES.</b> {@link CompetitorApi} answers them on the caller's own row
+ * and this one answers them on his record. Two homes are what lets two answers
+ * disagree, so the counting clause here is that one's word for word - as
+ * {@code season_to is null} already is between these two - and a case measures that
+ * the two doors really do still say the same thing. Which door keeps the fact is
+ * one increment over both together and wants the owner's word on whether a public
+ * list is the place for a member's private link at all; it is not this PR.
  *
  * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
  * COMFORTABLE: no pattern over the English above measures anything.</b> What the
- * cases hold is the thing the prose is about - that the words of every basis the
- * schema knows are absent from this answer, that no referral code in the database
- * is in it, and that the three shapes an account can have are three different
- * answers. Prose has no guard and cannot be given one that converges; a pattern
- * over English has to be right about sentences nobody has written yet.
+ * cases hold is the thing the prose is about - that the basis answered is the
+ * caller's own and the other word in the schema is not it, that the code answered
+ * is his and no other code in the database is anywhere in the answer, and that the
+ * three shapes an account can have are three different answers. Prose has no guard
+ * and cannot be given one that converges; a pattern over English has to be right
+ * about sentences nobody has written yet.
  */
 @RestController
 class MeApi {
@@ -120,14 +136,17 @@ class MeApi {
 	/**
 	 * THE CALLER'S OWN RECORD, and only what is his own to see about himself.
 	 *
-	 * <p>Every one of these four is a fact Article 73 already makes public about
-	 * every member, so nothing leaves here that does not leave {@link CompetitorApi}
-	 * for a member whose fee is standing. What this route adds is not secrecy but
-	 * ADDRESSING: the caller no longer has to find himself in a public list by a
-	 * number his browser remembered, which is a lookup that answers nothing at all
-	 * for the three people it matters most to - the moderator who is on no list, the
-	 * registered person who has no number to look up by, and the member whose fee has
-	 * lapsed and who is therefore off the list altogether.
+	 * <p>Six of these seven are facts a member whose fee is standing can already read
+	 * elsewhere: four of them Article 73 makes public about everybody, and two more
+	 * {@link CompetitorApi} hands the caller on his own row. The SEVENTH, the basis his
+	 * membership is held on, leaves nowhere else at all and is here on the owner's word
+	 * of 20.09.2026. What this route adds is not secrecy but ADDRESSING: the caller no
+	 * longer has to find himself in a public list by a number his browser remembered,
+	 * which is a lookup that answers nothing at all for the three people it matters
+	 * most to - the moderator who is on no list, the registered person who has no
+	 * number to look up by, and the member whose fee has lapsed and who is therefore
+	 * off the list altogether. The last of those three is why the three below are here
+	 * rather than left to the other door.
 	 *
 	 * @param memberNumber ABSENT for a person who has registered and has not been
 	 *                     given one (ADL A44, owner 11.09.2026). The record being
@@ -156,10 +175,30 @@ class MeApi {
 	 *                     rather than two, and moving it is one increment over both together
 	 *                     - with a product decision behind it, because no decision anywhere
 	 *                     says which of the two a member's own page draws in October
+	 * @param membershipBasis HIS OWN, and the only one that leaves here. Owner, 20.09.2026:
+	 *                     „Clan vidi SVOJ osnov clanstva; tudji ne vidi niko osim
+	 *                     administracije." Never absent: {@code competitor.membership_basis}
+	 *                     is NOT NULL (V7) and {@code competitor_membership_basis_known}
+	 *                     names the words it may hold, so there is no branch here for none
+	 * @param referralCode never absent, and it names one row: {@code competitor.referral_code}
+	 *                     is NOT NULL and UNIQUE (V7), and its shape is sixteen hexadecimal
+	 *                     characters rather than anything a member number could collide with
+	 * @param referredCount how many he has brought in WHOSE FEE IS STANDING, which is the
+	 *                     condition the credit itself carries - PDL, 13.08.2026: „Zbir je broj
+	 *                     clanova koje je taj clan doveo <b>i kojima je clanarina aktivirana</b>
+	 *                     ... Ko se registrovao preko linka a clanarina mu nikad nije
+	 *                     aktivirana, ne donosi nista." {@code referred_by} is the KEY of the
+	 *                     member who brought this one in and not his code (V7), so the count
+	 *                     is on the key. <b>The clause is {@link CompetitorApi}'s word for
+	 *                     word</b>, for the reason {@code season_to is null} is: two homes for
+	 *                     one fact may answer differently, and identical text is the cheapest
+	 *                     thing that stops them. Never absent: a {@code count} answers a
+	 *                     number even when nobody was brought in
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
-			@JsonInclude(JsonInclude.Include.NON_NULL) Long teamId) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) Long teamId,
+			String membershipBasis, String referralCode, int referredCount) {
 	}
 
 	/**
@@ -193,7 +232,20 @@ class MeApi {
 						   for one member, and a helper between them would be a third place
 						   deciding what a country is. */
 						+ " coalesce(town_country.code, typed_country.code) as country,"
-						+ " c.first_season, m.team_id"
+						+ " c.first_season, m.team_id,"
+						/* HIS OWN, and there is one row here, so there is no shape in which
+						   somebody else's could come out of it. */
+						+ " c.membership_basis, c.referral_code,"
+						/* AND HOW MANY HE HAS BROUGHT IN WHOSE FEE IS STANDING. Word for word
+						   `CompetitorApi`'s, which is the point rather than an accident: that
+						   route computes the same two facts for the caller and the day the two
+						   clauses differ the portal answers one member two numbers.
+
+						   Cast, because `count(*)` is a bigint and what comes back is read as
+						   a whole number that fits the portal's own type. */
+						+ " cast((select count(*) from competitor brought"
+						+ "  where brought.referred_by = c.id and brought.active) as integer)"
+						+ "  as referred_count"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -211,7 +263,8 @@ class MeApi {
 						+ " where c.id = :me")
 				.param("me", me)
 				.query((row, one) -> new MyOwnRecord(row.getString(1), row.getString(2),
-						row.getInt(3), row.getObject(4) == null ? null : row.getLong(4)))
+						row.getInt(3), row.getObject(4) == null ? null : row.getLong(4),
+						row.getString(5), row.getString(6), row.getInt(7)))
 				.single();
 	}
 }
