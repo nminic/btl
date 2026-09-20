@@ -192,11 +192,40 @@ services:
       # what the variable is called, and the one already on the QA host is spelled
       # BTL_SUPERADMIN_EMAIL. A name nothing reads is a setting that is silently dead.
       BTL_SUPERADMIN_EMAIL: ${BTL_SUPERADMIN_EMAIL:-}
+      # AND WHERE THE PICTURES LIVE, which is the mount right below this block.
+      #
+      # ADL A41 of 11.09.2026 decided the arrangement: "Imenovan Docker volumen uz
+      # bazu, montiran samo u bekend." A folder on the host outside Docker was
+      # offered and refused, because the backend would then be writing outside its
+      # container, and that is the easiest thing to configure wrongly on a
+      # production machine.
+      #
+      # Written out rather than taken from the environment, for the same reason
+      # BTL_PORTAL_ADDRESS above is: it is not a secret and not an operator's
+      # choice, it is where this stack keeps its files. A variable would be one
+      # more line in deploy/.env before QA can show a picture, and one more row in
+      # the table WhatEachStackRequiresTest holds.
+      BTL_PHOTOS_FOLDER: /var/lib/btl/photos
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
       # native memory next to the heap.
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=55 -XX:+UseSerialGC -Xss512k"
+    volumes:
+      # THE PICTURES, and this is the first volume this service has ever had.
+      # Without it every uploaded file lives in the container's own writable layer
+      # and goes with the next "up -d --build", while the rows in `photo` that
+      # describe them stay in the database - which is a portal full of pictures
+      # that 404.
+      #
+      # Compose prefixes it with the project name, so this is "qa_photos" on the
+      # host and cannot collide with a production volume of the same name, exactly
+      # as postgres-data above.
+      #
+      # AND IT IS A JOB THAT COMES WITH IT: ADL A41, "rezervna kopija mora da
+      # pokrije i volumen, a danas ne pokriva nista". The nightly pg_dump covers
+      # the database and nothing covers this.
+      - photos:/var/lib/btl/photos
     mem_limit: 640m
     healthcheck:
       # /actuator/health is the one endpoint Spring Boot exposes by default and
@@ -215,3 +244,4 @@ services:
 
 volumes:
   postgres-data:
+  photos:

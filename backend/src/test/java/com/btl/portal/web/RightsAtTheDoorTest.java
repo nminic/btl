@@ -1112,9 +1112,25 @@ class RightsAtTheDoorTest {
 	 * not excuse it, and the floor would demand it be named in the snapshot. That is a false
 	 * alarm and not a hole: it errs towards asking for a decision, which is the direction
 	 * this file is written in, and whoever widens the entry answers it once.
+	 *
+	 * <p><b>AND B83 IS THAT DAY ARRIVING, BY THE ROAD THE PARAGRAPH ABOVE NAMES.</b>
+	 * {@code GET /api/photos/&#123;name&#125;} is read by anybody - it is how a picture is
+	 * drawn on a page a visitor reads - and it is an address with a NAME in it, which is a
+	 * shape {@link ApiSecurity#READ_BY_ANYBODY} cannot carry: three cases there require each
+	 * of its entries to answer 200 as written and to be shut one segment further down, and
+	 * this address is nothing as written and is the whole of what is open one segment
+	 * further down. So it has a list of its own and this line reads both.
+	 *
+	 * <p><b>It is still read as TEXT and the boundary above is unchanged</b>, because the
+	 * new list is written with the variable exactly as the controller maps it - one string
+	 * in two places rather than two spellings of one rule. The alternative was to name the
+	 * route in {@link #ANSWERS_WITHOUT_A_RIGHT}, and that would have been a false sentence:
+	 * the list says a route „neither opens itself by name nor is decided at the door", while
+	 * this one opens itself by name in the file that opens everything else.
 	 */
 	private boolean anybodyMayDoThis(String how, String path) {
-		return ApiSecurity.READ_BY_ANYBODY.contains(path)
+		return (ApiSecurity.READ_BY_ANYBODY.contains(path)
+				|| ApiSecurity.READ_BY_ANYBODY_UNDER_A_NAME.contains(path))
 				&& privileges.isAllowed(null, path, how, null);
 	}
 
