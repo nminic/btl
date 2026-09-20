@@ -82,14 +82,17 @@ import static org.assertj.core.api.Assertions.fail;
  *     {@code --env-file} pointed at an EMPTY file precisely so that a developer who has a
  *     real one is not measured against it, and so that nothing here ever reads it.
  * <li><b>It holds one of the five places this decision is written.</b> The other four are
- *     prose and it does not read them: the comment beside the mail credentials in
- *     {@code deploy/compose.prod.yml}, the same comment in {@code deploy/compose.qa.yml},
- *     the table and two paragraphs in {@code deploy/README.md}, and the header above the
- *     mail block in {@code .env.example}. Moving a setting here without rewriting those
- *     four leaves four sentences claiming the opposite of what the stack does. It does
- *     open the last of those files, but for a different question and not for its prose:
- *     whether every setting a stack asks for has a LINE there at all, which is what the
- *     runbook's {@code cp .env.example .env} turns into a value on a host.
+ *     prose, and two of them it still does not read at all: the comment beside the mail
+ *     credentials in {@code deploy/compose.prod.yml} and the same comment in
+ *     {@code deploy/compose.qa.yml}. Moving a setting here without rewriting those two
+ *     leaves two sentences claiming the opposite of what the stack does. The other two it
+ *     does open, narrowly and not for their prose. {@code .env.example}: whether every
+ *     setting has a LINE there at all, which is what the runbook's
+ *     {@code cp .env.example .env} turns into a value on a host. {@code deploy/README.md},
+ *     since 20.09.2026: whether it NAMES a setting anywhere, whether the one recipe line
+ *     the owner actually runs by hand would still leave him keeping it, and whether the
+ *     production table lists it. None of that asks whether the sentences around the name
+ *     are well put.
  * </ol>
  */
 class WhatEachStackRequiresTest {
@@ -492,6 +495,141 @@ class WhatEachStackRequiresTest {
 		assertThat(asked)
 				.as("no stack asks the environment for anything at all, so this compared nothing")
 				.isNotZero();
+	}
+
+	/**
+	 * Every {@code compose.<env>.yml} stack this repository deploys, restricted to the ones
+	 * this runbook hands the owner a recipe for.
+	 *
+	 * <p>The root development stack is not among them: {@code docker-compose.yml} carries no
+	 * {@code PREFIX_} convention and this file has no {@code cp .env.example .env} step for
+	 * it at all, so there is no recipe line to hold it to.
+	 */
+	private static Stream<Path> everyStackThisRunbookGivesARecipeFor() throws Exception {
+		return everyStackThisRepoDeploys()
+				.filter(stack -> stack.getFileName().toString().matches("compose\\.[a-z0-9]+\\.ya?ml"));
+	}
+
+	/**
+	 * AND EVERY SETTING SURVIVES THE ONE RECIPE LINE THE OWNER ACTUALLY RUNS BY HAND.
+	 *
+	 * <p><b>The case above proves a name is somewhere in the file. That is a weaker claim
+	 * than it looks, and this was measured rather than argued.</b> {@code
+	 * BTL_SUPERADMIN_EMAIL} was named in the production table and in two paragraphs while
+	 * the line the owner actually runs, {@code cp ../.env.example .env}, told him in its own
+	 * trailing comment to keep only the {@code PROD_*} lines. Reverting just that one
+	 * comment back to that state left every other case in this file green, because the name
+	 * still appeared four other places nobody's hand follows.
+	 *
+	 * <p><b>So this reads the recipe line itself, never the prose around it.</b> Each stack
+	 * here is named {@code compose.<env>.yml}; its {@code PREFIX_} is that environment word,
+	 * upper-cased with a trailing underscore, which is also how every setting it asks for by
+	 * that convention is spelled. The line in the runbook that runs
+	 * {@code cp ../.env.example .env} and also says {@code PREFIX_*} is the recipe this
+	 * stack's owner follows by hand. A setting either falls under that mask, or it has to be
+	 * named on that same line outright the way {@code BTL_SUPERADMIN_EMAIL} is - there is no
+	 * third way to survive being copied by hand.
+	 *
+	 * <p><b>What it does not claim:</b> that the mask or the name is spelled correctly
+	 * anywhere else, or that the table agrees with it. A production-only case beside this one
+	 * covers the table; nothing here asks about QA's, because QA's settings are prose, not a
+	 * table.
+	 */
+	@ParameterizedTest
+	@MethodSource("everyStackThisRunbookGivesARecipeFor")
+	void everySettingSurvivesTheOneRecipeLineTheOwnerActuallyRunsByHand(Path stack) throws Exception {
+		String named = stack.getFileName().toString();
+		String environment = named.replaceFirst("^compose\\.", "").replaceFirst("\\.ya?ml$", "");
+		String prefix = environment.toUpperCase(java.util.Locale.ROOT) + "_";
+
+		String runbook = Files.readString(Path.of("..", "deploy", "README.md"), StandardCharsets.UTF_8);
+
+		List<String> recipes = runbook.lines()
+				.filter(line -> line.contains("cp ../.env.example .env"))
+				.filter(line -> line.contains(prefix + "*"))
+				.toList();
+
+		assertThat(recipes)
+				.as("%s asks the owner to keep its %s* lines, but no line in deploy/README.md"
+						+ " that runs `cp ../.env.example .env` says so, so nothing ties this"
+						+ " stack to the recipe the owner actually runs by hand", named, prefix)
+				.isNotEmpty();
+
+		for (String setting : settingsOf(stack)) {
+			boolean underTheMask = setting.startsWith(prefix);
+			boolean namedOutright = recipes.stream().anyMatch(line -> namedIn(line, setting));
+
+			assertThat(underTheMask || namedOutright)
+					.as("%s asks for %s, and the recipe line the owner actually runs for this"
+							+ " stack keeps only the %s* lines - which %s does not start with -"
+							+ " without naming %s outright either. Following that line by hand"
+							+ " deletes this setting from .env and the stack comes up without"
+							+ " it", named, setting, prefix, setting, setting)
+					.isTrue();
+		}
+	}
+
+	/**
+	 * AND THE PRODUCTION TABLE NAMES EVERY SETTING PRODUCTION ASKS FOR.
+	 *
+	 * <p><b>Scoped to {@code compose.prod.yml} on purpose, and the scope is measured rather
+	 * than assumed.</b> A row here is any stripped line starting with {@code |}, no Markdown
+	 * parser needed to find one. Asked of this file as it stands on 20.09.2026: all eight
+	 * production names are genuinely in such a row; none of QA's seven are in any, because
+	 * the QA half of this runbook explains its settings in prose and carries no table at
+	 * all. Extending this case to QA would therefore not measure a missing row, only a
+	 * missing table - a different, larger claim this case does not make.
+	 *
+	 * <p>What this closes that the case above cannot: deleting a row from this table leaves
+	 * every other name in the file untouched, {@code BTL_SUPERADMIN_EMAIL} included, so
+	 * nothing that merely asks whether a name appears ANYWHERE catches it.
+	 */
+	@Test
+	void theProductionTableNamesEverySettingProductionAsksFor() throws Exception {
+		List<String> lines = Files.readAllLines(Path.of("..", "deploy", "README.md"),
+				StandardCharsets.UTF_8);
+
+		int header = -1;
+
+		for (int at = 0; at < lines.size(); at++) {
+			if (lines.get(at).strip().equals("| name | what it is | required |")) {
+				header = at;
+				break;
+			}
+		}
+
+		assertThat(header)
+				.as("deploy/README.md no longer carries the production settings table under the"
+						+ " heading this case looks for, so nothing below reads anything")
+				.isNotEqualTo(-1);
+
+		TreeSet<String> named = new TreeSet<>();
+
+		for (int at = header + 2; at < lines.size(); at++) {
+			String row = lines.get(at).strip();
+
+			if (!row.startsWith("|")) {
+				break;
+			}
+
+			java.util.regex.Matcher backtick = java.util.regex.Pattern.compile("`([^`]+)`").matcher(row);
+
+			if (backtick.find()) {
+				named.add(backtick.group(1));
+			}
+		}
+
+		Path prod = everyStackThisRepoDeploys()
+				.filter(stack -> stack.getFileName().toString().equals("compose.prod.yml"))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("deploy/ no longer carries compose.prod.yml,"
+						+ " so this case has nothing to measure the table against"));
+
+		assertThat(named)
+				.as("the production table in deploy/README.md is missing a row for a setting"
+						+ " compose.prod.yml asks for; following it by hand deletes that"
+						+ " setting from .env and production comes up without it")
+				.containsAll(settingsOf(prod));
 	}
 
 	/**
