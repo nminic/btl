@@ -1,6 +1,9 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.token.SecretToken;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,11 +12,18 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
@@ -64,6 +74,30 @@ class CompetitorApiTest {
 	private static final String HOW_THE_MEMBERSHIP_IS_HELD = "membershipBasis";
 	private static final String WHETHER_THE_FEE_IS_STANDING = "active";
 
+	/**
+	 * WHAT {@code referredBy} IS ANSWERED AS, once the resource knows who is asking.
+	 *
+	 * <p>Not the column: PDL, 06.09.2026, „`referredBy` cita ekran Clanarine da
+	 * prebroji koga je clan doveo, a to je upit nad SVIMA, ne nad sobom". A count is
+	 * that query answered where the data is; the column answered to whoever signs in
+	 * would be every member's referrer beside his name, and the referrer is a code.
+	 *
+	 * <p>It is a name the portal does not serve, so {@code Answers} refuses it unless
+	 * it is named as something answered on purpose.
+	 */
+	private static final String THE_COUNT_SHE_BROUGHT_IN = "referredCount";
+
+	/** The one asking, and on purpose NOT the first record of the answer. */
+	private static final String HER_OWN_ACCOUNT = "milica@primer.rs";
+
+	/** A second member, who brought in nobody and is in no team. */
+	private static final String THE_OTHER_MEMBER = "strahinja@primer.rs";
+
+	/** Signed in, and no member behind the account at all. */
+	private static final String RACES_FOR_NOBODY = "moderator@primer.rs";
+
+	private final Map<String, SecretToken> sessions = new HashMap<>();
+
 	@Autowired
 	private MockMvc http;
 
@@ -91,19 +125,26 @@ class CompetitorApiTest {
 	 * <li><b>The three flags on the row.</b> Hidden is 000007, not active is 000012,
 	 * first season 2027 is 000045. Each is exactly one member and never the same one,
 	 * so answering with the wrong column answers with the wrong member.</li>
-	 * <li><b>The team.</b> The member in a team is 000045, who is neither the hidden
+	 * <li><b>The team.</b> The member in a team is 000012, who is neither the hidden
 	 * one nor the inactive one. He ran for one team in 2027, left it, and joined the
 	 * other in 2028, and 000007 left a team in 2027 and is in none now. So dropping
 	 * the condition that the membership has not ended does two visible things at once:
-	 * it gives 000007 a team he left, and it gives 000045 a second row.</li>
+	 * it gives 000007 a team he left, and it gives 000012 a second row.</li>
 	 * <li><b>The season the membership started in</b> is 2028, which is neither the
 	 * season the team started in (2027) nor either end of the membership he left.</li>
+	 * <li><b>Who brought whom in, on BOTH sides of „whose fee is standing".</b> 000012
+	 * brought in two people and they are 000007, who is on the list, and 000031, whose
+	 * fee has lapsed and who is not. So the count this resource answers him with is
+	 * ONE, and every wrong way of arriving at it is a different number: counting
+	 * everybody gives four, counting the members whose fee stands gives three,
+	 * counting everybody with a referrer at all gives two, and counting nothing gives
+	 * nought. 000045 brought in nobody, so the same field asked of him is nought and a
+	 * constant cannot answer both.</li>
 	 * </ul>
 	 *
-	 * <p>What is deliberately NOT separated: sex lines up with the inactive member,
-	 * and „has no team" lines up with „was brought in by nobody". Neither is a
-	 * substitution a wrong query could make, and three members cannot keep every set
-	 * of them distinct at once.
+	 * <p>What is deliberately NOT separated: sex lines up with the inactive member.
+	 * That is not a substitution a wrong query could make, and four members cannot
+	 * keep every set of them distinct at once.
 	 */
 	@BeforeEach
 	void fourMembers() {
@@ -125,9 +166,13 @@ class CompetitorApiTest {
 		   its length, and everything else about him is ordinary: he is not hidden, he
 		   is in no team, and he pays like two of the others. The only thing that keeps
 		   him out is the one thing being measured. */
+		/* AND 000012 BROUGHT HIM IN TOO, which is the second half of the referral
+		   count: one of the two he brought is on the list and one is not, so the
+		   count and the length of the list are different numbers. */
 		member("000031", "Nenad", "Ilic", "M", "1979-05-20",
 				"(select id from place where rank = 1)", "null", "null",
-				2015, false, false, "payment", "Pauziram.", "c3d2e1f0a9b87704", "null",
+				2015, false, false, "payment", "Pauziram.", "c3d2e1f0a9b87704",
+				"(select id from competitor where member_number = '000012')",
 				false, "none");
 
 		team("probni-tim", "Probni tim", "000012");
@@ -136,6 +181,43 @@ class CompetitorApiTest {
 		membership("000012", "drugi-tim", 2027, "2027", "'Presao u drugi tim'");
 		membership("000012", "probni-tim", 2028, "null", "null");
 		membership("000007", "probni-tim", 2027, "2027", "'Prestao da trci za tim'");
+
+		/* AND THREE WAYS OF ASKING, because the answer now depends on who asks.
+		   000012 is deliberately NOT the first record - the list comes back 000007,
+		   000012, 000045 - so „his own row" and „the first row" are two different
+		   places and a resource that answered the first would be caught. */
+		account(HER_OWN_ACCOUNT, "competitor");
+		belongsTo(HER_OWN_ACCOUNT, "000012");
+		account(THE_OTHER_MEMBER, "competitor");
+		belongsTo(THE_OTHER_MEMBER, "000045");
+		/* Signed in and racing for nobody: V23 leaves `account.competitor_id` empty for
+		   an account that does not race, which is the ordinary case for a moderator
+		   (owner, 14.09.2026). He is the case that separates „signed in" from „is a
+		   member". */
+		account(RACES_FOR_NOBODY, "moderator");
+	}
+
+	private void account(String email, String role) {
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values ('Ime', 'Prezime', ?, (select id from role where code = ?))")
+				.params(email, role).update();
+
+		SecretToken session = SecretToken.fresh();
+		Instant now = Instant.now();
+
+		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
+						+ " expires_at) values ((select id from account where email = ?), ?, ?, ?, ?)")
+				.params(email, session.hash(), Timestamp.from(now.minus(Duration.ofDays(1))),
+						Timestamp.from(now), Timestamp.from(now.plus(SessionLife.LASTS)))
+				.update();
+
+		sessions.put(email, session);
+	}
+
+	/** The link V23 wrote down: this account IS that member. */
+	private void belongsTo(String email, String memberNumber) {
+		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
+				+ " where email = ?").params(memberNumber, email).update();
 	}
 
 	private void member(String number, String first, String last, String gender, String born,
@@ -173,6 +255,29 @@ class CompetitorApiTest {
 	private JsonNode answer() throws Exception {
 		return new ObjectMapper().readTree(
 				http.perform(get("/api/competitors")).andReturn().getResponse().getContentAsString());
+	}
+
+	/** @param email null for the visitor, which is the same request without the cookie */
+	private MockHttpServletRequestBuilder asking(String email) {
+		MockHttpServletRequestBuilder asks = get("/api/competitors");
+		return email == null ? asks
+				: asks.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret()));
+	}
+
+	private String whole(String email) throws Exception {
+		return http.perform(asking(email)).andReturn().getResponse()
+				.getContentAsString(StandardCharsets.UTF_8);
+	}
+
+	private JsonNode answerFor(String email) throws Exception {
+		return new ObjectMapper().readTree(whole(email));
+	}
+
+	/** The one record of the answer that is about this member, for a field of his own. */
+	private JsonNode recordOf(String email, String memberNumber) throws Exception {
+		return StreamSupport.stream(answerFor(email).spliterator(), false)
+				.filter(one -> one.path("memberNumber").asString().equals(memberNumber))
+				.findFirst().orElseThrow();
 	}
 
 	/**
@@ -430,6 +535,197 @@ class CompetitorApiTest {
 		assertThat(http.perform(get("/api/competitors")).andReturn().getResponse().getStatus())
 				.as("/api/competitors asked a visitor to sign in")
 				.isEqualTo(200);
+	}
+
+	/**
+	 * THE VISITOR'S ANSWER HAS NOT MOVED, AND THAT IS THE FIRST THING THIS INCREMENT
+	 * WAS MEASURED BY.
+	 *
+	 * <p>This resource began to answer two fields to whoever is asking on 20.09.2026,
+	 * and the whole of what that may cost is here: the answer a visitor gets must be
+	 * what it was, to the byte. It is asked in the two ways that fail differently.
+	 *
+	 * <ul>
+	 * <li><b>Neither name is anywhere in the visitor's answer</b>, over EVERY record
+	 * and not only the first. A key carrying null would pass a check that reads the
+	 * first record and would still have changed every byte after it.</li>
+	 * <li><b>And the visitor's answer is the member's answer with exactly those two
+	 * keys taken out.</b> That is the half a name cannot measure: it holds the number
+	 * of records, their order, and every value in them, so a condition written as a
+	 * join - the one shape that can give a member two rows or drop one - fails here
+	 * even though every name is still right.</li>
+	 * </ul>
+	 *
+	 * <p><b>Why a golden file was measured and then not committed.</b> The answer was
+	 * captured off `origin/main` before this change and again after it, and the two
+	 * are the same SHA-256 on all four resources. It is not kept as a file because the
+	 * keys in it are `bigserial` and a sequence does not roll back with a test, so the
+	 * same fixture answers different numbers depending on what ran before it in the
+	 * same container - which is a guard that fails for a reason that has nothing to do
+	 * with what it is guarding.
+	 *
+	 * <p><b>The second half cuts the substring rather than parsing and writing back,
+	 * and {@code TeamApiTest} says why it was measured that way.</b> What is cut is
+	 * built out of the values the answer itself carries, so nothing in this case is a
+	 * number somebody remembered.
+	 */
+	@Test
+	void theVisitorsAnswerHasNotMoved() throws Exception {
+		for (JsonNode one : answerFor(null)) {
+			assertThat(Answers.fieldsOf(one))
+					.as("a visitor was answered something only a signed in member may have,"
+							+ " on the record of %s", one.path("memberNumber").asString())
+					.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN);
+		}
+
+		JsonNode hers = recordOf(HER_OWN_ACCOUNT, "000012");
+		String added = ",\"" + THE_REFERRAL_CODE + "\":\"" + hers.path(THE_REFERRAL_CODE).asString()
+				+ "\",\"" + THE_COUNT_SHE_BROUGHT_IN + "\":"
+				+ hers.path(THE_COUNT_SHE_BROUGHT_IN).asInt();
+
+		assertThat(whole(HER_OWN_ACCOUNT).replace(added, ""))
+				.as("signing in changed something other than the two fields it was allowed to:"
+						+ " the visitor's answer is no longer the member's answer with those two"
+						+ " taken out")
+				.isEqualTo(whole(null));
+	}
+
+	/**
+	 * AND THE MEMBER'S OWN RECORD CARRIES NOTHING NOBODY NAMED, which is the same
+	 * floor the visitor's answer stands on, moved onto the record that differs.
+	 *
+	 * <p>It is the SAME check and not a second one: {@code Answers} is handed the
+	 * caller's own record instead of the first, so what it compares against is the
+	 * file the portal serves rather than a list written here. Three of the four
+	 * omissions are still omissions for him - the age band because it is owed, the
+	 * referrer's code because the count replaces it, the basis because PDL P8 gives it
+	 * to the administration alone and the fee flag because he is on the list at all -
+	 * and the one that is no longer an omission is the one field this increment hands
+	 * back. The count is named as answered on purpose, and {@code Answers} checks that
+	 * the portal really does NOT serve that name, so a name listed here after the
+	 * portal starts serving it cannot quietly excuse anything.
+	 */
+	@Test
+	void theMembersOwnRecordCarriesNothingNobodyNamed() throws Exception {
+		assertThat(Answers.fieldsOf(recordOf(HER_OWN_ACCOUNT, "000012")))
+				.as("the caller's own record is no longer the one that differs, so the floor"
+						+ " below would be asked of the wrong record")
+				.contains(THE_REFERRAL_CODE);
+
+		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors asked by the member himself",
+				new ObjectMapper().createArrayNode().add(recordOf(HER_OWN_ACCOUNT, "000012")),
+				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
+				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, WHO_HANDED_OUT_THE_CODE,
+				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
+	}
+
+	/**
+	 * A MEMBER IS HANDED HIS OWN REFERRAL LINK AND NOBODY ELSE'S.
+	 *
+	 * <p>PDL, 06.09.2026: „`referralCode` je clanov sopstveni link". ADL A8 names the
+	 * road it may travel: „kod preporuke ... ide iskljucivo kroz endpoint koji trazi
+	 * prijavu, i nikad u odgovor koji vidi posetilac."
+	 *
+	 * <p><b>Three things, and the second is the one a wrong resource passes.</b> The
+	 * value on his record is HIS, read out of the database rather than written here.
+	 * Every OTHER code in the database is absent from the whole answer as text, which
+	 * is the check that refuses a resource answering the list of codes to anybody who
+	 * signs in - the exact shape PDL measured as the reason one public file could not
+	 * go on serving three audiences. And no other record carries the key at all, so a
+	 * code cannot arrive as null beside a name and be filled in by the next change.
+	 */
+	@Test
+	void aMemberIsHandedHisOwnCodeAndNobodyElses() throws Exception {
+		String hers = db.sql("select referral_code from competitor where member_number = '000012'")
+				.query(String.class).single();
+
+		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path(THE_REFERRAL_CODE).asString())
+				.as("the member was not handed her own referral link by a resource that knows"
+						+ " who is asking")
+				.isEqualTo(hers);
+
+		List<String> everybodyElses = db.sql("select referral_code from competitor"
+				+ " where member_number <> '000012'").query(String.class).list();
+		assertThat(everybodyElses).as("no other code was read out of the database, so the loop"
+				+ " below asserts nothing").hasSize(3);
+
+		String whole = whole(HER_OWN_ACCOUNT);
+
+		for (String code : everybodyElses) {
+			assertThat(whole).as("somebody else's referral code (%s) was handed to a member who"
+					+ " merely signed in; Clan 73 does not make it public and signing in is not"
+					+ " what makes it his", code).doesNotContain(code);
+		}
+
+		assertThat(StreamSupport.stream(answerFor(HER_OWN_ACCOUNT).spliterator(), false)
+				.filter(one -> Answers.fieldsOf(one).contains(THE_REFERRAL_CODE))
+				.map(one -> one.path("memberNumber").asString()).toList())
+				.as("a record other than the caller's own carries the referral code key, whatever"
+						+ " value it holds")
+				.containsExactly("000012");
+	}
+
+	/**
+	 * AND HE IS TOLD HOW MANY HE BROUGHT IN, WHICH IS A COUNT AND NEVER THE COLUMN.
+	 *
+	 * <p>PDL, 06.09.2026, measured why this field could not stay in the public file:
+	 * „`referredBy` cita ekran Clanarine da prebroji koga je clan doveo, a to je upit
+	 * nad SVIMA, ne nad sobom." Answered as a count by a resource that knows who is
+	 * asking, the query over everybody happens where the data is and nothing about
+	 * anybody else leaves.
+	 *
+	 * <p><b>The number is one and every wrong way of getting it is a different
+	 * number</b>, which is what the fixture is arranged for: she brought in two
+	 * people and one of them has let his fee lapse, so the answer is ONE while four
+	 * members exist, three are on the list and two have a referrer. And the same
+	 * field asked of a member who brought in nobody is nought, so nothing constant
+	 * answers both.
+	 */
+	@Test
+	void aMemberIsToldHowManyHeBroughtInAndOnlyThoseWhoseFeeStands() throws Exception {
+		assertThat(db.sql("select count(*) from competitor where referred_by ="
+						+ " (select id from competitor where member_number = '000012')")
+				.query(Integer.class).single())
+				.as("nobody in the fixture was brought in by her, so this case asserts nothing")
+				.isEqualTo(2);
+
+		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path(THE_COUNT_SHE_BROUGHT_IN).asInt())
+				.as("the count is not the members she brought in whose fee is standing; counting"
+						+ " everybody she brought gives two and the list itself gives three")
+				.isEqualTo(1);
+
+		assertThat(recordOf(THE_OTHER_MEMBER, "000045").path(THE_COUNT_SHE_BROUGHT_IN).asInt())
+				.as("a member who brought in nobody was told he brought in somebody, so the field"
+						+ " is not his own")
+				.isZero();
+
+		assertThat(StreamSupport.stream(answerFor(HER_OWN_ACCOUNT).spliterator(), false)
+				.filter(one -> Answers.fieldsOf(one).contains(THE_COUNT_SHE_BROUGHT_IN))
+				.map(one -> one.path("memberNumber").asString()).toList())
+				.as("a record other than the caller's own carries the count key")
+				.containsExactly("000012");
+	}
+
+	/**
+	 * AND AN ACCOUNT THAT RACES FOR NOBODY IS ANSWERED WHAT A VISITOR IS, TO THE BYTE.
+	 *
+	 * <p>V23 leaves {@code account.competitor_id} empty for an account that does not
+	 * race, „Empty for a moderator who does not race, which is the ordinary case and
+	 * not a fault" (owner, 14.09.2026). Being signed in is therefore not the same
+	 * question as being a member, and this is the case that keeps the two apart: a
+	 * resource that read the ACCOUNT where it means the MEMBER would answer this
+	 * caller somebody's fields, and the somebody would be whoever holds that key.
+	 */
+	@Test
+	void anAccountThatRacesForNobodyIsAnsweredWhatAVisitorIs() throws Exception {
+		assertThat(db.sql("select competitor_id from account where email = ?")
+				.param(RACES_FOR_NOBODY).query(Long.class).list().get(0))
+				.as("the account names a member after all, so this case measures the wrong thing")
+				.isNull();
+
+		assertThat(whole(RACES_FOR_NOBODY))
+				.as("an account with no member behind it was answered more than a visitor is")
+				.isEqualTo(whole(null));
 	}
 
 }

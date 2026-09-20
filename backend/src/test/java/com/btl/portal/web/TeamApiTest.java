@@ -1,6 +1,9 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.token.SecretToken;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,13 +12,19 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +40,23 @@ class TeamApiTest {
 	/** Named here with the reason, because a lost field and a withheld one look alike. */
 	private static final String THE_TEAMS_MARK = "logo";
 	private static final String WHO_ADMINISTERS_THE_TEAM = "organizerMemberNumber";
+
+	/** What the seat is answered AS, once the resource knows who is asking. */
+	private static final String WHETHER_THE_SEAT_IS_MINE = "foundedByMe";
+
+	/** Founded the team that comes back FIRST, which is the source the next one separates. */
+	private static final String FOUNDED_THE_FIRST_TEAM = "jelena@primer.rs";
+
+	/** Founded the team that comes back SECOND, so „mine" and „the first" are two places. */
+	private static final String FOUNDED_THE_SECOND_TEAM = "dusan@primer.rs";
+
+	/** In a team and founded none, which is the substitution „is in it" would make. */
+	private static final String FOUNDED_NOTHING = "ana@primer.rs";
+
+	/** Signed in, and no member behind the account at all. */
+	private static final String RACES_FOR_NOBODY = "moderator@primer.rs";
+
+	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	@Autowired
 	private MockMvc http;
@@ -114,6 +140,44 @@ class TeamApiTest {
 		membership("000002", "novosadski-trkaci", 2028);
 		membership("000003", "novosadski-trkaci", 2029);
 		membership("000004", "klub-lovcen", 2027);
+
+		/* AND FOUR WAYS OF ASKING, because the answer now depends on who asks. The
+		   teams come back in name order - Dunavski trkaci, Njegosevi trkaci, Vardarski
+		   krug - so the two founders are the first record and the SECOND, and „the team
+		   that is mine" is never the same place twice. */
+		account(FOUNDED_THE_FIRST_TEAM, "competitor");
+		belongsTo(FOUNDED_THE_FIRST_TEAM, "000001");
+		account(FOUNDED_THE_SECOND_TEAM, "competitor");
+		belongsTo(FOUNDED_THE_SECOND_TEAM, "000003");
+		account(FOUNDED_NOTHING, "competitor");
+		belongsTo(FOUNDED_NOTHING, "000004");
+		/* V23 leaves `account.competitor_id` empty for an account that does not race
+		   (owner, 14.09.2026), which is the case that keeps „signed in" and „is a
+		   member" from being one question. */
+		account(RACES_FOR_NOBODY, "moderator");
+	}
+
+	private void account(String email, String role) {
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values ('Ime', 'Prezime', ?, (select id from role where code = ?))")
+				.params(email, role).update();
+
+		SecretToken session = SecretToken.fresh();
+		Instant now = Instant.now();
+
+		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
+						+ " expires_at) values ((select id from account where email = ?), ?, ?, ?, ?)")
+				.params(email, session.hash(), Timestamp.from(now.minus(Duration.ofDays(1))),
+						Timestamp.from(now), Timestamp.from(now.plus(SessionLife.LASTS)))
+				.update();
+
+		sessions.put(email, session);
+	}
+
+	/** The link V23 wrote down: this account IS that member. */
+	private void belongsTo(String email, String memberNumber) {
+		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
+				+ " where email = ?").params(memberNumber, email).update();
 	}
 
 	private long photo(String digest, String x, String y, String diameter) {
@@ -187,6 +251,25 @@ class TeamApiTest {
 				.hasSize(1);
 
 		return found.getFirst();
+	}
+
+	/** @param email null for the visitor, which is the same request without the cookie */
+	private MockHttpServletRequestBuilder asking(String email) {
+		MockHttpServletRequestBuilder asks = get("/api/teams");
+		return email == null ? asks
+				: asks.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret()));
+	}
+
+	private String whole(String email) throws Exception {
+		return http.perform(asking(email)).andReturn().getResponse()
+				.getContentAsString(StandardCharsets.UTF_8);
+	}
+
+	/** The addresses this caller is told are his to run, in the order they came back. */
+	private List<String> mineAccordingTo(String email) throws Exception {
+		return StreamSupport.stream(new ObjectMapper().readTree(whole(email)).spliterator(), false)
+				.filter(one -> one.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
+				.map(one -> one.path("slug").asString()).toList();
 	}
 
 	/**
@@ -419,6 +502,148 @@ class TeamApiTest {
 		assertThat(http.perform(get("/api/teams")).andReturn().getResponse().getStatus())
 				.as("/api/teams asked a visitor to sign in")
 				.isEqualTo(200);
+	}
+
+	/**
+	 * THE VISITOR'S ANSWER HAS NOT MOVED, AND THAT IS THE FIRST THING THIS INCREMENT
+	 * WAS MEASURED BY.
+	 *
+	 * <p>Asked in the two ways that fail differently: the name is nowhere in any
+	 * record of the visitor's answer, and the visitor's answer is a member's answer
+	 * with exactly that one key taken out. The second half is what a check on names
+	 * cannot do - it holds the number of teams, their order and every value in them,
+	 * so a condition written as a join would fail here with every name still right.
+	 *
+	 * <p><b>The second half is done on the TEXT and not on the parsed tree, and that
+	 * is measured rather than preferred.</b> Written as „parse the member's answer,
+	 * drop the key, write it out again and compare", it failed on an answer nothing
+	 * was wrong with: the crop is {@code numeric(9,8)} and comes out as
+	 * {@code 0.62000000}, which survives being parsed but not being written back, so
+	 * the comparison was between two SERIALISATIONS rather than between two answers.
+	 * Cutting the one substring the field adds leaves every other byte exactly as the
+	 * server wrote it.
+	 */
+	@Test
+	void theVisitorsAnswerHasNotMoved() throws Exception {
+		for (JsonNode one : new ObjectMapper().readTree(whole(null))) {
+			assertThat(Answers.fieldsOf(one))
+					.as("a visitor was told something about a seat, on the record of %s",
+							one.path("slug").asString())
+					.doesNotContain(WHETHER_THE_SEAT_IS_MINE);
+		}
+
+		assertThat(whole(FOUNDED_THE_SECOND_TEAM)
+				.replace(",\"" + WHETHER_THE_SEAT_IS_MINE + "\":true", "")
+				.replace(",\"" + WHETHER_THE_SEAT_IS_MINE + "\":false", ""))
+				.as("signing in changed something other than the one field it was allowed to")
+				.isEqualTo(whole(null));
+	}
+
+	/**
+	 * AND THE MEMBER'S ANSWER CARRIES NOTHING NOBODY NAMED, which is the same floor
+	 * the visitor's answer stands on, asked of the answer that differs.
+	 *
+	 * <p>The two omissions are still omissions - the mark because this schema has no
+	 * address for a picture, the seat because Article 73 makes no role inside a team
+	 * public - and the one thing added is named, with {@code Answers} checking that
+	 * the portal really does not serve that name.
+	 */
+	@Test
+	void theMembersAnswerCarriesNothingNobodyNamed() throws Exception {
+		Answers.everyFieldThePortalReadsIsAnswered("/api/teams asked by a member",
+				new ObjectMapper().readTree(whole(FOUNDED_THE_SECOND_TEAM)), "teams.json",
+				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE),
+				THE_TEAMS_MARK, WHO_ADMINISTERS_THE_TEAM);
+	}
+
+	/**
+	 * A MEMBER IS TOLD WHICH TEAM IS HIS TO RUN, AND IS TOLD NOTHING ABOUT ANYBODY
+	 * ELSE'S.
+	 *
+	 * <p>Article 73 makes „Tim" public and makes no role inside one public, so the
+	 * seat does not leave as a member number (the case above this one holds that over
+	 * the whole text). What every screen that read the number actually asked was
+	 * whether the READER holds the seat - {@code runs === memberNumber} three times in
+	 * {@code pages/TeamDetail.tsx}, and a guard in {@code pages/member/EditTeam.tsx} -
+	 * and that is what comes back.
+	 *
+	 * <p><b>Four callers, because one answer can be right for three wrong reasons.</b>
+	 *
+	 * <ul>
+	 * <li><b>The founder of the SECOND team</b> is asked first and on purpose. The
+	 * teams come back in name order, so a resource that marked the first record, or
+	 * the caller's own record, or simply the first team a member is in, would all
+	 * agree with the right answer for the founder of the first one.</li>
+	 * <li><b>The founder of the FIRST team</b>, so the two are not the same place.</li>
+	 * <li><b>A member who is IN a team and founded none</b> is told nothing is his,
+	 * which is the substitution a query joining {@code team_membership} would
+	 * make.</li>
+	 * <li><b>And a team whose seat is empty</b> answers FALSE rather than nothing,
+	 * which is the difference between „you did not found this" and „I do not know who
+	 * you are". Without it the two sentences are one and a visitor cannot be told
+	 * apart from a stranger.</li>
+	 * </ul>
+	 */
+	@Test
+	void aMemberIsToldWhichTeamIsHisToRunAndNothingAboutTheRest() throws Exception {
+		assertThat(addresses()).as("the teams no longer come back in this order, so „the second"
+						+ " team" + " " + "is not the second record and this case measures nothing")
+				.containsExactly("novosadski-trkaci", "klub-lovcen", "vardarski-krug");
+
+		assertThat(mineAccordingTo(FOUNDED_THE_SECOND_TEAM))
+				.as("the member who founded the SECOND team was not told it is his, or was told"
+						+ " somebody else's is")
+				.containsExactly("klub-lovcen");
+
+		assertThat(mineAccordingTo(FOUNDED_THE_FIRST_TEAM))
+				.as("the member who founded the FIRST team was not told it is his, or was told"
+						+ " somebody else's is")
+				.containsExactly("novosadski-trkaci");
+
+		assertThat(mineAccordingTo(FOUNDED_NOTHING))
+				.as("a member who is in a team but founded none was told a team is his to run,"
+						+ " so the answer is about being in it rather than about the seat")
+				.isEmpty();
+
+		assertThat(db.sql("select count(*) from team where admin_id is null")
+				.query(Integer.class).single())
+				.as("no team in the fixture has an empty seat, so the claim below asserts nothing")
+				.isEqualTo(1);
+
+		JsonNode noSeat = StreamSupport.stream(
+						new ObjectMapper().readTree(whole(FOUNDED_NOTHING)).spliterator(), false)
+				.filter(one -> one.path("slug").asString().equals("vardarski-krug"))
+				.findFirst().orElseThrow();
+
+		assertThat(Answers.fieldsOf(noSeat))
+				.as("a team whose seat nobody holds answered a signed in member with nothing at"
+						+ " all, which is what a visitor is told; the two must not read alike")
+				.contains(WHETHER_THE_SEAT_IS_MINE);
+		assertThat(noSeat.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
+				.as("a team whose seat nobody holds was answered as the caller's own")
+				.isFalse();
+	}
+
+	/**
+	 * AND AN ACCOUNT THAT RACES FOR NOBODY IS ANSWERED WHAT A VISITOR IS, TO THE BYTE.
+	 *
+	 * <p>V23 leaves {@code account.competitor_id} empty for an account that does not
+	 * race (owner, 14.09.2026), so being signed in and being a member are two
+	 * questions. A resource that compared the seat with the ACCOUNT rather than with
+	 * the member would hand this caller a team belonging to whoever holds that key,
+	 * and the keys of two different tables agreeing by accident is how that reads
+	 * right in a fixture.
+	 */
+	@Test
+	void anAccountThatRacesForNobodyIsAnsweredWhatAVisitorIs() throws Exception {
+		assertThat(db.sql("select competitor_id from account where email = ?")
+				.param(RACES_FOR_NOBODY).query(Long.class).list().get(0))
+				.as("the account names a member after all, so this case measures the wrong thing")
+				.isNull();
+
+		assertThat(whole(RACES_FOR_NOBODY))
+				.as("an account with no member behind it was told something about a seat")
+				.isEqualTo(whole(null));
 	}
 
 }

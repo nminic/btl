@@ -70,6 +70,18 @@ import java.util.List;
  * in this resource, and it is the one thing whoever switches the portal over has
  * to know.
  *
+ * <p><b>AND A RESOURCE THAT KNEW WHO IS ASKING WOULD NOT CLOSE THAT BOUNDARY
+ * EITHER, which was measured on 20.09.2026 and is written here so it is not
+ * measured again.</b> P-javno (ADL, 13.09.2026) sends everything Article 73 does not
+ * list „iza resursa koji zna ko pita", and the seven above look from the outside
+ * like seven more fields waiting behind that door. They are not waiting behind any
+ * door: {@code ducat} has nine columns of content in V15 and NONE of them is a mark,
+ * an artwork or a word above a number. The seven are not withheld from a visitor and
+ * held for a member - <b>this server does not have them at all</b>, and the portal
+ * does, which is exactly what V15 decided. So this resource takes no parameter
+ * naming the caller: there is nothing here that could depend on him, and a parameter
+ * saying otherwise would be a promise.
+ *
  * <p><b>From bronze to gold</b>, which is the order the rulebook speaks of them in:
  * „od bronzanih, koje mnogi osvoje već u prvoj sezoni, preko srebrnih, do zlatnih,
  * koji se skupljaju godinama". Within one metal the order is the one the catalogue
