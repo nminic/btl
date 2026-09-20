@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.rights.TheNamedSuperadmin;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -41,17 +42,52 @@ import java.util.Optional;
  * Written against the hash it would be the same row today, and it would stop
  * being so the moment anything else reads a session; written against the account
  * it would move every device that member has.
+ *
+ * <p><b>AND THIS IS WHERE THE SUPERADMIN IS DECIDED, once, for the whole request.</b>
+ * The owner named him by an address in the server's settings rather than by anything the
+ * portal can write (PDL P21, 14.09.2026, „Superadmin se ne pravi kroz portal"), so the
+ * role this filter hands on is not always the role the row carries.
+ * {@link TheNamedSuperadmin} holds the whole of that question and this asks it in the one
+ * place that already knows whose request this is - so {@link MeApi} tells the browser
+ * which screens to draw, and {@link WhatHeMayDo} answers "may he", off ONE answer.
+ * Derived twice they could disagree, and the half that disagreed would be a portal
+ * drawing an administration whose routes refuse it, or worse, refusing to draw one whose
+ * routes are open.
  */
 final class WhoIsAsking extends OncePerRequestFilter {
 
 	private final JdbcClient db;
 
-	WhoIsAsking(JdbcClient db) {
+	private final TheNamedSuperadmin named;
+
+	WhoIsAsking(JdbcClient db, TheNamedSuperadmin named) {
 		this.db = db;
+		this.named = named;
 	}
 
-	/** What a session is worth knowing about, and nothing else is read. */
-	private record Open(long session, long account, String role, SessionLife.Session life) {
+	/**
+	 * What a session is worth knowing about, and nothing else is read.
+	 *
+	 * @param role            the role the ROW carries, before the settings are consulted
+	 * @param address         {@code account.email}, read to be compared with the setting
+	 *                        and never handed on
+	 * @param addressConfirmed whether the address has been confirmed, which is the half of
+	 *                        the owner's sentence that a claimed address does not satisfy
+	 * @param everyRightRole  the name of the role holding {@code rights_mode = 'all'},
+	 *                        read off the table rather than written here as the word
+	 *                        {@code superadmin}: V5's partial unique index
+	 *                        {@code role_only_one_holds_every_right} makes at most one role
+	 *                        carry it and {@code RolesAndRightsTest} holds that there is
+	 *                        one, so this is the schema answering rather than a second home
+	 *                        for which role that is
+	 */
+	private record Open(long session, long account, String role, String address,
+			boolean addressConfirmed, String everyRightRole, SessionLife.Session life) {
+
+		/** The role this request carries, which is the row's unless the settings say otherwise. */
+		String roleAfter(TheNamedSuperadmin named) {
+			return named.covers(address, addressConfirmed) ? everyRightRole : role;
+		}
 	}
 
 	@Override
@@ -64,10 +100,12 @@ final class WhoIsAsking extends OncePerRequestFilter {
 				.flatMap(this::sessionFor)
 				.filter(one -> SessionLife.stillOpen(one.life(), now))
 				.ifPresent(one -> {
+					String role = one.roleAfter(named);
+
 					SecurityContextHolder.getContext().setAuthentication(
-							new UsernamePasswordAuthenticationToken(new Member(one.account(), one.role()), null,
+							new UsernamePasswordAuthenticationToken(new Member(one.account(), role), null,
 									List.of(new SimpleGrantedAuthority(
-											"ROLE_" + one.role().toUpperCase(Locale.ROOT)))));
+											"ROLE_" + role.toUpperCase(Locale.ROOT)))));
 
 					if (SessionLife.worthRenewing(one.life(), now)) {
 						db.sql("update account_session set last_used_at = ?, expires_at = ? where id = ?")
@@ -116,16 +154,29 @@ final class WhoIsAsking extends OncePerRequestFilter {
 				.findFirst();
 	}
 
+	/**
+	 * The session, the account behind it, and what the settings need in order to say
+	 * whether that account is the superadmin - in the ONE statement this filter already
+	 * made.
+	 *
+	 * <p>The address and the role holding every right are two columns more on a row that
+	 * was being fetched anyway, so naming the superadmin costs no second round trip on any
+	 * request. Asked separately it would be one more query per request for a question
+	 * whose answer is no for everybody but one person.
+	 */
 	private Optional<Open> sessionFor(String secret) {
-		return db.sql("select s.id, s.account_id, r.code, s.last_used_at, s.expires_at"
+		return db.sql("select s.id, s.account_id, r.code, a.email, a.email_confirmed_at,"
+						+ " (select code from role where rights_mode = 'all'),"
+						+ " s.last_used_at, s.expires_at"
 						+ " from account_session s"
 						+ " join account a on a.id = s.account_id"
 						+ " join role r on r.id = a.role_id"
 						+ " where s.token_hash = ?")
 				.param(SecretToken.hashOf(secret))
 				.query((row, one) -> new Open(row.getLong(1), row.getLong(2), row.getString(3),
-						new SessionLife.Session(row.getTimestamp(4).toInstant(),
-								row.getTimestamp(5).toInstant())))
+						row.getString(4), row.getTimestamp(5) != null, row.getString(6),
+						new SessionLife.Session(row.getTimestamp(7).toInstant(),
+								row.getTimestamp(8).toInstant())))
 				.optional();
 	}
 

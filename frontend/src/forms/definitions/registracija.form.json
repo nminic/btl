@@ -95,7 +95,7 @@
       "type": "password",
       "labelKey": "registration.password",
       "required": true,
-      "minLength": 10,
+      "minLength": 12,
       "row": 3,
       "policyRow": "Lozinka",
       "policyBasis": "Izvršenje ugovora"
