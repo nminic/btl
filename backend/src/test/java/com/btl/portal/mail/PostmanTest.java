@@ -137,6 +137,14 @@ class PostmanTest {
 	 * written twice above. Asserting it a third time would compare a constant with itself;
 	 * what is worth holding is that the two homes still name one port, and that it is not
 	 * the one the library hands to everybody.
+	 *
+	 * <p><b>The border, so that nobody reads more out of this than it holds.</b> This does
+	 * NOT show that two seconds would actually fail to bind on any given machine: that
+	 * failure is probabilistic by construction and took six clean builds to appear once. It
+	 * shows the two things that ARE deterministic, that the wait the running server was
+	 * bound with is ours rather than the library's and that it is the ten seconds that were
+	 * measured. Put the wait back to two and this goes red on the first run rather than on
+	 * the sixth, which is the whole trade.
 	 */
 	@Test
 	void theServerTheseCasesSpeakToIsTheSharedOneWithTimeToComeUp() {
