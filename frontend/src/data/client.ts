@@ -16,25 +16,34 @@
  * What was measured on 20.09.2026, over all fourteen:
  *
  * All fourteen names have a GET route, which `contract.test.ts` holds. **A
- * declared address is not an answer a screen can read**, and none of the fourteen
- * answers in the shape read here. Ten carry a text identity in the file where the
- * schema says `bigserial` (A36 O1); `events.featured` and `races.renamed` carry
- * „yes" and „no" where it says `boolean`; `pages` is a record keyed by address
- * here and a list there; `verification` is one flat list here and a list of
- * queues there. And five resources answer with fewer fields than the screens
- * read: `competitors` without `active`, `ageBand`, `membershipBasis`,
- * `referralCode` and `referredBy`, `teams` without `logo` and
- * `organizerMemberNumber`, `pairs` without `since`, `ducats` without seven of its
- * sixteen.
+ * declared address is not an answer a screen can read**, and on the morning of
+ * that day none of the fourteen answered in the shape read here. Ten carried a
+ * text identity in the file where the schema says `bigserial` (A36 O1);
+ * `events.featured` and `races.renamed` carried „yes" and „no" where it says
+ * `boolean`; `pages` was a record keyed by address here and a list there;
+ * `verification` was one flat list here and a list of queues there. And five
+ * resources answer with fewer fields than the screens read: `competitors`
+ * without `active`, `ageBand`, `membershipBasis`, `referralCode` and
+ * `referredBy`, `teams` without `logo` and `organizerMemberNumber`, `pairs`
+ * without `since`, `ducats` without seven of its sixteen.
  *
- * **Those fields are withheld on purpose and no backend work brings them back
- * here:** P-javno, 13.09.2026, puts everything Article 73 does not list behind a
- * resource that knows who is asking, and that resource does not exist yet. So
- * A50's own condition is not met, and switching today is not a half-empty QA -
- * which is the cost A50 accepted - but a broken one. Two measured examples:
- * `profile/visible.ts` reads `competitor.active`, which would arrive undefined
- * and turn every profile invisible, and `usePages` reads a record keyed by
- * address, which a list answers with nothing on every written page.
+ * **THE SHAPES WERE CLOSED THE SAME DAY, AND THE FIELDS WERE NOT.** The owner's
+ * order was „Uskladi oblike, pa polje po polje odluci": the file and the types
+ * now carry the identities, the flags, the list of pages and the nothing where an
+ * empty string stood, and `data/servedShape.test.ts` holds the real answer
+ * against the very types the screens read it through. `verification` is the one
+ * shape left, because its answer is grouped by tab and drops nine of the fields
+ * that screen draws, and that is a decision rather than an alignment.
+ *
+ * **What still stops the switch is the fields, and no backend work brings them
+ * back here:** P-javno, 13.09.2026, puts everything Article 73 does not list
+ * behind a resource that knows who is asking, and that resource does not exist
+ * yet. So A50's own condition is not met, and switching today is not a half-empty
+ * QA - which is the cost A50 accepted - but a broken one. The measured example
+ * that still stands: `profile/visible.ts` reads `competitor.active`, which would
+ * arrive undefined and turn every profile invisible. The one beside it no longer
+ * does: `usePages` read a record keyed by address until 20.09.2026 and reads the
+ * list the server answers with since.
  *
  * **This said „no component calls fetch" until 19.09.2026, and that sentence is
  * corrected here rather than left to be walked past.** `pages/account` speaks to
@@ -134,17 +143,17 @@ const arrived = new Map<ResourceName, unknown>()
  *
  * **This promised that the day the backend arrived and the shapes were known by
  * name, this was the place that changed. That day came on 20.09.2026 and the
- * three stay, so the promise is replaced by what was measured.** The shapes are
- * known by name now, and they are not these: the head of this file lists where
- * the fourteen answers differ from what the screens read. An assertion is
- * removable when a name can be given a type that is true; naming these would mean
- * writing down the file's shape and calling it the server's, which is the one
- * thing worth less than the assertion, because it reads as checked.
+ * three stay, so the promise is replaced by what was measured.** Naming a shape
+ * here would mean writing down one record type per resource and reading the two
+ * caches by that name rather than by the caller's `T`, which is a change of its
+ * own size and is written out below. What the shapes being closed changed is that
+ * such a name would now be TRUE; it was not before, and that is why the first of
+ * the two things this was waiting for is done.
  *
- * So what has to happen first is not here. Either the screens come to the shapes
- * the schema serves, or a resource that knows who is asking answers for the
- * fields Article 73 keeps back (P-javno, 13.09.2026). On the day after that one,
- * this is still the place that changes.
+ * So what has to happen first is no longer both. The screens have come to the
+ * shapes the schema serves; what is left is a resource that knows who is asking,
+ * answering for the fields Article 73 keeps back (P-javno, 13.09.2026). On the
+ * day after that one, this is still the place that changes.
  *
  * `arrivedResource` is the one of the three that a table of shapes by resource
  * name would actually remove, because an object typed `{ [K in ResourceName]?:

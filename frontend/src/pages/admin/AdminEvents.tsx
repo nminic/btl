@@ -549,10 +549,13 @@ export function AdminEvents() {
                         remove(RESULTS, id)
                       }
 
-                      /* Counted up from the highest number already used, over every
-                         race that exists rather than over what this visit made
-                         (`raceIds.ts`). Counted rather than measured, it handed a
-                         new race the number a deleted one had freed and two records
+                      /* Counted down from the lowest number already used, over every
+                         race the screen is holding (`raceIds.ts`, `nextIdentity`).
+                         The file's races are on that list and change nothing, because
+                         they carry a `bigserial` and this counts below nought; what
+                         the list is really there for is the races this visit has
+                         already made. Counted rather than measured, it handed a new
+                         race the number a deleted one had freed and two records
                          answered to one id. */
                       let next = nextIdentity(allRaces.map((one) => one.id))
 
