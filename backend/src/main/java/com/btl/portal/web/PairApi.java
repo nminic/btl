@@ -35,10 +35,25 @@ import java.util.List;
  * over - by name and as text, because a field renamed is a field that walks past
  * a check that only reads names.
  *
- * <p>What follows from that, and is owed: the sentence that profile draws needs
- * either the owner's word that the day of forming is public, or it loses its
- * date. Nothing is blank today, because the portal stays on its own files until
- * every resource exists and then switches once (A50).
+ * <p><b>THAT WAS WRITTEN AS AN OPEN QUESTION AND IT IS NOT ONE ANY MORE, so the
+ * sentence that said it was has gone rather than been left for the next reader to
+ * act on.</b> It said the profile's sentence „needs either the owner's word that the
+ * day of forming is public, or it loses its date". The owner gave that word on
+ * 13.09.2026 and it went the other way, and not only for the visitor: <b>„Dan kad je
+ * par nastao se ne prikazuje NIKOME. Server ga ne vraca, i kad se `/mock` ugasi
+ * sklanja se i sa ekrana. Ostaje samo da su njih dvoje par."</b> (PDL). So the day
+ * does not come back when this resource learns who is asking either - there is
+ * nobody it may be answered to - and what is owed is on the portal's side of the
+ * line: the profile loses its date when {@code /mock} goes. Nothing is blank today,
+ * because the portal stays on its own files until every resource exists and then
+ * switches once (A50).
+ *
+ * <p><b>AND THAT IS WHY THIS RESOURCE DOES NOT ASK WHO IS ASKING, while
+ * {@code CompetitorApi} and {@code TeamApi} began to on 20.09.2026.</b> P-javno
+ * (ADL, 13.09.2026) sends everything Article 73 does not list „iza resursa koji zna
+ * ko pita", and the one field this resource holds back is not waiting behind that
+ * door - it is shut to everybody by a decision of its own. A parameter naming the
+ * caller would be a promise that something here depends on him, and nothing does.
  *
  * <p><b>THE TWO OF THEM COME BACK IN THE ORDER THE SCHEMA STORES THEM: the man
  * first.</b> A racing pair is mixed, one man and one woman (PDL), and V12 holds

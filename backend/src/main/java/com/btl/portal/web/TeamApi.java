@@ -1,6 +1,8 @@
 package com.btl.portal.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -42,6 +44,33 @@ import java.util.List;
  * „ko nije platio, ne vidi se nigde"). A member number answered here and absent
  * there says by subtraction exactly what that decision shut.</li>
  * </ul>
+ *
+ * <p><b>WHAT DOES LEAVE, SINCE 20.09.2026, IS THE ANSWER TO THE QUESTION THE
+ * NUMBER WAS BEING READ FOR, and only to the one asking it.</b> The paragraph
+ * above says the number is read as a condition and never drawn, and that was
+ * measured again before this was written: all three uses in
+ * {@code pages/TeamDetail.tsx} are {@code runs !== null} and
+ * {@code runs === memberNumber}, and the one use in {@code pages/member/EditTeam.tsx}
+ * is a guard that refuses the page to anybody but the administrator, after which the
+ * name it draws is the READER's own off the reader's own record. So no screen wants
+ * to know who founded a team; every screen wants to know whether the reader did.
+ * {@code foundedByMe} is that, and it is the number reduced to what Article 73 lets
+ * the reader have - nothing about anybody else at all.
+ *
+ * <p><b>AND IT IS THE STORED FACT, NOT THE STANDING RULE, WHICH IS A BOUNDARY AND
+ * IS WRITTEN DOWN RATHER THAN LEFT TO BE FOUND.</b> Who ADMINISTERS a team is more
+ * than who founded it: „Administrator tima je onaj ko je tim osnovao. Kad se mesto
+ * isprazni, po podrazumevanom ga preuzima clan koji je najduze u timu, dakle
+ * najraniji `teamSince`, a kod izjednacenja manji broj clana" (owner, PDL,
+ * 04.09.2026). The second half of that sentence is worked out from the roster and
+ * lives in {@code frontend/src/data/teamAdmin.ts}; this resource does not repeat it,
+ * because two homes for one rule drift and the other home is the one the owner's
+ * decision was written against. What the portal cannot do once the number is gone is
+ * tell whether the seat is EMPTY, which is the first line of that same function -
+ * and that is the one bit this resource still owes. It is named here, and in
+ * {@code TeamApiTest}, rather than guessed at: either this answers a second
+ * condition beside the one below, or the standing rule moves here whole. That is a
+ * decision about where a rule lives and it is the owner's to make.
  *
  * <p><b>AND NEITHER DO THE MEMBERS OF THE TEAM</b>, although they are public.
  * Article 73 does make them public and this resource still does not carry them,
@@ -99,8 +128,11 @@ class TeamApi {
 
 	private final JdbcClient db;
 
-	TeamApi(JdbcClient db) {
+	private final MemberOfAccount memberOfAccount;
+
+	TeamApi(JdbcClient db, MemberOfAccount memberOfAccount) {
 		this.db = db;
+		this.memberOfAccount = memberOfAccount;
 	}
 
 	/**
@@ -115,14 +147,30 @@ class TeamApi {
 	}
 
 	/**
-	 * @param crop the square of the mark, or null for a team that has no mark
+	 * @param crop        the square of the mark, or null for a team that has no mark
+	 * @param foundedByMe whether the one asking is the member this team's seat names,
+	 *                    and ABSENT - not null, and not false - from every answer
+	 *                    nobody signed in asked for. False and absent are two
+	 *                    different sentences: „you did not found this" and „I do not
+	 *                    know who you are", and a visitor must be told the second
 	 */
 	record Team(long id, String slug, String name, String city, String country, String bio,
-			Crop crop) {
+			Crop crop,
+			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe) {
 	}
 
+	/**
+	 * @param member who the chain worked out is asking, or NULL when nobody is, for the
+	 *               reason written on {@code CompetitorApi}: this route is open for
+	 *               reading, so an anonymous GET arrives here rather than at a 401
+	 */
 	@GetMapping("/api/teams")
-	List<Team> teams() {
+	List<Team> teams(@AuthenticationPrincipal WhoIsAsking.Member member) {
+		/* The caller as a MEMBER, which an account that does not race does not have:
+		   a signed in moderator founded no team and is answered exactly what a
+		   visitor is. */
+		Long me = member == null ? null : memberOfAccount.competitorId(member.account());
+
 		return db.sql("select t.id, t.slug, t.name,"
 						/* The town in the two shapes V11 allows, and the country off whichever
 						   of them the team used. The same three columns and the same coalesce as
@@ -134,7 +182,26 @@ class TeamApi {
 						   address in this schema and nothing serves one; the crop is the half
 						   that is really here. `crop_diameter` and not `crop_side`: V21 renamed
 						   it when the three became fractions. */
-						+ " mark.crop_x, mark.crop_y, mark.crop_diameter"
+						+ " mark.crop_x, mark.crop_y, mark.crop_diameter,"
+						/* AND WHETHER THE ONE ASKING IS THE MEMBER THIS SEAT NAMES.
+						   Written as two questions and not one, because `t.admin_id = :me`
+						   alone is NULL for two different reasons - nobody is asking, and
+						   the seat is empty - and those are the two sentences this field
+						   exists to keep apart. The outer `case` answers the visitor with
+						   null, which `@JsonInclude` leaves out; the `coalesce` answers a
+						   signed in member `false` for a team whose seat nobody holds.
+
+						   `t.admin_id` and never the member number: the number is what must
+						   not leave (see the note on this class), and comparing keys means
+						   this query never reads one.
+
+						   CAST ON THE FIRST ONE, and it is a requirement rather than a
+						   flourish: the other mention sits beside `t.admin_id` and takes its
+						   type from it, but `? is null` stands alone and PostgreSQL refuses
+						   the statement outright - „could not determine data type of
+						   parameter $1" - rather than guessing. */
+						+ " case when cast(:me as bigint) is null then null"
+						+ "      else coalesce(t.admin_id = :me, false) end as founded_by_me"
 						+ " from team t"
 						+ " left join place town on town.id = t.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -147,6 +214,7 @@ class TeamApi {
 						   /api/competitors. A join would also give a team as many rows as it has
 						   members. */
 						+ " order by t.name, t.id")
+				.param("me", me)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double. V21 chose `numeric(9, 8)`
 					   for this and said why: the rule is about the exact boundaries 0 and 1, and
@@ -159,7 +227,8 @@ class TeamApi {
 							/* Every column of `photo` is NOT NULL, so this one is null exactly
 							   when no picture joined, which is a team with no mark. */
 							across == null ? null
-									: new Crop(across, row.getBigDecimal(8), row.getBigDecimal(9)));
+									: new Crop(across, row.getBigDecimal(8), row.getBigDecimal(9)),
+							row.getObject(10, Boolean.class));
 				})
 				.list();
 	}
