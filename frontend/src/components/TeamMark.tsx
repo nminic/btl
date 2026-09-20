@@ -60,7 +60,7 @@ export function TeamMark({ team }: { team: Team }) {
   }
 
   return (
-    <span className="face-circle team-mark" aria-hidden="true" style={{ '--face-hue': hueFor(team.id) }}>
+    <span className="face-circle team-mark" aria-hidden="true" style={{ '--face-hue': hueFor(String(team.id)) }}>
       {initialsOf(team.name)}
     </span>
   )

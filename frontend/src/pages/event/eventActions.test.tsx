@@ -355,10 +355,10 @@ describe('a race carried into a copy of its event', () => {
      never carried a kind from one that has none, so the copy would quietly become
      a race of a length the first time somebody saved it. */
   const timed: Race = {
-    id: 'r1',
-    eventId: 'e1',
+    id: 1,
+    eventId: 2,
     name: 'Šri Činmoj ultramaraton',
-    renamed: 'yes',
+    renamed: true,
     date: '2026-09-19',
     kind: 'time',
     limitSeconds: 86_400,
@@ -795,7 +795,7 @@ describe('copying an event', () => {
   it('lets a copied race that was never renamed go on following its event', async () => {
     /* The other half of the rule, and the half the guard above cannot reach: the
        event it measures on has exactly one race and that race is renamed, so
-       `renamed: 'yes'` written flat into the copy passes it. A round measured that:
+       `renamed: true` written flat into the copy passes it. A round measured that:
        with the flag hard-coded, all 2148 tests stayed green while every copied race
        stopped following its event.
 

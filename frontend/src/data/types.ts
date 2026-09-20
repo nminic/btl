@@ -69,11 +69,6 @@ export const EVENT_KINDS = ['race', 'training', 'gathering'] as const
 
 export type EventKind = (typeof EVENT_KINDS)[number]
 
-/* No first, because that is what an event is until somebody says otherwise. */
-export const FEATURED = ['no', 'yes'] as const
-
-export type Featured = (typeof FEATURED)[number]
-
 /**
  * One member saying they are going to one event (owner, 11.08.2026).
  *
@@ -81,7 +76,7 @@ export type Featured = (typeof FEATURED)[number]
  * signing up through the portal is „samo iskazana namera, ne obaveza".
  */
 export type Attending = {
-  eventId: string
+  eventId: number
   memberNumber: string
 }
 
@@ -221,7 +216,7 @@ export type Competitor = {
    * (Član 74). That half is now the whole of what the record carries — see `ageBand`.
    */
   birthdayShown: BirthdayShown
-  teamId: string | null
+  teamId: number | null
   /**
    * The season this member joined their club, which is not the season they
    * joined the league.
@@ -255,8 +250,8 @@ export type Competitor = {
    generated file still carries its event's name: they were made before there was
    anything else to carry. */
 export type Race = {
-  id: string
-  eventId: string
+  id: number
+  eventId: number
   /**
    * What this race is called.
    *
@@ -280,11 +275,18 @@ export type Race = {
    * name into: it would go on following, and the next rename would take away a
    * choice that was made.
    *
-   * Yes or no and not `true`/`false`, for the same reason `BtlEvent.featured` is:
-   * the store keeps every value as text (`session/context.ts`, `Created`), and a
-   * boolean written into it comes back as the string „false", which is true.
+   * A true or a false, which is what the schema keeps and what `/api/races`
+   * answers with (`CalendarApi.Race`, `renamed boolean not null`). It was the
+   * words „yes" and „no" until 20.09.2026, because the session store keeps every
+   * value as text (`session/context.ts`, `Created`) and a boolean written into it
+   * comes back as the string „false", which is true. That is a fault of the
+   * store and not a shape of the record, and the store already answers for it:
+   * `forms/records.ts` turns the two buttons of a yes-or-no question into a
+   * boolean on the way in (`recordValue`, `like`) and back into the words on the
+   * way out (`valuesFor`), which is how `Competitor.firstSeason2027` has been
+   * kept since it was written.
    */
-  renamed: 'yes' | 'no'
+  renamed: boolean
   /**
    * The day this race is run on, which is not always the day of its event.
    *
@@ -330,7 +332,7 @@ export type Race = {
 }
 
 export type BtlEvent = {
-  id: string
+  id: number
   slug: string
   name: string
   date: string
@@ -341,12 +343,15 @@ export type BtlEvent = {
    * Whether the event is singled out in the calendar and on the front page
    * (owner, 11.08.2026).
    *
-   * Yes or no, and not true or false, because the owner asked for a list with
-   * two entries rather than a box to tick: a list says what both answers are
-   * before either is chosen, and a box says only one of them. What the record
-   * keeps is what the list holds.
+   * **The form still asks it as a list of two and not as a box to tick**, which
+   * is what the owner asked for: a list says what both answers are before either
+   * is chosen, and a box says only one of them. What the RECORD keeps is a true
+   * or a false, because that is what the schema keeps and what `/api/events`
+   * answers with (`CalendarApi.Event`, `featured boolean not null`). The two
+   * meet in `forms/records.ts`, which is where every question asked in words and
+   * kept as a flag has met since `Competitor.firstSeason2027` was written.
    */
-  featured: Featured
+  featured: boolean
   /**
    * What the organiser says this race is, and where they say the rest of it.
    *
@@ -363,7 +368,13 @@ export type BtlEvent = {
   description: string
   link: string
   /**
-   * The event this one was copied from, or an empty string.
+   * The event this one was copied from, or nothing at all.
+   *
+   * **Nothing, and not an empty string.** The column is nullable and
+   * `/api/events` answers with `null` for an event nobody copied
+   * (`CalendarApi.Event`, `Long copiedFrom`); an empty string is a value that
+   * says the copy came out of an event whose identity is blank, which is not a
+   * state this portal has.
    *
    * Written the moment a copy is made and never again (owner, 11.08.2026), so
    * one edition knows what it came out of and a chain of them reads backwards
@@ -374,7 +385,7 @@ export type BtlEvent = {
    * becomes "Wizz Air Beogradski maraton" and is the same race, while two
    * unrelated "Novogodišnja trka" are not one race in two towns.
    */
-  copiedFrom: string
+  copiedFrom: number | null
 }
 
 /* An event does not list its races. It did, in `raceIds`, and the same link was
@@ -384,9 +395,17 @@ export type BtlEvent = {
    is the whole of it (ADL A7, 06.08.2026). */
 
 export type Result = {
-  id: string
-  memberNumber: string
-  raceId: string
+  id: number
+  /**
+   * Whose run it was, while there is a member number to name.
+   *
+   * **Nothing is an ordinary answer here since V16.** A row in `competitor` is a
+   * person who registered; a MEMBER is a row whose `member_number` is there, so a
+   * result can belong to somebody who has no number yet and `/api/results`
+   * answers with `null` for them (`ResultApi.Result`).
+   */
+  memberNumber: string | null
+  raceId: number
   /**
    * The name of the race this result was run in, carried on the result the way
    * the event's name already is.
@@ -436,7 +455,7 @@ export type Result = {
  * raced in the next, and `since` is the day the second of the two confirmed.
  */
 export type RacingPair = {
-  id: string
+  id: number
   season: number
   /** Both members, and exactly two: a pair is one man and one woman (PDL). */
   memberNumbers: [string, string]
@@ -444,7 +463,7 @@ export type RacingPair = {
 }
 
 export type Team = {
-  id: string
+  id: number
   slug: string
   name: string
   city: string
@@ -483,11 +502,11 @@ export type Team = {
 }
 
 export type League = {
-  id: string
+  id: number
   slug: string
   name: string
   season: number
-  eventIds: string[]
+  eventIds: number[]
   /** Written for this league; empty until somebody writes it, and then the
    *  section does not appear at all. */
   rules: string
@@ -507,7 +526,7 @@ export type League = {
  * may do nothing yet.
  */
 export type Moderator = {
-  id: string
+  id: number
   firstName: string
   lastName: string
   email: string
@@ -546,13 +565,18 @@ export type PageSection = {
    * a third copy of figures that already live in `data/pricing.ts`, and the copy
    * that drifts is the one a member reads.
    */
-  gallery?: 'ducats' | 'prices'
+  gallery?: 'ducats' | 'prices' | null
 }
 
 /** A page of written text: the rulebook, the terms, the page about the league.
  *  Kept as data rather than in the translation dictionary because these run to
  *  thousands of words and are written and revised on their own schedule. */
 export type StaticPage = {
+  /** The address this page answers at, and the one identity in this portal a
+   *  human still types (ADL A4d). It is on the record rather than the key of a
+   *  dictionary around it, because that is what `/api/pages` answers with
+   *  (`PageApi.Page`): a list whose rows carry their own address. */
+  slug: string
   title: string
   sections: PageSection[]
   /**
@@ -595,12 +619,16 @@ export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
  * counts as published.
  */
 export type EventComment = {
-  id: string
+  id: number
   /** Which event, by the id and not the name: an event is copied into the next
    *  season with its name unchanged (PDL P6), and a comment belongs to the one
    *  it was written about. */
-  eventId: string
-  memberNumber: string
+  eventId: number
+  /** The author's, while there is a profile to lead to, and nothing where there
+   *  is not: a member who did not renew, or one who is gone altogether. The
+   *  comment itself stays either way, because it is published prose (owner,
+   *  07.08.2026); it is the LINK that goes (`CommentApi.EventComment`). */
+  memberNumber: string | null
   /** The name as it was when the comment went out, for a comment whose author
    *  has since left the league and has no profile to read it off. */
   who: string

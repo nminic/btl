@@ -237,7 +237,7 @@ export function MyResults() {
                             name={result.raceName}
                             look="button button--secondary"
                             onDelete={() => {
-                              remove(RESULTS, result.id)
+                              remove(RESULTS, String(result.id))
                             }}
                           />
                         </div>

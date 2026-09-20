@@ -55,10 +55,12 @@ const competitor = (memberNumber: string, active = true): Competitor => ({
   active,
 })
 
+let resultsMade = 0
+
 const result = (memberNumber: string, points: number): Result => ({
-  id: `${memberNumber}-${points}`,
+  id: (resultsMade += 1),
   memberNumber,
-  raceId: 'r',
+  raceId: 1,
   raceName: 'Trka',
   eventName: 'Trka',
   eventSlug: 'trka',
@@ -413,7 +415,7 @@ describe('TopByCategory', () => {
     renderWidget(
       <TopByCategory
         competitors={[competitor('000001')]}
-        results={[result('000001', 1), { ...result('000001', 2), id: 'long', category: 'long' }]}
+        results={[result('000001', 1), { ...result('000001', 2), category: 'long' as const }]}
         season={2027}
         turnMs={20}
       />,

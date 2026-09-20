@@ -600,7 +600,7 @@ describe('LeagueDetail', () => {
        The address is built off the record's own slug, which is the one this portal answers at. */
     const events = await loadResource<BtlEvent[]>('events')
     const opening = must(
-      events.find((one) => one.id === 'evt-mrazijada-2019-01-05'),
+      events.find((one) => one.slug === 'mrazijada-2019'),
       'Mrazijada, the first event of brdska-2019',
     )
     const user = setupUser()

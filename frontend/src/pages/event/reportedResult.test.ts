@@ -17,10 +17,10 @@ import { reportedResult } from './reportedResult'
  */
 
 const race = (over: Partial<Race> = {}): Race => ({
-  id: 'r1',
-  eventId: 'e1',
+  id: 1,
+  eventId: 2,
   name: 'Trka',
-  renamed: 'no',
+  renamed: false,
   date: '2026-09-19',
   kind: 'length',
   limitSeconds: 0,

@@ -61,7 +61,7 @@ function Standing({
   const fallback = useMemo(() => {
     // The default follows the list being shown, not the data as a whole: a
     // season can have a full women's field and a single man in it.
-    const ofGender = new Set(
+    const ofGender = new Set<string | null>(
       competitors.filter((one) => one.gender === gender).map((one) => one.memberNumber),
     )
 

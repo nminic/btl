@@ -53,8 +53,12 @@ import settled from '../test/writtenPages.snapshot.json'
  * is whether it changed.
  */
 
-const BODIES = Object.entries(pages).flatMap(([slug, page]) =>
-  page.sections.map((section) => ({ slug, heading: section.heading, body: section.body })),
+const BODIES = pages.flatMap((page) =>
+  page.sections.map((section) => ({
+    slug: page.slug,
+    heading: section.heading,
+    body: section.body,
+  })),
 )
 
 /** Every passage that uses the word for a result which has not been approved yet. */
@@ -85,11 +89,14 @@ describe('the written pages', () => {
   it('say exactly what the owner settled, page by page', () => {
     /* Asked page by page rather than all at once, so a failure names the page before
        it prints anything: four documents in one comparison is a diff nobody reads. */
-    const held: Record<string, unknown> = settled
-    const now: Record<string, unknown> = pages
+    const held: { slug: string }[] = settled
+    const now: { slug: string }[] = pages
 
-    for (const slug of Object.keys(held)) {
-      expect(now[slug], slug).toEqual(held[slug])
+    for (const page of held) {
+      expect(
+        now.find((each) => each.slug === page.slug),
+        page.slug,
+      ).toEqual(page)
     }
 
     /* And no page has appeared or gone — **in the order they are written in**, not
@@ -97,7 +104,7 @@ describe('the written pages', () => {
        record left every page equal to itself and moved the rows of the administration's
        list of written pages, which draws them in the order the record holds
        (review, 31.08.2026). Sorted, this line was blind to the same thing twice over. */
-    expect(Object.keys(now)).toEqual(Object.keys(held))
+    expect(now.map((page) => page.slug)).toEqual(held.map((page) => page.slug))
   })
 
   it('carry the rules about a waiting result in exactly the two places they belong', () => {

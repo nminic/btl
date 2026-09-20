@@ -68,11 +68,11 @@ const SMALLEST_FIELD = 3
  */
 export function defaultSeason(results: Result[], today: string): number {
   const current = Number(today.slice(0, 4))
-  const fields = new Map<number, Set<string>>()
+  const fields = new Map<number, Set<string | null>>()
 
   for (const result of results) {
     const season = seasonOf(result)
-    const field = fields.get(season) ?? new Set<string>()
+    const field = fields.get(season) ?? new Set<string | null>()
 
     field.add(result.memberNumber)
     fields.set(season, field)
@@ -242,7 +242,7 @@ export function rankingFor(
   results: Result[],
   filter: RankingFilter,
 ): RankingRow[] {
-  const totals = new Map<string, Totals>()
+  const totals = new Map<string | null, Totals>()
 
   for (const result of results) {
     if (seasonOf(result) !== filter.season) {
@@ -292,8 +292,8 @@ export function rankMembers(competitors: Competitor[], results: Result[]): Ranki
  * Totals per competitor in one pass. Filtering the whole result set once per
  * competitor is thirty times the work for the same answer, and it showed.
  */
-export function totalsByMember(results: Result[]): Map<string, Totals> {
-  const totals = new Map<string, Totals>()
+export function totalsByMember(results: Result[]): Map<string | null, Totals> {
+  const totals = new Map<string | null, Totals>()
 
   for (const result of results) {
     totals.set(result.memberNumber, addToTotals(totals.get(result.memberNumber) ?? EMPTY_TOTALS, result))
@@ -417,6 +417,14 @@ const BY_TEAM = byLadder<TeamRow>([
  * had just deleted would have been refused a new one, refused the address as well, and
  * still counted as somebody who runs a team.
  *
+ * **The empty string arrives as NOUGHT since 20.09.2026**, and nothing else about the
+ * paragraph above has changed. A team is identified by a number now, because that is what
+ * `/api/teams` answers with, so the layer that puts an overlay value back into the shape
+ * the record keeps turns „" into `Number('')`, which is 0 (`forms/records.ts`, `like`).
+ * Nought is not a team and can never be one: the schema's `bigserial` starts at one and so
+ * does the counter the prototype hands out in its place (`admin/raceIds.ts`,
+ * `nextIdentity`).
+ *
  * The other six readers compare `teamId` with a real identity (`=== team.id`,
  * `teams.find(…)`) and an empty string matches none of them, so they are right either
  * way and are left alone.
@@ -424,8 +432,8 @@ const BY_TEAM = byLadder<TeamRow>([
  * The owner's rule this serves, 05.09.2026: „svako brisanje tima do kraja godine je OK i
  * besplatno, ne brani mu se da napravi novi tim."
  */
-export function teamOf(competitor: { teamId: string | null } | undefined): string | null {
-  if (competitor === undefined || competitor.teamId === null || competitor.teamId === '') {
+export function teamOf(competitor: { teamId: number | null } | undefined): number | null {
+  if (competitor === undefined || competitor.teamId === null || competitor.teamId === 0) {
     return null
   }
 
@@ -460,7 +468,7 @@ export function rankTeams(
   season: number,
 ): Placed<TeamRow>[] {
   const rows = teams.map((team) => {
-    const numbers = new Set(
+    const numbers = new Set<string | null>(
       competitors
         .filter((one) => one.teamId === team.id && inTeamIn(one, season))
         .map((one) => one.memberNumber),
@@ -473,7 +481,7 @@ export function rankTeams(
     }
   })
 
-  return withPlaces(rows, BY_TEAM, (row) => row.team.id)
+  return withPlaces(rows, BY_TEAM, (row) => String(row.team.id))
 }
 
 /**
@@ -846,8 +854,8 @@ type Tally = { totals: Totals; reachedOn: string }
  * (PDL P12, and Article 49 of the rulebook), so both are counted here rather than
  * one of them keeping the day to itself.
  */
-function tallyOf(results: Result[]): Map<string, Tally> {
-  const tally = new Map<string, Tally>()
+function tallyOf(results: Result[]): Map<string | null, Tally> {
+  const tally = new Map<string | null, Tally>()
 
   for (const result of [...results].sort((left, right) => left.date.localeCompare(right.date))) {
     tally.set(result.memberNumber, {
@@ -955,7 +963,7 @@ const BY_KILOMETERS = byLadder<TallyRow>([
 export function pairsNow(
   fromFile: RacingPair[],
   made: RacingPair[],
-  broken: string[],
+  broken: number[],
 ): RacingPair[] {
   /* **By season, and that is the whole of it** (review, 07.09.2026). Read without the season, a
      pair made today took its two members out of **every** pair the file has for them, including
@@ -1084,7 +1092,7 @@ export function topPairs(
          two results on one race, and the history the portal reads holds four such pairs inside one
          season. A map of one result apiece would drop one of his and count hers twice, and the
          board would say a race they ran once was two. */
-      const his = new Map<string, Result[]>()
+      const his = new Map<number, Result[]>()
 
       for (const result of inSeason) {
         if (result.memberNumber === one.memberNumber) {
@@ -1261,7 +1269,9 @@ export function bestSingleRaces(
   season: number,
   limit: number,
 ): Placed<RaceRow>[] {
-  const byNumber = new Map(competitors.map((competitor) => [competitor.memberNumber, competitor]))
+  const byNumber = new Map<string | null, Competitor>(
+    competitors.map((competitor) => [competitor.memberNumber, competitor]),
+  )
   const inSeason = results.filter((result) => seasonOf(result) === season)
   const totals = totalsByMember(inSeason)
 

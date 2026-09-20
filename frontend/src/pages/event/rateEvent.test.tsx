@@ -78,7 +78,7 @@ async function eventWithId(id: string): Promise<BtlEvent> {
   const events = await loadResource<BtlEvent[]>('events')
 
   return must(
-    events.find((one) => one.id === id),
+    events.find((one) => String(one.id) === id),
     `an event with the id ${id}`,
   )
 }
@@ -618,9 +618,10 @@ describe('a comment a moderator lets out', () => {
        six comments on its busiest event, so a longer list is stood up here: it
        is the length that is under test and not the data. */
     const real = globalThis.fetch
+    const held = await eventAt(EVENT)
     const many = Array.from({ length: 23 }, (_, at) => ({
-      id: `kom-mnogo-${String(at)}`,
-      eventId: 'evt-fruskogorski-maraton-2010-05-08',
+      id: at + 1,
+      eventId: held.id,
       memberNumber: '000007',
       who: 'Neko Nekić',
       date: `2010-05-${String(10 + (at % 20)).padStart(2, '0')}`,
@@ -727,9 +728,9 @@ describe('a comment a moderator lets out', () => {
        left: twenty six shown, no button, and the foot claiming that was all of
        them. */
     const real = globalThis.fetch
-    const many = (eventId: string, howMany: number, from: number) =>
+    const many = (eventId: number, howMany: number, from: number) =>
       Array.from({ length: howMany }, (_, at) => ({
-        id: `kom-${eventId}-${String(at)}`,
+        id: eventId * 1000 + at,
         eventId,
         memberNumber: '000007',
         who: 'Neko Nekić',
@@ -742,8 +743,8 @@ describe('a comment a moderator lets out', () => {
       String(input).endsWith('/comments.json')
         ? new Response(
             JSON.stringify([
-              ...many('evt-fruskogorski-maraton-2010-05-08', 23, 1),
-              ...many('evt-ironman-70-3-st-polten-2010-05-30', 14, 100),
+              ...many((await eventAt(EVENT)).id, 23, 1),
+              ...many((await eventAt('ironman-70-3-st-polten-2010')).id, 14, 100),
             ]),
             { status: 200 },
           )

@@ -39,6 +39,13 @@ export function copyOf(event: BtlEvent): Record<string, string> & { date: string
        reason the chain can be walked at all: an id nobody typed and nobody can
        mistype, rather than a name that changes with a sponsor (owner,
        11.08.2026). */
-    copiedFrom: event.id,
+    /* As text, like everything else that goes into the overlay standing in for a
+       database (`session/context.ts`): an event made during a visit carries the
+       digits where the served record carries the number. The same is written down
+       beside `teamSince` in `admin/PendingQueue.tsx`, for the same reason and in
+       the owner's own shape. Nothing reads a created event's chain of editions,
+       because that chain is walked on the public page and a creation never reaches
+       one (`data/useResource.ts`, `useLive`). */
+    copiedFrom: String(event.id),
   }
 }

@@ -3,6 +3,8 @@ import { applyChanges } from '../forms/records'
 import { money } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { useOverlay } from '../pages/admin/overlay'
+import { PRICING } from '../pages/admin/entityForms'
+import { recordKey } from '../session/context'
 /* The sheets this table's own classes come from, and both are needed. `table`
    and `table-scroll` are the shared ones; `markdown__table` is what dresses a
    table as part of a document rather than as a standing, and it lives in
@@ -72,7 +74,9 @@ export function PriceTable() {
   const { t, locale } = useI18n()
   const { edits } = useOverlay()
 
-  const rows = [...PRICES, JUNIOR_ROW].map((row) => applyChanges(row, edits[row.key]))
+  const rows = [...PRICES, JUNIOR_ROW].map((row) =>
+    applyChanges(row, edits[recordKey(PRICING.id, row.key)]),
+  )
 
   return (
     <div className="table-scroll">

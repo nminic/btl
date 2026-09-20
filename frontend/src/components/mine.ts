@@ -28,13 +28,18 @@ export const MINE = 'table__mine'
  * A list rather than one member number, because a row is not always about one
  * person: a pair on the top boards is two, and the owner asked for his own row
  * there as well "ukoliko sam u paru".
+ *
+ * Written over whatever names a row rather than over a member number, because the
+ * table of teams marks the reader's club and a team is named by a number
+ * (`/api/teams`). One type variable rather than a union of the two, so a row named
+ * by a number and a reader named by text cannot be compared at all.
  */
-export function mineIn(members: string[], mine: string | null): string | undefined {
+export function mineIn<T>(members: (T | null)[], mine: T | null): string | undefined {
   return mine !== null && members.includes(mine) ? MINE : undefined
 }
 
 /** The same, where a row is about one person, which is most of them. */
-export function mineClass(memberNumber: string, mine: string | null): string | undefined {
+export function mineClass(memberNumber: string | null, mine: string | null): string | undefined {
   return mineIn([memberNumber], mine)
 }
 

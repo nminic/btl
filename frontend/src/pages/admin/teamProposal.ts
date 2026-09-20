@@ -2,7 +2,9 @@ import type { Competitor, PendingItem, Team } from '../../data/types'
 import { teamOf } from '../../data/derive'
 import { teamAdminOf } from '../../data/teamAdmin'
 import type { FieldError } from '../../forms/types'
+import { recordKey } from '../../session/context'
 import type { Edits } from '../../session/context'
+import { WAITING } from './pending'
 import { slugify } from '../rulebookToc'
 
 /* Everything about turning a proposal into a team, away from the screen that
@@ -126,7 +128,7 @@ export function refusal(
     return 'verification.teamNoMember'
   }
 
-  const about = teams.find((one) => one.id === item.subjectId)
+  const about = teams.find((one) => String(one.id) === item.subjectId)
 
   if (isChange(item) && about === undefined) {
     return 'verification.teamGone'
@@ -159,9 +161,9 @@ export function teamFrom(item: PendingItem, edits: Edits): Proposed {
   const said = proposed(item)
 
   return {
-    name: String(edits[item.id]?.name ?? said.name),
-    city: String(edits[item.id]?.city ?? said.city),
-    country: String(edits[item.id]?.country ?? said.country),
+    name: String(edits[recordKey(WAITING, item.id)]?.name ?? said.name),
+    city: String(edits[recordKey(WAITING, item.id)]?.city ?? said.city),
+    country: String(edits[recordKey(WAITING, item.id)]?.country ?? said.country),
   }
 }
 
@@ -181,7 +183,7 @@ export function teamFrom(item: PendingItem, edits: Edits): Proposed {
  * through the overlay, so a team made this visit counts. This reads the same list for
  * the same reason.
  */
-export function organisers(members: { memberNumber: string; teamId: string | null }[], teams: Team[]): string[] {
+export function organisers(members: { memberNumber: string; teamId: number | null }[], teams: Team[]): string[] {
   return [
     ...members.flatMap((one) => (teamOf(one) === null ? [] : [one.memberNumber])),
     ...teams.map((one) => one.organizerMemberNumber),
@@ -211,7 +213,7 @@ export function isChange(item: PendingItem): boolean {
  * way: it clashes with everything a new team would clash with.
  */
 export function addressesAgainst(item: PendingItem, teams: Team[], addresses: string[]): string[] {
-  const own = teams.find((one) => one.id === item.subjectId)
+  const own = teams.find((one) => String(one.id) === item.subjectId)
 
   return own === undefined ? addresses : addresses.filter((one) => one !== addressOf(own.name))
 }

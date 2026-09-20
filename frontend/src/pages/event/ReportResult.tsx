@@ -134,7 +134,7 @@ export function ReportResult() {
              event has not run. The one way in writes it (EventDetail.tsx), so an
              address without it was typed by hand, and a form that quietly picked
              a race would file somebody's time against a distance they never ran. */
-          const chosen = mineHere.find((race) => race.id === params.get('trka'))
+          const chosen = mineHere.find((race) => String(race.id) === params.get('trka'))
 
           if (chosen === undefined) {
             return (

@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import { applyChanges } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { recordKey } from '../../session/context'
+import { MEMBERS } from '../admin/entityForms'
 import { profilePath } from '../profileAddress'
 import { reachable } from './visible'
 import type { Competitor } from '../../data/types'
@@ -81,7 +83,11 @@ export function useProfileLink(): (competitor: Competitor) => string | undefined
 
   return useCallback(
     (competitor: Competitor) =>
-      profileLinkFor(applyChanges(competitor, edits[competitor.memberNumber]), reader, locale),
+      profileLinkFor(
+        applyChanges(competitor, edits[recordKey(MEMBERS.id, competitor.memberNumber)]),
+        reader,
+        locale,
+      ),
     [edits, reader, locale],
   )
 }

@@ -41,7 +41,7 @@ function RoleChooser() {
      What he holds is read off the record this switch hands over (rights.ts), so
      leaving him selectable would leave every one of his rights standing. */
   const gone = deletions.moderators ?? []
-  const moderators = dataOr(useModerators(), []).filter((one) => !gone.includes(one.id))
+  const moderators = dataOr(useModerators(), []).filter((one) => !gone.includes(String(one.id)))
 
   return (
     <div className="role-switch">

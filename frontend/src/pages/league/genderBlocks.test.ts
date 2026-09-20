@@ -82,7 +82,7 @@ const person = (memberNumber: string, gender: 'M' | 'F'): Competitor => ({
 })
 
 const rowsOf = (people: Competitor[]) =>
-  people.map((competitor) => ({ competitor, points: new Map<string, number>(), total: 0 }))
+  people.map((competitor) => ({ competitor, points: new Map<number, number>(), total: 0 }))
 
 describe('the name of a block of the standing', () => {
   it('is whatever the portal calls that gender, and is not written here', () => {
@@ -147,7 +147,7 @@ describe('the name of a block of the standing', () => {
       { ...person('000002', 'F'), ageBand: '25-39' as const, firstSeason2027: false, scores: [12, 8] },
     ].map(({ scores, ...competitor }) => ({
       competitor,
-      points: new Map(scores.map((score, at) => [`race-${String(at)}`, score])),
+      points: new Map(scores.map((score, at) => [at + 1, score])),
       /* The total is the sum of what is shown and nothing else, which is what
          `leagueTable` means by it: a row whose total is not its own sum is a row the
          portal cannot produce, and an earlier draft of this fixture carried three of

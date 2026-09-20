@@ -17,7 +17,7 @@ import { teamAdminOf } from './teamAdmin'
    after a field is added to the record, and the whole question here is which fields
    the answer is read off. */
 const team = (fields: Partial<Team> = {}): Team => ({
-  id: 'team-dunav',
+  id: 1,
   slug: 'dunav',
   name: 'Dunav',
   city: 'Novi Sad',
@@ -31,7 +31,7 @@ const team = (fields: Partial<Team> = {}): Team => ({
 
 const member = (
   memberNumber: string,
-  teamId: string | null,
+  teamId: number | null,
   teamSince: number | null,
 ): Competitor => ({
   memberNumber,
@@ -57,7 +57,7 @@ const member = (
 describe('who administers a team', () => {
   it('is the member who founded it, while they are still in it', () => {
     expect(
-      teamAdminOf(team(), [member('000001', 'team-dunav', 2019), member('000002', 'team-dunav', 2017)]),
+      teamAdminOf(team(), [member('000001', 1, 2019), member('000002', 1, 2017)]),
     ).toBe('000001')
   })
 
@@ -69,16 +69,16 @@ describe('who administers a team', () => {
        somebody actually leaves behind. */
     expect(
       teamAdminOf(team(), [
-        member('000001', 'team-sava', 2019),
-        member('000005', 'team-dunav', 2021),
-        member('000002', 'team-dunav', 2017),
+        member('000001', 2, 2019),
+        member('000005', 1, 2021),
+        member('000002', 1, 2017),
       ]),
     ).toBe('000002')
   })
 
   it('takes the smaller number where two arrived in the same year', () => {
     expect(
-      teamAdminOf(team(), [member('000009', 'team-dunav', 2017), member('000004', 'team-dunav', 2017)]),
+      teamAdminOf(team(), [member('000009', 1, 2017), member('000004', 1, 2017)]),
     ).toBe('000004')
   })
 
@@ -88,7 +88,7 @@ describe('who administers a team', () => {
        all — which is what the arithmetic does on its own, since nought is smaller
        than any year — the team would be handed to whoever is most broken. */
     expect(
-      teamAdminOf(team(), [member('000003', 'team-dunav', null), member('000008', 'team-dunav', 2024)]),
+      teamAdminOf(team(), [member('000003', 1, null), member('000008', 1, 2024)]),
     ).toBe('000008')
   })
 
@@ -97,23 +97,23 @@ describe('who administers a team', () => {
        two members over in whichever order it likes. Written once, the case only ever
        exercised the side the engine happened to pass it on. */
     expect(
-      teamAdminOf(team(), [member('000008', 'team-dunav', 2024), member('000003', 'team-dunav', null)]),
+      teamAdminOf(team(), [member('000008', 1, 2024), member('000003', 1, null)]),
     ).toBe('000008')
   })
 
   it('answers nobody for a team that has nobody in it', () => {
     /* Which is a team whose members have all left, and the answer has to be a word
        the screen can act on rather than an exception: nobody sees the two buttons. */
-    expect(teamAdminOf(team(), [member('000001', 'team-sava', 2019)])).toBeNull()
+    expect(teamAdminOf(team(), [member('000001', 2, 2019)])).toBeNull()
   })
 
   it('reads the team it was asked about and not another one', () => {
     /* The founder of Dunav standing in Sava's roster does not administer Sava, and
        the longest-serving member of Dunav does not either. */
     expect(
-      teamAdminOf(team({ id: 'team-sava', organizerMemberNumber: '000001' }), [
-        member('000001', 'team-dunav', 2015),
-        member('000006', 'team-sava', 2022),
+      teamAdminOf(team({ id: 2, organizerMemberNumber: '000001' }), [
+        member('000001', 1, 2015),
+        member('000006', 2, 2022),
       ]),
     ).toBe('000006')
   })

@@ -16,6 +16,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
+import { recordKey } from '../../session/context'
 import { dogadjaj } from '../../forms/definitions'
 import type { FormDef, FormValues } from '../../forms/types'
 
@@ -23,7 +24,7 @@ import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
 import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
-import { nextNumber } from './raceIds'
+import { nextIdentity } from './raceIds'
 import { nextSeason } from './nextSeason'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
@@ -64,17 +65,19 @@ function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] 
   return all
     .filter((one) => String(one.eventId) === event)
     .map((one) => ({
-      id: String(one.id),
-      eventId: String(one.eventId),
+      id: Number(one.id),
+      eventId: Number(one.eventId),
       /* Read straight, like the day beside it and for the same reason: both places
          a race can come from write it. One out of the file carries it, and one
          entered here is written by `storedRow`, which never leaves it out. A
          fallback here would be a second answer to a question that has one. */
       name: String(one.name),
-      /* Read as the one word that means yes, because that is what the store keeps:
-         every value in it is text (`session/context.ts`), so a boolean written into
-         it comes back as the string „false", which is true. */
-      renamed: one.renamed === 'yes' ? 'yes' : 'no',
+      /* True either as the flag the file carries or as the one word that means it,
+         because a race reaches here in both shapes: out of the served file it is a
+         boolean (`/api/races`), and out of a creation it is text, since every value
+         the store keeps is text (`session/context.ts`) and a boolean written into it
+         comes back as the string „false", which is true. */
+      renamed: one.renamed === true || one.renamed === 'true',
       date: String(one.date),
       /* Read against the list of kinds that exist, because the row does act on the
          word: a race that does not fix its length is not asked for one
@@ -221,8 +224,8 @@ export function AdminEvents() {
                    it: its races are entered under it right away, one by one,
                    rather than after going back to a list of eleven hundred to
                    find it again (owner, 11.08.2026). */
-                all.find((one) => one.id === justMade)
-              : all.find((one) => one.id === String(editing.record[EVENTS.idField]))
+                all.find((one) => String(one.id) === justMade)
+              : all.find((one) => String(one.id) === String(editing.record[EVENTS.idField]))
 
           if (editing !== null) {
             /* The rows this screen is holding, or the event's races lined up as
@@ -230,7 +233,7 @@ export function AdminEvents() {
                into state by an effect: state that mirrors a list is state that
                falls out of step with it, and this screen has been bitten by an
                effect that copied a record already (see `wanted` above). */
-            const under = openEvent?.id ?? 'nov'
+            const under = String(openEvent?.id ?? 'nov')
             const current =
               held.of === under
                 ? held.rows
@@ -401,7 +404,7 @@ export function AdminEvents() {
                           : new Set<string>()
 
                       const takesAway = allRaces.some(
-                        (one) => String(one.eventId) === under && !survives.has(one.id),
+                        (one) => String(one.eventId) === under && !survives.has(String(one.id)),
                       )
 
                       if (!takesAway || results !== null) {
@@ -430,7 +433,7 @@ export function AdminEvents() {
                         all
                           .filter(
                             (each) =>
-                              each.id !==
+                              String(each.id) !==
                               (editing.mode === 'one'
                                 ? String(editing.record[EVENTS.idField])
                                 : ''),
@@ -480,9 +483,9 @@ export function AdminEvents() {
                       const gone = new Set<string>()
 
                       for (const race of was) {
-                        if (!kept.has(race.id)) {
-                          remove(RACES.id, race.id)
-                          gone.add(race.id)
+                        if (!kept.has(String(race.id))) {
+                          remove(RACES.id, String(race.id))
+                          gone.add(String(race.id))
                         }
                       }
 
@@ -534,11 +537,11 @@ export function AdminEvents() {
                          Gathered into one set rather than removed twice: a save that
                          turns an event with races into a gathering walks both routes
                          over the same records. */
-                      const taken = new Set(byAddress.map((each) => each.id))
+                      const taken = new Set(byAddress.map((each) => String(each.id)))
 
                       for (const result of allResults) {
-                        if (gone.has(result.raceId)) {
-                          taken.add(result.id)
+                        if (gone.has(String(result.raceId))) {
+                          taken.add(String(result.id))
                         }
                       }
 
@@ -551,17 +554,14 @@ export function AdminEvents() {
                          (`raceIds.ts`). Counted rather than measured, it handed a
                          new race the number a deleted one had freed and two records
                          answered to one id. */
-                      let next = nextNumber(
-                        allRaces.map((one) => String(one.id)),
-                        `${written}-trka-`,
-                      )
+                      let next = nextIdentity(allRaces.map((one) => one.id))
 
                       for (const row of kindOf(values) === 'race' ? current : []) {
                         if (row.id === '') {
-                          create(RACES.id, `${written}-trka-${String(next)}`, storedRow(row, written))
+                          create(RACES.id, String(next), storedRow(row, written))
                           next += 1
                         } else {
-                          editRecord(row.id, storedRow(row, written))
+                          editRecord(recordKey(RACES.id, row.id), storedRow(row, written))
                         }
                       }
 
@@ -723,7 +723,7 @@ export function AdminEvents() {
                               for (const race of allRaces.filter(
                                 (each) => each.eventId === one.id,
                               )) {
-                                remove(RACES.id, race.id)
+                                remove(RACES.id, String(race.id))
                               }
 
                               /* Only where the address belongs to this event
@@ -744,7 +744,7 @@ export function AdminEvents() {
                               for (const result of shared
                                 ? []
                                 : allResults.filter((each) => each.eventSlug === one.slug)) {
-                                remove(RESULTS, result.id)
+                                remove(RESULTS, String(result.id))
                               }
                             }}
                           />

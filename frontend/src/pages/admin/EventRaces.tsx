@@ -125,7 +125,7 @@ export function EventRaces({
 
     wasCalled.current = eventName
 
-    onRows(rows.map((row) => (row.renamed === 'yes' ? row : { ...row, name: eventName })))
+    onRows(rows.map((row) => (row.renamed ? row : { ...row, name: eventName })))
   }, [eventName, onRows, rows])
 
   const change = (at: number, over: Partial<RaceRow>) => {
@@ -277,7 +277,7 @@ export function EventRaces({
                       /* Changed by hand, so this race stops following its event:
                          renaming the event afterwards leaves it alone
                          (owner, 23.08.2026). */
-                      onChange={(event) => change(at, { name: event.target.value, renamed: 'yes' })}
+                      onChange={(event) => change(at, { name: event.target.value, renamed: true })}
                     />
                   </td>
                   <td>

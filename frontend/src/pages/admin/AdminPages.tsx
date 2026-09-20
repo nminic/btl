@@ -29,12 +29,12 @@ type PageRow = {
 
 /** The record flattened into the shape a form can hold. A page that has not been
  *  written yet has no sections at all, and has to be listed all the same. */
-function pageRows(pages: Record<string, StaticPage>): PageRow[] {
-  return Object.entries(pages).map(([slug, page]) => {
+function pageRows(pages: StaticPage[]): PageRow[] {
+  return pages.map((page) => {
     const first = page.sections.at(0) ?? { heading: '', body: '' }
 
     return {
-      slug,
+      slug: page.slug,
       title: page.title,
       heading: first.heading,
       body: first.body,

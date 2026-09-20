@@ -28,7 +28,7 @@ import { setupUser } from '../test/user'
 const EVENT = 'fruskogorski-maraton-2010'
 const ME = '000021'
 /** A race of `maraton-maratona-2015`, for the report form. */
-const RACE = 'evt-maraton-maratona-2015-03-14-4400'
+const RACE = '683'
 
 describe('the way back from a confirmation', () => {
   it('skips the comment form and lands on the event', async () => {

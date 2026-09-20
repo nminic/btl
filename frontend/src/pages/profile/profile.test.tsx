@@ -310,10 +310,12 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     bio: '',
   })
 
-  const race = (memberNumber: string, points: number, id: string) => ({
-    id,
+  let made = 0
+
+  const race = (memberNumber: string, points: number) => ({
+    id: (made += 1),
     memberNumber,
-    raceId: 'r1',
+    raceId: 1,
     raceName: 'Proba, polumaraton',
     eventName: 'Proba',
     eventSlug: 'proba',
@@ -330,9 +332,9 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     const mine = person('000101', '25-39')
     const others = [person('000102', '25-39'), person('000103', '55+')]
     const results = [
-      race('000101', 100, 'a'),
-      race('000102', 200, 'b'),
-      race('000103', 300, 'c'),
+      race('000101', 100),
+      race('000102', 200),
+      race('000103', 300),
     ]
 
     const awards = awardsOf(mine, [mine, ...others], results)
@@ -349,8 +351,8 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     const mine = person('000101', '25-39')
     const others = Array.from({ length: 5 }, (_, index) => person(`00020${index}`, '25-39'))
     const results = [
-      race('000101', 1, 'a'),
-      ...others.map((one, index) => race(one.memberNumber, 100 + index, `b${index}`)),
+      race('000101', 1),
+      ...others.map((one, index) => race(one.memberNumber, 100 + index)),
     ]
 
     expect(awardsOf(mine, [mine, ...others], results)).toEqual([])

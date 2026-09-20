@@ -3,7 +3,7 @@ import { useCompetitors } from '../../data/useResource'
 import { useTheme } from '../../app/useTheme'
 import type { Theme } from '../../app/themeContext'
 import { useI18n } from '../../i18n/useI18n'
-import { NOTIFICATION_KEYS } from '../../session/context'
+import { NOTIFICATION_KEYS, recordKey } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
@@ -116,7 +116,7 @@ export function Settings() {
                       /* „true" and „false" as words, because the overlay keeps every value as
                          text and `forms/records.ts` turns them back into the shape the record
                          holds (`like`). */
-                      editRecord(memberNumber, {
+                      editRecord(recordKey(MEMBERS.id, memberNumber), {
                         profileHidden: String(event.target.checked),
                       })
                     }}

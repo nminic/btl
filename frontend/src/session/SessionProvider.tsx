@@ -1,7 +1,7 @@
 import { pointsOf } from '../data/scoring'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { EventComment, PendingItem, RacingPair, Result } from '../data/types'
-import { nextNumber } from '../pages/admin/raceIds'
+import { nextIdentity, nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
   type Application,
@@ -43,7 +43,7 @@ export function SessionProvider({
   const [deletions, setDeletions] = useState<Deletions>({})
   const [proposals, setProposals] = useState<PendingItem[]>([])
   const [going, setGoingAll] = useState<Record<string, boolean>>({})
-  const [published, setPublished] = useState<EventComment[]>([])
+  const [published, setPublished] = useState<{ from: string; comment: EventComment }[]>([])
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     resultApproved: true,
     resultChanged: true,
@@ -172,13 +172,34 @@ export function SessionProvider({
     setProposals((current) => [{ ...item, id: `prop-${current.length + 1}` }, ...current])
   }, [])
 
-  /* Kept once. A moderator can settle the same item twice (approve, take down,
-     approve again), and a list that grew each time would draw the comment
-     twice on the event page. */
-  const publish = useCallback((comment: EventComment) => {
-    setPublished((current) =>
-      current.some((one) => one.id === comment.id) ? current : [...current, comment],
-    )
+  /**
+   * The number the next comment let out in this visit is given.
+   *
+   * **Counted downwards from nought, and that is the prototype saying out loud
+   * that it has no sequence.** `/api/comments` answers with a `bigserial`, which
+   * starts at one and never goes below it, so nothing numbered here can collide
+   * with the file or with anything a server ever hands out, whatever either
+   * grows to.
+   *
+   * A ref and not the length of the list, because a moderator settles a whole
+   * queue in one press and `published` is state: read there, every comment of
+   * that press is handed the same number and the event page draws one of them.
+   */
+  const letOut = useRef(0)
+
+  /* Kept once, by the QUEUE ITEM and not by the comment. A moderator can settle
+     the same item twice (approve, take down, approve again), and a list that
+     grew each time would draw the comment twice on the event page. */
+  const publish = useCallback((from: string, comment: Omit<EventComment, 'id'>) => {
+    setPublished((current) => {
+      if (current.some((one) => one.from === from)) {
+        return current
+      }
+
+      letOut.current -= 1
+
+      return [...current, { from, comment: { ...comment, id: letOut.current } }]
+    })
   }, [])
 
   /**
@@ -360,9 +381,9 @@ export function SessionProvider({
      already used rather than from how many there are, because closing one shortens the list. */
   const [pairInvites, setPairInvites] = useState<PairInvite[]>([])
   const [pairsMade, setPairsMade] = useState<RacingPair[]>([])
-  const [pairsBroken, setPairsBroken] = useState<string[]>([])
+  const [pairsBroken, setPairsBroken] = useState<number[]>([])
   const asked = useRef<string[]>([])
-  const paired = useRef<string[]>([])
+  const paired = useRef<number[]>([])
 
   const invitePair = useCallback((invite: Omit<PairInvite, 'id'>) => {
     const id = `par-${String(nextNumber(asked.current, 'par-'))}`
@@ -378,13 +399,16 @@ export function SessionProvider({
   }, [])
 
   const makePair = useCallback((pair: Omit<RacingPair, 'id'>) => {
-    const id = `pair-${String(nextNumber(paired.current, 'pair-'))}`
+    /* Counted down from nought over what this visit has paired, which is all it
+       has to be counted over: the file's pairs carry a `bigserial` and this never
+       reaches one (`raceIds.ts`, `nextIdentity`). */
+    const id = nextIdentity(paired.current)
 
     paired.current = [...paired.current, id]
     setPairsMade((current) => [...current, { ...pair, id }])
   }, [])
 
-  const breakPair = useCallback((id: string) => {
+  const breakPair = useCallback((id: number) => {
     /* Written twice is written twice, and that is harmless: the list is only ever read with
        `includes`, so a second entry says the same thing as the first. A guard against it would be
        a branch nothing reaches, and a branch nothing reaches is one nobody can be sure works. */

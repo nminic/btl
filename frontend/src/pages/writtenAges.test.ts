@@ -23,8 +23,8 @@ import { registracija } from '../forms/definitions'
 const YEARS = registracija.fields.find((field) => field.name === 'parentConsent')
   ?.showWhenYoungerThan?.years
 
-const BODIES = Object.entries(pages).flatMap(([slug, page]) =>
-  page.sections.map((section) => ({ slug, heading: section.heading, body: section.body })),
+const BODIES = pages.flatMap((page) =>
+  page.sections.map((section) => ({ slug: page.slug, heading: section.heading, body: section.body })),
 )
 
 /** Every passage that speaks about a parent signing or holding the account. */

@@ -16,7 +16,7 @@ import type { Race, Result } from '../../data/types'
 export function ran(
   results: Result[],
   races: Race[],
-  eventId: string,
+  eventId: number,
   memberNumber: string,
 ): boolean {
   const mine = races.filter((race) => race.eventId === eventId)

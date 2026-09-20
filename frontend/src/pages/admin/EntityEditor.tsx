@@ -5,6 +5,7 @@ import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/t
 import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
+import { recordKey } from '../../session/context'
 import {
   addressField,
   fieldValues,
@@ -201,7 +202,7 @@ export function EntityEditor({
       written = made
     } else {
       written = String(editing.record[entity.idField])
-      editRecord(written, text)
+      editRecord(recordKey(entity.id, written), text)
     }
 
     /* On both, because what else a save changes does not depend on whether the

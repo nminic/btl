@@ -4,6 +4,8 @@ import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useClock } from '../clock/useClock'
+import { recordKey } from '../session/context'
+import { MEMBERS } from './admin/entityForms'
 import { useSession } from '../session/useSession'
 
 /* „Pozovi u tim", from the press to the answer.
@@ -39,7 +41,7 @@ function Empty({ team }: { team: string[] }) {
   const { editRecord } = useSession()
 
   return (
-    <button type="button" onClick={() => { for (const who of team) { editRecord(who, { teamId: '' }) } }}>
+    <button type="button" onClick={() => { for (const who of team) { editRecord(recordKey(MEMBERS.id, who), { teamId: '' }) } }}>
       isprazni {team.join(' ')}
     </button>
   )
@@ -470,12 +472,12 @@ describe('what is left when a team goes away', () => {
       IN_WINDOW,
       <>
         <Become who="000002" />
-        <Delete team="team-dunav" />
+        <Delete team="1" />
       </>,
     )
 
     await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-    await user.click(screen.getByRole('button', { name: 'obriši team-dunav' }))
+    await user.click(screen.getByRole('button', { name: 'obriši 1' }))
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
     await openTheInvitation(user)
 
@@ -1201,7 +1203,7 @@ describe('what the invitation must not be confused with', () => {
       <>
         <Become who="000003" />
         <Become who="000002" />
-        <Delete team="team-dunav" />
+        <Delete team="1" />
       </>,
     )
 
@@ -1226,7 +1228,7 @@ describe('what the invitation must not be confused with', () => {
     await user.click(must(both[1], 'the invitation Dunavski trkači sent'))
     await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
 
-    await user.click(screen.getByRole('button', { name: 'obriši team-dunav' }))
+    await user.click(screen.getByRole('button', { name: 'obriši 1' }))
 
     const after = (await inbox(user)).filter((one) => /Poziv u tim/.test(one.textContent ?? ''))
 
@@ -1247,7 +1249,7 @@ describe('what the invitation must not be confused with', () => {
       IN_WINDOW,
       <>
         <Become who="000002" />
-        <Delete team="team-dunav" />
+        <Delete team="1" />
       </>,
     )
 
@@ -1268,7 +1270,7 @@ describe('what the invitation must not be confused with', () => {
 
     expect(await screen.findByText(/Prihvatio\/la si ovaj poziv/)).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: 'obriši team-dunav' }))
+    await user.click(screen.getByRole('button', { name: 'obriši 1' }))
 
     expect(await screen.findByText(/Tim koji te je pozvao više ne postoji/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()

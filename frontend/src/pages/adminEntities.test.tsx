@@ -556,14 +556,14 @@ describe('the races of an event', () => {
 
     const gone = within(screen.getByRole('list', { name: 'session deletions' }))
 
-    expect(gone.getByText('gone races evt-besnjaja-trek-2017-04-15-2130')).toBeInTheDocument()
-    expect(gone.getByText('gone results res-01240')).toBeInTheDocument()
+    expect(gone.getByText('gone races 141')).toBeInTheDocument()
+    expect(gone.getByText('gone results 1241')).toBeInTheDocument()
 
     /* And the other race, which nobody touched, keeps every one of its three. */
-    expect(gone.queryByText(/^gone races evt-besnjaja-trek-2017-04-15-3220$/)).toBeNull()
-    expect(gone.queryByText('gone results res-00498')).toBeNull()
-    expect(gone.queryByText('gone results res-01512')).toBeNull()
-    expect(gone.queryByText('gone results res-03242')).toBeNull()
+    expect(gone.queryByText(/^gone races 142$/)).toBeNull()
+    expect(gone.queryByText('gone results 499')).toBeNull()
+    expect(gone.queryByText('gone results 1513')).toBeNull()
+    expect(gone.queryByText('gone results 3243')).toBeNull()
   })
 
   it('takes a second race of the same length on the same morning', async () => {
@@ -660,7 +660,7 @@ describe('the races of an event', () => {
 
   it('opens a row somebody adds under the event too, and lets it go on following', async () => {
     /* The row „Nova trka" makes starts out following its event, and until this was
-       written nothing measured it: a round set `renamed: 'yes'` into the new row and
+       written nothing measured it: a round set `renamed: true` into the new row and
        all 2150 tests stayed green. What that costs is worse on a new event, where
        the name is still empty when the row is added and the row would keep the
        screen's own fallback, „Događaji", as the name of a race.
@@ -1774,7 +1774,7 @@ describe('the country an event is filed in', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    expect(await told(serbian.id)).toContain('country=HR')
+    expect(await told(String(serbian.id))).toContain('country=HR')
   })
 
   it('stays as it was where the town was not touched', async () => {
@@ -1798,7 +1798,7 @@ describe('the country an event is filed in', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    expect(await told(serbian.id)).toContain('country=RS')
+    expect(await told(String(serbian.id))).toContain('country=RS')
   })
 })
 
@@ -2095,7 +2095,7 @@ describe('an event that is deleted', () => {
     const removed = (screen.getByTestId('removed').textContent ?? '').split(',')
 
     for (const race of its) {
-      expect(removed, `${race} went with its event`).toContain(race)
+      expect(removed, `${String(race)} went with its event`).toContain(String(race))
     }
 
     /* And its results, which is what the same deletion does from the event's own
@@ -2107,7 +2107,7 @@ describe('an event that is deleted', () => {
     expect(scored.length).toBeGreaterThan(0)
 
     for (const result of scored) {
-      expect(dropped, `${result} went with its event`).toContain(result)
+      expect(dropped, `${String(result)} went with its event`).toContain(String(result))
     }
   })
 
@@ -2185,11 +2185,15 @@ describe('an event that is deleted', () => {
     const dropped = (screen.getByTestId('removed-results').textContent ?? '').split(',')
 
     for (const race of its) {
-      expect(removed, `${race} stayed under an event that has no races`).toContain(race)
+      expect(removed, `${String(race)} stayed under an event that has no races`).toContain(
+        String(race),
+      )
     }
 
     for (const result of scored) {
-      expect(dropped, `${result} was left pointing at a race that is gone`).toContain(result)
+      expect(dropped, `${String(result)} was left pointing at a race that is gone`).toContain(
+        String(result),
+      )
     }
   })
 })

@@ -16,7 +16,7 @@ import { TeamMark } from './TeamMark'
  * the table of teams altogether: 1838 tests passed. A number is not a guarantee.
  */
 const aTeam = (over: Partial<Team> = {}): Team => ({
-  id: 'team-proba',
+  id: 1,
   slug: 'probni-tim',
   name: 'Dunavski trkači',
   city: 'Novi Sad',
@@ -54,7 +54,7 @@ describe('the circle before a team name', () => {
 
     expect(screen.getByText('NM')).toBeInTheDocument()
 
-    renderWithI18n(<TeamMark team={aTeam({ id: 'x', name: 'Maratonci' })} />)
+    renderWithI18n(<TeamMark team={aTeam({ id: 2, name: 'Maratonci' })} />)
 
     expect(screen.getByText('M')).toBeInTheDocument()
   })

@@ -10,7 +10,7 @@ import type { PageSection, StaticPage } from './types'
  * say which.
  */
 
-const MISSING: StaticPage = { title: '', sections: [] }
+const MISSING: StaticPage = { slug: '', title: '', sections: [] }
 
 /** The address of the president, which the front page draws inside itself. */
 export const PRESIDENT_PAGE = 'rec-predsednika'
@@ -29,24 +29,21 @@ export const PRESIDENT_PAGE = 'rec-predsednika'
  */
 const DRAWN_BY_A_SCREEN = [PRESIDENT_PAGE]
 
-export function withoutOwnAddress(pages: Record<string, StaticPage>): Set<string> {
-  return new Set([
-    ...Object.values(pages).flatMap((page) => page.includes ?? []),
-    ...DRAWN_BY_A_SCREEN,
-  ])
+export function withoutOwnAddress(pages: StaticPage[]): Set<string> {
+  return new Set([...pages.flatMap((page) => page.includes ?? []), ...DRAWN_BY_A_SCREEN])
 }
 
 /** The page under that address, or an empty one. A slug that answers nothing is
  *  not an error here: the screen that has to say "no such page" checks for it
  *  itself, and a widget that takes in a page simply has nothing to draw. */
-export function pageOf(pages: Record<string, StaticPage>, slug: string): StaticPage {
-  return pages[slug] ?? MISSING
+export function pageOf(pages: StaticPage[], slug: string): StaticPage {
+  return pages.find((page) => page.slug === slug) ?? MISSING
 }
 
 /** Everything a page shows, its own sections and the ones it takes in, in the
  *  order they are read: what is taken in stands first, because a foreword is a
  *  foreword. */
-export function sectionsOf(pages: Record<string, StaticPage>, page: StaticPage): PageSection[] {
+export function sectionsOf(pages: StaticPage[], page: StaticPage): PageSection[] {
   const taken = (page.includes ?? []).flatMap((slug) => pageOf(pages, slug).sections)
 
   return [...taken, ...page.sections]
@@ -61,9 +58,9 @@ export function sectionsOf(pages: Record<string, StaticPage>, page: StaticPage):
  * control that reads as removing a page and does not.
  */
 export function livePage(
-  pages: Record<string, StaticPage>,
+  pages: StaticPage[],
   slug: string,
   deleted: string[],
 ): StaticPage | undefined {
-  return deleted.includes(slug) ? undefined : pages[slug]
+  return deleted.includes(slug) ? undefined : pages.find((page) => page.slug === slug)
 }

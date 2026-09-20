@@ -36,6 +36,18 @@ import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
 import { formatDistance, formatNumber, formatShortDate, formatYear } from '../../i18n/format'
 import { raceLabel } from '../../data/raceLabel'
+
+/** The event answering at that address, which is what a human wrote and what these
+ *  cases are named by. Its identity is a number the file hands out and no case here
+ *  has any business knowing which one (`data/types.ts`, `BtlEvent.id`). */
+async function eventAt(slug: string): Promise<BtlEvent> {
+  const events = await loadResource<BtlEvent[]>('events')
+
+  return must(
+    events.find((one) => one.slug === slug),
+    `the event at ${slug}`,
+  )
+}
 import { renderAt } from '../../test/render'
 import { Reported } from '../../test/saved'
 import { setupUser } from '../../test/user'
@@ -196,7 +208,7 @@ describe('an event with no races on it', () => {
         <I18nProvider locale="sr">
           <MemoryRouter initialEntries={['/sr/kalendar/resolution-run-2027/prijava']}>
             <SessionProvider initialMemberNumber="000007">
-              <Given act={(session) => session.remove('races', 'evt-resolution-run-2027-12-27-550')}>
+              <Given act={(session) => session.remove('races', '1035')}>
                 <Routes>
                   <Route path="/sr/kalendar/:slug/prijava" element={<ReportResult />} />
                 </Routes>
@@ -662,7 +674,8 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        Asked of the function rather than of a screen, because the pair that shows it
        is in one event of 1163 and the rule is about every event. */
     const races = await loadResource<Race[]>('races')
-    const together = races.filter((one) => one.eventId === 'evt-btl-dezorijentiring-2018-12-23')
+    const held = await eventAt('btl-dezorijentiring-2018')
+    const together = races.filter((one) => one.eventId === held.id)
 
     expect(together.length, 'the file no longer holds the event this is about').toBeGreaterThan(1)
 
@@ -705,7 +718,8 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        to 722 and the whole suite stayed green. So this asks for the label itself,
        not for the absence of one part of it. */
     const races = await loadResource<Race[]>('races')
-    const plain = races.filter((one) => one.eventId === 'evt-baja-sombor-2019-12-01')
+    const held = await eventAt('baja-sombor-2019')
+    const plain = races.filter((one) => one.eventId === held.id)
 
     expect(plain.length, 'the file no longer holds the event this is about').toBe(3)
 
@@ -728,10 +742,10 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        parts the third from the other two, so it must keep the day; it does not part
        the first two from each other, so they must go on to the exact length. */
     const one: Race = {
-      id: 'a',
-      eventId: 'e',
+      id: 1,
+      eventId: 1,
       name: 'Probna trka',
-      renamed: 'no',
+      renamed: false,
       kind: 'length',
       limitSeconds: 0,
       date: '2020-01-01',
@@ -740,10 +754,10 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       descentM: 0,
       category: 'short',
     }
-    const two: Race = { ...one, id: 'b', distanceKm: 8.74 }
+    const two: Race = { ...one, id: 2, distanceKm: 8.74 }
     /* The same written length as the other two, so all three collide at the first
        step and the day is what has to part them. */
-    const three: Race = { ...one, id: 'c', date: '2020-01-02', distanceKm: 8.7 }
+    const three: Race = { ...one, id: 3, date: '2020-01-02', distanceKm: 8.7 }
     const among = [one, two, three]
 
     expect(raceLabel(one, among, 'sr-Latn')).toBe('Probna trka 2020. (8,68 km)')
@@ -773,10 +787,10 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        race, named by this, and four links two of which sound the same and lead
        somewhere different is WCAG 2.2 SC 2.4.4. */
     const morning: Race = {
-      id: 'a',
-      eventId: 'e',
+      id: 1,
+      eventId: 1,
       name: 'Probna trka',
-      renamed: 'no',
+      renamed: false,
       kind: 'length',
       limitSeconds: 0,
       date: '2020-01-01',
@@ -787,9 +801,9 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     }
     const among: Race[] = [
       morning,
-      { ...morning, id: 'b', distanceKm: 8.74 },
-      { ...morning, id: 'c', date: '2020-01-02' },
-      { ...morning, id: 'd', date: '2020-01-02', distanceKm: 8.74 },
+      { ...morning, id: 2, distanceKm: 8.74 },
+      { ...morning, id: 3, date: '2020-01-02' },
+      { ...morning, id: 4, date: '2020-01-02', distanceKm: 8.74 },
     ]
 
     const said = among.map((one) => raceLabel(one, among, 'sr-Latn'))
@@ -814,10 +828,10 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        last step rather than with its first: a reader gets everything there is and
        the two are then as close as the portal can bring them. */
     const one: Race = {
-      id: 'a',
-      eventId: 'e',
+      id: 1,
+      eventId: 1,
       name: 'Probna trka',
-      renamed: 'no',
+      renamed: false,
       kind: 'length',
       limitSeconds: 0,
       date: '2020-01-01',
@@ -826,7 +840,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       descentM: 0,
       category: 'short',
     }
-    const among: Race[] = [one, { ...one, id: 'b', distanceKm: 8.684 }]
+    const among: Race[] = [one, { ...one, id: 2, distanceKm: 8.684 }]
 
     expect(raceLabel(one, among, 'sr-Latn')).toBe(
       `Probna trka ${formatShortDate(one.date, 'sr-Latn')} (${formatNumber(8.681, 'sr-Latn', 2)} km)`,
@@ -845,10 +859,10 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        Both are asked, and by the whole label, because a rung is chosen once for the
        race and not once for the pair. */
     const one: Race = {
-      id: 'a',
-      eventId: 'e',
+      id: 1,
+      eventId: 1,
       name: 'Beogradski maraton',
-      renamed: 'no',
+      renamed: false,
       kind: 'length',
       limitSeconds: 0,
       date: '2020-01-01',
@@ -857,7 +871,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       descentM: 0,
       category: 'long',
     }
-    const among: Race[] = [one, { ...one, id: 'b', name: 'Beogradski polumaraton' }]
+    const among: Race[] = [one, { ...one, id: 2, name: 'Beogradski polumaraton' }]
     const said = among.map((race) => raceLabel(race, among, 'sr-Latn'))
 
     expect(said).toEqual([
@@ -871,7 +885,8 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        consecutive mornings. It needs the day and must not need the second decimal.
      */
     const races = await loadResource<Race[]>('races')
-    const many = races.filter((one) => one.eventId === 'evt-danube-maraton-2022-03-14')
+    const held = await eventAt('danube-maraton-2022-03')
+    const many = races.filter((one) => one.eventId === held.id)
 
     expect(many.length, 'the file no longer holds the event this is about').toBe(4)
 

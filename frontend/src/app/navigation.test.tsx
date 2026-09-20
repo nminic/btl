@@ -270,10 +270,10 @@ const STATUTE = '/BTL%20Statut.pdf'
        as „no link called exactly Statut is on this render", a second one written
        into the rulebook as „Preuzmite [Statut](/BTL%20Statut.pdf)." passed
        without a word: wrong screen, and a name that is not exactly that. */
-    const linking = Object.entries(WRITTEN).flatMap(([slug, page]) =>
+    const linking = WRITTEN.flatMap((page) =>
       page.sections
         .filter((section) => section.body.includes(STATUTE))
-        .map((section) => `${slug} / ${section.heading}`),
+        .map((section) => `${page.slug} / ${section.heading}`),
     )
 
     expect(linking).toEqual(['uslovi-koriscenja / 1. Ko smo i šta ovi uslovi uređuju'])

@@ -602,7 +602,7 @@ describe('a written page nobody has written yet', () => {
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/pages.json')
-        ? new Response(JSON.stringify({ nova: { title: 'Nova strana', sections: [] } }), {
+        ? new Response(JSON.stringify([{ slug: 'nova', title: 'Nova strana', sections: [] }]), {
             status: 200,
           })
         : real(input))
@@ -678,6 +678,9 @@ describe('the words the seven forms need', () => {
     /* And a new one opens on a race before anybody answers (owner,
        10.08.2026). Written as what the form starts holding rather than as what
        a created record carries, because it is a press saved on the form. */
+    /* The words the FORM opens with, and not what the record keeps: the two
+       buttons carry „yes" and „no" and the record keeps a flag, which is where
+       `forms/records.ts` stands between them. */
     expect(EVENTS.start).toEqual({ kind: 'race', featured: 'no', country: 'RS' })
   })
 
@@ -766,10 +769,10 @@ describe('the words the seven forms need', () => {
 
     expect(made.city).toBe('Beograd')
     expect(made.country).toBe('RS')
-    /* And it came out of nothing, said rather than left missing: the type
-       promises a string, and the walk of editions read the field of every event
-       entered by hand as undefined (data/editions.ts). */
-    expect(made.copiedFrom).toBe('')
+    /* And it came out of nothing, said rather than left missing: `EVENTS.blank`
+       holds the `null` and this writes nothing over it, so the walk of editions
+       reads „not copied" rather than `undefined` (data/editions.ts). */
+    expect(made.copiedFrom).toBeNull()
   })
 
   it('offer no choice at all where the value is read off another one', () => {
@@ -785,30 +788,44 @@ describe('the words the seven forms need', () => {
 })
 
 describe('the identity a new record is handed', () => {
-  /* Counted up from the highest already used, never from the length of the list.
+  /* Counted DOWN from the lowest already used, never from the length of the list.
    * The length goes back down: make two, delete the first, make a third, and the
    * third is handed the identity the second holds. The list then draws two rows
    * under one key and a change to either reaches both, because the overlay of
-   * changes is keyed by exactly that identity. */
+   * changes is keyed by exactly that identity.
+   *
+   * Downwards since 20.09.2026, because a team is identified by a `bigserial` now
+   * (`/api/teams`) and a screen that has not read the file cannot know which
+   * numbers are taken. Below nought it does not have to: a sequence starts at one
+   * and never goes under it (`admin/raceIds.ts`, `nextIdentity`). */
   it('follows the ones already made', () => {
-    expect(idFor(TEAMS, {}, [], [])).toBe('teams-nov-1')
-    expect(idFor(TEAMS, {}, ['teams-nov-1'], [])).toBe('teams-nov-2')
-    expect(idFor(TEAMS, {}, ['teams-nov-1', 'teams-nov-2'], [])).toBe('teams-nov-3')
+    expect(idFor(TEAMS, {}, [], [])).toBe('-1')
+    expect(idFor(TEAMS, {}, ['-1'], [])).toBe('-2')
+    expect(idFor(TEAMS, {}, ['-1', '-2'], [])).toBe('-3')
   })
 
   it('does not go back when one of them is deleted', () => {
     /* Two made, the first deleted, so the list holds one. Counted by length that
-       is "teams-nov-2" again, which is the identity the survivor answers to. */
-    expect(idFor(TEAMS, {}, ['teams-nov-2'], [])).toBe('teams-nov-3')
+       is „-2" again, which is the identity the survivor answers to. */
+    expect(idFor(TEAMS, {}, ['-2'], [])).toBe('-3')
   })
 
   it('steps over anything not of that shape', () => {
     /* Approving a proposal used to file the team under an identity of its own
        making, which moved this counter for everything entered by hand. It comes
        through here now, and anything else in the list is ignored rather than
-       counted. */
-    expect(idFor(TEAMS, {}, ['tim-ver-tim-1', 'teams-nov-4'], [])).toBe('teams-nov-5')
-    expect(idFor(TEAMS, {}, ['tim-ver-tim-1'], [])).toBe('teams-nov-1')
+       counted: `Number('tim-ver-tim-1')` is not a number, and `Number('')` is
+       nought, which is neither a record of the file nor one made here. */
+    expect(idFor(TEAMS, {}, ['tim-ver-tim-1', '-4'], [])).toBe('-5')
+    expect(idFor(TEAMS, {}, ['tim-ver-tim-1'], [])).toBe('-1')
+    expect(idFor(TEAMS, {}, [''], [])).toBe('-1')
+  })
+
+  /* And the file's own numbers are stepped over as well, which is what makes the
+     screen that has not read it safe: `ReviewQueue` hands in what this visit made
+     and nothing else. */
+  it('is below nought whatever the file holds', () => {
+    expect(idFor(TEAMS, {}, ['1', '2', '1167'], [])).toBe('-1')
   })
 })
 

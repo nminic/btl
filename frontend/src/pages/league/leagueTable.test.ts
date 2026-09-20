@@ -24,19 +24,21 @@ const person = (memberNumber: string): Competitor => ({
   bio: '',
 })
 
-const event = (id: string, date: string): BtlEvent => ({
+/* The name is a parameter because one case really reads it: two events of one day
+   are parted by their names, and the identity must not be able to answer for that. */
+const event = (id: number, date: string, name = `Događaj ${String(id)}`): BtlEvent => ({
   id,
-  slug: id,
-  name: `Događaj ${id}`,
+  slug: `dogadjaj-${String(id)}`,
+  name,
   date,
   city: 'Beograd',
   country: 'RS',
-  kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
+  kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
 })
 
 const race = (
-  id: string,
-  eventId: string,
+  id: number,
+  eventId: number,
   distanceKm = 10,
   date = '2027-04-03',
   /* What the race is called. It starts out as its event's name, so a case that
@@ -47,7 +49,7 @@ const race = (
   id,
   eventId,
   name,
-  renamed: 'no',
+  renamed: false,
   kind: 'length',
   limitSeconds: 0,
   date,
@@ -57,8 +59,10 @@ const race = (
   category: 'short',
 })
 
-const result = (memberNumber: string, raceId: string, points: number): Result => ({
-  id: `${memberNumber}-${raceId}`,
+let resultsMade = 0
+
+const result = (memberNumber: string, raceId: number, points: number): Result => ({
+  id: (resultsMade += 1),
   memberNumber,
   raceId,
   raceName: 'Događaj',
@@ -74,24 +78,24 @@ const result = (memberNumber: string, raceId: string, points: number): Result =>
 })
 
 const league: League = {
-  id: 'l1',
+  id: 1,
   slug: 'l1',
   name: 'Proba',
   season: 2019,
-  eventIds: ['e1', 'e2'],
+  eventIds: [4, 5],
   rules: '',
   prizes: '',
 }
 
-const events = [event('e1', '2019-05-01'), event('e2', '2019-03-01'), event('e3', '2019-04-01')]
+const events = [event(4, '2019-05-01'), event(5, '2019-03-01'), event(6, '2019-04-01')]
 /* Each race on the day of its own event, which is the ordinary case: an event
    that runs over more than one morning is the exception and has a test of its
    own below. The day is on the race and not read off the event (PDL P10). */
 const races = [
-  race('r1', 'e1', 10, '2019-05-01'),
-  race('r2', 'e2', 21, '2019-03-01'),
-  race('r3', 'e3', 5, '2019-04-01'),
-  race('r4', 'e1', 5.5, '2019-05-01'),
+  race(9, 4, 10, '2019-05-01'),
+  race(10, 5, 21, '2019-03-01'),
+  race(11, 6, 5, '2019-04-01'),
+  race(12, 4, 5.5, '2019-05-01'),
 ]
 
 describe('the grid of a competition', () => {
@@ -101,7 +105,7 @@ describe('the grid of a competition', () => {
     /* e3 is not in the competition, so it is not a column, though it has a race of
        its own. e1 has two races and is one column, which is what changed on
        07.09.2026 (owner: „Datum i kaze se dogadjaj samo"). */
-    expect(table.columns.map((one) => one.eventId)).toEqual(['e2', 'e1'])
+    expect(table.columns.map((one) => one.eventId)).toEqual([5, 4])
     expect(table.columns.map((one) => one.date)).toEqual(['2019-03-01', '2019-05-01'])
   })
 
@@ -112,8 +116,8 @@ describe('the grid of a competition', () => {
        their own values, because the day is the same for a column that lost both. */
     const table = leagueTable(league, events, races, [], [])
 
-    expect(first(table.columns).name).toBe('Događaj e2')
-    expect(first(table.columns).slug).toBe('e2')
+    expect(first(table.columns).name).toBe('Događaj 5')
+    expect(first(table.columns).slug).toBe('dogadjaj-5')
   })
 
   it('gives no column to an event that has no race yet', () => {
@@ -122,9 +126,9 @@ describe('the grid of a competition', () => {
        could ever stand under such a column. The width of this table is its whole
        difficulty, so a column that can never carry a number is width spent on
        nothing. */
-    const table = leagueTable(league, events, [race('r2', 'e2', 21, '2019-03-01')], [], [])
+    const table = leagueTable(league, events, [race(10, 5, 21, '2019-03-01')], [], [])
 
-    expect(table.columns.map((one) => one.eventId)).toEqual(['e2'])
+    expect(table.columns.map((one) => one.eventId)).toEqual([5])
   })
 
   it('draws two events of one day as two columns, in the order of their names', () => {
@@ -136,16 +140,16 @@ describe('the grid of a competition', () => {
        The order is by the name and not by the order the file happens to be written
        in, or the table would shuffle between two columns nothing else parts. Read
        with the later name given first, so that a sort that does nothing is caught. */
-    const sameDay = [event('z-drugi', '2019-03-01'), event('a-prvi', '2019-03-01')]
+    const sameDay = [event(7, '2019-03-01', 'Z drugi'), event(8, '2019-03-01', 'A prvi')]
     const table = leagueTable(
-      { ...league, eventIds: ['z-drugi', 'a-prvi'] },
+      { ...league, eventIds: [7, 8] },
       sameDay,
-      [race('r7', 'z-drugi', 10, '2019-03-01'), race('r8', 'a-prvi', 10, '2019-03-01')],
+      [race(13, 7, 10, '2019-03-01'), race(14, 8, 10, '2019-03-01')],
       [],
       [],
     )
 
-    expect(table.columns.map((one) => one.eventId)).toEqual(['a-prvi', 'z-drugi'])
+    expect(table.columns.map((one) => one.eventId)).toEqual([8, 7])
   })
 
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {
@@ -153,7 +157,7 @@ describe('the grid of a competition', () => {
       league,
       events,
       races,
-      [result('000001', 'r1', 10), result('000003', 'r3', 99)],
+      [result('000001', 9, 10), result('000003', 11, 99)],
       [person('000001'), person('000002'), person('000003')],
     )
 
@@ -167,10 +171,10 @@ describe('the grid of a competition', () => {
       events,
       races,
       [
-        result('000001', 'r1', 10),
-        result('000001', 'r2', 5),
-        result('000001', 'r3', 1000),
-        result('000002', 'r2', 40),
+        result('000001', 9, 10),
+        result('000001', 10, 5),
+        result('000001', 11, 1000),
+        result('000002', 10, 40),
       ],
       [person('000001'), person('000002')],
     )
@@ -180,7 +184,7 @@ describe('the grid of a competition', () => {
        up and land on the second column. */
     expect(table.rows.map((one) => one.total)).toEqual([40, 15])
     expect(first(table.rows).competitor.memberNumber).toBe('000002')
-    expect(at(table.rows, 1).points.get('e3')).toBeUndefined()
+    expect(at(table.rows, 1).points.get(6)).toBeUndefined()
   })
 
   it('leaves an event somebody did not race out of the row rather than at nought', () => {
@@ -188,13 +192,13 @@ describe('the grid of a competition', () => {
       league,
       events,
       races,
-      [result('000001', 'r1', 10)],
+      [result('000001', 9, 10)],
       [person('000001')],
     )
 
     // Nought would be a claim: it says they were there and scored nothing.
-    expect(first(table.rows).points.get('e1')).toBe(10)
-    expect(first(table.rows).points.has('e2')).toBe(false)
+    expect(first(table.rows).points.get(4)).toBe(10)
+    expect(first(table.rows).points.has(5)).toBe(false)
   })
 
   it('adds up two races of one event into the one cell that event has', () => {
@@ -211,11 +215,11 @@ describe('the grid of a competition', () => {
       league,
       events,
       races,
-      [result('000001', 'r1', 10), result('000001', 'r4', 7)],
+      [result('000001', 9, 10), result('000001', 12, 7)],
       [person('000001')],
     )
 
-    expect(first(table.rows).points.get('e1')).toBe(17)
+    expect(first(table.rows).points.get(4)).toBe(17)
     expect(first(table.rows).total).toBe(17)
   })
 
@@ -224,7 +228,7 @@ describe('the grid of a competition', () => {
       league,
       events,
       races,
-      [result('000005', 'r1', 20), result('000002', 'r2', 20)],
+      [result('000005', 9, 20), result('000002', 10, 20)],
       [person('000005'), person('000002')],
     )
 
@@ -241,11 +245,11 @@ describe('the grid of a competition', () => {
       league,
       events,
       races,
-      [result('000001', 'r1', 10), { ...result('000001', 'r1', 7), id: 'drugi' }],
+      [result('000001', 9, 10), result('000001', 9, 7)],
       [person('000001')],
     )
 
-    expect(first(table.rows).points.get('e1')).toBe(17)
+    expect(first(table.rows).points.get(4)).toBe(17)
     expect(first(table.rows).total).toBe(17)
   })
 })
@@ -268,7 +272,7 @@ describe('the way a competition splits its ranking', () => {
   ]
 
   const rowsOf = (people: Competitor[]) =>
-    people.map((competitor) => ({ competitor, points: new Map<string, number>(), total: 0 }))
+    people.map((competitor) => ({ competitor, points: new Map<number, number>(), total: 0 }))
 
   it('splits into two, in every competition there is', () => {
     /* „Samo po polu" is not „no grouping"; it is grouping into two, and that is

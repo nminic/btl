@@ -38,8 +38,14 @@ export function eventFrom(one: Submission): Record<string, string> & { date: str
     link: '',
     /* Not a copy of anything. The owner was asked whether the record should
        remember that it grew out of a submission and said no: „Ne, događaj je
-       događaj" (31.08.2026). */
-    copiedFrom: '',
+       događaj" (31.08.2026).
+
+       Left out rather than written as an empty string, and that is the difference
+       between nothing and a value: `copiedFrom` is nullable on the record
+       (`data/types.ts`) and `EVENTS.blank` holds the `null`, which is what stands
+       where this writes nothing over it (`entityForms.ts`, `recordFrom`). Written
+       as „", the record would say it was copied out of an event whose identity is
+       blank, which is not a state this portal has. */
   }
 }
 
@@ -55,7 +61,7 @@ export function raceFrom(one: Submission, eventId: string): Record<string, strin
     name: one.raceName,
     /* Given by hand, whatever it started as: the member typed it and the moderator
        may have changed it, and neither is the event renaming its races. */
-    renamed: 'yes',
+    renamed: 'true',
     date: one.date,
     kind: raceKind(one.raceKind),
     /* What a timed race is run to, and nought for the other two. On such a race the

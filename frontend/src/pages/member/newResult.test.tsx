@@ -49,23 +49,23 @@ const FILLED = [/^Datum/, /^Dužina/, /^Uspon/, /^Spust/] as const
    cases ask the same question of the same three races: what the row says, and
    what choosing it fills in. */
 const held: BtlEvent = {
-  id: 'e1',
+  id: 1,
   slug: 'dogadjaj-2026',
   name: 'Događaj',
   date: '2026-09-19',
   city: 'Beograd',
   country: 'RS',
   kind: 'race',
-  featured: 'no',
+  featured: false,
   description: '',
   link: '',
-  copiedFrom: '',
+  copiedFrom: null,
 }
 const shaped = (over: Partial<Race>): Race => ({
-  id: 'r',
-  eventId: 'e1',
+  id: 2,
+  eventId: 1,
   name: 'Trka',
-  renamed: 'no',
+  renamed: false,
   date: '2026-09-19',
   kind: 'length',
   limitSeconds: 0,
@@ -288,9 +288,9 @@ describe('the list of races under the name of an event', () => {
     const said = racesToOffer(
       [held],
       [
-        shaped({ id: 'r1', kind: 'time', limitSeconds: 86_400 }),
-        shaped({ id: 'r2', kind: 'free' }),
-        shaped({ id: 'r3', distanceKm: 21.1 }),
+        shaped({ id: 11, kind: 'time', limitSeconds: 86_400 }),
+        shaped({ id: 12, kind: 'free' }),
+        shaped({ id: 13, distanceKm: 21.1 }),
       ],
       '2026-12-31',
       'sr-Latn',
@@ -312,7 +312,7 @@ describe('the list of races under the name of an event', () => {
        race of a length and take those three off it. Two answers for one race. */
     const filled = racesToOffer(
       [held],
-      [{ ...shaped({ id: 'r1', distanceKm: 21.1 }), kind: 'ludilo' }],
+      [{ ...shaped({ id: 11, distanceKm: 21.1 }), kind: 'ludilo' }],
       '2026-12-31',
       'sr-Latn',
     )
@@ -370,9 +370,9 @@ describe('the list of races under the name of an event', () => {
            and the seconds both nought, and 6:30:30 leaves them equal; in either the
            two expressions that split a limit into boxes cannot be told apart, and
            both were measured passing a swap (30.08.2026). */
-        shaped({ id: 'r1', kind: 'time', limitSeconds: 23_445, ascentM: 120 }),
-        shaped({ id: 'r2', kind: 'free', ascentM: 120 }),
-        shaped({ id: 'r3', distanceKm: 21.1, ascentM: 120, descentM: 140 }),
+        shaped({ id: 11, kind: 'time', limitSeconds: 23_445, ascentM: 120 }),
+        shaped({ id: 12, kind: 'free', ascentM: 120 }),
+        shaped({ id: 13, distanceKm: 21.1, ascentM: 120, descentM: 140 }),
       ],
       '2026-12-31',
       'sr-Latn',

@@ -63,10 +63,15 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   ...extra,
 })
 
+/* One apiece, counted up, because a result is identified by a number and two
+   results of one member on one day are still two rows (`data/types.ts`). The case
+   that reads an identity writes its own over this. */
+let resultsMade = 0
+
 const result = (memberNumber: string, date: string, points: number, extra: Partial<Result> = {}): Result => ({
-  id: `${memberNumber}-${date}-${points}`,
+  id: (resultsMade += 1),
   memberNumber,
-  raceId: 'race',
+  raceId: 36,
   raceName: 'Trka',
   eventName: 'Trka',
   eventSlug: 'trka',
@@ -85,14 +90,17 @@ describe('the team somebody is in', () => {
      on the standing, the address that founds a team, and the queue that decides one.
      Asked here rather than through each of the three, because it is one fact.
 
-     **The empty string is the whole reason this exists.** There is no database in this
-     prototype: what changes during a visit is kept in the session, and the session keeps
-     every value as text (`session/context.ts`), so taking somebody out of a team is
-     writing an empty string over `teamId` and `null` cannot be written at all. Read as a
-     team, that empty string would refuse the founder of a team they had just deleted the
-     new one the owner allowed them (05.09.2026: „ne brani mu se da napravi novi tim"). */
-  it('is nothing at all for an empty string, exactly as for nothing written', () => {
-    expect(teamOf({ teamId: '' })).toBe(null)
+     **Nought is the whole reason this exists.** There is no database in this prototype:
+     what changes during a visit is kept in the session, and the session keeps every value
+     as text (`session/context.ts`), so taking somebody out of a team is writing an empty
+     string over `teamId` and `null` cannot be written at all. That string is read back
+     into the shape the record keeps, and a team is identified by a number since
+     20.09.2026, so what arrives here is `Number('')`, which is 0 (`forms/records.ts`,
+     `like`). Read as a team, nought would refuse the founder of a team they had just
+     deleted the new one the owner allowed them (05.09.2026: „ne brani mu se da napravi
+     novi tim"). */
+  it('is nothing at all for nought, exactly as for nothing written', () => {
+    expect(teamOf({ teamId: 0 })).toBe(null)
     expect(teamOf({ teamId: null })).toBe(null)
     /* And for nobody at all: a signed-in person with no competitor record is not in a
        team either, and the doors read that the same way. */
@@ -100,11 +108,12 @@ describe('the team somebody is in', () => {
   })
 
   it('is the team itself when there is one, which is what the other six readers compare', () => {
-    expect(teamOf({ teamId: 'team-dunav' })).toBe('team-dunav')
-    /* Whitespace is a value somebody wrote, not an empty field, so it is left alone
-       rather than guessed at: nothing in this portal writes one, and a reading that
-       trimmed would be deciding something no owner has decided. */
-    expect(teamOf({ teamId: ' ' })).toBe(' ')
+    expect(teamOf({ teamId: 35 })).toBe(35)
+    /* And a team made during this visit is a team like any other: its identity is below
+       nought, because a `bigserial` never is (`admin/raceIds.ts`, `nextIdentity`), and
+       nothing here may read that as „no team". This is the case a reading written as
+       „anything that is not a positive number is nobody's team" would fail. */
+    expect(teamOf({ teamId: -1 })).toBe(-1)
   })
 })
 
@@ -318,22 +327,22 @@ describe('categoriesOf', () => {
 
 describe('calendar helpers', () => {
   const sixthOfMarch: BtlEvent = {
-    id: 'a', slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
-    kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
+    id: 1, slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
+    kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
   }
   const secondOfMarch: BtlEvent = {
-    id: 'b', slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
-    kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
+    id: 2, slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
+    kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
   }
   const tenthOfApril: BtlEvent = {
-    id: 'c', slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
-    kind: 'gathering', description: '', link: '', copiedFrom: '', featured: 'no',
+    id: 3, slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
+    kind: 'gathering', description: '', link: '', copiedFrom: null, featured: false,
   }
 
   const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
 
   it('takes one month, in date order', () => {
-    expect(eventsInMonth(events, 2027, 3).map((event) => event.id)).toEqual(['b', 'a'])
+    expect(eventsInMonth(events, 2027, 3).map((event) => event.id)).toEqual([2, 1])
     expect(eventsInMonth(events, 2027, 12)).toEqual([])
   })
 
@@ -343,7 +352,7 @@ describe('calendar helpers', () => {
        there is no such event any more, because one that is off is deleted. What
        is worth holding in its place is that nothing else is left out either: a
        gathering with no race in it is in the month like anything else. */
-    expect(eventsInMonth(events, 2027, 4).map((event) => event.id)).toEqual(['c'])
+    expect(eventsInMonth(events, 2027, 4).map((event) => event.id)).toEqual([3])
     expect(monthsWithEvents(events)).toContain('2027-04')
   })
 
@@ -354,8 +363,8 @@ describe('calendar helpers', () => {
 
 describe('defaultMonth', () => {
   const events: BtlEvent[] = [
-    { id: 'a', slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no' },
-    { id: 'b', slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no' },
+    { id: 1, slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: null, featured: false },
+    { id: 2, slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: null, featured: false },
   ]
 
   it('opens on the first month from today onwards that holds something', () => {
@@ -477,7 +486,7 @@ describe('rankTeams', () => {
    * it stands: two rows leave only two possible orders, so it hands in a slug
    * and a name of its own, both in the order the id does not give.
    */
-  const team = (id: string, sorting: { slug?: string; name?: string } = {}): Team => ({
+  const team = (id: number, sorting: { slug?: string; name?: string } = {}): Team => ({
     id,
     slug: sorting.slug ?? `tim-${id}`,
     crop: { x: 0.5, y: 0.5, size: 1 },
@@ -490,11 +499,11 @@ describe('rankTeams', () => {
   })
 
   it('sums every member, without normalising for team size', () => {
-    const teams = [team('a'), team('b')]
+    const teams = [team(1), team(2)]
     const competitors = [
-      competitor('000001', { teamId: 'a', teamSince: 2027 }),
-      competitor('000002', { teamId: 'b', teamSince: 2027 }),
-      competitor('000004', { teamId: 'b', teamSince: 2027 }),
+      competitor('000001', { teamId: 1, teamSince: 2027 }),
+      competitor('000002', { teamId: 2, teamSince: 2027 }),
+      competitor('000004', { teamId: 2, teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 30),
@@ -503,18 +512,18 @@ describe('rankTeams', () => {
     ]
 
     // b wins with 40 against 30, although its average per member is lower.
-    expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual(['b', 'a'])
+    expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([2, 1])
   })
 
   /* The ladder from PDL P12 as the owner gave it on 11.08.2026: points, races,
      kilometres, time on the course. The size of the team was the second rung
      until that day, and these three tests are what tells the two apart. */
   it('breaks a tie on points by the races, not by the size of the team', () => {
-    const teams = [team('small'), team('big')]
+    const teams = [team(4), team(5)]
     const competitors = [
-      competitor('000001', { teamId: 'small', teamSince: 2027 }),
-      competitor('000002', { teamId: 'big', teamSince: 2027 }),
-      competitor('000004', { teamId: 'big', teamSince: 2027 }),
+      competitor('000001', { teamId: 4, teamSince: 2027 }),
+      competitor('000002', { teamId: 5, teamSince: 2027 }),
+      competitor('000004', { teamId: 5, teamSince: 2027 }),
     ]
     const results = [
       // One member, twenty points, three races.
@@ -529,7 +538,7 @@ describe('rankTeams', () => {
     const winner = first(rankTeams(teams, competitors, results, 2027))
 
     // The bigger team held this place until 11.08.2026, on the same numbers.
-    expect(winner.team.id).toBe('small')
+    expect(winner.team.id).toBe(4)
     expect(winner.members).toBe(1)
   })
 
@@ -538,10 +547,10 @@ describe('rankTeams', () => {
        broj trka (što više), kilometri (što više), vreme na stazi (što više)".
        The two middle rungs were never told apart until this test: every other
        case had the same team ahead on both, so swapping them changed nothing. */
-    const teams = [team('many-short'), team('one-long')]
+    const teams = [team(6), team(7)]
     const competitors = [
-      competitor('000001', { teamId: 'many-short', teamSince: 2027 }),
-      competitor('000002', { teamId: 'one-long', teamSince: 2027 }),
+      competitor('000001', { teamId: 6, teamSince: 2027 }),
+      competitor('000002', { teamId: 7, teamSince: 2027 }),
     ]
     const results = [
       // Three races, ten points, thirty kilometres in all.
@@ -553,16 +562,16 @@ describe('rankTeams', () => {
     ]
 
     expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([
-      'many-short',
-      'one-long',
+      6,
+      7,
     ])
   })
 
   it('goes on to the kilometres when the points and the races are level too', () => {
-    const teams = [team('fewer'), team('more')]
+    const teams = [team(8), team(9)]
     const competitors = [
-      competitor('000001', { teamId: 'fewer', teamSince: 2027 }),
-      competitor('000002', { teamId: 'more', teamSince: 2027 }),
+      competitor('000001', { teamId: 8, teamSince: 2027 }),
+      competitor('000002', { teamId: 9, teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 10, { distanceKm: 10 }),
@@ -570,16 +579,16 @@ describe('rankTeams', () => {
     ]
 
     expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([
-      'more',
-      'fewer',
+      9,
+      8,
     ])
   })
 
   it('goes on to the time on the course when the kilometres are level too', () => {
-    const teams = [team('quick'), team('long')]
+    const teams = [team(10), team(11)]
     const competitors = [
-      competitor('000001', { teamId: 'quick', teamSince: 2027 }),
-      competitor('000002', { teamId: 'long', teamSince: 2027 }),
+      competitor('000001', { teamId: 10, teamSince: 2027 }),
+      competitor('000002', { teamId: 11, teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 10, { distanceKm: 10, seconds: 3000 }),
@@ -589,8 +598,8 @@ describe('rankTeams', () => {
     // Everything above is level, and the last rung is volume like all the
     // others: more time on the course, not less.
     expect(rankTeams(teams, competitors, results, 2027).map((row) => row.team.id)).toEqual([
-      'long',
-      'quick',
+      11,
+      10,
     ])
   })
 
@@ -602,19 +611,19 @@ describe('rankTeams', () => {
        id does not give, so a rung moved onto either one is a rung that puts `b`
        first, and the test says so. */
     const teams = [
-      team('b', { slug: 'tim-1', name: 'Tim 1' }),
-      team('a', { slug: 'tim-2', name: 'Tim 2' }),
-      team('c', { slug: 'tim-3', name: 'Tim 3' }),
+      team(2, { slug: 'tim-1', name: 'Tim 1' }),
+      team(1, { slug: 'tim-2', name: 'Tim 2' }),
+      team(3, { slug: 'tim-3', name: 'Tim 3' }),
     ]
     const competitors = [
-      competitor('000001', { teamId: 'a', teamSince: 2027 }),
-      competitor('000002', { teamId: 'b', teamSince: 2027 }),
-      competitor('000004', { teamId: 'c', teamSince: 2027 }),
+      competitor('000001', { teamId: 1, teamSince: 2027 }),
+      competitor('000002', { teamId: 2, teamSince: 2027 }),
+      competitor('000004', { teamId: 3, teamSince: 2027 }),
       /* A second member for `b`, so the three teams differ in size while every
          rung of the ladder leaves them level. Written with one member each, a
          head count put back as a fifth rung would change nothing and no test
          would notice it (PDL P12, 11.08.2026: the size is not a rung). */
-      competitor('000005', { teamId: 'b', teamSince: 2027 }),
+      competitor('000005', { teamId: 2, teamSince: 2027 }),
     ]
     const results = [
       result('000001', '2027-01-01', 10),
@@ -628,17 +637,17 @@ describe('rankTeams', () => {
     // ladder leaves level are still 1 and 2, and the board does not shuffle
     // between two recounts of the same data (PDL P12).
     expect(ranked.map((row) => row.position)).toEqual([1, 2, 3])
-    expect(ranked.map((row) => row.team.id)).toEqual(['a', 'b', 'c'])
+    expect(ranked.map((row) => row.team.id)).toEqual([1, 2, 3])
   })
 
   it('counts the roster of the season being shown, not of today', () => {
     /* A team is a thing of one season, so a standing headed by a year has to be
        that year's team. Somebody who joined in 2021 was not in it in 2020, and
        somebody who joins for 2027 is not in it in 2026 however much they raced. */
-    const teams = [team('a')]
+    const teams = [team(1)]
     const competitors = [
-      competitor('000001', { teamId: 'a', teamSince: 2021 }),
-      competitor('000002', { teamId: 'a', teamSince: 2027 }),
+      competitor('000001', { teamId: 1, teamSince: 2021 }),
+      competitor('000002', { teamId: 1, teamSince: 2027 }),
       competitor('000003'),
     ]
     const results = [result('000001', '2020-05-01', 30), result('000002', '2020-05-01', 40)]
@@ -1216,21 +1225,21 @@ describe('boardOfTen', () => {
  * none either (ADL A7). One dot per length actually run, never one per race.
  */
 describe('dotsAt', () => {
-  const event = (id: string): BtlEvent => ({
+  const event = (id: number): BtlEvent => ({
     id,
-    slug: id,
-    name: id,
+    slug: String(id),
+    name: String(id),
     date: '2027-05-08',
     city: 'Niš',
     country: 'RS',
-    kind: 'race', description: '', link: '', copiedFrom: '', featured: 'no',
+    kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
   })
 
-  const race = (id: string, eventId: string, category: RaceCategory): Race => ({
+  const race = (id: number, eventId: number, category: RaceCategory): Race => ({
     id,
     eventId,
     name: 'Trka',
-    renamed: 'no',
+    renamed: false,
     kind: 'length',
     limitSeconds: 0,
     date: '2027-04-03',
@@ -1242,29 +1251,29 @@ describe('dotsAt', () => {
 
   it('takes the lengths of that event and of no other', () => {
     const races = [
-      race('a', 'one', 'short'),
-      race('b', 'one', 'marathon'),
+      race(1, 12, 'short'),
+      race(2, 12, 'marathon'),
       /* The other event's, which is the whole of what the join is for: read
          without it, every event on the calendar carried every colour. */
-      race('c', 'two', 'ultra'),
+      race(3, 13, 'ultra'),
     ]
 
-    expect(dotsAt(event('one'), races)).toEqual(['short', 'marathon'])
-    expect(dotsAt(event('two'), races)).toEqual(['ultra'])
+    expect(dotsAt(event(12), races)).toEqual(['short', 'marathon'])
+    expect(dotsAt(event(13), races)).toEqual(['ultra'])
   })
 
   it('says one length once, however many races are run at it', () => {
     const races = [
-      race('a', 'one', 'half'),
-      race('b', 'one', 'half'),
-      race('c', 'one', 'half'),
+      race(1, 12, 'half'),
+      race(2, 12, 'half'),
+      race(3, 12, 'half'),
     ]
 
-    expect(dotsAt(event('one'), races)).toEqual(['half'])
+    expect(dotsAt(event(12), races)).toEqual(['half'])
   })
 
   it('says nothing for an event whose races nobody has entered', () => {
-    expect(dotsAt(event('one'), [])).toEqual([])
+    expect(dotsAt(event(12), [])).toEqual([])
   })
 
   it('gives a race that fixes no length a dot of its own, not the one its category says', () => {
@@ -1276,12 +1285,12 @@ describe('dotsAt', () => {
        Both kinds that fix no length, because they arrive by different roads and the
        reading has to be about the kind rather than about the limit. And the dot comes
        last, after the five, because the list it is filtered from puts it there. */
-    const timed: Race = { ...race('a', 'one', 'short'), kind: 'time', limitSeconds: 86_400, distanceKm: 0 }
-    const free: Race = { ...race('b', 'one', 'short'), kind: 'free', distanceKm: 0 }
+    const timed: Race = { ...race(1, 12, 'short'), kind: 'time', limitSeconds: 86_400, distanceKm: 0 }
+    const free: Race = { ...race(2, 12, 'short'), kind: 'free', distanceKm: 0 }
 
-    expect(dotsAt(event('one'), [timed])).toEqual(['unmeasured'])
-    expect(dotsAt(event('one'), [free])).toEqual(['unmeasured'])
-    expect(dotsAt(event('one'), [timed, race('c', 'one', 'marathon')])).toEqual([
+    expect(dotsAt(event(12), [timed])).toEqual(['unmeasured'])
+    expect(dotsAt(event(12), [free])).toEqual(['unmeasured'])
+    expect(dotsAt(event(12), [timed, race(3, 12, 'marathon')])).toEqual([
       'marathon',
       'unmeasured',
     ])
@@ -1291,9 +1300,9 @@ describe('dotsAt', () => {
     /* The type says one of three and the file says whatever it says. Read as a race
        of a length, so an unknown word puts the dot its category asks for rather than
        taking every race on the calendar out of the five. */
-    const strange = { ...race('a', 'one', 'marathon'), kind: 'ludilo' }
+    const strange = { ...race(1, 12, 'marathon'), kind: 'ludilo' }
 
-    expect(dotsAt(event('one'), [strange])).toEqual(['marathon'])
+    expect(dotsAt(event(12), [strange])).toEqual(['marathon'])
   })
 
   it('offers exactly the five lengths and one more', () => {
@@ -1388,7 +1397,7 @@ describe('the board of best racing pairs', () => {
      dogadjaj. Ako on trci maraton a ona polumaraton na istoj manifestaciji, to nije zajednicka
      trka i ne ulazi u poredak parova." And the ladder, given for the team and the pair together on
      11.08.2026: points, races, kilometres, time on course. */
-  const pair = (id: string, one: string, two: string, season = 2027): RacingPair => ({
+  const pair = (id: number, one: string, two: string, season = 2027): RacingPair => ({
     id,
     season,
     memberNumbers: [one, two],
@@ -1403,13 +1412,13 @@ describe('the board of best racing pairs', () => {
        Same `eventSlug`, different `raceId`, which is the whole of the owner's sentence. And one
        race they really did run together. */
     const results = [
-      result('000001', '2027-05-01', 10, { raceId: 'together' }),
-      result('000002', '2027-05-01', 20, { raceId: 'together' }),
-      result('000001', '2027-06-01', 500, { raceId: 'his-marathon', eventSlug: 'jedan-dogadjaj' }),
-      result('000002', '2027-06-01', 400, { raceId: 'her-half', eventSlug: 'jedan-dogadjaj' }),
+      result('000001', '2027-05-01', 10, { raceId: 37 }),
+      result('000002', '2027-05-01', 20, { raceId: 37 }),
+      result('000001', '2027-06-01', 500, { raceId: 38, eventSlug: 'jedan-dogadjaj' }),
+      result('000002', '2027-06-01', 400, { raceId: 39, eventSlug: 'jedan-dogadjaj' }),
     ]
 
-    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+    const board = topPairs([pair(14, '000001', '000002')], [HE, SHE], results, 2027, 10)
 
     expect(board.length).toBe(1)
     /* Thirty, not nine hundred and thirty: the meeting they shared is not a race they shared. */
@@ -1423,12 +1432,12 @@ describe('the board of best racing pairs', () => {
        about the pair (owner, 04.08.2026), so it is hers; ordering by the season would say his, and
        the case could not tell the two apart if his season were only his shared race. */
     const results = [
-      result('000001', '2027-05-01', 10, { raceId: 'together' }),
-      result('000002', '2027-05-01', 40, { raceId: 'together' }),
-      result('000001', '2027-07-01', 900, { raceId: 'alone' }),
+      result('000001', '2027-05-01', 10, { raceId: 37 }),
+      result('000002', '2027-05-01', 40, { raceId: 37 }),
+      result('000001', '2027-07-01', 900, { raceId: 40 }),
     ]
 
-    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+    const board = topPairs([pair(14, '000001', '000002')], [HE, SHE], results, 2027, 10)
 
     expect(at(board, 0).competitors.map((one) => one.memberNumber)).toEqual(['000002', '000001'])
   })
@@ -1447,23 +1456,23 @@ describe('the board of best racing pairs', () => {
        second pair runs two half-length races: same twenty kilometres, same hundred minutes. */
     const half = { distanceKm: 5, seconds: 1500 }
     const results = [
-      result('000001', '2027-05-01', 30, { raceId: 'one' }),
-      result('000002', '2027-05-01', 30, { raceId: 'one' }),
-      result('000003', '2027-05-02', 15, { raceId: 'two', ...half }),
-      result('000004', '2027-05-02', 15, { raceId: 'two', ...half }),
-      result('000003', '2027-05-03', 15, { raceId: 'three', ...half }),
-      result('000004', '2027-05-03', 15, { raceId: 'three', ...half }),
+      result('000001', '2027-05-01', 30, { raceId: 12 }),
+      result('000002', '2027-05-01', 30, { raceId: 12 }),
+      result('000003', '2027-05-02', 15, { raceId: 13, ...half }),
+      result('000004', '2027-05-02', 15, { raceId: 13, ...half }),
+      result('000003', '2027-05-03', 15, { raceId: 41, ...half }),
+      result('000004', '2027-05-03', 15, { raceId: 41, ...half }),
     ]
 
     const board = topPairs(
-      [pair('p1', '000001', '000002'), pair('p2', '000003', '000004')],
+      [pair(14, '000001', '000002'), pair(15, '000003', '000004')],
       four,
       results,
       2027,
       10,
     )
 
-    expect(board.map((row) => row.pair.id)).toEqual(['p2', 'p1'])
+    expect(board.map((row) => row.pair.id)).toEqual([15, 14])
     expect(board.map((row) => row.position)).toEqual([1, 2])
   })
 
@@ -1484,23 +1493,23 @@ describe('the board of best racing pairs', () => {
       competitor('000009', { gender: 'F' }),
     ]
     const results = [
-      result('000002', '2027-05-01', 30, { raceId: 'one' }),
-      result('000003', '2027-05-01', 30, { raceId: 'one' }),
-      result('000001', '2027-05-02', 30, { raceId: 'two' }),
-      result('000009', '2027-05-02', 30, { raceId: 'two' }),
+      result('000002', '2027-05-01', 30, { raceId: 12 }),
+      result('000003', '2027-05-01', 30, { raceId: 12 }),
+      result('000001', '2027-05-02', 30, { raceId: 13 }),
+      result('000009', '2027-05-02', 30, { raceId: 13 }),
     ]
 
     /* Handed in with the larger sum first, so the order that comes back is the rung and not the
        order of the list. */
     const board = topPairs(
-      [pair('sum-ten', '000001', '000009'), pair('sum-five', '000002', '000003')],
+      [pair(16, '000001', '000009'), pair(17, '000002', '000003')],
       four,
       results,
       2027,
       10,
     )
 
-    expect(board.map((row) => row.pair.id)).toEqual(['sum-five', 'sum-ten'])
+    expect(board.map((row) => row.pair.id)).toEqual([17, 16])
   })
 
   it('parts two pairs whose member numbers even add up the same, by the lower of them', () => {
@@ -1515,21 +1524,21 @@ describe('the board of best racing pairs', () => {
       competitor('000004', { gender: 'F' }),
     ]
     const results = [
-      result('000001', '2027-05-01', 30, { raceId: 'one' }),
-      result('000004', '2027-05-01', 30, { raceId: 'one' }),
-      result('000002', '2027-05-02', 30, { raceId: 'two' }),
-      result('000003', '2027-05-02', 30, { raceId: 'two' }),
+      result('000001', '2027-05-01', 30, { raceId: 12 }),
+      result('000004', '2027-05-01', 30, { raceId: 12 }),
+      result('000002', '2027-05-02', 30, { raceId: 13 }),
+      result('000003', '2027-05-02', 30, { raceId: 13 }),
     ]
 
     const board = topPairs(
-      [pair('later', '000002', '000003'), pair('earlier', '000001', '000004')],
+      [pair(18, '000002', '000003'), pair(19, '000001', '000004')],
       four,
       results,
       2027,
       10,
     )
 
-    expect(board.map((row) => row.pair.id)).toEqual(['earlier', 'later'])
+    expect(board.map((row) => row.pair.id)).toEqual([19, 18])
   })
 
   it('goes on to the kilometres when the points and the races are level', () => {
@@ -1548,21 +1557,21 @@ describe('the board of best racing pairs', () => {
       competitor('000009', { gender: 'F' }),
     ]
     const results = [
-      result('000001', '2027-05-01', 30, { raceId: 'short', distanceKm: 10 }),
-      result('000002', '2027-05-01', 30, { raceId: 'short', distanceKm: 10 }),
-      result('000003', '2027-05-02', 30, { raceId: 'long', distanceKm: 30 }),
-      result('000009', '2027-05-02', 30, { raceId: 'long', distanceKm: 30 }),
+      result('000001', '2027-05-01', 30, { raceId: 20, distanceKm: 10 }),
+      result('000002', '2027-05-01', 30, { raceId: 20, distanceKm: 10 }),
+      result('000003', '2027-05-02', 30, { raceId: 11, distanceKm: 30 }),
+      result('000009', '2027-05-02', 30, { raceId: 11, distanceKm: 30 }),
     ]
 
     const board = topPairs(
-      [pair('short', '000001', '000002'), pair('long', '000003', '000009')],
+      [pair(20, '000001', '000002'), pair(11, '000003', '000009')],
       four,
       results,
       2027,
       10,
     )
 
-    expect(board.map((row) => row.pair.id)).toEqual(['long', 'short'])
+    expect(board.map((row) => row.pair.id)).toEqual([11, 20])
     expect(board.map((row) => row.kilometers)).toEqual([60, 20])
   })
 
@@ -1574,12 +1583,12 @@ describe('the board of best racing pairs', () => {
 
        Both halves are asked, because the fault had two: the count of races, and the points. */
     const results = [
-      result('000001', '2027-05-01', 10, { raceId: 'one', id: 'his-first' }),
-      result('000001', '2027-05-01', 5, { raceId: 'one', id: 'his-second' }),
-      result('000002', '2027-05-01', 20, { raceId: 'one', id: 'hers' }),
+      result('000001', '2027-05-01', 10, { raceId: 12, id: 42 }),
+      result('000001', '2027-05-01', 5, { raceId: 12, id: 43 }),
+      result('000002', '2027-05-01', 20, { raceId: 12, id: 27 }),
     ]
 
-    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+    const board = topPairs([pair(14, '000001', '000002')], [HE, SHE], results, 2027, 10)
 
     expect(at(board, 0).races).toBe(1)
     expect(at(board, 0).points).toBe(35)
@@ -1591,12 +1600,12 @@ describe('the board of best racing pairs', () => {
        because there the doubled rows belong to the first. Written this way round the two answers
        part: her two rows on one race are still one race. */
     const results = [
-      result('000001', '2027-05-01', 10, { raceId: 'one', id: 'his' }),
-      result('000002', '2027-05-01', 20, { raceId: 'one', id: 'hers-first' }),
-      result('000002', '2027-05-01', 5, { raceId: 'one', id: 'hers-second' }),
+      result('000001', '2027-05-01', 10, { raceId: 12, id: 26 }),
+      result('000002', '2027-05-01', 20, { raceId: 12, id: 44 }),
+      result('000002', '2027-05-01', 5, { raceId: 12, id: 45 }),
     ]
 
-    const board = topPairs([pair('p1', '000001', '000002')], [HE, SHE], results, 2027, 10)
+    const board = topPairs([pair(14, '000001', '000002')], [HE, SHE], results, 2027, 10)
 
     expect(at(board, 0).races).toBe(1)
     expect(at(board, 0).points).toBe(35)
@@ -1611,11 +1620,11 @@ describe('the board of best racing pairs', () => {
        „the order they were written in" and „the smaller member number" give the same answer and the
        case cannot tell one from the other. */
     const results = [
-      result('000001', '2027-05-01', 30, { raceId: 'together' }),
-      result('000002', '2027-05-01', 30, { raceId: 'together' }),
+      result('000001', '2027-05-01', 30, { raceId: 37 }),
+      result('000002', '2027-05-01', 30, { raceId: 37 }),
     ]
 
-    const board = topPairs([pair('p1', '000002', '000001')], [HE, SHE], results, 2027, 10)
+    const board = topPairs([pair(14, '000002', '000001')], [HE, SHE], results, 2027, 10)
 
     expect(at(board, 0).competitors.map((one) => one.memberNumber)).toEqual(['000002', '000001'])
   })
@@ -1625,15 +1634,15 @@ describe('the board of best racing pairs', () => {
        nothing to rank. The second is the state a season of history arrives in, a pair naming a
        member who is not in the field being read. */
     const results = [
-      result('000001', '2027-05-01', 10, { raceId: 'his' }),
-      result('000002', '2027-05-02', 20, { raceId: 'hers' }),
+      result('000001', '2027-05-01', 10, { raceId: 26 }),
+      result('000002', '2027-05-02', 20, { raceId: 27 }),
     ]
 
     const board = topPairs(
       [
-        pair('apart', '000001', '000002'),
-        pair('unknown-second', '000001', '000099'),
-        pair('unknown-first', '000099', '000002'),
+        pair(21, '000001', '000002'),
+        pair(22, '000001', '000099'),
+        pair(23, '000099', '000002'),
       ],
       [HE, SHE],
       results,
@@ -1646,23 +1655,23 @@ describe('the board of best racing pairs', () => {
 
   it('reads the pairs of the season it is asked about, and cuts the board to the limit', () => {
     const results = [
-      result('000001', '2027-05-01', 10, { raceId: 'together' }),
-      result('000002', '2027-05-01', 20, { raceId: 'together' }),
-      result('000001', '2026-05-01', 10, { raceId: 'earlier' }),
-      result('000002', '2026-05-01', 20, { raceId: 'earlier' }),
+      result('000001', '2027-05-01', 10, { raceId: 37 }),
+      result('000002', '2027-05-01', 20, { raceId: 37 }),
+      result('000001', '2026-05-01', 10, { raceId: 19 }),
+      result('000002', '2026-05-01', 20, { raceId: 19 }),
     ]
-    const both = [pair('now', '000001', '000002'), pair('before', '000001', '000002', 2026)]
+    const both = [pair(24, '000001', '000002'), pair(25, '000001', '000002', 2026)]
 
-    expect(topPairs(both, [HE, SHE], results, 2027, 10).map((row) => row.pair.id)).toEqual(['now'])
+    expect(topPairs(both, [HE, SHE], results, 2027, 10).map((row) => row.pair.id)).toEqual([24])
     expect(topPairs(both, [HE, SHE], results, 2026, 10).map((row) => row.pair.id)).toEqual([
-      'before',
+      25,
     ])
     expect(topPairs(both, [HE, SHE], results, 2027, 0)).toEqual([])
   })
 })
 
 describe('the racing pairs that hold now', () => {
-  const pair = (id: string, one: string, two: string, season = 2027): RacingPair => ({
+  const pair = (id: number, one: string, two: string, season = 2027): RacingPair => ({
     id,
     season,
     memberNumbers: [one, two],
@@ -1670,15 +1679,15 @@ describe('the racing pairs that hold now', () => {
   })
 
   it('is what the file says while this visit has changed nothing', () => {
-    const file = [pair('a', '000001', '000002'), pair('b', '000003', '000004')]
+    const file = [pair(1, '000001', '000002'), pair(2, '000003', '000004')]
 
-    expect(pairsNow(file, [], []).map((one) => one.id)).toEqual(['a', 'b'])
+    expect(pairsNow(file, [], []).map((one) => one.id)).toEqual([1, 2])
   })
 
   it('drops the one this visit broke, and keeps the rest', () => {
-    const file = [pair('a', '000001', '000002'), pair('b', '000003', '000004')]
+    const file = [pair(1, '000001', '000002'), pair(2, '000003', '000004')]
 
-    expect(pairsNow(file, [], ['a']).map((one) => one.id)).toEqual(['b'])
+    expect(pairsNow(file, [], [1]).map((one) => one.id)).toEqual([2])
   })
 
   it('takes both members out of whatever the file paired them with', () => {
@@ -1688,10 +1697,10 @@ describe('the racing pairs that hold now', () => {
        **Both ends are read**, and the case is written so that they differ: the newly made pair
        takes the **second** member of one file pair and the **first** of another, so a version that
        looked at one end only would leave one of the two standing. */
-    const file = [pair('his', '000001', '000002'), pair('hers', '000003', '000004')]
-    const made = [pair('new', '000002', '000003')]
+    const file = [pair(26, '000001', '000002'), pair(27, '000003', '000004')]
+    const made = [pair(28, '000002', '000003')]
 
-    expect(pairsNow(file, made, []).map((one) => one.id)).toEqual(['new'])
+    expect(pairsNow(file, made, []).map((one) => one.id)).toEqual([28])
   })
 
   it('leaves a season that is over alone, however its members pair up now', () => {
@@ -1702,21 +1711,21 @@ describe('the racing pairs that hold now', () => {
 
        One member is in one pair **per season**, which is what the file's two pairs for 2019 are:
        history, and nobody's to change. */
-    const file = [pair('frozen', '000001', '000002', 2019)]
-    const made = [pair('new', '000001', '000009', 2027)]
+    const file = [pair(29, '000001', '000002', 2019)]
+    const made = [pair(28, '000001', '000009', 2027)]
 
-    expect(pairsNow(file, made, []).map((one) => one.id)).toEqual(['frozen', 'new'])
+    expect(pairsNow(file, made, []).map((one) => one.id)).toEqual([29, 28])
     /* And the same two members pairing again **for the same season** does take the old one out,
        which is the rule the season was hiding. */
-    expect(pairsNow(file, [pair('again', '000001', '000009', 2019)], []).map((one) => one.id))
-      .toEqual(['again'])
+    expect(pairsNow(file, [pair(30, '000001', '000009', 2019)], []).map((one) => one.id))
+      .toEqual([30])
   })
 
   it('drops a pair this visit made and then broke', () => {
-    const made = [pair('made', '000001', '000002')]
+    const made = [pair(31, '000001', '000002')]
 
-    expect(pairsNow([], made, ['made'])).toEqual([])
-    expect(pairsNow([], made, []).map((one) => one.id)).toEqual(['made'])
+    expect(pairsNow([], made, [31])).toEqual([])
+    expect(pairsNow([], made, []).map((one) => one.id)).toEqual([31])
   })
 
   it('says every pair that still counts, earliest season first', () => {
@@ -1727,34 +1736,34 @@ describe('the racing pairs that hold now', () => {
 
        **Handed in newest first**, so „the order they arrive in" and „earliest season first" are
        different answers and the case can tell them apart. */
-    const now = pair('now', '000001', '000002', 2027)
-    const soon = pair('soon', '000001', '000009', 2028)
-    const old = pair('old', '000001', '000004', 2019)
+    const now = pair(24, '000001', '000002', 2027)
+    const soon = pair(32, '000001', '000009', 2028)
+    const old = pair(33, '000001', '000004', 2019)
 
-    expect(pairsFrom([soon, now, old], '000001', 2027).map((one) => one.id)).toEqual(['now', 'soon'])
+    expect(pairsFrom([soon, now, old], '000001', 2027).map((one) => one.id)).toEqual([24, 32])
     /* A season that is over is history rather than „who they are paired with". */
     expect(pairsFrom([old], '000001', 2027)).toEqual([])
     expect(pairsFrom([now], '000009', 2027)).toEqual([])
     /* **And the floor is that season and not the one before it** (review, 07.09.2026): with eight
        years between `old` and `from`, `>= from - 1` answers with the same two ids and the boundary
        is not measured at all. So it is asked one year at a time, from both sides. */
-    const justOver = pair('justOver', '000001', '000030', 2026)
+    const justOver = pair(34, '000001', '000030', 2026)
 
-    expect(pairsFrom([justOver, now], '000001', 2027).map((one) => one.id)).toEqual(['now'])
+    expect(pairsFrom([justOver, now], '000001', 2027).map((one) => one.id)).toEqual([24])
     expect(pairsFrom([justOver, now], '000001', 2026).map((one) => one.id))
-      .toEqual(['justOver', 'now'])
+      .toEqual([34, 24])
   })
 
   it('says which pair one member is in, of the season asked about', () => {
     /* The season is a rung of its own: a member paired in 2026 and paired again in 2027 has two
        records, and the profile asks about the season it is drawing. */
-    const two = [pair('now', '000001', '000002'), pair('before', '000001', '000009', 2026)]
+    const two = [pair(24, '000001', '000002'), pair(25, '000001', '000009', 2026)]
 
-    expect(pairOf(two, '000001', 2027)?.id).toBe('now')
-    expect(pairOf(two, '000001', 2026)?.id).toBe('before')
+    expect(pairOf(two, '000001', 2027)?.id).toBe(24)
+    expect(pairOf(two, '000001', 2026)?.id).toBe(25)
     /* Read from the second member as well, because a pair is symmetric and the profile of either
        of them asks the same question. */
-    expect(pairOf(two, '000002', 2027)?.id).toBe('now')
+    expect(pairOf(two, '000002', 2027)?.id).toBe(24)
     expect(pairOf(two, '000009', 2027)).toBe(null)
     expect(pairOf(two, '000004', 2027)).toBe(null)
   })

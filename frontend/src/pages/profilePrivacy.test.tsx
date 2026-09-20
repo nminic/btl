@@ -5,6 +5,8 @@ import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useSession } from '../session/useSession'
+import { recordKey } from '../session/context'
+import { MEMBERS } from './admin/entityForms'
 
 /* What a member chooses to show, and to whom.
  *
@@ -41,7 +43,7 @@ function Hide({ who }: { who: string }) {
   const { editRecord } = useSession()
 
   return (
-    <button type="button" onClick={() => { editRecord(who, { profileHidden: 'true' }) }}>
+    <button type="button" onClick={() => { editRecord(recordKey(MEMBERS.id, who), { profileHidden: 'true' }) }}>
       sakrij {who}
     </button>
   )

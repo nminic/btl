@@ -19,6 +19,7 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
+import type { Competitor } from '../data/types'
 import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { outsideHost, outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
@@ -273,7 +274,9 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
           )
         }
 
-        const byNumber = new Map(competitors.map((one) => [one.memberNumber, one]))
+        const byNumber = new Map<string | null, Competitor>(
+          competitors.map((one) => [one.memberNumber, one]),
+        )
 
         return (
           <>

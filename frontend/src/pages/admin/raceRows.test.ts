@@ -12,12 +12,12 @@ import { RACE_KINDS, type Race } from '../../data/types'
 import { first } from '../../test/at'
 
 /** A race as the store keeps one, with only what a row reads off it. */
-function race(id: string, date: string, distanceKm: number): Race {
+function race(id: number, date: string, distanceKm: number): Race {
   return {
     id,
-    eventId: 'evt',
+    eventId: 1,
     name: 'Trka',
-    renamed: 'no' as const,
+    renamed: false,
     date,
     kind: 'length' as const,
     limitSeconds: 0,
@@ -31,7 +31,7 @@ function race(id: string, date: string, distanceKm: number): Race {
 const row = (over: Partial<RaceRow> = {}): RaceRow => ({
   id: '',
   name: 'Trka',
-  renamed: 'no',
+  renamed: false,
   date: '17/10/2026',
   kind: 'length',
   limitHours: '',
@@ -47,11 +47,11 @@ describe('the races of an event while they are being entered', () => {
        as. Entered in the other order on purpose, so the sort is what puts them
        right rather than the order they happened to come in. */
     const rows = rowsOf(
-      [race('c', '2026-10-18', 5), race('a', '2026-10-17', 21.1), race('b', '2026-10-17', 10)],
+      [race(3, '2026-10-18', 5), race(1, '2026-10-17', 21.1), race(2, '2026-10-17', 10)],
       fieldDate,
     )
 
-    expect(rows.map((one) => one.id)).toEqual(['b', 'a', 'c'])
+    expect(rows.map((one) => one.id)).toEqual(['2', '1', '3'])
     expect(rows[0]?.date).toBe('17/10/2026')
     expect(rows[0]?.distanceKm).toBe('10')
   })
@@ -192,7 +192,7 @@ describe('the races of an event while they are being entered', () => {
        (`pages/timedRace.test.tsx`), because the two halves refuse in different
        places and a sentence about one of them said the other. */
     const timed: Race = {
-      ...race('r', '2026-09-19', 0),
+      ...race(4, '2026-09-19', 0),
       kind: 'time',
       limitSeconds: 86_400,
     }
@@ -206,7 +206,7 @@ describe('the races of an event while they are being entered', () => {
     expect(storedRow(row(), 'evt')).toEqual({
       eventId: 'evt',
       name: 'Trka',
-      renamed: 'no' as const,
+      renamed: 'false',
       date: '2026-10-17',
       kind: 'length',
       limitSeconds: '0',

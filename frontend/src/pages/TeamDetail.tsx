@@ -27,6 +27,7 @@ import { teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
+import { recordKey } from '../session/context'
 import { useOverlay } from './admin/overlay'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
@@ -143,7 +144,7 @@ export function TeamDetail() {
                 .map((asked) => ({ sent, asked })),
         )
         const everMembers = listedMembers.filter((one) => one.teamId === team.id)
-        const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
+        const everNumbers = new Set<string | null>(everMembers.map((one) => one.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
            the default and a control cannot open on an option it does not have.
            Worked out before the choice, because the choice is held against it. */
@@ -156,7 +157,7 @@ export function TeamDetail() {
         /* The roster of the season being read, not of today: a page headed by
            a year has to be that year's team (PDL P13). */
         const members = everMembers.filter((one) => inTeamIn(one, Number(season)))
-        const numbers = new Set(members.map((one) => one.memberNumber))
+        const numbers = new Set<string | null>(members.map((one) => one.memberNumber))
         const inSeason = results.filter((one) => seasonOf(one) === Number(season))
         const mine = inSeason.filter((one) => numbers.has(one.memberNumber))
         const totals = totalsOf(mine)
@@ -273,10 +274,10 @@ export function TeamDetail() {
                                hold a `null`; `teamOf` is the one reading that knows the
                                two mean the same thing. */
                             for (const one of everMembers) {
-                              editRecord(one.memberNumber, { teamId: '' })
+                              editRecord(recordKey(MEMBERS.id, one.memberNumber), { teamId: '' })
                             }
 
-                            remove(TEAMS.id, team.id)
+                            remove(TEAMS.id, String(team.id))
                             void navigate(`/${locale}/timovi`)
                           }}
                         />
@@ -375,8 +376,8 @@ export function TeamDetail() {
                                    it is the same fact by another road: the team on the
                                    member's record, and the season they run for it from,
                                    which is the next one (PDL, 05.09.2026). */
-                                editRecord(ask.memberNumber, {
-                                  teamId: team.id,
+                                editRecord(recordKey(MEMBERS.id, ask.memberNumber), {
+                                  teamId: String(team.id),
                                   teamSince: String(transfersTakeEffect(today)),
                                 })
                                 answer(ask.id)
