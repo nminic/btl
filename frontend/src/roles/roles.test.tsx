@@ -124,8 +124,13 @@ describe('RoleSwitch', () => {
     expect(chooser).toHaveValue('moderator')
     expect(screen.getByRole('option', { name: 'sa servera' })).toBeInTheDocument()
     expect(screen.getByRole('option', { selected: true })).toHaveTextContent('sa servera')
-    expect(screen.getByRole('option', { name: 'Posetilac' })).not.toBeUndefined()
-    expect(screen.getByRole('option', { name: 'Posetilac' })).not.toHaveAttribute('selected')
+    /* THE ONE THE CONTROL USED TO DRAW INSTEAD, still offered and not the chosen one.
+       Asked of the chooser rather than of the markup: `selected` is a property React
+       never writes out as an attribute on a controlled select, so reading for the
+       attribute passed for the option that IS chosen as readily as for this one (review,
+       21.09.2026), and `getByRole` throwing where there is nothing is the whole of what
+       „is it there" can mean. */
+    expect(screen.getByRole('option', { name: 'Posetilac', selected: false })).toBeInTheDocument()
   })
 
   it('offers no such choice once a moderator has been named', async () => {

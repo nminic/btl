@@ -13,7 +13,7 @@ import { SignedOut } from './SignedOut'
  * moment a real session existed: a member who signed in against the server got a header
  * with his account menu on it and „Za ovo treba prijava" behind every link in that menu,
  * because `GET /api/me` carries no member number and nothing else sets one. Measured on
- * all five addresses behind the picture.
+ * all eleven, which is five more than the menu behind the picture draws.
  *
  * <p><b>There are three answers and not two, and the third is not a waiting room.</b> A
  * signed in account with no competitor record is a permanent state and not a moment on
@@ -29,11 +29,14 @@ import { SignedOut } from './SignedOut'
  * and the server will answer every request they make. Sending them to the sign in form
  * is the portal arguing with them.
  *
- * <p><b>Where the floor is.</b> `pages/member/oneQuestion.test.tsx` walks every address
- * in `ACCOUNT_ROUTES` against a server that says somebody is signed in, and fails on any
- * of them that answers with the sign in. The list is the router's own, so a sixth screen
- * of the member area is measured the day its address is added rather than the day
- * somebody remembers it.
+ * <p><b>Where the floor is, and it is not a list of addresses.</b> This file said until
+ * 21.09.2026 that `ACCOUNT_ROUTES` is what the member area is made of. It is not: five of
+ * these eleven screens are on that list and six are not, and a review put the old question
+ * back into all six with the package staying green. „Which screens belong to one person"
+ * cannot be answered by an address, so `pages/member/oneQuestion.test.tsx` asks the module
+ * graph instead - which modules of the portal name `SignedOut` - and requires the answer to
+ * be this file and nothing else. A screen that decides for itself again has to name it, and
+ * naming it is what fails.
  */
 export type MemberScreen =
   /** Whose screen this is, for a screen that may draw itself. */
