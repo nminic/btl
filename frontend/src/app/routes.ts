@@ -108,6 +108,10 @@ const UNLISTED_ROUTES: RouteDef[] = [
      already sent carries one of them. Reached from a link in a message and from
      nowhere on the portal, which is why they are here and not in the navigation.
 
+     What holds the two sides together is not this sentence but
+     `APostedAddressHasAScreenTest`, which asks `Message.values()` what it posts and
+     fails if any of it has no row here. Deleting a row below is therefore loud.
+
      The link in a message carries no language, because the server does not know
      which one the reader wants. `LocaleLayout` is what makes that work: a first
      segment that is not a language is sent on to `/sr` with the query intact. */
