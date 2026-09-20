@@ -432,6 +432,20 @@ class WhatEachStackRequiresTest {
 	}
 
 	/**
+	 * Whether the runbook NAMES this setting, rather than merely containing its letters.
+	 *
+	 * <p>A name is bounded by anything that is not a name character, or by the ends of the
+	 * file. That is what separates {@code MAIL_PORT} from {@code PROD_MAIL_PORT}, which is
+	 * the whole reason this method exists instead of {@code contains}.
+	 */
+	private static boolean namedIn(String runbook, String setting) {
+		return java.util.regex.Pattern
+				.compile("(^|[^A-Za-z0-9_])" + java.util.regex.Pattern.quote(setting) + "([^A-Za-z0-9_]|$)")
+				.matcher(runbook)
+				.find();
+	}
+
+	/**
 	 * THE SAME FLOOR, OVER THE FILE THE OWNER ACTUALLY READS.
 	 *
 	 * <p>The case above proves a setting has a LINE in {@code .env.example}. That is not
@@ -457,13 +471,19 @@ class WhatEachStackRequiresTest {
 
 		for (Path stack : everyStackThisRepoDeploys().toList()) {
 			for (String setting : settingsOf(stack)) {
+				/* BY NAME, NOT BY SUBSTRING, and that distinction was measured rather
+				   than argued. The first draft of this case asked `contains(setting)`,
+				   and a setting called MAIL_PORT then passed on a file that only ever
+				   says PROD_MAIL_PORT and QA_MAIL_PORT. Three live names were green
+				   that way on the day this was written. The sibling case ten lines up
+				   compares `startsWith(setting + "=")` for the same reason. */
 				assertThat(runbook)
 						.as("%s asks for %s, but deploy/README.md never names it. The runbook"
 								+ " tells the owner to copy .env.example and keep only the lines"
 								+ " it lists, so a name missing from it is a name he is told to"
 								+ " delete - and the stack then comes up with that setting"
 								+ " silently unset", stack, setting)
-						.contains(setting);
+						.matches(whole -> namedIn(whole, setting));
 
 				asked++;
 			}

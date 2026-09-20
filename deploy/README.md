@@ -117,8 +117,6 @@ expecting exactly that mail - and the attacker signs in as superadmin with the p
 chose. Confirming proves somebody READS that mailbox, not that whoever holds the password
 owns it.
 
-```bash
-```
 
 Eight names, and no value of any of them belongs in this repository or in any
 message:
@@ -138,11 +136,17 @@ message:
 a missing relay key must never keep the public site down, so the stack starts without them. What it
 does not do is send. No address is ever confirmed and no password is ever reset.
 
-**And nothing sends anything yet, which is the first thing to know.** No endpoint asks for a
-message: `Postman` has no caller in `backend/src/main`, only its own test. Pasting the key
-turns nothing on by itself. When a caller does exist, `Postman.send` throws to whoever asked
-rather than swallowing it, so the failure reaches the member who pressed the button and not
-a log. **Both or neither:** the key is shown by Brevo exactly once, so the moment to paste
+**FOUR ENDPOINTS NOW SEND, so an empty key is no longer harmless.** This paragraph used to say
+`Postman` had no caller in `backend/src/main`; measured on 20.09.2026 it has **four** -
+`RegistrationApi`, `EmailConfirmationApi`, `PasswordResetApi` and `ModeratorWriteApi`. The
+sentence was true when it was written and is not any more.
+
+What that changes for you: `RegistrationApi.send` catches `MailException` and writes
+`LOG.warn` rather than failing the request, so with the key blank a member registers,
+gets 204, and waits for a message that never arrives. His address stays unconfirmed - and
+since the superadmin role hangs on a CONFIRMED address (PDL P21), raising production with
+these two blank leaves the portal with **no superadmin** and no screen saying why. **Both or
+neither** still holds, but now it has to be done BEFORE the owner registers, not after. **Both or neither:** the key is shown by Brevo exactly once, so the moment to paste
 it is also the moment to paste the login beside it.
 
 `PROD_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
@@ -400,7 +404,7 @@ for either of them.
 
 The database name, role and password come from `/opt/btl-qa/deploy/.env`, which
 is gitignored and never committed. Compose reads the `.env` of the directory the
-deploy command runs from, and that is `deploy/`. Copy the three `QA_*` lines out
+deploy command runs from, and that is `deploy/`. Copy the seven `QA_*` lines (three `QA_POSTGRES_*` and four `QA_MAIL_*`) out
 of `.env.example` in the repository root and set a real password:
 
 ```bash
@@ -409,11 +413,14 @@ cd /opt/btl-qa/deploy
 (umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines AND BTL_SUPERADMIN_EMAIL, set the password
 ```
 
-**Same order here, and it matters more on QA:** the database is wiped, so the address is
-free again after every reset. Register and confirm before the setting names it.
+**ON QA THIS ORDER DOES NOT PROTECT YOU, and the decision says so.** PDL P21 records the
+cost the owner accepted: the measure "leans on discipline at every new stack and does NOT
+protect QA, where the database is wiped". Refreshing QA drops `qa_postgres-data` and replays
+Flyway (see below) WITHOUT touching `.env`, so the moment the database is empty the setting
+already names an address that no account holds - which is the open window itself. Doing the
+order here means raising QA with the setting blank, registering, confirming, and only then
+putting the address back; the refresh procedure below does not do that on its own.
 
-```bash
-```
 
 The names are `QA_POSTGRES_DB`, `QA_POSTGRES_USER` and `QA_POSTGRES_PASSWORD`,
 deliberately different from the `POSTGRES_*` names the root `docker-compose.yml`
