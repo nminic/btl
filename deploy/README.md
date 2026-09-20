@@ -393,7 +393,8 @@ alone until QA had run this arrangement, and it grew the other two once QA had.
 internet ──▶ edge-caddy ──▶ qa-frontend  (nginx, this repo)
                                  │  /api/ ──▶ backend:8080
                                  ▼
-                            qa-backend   (Spring Boot, Flyway on startup)
+                            qa-backend   (Spring Boot, Flyway on startup,
+                                          volume qa_photos)
                                  │  jdbc ──▶ postgres:5432
                                  ▼
                             qa-postgres  (postgres:18, volume qa_postgres-data)
@@ -605,6 +606,17 @@ is attached to.
   QA is different and stays different: it holds nothing that needs restoring, so
   `qa_postgres-data` is backed up by nothing on purpose and is rebuilt by
   dropping it and letting Flyway run again.
+- **And the pictures are a second volume with the same gap.** `qa_photos` holds
+  the files `/api/photos/{name}` serves, which ADL A41 decided should live in a
+  named volume beside the database rather than in a folder on the host: "rezervna
+  kopija mora da pokrije i volumen, a danas ne pokriva nista", written down there
+  on the day the arrangement was chosen and still true. On QA it is the same
+  sentence as the one above - nothing there needs restoring, and dropping the
+  volume loses pictures whose rows will then answer 404 until somebody uploads
+  again. **Production has neither the volume nor the setting yet**, because
+  `compose.prod.yml` is a separate stack on a separate commit; it needs both
+  before it serves a picture, and the backup above has to grow a second target
+  on the same day.
 - **`compose.prod.yml` is measured, and it took a hole to get there.** `PostmanTest`
   read `compose.qa.yml` BY NAME, so when this directory grew a second stack the new
   one was covered by nothing: measured, deleting
