@@ -101,10 +101,10 @@ It is **not** the same file as the QA one, which lives in `/opt/btl-qa/deploy/`.
 ```bash
 cd /opt/btl/deploy
 # umask first, so the file is never world readable, not even for a moment
-(umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines, set real values
+(umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines AND BTL_SUPERADMIN_EMAIL, set real values
 ```
 
-Seven names, and no value of any of them belongs in this repository or in any
+Eight names, and no value of any of them belongs in this repository or in any
 message:
 
 | name | what it is | required |
@@ -116,6 +116,7 @@ message:
 | `PROD_MAIL_PORT` | relay port | no, defaults to `587` |
 | `PROD_MAIL_USERNAME` | Brevo SMTP login | not to START, but see below |
 | `PROD_MAIL_PASSWORD` | Brevo SMTP key | not to START, but see below |
+| `BTL_SUPERADMIN_EMAIL` | address that carries the superadmin role (PDL P21) | not to START, but the portal has no superadmin without it |
 
 **The two mail variables are the pair that fails quietly.** They are empty by default ON PURPOSE:
 a missing relay key must never keep the public site down, so the stack starts without them. What it
@@ -389,7 +390,7 @@ of `.env.example` in the repository root and set a real password:
 ```bash
 cd /opt/btl-qa/deploy
 # umask first, so the file is never world readable, not even for a moment
-(umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines, set the password
+(umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines AND BTL_SUPERADMIN_EMAIL, set the password
 ```
 
 The names are `QA_POSTGRES_DB`, `QA_POSTGRES_USER` and `QA_POSTGRES_PASSWORD`,

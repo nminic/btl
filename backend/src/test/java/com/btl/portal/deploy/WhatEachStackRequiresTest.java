@@ -432,6 +432,49 @@ class WhatEachStackRequiresTest {
 	}
 
 	/**
+	 * THE SAME FLOOR, OVER THE FILE THE OWNER ACTUALLY READS.
+	 *
+	 * <p>The case above proves a setting has a LINE in {@code .env.example}. That is not
+	 * enough, and this was measured rather than argued: {@code deploy/README.md} tells the
+	 * owner to copy that file and then <i>"keep the PROD_* lines"</i>, listing the names in a
+	 * table. A setting whose name carries no {@code PROD_} prefix and sits in no row of that
+	 * table is one the runbook tells him to DELETE, even though the stack asks for it.
+	 *
+	 * <p>That is how {@code BTL_SUPERADMIN_EMAIL} arrived: present in Compose, present in
+	 * {@code .env.example}, absent from the runbook. Following the runbook produced a stack
+	 * that comes up green with no superadmin and nothing saying why.
+	 *
+	 * <p><b>Nothing is listed here either.</b> The names come from Compose, the same floor as
+	 * above, so a setting that arrives tomorrow is measured the day it arrives. What is
+	 * claimed is only that the runbook MENTIONS the name - not where, not how well.
+	 */
+	@Test
+	void everySettingEveryStackAsksForIsNamedInTheRunbookThatTellsTheOwnerWhatToKeep() throws Exception {
+		String runbook = Files.readString(Path.of("..", "deploy", "README.md"),
+				StandardCharsets.UTF_8);
+
+		int asked = 0;
+
+		for (Path stack : everyStackThisRepoDeploys().toList()) {
+			for (String setting : settingsOf(stack)) {
+				assertThat(runbook)
+						.as("%s asks for %s, but deploy/README.md never names it. The runbook"
+								+ " tells the owner to copy .env.example and keep only the lines"
+								+ " it lists, so a name missing from it is a name he is told to"
+								+ " delete - and the stack then comes up with that setting"
+								+ " silently unset", stack, setting)
+						.contains(setting);
+
+				asked++;
+			}
+		}
+
+		assertThat(asked)
+				.as("no stack asks the environment for anything at all, so this compared nothing")
+				.isNotZero();
+	}
+
+	/**
 	 * What one stack hands its backend, read off COMPOSE'S OWN rendered configuration.
 	 *
 	 * <p>The shape is {@code PostmanTest}'s, with one difference that matters here: it
