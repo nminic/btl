@@ -561,8 +561,14 @@ class RegistrationApi {
 						   with. The owner settled on 14.09.2026 how that account is made
 						   instead - it is named by its address of electronic mail in
 						   `deploy/.env`, and the account carrying that address takes the role
-						   once its address is confirmed - which is its own increment and is
-						   nothing this route does. */
+						   once its address is confirmed.
+
+						   THAT IS NOW WRITTEN, and it is still nothing this route does:
+						   `TheNamedSuperadmin` answers it and `WhoIsAsking` asks it once per
+						   request, off the settings, so no row anywhere - this one included -
+						   ever carries the superadmin's role. What this statement writes stays
+						   `competitor` for him too, and that is not a gap: the role he holds
+						   is not in the row at all. */
 						+ " values (?, ?, ?, (select id from role where code = 'competitor'), ?)"
 						/* AND `email_confirmed_at` IS NOT IN THAT LIST. V6 gives the column no
 						   default so that an account is born unconfirmed, and being born is

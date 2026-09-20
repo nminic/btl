@@ -170,6 +170,28 @@ services:
       # QA sends a usable link, and one more line in the table
       # WhatEachStackRequiresTest holds.
       BTL_PORTAL_ADDRESS: https://qa.balkanskatrkackaliga.net
+      # AND WHO THE SUPERADMIN IS, named by his address rather than made through the
+      # portal (PDL P21, 14.09.2026). Unlike the line above this one IS taken from the
+      # environment, and for the reason that line gives for not being: the portal
+      # address is what this stack IS, while this is who a person is, and a person's
+      # address does not belong in a public repository.
+      #
+      # Empty by default and never `:?`, the same shape as the mail credentials above
+      # and for the same reason: a stack that refused to come up without it would make
+      # the portal undeployable until somebody had pasted an address in, and ADL A4a
+      # says such a refusal turns down every command over this file, the frontend-only
+      # deploy included. Unset, nobody is the superadmin and everything else works.
+      #
+      # AND IT IS NOT QA_-PREFIXED, which is deliberate and is the one exception on
+      # this file. The header of compose.prod.yml gives the reason for the prefixes:
+      # "the database, the role, the password and the relay key MUST NOT BE SHARED
+      # between the two stacks". This one is the opposite case - it is the same person
+      # administering both, and the owner wants to be superadmin on QA and on
+      # production alike - so a prefix would not be protecting anything and would cost
+      # the thing prefixes are meant to buy: the two .env files would disagree about
+      # what the variable is called, and the one already on the QA host is spelled
+      # BTL_SUPERADMIN_EMAIL. A name nothing reads is a setting that is silently dead.
+      BTL_SUPERADMIN_EMAIL: ${BTL_SUPERADMIN_EMAIL:-}
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
