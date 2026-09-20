@@ -422,6 +422,14 @@ password by someone copying one env file over the other on this shared host.
 `QA_POSTGRES_PASSWORD` has no default: with it unset, Compose refuses to do
 anything and names the variable, rather than starting a database without one.
 
+**Four more names this stack reads, and they were missing from this paragraph until
+20.09.2026:** `QA_MAIL_HOST`, `QA_MAIL_PORT`, `QA_MAIL_USERNAME` and `QA_MAIL_PASSWORD`.
+They behave like their `PROD_MAIL_*` counterparts - empty by default on purpose, so a
+stack raised without them comes up and simply sends nothing. They were not listed here
+while Compose asked for them, which is the same quiet gap `BTL_SUPERADMIN_EMAIL` fell
+into; the case `everySettingEveryStackAsksForIsNamedInTheRunbookThatTellsTheOwnerWhatToKeep`
+now fails the build for any name a stack reads and this file does not mention.
+
 ### Deploying
 
 ```bash
