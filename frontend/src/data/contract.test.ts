@@ -82,9 +82,14 @@ describe('the list of resources', () => {
        the repo can do: there is no Java compiler in this run to ask instead, and
        the routes are gathered the same way `btl-produkt/odluke-za-resurs.py`
        gathers them. So it holds that an address is DECLARED, never that the answer
-       at it has the shape the screens read. That second half is a real gap, it is
-       measured, and it is what keeps `BASE` on `/mock` - see the head of
-       `data/client.ts`. */
+       at it has the shape the screens read.
+
+       **That second half was a real gap when this was written and has a guard of
+       its own since the same day:** `data/servedShape.test.ts` writes the answer
+       down as it came off the wire and hands it to the very types the screens read
+       it through. What keeps `BASE` on `/mock` is no longer the shapes but the
+       FIELDS the server does not serve, which that guard also names - see the head
+       of `data/client.ts`. */
     const routes = readRoutes()
 
     expect(routes.size).toBeGreaterThan(RESOURCE_NAMES.length)

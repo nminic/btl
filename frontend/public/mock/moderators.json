@@ -1,6 +1,6 @@
 [
   {
-    "id": "mod-radulovic",
+    "id": 1,
     "firstName": "Jelena",
     "lastName": "Radulović",
     "email": "jelena.radulovic@primer.rs",
@@ -20,7 +20,7 @@
     ]
   },
   {
-    "id": "mod-vujacic",
+    "id": 2,
     "firstName": "Nenad",
     "lastName": "Vujačić",
     "email": "nenad.vujacic@primer.me",
@@ -29,14 +29,14 @@
     ]
   },
   {
-    "id": "mod-saric",
+    "id": 3,
     "firstName": "Milena",
     "lastName": "Šarić",
     "email": "milena.saric@primer.rs",
     "rights": []
   },
   {
-    "id": "mod-milovanovic-stefanovic",
+    "id": 4,
     "firstName": "Aleksandra",
     "lastName": "Milovanović-Stefanović",
     "email": "aleksandra.milovanovic@primer.ba",

@@ -69,7 +69,7 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
        typed without it says where the way in is instead of drawing a form. The
        id is written out because this list is read before anything is rendered;
        it is the one race of that event. */
-    '/sr/kalendar/fruskogorski-maraton-2010/prijava?trka=evt-fruskogorski-maraton-2010-05-08-5768',
+    '/sr/kalendar/fruskogorski-maraton-2010/prijava?trka=396',
     'Za ovo treba prijava',
     'Prijava rezultata',
   ],

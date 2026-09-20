@@ -25,7 +25,8 @@ import countries from '../../data/countries.json'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { moveEvent } from './moveEvent'
-import { usePending, waitingIn } from './pending'
+import { usePending, WAITING, waitingIn } from './pending'
+import { recordKey } from '../../session/context'
 import type { PendingItem, Team } from '../../data/types'
 import { EVENTS, idFor, MEMBERS, RACES, recordsOf, TEAMS } from './entityForms'
 import {
@@ -153,7 +154,7 @@ function TeamFields({ item }: { item: PendingItem }) {
   const { edits, edit } = useSession()
 
   const value = (field: 'name' | 'city' | 'country') =>
-    String(edits[item.id]?.[field] ?? proposed(item)[field])
+    String(edits[recordKey(WAITING, item.id)]?.[field] ?? proposed(item)[field])
 
   return (
     /* All three are obligatory in the definition a proposed team is saved
@@ -170,7 +171,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           value={value('name')}
           aria-required="true"
           maxLength={limitOf(tim, 'name')}
-          onChange={(event) => edit(item.id, 'name', event.target.value)}
+          onChange={(event) => edit(recordKey(WAITING, item.id), 'name', event.target.value)}
         />
       </div>
 
@@ -182,7 +183,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           value={value('city')}
           aria-required="true"
           maxLength={limitOf(tim, 'city')}
-          onChange={(event) => edit(item.id, 'city', event.target.value)}
+          onChange={(event) => edit(recordKey(WAITING, item.id), 'city', event.target.value)}
         />
       </div>
 
@@ -192,7 +193,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           id={`team-country-${item.id}`}
           value={value('country')}
           aria-required="true"
-          onChange={(event) => edit(item.id, 'country', event.target.value)}
+          onChange={(event) => edit(recordKey(WAITING, item.id), 'country', event.target.value)}
         >
           <option value="">{t('form.choose')}</option>
           {/* The region first and named, like every other choice of country on
@@ -277,7 +278,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
   /** The event a reported change is about, as the list has it now: the decision
    *  waits for the events, so by the time one is taken this is there. */
-  const eventOf = (one: PendingItem) => allEvents.find((each) => each.id === one.subjectId)
+  const eventOf = (one: PendingItem) => allEvents.find((each) => String(each.id) === one.subjectId)
   /**
    * Why no decision can be taken on this queue just now, or nothing.
    *
@@ -377,7 +378,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          is public and must never read this queue to find out (session/context,
          `published`). */
       if (queue.id === 'comments') {
-        publish(commentFrom(one))
+        publish(one.id, commentFrom(one))
       }
 
       /* And what an approval on the queue of dates does: the event moves. Until
@@ -415,7 +416,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          so there is nothing to move. */
       if (isChange(one)) {
         addresses.push(addressOf(made.name))
-        editRecord(one.subjectId, { ...made, slug: addressOf(made.name) })
+        editRecord(recordKey(TEAMS.id, one.subjectId), { ...made, slug: addressOf(made.name) })
 
         notify({
           from: t('app.name'),
@@ -470,7 +471,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          comparison in the portal reads the same way and the database will type
          properly; written down rather than papered over. */
       inATeam.push(one.memberNumber)
-      editRecord(one.memberNumber, {
+      editRecord(recordKey(MEMBERS.id, one.memberNumber), {
         teamId: id,
         teamSince: String(transfersTakeEffect(today)),
       })
@@ -491,7 +492,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          accepted an invitation here. */
       const after = afterJoining({
         member: one.memberNumber,
-        joined: id,
+        joined: Number(id),
         keep: undefined,
         invitations,
         teams,
@@ -554,7 +555,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
            *  change whose team has been deleted since it was sent. Asked of the id
            *  alone: a proposal carries none, so there is no sort to test for and no
            *  branch here that nothing can reach. */
-          const teamOf = (one: PendingItem) => teams.find((each) => each.id === one.subjectId)
+          const teamOf = (one: PendingItem) => teams.find((each) => String(each.id) === one.subjectId)
 
           const refusedFor = (one: PendingItem) =>
             queue.id === 'teams'

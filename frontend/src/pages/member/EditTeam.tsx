@@ -152,7 +152,7 @@ export function EditTeam() {
               /* And which team it is about, which is the whole difference at the
                  far end: an approval writes into this record rather than making
                  one. A name cannot say it — the change may be a change of name. */
-              subjectId: about.id,
+              subjectId: String(about.id),
               body: t('teams.proposeBody', {
                 city: String(values.city),
                 country: countryName(String(values.country)),

@@ -19,7 +19,7 @@ import type { BtlEvent, Competitor, EventComment } from './types'
  * and is what PDL P9 refuses.
  */
 
-const dateOf = (events: BtlEvent[], id: string) => events.find((one) => one.id === id)?.date
+const dateOf = (events: BtlEvent[], id: number) => events.find((one) => one.id === id)?.date
 
 describe('the comments in the record', () => {
   it('are each about an event the portal has', async () => {
@@ -58,7 +58,7 @@ describe('the comments in the record', () => {
        have to be shown doing it. Named, because a rule saying "older is fine"
        would allow the thing this test is for: a comment about a race that had
        not been run when it was written, which PDL P9 refuses. */
-    const moved = ['kom-8']
+    const moved = [8]
     const early = comments.filter(
       (one) => !moved.includes(one.id) && one.date < (dateOf(events, one.eventId) ?? ''),
     )

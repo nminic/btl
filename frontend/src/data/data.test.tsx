@@ -8,7 +8,7 @@ import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
 import countries from './countries.json'
 import { plainly, type Place } from './places'
-import { EVENT_KINDS, FEATURED, ITEM_KINDS, RACE_KINDS } from './types'
+import { EVENT_KINDS, ITEM_KINDS, RACE_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
   combinePair,
@@ -514,19 +514,20 @@ describe('the generated data', () => {
     ).toEqual([])
   })
 
-  it('writes whether an event is featured as one of the two words the form offers', async () => {
+  it('writes whether an event is featured as a yes or a no and never as a word', async () => {
     /* The same guard the kind has, and for the same reason: the generator lives
-       outside the repo and writes this field by hand in three places. „Yes"
-       instead of „yes" reaches the form as a value with no option behind it, and
-       a select handed a value it has no option for draws an empty box
-       (forms/PlaceField.tsx carries the rest of that story). Nothing else on the
-       portal would notice. */
-    const events = await loadResource<{ featured: string }[]>('events')
+       outside the repo and writes this field by hand in three places. The words
+       „yes" and „no" stood here until 20.09.2026, when the record took the shape
+       the schema keeps and `/api/events` answers with (`CalendarApi.Event`,
+       `boolean featured`). The word „no" read as a flag is true, which is the
+       whole of why this is asked of the file rather than left to the screens: a
+       string in this field singles out every event in the calendar. */
+    const events = await loadResource<{ featured: unknown }[]>('events')
     const featured = events.map((one) => one.featured)
 
-    expect(featured.filter((one) => !FEATURED.some((word) => word === one))).toEqual([])
-    /* And both words stand in the fixture, so neither goes untried on a screen. */
-    expect([...new Set(featured)].sort()).toEqual(['no', 'yes'])
+    expect(featured.filter((one) => typeof one !== 'boolean')).toEqual([])
+    /* And both answers stand in the fixture, so neither goes untried on a screen. */
+    expect([...new Set(featured)].sort()).toEqual([false, true])
   })
 })
 
@@ -542,9 +543,9 @@ describe('the generated data', () => {
 function LetOut() {
   const state = useComments()
   const { publish, settle } = useSession()
-  const one: EventComment = {
-    id: 'ver-kom-1',
-    eventId: 'evt-fruskogorski-maraton-2010-05-08',
+  const item = 'ver-kom-1'
+  const one: Omit<EventComment, 'id'> = {
+    eventId: 1,
     memberNumber: '000007',
     who: 'Ime Prezime',
     date: '2026-08-06',
@@ -552,27 +553,29 @@ function LetOut() {
     body: 'Reci koje su izasle.',
   }
   const said = (status: 'approved' | 'rejected') => () => {
-    publish(one)
-    settle(one.id, { status, note: '', basis: '', memberNumber: '' })
+    publish(item, one)
+    settle(item, { status, note: '', basis: '', memberNumber: '' })
   }
 
-  /* The id of a comment the file already carries. What the queue hands over
-     keeps the id it was queued under (commentFrom), so the day a backend
-     answers with an approved comment under that id both sides name the one
-     comment. */
-  const twice: EventComment = { ...one, id: 'kom-1' }
+  /* The FIRST comment the file carries, which the event page draws already. What
+     the session hands out is numbered below nought and a `bigserial` never is
+     (`SessionProvider`, `publish`), so the two sides cannot name one comment by
+     accident today; this stands for the day a backend answers with an approved
+     comment under an id the file also holds. */
+  const already = 1
 
   return (
     <>
       <span data-testid="mine">
         {state.status !== 'ready'
           ? state.status
-          : state.data.filter((each) => each.id === one.id).length}
+          : state.data.filter((each) => each.eventId === one.eventId && each.body === one.body)
+              .length}
       </span>
       <span data-testid="twice">
         {state.status !== 'ready'
           ? state.status
-          : state.data.filter((each) => each.id === twice.id).length}
+          : state.data.filter((each) => each.id === already).length}
       </span>
       <button type="button" onClick={said('approved')}>
         pusti
@@ -583,8 +586,8 @@ function LetOut() {
       <button
         type="button"
         onClick={() => {
-          publish(twice)
-          settle(twice.id, { status: 'approved', note: '', basis: '', memberNumber: '' })
+          publish('ver-kom-2', one)
+          settle('ver-kom-2', { status: 'approved', note: '', basis: '', memberNumber: '' })
         }}
       >
         pusti isti
@@ -646,7 +649,7 @@ describe('commentFrom', () => {
       memberNumber: '000007',
       who: 'Ime Prezime',
       subject: 'Fruškogorski maraton',
-      subjectId: 'evt-fruskogorski-maraton-2010-05-08',
+      subjectId: '1',
       body: 'Reci koje je clan napisao.',
       picture: '',
       crop: { x: 0.5, y: 0.5, size: 1 },
@@ -659,8 +662,7 @@ describe('commentFrom', () => {
     }
 
     expect(commentFrom(waiting)).toEqual({
-      id: 'ver-kom-9',
-      eventId: 'evt-fruskogorski-maraton-2010-05-08',
+      eventId: 1,
       memberNumber: '000007',
       who: 'Ime Prezime',
       date: '2026-08-06',
@@ -686,14 +688,17 @@ describe('the credit the codebook of towns asks for', () => {
        on technical partners the owner added above it, which is where a credit
        belongs. Found by the sentence rather than by counting to the last
        section, so the next section added under it does not break this. */
-    const pages = await loadResource<Record<string, { sections: { body: string }[] }>>('pages')
-    const carrying = Object.entries(pages).filter(([, page]) =>
+    const pages = await loadResource<{ slug: string; sections: { body: string }[] }[]>('pages')
+    const carrying = pages.filter((page) =>
       page.sections.some((section) => section.body.includes('GeoNames')),
     )
 
-    expect(carrying.map(([name]) => name)).toEqual(['uslovi-koriscenja'])
+    expect(carrying.map((page) => page.slug)).toEqual(['uslovi-koriscenja'])
 
-    const terms = must(pages['uslovi-koriscenja'], 'the terms of use').sections
+    const terms = must(
+      pages.find((page) => page.slug === 'uslovi-koriscenja'),
+      'the terms of use',
+    ).sections
     const credit = must(
       terms.find((section) => section.body.includes('GeoNames')),
       'the section of the terms that names GeoNames',

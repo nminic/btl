@@ -32,7 +32,7 @@ import './EventComments.css'
  * waiting to be filled: it stands in the head of the page, where a box that
  * resolves into nothing moves the name of the race under the reader's eye.
  */
-export function OverallMark({ eventId }: { eventId: string }) {
+export function OverallMark({ eventId }: { eventId: number }) {
   const { locale, t } = useI18n()
   const reads = useReadsComments()
   const state = combinePair(useComments(), useEvents())

@@ -1,5 +1,7 @@
 import { daysBetween, shiftDate } from '../../forms/dateField'
 import type { Race } from '../../data/types'
+import { recordKey } from '../../session/context'
+import { EVENTS, RACES } from './entityForms'
 
 /**
  * An event put on another day, with its races.
@@ -16,7 +18,7 @@ import type { Race } from '../../data/types'
  * put an event and its races a week apart in one press.
  */
 export function moveEvent(
-  eventId: string,
+  eventId: number,
   from: string,
   to: string,
   races: Race[],
@@ -24,7 +26,7 @@ export function moveEvent(
 ): void {
   const days = daysBetween(from, to)
 
-  editRecord(eventId, { date: to })
+  editRecord(recordKey(EVENTS.id, eventId), { date: to })
 
   /* Nothing to move where the day has not changed, and nothing to move where
      either day is not a date: `daysBetween` answers nought to both, and a loop
@@ -35,6 +37,6 @@ export function moveEvent(
   }
 
   for (const race of races.filter((one) => one.eventId === eventId)) {
-    editRecord(race.id, { date: shiftDate(race.date, days) })
+    editRecord(recordKey(RACES.id, race.id), { date: shiftDate(race.date, days) })
   }
 }

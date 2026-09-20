@@ -11,6 +11,7 @@ import {
   categoryOfMember,
   defaultSeason,
   fieldFor,
+  numbered,
   rankingFor,
   seasonsWithResults,
 } from '../data/derive'
@@ -65,7 +66,7 @@ function Standing({
       competitors.filter((one) => one.gender === gender).map((one) => one.memberNumber),
     )
 
-    return defaultSeason(results.filter((one) => ofGender.has(one.memberNumber)), today)
+    return defaultSeason(numbered(results).filter((one) => ofGender.has(one.memberNumber)), today)
   }, [competitors, results, gender, today])
 
   const season = seasonParam === null ? fallback : Number(seasonParam)

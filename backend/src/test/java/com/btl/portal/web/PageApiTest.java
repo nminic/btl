@@ -25,13 +25,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * THE WRITTEN PAGES AS THE PORTAL ANSWERS THEM, AGAINST THE FILE THEY WERE SEEDED FROM.
  *
  * <p><b>Why this compares against the mock file directly, and not through
- * {@code Answers}.</b> {@code Answers.servedRecord} requires the file to be a JSON
- * ARRAY (it takes element zero); {@code frontend/public/mock/pages.json} is an OBJECT
- * keyed by slug, which is exactly why the resource below answers with an explicit
- * {@code slug} field instead of making a caller pull it out of a map key. So this file
- * walks {@code pages.json} itself, the same decision {@code PricingApiTest} took for
- * its own reason (no served file at all) and documented rather than forced through the
- * shared helper.
+ * {@code Answers}.</b> {@code Answers.servedRecord} takes element zero and asks about
+ * one record; what is asked here is every page, in order, field for field, so this
+ * file walks {@code pages.json} itself. The same decision {@code PricingApiTest} took
+ * for its own reason (no served file at all) and documented rather than forced through
+ * the shared helper.
+ *
+ * <p><b>The file was an OBJECT keyed by slug until 20.09.2026</b> and is a LIST whose
+ * rows carry their own address since, which is the shape this resource has always
+ * answered with; the two now agree and the comparison below no longer has to go
+ * through a map key.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -114,7 +117,11 @@ class PageApiTest {
 
 		for (String slug : SLUGS) {
 			JsonNode page = pageNamed(ours, slug);
-			JsonNode expectedPage = theirs.path(slug);
+			JsonNode expectedPage = pageNamed(theirs, slug);
+
+			assertThat(expectedPage)
+					.as("the mock file no longer holds a page at %s", slug)
+					.isNotNull();
 
 			assertThat(page.path("title").asString())
 					.as("%s's title does not match the mock file", slug)

@@ -1,4 +1,6 @@
 import { first } from '../../test/at'
+import { recordKey } from '../../session/context'
+import { WAITING } from './pending'
 import type { Competitor, PendingItem, Team } from '../../data/types'
 import { NO_RATING } from '../../data/types'
 import {
@@ -41,7 +43,7 @@ const item = (over: Partial<PendingItem> = {}): PendingItem => ({
  *  answers this function gives. */
 const TEAMS: Team[] = [
   {
-    id: 'team-dunav',
+    id: 1,
     slug: 'dunavski-trkaci',
     name: 'Dunavski trkači',
     city: 'Novi Sad',
@@ -70,7 +72,7 @@ const MEMBERS: Competitor[] = [
     membershipBasis: 'payment',
     referralCode: '',
     referredBy: null,
-    teamId: 'team-dunav',
+    teamId: 1,
     teamSince: 2019,
     profileHidden: false,
     birthdayShown: 'none',
@@ -137,7 +139,9 @@ describe('what a team would be made of', () => {
 
   it('is what the moderator left, where they have', () => {
     expect(
-      teamFrom(item(), { 'prop-1': { name: 'Trkači Zapadne Morave', city: 'Kraljevo' } }),
+      teamFrom(item(), {
+        [recordKey(WAITING, 'prop-1')]: { name: 'Trkači Zapadne Morave', city: 'Kraljevo' },
+      }),
     ).toEqual({ name: 'Trkači Zapadne Morave', city: 'Kraljevo', country: 'RS' })
   })
 })
@@ -153,8 +157,8 @@ describe('who the league counts as running a team', () => {
      hold a `null`. Counted as a team, the founder of a team they had just deleted would
      have their next proposal refused with `verification.teamMemberHasTeam`, which is
      exactly what the owner allowed on 05.09.2026: „ne brani mu se da napravi novi tim." */
-  it('does not count somebody whose team was written away as an empty string', () => {
-    const gone: Competitor[] = [{ ...first(MEMBERS), teamId: '' }]
+  it('does not count somebody whose team was written away as nought', () => {
+    const gone: Competitor[] = [{ ...first(MEMBERS), teamId: 0 }]
 
     expect(organisers(gone, [])).toEqual([])
     /* And the same for nothing written at all, which is what a member who has never been
@@ -208,7 +212,7 @@ describe('why a proposal cannot be taken', () => {
         [],
         /* Sent by the member who administers that team, which is who a change comes
            from; sent by anybody else it is refused for that reason instead. */
-        item({ kind: 'teamEdit', subjectId: 'team-dunav', memberNumber: '000001' }),
+        item({ kind: 'teamEdit', subjectId: '1', memberNumber: '000001' }),
         ['000001'],
         TEAMS,
         MEMBERS,
@@ -226,7 +230,7 @@ describe('why a proposal cannot be taken', () => {
       refusal(
         whole,
         [],
-        item({ kind: 'teamEdit', subjectId: 'team-dunav', memberNumber: '000007' }),
+        item({ kind: 'teamEdit', subjectId: '1', memberNumber: '000007' }),
         [],
         TEAMS,
         MEMBERS,
@@ -239,7 +243,7 @@ describe('why a proposal cannot be taken', () => {
        time anybody decides. Approved anyway it wrote into an identity nothing answers
        to, settled the item, and told the member their team had been changed (review,
        05.09.2026). A proposal names no team, so this cannot touch one. */
-    expect(refusal(whole, [], item({ kind: 'teamEdit', subjectId: 'team-nema' }), [], TEAMS, MEMBERS)).toBe(
+    expect(refusal(whole, [], item({ kind: 'teamEdit', subjectId: '99' }), [], TEAMS, MEMBERS)).toBe(
       'verification.teamGone',
     )
     expect(refusal(whole, [], item(), [], TEAMS, MEMBERS)).toBeNull()

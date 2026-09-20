@@ -83,27 +83,12 @@
     "rights"
   ],
   "pages.json": [
-    "politika-privatnosti",
-    "politika-privatnosti.sections",
-    "politika-privatnosti.sections.body",
-    "politika-privatnosti.sections.heading",
-    "politika-privatnosti.title",
-    "pravilnik",
-    "pravilnik.sections",
-    "pravilnik.sections.body",
-    "pravilnik.sections.gallery",
-    "pravilnik.sections.heading",
-    "pravilnik.title",
-    "rec-predsednika",
-    "rec-predsednika.sections",
-    "rec-predsednika.sections.body",
-    "rec-predsednika.sections.heading",
-    "rec-predsednika.title",
-    "uslovi-koriscenja",
-    "uslovi-koriscenja.sections",
-    "uslovi-koriscenja.sections.body",
-    "uslovi-koriscenja.sections.heading",
-    "uslovi-koriscenja.title"
+    "sections",
+    "sections.body",
+    "sections.gallery",
+    "sections.heading",
+    "slug",
+    "title"
   ],
   "pairs.json": [
     "id",

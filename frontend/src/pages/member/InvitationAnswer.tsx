@@ -3,6 +3,8 @@ import { afterJoining } from '../../data/afterJoining'
 import { inYearlyWindow, transfersTakeEffect } from '../../data/season'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { recordKey } from '../../session/context'
+import { MEMBERS } from '../admin/entityForms'
 import { useToday } from '../../clock/useClock'
 import type { Competitor, Team } from '../../data/types'
 
@@ -135,8 +137,8 @@ export function InvitationAnswer({
              team on the record and the season they run for it from, which is the
              next one (PDL, 05.09.2026). One fact by a third road, written the
              same way rather than a third way. */
-          editRecord(invitation.memberNumber, {
-            teamId: invitation.teamId,
+          editRecord(recordKey(MEMBERS.id, invitation.memberNumber), {
+            teamId: String(invitation.teamId),
             teamSince: String(transfersTakeEffect(today)),
           })
 

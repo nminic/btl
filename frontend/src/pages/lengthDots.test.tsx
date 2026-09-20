@@ -51,7 +51,7 @@ import { CalendarExtract } from './home/CalendarExtract'
  */
 
 const event: BtlEvent = {
-  id: 'one',
+  id: 1,
   slug: 'one',
   name: 'Trka kroz šumu',
   date: '2027-05-08',
@@ -60,15 +60,15 @@ const event: BtlEvent = {
   kind: 'race',
   description: '',
   link: '',
-  copiedFrom: '',
-  featured: 'no',
+  copiedFrom: null,
+  featured: false,
 }
 
-const race = (id: string, kind: RaceKind, category: RaceCategory): Race => ({
+const race = (id: number, kind: RaceKind, category: RaceCategory): Race => ({
   id,
-  eventId: 'one',
+  eventId: 1,
   name: 'Trka',
-  renamed: 'no',
+  renamed: false,
   kind,
   limitSeconds: kind === 'time' ? 86_400 : 0,
   date: '2027-05-08',
@@ -113,7 +113,7 @@ describe('the dots a screen draws beside an event', () => {
        things and a screen could be written to catch one of them. */
     for (const { where, draw } of SCREENS) {
       for (const kind of ['time', 'free'] as const) {
-        const { dots, unmount } = drawn([race('a', kind, 'marathon')], draw)
+        const { dots, unmount } = drawn([race(1, kind, 'marathon')], draw)
 
         expect(dots, `${kind} on ${where}`).toEqual(['unmeasured'])
         unmount()
@@ -124,7 +124,7 @@ describe('the dots a screen draws beside an event', () => {
   it('still give a race of a length the dot its length says, and no other', () => {
     for (const { where, draw } of SCREENS) {
       const { dots, unmount } = drawn(
-        [race('a', 'length', 'marathon'), race('b', 'length', 'short')],
+        [race(1, 'length', 'marathon'), race(2, 'length', 'short')],
         draw,
       )
 
@@ -140,7 +140,7 @@ describe('the dots a screen draws beside an event', () => {
        reader gets. */
     for (const { where, draw } of SCREENS) {
       const { allHidden, unmount } = drawn(
-        [race('a', 'free', 'marathon'), race('b', 'length', 'short')],
+        [race(1, 'free', 'marathon'), race(2, 'length', 'short')],
         draw,
       )
 

@@ -112,7 +112,7 @@ export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
                         className="rights__input"
                         checked={allowed(one, right.key, rights)}
                         aria-label={t('rights.box', { who, action: t(right.actionKey) })}
-                        onChange={(event) => setRight(one.id, right.key, event.target.checked)}
+                        onChange={(event) => setRight(String(one.id), right.key, event.target.checked)}
                       />
                       {/* The words a telephone shows beside the box, where there
                           is no column heading over it. Hidden from a screen

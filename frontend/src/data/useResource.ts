@@ -262,11 +262,21 @@ export function useComments(): ResourceState<EventComment[]> {
        a comment let out and then taken down again is a decision changed, and
        the screen must follow the change without the moderator having to be
        standing on it. */
-    const letOut = published.filter((one) => decisions[one.id]?.status === 'approved')
+    const letOut = published
+      /* By the QUEUE ITEM it came out of and not by the comment's own identity.
+         The two were one value until 20.09.2026, when a comment became something
+         identified by a number (`/api/comments`) while a queue item is still
+         identified by the text the file gives it; read by the comment's number
+         this finds no decision at all and nothing a moderator let out is ever
+         drawn. */
+      .filter((one) => decisions[one.from]?.status === 'approved')
+      .map((one) => one.comment)
     /* By id, because the two sides can name the same comment. Nothing does
-       today, but `commentFrom` keeps the id the queue gave it on purpose, so the
-       day a backend hands back an approved comment under that id the event page
-       would draw it twice, with a repeated React key underneath. */
+       today: what the session hands out is numbered below nought and a
+       `bigserial` never is (`SessionProvider`, `publish`). It stands for the day
+       a backend hands back an approved comment under an id the file also holds,
+       which the event page would otherwise draw twice with a repeated React key
+       underneath. */
     const already = new Set(state.data.map((one) => one.id))
 
     return {
@@ -281,7 +291,7 @@ export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'event
 export const useAttendance = () => useResource<Attending[]>('attendance')
 export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
-export const usePages = () => useResource<Record<string, StaticPage>>('pages')
+export const usePages = () => useResource<StaticPage[]>('pages')
 export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id')
 /** What a deletion of results is filed under. Named here, where the results
  *  are read, rather than spelled out at the screen that deletes them. */

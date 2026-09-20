@@ -22,46 +22,46 @@ function renderWidget(ui: React.ReactNode) {
 
 describe('CalendarExtract', () => {
   const event = (
-    id: string,
+    id: number,
     name: string,
     date: string,
     kind: BtlEvent['kind'] = 'race',
   ): BtlEvent => ({
     id,
-    slug: id,
+    slug: `dogadjaj-${String(id)}`,
     name,
     date,
     city: 'Beograd',
     country: 'RS',
-    kind, description: '', link: '', copiedFrom: '', featured: 'no',
+    kind, description: '', link: '', copiedFrom: null, featured: false,
   })
 
   const races: Race[] = [
     {
-      id: 'r1',
-      eventId: 'd',
+      id: 1,
+      eventId: 4,
       name: 'Trka',
-      renamed: 'no' as const,
+      renamed: false,
       kind: 'length' as const,
       limitSeconds: 0,
       date: '2027-04-03',
       distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon',
     },
     {
-      id: 'r2',
-      eventId: 'd',
+      id: 2,
+      eventId: 4,
       name: 'Trka',
-      renamed: 'no' as const,
+      renamed: false,
       kind: 'length' as const,
       limitSeconds: 0,
       date: '2027-04-03',
       distanceKm: 100, ascentM: 0, descentM: 0, category: 'ultra',
     },
     {
-      id: 'r3',
-      eventId: 'd',
+      id: 3,
+      eventId: 4,
       name: 'Trka',
-      renamed: 'no' as const,
+      renamed: false,
       kind: 'length' as const,
       limitSeconds: 0,
       date: '2027-04-03',
@@ -84,9 +84,9 @@ describe('CalendarExtract', () => {
     renderWidget(
       <CalendarExtract
         events={[
-          event('t', 'Trka koja se trči', '2027-04-03'),
-          event('s', 'Sreda koja se ne trči', '2027-04-04', 'gathering'),
-          event('v', 'Trening koji se ne trči', '2027-04-05', 'training'),
+          event(1, 'Trka koja se trči', '2027-04-03'),
+          event(2, 'Sreda koja se ne trči', '2027-04-04', 'gathering'),
+          event(3, 'Trening koji se ne trči', '2027-04-05', 'training'),
         ]}
         races={[]}
         today="2027-01-01"
@@ -115,10 +115,10 @@ describe('CalendarExtract', () => {
     renderWidget(
       <CalendarExtract
         events={[
-          event('a', 'BTL sreda', '2026-12-02'),
-          event('b', 'BTL sreda', '2026-12-09'),
-          event('c', 'BTL sreda', '2026-12-16'),
-          event('d', 'Fruškogorski maraton', '2026-12-05'),
+          event(5, 'BTL sreda', '2026-12-02'),
+          event(6, 'BTL sreda', '2026-12-09'),
+          event(7, 'BTL sreda', '2026-12-16'),
+          event(4, 'Fruškogorski maraton', '2026-12-05'),
         ]}
         races={races}
         today="2026-11-01"
@@ -138,7 +138,7 @@ describe('CalendarExtract', () => {
   it('marks the lengths an event holds, once each', () => {
     const { container } = renderWidget(
       <CalendarExtract
-        events={[event('d', 'Fruškogorski maraton', '2026-12-05')]}
+        events={[event(4, 'Fruškogorski maraton', '2026-12-05')]}
         races={races}
         today="2026-11-01"
       />,

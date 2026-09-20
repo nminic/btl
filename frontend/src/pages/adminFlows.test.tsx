@@ -66,7 +66,7 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
       /* The race the calendar holds for it, on every road but one: a member who
          typed a name the calendar does not hold sends none, and `loose` names
          which of these stand for that. */
-      ...(loose.includes(index) ? {} : { raceId: 'trka-1' }),
+      ...(loose.includes(index) ? {} : { raceId: 1 }),
       raceKind: 'length',
       city: 'Niš',
       country: 'RS',
@@ -1713,9 +1713,6 @@ describe('the queue of results', () => {
       featured: 'no',
       description: '',
       link: '',
-      /* „Ne, događaj je događaj" (owner, 31.08.2026): nothing on the record says it
-         grew out of a submission. */
-      copiedFrom: '',
     })
 
     expect(race?.[0], 'and its race under it').toBe('races')
@@ -1724,7 +1721,7 @@ describe('the queue of results', () => {
       name: 'Probna trka',
       /* Given by hand, whatever it started as, so renaming the event later leaves
          it alone. */
-      renamed: 'yes',
+      renamed: 'true',
       date: '2026-05-10',
       kind: 'length',
       /* Nought on a race run to a distance: the limit belongs to a timed one. */
@@ -1765,8 +1762,8 @@ describe('the queue of results', () => {
        Measured with one already there, since a queue whose session has made nothing
        cannot tell counting from reading. */
     const { user, session } = openWith(['pending'], {}, [0], {
-      events: [{ id: 'events-nov-1', values: {} }],
-      races: [{ id: 'events-nov-1-trka-1', values: {} }],
+      events: [{ id: '-1', values: {} }],
+      races: [{ id: '-1', values: {} }],
     })
 
     await user.click(screen.getByRole('button', { name: 'Odobri' }))
@@ -1774,8 +1771,11 @@ describe('the queue of results', () => {
     const made = vi.mocked(session.create)
     const [event, race] = made.mock.calls
 
-    expect(event?.[1], 'the next event, not the one that is there').not.toBe('events-nov-1')
-    expect(race?.[1], 'and its race numbered under it').toBe(`${String(event?.[1])}-trka-1`)
+    expect(event?.[1], 'the next event, not the one that is there').toBe('-2')
+    /* And its race is numbered in its OWN family: a `bigserial` is unique inside one
+       table, so a race and an event may hold the same number and the overlay keeps
+       them apart by the family (`session/context.ts`, `recordKey`). */
+    expect(race?.[1], 'and its race, counted over the races this visit made').toBe('-2')
   })
 
   it('ties the result to the race it has just made', async () => {
@@ -1789,7 +1789,7 @@ describe('the queue of results', () => {
 
     const [, race] = vi.mocked(session.create).mock.calls
 
-    expect(session.amend).toHaveBeenCalledWith('sub-0', { raceId: race?.[1] })
+    expect(session.amend).toHaveBeenCalledWith('sub-0', { raceId: Number(race?.[1]) })
   })
 
   it('makes the event under the name the administration settled, not the race’s', async () => {

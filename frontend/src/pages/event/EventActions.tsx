@@ -7,7 +7,7 @@ import { useSession } from '../../session/useSession'
 import { EVENTS, RACES } from '../admin/entityForms'
 import { copiedRace } from './copiedRace'
 import { copyOf } from './copyOf'
-import { nextNumber } from '../admin/raceIds'
+import { nextIdentity } from '../admin/raceIds'
 import { daysBetween } from '../../forms/dateField'
 import { ran } from './ran'
 import { useMay } from '../admin/rights'
@@ -62,35 +62,33 @@ export function EventActions({
        same rule applied once instead of once per keystroke. */
     const moved = copyOf(event).date
     const by = daysBetween(event.date, moved)
-    /* Numbered from the highest already used and not from how many there are
+    /* Numbered from the lowest already used and not from how many there are
        (`admin/raceIds.ts`). Counted, the number a deleted copy freed went to the
        next one made: measured on 23.08.2026, copy, copy, delete the first, copy,
-       and the third came out as `-kopija-2`, which the second still holds. Two
-       records under one id is the fault the whole numbering module exists to
-       prevent: the list draws them under one key, a lookup finds only the first,
-       and an edit to either changes both.
+       and the third came out as the second's. Two records under one id is the
+       fault the whole numbering module exists to prevent: the list draws them
+       under one key, a lookup finds only the first, and an edit to either changes
+       both.
 
-       Over the copies this visit has made, which is where every one of them is: a
-       copy of an event is only ever created here, so nothing in the file carries
-       that shape of id. Deleting one takes it out of that list, and taking the
-       highest still says three where counting said two. */
-    const under = `${event.id}-kopija-`
-    const id = `${under}${String(
-      nextNumber(
-        (creations[EVENTS.id] ?? []).map((one) => one.id),
-        under,
-      ),
-    )}`
+       Over the records this visit has made, which is where every copy is and all
+       this has to look at: an event out of the file carries a `bigserial` and
+       `nextIdentity` counts below nought, so the two cannot meet. Deleting one
+       takes it out of that list, and taking the lowest still says three where
+       counting said two. */
+    const id = String(nextIdentity((creations[EVENTS.id] ?? []).map((one) => Number(one.id))))
 
     create(EVENTS.id, id, copyOf(event))
 
-    /* Every race there is, whichever way it came to be: one out of the file, one
-       entered under an event, and one copied along with its event all live in one
-       list, and a number in use is in use whichever of the three it is. */
-    const takenRaces = [...races.map((one) => String(one.id)), ...(creations[RACES.id] ?? []).map((one) => one.id)]
+    /* Every race this visit has made, whichever way it came to be: one entered
+       under an event and one copied along with its event live in one list, and a
+       number in use is in use whichever of the two it is. The file's races are
+       not on it and do not need to be, for the reason above. */
+    const takenRaces = (creations[RACES.id] ?? []).map((one) => Number(one.id))
+
+    const copied: number[] = []
 
     for (const race of mine) {
-      /* Counted up from the highest number in use, over every race that exists
+      /* Counted down from the lowest number in use, over every race this visit made
          (`admin/raceIds.ts`).
 
          Counted instead, this was the third home of one fault and the last to be
@@ -100,11 +98,10 @@ export function EventActions({
          `editRecord` is filed by id, so saving the third copy moved **both** onto
          it and the second copy was left with no races at all. Measured on
          „Maraton maratona 2015" on 23.08.2026: four rows became none. */
-      create(
-        RACES.id,
-        `${race.id}-kopija-${String(nextNumber(takenRaces, `${race.id}-kopija-`))}`,
-        copiedRace(race, id, by),
-      )
+      const made = String(nextIdentity([...takenRaces, ...copied]))
+
+      copied.push(Number(made))
+      create(RACES.id, made, copiedRace(race, id, by))
     }
 
     /* And the screen is told what it is doing, rather than left to work it out
@@ -130,7 +127,7 @@ export function EventActions({
     }
 
     for (const race of mine) {
-      remove(RACES.id, race.id)
+      remove(RACES.id, String(race.id))
     }
 
     /* And what hangs off it. A result carries the address of its event, so
@@ -138,7 +135,7 @@ export function EventActions({
        in the standing, in the Top 10 boards and in the team totals, each of them
        still linking to a page that now says the event does not exist. */
     for (const result of results.filter((one) => one.eventSlug === event.slug)) {
-      remove(RESULTS, result.id)
+      remove(RESULTS, String(result.id))
     }
 
     /* No question here of a second event answering at this address, which is
@@ -154,7 +151,7 @@ export function EventActions({
        and holds back the deletion of the row until they are here
        (admin/AdminEvents.tsx). Neither deletes an event without its results. */
 
-    remove(EVENTS.id, event.id)
+    remove(EVENTS.id, String(event.id))
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
   }
 

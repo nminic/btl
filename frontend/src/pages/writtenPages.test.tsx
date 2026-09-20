@@ -28,10 +28,22 @@ const dictionary = sr
 /* The written pages as the portal itself reads them. Annotated and not asserted:
    an annotation is a claim the compiler has to agree with, and this one holds
    the file to the type every screen reads it through (ADL A14). */
-const WRITTEN: Record<
-  string,
-  { title: string; sections: { heading: string; body: string; gallery?: string }[] }
-> = written
+type WrittenPage = {
+  slug: string
+  title: string
+  sections: { heading: string; body: string; gallery?: string }[]
+}
+
+const WRITTEN: WrittenPage[] = written
+
+/** One page by its address, which is the list's own field since 20.09.2026: what
+ *  `/api/pages` answers with is a list whose rows carry the address, not a
+ *  dictionary keyed by it (`PageApi.Page`). */
+const pageAt = (slug: string): WrittenPage =>
+  must(
+    WRITTEN.find((page) => page.slug === slug),
+    `the written page ${slug}`,
+  )
 
 /* The mark a body carries to say where its drawing goes (PageSectionBody.tsx).
    Written out here rather than imported: a test that reads the same constant as
@@ -423,9 +435,7 @@ describe('the fee schedule in the rulebook', () => {
     /* Annotated rather than asserted: the ban on `as` is now enforced by the
        linter (ADL A14, PR #77), and a name that carries the type takes the
        parsed JSON on its own. */
-    const pages: Record<string, { sections: { heading: string; body: string }[] } | undefined> =
-      written
-    const sections = pages['uslovi-koriscenja']?.sections ?? []
+    const sections = pageAt('uslovi-koriscenja').sections
     const numbers = sections.map((section) => Number(section.heading.split('.')[0]))
 
     expect(numbers.length).toBeGreaterThan(8)
@@ -483,7 +493,7 @@ describe('the fee schedule in the rulebook', () => {
 })
 
 describe('a drawing a written section names', () => {
-  const sections = Object.values(WRITTEN).flatMap((page) => page.sections)
+  const sections = WRITTEN.flatMap((page) => page.sections)
   const LINE_BREAK = String.fromCharCode(10)
 
   /** Places marked: lines holding nothing but the mark, which is what the portal
@@ -1231,8 +1241,8 @@ function mentionsIn(
  *  is blind to exactly those: the privacy policy held one, and it stood on a number
  *  that had stopped existing. */
 
-const WRITTEN_PAGES: [string, string][] = Object.entries(WRITTEN).map(([slug, page]) => [
-  slug,
+const WRITTEN_PAGES: [string, string][] = WRITTEN.map((page) => [
+  page.slug,
   [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])].join(NEWLINE),
 ])
 
@@ -1240,7 +1250,7 @@ describe('the rulebook', () => {
   /** The whole of it as one piece of text, which is how a rule that has to be in
    *  it is looked for: an article moved from one section to another is still in
    *  the rulebook. */
-  const rulebook = WRITTEN['pravilnik']
+  const rulebook = pageAt('pravilnik')
     ?.sections.map((section) => section.body)
     .join(NEWLINE)
 
@@ -1308,8 +1318,8 @@ describe('the rulebook', () => {
        line break (`Markdown.css`, `white-space: pre-line`), so „BTL" at the end
        of one line and the word at the start of the next is a broken name on the
        screen and has to read as one here. */
-    const prose = Object.entries(WRITTEN).map(([slug, page]): [string, string] => [
-      slug,
+    const prose = WRITTEN.map((page): [string, string] => [
+      page.slug,
       [page.title, ...page.sections.flatMap((one) => [one.heading, one.body])]
         .join(NEWLINE)
         .replace(/\]\([^)\s]+\)/g, ']'),
@@ -1745,13 +1755,13 @@ describe('the rulebook', () => {
 })
 
 describe('how a written page is set', () => {
-  const pages = Object.entries(WRITTEN)
+  const pages = WRITTEN
 
   it('reads every written page there is', () => {
     /* Without this the two below pass on an empty list. Four: the rulebook, the
        terms, the privacy policy and the address of the president. */
     expect(pages.length).toBe(4)
-    expect(pages.map(([slug]) => slug)).toContain('politika-privatnosti')
+    expect(pages.map((page) => page.slug)).toContain('politika-privatnosti')
   })
 
   it('keeps bold for a sub-heading and takes it off everything else', () => {
@@ -1766,7 +1776,8 @@ describe('how a written page is set', () => {
        back to being a sentence. */
     const shouted: string[] = []
 
-    for (const [slug, page] of pages) {
+    for (const page of pages) {
+      const slug = page.slug
       for (const section of page.sections) {
         for (const line of section.body.split(NEWLINE)) {
           const t = line.trim()
@@ -1792,7 +1803,8 @@ describe('how a written page is set', () => {
        be typed into a terminal. */
     const code: string[] = []
 
-    for (const [slug, page] of pages) {
+    for (const page of pages) {
+      const slug = page.slug
       for (const section of page.sections) {
         for (const found of section.body.matchAll(/`([^`]*)`/g)) {
           const inside = found[1] ?? ''
@@ -1814,7 +1826,8 @@ describe('how a written page is set', () => {
        document with a dead link in it. */
     const wrong: string[] = []
 
-    for (const [slug, page] of pages) {
+    for (const page of pages) {
+      const slug = page.slug
       for (const section of page.sections) {
         for (const link of section.body.matchAll(/\]\((\/[^)]*)\)/g)) {
           if (/^\/(sr|en)\//.test(link[1] ?? '')) {
@@ -1882,7 +1895,8 @@ describe('how a written page is set', () => {
     const seenInProse: { slug: string; before: string; number: number }[] = []
     const seenInTables = new Set<string>()
 
-    for (const [slug, page] of pages) {
+    for (const page of pages) {
+      const slug = page.slug
       const numbered = new Map(
         page.sections
           .map((section) => /^(\d+)\. (.*)$/.exec(section.heading))
@@ -2159,9 +2173,9 @@ describe('how a written page is set', () => {
        in `sr.json` nothing triggers it at all today and a half of a guard that
        reads nothing looks exactly like a half that finds nothing. */
     const lines: [string, string][] = [
-      ...pages.flatMap(([slug, page]) =>
+      ...pages.flatMap((page) =>
         page.sections.flatMap((section) =>
-          section.body.split(NEWLINE).map((line): [string, string] => [slug, line]),
+          section.body.split(NEWLINE).map((line): [string, string] => [page.slug, line]),
         ),
       ),
       /* The dictionary as well, because an offer printed on a screen is the same
@@ -2180,7 +2194,8 @@ describe('how a written page is set', () => {
   it('carries no telephone number anywhere', () => {
     /* Owner, 01.08.2026: the association's number is on none of these pages.
        The one a member gives at registration is collected and never shown. */
-    for (const [slug, page] of pages) {
+    for (const page of pages) {
+      const slug = page.slug
       for (const section of page.sections) {
         expect(section.body, `${slug} prints a telephone number`).not.toMatch(/\+381[\d\s]/)
       }
@@ -2293,8 +2308,8 @@ function whole(slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti')
      "Zašto je formula tajna" would have gone past a guard that read only the
      text under it. */
   return [
-    written[slug].title,
-    ...written[slug].sections.flatMap((section) => [section.heading, section.body]),
+    pageAt(slug).title,
+    ...pageAt(slug).sections.flatMap((section) => [section.heading, section.body]),
   ].join(`\n`)
 }
 
@@ -2303,7 +2318,7 @@ function sectionOf(
   slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti',
   says: RegExp,
 ): string {
-  const found = written[slug].sections.find((section) => says.test(section.body))
+  const found = pageAt(slug).sections.find((section) => says.test(section.body))
 
   if (found === undefined) {
     throw new Error(`no section of ${slug} says ${String(says)}`)
@@ -2335,7 +2350,7 @@ function oneSectionOf(
   slug: 'uslovi-koriscenja' | 'pravilnik' | 'politika-privatnosti',
   says: RegExp,
 ): string {
-  const found = written[slug].sections.filter((section) => says.test(section.body))
+  const found = pageAt(slug).sections.filter((section) => says.test(section.body))
 
   if (found.length !== 1) {
     throw new Error(
@@ -2589,7 +2604,7 @@ describe('what the written pages say the fee buys', () => {
        what he asked for is that they **match**: pinned separately, the next one
        to be reworded drifts and nothing says so. */
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {
-      const sections = must(written[slug], slug).sections
+      const sections = pageAt(slug).sections
       const last = must(sections[sections.length - 1], `the last section of ${slug}`).body
 
       /* The shape, and then the count. The pattern below is anchored only at the
@@ -2764,11 +2779,11 @@ describe('what the written pages say the fee buys', () => {
        under the article on the price. So the guard follows the sentence to where
        it now lives, and holds that it lives in one place: two homes for one
        number is how the drift started. */
-    const carrying = Object.entries(WRITTEN).filter(([, page]) =>
+    const carrying = WRITTEN.filter((page) =>
       page.sections.some((section) => /taksa za obradu plaćanja/.test(section.body)),
     )
 
-    expect(carrying.map(([slug]) => slug)).toEqual(['pravilnik'])
+    expect(carrying.map((page) => page.slug)).toEqual(['pravilnik'])
     expect(sectionOf('pravilnik', /taksa za obradu plaćanja/)).toMatch(
       new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`),
     )

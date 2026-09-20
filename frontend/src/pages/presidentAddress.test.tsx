@@ -14,7 +14,7 @@ import { ADDRESS_SLUG } from './home/President'
  * (owner, 04.08.2026); what is held here is that it is drawn from the record and
  * stored once. */
 
-const pagesOf = () => loadResource<Record<string, StaticPage>>('pages')
+const pagesOf = () => loadResource<StaticPage[]>('pages')
 
 /** The record kept under that address.
  *
@@ -23,7 +23,7 @@ const pagesOf = () => loadResource<Record<string, StaticPage>>('pages')
  *  would go on as an empty page and the assertions below would then be about
  *  nothing: `expect(within(page).getByText(''))` finds every node there is. */
 async function pageAt(slug: string): Promise<StaticPage> {
-  const stored = (await pagesOf())[slug]
+  const stored = (await pagesOf()).find((page) => page.slug === slug)
 
   if (stored === undefined) {
     throw new Error(`no written page is stored under "${slug}"`)
@@ -153,11 +153,11 @@ describe('the address of the president', () => {
     expect(stored.sections.map((section) => section.body).join('\n')).toContain(
       'pod popularnim imenom',
     )
-    expect(Object.keys(pages)).not.toContain('o-ligi')
+    expect(pages.map((page) => page.slug)).not.toContain('o-ligi')
     expect(
-      Object.entries(pages)
-        .filter(([slug]) => slug !== ADDRESS_SLUG)
-        .flatMap(([, page]) => page.sections.map((section) => section.body))
+      pages
+        .filter((page) => page.slug !== ADDRESS_SLUG)
+        .flatMap((page) => page.sections.map((section) => section.body))
         .join('\n'),
     ).not.toContain('pod popularnim imenom')
   })
@@ -186,20 +186,25 @@ describe('sectionsOf', () => {
      the two pages of this fixture are known by name here, and `prva` is then a
      page rather than a page that might not be there. The function still takes it
      as the open record it takes on the screens. */
-  const pages = {
-    prva: { title: 'Prva', sections: [{ heading: 'Svoja', body: 'x' }], includes: ['druga', 'nema'] },
-    druga: { title: 'Druga', sections: [{ heading: 'Uzeta', body: 'y' }] },
-  } satisfies Record<string, StaticPage>
+  const prva: StaticPage = {
+    slug: 'prva',
+    title: 'Prva',
+    sections: [{ heading: 'Svoja', body: 'x' }],
+    includes: ['druga', 'nema'],
+  }
+  const druga: StaticPage = {
+    slug: 'druga',
+    title: 'Druga',
+    sections: [{ heading: 'Uzeta', body: 'y' }],
+  }
+  const pages = [prva, druga]
 
   it('puts what a page takes in above what it wrote itself', () => {
-    expect(sectionsOf(pages, pages.prva).map((section) => section.heading)).toEqual([
-      'Uzeta',
-      'Svoja',
-    ])
+    expect(sectionsOf(pages, prva).map((section) => section.heading)).toEqual(['Uzeta', 'Svoja'])
   })
 
   it('passes over a page that is not there rather than breaking the one that is', () => {
     // "nema" answers nothing, and the page still draws everything else.
-    expect(sectionsOf(pages, pages.druga)).toEqual(pages.druga.sections)
+    expect(sectionsOf(pages, druga)).toEqual(druga.sections)
   })
 })

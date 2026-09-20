@@ -81,7 +81,8 @@ export function AdminModerators() {
                       <tr key={one.id}>
                         <td>
                           <EditableCell
-                            id={one.id}
+                            under={MODERATORS.id}
+                            id={String(one.id)}
                             field="firstName"
                             value={one.firstName}
                             label={t('admin.field.firstName')}
@@ -89,7 +90,8 @@ export function AdminModerators() {
                         </td>
                         <td>
                           <EditableCell
-                            id={one.id}
+                            under={MODERATORS.id}
+                            id={String(one.id)}
                             field="lastName"
                             value={one.lastName}
                             label={t('admin.field.lastName')}
@@ -97,7 +99,8 @@ export function AdminModerators() {
                         </td>
                         <td className="moderators__email">
                           <EditableCell
-                            id={one.id}
+                            under={MODERATORS.id}
+                            id={String(one.id)}
                             field="email"
                             value={one.email}
                             label={t('admin.field.email')}

@@ -48,7 +48,7 @@ export function leagueRaces(league: League, races: Race[]): Race[] {
  * P10), so the day comes first there and the distance parts the races of one morning.
  */
 export function racesByEvent(races: Race[], events: BtlEvent[]): EventRaces[] {
-  const byEvent = new Map<string, Race[]>()
+  const byEvent = new Map<number, Race[]>()
 
   for (const race of races) {
     byEvent.set(race.eventId, [...(byEvent.get(race.eventId) ?? []), race])

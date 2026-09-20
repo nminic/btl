@@ -36,6 +36,11 @@ import { useSession } from '../../session/useSession'
  * the three forgetting to merge is a moderator who is told there is nothing
  * waiting on a screen that is about to show them something.
  */
+/** The family the queue's own waiting items are filed under in the overlay.
+ *  Not an `EntityDef`: nothing serves a waiting item as a record, and its identity
+ *  is the text the file gives it rather than a number out of a sequence. */
+export const WAITING = 'waiting'
+
 export function usePending(): ResourceState<PendingItem[]> {
   const state = useResource<PendingItem[]>('verification')
   const { proposals } = useSession()

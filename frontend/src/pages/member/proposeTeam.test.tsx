@@ -301,7 +301,7 @@ describe('a member who founds a team', () => {
       saved
         .getAllByRole('listitem')
         .map((one) => one.textContent ?? '')
-        .find((one) => one.startsWith('edit 000002 |')),
+        .find((one) => one.startsWith('edit members:000002 |')),
       'what the session was told about the member who founded it',
     )
 

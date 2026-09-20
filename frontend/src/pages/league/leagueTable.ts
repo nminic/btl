@@ -1,4 +1,5 @@
 import { genderMark } from '../../data/categories'
+import { numbered } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 
 /**
@@ -29,7 +30,7 @@ export type LeagueColumn = {
    * event's own page lists its races and their results, which is where that question is answered
    * and where this heading now leads.
    */
-  eventId: string
+  eventId: number
   /**
    * The day the event is held, which is the whole of the heading.
    *
@@ -50,7 +51,7 @@ export type LeagueRow = {
   /** Points per event, by event id, and everything they scored inside one event added up. An
    *  event the person did not race is absent, which is not the same as nought and must not be
    *  drawn as one. */
-  points: Map<string, number>
+  points: Map<number, number>
   total: number
 }
 
@@ -109,16 +110,18 @@ export function leagueTable(
   const eventOf = new Map(
     races.flatMap((race) => (inLeague.has(race.eventId) ? [[race.id, race.eventId] as const] : [])),
   )
-  const byMember = new Map<string, Map<string, number>>()
+  const byMember = new Map<string, Map<number, number>>()
 
-  for (const result of results) {
+  /* The results that name a member, because this cell is a member's cell
+     (`data/derive.ts`, `numbered`). */
+  for (const result of numbered(results)) {
     const eventId = eventOf.get(result.raceId)
 
     if (eventId === undefined) {
       continue
     }
 
-    const mine = byMember.get(result.memberNumber) ?? new Map<string, number>()
+    const mine = byMember.get(result.memberNumber) ?? new Map<number, number>()
 
     /* Added rather than set, and since 07.09.2026 that is a rule of the screen and not only a
        guard against bad data. A member who ran two races of one event has both in this one cell

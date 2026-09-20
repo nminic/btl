@@ -102,17 +102,17 @@ describe('RoleSwitch', () => {
     expect(screen.getByRole('option', { name: 'A. M.-S.' })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Moderator' })).not.toBeInTheDocument()
 
-    await user.selectOptions(chooser, 'moderator:mod-saric')
+    await user.selectOptions(chooser, 'moderator:3')
 
     expect(screen.getByTestId('uloga')).toHaveTextContent('moderator')
-    expect(screen.getByTestId('ko')).toHaveTextContent('mod-saric')
+    expect(screen.getByTestId('ko')).toHaveTextContent('3')
   })
 
   it('lets go of the moderator when the choice is not one', async () => {
     const user = setupUser()
     renderSwitch()
 
-    await user.selectOptions(await screen.findByLabelText('Uloga'), 'moderator:mod-saric')
+    await user.selectOptions(await screen.findByLabelText('Uloga'), 'moderator:3')
     await user.selectOptions(screen.getByLabelText('Uloga'), 'superadmin')
 
     /* A role and a moderator that could drift apart would be a superadmin

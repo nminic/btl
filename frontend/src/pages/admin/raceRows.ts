@@ -18,7 +18,11 @@ import type { Race, RaceKind } from '../../data/types'
  * makes „0" and „nothing yet" the same thing.
  */
 export type RaceRow = {
-  /** The race this row already is, or an empty string for one being entered. */
+  /** The race this row already is, as text, or an empty string for one being
+   *  entered. Text and not the number the record keeps, because the one thing
+   *  this field is read for is whether there is a race behind the row at all
+   *  (`AdminEvents.tsx`, `row.id === ''`), and a row being entered has no number
+   *  to stand for „none": nought is one, and every other is a race. */
   id: string
   /**
    * What the race is called. Opens as the name of its event and may be changed
@@ -28,7 +32,7 @@ export type RaceRow = {
   name: string
   /** Whether that name was given by hand, which is what decides whether the race
    *  follows its event when the event is renamed (`data/types.ts`). */
-  renamed: 'yes' | 'no'
+  renamed: boolean
   date: string
   /**
    * Which of the three kinds the race is. Its limit sits beside it, in hours, which
@@ -89,7 +93,7 @@ export function newRaceRow(eventName: string, eventDate: string): RaceRow {
     /* Named after the event it is entered under, which is what „po default-u naziv
        događaja" means; it follows the event until somebody types into it. */
     name: eventName,
-    renamed: 'no',
+    renamed: false,
     date: isoDate(eventDate) === '' ? '' : eventDate,
     kind: 'length',
     limitHours: '',
@@ -105,7 +109,7 @@ export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): 
        run in: an event over two mornings reads as two mornings. */
     .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
     .map((race) => ({
-      id: race.id,
+      id: String(race.id),
       name: race.name,
       renamed: race.renamed,
       date: fieldDate(race.date),
@@ -340,7 +344,7 @@ export function storedRow(row: RaceRow, eventId: string): Record<string, string>
   return {
     eventId,
     name: row.name.trim(),
-    renamed: row.renamed,
+    renamed: String(row.renamed),
     date: isoDate(row.date),
     /* Written back as the row carries it, not as a fixed word. A row entered here
        opens as a race of a length, because a length is the only thing this table

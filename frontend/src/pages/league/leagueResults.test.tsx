@@ -435,7 +435,9 @@ describe('the head of a race column', () => {
       races.find((race) => race.eventId === event.id),
       'trka tog događaja',
     )
-    const second: Race = { ...mine, id: `${mine.id}-drugo-jutro`, date: '2019-12-31' }
+    /* Below nought, so it is a race of its own and not the one it was copied from:
+       nothing in the file carries such a number (`admin/raceIds.ts`, `nextIdentity`). */
+    const second: Race = { ...mine, id: -1, date: '2019-12-31' }
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/races.json')

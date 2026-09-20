@@ -55,7 +55,7 @@ export type Amendment = {
    * asked for stands empty (PDL, 30.08.2026, point 6: „Rezultat prvog člana se
    * veže za trku koja je tim upisom nastala").
    */
-  raceId?: string
+  raceId?: number
   eventName?: string
   raceName?: string
   raceKind?: string
@@ -87,7 +87,7 @@ export type Submission = {
    * the race before it can approve (owner, 31.08.2026), and it is why the queue
    * marks such a row „NOVO" and why sweeping the queue steps over it.
    */
-  raceId?: string
+  raceId?: number
   /**
    * The event this race was run at, as the administration settled it.
    *
@@ -263,7 +263,7 @@ export type Message = {
 export type Application = {
   id: string
   /** The team being asked about. */
-  teamId: string
+  teamId: number
   /** Who is asking to be let in. */
   memberNumber: string
   /** The day they asked. */
@@ -315,14 +315,42 @@ export type PairInvite = {
 export type Invitation = {
   id: string
   /** The team doing the asking. */
-  teamId: string
+  teamId: number
   /** Who is being asked in. */
   memberNumber: string
   /** The day they were asked. */
   date: string
 }
 
+/**
+ * What administration has changed, by record.
+ *
+ * **Keyed by the family a record belongs to AND by its identity, not by its
+ * identity alone** (20.09.2026). Until that day an identity said which record it
+ * was on its own, because the generator wrote `evt-…` on an event, `evt-…-1000`
+ * on a race and `team-dunav` on a team. The records now carry what the schema
+ * carries, and a `bigserial` is only unique inside its own table: event 1116 and
+ * race 1116 are two different things answering to one number, and so are team 1
+ * and league 1.
+ *
+ * Measured before the change went in, on the administration's own screen: saving
+ * an event writes every one of its races back (`AdminEvents`, `alsoSave`), a race
+ * that was never renamed carries its event's name, and the change filed under the
+ * race's number reached the EVENT of that number as well. Two events then read
+ * „Provera unosa", one of them in the wrong town and carrying the kind of a race.
+ */
 export type Edits = Record<string, Record<string, string>>
+
+/**
+ * The key one record's changes are filed under.
+ *
+ * `under` is the family, which every screen that writes a change already knows:
+ * an entity's own `id` where there is an `EntityDef`, and the name of the list
+ * where there is not.
+ */
+export function recordKey(under: string, id: string | number): string {
+  return `${under}:${String(id)}`
+}
 
 /* And what administration has created, kept the same way for the same reason.
  *
@@ -513,9 +541,9 @@ export type SessionValue = {
   pairsMade: RacingPair[]
   /** The identities of pairs that were broken during this visit, whether they came from the file
    *  or were made in it: „Ne postoji par onda, raskida se" (PDL P13). */
-  pairsBroken: string[]
+  pairsBroken: number[]
   makePair: (pair: Omit<RacingPair, 'id'>) => void
-  breakPair: (id: string) => void
+  breakPair: (id: number) => void
   /** Closes one: accepted, refused, or overtaken because the member joined
    *  elsewhere. The message stays in the inbox either way, because deleting
    *  somebody's mail is deleting the answer to „what happened to that". */
@@ -580,8 +608,11 @@ export type SessionValue = {
    * list of "what is out" would have to be kept in step with the decisions by
    * hand, which is how two answers to one question start.
    */
-  published: EventComment[]
-  publish: (comment: EventComment) => void
+  published: { from: string; comment: EventComment }[]
+  /** `from` is the queue item, which is what a decision is filed under; the
+   *  comment is handed over without an identity, because the session gives it
+   *  one (`SessionProvider`, `publish`). */
+  publish: (from: string, comment: Omit<EventComment, 'id'>) => void
 }
 
 /** The six obligatory emails cannot be switched off (PDL P22); these can. */

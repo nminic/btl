@@ -113,6 +113,7 @@ export function AdminMembers() {
                         <td>{categoryLabel(categoryOfMember(one), t)}</td>
                         <td>
                           <EditableCell
+                            under={MEMBERS.id}
                             id={one.memberNumber}
                             field="city"
                             value={one.city}

@@ -40,7 +40,7 @@ const SCREENS = [
      two had. Counting the screens by reading them, rather than by remembering which
      ones were reported, is what this row costs. */
   [
-    '/sr/kalendar/maraton-maratona-2015/prijava?trka=evt-maraton-maratona-2015-03-14-4400',
+    '/sr/kalendar/maraton-maratona-2015/prijava?trka=683',
     'Prijava rezultata',
     /Prijavljuješ rezultat sa trke/,
   ],
