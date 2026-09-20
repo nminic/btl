@@ -97,6 +97,14 @@
       "title": "Prijava na BTL nalog",
       "description": "Prijava na članski nalog portala Balkanske trkačke lige."
     },
+    "newPassword": {
+      "title": "Nova lozinka",
+      "description": "Postavljanje nove lozinke preko veze koju je portal poslao na adresu elektronske pošte."
+    },
+    "confirmAddress": {
+      "title": "Potvrda adrese",
+      "description": "Potvrda adrese elektronske pošte preko veze iz poruke koju portal pošalje po registraciji."
+    },
     "admin": {
       "title": "Administracija",
       "description": "Ulaz u administrativni deo portala, sa redovima čekanja i svim entitetima lige."

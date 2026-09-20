@@ -102,6 +102,23 @@ export const CONTACT_ADDRESS = 'info@balkanskatrkackaliga.net'
 const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'registracija', labelKey: 'nav.register', seoKey: 'register' },
   { path: 'prijava', labelKey: 'nav.login', seoKey: 'signIn' },
+  /* The two addresses the SERVER writes, and the only two on this list that are
+     not ours to rename: `WhatTheMessageSays.Message` hangs `/nova-lozinka` and
+     `/potvrda-adrese` on the portal's own address and posts them, so every message
+     already sent carries one of them. Reached from a link in a message and from
+     nowhere on the portal, which is why they are here and not in the navigation.
+
+     What holds the two sides together is not this sentence but two cases that meet on
+     `postedAddresses.json`: `APostedAddressHasAScreenTest` asks `Message.values()` what
+     goes out and pins that file to it, and `routes.test.ts` requires every address in it
+     to be among the paths `routeObjects` actually serves. Removing, commenting out or
+     moving a row below is therefore loud, and so is editing the file to match.
+
+     The link in a message carries no language, because the server does not know
+     which one the reader wants. `LocaleLayout` is what makes that work: a first
+     segment that is not a language is sent on to `/sr` with the query intact. */
+  { path: 'nova-lozinka', labelKey: 'nav.newPassword', seoKey: 'newPassword' },
+  { path: 'potvrda-adrese', labelKey: 'nav.confirmAddress', seoKey: 'confirmAddress' },
   /* Reached from the standing of the teams, by whoever is signed in. Not in the
      navigation: proposing a team is something a member does once, if ever. */
   { path: 'novi-tim', labelKey: 'teams.propose', seoKey: 'proposeTeam' },

@@ -239,11 +239,23 @@ describe('a sentence with a value put into it', () => {
       '? (Counters.tsx)',
       '? (FormRenderer.tsx)',
       '? (Home.tsx)',
+      /* The rule beside the password, whose name is declared as a `hintKey` on the
+         screen rather than written into the call: `t(PASSWORD_FIELD.hintKey, { count })`.
+         That shape is not an accident and is not avoidable either. `forms/fieldHint.test.tsx`
+         counts the rules the portal keeps by reading `hintKey`, so a rule typed straight
+         into a call is a rule nothing counts, which is how three of them outlived the
+         deletion of 31.08.2026. The value it takes is the one number this portal has for
+         the length of a password (`pages/account/passwordRule.ts`). */
+      '? (NewPassword.tsx)',
       '? (Payments.tsx)',
       '? (PendingQueue.tsx)',
       '? (ReportResult.tsx)',
       '? (ReviewQueue.tsx)',
       '? (SendBack.tsx)',
+      /* The refusal a route named, looked up by the word the server sent rather than by
+         a name written out here: `refusals[answer.reason]`. Which sentence that is
+         cannot be read off the call at all, which is the case this row stands for. */
+      '? (ServerSaid.tsx)',
       'admin.form.deleteNamed',
       'admin.form.deleteSureNamed',
       'admin.form.keepNamed',
@@ -362,6 +374,12 @@ describe('a sentence with a value put into it', () => {
       'seo.team.recordTitle',
       'seo.verificationQueue.queueDescription',
       'seo.verificationQueue.queueTitle',
+      /* What the server answered, in the two cases where the screen can only repeat it:
+         the name of a refusal this portal does not know, and the number of an answer
+         that is not one of the shapes it reads. Both are values the server chose, so
+         neither can be written into the words. */
+      'server.refused',
+      'server.wrong',
       'shell.unread',
       'shell.waiting',
       'teams.editDone',

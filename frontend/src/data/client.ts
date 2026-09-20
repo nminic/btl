@@ -1,9 +1,18 @@
-/* The only module that knows where data comes from.
+/* The only module that knows where THE DATA comes from.
  *
  * Today it fetches generated JSON from /mock. When the backend exists, BASE
  * becomes '/api' and nothing else in the application changes. That is the whole
- * point of this file: no component calls fetch, and no component knows that
- * mock data exists at all.
+ * point of this file: no screen that draws a resource calls fetch, and none of
+ * them knows that mock data exists at all.
+ *
+ * **This said „no component calls fetch" until 19.09.2026, and that sentence is
+ * corrected here rather than left to be walked past.** `pages/account` speaks to
+ * `/api` directly: it spends a link out of a message on `/api/password-reset` and
+ * `/api/email-confirmation`, which are writes rather than resources and have no
+ * mock of themselves to read. Nothing about the sentence above moved with it -
+ * no resource was added to the list below, BASE is untouched, and ADL A50 („mock
+ * se gasi tek kad sve bude gotovo, odjednom a ne resurs po resurs") is the same
+ * day's work as it was the day before.
  *
  * The files are served rather than imported so a million and a half bytes of
  * results stay out of the JavaScript bundle, and so the screens go through a
