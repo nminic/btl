@@ -106,10 +106,20 @@ class LeagueApiTest {
 		counts("liga-2029", "tudja");
 	}
 
+	/**
+	 * THE RULES AND THE PRIZES ARE EACH LEAGUE'S OWN, and until 20.09.2026 all three rows
+	 * carried one and the same sentence in both of them.
+	 *
+	 * <p>A field the fixture never varies is a field the server could answer with a
+	 * constant, and the two read alike in every case below. Measured that day, before the
+	 * floor at the end of this file existed: {@code select 999 as id, l.slug, 'x' as name,
+	 * ...} passed the whole file.
+	 */
 	private void league(String slug, int season) {
-		db.sql("insert into league (slug, name, season, rules, prizes)"
-						+ " values (?, ?, ?, 'pravila', 'nagrade')")
-				.params(slug, "Liga " + season, season).update();
+		db.sql("insert into league (slug, name, season, rules, prizes) values (?, ?, ?, ?, ?)")
+				.params(slug, "Liga " + season, season, "Pravila lige " + season,
+						"Nagrade lige " + season)
+				.update();
 	}
 
 	private void event(String slug, String day) {
@@ -195,6 +205,25 @@ class LeagueApiTest {
 		   review measured that a name nobody reads can carry a fact nobody meant to publish. */
 		Answers.everyFieldThePortalReadsIsAnswered("/api/leagues", answer(), "leagues.json",
 				Set.of("raceIds"));
+	}
+
+	/**
+	 * AND NO FIELD OF THE ANSWER IS THE SAME IN EVERY RECORD.
+	 *
+	 * <p>The second of the two floors {@code Answers} holds for every resource of this API,
+	 * and this was the one resource of fourteen standing on only the first - written down
+	 * in the cleanup plan of 19.09.2026 and measured on 20.09: with it missing, a server
+	 * answering {@code id} with {@code 999} and {@code name} with {@code 'x'} passed every
+	 * case in this file, because nothing here reads either off a league it did not pick by
+	 * {@code slug}.
+	 *
+	 * <p>It is a copy of a form that already exists thirteen times over and carries no
+	 * decision of its own; what it cost was two columns of the fixture, which until then
+	 * gave all three leagues the same rules and the same prizes.
+	 */
+	@Test
+	void noFieldOfTheAnswerIsTheSameInEveryRecord() throws Exception {
+		Answers.noFieldIsTheSameInEveryRecord("/api/leagues", answer());
 	}
 
 	/** And in season order, oldest first, whatever order the rows were written in. */
