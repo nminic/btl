@@ -611,7 +611,7 @@ is attached to.
   `qa_postgres-data` is backed up by nothing on purpose and is rebuilt by
   dropping it and letting Flyway run again.
 - **And the pictures are a second volume with the same gap.** `qa_photos` holds
-  the files `/api/photos/{name}` serves, which ADL A41 decided should live in a
+  the files `/api/photos/{name}` serves, which ADL A43, 2, decided should live in a
   named volume beside the database rather than in a folder on the host: "rezervna
   kopija mora da pokrije i volumen, a danas ne pokriva nista", written down there
   on the day the arrangement was chosen and still true. On QA it is the same

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -949,9 +950,9 @@ class WhatEachStackRequiresTest {
 	 * right answer, and {@code application.properties} says so in its own note.
 	 *
 	 * <p><b>What it does not claim:</b> that the mount is a named volume rather than a bind.
-	 * ADL A41 decided a named volume and this asks only that SOMETHING durable is mounted at
-	 * the path the backend was told about; the day a stack binds a host folder instead, that
-	 * is a decision for whoever writes it and not a thing for this line to refuse.
+	 * ADL A43, 2, decided a named volume and this asks only that SOMETHING durable is
+	 * mounted at the path the backend was told about; the day a stack binds a host folder
+	 * instead, that is a decision for whoever writes it, not a thing for this line to refuse.
 	 */
 	@Test
 	@SuppressWarnings("unchecked")
@@ -1045,10 +1046,31 @@ class WhatEachStackRequiresTest {
 	 * which is the shape this repository distrusts, and the reason it is accepted here is
 	 * that the alternative is building the image and raising a fresh volume inside the gate -
 	 * minutes per run for a fact that changes once. So the claim is kept narrow and literal:
-	 * the file must carry a {@code chown} naming both the user the image runs as and this
-	 * exact path, and it must do so BEFORE the {@code USER} line, because afterwards it could
-	 * not. A Dockerfile that achieves the same some other way fails here and its author says
-	 * so once, which is the direction the whole of this file is written in.
+	 * ONE command, before the {@code USER} line because afterwards it could not, that gives
+	 * the user the image runs as this exact path. A Dockerfile that achieves the same some
+	 * other way fails here and its author says so once, which is the direction the whole of
+	 * this file is written in.
+	 *
+	 * <p><b>ONE ASSERTION AND NOT TWO, WHICH IS THE CORRECTION OF 20.09.2026 AND WAS A
+	 * FINDING.</b> It used to ask separately that the text before {@code USER} carried the
+	 * path and that it carried a {@code chown} naming the user, and the two were not tied to
+	 * each other or to a command. Both halves were measured and both passed on a broken
+	 * image: {@code chown -R btl:btl /app} beside a {@code mkdir} of the right folder left
+	 * the folder {@code root:root} and the case green, and so did replacing the whole
+	 * {@code RUN} line with a COMMENT carrying those words. So the text is stripped of
+	 * comments first - a Dockerfile comment is a line whose first character is {@code #} -
+	 * and what is looked for is a single chown, on a single line, whose subject is the user
+	 * and whose object is the folder.
+	 *
+	 * <p><b>And it is the folder itself and not an ancestor, which is a decision.</b> The
+	 * Dockerfile chowned the PARENT recursively, which does cover the folder - {@code -R}
+	 * reaches it - so nothing was broken. It is written as the exact path for two reasons.
+	 * Accepting an ancestor would make this case do path arithmetic and read a flag, which
+	 * is two more things a pattern can be wrong about, and this file's own header is the
+	 * record of what reading a shape costs. And the exact path is what the day of the move
+	 * needs: the folder comes off the rendered stack, so a stack that moves its pictures to
+	 * another tree leaves the Dockerfile naming a parent that no longer contains them, and a
+	 * recursive chown of the old parent would still be a chown naming the right user.
 	 */
 	@Test
 	@SuppressWarnings("unchecked")
@@ -1073,7 +1095,9 @@ class WhatEachStackRequiresTest {
 		String whoItRunsAs = dockerfile.get(dropsPrivilege).strip().substring("USER ".length())
 				.strip();
 
-		String beforeThat = String.join("\n", dockerfile.subList(0, dropsPrivilege));
+		List<String> commandsBeforeThat = dockerfile.subList(0, dropsPrivilege).stream()
+				.filter(line -> !line.strip().startsWith("#"))
+				.toList();
 
 		for (Path stack : everyStackThisRunbookGivesARecipeFor().toList()) {
 			Map<String, String> distinct = new LinkedHashMap<>();
@@ -1094,14 +1118,21 @@ class WhatEachStackRequiresTest {
 
 			String folder = String.valueOf(backend.get(PHOTOS));
 
-			assertThat(beforeThat)
-					.as("%s tells its backend to keep pictures in %s, and backend/Dockerfile"
-							+ " never gives %s that folder before it stops being root. A fresh"
-							+ " named volume is made root-owned, so the stack comes up healthy"
-							+ " and the first upload is the thing that falls", stack, folder,
+			/* THE USER AND THE FOLDER IN ONE COMMAND, in that order, on one line. The group
+			   is optional because `chown btl` and `chown btl:btl` are the same sentence, and
+			   the folder is followed by whitespace or the end of the line so that a chown of
+			   a LONGER path that merely starts with this one is not read as this one. */
+			Pattern owning = Pattern.compile("chown\\s+(-\\S+\\s+)*" + Pattern.quote(whoItRunsAs)
+					+ "(:\\S+)?\\s+" + Pattern.quote(folder) + "(\\s|$)");
+
+			assertThat(commandsBeforeThat)
+					.as("%s tells its backend to keep pictures in %s, and no command in"
+							+ " backend/Dockerfile gives %s that exact folder before the image"
+							+ " stops being root. A fresh named volume is made root-owned, so the"
+							+ " stack comes up healthy and the FIRST upload is the thing that"
+							+ " falls - and a comment saying so is not a command", stack, folder,
 							whoItRunsAs)
-					.contains(folder)
-					.containsPattern("chown[^\\n]*" + whoItRunsAs);
+					.anyMatch(line -> owning.matcher(line).find());
 		}
 	}
 

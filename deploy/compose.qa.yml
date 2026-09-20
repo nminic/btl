@@ -194,7 +194,7 @@ services:
       BTL_SUPERADMIN_EMAIL: ${BTL_SUPERADMIN_EMAIL:-}
       # AND WHERE THE PICTURES LIVE, which is the mount right below this block.
       #
-      # ADL A41 of 11.09.2026 decided the arrangement: "Imenovan Docker volumen uz
+      # ADL A43, 2, of 11.09.2026 decided the arrangement: "Imenovan Docker volumen uz
       # bazu, montiran samo u bekend." A folder on the host outside Docker was
       # offered and refused, because the backend would then be writing outside its
       # container, and that is the easiest thing to configure wrongly on a
@@ -222,7 +222,7 @@ services:
       # host and cannot collide with a production volume of the same name, exactly
       # as postgres-data above.
       #
-      # AND IT IS A JOB THAT COMES WITH IT: ADL A41, "rezervna kopija mora da
+      # AND IT IS A JOB THAT COMES WITH IT: ADL A43, 2, "rezervna kopija mora da
       # pokrije i volumen, a danas ne pokriva nista". The nightly pg_dump covers
       # the database and nothing covers this.
       - photos:/var/lib/btl/photos

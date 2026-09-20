@@ -246,7 +246,7 @@ class PhotoApi {
 
 	/**
 	 * @param folder where the files are, which is a setting because QA and production are
-	 *               two installations of one portal and neither is this machine. ADL A41,
+	 *               two installations of one portal and neither is this machine. ADL A43, 2,
 	 *               11.09.2026: „Imenovan Docker volumen uz bazu, montiran samo u bekend."
 	 *               Its default is a developer's temporary folder, and what that means is
 	 *               an empty one: on a machine nobody has uploaded to, every picture is an
@@ -291,15 +291,15 @@ class PhotoApi {
 			/* THE NAME OF THE FILE IS THE KEY OF THE ROW AND NOTHING ELSE TOUCHES IT. Not
 			   `name`, which came over the wire; not the digest, which is the same string.
 			   A `long` written out is digits, so there is no spelling of it that leaves
-			   this folder, and `PhotoApiTest.theBytesAreTheRowsAndNotTheAddressesOwn`
-			   keeps a decoy file named after the digest to say which of the two was
-			   read. */
+			   this folder, and every case in `PhotoApiTest` keeps a decoy file named after
+			   the digest to say which of the two was read - see the note at the head of
+			   that class, which is where the arrangement is described. */
 			bytes = bytesOf(folder.resolve(String.valueOf(kept.get().id())));
 		} catch (IOException noFile) {
 			/* THE ONLY PLACE THIS FAULT EXISTS. The caller is told what a caller of a
 			   digest nobody wrote is told, so a row and its absence cannot be told apart
 			   from outside; whoever runs the server is told here, because a row whose file
-			   has gone is a backup that did not cover the volume (ADL A41, „rezervna kopija
+			   has gone is a backup that did not cover the volume (ADL A43, 2, „rezervna kopija
 			   mora da pokrije i volumen, a danas ne pokriva nista").
 
 			   AND THE EXCEPTION IS NOT HANDED TO THE LOGGER, which is the correction of
@@ -341,6 +341,20 @@ class PhotoApi {
 	 * from a backup, and a restore writes whatever the archive holds. The flag costs one
 	 * argument and the refusal it produces is an {@code IOException}, which is the road
 	 * a missing file already takes, so a link answers what an absent picture answers.
+	 *
+	 * <p><b>AND NO CASE MEASURES THAT FLAG, WHICH IS A BOUNDARY AND IS WRITTEN HERE RATHER
+	 * THAN LEFT TO BE FOUND.</b> Taking {@code NOFOLLOW_LINKS} out of the set leaves the whole
+	 * gate green, so the line has no guard at all. What a case would need is a symbolic link
+	 * in the folder, and this is where the two ends of the build disagree: a review on
+	 * 20.09.2026 measured the flag working on Linux, where the open comes back
+	 * {@code IOException: Too many levels of symbolic links}, and measured on the machine this
+	 * repository is written on that a link cannot be MADE at all without a privilege the
+	 * developer does not hold - {@code FileSystemException: A required privilege is not held
+	 * by the client}, which is the same answer the operating system gives outside Java. So a
+	 * case here would be one that only ever runs on CI and is skipped where it is written,
+	 * which is a case nobody watches. The flag stays because it costs one argument and the
+	 * production system is Linux; what is missing is a guard, and this paragraph is the
+	 * record of that rather than a comment excusing it.
 	 *
 	 * <p><b>THE TWO THINGS IT DOES NOT DO, named rather than left to be found.</b>
 	 *

@@ -26,7 +26,14 @@ RUN useradd --system --uid 1001 btl
 # WhatEachStackRequiresTest.theImageOwnsThatFolderBeforeItStopsBeingRoot reads it off the
 # rendered configuration rather than out of this comment, so the day it moves this line is
 # what goes red.
-RUN mkdir -p /var/lib/btl/photos && chown -R btl:btl /var/lib/btl
+#
+# THE FOLDER ITSELF AND NOT ITS PARENT, corrected 20.09.2026. `chown -R /var/lib/btl` did
+# reach it, so nothing was broken; what it cost is that the Dockerfile and the stacks named
+# two different paths, and a recursive chown of a parent goes on looking right on the day a
+# stack moves its pictures somewhere that parent no longer contains. `/var/lib/btl` is left
+# root-owned on purpose: the backend writes INSIDE this folder and only needs to traverse
+# the one above it, which drwxr-xr-x already allows.
+RUN mkdir -p /var/lib/btl/photos && chown -R btl:btl /var/lib/btl/photos
 USER btl
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar

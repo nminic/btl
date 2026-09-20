@@ -673,7 +673,7 @@ class RaceWriteApi {
 	 * {@link #change} says which and why.
 	 *
 	 * <p><b>The list is written out by hand and it has a floor in the same commit.</b>
-	 * {@code RaceWriteApiTest.anEditMustSendEveryFieldTheFormHas} reads the components of
+	 * {@code RaceWriteApiTest.everyFieldAnEditMustSend} reads the components of
 	 * {@link Upsert} off the record itself, takes the three away, and drives one case per
 	 * field that is left. A tenth field added to the form tomorrow is a case that fails
 	 * the day it is added rather than a field nobody remembered to require.

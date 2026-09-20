@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -647,13 +648,70 @@ class PhotoApiTest {
 				.isEqualTo(TWICE_OVER.bytes());
 	}
 
-	/** One picture, who holds it, and whether that holder is something the portal publishes. */
+	/**
+	 * One picture, who holds it, and whether that holder is something the portal publishes.
+	 *
+	 * <p><b>{@code holder} is the name of a COLUMN and it is asked of the database, not
+	 * believed.</b> It is spelt exactly as {@code pg_constraint} spells one, which is what
+	 * lets {@link #whatHolds(long)} answer with the same strings and
+	 * {@link #whatHoldsAPictureDecidesWhetherItIsAnswered} compare the two.
+	 */
 	private record Held(String holder, Written picture, int answered) {
 
 		@Override
 		public String toString() {
 			return holder + " -> " + answered;
 		}
+	}
+
+	/**
+	 * EVERY COLUMN THE SCHEMA LETS POINT AT A PICTURE, asked of {@code pg_constraint}.
+	 *
+	 * <p>One reader for the two questions this file asks about holders - which of them
+	 * EXIST, and which of them hold one given picture - so that neither of them is a list
+	 * written here. The names come back as {@code table.column}, which is how this file
+	 * spells a holder everywhere.
+	 */
+	private List<String> everyColumnThatMayPointAtAPicture() {
+		return db.sql("select c.conrelid::regclass::text || '.' || a.attname"
+						+ " from pg_constraint c"
+						+ " cross join lateral unnest(c.conkey) as k(attnum)"
+						+ " join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum"
+						+ " where c.contype = 'f' and c.confrelid = 'photo'::regclass"
+						+ " order by 1")
+				.query(String.class).list();
+	}
+
+	/**
+	 * AND WHICH OF THEM REALLY POINT AT THIS ONE, which is what a case may believe about a
+	 * holder.
+	 *
+	 * <p><b>Why it is here at all.</b> A holder written into a case is a STRING: until
+	 * 20.09.2026 {@code Held("team.logo_id", WEBP, 200)} said nothing that any line checked,
+	 * and moving that picture onto a competitor in the fixture left every case green while
+	 * the word {@code team} went on standing in the name of the case. Asked this way the
+	 * word is an assertion: the answer comes off the ROWS, the columns it walks come off the
+	 * catalogue, and there is no second list anywhere to go stale.
+	 *
+	 * <p>The table and the column are interpolated because a column name cannot be a
+	 * parameter - and they are the database's own words, come back from the query above,
+	 * never a string this file chose.
+	 */
+	private List<String> whatHolds(long picture) {
+		List<String> holding = new ArrayList<>();
+
+		for (String column : everyColumnThatMayPointAtAPicture()) {
+			String table = column.substring(0, column.indexOf('.'));
+			String field = column.substring(column.indexOf('.') + 1);
+
+			if (db.sql("select exists (select 1 from %s where %s = ?)".formatted(table, field))
+					.param(picture).query(Boolean.class).single()) {
+
+				holding.add(column);
+			}
+		}
+
+		return holding;
 	}
 
 	/**
@@ -665,6 +723,11 @@ class PhotoApiTest {
 	 * answered nothing. The floor under this list is
 	 * {@link #everyColumnPointingAtAPictureIsNamedHereAsPublicOrNot()}, which asks the
 	 * schema.
+	 *
+	 * <p><b>And the floor under each ENTRY is {@link #whatHolds(long)}</b>, which asks the
+	 * rows. The two together are what keep this from being four labels: the schema says
+	 * these four columns are all there are, and the rows say that the picture in each entry
+	 * is held by the column the entry names and by no other.
 	 */
 	private static Stream<Held> everyHolderThereIs() {
 		return Stream.of(
@@ -690,19 +753,45 @@ class PhotoApiTest {
 	 * refused for reasons of their own and each has its own case; take any of those three
 	 * away from these two and the 404 would be true for a reason that is not this one. The
 	 * floors below assert exactly that before the answer is read.
+	 *
+	 * <p><b>AND THE HOLDER IS ONE OF THOSE FLOORS SINCE 20.09.2026, because until then it
+	 * was only the name of the case.</b> Measured: giving {@code WEBP} to a competitor
+	 * instead of to a team left all twenty seven cases green while the case went on being
+	 * called {@code team.logo_id}, so „a team's mark is answered" was a sentence no line
+	 * held. {@link #whatHolds(long)} asks the rows which columns point at this one, over
+	 * every column the catalogue lets point at a picture, and the comparison is EXACT in
+	 * both directions: a picture that moved to another holder falls, and so does one that
+	 * quietly picked up a second - which would make the 200 or the 404 true for a holder
+	 * this case is not about.
 	 */
 	@ParameterizedTest
 	@MethodSource("everyHolderThereIs")
 	void whatHoldsAPictureDecidesWhetherItIsAnswered(Held held) throws Exception {
-		assertThat(db.sql("select count(*) from photo where digest = ?")
-						.param(held.picture().digest()).query(Long.class).single())
-				.as("%s: the digest this case asks for stands on no row, so a 404 would be the"
-						+ " answer to a picture that is not there", held)
-				.isEqualTo(1L);
-		assertThat(FOLDER.resolve(String.valueOf(ids.get(held.picture().digest()))))
+		List<Long> rows = db.sql("select id from photo where digest = ?")
+				.param(held.picture().digest()).query(Long.class).list();
+
+		assertThat(rows)
+				.as("%s: this digest does not stand on exactly one row, so either a 404 would be"
+						+ " the answer to a picture that is not there, or the tie-break is what"
+						+ " chooses the row this case is about", held)
+				.hasSize(1);
+
+		long picture = rows.get(0);
+
+		assertThat(FOLDER.resolve(String.valueOf(picture)))
 				.as("%s: this picture's file is not on disk, so a 404 would be the answer to a"
 						+ " row whose file has gone", held)
 				.exists();
+
+		List<String> holding = whatHolds(picture);
+
+		assertThat(holding)
+				.as("%s: this case NAMES a holder and %s is what points at the row. The answer"
+						+ " below is decided by what really holds the picture, so a fixture that"
+						+ " moved it to another holder, or gave it a second one, would be"
+						+ " measuring a rule other than the one this case is called after", held,
+						holding)
+				.containsExactly(held.holder());
 
 		MockHttpServletResponse answer = answerFor(held.picture().digest());
 
@@ -798,14 +887,7 @@ class PhotoApiTest {
 	 */
 	@Test
 	void everyColumnPointingAtAPictureIsNamedHereAsPublicOrNot() {
-		List<String> pointingAtAPicture = db.sql(
-						"select c.conrelid::regclass::text || '.' || a.attname"
-						+ " from pg_constraint c"
-						+ " cross join lateral unnest(c.conkey) as k(attnum)"
-						+ " join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum"
-						+ " where c.contype = 'f' and c.confrelid = 'photo'::regclass"
-						+ " order by 1")
-				.query(String.class).list();
+		List<String> pointingAtAPicture = everyColumnThatMayPointAtAPicture();
 
 		assertThat(pointingAtAPicture)
 				.as("nothing in the schema points at a picture at all, so the route has nothing"
@@ -1022,7 +1104,7 @@ class PhotoApiTest {
 		/* AND A CACHEABLE ANSWER CARRYING A COOKIE MAY NOT BE KEPT BY ANYTHING IN BETWEEN.
 		   Asked of the answer itself rather than written as „this says private", because what
 		   makes `public` wrong here is not a preference: this is the only answer in the
-		   portal that is cacheable at all, `ApiSecurity.csrf.spa()` puts an XSRF-TOKEN cookie
+		   portal that is cacheable at all, `ApiSecurity`'s `csrf.spa()` puts an XSRF-TOKEN cookie
 		   on everything this chain answers, and an intermediary that kept such an answer
 		   would hand one visitor's token to every later one. Measured 20.09.2026: the two
 		   headers really do arrive together. The day the cookie stops riding on this answer,
