@@ -84,13 +84,17 @@ import java.util.regex.Pattern;
  * and {@code image/webp}, which is why nothing here validates what it read: a fourth value
  * cannot be written, and a branch for one could never be measured.
  *
- * <p><b>And {@code nosniff}, which is the one header that makes the sentence above binding
- * on a browser.</b> Without it a browser may disregard the type and decide from the bytes,
- * and the whole point of answering from the row is that the row is the only thing that
- * decided. The edge sets this header for the portal already (ADL A12a, 5, which names it
- * among the three {@code deploy/README.md} sets), and it is set here as well on purpose:
- * this route is the portal's first that answers with bytes somebody else chose, and a rule
- * it depends on must not live only in a proxy it does not ship with.
+ * <p><b>And {@code nosniff} is what makes the sentence above binding on a browser, and this
+ * class does not write it.</b> Without it a browser may disregard the type and decide from
+ * the bytes, and the whole point of answering from the row is that the row is the only
+ * thing that decided. A first draft set the header here; measured by taking it off again,
+ * the answer carries it anyway, because Spring Security's own header writer puts it on
+ * everything this chain answers. So what is left is a case pinning that it is there
+ * ({@code PhotoApiTest.aPictureMayBeKeptForAYearAndItsTypeMayNotBeGuessed}): nothing else
+ * in the portal serves bytes a member chose, so nothing else would notice the day that
+ * default changed. The edge sets it too (ADL A12a, 5, which names it among the three
+ * {@code deploy/README.md} sets), which is a third floor and not the one this route rests
+ * on.
  *
  * <p><b>The cache is a year and it is immutable, which is a sentence about the ADDRESS
  * rather than about the picture.</b> The name is the digest of the content, so bytes behind
@@ -214,10 +218,13 @@ class PhotoApi {
 		return ResponseEntity.ok()
 				.contentType(MediaType.parseMediaType(kept.get().mediaType()))
 				.cacheControl(CacheControl.maxAge(FOR_A_YEAR).cachePublic().immutable())
-				/* Spring writes this header for the pages it serves and for nothing it does
-				   not; this answer is bytes somebody else chose, and the type on it is only
-				   as good as the browser's willingness to believe it. */
-				.header("X-Content-Type-Options", "nosniff")
+				/* AND NOTHING IS WRITTEN HERE ABOUT SNIFFING, which a first draft did.
+				   `X-Content-Type-Options: nosniff` is on this answer already, written by the
+				   chain's own header writer for everything it answers - measured by taking the
+				   explicit header off and finding the case that asks for it still green. A
+				   line that changes no answer beside a sentence crediting it is worse than no
+				   line, so the fact is PINNED in the case instead, because this route is the
+				   one that depends on it. */
 				.body(bytes);
 	}
 

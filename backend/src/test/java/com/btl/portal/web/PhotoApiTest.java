@@ -337,13 +337,20 @@ class PhotoApiTest {
 	 */
 	@Test
 	void aRowWithNoFileIsAnsweredExactlyAsADigestNobodyWrote() throws Exception {
-		MockHttpServletResponse itsFileHasGone = answerFor(WITH_NO_FILE.digest());
-		MockHttpServletResponse nobodyWroteIt = answerFor(NOBODY_WROTE);
+		/* THE TWO NAMES ARE HELD HERE AND THE FLOOR IS OVER THESE VERY STRINGS. Written
+		   against the two constants instead, the floor stays true while a request quietly
+		   moves onto the other name - measured, and it passed. The same fault as a floor
+		   built beside the requests it is meant to hold rather than over them. */
+		String itsFileHasGoneName = WITH_NO_FILE.digest();
+		String nobodyWroteName = NOBODY_WROTE;
 
-		assertThat(WITH_NO_FILE.digest())
+		assertThat(itsFileHasGoneName)
 				.as("the two names in this comparison are one name, so everything below is"
 						+ " satisfied by an answer being equal to itself")
-				.isNotEqualTo(NOBODY_WROTE);
+				.isNotEqualTo(nobodyWroteName);
+
+		MockHttpServletResponse itsFileHasGone = answerFor(itsFileHasGoneName);
+		MockHttpServletResponse nobodyWroteIt = answerFor(nobodyWroteName);
 
 		assertThat(itsFileHasGone.getStatus())
 				.as("a row whose file is not on disk was answered something other than 404, so a"
@@ -585,9 +592,15 @@ class PhotoApiTest {
 	 * they say three things - how long, who may keep it, and that there is no point ever
 	 * asking again - and a header that lost one of them would still carry the other two.
 	 *
-	 * <p>{@code nosniff} is here for a different reason and is asked for in the same case
-	 * because it rides on the same answer: the type is decided by the row (ADL A12a, 1) and
-	 * this is what stops a browser deciding it from the bytes instead.
+	 * <p><b>{@code nosniff} is here for a different reason and NOTHING IN {@link PhotoApi}
+	 * PUTS IT THERE.</b> It rides on the same answer and it is what stops a browser working
+	 * the type out from the bytes instead of reading it off the row (ADL A12a, 1). This
+	 * class wrote it explicitly until a mutation measured that taking the line out changed
+	 * no answer: Spring Security's own header writer sets it on everything the chain
+	 * answers. So the line went and the assertion stayed, which is what „pinning" is for
+	 * here - this route is the only one in the portal that answers with bytes somebody else
+	 * chose, so it is the only place where that default going away would matter, and
+	 * nothing else would go red.
 	 */
 	@Test
 	void aPictureMayBeKeptForAYearAndItsTypeMayNotBeGuessed() throws Exception {
