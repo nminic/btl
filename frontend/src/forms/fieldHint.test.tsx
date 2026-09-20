@@ -11,11 +11,27 @@ import { FormRenderer } from './FormRenderer'
 import { must } from '../test/at'
 import { setupUser } from '../test/user'
 
-/** The seven rules the owner kept on the whole portal on 31.08.2026, written out
- *  once and read by two cases: the one that counts what forms carry, and the one
- *  that refuses to see any of them written into a screen by hand. Two lists would
- *  drift, and the drift would show as a guard quietly holding six. */
+/** The rules the owner keeps on the whole portal, written out once and read by two
+ *  cases: the one that counts what forms carry, and the one that refuses to see any of
+ *  them written into a screen by hand. Two lists would drift, and the drift would show
+ *  as a guard quietly holding one fewer.
+ *
+ *  Seven from 31.08.2026, and **eight since 20.09.2026**: the owner asked for the rule
+ *  about the length of a password to stand beside the field on the screen a link out of
+ *  a message lands on (`pages/account/NewPassword.tsx`). His reason is what separates
+ *  that field from the password field of the registration form, which is one of the
+ *  fifty four he had deleted and still carries no rule: whoever reads this one arrived
+ *  from a message with no rule in front of him, and a password box empties itself on
+ *  every refusal, so learning the rule from the server costs him the whole thing typed
+ *  again.
+ *
+ *  It is in this list on the same terms as the other seven, which is the point: it is
+ *  declared as a `hintKey` on the screen that draws it, so the sweep below counts it,
+ *  and the day somebody adds a ninth without being asked this fails. A rule that
+ *  reached a screen WITHOUT a `hintKey` is the shape three of them outlived the
+ *  deletion in, and that is what the second case refuses. */
 const KEPT = [
+  'newPassword.passwordHint',
   'newResult.linkHint',
   'newResult.photoHint',
   'newResult.raceKindHint',
@@ -47,16 +63,17 @@ function renderForm() {
 }
 
 /**
- * Seven rules on the whole portal, and these are they.
+ * Eight rules on the whole portal, and these are they.
  *
  * The owner read a numbered list of all sixty one on 31.08.2026 and named the ones
- * to keep, with the words for six of them; „sve ostalo treba obrisati". Counted
- * here rather than left to whoever adds a field: a rule added quietly is the state
- * this began in, a dozen paragraphs on one form, and a rule taken away quietly is
- * how the ones he kept would leave.
+ * to keep, with the words for six of them; „sve ostalo treba obrisati". He asked for
+ * an eighth on 20.09.2026, beside the password on the screen a link out of a message
+ * lands on. Counted here rather than left to whoever adds a field: a rule added
+ * quietly is the state this began in, a dozen paragraphs on one form, and a rule
+ * taken away quietly is how the ones he kept would leave.
  */
 describe('the rules that were kept', () => {
-  it('are the seven he named, beside those fields and no others', () => {
+  it('are the eight he named, beside those fields and no others', () => {
     /* **Both homes of the fact, not one.** Fifty nine of the sixty one stood in the
        JSON definitions and two were built in code, in `pages/admin/entityForms.ts`;
        a check that read only the definitions was green while one of those two was
@@ -85,10 +102,12 @@ describe('the rules that were kept', () => {
 
     expect([...new Set(carried)].sort()).toEqual(KEPT)
 
-    /* Nine fields and seven rules, because two of them are asked for on two forms:
+    /* Ten fields and eight rules, because two of them are asked for on two forms:
        the link and the picture stand on both roads a result is reported by, so one
-       wording answers for both. */
-    expect(carried).toHaveLength(9)
+       wording answers for both. The tenth is the eighth rule itself, declared on the
+       screen that draws it rather than in a definition, which is what makes it visible
+       to the sweep above at all. */
+    expect(carried).toHaveLength(10)
   })
 
   it('are never written into a screen by hand, under any name they have had', () => {
@@ -111,10 +130,20 @@ describe('the rules that were kept', () => {
        **Two names are asked for, not one.** The first draft asked only for names
        ending in `rule`, and a review answered it by hand-writing `registration.
        bioHint` into a second screen: one of the seven, drawn beside a field no form
-       asks it for, and the sweep said nothing. The seven do not have to be guessed
-       at, they are listed ten lines above, so both are held: **the three that were
-       deleted must not come back under their old names, and the seven that stay
-       must reach a field only through the form that asks for it.**
+       asks it for, and the sweep said nothing. The names do not have to be guessed
+       at, they are listed above, so both are held: **the three that were deleted
+       must not come back under their old names, and a rule that is kept must reach a
+       field through something the case above can count, never by being typed into a
+       `t(…)` call.**
+
+       **What „through something the case above can count" means since 20.09.2026.**
+       It was „through the form that asks for it" while every rule came from a
+       definition. The eighth does not: `pages/account/NewPassword.tsx` builds its two
+       controls by hand and the sentence takes a number, which `FormRenderer` does not
+       interpolate. So it declares a `hintKey` of its own and hands that to the hint,
+       and the sweep above counts it exactly as it counts a definition's. What this
+       case refuses is unchanged and is the thing that actually went wrong: a name
+       written out inside a call, where nothing counts it.
 
        **Only the opening of the call is read**, which is the shape `i18n/said.test.ts`
        already uses and the shape the first draft got wrong: it asked for the closing
@@ -127,7 +156,7 @@ describe('the rules that were kept', () => {
        rule invented under a wholly new name, `t('picture.explanation')` and the
        like. The name of this case said „whatever they are named" until 31.08.2026 and
        promised exactly that; it now says „under any name they have had", which is the
-       two the expression really reads: a name ending in `rule`, and the seven listed
+       two the expression really reads: a name ending in `rule`, and the ones listed
        above. Holding every paragraph on the portal would mean deciding which of them
        counts as a rule beside a field, and that is a question about the word rather
        than a defect in the code. Comments blanked, so a note naming a key is not
