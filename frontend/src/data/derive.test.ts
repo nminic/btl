@@ -11,6 +11,7 @@ import {
   monthsWithEvents,
   bestOfficialSeason,
   bestSingleRaces,
+  memberOf,
   rankingFor,
   rankMembers,
   topByKilometers,
@@ -488,6 +489,21 @@ describe('a result that names no member', () => {
     expect([...totalsByMember([...anybody, ...nobody]).entries()]).toEqual([
       ...totalsByMember(anybody).entries(),
     ])
+  })
+
+  it('is drawn by a screen that draws runs, and leads to nobody', () => {
+    /* The other half of the rule, for a table of runs rather than a table of
+       people: the row is still a run that happened, so it is not thrown away, and
+       what it has instead of a member is nothing (`EventDetail`).
+
+       Both answers in one case, because either alone is half a statement: a
+       reading that always answered nothing would pass on the second line, and one
+       that never did would pass on the first. */
+    const who = competitor('000001')
+    const byNumber = new Map([[who.memberNumber, who]])
+
+    expect(memberOf(byNumber, at(anybody, 0))).toBe(who)
+    expect(memberOf(byNumber, at(nobody, 0))).toBeUndefined()
   })
 
   it('does not fill up a season that has no field', () => {

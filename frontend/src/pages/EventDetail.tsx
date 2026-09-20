@@ -19,6 +19,7 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
+import { memberOf } from '../data/derive'
 import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { outsideHost, outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
@@ -314,11 +315,10 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                 </thead>
                 <tbody>
                   {ran.map((result) => {
-                    /* Nothing is not a key, and it is asked for separately rather
-                       than let through a map that would answer `undefined` to it
-                       anyway: the map is built out of members, so a member number
-                       that might be nothing cannot be one of its keys, and the
-                       portal keys nothing by one (`data/derive.ts`, `numbered`).
+                    /* Whose run it was, where the result says (`data/derive.ts`,
+                       `memberOf`). Nothing is not a key of this map and is asked
+                       about before it rather than let through it, which is the same
+                       statement `numbered` makes for every figure.
 
                        **The boundary, written here rather than left to be found.**
                        A run by somebody with no number falls to the same column as
@@ -327,8 +327,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                        row should be headed instead is a question for the owner and
                        not for this line, and it is asked rather than answered here,
                        because inventing a word for it would be deciding it. */
-                    const person =
-                      result.memberNumber === null ? undefined : byNumber.get(result.memberNumber)
+                    const person = memberOf(byNumber, result)
                     const name =
                       person === undefined
                         ? result.memberNumber

@@ -105,6 +105,24 @@ export function numbered(results: Result[]): NumberedResult[] {
   )
 }
 
+/**
+ * And the other half of the same rule, for a screen that DRAWS a result rather
+ * than counting it: whose run it was, where it says.
+ *
+ * A table of runs draws the run either way, so it cannot take `numbered` and
+ * throw the row away; what it needs is the member or nothing. Here rather than at
+ * the table, for the reason the rule has one home at all, and because a screen
+ * that asked it for itself would be a second answer to a question that has one.
+ *
+ * Nothing is asked for before the map is, and not let through it: the map is
+ * built out of members, whose numbers are never nothing, so a nothing handed to
+ * it could only ever miss. Written out, the miss is a statement instead of a
+ * coincidence, and it is the same statement `numbered` makes.
+ */
+export function memberOf<T>(byNumber: Map<string, T>, result: Result): T | undefined {
+  return result.memberNumber === null ? undefined : byNumber.get(result.memberNumber)
+}
+
 /** A standing that cannot fill a podium is not a standing. */
 const SMALLEST_FIELD = 3
 
