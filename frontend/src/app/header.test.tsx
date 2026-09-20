@@ -282,6 +282,9 @@ function renderInbox(inbox: Message[]) {
   const session: SessionValue = {
     memberNumber: '000007',
     signIn: vi.fn(),
+    account: null,
+    theServerSignedMeIn: vi.fn(),
+    signedIn: { as: 'member', memberNumber: '000007' },
     signOut: vi.fn(),
     submissions: [],
     corrected: {},

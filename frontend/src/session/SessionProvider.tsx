@@ -30,6 +30,12 @@ export function SessionProvider({
   children: ReactNode
 }) {
   const [memberNumber, setMemberNumber] = useState<string | null>(initialMemberNumber)
+  /* What the server said, and nothing a test may set up front: a real session begins
+     with a cookie and an answer to `GET /api/me`, and a prop that let a case skip that
+     would be a way of measuring a signed in portal without ever measuring the signing
+     in. `Shell` asks the server on every visit (session/useTheServersSession.ts) and
+     writes it here. */
+  const [account, setAccount] = useState<number | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   /* The counted results a moderator has agreed to change during this visit, by the
      identity of the record each one replaces. Read by `useResults`, so the
@@ -482,7 +488,25 @@ export function SessionProvider({
     () => ({
       memberNumber,
       signIn: setMemberNumber,
-      signOut: () => setMemberNumber(null),
+      account,
+      theServerSignedMeIn: setAccount,
+      /* One question, one answer, worked out here from the only two facts there are.
+         The member number wins where both are set, because every screen that draws a
+         member reads the mock through it and the account knows no member (MeApi). */
+      signedIn:
+        memberNumber !== null
+          ? { as: 'member', memberNumber }
+          : account !== null
+            ? { as: 'account', account }
+            : null,
+      /* BOTH, and never one of them. Signing out of a real session while the prototype
+         member number stood would leave the header signed in with a server that has
+         already forgotten the cookie, which is the one state no screen could recover
+         from without another sign in. */
+      signOut: () => {
+        setMemberNumber(null)
+        setAccount(null)
+      },
       submissions,
       corrected,
       submit,
@@ -528,6 +552,7 @@ export function SessionProvider({
     }),
     [
       memberNumber,
+      account,
       going,
       setGoing,
       submissions,

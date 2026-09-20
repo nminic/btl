@@ -8,10 +8,17 @@ import { initialsOf } from './initials'
 import { useRole } from './useRole'
 import './RoleSwitch.css'
 
-/* A control for development and for QA. It exists because the member and
- * administration flows have to be walked through and approved before
- * authentication is built, and there is otherwise no way to reach them. It is
- * never rendered in the production build; see devTools.ts.
+/* A control for development and for QA. It is never rendered in the production build;
+ * see devTools.ts.
+ *
+ * It said „it exists because there is otherwise no way to reach them" until 20.09.2026,
+ * and that is no longer the reason: `/api/sign-in` exists, and a real session sets the
+ * role through the same `become` this control calls (pages/member/SignIn.tsx). WHAT
+ * KEEPS IT IS THE MOCK. Every screen behind these roles draws members, teams and
+ * results out of `/mock` (data/client.ts), and a real account has no member number to
+ * read them by - `MeApi` carries none on purpose. So signing in really reaches the
+ * portal and this control is still the only way to reach the member whose results are
+ * on it. The two go off together, when ADL A50 says the mock does.
  *
  * Moderator is not one choice on it but as many as there are moderators, because
  * "a moderator" is not a person whose rights can be looked up: the superadmin

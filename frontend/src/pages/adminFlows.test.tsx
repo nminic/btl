@@ -45,6 +45,9 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
   return {
     memberNumber: '000007',
     signIn: vi.fn(),
+    account: null,
+    theServerSignedMeIn: vi.fn(),
+    signedIn: { as: 'member', memberNumber: '000007' },
     signOut: vi.fn(),
     withdraw: vi.fn(),
     amend: vi.fn(),
