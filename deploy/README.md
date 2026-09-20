@@ -15,7 +15,8 @@ internet ──▶ edge-caddy (host: /opt/edge, owns :80 and :443)
            deploy-frontend-1  (nginx, this repo)
                  │  /api/ ──▶ backend:8080
                  ▼
-           deploy-backend-1   (Spring Boot, Flyway on startup)
+           deploy-backend-1   (Spring Boot, Flyway on startup,
+                               volume deploy_photos)
                  │  jdbc ──▶ postgres:5432
                  ▼
            deploy-postgres-1  (postgres:18, volume deploy_postgres-data)
@@ -72,11 +73,14 @@ edge proxy is ever stopped first, the network really is removed and the edge the
 refuses to start with `network deploy_default declared as external, but could not
 be found`.
 
-**And `down -v` takes the production database with it.** The rows live in the
-named volume `deploy_postgres-data`, and `-v` deletes exactly that. There is no
-backup yet (see "Known gaps"), so there is nothing to restore from. A plain
-`down` leaves the volume alone; the flag is the difference between an outage and
-a loss.
+**And `down -v` takes the production database with it, and since 20.09.2026 the
+pictures too.** The rows live in the named volume `deploy_postgres-data` and the
+uploaded files in `deploy_photos`, and `-v` deletes exactly those two. There is no
+backup of either yet (see "Known gaps"), so there is nothing to restore from - and
+the pictures are worse than the rows, because a schema can be rebuilt from the
+migrations and a photograph a member uploaded cannot be rebuilt from anything. A
+plain `down` leaves both alone; the flag is the difference between an outage and a
+loss.
 
 Everything an operator needs is reachable without it:
 
@@ -393,7 +397,8 @@ alone until QA had run this arrangement, and it grew the other two once QA had.
 internet ──▶ edge-caddy ──▶ qa-frontend  (nginx, this repo)
                                  │  /api/ ──▶ backend:8080
                                  ▼
-                            qa-backend   (Spring Boot, Flyway on startup)
+                            qa-backend   (Spring Boot, Flyway on startup,
+                                          volume qa_photos)
                                  │  jdbc ──▶ postgres:5432
                                  ▼
                             qa-postgres  (postgres:18, volume qa_postgres-data)
@@ -605,6 +610,21 @@ is attached to.
   QA is different and stays different: it holds nothing that needs restoring, so
   `qa_postgres-data` is backed up by nothing on purpose and is rebuilt by
   dropping it and letting Flyway run again.
+- **And the pictures are a second volume with the same gap.** `qa_photos` holds
+  the files `/api/photos/{name}` serves, which ADL A43, 2, decided should live in a
+  named volume beside the database rather than in a folder on the host: "rezervna
+  kopija mora da pokrije i volumen, a danas ne pokriva nista", written down there
+  on the day the arrangement was chosen and still true. On QA it is the same
+  sentence as the one above - nothing there needs restoring, and dropping the
+  volume loses pictures whose rows will then answer 404 until somebody uploads
+  again. **Production now has the same volume and the same setting**, added
+  20.09.2026 after a security round measured what their absence meant: with
+  neither, the backend falls back to `application.properties`, whose default is
+  `${java.io.tmpdir}`, so production would have kept members' photographs in the
+  container's `/tmp` - writable by everything in it, emptied by every build, and
+  in no backup at all. `deploy_photos` is therefore the **second** production
+  volume the nightly `pg_dump` above has to grow a target for, and unlike the
+  database it holds something no migration can rebuild.
 - **`compose.prod.yml` is measured, and it took a hole to get there.** `PostmanTest`
   read `compose.qa.yml` BY NAME, so when this directory grew a second stack the new
   one was covered by nothing: measured, deleting

@@ -111,7 +111,7 @@ class ApiSecurityTest {
 				.filter(this::answersAGet)
 				.flatMap(this::pathsOf)
 				.filter(path -> path.startsWith("/api/"))
-				.filter(path -> !ApiSecurity.READ_BY_ANYBODY.contains(path))
+				.filter(path -> !openedByName(path))
 				.map(ApiSecurityTest::withASampleValue)
 				.distinct().sorted().toList();
 
@@ -134,6 +134,24 @@ class ApiSecurityTest {
 		}
 	}
 
+	/**
+	 * WHETHER THIS PATTERN IS ONE {@link ApiSecurity} OPENED, asked of BOTH its lists.
+	 *
+	 * <p>There are two since B83 and the note on
+	 * {@link ApiSecurity#READ_BY_ANYBODY_UNDER_A_NAME} says why they cannot be one. Asked as
+	 * text and not as a pattern, exactly as the excuse in {@code RightsAtTheDoorTest} is:
+	 * each entry of the second list is written as the SAME string the controller maps, so
+	 * the comparison is between one text and itself. The day an entry is written some other
+	 * way - {@code /api/photos/*} for {@code /api/photos/&#123;name&#125;} - this stops
+	 * excusing that route and the case below demands 401 of an address that answers a
+	 * visitor. That is a red build asking for a decision, which is the direction this whole
+	 * file is written in, and not a hole.
+	 */
+	private static boolean openedByName(String pattern) {
+		return ApiSecurity.READ_BY_ANYBODY.contains(pattern)
+				|| ApiSecurity.READ_BY_ANYBODY_UNDER_A_NAME.contains(pattern);
+	}
+
 	/** A mapping that names no method at all answers every one of them, GET included. */
 	private boolean answersAGet(RequestMappingInfo info) {
 		Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
@@ -152,7 +170,7 @@ class ApiSecurityTest {
 	 * does: the question is whether a rule lets it through, and no rule here is about
 	 * the value.
 	 */
-	private static String withASampleValue(String pattern) {
+	static String withASampleValue(String pattern) {
 		return pattern.replaceAll("\\{[^/}]*\\}", "1").replace("**", "1").replace("*", "1");
 	}
 
@@ -223,6 +241,69 @@ class ApiSecurityTest {
 					+ resource.toUpperCase(java.util.Locale.ROOT);
 
 			for (String beside : new String[] {open + "/2", open + "/", respelt}) {
+				assertThat(statusOf(beside))
+						.as("%s was answered, and only %s is open", beside, open)
+						.isEqualTo(401);
+			}
+		}
+	}
+
+	/**
+	 * AND THE SAME FOR THE LIST WHOSE ENTRIES CARRY A NAME, which is a different shape and
+	 * therefore a different case.
+	 *
+	 * <p><b>The entry itself is never asked.</b> {@code /api/photos/&#123;name&#125;} is a
+	 * pattern and not an address: asked as written it would be a picture called
+	 * „&#123;name&#125;", which is a 404 from the route and would say nothing about the
+	 * rule. So the sample value the rest of this file already uses stands in for the name,
+	 * and the dispatcher is asked whether what came out is really an address, the same floor
+	 * {@code everyRouteNobodyOpenedIsARouteNobodyCanRead} needed for the same reason.
+	 *
+	 * <p><b>What „open" is measured as is NOT 401</b>, and that is the whole of what this
+	 * chain decides. A sample name belongs to no row in this class's database, so the route
+	 * answers 404 - which is the route talking, not the chain. Written as „is 200" the case
+	 * would have to keep a picture in the database of a class that is about rules, and it
+	 * would go red the day the route answered a refusal for a reason of its own.
+	 *
+	 * <p><b>And the three spellings beside it stay shut.</b> The folder above the name
+	 * ({@code /api/photos}) maps nothing and must not be opened by the rule that opens what
+	 * is under it - a route answering there would be a list of every picture the portal
+	 * holds, which is what an address made of a digest exists to prevent. A second segment
+	 * under the name is not this route's address at all. And the RESOURCE respelt is the
+	 * same question {@code noOpenRouteOpensAnythingBesideIt} asks of its own list: it is the
+	 * segment before the name that is respelt here and not the name, because the name is
+	 * data - how a picture answers to a name spelt differently is the route's own business
+	 * and {@code PhotoApiTest.aDigestSpeltInCapitalsIsNobody} measures it there.
+	 */
+	@Test
+	void noOpenNameOpensAnythingBesideIt() throws Exception {
+		assertThat(ApiSecurity.READ_BY_ANYBODY_UNDER_A_NAME)
+				.as("nothing is open under a name at all, so this compares nothing")
+				.isNotEmpty();
+
+		for (String open : ApiSecurity.READ_BY_ANYBODY_UNDER_A_NAME) {
+			String asked = withASampleValue(open);
+
+			assertThat(asked)
+					.as("%s carries no name, so the sample below is the entry itself and the case"
+							+ " asks about a pattern instead of an address", open)
+					.isNotEqualTo(open);
+			assertThat(reallyMapped(asked))
+					.as("%s is not a path this server maps at all, so asking it about a rule"
+							+ " measures nothing; the pattern it was made from needs a sample value"
+							+ " that fits", asked)
+					.isTrue();
+			assertThat(statusOf(asked))
+					.as("%s is opened by name and the chain refused somebody who is not signed in",
+							asked)
+					.isNotEqualTo(401);
+
+			String folder = open.substring(0, open.lastIndexOf('/'));
+			String respelt = folder.substring(0, folder.lastIndexOf('/') + 1)
+					+ folder.substring(folder.lastIndexOf('/') + 1).toUpperCase(java.util.Locale.ROOT)
+					+ asked.substring(folder.length());
+
+			for (String beside : new String[] {folder, folder + "/", asked + "/2", respelt}) {
 				assertThat(statusOf(beside))
 						.as("%s was answered, and only %s is open", beside, open)
 						.isEqualTo(401);

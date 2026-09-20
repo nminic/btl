@@ -985,7 +985,7 @@ class MeWriteApiTest {
 	 * rather than of the list beside it.
 	 *
 	 * <p>The floor under {@link MeWriteApi#WHAT_THIS_ROUTE_TAKES}, in the same commit as the
-	 * list, which is {@code RaceWriteApiTest.anEditMustSendEveryFieldTheFormHas}'s own
+	 * list, which is {@code RaceWriteApiTest.everyFieldAnEditMustSend}'s own
 	 * arrangement. A third field added to {@link MeWriteApi.Change} tomorrow fails the build
 	 * until somebody decides whether leaving it out is a refusal, instead of quietly not
 	 * being named in one.
