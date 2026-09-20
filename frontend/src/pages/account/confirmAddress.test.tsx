@@ -122,6 +122,42 @@ describe('arriving with a link', () => {
   })
 })
 
+describe('arriving at the address the server really writes', () => {
+  /**
+   * WITHOUT A LANGUAGE ON IT, WHICH IS THE ONLY ADDRESS ANYBODY EVER ARRIVES AT.
+   *
+   * <p>`WhatTheMessageSays.about` writes `portal.address() + message.path() + "?token="`,
+   * and for this road `CONFIRM_THE_ADDRESS.path()` is `/potvrda-adrese`. No `/sr` is in it, because
+   * the server does not know which language the reader wants. Every other case in this
+   * file opens `/sr/potvrda-adrese?token=…`, which is where the reader ENDS UP rather
+   * than where he starts.
+   *
+   * <p>What carries him there is one expression in `LocaleLayout.tsx`, and it had no
+   * case of its own on either road: deleting `${location.search}` from it, and
+   * separately `${location.pathname}`, each left the whole suite green while every link
+   * the server has ever posted would have landed somewhere it cannot be spent.
+   */
+  const AS_THE_SERVER_WRITES_IT = '/potvrda-adrese?token=veza-iz-poruke'
+
+  it('carries the token through the language the server did not put on it', async () => {
+    server = serverThat(() => did())
+
+    const { router } = renderAt(AS_THE_SERVER_WRITES_IT)
+
+    await screen.findByText(/Adresa je potvrđena/)
+
+    const { pathname, search } = router.state.location
+
+    expect(`${pathname}${search}`).toBe('/sr/potvrda-adrese?token=veza-iz-poruke')
+
+    /* And the word this case sent is the word that reached the route. It stands nowhere
+       else in the file, so it cannot have come off the address the other cases open. */
+    expect(JSON.parse(String(at(sentToTheRoute(), 0).init?.body))).toEqual({
+      token: 'veza-iz-poruke',
+    })
+  })
+})
+
 describe('arriving without one', () => {
   it('says there is nothing to confirm, and asks the server for nothing', async () => {
     server = serverThat(() => null)

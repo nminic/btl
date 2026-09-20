@@ -887,6 +887,7 @@
     "intro": "Upiši novu lozinku za svoj nalog i ponovi je.",
     "password": "Nova lozinka",
     "passwordRepeat": "Ponovi novu lozinku",
+    "passwordHint": "Najmanje {count} znakova. Drugih uslova nema, ali lozinka ne sme da bude jedna od onih koje su se već našle u javno objavljenim provalama.",
     "submit": "Postavi lozinku",
     "sending": "Šalje se",
     "done": "Lozinka je postavljena. Sada možeš da se prijaviš.",

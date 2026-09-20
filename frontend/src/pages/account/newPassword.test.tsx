@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { at } from '../../test/at'
+import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import {
   answeredWith,
@@ -75,22 +75,92 @@ describe('opening the screen', () => {
     expect(server.asked.filter((one) => one.path.startsWith('/api'))).toEqual([])
   })
 
-  it('says nothing beside the field about how long a password has to be', async () => {
-    /* The owner kept seven rules beside fields on the whole portal on 31.08.2026 and
-       had the other fifty four deleted; the password field was not among the seven,
-       and `forms/fieldHint.test.tsx` is what holds that. Read here as well, from the
-       reader's side rather than off the source, because the sweep there knows the
-       names a rule has HAD and cannot know one invented under a new one.
+  it('says beside the field how long a password has to be, and says the number once', async () => {
+    /* The owner asked for this on 20.09.2026, as the eighth rule beside a field on the
+       portal: whoever reads this screen arrived from a link in a message with no rule in
+       front of him, and a password box empties itself on every refusal, so learning the
+       rule from the server costs him the whole thing typed again. This case said the
+       opposite until that day, because the seven kept on 31.08.2026 did not include the
+       password field of the registration form.
 
-       The number is not absent from the screen - it is in the sentence the server's
-       own refusal is told in, which the table below reads. */
+       Read from the reader's side rather than off the source: the sweep in
+       `forms/fieldHint.test.tsx` knows what the portal DECLARES, and this knows what a
+       reader is actually given.
+
+       **Asked of what the field itself points at, not of the page.** The number stands
+       in a second sentence on this screen, the one the server's own refusal is told in,
+       and a case that looked for it anywhere on the page would be green while the rule
+       beside the field was gone and the refusal was on screen instead. Those are two
+       different moments and the reader is owed both.
+
+       And the number is the one `PasswordPolicy.SHORTEST` keeps, through the single copy
+       of it this portal has (`passwordRule.ts`), never a figure typed into this case. */
     server = serverThat(() => null)
 
     renderAt(AT)
 
-    await screen.findByLabelText('Nova lozinka')
+    const field = await screen.findByLabelText('Nova lozinka')
+    const described = must(
+      field.getAttribute('aria-describedby'),
+      'what the password field is described by',
+    )
+    const rule = must(document.getElementById(described), 'the rule beside the password')
 
-    expect(screen.queryByText(new RegExp(String(SHORTEST_PASSWORD)))).not.toBeInTheDocument()
+    expect(rule).toHaveTextContent(new RegExp(`Najmanje ${String(SHORTEST_PASSWORD)} znakova`))
+    /* And it is read out with the field rather than only drawn: a rule only sighted
+       people have is a rule half the people filling in the form do not (WCAG 2.2
+       SC 1.3.1, forms/FieldHint.tsx). */
+    expect(rule).toHaveClass('hint__text')
+    /* The refusal has not been drawn, so the only sentence carrying the number on this
+       screen is the one above. Without this the assertion could be met by a screen that
+       had already been told no. */
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+describe('arriving at the address the server really writes', () => {
+  /**
+   * WITHOUT A LANGUAGE ON IT, WHICH IS THE ONLY ADDRESS ANYBODY EVER ARRIVES AT.
+   *
+   * <p>`WhatTheMessageSays.about` builds `portal.address() + message.path() + "?token="`,
+   * and `SET_A_NEW_PASSWORD.path()` is `/nova-lozinka`. There is no `/sr` in it and there cannot
+   * be: the server does not know which language the reader wants. Every other case in
+   * this file opens `/sr/nova-lozinka?token=…`, which is where the reader ENDS UP and
+   * not where he starts, so none of them touches the one piece of code that carries him
+   * there.
+   *
+   * <p>That piece is a single expression, `LocaleLayout.tsx`:
+   * `` `/${DEFAULT_LOCALE}${location.pathname}${location.search}${location.hash}` ``.
+   * Measured before this case was written: deleting `${location.search}` left the whole
+   * suite green, and so did deleting `${location.pathname}`. The first sends every link
+   * ever posted to a screen with no token on it, the second sends it to the front page,
+   * and in both cases nobody can set a password at all.
+   */
+  const AS_THE_SERVER_WRITES_IT = '/nova-lozinka?token=veza-iz-poruke'
+
+  it('carries the token through the language the server did not put on it', async () => {
+    server = serverThat(() => did())
+
+    const { router } = renderAt(AS_THE_SERVER_WRITES_IT)
+
+    await setOne()
+
+    /* The address the reader is standing at: the language put in front of the path the
+       message carried, with the query still on it. Read off the router, because a
+       memory router never writes to `window.location`. */
+    const { pathname, search } = router.state.location
+
+    expect(`${pathname}${search}`).toBe('/sr/nova-lozinka?token=veza-iz-poruke')
+
+    /* And the token really reached the route, which is the half an address alone does
+       not prove: a screen could stand at the right address and send something else. The
+       word is this case's own and stands nowhere else in the file, so it cannot have
+       arrived from the address the other cases open. */
+    expect(JSON.parse(String(at(sentToTheRoute(), 0).init?.body))).toEqual({
+      token: 'veza-iz-poruke',
+      password: TYPED,
+      passwordRepeat: TYPED_AGAIN,
+    })
   })
 })
 
@@ -181,6 +251,17 @@ describe('what the screen says about each answer', () => {
       'a reason this screen does not know',
       () => refused('nestoNovo'),
       /odbio zahtev uz razlog nestoNovo/,
+    ],
+    [
+      'a reason that names something every object already has',
+      /* The word comes off the wire, so it can be `constructor` as easily as
+         `nestoNovo`, and `refusals[reason]` hands back a FUNCTION for that one rather
+         than nothing: the sentence below is then looked up by a function, `translate`
+         breaks on it, and `ErrorBoundary` takes the whole panel away from a reader who
+         should have been told what the server said. Asked with `Object.hasOwn`, which
+         is the shape `refusals.test.ts` already uses, it is a reason like any other. */
+      () => refused('constructor'),
+      /odbio zahtev uz razlog constructor/,
     ],
     [
       'a request nobody proved came from the portal',

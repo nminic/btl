@@ -35,7 +35,15 @@ export function ServerSaid({
 
   const said = (): string => {
     if (answer.got === 'refused') {
-      const known = refusals[answer.reason]
+      /* `Object.hasOwn` and never `refusals[reason]` on its own, because the word comes
+         off the wire: a server answering `constructor`, `toString`, `valueOf` or
+         `hasOwnProperty` is handed something every object has, and what comes back is a
+         FUNCTION rather than `undefined`. The branch below then reads it as a name of a
+         sentence, `translate` is given a function where it expects a string, and the
+         reader loses the whole panel to `ErrorBoundary` instead of being told what the
+         server said. The same question is asked the same way in `refusals.test.ts`,
+         which is where this shape is already written down. */
+      const known = Object.hasOwn(refusals, answer.reason) ? refusals[answer.reason] : undefined
 
       return known === undefined ? t('server.refused', { reason: answer.reason }) : t(known, params)
     }

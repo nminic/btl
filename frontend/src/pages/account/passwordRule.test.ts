@@ -8,8 +8,13 @@ import { SHORTEST_PASSWORD } from './passwordRule'
  *
  * <p>The rule is the owner's, 11.09.2026: „lozinka najmanje 12 znakova, bez ostalih
  * uslova, uz proveru na listi procurelih" (`ADL.md`). It is enforced in one place,
- * `PasswordPolicy.SHORTEST`, and the screen that asks for a password writes it beside
- * the field because PDL asks for the strength rules to stand there.
+ * `PasswordPolicy.SHORTEST`, and the number below is the portal's only copy of it.
+ *
+ * <p>Two sentences on one screen carry that number, and both were decided rather than
+ * assumed: the words the server's refusal is told in, and - since the owner asked for
+ * it on 20.09.2026 - the rule beside the field itself. Which sentences those are is
+ * `pages/account/newPassword.test.tsx`'s business; this file holds only that the number
+ * in them is the server's.
  *
  * <p><b>Two places holding one number is the fault this file exists against, and the
  * portal already carries a standing example of it.</b> `forms/definitions/registracija.form.json`

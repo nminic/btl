@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useFilterParams } from '../../app/useFilterParams'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { FieldHint } from '../../forms/FieldHint'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from './askTheServer'
 import { SHORTEST_PASSWORD } from './passwordRule'
@@ -31,14 +32,52 @@ import '../member/Member.css'
  *
  * **NOTHING JUDGES THE PASSWORD HERE**, and `passwordRule.ts` says at length why: the
  * rule is the server's, the answer comes back named, and each of its three names has
- * its own sentence below. The number in one of those sentences is a copy of
+ * its own sentence below. The number in those sentences is a copy of
  * `PasswordPolicy.SHORTEST` and is held to it by a test.
+ *
+ * **But the rule IS written beside the field, and it is the eighth on the portal**
+ * (owner, 20.09.2026). He had read a numbered list of all sixty one such rules on
+ * 31.08.2026, kept seven and had the rest deleted, and the password field of the
+ * registration form was not among the seven. This field is not that one: whoever
+ * arrives here arrives from a link in a message, has no rule in front of him, and finds
+ * it out only when the server refuses - by which time the box has been emptied and he
+ * types the whole thing again. `forms/fieldHint.test.tsx` counts the eight, and this
+ * one is counted with them because `PASSWORD_FIELD` below declares it as a `hintKey`
+ * like any other.
  *
  * **What it does refuse to do is send nothing anywhere.** An address with no token on
  * it is not a link somebody was sent, so there is nothing to spend and the form is not
  * drawn: that is a fact about the address, not a second opinion about the token, and
  * the server remains the only thing that judges a token that is really there.
  */
+
+/**
+ * The field the rule stands beside, in the shape a form definition gives one.
+ *
+ * <p>Written out here because this screen builds its two controls by hand rather than
+ * from a definition, and because the sentence takes a number: `FormRenderer` draws a
+ * rule with `t(field.hintKey)` and interpolates nothing, so a rule that has to name the
+ * shortest password there is could not come through it even if this screen had a
+ * definition. The number itself comes from `passwordRule.ts`, which is the portal's one
+ * copy of `PasswordPolicy.SHORTEST` and is held to it.
+ *
+ * <p><b>Declared as a `hintKey` and not typed into a `t(…)` call</b>, which is the one
+ * thing that matters about the shape: `forms/fieldHint.test.tsx` counts every `hintKey`
+ * the portal carries and fails when the count moves without anybody saying so. Three
+ * rules outlived the deletion of 31.08.2026 precisely by being written straight into a
+ * screen, where nothing counted them. This one is counted.
+ *
+ * <p>The three ids are the ones `FormRenderer` builds for a field of its own, spelled
+ * the same way, so the rule hangs off a `.field__head` and is measured from it - a box
+ * as wide as the field, which is what keeps it from opening off the edge of a telephone
+ * (`forms/FieldHint.css`).
+ */
+const PASSWORD_FIELD = {
+  id: 'new-password',
+  labelId: 'new-password-label',
+  hintId: 'new-password-hint',
+  hintKey: 'newPassword.passwordHint',
+}
 
 export function NewPassword() {
   const { locale, t } = useI18n()
@@ -125,27 +164,47 @@ export function NewPassword() {
         <RequiredNote />
 
         <div className="rankings__field">
-          <AskedLabel id="new-password">{t('newPassword.password')}</AskedLabel>
-          {/* AND NOTHING BESIDE IT SAYING HOW LONG A PASSWORD HAS TO BE, which is a
-              decision of the owner's and not an omission. On 31.08.2026 he read a
-              numbered list of all sixty one rules the portal wrote beside its fields,
-              named seven to keep and said „sve ostalo treba obrisati"; the password
-              field of the registration form is one of the fifty four, and carries no
-              `hintKey` to this day. PDL of 28.07.2026 („Pravila jačine stoje uz polje
-              kao infotip") is the older sentence and that decision is the newer one.
-              `forms/fieldHint.test.tsx` is what holds it, and an eighth rule is his to
-              ask for rather than ours to add while writing a screen.
+          {/* AND THE RULE BESIDE IT, WHICH THE OWNER ASKED FOR ON 20.09.2026 as the
+              eighth of the seven he kept on 31.08.2026. His reason is the one thing
+              this screen has that the registration form has not: whoever is reading it
+              came from a link in a message with no rule in front of him, and a password
+              box empties itself on every refusal, so finding the rule out from the
+              server costs him the whole thing typed again. PDL of 28.07.2026 („Pravila
+              jačine stoje uz polje kao infotip") is the older sentence and says the
+              same.
 
-              What the reader gets instead is the server's own refusal, in words and
-              with the number in them, the moment it refuses - which is the half
-              `PasswordReset.decide` says out loud on purpose. */}
+              A tooltip and not a paragraph, which is the shape every rule on this
+              portal has had since 11.08.2026 („Svuda ćemo koristiti tooltip"), and it
+              is read out with the field whether or not it is on screen: the control
+              names it in `aria-describedby` (forms/FieldHint.tsx).
+
+              The number in it is the one `PasswordPolicy.SHORTEST` keeps, through the
+              one copy of it this portal has (`passwordRule.ts`), and not a second
+              number written beside a field.
+
+              The server's own refusal is still what a reader gets when it refuses, in
+              words and with the number in them; the two answer different moments. */}
+          <span className="field__head">
+            <AskedLabel id={PASSWORD_FIELD.id}>
+              {/* Named by a box of its own so the letter beside it can say which field
+                  it explains without taking that field its name, exactly as
+                  `FormRenderer` puts `labelId` on the label it draws. */}
+              <span id={PASSWORD_FIELD.labelId}>{t('newPassword.password')}</span>
+            </AskedLabel>
+            <FieldHint
+              id={PASSWORD_FIELD.hintId}
+              text={t(PASSWORD_FIELD.hintKey, { count: SHORTEST_PASSWORD })}
+              of={PASSWORD_FIELD.labelId}
+            />
+          </span>
           <input
-            id="new-password"
+            id={PASSWORD_FIELD.id}
             type="password"
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             aria-required="true"
+            aria-describedby={PASSWORD_FIELD.hintId}
           />
         </div>
 
