@@ -20,6 +20,27 @@ import './RoleSwitch.css'
  * portal and this control is still the only way to reach the member whose results are
  * on it. The two go off together, when ADL A50 says the mock does.
  *
+ * WHICH WAY THE TWO OF THEM WIN OVER EACH OTHER, written down because since 20.09.2026
+ * there are two and nothing said. THE SWITCH OVERTURNS WHAT THE SERVER SAID, in both
+ * directions and by construction: it calls `become` with whatever was chosen, which is
+ * the same setter `GET /api/me` is written through (`RoleProvider`), and a member number
+ * chosen here wins in the session too, because `signedIn` reads it before the account
+ * (`session/SessionProvider.tsx`). So a developer who signs in as a moderator and picks
+ * „Posetilac" is a visitor on every screen while the cookie in the browser goes on
+ * opening everything on the server.
+ *
+ * <b>Nothing is gained by that and nothing can be</b>, which is why it is a boundary
+ * rather than a hole. The server never reads any of this: it decides from the cookie,
+ * route by route (`ApiSecurity`). And the only place a visitor could reach this control
+ * is one where it is not built at all - `devToolsEnabled()` is false in the production
+ * bundle, so what the switch can overturn there is nothing (dev/tools.ts).
+ * What it does buy is the thing it exists for: the portal can be walked as a member of
+ * the mock while a real session stands behind it.
+ *
+ * <b>The one thing it will not do is un-say a real session.</b> A role chosen here does
+ * not sign anybody out, and neither does the question asked above every screen sign
+ * anybody in or out of what was chosen here (session/useTheServersSession.ts).
+ *
  * Moderator is not one choice on it but as many as there are moderators, because
  * "a moderator" is not a person whose rights can be looked up: the superadmin
  * gives each of them a different set (PDL P21), so what a limited moderator
@@ -88,6 +109,18 @@ function RoleChooser() {
                not something anybody can be: every one of them may something
                different. */
             <optgroup key={option} label={t('role.moderator')}>
+              {/* A CHOICE FOR THE MODERATOR THE SERVER NAMED, who is on no list here.
+                  `GET /api/me` answers a role and no record (MeApi), so a real
+                  moderator session leaves `moderator` null and the value below is the
+                  bare word „moderator" - which this group is a LABEL for and never an
+                  option. A select whose value matches no option draws its first one, so
+                  the control read „Posetilac" above a signed in moderator: a
+                  development tool telling the developer the opposite of the one thing
+                  it is there to show. Drawn only in that state, and choosing it leads
+                  back to it, so nothing new can be become by it. */}
+              {role === 'moderator' && moderator === null && (
+                <option value="moderator">{t('role.fromTheServer')}</option>
+              )}
               {moderators.map((one) => (
                 <option key={one.id} value={optionFor(one)} title={`${one.firstName} ${one.lastName}`}>
                   {initialsOf(one)}

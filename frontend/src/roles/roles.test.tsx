@@ -108,6 +108,48 @@ describe('RoleSwitch', () => {
     expect(screen.getByTestId('ko')).toHaveTextContent('3')
   })
 
+  it('says a moderator the server named is a moderator, and not a visitor', async () => {
+    /* WHAT THE CONTROL SHOWS FOR A REAL SESSION. `GET /api/me` answers a role and no
+       moderator record ({@code MeApi}), which is the state below: the role is
+       „moderator" and there is nobody beside it. The value of the control is then the
+       bare word, and „moderator" is what the GROUP of them is labelled with rather than
+       anything anybody can choose, so the select had no option matching its own value
+       and drew its first one instead - „Posetilac", above a signed in moderator
+       (review, 20.09.2026). A development control whose whole job is to say who is at
+       the keyboard must not say the opposite of it. */
+    renderSwitch('moderator')
+
+    const chooser = await screen.findByLabelText('Uloga')
+
+    expect(chooser).toHaveValue('moderator')
+    expect(screen.getByRole('option', { name: 'sa servera' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { selected: true })).toHaveTextContent('sa servera')
+    expect(screen.getByRole('option', { name: 'Posetilac' })).not.toBeUndefined()
+    expect(screen.getByRole('option', { name: 'Posetilac' })).not.toHaveAttribute('selected')
+  })
+
+  it('offers no such choice once a moderator has been named', async () => {
+    /* THE OTHER HALF OF THE SAME AXIS. The choice above exists for one state only, so
+       read alone the row above is satisfied by a control that always carries it - which
+       would be a fifth way to become a moderator standing beside the four real ones. */
+    const user = setupUser()
+
+    renderSwitch('moderator')
+    await user.selectOptions(await screen.findByLabelText('Uloga'), 'moderator:3')
+
+    expect(screen.getByTestId('ko')).toHaveTextContent('3')
+    expect(screen.queryByRole('option', { name: 'sa servera' })).not.toBeInTheDocument()
+  })
+
+  it('does not offer it to anybody who is not a moderator', async () => {
+    /* And the third state of the same axis: a superadmin is signed in by the server the
+       same way and carries no record either, and the choice must not follow them there. */
+    renderSwitch('superadmin')
+
+    expect(await screen.findByLabelText('Uloga')).toHaveValue('superadmin')
+    expect(screen.queryByRole('option', { name: 'sa servera' })).not.toBeInTheDocument()
+  })
+
   it('lets go of the moderator when the choice is not one', async () => {
     const user = setupUser()
     renderSwitch()

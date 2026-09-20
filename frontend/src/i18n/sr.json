@@ -253,7 +253,8 @@
     "visitor": "Posetilac",
     "competitor": "Takmičar",
     "moderator": "Moderator",
-    "superadmin": "Superadmin"
+    "superadmin": "Superadmin",
+    "fromTheServer": "sa servera"
   },
   "notFound": {
     "title": "Ove strane nema"
@@ -882,6 +883,8 @@
     "sending": "Prijavljuje se",
     "needed": "Za ovo treba prijava",
     "neededText": "Ovaj deo portala vide samo članovi.",
+    "noRecord": "Ovaj deo je za takmičare",
+    "noRecordText": "Prijavljen si, ali uz ovaj nalog ne stoji takmičarski zapis, pa ovde nema šta da se prikaže.",
     "needsBoth": "Upiši adresu i lozinku da bi mogao da se prijaviš.",
     "refused": "Prijava nije uspela. Adresa ili lozinka nisu tačne, ili je nalog privremeno zaključan zbog previše neuspelih pokušaja.",
     "noWho": "Prijava je prošla, ali portal nije uspeo da sazna ko si. Osveži stranu, pa ako se ponovi, javi nam."

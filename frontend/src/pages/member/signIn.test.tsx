@@ -216,12 +216,38 @@ describe('what the form sends', () => {
     expect(screen.getByLabelText('Lozinka')).toHaveAttribute('autocomplete', 'current-password')
   })
 
-  it('sends nothing at all until both fields are filled in', async () => {
+  /**
+   * BOTH HALVES OF ONE CONDITION, AND THEY ARE TWO CASES BECAUSE THEY ARE TWO STATES.
+   *
+   * „Nothing typed" reads `email === '' || password === ''`, which is two questions
+   * wearing one name. Only the first of them was ever asked: the case typed an address
+   * and left the password, so it was satisfied by the half about the password alone, and
+   * `nothingTyped = password === ''` passed the whole package green (review, 20.09.2026).
+   * The half about the address held nothing at all.
+   *
+   * Each half is therefore its own row, and each one falls when the OTHER half is taken
+   * out of the condition. Written as one row with both fields empty, neither would.
+   */
+  const halfTyped: [says: string, address: string, password: string][] = [
+    ['an address and no password', TYPED_ADDRESS, ''],
+    ['a password and no address', '', TYPED_PASSWORD],
+  ]
+
+  it.each(halfTyped)('sends nothing at all on %s', async (_says, address, password) => {
     aServerWhere({ role: 'competitor', account: 7 })
     openSignIn()
 
     const user = setupUser()
-    await user.type(await screen.findByLabelText('Adresa elektronske pošte'), TYPED_ADDRESS)
+    const field = await screen.findByLabelText('Adresa elektronske pošte')
+
+    if (address !== '') {
+      await user.type(field, address)
+    }
+
+    if (password !== '') {
+      await user.type(screen.getByLabelText('Lozinka'), password)
+    }
+
     await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
 
     expect(screen.getByText('Upiši adresu i lozinku da bi mogao da se prijaviš.')).toBeVisible()
@@ -274,6 +300,50 @@ describe('where the role comes from', () => {
     await signIn('takmicar@primer.rs')
 
     expect(await screen.findByRole('link', { name: 'Administracija' })).toBeVisible()
+  })
+})
+
+describe('where a sign in that went through lands', () => {
+  /**
+   * NOTHING HELD THIS AT ALL UNTIL 20.09.2026, and a review found it by changing the
+   * address to another one and watching the package stay green. The screen this form
+   * leaves is the whole of what a member gets for signing in, so it is worth a row.
+   *
+   * Read off the ROUTER rather than off what is drawn. What the address answers with is
+   * the next screen's business and changes with who signed in; where the portal went is
+   * this screen's, and `window.location` is the wrong place to look because a memory
+   * router never writes to it (test/render.tsx).
+   */
+  it('is the member own profile, and the address says so', async () => {
+    aServerWhere({ role: 'competitor', account: 7 })
+    const { router } = openSignIn()
+
+    await signIn()
+
+    /* Waited for on what the address DREW and not on the address itself. The router's
+       own state is written before React has drawn anything, so a wait on the path alone
+       is satisfied one render too early, and the form was still on screen when the next
+       line read for it. An account of 7 carries no member number, so the profile answers
+       with the sentence for exactly that (`memberScreen.tsx`). */
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
+    ).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moj-profil')
+    /* And it left the form: read on the address alone, a screen that drew the sign in
+       over the top of it would pass. */
+    expect(screen.queryByLabelText('Lozinka')).not.toBeInTheDocument()
+  })
+
+  it('stays where it is when the server refused, and goes nowhere at all', async () => {
+    /* THE OTHER HALF OF THE SAME AXIS. Without it the row above is satisfied by a form
+       that navigates whatever the server said, which is the fault it looks like. */
+    aServerWhere({ role: 'competitor', account: 7 }, false, () => answeredWith(401))
+    const { router } = openSignIn()
+
+    await signIn()
+
+    expect(await screen.findByRole('alert')).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/prijava')
   })
 })
 

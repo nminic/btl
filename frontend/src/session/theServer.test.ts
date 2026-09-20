@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { ROLES, SIGNED_IN_ROLES } from '../roles/context'
 import { serverThat, type Asked } from '../test/serverAnswers'
 import { whoTheServerSaysIAm } from './theServer'
 
@@ -73,7 +74,38 @@ describe('who the server says I am', () => {
     expect(await whoTheServerSaysIAm()).toBeNull()
   })
 
-  it('is nobody when the role is not one of the four the portal knows', async () => {
+  it('is nobody when the answer says „visitor", which is the word for nobody', async () => {
+    /* ITS OWN CASE AND NOT A VARIATION OF THE ONE BELOW, because „visitor" is a word the
+       portal DOES know: it is one of the four `V5__role_and_admin_right.sql` inserts and
+       one of the four in `ROLES`, and nothing in the schema stops an account's `role_id`
+       from pointing at that row. Read through the four, it signed somebody in: measured
+       20.09.2026, this answer drew the account menu and named them „Nalog 99", which is
+       the header saying somebody is signed in while the word it was handed says the
+       opposite. Read through the three a signed in answer may carry, it is nobody, which
+       is what the word means everywhere else on the portal (`isMember`). */
+    server = serverThat(() => saying(JSON.stringify({ role: 'visitor', account: 99 })))
+
+    expect(await whoTheServerSaysIAm()).toBeNull()
+  })
+
+  it('is somebody for each of the three a signed in answer may carry', async () => {
+    /* The other half of the same axis, and all three of it rather than one: read alone,
+       the case above is satisfied by a portal that refuses every role there is. Derived
+       from `SIGNED_IN_ROLES` rather than written out, so a fifth role decided tomorrow
+       is measured here on the line it is decided. */
+    for (const role of SIGNED_IN_ROLES) {
+      server?.stop()
+      server = serverThat(() => saying(JSON.stringify({ role, account: 41 })))
+
+      expect(await whoTheServerSaysIAm(), role).toEqual({ role, account: 41 })
+    }
+
+    /* And there really were three. An empty list would make the loop above say nothing
+       at all, quietly. */
+    expect(SIGNED_IN_ROLES.length).toBe(ROLES.length - 1)
+  })
+
+  it('is nobody when the role is not one the portal knows at all', async () => {
     /* A server one release ahead. Believed, this would be a word handed to
        `navForRole` and to the rights table, both of which answer „not staff" and
        neither of which was asked about this. */

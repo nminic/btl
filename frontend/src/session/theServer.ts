@@ -1,5 +1,5 @@
 import { askTheServer, type Answer } from '../pages/account/askTheServer'
-import { ROLES, type Role } from '../roles/context'
+import { SIGNED_IN_ROLES, type SignedInRole } from '../roles/context'
 
 /**
  * THE THREE THINGS THE PORTAL SAYS TO THE SERVER ABOUT BEING SIGNED IN.
@@ -34,9 +34,19 @@ import { ROLES, type Role } from '../roles/context'
  * `newPassword.test.tsx` does for the other route that carries a password.
  */
 
-/** What the server says back about whoever is asking: `MeApi.WhoIAm`, and no more
- *  than that. There is no member number in it and `MeApi` says at length why. */
-export type WhoTheServerSaysIAm = { role: Role; account: number }
+/**
+ * What the server says back about whoever is asking: `MeApi.WhoIAm`, and no more than
+ * that. There is no member number in it and `MeApi` says at length why.
+ *
+ * <p><b>Three roles and not four.</b> This answer only exists for somebody the chain has
+ * already let through, and „visitor" is the portal's own word for nobody being let
+ * through (`roles/context.ts`, `isMember`). Believed off the wire it signed somebody in
+ * as a visitor: measured 20.09.2026, `{"role":"visitor","account":99}` drew the account
+ * menu and named them „Nalog 99", which is the header saying somebody is signed in while
+ * the word it was given says the opposite. The boundary this narrowing has - that the
+ * schema does not itself refuse such an account - is written where `SIGNED_IN_ROLES` is.
+ */
+export type WhoTheServerSaysIAm = { role: SignedInRole; account: number }
 
 /**
  * Signing in, which is the one request on this portal that carries a password.
@@ -112,9 +122,11 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
   const said: unknown = Reflect.get(body, 'role')
   const account: unknown = Reflect.get(body, 'account')
   /* Looked for rather than declared, exactly as `RoleSwitch` looks for the word its
-     own control hands back (ADL A14). The four the portal knows are the four
-     `V5__role_and_admin_right.sql` inserts, spelled the same way. */
-  const role = ROLES.find((one) => one === said)
+     own control hands back (ADL A14). Looked for among the THREE a signed in answer may
+     carry and not among the four `V5__role_and_admin_right.sql` inserts: the fourth is
+     the word for nobody, and a fourth taken as an answer is a session that signs
+     somebody in as a visitor. See `WhoTheServerSaysIAm` above. */
+  const role = SIGNED_IN_ROLES.find((one) => one === said)
 
   return role === undefined || typeof account !== 'number' ? null : { role, account }
 }
