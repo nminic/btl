@@ -104,6 +104,22 @@ cd /opt/btl/deploy
 (umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines AND BTL_SUPERADMIN_EMAIL, set real values
 ```
 
+**BEFORE that address goes into `.env`, REGISTER IT AND CONFIRM IT.** Owner decision,
+20.09.2026 (PDL P21). Raise the stack with `BTL_SUPERADMIN_EMAIL` still empty, register
+through the portal like any member, click the link in the mail, and only then put the
+address into `.env` and restart. The role is derived, so it attaches to that account the
+moment the setting names it.
+
+The order is the whole protection, and it was measured rather than assumed: with the
+setting already in place, anyone who knows the address can register it FIRST with his own
+password. The portal then mails the confirmation to the owner, who clicks it because he is
+expecting exactly that mail - and the attacker signs in as superadmin with the password he
+chose. Confirming proves somebody READS that mailbox, not that whoever holds the password
+owns it.
+
+```bash
+```
+
 Eight names, and no value of any of them belongs in this repository or in any
 message:
 
@@ -391,6 +407,12 @@ of `.env.example` in the repository root and set a real password:
 cd /opt/btl-qa/deploy
 # umask first, so the file is never world readable, not even for a moment
 (umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines AND BTL_SUPERADMIN_EMAIL, set the password
+```
+
+**Same order here, and it matters more on QA:** the database is wiped, so the address is
+free again after every reset. Register and confirm before the setting names it.
+
+```bash
 ```
 
 The names are `QA_POSTGRES_DB`, `QA_POSTGRES_USER` and `QA_POSTGRES_PASSWORD`,
