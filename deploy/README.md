@@ -101,14 +101,18 @@ It is **not** the same file as the QA one, which lives in `/opt/btl-qa/deploy/`.
 ```bash
 cd /opt/btl/deploy
 # umask first, so the file is never world readable, not even for a moment
-(umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines AND BTL_SUPERADMIN_EMAIL, set real values
+(umask 077; cp ../.env.example .env)   # then edit: keep the PROD_* lines, set real values; leave BTL_SUPERADMIN_EMAIL empty for now, see below
 ```
 
 **BEFORE that address goes into `.env`, REGISTER IT AND CONFIRM IT.** Owner decision,
 20.09.2026 (PDL P21). Raise the stack with `BTL_SUPERADMIN_EMAIL` still empty, register
 through the portal like any member, click the link in the mail, and only then put the
-address into `.env` and restart. The role is derived, so it attaches to that account the
-moment the setting names it.
+address into `.env` and run `docker compose -f compose.prod.yml up -d backend` to apply
+it. **`restart` does not reread `.env`:** it restarts the container's existing process,
+which still carries whatever environment it was created with, so a plain restart here
+would leave the stack believing the address is still empty. Only recreating the
+container, which `up -d` does, picks up the new value. The role is derived, so it
+attaches to that account the moment the setting names it.
 
 The order is the whole protection, and it was measured rather than assumed: with the
 setting already in place, anyone who knows the address can register it FIRST with his own
@@ -410,7 +414,7 @@ of `.env.example` in the repository root and set a real password:
 ```bash
 cd /opt/btl-qa/deploy
 # umask first, so the file is never world readable, not even for a moment
-(umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines AND BTL_SUPERADMIN_EMAIL, set the password
+(umask 077; cp ../.env.example .env)   # then edit: keep the QA_* lines, set the password; leave BTL_SUPERADMIN_EMAIL empty for now, see below
 ```
 
 **ON QA THIS ORDER DOES NOT PROTECT YOU, and the decision says so.** PDL P21 records the
@@ -418,8 +422,13 @@ cost the owner accepted: the measure "leans on discipline at every new stack and
 protect QA, where the database is wiped". Refreshing QA drops `qa_postgres-data` and replays
 Flyway (see below) WITHOUT touching `.env`, so the moment the database is empty the setting
 already names an address that no account holds - which is the open window itself. Doing the
-order here means raising QA with the setting blank, registering, confirming, and only then
-putting the address back; the refresh procedure below does not do that on its own.
+order here also means pasting `QA_MAIL_USERNAME` and `QA_MAIL_PASSWORD` before anybody
+registers - **Both or neither**, the same as production, and before rather than after:
+`RegistrationApi.send` swallows a relay failure into a 204 and a log line, so a blank key
+leaves the confirmation mail unsent, the address unconfirmed, and the stored token holding
+only a hash nothing can recover a link from. So: raise QA with the setting blank AND the
+mail key already pasted, register, confirm, and only then put the address back; the refresh
+procedure below does not do any of that on its own.
 
 
 The names are `QA_POSTGRES_DB`, `QA_POSTGRES_USER` and `QA_POSTGRES_PASSWORD`,

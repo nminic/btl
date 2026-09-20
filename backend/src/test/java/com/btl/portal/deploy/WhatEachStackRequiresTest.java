@@ -449,6 +449,21 @@ class WhatEachStackRequiresTest {
 	}
 
 	/**
+	 * {@code deploy/README.md}, read whole. Several cases below read it as PARAGRAPHS rather
+	 * than lines, via {@link #paragraphsOf}, because a markdown sentence here often carries
+	 * its noun on one line and its verb on the next; a line-by-line reader has already been
+	 * measured missing exactly the sentence it existed to catch.
+	 */
+	private static String runbook() throws IOException {
+		return Files.readString(Path.of("..", "deploy", "README.md"), StandardCharsets.UTF_8);
+	}
+
+	/** Markdown paragraphs: blocks separated by one or more blank lines. */
+	private static List<String> paragraphsOf(String text) {
+		return List.of(text.split("\\r?\\n\\s*\\r?\\n+"));
+	}
+
+	/**
 	 * THE SAME FLOOR, OVER THE FILE THE OWNER ACTUALLY READS.
 	 *
 	 * <p>The case above proves a setting has a LINE in {@code .env.example}. That is not
@@ -464,15 +479,28 @@ class WhatEachStackRequiresTest {
 	 * <p><b>Nothing is listed here either.</b> The names come from Compose, the same floor as
 	 * above, so a setting that arrives tomorrow is measured the day it arrives. What is
 	 * claimed is only that the runbook MENTIONS the name - not where, not how well.
+	 *
+	 * <p><b>Scoped to the stacks this runbook gives a recipe for, and the scope is measured
+	 * rather than assumed.</b> {@code docker-compose.yml} used to be asked here too, and its
+	 * three settings passed by coincidence: the only two places their bare names appear in
+	 * this file are a psql command told, two lines below it, to read the production
+	 * CONTAINER's own environment, and a quoted Compose error message - neither one a line
+	 * telling the owner to keep or set anything, since this file's own header says it is
+	 * production deployment and never opens a {@code .env} for the root stack at all.
+	 * Measured 20.09.2026: renaming those two coincidental occurrences failed this case with
+	 * a message that would have sent the owner to add development names to the production
+	 * runbook. {@link #everyStackThisRunbookGivesARecipeFor} already carries the reason
+	 * {@code docker-compose.yml} has no recipe here to be named in; the psql line itself is
+	 * pinned by {@code theIdentityCheckReadsTheContainersOwnEnvironment} below rather than
+	 * left to this case's coincidence.
 	 */
 	@Test
 	void everySettingEveryStackAsksForIsNamedInTheRunbookThatTellsTheOwnerWhatToKeep() throws Exception {
-		String runbook = Files.readString(Path.of("..", "deploy", "README.md"),
-				StandardCharsets.UTF_8);
+		String runbook = runbook();
 
 		int asked = 0;
 
-		for (Path stack : everyStackThisRepoDeploys().toList()) {
+		for (Path stack : everyStackThisRunbookGivesARecipeFor().toList()) {
 			for (String setting : settingsOf(stack)) {
 				/* BY NAME, NOT BY SUBSTRING, and that distinction was measured rather
 				   than argued. The first draft of this case asked `contains(setting)`,
@@ -493,7 +521,8 @@ class WhatEachStackRequiresTest {
 		}
 
 		assertThat(asked)
-				.as("no stack asks the environment for anything at all, so this compared nothing")
+				.as("no stack this runbook covers asks the environment for anything at all, so"
+						+ " this compared nothing")
 				.isNotZero();
 	}
 
@@ -630,6 +659,255 @@ class WhatEachStackRequiresTest {
 						+ " compose.prod.yml asks for; following it by hand deletes that"
 						+ " setting from .env and production comes up without it")
 				.containsAll(settingsOf(prod));
+	}
+
+	/**
+	 * AND THE IDENTITY CHECK STILL READS THE CONTAINER'S OWN ENVIRONMENT, NEVER A NAME
+	 * WRITTEN HERE.
+	 *
+	 * <p><b>Why this is pinned instead of left to the naming case above.</b>
+	 * {@code docker-compose.yml}'s settings are deliberately out of that case's scope now
+	 * (see its javadoc), because {@code deploy/README.md} never gives that stack a recipe.
+	 * The one place this file still touches those bare names is the psql line under
+	 * "Checking that production really came up", and the paragraph two lines below it says
+	 * exactly why that has to stay a live read rather than a written name: "whatever
+	 * PROD_POSTGRES_USER and PROD_POSTGRES_DB were set to on this host is what the container
+	 * was started with, and that is the only copy that cannot be stale." A rename to
+	 * clearer-looking variables, or a literal role and database pasted in, both read as an
+	 * improvement and both go stale the day {@code PROD_POSTGRES_USER} changes on the host
+	 * without this file being touched.
+	 *
+	 * <p>Pinned as the exact command rather than a pattern, because there is only one such
+	 * line and its words either match what the container carries or they do not.
+	 */
+	@Test
+	void theIdentityCheckReadsTheContainersOwnEnvironment() throws Exception {
+		assertThat(runbook())
+				.as("deploy/README.md's \"Checking that production really came up\" section"
+						+ " should still run psql with -U \"$POSTGRES_USER\" -d"
+						+ " \"$POSTGRES_DB\", reading the production postgres container's own"
+						+ " environment rather than a name written here, which the paragraph"
+						+ " right after it says is the only copy that cannot be stale")
+				.contains("psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"");
+	}
+
+	/**
+	 * AND NOTHING IN THIS RUNBOOK OFFERS {@code restart} AS THE WAY TO APPLY AN
+	 * {@code .env} CHANGE.
+	 *
+	 * <p><b>Why this is asked of every paragraph rather than the one line that was wrong.</b>
+	 * {@code docker compose restart} does not reread {@code .env}: it restarts the
+	 * container's existing process, which still carries whatever environment it was created
+	 * with. Line 85 of this very file says so - "restart one service" - and separates it
+	 * from {@code up -d --build} two lines later. The production superadmin paragraph
+	 * nonetheless closed with "put the address into `.env` and restart", the one sentence in
+	 * the whole file that told the owner the opposite of what line 85 already says; following
+	 * it by hand left {@code BTL_SUPERADMIN_EMAIL} set on disk and empty in the running
+	 * container.
+	 *
+	 * <p><b>Read as paragraphs, never as lines,</b> via {@link #paragraphsOf}, because a
+	 * markdown sentence here often carries {@code .env} on one line and {@code restart} on
+	 * the next.
+	 *
+	 * <p><b>What this allows, named rather than guessed:</b> a paragraph is free to mention
+	 * both words if it is itself the warning that restart does not reread {@code .env}. Any
+	 * other paragraph naming both is the mistake this case exists to catch.
+	 */
+	@Test
+	void restartIsNeverOfferedAsTheWayToApplyAnEnvChange() throws Exception {
+		java.util.regex.Pattern restartWord = java.util.regex.Pattern
+				.compile("\\brestart\\b", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+		List<String> both = paragraphsOf(runbook()).stream()
+				.filter(block -> restartWord.matcher(block).find() && block.contains(".env"))
+				.toList();
+
+		assertThat(both)
+				.as("every paragraph naming both `restart` and `.env` must say outright that"
+						+ " restart does not reread it - `docker compose restart` never"
+						+ " applies a changed setting, only recreating the container does,"
+						+ " and a paragraph that mentions both without saying so tells the"
+						+ " owner the opposite: %s", both)
+				.allMatch(block -> block.contains("`restart` does not reread `.env`"));
+	}
+
+	/**
+	 * AND THE RECIPE LINE NEVER TELLS THE OWNER TO SET THE SUPERADMIN ADDRESS YET.
+	 *
+	 * <p><b>PDL P21's whole protection is an order: register and confirm the address BEFORE
+	 * it goes into {@code .env}.</b> Both {@code cp ../.env.example .env} recipe lines in
+	 * this file - production and QA - carried a trailing comment reading "keep the PROD_*
+	 * [or QA_*] lines AND BTL_SUPERADMIN_EMAIL, set real values [or the password]", which
+	 * told whoever runs it by hand to fill in the real address at the exact moment P21 says
+	 * it must still be empty. Both lines were new in the same PR that added P21's own
+	 * paragraph a few lines below each one, so the contradiction was that PR's own.
+	 *
+	 * <p>Reads every recipe line by the same {@code cp ../.env.example .env} anchor
+	 * {@link #everySettingSurvivesTheOneRecipeLineTheOwnerActuallyRunsByHand} already uses,
+	 * and for any of them that mentions the setting at all, requires it to say the address is
+	 * left empty at this step - not that the wording takes any particular shape, only that
+	 * "empty" is somewhere in it.
+	 */
+	@Test
+	void theEnvRecipeLineNeverTellsTheOwnerToSetTheSuperadminAddressYet() throws Exception {
+		List<String> recipes = runbook().lines()
+				.filter(line -> line.contains("cp ../.env.example .env"))
+				.toList();
+
+		assertThat(recipes)
+				.as("deploy/README.md no longer carries a `cp ../.env.example .env` recipe"
+						+ " line, so this measures nothing")
+				.isNotEmpty();
+
+		assertThat(recipes)
+				.as("no recipe line mentions %s any more, so this case is not measuring the"
+						+ " thing it was written for; if the setting is meant to be dropped"
+						+ " from these comments on purpose, delete this case rather than"
+						+ " leave it passing without reading anything", SUPERADMIN)
+				.anyMatch(recipe -> recipe.contains(SUPERADMIN));
+
+		for (String recipe : recipes) {
+			if (recipe.contains(SUPERADMIN)) {
+				assertThat(recipe)
+						.as("\"%s\" mentions %s while copying .env.example, but does not say"
+								+ " it is left empty at this step - PDL P21 requires the"
+								+ " address to be registered and confirmed BEFORE it goes into"
+								+ " .env, so a recipe line that hands it a real value here"
+								+ " tells the owner to do the opposite", recipe, SUPERADMIN)
+						.contains("empty");
+			}
+		}
+	}
+
+	/**
+	 * AND THE QA ORDER ALSO NAMES THE MAIL KEY, BEFORE IT SENDS THE OWNER TO REGISTER.
+	 *
+	 * <p><b>The production paragraph on this same page already says the mail key has to be
+	 * pasted before anybody registers.</b> The QA paragraph explaining why PDL P21's order
+	 * does not protect QA sent the owner straight to "raising QA with the setting blank,
+	 * registering, confirming" without ever naming {@code QA_MAIL_USERNAME} or
+	 * {@code QA_MAIL_PASSWORD}. {@code RegistrationApi.send} swallows a relay failure into a
+	 * 204 and a log line rather than an error, so a stack raised with a blank key registers
+	 * the owner, never sends the confirmation, and leaves the address unconfirmed with the
+	 * stored token holding only a hash - nothing to recover a link from. Following the QA
+	 * paragraph by hand therefore still ends with no superadmin on QA, for a different reason
+	 * than the one the paragraph itself warns about.
+	 *
+	 * <p>Anchored on the sentence that already names this decision, so a rewrite of the rest
+	 * of the paragraph does not make this case stop reading it.
+	 */
+	@Test
+	void theQaOrderAlsoNamesTheMailKeyBeforeRegistering() throws Exception {
+		List<String> qaOrder = paragraphsOf(runbook()).stream()
+				.filter(block -> block.contains("ON QA THIS ORDER DOES NOT PROTECT YOU"))
+				.toList();
+
+		assertThat(qaOrder)
+				.as("deploy/README.md no longer explains PDL P21's QA order in the paragraph"
+						+ " this case looks for, so nothing below measures anything")
+				.hasSize(1);
+
+		assertThat(qaOrder.get(0))
+				.as("the QA order sends the owner to register and confirm with the superadmin"
+						+ " setting blank, but never says to paste QA_MAIL_USERNAME and"
+						+ " QA_MAIL_PASSWORD first - without them RegistrationApi.send"
+						+ " swallows the mail failure into a 204, the address is never"
+						+ " confirmed, and the stored token holds only a hash nothing can"
+						+ " recover a link from")
+				.contains("QA_MAIL_USERNAME")
+				.contains("QA_MAIL_PASSWORD");
+	}
+
+	/**
+	 * ENGLISH CARDINAL NUMBER WORDS THIS FILE SPELLS OUT, so a count can be compared against
+	 * the word rather than the word being trusted to have kept up with the count.
+	 */
+	private static final List<String> NUMBER_WORDS = List.of("zero", "one", "two", "three",
+			"four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve");
+
+	private static String numberWord(int count) {
+		assertThat(count)
+				.as("this case only knows how to spell counts up to twelve in words; %d is"
+						+ " outside that range, so extend NUMBER_WORDS rather than trust a"
+						+ " mismatch it cannot report", count)
+				.isLessThan(NUMBER_WORDS.size());
+
+		return NUMBER_WORDS.get(count);
+	}
+
+	private static String capitalized(String word) {
+		return Character.toUpperCase(word.charAt(0)) + word.substring(1);
+	}
+
+	/**
+	 * AND THE PRODUCTION NAME COUNT AGREES WITH WHAT COMPOSE ASKS FOR.
+	 *
+	 * <p><b>The numbers in this file are all correct as committed and nothing holds them
+	 * there.</b> Measured 20.09.2026: adding an eighth setting, {@code QA_MAIL_REPLY_TO}, to
+	 * {@code compose.qa.yml}, {@code .env.example}, this runbook and {@code HELD} left the
+	 * whole suite green while "Eight names", two paragraphs above the production table and
+	 * written for the seven {@code PROD_*} settings plus {@code BTL_SUPERADMIN_EMAIL} this
+	 * table carried on 20.09.2026, went uncorrected - a prose count nothing compared against
+	 * Compose's own answer.
+	 *
+	 * <p>So this derives the count from {@link #settingsOf} rather than the table, spells it
+	 * with {@link #numberWord}, and requires the sentence introducing the production table to
+	 * say that word.
+	 */
+	@Test
+	void theProductionNameCountAgreesWithWhatComposeAsksFor() throws Exception {
+		Path prod = everyStackThisRepoDeploys()
+				.filter(stack -> stack.getFileName().toString().equals("compose.prod.yml"))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("deploy/ no longer carries"
+						+ " compose.prod.yml, so this case has nothing to count"));
+
+		int total = settingsOf(prod).size();
+		String expected = capitalized(numberWord(total)) + " names, and no value of any of"
+				+ " them belongs in this repository or in any";
+
+		assertThat(runbook())
+				.as("compose.prod.yml asks for %d settings, so the sentence introducing the"
+						+ " production table should read \"%s\" - a setting added to or"
+						+ " removed from this stack without touching this sentence leaves it"
+						+ " wrong while the suite stays green", total, expected)
+				.contains(expected);
+	}
+
+	/**
+	 * AND THE QA COPY LINE'S THREE COUNTS AGREE WITH WHAT COMPOSE ASKS FOR.
+	 *
+	 * <p>The same gap as above, over the sentence that tells the QA owner how many
+	 * {@code QA_*} lines to copy, and its two parenthetical subtotals. Measured 20.09.2026:
+	 * the same {@code QA_MAIL_REPLY_TO} addition left "Copy the seven `QA_*` lines (three
+	 * `QA_POSTGRES_*` and four `QA_MAIL_*`)" uncorrected while Compose's own count had
+	 * already moved to eight and five.
+	 */
+	@Test
+	void theQaCopyLineCountsAgreeWithWhatComposeAsksFor() throws Exception {
+		Path qa = everyStackThisRepoDeploys()
+				.filter(stack -> stack.getFileName().toString().equals("compose.qa.yml"))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("deploy/ no longer carries"
+						+ " compose.qa.yml, so this case has nothing to count"));
+
+		List<String> settings = settingsOf(qa);
+
+		long prefixed = settings.stream().filter(one -> one.startsWith("QA_")).count();
+		long postgres = settings.stream().filter(one -> one.startsWith("QA_POSTGRES_")).count();
+		long mail = settings.stream().filter(one -> one.startsWith("QA_MAIL_")).count();
+
+		String expected = "Copy the " + numberWord((int) prefixed) + " `QA_*` lines ("
+				+ numberWord((int) postgres) + " `QA_POSTGRES_*` and " + numberWord((int) mail)
+				+ " `QA_MAIL_*`)";
+
+		assertThat(runbook())
+				.as("compose.qa.yml asks for %d QA_* settings (%d QA_POSTGRES_* and %d"
+						+ " QA_MAIL_*), so the recipe line telling the owner what to copy"
+						+ " should read \"%s\" - a setting added to or removed from this stack"
+						+ " without touching this sentence leaves it wrong while the suite"
+						+ " stays green", prefixed, postgres, mail, expected)
+				.contains(expected);
 	}
 
 	/**
