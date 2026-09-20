@@ -4,7 +4,9 @@ import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.web.MailServerForACase;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
+import com.icegreen.greenmail.util.ServerSetup;
 import com.icegreen.greenmail.util.ServerSetupTest;
 import jakarta.mail.internet.MimeMessage;
 import org.yaml.snakeyaml.Yaml;
@@ -48,13 +50,33 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 		org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration.class})
 @TestPropertySource(properties = {
 		"spring.mail.host=127.0.0.1",
-		"spring.mail.port=3025",
+		"spring.mail.port=3330",
 		"spring.mail.properties.mail.smtp.auth=false"})
 class PostmanTest {
 
-	/** Port 3025 is GreenMail's own for SMTP, and the properties above name it. */
+	/**
+	 * A SERVER OF THIS CLASS'S OWN, ON ITS OWN PORT AND WITH TIME TO COME UP.
+	 *
+	 * <p>{@link MailServerForACase} carries the reason and the measurement. What stood here
+	 * until 20.09.2026 was the raw {@code ServerSetupTest.SMTP}, which is two things at
+	 * once: GreenMail's two seconds to bind, and GreenMail's own 3025.
+	 *
+	 * <p><b>3330 rather than 3025, and the difference is not tidiness.</b> 3025 is a
+	 * constant of the library ({@code ServerSetupTest.SMTP.getPort()}), so every other
+	 * GreenMail on this machine that never names a port is listening on exactly it, while
+	 * 3325 to 3329 are numbers this repo invented and nothing else knows. Searched across
+	 * the whole repo on 20.09.2026: 3025 appears only under {@code backend/src/test/java}
+	 * and in no compose file, script or workflow, and 3330 appears nowhere at all - so this
+	 * extends the run 3325..3329 without a gap and without taking the one number the library
+	 * hands out for free.
+	 *
+	 * <p><b>The border, written down rather than left to be found:</b> all six are still
+	 * FIXED numbers, so two full gates started on one machine in the same second still
+	 * collide, on 3330 exactly as they did on 3025. What this changes is the wait and whose
+	 * the number is, not that it is fixed.
+	 */
 	@RegisterExtension
-	static final GreenMailExtension SMTP = new GreenMailExtension(ServerSetupTest.SMTP);
+	static final GreenMailExtension SMTP = new GreenMailExtension(MailServerForACase.on(3330));
 
 	private static final Portal PORTAL = new Portal("https://balkanskatrkackaliga.net");
 
@@ -78,6 +100,78 @@ class PostmanTest {
 	 */
 	@Value("${btl.mail.from}")
 	private String from;
+
+	/**
+	 * The port SPRING was told to send to, which is the other home of one fact.
+	 *
+	 * <p>Read from the context rather than written here a third time: the extension above
+	 * tells GreenMail where to listen and {@code @TestPropertySource} tells Spring where to
+	 * send, and the case below is the only thing that notices the day those two stop
+	 * agreeing.
+	 */
+	@Value("${spring.mail.port}")
+	private int whereSpringSends;
+
+	/**
+	 * AND THE SERVER THESE CASES SPEAK TO IS THE SHARED ONE, WITH TIME TO COME UP.
+	 *
+	 * <p><b>Read off the RUNNING server, not off the constant that configured it.</b>
+	 * {@code getSmtp()} is the thread that bound the socket, so what it answers is what the
+	 * socket was bound with. A case that read {@code MailServerForACase.on(3330)} back
+	 * instead would be comparing one expression with itself and would stay green with
+	 * nothing listening at all.
+	 *
+	 * <p><b>Measured 19.09.2026, and this class was the last one outside.</b> Ten full
+	 * builds of a clean main, back to back: the sixth exited 1 with ten errors, every one of
+	 * them {@code Could not start mail server smtp:127.0.0.1:3025, try to set server startup
+	 * timeout > 2000}, and not one case of this class had run. The other nine reported
+	 * {@code Tests run: 2286, Failures: 0, Errors: 0}. An unrun class and a red one are the
+	 * same non-zero exit, so nothing else in this file could have said which had happened.
+	 *
+	 * <p><b>The wait is held twice because one number can arrive from two places.</b> Ten
+	 * seconds is what was measured to be enough; it is also what the library's own default
+	 * would become the day it is raised, and then the first line alone would go on passing
+	 * on the raw setup. The second line holds what the first cannot, that this wait is ours.
+	 *
+	 * <p><b>The port is held as a property and not as the number 3330</b>, which is already
+	 * written twice above. Asserting it a third time would compare a constant with itself;
+	 * what is worth holding is that the two homes still name one port, and that it is not
+	 * the one the library hands to everybody.
+	 *
+	 * <p><b>The border, so that nobody reads more out of this than it holds.</b> This does
+	 * NOT show that two seconds would actually fail to bind on any given machine: that
+	 * failure is probabilistic by construction and took six clean builds to appear once. It
+	 * shows the two things that ARE deterministic, that the wait the running server was
+	 * bound with is ours rather than the library's and that it is the ten seconds that were
+	 * measured. Put the wait back to two and this goes red on the first run rather than on
+	 * the sixth, which is the whole trade.
+	 */
+	@Test
+	void theServerTheseCasesSpeakToIsTheSharedOneWithTimeToComeUp() {
+		assertThat(SMTP.getSmtp().isRunning())
+				.as("the server was not up when this was read, so what follows describes a"
+						+ " settings object rather than a bound socket")
+				.isTrue();
+
+		ServerSetup running = SMTP.getSmtp().getServerSetup();
+
+		assertThat(running.getServerStartupTimeout())
+				.as("back on a wait short enough to report an unrun class as a tested one,"
+						+ " measured 19.09.2026 at six builds in and ten errors")
+				.isGreaterThanOrEqualTo(10_000);
+		assertThat(running.getServerStartupTimeout())
+				.as("the wait is the library's own rather than the one this repo measured")
+				.isGreaterThan(ServerSetupTest.SMTP.getServerStartupTimeout());
+		assertThat(running.getPort())
+				.as("back on GreenMail's default port, which every other tool on this machine"
+						+ " that never names one is listening on as well")
+				.isNotEqualTo(ServerSetupTest.SMTP.getPort());
+		assertThat(running.getPort())
+				.as("Spring sends to %d while the server listens on %d, so nothing arrives and"
+						+ " every case above fails five seconds at a time without saying why",
+						whereSpringSends, running.getPort())
+				.isEqualTo(whereSpringSends);
+	}
 
 	private MimeMessage waitForOne() throws Exception {
 		assertThat(SMTP.waitForIncomingEmail(5000, 1))

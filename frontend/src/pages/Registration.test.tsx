@@ -2,6 +2,7 @@ import { SLOW } from '../test/slow'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
+import { registracija } from '../forms/definitions'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/translate'
 import sr from '../i18n/sr.json'
@@ -15,6 +16,41 @@ import { Registration } from './Registration'
 
 /** After registration opens, so the form itself is on screen. */
 const OPEN = '2026-10-02'
+
+/* The password every case here types, and its length is deliberately not this
+ * file's to choose.
+ *
+ * WHY IT IS DERIVED AND NOT TYPED OUT. Until 20.09.2026 this was the literal
+ * `trkacka2027`, eleven characters. That was never a password the portal would
+ * have taken: `PasswordPolicy.SHORTEST` has kept twelve since the owner decided
+ * it on 11.09.2026 (`ADL.md` A43), so every one of these cases was submitting
+ * something the real server refuses. It passed only because
+ * `registracija.form.json` had drifted to ten and nothing held the two numbers
+ * together. `forms/passwordLength.test.ts` holds them now.
+ *
+ * So the length is read off the same definition this screen draws, which is the
+ * copy that guard keeps equal to the server. Raise `SHORTEST` and this grows
+ * with it; nobody has to remember this file, and it cannot go stale again the
+ * one way it already did.
+ *
+ * None of the cases below are about the password. They type it because the form
+ * will not submit without one, and what they then assert is the referral code,
+ * the picture, the town, the register of members. */
+const PASSWORD_FIELD = must(
+  registracija.fields.find((field) => field.name === 'password'),
+  'a password field on the registration form',
+)
+
+const PASSWORD = 'trkackaliga'.padEnd(
+  must(PASSWORD_FIELD.minLength, 'a length rule on the registration password'),
+  '7',
+)
+
+/* For the one case about the two boxes disagreeing. Built out of the password
+   rather than written beside it, so it can never quietly become equal to it and
+   can never be the shorter of the two: if it were refused for its length as
+   well, that case would stop telling a mismatch apart from a short password. */
+const A_DIFFERENT_PASSWORD = `${PASSWORD}-nije-ista`
 
 /* The day goes on the clock above the screen, which is where the portal keeps
    it and what the switch in the header moves (src/clock). */
@@ -47,8 +83,8 @@ async function fillEverythingExceptBirthDate(
   await user.type(screen.getByLabelText(/^Ime oca$/), 'Milan')
   await user.type(screen.getByLabelText(/^Broj ličnog dokumenta$/), '123456789')
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
-  await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
-  await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
+  await user.type(screen.getByLabelText(/^Lozinka$/), PASSWORD)
+  await user.type(screen.getByLabelText(/Ponovi lozinku/), PASSWORD)
   /* Buttons since 11.08.2026, not a list: two answers worth seeing at once. */
   await user.click(screen.getByRole('radio', { name: 'Muški' }))
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
@@ -332,7 +368,7 @@ describe('Registration once it is open', () => {
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.clear(screen.getByLabelText(/Ponovi lozinku/))
-    await user.type(screen.getByLabelText(/Ponovi lozinku/), 'nesto-drugo')
+    await user.type(screen.getByLabelText(/Ponovi lozinku/), A_DIFFERENT_PASSWORD)
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByText('Ne poklapa se sa prethodnim poljem.')).toBeVisible()
@@ -396,8 +432,13 @@ describe('Registration once it is open', () => {
     expect(screen.getByRole('button', { name: 'Pošalji potvrdu ponovo' })).toBeVisible()
 
     /* And never what was typed. This screen used to print every field under its
-       own name in the code, the password among them, in plain sight. */
-    expect(screen.queryByText(/trkacka2027/)).not.toBeInTheDocument()
+       own name in the code, the password among them, in plain sight.
+
+       It looks for the very value this case typed, not for a copy of it written
+       out here: a literal beside a derived password is two sources for one
+       value, and the moment they drift this line searches the screen for a
+       string nobody ever typed and passes without looking at anything. */
+    expect(screen.queryByText(PASSWORD, { exact: false })).not.toBeInTheDocument()
     expect(screen.queryByText('password')).not.toBeInTheDocument()
 
     /* Asking for the letter again says so and stays where it is. It used to
@@ -594,8 +635,8 @@ describe('the country a member lives in', () => {
     await user.type(screen.getByLabelText(/^Ime oca$/), 'Milan')
     await user.type(screen.getByLabelText(/^Broj ličnog dokumenta$/), '123456789')
     await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
-    await user.type(screen.getByLabelText(/^Lozinka$/), 'trkacka2027')
-    await user.type(screen.getByLabelText(/Ponovi lozinku/), 'trkacka2027')
+    await user.type(screen.getByLabelText(/^Lozinka$/), PASSWORD)
+    await user.type(screen.getByLabelText(/Ponovi lozinku/), PASSWORD)
     await user.click(screen.getByRole('radio', { name: 'Muški' }))
     await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
     /* A hamlet of two hundred people that no codebook of the world has heard
