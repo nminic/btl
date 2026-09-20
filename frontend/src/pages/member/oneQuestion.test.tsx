@@ -193,6 +193,14 @@ describe('the one door to „nobody is signed in"', () => {
    * <p>Both ways round on purpose. A twelfth screen asking the question and having no row
    * fails here, which is the fault a list of five addresses hid; and a row whose module has
    * stopped asking fails here too, which is a row that has quietly begun measuring nothing.
+   *
+   * <p><b>Where this is wider than „a screen", said rather than left to be found.</b> What
+   * is asked is „which modules NAME this one", so something taking only the `MemberScreen`
+   * type off it would be counted and would be asked for a row it has no address for.
+   * Nothing does today. The answer then is to give that module an address or to move the
+   * type, never to teach this to skip a kind of import: `import type` and `import` are one
+   * statement away from each other, and a reader that skipped one would hand back the hole
+   * this exists to close.
    */
   it('has a row for every screen that asks the question, and no row for one that does not', () => {
     const { walked, naming } = modulesNaming(HOOK)
