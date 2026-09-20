@@ -1599,7 +1599,7 @@ class ModeratorWriteApiTest {
 			/* Written as escapes and never as the characters themselves: the first is a
 			   Cyrillic „o" inside a Latin word and the second a zero width space, and
 			   neither can be seen in a diff. */
-			"nоva@primer.rs", "nova​@primer.rs"})
+			"n\u043Eva@primer.rs", "nova\u200B@primer.rs"})
 	void anAddressThatIsNotAnAddressIsADifferentSentence(String email) throws Exception {
 		long before = howManyAccounts();
 
