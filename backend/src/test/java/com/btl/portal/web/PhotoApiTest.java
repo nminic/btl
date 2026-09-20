@@ -515,11 +515,20 @@ class PhotoApiTest {
 	 */
 	@Test
 	void whoIsAskingChangesNothing() throws Exception {
-		assertThat(asking(WEBP.digest(), A_MEMBER).buildRequest(new MockServletContext())
-				.getCookies())
+		MockHttpServletRequestBuilder asAVisitor = asking(WEBP.digest(), null);
+		MockHttpServletRequestBuilder asAMember = asking(WEBP.digest(), A_MEMBER);
+
+		/* ASKED OF THE VERY REQUESTS THAT ARE SENT, and not of a second pair built beside
+		   them: a floor over `asking(digest, A_MEMBER)` written here would go on passing
+		   while the line below sent the visitor's request twice. */
+		assertThat(asAMember.buildRequest(new MockServletContext()).getCookies())
 				.as("the request this case calls a member's carries no cookie, so both halves"
 						+ " below are the same visitor asked twice")
 				.isNotEmpty();
+		assertThat(asAVisitor.buildRequest(new MockServletContext()).getCookies())
+				.as("the request this case calls a visitor's carries a cookie, so both halves"
+						+ " below are the same member asked twice")
+				.isNullOrEmpty();
 
 		assertThat(http.perform(get("/api/me")
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(A_MEMBER).secret())))
@@ -528,10 +537,8 @@ class PhotoApiTest {
 						+ " requests below are one request asked twice")
 				.isNotEqualTo(401);
 
-		MockHttpServletResponse toAVisitor = http.perform(asking(WEBP.digest(), null))
-				.andReturn().getResponse();
-		MockHttpServletResponse toAMember = http.perform(asking(WEBP.digest(), A_MEMBER))
-				.andReturn().getResponse();
+		MockHttpServletResponse toAVisitor = http.perform(asAVisitor).andReturn().getResponse();
+		MockHttpServletResponse toAMember = http.perform(asAMember).andReturn().getResponse();
 
 		assertThat(toAVisitor.getStatus())
 				.as("a visitor was not answered a picture, and this route is open")
