@@ -357,6 +357,70 @@ class JoiningConstraintsTest extends DatabaseTest {
 	}
 
 	/**
+	 * THE SAME MEMBER MAY ASK THE SAME TEAM AGAIN FOR ANOTHER SEASON, AND THE TEAM MAY ASK
+	 * HIM AGAIN, which is what says the season is a third of each of those two keys.
+	 *
+	 * <p>The twin of the case above, one table down, and it was missing until 20.09.2026.
+	 * {@link #violations()} proves that asking twice FOR ONE SEASON is refused, and
+	 * {@code aLegitimateRowIsAccepted} writes a row naming another member and another team,
+	 * so nothing in this file ever wrote the same two with a different season. Measured
+	 * that day, both halves: with {@code season} struck out of
+	 * {@code team_application_asked_once}, and again with it struck out of
+	 * {@code team_invitation_sent_once}, all 54 cases stayed green.
+	 *
+	 * <p>Membership takes effect on 1 January (P13), so a member the team never answered
+	 * this season asks again for the next one; a key without the season would tell him he
+	 * already has.
+	 */
+	@Test
+	void theSameMemberAndTheSameTeamMayAskEachOtherAgainForAnotherSeason() {
+		assertThat(db.sql(application(A_MAN + ", " + A_TEAM + ", 2028")).update())
+				.as("a member who asked this team for 2027 could not ask it for 2028")
+				.isOne();
+		assertThat(db.sql(invitation(A_TEAM + ", " + A_MAN + ", 2028")).update())
+				.as("a team that asked this member for 2027 could not ask him for 2028")
+				.isOne();
+	}
+
+	/**
+	 * A MEMBER MAY HAVE MORE THAN ONE PAIR QUESTION OPEN, AND SO MAY THE PERSON HE ASKED.
+	 *
+	 * <p>The same hole in {@code pair_invite_asked_once}: {@link #violations()} proves the
+	 * same two people in the same direction twice is refused, and nothing said that EITHER
+	 * column is really part of that key. Measured on 20.09.2026 - cut down to
+	 * {@code (from_id)} alone, and again to {@code (to_id)} alone, all 54 cases stayed
+	 * green both times.
+	 */
+	@Test
+	void aMemberMayHaveMoreThanOnePairQuestionOpenAndSoMayThePersonHeAsked() {
+		assertThat(db.sql(invite(A_MAN + ", " + ANOTHER_WOMAN)).update())
+				.as("a member who had asked one person could not ask a second")
+				.isOne();
+		assertThat(db.sql(invite(ANOTHER_MAN + ", " + A_WOMAN)).update())
+				.as("a second member could not ask somebody who was already being asked")
+				.isOne();
+	}
+
+	/**
+	 * AND TWO PAIRS MAY STAND IN ONE SEASON, which is the other half of the two keys
+	 * {@link #oneMemberMayHaveAPairInEverySeasonAndADifferentPartnerInEachOne} is about.
+	 *
+	 * <p>That case says one member may pair in every season; this says one season holds
+	 * more than one pair. Measured on 20.09.2026: cut down to {@code (season)} alone, the
+	 * WOMAN'S key passed all 54 cases. The man's failed - but by accident and not by
+	 * design: the row {@link #violations()} writes for {@code racing_pair_one_woman_a_season}
+	 * then breaks the man's key first and PostgreSQL names that one instead, so what caught
+	 * it was a case about the other constraint reporting the wrong name. This says it
+	 * directly, for both.
+	 */
+	@Test
+	void twoPairsMayStandInOneSeason() {
+		assertThat(db.sql(pair("2027, " + ANOTHER_MAN + ", " + ANOTHER_WOMAN)).update())
+				.as("a second pair could not be made in a season that already had one")
+				.isOne();
+	}
+
+	/**
 	 * Deleting a member takes everything he asked for, was asked, and paired into.
 	 *
 	 * <p>PDL P23 again, and it is measured over all four tables at once because all
