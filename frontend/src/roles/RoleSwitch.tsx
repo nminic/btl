@@ -119,7 +119,7 @@ function RoleChooser() {
                   it is there to show. Drawn only in that state, and choosing it leads
                   back to it, so nothing new can be become by it. */}
               {role === 'moderator' && moderator === null && (
-                <option value="moderator">{t('role.fromTheServer')}</option>
+                <option value="moderator">{t('server.named')}</option>
               )}
               {moderators.map((one) => (
                 <option key={one.id} value={optionFor(one)} title={`${one.firstName} ${one.lastName}`}>

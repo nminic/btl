@@ -253,8 +253,7 @@
     "visitor": "Posetilac",
     "competitor": "Takmičar",
     "moderator": "Moderator",
-    "superadmin": "Superadmin",
-    "fromTheServer": "sa servera"
+    "superadmin": "Superadmin"
   },
   "notFound": {
     "title": "Ove strane nema"
@@ -915,7 +914,8 @@
     "refused": "Server je odbio zahtev uz razlog {reason}, koji ovaj ekran ne prepoznaje.",
     "rejected": "Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.",
     "wrong": "Server je odgovorio brojem {status} i ništa nije promenjeno. Pokušaj ponovo za koji minut.",
-    "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo."
+    "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo.",
+    "named": "sa servera"
   },
   "myProfile": {
     "signOut": "Odjavi se",
