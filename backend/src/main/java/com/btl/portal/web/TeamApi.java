@@ -86,22 +86,54 @@ import java.util.List;
  * {@code TeamApiTest.noMemberNumberLeavesTheServer} measures that over the whole
  * text rather than over a name.
  *
- * <p><b>AND THE MARK DOES NOT LEAVE, BECAUSE THIS SCHEMA HAS NO ADDRESS FOR
- * ONE.</b> The portal reads {@code logo} as a path to a picture. A picture is a
- * row in {@code photo} (V8, V21), and that row carries a media type, a byte size,
- * a digest and the crop - nothing that points at bytes - and no route of this
- * application serves a picture. Pictures are F5 (ADL, 15.08.2026, and PENDING:
- * „Timska slika se u celini gubi pri odobravanju... F5"). An address invented
- * here would be a broken circle beside every team that has a mark and a promise
- * the next increment would have to keep, so the field is left out and the screen
- * draws initials, which is what it already does for a team with no mark.
+ * <p><b>AND THE MARK DOES LEAVE SINCE 21.09.2026, WHICH IS THIS PARAGRAPH
+ * REVERSED RATHER THAN EXTENDED.</b> What stood here said the mark could not
+ * leave, and said why: a picture is a row in {@code photo} (V8, V21) carrying a
+ * media type, a byte size, a digest and the crop, „nothing that points at bytes -
+ * and no route of this application serves one". The first half is still true of
+ * the row and the second half stopped being true of the portal the day
+ * {@link PhotoApi} was written, so the field is answered and the sentence is
+ * rewritten in the same commit. Left standing, it would read as an instruction to
+ * the next reader to take the field back out.
  *
- * <p><b>What IS answered is the square of the mark</b>, because that half the
- * schema really holds. It is three exact fractions on the picture's row and it is
- * what the team chose; leaving it out would mean choosing it again when the
- * picture gets an address. A team with no mark has no crop and answers null,
- * which is what the portal already reads as „the whole picture"
- * ({@code components/crop.ts}, {@code cropIn}).
+ * <p><b>The address is the DIGEST and never {@code photo.id}</b>, and that is
+ * {@link PhotoApi}'s decision arriving at its first publisher rather than a choice
+ * made a second time here (ADL A60, 20.09.2026, and PDL:6165, „Oba slucaja dobijaju
+ * isti ishod"). A key is countable, so an address built on one would let anybody
+ * walk 1, 2, 3 and learn which rows the portal holds; sixty four hexadecimal
+ * characters are not walked. The shape is READ OFF the route and not invented:
+ * {@code GET /api/photos/} takes the digest as the whole of the name, with no
+ * extension behind it, and {@code TeamApiTest} asks the dispatcher whether the
+ * address answered here really reaches that route rather than comparing two
+ * spellings. That is the arrangement {@code ApiSecurity} already keeps for the same
+ * string, for the same reason.
+ *
+ * <p><b>And this is the first place in the portal that publishes a digest at
+ * all</b>, so what it publishes is said out loud: a team's mark and nothing else.
+ * ADL A60 makes exactly two holders public, {@code competitor.photo_id} and
+ * {@code team.logo_id}, and only the second is a fact this resource holds. The one
+ * boundary A60 leaves open - a member's portrait counts as public whatever
+ * {@code profile_hidden} says - rests today on nobody publishing a portrait's
+ * digest, and nothing here does. {@code noPartOfAnybodysProfilePictureLeavesWithATeam}
+ * holds that over the whole text rather than over a field name.
+ *
+ * <p><b>The mark and its square are two halves of one fact and leave together.</b>
+ * The square is three exact fractions on the picture's row and it is what the team
+ * chose. Every column of {@code photo} is NOT NULL, so both are null exactly when no
+ * picture joined: a team with no mark answers null to both, and never the empty path,
+ * which {@code frontend/src/data/types.ts} refuses in as many words - „a team that has
+ * none is not a team whose logo is the empty path". Null is also what the portal
+ * already reads as „the whole picture" ({@code components/crop.ts}, {@code cropIn}).
+ * Until today the answer could carry a square with no picture to cut, which is the
+ * square of nothing; that is what {@code aTeamAnswersWithBothHalvesOfItsMarkOrNeither}
+ * now refuses.
+ *
+ * <p><b>What this does NOT give a team, named rather than left to be found:</b> a way
+ * to have a mark at all. {@code team_proposal.logo_id} is not carried over when a
+ * moderator approves a proposal (ADL, 15.08.2026: „Nista od timske slike ne prezivljava
+ * odobravanje predloga, do F5") and {@link TeamWriteApi} collects no picture, so the
+ * only teams that answer with an address are the ones the league's own data gave one.
+ * The field has a home here; filling it is F5 and somebody else's increment.
  *
  * <p><b>The three numbers are answered under the portal's names and not the
  * schema's, and that is a boundary rather than an oversight.</b> V21 renamed the
@@ -126,6 +158,20 @@ import java.util.List;
 @RestController
 class TeamApi {
 
+	/**
+	 * WHERE A PICTURE IS ASKED FOR, and the name that follows is its digest.
+	 *
+	 * <p>The same text {@link PhotoApi} maps and {@code ApiSecurity} opens, which is two
+	 * homes already and this is a third. Kept as a literal rather than reached for through
+	 * either of them, because neither is a fact about a team and an import would tie this
+	 * resource to a class it does not otherwise know - and because a constant copied is
+	 * only ever as good as what proves it equal. What proves it is
+	 * {@code theMarkIsTheAddressOfThatTeamsOwnPicture}, which hands the address this builds
+	 * back to the dispatcher and requires it to arrive at {@link PhotoApi}; a rename that
+	 * left this behind would be caught by the route and not by a comparison of two strings.
+	 */
+	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
@@ -147,7 +193,12 @@ class TeamApi {
 	}
 
 	/**
-	 * @param crop        the square of the mark, or null for a team that has no mark
+	 * @param logo        where the mark's picture is asked for, or NULL for a team that
+	 *                    has none. Null and never the empty string: the portal reads the
+	 *                    two as different things ({@code frontend/src/data/types.ts}), and
+	 *                    the empty path is an address that would be asked for
+	 * @param crop        the square of the mark, or null for a team that has no mark. The
+	 *                    other half of {@code logo} and never answered without it
 	 * @param foundedByMe whether the one asking is the member this team's seat names,
 	 *                    and ABSENT - not null, and not false - from every answer
 	 *                    nobody signed in asked for. False and absent are two
@@ -155,7 +206,7 @@ class TeamApi {
 	 *                    know who you are", and a visitor must be told the second
 	 */
 	record Team(long id, String slug, String name, String city, String country, String bio,
-			Crop crop,
+			String logo, Crop crop,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe) {
 	}
 
@@ -178,11 +229,13 @@ class TeamApi {
 						+ " coalesce(town.name, t.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
 						+ " t.bio,"
-						/* AND THE SQUARE OF THE MARK, WITHOUT THE MARK. The picture has no
-						   address in this schema and nothing serves one; the crop is the half
-						   that is really here. `crop_diameter` and not `crop_side`: V21 renamed
-						   it when the three became fractions. */
-						+ " mark.crop_x, mark.crop_y, mark.crop_diameter,"
+						/* AND THE MARK AND ITS SQUARE, WHICH ARE ONE FACT AND ARE ASKED FOR IN
+						   ONE BREATH. The digest is what the picture is asked for BY (PhotoApi,
+						   ADL A60) and never `mark.id`, which is countable. `crop_diameter` and
+						   not `crop_side`: V21 renamed it when the three became fractions. All
+						   four come off the same joined row, so there is no arrangement of the
+						   data in which one of them is there and the others are not. */
+						+ " mark.digest, mark.crop_x, mark.crop_y, mark.crop_diameter,"
 						/* AND WHETHER THE ONE ASKING IS THE MEMBER THIS SEAT NAMES.
 						   Written as two questions and not one, because `t.admin_id = :me`
 						   alone is NULL for two different reasons - nobody is asking, and
@@ -220,15 +273,24 @@ class TeamApi {
 					   for this and said why: the rule is about the exact boundaries 0 and 1, and
 					   a binary fraction cannot be trusted at one. Reading it as a double here
 					   would undo that on the way to the answer. */
-					BigDecimal across = row.getBigDecimal(7);
+					/* Every column of `photo` is NOT NULL, so each of these two is null
+					   exactly when no picture joined, which is a team with no mark. They are
+					   read side by side rather than one from the other so that the answer says
+					   what the row says: a mark and its square go out together or neither
+					   does, which is what `aTeamAnswersWithBothHalvesOfItsMarkOrNeither`
+					   requires of every record. */
+					String mark = row.getString(7);
+					BigDecimal across = row.getBigDecimal(8);
 
 					return new Team(row.getLong(1), row.getString(2), row.getString(3),
 							row.getString(4), row.getString(5), row.getString(6),
-							/* Every column of `photo` is NOT NULL, so this one is null exactly
-							   when no picture joined, which is a team with no mark. */
+							/* The digest and never the key, and never the empty path for a team
+							   that has none: an empty path is an address a browser would ask
+							   for. */
+							mark == null ? null : A_PICTURE_IS_ASKED_FOR_AT + mark,
 							across == null ? null
-									: new Crop(across, row.getBigDecimal(8), row.getBigDecimal(9)),
-							row.getObject(10, Boolean.class));
+									: new Crop(across, row.getBigDecimal(9), row.getBigDecimal(10)),
+							row.getObject(11, Boolean.class));
 				})
 				.list();
 	}
