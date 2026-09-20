@@ -177,11 +177,46 @@ services:
       # shared NAME shares no value; what it buys is that one spelling works on
       # both hosts instead of a setting that is silently dead on one of them.
       BTL_SUPERADMIN_EMAIL: ${BTL_SUPERADMIN_EMAIL:-}
+      # AND WHERE THE PICTURES LIVE, which is the mount right below this block.
+      #
+      # This stack had neither this line nor the mount until 20.09.2026, and a
+      # security round measured what that meant: with neither, the backend falls
+      # back to application.properties, whose default is ${java.io.tmpdir} - so
+      # PRODUCTION would have kept members' photographs in the container's /tmp.
+      # Writable by everything in the container, emptied by every `up -d --build`
+      # while the rows in `photo` describing them stayed, and covered by no
+      # backup. Nothing went red, because a setting written out rather than taken
+      # from .env has no row in WhatEachStackRequiresTest's table at all; what
+      # holds it now is that class's
+      # everyDeployedStackMountsSomethingWhereItToldItsBackendToKeepPictures,
+      # which compares this value with the mount's target for every deployed
+      # stack.
+      #
+      # Written out and not taken from the environment, and the SAME path as QA,
+      # for the reason compose.qa.yml gives beside its own copy: it is not a
+      # secret and not an operator's choice, it is where this stack keeps its
+      # files. Compose prefixes the volume with the project name, so the two
+      # stacks cannot reach each other's copies through a shared path.
+      BTL_PHOTOS_FOLDER: /var/lib/btl/photos
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
       # native memory next to the heap.
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=55 -XX:+UseSerialGC -Xss512k"
+    volumes:
+      # THE PICTURES, and on production this is the first volume this service has
+      # ever had, exactly as on QA.
+      #
+      # ADL A41, 11.09.2026: "Imenovan Docker volumen uz bazu, montiran samo u
+      # bekend." Without it every uploaded file lives in the container's own
+      # writable layer and goes with the next build, while the rows in `photo`
+      # that describe them stay - which is a portal full of pictures that 404.
+      #
+      # AND IT IS A JOB THAT COMES WITH IT: ADL A41, "rezervna kopija mora da
+      # pokrije i volumen, a danas ne pokriva nista". The nightly pg_dump covers
+      # the database and nothing covers this, and on production that is a member's
+      # photograph rather than a test one.
+      - photos:/var/lib/btl/photos
     mem_limit: 640m
     healthcheck:
       # /actuator/health is the one endpoint Spring Boot exposes by default and
@@ -200,3 +235,4 @@ services:
 
 volumes:
   postgres-data:
+  photos:

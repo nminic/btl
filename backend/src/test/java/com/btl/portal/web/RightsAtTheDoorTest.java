@@ -24,11 +24,14 @@ import org.springframework.web.servlet.mvc.condition.PathPatternsRequestConditio
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1010,17 +1013,87 @@ class RightsAtTheDoorTest {
 	}
 
 	/**
-	 * AND THE OPEN LIST GRANTS TWO READS AND {@code OPTIONS}, WHICH IS THE FLOOR UNDER THE
-	 * LINE ABOVE.
+	 * WHAT EACH OPEN LIST GRANTS, and there is a row here for EVERY list {@code ApiSecurity}
+	 * declares rather than for the one somebody remembered.
+	 *
+	 * <p><b>This is a written snapshot and the floor under it is
+	 * {@link #everyListOfOpenRoutes()}</b>, which asks the class for its lists instead of
+	 * reading this. A list added to {@code ApiSecurity} with no row here fails on the line
+	 * that compares the two sets, in both directions, so a third list cannot arrive
+	 * unmeasured and a row for a list that has gone cannot sit here claiming to hold
+	 * something.
+	 *
+	 * <p><b>The verbs themselves cannot be derived and that is the point of writing them.</b>
+	 * What the chain grants is read off the chain; what somebody DECIDED to grant exists
+	 * nowhere but in a sentence, so this is the sentence. The two lists say different things
+	 * and the difference is the decision: {@code READ_BY_ANYBODY} opens {@code OPTIONS} as
+	 * well, because „what is open by name has nothing to hide about which verbs it takes",
+	 * and {@code READ_BY_ANYBODY_UNDER_A_NAME} does not, because an {@code Allow} answered at
+	 * an address made of a digest is a sentence with no reader. Both reasons are written out
+	 * in {@code ApiSecurity} beside the lists they belong to.
+	 */
+	private static final Map<String, List<String>> WHAT_EACH_OPEN_LIST_GRANTS = Map.of(
+			"READ_BY_ANYBODY", List.of("GET", "HEAD", "OPTIONS"),
+			"READ_BY_ANYBODY_UNDER_A_NAME", List.of("GET", "HEAD"));
+
+	/**
+	 * EVERY LIST OF OPEN ROUTES {@code ApiSecurity} DECLARES, ASKED OF THE CLASS.
+	 *
+	 * <p><b>Nothing names a list here, and a review on 20.09.2026 is why.</b> Until that day
+	 * the floor below ran over {@code READ_BY_ANYBODY} alone, which was true of the portal
+	 * exactly while there was one list. B83 added a second, and the mutation that proved the
+	 * gap took one line: replacing the two method-bearing rules for that list with a bare
+	 * {@code .requestMatchers(openUnderAName).permitAll()} - which opens every verb there is
+	 * on {@code /api/photos/&#123;name&#125;} - left 84 cases green and BUILD SUCCESS, while
+	 * the same mutation over the FIRST list falls three times. The guard existed; the second
+	 * list simply did not get it, and a third would not have got it either.
+	 *
+	 * <p><b>So the question is asked of the language.</b> Every {@code static final} field
+	 * {@code ApiSecurity} declares whose type is {@link List} is a list of open routes, by
+	 * the shape of the file: that class holds nothing else. A list added tomorrow is swept
+	 * the day it is written, under any name, and one whose rows nobody decided on fails at
+	 * the comparison with {@link #WHAT_EACH_OPEN_LIST_GRANTS} rather than passing quietly.
+	 *
+	 * <p><b>Its boundary, written down rather than left to be found:</b> a list of open
+	 * routes kept somewhere other than a field of {@code ApiSecurity} - built inside the
+	 * lambda, or read out of a property - is not seen here at all. What makes that visible is
+	 * that this floor demands the field's own name in the snapshot, so a list that moved out
+	 * of a field takes its row with it and the comparison falls.
+	 */
+	@SuppressWarnings("unchecked")
+	private static Map<String, List<String>> everyListOfOpenRoutes() {
+		Map<String, List<String>> lists = new LinkedHashMap<>();
+
+		for (Field field : ApiSecurity.class.getDeclaredFields()) {
+			if (!Modifier.isStatic(field.getModifiers()) || field.getType() != List.class) {
+				continue;
+			}
+
+			field.setAccessible(true);
+
+			try {
+				lists.put(field.getName(), (List<String>) field.get(null));
+			} catch (IllegalAccessException cannot) {
+				throw new AssertionError("ApiSecurity." + field.getName() + " could not be read,"
+						+ " so this floor cannot say which routes are open", cannot);
+			}
+		}
+
+		return lists;
+	}
+
+	/**
+	 * AND EVERY OPEN LIST GRANTS EXACTLY THE VERBS SOMEBODY DECIDED TO OPEN, WHICH IS THE
+	 * FLOOR UNDER THE LINE ABOVE.
 	 *
 	 * <p>The excuse above asks {@link #privileges} rather than a list, and that is only worth
 	 * anything while the evaluator really distinguishes one verb from another. An evaluator
 	 * wired to the wrong chain, or answering yes to everything, would excuse every route on
-	 * the open list - writes included - and the floor above would go back to passing on the
+	 * an open list - writes included - and the floor above would go back to passing on the
 	 * very mutation it exists for, silently. Measured rather than assumed, and this is the
 	 * case that measures it.
 	 *
-	 * <p><b>{@code OPTIONS} IS IN THAT LIST AND IT IS NOT A READ, and this case said
+	 * <p><b>{@code OPTIONS} IS IN ONE OF THOSE LISTS AND IT IS NOT A READ, and this case said
 	 * otherwise until a review on 19.09.2026.</b> Its name and its note both claimed
 	 * „reading", while the line below has always demanded {@code OPTIONS} as well -
 	 * {@code ApiSecurity} says so in as many words („AND OPTIONS, which is NOT a read and is
@@ -1028,8 +1101,15 @@ class RightsAtTheDoorTest {
 	 * (`ADL.md`:801). So the claim was narrower than the code, which is the shape of thing
 	 * this whole branch exists to remove.
 	 *
+	 * <p><b>AND IT IS NO LONGER A CASE ABOUT ONE LIST, which is the correction of
+	 * 20.09.2026</b> and the reason it is named as it is now. The note on
+	 * {@link #everyListOfOpenRoutes()} carries the measurement: a second list had no floor at
+	 * all, and writing a second case for it would have left a third list in the same place.
+	 * What the two lists grant is different, so the snapshot is keyed by the field's name and
+	 * not shared.
+	 *
 	 * <p><b>WHAT THIS FLOOR THEREFORE DOES NOT SEE, named rather than left to be found: a
-	 * handler MAPPED for {@code OPTIONS} on an open path.</b> Measured the same day - an
+	 * handler MAPPED for {@code OPTIONS} on an open path.</b> Measured on 19.09.2026 - an
 	 * unguarded {@code @RequestMapping(method = OPTIONS)} on {@code /api/events} passes, and
 	 * it passes correctly by this file's own rule, because the chain really does grant that
 	 * verb there. Nothing maps one today and Spring answers {@code OPTIONS} itself out of the
@@ -1038,18 +1118,12 @@ class RightsAtTheDoorTest {
 	 * where that decision is owed. {@code HEAD} sits in the same list and is NOT a boundary,
 	 * because {@code HEAD} is a read.
 	 *
-	 * <p><b>It is a snapshot of THREE VERBS and it is the only place they are written in this
-	 * file.</b> Nothing reads it; it asserts. {@code ApiSecurity} is the one home of the
-	 * decision, this says out loud what that home currently says, and the day it opens a
-	 * fourth verb or drops one this fails and somebody writes down why once - instead of the
-	 * floor above quietly excusing a verb nobody decided to open.
-	 *
 	 * <p>The verbs it asks about are {@link HttpMethod#values()}, which is the language's own
 	 * enumeration rather than a fourth list; asserted non-trivial first, because a set of
 	 * verbs holding no write would make every line below true while asking nothing.
 	 */
 	@Test
-	void theOpenListGrantsTwoReadsAndOptionsAndNothingElse() {
+	void everyOpenListGrantsExactlyTheVerbsSomebodyDecidedToOpen() {
 		List<String> everyVerbThereIs =
 				Stream.of(HttpMethod.values()).map(HttpMethod::name).sorted().toList();
 
@@ -1057,28 +1131,48 @@ class RightsAtTheDoorTest {
 				.as("the verbs asked about hold no write, so nothing below could fail")
 				.contains("POST", "PUT", "PATCH", "DELETE");
 
-		assertThat(ApiSecurity.READ_BY_ANYBODY)
-				.as("nothing is open at all, so this asks about nothing")
-				.isNotEmpty();
+		Map<String, List<String>> declared = everyListOfOpenRoutes();
 
-		for (String open : ApiSecurity.READ_BY_ANYBODY) {
-			assertThat(everyVerbThereIs.stream().filter(how -> anybodyMayDoThis(how, open)).toList())
-					.as("%s is open for a verb nobody decided to open, or has stopped being open"
-							+ " for one that was decided; whichever it is, the line that excuses"
-							+ " routes on the open list is no longer excusing what ApiSecurity"
-							+ " grants", open)
-					.containsExactly("GET", "HEAD", "OPTIONS");
+		/* BOTH WAYS, which is what keeps the snapshot from being padded and from going
+		   stale: a list ApiSecurity declares and nobody decided verbs for fails here, and so
+		   does a name written here for a list that no longer exists. */
+		assertThat(declared.keySet())
+				.as("ApiSecurity declares a list of open routes that nobody has decided verbs"
+						+ " for, or this snapshot names one it no longer declares. Either way"
+						+ " the chain is opening something this floor is not measuring, which"
+						+ " is exactly how READ_BY_ANYBODY_UNDER_A_NAME arrived with no floor"
+						+ " of its own")
+				.containsExactlyInAnyOrderElementsOf(WHAT_EACH_OPEN_LIST_GRANTS.keySet());
 
-			/* AND A MAPPING THAT LIMITS NO VERB IS GRANTED NOTHING, which is the fact
-			   `anybodyMayDoThis` leans on since the clause that used to assert it in code was
-			   measured to be a belt with no buckle. `LIMITS_NO_VERB` is not a verb any rule in
-			   `ApiSecurity` names, so the evaluator falls through to `authenticated()` and
-			   denies a stranger. Pinned here rather than assumed: the day that stops holding,
-			   `/error` would start borrowing an open path's excuse and this says so first. */
-			assertThat(anybodyMayDoThis(LIMITS_NO_VERB, open))
-					.as("a mapping that limits no verb was granted %s by the chain, so the floor"
-							+ " above would excuse one instead of making it name itself", open)
-					.isFalse();
+		for (Map.Entry<String, List<String>> list : declared.entrySet()) {
+			List<String> decided = WHAT_EACH_OPEN_LIST_GRANTS.get(list.getKey());
+
+			assertThat(list.getValue())
+					.as("ApiSecurity.%s is empty, so this asks about nothing", list.getKey())
+					.isNotEmpty();
+
+			for (String open : list.getValue()) {
+				assertThat(everyVerbThereIs.stream()
+								.filter(how -> anybodyMayDoThis(how, open)).toList())
+						.as("%s is on %s and is open for a verb nobody decided to open, or has"
+								+ " stopped being open for one that was decided; whichever it is,"
+								+ " the line that excuses routes on an open list is no longer"
+								+ " excusing what ApiSecurity grants", open, list.getKey())
+						.containsExactlyElementsOf(decided);
+
+				/* AND A MAPPING THAT LIMITS NO VERB IS GRANTED NOTHING, which is the fact
+				   `anybodyMayDoThis` leans on since the clause that used to assert it in code
+				   was measured to be a belt with no buckle. `LIMITS_NO_VERB` is not a verb any
+				   rule in `ApiSecurity` names, so the evaluator falls through to
+				   `authenticated()` and denies a stranger. Pinned here rather than assumed: the
+				   day that stops holding, `/error` would start borrowing an open path's excuse
+				   and this says so first. */
+				assertThat(anybodyMayDoThis(LIMITS_NO_VERB, open))
+						.as("a mapping that limits no verb was granted %s by the chain, so the"
+								+ " floor above would excuse one instead of making it name"
+								+ " itself", open)
+						.isFalse();
+			}
 		}
 	}
 
@@ -1101,7 +1195,7 @@ class RightsAtTheDoorTest {
 	 * evaluator falls through to {@code anyRequest().authenticated()} and denies it. The
 	 * clause was a belt with no buckle beside a sentence crediting the belt, so it is gone
 	 * and the fact it was standing in for is PINNED instead, in
-	 * {@link #theOpenListGrantsTwoReadsAndOptionsAndNothingElse} - which falls the day that
+	 * {@link #everyOpenListGrantsExactlyTheVerbsSomebodyDecidedToOpen} - which falls the day that
 	 * fall-through stops holding, and a clause with no case never would have.
 	 *
 	 * <p><b>The boundary of reading the list as TEXT, written down because it is not
@@ -1127,10 +1221,16 @@ class RightsAtTheDoorTest {
 	 * route in {@link #ANSWERS_WITHOUT_A_RIGHT}, and that would have been a false sentence:
 	 * the list says a route „neither opens itself by name nor is decided at the door", while
 	 * this one opens itself by name in the file that opens everything else.
+	 *
+	 * <p><b>AND NEITHER LIST IS NAMED HERE EITHER, which is the correction of 20.09.2026.</b>
+	 * Written as two fields read by hand, a THIRD list would have had to be added to this
+	 * line by whoever remembered it existed - and the finding of that day was that exactly
+	 * such a remembering had already been missed once. {@link #everyListOfOpenRoutes()} asks
+	 * {@code ApiSecurity} for its lists instead, so this excuse covers a list on the day it
+	 * is declared.
 	 */
 	private boolean anybodyMayDoThis(String how, String path) {
-		return (ApiSecurity.READ_BY_ANYBODY.contains(path)
-				|| ApiSecurity.READ_BY_ANYBODY_UNDER_A_NAME.contains(path))
+		return everyListOfOpenRoutes().values().stream().anyMatch(open -> open.contains(path))
 				&& privileges.isAllowed(null, path, how, null);
 	}
 
