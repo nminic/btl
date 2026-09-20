@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { ACCOUNT_ROUTES, FOOTER_ROUTES, NAV } from './routes'
+import { ROUTES } from './routes'
 
 /**
  * THE ADDRESS IN A POSTED MESSAGE HAS TWO HOMES, AND THIS IS THE FLOOR BETWEEN THEM.
@@ -56,9 +56,11 @@ describe('every address the server posts in a message', () => {
   const pathsThePortalPosts = (java: string) =>
     [...java.matchAll(/^\s*[A-Z_]+\("[^"]+",\s*"(\/[^"]*)"/gm)].map((found) => found[1])
 
-  const everyPath = () =>
-    [...NAV.flatMap((section) => [section, ...(section.children ?? [])]), ...ACCOUNT_ROUTES, ...FOOTER_ROUTES]
-      .map((route) => `/${route.path}`)
+  /* `ROUTES` is the router's own sum - navigation, account, footer and the unlisted ones
+     the server posts - so this reads the same list the router reads. Naming the three
+     exported lists by hand missed `UNLISTED_ROUTES`, which is exactly where the two
+     addresses in question live; that draft reported them as having no screen. */
+  const everyPath = () => ROUTES.map((route) => `/${route.path}`)
 
   it('is read off the Java that posts it, not off a list kept by hand', () => {
     const posted = pathsThePortalPosts(messageJava())
