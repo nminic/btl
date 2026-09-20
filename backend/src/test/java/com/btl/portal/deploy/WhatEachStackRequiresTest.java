@@ -1084,6 +1084,14 @@ class WhatEachStackRequiresTest {
 					backendEnvironmentOf(compose(stack, List.of("config"), distinct).output(),
 							stack);
 
+			/* ASKED FOR BEFORE IT IS READ, so that a stack which stopped handing the setting
+			   over fails on the case written about THAT and not here with the word „null"
+			   where a path belongs. The case above is the one that owns that sentence. */
+			assertThat(backend)
+					.as("%s hands its backend no %s, which the case above is the one to report -"
+							+ " this one has no path to hold the image to", stack, PHOTOS)
+					.containsKey(PHOTOS);
+
 			String folder = String.valueOf(backend.get(PHOTOS));
 
 			assertThat(beforeThat)
