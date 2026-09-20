@@ -3,6 +3,8 @@ import { screen, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { Asked, Pigeonhole, Saved } from '../test/saved'
+import { recordKey } from '../session/context'
+import { MEMBERS } from './admin/entityForms'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useClock } from '../clock/useClock'
@@ -112,7 +114,7 @@ describe('the way a member asks to be let into a team', () => {
       '000002',
       undefined,
       DAY,
-      <Given who="000002" team="team-vardar" />,
+      <Given who="000002" team={3} />,
     )
 
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
@@ -131,7 +133,7 @@ describe('the way a member asks to be let into a team', () => {
       '000002',
       undefined,
       SHUT,
-      <Applied who="000002" team="team-dunav" day={DAY} />,
+      <Applied who="000002" team={1} day={DAY} />,
     )
 
     return screen.findByRole('button', { name: 'Povuci prijavu' }).then((one) => {
@@ -153,11 +155,11 @@ describe('the way a member asks to be let into a team', () => {
       '000002',
       undefined,
       DAY,
-      <Folded team="team-dunav" />,
+      <Folded team={1} />,
     )
 
     await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
-    await user.click(screen.getByRole('button', { name: 'obriši team-dunav' }))
+    await user.click(screen.getByRole('button', { name: 'obriši 1' }))
     await router.navigate(VARDAR)
 
     expect(await screen.findByRole('button', { name: 'Prijavi se u tim' })).toBeVisible()
@@ -180,7 +182,7 @@ describe('the way a member asks to be let into a team', () => {
       undefined,
       DAY,
       <>
-        <Also who="000004" team="team-vardar" day={DAY} />
+        <Also who="000004" team={3} day={DAY} />
         <Answered who="000004" />
         <Asked />
       </>,
@@ -229,7 +231,7 @@ describe('the way a member asks to be let into a team', () => {
       undefined,
       DAY,
       <>
-        <Also who="000004" team="team-vardar" day={DAY} />
+        <Also who="000004" team={3} day={DAY} />
         <Asked />
       </>,
     )
@@ -298,7 +300,7 @@ function Left({ who }: { who: string }) {
   useEffect(() => {
     if (!done.current) {
       done.current = true
-      editRecord(who, { teamId: 'team-vardar', teamSince: '2020' })
+      editRecord(recordKey(MEMBERS.id, who), { teamId: '3', teamSince: '2020' })
     }
   }, [editRecord, who])
 
@@ -323,14 +325,14 @@ function Erased({ who }: { who: string }) {
 /** A member who has come by a team some other way while their application waited. The
  *  moderator approving a team they proposed writes exactly this
  *  (`admin/PendingQueue.tsx`), and so does administration editing their record. */
-function Given({ who, team }: { who: string; team: string }) {
+function Given({ who, team }: { who: string; team: number }) {
   const { editRecord } = useSession()
 
   return (
     <button
       type="button"
       onClick={() => {
-        editRecord(who, { teamId: team, teamSince: '2027' })
+        editRecord(recordKey(MEMBERS.id, who), { teamId: String(team), teamSince: '2027' })
       }}
     >
       daj tim {who}
@@ -340,7 +342,7 @@ function Given({ who, team }: { who: string; team: string }) {
 
 /** A second application, filed the way the screen files one, on behalf of somebody who is
  *  not the member reading this page. */
-function Also({ who, team, day }: { who: string; team: string; day: string }) {
+function Also({ who, team, day }: { who: string; team: number; day: string }) {
   const { apply } = useSession()
 
   return (
@@ -396,14 +398,14 @@ function Ticking({ to }: { to: string }) {
 /** A team deleted during this same visit, which the control 133c put on this very page
  *  does. On a button and not on mounting, because the application has to exist before the
  *  team stops doing so. */
-function Folded({ team }: { team: string }) {
+function Folded({ team }: { team: number }) {
   const { remove } = useSession()
 
   return (
     <button
       type="button"
       onClick={() => {
-        remove('teams', team)
+        remove('teams', String(team))
       }}
     >
       obriši {team}
@@ -413,7 +415,7 @@ function Folded({ team }: { team: string }) {
 
 /** An application already open, filed the way the screen files one, so the answering side
  *  can be measured on a day when nobody could have sent it. */
-function Applied({ who, team, day }: { who: string; team: string; day: string }) {
+function Applied({ who, team, day }: { who: string; team: number; day: string }) {
   const { apply } = useSession()
   const done = useRef(false)
 
@@ -473,7 +475,7 @@ describe('the answer the team gives', () => {
 
     const written = within(screen.getByRole('list', { name: 'session records' }))
 
-    expect(written.getByText(/000002.*team-dunav/)).toBeVisible()
+    expect(written.getByText(/000002.*teamId=1 /)).toBeVisible()
     expect(written.getByText(/000002.*2027/)).toBeVisible()
     /* And the question is over: it is not waiting on this team any more. */
     expect(screen.queryByRole('button', { name: TAKE })).toBeNull()
@@ -523,7 +525,7 @@ describe('the answer the team gives', () => {
       '000001',
       undefined,
       LATER,
-      <Applied who="000002" team="team-dunav" day={DAY} />,
+      <Applied who="000002" team={1} day={DAY} />,
     )
 
     return screen.findByText(/15\D+10\D+2026/).then((one) => {
@@ -557,7 +559,7 @@ describe('the answer the team gives', () => {
 
     const written = within(screen.getByRole('list', { name: 'session records' }))
 
-    expect(written.queryByText(/000002.*team-dunav/)).toBeNull()
+    expect(written.queryByText(/000002.*teamId=1 /)).toBeNull()
     expect(screen.queryByRole('button', { name: REFUSE })).toBeNull()
     expect(
       within(screen.getByRole('list', { name: 'open applications' })).queryByText(/000002/),
@@ -653,7 +655,7 @@ describe('the answer the team gives', () => {
       undefined,
       DAY,
       <>
-        <Given who="000002" team="team-vardar" />
+        <Given who="000002" team={3} />
         <Become who="000001" />
       </>,
     )
@@ -742,8 +744,8 @@ describe('the answer the team gives', () => {
       undefined,
       LATER,
       <>
-        <Applied who="000002" team="team-dunav" day={DAY} />
-        <Applied who="000004" team="team-dunav" day={OTHER_DAY} />
+        <Applied who="000002" team={1} day={DAY} />
+        <Applied who="000004" team={1} day={OTHER_DAY} />
         <Become who="000002" />
         <Become who="000004" />
         <Saved />
@@ -773,8 +775,8 @@ describe('the answer the team gives', () => {
 
     const written = within(screen.getByRole('list', { name: 'session records' }))
 
-    expect(written.getByText(/000004.*team-dunav/)).toBeVisible()
-    expect(written.queryByText(/000002.*team-dunav/)).toBeNull()
+    expect(written.getByText(/000004.*teamId=1 /)).toBeVisible()
+    expect(written.queryByText(/000002.*teamId=1 /)).toBeNull()
 
     /* The other is still waiting, and was told nothing. */
     expect(
@@ -813,8 +815,8 @@ describe('the answer the team gives', () => {
       undefined,
       LATER,
       <>
-        <Applied who="000002" team="team-dunav" day={DAY} />
-        <Applied who="000004" team="team-dunav" day={OTHER_DAY} />
+        <Applied who="000002" team={1} day={DAY} />
+        <Applied who="000004" team={1} day={OTHER_DAY} />
         <Become who="000002" />
         <Become who="000004" />
         <Asked />
@@ -863,7 +865,7 @@ describe('the answer the team gives', () => {
       undefined,
       LATER,
       <>
-        <Applied who="000002" team="team-vardar" day={DAY} />
+        <Applied who="000002" team={3} day={DAY} />
         <Become who="000002" />
         <Saved />
         <Pigeonhole />
@@ -874,7 +876,7 @@ describe('the answer the team gives', () => {
 
     expect(
       within(screen.getByRole('list', { name: 'session records' })).getByText(
-        /000002.*team-vardar/,
+        /000002.*teamId=3 /,
       ),
     ).toBeVisible()
 
@@ -913,9 +915,9 @@ describe('the answer the team gives', () => {
       undefined,
       NEXT_WINDOW,
       <>
-        <Applied who="000002" team="team-vardar" day={DAY} />
-        <Applied who="000004" team="team-vardar" day={OTHER_DAY} />
-        <Applied who="000006" team="team-vardar" day={THIRD_DAY} />
+        <Applied who="000002" team={3} day={DAY} />
+        <Applied who="000004" team={3} day={OTHER_DAY} />
+        <Applied who="000006" team={3} day={THIRD_DAY} />
         <Become who="000002" />
         <Become who="000004" />
         <Saved />
@@ -929,7 +931,7 @@ describe('the answer the team gives', () => {
     /* The team whose page this is, and the season being sold on the day of the answer. */
     const written = within(screen.getByRole('list', { name: 'session records' }))
 
-    expect(written.getByText(/000004.*team-vardar/)).toBeVisible()
+    expect(written.getByText(/000004.*teamId=3 /)).toBeVisible()
     expect(written.getByText(/000004.*2028/)).toBeVisible()
 
     /* Neither of the other two was touched, and both are still waiting. */
@@ -971,9 +973,9 @@ describe('the answer the team gives', () => {
       undefined,
       NEXT_WINDOW,
       <>
-        <Applied who="000002" team="team-vardar" day={DAY} />
-        <Applied who="000004" team="team-vardar" day={OTHER_DAY} />
-        <Applied who="000006" team="team-vardar" day={THIRD_DAY} />
+        <Applied who="000002" team={3} day={DAY} />
+        <Applied who="000004" team={3} day={OTHER_DAY} />
+        <Applied who="000006" team={3} day={THIRD_DAY} />
         <Become who="000002" />
         <Become who="000004" />
         <Saved />
@@ -986,7 +988,7 @@ describe('the answer the team gives', () => {
 
     /* Nobody was put in a team by a refusal. */
     expect(
-      within(screen.getByRole('list', { name: 'session records' })).queryByText(/team-vardar/),
+      within(screen.getByRole('list', { name: 'session records' })).queryByText(/teamId=3 /),
     ).toBeNull()
 
     const open = within(screen.getByRole('list', { name: 'open applications' }))
@@ -1039,8 +1041,8 @@ describe('the answer the team gives', () => {
       undefined,
       DAY,
       <>
-        <Applied who="000004" team="team-vardar" day={OTHER_DAY} />
-        <Also who="000006" team="team-vardar" day={THIRD_DAY} />
+        <Applied who="000004" team={3} day={OTHER_DAY} />
+        <Also who="000006" team={3} day={THIRD_DAY} />
         <Ticking to={NEXT_WINDOW} />
         <Become who="000003" />
         <Become who="000002" />
@@ -1067,7 +1069,7 @@ describe('the answer the team gives', () => {
     /* The whole of what was written: the field names as well as the values. */
     expect(
       within(screen.getByRole('list', { name: 'session records' })).getByText(
-        'edit 000002 | teamId=team-vardar teamSince=2028',
+        'edit members:000002 | teamId=3 teamSince=2028',
       ),
     ).toBeVisible()
 
@@ -1094,7 +1096,7 @@ describe('the answer the team gives', () => {
       '000001',
       undefined,
       SHUT,
-      <Applied who="000002" team="team-dunav" day={DAY} />,
+      <Applied who="000002" team={1} day={DAY} />,
     )
 
     return screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' }).then(() => {

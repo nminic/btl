@@ -43,7 +43,7 @@ import './EventComments.css'
  *  11.08.2026). */
 const AT_FIRST = 10
 
-export function EventComments({ eventId, date }: { eventId: string; date: string }) {
+export function EventComments({ eventId, date }: { eventId: number; date: string }) {
   const { t } = useI18n()
   const reads = useReadsComments()
   const today = useToday()

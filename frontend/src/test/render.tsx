@@ -19,7 +19,7 @@ import { SessionProvider } from '../session/SessionProvider'
  */
 export function moderatorWith(rights: string[]): Moderator {
   return {
-    id: 'mod-proba',
+    id: 1,
     firstName: 'Probni',
     lastName: 'Moderator',
     email: 'probni@primer.rs',

@@ -143,7 +143,7 @@ function RateOne() {
               subject: event.name,
               /* By the id as well, because approving it publishes a comment about
                  this edition and not about whatever else carries the name. */
-              subjectId: event.id,
+              subjectId: String(event.id),
               body: comment,
               currentDate: '',
               proposedDate: '',

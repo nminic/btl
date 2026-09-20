@@ -35,7 +35,7 @@ export function afterJoining({
   /** Whose invitations these are. */
   member: string
   /** The club they are now in. */
-  joined: string
+  joined: number
   /**
    * The one invitation that is not closed, where there is one.
    *

@@ -21,15 +21,15 @@ import type { BtlEvent } from './types'
  * an event pointing at itself, or two pointing at each other, is a page that
  * never finishes drawing. Every id is met once.
  */
-export function editionsOf(events: BtlEvent[], eventId: string): BtlEvent[] {
-  const byId = new Map(events.map((event) => [event.id, event]))
+export function editionsOf(events: BtlEvent[], eventId: number): BtlEvent[] {
+  const byId = new Map<number | null, BtlEvent>(events.map((event) => [event.id, event]))
   const chain: BtlEvent[] = []
-  const met = new Set<string>()
+  const met = new Set<number | null>()
 
-  let at = eventId
+  let at: number | null = eventId
 
-  /* No test for the empty string an event entered by hand carries: the lookup
-     below answers nothing for it, which is the same door out. */
+  /* No test for the nothing an event entered by hand carries: the lookup below
+     answers nothing for it, which is the same door out. */
   while (!met.has(at)) {
     met.add(at)
 

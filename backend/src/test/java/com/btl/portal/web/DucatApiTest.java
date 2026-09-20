@@ -30,37 +30,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 class DucatApiTest {
 
-	/**
-	 * HOW A DUCAT IS DRAWN, NAMED HERE WITH THE REASON, because a lost field and a
-	 * withheld one look alike from a test.
-	 *
-	 * <p>All seven are settings of the DRAWING, and V15 refused them a column in as
-	 * many words: „How a badge is DRAWN - its mark, its artwork, the words above and
-	 * below the number - is the portal's and stays in the portal, keyed by the code
-	 * below. The schema decides who gets what; it does not decide what that looks
-	 * like." There is nothing in the database to answer them with, and inventing one
-	 * would make the appearance of a ducat a migration.
-	 *
-	 * <p>Not one of them is a privacy omission: Article 73 publishes „dukati i
-	 * priznanja" and says nothing against a legend on a coin. They are left out
-	 * because they are somebody else's, which is a different sentence and is why it
-	 * is written down.
-	 */
-	private static final String THE_LEGEND_ABOVE = "top";
-	private static final String THE_LEGEND_ABOVE_FOR_A_WOMAN = "topFemale";
-	private static final String THE_LEGEND_BELOW = "bottom";
-	private static final String WHICH_LEGEND_THE_PERIOD_TAKES = "periodAt";
-	private static final String THE_SMALL_MARK = "mark";
-	private static final String THE_DRAWING_IN_THE_MIDDLE = "art";
-	private static final String WHAT_A_STEP_IS_COUNTED_IN = "counted";
-
 	/** What the portal draws today, read off the working tree the same way
 	 *  {@code CountryApiTest} and {@code DucatConstraintsTest} read theirs. */
 	private static final Path DRAWN = Path.of("..", "frontend", "public", "mock", "ducats.json");
 
-	/** Fifteen families, and nine fields of each: the condition and what it is worth. */
+	/**
+	 * Fifteen families, and sixteen fields of each: the condition, what it is worth,
+	 * and the coin it is struck on.
+	 *
+	 * <p><b>Seven of the sixteen were named here as deliberate omissions until
+	 * 20.09.2026</b>, with V15's own sentence for a reason - the mark, the artwork and
+	 * the words on the two arcs „is the portal's and stays in the portal". V27
+	 * overturns that sentence and the seven are columns; the omissions are gone from
+	 * the call below rather than reworded, because an omission that omits nothing is
+	 * the kind of stale line {@code Answers} was written to refuse.
+	 */
 	private static final int FAMILIES = 15;
-	private static final int FIELDS_OF_THE_CONDITION = 9;
+	private static final int FIELDS_OF_A_DUCAT = 16;
 
 	@Autowired
 	private MockMvc http;
@@ -97,24 +83,17 @@ class DucatApiTest {
 	}
 
 	/**
-	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE SEVEN THAT DRAW THE COIN.
+	 * EVERY FIELD THE PORTAL READS IS ANSWERED, AND NOTHING IS LEFT OUT ANY MORE.
 	 *
-	 * <p>Those seven are named above with the reason. {@code Answers} checks each name
-	 * against the file the portal really serves, so a name left here after the portal
-	 * stopped serving it cannot quietly excuse a field that went missing for another
-	 * reason, and it checks the answer really does leave them out - which is the whole
-	 * claim, and the half a review found missing on the competitors' resource.
-	 *
-	 * <p>It also refuses a name the portal does NOT read, and nothing is named as
-	 * deliberately added here: who holds which ducat has a table in V15 and no screen
-	 * that reads it, so it does not leave through this route at all.
+	 * <p>Nothing is named as deliberately withheld and nothing as deliberately added:
+	 * the sixteen the portal serves are the sixteen this answers with, exactly. Who
+	 * holds which ducat has a table in V15 and no screen that reads it, so it does not
+	 * leave through this route at all - which is the case at the bottom of this file
+	 * rather than a name on this line.
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
-		Answers.everyFieldThePortalReadsIsAnswered("/api/ducats", answer(), "ducats.json",
-				THE_LEGEND_ABOVE, THE_LEGEND_ABOVE_FOR_A_WOMAN, THE_LEGEND_BELOW,
-				WHICH_LEGEND_THE_PERIOD_TAKES, THE_SMALL_MARK, THE_DRAWING_IN_THE_MIDDLE,
-				WHAT_A_STEP_IS_COUNTED_IN);
+		Answers.everyFieldThePortalReadsIsAnswered("/api/ducats", answer(), "ducats.json");
 	}
 
 	@Test
@@ -134,10 +113,12 @@ class DucatApiTest {
 	 * something nobody decided.
 	 *
 	 * <p><b>What this measures that the schema's own case does not.</b>
-	 * {@code DucatConstraintsTest} ties the ROWS to the file, and only by code, name,
-	 * kind and threshold. This ties the ANSWER to it, by every field of it: a SELECT
-	 * that reads one column for another, or drops a record, or sorts by something else,
-	 * leaves the rows untouched and would walk straight past that case.
+	 * {@code DucatConstraintsTest} ties the ROWS to the file. This ties the ANSWER to
+	 * it: a SELECT that reads one column for another, or drops a record, or sorts by
+	 * something else, leaves the rows untouched and would walk straight past that case.
+	 * The two are not one case with two homes - sixteen columns and sixteen components
+	 * of a record are sixteen chances to line them up wrongly, and only one of the two
+	 * cases is looking at that.
 	 *
 	 * <p><b>Which column swaps it can see is not assumed</b>, it is the case below:
 	 * no two fields of this answer carry the same value in all fifteen records, so
@@ -184,10 +165,9 @@ class DucatApiTest {
 		}
 
 		assertThat(compared)
-				.as("fifteen ducats times the nine fields of the condition were not compared, so this"
-						+ " case is measuring less than it says; the seven that draw the coin are named"
-						+ " in the case above and are not among them")
-				.isEqualTo(FAMILIES * FIELDS_OF_THE_CONDITION);
+				.as("fifteen ducats times the sixteen fields of one were not compared, so this case is"
+						+ " measuring less than it says")
+				.isEqualTo(FAMILIES * FIELDS_OF_A_DUCAT);
 	}
 
 	/**
@@ -195,19 +175,22 @@ class DucatApiTest {
 	 * what makes the comparison above able to see a column read for another one.
 	 *
 	 * <p>The floor under a golden comparison is not that it compares everything - it is
-	 * that the two sides can disagree. Nine fields is thirty-six pairs, and a pair that
-	 * said the same thing in all fifteen records would be a pair the catalogue cannot
-	 * tell apart: a query answering {@code last} out of {@code tierUpFrom} would then
-	 * produce this very list and nothing would be red.
+	 * that the two sides can disagree. Sixteen fields is a hundred and twenty pairs, and
+	 * a pair that said the same thing in all fifteen records would be a pair the
+	 * catalogue cannot tell apart: a query answering {@code last} out of
+	 * {@code tierUpFrom} would then produce this very list and nothing would be red.
 	 *
 	 * <p>It is worth its own case rather than a sentence in a comment because the
 	 * fifteen are real data and the pairs are nearly alike: thirteen of them carry
 	 * nought in all three fields of a run, and both of the two that carry a run have a
-	 * step exactly equal to their first threshold. The two that separate every pair are
-	 * the two runs, and losing them would be losing this without a word.
+	 * step exactly equal to their first threshold. Seven of the sixteen columns V27
+	 * added are empty on the same row more often than not - {@code topFemale} on seven
+	 * ducats, {@code counted} on thirteen, one of the two arcs on six - so the pairs
+	 * among THEM are the tightest in the answer. Measured on 20.09.2026 over the file
+	 * itself: not one of the hundred and twenty agrees in all fifteen records.
 	 *
 	 * <p>Read off the answer's own fields rather than from a list written here, so a
-	 * field answered tomorrow is either told apart from the eight beside it or it is
+	 * field answered tomorrow is either told apart from the fifteen beside it or it is
 	 * measured by nothing and says so.
 	 */
 	@Test
@@ -217,8 +200,8 @@ class DucatApiTest {
 
 		assertThat(ours.size()).as("one record cannot tell two fields apart, so this compares nothing")
 				.isGreaterThan(1);
-		assertThat(fields).as("the answer carries fewer fields than the condition has, so some pair"
-				+ " below was never formed").hasSize(FIELDS_OF_THE_CONDITION);
+		assertThat(fields).as("the answer carries fewer fields than a ducat has, so some pair below"
+				+ " was never formed").hasSize(FIELDS_OF_A_DUCAT);
 
 		for (int a = 0; a < fields.size(); a++) {
 			for (int b = a + 1; b < fields.size(); b++) {
@@ -254,9 +237,19 @@ class DucatApiTest {
 	 * </ul>
 	 *
 	 * <p>Its every value is unlike anything in the catalogue - a run of three from
-	 * seven to twenty-two rising at thirteen - so each of the nine fields is told apart
-	 * from the other eight on this row alone, and the whole record is compared rather
+	 * seven to twenty-two rising at thirteen, and legends nobody has struck on a coin -
+	 * and no two of its sixteen values are alike either, so each field is told apart
+	 * from the other fifteen on this row alone and the whole record is compared rather
 	 * than the field this case is named for.
+	 *
+	 * <p><b>AND THE SIXTEEN EXPECTED VALUES BELOW COME FROM THE INSERT ABOVE THEM,
+	 * NEVER FROM {@code ducats.json}</b>, which is the one thing that makes this case
+	 * about the database at all. The seven legends V27 added are the easy place to lose
+	 * that: {@code duk-probni} says „PROBAO" where every ducat in the file says
+	 * something else, so an expectation quietly taken off the file instead - „ISTRČANIH"
+	 * on the first row of it - would be an assertion about the portal's own copy
+	 * dressed as one about the schema. Swapping any of the sixteen for the matching
+	 * value of the file is a red case, and was measured to be one.
 	 *
 	 * <p>What it cannot separate is {@code order by tier, id} from {@code order by
 	 * tier, code}, because {@code duk-probni} sorts after the two ducats of the first
@@ -267,8 +260,10 @@ class DucatApiTest {
 	@Test
 	void aDucatTheSchemaHoldsComesBackInItsMetalsPlace() throws Exception {
 		assertThat(db.sql("insert into ducat (code, name, kind, threshold, period, tier, step, last,"
-						+ " tier_up_from) values ('duk-probni', 'Probni dukat', 'points', 7, 'season',"
-						+ " 1, 3, 22, 13)").update())
+						+ " tier_up_from, top, top_female, bottom, period_at, mark, art, counted)"
+						+ " values ('duk-probni', 'Probni dukat', 'points', 7, 'season', 1, 3, 22, 13,"
+						+ " 'PROBAO', 'PROBALA', 'PROBNIH POENA', 'none', 'races', 'globe', 'poena')")
+						.update())
 				.as("the sixteenth ducat was not written, so this case measures the fifteen again")
 				.isOne();
 
@@ -289,9 +284,14 @@ class DucatApiTest {
 
 		assertThat(said)
 				.as("a column of the sixteenth ducat did not land in the field that names it")
-				.isEqualTo(Map.of("id", "duk-probni", "name", "Probni dukat", "kind", "points",
-						"value", "7", "period", "season", "tier", "1",
-						"step", "3", "last", "22", "tierUpFrom", "13"));
+				.isEqualTo(Map.ofEntries(Map.entry("id", "duk-probni"),
+						Map.entry("name", "Probni dukat"), Map.entry("kind", "points"),
+						Map.entry("value", "7"), Map.entry("period", "season"),
+						Map.entry("top", "PROBAO"), Map.entry("topFemale", "PROBALA"),
+						Map.entry("bottom", "PROBNIH POENA"), Map.entry("periodAt", "none"),
+						Map.entry("mark", "races"), Map.entry("art", "globe"),
+						Map.entry("tier", "1"), Map.entry("step", "3"), Map.entry("last", "22"),
+						Map.entry("tierUpFrom", "13"), Map.entry("counted", "poena")));
 	}
 
 	/**

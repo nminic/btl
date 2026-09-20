@@ -2,10 +2,12 @@ import { fieldDate } from '../../forms/dateField'
 import { WHOLE } from '../../components/crop'
 import { cena, clan, dogadjaj, liga, moderator, strana, tim, trka } from '../../forms/definitions'
 import { nextMemberNumber } from '../../data/memberNumber'
+import { nextIdentity } from './raceIds'
 import { isoDate } from '../../forms/dateField'
 import { slugify } from '../rulebookToc'
 import { applyChanges, fieldValue, recordValue } from '../../forms/records'
 import type { DerivedField, FieldDef, FieldError, FormDef, FormValues } from '../../forms/types'
+import { recordKey } from '../../session/context'
 import type { Created, Creations, Deletions, Edits } from '../../session/context'
 
 /* The seven entities administration owns, described rather than programmed.
@@ -162,7 +164,10 @@ export const EVENTS: EntityDef = {
      state today, because `emptyValues` seeds both with `''` (forms/validate.ts)
      and every event in the file carries them; this is the record saying what it
      is worth rather than a screen guessing. */
-  blank: { copiedFrom: '', description: '', link: '' },
+  /* Nothing, and not an empty string: an event nobody copied has no event
+     behind it, which is what `/api/events` answers with (`CalendarApi.Event`,
+     `Long copiedFrom`). */
+  blank: { copiedFrom: null, description: '', link: '' },
   /* What a new event opens holding, and every one of the three is the answer
      nearly every event gives (owner, 10. and 11.08.2026): it is a race, it is
      not featured, and it is run in Serbia. A required field whose answer is the
@@ -486,6 +491,25 @@ export function namesItself(entity: EntityDef): boolean {
 }
 
 /**
+ * Whether this entity's records are identified by a number the system counts up.
+ *
+ * **Read off the name of the identity, which is not a coincidence but the shape of
+ * the schema.** Everything the backend files under `id` is a `bigserial` it hands
+ * out (`CalendarApi`, `TeamApi`, `LeagueApi`, `ModeratorApi`); everything with a
+ * natural key is named for that key instead, and there are three of them: a member
+ * is `memberNumber`, a written page is `slug`, a price window is `key`. So this
+ * needs no list to keep in step with, and `entityForms.test.tsx` holds it against
+ * the files the portal actually serves.
+ *
+ * Two callers and one rule: `idFor`, which hands out the next one, and
+ * `recordFrom`, which puts it on the record as a number rather than as the text
+ * the session carries it in.
+ */
+export function numbersItsRecords(entity: EntityDef): boolean {
+  return entity.idField === 'id'
+}
+
+/**
  * The identity a record about to be created gets, in the three ways an entity can
  * come by one: handed out by the system out of what is free, typed where the form
  * asks for it, or made up where nobody should be typing it.
@@ -508,31 +532,24 @@ export function idFor(
     return String(values[entity.idField])
   }
 
-  /* One past the highest already used, and not the length of the list.
+  /* What is left is a record filed under a number, and that is not a fallback but
+   * the only remaining case: an entity either hands out its own identity, or asks
+   * for it on the form, or is filed under `id`, and `id` is a `bigserial`
+   * (`numbersItsRecords`). `overlayKeys.test.ts` holds that against the files the
+   * portal serves.
    *
-   * The length goes back down. Make two records, delete the first, make a
-   * third, and the third is handed the identity the second holds: the list
-   * draws two rows under one key, and a change to either reaches both, because
-   * the overlay of changes is keyed by exactly that identity. That is the same
-   * fault this file warns about two functions down, arriving by a different
-   * door. Counting up from the highest never goes back. */
-  const highest = made.reduce((most, one) => {
-    /* Taken apart rather than indexed. Read as `found[1]` the digits are "string
-       or nothing", `Number(undefined)` is not a number, and `Math.max` of it is
-       not a number either: every record then came out `-nov-NaN`, which is one
-       identity for all of them. That is the very fault this counter exists to
-       stop, and it went in silently, because nothing about a name is checked at
-       the point it is made. */
-    /* Two backslashes, because this is a template literal: written with one,
-       JavaScript reads it as an escape and hands the expression `d+`, which
-       matches nothing, so the count stayed at nought and every record was
-       named `-nov-1`. */
-    const [, digits] = new RegExp(`^${entity.id}-nov-(\\d+)$`).exec(one) ?? []
-
-    return digits === undefined ? most : Math.max(most, Number(digits))
-  }, 0)
-
-  return `${entity.id}-nov-${highest + 1}`
+   * **Counted DOWN from nought over what this visit has made**, which is the whole
+   * of what it has to be counted over: a `bigserial` never reaches here, so a
+   * record out of the file cannot hold the number this hands out and does not have
+   * to be looked at (`raceIds.ts`, `nextIdentity`). Never the length of the list:
+   * the length goes back down, so making two, deleting the first and making a
+   * third hands the third the identity the second holds, the list draws two rows
+   * under one key, and a change to either reaches both.
+   *
+   * Anything on the list that is not a whole number is stepped over rather than
+   * read as one; `Number('')` is nought and `Number('x')` is not a number, and
+   * either read as an identity is the one fault this counter exists to prevent. */
+  return String(nextIdentity(made.map(Number).filter((one) => Number.isInteger(one))))
 }
 
 /**
@@ -623,7 +640,12 @@ export function recordFrom(entity: EntityDef, created: Created): Record<string, 
   const record: Record<string, unknown> = { ...entity.blank }
 
   for (const [name, value] of Object.entries(created.values)) {
-    record[name] = value
+    /* Through the same door a change goes through, so a value the form never asked
+       for lands in the shape the record keeps rather than as the text the session
+       carried it in (`forms/records.ts`, `applyChanges`). The event a copy came out
+       of is such a value: written straight, a copy said it came out of the event
+       „1" and the chain of editions, which reads numbers, found nothing. */
+    record[name] = fieldValue(applyChanges({ [name]: record[name] }, { [name]: value }), name)
   }
 
   for (const { field, value } of fieldValues(entity.form, created.values)) {
@@ -636,7 +658,10 @@ export function recordFrom(entity: EntityDef, created: Created): Record<string, 
     record[value.name] = value.value
   }
 
-  record[entity.idField] = created.id
+  /* As a number where the entity is filed under one, because that is what the
+     record carries and what the served file holds; the session keeps every
+     identity as text, so this is where the two meet (`numbersItsRecords`). */
+  record[entity.idField] = numbersItsRecords(entity) ? Number(created.id) : created.id
 
   return record
 }
@@ -674,7 +699,10 @@ export function recordsOf<T extends object>(
   // oxlint-disable-next-line typescript/consistent-type-assertions
   const made = (creations[entity.id] ?? []).map((one) => recordFrom(entity, one) as T)
   const gone = deletions[entity.id] ?? []
+  /* The family and the identity together, because a `bigserial` is only unique
+     inside its own table (`session/context.ts`, `recordKey`). */
   const identity = (one: T) => String(fieldValue(one, entity.idField))
+  const key = (one: T) => recordKey(entity.id, identity(one))
 
   /* Deletions are read past the generated records only. What was entered during
      this visit is dropped when it is deleted (SessionProvider), so it is never
@@ -683,6 +711,6 @@ export function recordsOf<T extends object>(
      saved, confirmed, and was then not in the list, with the next member handed
      the same number again, and again after that. */
   return [...made, ...base.filter((one) => !gone.includes(identity(one)))].map((one) =>
-    applyChanges(one, edits[identity(one)]),
+    applyChanges(one, edits[key(one)]),
   )
 }

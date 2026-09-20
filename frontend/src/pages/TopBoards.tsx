@@ -416,7 +416,7 @@ function Boards({
       title: t('topBoards.pairs'),
       columns: [{ text: t('topBoards.columns.points') }],
       places: topPairs(pairs, field, results, season, PAIR_PLACES).map((row) => ({
-        key: row.pair.id,
+        key: String(row.pair.id),
         position: row.position,
         /* No link on the row: a pair is two people and there is no one profile to lead to. The
            `Place` said so before there was a pair to draw. */
@@ -476,7 +476,7 @@ function Boards({
       empty: noResults,
       places: bestSingleRaces(field, results, season, PLACES).map((row) => ({
         to: profile(row.competitor),
-        key: row.result.id,
+        key: String(row.result.id),
         position: row.position,
         name: <NamePlate competitors={[row.competitor]}>{nameOf(row.competitor)}</NamePlate>,
         members: [row.competitor.memberNumber],

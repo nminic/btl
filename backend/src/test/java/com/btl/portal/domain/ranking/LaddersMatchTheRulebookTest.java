@@ -74,7 +74,11 @@ class LaddersMatchTheRulebookTest {
 
 		List<String> holding = new ArrayList<>();
 
-		pages.propertyStream().forEach(page -> page.getValue().path("sections")
+		/* Walked as a LIST since 20.09.2026: what the file holds is what
+		   {@code GET /api/pages} answers with, which is a list whose rows carry their
+		   own address, rather than a dictionary keyed by it. Read as a dictionary it
+		   found nothing at all and said the article is published in nought places. */
+		pages.forEach(page -> page.path("sections")
 				.forEach(section -> {
 					String body = section.path("body").asString();
 

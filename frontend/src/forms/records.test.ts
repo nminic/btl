@@ -1,8 +1,11 @@
 import { must } from '../test/at'
 import { fieldDate, isoDate, storedDate } from './dateField'
 import { registracija } from './definitions'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   applyChanges,
+  KEPT_AS_A_NUMBER,
   limitOf,
   optionsFor,
   recordValue,
@@ -287,5 +290,82 @@ describe('the country a form opens holding', () => {
        without a country. `String(undefined)` is "undefined", which is what the
        first version of this saved (entityForms.ts). */
     expect(valuesFor(withPlace, { city: 'Beograd' })).toEqual({ city: 'Beograd', country: '' })
+  })
+})
+
+
+/**
+ * THE FLOOR UNDER `KEPT_AS_A_NUMBER`, and the reason a list is allowed to stand
+ * there at all.
+ *
+ * The names on it are hand written, because nothing in the running portal can be
+ * asked „which fields does the overlay write". What CAN be asked, and is asked
+ * here, is the other half: what the portal actually serves under each of those
+ * names. A name that reaches this list by mistake - `memberNumber`, `slug`, a
+ * member's `bio` - turns a value the record keeps as text into `NaN` the first
+ * time anybody edits it, and every screen that draws it then draws nothing.
+ */
+describe('the fields an overlay writes that a record keeps as a number', () => {
+  const MOCK = join(process.cwd(), 'public', 'mock')
+
+  /** Every value the served files hold under that name, at any depth. */
+  function servedUnder(name: string): unknown[] {
+    const found: unknown[] = []
+
+    const walk = (body: unknown): void => {
+      if (Array.isArray(body)) {
+        for (const one of body) {
+          walk(one)
+        }
+
+        return
+      }
+
+      if (typeof body === 'object' && body !== null) {
+        for (const [key, value] of Object.entries(body)) {
+          if (key === name) {
+            found.push(value)
+          }
+
+          walk(value)
+        }
+      }
+    }
+
+    for (const file of readdirSync(MOCK).filter((one) => one.endsWith('.json'))) {
+      walk(JSON.parse(readFileSync(join(MOCK, file), 'utf8')))
+    }
+
+    return found
+  }
+
+  it('is held to what the portal serves under each of those names', () => {
+    for (const name of KEPT_AS_A_NUMBER) {
+      const values = servedUnder(name)
+
+      /* Found at all, first: a name nothing serves is a name nobody can measure,
+         and it would sit here excusing a conversion that never happens. */
+      expect(values.length, `${name} is served somewhere`).toBeGreaterThan(0)
+      expect(
+        values.filter((one) => one !== null && typeof one !== 'number'),
+        `${name} is a number or nothing in every served file`,
+      ).toEqual([])
+    }
+  })
+
+  it('turns the text the overlay carries into that number, and an empty box into nothing', () => {
+    /* Both halves, because they are two different states: a club written over a
+       member who had none, and a member taken out of the club they were in. */
+    expect(applyChanges({ teamId: null }, { teamId: '3' })).toEqual({ teamId: 3 })
+    expect(applyChanges({ teamId: 3 }, { teamId: '' })).toEqual({ teamId: 0 })
+    expect(applyChanges({ teamId: null }, { teamId: '' })).toEqual({ teamId: null })
+  })
+
+  it('leaves every other field exactly as the overlay carries it', () => {
+    /* The mutation this case exists for: a name added to the list that the record
+       keeps as text. `Number('000001')` is 1, and a member number of 1 is nobody. */
+    expect(applyChanges({ memberNumber: null }, { memberNumber: '000001' })).toEqual({
+      memberNumber: '000001',
+    })
   })
 })

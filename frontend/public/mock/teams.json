@@ -1,6 +1,6 @@
 [
   {
-    "id": "team-dunav",
+    "id": 1,
     "slug": "dunavski-trkaci",
     "name": "Dunavski trkači",
     "city": "Novi Sad",
@@ -15,7 +15,7 @@
     }
   },
   {
-    "id": "team-nisava",
+    "id": 2,
     "slug": "nisavski-maraton-klub",
     "name": "Nišavski maraton klub",
     "city": "Niš",
@@ -30,7 +30,7 @@
     }
   },
   {
-    "id": "team-vardar",
+    "id": 3,
     "slug": "vardarski-krug",
     "name": "Vardarski krug",
     "city": "Skoplje",
@@ -45,7 +45,7 @@
     }
   },
   {
-    "id": "team-novi",
+    "id": 4,
     "slug": "novoosnovani-tim",
     "name": "Novoosnovani tim",
     "city": "Subotica",

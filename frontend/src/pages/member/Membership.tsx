@@ -32,7 +32,8 @@ import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { applyChanges } from '../../forms/records'
-import { MEMBERS, recordsOf } from '../admin/entityForms'
+import { MEMBERS, PRICING, recordsOf } from '../admin/entityForms'
+import { recordKey } from '../../session/context'
 import { useOverlay } from '../admin/overlay'
 import { SignedOut } from './SignedOut'
 import './Member.css'
@@ -111,7 +112,7 @@ export function Membership() {
      list that could be empty and a default that could never be reached. */
   const overlay = useOverlay()
   const { edits } = overlay
-  const credited = applyChanges(REFERRAL_ROW, edits[REFERRAL.key])
+  const credited = applyChanges(REFERRAL_ROW, edits[recordKey(PRICING.id, REFERRAL.key)])
   const state = combineResources(useCompetitors(), useResults(), useTeams())
   /* Renewal only opens inside its window and the price changes three times
      inside it, so this screen is the one that changes most with the date. It
@@ -154,8 +155,8 @@ export function Membership() {
            the price list, see the table show it, and a member would still read 20
            and scan a code for the old figure. One screen sets these; one screen
            has to be enough. */
-        const price = applyChanges(priceOn(today), edits[priceOn(today).key])
-        const junior = applyChanges(JUNIOR, edits[JUNIOR.key])
+        const price = applyChanges(priceOn(today), edits[recordKey(PRICING.id, priceOn(today).key)])
+        const junior = applyChanges(JUNIOR, edits[recordKey(PRICING.id, JUNIOR.key)])
         /* A member freed of the fee owes nothing at all (Pravilnik član 15, PDL P16),
            and twenty nine of the thirty two members in the data are freed of the fee. */
         const feeExempt = me.membershipBasis === 'feeExempt'

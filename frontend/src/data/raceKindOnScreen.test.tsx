@@ -42,12 +42,12 @@ function Sent() {
 
 /** The event and race the sweep of every address already reports from. */
 const EVENT = 'fruskogorski-maraton-2010'
-const RACE = 'evt-fruskogorski-maraton-2010-05-08-5768'
+const RACE = 396
 
 /** The generated races, with that one race carrying a word from nowhere. */
 async function withOddKind(served: typeof globalThis.fetch, input: RequestInfo | URL) {
   const answer = await served(input)
-  const races: { id: string; kind: string }[] = await answer.json()
+  const races: { id: number; kind: string }[] = await answer.json()
 
   const odd = races.map((one) => (one.id === RACE ? { ...one, kind: 'ludilo' } : one))
 
@@ -91,7 +91,7 @@ describe('a race whose kind is a word the portal does not know', () => {
        because the race fixes it. A word that is not one of the three would give
        `undefined` where the form is chosen, and this screen would be the error
        boundary instead. */
-    renderAt(`/sr/kalendar/${EVENT}/prijava?trka=${RACE}`, 'competitor', '000002')
+    renderAt(`/sr/kalendar/${EVENT}/prijava?trka=${String(RACE)}`, 'competitor', '000002')
 
     expect(await screen.findByRole('heading', { level: 1, name: /Prijava rezultata/ })).toBeVisible()
     expect(screen.getByLabelText(/^Sati/)).toBeVisible()
@@ -110,7 +110,7 @@ describe('a race whose kind is a word the portal does not know', () => {
     const user = setupUser()
 
     renderAt(
-      `/sr/kalendar/${EVENT}/prijava?trka=${RACE}`,
+      `/sr/kalendar/${EVENT}/prijava?trka=${String(RACE)}`,
       'competitor',
       '000002',
       undefined,

@@ -241,17 +241,19 @@ describe('the rulebook that takes in another page', () => {
   }
 
   it('draws what it takes in above its own sections, and lists it too', async () => {
-    serve({
-      pravilnik: {
+    serve([
+      {
+        slug: 'pravilnik',
         title: TITLE,
         includes: ['rec-predsednika'],
         sections: [{ heading: '1. Uvodne odredbe', body: 'Sopstveni tekst.' }],
       },
-      'rec-predsednika': {
+      {
+        slug: 'rec-predsednika',
         title: 'Reč predsednika',
         sections: [{ heading: 'Reč predsednika', body: 'Preuzeti tekst.' }],
       },
-    })
+    ])
 
     renderAt('/sr/pravilnik')
     await screen.findByRole('heading', { level: 1, name: TITLE })
@@ -267,7 +269,7 @@ describe('the rulebook that takes in another page', () => {
   })
 
   it('says the page is not there when the text is missing', async () => {
-    serve({})
+    serve([])
 
     renderAt('/sr/pravilnik')
 

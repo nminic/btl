@@ -3,6 +3,8 @@ import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
 import { MAIN_LEAGUE_SLUG } from '../data/pricing'
+import { LEAGUES } from './admin/entityForms'
+import { recordKey } from '../session/context'
 import { fieldFor } from '../data/derive'
 import type { League } from '../data/types'
 import {
@@ -215,21 +217,21 @@ export function Leagues() {
                       </p>
 
                       <EditableText
-                        value={edits[league.id]?.rules ?? league.rules}
+                        value={edits[recordKey(LEAGUES.id, league.id)]?.rules ?? league.rules}
                         field="rules"
                         headingId={`league-rules-${league.id}`}
                         heading={t('leagues.rules')}
                         canEdit={may('entity:leagues')}
-                        onSave={(text) => edit(league.id, 'rules', text)}
+                        onSave={(text) => edit(recordKey(LEAGUES.id, league.id), 'rules', text)}
                       />
 
                       <EditableText
-                        value={edits[league.id]?.prizes ?? league.prizes}
+                        value={edits[recordKey(LEAGUES.id, league.id)]?.prizes ?? league.prizes}
                         field="prizes"
                         headingId={`league-prizes-${league.id}`}
                         heading={t('leagues.prizes')}
                         canEdit={may('entity:leagues')}
-                        onSave={(text) => edit(league.id, 'prizes', text)}
+                        onSave={(text) => edit(recordKey(LEAGUES.id, league.id), 'prizes', text)}
                       />
 
                       {/* And after the prizes, the events and races the competition counts, in a

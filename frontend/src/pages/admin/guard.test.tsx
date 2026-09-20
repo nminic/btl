@@ -198,7 +198,7 @@ describe('the role switch', () => {
     expect(within(chooser).getByRole('option', { name: 'N. V.' })).toBeInTheDocument()
 
     // Nenad may decide results and nothing else, so the price list closes.
-    await user.selectOptions(chooser, 'moderator:mod-vujacic')
+    await user.selectOptions(chooser, 'moderator:2')
 
     await expectFrontPage()
   })
@@ -215,7 +215,7 @@ describe('the role switch', () => {
       matrix.getByRole('checkbox', { name: 'Jelena Radulović, uređivanje cenovnika' }),
     )
 
-    await user.selectOptions(screen.getByLabelText(t('role.label')), 'moderator:mod-radulovic')
+    await user.selectOptions(screen.getByLabelText(t('role.label')), 'moderator:1')
 
     /* The screen she was standing on is the one entity no moderator ever opens,
        so becoming her takes her off it and onto the front page. In through the

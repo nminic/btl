@@ -2,17 +2,17 @@ import { copyOf } from './copyOf'
 import type { BtlEvent } from '../../data/types'
 
 const EVENT: BtlEvent = {
-  id: 'evt-beogradski-maraton-2026-04-19',
+  id: 1,
   slug: 'beogradski-maraton-2026',
   name: 'Beogradski maraton',
   date: '2026-04-19',
   city: 'Beograd',
   country: 'RS',
   kind: 'race',
-  featured: 'yes',
+  featured: true,
   description: 'Trka kroz gradsko jezgro, sa dva kruga.',
   link: 'https://organizator.example/trka',
-  copiedFrom: '',
+  copiedFrom: null,
 }
 
 describe('what a copy of an event holds', () => {
@@ -48,6 +48,9 @@ describe('what a copy of an event holds', () => {
     /* Being singled out is a choice about this running of the race and not a
        property the race carries (owner, 11.08.2026), so a copy of a featured event
        is not featured. */
-    expect(copyOf(EVENT)).toMatchObject({ featured: 'no', copiedFrom: EVENT.id })
+    /* Both as text, because a copy is written into the session's overlay and the
+       overlay carries text (`session/context.ts`, `Created`); what the record keeps
+       is a flag and a number, and `forms/records.ts` is where the two meet. */
+    expect(copyOf(EVENT)).toMatchObject({ featured: 'no', copiedFrom: String(EVENT.id) })
   })
 })

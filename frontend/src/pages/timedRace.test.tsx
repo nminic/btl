@@ -63,7 +63,7 @@ const EVENT = 'jagodinski-maraton-2017'
  * really are and the screen would go on drawing those while the case passed anyway.
  */
 async function reportAddress() {
-  const events = await loadResource<{ id: string; slug: string }[]>('events')
+  const events = await loadResource<{ id: number; slug: string }[]>('events')
   const held = must(
     events.find((one) => one.slug === EVENT),
     'the event these cases are written around',

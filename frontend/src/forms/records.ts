@@ -42,12 +42,19 @@ export function valuesFor(form: FormDef, record: Record<string, unknown>): FormV
 
     if (field.type === 'checkbox') {
       values[field.name] = value === true
-    } else if (field.type === 'choice' && typeof value === 'boolean') {
+    } else if (yesOrNo(field) && typeof value === 'boolean') {
       /* The way back for a question a record keeps as a yes or a no and a pair
          of buttons answers in words (`recordValue` is the way out). Written as
          `String(true)` it came back as „true", which is neither of the two
          values the buttons carry, so a record that says yes opened a form with
-         neither button taken. */
+         neither button taken.
+
+         Asked of the ANSWERS and not of the control since 20.09.2026, which is
+         the same question `recordValue` asks on the way out and the reason it is
+         asked in one place: `featured` offers the same two words out of a select
+         and `firstSeason2027` out of a pair of buttons, and both records keep a
+         flag. Read off the control, an event that IS singled out opened its form
+         with the word „true" in it, which is neither button. */
       values[field.name] = value ? 'yes' : 'no'
     } else if (field.type === 'date') {
       values[field.name] = fieldDate(String(value ?? ''))
@@ -93,11 +100,45 @@ export function textFrom(form: FormDef, values: FormValues): Record<string, stri
   return text
 }
 
+/**
+ * The fields an overlay writes that a record keeps as a NUMBER even when what is
+ * there now is nothing.
+ *
+ * **Why a list of names, said plainly.** `like` puts a value back into the shape
+ * of the value it replaces, and that works for every field that already holds
+ * something. It cannot work where the record holds `null`, because nothing has no
+ * shape: `typeof null` is „object" and the text goes in as text. That was
+ * harmless while every one of these was itself text; it stopped being harmless on
+ * 20.09.2026, when a team became something identified by a number. Measured on
+ * the team's own page that day: a member let into a club had `teamId` written as
+ * „1", the six readers that compare it with `team.id` found no match, and the
+ * member was in the club on their own record and in no club on every screen.
+ *
+ * The four of them are every field the overlay writes whose record keeps a number:
+ * the club somebody is in, the season they joined it, the event a copy came out
+ * of, and the event a race belongs to. Held to the served files in
+ * `records.test.ts`, so a fifth cannot arrive unnoticed.
+ */
+export const KEPT_AS_A_NUMBER = ['copiedFrom', 'eventId', 'teamId', 'teamSince']
+
 /** One value out of the overlay, put back into the shape the record keeps it in,
  *  so a screen that formats a number keeps being handed a number. */
-function like(current: unknown, value: string): unknown {
+function like(current: unknown, value: string, field: string): unknown {
   if (typeof current === 'number') {
     return Number(value)
+  }
+
+  if ((current === null || current === undefined) && KEPT_AS_A_NUMBER.includes(field)) {
+    /* Nothing written over one of these is nothing again, and that is the whole of
+       how somebody is taken out of a club: an empty box is not the club numbered
+       nought (`data/derive.ts`, `teamOf`).
+
+       `undefined` as well as `null`, because a record being MADE starts from the
+       entity's blank and a blank does not carry every field: a race entered under
+       an event is written with the event's identity as text, and read straight it
+       is a race that belongs to the event „1133" while every screen looks for
+       1133. */
+    return value === '' ? null : Number(value)
   }
 
   if (typeof current === 'boolean') {
@@ -139,7 +180,7 @@ export function applyChanges<T extends object>(
   const next: Record<string, unknown> = {}
 
   for (const [field, value] of Object.entries(changes)) {
-    next[field] = like(fieldValue(record, field), value)
+    next[field] = like(fieldValue(record, field), value, field)
   }
 
   /* `Object.assign` rather than a spread, because it hands back the type of
@@ -167,13 +208,36 @@ export function recordValue(field: FieldDef, text: string): unknown {
     return text === 'true'
   }
 
-  /* Two buttons answering a question a record keeps as a yes or a no: „Početnička" and „Starosna" are the two faces of `firstSeason2027`
-     (data/types.ts). Which choice that is is decided by what the field offers
-     rather than by what was typed into it: a choice offering „yes" and „no" is
-     the shape of a question a record keeps as a boolean, and one that happens to
-     receive the word „yes" among other answers is not. Every other `choice` writes its own value and falls through. */
-  if (field.type === 'choice' && yesOrNo(field)) {
+  /* A question a record keeps as a yes or a no: „Početnička" and „Starosna" are the
+     two faces of `firstSeason2027`, and „Da"/„Ne" the two faces of `BtlEvent.featured`
+     (data/types.ts). Which question that is is decided by what the field OFFERS
+     rather than by what was typed into it or by the control it is drawn with: a
+     field offering „yes" and „no" and nothing else is the shape of a question a
+     record keeps as a boolean, and one that happens to receive the word „yes"
+     among other answers is not. Every other choice writes its own value and falls
+     through.
+
+     The control was part of the test until 20.09.2026, and `featured` is why it
+     no longer is: the owner asked for that one as a list of two rather than a box
+     to tick, so it is a `select`, and the record keeps the flag the schema keeps
+     (`CalendarApi.Event`). Read off the control, a new event went in carrying the
+     word „no" where a false belongs. */
+  if (yesOrNo(field)) {
     return text === 'yes'
+  }
+
+  /* And a field that NAMES another record by its number. The control is a list of
+     events, so what it hands over is text, and the record keeps the number the
+     schema keeps (`/api/races`, `long eventId`). Read straight, a race entered
+     under an event belonged to the event „1133" while every screen that draws it
+     looks for 1133, and the race stood in the calendar under nothing. */
+  if (KEPT_AS_A_NUMBER.includes(field.name)) {
+    /* `Number` and nothing else, as on every `number` field above: a record is
+       made out of a form, the one such field a form asks for is the event a race
+       belongs to, and that one is obligatory. Emptiness reaches a record through
+       the OVERLAY rather than through here, and that is where it is read as
+       nothing (`like`). */
+    return Number(text)
   }
 
   return text

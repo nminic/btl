@@ -20,7 +20,7 @@ export function copiedRace(race: Race, event: string, by: number): Record<string
        that only ever carried its event's name goes on following it (owner,
        23.08.2026). */
     name: race.name,
-    renamed: race.renamed,
+    renamed: String(race.renamed),
     /* Moved with the event, by the same number of days: two races on the
        Saturday and one on the Sunday stay two and one, a year on (owner,
        10.08.2026). */

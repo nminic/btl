@@ -26,7 +26,7 @@ async function upcoming(): Promise<{ event: BtlEvent; going: Attending[]; day: s
   /* The busiest of them, because half of what is under test needs two people:
      an envelope stands beside every name but your own, so a race one person is
      going to has a list and no envelope on it. */
-  const counted = new Map<string, number>()
+  const counted = new Map<number, number>()
 
   for (const one of attendance) {
     counted.set(one.eventId, (counted.get(one.eventId) ?? 0) + 1)

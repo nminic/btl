@@ -912,7 +912,7 @@ describe('TopBoards', () => {
        record is given a race renamed by hand, which is the case the column exists
        for. */
     const served = globalThis.fetch
-    const best = 'res-01815'
+    const best = 1816
     const own = 'Sri Chinmoy Šamorin, 125 km'
 
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -2363,8 +2363,8 @@ describe('the row of whoever is signed in', () => {
     /* Through the race, because the address of an event is its name and the
        year since 10.08.2026 and the id of a race is built from the id of its
        event, which carries the whole day. */
-    const races = await loadResource<{ id: string; eventId: string }[]>('races')
-    const events = await loadResource<{ id: string; slug: string }[]>('events')
+    const races = await loadResource<{ id: number; eventId: number }[]>('races')
+    const events = await loadResource<{ id: number; slug: string }[]>('events')
     const race = must(
       races.find((one) => one.id === ran.raceId),
       'the race it was run at',
@@ -2685,8 +2685,8 @@ Nije cilj stići prvi, cilj je tokom sat vremena sakupiti što više BTL bodova.
 
 Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tabelu.`
 
-    const written = Object.entries(pages).flatMap(([slug, page]) =>
-      page.sections.map((one) => ({ slug, heading: one.heading, body: one.body })),
+    const written = pages.flatMap((page) =>
+      page.sections.map((one) => ({ slug: page.slug, heading: one.heading, body: one.body })),
     )
     const held = written.filter((one) => one.slug === 'pravilnik' && one.heading === "13. Prateća takmičenja i lige")
 

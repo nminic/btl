@@ -10,7 +10,8 @@ import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
 import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
 import { formatShortDate } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { NOTIFICATION_KEYS } from '../session/context'
+import { NOTIFICATION_KEYS, recordKey } from '../session/context'
+import { PRICING } from './admin/entityForms'
 import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { first, must } from '../test/at'
@@ -64,7 +65,7 @@ function Administration({
   const { editRecord } = useSession()
 
   return (
-    <button type="button" onClick={() => editRecord('referral', { eur, rsd })}>
+    <button type="button" onClick={() => editRecord(recordKey(PRICING.id, 'referral'), { eur, rsd })}>
       {name}
     </button>
   )
@@ -1263,9 +1264,11 @@ async function withOneMoreResult(
     const rows: Result[] = await response.json()
 
     rows.push({
-      id: `added-${row.memberNumber}-${row.date}`,
+      /* Below nought, so it cannot be the number of anything the file carries:
+         a `bigserial` starts at one (`admin/raceIds.ts`, `nextIdentity`). */
+      id: -1,
       memberNumber: row.memberNumber,
-      raceId: 'race-added',
+      raceId: -1,
       raceName: 'Trka',
       eventName: 'Trka',
       eventSlug: 'trka',

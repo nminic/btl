@@ -134,7 +134,12 @@ function valuesIn(body: unknown, at = ''): { under: string; value: unknown }[] {
 
 const everything = servedFiles()
 const read = everything.filter((one) => one.name !== NOT_READ)
-const everyValue = read.flatMap((one) => valuesIn(one.body))
+/* Each value with the file it came out of, because since 20.09.2026 one of the
+   rules below has to be told file by file: an identity is a number a sequence
+   handed out, and a sequence counts into the band a year sits in. */
+const everyValue = read.flatMap((one) =>
+  valuesIn(one.body).map((each) => ({ ...each, file: one.name, path: `${one.name}:${each.under}` })),
+)
 
 describe('the sweep itself', () => {
   /* **The floor, and the reason this describe is first.** A guard over a folder answers
@@ -287,19 +292,40 @@ describe('what the portal serves about how old somebody is', () => {
    * The fields that carry a value shaped like a year, and the only ones that may.
    *
    * Read off the files rather than remembered: these are every path under `public/mock`
-   * holding a whole number between 1900 and 2027, measured on 13.09.2026. Three are
-   * seasons and three are a race's metres and seconds, which really do reach those
-   * sizes.
+   * holding a whole number between 1900 and 2027, measured on 13.09.2026 and again on
+   * 20.09.2026. Seasons, a race's metres and seconds, which really do reach those
+   * sizes, and one identity.
+   *
+   * **By file and by path since 20.09.2026, not by path alone.** A name on this list
+   * used to excuse that name in every served file at once, and the entry that made
+   * that intolerable is `id`: it is an identity in ten files and a quantity in none.
    */
-  const MAY_HOLD_A_YEAR = ['ascentM', 'descentM', 'firstSeason', 'seconds', 'season', 'teamSince']
+  const MAY_HOLD_A_YEAR = [
+    'competitors.json:firstSeason',
+    'competitors.json:teamSince',
+    'leagues.json:season',
+    'pairs.json:season',
+    'races.json:ascentM',
+    'races.json:descentM',
+    'results.json:ascentM',
+    'results.json:descentM',
+    /* **The one that is not a quantity at all, and the reason this list is now told
+       file by file** (20.09.2026). A result is identified by a number the schema
+       hands out (`/api/results`, `bigserial`), and a sequence that has handed out
+       three and a half thousand rows has counted through 1900 to 2027 on its way.
+       Named here and nowhere else: `id` permitted across the folder would permit a
+       year of birth under that name in `competitors.json`, which is the one file
+       this whole guard is about. */
+    'results.json:id',
+    'results.json:seconds',
+  ]
 
   /**
    * What to do when the two cases below fail, written here because the failure message
    * is the only place the next person is standing.
    *
-   * **Do not add the field to `MAY_HOLD_A_YEAR`.** It is the cheapest fix and it is the
-   * wrong one every time: adding a name here permits a year of birth under that name in
-   * every file at once. `value` is the one to watch, because it is three fields in three
+   * **Do not add the field to `MAY_HOLD_A_YEAR`.** It is the cheapest fix and it is
+   * usually the wrong one: an entry here permits a year of birth at that exact path. `value` is the one to watch, because it is three fields in three
    * files (`comments.json`, `ducats.json`, `verification.json`) and a ducat is a round
    * number a step away from this band — `duk-sezonski-km` stands at 1000 today and 2000
    * is the next rung. `last` reaches 1000, `tierUpFrom` 500 and `step` 100.
@@ -313,9 +339,9 @@ describe('what the portal serves about how old somebody is', () => {
    * one nobody did.
    */
   const READ_THIS_BEFORE_WIDENING_THE_LIST =
-    'do NOT add this field to MAY_HOLD_A_YEAR to make this pass: that permits a year of' +
-    ' birth under that name in every served file at once. Look at the value first. See' +
-    ' the note above MAY_HOLD_A_YEAR in this file.'
+    'do NOT add this path to MAY_HOLD_A_YEAR to make this pass: that permits a year of' +
+    ' birth at exactly that path. Look at the value first. See the note above' +
+    ' MAY_HOLD_A_YEAR in this file.'
 
   const yearShaped = everyValue.flatMap((one) => {
     const year = asWholeNumber(one.value)
@@ -327,7 +353,7 @@ describe('what the portal serves about how old somebody is', () => {
     /* Both directions. A field on the list that is not in the files excuses something
        that is not there; a field in the files and not on the list is what the case after
        this is about, and it would find it, but this says which of the two went wrong. */
-    const carrying = [...new Set(yearShaped.map((one) => one.under))].sort()
+    const carrying = [...new Set(yearShaped.map((one) => one.path))].sort()
 
     expect(carrying, READ_THIS_BEFORE_WIDENING_THE_LIST).toEqual([...MAY_HOLD_A_YEAR].sort())
   })
@@ -336,8 +362,8 @@ describe('what the portal serves about how old somebody is', () => {
     /* The value and not the name, so a year of birth restored as `born`, as `age`, as
        `y` or with no new field at all lands here. Read as text or as a number alike. */
     const loose = yearShaped
-      .filter((one) => !MAY_HOLD_A_YEAR.includes(one.under))
-      .map((one) => `${one.under}: ${String(one.year)}`)
+      .filter((one) => !MAY_HOLD_A_YEAR.includes(one.path))
+      .map((one) => `${one.path}: ${String(one.year)}`)
 
     expect(loose, READ_THIS_BEFORE_WIDENING_THE_LIST).toEqual([])
   })

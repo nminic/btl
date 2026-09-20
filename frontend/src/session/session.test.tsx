@@ -96,7 +96,7 @@ function Probe() {
             link: 'https://primer.rs/r',
             comment: '',
             corrects: {
-              id: 'res-1',
+              id: 1,
               memberNumber: '000001',
               raceName: 'Ispravka',
               date: '2026-05-10',
@@ -106,7 +106,7 @@ function Probe() {
               seconds: 6730,
               points: 23.55,
               category: 'half',
-              raceId: 'trka-1',
+              raceId: 1,
               eventName: 'Probni događaj',
               eventSlug: 'probni-dogadjaj',
             },
@@ -388,9 +388,8 @@ describe('useSession', () => {
  * the day a second decision becomes possible. */
 function Published() {
   const { published, publish } = useSession()
-  const one: EventComment = {
-    id: 'ver-kom-1',
-    eventId: 'evt-fruskogorski-maraton-2010',
+  const one: Omit<EventComment, 'id'> = {
+    eventId: 1,
     memberNumber: '000007',
     who: 'Ime Prezime',
     date: '2026-08-06',
@@ -400,11 +399,16 @@ function Published() {
 
   return (
     <>
-      <span data-testid="published">{published.map((each) => each.id).join(',')}</span>
-      <button type="button" onClick={() => publish(one)}>
+      {/* The QUEUE ITEM each one came out of, which is what the list is kept by
+          and what a decision is filed under, and the identity the session handed
+          the comment, which is below nought (`SessionProvider`, `publish`). */}
+      <span data-testid="published">
+        {published.map((each) => `${each.from}=${String(each.comment.id)}`).join(',')}
+      </span>
+      <button type="button" onClick={() => publish('ver-kom-1', one)}>
         pusti
       </button>
-      <button type="button" onClick={() => publish({ ...one, id: 'ver-kom-2' })}>
+      <button type="button" onClick={() => publish('ver-kom-2', one)}>
         pusti drugi
       </button>
     </>
@@ -426,12 +430,12 @@ describe('what has been let out', () => {
     await user.click(screen.getByRole('button', { name: 'pusti' }))
     await user.click(screen.getByRole('button', { name: 'pusti' }))
 
-    expect(screen.getByTestId('published').textContent).toBe('ver-kom-1')
+    expect(screen.getByTestId('published').textContent).toBe('ver-kom-1=-1')
 
     /* And a different one is a different entry, so the check above is holding
        the identity rather than the length. */
     await user.click(screen.getByRole('button', { name: 'pusti drugi' }))
 
-    expect(screen.getByTestId('published').textContent).toBe('ver-kom-1,ver-kom-2')
+    expect(screen.getByTestId('published').textContent).toBe('ver-kom-1=-1,ver-kom-2=-2')
   })
 })

@@ -14,7 +14,6 @@ import { validateField } from '../../forms/validate'
 import { raceKind } from '../../data/raceKind'
 import { eventFrom, raceFrom } from './madeFromResult'
 import { EVENTS, idFor, RACES } from './entityForms'
-import { nextNumber } from './raceIds'
 import { RACE_KINDS, type RaceKind } from '../../data/types'
 import '../../styles/outsideLink.css'
 import '../member/Member.css'
@@ -102,7 +101,11 @@ export function ReviewQueue() {
 
       const taken = (creations[RACES.id] ?? []).map((each) => each.id)
 
-      const race = `${event}-trka-${String(nextNumber(taken, `${event}-trka-`))}`
+      /* And the race under it, numbered the way every other new record filed under
+         `id` is (`entityForms.idFor`). Counted over the races this visit made:
+         nothing out of the file is in that list, which is why the count starts
+         from what the screen holds rather than from nothing. */
+      const race = idFor(RACES, {}, taken, [])
 
       create(RACES.id, race, raceFrom(one, event))
 
@@ -110,7 +113,7 @@ export function ReviewQueue() {
          apart: a race stands in the calendar with nothing run on it, and a result
          is counted that points at no race (PDL, 30.08.2026, point 6, and the cost
          the owner accepted when he chose it). */
-      amend(one.id, { raceId: race })
+      amend(one.id, { raceId: Number(race) })
     }
 
     decide(one.id, 'approved', '')

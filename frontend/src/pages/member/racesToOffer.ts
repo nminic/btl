@@ -76,7 +76,7 @@ export function racesToOffer(
   today: string,
   locale: string,
 ): Suggestion[] {
-  const byEvent = new Map<string, Offered[]>()
+  const byEvent = new Map<number, Offered[]>()
 
   for (const race of races) {
     byEvent.set(race.eventId, [...(byEvent.get(race.eventId) ?? []), race])
@@ -91,7 +91,7 @@ export function racesToOffer(
   pairs.sort((left, right) => right.race.date.localeCompare(left.race.date))
 
   return pairs.map(({ race }) => ({
-    id: race.id,
+    id: String(race.id),
     /* The **race** is what is searched for and what goes into the box, since
        23.08.2026: „sad je postalo logičnije da se pretražuje zapravo naziv trke sa
        datumom i dužinom" (owner). Until that day a race had no name of its own and
@@ -146,7 +146,7 @@ export function racesToOffer(
        *
          No field carries this name, so nothing is drawn for it and nothing is
          locked; what a name in `fills` locks is a control, and there is none. */
-      raceId: race.id,
+      raceId: String(race.id),
     },
   }))
 }

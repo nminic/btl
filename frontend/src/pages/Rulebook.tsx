@@ -78,7 +78,7 @@ function useCurrentSection(ids: string[]): string {
  * pages that the text had been taken in, and would find the rulebook drawing
  * nothing of it. Two screens over one record must not disagree about what the
  * record says. */
-function RulebookPage({ pages, page }: { pages: Record<string, StaticPage>; page: StaticPage }) {
+function RulebookPage({ pages, page }: { pages: StaticPage[]; page: StaticPage }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
 

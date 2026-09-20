@@ -184,11 +184,14 @@ export function NewResult() {
      and „Odobri sve" walks them newest first, so what ends up counted is the
      oldest. Measured by a review on 28.08.2026. */
   const waiting = submissions.some(
-    (one) => one.memberNumber === memberNumber && one.status === 'pending' && one.corrects?.id === fixing,
+    (one) =>
+      one.memberNumber === memberNumber &&
+      one.status === 'pending' &&
+      String(one.corrects?.id) === fixing,
   )
   const fixingOne = waiting
     ? undefined
-    : counted.find((one) => one.id === fixing && one.memberNumber === memberNumber)
+    : counted.find((one) => String(one.id) === fixing && one.memberNumber === memberNumber)
   /* Whichever of the two this is, when it is either: the race is read off the
      record on both roads in, and one name for that saves the next reader from
      having to notice that there are two. */
@@ -261,7 +264,7 @@ export function NewResult() {
                to know it has to make the race. */
             ...(values.raceId === undefined || values.raceId === ''
               ? {}
-              : { raceId: String(values.raceId) }),
+              : { raceId: Number(values.raceId) }),
           }
         : {
             raceKind: behind?.kind ?? '',

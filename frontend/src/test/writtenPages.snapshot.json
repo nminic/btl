@@ -1,5 +1,6 @@
-{
-  "politika-privatnosti": {
+[
+  {
+    "slug": "politika-privatnosti",
     "title": "Politika privatnosti",
     "sections": [
       {
@@ -32,7 +33,8 @@
       }
     ]
   },
-  "uslovi-koriscenja": {
+  {
+    "slug": "uslovi-koriscenja",
     "title": "Uslovi korišćenja",
     "sections": [
       {
@@ -85,7 +87,8 @@
       }
     ]
   },
-  "rec-predsednika": {
+  {
+    "slug": "rec-predsednika",
     "title": "Reč predsednika",
     "sections": [
       {
@@ -94,7 +97,8 @@
       }
     ]
   },
-  "pravilnik": {
+  {
+    "slug": "pravilnik",
     "title": "Opšti pravilnik Balkanske trkačke lige za sezonu 2027",
     "sections": [
       {
@@ -177,4 +181,4 @@
       }
     ]
   }
-}
+]

@@ -10,6 +10,7 @@ import { EditableCell } from './EditableCell'
 import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { MEMBERS, recordsOf, TEAMS, type Editing } from './entityForms'
+import { recordKey } from '../../session/context'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
 
@@ -100,7 +101,7 @@ export function AdminTeams() {
                     addressesIn(
                       rows.filter(
                         (one) =>
-                          one.id !==
+                          String(one.id) !==
                           (editing.mode === 'one'
                             ? String(editing.record[TEAMS.idField])
                             : /* Nothing to leave out: a team being made is not
@@ -150,7 +151,8 @@ export function AdminTeams() {
                           <td>{team.name}</td>
                           <td>
                             <EditableCell
-                              id={team.id}
+                              under={TEAMS.id}
+                              id={String(team.id)}
                               field="city"
                               value={team.city}
                               label={t('event.place')}
@@ -181,7 +183,7 @@ export function AdminTeams() {
                                  05.09.2026). */
                               alsoRemove={() => {
                                 for (const one of members) {
-                                  editRecord(one.memberNumber, { teamId: '' })
+                                  editRecord(recordKey(MEMBERS.id, one.memberNumber), { teamId: '' })
                                 }
                               }}
                             />

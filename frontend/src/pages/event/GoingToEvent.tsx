@@ -78,7 +78,7 @@ function Going({
   me,
 }: {
   event: BtlEvent
-  attendance: { eventId: string; memberNumber: string }[]
+  attendance: { eventId: number; memberNumber: string }[]
   competitors: Competitor[]
   /** Who is reading, where that is somebody with a number of their own. A
    *  moderator has none, reads the list, and has nothing to say about going. */
@@ -96,7 +96,7 @@ function Going({
   /* What the file says, and then what has been said during this visit. The
      switch is a value rather than an absence (session/context.ts), so a member
      who takes their name off is taken off a list the file still carries. */
-  const said = going[event.id]
+  const said = going[String(event.id)]
   const fromFile = attendance
     .filter((one) => one.eventId === event.id)
     .map((one) => one.memberNumber)
@@ -144,7 +144,7 @@ function Going({
         type="button"
         className={iAmGoing ? 'button button--primary' : 'button button--secondary'}
         aria-pressed={iAmGoing}
-        onClick={() => setGoing(event.id, !iAmGoing)}
+        onClick={() => setGoing(String(event.id), !iAmGoing)}
       >
         {/* One name whichever way it is switched, because `aria-pressed` is
             already saying which: a label that changes as well is the state read
