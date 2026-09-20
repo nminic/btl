@@ -55,7 +55,7 @@ class WhatHeMayDo {
 	 * @param right the code as {@code admin_right.code} generates it
 	 */
 	boolean may(String right) {
-		return rightsOf(asking().account()).may(right);
+		return rightsOf(asking()).may(right);
 	}
 
 	/**
@@ -78,7 +78,7 @@ class WhatHeMayDo {
 	 * @param rights codes as {@code admin_right.code} generates them
 	 */
 	List<String> whichOf(List<String> rights) {
-		AdminRights his = rightsOf(asking().account());
+		AdminRights his = rightsOf(asking());
 
 		return rights.stream().filter(his::may).toList();
 	}
@@ -96,23 +96,36 @@ class WhatHeMayDo {
 	 * somebody holds.
 	 */
 	boolean holdsEveryRightThereIs() {
-		return rightsOf(asking().account()).holdsEveryRightThereIs();
+		return rightsOf(asking()).holdsEveryRightThereIs();
 	}
 
 	/**
-	 * What one account holds, in the shape {@link AdminRights} answers from.
+	 * What whoever is asking holds, in the shape {@link AdminRights} answers from.
 	 *
 	 * <p>The mode comes off the ROLE and the ticks off the account. Both halves are
 	 * needed and neither implies the other: a superadmin holds everything with no tick
 	 * anywhere, and a moderator with every tick removed is still a moderator and holds
 	 * nothing. Read the other way round - ticks only - the superadmin is refused his
 	 * own portal; read as the role alone, the whole matrix is decoration.
+	 *
+	 * <p><b>THE ROLE IS THE ONE {@link WhoIsAsking} DECIDED, and that is what makes the
+	 * superadmin real rather than drawn.</b> It used to be read back off
+	 * {@code account.role_id} here, which was the same answer for everybody at the time
+	 * and stopped being so on the day the owner named a superadmin by an address in the
+	 * server's settings instead of by a row (PDL P21, 14.09.2026, „Superadmin se ne pravi
+	 * kroz portal"). Left as it was, the portal would have drawn him an administration -
+	 * {@link MeApi} serves the decided role - whose every route then refused him 404,
+	 * because this half still read the {@code competitor} his row carries. One fact, one
+	 * home: the filter decides, and this asks what that role grants.
+	 *
+	 * <p><b>It is still not anything the caller wrote.</b> The role arrives on the
+	 * principal, which {@link WhoIsAsking} worked out from a cookie whose secret the
+	 * database does not hold, and every value it can hold came out of the {@code role}
+	 * table on that same request.
 	 */
-	private AdminRights rightsOf(long account) {
-		String mode = db.sql("select r.rights_mode from account a"
-						+ " join role r on r.id = a.role_id"
-						+ " where a.id = ?")
-				.param(account).query(String.class).single();
+	private AdminRights rightsOf(WhoIsAsking.Member asking) {
+		String mode = db.sql("select rights_mode from role where code = ?")
+				.param(asking.role()).query(String.class).single();
 
 		/* NAMED BY ACCOUNT, and that is the whole of the statement. Without the
 		   condition every moderator would hold every tick anybody was ever given, and
@@ -120,7 +133,7 @@ class WhatHeMayDo {
 		   `aModeratorIsRefusedARightAnotherModeratorHolds` is the case that does. */
 		Set<String> ticked = Set.copyOf(db.sql("select right_code from account_admin_right"
 						+ " where account_id = ?")
-				.param(account).query(String.class).list());
+				.param(asking.account()).query(String.class).list());
 
 		return new AdminRights(AdminRights.Mode.of(mode), ticked);
 	}

@@ -159,6 +159,24 @@ services:
       # this line does not quietly weaken production: it stops the backend from
       # coming up at all.
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
+      # WHO THE SUPERADMIN IS, named by his address rather than made through the
+      # portal (PDL P21, 14.09.2026): the account carrying it holds the role once
+      # its address is confirmed, and holds it only while this names it.
+      #
+      # Empty by default and never `:?`, the same shape as the mail credentials
+      # above and for the same reason: ADL A4a says a setting that refuses turns
+      # down EVERY command over this file, the frontend-only deploy included, so
+      # requiring it would make production undeployable while it was absent.
+      # Unset, nobody is the superadmin and the portal serves exactly as before.
+      #
+      # AND IT IS NOT PROD_-PREFIXED, the one exception on this file. The header
+      # above gives the reason for the prefixes - the database, the role, the
+      # password and the relay key must NOT be shared between the two stacks -
+      # and this is the opposite case: it is the same person administering both.
+      # The two .env files are still separate (/opt/btl and /opt/btl-qa), so the
+      # shared NAME shares no value; what it buys is that one spelling works on
+      # both hosts instead of a setting that is silently dead on one of them.
+      BTL_SUPERADMIN_EMAIL: ${BTL_SUPERADMIN_EMAIL:-}
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in

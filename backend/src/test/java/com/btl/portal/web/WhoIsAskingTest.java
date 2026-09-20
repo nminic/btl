@@ -214,6 +214,35 @@ class WhoIsAskingTest {
 				.isEqualTo(hersEnded);
 	}
 
+	/**
+	 * AND A PORTAL WHOSE SETTINGS NAME NOBODY HAS NO SUPERADMIN, however confirmed
+	 * anybody's address is.
+	 *
+	 * <p>„Sta ako je .env prazan ili odrednice nema? Portal mora da radi normalno, bez
+	 * superadmina, i bez pada." This class is where that is measurable for nothing: it
+	 * carries no {@code btl.superadmin.email}, so it runs on the setting an installation
+	 * that has not been told about a superadmin actually has, and the whole of the rest of
+	 * this file is the „radi normalno" half already.
+	 *
+	 * <p><b>This is the „bez superadmina" half, and it needs the address CONFIRMED to say
+	 * anything.</b> Every other account in this file is unconfirmed, so a portal that had
+	 * quietly decided confirmation alone is enough would be answered `competitor` by all of
+	 * them and would read as green. Confirming first is what separates the two halves of
+	 * the owner's sentence here: with nobody named, the half that is satisfied must still
+	 * grant nothing.
+	 */
+	@Test
+	void withNobodyNamedAConfirmedAddressIsStillAnOrdinaryMember() throws Exception {
+		db.sql("update account set email_confirmed_at = ? where email = ?")
+				.params(Timestamp.from(Instant.now()), MINE).update();
+
+		assertThat(me(openFor(MINE, Instant.now(), Instant.now().plus(SessionLife.LASTS)))
+				.getContentAsString())
+				.as("the portal names no superadmin, yet confirming an address was enough to"
+						+ " become one")
+				.contains("\"role\":\"competitor\"");
+	}
+
 	private static org.assertj.core.data.TemporalUnitOffset within(Duration slack) {
 		return new org.assertj.core.data.TemporalUnitWithinOffset(slack.toSeconds(),
 				java.time.temporal.ChronoUnit.SECONDS);
