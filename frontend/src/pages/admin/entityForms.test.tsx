@@ -829,6 +829,72 @@ describe('the identity a new record is handed', () => {
   })
 })
 
+describe('a field changed in the row rather than on the form', () => {
+  /* WHAT IT IS FILED UNDER, which since 20.09.2026 is the family AND the number
+   * and not the number alone (`session/context.ts`, `recordKey`).
+   *
+   * The cell was writing the bare number for a day while every reader of it had
+   * moved on to the pair, so the two never met: the cell drew the new value out
+   * of its own writing and everything that reads a record through `recordsOf`
+   * went on showing the old one. Six cells on four screens, and on the public
+   * side a member's town and a written page's title.
+   *
+   * **Read off something the cell does not write**, or the case proves nothing:
+   * the cell's own text is new either way, because it falls back to what it
+   * wrote under whatever key it used. The button that opens the record is fed
+   * from `recordsOf`, so it is the one that tells a key that meets from one that
+   * does not, and it tells a wrong FAMILY apart as well - a cell handed the
+   * wrong one writes and reads a key of its own just as happily.
+   *
+   * **The third row on purpose.** A reader that always takes the first row would
+   * pass on the first, and the screen carries four.
+   *
+   * The sweep over the other five cells is the compiler's: the family is a
+   * required prop, so a cell that does not take one does not build, and the
+   * build is in the gate. What it cannot answer is whether the family handed in
+   * is the right one, which is what this measures. That cells exist at all is
+   * held where they are drawn (the town of a team, below; the title of a page,
+   * `presidentAddress.test.tsx`). */
+  it('reaches the record every other reader of it sees', async () => {
+    const user = setupUser()
+    const title = t('admin.form.edit.moderators')
+    renderAt('/sr/administracija/moderatori', 'superadmin')
+
+    const table = await screen.findByRole('table', { name: 'Moderatori' })
+    const row = at(within(table).getAllByRole('row'), 3)
+
+    await user.click(
+      within(row).getByRole('button', { name: `Ime: Milena. ${t('admin.change')}` }),
+    )
+    await user.clear(within(row).getByRole('textbox', { name: t('admin.field.firstName') }))
+    await user.type(
+      within(row).getByRole('textbox', { name: t('admin.field.firstName') }),
+      'Promenjena',
+    )
+    await user.tab()
+
+    /* The half that must go on working, first: without it the case below passes
+       on a screen that has stopped drawing cells altogether. */
+    expect(
+      within(row).getByRole('button', { name: `Ime: Promenjena. ${t('admin.change')}` }),
+    ).toBeVisible()
+
+    /* And the half that was broken. The name on this button is built out of the
+       record the list holds, not out of the cell. */
+    expect(
+      within(row).getByRole('button', { name: 'Otvori: Promenjena Šarić' }),
+    ).toBeVisible()
+
+    /* And the form behind it opens on the same record, which is what the next
+       person to correct that moderator would see. */
+    await user.click(within(row).getByRole('button', { name: 'Otvori: Promenjena Šarić' }))
+
+    expect(open(title).getByLabelText(labelled(t('admin.field.firstName')))).toHaveValue(
+      'Promenjena',
+    )
+  })
+})
+
 describe('two teams under one name', () => {
   /* A name already taken is refused (PDL P13), and refused by the address it
      makes: the address is read off the name, so two names that make one address

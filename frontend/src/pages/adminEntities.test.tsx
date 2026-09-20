@@ -1440,6 +1440,116 @@ describe('the races of an event', () => {
 
     expect(await screen.findByText('Ovaj događaj još nema nijednu trku.')).toBeVisible()
   })
+
+  /** Goes back to the list and opens the first event again, which is what somebody
+   *  adding races to one event over two sittings does. Off the list already on the
+   *  screen rather than by rendering a second time, or what the save left behind is
+   *  not what is read. */
+  async function openAgain(user: Pressing) {
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const again = await table('Događaji')
+
+    await user.click(within(at(again.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+  }
+
+  /** Adds `how many` rows to the open event and gives each a length, then saves. */
+  async function addRaces(user: Pressing, howMany: number, from: number) {
+    for (let each = 0; each < howMany; each += 1) {
+      await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+      await fill(user, lastRow(), { km: String(from + each) })
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+  }
+
+  it('hands every race made in a press a number nothing else answers to', async () => {
+    /* THE COUNTER GOES DOWN, and a press that makes more than one race has to go
+       down with it (`admin/raceIds.ts`, `nextIdentity`). Stepped up by one, the
+       second race of a press walked straight back into the numbers taken, and the
+       third reached `1`, which is a race the portal serves.
+
+       Asked again for each row over what the press has already handed out, which
+       is the shape `pages/event/EventActions.tsx` keeps for the same work: what
+       `create` writes is not in this render's list of races, so a press that reads
+       the list once and steps through it is reading a list of everything except
+       what it is doing.
+
+       **Three in one press and then two more**, because the two halves fail
+       differently and either can be right while the other is not: three in one
+       press is what reaches a number the file serves, and a second press is what
+       walks back into the first one's.
+
+       Read off the session rather than off the table. Two races under one number
+       are two rows on the screen just the same, each drawn with its own name,
+       until somebody changes one of them; the number itself is what is wrong, and
+       this is where it is written. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, <Saved />)
+
+    const listed = await table('Događaji')
+
+    await user.click(within(at(listed.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await addRaces(user, 3, 31)
+    await openAgain(user)
+    await addRaces(user, 2, 41)
+
+    const made = within(screen.getByRole('list', { name: 'session records' }))
+      .getAllByRole('listitem')
+      .flatMap((one) => {
+        const found = /^new races (-?\d+) \|/.exec(one.textContent ?? '')
+
+        return found === null ? [] : [Number(at(found, 1))]
+      })
+
+    expect(made, 'five races were entered over two presses').toHaveLength(5)
+    expect(new Set(made).size, 'two races were handed one number').toBe(made.length)
+
+    /* And none of them is a number the portal already serves. Held against the
+       file rather than against „is it below nought", because below nought is the
+       reason and this is the thing it is there for. */
+    const served = new Set((await loadResource<Race[]>('races')).map((one) => one.id))
+
+    expect(made.filter((one) => served.has(one)), 'a made race took a served number').toEqual([])
+  })
+
+  it('leaves a race renamed in the table the only one carrying that name', async () => {
+    /* The same fault from the side somebody would meet it on, and the one that
+       says why it matters: the overlay of changes is keyed by the number
+       (`session/context.ts`, `recordKey`), so two races under one number are one
+       record to every change, and renaming either renames both.
+
+       Two presses of two, which is the shortest way to a number handed out twice,
+       then a third that gives one row a name of its own. */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    const listed = await table('Događaji')
+
+    await user.click(within(at(listed.getAllByRole('row'), 1)).getByRole('button', { name: /^Otvori:/ }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await addRaces(user, 2, 31)
+    await openAgain(user)
+    await addRaces(user, 2, 41)
+    await openAgain(user)
+
+    const named = 'Preimenovana trka'
+
+    await user.clear(lastRow().getByLabelText(/^Trka,/))
+    await user.type(lastRow().getByLabelText(/^Trka,/), named)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await openAgain(user)
+
+    const names = screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value)
+
+    expect(names.filter((one) => one === named)).toHaveLength(1)
+  })
 })
 
 /**

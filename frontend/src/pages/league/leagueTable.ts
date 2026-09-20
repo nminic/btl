@@ -1,4 +1,5 @@
 import { genderMark } from '../../data/categories'
+import { numbered } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 
 /**
@@ -109,9 +110,11 @@ export function leagueTable(
   const eventOf = new Map(
     races.flatMap((race) => (inLeague.has(race.eventId) ? [[race.id, race.eventId] as const] : [])),
   )
-  const byMember = new Map<string | null, Map<number, number>>()
+  const byMember = new Map<string, Map<number, number>>()
 
-  for (const result of results) {
+  /* The results that name a member, because this cell is a member's cell
+     (`data/derive.ts`, `numbered`). */
+  for (const result of numbered(results)) {
     const eventId = eventOf.get(result.raceId)
 
     if (eventId === undefined) {

@@ -556,13 +556,34 @@ export function AdminEvents() {
                          the list is really there for is the races this visit has
                          already made. Counted rather than measured, it handed a new
                          race the number a deleted one had freed and two records
-                         answered to one id. */
-                      let next = nextIdentity(allRaces.map((one) => one.id))
+                         answered to one id.
+
+                         **Asked again for each row, over what this press has handed
+                         out as well**, which is the shape `pages/event/EventActions.tsx`
+                         already keeps for the same work: it copies an event and its
+                         races in one go and reads `nextIdentity` once per race, over
+                         the list plus what it has just made. Stepped instead, this
+                         went the wrong way: `nextIdentity` counts DOWN from nought and
+                         a step of one counts up, so the second new race of a press
+                         walked back into the numbers the press before it had taken,
+                         and the third reached `1`, which is a race the file serves.
+                         Measured on the screen: two presses of two new races each, and
+                         renaming one of them renamed two.
+
+                         The creations of this press are not in `allRaces`: that list
+                         is this render's, and what `create` writes is not in it until
+                         the next one. */
+                      const handedOut: number[] = []
 
                       for (const row of kindOf(values) === 'race' ? current : []) {
                         if (row.id === '') {
-                          create(RACES.id, String(next), storedRow(row, written))
-                          next += 1
+                          const made = nextIdentity([
+                            ...allRaces.map((one) => one.id),
+                            ...handedOut,
+                          ])
+
+                          handedOut.push(made)
+                          create(RACES.id, String(made), storedRow(row, written))
                         } else {
                           editRecord(recordKey(RACES.id, row.id), storedRow(row, written))
                         }

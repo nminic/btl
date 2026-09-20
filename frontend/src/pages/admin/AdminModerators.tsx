@@ -81,6 +81,7 @@ export function AdminModerators() {
                       <tr key={one.id}>
                         <td>
                           <EditableCell
+                            under={MODERATORS.id}
                             id={String(one.id)}
                             field="firstName"
                             value={one.firstName}
@@ -89,6 +90,7 @@ export function AdminModerators() {
                         </td>
                         <td>
                           <EditableCell
+                            under={MODERATORS.id}
                             id={String(one.id)}
                             field="lastName"
                             value={one.lastName}
@@ -97,6 +99,7 @@ export function AdminModerators() {
                         </td>
                         <td className="moderators__email">
                           <EditableCell
+                            under={MODERATORS.id}
                             id={String(one.id)}
                             field="email"
                             value={one.email}

@@ -102,6 +102,7 @@ export function AdminPages() {
                       <tr key={page.slug}>
                         <td>
                           <EditableCell
+                            under={PAGES.id}
                             id={page.slug}
                             field="title"
                             value={page.title}

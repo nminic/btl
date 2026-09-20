@@ -19,7 +19,6 @@ import {
 } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
-import type { Competitor } from '../data/types'
 import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { outsideHost, outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
@@ -274,9 +273,12 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
           )
         }
 
-        const byNumber = new Map<string | null, Competitor>(
-          competitors.map((one) => [one.memberNumber, one]),
-        )
+        /* A lookup and not a tally, which is why the results are read whole here
+           while every figure reads them through `numbered` (`data/derive.ts`).
+           This table draws one row per run, and a run by somebody with no member
+           number to look up is still a run that happened; what it has instead of
+           a name is settled below. */
+        const byNumber = new Map(competitors.map((one) => [one.memberNumber, one]))
 
         return (
           <>
@@ -312,7 +314,21 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                 </thead>
                 <tbody>
                   {ran.map((result) => {
-                    const person = byNumber.get(result.memberNumber)
+                    /* Nothing is not a key, and it is asked for separately rather
+                       than let through a map that would answer `undefined` to it
+                       anyway: the map is built out of members, so a member number
+                       that might be nothing cannot be one of its keys, and the
+                       portal keys nothing by one (`data/derive.ts`, `numbered`).
+
+                       **The boundary, written here rather than left to be found.**
+                       A run by somebody with no number falls to the same column as
+                       a run by a member who has left, and that column then says the
+                       number - which for this one is nothing at all. What such a
+                       row should be headed instead is a question for the owner and
+                       not for this line, and it is asked rather than answered here,
+                       because inventing a word for it would be deciding it. */
+                    const person =
+                      result.memberNumber === null ? undefined : byNumber.get(result.memberNumber)
                     const name =
                       person === undefined
                         ? result.memberNumber

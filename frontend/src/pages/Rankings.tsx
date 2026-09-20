@@ -11,6 +11,7 @@ import {
   categoryOfMember,
   defaultSeason,
   fieldFor,
+  numbered,
   rankingFor,
   seasonsWithResults,
 } from '../data/derive'
@@ -61,11 +62,11 @@ function Standing({
   const fallback = useMemo(() => {
     // The default follows the list being shown, not the data as a whole: a
     // season can have a full women's field and a single man in it.
-    const ofGender = new Set<string | null>(
+    const ofGender = new Set(
       competitors.filter((one) => one.gender === gender).map((one) => one.memberNumber),
     )
 
-    return defaultSeason(results.filter((one) => ofGender.has(one.memberNumber)), today)
+    return defaultSeason(numbered(results).filter((one) => ofGender.has(one.memberNumber)), today)
   }, [competitors, results, gender, today])
 
   const season = seasonParam === null ? fallback : Number(seasonParam)

@@ -41,14 +41,39 @@ import type { Place } from './places'
  * do about a field the server has not got is the half the owner kept for himself
  * („Uskladi oblike, pa polje po polje odluci", 20.09.2026).
  *
- * **Where the samples come from, said exactly.** The ones marked „off the wire"
- * were taken from `127.0.0.1:8081/api/...` on QA on 20.09.2026, against the
- * database carrying the owner's own history. Four addresses answered 401 with an
- * empty body and one answered with an empty list, so for those there was no row
- * to see; those are marked „off the record" and are copied from the record the
- * server declares (`backend/src/main/java/com/btl/portal/web`), which is what
- * Jackson writes out. The difference is written down rather than smoothed over,
- * because a sample nobody measured is a claim and not a measurement.
+ * **What a sample is a sample OF, said exactly, because it is not everything.**
+ * What this file holds against the types is the set of FIELD NAMES a row carries
+ * and the SORT of each (number, text, nothing, list), and those are what was read
+ * off `127.0.0.1:8081/api/...` on QA on 20.09.2026, against the database carrying
+ * the owner's own history. **The values beside them are not all the server's**,
+ * and that was found in review the same day: the event of id 273 answers from
+ * another town than the one written here, the race of id 275 with another length,
+ * climb and length-class, and the result of id 275 with another time and score.
+ * Nothing reads a value here for its own sake - `sortOf` reduces every one of them
+ * to its sort before a word of this is compared - so what is wrong is the sentence
+ * and never the answer, and the sentence is now the narrow one it should always
+ * have been.
+ *
+ * **Two of the samples are not answers at all and are no longer filed as if they
+ * were.** `aCopiedEvent` and `aCountedResult` are the OTHER state of a field that
+ * has two, built here out of the row above them, and they have to be built: on QA
+ * `copiedFrom` is nothing in all 319 events and `memberNumber` is nothing in all
+ * 264 results, so the state where each is a value has no row to be read off. They
+ * stand under a heading of their own below, saying so.
+ *
+ * Four addresses answered 401 with an empty body and one answered with an empty
+ * list, so for those there was no row to see at all; those are marked „off the
+ * record" and are copied from the record the server declares
+ * (`backend/src/main/java/com/btl/portal/web`), which is what Jackson writes out.
+ *
+ * **And the reach of the two comparisons below, which is one way and not two.**
+ * `shared` and `missing` both walk the keys of the SERVED row, so what they answer
+ * is „the file holds a field, or a sort, the answer has not". The other direction
+ * is invisible to them: `/api/pages` answers with `includes: []` on all four pages
+ * and no page in the file carries that field at all, and both of these pass. What
+ * the backend has and the portal has not is the half the owner kept for himself
+ * („Uskladi oblike, pa polje po polje odluci", 20.09.2026), so it is written down
+ * here rather than guarded.
  */
 
 /* ---- off the wire ------------------------------------------------------- */
@@ -99,15 +124,8 @@ const aResult = {
   category: 'marathon' as const,
 }
 
-/** And the other state: a result of somebody who has a number. */
-const aCountedResult = { ...aResult, id: 276, memberNumber: '000001' }
-
 /** A list whose rows carry their own address, and every block says whether it
  *  draws anything: `gallery` is there and empty on a block that draws none. */
-/** The other state of the same field: an event that WAS copied, which is what
- *  says `copiedFrom` is a number or nothing and never text. */
-const aCopiedEvent = { ...anEvent, id: 274, copiedFrom: 273 }
-
 const aPage = {
   slug: 'politika-privatnosti',
   title: 'Politika privatnosti',
@@ -132,6 +150,23 @@ const aDucat = {
  *  them is what the two names below say. */
 const aTown: [number, string, string] = [1_796_236, 'Shanghai', 'CN']
 const anEnglishTown: [number, string, string, string] = [792_680, 'Beograd', 'RS', 'Belgrade']
+
+/* ---- the other state of a field, built rather than read ------------------ */
+
+/* Two fields the answer gives in two states, and QA holds only one of each: on the
+   day the samples were taken `copiedFrom` was nothing in all 319 events and
+   `memberNumber` was nothing in all 264 results. The state with a value in it
+   therefore has no row to be copied from, and is made here out of the row above.
+   Written this way round on purpose: what is claimed is only that the field may
+   hold that sort, which is what the comparison below reads, and never that some
+   row on QA holds exactly this. */
+
+/** An event that WAS copied, which is what says `copiedFrom` is a number or
+ *  nothing and never text. */
+const aCopiedEvent = { ...anEvent, id: 274, copiedFrom: 273 }
+
+/** And a result of somebody who has a member number. */
+const aCountedResult = { ...aResult, id: 276, memberNumber: '000001' }
 
 /* ---- off the record the server declares --------------------------------- */
 

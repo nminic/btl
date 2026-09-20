@@ -23,6 +23,7 @@ import {
   rankTeams,
   resultsOf,
   seasonsWithResults,
+  totalsByMember,
   totalsOf,
   withPlaces,
   monthFrom,
@@ -68,7 +69,7 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
    that reads an identity writes its own over this. */
 let resultsMade = 0
 
-const result = (memberNumber: string, date: string, points: number, extra: Partial<Result> = {}): Result => ({
+const result = (memberNumber: string | null, date: string, points: number, extra: Partial<Result> = {}): Result => ({
   id: (resultsMade += 1),
   memberNumber,
   raceId: 36,
@@ -432,6 +433,82 @@ describe('defaultSeason', () => {
 
   it('falls back to the running season when there is nothing at all', () => {
     expect(defaultSeason([], '2027-03-01')).toBe(2027)
+  })
+})
+
+describe('a result that names no member', () => {
+  /* IT IS NOT IN ANY FIGURE, and that is the reading side of the owner's own
+   * decision (ADL A44, 11.09.2026): a person is a `competitor` from the day they
+   * register and a MEMBER when they are given a number, so `/api/results` answers
+   * with `null` for a run by somebody who has none. The cost he took with it was
+   * „svaki upit koji racuna da broj postoji mora da kaze `member_number is not
+   * null`".
+   *
+   * **Nothing is not a member, so it must not be counted as one.** Every figure
+   * below gathers results into a map keyed by the number; with `null` left in,
+   * everybody who raced without one is a single „member" holding the sum of all
+   * of them.
+   *
+   * **Two of them, of two different people and on two different days**, because a
+   * single unnumbered row proves nothing: one row makes an entry of one whether
+   * it is counted as one person or thirty, and the whole fault is what happens
+   * when there are two.
+   *
+   * **Stated as „the same answer as if they were not there"**, rather than as a
+   * figure written out here. The rule is that they do not take part, and a
+   * written-out figure would also pass on a reading that let them in and happened
+   * to land on the same number.
+   *
+   * **Where the case ends and the compiler starts.** Only two readings change
+   * their ANSWER: these two. The rest (`rankingFor`, `tallyOf`, `rankTeams`,
+   * `bestSingleRaces`, `leagueTable`) look their map up by a competitor's number,
+   * which is never nothing, so the entry filed under nothing was built and never
+   * read. There is no case that can fail on those, and saying so is the honest
+   * half: what holds them is that nothing in the portal is keyed by a member
+   * number that might be nothing any more, so a reading that drops `numbered`
+   * does not compile, and the build is in the gate.
+   *
+   * Invisible until the mock goes: `BASE` is `/mock` and nothing in it is missing
+   * a number, while on QA all 264 rows of `/api/results` answer with `null`. */
+  const anybody = [
+    result('000001', '2026-01-01', 10),
+    result('000001', '2026-02-01', 20),
+    result('000002', '2026-03-01', 30),
+  ]
+
+  const nobody = [
+    result(null, '2026-04-01', 10, { distanceKm: 4, raceId: 71 }),
+    result(null, '2026-05-01', 20, { distanceKm: 6, raceId: 72 }),
+  ]
+
+  it('is in nobody`s totals, and does not become a member of its own', () => {
+    /* Measured before this line was here: the two rows above came back as one
+       entry of `{ races: 2, kilometers: 10, points: 30 }` filed under nothing,
+       which is two strangers read as one person. */
+    expect([...totalsByMember([...anybody, ...nobody]).entries()]).toEqual([
+      ...totalsByMember(anybody).entries(),
+    ])
+  })
+
+  it('does not fill up a season that has no field', () => {
+    /* The one place it shows without anybody going looking. The season being read
+       has two members in it, which is under the three a podium needs, so the
+       screen opens on the older one instead. Counted as a member, the rows above
+       make a third „person" and the screen opens on a season of two.
+
+       2019 carries three, so the answer is a season and not a shrug: a fallback
+       to the running year would pass either way. */
+    const older = [
+      result('000001', '2019-01-01', 1),
+      result('000002', '2019-02-01', 1),
+      result('000004', '2019-03-01', 1),
+    ]
+
+    expect(defaultSeason([...anybody, ...older, ...nobody], '2026-08-01')).toBe(2019)
+    expect(
+      defaultSeason([...anybody, ...older, ...nobody], '2026-08-01'),
+      'the rows with no member number changed which season the screen opens on',
+    ).toBe(defaultSeason([...anybody, ...older], '2026-08-01'))
   })
 })
 

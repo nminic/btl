@@ -151,6 +151,7 @@ export function AdminTeams() {
                           <td>{team.name}</td>
                           <td>
                             <EditableCell
+                              under={TEAMS.id}
                               id={String(team.id)}
                               field="city"
                               value={team.city}

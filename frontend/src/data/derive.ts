@@ -58,6 +58,53 @@ export function seasonOf(result: Result): number {
   return Number(result.date.slice(0, 4))
 }
 
+/** A result that names the member it belongs to. */
+export type NumberedResult = Result & { memberNumber: string }
+
+/**
+ * THE RESULTS THAT NAME A MEMBER, which is every result a per-member figure on
+ * this portal is worked out from.
+ *
+ * **A result with no member number does not enter an aggregation** (20.09.2026),
+ * and that is not a new rule but the reading side of one the owner has already
+ * taken and paid for. `member_number` is optional on `competitor` since ADL A44,
+ * 11.09.2026: „Osoba je `competitor` od registracije, a **clan** postaje kad
+ * dobije broj." The cost he accepted in the same breath was „svaki upit koji
+ * racuna da broj postoji mora da kaze `member_number is not null`", and this is
+ * that sentence said on the screens instead of in the database. It agrees with
+ * what the standings are: a table of MEMBERS (PDL P11, Article 73), fed from
+ * `/api/competitors`, whose every row carries a number.
+ *
+ * **What it prevents is not a type error but many people made into one.** Every
+ * figure below gathers results into a map keyed by the number, so left in,
+ * everybody who has raced without one is a single „member" carrying the sum of
+ * all of them. Measured on two results of two different people: one entry,
+ * `{ races: 2, kilometers: 20, points: 30 }`. `defaultSeason` is where it shows
+ * without anybody going looking, because it counts the field by how many numbers
+ * a season has and would say three people raced where thirty did.
+ *
+ * **Invisible today, and that is the whole reason it is being written now.**
+ * `BASE` is still `/mock` and nothing in the mock is missing a number; on QA all
+ * 264 rows of `/api/results` answer with `null`, so the day the mock goes out is
+ * the day the table would sum strangers into one line.
+ *
+ * **Where the rule stops, said here rather than left for somebody to find.** This
+ * is about COUNTING and not about showing. A screen that draws one result
+ * unchanged draws it unchanged (`EventDetail`), and what it puts in the name
+ * column where there is no member to look up is that screen's own question.
+ *
+ * **And the floor under it is the compiler.** Nothing in the portal is keyed by a
+ * member number that might be nothing any more: every map and set of them is
+ * `string`, so a figure written tomorrow that gathers raw results either calls
+ * this or widens its own key, and widening it is a visible act rather than an
+ * oversight.
+ */
+export function numbered(results: Result[]): NumberedResult[] {
+  return results.filter(
+    (result): result is NumberedResult => result.memberNumber !== null,
+  )
+}
+
 /** A standing that cannot fill a podium is not a standing. */
 const SMALLEST_FIELD = 3
 
@@ -68,11 +115,11 @@ const SMALLEST_FIELD = 3
  */
 export function defaultSeason(results: Result[], today: string): number {
   const current = Number(today.slice(0, 4))
-  const fields = new Map<number, Set<string | null>>()
+  const fields = new Map<number, Set<string>>()
 
-  for (const result of results) {
+  for (const result of numbered(results)) {
     const season = seasonOf(result)
-    const field = fields.get(season) ?? new Set<string | null>()
+    const field = fields.get(season) ?? new Set<string>()
 
     field.add(result.memberNumber)
     fields.set(season, field)
@@ -242,9 +289,9 @@ export function rankingFor(
   results: Result[],
   filter: RankingFilter,
 ): RankingRow[] {
-  const totals = new Map<string | null, Totals>()
+  const totals = new Map<string, Totals>()
 
-  for (const result of results) {
+  for (const result of numbered(results)) {
     if (seasonOf(result) !== filter.season) {
       continue
     }
@@ -292,10 +339,10 @@ export function rankMembers(competitors: Competitor[], results: Result[]): Ranki
  * Totals per competitor in one pass. Filtering the whole result set once per
  * competitor is thirty times the work for the same answer, and it showed.
  */
-export function totalsByMember(results: Result[]): Map<string | null, Totals> {
-  const totals = new Map<string | null, Totals>()
+export function totalsByMember(results: Result[]): Map<string, Totals> {
+  const totals = new Map<string, Totals>()
 
-  for (const result of results) {
+  for (const result of numbered(results)) {
     totals.set(result.memberNumber, addToTotals(totals.get(result.memberNumber) ?? EMPTY_TOTALS, result))
   }
 
@@ -468,7 +515,7 @@ export function rankTeams(
   season: number,
 ): Placed<TeamRow>[] {
   const rows = teams.map((team) => {
-    const numbers = new Set<string | null>(
+    const numbers = new Set(
       competitors
         .filter((one) => one.teamId === team.id && inTeamIn(one, season))
         .map((one) => one.memberNumber),
@@ -477,7 +524,7 @@ export function rankTeams(
     return {
       team,
       members: numbers.size,
-      totals: totalsOf(results.filter((result) => numbers.has(result.memberNumber))),
+      totals: totalsOf(numbered(results).filter((result) => numbers.has(result.memberNumber))),
     }
   })
 
@@ -854,10 +901,10 @@ type Tally = { totals: Totals; reachedOn: string }
  * (PDL P12, and Article 49 of the rulebook), so both are counted here rather than
  * one of them keeping the day to itself.
  */
-function tallyOf(results: Result[]): Map<string | null, Tally> {
-  const tally = new Map<string | null, Tally>()
+function tallyOf(results: Result[]): Map<string, Tally> {
+  const tally = new Map<string, Tally>()
 
-  for (const result of [...results].sort((left, right) => left.date.localeCompare(right.date))) {
+  for (const result of numbered(results).sort((left, right) => left.date.localeCompare(right.date))) {
     tally.set(result.memberNumber, {
       totals: addToTotals(tally.get(result.memberNumber)?.totals ?? EMPTY_TOTALS, result),
       reachedOn: result.date,
@@ -1269,10 +1316,8 @@ export function bestSingleRaces(
   season: number,
   limit: number,
 ): Placed<RaceRow>[] {
-  const byNumber = new Map<string | null, Competitor>(
-    competitors.map((competitor) => [competitor.memberNumber, competitor]),
-  )
-  const inSeason = results.filter((result) => seasonOf(result) === season)
+  const byNumber = new Map(competitors.map((competitor) => [competitor.memberNumber, competitor]))
+  const inSeason = numbered(results).filter((result) => seasonOf(result) === season)
   const totals = totalsByMember(inSeason)
 
   /* The season behind the race, carried on the row: the last two rungs need it,
