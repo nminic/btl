@@ -2,12 +2,12 @@
  * THE FIRST THING ON THIS PORTAL THAT ASKS THE SERVER TO DO SOMETHING, AND IT IS
  * DELIBERATELY THE SMALLEST THING THAT CAN.
  *
- * Everything else here reads generated files out of `/mock` (`data/client.ts`), and
- * ADL A50 says that stays so until every resource exists and they are switched over
- * in one go. Nothing in this file moves that day nearer or further: no resource is
- * added, `BASE` is untouched, and no screen that draws data changes. What these two
- * routes are is the other half of a message the server already posted - a link, spent
- * once - and there is no mock of a link anybody clicked.
+ * **This said everything else reads generated files out of `/mock` and that `BASE` is
+ * untouched, and both went out of date on 21.09.2026**, when ADL A50 was carried out and
+ * the fourteen resources moved to `/api` in one go (`data/client.ts`). What the paragraph
+ * was for survives it: these two routes are not resources and belong on no list of them.
+ * They are the other half of a message the server already posted - a link, spent once -
+ * so there is nothing of them to cache and no name of them in `RESOURCE_NAMES`.
  *
  * **It is not a client for the portal and must not become one.** Two screens of one
  * increment share it because the alternative is two homes for one fact, and the fact

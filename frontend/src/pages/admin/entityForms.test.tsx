@@ -601,7 +601,7 @@ describe('a written page nobody has written yet', () => {
     const user = setupUser()
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/pages.json')
+      String(input).endsWith('/api/pages')
         ? new Response(JSON.stringify([{ slug: 'nova', title: 'Nova strana', sections: [] }]), {
             status: 200,
           })

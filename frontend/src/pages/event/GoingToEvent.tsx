@@ -111,11 +111,15 @@ function Going({
    * a switch saying „you are going" over a list saying „nobody is" is the
    * screen contradicting itself. What a missing record costs is the link and
    * the name, not the row: a profile that is not there is not a link (PDL P11),
-   * so such a row is plain words. */
+   * so such a row is plain words.
+   *
+   * **The two are one lookup since 21.09.2026:** whoever is no longer active has
+   * no record in the answer either (owner, 13.09.2026), so `find` returning
+   * nothing covers both and the second condition had nothing left to read. */
   const named = numbers
     .map((number) => ({
       number,
-      who: competitors.find((one) => one.memberNumber === number && one.active),
+      who: competitors.find((one) => one.memberNumber === number),
     }))
     .sort((left, right) => {
       /* A row nobody can be named on goes under the named ones, and not over

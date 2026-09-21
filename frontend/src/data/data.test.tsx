@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render, screen, waitFor } from '@testing-library/react'
 import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
@@ -138,7 +140,7 @@ function unserved(name: ResourceName) {
   const real = globalThis.fetch
 
   globalThis.fetch = async (input: RequestInfo | URL) =>
-    String(input).endsWith(`/${name}.json`) ? new Response('nema', { status: 404 }) : real(input)
+    String(input).endsWith(`/api/${name}`) ? new Response('nema', { status: 404 }) : real(input)
 
   return () => {
     globalThis.fetch = real
@@ -337,12 +339,24 @@ describe('the generated data', () => {
 
     expect(competitors.filter((one) => !/^\d{6}$/.test(one.memberNumber))).toEqual([])
 
-    /* An inactive member is a different thing and does belong here: their fee
-       ran out, they keep their number (PDL P8) and their name stays in the
-       historic tables, while their profile is hidden (PDL P11). This used to
-       assert there were none, which conflated "has not paid yet" with "no longer
-       a member" and left the portal with nobody to check the hiding against. */
-    expect(competitors.filter((one) => !one.active).length).toBe(1)
+    /* **THE FLAG THAT SAID SO IS GONE SINCE 21.09.2026, and what took its place is
+       the answer itself.** This asked for exactly one member with `active: false`,
+       because a member whose fee has run out keeps their number (PDL P8) and their
+       name in the historic tables while their profile is hidden (PDL P11). The
+       portal reads `/api/competitors` now, which does not answer for such a member
+       at all (owner, 13.09.2026), so there is no flag on the record to count and
+       „their fee has run out" is „they are not in this list".
+
+       The generated file still carries the flag, and it is read here rather than
+       through `Competitor`, which is the honest shape of what this case is: a
+       question about the FILE on the disc, asked of the file, in the one describe
+       block on the portal that is about the file rather than about a screen. The
+       screens are held to the real answer in `data/theRealAnswer.test.tsx`. */
+    const onTheDisc: { active: boolean }[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'public', 'mock', 'competitors.json'), 'utf-8'),
+    )
+
+    expect(onTheDisc.filter((one) => !one.active).length).toBe(1)
 
     expect(memberships.length).toBeGreaterThan(0)
     expect(memberships.filter((one) => one.memberNumber !== '')).toEqual([])

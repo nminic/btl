@@ -68,10 +68,8 @@ const MEMBERS: Competitor[] = [
     ageBand: '25-39',
     firstSeason2027: false,
     firstSeason: 2019,
-    active: true,
     membershipBasis: 'payment',
     referralCode: '',
-    referredBy: null,
     teamId: 1,
     teamSince: 2019,
     profileHidden: false,
@@ -173,6 +171,28 @@ describe('who the league counts as running a team', () => {
        to everything. */
     expect(organisers(MEMBERS, [])).toEqual(['000001'])
     expect(organisers([], TEAMS)).toEqual(['000001'])
+  })
+
+  /* **AND THE SEAT ARRIVES IN FOUR SHAPES SINCE 21.09.2026, of which one is a member**
+     (`/api/teams`, `data/types.ts`). This queue is the administration and is answered
+     three of them: a member number, the empty string for a seat nobody holds, and JSON
+     null for a seat held by somebody who has no member number - a row in `competitor` may
+     have none since V16, and nothing keeps such a row out of a seat. The fourth, the key
+     absent, is every answer that is not the administration's; it is walked here because
+     the type carries it and a second reader of this list would meet it.
+
+     Written as cases because the generated file holds a number on three teams and the
+     empty string on the fourth, so neither of the other two would ever be reached. */
+  it('takes nothing off a seat that names nobody with a number', () => {
+    const noNumber: Team[] = [{ ...first(TEAMS), organizerMemberNumber: null }]
+    const notTold: Team[] = [{ ...first(TEAMS), organizerMemberNumber: undefined }]
+
+    expect(organisers([], noNumber)).toEqual([])
+    expect(organisers([], notTold)).toEqual([])
+    /* And the empty seat, which stays on the list as the empty string it is: it matches no
+       member number, so it refuses nobody, and taking it off here would be this function
+       deciding something `teamAdminOf` already decides. */
+    expect(organisers([], [{ ...first(TEAMS), organizerMemberNumber: '' }])).toEqual([''])
   })
 })
 

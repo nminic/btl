@@ -117,10 +117,13 @@ export function PairInviteAnswer({
              is a member's own inbox and a visitor never reaches it (`SignedOut`). A check nothing
              can reach is a check nobody can be sure still works, which is the argument
              `profile/InviteToTeam.tsx` makes about inviting yourself. */
+          /* No day is written with it since 21.09.2026: `RacingPair` has none, because the
+             owner closed the day of a pair to everybody on 13.09.2026 and `/api/pairs` does not
+             answer it. A field written here and read nowhere would be this screen inventing a
+             record the portal does not have. */
           makePair({
             season,
             memberNumbers: [invite.from, String(memberNumber)],
-            since: today,
           })
           closePairInvite(id)
         }}

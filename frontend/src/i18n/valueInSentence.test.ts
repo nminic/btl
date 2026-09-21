@@ -332,11 +332,12 @@ describe('a sentence with a value put into it', () => {
          season, whose pair the reader is already in, and who a broken pair was broken for. */
       'pair.brokenBody',
       'pair.endedBody',
+      /* The season a pair runs in, and not the day it was made: that day is answered to
+         nobody since 13.09.2026 and is drawn nowhere. */
+      'pair.forSeason',
       'pair.inviteBody',
       'pair.received',
-      /* The day the two of them confirmed, written the way every other day on a profile is. */
       'pair.sent',
-      'pair.since <- formatShortDate',
       'profile.allDucats',
       'profile.allResults',
       'profile.inClub',
@@ -384,7 +385,11 @@ describe('a sentence with a value put into it', () => {
          no case at all: the sentence is „Nalog 41", the word stands first and the number
          after it is a label rather than a thing being counted. It is drawn only where the
          portal has no member number to name him by, which is a real session against a
-         portal still reading its members out of `/mock` (app/AccountMenu.tsx). */
+         portal that does not read one off `GET /api/me` yet (app/AccountMenu.tsx).
+
+         **This said „a portal still reading its members out of `/mock`" until 21.09.2026,
+         and that went out of date the day the mock was switched off** (`data/client.ts`).
+         The sentence is still drawn, for the reason beside it rather than for that one. */
       'shell.accountNumber',
       'shell.unread',
       'shell.waiting',

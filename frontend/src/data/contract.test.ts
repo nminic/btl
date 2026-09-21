@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { RESOURCE_NAMES } from './client'
+import { clearResourceCache, loadResource, RESOURCE_NAMES } from './client'
+import { myOwnRecordFromMe, whoIAm } from '../test/theAnswer'
 import { plainly, type Place } from './places'
 import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
@@ -87,12 +88,79 @@ describe('the list of resources', () => {
        **That second half was a real gap when this was written and has a guard of
        its own since the same day:** `data/servedShape.test.ts` writes the answer
        down as it came off the wire and hands it to the very types the screens read
-       it through. What keeps `BASE` on `/mock` is no longer the shapes but the
-       FIELDS the server does not serve, which that guard also names - see the head
-       of `data/client.ts`. */
+       it through. The fields it named as missing were decided one by one over the
+       two days after, and `BASE` moved to `/api` on 21.09.2026 - see the head of
+       `data/client.ts`. */
     const routes = readRoutes()
 
     expect(routes.size).toBeGreaterThan(RESOURCE_NAMES.length)
+  })
+
+  it('is what the portal really asks for, name by name, at the declared address', async () => {
+    /* **THE HALF NOTHING HELD UNTIL 21.09.2026, AND IT IS ABOUT THE SOURCE RATHER
+       THAN THE SHAPE.** The two cases above ask whether the backend DECLARES an
+       address; neither of them asks whether the portal goes there. While `BASE` was
+       `/mock` both of them passed over a portal reading files off a disc, which is
+       exactly what the switch changed and therefore exactly what has to be held: a
+       constant moved back, by hand or by a merge, would leave both of them green.
+
+       **Asked of the request and never of the answer**, which is the whole
+       construction. What comes back here is the generated record, because that is
+       what `test/setup.ts` answers a resource with and what every other case on the
+       portal is written against; if this read the BODY it would be measuring the
+       shape of a file and would pass just the same with `BASE` back on `/mock`.
+       What it reads is the address that was asked for, which is the one thing only
+       the constant decides.
+
+       Every name and not one, because a resource is free to be fetched somewhere
+       else: `places` already has a loader of its own (`data/places.ts`) and a
+       fifteenth could arrive with another. */
+    const asked: string[] = []
+    const disc = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      asked.push(String(input))
+
+      return disc(input, init)
+    }
+
+    try {
+      clearResourceCache()
+
+      await Promise.all(RESOURCE_NAMES.map(async (name) => loadResource(name)))
+
+      expect([...asked].sort()).toEqual(RESOURCE_NAMES.map((name) => `/api/${name}`).sort())
+    } finally {
+      globalThis.fetch = disc
+      clearResourceCache()
+    }
+  })
+
+  it('asks for a resource by name, with no file extension on the end', async () => {
+    /* The other half of the same constant, and it has its own case because it can
+       be got wrong on its own: `/api/events.json` is a declared route with four
+       characters after it, and the backend answers it 404. Nothing above would
+       notice - the name is in the address either way - so the ending is asked about
+       here, over every one of them rather than over a sample. */
+    const asked: string[] = []
+    const disc = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      asked.push(String(input))
+
+      return disc(input, init)
+    }
+
+    try {
+      clearResourceCache()
+
+      await Promise.all(RESOURCE_NAMES.map(async (name) => loadResource(name)))
+
+      expect(asked.filter((one) => /\.[a-z]+$/.test(one))).toEqual([])
+    } finally {
+      globalThis.fetch = disc
+      clearResourceCache()
+    }
   })
 })
 
@@ -104,7 +172,13 @@ describe('the list of resources', () => {
  * about reading a resource, and a resource that only accepts writes answers no
  * screen.
  */
+let routes: Set<string> | null = null
+
 function readRoutes(): Set<string> {
+  if (routes !== null) {
+    return routes
+  }
+
   const java = under(join(process.cwd(), '..', 'backend', 'src', 'main', 'java'), '', ['.java'])
   const found = new Set<string>()
 
@@ -114,7 +188,111 @@ function readRoutes(): Set<string> {
     }
   }
 
+  /* Kept for the same reason the sweep below is: three cases ask for it and the backend
+     does not change under a running package. */
+  routes = found
+
   return found
+}
+
+/**
+ * THE ONE ANSWER THAT IS ABOUT THE CALLER RATHER THAN ABOUT A RESOURCE.
+ *
+ * **Why it needs a home of its own here.** `data/servedShape.test.ts` holds every
+ * resource's answer against the types and against the generated file, and it walks
+ * `RESOURCE_NAMES`. `/api/me` is on no such list - it is not a resource - so nothing
+ * reached it, and the thing that stands in for it in tests kept its seven names written
+ * out by hand. Measured 21.09.2026: adding `active` to that hand-written record - a name
+ * `MeApi` does not carry - left all 179 files and 2959 cases green. The harness answered
+ * more than the server and nothing could tell, which is precisely how the one field the
+ * server withholds from a member got past a whole suite once already.
+ *
+ * **What is held, and where it stops.** The set of component NAMES `MeApi.MyOwnRecord`
+ * declares, against the keys of the record the harness answers with
+ * (`test/theAnswer.ts`). It is read off the backend's own source, the same way the
+ * routes above are and with the same boundary: it holds what is DECLARED, never that the
+ * value at each name is the sort the portal expects. The one name the portal reads by
+ * value has its own cases (`session/theServer.test.ts`, four states).
+ */
+describe("the caller's own record", () => {
+  it('is the seven the backend declares, and not one name more or fewer', () => {
+    /* Both directions at once, because a set comparison is both: a name here the server
+       has not got fails by name, and a name the server has that is missing here fails the
+       same way. */
+    expect(declaredBy('MyOwnRecord')).toEqual(Object.keys(myOwnRecordFromMe).sort())
+  })
+
+  it('arrives inside the three names the answer itself has, and no more', () => {
+    /* **The floor one storey up, and it was open until 21.09.2026.** The record inside was
+       held to `MyOwnRecord` while the answer AROUND it was written out by hand, so the
+       harness could answer a fourth outer name the server has not got - measured, 141
+       cases stayed green either way. The direction that matters is the harness answering
+       MORE than the server, because that is how a field the server withholds went through
+       a whole suite once already. */
+    expect(declaredBy('WhoIAm')).toEqual(Object.keys(whoIAm).sort())
+  })
+
+  it('is read off the backend, so the line above is looking at something', () => {
+    /* The floor, and it is the same one the sweep for routes carries: a reader that has
+       stopped recognising the declaration - record renamed, components reformatted,
+       annotations moved - collapses to a number under this one and says so, instead of
+       passing over an empty set that would make the comparison above agree with a record
+       nobody wrote. */
+    expect(declaredBy('MyOwnRecord').length).toBeGreaterThan(4)
+    expect(declaredBy('WhoIAm').length).toBeGreaterThan(2)
+    /* And a name nothing declares comes back empty rather than agreeing with whatever is
+       asked of it, which is what keeps the two comparisons above from passing over a
+       reader that has quietly stopped finding anything. */
+    expect(declaredBy('NoSuchRecord')).toEqual([])
+  })
+})
+
+/**
+ * The component names of a record `MeApi` declares, off the backend's own source.
+ *
+ * Read between the opening bracket and the one that closes it, counted rather than
+ * looked for, because the components carry annotations with brackets of their own
+ * (`@JsonInclude(JsonInclude.Include.NON_NULL)`). Those are taken off before the list is
+ * split, so what is left of each component is „type name" and the name is the last word
+ * of it.
+ *
+ * One reader for both records rather than one apiece: they are the same question asked
+ * one storey apart, and two copies of it would be free to stop agreeing.
+ */
+function declaredBy(record: string): string[] {
+  const source = readFileSync(
+    join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web', 'MeApi.java'),
+    'utf-8',
+  )
+  const opens = source.indexOf(`record ${record}(`)
+
+  if (opens === -1) {
+    return []
+  }
+
+  let depth = 0
+  let closes = opens
+
+  for (let at = opens + `record ${record}`.length; at < source.length; at += 1) {
+    if (source[at] === '(') {
+      depth += 1
+    } else if (source[at] === ')') {
+      depth -= 1
+
+      if (depth === 0) {
+        closes = at
+        break
+      }
+    }
+  }
+
+  return source
+    .slice(opens + `record ${record}(`.length, closes)
+    .replace(/@\w+\([^)]*\)/g, ' ')
+    .split(',')
+    .map((one) => one.trim().split(/\s+/).slice(-1)[0] ?? '')
+    .filter((one) => one !== '')
+    .sort()
 }
 
 describe('the screens that draw a section of a written page', () => {
@@ -501,8 +679,21 @@ describe('what the portal writes down about the codebook of towns', () => {
  * places `src/**` alone could see it. Paths under `public/mock` are given
  * without that prefix, so a file reads as `mock/pages.json`.
  */
+/* **Read once and kept, since 21.09.2026, and that is about the clock rather than
+   about tidiness.** Six cases in this file call it, so the whole of `src` and `public`
+   was walked six times, about four hundred milliseconds each on an idle machine. That
+   is comfortable alone and not comfortable beside another gate: measured that day, two
+   runs of the package minutes apart gave one failure and then two, and every one of them
+   was this file running out of its five seconds in a sweep rather than a case saying
+   anything. Two runs with different numbers means one of them measured nothing
+   (`CLAUDE.md`), so the work is done once instead of the limit being raised.
+
+   Nothing mutates what comes back, and the files do not change while a run is in
+   progress: a case that means to see a changed file writes it and reads it itself. */
+let swept: { path: string; code: string }[] | null = null
+
 function everything(): { path: string; code: string }[] {
-  return [
+  swept ??= [
     ...under(join(process.cwd(), 'src'), '', ['.ts', '.tsx', '.css', '.json']),
     ...under(join(process.cwd(), 'public'), '', ['.json']),
     /* The codebook of the world's towns is not among them, and is dropped
@@ -513,6 +704,8 @@ function everything(): { path: string; code: string }[] {
        a description of its own, which is words a visitor reads. */
     { path: 'index.html', code: readFileSync(join(process.cwd(), 'index.html'), 'utf-8') },
   ].filter((one) => one.path !== 'mock/places.json')
+
+  return swept
 }
 
 function under(dir: string, prefix: string, kinds: string[]): { path: string; code: string }[] {

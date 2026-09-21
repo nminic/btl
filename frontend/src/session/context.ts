@@ -448,27 +448,52 @@ export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
 /**
  * WHOEVER IS SIGNED IN, AND WHICH OF THE TWO WAYS IN HE CAME BY.
  *
- * <p>There are two, and until the mock is switched off there go on being two. The
- * header has to ask ONE question - „is anybody signed in" (PDL, owner: „Prijavljen član
- * vidi istu naslovnu kao gost. Jedina razlika je gore desno, gde umesto Registracija /
- * Prijava stoji link ka opcijama profila") - and it must not ask it twice and get two
- * answers.
+ * <p>There are two, and there go on being two AFTER the mock was switched off on
+ * 21.09.2026. The header has to ask ONE question - „is anybody signed in" (PDL, owner:
+ * „Prijavljen član vidi istu naslovnu kao gost. Jedina razlika je gore desno, gde umesto
+ * Registracija / Prijava stoji link ka opcijama profila") - and it must not ask it twice
+ * and get two answers.
  *
- * <p><b>A real session carries no member number, and that is the server's decision
- * rather than an oversight here.</b> `GET /api/me` answers `{role, account}` and
- * {@code MeApi} says at length why the member number is not on it: a moderator has no
- * member record at all, so the field would be empty for a real signed in administrator
- * and every screen reading it would carry the branch whether it wanted one or not. So
- * the two arms of this carry different things because the portal genuinely knows
- * different things about them.
+ * <p><b>A real session carries no member number HERE, and since 21.09.2026 that is the
+ * PORTAL'S doing rather than the server's.</b> This said the answer is `{role, account}`
+ * and that {@code MeApi} „says at length why the member number is not on it". Both halves
+ * are out of date, and the second is refused by that class in bold: „AND SINCE 20.09.2026
+ * IT CARRIES A MEMBER NUMBER, which is the sentence this class used to spend four
+ * paragraphs refusing." Measured the same day: a harness that really answers `{role,
+ * account}` and nothing else fails two cases, because the portal does read something out
+ * of the record beside them.
+ *
+ * <p>What the reason has become is smaller and still good: the number is on the answer and
+ * the portal does not take it, because doing so is one increment with the member area and
+ * a moderator's rights in it. Until then the two arms of this carry different things.
  */
 export type SignedIn =
   /**
    * The prototype's way in: a member number, chosen on the development switch.
    *
-   * Every screen that draws a member reads the mock through this, so it wins where both
-   * are set. There is nothing to reconcile - the mock knows members and the server
-   * knows accounts - and the day `/mock` goes off (ADL A50) this arm goes with it.
+   * Every screen that draws a member reads through this, so it wins where both are set.
+   *
+   * **THIS SAID THE ARM WOULD GO WITH THE MOCK, AND THAT DAY CAME ON 21.09.2026 AND IT DID
+   * NOT GO.** The sentence is corrected here rather than left standing, because a promise
+   * about a day that has passed reads as an instruction to carry it out. What it missed is
+   * that the two arms carry different things for a reason the switch does not touch: a real
+   * session is `GET /api/me`, and the portal takes no MEMBER NUMBER off it, so a signed in
+   * member has none and every screen about „me" would have nothing to draw.
+   *
+   * **AND THE CORRECTION ITSELF CARRIED THE NEXT ONE, which is why this paragraph says so
+   * out loud.** It went on to say that `theServer.ts` reads the role and the account „and
+   * nothing else", and that was already false when it was written: the same day's work had
+   * that file reading `member.membershipBasis` as well, because a member is told how his
+   * own fee is held through this answer and through no other. Left standing it was an
+   * instruction to take that reading back out - which is the very thing a round of review
+   * had just called a high finding. Measured 21.09.2026: making it true again, by answering
+   * `null` for the basis, fails five cases.
+   *
+   * **What the portal reads off `/api/me` today, said as a list so the next sentence about
+   * it can be checked rather than believed:** the role, the account, and the caller's own
+   * membership basis. `MeApi.WhoIAm` carries more than that - the member number among it,
+   * since 20.09.2026 - and taking the number off it is its own increment, because the
+   * member area and a moderator's rights come off the same answer.
    */
   | { as: 'member'; memberNumber: string }
   /** A real session, which is an account and nothing more. */
@@ -486,7 +511,25 @@ export type SessionValue = {
    */
   account: number | null
   /** What `GET /api/me` said, remembered for the rest of the visit. */
-  theServerSignedMeIn: (account: number) => void
+  theServerSignedMeIn: (account: number, membershipBasis: MembershipBasis | null) => void
+  /**
+   * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, as the server answered it, or null where
+   * it did not say.
+   *
+   * **It is here and not on the member's record in the public list, and that is the
+   * owner's decision rather than a convenience.** 20.09.2026: „Clan vidi SVOJ osnov
+   * clanstva; tudj ne vidi niko osim administracije." `/api/competitors` keeps the
+   * second half by asking about the CALLER and not about the row, so it withholds the
+   * field from a member even on his own row; `/api/me` is where the first half lives
+   * (`session/theServer.ts` writes out what reading it the other way cost).
+   *
+   * **Only this one of the seven the answer carries**, because only this one has no
+   * other door. The member number, the country, the first season and the team are on
+   * the public list; the referral code and the count are on the caller's own row of it.
+   * A field remembered here with no reader would be a second home for a fact that
+   * already has one.
+   */
+  myMembershipBasis: MembershipBasis | null
   /**
    * The one question the header asks, answered once here.
    *

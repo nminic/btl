@@ -1,6 +1,12 @@
 import { pointsOf } from '../data/scoring'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { EventComment, PendingItem, RacingPair, Result } from '../data/types'
+import type {
+  EventComment,
+  MembershipBasis,
+  PendingItem,
+  RacingPair,
+  Result,
+} from '../data/types'
 import { nextIdentity, nextNumber } from '../pages/admin/raceIds'
 import {
   SessionContext,
@@ -36,6 +42,11 @@ export function SessionProvider({
      in. `Shell` asks the server on every visit (session/useTheServersSession.ts) and
      writes it here. */
   const [account, setAccount] = useState<number | null>(null)
+  /* Beside the account and never apart from it, which is the rule this provider
+     already keeps for the account and its role: the two arrive in one answer
+     (`GET /api/me`) and a screen that had one without the other would be reading half
+     a session. */
+  const [myMembershipBasis, setMyMembershipBasis] = useState<MembershipBasis | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   /* The counted results a moderator has agreed to change during this visit, by the
      identity of the record each one replaces. Read by `useResults`, so the
@@ -477,6 +488,23 @@ export function SessionProvider({
     setEdits(({ [id]: _gone, ...rest }) => rest)
   }, [])
 
+  /**
+   * What the server said about the caller, written down in one go.
+   *
+   * **Held steady across renders, and that is not tidiness.** `useTheServersSession`
+   * asks `GET /api/me` inside an effect whose dependencies are this function and the
+   * role setter, and its own note says the question is asked „once a visit rather than
+   * once a render" because both are stable. Written inline it is a new function every
+   * render, the effect runs again after every state change, and a member who signs out
+   * is signed straight back in by the answer arriving a tick later. Measured 21.09.2026
+   * on five cases about signing out, all of which came back with the account menu still
+   * on the header.
+   */
+  const theServerSignedMeIn = useCallback((said: number, basis: MembershipBasis | null) => {
+    setAccount(said)
+    setMyMembershipBasis(basis)
+  }, [])
+
   /* What the person at the keyboard is allowed to see: what was written to them,
    * and what was written to the whole league. The store holds everybody's. */
   const inbox = useMemo(
@@ -489,10 +517,17 @@ export function SessionProvider({
       memberNumber,
       signIn: setMemberNumber,
       account,
-      theServerSignedMeIn: setAccount,
+      myMembershipBasis,
+      theServerSignedMeIn,
       /* One question, one answer, worked out here from the only two facts there are.
          The member number wins where both are set, because every screen that draws a
-         member reads the mock through it and the account knows no member (MeApi). */
+         member reads THROUGH it and the account knows no member (MeApi).
+
+         **It said „reads the mock through it" until 21.09.2026**, and the mock went off
+         that day (`data/client.ts`); measured, putting `BASE` back fails two cases in
+         `data/contract.test.ts`. What the sentence is about did not move: the two facts
+         are a member number and an account, and only one of them names somebody a screen
+         can draw. */
       signedIn:
         memberNumber !== null
           ? { as: 'member', memberNumber }
@@ -553,6 +588,16 @@ export function SessionProvider({
     [
       memberNumber,
       account,
+      /* **BOTH OF THESE WERE MISSING UNTIL 21.09.2026, and the reason nothing showed it
+         is the shape this repository keeps being bitten by.** The basis is set in the
+         same breath as the account (`theServerSignedMeIn`), so the memo was rebuilt for
+         the account's sake and the new basis came along with it - the right screen for
+         the wrong reason, and a second writer of either would have parted them. The
+         setter is a `useCallback` over nothing and never changes; it is named here all
+         the same, because a dependency list that leaves out what it reads is a list
+         somebody has to re-derive by hand the next time it grows. */
+      myMembershipBasis,
+      theServerSignedMeIn,
       going,
       setGoing,
       submissions,

@@ -97,7 +97,11 @@ export function SignIn() {
     }
 
     become(who.role)
-    theServerSignedMeIn(who.account)
+    /* The whole of what the answer said, and not the account on its own: the basis a
+       member's own fee is held on comes through this one door (`session/context.ts`),
+       and a sign in that set the account without it would leave „Moja clanarina"
+       reading „I was not told" until the visit was refreshed. */
+    theServerSignedMeIn(who.account, who.membershipBasis)
     navigate(`/${locale}/moj-profil`)
   }
 

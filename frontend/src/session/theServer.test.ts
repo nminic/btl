@@ -33,9 +33,9 @@ function saying(body: string, status = 200): Response {
 
 describe('who the server says I am', () => {
   it('is the role and the account it answered with', async () => {
-    server = serverThat(() => saying(JSON.stringify({ role: 'superadmin', account: 41 })))
+    server = serverThat(() => saying(JSON.stringify({ role: 'superadmin', account: 41, membershipBasis: null })))
 
-    expect(await whoTheServerSaysIAm()).toEqual({ role: 'superadmin', account: 41 })
+    expect(await whoTheServerSaysIAm()).toEqual({ role: 'superadmin', account: 41, membershipBasis: null })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
   })
 
@@ -97,12 +97,41 @@ describe('who the server says I am', () => {
       server?.stop()
       server = serverThat(() => saying(JSON.stringify({ role, account: 41 })))
 
-      expect(await whoTheServerSaysIAm(), role).toEqual({ role, account: 41 })
+      expect(await whoTheServerSaysIAm(), role).toEqual({
+        role,
+        account: 41,
+        membershipBasis: null,
+      })
     }
 
     /* And there really were three. An empty list would make the loop above say nothing
        at all, quietly. */
     expect(SIGNED_IN_ROLES.length).toBe(ROLES.length - 1)
+  })
+
+  /* **HOW THE CALLER'S OWN MEMBERSHIP IS HELD, WHICH IS THE THIRD THING THIS ANSWER
+     CARRIES SINCE 21.09.2026, and the axis has four states rather than two.** It is read
+     here and nowhere else on the portal: `/api/competitors` decides that field by asking
+     whether the CALLER is the administration rather than whether the row is his
+     (`CompetitorApi`), so a member is not given it even about himself, and a screen that
+     read it there asked a member freed of the fee to pay. */
+  it.each([
+    ['a member who pays', { member: { membershipBasis: 'payment' } }, 'payment'],
+    ['a member the league has freed', { member: { membershipBasis: 'feeExempt' } }, 'feeExempt'],
+    /* An account that races for nobody: the record is ABSENT altogether rather than an
+       object of nulls, which is what `MeApi.WhoIAm` says in as many words. */
+    ['an account that races for nobody', {}, null],
+    /* And a word the portal does not know, which is „I was not told" and never a third
+       basis: the same shape the role above is read with (ADL A14, looked for and not
+       asserted). */
+    ['a word the portal does not know', { member: { membershipBasis: 'barter' } }, null],
+  ])('says how the fee is held for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.membershipBasis).toBe(expected)
   })
 
   it('is nobody when the role is not one the portal knows at all', async () => {

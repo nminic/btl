@@ -1,5 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { loadResource } from '../../data/client'
+import { membersAsServed } from '../../test/serverAnswers'
 import type { Attending, BtlEvent, Competitor } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -63,7 +64,7 @@ describe('who is going to a race', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
     const named = going
       .map((one) => competitors.find((each) => each.memberNumber === one.memberNumber))
-      .filter((one) => one !== undefined && one.active)
+      .filter((one) => one !== undefined)
 
     expect(named.length).toBeGreaterThan(0)
 
@@ -209,7 +210,7 @@ describe('writing to somebody else who is going', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
     const two = going
       .map((one) => competitors.find((each) => each.memberNumber === one.memberNumber))
-      .filter((one): one is Competitor => one !== undefined && one.active)
+      .filter((one): one is Competitor => one !== undefined)
       .slice(0, 2)
     const first = must(two[0], 'the first of them')
     const second = must(two[1], 'the second of them')
@@ -218,7 +219,7 @@ describe('writing to somebody else who is going', () => {
        envelope. */
     const outsider = must(
       competitors.find(
-        (one) => one.active && !going.some((each) => each.memberNumber === one.memberNumber),
+        (one) => !going.some((each) => each.memberNumber === one.memberNumber),
       ),
       'a member not going to it',
     )
@@ -301,14 +302,14 @@ describe('writing to somebody else who is going', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
     const them = must(
       competitors.find(
-        (one) => one.active && going.some((each) => each.memberNumber === one.memberNumber),
+        (one) => going.some((each) => each.memberNumber === one.memberNumber),
       ),
       'somebody going to it',
     )
 
     const outsider = must(
       competitors.find(
-        (one) => one.active && !going.some((each) => each.memberNumber === one.memberNumber),
+        (one) => !going.some((each) => each.memberNumber === one.memberNumber),
       ),
       'a member not going to it',
     )
@@ -362,7 +363,6 @@ describe('writing to somebody else who is going', () => {
     const them = must(
       competitors.find(
         (one) =>
-          one.active &&
           one.memberNumber !== already.memberNumber &&
           going.some((each) => each.memberNumber === one.memberNumber),
       ),
@@ -398,7 +398,7 @@ describe('writing to somebody else who is going', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
     const them = must(
       competitors.find(
-        (one) => one.active && going.some((each) => each.memberNumber === one.memberNumber),
+        (one) => going.some((each) => each.memberNumber === one.memberNumber),
       ),
       'somebody going to it',
     )
@@ -431,7 +431,7 @@ describe('writing to somebody else who is going', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
     const them = must(
       competitors.find(
-        (one) => one.active && one.memberNumber !== already.memberNumber && going.some(
+        (one) => one.memberNumber !== already.memberNumber && going.some(
           (each) => each.memberNumber === one.memberNumber,
         ),
       ),
@@ -488,12 +488,38 @@ describe('a name the list cannot lead to', () => {
      while a registration is going through. Neither may vanish from the list:
      the switch and the list are one answer to one question, and a switch
      saying „you are going" over a list saying „nobody is" is the screen
-     contradicting itself. */
+     contradicting itself.
+
+     **THE FIRST OF THE TWO IS ONLY A STRANGER ON THE ANSWER THE SERVER GIVES,
+     SINCE 21.09.2026.** The generated file still carries the member whose fee has
+     lapsed, with a flag saying so; `/api/competitors` carries neither the row nor
+     the flag (owner, 13.09.2026). Read off the file this describe would have had
+     one stranger where it needs two, and the shape it exists to measure - a list
+     with both kinds of nameless row on it - would have stopped existing without
+     anything saying so. `membersAsServed` is what puts the answer in front of the
+     file, and it is also what makes this case measure the rule rather than the
+     seed: „no record" and „fee run out" are one state now, and this is where that
+     is said out loud. */
+  /* The answer in front of the file for every case below, rather than inside each
+     one: they all read the same list, and a case that forgot would quietly go back
+     to measuring the seed. Put back after each, because `serverThat` stands in
+     front of the disc reader rather than replacing it, and the next file's cases
+     need the disc reader back. */
+  let putTheDiscBack = () => {}
+
+  beforeEach(() => {
+    putTheDiscBack = membersAsServed().stop
+  })
+
+  afterEach(() => {
+    putTheDiscBack()
+  })
+
   async function withStrangers() {
     const events = await loadResource<BtlEvent[]>('events')
     const attendance = await loadResource<Attending[]>('attendance')
     const competitors = await loadResource<Competitor[]>('competitors')
-    const known = new Set(competitors.filter((one) => one.active).map((one) => one.memberNumber))
+    const known = new Set(competitors.map((one) => one.memberNumber))
     const stranger = must(
       attendance.find((one) => !known.has(one.memberNumber)),
       'somebody going who has no visible record',
@@ -513,6 +539,8 @@ describe('a name the list cannot lead to', () => {
   it('draws them as plain words rather than dropping them', async () => {
     const { event, strangers } = await withStrangers()
 
+    /* Two of them and not one, which is the whole shape this describe measures:
+       a number with nothing behind it, and a member whose fee has run out. */
     expect(strangers.length).toBeGreaterThan(1)
 
     renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME, undefined, '2026-08-01')

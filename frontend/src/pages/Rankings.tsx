@@ -10,7 +10,6 @@ import {
   categoriesOf,
   categoryOfMember,
   defaultSeason,
-  fieldFor,
   numbered,
   rankingFor,
   seasonsWithResults,
@@ -71,13 +70,16 @@ function Standing({
 
   const season = seasonParam === null ? fallback : Number(seasonParam)
 
-  /* Who this season's table is drawn from (PDL P11, and `fieldFor` for why).
+  /* Who this season's table is drawn from (PDL P11).
    *
-   * At the call site rather than inside `rankingFor`, because it is a rule about
-   * what a list shows and not about how a standing is worked out. Inside, it
-   * would also have reached the awards, where taking a row out shifts everybody
-   * below it and quietly rewrites who came third in a season already run. */
-  const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
+   * The list itself since 21.09.2026: a member whose fee has run out is not on
+   * `/api/competitors` at all (owner, 13.09.2026), so the rule is kept by the
+   * answer and `fieldFor` had nothing left to take out. It used to stand at the
+   * call site rather than inside `rankingFor`, because it is a rule about what a
+   * list shows and not about how a standing is worked out; inside, it would also
+   * have reached the awards, where taking a row out shifts everybody below it and
+   * quietly rewrites who came third in a season already run. */
+  const field = competitors
 
   const rows = useMemo(
     () => rankingFor(field, results, { season, gender, categoryCode: category }),

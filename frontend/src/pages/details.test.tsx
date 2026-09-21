@@ -4,6 +4,7 @@ import { loadResource } from '../data/client'
 import type { BtlEvent, League, Race } from '../data/types'
 import { at, first, last, must } from '../test/at'
 import { renderAt } from '../test/render'
+import { membersAsServed } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
@@ -115,21 +116,42 @@ describe('EventDetail, the results of the league members who ran it', () => {
     expect(links[0]).toHaveAttribute('href', expect.stringContaining('/sr/takmicar/'))
   })
 
-  it('keeps the name of a member who has left, and takes away only the link', async () => {
-    /* PDL P11: the profile is hidden as though it did not exist, but the history
-       did happen, so the name stays in the table of the season they raced in.
-       000032 is the one such member in the data, and until now they had no
-       results at all, so this half of the rule had nothing to stand on. */
-    renderAt(RAN)
+  it('keeps the row of a member who has left, under the number the result carries', async () => {
+    /* **THIS ASKED FOR THE NAME UNTIL 21.09.2026 AND IT IS A COST OF THE SWITCH RATHER
+       THAN A DECISION TAKEN HERE.** PDL P11 says the profile is hidden as though it did
+       not exist while the history did happen, so „njihovo ime ostaje u tabelama sezona
+       koje su trčali". The name was read off the member's record, and `/api/competitors`
+       does not answer for such a member at all (owner, 13.09.2026), so there is no record
+       left to read one off. The row stays, headed by the number the RESULT carries, which
+       is the one thing this screen still has - and `EventDetail.tsx` names that boundary
+       in as many words beside the line that draws it.
 
-    const table = await screen.findByRole('table', { name: 'Rezultati članova' })
-    const gone = within(table).getByText('Vojislav Antonijević')
+       **Two owner's decisions meet here and only he can part them**, so it is written down
+       in `PENDING.md` rather than settled: either the answer carries a lapsed member after
+       all, or a historic row shows a number where a name used to be. What this case holds
+       meanwhile is that the ROW does not vanish, which is the half that is still the
+       portal's to keep. */
+    const { stop } = membersAsServed()
 
-    expect(gone).toBeVisible()
-    expect(within(gone).queryByRole('link')).not.toBeInTheDocument()
-    expect(
-      within(table).queryByRole('link', { name: 'Vojislav Antonijević' }),
-    ).not.toBeInTheDocument()
+    try {
+      renderAt(RAN)
+
+      const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+
+      /* Their row, by the number, and not a link. */
+      expect(within(table).getAllByText('000032').length).toBeGreaterThan(0)
+      expect(
+        within(table).queryByRole('link', { name: /000032/ }),
+      ).not.toBeInTheDocument()
+      /* And the name is gone with the record, which is the cost said as a measurement
+         rather than as a sentence. */
+      expect(within(table).queryByText('Vojislav Antonijević')).not.toBeInTheDocument()
+      /* Everybody else is still named and still a link, or „nobody is" would pass for
+         „this one is not". */
+      expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
+    } finally {
+      stop()
+    }
   })
 
   it('says nothing at all about results for a race nobody has run yet', async () => {
@@ -174,7 +196,7 @@ describe('EventDetail, the results of the league members who ran it', () => {
        the result itself carries. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) => {
-      if (!String(input).endsWith('/competitors.json')) {
+      if (!String(input).endsWith('/api/competitors')) {
         return real(input)
       }
 
@@ -621,7 +643,7 @@ describe('LeagueDetail', () => {
     // Only the main league exists, and that one is never listed.
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/leagues.json')
+      String(input).endsWith('/api/leagues')
         ? new Response(
             JSON.stringify([
               {
@@ -816,17 +838,27 @@ describe('the grid of a competition, in the details the review found unguarded',
   it('carries no link to a profile that is not there', async () => {
     /* PDL P11 on this screen too. The grid is one of five lists of a season and
        the rule is kept on the other four. */
+    /* **EVERYBODY HIDING, WHICH IS THE ONE REASON LEFT SINCE 21.09.2026.** This used to
+       answer with every member and `active: false` on each of them. `/api/competitors`
+       has no such flag - a member whose fee has run out is not on the list at all (owner,
+       13.09.2026) - and answering with the empty list instead would be measuring nothing,
+       because the standing is built out of that list and would have no rows to carry a
+       link or not. Hiding is the other half of the same rule (P23) and it is the half
+       that leaves a row standing, which is exactly the arrangement this case is for: rows
+       there, links not. Read as a visitor, because a hidden profile is hidden from nobody
+       else. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) => {
-      if (!String(input).endsWith('/competitors.json')) {
+      if (String(input) !== '/api/competitors') {
         return real(input)
       }
 
-      const all: { active: boolean }[] = await (await real(input)).json()
+      const all: Record<string, unknown>[] = await (await real(input)).json()
 
-      return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
-        status: 200,
-      })
+      return new Response(
+        JSON.stringify(all.map((one) => ({ ...one, profileHidden: true }))),
+        { status: 200 },
+      )
     })
 
     try {
@@ -849,17 +881,18 @@ describe('the grid of a competition, in the details the review found unguarded',
     /* Read on a day inside 2019, so that competition is the season running. The
        one member this is true of raced in 2017, so the list is made inactive to
        give the rule something to act on. */
+    /* **NOBODY IN THE LEAGUE, WHICH IS HOW THE ANSWER SAYS IT SINCE 21.09.2026.** This
+       used to answer with every member and a `false` on each of them, because the
+       generated file said whose fee was standing with a flag. `/api/competitors` has no
+       such flag: a member whose fee has run out is not on the list (owner, 13.09.2026),
+       so „everybody has left" is the empty list and nothing else. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) => {
-      if (!String(input).endsWith('/competitors.json')) {
+      if (String(input) !== '/api/competitors') {
         return real(input)
       }
 
-      const all: { active: boolean }[] = await (await real(input)).json()
-
-      return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
-        status: 200,
-      })
+      return new Response('[]', { status: 200 })
     })
 
     try {
@@ -931,7 +964,7 @@ describe('the description of an event and the organiser’s page', () => {
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const answer = await served(input, init)
 
-      if (!String(input).endsWith('/events.json')) {
+      if (!String(input).endsWith('/api/events')) {
         return answer
       }
 

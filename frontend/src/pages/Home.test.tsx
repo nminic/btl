@@ -3,6 +3,7 @@ import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
+import { membersAsServed } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
 import { freshNews, type NewsItem } from './home/content'
 
@@ -56,14 +57,23 @@ describe('Home', () => {
        where that whole shape is written out (test/media.ts). */
     window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
 
+    /* **On the answer the server gives, since 21.09.2026.** The generated file holds
+       all thirty two with a flag saying which of them count; `/api/competitors`
+       answers with the thirty one and no flag (owner, 13.09.2026), so „members of the
+       season running" is what arrives rather than something this page works out.
+       Read off the file the front page would say 32 and the rule would have nothing
+       standing on it, which is what this case is for. */
+    const { stop } = membersAsServed()
+
     try {
       renderAt('/sr')
 
-      // 32 members in the data, 31 of them active. Which of the two this says
+      // 32 members in the data, 31 of them in the answer. Which of the two this says
       // is the whole of PDL P11 on the front page.
       expect(await screen.findByText(/^31 član$/, {}, { timeout: 10_000 })).toBeVisible()
       expect(screen.queryByText(/^32 člana$/)).not.toBeInTheDocument()
     } finally {
+      stop()
       window.matchMedia = previous
     }
   }, SLOW)

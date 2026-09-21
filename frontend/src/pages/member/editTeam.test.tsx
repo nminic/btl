@@ -87,6 +87,24 @@ describe('the way to change a team', () => {
     expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
   })
 
+  it('sends away a member number the answer has no record of', async () => {
+    /* **THE OTHER REASON THIS ADDRESS REFUSES SOMEBODY, and it is not the permission.**
+       A visit carries a member number and the list carries records; the two can part,
+       and since 21.09.2026 they part for a reason of their own: a member whose fee has
+       lapsed is not on `/api/competitors` at all (owner, 13.09.2026), so the number a
+       browser remembered may name nobody in the answer.
+
+       Both reasons end on the front page, which is the same sentence the owner gave for
+       the deeplink, and reading one of them off the screen rather than the address would
+       pass over a page that never redirected. */
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'competitor', '000999')
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+    expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
+  })
+
   it('says there is no such team when the address names one the league does not have', async () => {
     /* The same answer the team's own page gives, because it is the same question:
        an address typed by hand, or one left over from a team that has been deleted. */

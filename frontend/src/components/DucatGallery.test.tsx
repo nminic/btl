@@ -144,7 +144,7 @@ describe('the wall of ducats in the rulebook', () => {
        it the branch exists and nothing ever walks it. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/ducats.json')
+      String(input).endsWith('/api/ducats')
         ? new Response('[]', { status: 200 })
         : real(input))
 

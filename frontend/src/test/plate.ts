@@ -27,13 +27,11 @@ export function person(memberNumber: string, firstName: string, lastName: string
     firstSeason: 2027,
     membershipBasis: 'payment',
     referralCode: 'proba0000',
-    referredBy: null,
     teamId: null,
     teamSince: null,
     profileHidden: false,
     birthdayShown: 'none',
     bio: '',
-    active: true,
   }
 }
 

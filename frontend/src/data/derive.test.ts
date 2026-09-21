@@ -53,10 +53,8 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2027,
-  active: true,
   membershipBasis: 'payment',
   referralCode: 'proba0000',
-  referredBy: null,
   teamId: null,
   teamSince: null,
   profileHidden: false,
@@ -469,7 +467,7 @@ describe('a result that names no member', () => {
    * number that might be nothing any more, so a reading that drops `numbered`
    * does not compile, and the build is in the gate.
    *
-   * Invisible until the mock goes: `BASE` is `/mock` and nothing in it is missing
+   * Invisible until the switch of 21.09.2026: the generated file has nothing missing
    * a number, while on QA all 264 rows of `/api/results` answer with `null`. */
   const anybody = [
     result('000001', '2026-01-01', 10),
@@ -1494,7 +1492,6 @@ describe('the board of best racing pairs', () => {
     id,
     season,
     memberNumbers: [one, two],
-    since: `${season - 1}-12-14`,
   })
 
   const HE = competitor('000001', { gender: 'M' })
@@ -1768,7 +1765,6 @@ describe('the racing pairs that hold now', () => {
     id,
     season,
     memberNumbers: [one, two],
-    since: `${season - 1}-12-14`,
   })
 
   it('is what the file says while this visit has changed nothing', () => {

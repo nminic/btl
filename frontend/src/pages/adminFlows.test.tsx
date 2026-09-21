@@ -47,6 +47,7 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
     signIn: vi.fn(),
     account: null,
     theServerSignedMeIn: vi.fn(),
+  myMembershipBasis: null,
     signedIn: { as: 'member', memberNumber: '000007' },
     signOut: vi.fn(),
     withdraw: vi.fn(),
@@ -837,7 +838,7 @@ describe('payment payloads', () => {
     globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const answer = await real(input, init)
 
-      if (!String(input).includes('verification.json')) {
+      if (!String(input).includes('/api/verification')) {
         return answer
       }
 
@@ -2091,7 +2092,7 @@ describe('verification', () => {
        row said four, the screen showed three, and the fourth was a piece of work
        nobody could do. */
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/events.json')
+      String(input).endsWith('/api/events')
         ? new Response(JSON.stringify([{ id: 'e1', status: 'checking', date: '2027-04-01' }]), {
             status: 200,
           })
@@ -2118,7 +2119,7 @@ describe('verification', () => {
   it('keeps the rows a broken file has nothing to do with', async () => {
     const served = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/verification.json')
+      String(input).endsWith('/api/verification')
         ? new Response('nema', { status: 500 })
         : served(input))
 
@@ -2145,7 +2146,7 @@ describe('verification', () => {
   it('says the numbers may be short wherever the numbers are, not only on the way in', async () => {
     const served = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/verification.json')
+      String(input).endsWith('/api/verification')
         ? new Response('nema', { status: 500 })
         : served(input))
 
@@ -2200,7 +2201,7 @@ describe('verification', () => {
   it('reads every queue as nought and says nothing while the file is still on its way', async () => {
     const served = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/verification.json')
+      String(input).endsWith('/api/verification')
         ? new Promise<Response>(() => undefined)
         : served(input))
 
@@ -2241,7 +2242,7 @@ describe('verification', () => {
   it('raises no alarm over a file none of the numbers come from', async () => {
     const served = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/competitors.json')
+      String(input).endsWith('/api/competitors')
         ? new Response('nema', { status: 500 })
         : served(input))
 
@@ -3530,7 +3531,7 @@ describe('the six queues read from the file', () => {
       }
 
       globalThis.fetch = ((input: RequestInfo | URL) =>
-        String(input).endsWith('verification.json')
+        String(input).endsWith('/api/verification')
           ? Promise.resolve(
               new Response(JSON.stringify([orphan]), {
                 status: 200,

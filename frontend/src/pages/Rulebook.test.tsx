@@ -230,7 +230,7 @@ describe('the rulebook that takes in another page', () => {
   /** The real files, except for the written pages, which this test writes. */
   function serve(pages: unknown) {
     globalThis.fetch = ((input: RequestInfo | URL) =>
-      String(input).endsWith('pages.json')
+      String(input).endsWith('/api/pages')
         ? Promise.resolve(
             new Response(JSON.stringify(pages), {
               status: 200,

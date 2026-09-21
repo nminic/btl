@@ -24,7 +24,7 @@ import { podiumClass } from '../components/podium'
 import { afterJoining } from '../data/afterJoining'
 import { teamOf } from '../data/derive'
 import { inYearlyWindow, transfersTakeEffect } from '../data/season'
-import { teamAdminOf } from '../data/teamAdmin'
+import { readerAdministers, teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
@@ -94,7 +94,15 @@ export function TeamDetail() {
         /* Whoever is reading, off the same list as everything else on this screen, and
            what they are called, because an application says who is asking. */
         const me = listedMembers.find((one) => one.memberNumber === memberNumber)
+        /* **TWO QUESTIONS AND TWO ANSWERS SINCE 21.09.2026, because one of them was
+           being answered by the other and that was a hole.** „Is there anybody here to
+           decide" is a fact about the TEAM and the standing rule answers it for every
+           reader; „may I decide" is a permission and a member may only be told it about
+           himself (`data/teamAdmin.ts`). Asked as `runs === memberNumber`, a member who
+           had founded nothing was handed this team's controls, because the seat he is
+           not told about fell through to the standing rule. */
         const runs = teamAdminOf(team, listedMembers)
+        const mineToRun = readerAdministers(team, listedMembers, memberNumber)
         /* The application this member has open, wherever it is: one at a time, because a
            member is in one team and cannot be waiting on two.
 
@@ -244,7 +252,7 @@ export function TeamDetail() {
                         {t('teams.joinWithdraw')}
                       </button>
                     )}
-                    {memberNumber !== null && runs === memberNumber && (
+                    {mineToRun && (
                       <>
                         <Link
                           className="button button--secondary"
@@ -332,8 +340,7 @@ export function TeamDetail() {
                   P13); outside it the application waits, which is what the window is for.
                   Which season that is, is not this screen's to work out
                   (`transfersTakeEffect`). */}
-              {memberNumber !== null &&
-                runs === memberNumber &&
+              {mineToRun &&
                 inYearlyWindow(today) &&
                 waiting.length > 0 && (
                   <>

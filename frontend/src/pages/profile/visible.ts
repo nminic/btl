@@ -28,14 +28,26 @@ export type Readable = { kind: 'none' } | { kind: 'shown'; competitor: Competito
  * decide whether a name is a link or plain text (`profile/useProfileLink.ts`, which is the one
  * place that turns this answer into an address, and does not export the turning).
  *
- * **Two reasons for one answer, and the second is the new one.** A member whose fee has run out
- * has no visible profile at all (P11) and has been drawn as plain text on two screens since
- * before this; a member who has hidden their profile is the same to a reader who is not signed
- * in, and to nobody else. The published policy gives the reason in the same sentence as the
- * promise: „ali ne i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja."
+ * **ONE REASON SINCE 21.09.2026, AND THE OTHER MOVED RATHER THAN WENT.** This read
+ * `competitor.active && !(competitor.profileHidden && reader === null)`, and the first half is
+ * the one the whole switch to `/api` turned on: a member whose fee has run out is not on
+ * `/api/competitors` at all (owner, 13.09.2026), so there is no record here to ask. The fee is
+ * answered by `profileFor` below, which finds nobody - and that answer was already the right one,
+ * because P23 requires that a profile nobody may reach and a profile that does not exist read
+ * alike.
+ *
+ * **Left as it stood it would have hidden every profile on the portal, the owner's included.**
+ * `/api/competitors` does not carry the field, so `competitor.active` is `undefined`, and
+ * `undefined && anything` is false for every member there is. That is the one measured example
+ * `data/client.ts` carried for two months as the reason the switch was refused.
+ *
+ * So what is left here is the hiding, and it is one sentence: a member who has hidden their
+ * profile is unreachable to a reader who is not signed in, and to nobody else. The published
+ * policy gives the reason in the same sentence as the promise: „ali ne i od ostalih članova, jer
+ * bi time nestao smisao zajedničkog rangiranja."
  */
 export function reachable(competitor: Competitor, reader: string | null): boolean {
-  return competitor.active && !(competitor.profileHidden && reader === null)
+  return !(competitor.profileHidden && reader === null)
 }
 
 export function profileFor(
@@ -49,7 +61,12 @@ export function profileFor(
 
   /* A number nobody has, a member who is not active, and a member hiding from a reader who is
      not signed in: one answer for all three, so the difference between them cannot be read off
-     the screen (PDL P23, 06.09.2026). */
+     the screen (PDL P23, 06.09.2026).
+
+     **THE FIRST TWO ARE ONE LOOKUP SINCE 21.09.2026 AND NOT TWO QUESTIONS.** A member whose fee
+     has run out is not in this list, so `find` answers nothing about them for the same reason it
+     answers nothing about a number nobody has - which is the very thing P23 asks for, now held by
+     the shape of the answer instead of by a pair of conditions that had to agree. */
   return competitor === undefined || !reachable(competitor, reader)
     ? { kind: 'none' }
     : { kind: 'shown', competitor }

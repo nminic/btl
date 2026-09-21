@@ -40,7 +40,7 @@ function servingRaces(
   said: (race: Race) => Record<string, unknown>,
 ): typeof globalThis.fetch {
   return async (input: RequestInfo | URL) => {
-    if (!String(input).endsWith('/races.json')) {
+    if (!String(input).endsWith('/api/races')) {
       return real(input)
     }
 

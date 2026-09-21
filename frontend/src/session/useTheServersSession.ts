@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRole } from '../roles/useRole'
 import { whoTheServerSaysIAm } from './theServer'
 import { useSession } from './useSession'
@@ -32,8 +32,23 @@ import { useSession } from './useSession'
  * that is not running would otherwise sign the developer out on every screen.
  */
 export function useTheServersSession(): void {
-  const { become } = useRole()
+  const { become, moderator } = useRole()
   const { theServerSignedMeIn } = useSession()
+
+  /* **WHAT THE ANSWER DOES NOT MENTION IS LEFT ALONE, AND THAT IS THE RULE ABOVE
+     APPLIED ONE LEVEL DOWN.** `become` takes a role AND a moderator and sets them
+     together, so calling it with the role alone clears whoever was holding the rights.
+     `GET /api/me` says nothing about a moderator - a real session's rights are their own
+     increment and have not arrived - so adopting its role used to take the rights with
+     it: measured 21.09.2026, a moderator walking the portal lost administration the
+     moment the answer came back, on the same three words the header is drawn from.
+
+     Read through a ref rather than named in the dependencies below, so that this stays
+     the one question asked once a visit: put in the list, a moderator being set would
+     ask it again. */
+  const holding = useRef(moderator)
+
+  holding.current = moderator
 
   useEffect(() => {
     /* Both of these are stable for the life of the provider - `become` is a `useCallback`
@@ -46,8 +61,8 @@ export function useTheServersSession(): void {
         return
       }
 
-      become(who.role)
-      theServerSignedMeIn(who.account)
+      become(who.role, holding.current)
+      theServerSignedMeIn(who.account, who.membershipBasis)
     }
 
     void ask()

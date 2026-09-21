@@ -27,13 +27,18 @@ const members: Competitor[] = JSON.parse(
 
 /** Somebody who has written one, and somebody who has not, taken out of the
  *  file rather than named here: if the seed changes, this says so instead of
- *  passing. */
+ *  passing.
+ *
+ *  Whether the fee is standing is not asked any more, because there is nothing
+ *  left to ask it of: `/api/competitors` answers only for members whose fee is
+ *  (owner, 13.09.2026), so being in the list IS the condition this used to spell
+ *  out as `one.active`. */
 const withOne = must(
-  members.find((one) => one.active && one.bio.trim() !== ''),
+  members.find((one) => one.bio.trim() !== ''),
   'a member whose profile carries a biography',
 )
 const withNone = must(
-  members.find((one) => one.active && one.bio.trim() === ''),
+  members.find((one) => one.bio.trim() === ''),
   'a member whose profile carries none',
 )
 

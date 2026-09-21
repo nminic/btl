@@ -1,74 +1,65 @@
 /* The only module that knows where THE DATA comes from.
  *
- * Today it fetches generated JSON from /mock. That is the whole point of this
- * file: no screen that draws a resource calls fetch, and none of them knows that
- * mock data exists at all.
+ * **SINCE 21.09.2026 IT FETCHES `/api`, AND THAT IS THE WHOLE OF THE SWITCH THIS
+ * FILE EXISTED TO WAIT FOR.** No screen that draws a resource calls fetch, and none
+ * of them knows where the answer came from; that is what made one constant enough
+ * to move fourteen resources at once, which is what ADL A50 asks for („gasi se
+ * odjednom, a ne resurs po resurs").
  *
- * **THIS SAID „BASE BECOMES '/api' AND NOTHING ELSE IN THE APPLICATION CHANGES"
- * UNTIL 20.09.2026, AND THAT SENTENCE WAS MEASURED AND FOUND FALSE.** It is
- * corrected here rather than left standing, because a sentence promising that the
- * switch is one constant is what somebody plans the switch by.
+ * **AND „ONE CONSTANT AND NOTHING ELSE" WAS STILL FALSE, which is why this file
+ * spent a month saying so.** What moved with the constant is written down here
+ * rather than left to be rediscovered, because a sentence promising the switch is
+ * one line is what somebody plans the next one by:
  *
- * ADL already corrected it twice and the correction never reached this file: once
- * on 31.07.2026 („Prelazak na `/api` nije promena te konstante"), and again on
- * 12.09.2026 („Zamena je jedna konstanta važi za šifarnike, ne za sve").
+ * <ul>
+ * <li>`.json` came off the address. A resource is asked for by name now, and the
+ * answer's sort is the server's business.</li>
+ * <li>Three fields the answer has not got left the types: `competitor.active`
+ * entirely, `pairs.since` entirely, and `team.crop` gained a nothing. Two more
+ * became conditional, `membershipBasis` and `referralCode`, because the answer
+ * carries them to the administration and to the caller's own row and to nobody
+ * else.</li>
+ * <li>Two questions changed shape rather than losing a field. „Is this member
+ * active" became „is this member on the list", because the server does not answer
+ * for one whose fee has lapsed. And „who administers this team" became „did the
+ * reader found it" (`data/teamAdmin.ts`), because the seat leaves only to the
+ * administration.</li>
+ * <li>One count moved to the server whole: how many members somebody brought in was
+ * counted here over a field (`referredBy`) that is a KEY on the server and is
+ * answered to nobody, so it arrives as `referredCount` instead.</li>
+ * </ul>
  *
- * What was measured on 20.09.2026, over all fourteen:
- *
- * All fourteen names have a GET route, which `contract.test.ts` holds. **A
- * declared address is not an answer a screen can read**, and on the morning of
- * that day none of the fourteen answered in the shape read here. Ten carried a
- * text identity in the file where the schema says `bigserial` (A36 O1);
+ * **What was measured on 20.09.2026, and is kept here because it is the record of
+ * why this took two more days.** All fourteen names had a GET route, which
+ * `contract.test.ts` holds, and **a declared address is not an answer a screen can
+ * read**: on the morning of that day none of the fourteen answered in the shape read
+ * here. Ten carried a text identity where the schema says `bigserial` (A36 O1);
  * `events.featured` and `races.renamed` carried „yes" and „no" where it says
- * `boolean`; `pages` was a record keyed by address here and a list there;
- * `verification` was one flat list here and a list of queues there. And five
- * resources answer with fewer fields than the screens read: `competitors`
- * without `active`, `ageBand`, `membershipBasis`, `referralCode` and
- * `referredBy`, `teams` without `logo` and `organizerMemberNumber`, `pairs`
- * without `since`, `ducats` without seven of its sixteen.
+ * `boolean`; `pages` was a record keyed by address here and a list there. The shapes
+ * were closed that day and the FIELDS were not, and the owner's order was „Uskladi
+ * oblike, pa polje po polje odluci". The fields were decided one by one over the two
+ * days after it, through PRs 327 to 334, and this is the day after the last of them.
  *
- * **THE SHAPES WERE CLOSED THE SAME DAY, AND THE FIELDS WERE NOT.** The owner's
- * order was „Uskladi oblike, pa polje po polje odluci": the file and the types
- * now carry the identities, the flags, the list of pages and the nothing where an
- * empty string stood, and `data/servedShape.test.ts` holds the real answer
- * against the very types the screens read it through. `verification` is the one
- * shape left, because its answer is grouped by tab and drops nine of the fields
- * that screen draws, and that is a decision rather than an alignment.
+ * **One shape is still not the portal's, and it is named rather than switched.**
+ * `verification` answers grouped by queue and carries nine fields fewer than the
+ * screen draws, and its shape is a decision the owner has not taken. It is on the
+ * list below like the other thirteen because the list is the CONTRACT - what the
+ * backend has to answer for - and the address is real. What a moderator sees off it
+ * is the one screen this switch leaves owing something, and `PENDING.md` carries it.
  *
- * **What still stops the switch is the fields, and no backend work brings them
- * back here:** P-javno, 13.09.2026, puts everything Article 73 does not list
- * behind a resource that knows who is asking, and that resource does not exist
- * yet. So A50's own condition is not met, and switching today is not a half-empty
- * QA - which is the cost A50 accepted - but a broken one. The measured example
- * that still stands: `profile/visible.ts` reads `competitor.active`, which would
- * arrive undefined and turn every profile invisible. The one beside it no longer
- * does: `usePages` read a record keyed by address until 20.09.2026 and reads the
- * list the server answers with since.
- *
- * **This said „no component calls fetch" until 19.09.2026, and that sentence is
- * corrected here rather than left to be walked past.** `pages/account` speaks to
- * `/api` directly: it spends a link out of a message on `/api/password-reset` and
- * `/api/email-confirmation`, which are writes rather than resources and have no
- * mock of themselves to read. Nothing about the sentence above moved with it -
- * no resource was added to the list below, BASE is untouched, and ADL A50 („mock
- * se gasi tek kad sve bude gotovo, odjednom a ne resurs po resurs") is the same
- * day's work as it was the day before.
- *
- * **And on 20.09.2026 signing in joined them, on exactly the same ground.**
- * `session/theServer.ts` speaks to `/api/sign-in`, `/api/sign-out` and `/api/me`:
- * two writes and the question of who is asking. None of the three is a resource,
- * none has a mock of itself, and the list below is again untouched. What moved
- * with it is one thing and it is about this file rather than about the mock: the
- * role a screen draws itself by no longer comes from a control in the header but
- * from the server, so the portal now has a session that outlives a refresh while
- * its data still comes off the disc.
+ * **Two more things speak to `/api` and are not resources, and that has been true
+ * since before the switch.** `pages/account` spends a link out of a message on
+ * `/api/password-reset` and `/api/email-confirmation`, and `session/theServer.ts`
+ * on `/api/sign-in`, `/api/sign-out` and `/api/me`. Those are writes, and the
+ * question of who is asking; none of them has a shape on the list below, and none of
+ * them goes through the cache.
  *
  * The files are served rather than imported so a million and a half bytes of
  * results stay out of the JavaScript bundle, and so the screens go through a
  * real request with a real loading state.
  */
 
-const BASE = '/mock'
+const BASE = '/api'
 
 export const RESOURCE_NAMES = [
   /* Who has said they are going to which event (owner, 11.08.2026). Its own
@@ -102,7 +93,7 @@ export const RESOURCE_NAMES = [
 export type ResourceName = (typeof RESOURCE_NAMES)[number]
 
 async function request<T>(name: ResourceName): Promise<T> {
-  const response = await fetch(`${BASE}/${name}.json`)
+  const response = await fetch(`${BASE}/${name}`)
 
   if (!response.ok) {
     throw new Error(`Cannot load ${name}: ${response.status}`)
@@ -159,10 +150,13 @@ const arrived = new Map<ResourceName, unknown>()
  * such a name would now be TRUE; it was not before, and that is why the first of
  * the two things this was waiting for is done.
  *
- * So what has to happen first is no longer both. The screens have come to the
- * shapes the schema serves; what is left is a resource that knows who is asking,
- * answering for the fields Article 73 keeps back (P-javno, 13.09.2026). On the
- * day after that one, this is still the place that changes.
+ * **And both of the things it was waiting for have now happened, so what is left
+ * owing is this and nothing else.** The screens came to the shapes on 20.09.2026,
+ * and the resources that know who is asking arrived over the two days after
+ * (P-javno, 13.09.2026, and PRs 330 to 334). The switch above is done and the three
+ * assertions are still here, which is the measurement rather than the plan: naming
+ * a shape per resource is a change of its own size and nothing about it got easier
+ * or harder on the day `BASE` moved.
  *
  * `arrivedResource` is the one of the three that a table of shapes by resource
  * name would actually remove, because an object typed `{ [K in ResourceName]?:

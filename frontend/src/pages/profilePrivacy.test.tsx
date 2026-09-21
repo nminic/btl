@@ -69,7 +69,7 @@ function Pair({ a, b, season }: { a: string; b: string; season: number }) {
     <button
       type="button"
       onClick={() => {
-        makePair({ season, memberNumbers: [a, b], since: DAY })
+        makePair({ season, memberNumbers: [a, b] })
       }}
     >
       upari {a} i {b}

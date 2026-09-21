@@ -10,6 +10,7 @@ import {
   answeredWith,
   did,
   forgetEveryCookie,
+  isResource,
   refused,
   serverThat,
   type Asked,
@@ -170,9 +171,17 @@ describe('arriving without one', () => {
     /* The shell asks `GET /api/me` above every screen since 20.09.2026
        (app/Shell.tsx, session/useTheServersSession.ts). That is the portal asking who
        is signed in, not this screen spending anything, so it is named and set aside
-       here rather than the assertion being loosened to „not many requests". */
+       here rather than the assertion being loosened to „not many requests".
+
+       And the RESOURCES are set aside beside it since 21.09.2026, for the same reason
+       and by a derived question rather than by name: they moved under `/api` with
+       everything else when the mock was switched off, and the shell reads some of them
+       above every screen too. What is left after the two is what this screen itself
+       spent, which is what the case is about and is nothing. */
     expect(
-      server.asked.filter((one) => one.path.startsWith('/api') && one.path !== '/api/me'),
+      server.asked.filter(
+        (one) => one.path.startsWith('/api') && one.path !== '/api/me' && !isResource(one.path),
+      ),
     ).toEqual([])
   })
 })

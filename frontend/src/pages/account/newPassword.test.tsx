@@ -6,6 +6,7 @@ import {
   answeredWith,
   did,
   forgetEveryCookie,
+  isResource,
   refused,
   serverThat,
   type Asked,
@@ -74,9 +75,13 @@ describe('opening the screen', () => {
     /* And nothing was asked of the server, which is the other half of "no form".
        `GET /api/me` is the shell's own question above every screen since 20.09.2026
        (app/Shell.tsx, session/useTheServersSession.ts) and is named and set aside
-       rather than the assertion being loosened to „not many requests". */
+       rather than the assertion being loosened to „not many requests". The resources
+       joined it there on 21.09.2026, when they moved under `/api`; they are set aside
+       by a derived question and not by name (`test/serverAnswers.ts`). */
     expect(
-      server.asked.filter((one) => one.path.startsWith('/api') && one.path !== '/api/me'),
+      server.asked.filter(
+        (one) => one.path.startsWith('/api') && one.path !== '/api/me' && !isResource(one.path),
+      ),
     ).toEqual([])
   })
 

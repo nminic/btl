@@ -21,12 +21,15 @@ import { useMay } from './rights'
  * session without touching the control at all. The switch still sets it too, and is
  * never built into production (dev/tools.ts).
  *
- * THIS IS STILL NOT THE BOUNDARY THAT MATTERS, and the reason has changed with it. It
- * was „no authentication yet"; it is now that this hides a SCREEN and nothing else. The
- * server refuses on its own, route by route, whatever the browser drew
- * (`ApiSecurity`: everything not named in `READ_BY_ANYBODY` falls through to
- * `anyRequest().authenticated()`), and what these screens actually draw comes out of
- * `/mock` (data/client.ts), which no chain guards because it is a folder of files.
+ * THIS IS STILL NOT THE BOUNDARY THAT MATTERS, and the reason has changed twice. It was
+ * „no authentication yet"; then it was that the screens drew out of a folder of files no
+ * chain guards. **Since 21.09.2026 neither is true and the sentence is stronger rather
+ * than weaker**: what these screens draw comes out of `/api` (`data/client.ts`), so the
+ * chain is in front of every byte of it. The server refuses on its own, route by route,
+ * whatever the browser drew - `ApiSecurity` sends everything not named in
+ * `READ_BY_ANYBODY` through to `anyRequest().authenticated()`, and a right that is
+ * missing is answered 404 rather than 403 (ADL A8), so the door does not even admit it
+ * is there. This hides a SCREEN, and that is all it is for.
  *
  * A closed door sends whoever knocked to the front page (owner, 30.07.2026). It
  * used to answer with one of three sentences, one of which named the right to go

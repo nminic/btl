@@ -248,8 +248,13 @@ describe('the answer to „Pozovi u trkački par"', () => {
 
     expect(line).toContain('Relja Momčilović')
     expect(line).toContain('Za sezonu 2027')
-    /* The day the two of them finished it, and none of the other three days. */
-    expect(line).toContain('20. 11. 2026')
+    /* **NO DAY AT ALL SINCE 21.09.2026, which is why the four days above still have one job
+       each.** The day the two of them confirmed „se ne prikazuje nikome" (owner, 13.09.2026)
+       and `/api/pairs` does not answer it, so the line carries the season and nothing else.
+       Each of the four is refused by name rather than the assertion being loosened to „no
+       digits": the season is a number too, and a guard that refused every digit would be
+       refusing the one thing this line is for. */
+    expect(line).not.toContain('20. 11. 2026')
     expect(line).not.toContain('15. 10. 2026')
     expect(line).not.toContain('5. 12. 2026')
   }, SLOW)
@@ -600,7 +605,7 @@ describe('a pair whose other half the portal does not have', () => {
     ]
 
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('pairs.json')
+      String(input).includes('/api/pairs')
         ? new Response(JSON.stringify(orphan), { headers: { 'content-type': 'application/json' } })
         : served(input, init),
     )
@@ -1012,7 +1017,12 @@ describe('a pair that ends because the same two are pairing again', () => {
     const rows = pairRows()
 
     expect(rows.length).toBe(1)
-    expect(at(rows, 0)).toContain('20. 11. 2026')
+    /* The pair they have just confirmed, said by its season: the day is answered to nobody
+       since 13.09.2026 and is drawn nowhere, so what parts this row from the one that ended
+       is the season and the partner. */
+    expect(at(rows, 0)).toContain('Za sezonu 2027')
+    expect(at(rows, 0)).toContain('Relja Momčilović')
+    expect(at(rows, 0)).not.toContain('20. 11. 2026')
     expect(at(rows, 0)).not.toContain('15. 10. 2026')
     expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(1)
   }, SLOW)
@@ -1172,21 +1182,26 @@ describe('a member who holds a pair for this season and one for the next', () =>
     await goToMyProfile(user)
     await screen.findByRole('heading', { level: 1, name: /Katarina/ })
 
-    /* **Row by row, and each carries its own name, season and day** (reviews of 07.09.2026). The
-       only other walk that reads a day has one pair in it, so `pair.since` and `held[0].since` are
-       the same string there. And read as one page rather than as rows, a portal that hands each row
-       the **other** row's season and day says both of everything and passes. */
+    /* **Row by row, and each carries its own name and season** (reviews of 07.09.2026). Read as
+       one page rather than as rows, a portal that hands each row the **other** row's season says
+       both of everything and passes.
+
+       **The day went out of this on 21.09.2026 and the two rows are still parted**, which is the
+       thing to check before trusting the shortened form: the name and the season differ between
+       them, so one row holding the other's values still fails. The day „se ne prikazuje nikome"
+       (owner, 13.09.2026) and `/api/pairs` does not carry it, and both days are refused by name
+       below so that a portal drawing one again fails here. */
     const rows = pairRows()
 
     expect(rows.length).toBe(2)
 
     expect(at(rows, 0)).toContain('Relja Momčilović')
     expect(at(rows, 0)).toContain('Za sezonu 2027')
-    expect(at(rows, 0)).toContain('31. 12. 2026')
+    expect(at(rows, 0)).not.toContain('31. 12. 2026')
 
     expect(at(rows, 1)).toContain('Časlav Radenković')
     expect(at(rows, 1)).toContain('Za sezonu 2028')
-    expect(at(rows, 1)).toContain('2. 1. 2027')
+    expect(at(rows, 1)).not.toContain('2. 1. 2027')
 
     expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(2)
 

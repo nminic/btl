@@ -34,7 +34,7 @@ function renderWidget(ui: React.ReactNode, memberNumber: string | null = null) {
   )
 }
 
-const competitor = (memberNumber: string, active = true): Competitor => ({
+const competitor = (memberNumber: string): Competitor => ({
   memberNumber,
   firstName: 'Ime',
   lastName: memberNumber,
@@ -46,13 +46,11 @@ const competitor = (memberNumber: string, active = true): Competitor => ({
   firstSeason: 2027,
   membershipBasis: 'payment',
   referralCode: 'proba0000',
-  referredBy: null,
   teamId: null,
   teamSince: null,
   profileHidden: false,
   birthdayShown: 'none',
   bio: '',
-  active,
 })
 
 let resultsMade = 0
@@ -220,34 +218,36 @@ describe('TopTen', () => {
      is called. Take the link away and the words go with it, and the item is then a place on a
      board of ten with nothing in it at all for a reader who cannot see the picture.
 
-     **Both reasons, in one case, because there is now one branch.** A branch inside this widget
-     used to ask `!slot.active` and draw the plain circle itself, which is the question
-     `ProfileLink` answers for all eight screens that draw a competitor; hiding was added to that
-     rule on 06.09.2026 and this widget knew nothing of it. The two are measured together here so
-     that neither can be answered without the other.
+     **A branch inside this widget used to ask `!slot.active` and draw the plain circle itself**,
+     which is the question `ProfileLink` answers for all eight screens that draw a competitor;
+     hiding was added to that rule on 06.09.2026 and this widget knew nothing of it.
 
-     Read against a third face that **is** a link, or „nobody is a link" would be the same
+     **ONE REASON SINCE 21.09.2026, AND THE OTHER DOES NOT REACH THIS SCREEN AT ALL.** This read
+     both halves at once, an inactive member and a hiding one, and the first half cannot be built
+     any more: a member whose fee has run out is not in the list the portal is answered with
+     (`/api/competitors`, owner 13.09.2026), and `boardOfTen` builds the board OUT OF that list,
+     so such a member takes no place on it and there is no face of theirs to say anything about.
+     What that state looks like is the second case below, an empty circle out of the reading, and
+     it is measured there rather than pretended at here.
+
+     Read against a second face that **is** a link, or „nobody is a link" would be the same
      sentence as „the board drew nothing". */
-  it('says who a face is even where it leads nowhere, for either reason', () => {
-    const gone = competitor('000002', false)
+  it('says who a face is even where it leads nowhere', () => {
     const hiding = { ...competitor('000004'), profileHidden: true }
 
     renderWidget(
       <TopTen
-        competitors={[competitor('000001'), gone, hiding]}
-        results={[result('000001', 30), result('000002', 20), result('000004', 10)]}
+        competitors={[competitor('000001'), hiding]}
+        results={[result('000001', 30), result('000004', 10)]}
         season={2027}
         gender="M"
       />,
     )
 
-    /* The leader still has somewhere to go, which is what makes the other two mean something. */
+    /* The leader still has somewhere to go, which is what makes the other one mean something. */
     expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
 
-    for (const [place, who] of [
-      ['2', gone],
-      ['3', hiding],
-    ] as const) {
+    for (const [place, who] of [['2', hiding]] as const) {
       const reading = `${place}. Ime ${who.memberNumber}`
 
       expect(screen.queryByRole('link', { name: reading })).toBeNull()
@@ -383,6 +383,36 @@ describe('the circle in a bar', () => {
 })
 
 describe('TopByCategory', () => {
+  it('draws the bar of somebody hiding, and hangs no address off it', () => {
+    /* **The one way a bar leads nowhere, since 21.09.2026.** A bar carries more than a
+       profile - it opens one already narrowed to the length the bar is about (owner,
+       01.08.2026) - so the address and the query are put together in one place
+       (`profile/visible.ts`, `appended`), and „there is no address" has to survive the
+       appending or the reader gets a query hanging off nothing.
+
+       This used to be walked by a member whose fee had run out. `/api/competitors` does
+       not answer for such a member at all (owner, 13.09.2026), so they take no bar and
+       there is nothing here to hang a query off. Hiding is the reason that is left, and it
+       is the one that leaves the bar standing: read by somebody who is not signed in, a
+       hidden profile is unreachable and the name beside the bar is words (P23).
+
+       Read against a second bar that IS a link, or „nothing is a link" would pass for
+       „this one is not". */
+    const hiding = { ...competitor('000002'), profileHidden: true }
+
+    renderWidget(
+      <TopByCategory
+        competitors={[competitor('000001'), hiding]}
+        results={[result('000001', 1), result('000002', 2), result('000002', 3)]}
+        season={2027}
+      />,
+    )
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(screen.getByTitle('Ime 000002').tagName).toBe('SPAN')
+  })
+
   it('ranks by how many races of one length, tallest first', () => {
     const competitors = [competitor('000001'), competitor('000002'), competitor('000004')]
     const results = [
@@ -990,48 +1020,52 @@ describe('TopByCategory', () => {
   })
 })
 
-describe('a member whose fee has run out, in a widget of a season they did race', () => {
-  /* Two halves of PDL P11, and these widgets keep the second one.
+describe('a member the portal no longer has, in a widget of a season they did race', () => {
+  /* **THIS MEASURED THE OPPOSITE UNTIL 21.09.2026, AND THE CHANGE IS A COST RATHER THAN A
+   * TIDY-UP.** It held the second half of PDL P11 over these widgets: a member whose fee had
+   * run out kept their bar and their place on the board of a season they did race, drawn as
+   * plain words rather than as a link, because „njihovo ime ostaje u tabelama sezona koje su
+   * trčali". It could do that because the record was still there with a flag on it.
    *
-   * The first half, that they are not in the season running now at all, belongs
-   * to the page: `Home` narrows the field before it hands it over, and so does
-   * the page of boards. The second half, that nothing links to a profile that is
-   * hidden, belongs here, because these are the same widgets that draw a season
-   * already run. */
-  const gone = competitor('000099', false)
+   * `/api/competitors` does not answer for such a member at all (owner, 13.09.2026, and it is
+   * what keeps anybody from reading their state out of the DIFFERENCE between two answers), and
+   * every widget here is built out of that list: `boardOfTen` ranks it, and the chart draws it.
+   * So there is no record left to take a name off, and their results are drawn by nobody.
+   *
+   * **What is measured below is therefore the new truth, not the old rule**, and it is measured
+   * rather than left silent so that the day the server answers for them this case fails and
+   * somebody decides which of the two the portal wants. The question is in `PENDING.md`. */
   const still = competitor('000001')
 
-  it('has a bar in the chart, and the bar is not a link', () => {
+  it('draws no bar in the chart, because there is no record to name one', () => {
     renderWidget(
       <TopByCategory
-        competitors={[gone, still]}
+        competitors={[still]}
         results={[result('000099', 1), result('000099', 2), result('000001', 3)]}
         season={2027}
       />,
     )
 
-    const bars = screen.getAllByRole('listitem')
-    expect(bars).toHaveLength(2)
-    // One of the two names is a link and the other is not.
+    /* One bar and not two, and the one is the member the answer still carries. */
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
     expect(screen.getAllByRole('link')).toHaveLength(1)
-    expect(screen.getByTitle('Ime 000099').tagName).toBe('SPAN')
+    expect(screen.queryByTitle('Ime 000099')).not.toBeInTheDocument()
   })
 
-  it('holds a place in the top ten, and it is no way to a profile', () => {
+  it('takes no place in the top ten, although the results are still counted', () => {
     renderWidget(
       <TopTen
-        competitors={[gone, still]}
+        competitors={[still]}
         results={[result('000099', 20), result('000001', 10)]}
         season={2027}
         gender="M"
       />,
     )
 
-    /* Their face is on the board of the season they raced, in first place, and
-       it goes nowhere: the profile is not there to go to (PDL P11). The one
-       behind them is a link. */
-    expect(screen.getByTitle('Ime 000099').tagName).toBe('SPAN')
-    expect(screen.queryByRole('link', { name: /Ime 000099/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '2. Ime 000001' })).toBeInTheDocument()
+    /* First place is the one member there is a record of, although twenty points were run by
+       somebody there is not: the board is the list, and what is not on the list is not on the
+       board in any shape, not even a nameless one. */
+    expect(screen.queryByTitle('Ime 000099')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeInTheDocument()
   })
 })

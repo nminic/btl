@@ -64,7 +64,7 @@ async function withCompetitors(count: number, mixed = false) {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const name = String(input)
 
-    if (name.endsWith('/competitors.json')) {
+    if (name.endsWith('/api/competitors')) {
       const all: Competitor[] = await (await real(input)).json()
       const one = first(all)
 
@@ -91,7 +91,7 @@ async function withCompetitors(count: number, mixed = false) {
       )
     }
 
-    if (name.endsWith('/results.json')) {
+    if (name.endsWith('/api/results')) {
       const all: Result[] = await (await real(input)).json()
       /* One result of a race that belongs to this competition, copied to every
          competitor, so every one of them is placed and the grid has a row for
@@ -440,7 +440,7 @@ describe('the head of a race column', () => {
     const second: Race = { ...mine, id: -1, date: '2019-12-31' }
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/races.json')
+      String(input).endsWith('/api/races')
         ? new Response(JSON.stringify([...races, second]), { status: 200 })
         : real(input))
 

@@ -6,7 +6,13 @@ import ts from 'typescript'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { routeObjects } from '../../app/routeObjects'
 import { renderAt } from '../../test/render'
-import { answeredWith, forgetEveryCookie, serverThat, type Asked } from '../../test/serverAnswers'
+import {
+  answeredWith,
+  forgetEveryCookie,
+  isResource,
+  serverThat,
+  type Asked,
+} from '../../test/serverAnswers'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
 
 /**
@@ -172,8 +178,12 @@ function aSignedInAccount(role = 'competitor', account = 107): void {
       })
     }
 
-    /* Everything else off the disc, exactly as every other screen reads it. */
-    return path.startsWith('/api') ? answeredWith(404) : null
+    /* Everything else off the disc, exactly as every other screen reads it - and
+       since 21.09.2026 „everything else" has to say which else. A resource is under
+       `/api` now too, so the line below used to hand a 404 to every list the shell
+       asks for and left every screen in this file empty. The question is derived from
+       the contract rather than written out (`test/serverAnswers.ts`). */
+    return path.startsWith('/api') && !isResource(path) ? answeredWith(404) : null
   })
 }
 

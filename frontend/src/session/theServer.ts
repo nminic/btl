@@ -1,17 +1,18 @@
 import { askTheServer, type Answer } from '../pages/account/askTheServer'
 import { SIGNED_IN_ROLES, type SignedInRole } from '../roles/context'
+import { MEMBERSHIP_BASES, type MembershipBasis } from '../data/types'
 
 /**
  * THE THREE THINGS THE PORTAL SAYS TO THE SERVER ABOUT BEING SIGNED IN.
  *
  * <p>Getting in, asking who it thinks you are, and getting out. Nothing else, and
- * nothing about any resource: the fourteen resources still come out of `/mock`
- * (`data/client.ts`) and ADL A50 says they are switched over in one go rather than one
- * at a time. Signing in is not a resource. It is a write, it has no mock of itself, and
- * it moves nothing about that day - no name is added to `RESOURCE_NAMES`, `BASE` is
- * untouched, and no screen that draws data changes. That is the same ground
- * `pages/account` stood on from 19.09.2026, and `data/client.ts` records it in its own
- * head.
+ * nothing about any resource. **This said the fourteen resources „still come out of
+ * `/mock`" and that `BASE` is untouched, and both went out of date on 21.09.2026**, when
+ * ADL A50 was carried out and they moved to `/api` in one go. What that paragraph was
+ * really for survives it: signing in is not a resource, it is a write, and it belongs on
+ * no list of them - no name of it is in `RESOURCE_NAMES` and nothing here goes through
+ * the cache in `data/client.ts`. That is the same ground `pages/account` stood on from
+ * 19.09.2026.
  *
  * <p><b>The token is asked of `askTheServer` rather than copied out of it.</b> That
  * file warns the next reader off IMPORTING AND WIDENING it, and nothing here widens it:
@@ -46,7 +47,32 @@ import { SIGNED_IN_ROLES, type SignedInRole } from '../roles/context'
  * the word it was given says the opposite. The boundary this narrowing has - that the
  * schema does not itself refuse such an account - is written where `SIGNED_IN_ROLES` is.
  */
-export type WhoTheServerSaysIAm = { role: SignedInRole; account: number }
+export type WhoTheServerSaysIAm = {
+  role: SignedInRole
+  account: number
+  /**
+   * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, and null where the answer did not say.
+   *
+   * **This is the only door it can come through, and that is measured rather than
+   * chosen.** The owner, 20.09.2026: „Clan vidi SVOJ osnov clanstva; tudj ne vidi niko
+   * osim administracije." `/api/competitors` keeps the second half by asking about the
+   * CALLER and never about the row (`CompetitorApi`,
+   * `case when cast(:administration as boolean) then c.membership_basis end`), so a
+   * member is not given it even on his own row. `/api/me` is where the first half
+   * lives: `MeApi.MyOwnRecord` carries it, on one row, and that row is his.
+   *
+   * **What reading it the other way cost, measured 21.09.2026 before it shipped.** The
+   * screen about a member's own fee read the basis off the public list, so for every
+   * member it came back nothing, „freed of the fee" was false, and the renewal panel
+   * opened with a payment slip on it. A member who owes the league nothing would have
+   * been asked for money the first time he opened „Moja clanarina".
+   *
+   * Null for a visitor, for an account that races for nobody, and for a word the
+   * answer carries that the portal does not know: all three are „I was not told", and
+   * the screen may not turn any of them into „you pay".
+   */
+  membershipBasis: MembershipBasis | null
+}
 
 /**
  * Signing in, which is the one request on this portal that carries a password.
@@ -128,5 +154,30 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
      somebody in as a visitor. See `WhoTheServerSaysIAm` above. */
   const role = SIGNED_IN_ROLES.find((one) => one === said)
 
-  return role === undefined || typeof account !== 'number' ? null : { role, account }
+  return role === undefined || typeof account !== 'number'
+    ? null
+    : { role, account, membershipBasis: basisIn(body) }
+}
+
+/**
+ * The caller's own membership basis out of the answer, or nothing.
+ *
+ * **Looked for and never asserted**, the same shape the role above is read with: the
+ * record is absent altogether for an account that races for nobody (`MeApi.WhoIAm`,
+ * „Absent rather than null, and rather than an object of nulls"), and a word inside it
+ * that the portal does not know is a word it may not act on.
+ *
+ * Written as its own function rather than inline because it walks two levels and the
+ * reader above is already the longest sentence in this file.
+ */
+function basisIn(body: object): MembershipBasis | null {
+  const member: unknown = Reflect.get(body, 'member')
+
+  if (typeof member !== 'object' || member === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(member, 'membershipBasis')
+
+  return MEMBERSHIP_BASES.find((one) => one === said) ?? null
 }

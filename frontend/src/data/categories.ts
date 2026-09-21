@@ -55,7 +55,8 @@ export function categoryCodeFor(gender: Gender, band: AgeBand, firstSeason: bool
  * The arithmetic is unchanged and it is still the rule. What changed is that the
  * portal no longer holds the number to do it with: a year of birth is the short
  * form of a date of birth, Član 74 says that is never shown, and everything on a
- * member's record is served publicly out of `public/mock` (ADL A8). So the band
+ * member's record is served publicly, to anybody who asks for the address, signed
+ * in or not (ADL A8). So the band
  * is worked out where the data is made and arrives already worked out, and the
  * function that needed a year is gone rather than left standing with nothing to
  * call it — a signature asking for a year of birth is an instruction to the next

@@ -1,7 +1,7 @@
 import { addressOf } from '../../app/head'
 import { countryName } from '../../data/countryName'
-import type { Competitor } from '../../data/types'
 import { useToday } from '../../clock/useClock'
+import { useSession } from '../../session/useSession'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
 import { bestOfficialSeason } from '../../data/derive'
@@ -31,7 +31,7 @@ import { combineResources, useCompetitors, useTeams } from '../../data/useResour
 import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { applyChanges } from '../../forms/records'
-import { MEMBERS, PRICING, recordsOf } from '../admin/entityForms'
+import { PRICING } from '../admin/entityForms'
 import { recordKey } from '../../session/context'
 import { useOverlay } from '../admin/overlay'
 import { useMemberScreen } from './memberScreen'
@@ -76,31 +76,34 @@ function inTheirCurrency(
     : `${money(row.eur * times, locale)} EUR`
 }
 
-/**
- * How many members this one brought in and was actually credited for.
+/* HOW MANY MEMBERS THIS ONE BROUGHT IN USED TO BE COUNTED HERE, AND SINCE
+ * 21.09.2026 IT ARRIVES COUNTED.
  *
- * Counted rather than stored, and counted twice over: the link records who
- * brought whom, and the credit falls when that member's own membership is first
- * activated (owner, 12.08.2026). Somebody who registered through a link and
- * never went active pays nobody.
+ * The rule has not moved and is the owner's, 12.08.2026 and 13.08.2026: the link
+ * records who brought whom, the credit falls when that member's own membership is
+ * first ACTIVATED rather than paid, so somebody who registered through a link and
+ * never went active pays nobody, and somebody the league freed of the fee still
+ * counts („OK je da se za preporuku dobije balans čak i ako je preporučen član
+ * oslobođen članarine", PDL P16).
  *
- * Activation and not payment, decided by the owner on 13.08.2026 after a review
- * asked: „OK je da se za preporuku dobije balans čak i ako je preporučen član
- * oslobođen članarine." So a member freed of the fee counts. What the referrer is
- * paid for is bringing somebody into the league, and the league deciding to
- * waive that person's fee is the league's own business, not a reason to withhold
- * it (PDL P16).
+ * What moved is where it can be worked out. It read
+ * `everybody.filter((one) => one.referredBy === me.referralCode && one.active)`,
+ * and `/api/competitors` answers NEITHER of those two fields to anybody:
+ * `referred_by` is the KEY of whoever brought a member (V7) and never a code, and
+ * a member whose fee has lapsed is not on the list at all (owner, 13.09.2026). So
+ * both halves are known in one place, the database, and the answer carries the
+ * number itself as `referredCount` - on the caller's own row and on no other.
  *
- * The balance under this used to be the string „0 EUR" for everybody, written
- * out, so no arrangement of the data could ever have shown anything else.
+ * **Left as it stood it would have shown nought to everybody, with nothing
+ * failing.** Every row would have answered `undefined === <code>` false, which is
+ * the same screen a member with no referrals sees, and the tests would have gone
+ * on reading a generated file that still carries both fields.
  */
-function broughtInBy(me: Competitor, everybody: Competitor[]): number {
-  return everybody.filter((one) => one.referredBy === me.referralCode && one.active).length
-}
 
 export function Membership() {
   const { locale, t } = useI18n()
   const who = useMemberScreen()
+  const { myMembershipBasis } = useSession()
   /* The referral amount as administration has it, not as the file has it: it is
      a row of the price list and is changed there (AdminPricing).
    *
@@ -160,13 +163,34 @@ export function Membership() {
         const junior = applyChanges(JUNIOR, edits[recordKey(PRICING.id, JUNIOR.key)])
         /* A member freed of the fee owes nothing at all (Pravilnik član 15, PDL P16),
            and twenty nine of the thirty two members in the data are freed of the fee. */
-        const feeExempt = me.membershipBasis === 'feeExempt'
-        /* The members as administration has them, not as the file has them.
-           Counted straight off the file, somebody an administrator had deleted
-           went on earning their referrer six hundred dinars: they were gone from
-           the list of members and still in the sum here. ADL A8 says deleting a
-           record frees the identity from everything, not only from a list. */
-        const members = recordsOf(MEMBERS, competitors, overlay)
+        /* **OFF THE ANSWER THAT CARRIES IT TO HIM, AND NOT OFF THE PUBLIC LIST**
+           (21.09.2026). This read `me.membershipBasis`, and `/api/competitors` decides
+           that field by asking whether the CALLER is the administration rather than
+           whether the row is his (`CompetitorApi`), so a member is not given it even on
+           his own row. Read there it came back nothing for every member, „freed of the
+           fee" was false, and this screen opened the renewal with a payment slip on it:
+           a member who owes the league nothing, asked for money.
+
+           The owner's decision has both halves in one sentence, 20.09.2026: „Clan vidi
+           SVOJ osnov clanstva; tudj ne vidi niko osim administracije." `/api/me` is
+           where the first half lives, and the session remembers what it said
+           (`session/context.ts`). */
+        const feeExempt = myMembershipBasis === 'feeExempt'
+        /* THE LIST OF MEMBERS USED TO BE READ HERE AND IS NOT ANY MORE, and the
+           reason it was is worth keeping: the credit was counted off it, and counted
+           straight off the FILE somebody an administrator had deleted went on earning
+           their referrer six hundred dinars (ADL A8, a deleted record is freed from
+           everything and not only from a list). Since 21.09.2026 the count arrives on
+           the caller's own row as `referredCount`, worked out by the one place that
+           still knows both halves of the rule, so there is no list here to lay an
+           overlay over.
+
+           **What that costs, said rather than left to be found:** a member an
+           administrator deletes during THIS VISIT is still in the server's count until
+           the deletion reaches the server, because the overlay cannot reach a number
+           that was added up before it was handed over. The overlay is a stand-in for a
+           database that does not take writes yet (ADL A8); the day it does, this is one
+           of the places that stops having a gap rather than one that needs a fix. */
         /* What this member actually owes.
 
            **The junior fee is no longer applied here, and this is a boundary
@@ -511,9 +535,14 @@ export function Membership() {
                   somebody else's link, or credit themselves with a member they
                   never brought. The origin comes from the one place that holds
                   it, so a change of domain does not leave this link behind. */}
-              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${me.referralCode}`}</p>
+              {/* Nothing where the answer carried no code, which is every row but the
+                  caller's own (`/api/competitors`). This screen is the caller's own row,
+                  so it does not happen; written out because a `${undefined}` in an address
+                  is a link a reader would copy and send, and the empty string is a link
+                  that plainly does not work rather than one that looks as if it might. */}
+              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${me.referralCode ?? ''}`}</p>
               <p className="membership__balance">
-                <strong>{inTheirCurrency(me.country, credited, locale, broughtInBy(me, members))}</strong>{' '}
+                <strong>{inTheirCurrency(me.country, credited, locale, me.referredCount ?? 0)}</strong>{' '}
                 <span>{t('membership.balance')}</span>
               </p>
               <p className="member__note">{t('membership.balanceNote')}</p>

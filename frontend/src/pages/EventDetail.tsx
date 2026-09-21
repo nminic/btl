@@ -340,7 +340,12 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                          the same event. */
                       <tr key={result.id} className={mineClass(result.memberNumber, mine)}>
                         <td>
-                          {person !== undefined && person.active ? (
+                          {/* A profile to lead to, which is one question since
+                              21.09.2026: a member whose fee has run out is not in
+                              the list the portal is answered with, so there is no
+                              record here to ask a second thing of (PDL P11, owner
+                              13.09.2026). */}
+                          {person !== undefined ? (
                             <ProfileLink competitor={person}>{name}</ProfileLink>
                           ) : (
                             name

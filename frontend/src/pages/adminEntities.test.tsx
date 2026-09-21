@@ -1588,7 +1588,7 @@ describe('Balkanska trkačka liga among the leagues', () => {
   function servingBoth() {
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/leagues.json')
+      String(input).endsWith('/api/leagues')
         ? new Response(
             JSON.stringify([
               {
