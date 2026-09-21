@@ -257,7 +257,10 @@ class CompetitorApi {
 	 *               Spring's resolver hands a parameter of this type nothing when the
 	 *               principal is the anonymous token. Measured rather than assumed, by
 	 *               {@code theVisitorsAnswerHasNotMoved}: the visitor's answer carries
-	 *               none of the three conditional fields below at all
+	 *               none of the three conditional fields below at all, asked by KEY over
+	 *               every record. It named all three before 21.09.2026 while the case
+	 *               asked about two, and a resource handing the basis to everybody walked
+	 *               past it
 	 */
 	@GetMapping("/api/competitors")
 	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
@@ -321,6 +324,14 @@ class CompetitorApi {
 						   `c.id = :me` it would hand the administration its own basis and
 						   nothing else, which is the shape a copy of the line above produces
 						   and `aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld` refuses.
+
+						   EVERY ROW MEANS THE CALLER'S OWN ROW AS WELL, and that is measured
+						   since 21.09.2026 rather than read off this sentence. `... and c.id is
+						   distinct from :me` - the whole list except the one asking - left all
+						   21 cases green until an administration account was put ON the list,
+						   because neither of the two there had a row in the answer at all.
+						   `theAdministratorsOwnRowCarriesTheBasisLikeEveryOther` is what
+						   refuses it now.
 
 						   FALSE ANSWERS NULL AND NOT AN EMPTY STRING, so `@JsonInclude` leaves
 						   the key out and the answer of everybody else is what it was to the

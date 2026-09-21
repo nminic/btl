@@ -113,34 +113,69 @@ class CompetitorApiTest {
 	 *
 	 * <p><b>He is 000031, whose fee has lapsed, and that is the point of choosing
 	 * him.</b> He is not on the list at all (the resource answers only the members
-	 * whose fee is standing), so „his own row" and „a row he is looking at" are never
-	 * the same record - which is what makes the substitution measurable: served his
-	 * own basis instead of each row's, every record would read {@code payment} and
+	 * whose fee is standing), so for HIM „his own row" and „a row he is looking at" are
+	 * never the same record - which is what makes the substitution measurable: served
+	 * his own basis instead of each row's, every record would read {@code payment} and
 	 * 000012 is {@code feeExempt}. Served on the caller's own row the way the referral
 	 * code is, he would be answered nothing at all.
+	 *
+	 * <p><b>That is one state of „whose row is this" and not the whole axis, which is
+	 * the finding of 21.09.2026 and why the account below exists.</b> Read as a property
+	 * of the administration rather than of this one account, the sentence above excused
+	 * a resource that answers everybody but the caller: the caller's own row is the one
+	 * row no case here was looking at.
 	 */
 	private static final String THE_MODERATOR_OVER_THE_MEMBERS = "clanovi@primer.rs";
+
+	/**
+	 * AND THE SECOND STATE OF „WHOSE ROW IS THIS", WHICH THE TWO ABOVE DO NOT CARRY.
+	 *
+	 * <p><b>He holds the same right and he IS on the list, which is the half that was
+	 * missing until 21.09.2026.</b> The moderator above has a member whose fee has
+	 * lapsed and the superadmin has no member at all, so „the administration looks at
+	 * its own row" did not happen in any case of this class - and two of them are about
+	 * the word „every". Measured then: a condition that cut the caller's own row out of
+	 * the basis (`c.id is distinct from :me`) left all 21 cases green, while a moderator
+	 * over the members who races would have seen his own row, and his alone, without the
+	 * basis on it.
+	 *
+	 * <p>He is 000023, whose number sorts third of the four on the list, so „his own
+	 * row" is neither the first record nor the last. His basis is {@code feeExempt},
+	 * which two of the three rows he looks at do NOT share, so serving him his own basis
+	 * across the answer changes two records rather than none; and his own referral count
+	 * is nought while 000012's is one, so a count arriving from the wrong row is a
+	 * different number.
+	 */
+	private static final String THE_ADMINISTRATOR_ON_THE_LIST = "clanovi-i-trci@primer.rs";
 
 	/** And the other half of „Superadmin i moderatori sa pravom", who races for nobody. */
 	private static final String THE_SUPERADMIN = "superadmin@primer.rs";
 
 	/**
-	 * THE FIVE STATES OF „WHO IS ASKING", SPLIT BY THE ONE LINE PDL P8 DRAWS.
+	 * THE SIX STATES OF „WHO IS ASKING", SPLIT BY THE ONE LINE PDL P8 DRAWS.
 	 *
 	 * <p>Written out rather than derived, because what each account IS is the thing the
 	 * fixture decides and nothing can read back. What IS derived is that the split is
 	 * complete: {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther} reads
 	 * every address out of {@code account} and requires these two lists to be exactly
-	 * that set, so a sixth account added tomorrow has to be put on a side rather than
+	 * that set, so a seventh account added tomorrow has to be put on a side rather than
 	 * quietly measured by nothing. The visitor is the {@code null} below, which is the
 	 * same request without the cookie and is not an account.
 	 */
 	private static final List<String> NOBODY_WHO_MAY_READ_THE_BASIS =
 			java.util.Arrays.asList(null, HER_OWN_ACCOUNT, THE_OTHER_MEMBER, RACES_FOR_NOBODY);
 
-	/** And the two PDL P8 names, „Superadmin i moderatori sa pravom nad clanovima". */
-	private static final List<String> THE_ADMINISTRATION =
-			List.of(THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN);
+	/**
+	 * And the PDL P8 names, „Superadmin i moderatori sa pravom nad clanovima".
+	 *
+	 * <p><b>Three and not two, because „whose row is this" has two states and the
+	 * administration must stand on both.</b> One of them looks at his own row (000023),
+	 * one has a member who is off the list because his fee has lapsed (000031), and one
+	 * has no member at all (V23's ordinary case). A list of the first two only is a list
+	 * on which the word „every" is never asked about the caller himself.
+	 */
+	private static final List<String> THE_ADMINISTRATION = List.of(
+			THE_MODERATOR_OVER_THE_MEMBERS, THE_ADMINISTRATOR_ON_THE_LIST, THE_SUPERADMIN);
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -151,24 +186,26 @@ class CompetitorApiTest {
 	private JdbcClient db;
 
 	/**
-	 * Three members, and no two of them alike in anything the answer carries.
+	 * Five members, four of them on the list, and no two alike in what the answer
+	 * carries.
 	 *
-	 * <p>One takes her town from the codebook and one has it typed, which are the two
-	 * shapes V7 allows. One is in a team and two are not, one was brought in by
-	 * another and two were not, one hides his profile, and all three answer the
-	 * birthday question differently. A field that is the same in every record is a
-	 * field the server could answer with a constant, and `Answers` refuses that.
+	 * <p>Three take their town from the codebook, each a different one, and one has it
+	 * typed, which are the two shapes V7 allows. One is in a team and three are not, two
+	 * were brought in by another and three were not, one hides his profile, and all three
+	 * answers the birthday question allows are in the list. A field that is the same in
+	 * every record is a field the server could answer with a constant, and `Answers`
+	 * refuses that.
 	 *
 	 * <p><b>AND NO TWO OF THEM SHARE AN ORDER OR A FLAG</b>, because a fixture where
 	 * two behaviours give the same list measures neither of them. Every axis below is
 	 * separated on purpose and each line says which wrong answer it refuses:
 	 *
 	 * <ul>
-	 * <li><b>The order.</b> They are written 000012, 000045, 000007, so the row order
-	 * is not the number order and neither is its reverse. Surname, given name, day of
-	 * birth, first season and referral code each sort them differently again, so
+	 * <li><b>The order.</b> They are written 000012, 000045, 000007, 000023, so the row
+	 * order is not the number order and neither is its reverse. Surname, given name, day
+	 * of birth, first season and referral code each sort them differently again, so
 	 * ordering by any of those is a different list.</li>
-	 * <li><b>The three flags on the row.</b> Hidden is 000007, not active is 000012,
+	 * <li><b>The three flags on the row.</b> Hidden is 000007, not active is 000031,
 	 * first season 2027 is 000045. Each is exactly one member and never the same one,
 	 * so answering with the wrong column answers with the wrong member.</li>
 	 * <li><b>The team.</b> The member in a team is 000012, who is neither the hidden
@@ -182,18 +219,27 @@ class CompetitorApiTest {
 	 * brought in two people and they are 000007, who is on the list, and 000031, whose
 	 * fee has lapsed and who is not. So the count this resource answers him with is
 	 * ONE, and every wrong way of arriving at it is a different number: counting
-	 * everybody gives four, counting the members whose fee stands gives three,
+	 * everybody gives five, counting the members whose fee stands gives four,
 	 * counting everybody with a referrer at all gives two, and counting nothing gives
-	 * nought. 000045 brought in nobody, so the same field asked of him is nought and a
-	 * constant cannot answer both.</li>
+	 * nought. 000045 and 000023 brought in nobody, so the same field asked of either is
+	 * nought and a constant cannot answer both.</li>
+	 * <li><b>Whose row the caller is looking at.</b> 000023 is the member behind an
+	 * account that may read the basis, and his number sorts third of the four on the
+	 * list, so „the administration's own row" is a record in the middle of the answer
+	 * rather than an absence. 000031 is the member behind the other such account and he
+	 * is off the list, and the superadmin has no member at all. Written the other way
+	 * round - every administration account off the list - a resource that answers
+	 * everybody EXCEPT the caller passes every case here, which is what it did until
+	 * 21.09.2026.</li>
 	 * </ul>
 	 *
-	 * <p>What is deliberately NOT separated: sex lines up with the inactive member.
-	 * That is not a substitution a wrong query could make, and four members cannot
-	 * keep every set of them distinct at once.
+	 * <p>What is deliberately NOT separated: sex lines up with the inactive member, and
+	 * two members answer the birthday question the same way. Neither is a substitution a
+	 * wrong query could make, and five members cannot keep every set of them distinct at
+	 * once.
 	 */
 	@BeforeEach
-	void fourMembers() {
+	void fiveMembers() {
 		member("000012", "Milica", "Djurisic", "F", "1968-03-11",
 				"(select id from place where rank = 1)", "null", "null",
 				2014, false, true, "feeExempt", "Trcim od 2014.", "0a2b4c6d8e0f1102", "null",
@@ -206,6 +252,21 @@ class CompetitorApiTest {
 				"null", "'Krusevac'", "(select id from country where code = 'RS')",
 				2020, false, true, "payment", "", "b7f3a1c2d4e50601",
 				"(select id from competitor where member_number = '000012')", true, "year");
+
+		/* AND THE ONE WHOSE ACCOUNT MAY READ THE BASIS AND WHOSE ROW IS ON THE LIST,
+		   which is the state the other two administration accounts cannot carry: one has
+		   a member whose fee has lapsed and the other has no member at all.
+
+		   HIS NUMBER SORTS THIRD OF THE FOUR, so „his own row" is neither the first
+		   record nor the last, the same care 000012 is placed with. He is in no team and
+		   he is not hidden, so he adds no second member to either of those two axes; he
+		   brought in nobody, so his own count is nought while 000012's is one. His basis
+		   is `feeExempt`, which the two members who pay do not share, so his own basis
+		   written across the answer changes two records. */
+		member("000023", "Jovana", "Markovic", "F", "1985-11-24",
+				"(select id from place where rank = 3)", "null", "null",
+				2019, false, true, "feeExempt", "Moderiram i trcim.", "e5d4c3b2a1908805", "null",
+				false, "full");
 
 		/* AND THE FOURTH, WHOSE FEE HAS LAPSED. His number sorts BETWEEN two of the
 		   three, so a list that lets him through is wrong in its order as well as in
@@ -228,10 +289,11 @@ class CompetitorApiTest {
 		membership("000012", "probni-tim", 2028, "null", "null");
 		membership("000007", "probni-tim", 2027, "2027", "'Prestao da trci za tim'");
 
-		/* AND THREE WAYS OF ASKING, because the answer now depends on who asks.
-		   000012 is deliberately NOT the first record - the list comes back 000007,
-		   000012, 000045 - so „his own row" and „the first row" are two different
-		   places and a resource that answered the first would be caught. */
+		/* AND SIX WAYS OF ASKING, because the answer now depends on who asks. 000012 is
+		   deliberately NOT the first record - the list comes back 000007, 000012, 000023,
+		   000045 - so „his own row" and „the first row" are two different places and a
+		   resource that answered the first would be caught. The same care is taken with
+		   000023, the administration's own row, which is third of the four. */
 		account(HER_OWN_ACCOUNT, "competitor");
 		belongsTo(HER_OWN_ACCOUNT, "000012");
 		account(THE_OTHER_MEMBER, "competitor");
@@ -245,14 +307,17 @@ class CompetitorApiTest {
 		   resource asks for rather than his holding nothing at all. */
 		ticked(RACES_FOR_NOBODY, "entity:events");
 
-		/* AND THE TWO WHO MAY, which is the whole of PDL P8's „Superadmin i moderatori
-		   sa pravom nad clanovima" and no third kind.
+		/* AND THOSE WHO MAY, which is the whole of PDL P8's „Superadmin i moderatori
+		   sa pravom nad clanovima" and no third KIND - but three STATES of „whose row is
+		   this", because that is the axis this field is answered along.
 
-		   ONE OF THEM RACES AND THE OTHER DOES NOT, on purpose. The superadmin is the
-		   ordinary case V23 describes and the one that catches a condition written
-		   against the caller's MEMBER: with no member at all he would be answered
-		   nothing. The moderator is a member, so a resource serving him his own basis
-		   instead of each row's has something wrong to serve. */
+		   The superadmin races for nobody: the ordinary case V23 describes, and the one
+		   that catches a condition written against the caller's MEMBER, since with no
+		   member at all he would be answered nothing. The moderator below is a member
+		   whose fee has lapsed, so a resource serving him his own basis instead of each
+		   row's has something wrong to serve. And the third, further down, IS on the
+		   list, which is the only state in which „every record" includes the caller's
+		   own - the state that was missing until 21.09.2026. */
 		account(THE_MODERATOR_OVER_THE_MEMBERS, "moderator");
 		/* THE BOX IS TICKED WITH THE WORD V5 WRITES AND NOT WITH THE CONSTANT THE
 		   RESOURCE ASKS BY, and that is the difference between measuring two things and
@@ -270,6 +335,14 @@ class CompetitorApiTest {
 		   key, which refuses a word `admin_right` does not hold. */
 		ticked(THE_MODERATOR_OVER_THE_MEMBERS, "entity:members");
 		belongsTo(THE_MODERATOR_OVER_THE_MEMBERS, "000031");
+
+		/* AND THE SAME RIGHT HELD BY SOMEBODY WHOSE ROW IS ON THE LIST. The box is ticked
+		   with V5's own word for the reason written above it, and he is a separate ACCOUNT
+		   rather than a second address on 000031, because `account_competitor_unique`
+		   allows a member exactly one. */
+		account(THE_ADMINISTRATOR_ON_THE_LIST, "moderator");
+		ticked(THE_ADMINISTRATOR_ON_THE_LIST, "entity:members");
+		belongsTo(THE_ADMINISTRATOR_ON_THE_LIST, "000023");
 
 		account(THE_SUPERADMIN, "superadmin");
 	}
@@ -417,7 +490,7 @@ class CompetitorApiTest {
 
 		List<String> codes = db.sql("select referral_code from competitor").query(String.class).list();
 		assertThat(codes).as("no code was read out of the database, so the loop below asserts nothing")
-				.hasSize(4);
+				.hasSize(5);
 
 		for (String code : codes) {
 			assertThat(whole).as("a referral code (%s) left the server, which Clan 73 does not make"
@@ -554,8 +627,8 @@ class CompetitorApiTest {
 		List<String> days = db.sql("select distinct to_char(birth_date, '-MM-DD') from competitor")
 				.query(String.class).list();
 		assertThat(years).as("no year was read out of the database, so the loops below assert"
-				+ " nothing").hasSize(4);
-		assertThat(days).as("no day was read out of the database").hasSize(4);
+				+ " nothing").hasSize(5);
+		assertThat(days).as("no day was read out of the database").hasSize(5);
 
 		for (String year : years) {
 			assertThat(whole)
@@ -576,7 +649,7 @@ class CompetitorApiTest {
 		assertThat(StreamSupport.stream(answer().spliterator(), false)
 				.map(one -> one.path("memberNumber").asString()).toList())
 				.as("the members came back in some order other than by their number")
-				.containsExactly("000007", "000012", "000045");
+				.containsExactly("000007", "000012", "000023", "000045");
 	}
 
 	/**
@@ -602,7 +675,7 @@ class CompetitorApiTest {
 	 *
 	 * <p>A member is in one team at a time (V11) and the season it started in is what
 	 * the portal draws beside the club. Both halves are here: the one who is in a team
-	 * carries it with the season, and the two who are not carry neither.
+	 * carries it with the season, and the three who are not carry neither.
 	 *
 	 * <p><b>A membership that ended is in the fixture on both sides</b>, which is what
 	 * makes this measure the condition rather than the join. 000045 left one team and
@@ -629,7 +702,7 @@ class CompetitorApiTest {
 				.filter(one -> one.path("teamId").isNull())
 				.map(one -> one.path("memberNumber").asString()).toList())
 				.as("a member who is in no team came back in one")
-				.containsExactly("000007", "000045");
+				.containsExactly("000007", "000023", "000045");
 	}
 
 	@Test
@@ -648,14 +721,19 @@ class CompetitorApiTest {
 	 * what it was, to the byte. It is asked in the two ways that fail differently.
 	 *
 	 * <ul>
-	 * <li><b>Neither name is anywhere in the visitor's answer</b>, over EVERY record
-	 * and not only the first. A key carrying null would pass a check that reads the
-	 * first record and would still have changed every byte after it.</li>
+	 * <li><b>None of the THREE conditional names is anywhere in the visitor's answer</b>,
+	 * over EVERY record and not only the first. A key carrying null would pass a check
+	 * that reads the first record and would still have changed every byte after it.
+	 * <b>The basis is asked here as well since 21.09.2026</b>, because
+	 * {@code CompetitorApi}'s own javadoc says this case measures all three and it
+	 * measured two: a resource handing the basis to everybody walked past it (2 cases
+	 * green, exit 0) while the rest of the class went red with five.</li>
 	 * <li><b>And the visitor's answer is the member's answer with exactly those two
-	 * keys taken out.</b> That is the half a name cannot measure: it holds the number
-	 * of records, their order, and every value in them, so a condition written as a
-	 * join - the one shape that can give a member two rows or drop one - fails here
-	 * even though every name is still right.</li>
+	 * keys taken out.</b> Two and not three: the member is answered no basis either, so
+	 * there is nothing of it to cut. That is the half a name cannot measure: it holds
+	 * the number of records, their order, and every value in them, so a condition
+	 * written as a join - the one shape that can give a member two rows or drop one -
+	 * fails here even though every name is still right.</li>
 	 * </ul>
 	 *
 	 * <p><b>Why a golden file was measured and then not committed.</b> The answer was
@@ -675,9 +753,11 @@ class CompetitorApiTest {
 	void theVisitorsAnswerHasNotMoved() throws Exception {
 		for (JsonNode one : answerFor(null)) {
 			assertThat(Answers.fieldsOf(one))
-					.as("a visitor was answered something only a signed in member may have,"
-							+ " on the record of %s", one.path("memberNumber").asString())
-					.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN);
+					.as("a visitor was answered something only a signed in member or the"
+							+ " administration may have, on the record of %s",
+							one.path("memberNumber").asString())
+					.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN,
+							HOW_THE_MEMBERSHIP_IS_HELD);
 		}
 
 		JsonNode hers = recordOf(HER_OWN_ACCOUNT, "000012");
@@ -749,7 +829,7 @@ class CompetitorApiTest {
 		List<String> everybodyElses = db.sql("select referral_code from competitor"
 				+ " where member_number <> '000012'").query(String.class).list();
 		assertThat(everybodyElses).as("no other code was read out of the database, so the loop"
-				+ " below asserts nothing").hasSize(3);
+				+ " below asserts nothing").hasSize(4);
 
 		String whole = whole(HER_OWN_ACCOUNT);
 
@@ -778,8 +858,8 @@ class CompetitorApiTest {
 	 *
 	 * <p><b>The number is one and every wrong way of getting it is a different
 	 * number</b>, which is what the fixture is arranged for: she brought in two
-	 * people and one of them has let his fee lapse, so the answer is ONE while four
-	 * members exist, three are on the list and two have a referrer. And the same
+	 * people and one of them has let his fee lapse, so the answer is ONE while five
+	 * members exist, four are on the list and two have a referrer. And the same
 	 * field asked of a member who brought in nobody is nought, so nothing constant
 	 * answers both.
 	 */
@@ -915,6 +995,13 @@ class CompetitorApiTest {
 	 * who holds the right is 000031, whose fee has lapsed, so he is not on the list at
 	 * all; his basis is {@code payment} and 000012's is {@code feeExempt}.
 	 *
+	 * <p><b>And the map is compared whole for the administration account that IS on the
+	 * list too</b>, so the one row the condition could have cut out - the caller's own -
+	 * is one of the entries. That is the half this case could not carry until
+	 * 21.09.2026, and the two questions asked of 000031 above are asked of him as well:
+	 * his row is really in the map, and at least one row he looks at is held on another
+	 * basis, so a word taken off the wrong row is a different word.
+	 *
 	 * <p><b>What is compared is read out of the database</b>, so a fixture changed
 	 * tomorrow is measured without anybody remembering this case - and the map is
 	 * compared whole, which holds the pairing as well as the words. A resource
@@ -948,6 +1035,22 @@ class CompetitorApiTest {
 		assertThat(onTheRows).as("the moderator's own basis stands on no row he looks at, so this"
 						+ " case cannot tell his own from the row's").containsValue(his);
 
+		/* AND THE SAME TWO QUESTIONS ABOUT THE ADMINISTRATION ACCOUNT THAT IS ON THE LIST,
+		   because the map below is compared whole and his own row is one of its entries.
+		   Without these, a resource that handed his own row the word off another row would
+		   be caught only when the two words happened to differ. */
+		assertThat(onTheRows).as("the administration account that is meant to be on the list is"
+						+ " not on it, so the map below says nothing about the caller's own row")
+				.containsKey(hisMemberNumber());
+
+		String onTheList = db.sql("select membership_basis from competitor where member_number = ?")
+				.param(hisMemberNumber()).query(String.class).single();
+		assertThat(onTheRows.values().stream().filter(one -> !one.equals(onTheList)).toList())
+				.as("every row the administrator on the list looks at is held on his own basis"
+						+ " (%s), so his own row carrying another row's word reads the same",
+						onTheList)
+				.isNotEmpty();
+
 		for (String administration : THE_ADMINISTRATION) {
 			Map<String, String> answered = new HashMap<>();
 
@@ -974,17 +1077,37 @@ class CompetitorApiTest {
 	 * key arriving empty rather than absent for everybody else, because what is cut out
 	 * is built from the values the answer itself carries.
 	 *
-	 * <p>Both of the administration are asked, and neither of them races for anybody on
-	 * the list, so neither carries the two fields a member is answered about himself.
+	 * <p><b>All of the administration are asked, and ONE of them is on the list</b>, so
+	 * his own record carries the two fields a member is answered about himself on top of
+	 * the basis. Those are cut too, and only off the record that really carries them:
+	 * until 21.09.2026 no administration account had a row here at all, and the sentence
+	 * „neither of them races for anybody on the list" read as a convenience of the
+	 * fixture when it was in fact the one state this case never entered.
+	 *
+	 * <p>What is cut is built out of the values the answer itself carries and the key is
+	 * looked for rather than remembered, so nothing here is a number somebody wrote down.
+	 * The count below says the branch really fired: without it, a resource that stopped
+	 * answering the caller his own two fields would make this case pass by having less to
+	 * cut.
 	 */
 	@Test
 	void theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded() throws Exception {
+		int ownRecordsCut = 0;
+
 		for (String administration : THE_ADMINISTRATION) {
 			String whole = whole(administration);
 
 			for (JsonNode one : answerFor(administration)) {
 				whole = whole.replace(",\"" + HOW_THE_MEMBERSHIP_IS_HELD + "\":\""
 						+ one.path(HOW_THE_MEMBERSHIP_IS_HELD).asString() + "\"", "");
+
+				if (Answers.fieldsOf(one).contains(THE_REFERRAL_CODE)) {
+					whole = whole.replace(",\"" + THE_REFERRAL_CODE + "\":\""
+							+ one.path(THE_REFERRAL_CODE).asString() + "\",\""
+							+ THE_COUNT_SHE_BROUGHT_IN + "\":"
+							+ one.path(THE_COUNT_SHE_BROUGHT_IN).asInt(), "");
+					ownRecordsCut++;
+				}
 			}
 
 			assertThat(whole)
@@ -993,24 +1116,151 @@ class CompetitorApiTest {
 							+ " it", administration)
 					.isEqualTo(whole(null));
 		}
+
+		assertThat(ownRecordsCut)
+				.as("no administration account was answered a record of its own, so this case"
+						+ " never entered the state it was rewritten for and the branch above cut"
+						+ " nothing")
+				.isEqualTo(1);
 	}
 
 	/**
 	 * AND THE ADMINISTRATION'S RECORD CARRIES NOTHING NOBODY NAMED EITHER.
 	 *
 	 * <p>The same floor the visitor's answer and the member's own record stand on,
-	 * moved onto the third audience. Three of the five names are still omissions for
-	 * him - the age band because it is owed, the referrer's code because the count
+	 * moved onto the third audience - and onto BOTH records the third audience sees,
+	 * which is the half that was missing until 21.09.2026.
+	 *
+	 * <ul>
+	 * <li><b>Somebody else's record.</b> Three of the five names are still omissions
+	 * there - the age band because it is owed, the referrer's code because the count
 	 * replaces it, the fee flag because he is on the list at all - and the referral
-	 * code is one too, because this caller is not the member whose row it is.
+	 * code is one too, because this caller is not the member whose row it is. It is
+	 * asked of the FIRST record, which {@code Answers} reads, so the case says out
+	 * loud that the first record is nobody's own.</li>
+	 * <li><b>His OWN record</b>, which exists because one administration account is a
+	 * member whose fee is standing. There the referral code and the count are not
+	 * omissions at all but the two fields his row is entitled to, exactly as
+	 * {@code theMembersOwnRecordCarriesNothingNobodyNamed} holds them, and the basis
+	 * is answered on top. Written the other way round - his own two fields named as
+	 * left out - this case would fail the day the resource started behaving
+	 * correctly.</li>
+	 * </ul>
 	 */
 	@Test
 	void theAdministrationsRecordCarriesNothingNobodyNamed() throws Exception {
+		String somebodyElses = answerFor(THE_MODERATOR_OVER_THE_MEMBERS).get(0)
+				.path("memberNumber").asString();
+
+		assertThat(db.sql("select count(*) from account where competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(somebodyElses).query(Integer.class).single())
+				.as("the first record of the answer (%s) belongs to an account after all, so the"
+						+ " floor below is not asked of somebody else's record", somebodyElses)
+				.isZero();
+
 		Answers.everyFieldThePortalReadsIsAnswered(
 				"/api/competitors asked by a moderator over the members",
 				answerFor(THE_MODERATOR_OVER_THE_MEMBERS), "competitors.json",
 				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, THE_REFERRAL_CODE,
 				WHO_HANDED_OUT_THE_CODE, WHETHER_THE_FEE_IS_STANDING);
+
+		Answers.everyFieldThePortalReadsIsAnswered(
+				"/api/competitors asked by a moderator over the members, on his own record",
+				new ObjectMapper().createArrayNode().add(
+						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, hisMemberNumber())),
+				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
+				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, WHO_HANDED_OUT_THE_CODE,
+				WHETHER_THE_FEE_IS_STANDING);
+	}
+
+	/** The member behind the one administration account whose row is on the list. */
+	private String hisMemberNumber() {
+		return db.sql("select member_number from competitor where id ="
+						+ " (select competitor_id from account where email = ?)")
+				.param(THE_ADMINISTRATOR_ON_THE_LIST).query(String.class).single();
+	}
+
+	/**
+	 * AND THE ADMINISTRATION'S OWN ROW CARRIES THE BASIS LIKE EVERY OTHER, WITH HIS OWN
+	 * TWO FIELDS ON TOP.
+	 *
+	 * <p><b>This is the second state of „whose row is this" and the one that was
+	 * missing.</b> PDL P8 gives the basis to the administration over „svi clanovi" and
+	 * the condition in the query is the CALLER and never the row, so the caller's own row
+	 * is not an exception to it. Until 21.09.2026 no case could say so: the two
+	 * administration accounts were a member whose fee had lapsed and a moderator who
+	 * races for nobody, so a resource written as {@code c.id is distinct from :me} - the
+	 * whole list except the one asking - left all 21 cases green. A moderator over the
+	 * members who is himself a member would have seen every row's basis but his own.
+	 *
+	 * <p><b>And his own row is a member's row as well, so it carries the referral code
+	 * and the count too.</b> They are answered on the caller's own row whoever the caller
+	 * is; holding the right adds a field, it does not take two away. Both are compared by
+	 * VALUE against what the database holds for HIM, so a code or a count arriving from
+	 * another row is a different string and a different number.
+	 *
+	 * <p><b>Every value this case reads is separated from a second source it could have
+	 * come from</b>, and each separation is asserted rather than arranged and forgotten:
+	 * his basis against a row that is held on another one, his count against a member who
+	 * brought in a different number, and his record against the first and the last of the
+	 * answer.
+	 */
+	@Test
+	void theAdministratorsOwnRowCarriesTheBasisLikeEveryOther() throws Exception {
+		String number = hisMemberNumber();
+		List<String> list = StreamSupport.stream(answerFor(THE_ADMINISTRATOR_ON_THE_LIST)
+				.spliterator(), false).map(one -> one.path("memberNumber").asString()).toList();
+
+		assertThat(list).as("the administrator's own row is not on the list at all, so this case"
+				+ " measures the same state the other two administration accounts do")
+				.contains(number);
+		assertThat(List.of(list.getFirst(), list.getLast()))
+				.as("the administrator's own row is the first or the last record of the answer,"
+						+ " so a resource answering the record at either edge would pass for his")
+				.doesNotContain(number);
+
+		String hisBasis = db.sql("select membership_basis from competitor where member_number = ?")
+				.param(number).query(String.class).single();
+		assertThat(db.sql("select count(*) from competitor where active and membership_basis <> ?")
+				.param(hisBasis).query(Integer.class).single())
+				.as("every other row on the list is held on the same basis as his (%s), so his own"
+						+ " row carrying another row's word would read the same", hisBasis)
+				.isGreaterThan(0);
+
+		int hisCount = db.sql("select count(*) from competitor brought where brought.active"
+						+ " and brought.referred_by = (select id from competitor"
+						+ " where member_number = ?)").param(number).query(Integer.class).single();
+		assertThat(db.sql("select count(*) from competitor c where c.active and ? <> (select"
+						+ " count(*) from competitor brought where brought.active"
+						+ " and brought.referred_by = c.id)")
+				.param(hisCount).query(Integer.class).single())
+				.as("every member on the list brought in as many as he did (%s), so his count"
+						+ " arriving from another row would be the same number", hisCount)
+				.isGreaterThan(0);
+
+		JsonNode his = recordOf(THE_ADMINISTRATOR_ON_THE_LIST, number);
+
+		assertThat(his.path(HOW_THE_MEMBERSHIP_IS_HELD).asString())
+				.as("the administration was answered every basis but its own, or its own row was"
+						+ " handed the word standing on another row")
+				.isEqualTo(hisBasis);
+		assertThat(his.path(THE_REFERRAL_CODE).asString())
+				.as("the administration's own row lost the referral link it would have had"
+						+ " without the right, or was handed a link off another row")
+				.isEqualTo(db.sql("select referral_code from competitor where member_number = ?")
+						.param(number).query(String.class).single());
+		assertThat(his.path(THE_COUNT_SHE_BROUGHT_IN).asInt())
+				.as("the administration's own row lost the count it would have had without the"
+						+ " right, or was handed a count off another row")
+				.isEqualTo(hisCount);
+
+		assertThat(StreamSupport.stream(answerFor(THE_ADMINISTRATOR_ON_THE_LIST).spliterator(),
+						false).filter(one -> Answers.fieldsOf(one).contains(THE_REFERRAL_CODE))
+				.map(one -> one.path("memberNumber").asString()).toList())
+				.as("a record other than the administration's own carries the referral code key;"
+						+ " holding the right over the members is not what makes a link his")
+				.containsExactly(number);
 	}
 
 	/**
