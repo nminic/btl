@@ -14,7 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Every constraint the three tables of V15 carry, with the row that breaks it.
+ * Every constraint the three tables of V15 carry, and the seven columns V27 added to
+ * one of them, with the row that breaks each.
  *
  * <p>A badge is a recognition and carries no points (PDL), so nothing here touches
  * scoring. What it does carry is a CONDITION, and the condition is data rather than
@@ -24,6 +25,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * to a hundred, races every hundred to a thousand - and the tier rises part way
  * through, which is the owner's own correction of 10.08.2026. Half of this file is
  * about that run being a whole run rather than half of one.
+ *
+ * <p><b>And since V27 the row also carries the coin it is struck on</b> - the two
+ * legends, which arc the period takes, the mark, the artwork and what a piece of a run
+ * is counted in. V15 refused those a column and V27 says at length why that was wrong;
+ * what they bring here is four rules that tie one column to another, and every one of
+ * them is refused from both sides below rather than once.
  */
 class DucatConstraintsTest extends DatabaseTest {
 
@@ -58,25 +65,59 @@ class DucatConstraintsTest extends DatabaseTest {
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
-	private static final String DUCAT_COLUMNS =
+	private static final String CONDITION_COLUMNS =
 			"code, name, kind, threshold, period, tier, step, last, tier_up_from";
+	/** And the coin it is struck on, which V27 added. */
+	private static final String DRAWING_COLUMNS = "top, top_female, bottom, period_at, mark, art,"
+			+ " counted";
+	private static final String DUCAT_COLUMNS = CONDITION_COLUMNS + ", " + DRAWING_COLUMNS;
 	private static final String AWARD_COLUMNS =
 			"competitor_id, ducat_id, kind, threshold, reached, period, season, month";
 
+	/**
+	 * A COIN THAT BREAKS NOTHING ABOUT ITS DRAWING, for every row here whose fault is
+	 * somewhere else.
+	 *
+	 * <p>Both arcs written, the period on neither, no artwork, and no unit - which is
+	 * what a family that is one ducat looks like. Kept as one constant rather than
+	 * repeated down the list for the reason the list itself is built that way: a row
+	 * must break exactly the constraint it names, and seven more literals on every line
+	 * is seven more chances for one of them to break something else quietly.
+	 */
+	private static final String A_DRAWING = "'GORE', '', 'DOLE', 'none', 'points', 'none', ''";
+
+	/** And the same for a row that IS a run, because a run has to say what it counts. */
+	private static final String A_RUNS_DRAWING = "'GORE', '', 'DOLE', 'none', 'points', 'none',"
+			+ " 'komada'";
+
+	private static String drawnAs(String values, String drawing) {
+		return "insert into ducat (" + DUCAT_COLUMNS + ") values (" + values + ", " + drawing + ")";
+	}
+
+	/** A ducat that is one threshold, so it counts no pieces and carries no unit. */
 	private static String ducat(String values) {
-		return "insert into ducat (" + DUCAT_COLUMNS + ") values (" + values + ")";
+		return drawnAs(values, A_DRAWING);
+	}
+
+	/** And one whose `step` is anything but nought, which the unit has to follow. */
+	private static String runDucat(String values) {
+		return drawnAs(values, A_RUNS_DRAWING);
 	}
 
 	private static String award(String values) {
 		return "insert into ducat_award (" + AWARD_COLUMNS + ") values (" + values + ")";
 	}
 
+	/** A condition nothing is wrong with, for the rows whose fault is in the drawing. */
+	private static final String A_PLAIN_CONDITION =
+			"'duk-nov', 'Nov', 'points', 500, 'season', 2, 0, 0, 0";
+
 	/** One threshold and nothing after it, which is thirteen of the fifteen. */
 	private static final String GOOD_DUCAT =
 			ducat("'duk-probni', 'Probni dukat', 'points', 500, 'season', 2, 0, 0, 0");
 	/** And a run, with the tier rising in the middle of it. */
 	private static final String GOOD_RUN =
-			ducat("'duk-probna-serija', 'Probna serija', 'raceCount', 25, 'always', 3, 25, 250, 125");
+			runDucat("'duk-probna-serija', 'Probna serija', 'raceCount', 25, 'always', 3, 25, 250, 125");
 
 	/** Won for a season. */
 	private static final String GOOD_AWARD =
@@ -115,10 +156,11 @@ class DucatConstraintsTest extends DatabaseTest {
 				/* THE BADGE ITSELF. */
 				Violation.notNull("ducat_id_not_null", "id",
 						"insert into ducat (id, " + DUCAT_COLUMNS + ") values (null, 'duk-nov', 'Nov',"
-								+ " 'points', 500, 'season', 2, 0, 0, 0)"),
+								+ " 'points', 500, 'season', 2, 0, 0, 0, " + A_DRAWING + ")"),
 				Violation.of("ducat_pk",
 						"insert into ducat (id, " + DUCAT_COLUMNS + ") select id, 'duk-nov', 'Nov',"
-								+ " 'points', 500, 'season', 2, 0, 0, 0 from ducat limit 1"),
+								+ " 'points', 500, 'season', 2, 0, 0, 0, " + A_DRAWING
+								+ " from ducat limit 1"),
 
 				Violation.notNull("ducat_code_not_null", "code",
 						ducat("null, 'Nov', 'points', 500, 'season', 2, 0, 0, 0")),
@@ -160,7 +202,7 @@ class DucatConstraintsTest extends DatabaseTest {
 				   the short way first, with no end, it broke `a_run_has_an_end` instead and named
 				   the wrong constraint. */
 				Violation.of("ducat_step_not_negative",
-						ducat("'duk-nov', 'Nov', 'points', 500, 'season', 2, -10, 1000, 600")),
+						runDucat("'duk-nov', 'Nov', 'points', 500, 'season', 2, -10, 1000, 600")),
 				Violation.notNull("ducat_last_not_null", "last",
 						ducat("'duk-nov', 'Nov', 'points', 500, 'season', 2, 0, null, 0")),
 				/* An end with no step, written with `tier_up_from` at nought so that the tier
@@ -169,18 +211,18 @@ class DucatConstraintsTest extends DatabaseTest {
 						ducat("'duk-nov', 'Nov', 'points', 500, 'season', 2, 0, 1000, 0")),
 				/* And a step with no end, which is the other half of the same biconditional. */
 				Violation.of("ducat_a_run_has_an_end",
-						ducat("'duk-nov', 'Nov', 'points', 500, 'season', 2, 100, 0, 600")),
+						runDucat("'duk-nov', 'Nov', 'points', 500, 'season', 2, 100, 0, 600")),
 				/* A run that does not land on its own end: 25 to 250 in steps of 40. */
 				Violation.of("ducat_a_run_is_a_whole_number_of_steps",
-						ducat("'duk-nov', 'Nov', 'raceCount', 25, 'always', 3, 40, 250, 125")),
+						runDucat("'duk-nov', 'Nov', 'raceCount', 25, 'always', 3, 40, 250, 125")),
 
 				Violation.notNull("ducat_tier_up_from_not_null", "tier_up_from",
 						ducat("'duk-nov', 'Nov', 'points', 500, 'season', 2, 0, 0, null")),
 				/* The tier rising before the run starts, and after it ends. */
 				Violation.of("ducat_tier_rises_inside_the_run",
-						ducat("'duk-nov', 'Nov', 'raceCount', 100, 'always', 3, 100, 1000, 50")),
+						runDucat("'duk-nov', 'Nov', 'raceCount', 100, 'always', 3, 100, 1000, 50")),
 				Violation.of("ducat_tier_rises_inside_the_run",
-						ducat("'duk-nov', 'Nov', 'raceCount', 100, 'always', 3, 100, 1000, 1100")),
+						runDucat("'duk-nov', 'Nov', 'raceCount', 100, 'always', 3, 100, 1000, 1100")),
 				/* And a badge that is not a run at all, claiming a tier rise. */
 				Violation.of("ducat_tier_rises_inside_the_run",
 						ducat("'duk-nov', 'Nov', 'points', 500, 'season', 2, 0, 0, 250")),
@@ -188,7 +230,69 @@ class DucatConstraintsTest extends DatabaseTest {
 				   hundred to a thousand, with the tier rising at a hundred and thirty-seven,
 				   which is not a threshold anybody can reach. Found by a round on 11.09.2026. */
 				Violation.of("ducat_tier_rises_inside_the_run",
-						ducat("'duk-nov', 'Nov', 'raceCount', 100, 'always', 3, 100, 1000, 137")),
+						runDucat("'duk-nov', 'Nov', 'raceCount', 100, 'always', 3, 100, 1000, 137")),
+
+				/* THE COIN IT IS STRUCK ON, which V27 added.
+
+				   Each row below is a legitimate condition - `points`, 500, one threshold - with
+				   exactly one thing wrong about the drawing, so the constraint it names is the
+				   only thing it can break. The order of the seven values is the order of
+				   DRAWING_COLUMNS, and A_DRAWING is what they say when nothing is wrong. */
+				Violation.notNull("ducat_top_not_null", "top",
+						drawnAs(A_PLAIN_CONDITION, "null, '', 'DOLE', 'none', 'points', 'none', ''")),
+				Violation.notNull("ducat_top_female_not_null", "top_female",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', null, 'DOLE', 'none', 'points', 'none', ''")),
+				Violation.notNull("ducat_bottom_not_null", "bottom",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', null, 'none', 'points', 'none', ''")),
+				Violation.notNull("ducat_period_at_not_null", "period_at",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', null, 'points', 'none', ''")),
+				Violation.notNull("ducat_mark_not_null", "mark",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'none', null, 'none', ''")),
+				Violation.notNull("ducat_art_not_null", "art",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'none', 'points', null, ''")),
+				Violation.notNull("ducat_counted_not_null", "counted",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'none', 'points', 'none', null")),
+
+				/* A fourth place for the period, which is a lay-out and not a value. */
+				Violation.of("ducat_period_at_known",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'middle', 'points', 'none', ''")),
+				/* AN EIGHTH MARK, and it is refused although no ducat uses the seventh either:
+				   what the check names is the seven paths `DucatArt.tsx` can draw, so an eighth
+				   is a drawing somebody has to make rather than a word somebody adds. Widening
+				   the list to let this row in is what this case exists to go red for. */
+				Violation.of("ducat_mark_known",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'none', 'medal', 'none', ''")),
+				/* And a fourth artwork, for the same reason. */
+				Violation.of("ducat_art_known",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'none', 'points', 'medal', ''")),
+
+				/* THE ARC THE PERIOD TAKES IS THE ARC THAT IS EMPTY, and each arc is refused
+				   from BOTH sides: a legend written where the period stands, and an arc left
+				   blank with the period somewhere else. One direction alone would let half of
+				   each rule be dropped without a word. */
+				Violation.of("ducat_top_is_empty_exactly_when_the_period_is_there",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'top', 'points', 'none', ''")),
+				Violation.of("ducat_top_is_empty_exactly_when_the_period_is_there",
+						drawnAs(A_PLAIN_CONDITION, "'', '', 'DOLE', 'none', 'points', 'none', ''")),
+				Violation.of("ducat_bottom_is_empty_exactly_when_the_period_is_there",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', 'DOLE', 'bottom', 'points', 'none', ''")),
+				Violation.of("ducat_bottom_is_empty_exactly_when_the_period_is_there",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', '', '', 'none', 'points', 'none', ''")),
+
+				/* A UNIT WITHOUT A RUN, and a run without a unit. Both halves again, and this
+				   is the one rule of the seven that a new column cannot satisfy on its own:
+				   `step` is V15's and decides which half applies. */
+				Violation.of("ducat_a_run_says_what_it_counts",
+						drawnAs(A_PLAIN_CONDITION, A_RUNS_DRAWING)),
+				Violation.of("ducat_a_run_says_what_it_counts",
+						drawnAs("'duk-nov', 'Nov', 'points', 500, 'season', 2, 100, 1000, 600",
+								A_DRAWING)),
+
+				/* And a woman's legend that says exactly what the man's says, which is a coin
+				   drawn twice rather than a wording anybody decided. */
+				Violation.of("ducat_a_womans_legend_says_something_else",
+						drawnAs(A_PLAIN_CONDITION, "'GORE', 'GORE', 'DOLE', 'none', 'points', 'none',"
+								+ " ''")),
 
 				/* WHO HAS WON WHICH. */
 				Violation.notNull("ducat_award_id_not_null", "id",
@@ -357,24 +461,117 @@ class DucatConstraintsTest extends DatabaseTest {
 		String drawnText = java.nio.file.Files.readString(drawn, java.nio.charset.StandardCharsets.UTF_8);
 
 		java.util.Map<String, String> theirs = new java.util.TreeMap<>();
-		db.sql("select one ->> 'id' as code, (one ->> 'name') || '|' || (one ->> 'kind') || '|'"
-				+ " || (one ->> 'value') as says from jsonb_array_elements(cast(? as jsonb)) as one")
+		db.sql("select one ->> 'id' as code, concat_ws('|', one ->> 'name', one ->> 'kind',"
+				+ " one ->> 'value', one ->> 'top', one ->> 'topFemale', one ->> 'bottom',"
+				+ " one ->> 'periodAt', one ->> 'mark', one ->> 'art', one ->> 'counted') as says"
+				+ " from jsonb_array_elements(cast(? as jsonb)) as one")
 				.param(drawnText)
 				.query((rs, one) -> java.util.Map.entry(rs.getString("code"), rs.getString("says")))
 				.list()
 				.forEach(entry -> theirs.put(entry.getKey(), entry.getValue()));
 
 		java.util.Map<String, String> ours = new java.util.TreeMap<>();
-		db.sql("select code, name, kind, threshold from ducat")
+		db.sql("select code, name, kind, threshold, top, top_female, bottom, period_at, mark, art,"
+				+ " counted from ducat")
 				.query((rs, one) -> java.util.Map.entry(rs.getString("code"),
-						rs.getString("name") + "|" + rs.getString("kind") + "|"
-								+ rs.getBigDecimal("threshold").stripTrailingZeros().toPlainString()))
+						String.join("|", rs.getString("name"), rs.getString("kind"),
+								rs.getBigDecimal("threshold").stripTrailingZeros().toPlainString(),
+								rs.getString("top"), rs.getString("top_female"), rs.getString("bottom"),
+								rs.getString("period_at"), rs.getString("mark"), rs.getString("art"),
+								rs.getString("counted"))))
 				.list()
 				.forEach(entry -> ours.put(entry.getKey(), entry.getValue()));
 
 		assertThat(ours)
 				.as("a badge in the schema is not the badge the portal draws under the same code")
 				.isEqualTo(theirs);
+	}
+
+	/** The codes of the rows a sentence about the fifteen is true of, in catalogue order. */
+	private List<String> codesWhere(String condition) {
+		return db.sql("select code from ducat where " + condition + " order by id")
+				.query(String.class)
+				.list();
+	}
+
+	/**
+	 * THE FOUR THINGS THE DRAWING SAYS, EACH IN BOTH OF ITS STATES, AND THE ROWS IN
+	 * EACH STATE NAMED.
+	 *
+	 * <p><b>Why this is not the comparison above said twice.</b> That one holds the
+	 * schema against {@code ducats.json}, so it is right about every value and silent
+	 * about every state: an edit that moved a ducat from one state to the other in BOTH
+	 * copies passes it without a word. Here the states are written out, and each is
+	 * written out as the owner decided it rather than as the file happens to be today.
+	 *
+	 * <ul>
+	 * <li><b>Which arc the period takes.</b> PDL, 10.08.2026, the owner's own words:
+	 * „kod 1 i 3 period je dole, kod 2, 4, 5 i 6 gore". Two below, four above, nine
+	 * neither - and those nine are the families that do not repeat.</li>
+	 * <li><b>Whether the legend changes for a woman.</b> PDL, 11.08.2026: „Rod ima osam
+	 * porodica, ne tri. Uz 7, 14 i 15, i pet klubova od sto trka." Eight, and this is
+	 * the case that says WHICH eight, because a count of eight is true of any eight.</li>
+	 * <li><b>Whether the family is a run.</b> V15's `step` decides, and the unit follows
+	 * it: two runs with a unit, thirteen without.</li>
+	 * <li><b>Whether a drawing takes the middle instead of the number.</b> PDL,
+	 * 10.08.2026: „Dve porodice, 7 i 15, u sredini nose crtež umesto broja."</li>
+	 * </ul>
+	 *
+	 * <p><b>Where the floor under these lists is.</b> Not in the lists: in the count of
+	 * fifteen at the top, in {@code containsExactly}, which refuses a row that joined a
+	 * state as loudly as one that left it, and in the CHECK constraints, which make the
+	 * three states of the period and the three artworks exhaustive. A sixteenth ducat
+	 * would have to appear in one of the lists below and cannot appear in none.
+	 */
+	@Test
+	void everyStateOfTheDrawingIsHeldByTheRowsNamedHere() {
+		assertThat(db.sql("select count(*) from ducat").query(Long.class).single())
+				.as("the fifteen are not fifteen, so the lists below are about another catalogue")
+				.isEqualTo(15L);
+
+		assertThat(codesWhere("period_at = 'bottom'"))
+				.as("the families whose period stands on the bottom arc")
+				.containsExactly("duk-mesecni-km", "duk-sezonski-km");
+		assertThat(codesWhere("period_at = 'top'"))
+				.as("the families whose period stands on the top arc")
+				.containsExactly("duk-mesecni-sati", "duk-sezonski-bodovi", "duk-sezonski-sati",
+						"duk-sezonske-trke");
+		assertThat(codesWhere("period_at = 'none'"))
+				.as("the families that do not repeat, so their period stands on neither arc")
+				.containsExactly("duk-drzave", "duk-sve-trke", "duk-krace-trke", "duk-polumaratoni",
+						"duk-duze-trke", "duk-maratoni", "duk-uspon", "duk-ultramaratoni",
+						"duk-obim-planete");
+
+		assertThat(codesWhere("top_female <> ''"))
+				.as("the eight families whose top legend is worded differently for a woman")
+				.containsExactly("duk-drzave", "duk-krace-trke", "duk-polumaratoni", "duk-duze-trke",
+						"duk-maratoni", "duk-uspon", "duk-ultramaratoni", "duk-obim-planete");
+		assertThat(codesWhere("top_female = ''"))
+				.as("and the seven that read the same to everybody")
+				.hasSize(7);
+
+		assertThat(db.sql("select code || '=' || counted from ducat where step > 0 order by id")
+				.query(String.class).list())
+				.as("the two runs, and what a piece of each is counted in")
+				.containsExactly("duk-drzave=država", "duk-sve-trke=trka");
+		assertThat(codesWhere("step = 0 and counted = ''"))
+				.as("and the thirteen that are one ducat, which count no pieces")
+				.hasSize(13);
+
+		assertThat(db.sql("select code || '=' || art from ducat where art <> 'none' order by id")
+				.query(String.class).list())
+				.as("the two families that carry a drawing in the middle instead of a number")
+				.containsExactly("duk-uspon=galaxy", "duk-obim-planete=globe");
+		assertThat(codesWhere("art = 'none'"))
+				.as("and the thirteen whose middle is the threshold, written out")
+				.hasSize(13);
+
+		assertThat(db.sql("select distinct mark from ducat order by mark").query(String.class).list())
+				.as("the fifteen no longer use every one of the seven marks the check allows, so the"
+						+ " check has a word in it nothing draws, or the portal draws a mark the"
+						+ " catalogue does not use")
+				.containsExactly("club", "countries", "distance", "points", "races", "time",
+						"vertical");
 	}
 
 	/**

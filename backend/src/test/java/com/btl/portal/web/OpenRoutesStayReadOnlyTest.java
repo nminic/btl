@@ -16,6 +16,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -95,7 +96,9 @@ class OpenRoutesStayReadOnlyTest {
 	 */
 	@Test
 	void noWriteSentToAnOpenRouteChangesTheDatabase() throws Exception {
-		assertThat(ApiSecurity.READ_BY_ANYBODY)
+		List<String> everyOpenAddress = everyOpenAddress();
+
+		assertThat(everyOpenAddress)
 				.as("the open list is empty, so the loop below sends nothing and asks nothing")
 				.isNotEmpty();
 
@@ -106,7 +109,7 @@ class OpenRoutesStayReadOnlyTest {
 						+ " however much a request deletes or changes")
 				.anyMatch(mark -> mark.rows() > 0);
 
-		for (String open : ApiSecurity.READ_BY_ANYBODY) {
+		for (String open : everyOpenAddress) {
 			for (String writing : WRITING) {
 				int answered = answerTo(writing, open);
 
@@ -123,6 +126,27 @@ class OpenRoutesStayReadOnlyTest {
 						.isEqualTo(golden);
 			}
 		}
+	}
+
+	/**
+	 * EVERY ADDRESS {@link ApiSecurity} OPENS, as an ADDRESS and not as a pattern.
+	 *
+	 * <p>There are two lists since B83 and the note on
+	 * {@link ApiSecurity#READ_BY_ANYBODY_UNDER_A_NAME} says why they cannot be one. Both
+	 * belong here: what this case is about is that opening something for reading opened
+	 * nothing for writing, and a picture is open exactly as a codebook is.
+	 *
+	 * <p>The entries of the second list carry a name, so each is asked with the sample value
+	 * {@code ApiSecurityTest} already builds for the same purpose - one helper rather than a
+	 * second spelling of the same rule. What the write is sent AT does not matter to the
+	 * answer: the chain grants that address a {@code GET} and a {@code HEAD} and nothing
+	 * else, so a {@code POST} is refused before any name is looked at.
+	 */
+	private static List<String> everyOpenAddress() {
+		return Stream.concat(ApiSecurity.READ_BY_ANYBODY.stream(),
+						ApiSecurity.READ_BY_ANYBODY_UNDER_A_NAME.stream()
+								.map(ApiSecurityTest::withASampleValue))
+				.toList();
 	}
 
 	/**

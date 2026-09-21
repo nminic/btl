@@ -11,6 +11,7 @@ import type {
   Result,
   StaticPage,
 } from './types'
+import type { DucatFamily } from './ducatRule'
 import type { Place } from './places'
 
 
@@ -34,12 +35,21 @@ import type { Place } from './places'
  * portal does not read it yet.
  *
  * **One resource is NOT read by its type, and that is the finding rather than an
- * omission.** `/api/ducats` answers with nine fields and `DucatFamily` needs
- * sixteen: the seven legends and marks a coin is drawn from live in the portal
- * and nowhere in the schema. `/api/competitors` is the same shape of gap, five
- * fields wide. Both are named below and neither is papered over, because what to
+ * omission.** `/api/competitors` answers with thirteen fields and the file the
+ * portal draws a member from carries eighteen: the band a member competes in,
+ * whether the fee is standing and what it stands on, and the two halves of the
+ * referral link. The five are named below and not papered over, because what to
  * do about a field the server has not got is the half the owner kept for himself
  * („Uskladi oblike, pa polje po polje odluci", 20.09.2026).
+ *
+ * **`/api/ducats` was the second such resource until V27 and is not one any
+ * more.** It answered with nine of the sixteen names a coin is drawn by, and the
+ * seven that were missing - the two legends, which arc the period takes, the mark,
+ * the artwork and what a piece of a run is counted in - were a decision of V15
+ * that V27 reversed. So `aDucat` is handed to `DucatFamily` like every other
+ * sample here, and the list of what the server has not got is empty rather than
+ * seven names long. That empty list is the case, not a tidy-up: a field that
+ * rejoins it is a screen drawing something out of nothing.
  *
  * **What a sample is a sample OF, said exactly, because it is not everything.**
  * What this file holds against the types is the set of FIELD NAMES a row carries
@@ -133,16 +143,26 @@ const aPage = {
   includes: [],
 }
 
+/** All sixteen since V27, which is why this one is read by its type below. The
+ *  legend on the bottom arc is empty because the period stands there, and the unit
+ *  is empty because the family is one ducat and counts no pieces. */
 const aDucat = {
   id: 'duk-mesecni-km',
   name: 'Mesečni kilometri',
   kind: 'totalKm' as const,
   value: 125,
   period: 'month' as const,
+  top: 'ISTRČANIH',
+  topFemale: '',
+  bottom: '',
+  periodAt: 'bottom' as const,
+  mark: 'distance' as const,
+  art: 'none' as const,
   tier: 1 as const,
   step: 0,
   last: 0,
   tierUpFrom: 0,
+  counted: '',
 }
 
 /** Three long, or four where a town's English name really differs. The lengths are
@@ -224,6 +244,7 @@ const readAsEvent: BtlEvent = anEvent
 const readAsRace: Race = aRace
 const readAsResult: Result = aResult
 const readAsPage: StaticPage = aPage
+const readAsDucat: DucatFamily = aDucat
 const readAsTown: Place = aTown
 const readAsEnglishTown: Place = anEnglishTown
 const readAsAttendance: Attending = anAttendance
@@ -329,7 +350,11 @@ describe('the answer the backend gives', () => {
     expect(readAsRace.renamed).toBe(false)
     expect(readAsResult.memberNumber).toBeNull()
     expect(readAsPage.slug).toBe('politika-privatnosti')
-    expect(aDucat.id).toBe('duk-mesecni-km')
+    expect(readAsDucat.id).toBe('duk-mesecni-km')
+    /* The arc the period takes is the empty one, which is the rule V27 put in the
+       schema and the shape a screen reads it back by. */
+    expect(readAsDucat.periodAt).toBe('bottom')
+    expect(readAsDucat.bottom).toBe('')
     expect(readAsTown).toHaveLength(3)
     expect(readAsEnglishTown).toHaveLength(4)
     expect(readAsAttendance.eventId).toBe(273)
@@ -372,6 +397,16 @@ describe('the answer the backend gives', () => {
     expect(missing(aComment, servedRow('comments'))).toEqual([])
     expect(missing(aModerator, servedRow('moderators'))).toEqual([])
 
+    /* AND THE DUCATS, WHICH LEFT THIS LIST ON 20.09.2026 RATHER THAN SHRANK IN IT.
+       Seven names stood here - `art`, `bottom`, `counted`, `mark`, `periodAt`, `top`
+       and `topFemale` - with V15's sentence for a reason: the mark, the artwork and
+       the words on the two arcs „is the portal's and stays in the portal". V27
+       overturned that and gave them columns, so the answer carries all sixteen names
+       a coin is drawn by and this list is empty. Left standing rather than deleted
+       because an empty list is the claim: a name that comes back is a screen drawing
+       something out of nothing. */
+    expect(missing(aDucat, servedRow('ducats'))).toEqual([])
+
     /* The five a member is drawn by and the schema says nothing about here: the
        band they compete in, whether the fee is standing, what it stands on, the
        code their own link carries, and whose link brought them. `active` is the
@@ -383,21 +418,6 @@ describe('the answer the backend gives', () => {
       'membershipBasis',
       'referralCode',
       'referredBy',
-    ])
-
-    /* The seven a coin is drawn from, which is why `DucatFamily` does not read
-       this answer at all and why no name above carries it: the legend along the
-       top, the same legend for a woman, the legend along the bottom, which of the
-       two the period takes, the mark in the middle, the drawing behind it, and
-       what the step of a series is counted in. */
-    expect(missing(aDucat, servedRow('ducats'))).toEqual([
-      'art',
-      'bottom',
-      'counted',
-      'mark',
-      'periodAt',
-      'top',
-      'topFemale',
     ])
   })
 
