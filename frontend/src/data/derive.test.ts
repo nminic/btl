@@ -2097,6 +2097,47 @@ describe('the span of an event', () => {
     expect(twelfth.hidden).toBe(2)
   })
 
+  it('counts a bar it could not draw even where the lanes alone fill the day', () => {
+    /* **The question the owner's rule leaves open, asked outright: what happens when
+       more bars cross one day than a day has room for.** Measured over the served file
+       on 21.09.2026, the deepest stack anywhere in seventeen years is two, so nothing
+       in the data comes near this; what is held here is that the answer is the one the
+       day already had, which is „the rest are on the day's own page".
+
+       Seven bars all starting on the 12th, each one day longer than the last. On the
+       18th only the seventh is still running, so the six lanes over it are held open,
+       they fill the cap of five on their own, and the bar itself is cut off the day.
+
+       **This is also the one shape where counting lines and counting events part
+       company**, and until it was written the difference between them was a claim with
+       nothing behind it: with every held lane inside the cap the two arithmetics give
+       the same number, and a swap between them passed the whole series green
+       (mutation 8, 21.09.2026). */
+    /* Six bars that all end on the 12th and start a day apart, so they overlap there
+       and take six lanes in the order they start; then a seventh that starts on the
+       12th and runs on to the 20th, which lands it in the seventh lane. On the 13th
+       the six are over, their lanes are held open above the one still running, and the
+       five the day has room for are all of them empty. */
+    const events = Array.from({ length: 7 }, (_, index) => spanning(index + 1, '2027-05-01'))
+    const races = events.flatMap((event, index) => [
+      on(index * 2 + 1, event.id, `2027-05-${String(6 + index).padStart(2, '0')}`),
+      on(index * 2 + 2, event.id, index === 6 ? '2027-05-20' : '2027-05-12'),
+    ])
+    const month = monthDrawing(events, races, 2027, 5, 5)
+    const thirteenth = at(month, 12)
+
+    expect(thirteenth.drawn.map((one) => one.at)).toEqual([
+      'hollow',
+      'hollow',
+      'hollow',
+      'hollow',
+      'hollow',
+      /* and the bar itself, in the seventh lane, is past the cap */
+    ])
+    /* ONE event did not fit, and not the two the lines alone would say. */
+    expect(thirteenth.hidden).toBe(1)
+  })
+
   it('says an event is run on every day of its range, for the page that draws a day alone', () => {
     /* The grid sends a day with more on it than fits to a page of its own, so the two
        have to agree about what is on a day. */
