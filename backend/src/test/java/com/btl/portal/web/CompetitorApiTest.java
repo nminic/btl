@@ -207,8 +207,25 @@ class CompetitorApiTest {
 	/** The first season the league has, while it is running. */
 	private static final Instant DURING_2027 = Instant.parse("2027-06-15T12:00:00Z");
 
-	/** And the next one, which is the half of „the season that is running" that moves. */
-	private static final Instant DURING_2028 = Instant.parse("2028-06-15T12:00:00Z");
+	/**
+	 * AND THE NEXT ONE, HALF AN HOUR PAST MIDNIGHT IN BELGRADE AND HALF AN HOUR BEFORE
+	 * IT IN UTC, which is the half of „the season that is running" that moves.
+	 *
+	 * <p><b>It is the boundary rather than a day in June, and that is the second thing
+	 * it measures.</b> {@code ResultApiTest.NEW_YEARS_NIGHT} is the same instant for the
+	 * same reason: the clock this fixture hands the server reports {@link ZoneOffset#UTC},
+	 * as a container's does, so a resource that reads the server's own zone instead of the
+	 * league's calls this night 2027 while Belgrade is already in 2028.
+	 *
+	 * <p><b>It was a day in June until 21.09.2026 and the zone was not measured at all</b>:
+	 * review dropped {@code clock.withZone(SeasonClock.ZONE)} from
+	 * {@code CompetitorApi.theBandsSeason} and all thirty cases stayed green. The sentence
+	 * on {@link AClockTheCaseMoves} had been copied from {@code ResultApiTest} without the
+	 * moment that makes it true. {@code theBandMovesWithTheSeasonThatIsRunning} now stands
+	 * here and asks the clock itself whether the two zones still disagree.
+	 */
+	private static final Instant NEW_YEARS_NIGHT_INTO_2028 =
+			Instant.parse("2027-12-31T23:30:00Z");
 
 	/**
 	 * MID OCTOBER OF 2027, the one kind of moment where „which season" has two answers.
@@ -1536,6 +1553,20 @@ class CompetitorApiTest {
 	 * <p><b>Both states of the axis are here</b>, which is what makes it an axis: the
 	 * season is read once with 2027 running and once with 2028 running, and a resource
 	 * that ignores the clock cannot tell them apart.
+	 *
+	 * <p><b>AND THE SECOND OF THE TWO IS A NEW YEAR'S NIGHT, WHICH IS WHAT MAKES THE ZONE
+	 * MEASURED RATHER THAN BELIEVED.</b> This is the shape {@code ResultApiTest} carries -
+	 * a fake clock reporting UTC standing at {@code 2027-12-31T23:30:00Z}, which is already
+	 * 2028 in Belgrade - and the shape was copied here on 21.09.2026 WITHOUT that moment,
+	 * so {@code clock.withZone(SeasonClock.ZONE)} could be dropped from
+	 * {@code CompetitorApi.theBandsSeason} with the whole package staying green. Standing
+	 * on the boundary, dropping it answers 2027 and all three members below come back a
+	 * band short.
+	 *
+	 * <p><b>The floor asks the clock rather than remembering that it reports UTC.</b>
+	 * Moved off the boundary, or handed a clock already keeping the league's own time, this
+	 * case would quietly go back to measuring only that the year moved - which is what it
+	 * did until today - and the floor says so instead of passing.
 	 */
 	@Test
 	void theBandMovesWithTheSeasonThatIsRunning() throws Exception {
@@ -1549,10 +1580,17 @@ class CompetitorApiTest {
 				.contains(Map.entry("000111", "24-"), Map.entry("000112", "25-39"),
 						Map.entry("000113", "40-54"));
 
-		clock.moveTo(DURING_2028);
+		assertThat(NEW_YEARS_NIGHT_INTO_2028.atZone(clock.getZone()).getYear())
+				.as("the server's clock already reads this moment in the league's own year, so"
+						+ " the list below is answered the same whether the resource re-reads"
+						+ " the zone or not and the zone is not measured anywhere in this file")
+				.isNotEqualTo(NEW_YEARS_NIGHT_INTO_2028.atZone(SeasonClock.ZONE).getYear());
+
+		clock.moveTo(NEW_YEARS_NIGHT_INTO_2028);
 		assertThat(bands())
 				.as("a season went by and nobody changed band, so the band is worked out for a"
-						+ " season fixed in the code rather than for the one being run")
+						+ " season fixed in the code - or read in the server's own zone, which on"
+						+ " this night is still the season that has just ended")
 				.contains(Map.entry("000111", "25-39"), Map.entry("000112", "40-54"),
 						Map.entry("000113", "55+"));
 	}
@@ -1630,13 +1668,32 @@ class CompetitorApiTest {
 	 * {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther} holds to be exactly
 	 * the accounts in the database. So an eighth account added tomorrow is measured here
 	 * without anybody remembering this case.
+	 *
+	 * <p><b>The floor is over the BANDS and not over the number of records</b>, which is
+	 * the same difference {@code everyMemberIsAnsweredTheBandHisDateOfBirthPutsHimIn}
+	 * rests on. {@code bandsIn} keys the map by member number, so counting it counts
+	 * records: until 21.09.2026 this floor read {@code hasSize(4)} while claiming to
+	 * refuse an answer that carries no bands, and a server handing every record ONE
+	 * constant band satisfied both it and every comparison below. Review measured that
+	 * mutation failing eight cases in this file and NOT this one. What the comparisons
+	 * need is an answer that can disagree, so that is what is asked for.
 	 */
 	@Test
 	void everybodyIsAnsweredTheSameBands() throws Exception {
 		Map<String, String> asAVisitor = bands();
 
-		assertThat(asAVisitor).as("the visitor's answer carries no bands, so there is nothing"
-				+ " for the callers below to be compared against").hasSize(4);
+		assertThat(asAVisitor.values())
+				.as("a record came back carrying something that is not a band of the rulebook's,"
+						+ " so what the callers below are compared against is an absence rather"
+						+ " than the category Clan 74 makes public")
+				.isNotEmpty()
+				.allSatisfy(band -> assertThat(THE_BANDS_THE_RULEBOOK_HAS).contains(band));
+
+		assertThat(Set.copyOf(asAVisitor.values()))
+				.as("every record is answered one and the same band, so a server handing"
+						+ " everybody a constant satisfies every comparison below and this case"
+						+ " measures nothing but that the constant is the same constant")
+				.hasSizeGreaterThan(1);
 
 		List<String> everybody = new java.util.ArrayList<>(THE_ADMINISTRATION);
 		NOBODY_WHO_MAY_READ_THE_BASIS.stream().filter(one -> one != null).forEach(everybody::add);
@@ -1687,6 +1744,12 @@ class CompetitorApiTest {
 	 * whoever asks what season it is has to re-read the instant in the league's own time,
 	 * and a server that reads this zone instead answers 2027 on a night that is already
 	 * 2028 in Belgrade.
+	 *
+	 * <p><b>That night is {@link #NEW_YEARS_NIGHT_INTO_2028}, and it is named here because
+	 * the sentence above arrived without it.</b> A zone reported by a fake clock is not a
+	 * measurement on its own: every moment this file stood on read the same year in both
+	 * zones, so the sentence was true of the portal and untrue of the cases until
+	 * {@code theBandMovesWithTheSeasonThatIsRunning} was moved onto the boundary.
 	 */
 	static final class AClockTheCaseMoves extends Clock {
 
