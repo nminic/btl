@@ -18,6 +18,7 @@ import org.springframework.web.method.HandlerMethod;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
@@ -113,6 +114,21 @@ class TeamApiTest {
 
 	/** What a team whose seat names nobody answers the administration with (V11). */
 	private static final String NOBODY_IS_NAMED_TO_THIS_SEAT = "";
+
+	/**
+	 * WHAT V11 SAYS ABOUT AN EMPTY SEAT, QUOTED ONCE HERE AND NOWHERE ELSE IN THIS FILE.
+	 *
+	 * <p>It is a value and not a sentence in a comment, and that is the whole reason it
+	 * is here: a quotation drifts from the document it quotes, and nothing can check a
+	 * comment. {@code theV11ClauseThisCaseQuotesIsStillWhatTheMigrationSays} reads the
+	 * migration off the classpath and compares the two, so this string is the one home
+	 * of the clause and the javadoc below points at it rather than retyping it.
+	 */
+	private static final String V11_ON_THE_EMPTY_SEAT =
+			"It EMPTIES rather than blocking anything: when the seat is vacant the portal reads"
+					+ " the member who has been in the team longest, and that is a query, not a"
+					+ " column. So this says who was NAMED, and nothing here pretends it is always"
+					+ " somebody";
 
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
@@ -1076,15 +1092,15 @@ class TeamApiTest {
 	 * A SEAT THAT NAMES NOBODY IS ANSWERED EMPTY AND NEVER ABSENT, which is the third
 	 * sentence this field has to say and the one a boolean field never needs.
 	 *
-	 * <p>V11 made {@code team.admin_id} nullable on purpose - „It EMPTIES rather than
-	 * blocking anything: when the seat is vacant the portal reads the member who has
-	 * been in the team longest, and that is a query, not a column. So this says who was
-	 * NAMED, and nothing here pretends it is always somebody" - so the answer has three
-	 * things to say: „I am not telling you", „nobody is named to this seat", and a
-	 * number. Absent is the first and the empty string is the second, which is also the
-	 * shape the portal already reads: the served file writes {@code ""} for the team
-	 * that has none and {@code frontend/src/data/types.ts} types the field
-	 * {@code string}, not {@code string | null}.
+	 * <p>V11 made {@code team.admin_id} nullable on purpose, and what it says about that
+	 * is {@link #V11_ON_THE_EMPTY_SEAT}, quoted there once instead of being retyped here
+	 * so that {@code theV11ClauseThisCaseQuotesIsStillWhatTheMigrationSays} can hold it
+	 * against the migration itself. So the answer has three things to say: „I am not
+	 * telling you", „nobody is named to this seat", and a number. Absent is the first
+	 * and the empty string is the second, which is also the shape the portal already
+	 * reads: the served file writes {@code ""} for the team that has none and
+	 * {@code frontend/src/data/types.ts} types the field {@code string}, not
+	 * {@code string | null}.
 	 *
 	 * <p><b>Answered null the second would arrive spelt as the first</b>, because
 	 * {@code @JsonInclude} takes the key out - and the administration would be told „you
@@ -1125,6 +1141,72 @@ class TeamApiTest {
 							administration)
 					.isEqualTo(NOBODY_IS_NAMED_TO_THIS_SEAT);
 		}
+	}
+
+	/**
+	 * AND THE CLAUSE THE CASE ABOVE QUOTES IS STILL WHAT THE MIGRATION SAYS.
+	 *
+	 * <p><b>Written because that claim had no floor.</b> The case above quotes V11 and
+	 * says the quote is whole; until this one existed a line could be taken out of
+	 * {@link #V11_ON_THE_EMPTY_SEAT} and the whole suite stayed green. That is the very
+	 * defect the quote is about: what stood here until 21.09.2026 stopped at the colon,
+	 * one clause short of the sentence that overturns it, and nothing said so.
+	 *
+	 * <p><b>The migration is read off the CLASSPATH and never off a path written here.</b>
+	 * {@code src/main/resources} is on the test classpath already, so this adds no file
+	 * and nothing to the build, and there is no working directory to keep right. It is
+	 * the file system answering a question about a file, which is the one thing that
+	 * cannot be wrong about it.
+	 *
+	 * <p><b>Compared as EQUALITY against the tail of that comment, and that is what makes
+	 * it WHOLE rather than merely present.</b> {@code contains} is satisfied by one word
+	 * that happens to be in the file, and by the empty string, so it would pass on
+	 * exactly the cut quote this exists to refuse. Equality against everything from the
+	 * quote's own opening words to the end of the comment is satisfied by nothing but
+	 * the whole clause. Whitespace is flattened on both sides, because the migration
+	 * wraps the sentence over four lines inside a comment frame and this file wraps it
+	 * again, and a quotation is not less faithful for being broken differently.
+	 *
+	 * <p><b>The opening words are taken from the quote itself</b> rather than written out
+	 * a second time, so there is no list here to fall out of step with it.
+	 */
+	@Test
+	void theV11ClauseThisCaseQuotesIsStillWhatTheMigrationSays() throws Exception {
+		String migration = "/db/migration/V11__team_and_membership.sql";
+		String sql;
+
+		try (InputStream open = getClass().getResourceAsStream(migration)) {
+			assertThat(open).as("%s is not on the classpath, so this case compares nothing",
+					migration).isNotNull();
+			sql = new String(open.readAllBytes(), StandardCharsets.UTF_8);
+		}
+
+		int column = sql.indexOf("admin_id");
+		assertThat(column).as("%s no longer names an admin_id column, so there is no comment on"
+				+ " one to quote", migration).isNotNegative();
+
+		String above = sql.substring(0, column);
+		int closes = above.lastIndexOf("*/");
+		int opens = above.lastIndexOf("/*", closes);
+		assertThat(opens).as("the admin_id column of %s no longer carries a comment above it, so"
+				+ " there is nothing there to quote", migration).isNotNegative();
+
+		String says = above.substring(opens + 2, closes).replaceAll("\\s+", " ").trim();
+
+		String opening = String.join(" ", java.util.Arrays.stream(
+				V11_ON_THE_EMPTY_SEAT.split(" ")).limit(4).toList());
+		int quoted = says.indexOf(opening);
+		assertThat(quoted).as("the comment on admin_id in %s does not open the quoted clause with"
+						+ " „%s\" any more, so what this file quotes is not in the migration at"
+						+ " all", migration, opening)
+				.isNotNegative();
+
+		assertThat(says.substring(quoted))
+				.as("what this file quotes as V11 and what %s actually says have come apart. The"
+						+ " quote has to run to the END of that comment, which is the whole point:"
+						+ " it used to stop at the colon and leave out the clause saying the"
+						+ " portal still reads an administrator when the seat is empty", migration)
+				.isEqualTo(V11_ON_THE_EMPTY_SEAT + ".");
 	}
 
 	/**
