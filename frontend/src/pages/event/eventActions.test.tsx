@@ -1,4 +1,4 @@
-import { SEVERAL_SCREENS } from '../../test/slow'
+import { SLOW } from '../../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
@@ -15,6 +15,23 @@ import { nextSeason } from '../admin/nextSeason'
  * 03.08.2026): copied and deleted by whoever administers events, and reported a
  * result on by whoever is signed in.
  */
+
+/**
+ * How long a case in this file is given, which is twice what a case drawing one screen gets.
+ *
+ * **It also keeps the failure readable, and that part is measured rather than reasoned.**
+ * `asyncUtilTimeout` stays at `SLOW` (`test/setup.ts`), below the case's own clock. Asking one
+ * case here for a button that does not exist prints, on this clock,
+ * `Unable to find role="button" and name "…"`; on `SLOW` the same miss prints
+ * `Test timed out in 20000ms` and names nothing, because the query and the case die at the same
+ * instant. That is the fault `publicScreens.test.tsx` answers with `SLOW / 4` from the other side.
+ *
+ * `SLOW` stays the one home of the number (ADL A31); this is derived from it rather than a
+ * second threshold written out by hand. Named for what separates these cases from the one
+ * screen case `SLOW` was written for, and not `WALKED`, which `member/oneQuestion.test.tsx`
+ * already uses for a list of screens.
+ */
+const SEVERAL_SCREENS = SLOW * 2
 
 /** An event with races on it, by the address the calendar links to. */
 const EVENT = '/sr/kalendar/maraton-maratona-2015'

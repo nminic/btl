@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
-import { SEVERAL_SCREENS } from '../test/slow'
+import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useClock } from '../clock/useClock'
 import { recordKey } from '../session/context'
@@ -21,10 +21,8 @@ import { useSession } from '../session/useSession'
  * member's mail, and the notice is in a third member's.
  */
 
-/*
+/**
  * How long a case in this file is given, which is twice what a case drawing one screen gets.
- * The number itself lives in `test/slow.ts` as `SEVERAL_SCREENS`, where two more files read it;
- * what follows is the measurement that put it there, kept beside the cases it was measured on.
  *
  * **The work was measured before the number was touched, and there is nothing to take out.**
  * Thirty four cases, 21.09.2026: 92,5% of the time inside them is 186 `user.click`, 134 `findBy`,
@@ -68,6 +66,7 @@ import { useSession } from '../session/useSession'
  * `SLOW` was written for, and not `WALKED`, which `member/oneQuestion.test.tsx` already uses for
  * a list of screens.
  */
+const SEVERAL_SCREENS = SLOW * 2
 
 /** The reader becomes somebody else inside one visit. */
 function Become({ who }: { who: string }) {
