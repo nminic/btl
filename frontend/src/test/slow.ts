@@ -42,3 +42,37 @@
  * failed, and no more.
  */
 export const SLOW = 20_000
+
+/**
+ * How long a case is given when it does not draw one screen but walks through several.
+ *
+ * **`SLOW` is one screen's worth**, and everything measured above it is one screen's: a case
+ * that draws a page and reads it. A case that presses on through four or five pages pays that
+ * cost once per page, so what it needs is a multiple rather than a bigger single screen figure.
+ * Twice, so the number keeps one home and is derived rather than typed out a second time
+ * (ADL A31). Vitest's own default stays where it is, which ADL A2 keeps as a performance budget:
+ * a case that stays on one screen and is slow is exactly what that budget exists to show.
+ *
+ * **Which cases carry it is measured, not felt.** A case walks if it leaves the screen it
+ * started on, and that is read off the heading of the screen while the case runs rather than out
+ * of the source, across all 2933 cases of the suite on 21.09.2026.
+ *
+ * In the two files this was written for the split is now exact: every walk carries this and no
+ * single screen case does, nine of fifty seven in `memberFlows.test.tsx` and fourteen of twenty
+ * six in `event/eventActions.test.tsx`. Only three of each were marked before, and the unmarked
+ * ones were the ones sitting closest to red: under sixty processes burning the processor
+ * `eventActions > keeps the structure` reached 4999 ms against the default 5000, while the
+ * marked case in the same file used 14647 of its 20000. So the clock had been handed out to
+ * whichever case had gone red once, rather than to the kind of case that needs it.
+ *
+ * **It is not exact anywhere else, and that is left alone rather than claimed.**
+ * `teamInvite.test.tsx` carries this on two cases that never leave their screen (217 and 170 ms),
+ * which came with the change that introduced the constant. Across the whole suite the rule does
+ * not hold at all: twenty three files hold a walk on the default clock and twenty one hold a
+ * single screen case on a raised one. Measured and written down in the pull request, not swept
+ * up here, because that is a change to files this one has no reason to touch.
+ *
+ * Named for what separates these cases from the one screen case `SLOW` was written for, and not
+ * `WALKED`, which `member/oneQuestion.test.tsx` already uses for a list of screens.
+ */
+export const SEVERAL_SCREENS = SLOW * 2
