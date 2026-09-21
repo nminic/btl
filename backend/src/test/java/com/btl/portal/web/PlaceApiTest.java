@@ -19,15 +19,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * THE SERVER'S ANSWER IS THE FILE THE PORTAL SHIPPED.
  *
  * <p>Until 21.09.2026 the portal fetched its resources out of {@code /mock}, one
- * constant deciding where from; PR 340 (ADL A50) replaced that constant with
- * {@code /api}, carrying fourteen resources across in one commit with nothing else
- * in the application changing. That promise was only worth as much as the answers
- * being the same, and this is the one kind of case that could say so: not "the
- * shape looks right", but the bytes, all forty-seven thousand rows of them, in the
- * same order. The same comparison keeps running now that the day has passed,
- * against the file kept as the shipped catalogue's own frozen copy, so a server
- * answer that drifts from it is caught whether the drift happens before
- * {@code BASE} moved or after.
+ * constant deciding where from. PR 340 (ADL A50) replaced that constant with
+ * {@code /api} for all fourteen resources in one commit, but "one constant and
+ * nothing else" was not the whole of it: {@code data/client.ts} names four other
+ * things that same commit had to change, because several answers had grown a
+ * shape {@code /mock} never carried. Places was not one of them - the promise
+ * was kept here, and this is the one kind of case that can say so: not "the
+ * shape looks right", but the bytes, all forty-seven thousand rows of them, in
+ * the same order. The same comparison keeps running now that the day has
+ * passed, against the file kept as the shipped catalogue's own frozen copy, so
+ * a server answer that drifts from it is caught whether the drift happens
+ * before {@code BASE} moved or after.
  *
  * <p>It also measures more than it looks like it does. The order is the answer
  * for this resource, the compact array shape is a decision about its size, and

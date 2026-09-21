@@ -67,8 +67,9 @@ import java.util.List;
  * says "first" and none is needed. The order cannot drift either, and that is
  * the same foreign key: it may not cascade an update, so a member who is in a
  * pair cannot have his gender changed until the pair is gone (V12 says so in as
- * many words). The two pairs the portal serves today are both written man first,
- * which is the same answer from the other side.
+ * many words). The pairs {@code /api/pairs} answers with today - two, as many
+ * as {@code racing_pair} holds - are both written man first, which is the same
+ * answer from the other side.
  *
  * <p>Why a settled order is worth saying out loud: the board of best pairs
  * breaks its last tie on {@code memberNumbers[0]} and keeps the written order
