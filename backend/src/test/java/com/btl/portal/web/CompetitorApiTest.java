@@ -254,7 +254,21 @@ class CompetitorApiTest {
 		   nothing. The moderator is a member, so a resource serving him his own basis
 		   instead of each row's has something wrong to serve. */
 		account(THE_MODERATOR_OVER_THE_MEMBERS, "moderator");
-		ticked(THE_MODERATOR_OVER_THE_MEMBERS, CompetitorApi.OVER_THE_MEMBERS);
+		/* THE BOX IS TICKED WITH THE WORD V5 WRITES AND NOT WITH THE CONSTANT THE
+		   RESOURCE ASKS BY, and that is the difference between measuring two things and
+		   measuring one twice. Taken from `CompetitorApi.OVER_THE_MEMBERS`, a misspelt
+		   constant would tick the misspelt box and this moderator would be answered
+		   exactly the same either way - one value in two roles, so right and wrong give
+		   the same list. Written out, the two are independent: a constant that drifts
+		   leaves this tick where it is, the moderator is refused and the SUPERADMIN is
+		   let through, and that is the leak `RightIsNeeded` describes.
+
+		   Measured, rather than argued: with the two tied together, misspelling the
+		   constant was caught by `account_admin_right_right_fk` refusing the fixture, so
+		   all 21 cases errored before one of them ran. Written apart, the same mutation
+		   is caught by two cases asserting behaviour. Its own floor is that same foreign
+		   key, which refuses a word `admin_right` does not hold. */
+		ticked(THE_MODERATOR_OVER_THE_MEMBERS, "entity:members");
 		belongsTo(THE_MODERATOR_OVER_THE_MEMBERS, "000031");
 
 		account(THE_SUPERADMIN, "superadmin");
@@ -814,11 +828,15 @@ class CompetitorApiTest {
 		/* AND HE HOLDS NOTHING OVER THE MEMBERS, which this case has said since the
 		   basis started leaving to the administration. Without the line, ticking that
 		   box for him tomorrow would turn the sentence above into a different one and
-		   nothing would say so. */
+		   nothing would say so.
+
+		   The word and not `CompetitorApi.OVER_THE_MEMBERS`, for the reason written
+		   beside the tick in the fixture: this is a sentence about the FIXTURE, and
+		   read through the constant it would go on passing while the constant drifted. */
 		assertThat(db.sql("select count(*) from account_admin_right"
 						+ " where account_id = (select id from account where email = ?)"
 						+ " and right_code = ?")
-				.params(RACES_FOR_NOBODY, CompetitorApi.OVER_THE_MEMBERS)
+				.params(RACES_FOR_NOBODY, "entity:members")
 				.query(Integer.class).single())
 				.as("this moderator holds the right over the members after all, so he is no longer"
 						+ " answered what a visitor is for a reason that has nothing to do with"
