@@ -406,6 +406,29 @@ class VerificationWriteApiTest {
 		assertThat(db.sql("select count(*) from message").query(Integer.class).single()).isZero();
 	}
 
+	/**
+	 * AND NOTHING IS HELD IN A TAB THIS ROUTE CANNOT ANSWER.
+	 *
+	 * <p>Without this a moderator of payments takes an item, is told he has fifteen minutes,
+	 * and at the end of them is refused 409 whatever he presses. That is the same refusal he
+	 * would have had at once, delivered a quarter of an hour late and after he has read the
+	 * thing. The superadmin is asked here because he holds every tab, so the refusal cannot
+	 * be his rights - it is the tab.
+	 */
+	@Test
+	void nothingIsHeldInATabThisRouteCannotAnswer() throws Exception {
+		long payment = db.sql("select id from verification where queue = 'payments'"
+				+ " and state = 'waiting' order by id limit 1").query(Long.class).single();
+
+		assertThat(take(THE_SUPERADMIN, payment)).isEqualTo(409);
+		assertThat(holdsOn(payment)).isZero();
+
+		assertThat(take(THE_SUPERADMIN, anasText))
+				.as("the superadmin cannot hold anything at all, so the refusal above is not"
+						+ " about the tab")
+				.isEqualTo(200);
+	}
+
 	@Test
 	void nothingIsHeldInOrderToBeReadOnceItHasBeenAnswered() throws Exception {
 		assertThat(take(PROFILES_MODERATOR, alreadyAnswered)).isEqualTo(409);
@@ -472,6 +495,38 @@ class VerificationWriteApiTest {
 	 * reaches the method at all: a missing or unreadable one is refused by the chain, which
 	 * is why the route carries no null check over it.
 	 */
+	/**
+	 * THE FORM IS NOT SPOKEN OF TO SOMEBODY WHO MAY NOT DECIDE, and this is a leak rather
+	 * than a tidiness.
+	 *
+	 * <p>Asked the other way round - the body checked before the door - a plain competitor
+	 * sending an empty object was answered 400 while the same body on an address that maps
+	 * nothing was answered 404. One request, and he has learnt that an administrative action
+	 * lives there, which ADL A8 forbids in as many words: „ne sme ni da sazna da radnja
+	 * postoji". The bytes of that difference are measured over a socket in
+	 * {@code RightsOverRealHttpTest}; what is held here is the order of the two checks.
+	 *
+	 * <p><b>Both askers are refused for different reasons and must answer alike:</b> the
+	 * competitor holds nothing, the comments moderator holds a tab that is not this row's.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {A_COMPETITOR, COMMENTS_MODERATOR})
+	void aFormThatSaysNothingIsNotSpokenOfToSomebodyWhoMayNotDecide(String asker) throws Exception {
+		assertThat(http.perform(asking(asker, post(decision(anasText)))
+						.contentType(MediaType.APPLICATION_JSON).content("{}"))
+				.andReturn().getResponse().getStatus())
+				.as("an incomplete form is answered about before the door is, so the refusal"
+						+ " tells him the route is there")
+				.isEqualTo(404);
+
+		assertThat(http.perform(asking(PROFILES_MODERATOR, post(decision(anasText)))
+						.contentType(MediaType.APPLICATION_JSON).content("{}"))
+				.andReturn().getResponse().getStatus())
+				.as("nobody at all is told 400 for an empty form, so the two answers above are"
+						+ " equal for a reason that has nothing to do with the door")
+				.isEqualTo(400);
+	}
+
 	@Test
 	void aBodyThatSaysNothingAtAllIsNotADecision() throws Exception {
 		assertThat(http.perform(asking(PROFILES_MODERATOR, post(decision(anasText)))
