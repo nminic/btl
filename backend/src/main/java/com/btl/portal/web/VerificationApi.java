@@ -148,8 +148,8 @@ import java.util.Map;
  * <p><b>WHAT THE SCHEMA HAS NOWHERE TO HOLD IS LEFT OUT AND NAMED, never invented.</b> V9
  * says what it is and is not: „What this table is NOT. It does not model what each tab is
  * about... What it holds is the part every tab shares: who it is about, what was
- * proposed, and what a moderator decided." The file the portal serves today carries
- * twelve fields more - the sort of item, the name of whoever sent it in beside the
+ * proposed, and what a moderator decided." The file the portal served until 21.09.2026
+ * carries twelve fields more - the sort of item, the name of whoever sent it in beside the
  * subject, the id of what an approval writes about, the picture and its crop, the two
  * dates a reported change of term carries, the three marks of a comment, and the address,
  * town and country of a registration - and there is no column for any of them.
@@ -160,9 +160,10 @@ import java.util.Map;
  * <p><b>And the two pointers V10 and V11 added are left out too, which is a decision
  * rather than an oversight.</b> {@code result_submission_id} and {@code team_proposal_id}
  * exist for what an APPROVAL writes, and this increment writes nothing: the layer of
- * 13.09.2026 „ne uvodi nijedan upis" (ADL A8), and the screen that will need them is not
- * switched to this endpoint (A50 - the portal changes files once, together, when every
- * resource exists). ADL P-javno's rule is to leave out rather than to serve „za svaki
+ * 13.09.2026 „ne uvodi nijedan upis" (ADL A8), and the screen that will need them does
+ * not exist yet. That is no longer a day owed on A50's calendar - PR 340 moved every
+ * resource to {@code /api} on 21.09.2026 - it is a screen nobody has built, which is a
+ * different debt. ADL P-javno's rule is to leave out rather than to serve „za svaki
  * slučaj", so they wait for the increment that has a use for them.
  *
  * <p><b>The picture is answered as the id of a row in {@code photo}</b>, which is a name

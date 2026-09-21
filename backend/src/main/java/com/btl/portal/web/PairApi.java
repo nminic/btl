@@ -19,9 +19,9 @@ import java.util.List;
  * nabraja, i nista vise. Sve ostalo ceka resurs koji zna ko pita."
  *
  * <p><b>AND THE DAY THE PAIR WAS MADE DOES NOT LEAVE, which is the one omission
- * here and the reason this class carries a note as long as the query.</b> What
- * the portal serves today ({@code mock/pairs.json}) carries {@code since}, and
- * {@code profile/RacingPairLine.tsx} draws it on a profile - anybody's profile,
+ * here and the reason this class carries a note as long as the query.</b> Until
+ * 21.09.2026, what the portal served ({@code mock/pairs.json}) carried {@code since},
+ * and {@code profile/RacingPairLine.tsx} drew it on a profile - anybody's profile,
  * not only the member's own. Article 73 names a day exactly once, and it is the
  * day of a verified RESULT („Svi verifikovani rezultati sa duzinom, usponom,
  * spustom, vremenom i datumom"). The day two people became a pair is not on the
@@ -43,10 +43,13 @@ import java.util.List;
  * par nastao se ne prikazuje NIKOME. Server ga ne vraca, i kad se `/mock` ugasi
  * sklanja se i sa ekrana. Ostaje samo da su njih dvoje par."</b> (PDL). So the day
  * does not come back when this resource learns who is asking either - there is
- * nobody it may be answered to - and what is owed is on the portal's side of the
- * line: the profile loses its date when {@code /mock} goes. Nothing is blank today,
- * because the portal stays on its own files until every resource exists and then
- * switches once (A50).
+ * nobody it may be answered to - and what was owed was on the portal's side of
+ * the line: the profile lost its date when {@code /mock} went, on 21.09.2026
+ * (PR 340). Nothing was blank before that day, because the portal stayed on its
+ * own files, together, until every resource existed, and then switched once, as
+ * A50 required; {@code data/types.ts} now answers {@code id}, {@code season} and
+ * the two member numbers and nothing else, which is the same correction in the
+ * same tense as its own twin in {@code RacingPairLine.tsx}.
  *
  * <p><b>AND THAT IS WHY THIS RESOURCE DOES NOT ASK WHO IS ASKING, while
  * {@code CompetitorApi} and {@code TeamApi} began to on 20.09.2026.</b> P-javno
