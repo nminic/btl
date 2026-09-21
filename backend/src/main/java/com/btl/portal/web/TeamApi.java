@@ -91,17 +91,27 @@ import java.util.Optional;
  * appoint it, so that reason does not carry across and the choice does not follow from
  * it. What carries across is only the vocabulary, above.
  *
- * <p><b>AND ONE DEBT THE PORTAL OWES THE DAY THE MOCK IS SWITCHED OFF, written where
- * whoever switches it off will be standing.</b> {@code frontend/src/data/types.ts}
- * types this field {@code organizerMemberNumber: string} - REQUIRED, and neither
- * optional nor nullable - while the answer leaves the key out for four of the five
- * callers and, since 21.09.2026, may carry null for the fifth. Nothing is broken today
- * because the portal still reads {@code /mock} (ADL A50) and the served file writes a
- * string on every record. On the first day it reads this resource the type has to
- * become {@code organizerMemberNumber?: string | null}, and the two halves are two
- * different sentences: the {@code ?} is „I am not telling you" and the {@code null} is
- * „somebody holds it whom I cannot name". The frontend is not touched by this
- * increment; this paragraph is the whole of what it is owed.
+ * <p><b>THE DEBT THIS ONCE NAMED WAS PAID ON 21.09.2026, AND THE SENTENCE IS PUT IN THE
+ * PAST RATHER THAN DELETED.</b> What stood here said that the portal „still reads
+ * {@code /mock} (ADL A50) and the served file writes a string on every record", so
+ * nothing was broken by {@code frontend/src/data/types.ts} typing the seat
+ * {@code organizerMemberNumber: string} - required, neither optional nor nullable -
+ * while the answer leaves the key out for four of the five callers and may carry null
+ * for the fifth. <b>Both halves of that stopped being true in one commit.</b> PR 340
+ * moved the portal's {@code BASE} from {@code /mock} to {@code /api}, so no screen reads
+ * the served file at all, and the same commit loosened the type to
+ * {@code organizerMemberNumber?: string | null} - which is, word for word, what this
+ * paragraph said the first such day would require. Left standing it would read as a debt
+ * still owed and send the next reader to pay it twice.
+ *
+ * <p><b>What IS owed, since this increment, is the field below it</b>, and it is named
+ * here because this is where the last one was: {@code administeredByMe} is answered by
+ * this resource and appears in neither {@code frontend/src/data/types.ts} nor
+ * {@code frontend/src/data/teamAdmin.ts}, which goes on working the rule out for itself
+ * off a seat a member is not told. The portal is not touched by this increment - taking
+ * {@code foundedByMe} out from under {@code teamAdmin.ts} while it still reads it would
+ * drop every member through to the arm that reads the seat, which is the hole this whole
+ * increment closes - so this paragraph is the whole of what it is owed.
  *
  * <p><b>AND SINCE 21.09.2026 IT DOES LEAVE TO THE ADMINISTRATION, which is the
  * other half of the same decision rather than a hole in it.</b> ADL, 13.09.2026:
@@ -189,27 +199,40 @@ import java.util.Optional;
  * {@code foundedByMe} is that, and it is the number reduced to what Article 73 lets
  * the reader have - nothing about anybody else at all.
  *
- * <p><b>AND IT IS THE STORED FACT, NOT THE STANDING RULE, WHICH IS A BOUNDARY AND
- * IS WRITTEN DOWN RATHER THAN LEFT TO BE FOUND.</b> Who ADMINISTERS a team is more
- * than who founded it: „Administrator tima je onaj ko je tim osnovao. Kad se mesto
- * isprazni, po podrazumevanom ga preuzima clan koji je najduze u timu, dakle
- * najraniji `teamSince`, a kod izjednacenja manji broj clana" (owner, PDL,
- * 04.09.2026). The second half of that sentence is worked out from the roster and
- * lives in {@code frontend/src/data/teamAdmin.ts}; this resource does not repeat it,
- * because two homes for one rule drift and the other home is the one the owner's
- * decision was written against.
+ * <p><b>AND SINCE 21.09.2026 THE STANDING RULE IS ANSWERED TOO, WHICH IS THIS PARAGRAPH
+ * REVERSED RATHER THAN EXTENDED.</b> What stood here said that who ADMINISTERS a team is
+ * more than who founded it - „Administrator tima je onaj ko je tim osnovao. Kad se mesto
+ * isprazni, po podrazumevanom ga preuzima clan koji je najduze u timu, dakle najraniji
+ * {@code teamSince}, a kod izjednacenja manji broj clana" (owner, PDL:6428, 04.09.2026)
+ * - and that the second half of it „is worked out from the roster and lives in
+ * {@code frontend/src/data/teamAdmin.ts}; this resource does not repeat it, because two
+ * homes for one rule drift". <b>The reason was right and the conclusion is now the
+ * opposite one</b>, because the other home stopped being able to hold it: a member is
+ * answered no seat, so a rule worked out from the seat fell through to „whoever has been
+ * here longest" and handed the team to somebody who had not founded it. Measured on the
+ * shipped data, 21.09.2026: {@code nisavski-maraton-klub}'s seat names {@code 000005},
+ * who joined in 2022, while FOUR members joined in 2017 - {@code 000011}, {@code 000017},
+ * {@code 000023} and {@code 000029} - so it was the tie break on the member number that
+ * picked one of them, and {@code 000011} was given the edit screen, the delete and the
+ * answering of applications. The half of the rule that looks like a detail is the half
+ * that decided who got the team.
  *
- * <p><b>Which leaves exactly one thing owed, and it is smaller than it was.</b> What
- * stood here said the portal cannot tell whether a seat is EMPTY once the number is
- * gone. Since 21.09.2026 the ADMINISTRATION can tell whether it NAMES anybody - that
- * is what the empty string above says, and it is the state {@code teamAdmin.ts} opens
- * with - so what is still owed is the same question asked by a MEMBER, who is answered
- * {@code foundedByMe} and nothing else. {@code false} tells him „the seat is not
- * yours" and cannot tell him „and it names nobody". It is named here, and in
- * {@code TeamApiTest}, rather than guessed at: either this answers a second
- * condition beside the one below, or
- * the standing rule moves here whole. That is a decision about where a rule lives
- * and it is the owner's to make.
+ * <p><b>So the rule MOVES here whole rather than being answered in halves</b>, and that
+ * is the owner's decision of 21.09.2026 and not a repair chosen here: „Server primenjuje
+ * <b>celo</b> pravilo od 04.09.2026 i odgovara <b>jednim poljem</b>, tacno u obliku koji
+ * {@code foundedByMe} vec ima... a <b>niko ne saznaje ko u sedistu sedi</b>, pa odluka od
+ * 13.09.2026 nije dirnuta." {@code administeredByMe} is that field. The shape he refused
+ * is named with it, so nobody re-proposes it: a field saying only „this seat is empty"
+ * was rejected because a member would learn a fact about the team he is not given today,
+ * and the rule of inheritance would go on living in two places.
+ *
+ * <p><b>Which leaves the two fields saying two different things about one record, on
+ * purpose.</b> {@code foundedByMe} is the SEAT - „your key is the one in it" - and
+ * {@code administeredByMe} is the RIGHT. They disagree in both directions and the
+ * fixture holds both: the member whose fee has lapsed is told the seat of
+ * {@code klub-lovcen} is his and that he does not administer it, and the member who
+ * founded nothing is told the opposite about the same team. A single field would have
+ * had to lose one of those two sentences.
  *
  * <p><b>AND NEITHER DO THE MEMBERS OF THE TEAM</b>, although they are public.
  * Article 73 does make them public and this resource still does not carry them,
@@ -223,6 +246,18 @@ import java.util.Optional;
  * that has to be remembered every time the first one changes. So a member of a team
  * is named in no answer of this resource at all, to anybody.
  *
+ * <p><b>SINCE 21.09.2026 THE ROSTER IS READ HERE, AND THE DIFFERENCE BETWEEN READING IT
+ * AND ANSWERING WITH IT IS THE WHOLE OF THE SENTENCE ABOVE.</b> What stood here was „nothing
+ * is joined to {@code team_membership}", and the field below joins it: the standing rule
+ * asks who has been in this team longest, and there is no other table that knows. What has
+ * not moved is the answer - no member of a team is named in it, to anybody, and
+ * {@code noMemberNumberLeavesTheServer} asks that of the whole TEXT rather than of a field
+ * name, so it holds however the join is written. The rule the paragraph above gives for a
+ * second home is kept rather than broken: the roster is read under EXACTLY the filter that
+ * paragraph names („filtered to the members whose fee is standing"), it is read as a
+ * condition and never as a value, and the one thing that leaves is a boolean about the
+ * caller.
+ *
  * <p><b>Which makes the whole-text floor a floor over WHO IS ASKING, since
  * 21.09.2026.</b> {@code TeamApiTest.noMemberNumberLeavesTheServer} asked the answer
  * for every member number in the database and required it to carry none, over the
@@ -232,7 +267,10 @@ import java.util.Optional;
  * signed in moderator who does not hold {@link #OVER_THE_TEAMS} - and of the
  * administration it asks the one thing that is now true instead: the numbers it may
  * read are the seats and no others, so every member number that is in no team's seat
- * is still absent from its answer. The roster is the door that stays shut in both.
+ * is still absent from its answer. The roster is the door that stays shut in both -
+ * and since the field below reads that table, this is the case that says the reading
+ * is a condition: every member of a team who is in no seat is in the query and in no
+ * answer.
  *
  * <p><b>AND THE MARK DOES LEAVE SINCE 21.09.2026, WHICH IS THIS PARAGRAPH
  * REVERSED RATHER THAN EXTENDED.</b> What stood here said the mark could not
@@ -384,7 +422,22 @@ class TeamApi {
 	 *                    and ABSENT - not null, and not false - from every answer
 	 *                    nobody signed in asked for. False and absent are two
 	 *                    different sentences: „you did not found this" and „I do not
-	 *                    know who you are", and a visitor must be told the second
+	 *                    know who you are", and a visitor must be told the second.
+	 *                    <b>It is the SEAT and never the right</b>: the seat may name
+	 *                    somebody who no longer administers the team, so a screen
+	 *                    asking „may I" reads the field below instead
+	 * @param administeredByMe whether the one asking ADMINISTERS this team, which is the
+	 *                    whole of the owner's rule of 04.09.2026 worked out here rather
+	 *                    than handed over as material: the member the seat names while he
+	 *                    is still a standing member of this team, and otherwise the
+	 *                    standing member who has been in it longest, the smaller member
+	 *                    number breaking a tie. Absent in exactly the same places
+	 *                    {@code foundedByMe} is absent and for the same reason, which is
+	 *                    the shape the owner asked for by name on 21.09.2026 - „tacno u
+	 *                    obliku koji {@code foundedByMe} vec ima". <b>It names nobody</b>:
+	 *                    false is „not you" and never „it is him", so a member learns no
+	 *                    fact about the team he is not given today and the decision of
+	 *                    13.09.2026 is untouched
 	 * @param organizerMemberNumber who sits in this team's seat, said in FOUR shapes
 	 *                    because the seat has four states and no two of them may read
 	 *                    alike. The Java {@code null} is the key ABSENT, which is
@@ -403,6 +456,7 @@ class TeamApi {
 	record Team(long id, String slug, String name, String city, String country, String bio,
 			String logo, Crop crop,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe,
+			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean administeredByMe,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> organizerMemberNumber) {
 	}
 
@@ -444,7 +498,52 @@ class TeamApi {
 		   taking the guard away fails both. */
 		boolean administration = member != null && mayHe.may(member, OVER_THE_TEAMS);
 
-		return db.sql("select t.id, t.slug, t.name,"
+		return db.sql(
+						/* WHO IS A STANDING MEMBER OF WHICH TEAM, WRITTEN ONCE BECAUSE THE RULE
+						   BELOW ASKS IT TWICE. „Administrator tima je onaj ko je tim osnovao. Kad
+						   se mesto isprazni, po podrazumevanom ga preuzima clan koji je najduze u
+						   timu" (owner, PDL:6428, 04.09.2026) asks the same question of the man in
+						   the seat and of everybody who might take it from him, and a condition
+						   written twice is a condition that drifts on one of the two days it is
+						   edited. THIS IS THE ONLY PLACE THE ROSTER IS READ, and it is read as a
+						   condition: nothing off it reaches the answer.
+
+						   THE MEMBERSHIP THAT HAS NOT ENDED, and never a membership that has.
+						   V11 writes `season_to` as „the last season he is in it, or empty while
+						   he still is", so a row with one is somebody who LEFT, and PDL:2429 says
+						   what that does to the seat in as many words: a departed administrator
+						   „biva isto sto i kad je otisao sam", the title passes on.
+
+						   AND THE SEASON IS NOT ASKED ABOUT AT ALL, which is a decision and not an
+						   omission. PDL:6348, 05.09.2026: „„Nema tim" se cita sa zapisa (`teamId`),
+						   ne po sezoni", with the boundary drawn in both directions and a named
+						   case on each side. It has teeth here rather than being a nicety:
+						   `team_membership_season_from_not_before_the_league` (V11) refuses
+						   anything before 2027, so on any day of 2026 a condition written
+						   `season_from <= <this year>` answers FALSE to every member of every team
+						   in the league, and nothing but a case about a future membership would
+						   say so.
+
+						   AND THE FEE, WHICH IS THE OWNER'S RULE OF 19.09.2026 ARRIVING HERE:
+						   „Clan kome je istekla clanarina... se sve akcije za njega brane"
+						   (PDL:2301). Administering a team is such an action. It is also what
+						   `/api/competitors` already does to the roster `teamAdmin.ts` read this
+						   rule off, so the server and the screen agree rather than differing by a
+						   condition.
+
+						   AND A MEMBER NUMBER, WHICH IS THE RULE'S OWN WORD: the tie is broken by
+						   „manji broj clana", and a row with no number has no place in that order.
+						   `competitor.member_number` is nullable since V16 - „a row in `competitor`
+						   is a PERSON WHO REGISTERED. A MEMBER is a row whose `member_number` is
+						   there" - and nothing ties that column to `active`, so the two conditions
+						   are independent and the fixture holds a row that satisfies one and not
+						   the other. */
+						"with standing as ("
+						+ " select m.team_id, c.id, c.member_number, m.season_from"
+						+ " from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " where m.season_to is null and c.active and c.member_number is not null)"
+						+ " select t.id, t.slug, t.name,"
 						/* The town in the two shapes V11 allows, and the country off whichever
 						   of them the team used. The same three columns and the same coalesce as
 						   on a member, because it is the same fact about a different thing. */
@@ -477,6 +576,50 @@ class TeamApi {
 						   parameter $1" - rather than guessing. */
 						+ " case when cast(:me as bigint) is null then null"
 						+ "      else coalesce(t.admin_id = :me, false) end as founded_by_me,"
+						/* AND WHETHER THE ONE ASKING ADMINISTERS IT, WHICH IS A DIFFERENT QUESTION
+						   AND THE ONE EVERY SCREEN WAS REALLY ASKING. The line above is the SEAT;
+						   this is the RIGHT, and the two disagree in both directions. The seat may
+						   name a member whose fee has lapsed and who has left the team, and it may
+						   be empty over a team somebody has administered for four seasons.
+
+						   THE OWNER'S SENTENCE, IN THE ORDER HE WROTE IT, so that a reader can hold
+						   the two side by side without decoding anything: „Administrator tima je
+						   onaj ko je tim osnovao. Kad se mesto isprazni, po podrazumevanom ga
+						   preuzima clan koji je najduze u timu, dakle najraniji `teamSince`, a kod
+						   izjednacenja manji broj clana." The first subquery is the first sentence
+						   and the second is the second, both over `standing` and therefore over one
+						   definition of „in the team".
+
+						   „KAD SE MESTO ISPRAZNI" IS NOT ONLY `admin_id is null`, and that is read
+						   off the portal rather than decided here. `frontend/src/data/teamAdmin.ts`
+						   has said since it was written that it is „the founder only while they are
+						   still in it. The seat is who founded the team and never changes; being its
+						   administrator does", and PDL:2405 and PDL:2429 say the same from the
+						   owner's side - the title passes when the administrator leaves or stops
+						   paying, whatever the column still holds. A seat naming somebody who is not
+						   in `standing` for THIS team simply misses the first subquery, so there is
+						   no second condition to keep in step with the first.
+
+						   THE ORDER IS `season_from` THEN `member_number`, AND THE SECOND IS NOT
+						   DECORATION: two members who joined in the same season is the ordinary case
+						   after a team is founded, and without it the answer would be whichever row
+						   PostgreSQL happened to return. `nulls last` never comes into it because
+						   `standing` has no row without a number.
+
+						   AND THE COMPARISON IS WITH THE CALLER'S KEY, exactly as the line above,
+						   so that this query reads a member number to ORDER BY and never to answer
+						   with. The outer `coalesce` is the team nobody administers at all - an
+						   empty seat over a team with no standing member - which is FALSE and never
+						   null: null would take the key out and tell a signed in member what only a
+						   visitor is told. */
+						+ " case when cast(:me as bigint) is null then null"
+						+ "      else coalesce(:me = coalesce("
+						+ "        (select seat.id from standing seat"
+						+ "          where seat.team_id = t.id and seat.id = t.admin_id),"
+						+ "        (select longest.id from standing longest"
+						+ "          where longest.team_id = t.id"
+						+ "          order by longest.season_from, longest.member_number"
+						+ "          limit 1)), false) end as administered_by_me,"
 						/* AND WHO SITS IN THE SEAT, WHICH IS A FACT ABOUT THE TEAM AND NOT
 						   ABOUT THE CALLER - the whole difference between this field and the
 						   one above it. That one is the caller's own fact; this is a fact about
@@ -522,14 +665,21 @@ class TeamApi {
 						   a team still comes back once, which is what
 						   `aTeamComesBackOnceHoweverManyMembersItHas` measures.
 
-						   THIS IS THE ONE JOIN IN THIS QUERY THAT REACHES A MEMBER, and nothing
-						   but `member_number` is read off it. The roster is still not joined;
-						   who is IN a team remains /api/competitors' one answer. */
+						   THIS IS THE ONE JOIN IN THE BODY OF THIS QUERY THAT REACHES A MEMBER,
+						   and nothing but `member_number` is read off it. What stood here also
+						   said „the roster is still not joined", and since 21.09.2026 that is
+						   true of the FROM clause and not of the statement: `standing`, above,
+						   reads `team_membership` for the rule the field two lines up answers.
+						   Who is IN a team remains /api/competitors' one answer, which is a
+						   sentence about what LEAVES and is held over the whole text by
+						   `noMemberNumberLeavesTheServer`. */
 						+ " left join competitor seat on seat.id = t.admin_id"
-						/* NOTHING IS JOINED TO `team_membership` HERE, and that is the decision
-						   above rather than an omission: who is in which team is answered by
-						   /api/competitors. A join would also give a team as many rows as it has
-						   members. */
+						/* NOTHING IS JOINED TO `team_membership` IN THIS FROM CLAUSE, and that is
+						   the shape of the answer rather than a rule about the table: a join here
+						   would give a team as many rows as it has members, which is what
+						   `aTeamComesBackOnceHoweverManyMembersItHas` refuses. The rule above
+						   reaches the same table through scalar subqueries, which answer one value
+						   per team however many members it has. */
 						+ " order by t.name, t.id")
 				.param("me", me)
 				.query((row, one) -> {
@@ -559,7 +709,7 @@ class TeamApi {
 					   Jackson 3 carries the Optional itself (3.1.4; the jdk8 types stopped
 					   being a module of their own), so there is nothing to register. */
 					Optional<String> inTheSeat =
-							administration ? Optional.ofNullable(row.getString(12)) : null;
+							administration ? Optional.ofNullable(row.getString(13)) : null;
 
 					return new Team(row.getLong(1), row.getString(2), row.getString(3),
 							row.getString(4), row.getString(5), row.getString(6),
@@ -569,7 +719,13 @@ class TeamApi {
 							mark == null ? null : A_PICTURE_IS_ASKED_FOR_AT + mark,
 							across == null ? null
 									: new Crop(across, row.getBigDecimal(9), row.getBigDecimal(10)),
-							row.getObject(11, Boolean.class), inTheSeat);
+							/* BOTH READ AS `Boolean` AND NEVER AS `boolean`, because the null the
+							   query answers a visitor with is the whole of „I do not know who you
+							   are": read as a primitive it would arrive false, which is the
+							   sentence „you do not administer this" told to somebody who was never
+							   asked about. */
+							row.getObject(11, Boolean.class), row.getObject(12, Boolean.class),
+							inTheSeat);
 				})
 				.list();
 	}

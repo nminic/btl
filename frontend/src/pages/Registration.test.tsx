@@ -8,6 +8,13 @@ import { translate } from '../i18n/translate'
 import sr from '../i18n/sr.json'
 import { first, inputElement, last, must } from '../test/at'
 import { renderAt } from '../test/render'
+import {
+  did,
+  forgetEveryCookie,
+  refused,
+  serverThat,
+  type Asked,
+} from '../test/serverAnswers'
 import { inside, SEP, sources, WHOLE_PORTAL } from '../test/sources'
 import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
@@ -52,6 +59,52 @@ const PASSWORD = 'trkackaliga'.padEnd(
    well, that case would stop telling a mismatch apart from a short password. */
 const A_DIFFERENT_PASSWORD = `${PASSWORD}-nije-ista`
 
+/* EVERY CASE HERE HAS A SERVER IN FRONT OF IT, BECAUSE SINCE 21.09.2026 THIS SCREEN
+ * SPEAKS TO ONE.
+ *
+ * Before that the press drew the confirmation by itself, so thirteen of these cases were
+ * measuring a screen that told somebody „Poslali smo poruku na …" with nothing sent. The
+ * default is a server that TAKES the registration, since the great majority of these
+ * cases are about the form rather than about the answer; the handful that are about the
+ * answer say so by installing their own. */
+let server: { asked: Asked[]; stop: () => void } | null = null
+
+function registrationAnswered(
+  answer: (init: RequestInit | undefined) => Response | Promise<Response>,
+): void {
+  server?.stop()
+  /* Null for everything else, which hands the request back to the disc reader: the
+     codebook of towns is read that way, and these cases type into a place field. */
+  server = serverThat((path, init) => (path === '/api/registration' ? answer(init) : null))
+}
+
+/** The one registration this case sent, and nothing else that went over the wire. */
+function whatWasSent(): Asked[] {
+  return (server?.asked ?? []).filter((one) => one.path === '/api/registration')
+}
+
+/** The body of that registration, as the server would parse it. */
+function theBodySent(): unknown {
+  const sent = must(whatWasSent()[0], 'a registration sent to the server')
+
+  return JSON.parse(String(sent.init?.body))
+}
+
+beforeEach(() => {
+  forgetEveryCookie()
+  /* The token already in the jar, so no case here spends a request being handed one.
+     That the portal really can be handed one, and echoes it unchanged, is measured
+     where it belongs (`account/askTheServer.test.ts`) rather than a second time here. */
+  document.cookie = 'XSRF-TOKEN=imam'
+  registrationAnswered(() => did())
+})
+
+afterEach(() => {
+  server?.stop()
+  server = null
+  forgetEveryCookie()
+})
+
 /* The day goes on the clock above the screen, which is where the portal keeps
    it and what the switch in the header moves (src/clock). */
 function renderForm(today = OPEN, address = '/sr/registracija') {
@@ -71,11 +124,20 @@ function renderForm(today = OPEN, address = '/sr/registracija') {
 
 async function fillEverythingExceptBirthDate(
   user: ReturnType<typeof setupUser>,
-  /** Left out where the test is about the picture being missing: a file input
+  {
+    picture = true,
+    /** What is typed into both password boxes. Handed in for the one pair of cases about
+     *  a secret with a space in it, which is a value the portal must not alter. */
+    password = PASSWORD,
+    /** And the one case beside them about a name with spaces, which the portal must
+     *  still trim. Without that pair nothing tells „leave the password alone" apart from
+     *  „leave everything alone". */
+    firstName = 'Vladan',
+  }: /** Left out where the test is about the picture being missing: a file input
    *  cannot be cleared once it holds something (`user.clear` refuses it). */
-  { picture = true }: { picture?: boolean } = {},
+  { picture?: boolean; password?: string; firstName?: string } = {},
 ) {
-  await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
+  await user.type(screen.getByLabelText(/^Ime$/), firstName)
   await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
   /* Obligatory since 20.08.2026: the register of members the association keeps
      by law asks for the father's name and for the number of an identity
@@ -83,8 +145,8 @@ async function fillEverythingExceptBirthDate(
   await user.type(screen.getByLabelText(/^Ime oca$/), 'Milan')
   await user.type(screen.getByLabelText(/^Broj ličnog dokumenta$/), '123456789')
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
-  await user.type(screen.getByLabelText(/^Lozinka$/), PASSWORD)
-  await user.type(screen.getByLabelText(/Ponovi lozinku/), PASSWORD)
+  await user.type(screen.getByLabelText(/^Lozinka$/), password)
+  await user.type(screen.getByLabelText(/Ponovi lozinku/), password)
   /* Buttons since 11.08.2026, not a list: two answers worth seeing at once. */
   await user.click(screen.getByRole('radio', { name: 'Muški' }))
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
@@ -130,8 +192,13 @@ describe('Registration while it is shut', () => {
     ).toBeVisible()
   })
 
-  it('is shut on the route today, since October has not come', async () => {
-    renderAt('/sr/registracija')
+  it('is shut on the route on a day before October', async () => {
+    /* THE DAY IS SET, AND UNTIL 21.09.2026 IT WAS NOT. `renderAt` left alone „runs on
+       the real one", and `REGISTRATION_OPENS` is 2026-10-01: this case was therefore
+       measuring the calendar rather than the route, and would have gone red on the CI on
+       the very morning registration opens, over a screen that had done nothing wrong.
+       Found by a review of this branch; the fault is older than the branch. */
+    renderAt('/sr/registracija', 'visitor', null, undefined, '2026-09-20')
 
     expect(
       await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
@@ -270,7 +337,7 @@ describe('Registration once it is open', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.getByText(/zabeležena kao preporuka/)).toBeVisible()
     /* And whoever brought them is not named: the code belongs to that member,
        not to this one. */
@@ -299,7 +366,7 @@ describe('Registration once it is open', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
   }, SLOW)
 
@@ -357,7 +424,7 @@ describe('Registration once it is open', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.queryByText(/zabeležena kao preporuka/)).not.toBeInTheDocument()
   }, SLOW)
 
@@ -424,7 +491,7 @@ describe('Registration once it is open', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     /* The address the letter went to, what it is for, where to look if it does
        not arrive, and a way to ask for another one (PDL P22). */
     expect(screen.getByText(/vladan@primer\.rs/)).toBeVisible()
@@ -489,7 +556,7 @@ describe('the biography, at the moment of joining', () => {
     await user.clear(screen.getByLabelText(/Svojim rečima/))
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
 
   it('says how long it may be, and nothing about what happens to it', async () => {
@@ -617,7 +684,7 @@ describe('the country a member lives in', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
 
   it('is refused when the town was typed by hand and no country was picked', async () => {
@@ -660,7 +727,7 @@ describe('the country a member lives in', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: /^Država/ }), 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 })
 
@@ -770,7 +837,7 @@ describe('a town the codebook does know', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 })
 
@@ -787,7 +854,7 @@ describe('the telephone', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.queryByText(/123456789/)).toBeNull()
     expect(screen.queryByText(/Milan/)).toBeNull()
   })
@@ -812,7 +879,7 @@ describe('the telephone', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(screen.getByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   })
 })
 
@@ -971,4 +1038,425 @@ describe('the box a member writes about themselves in', () => {
     expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
     expect(screen.getByText('Još 320 znakova')).toBeVisible()
   })
+})
+
+/**
+ * WHAT ACTUALLY GOES TO `/api/registration`, WHICH UNTIL 21.09.2026 WAS NOTHING AT ALL.
+ *
+ * <p>The screen drew „Prijava je zabelezena" and „Poslali smo poruku na …" on the press,
+ * and no request had been made: `Registration.tsx` called `confirm(...)` and stopped. The
+ * cases in this file all read a rendered sentence, so not one of them could see it.
+ *
+ * <p><b>These read the body instead, which is the half no drawn sentence shows.</b> The
+ * other end of it - that a real server accepts exactly this - is measured in Java
+ * (`RegistrationApiTest`); neither is the other.
+ */
+describe('what the registration sends', () => {
+  /** The birthday of somebody comfortably over sixteen on the day the form opens. */
+  const GROWN = '12041985'
+
+  /** And of somebody who is fourteen on that day, so a guardian holds the account. */
+  const A_CHILD = '20052012'
+
+  async function fillAndSend(
+    user: ReturnType<typeof setupUser>,
+    born = GROWN,
+    { beginner = false }: { beginner?: boolean } = {},
+  ) {
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), born)
+
+    if (beginner) {
+      await user.click(screen.getByRole('radio', { name: 'Početnička' }))
+    }
+
+    if (born === A_CHILD) {
+      await user.type(screen.getByLabelText(/roditelja ili staratelja/), 'Milan Đurišić')
+      await user.selectOptions(screen.getByLabelText(/Srodstvo/), 'father')
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+  }
+
+  it('writes every answer under the name the route reads it by, and nothing else', async () => {
+    /* ASSERTED AS THE WHOLE OF WHAT IS THERE, and that is the point of the case rather
+       than a style of writing it. A mismatch of names is silent in both directions: the
+       route reads a name it cannot find as null and answers „the form is not complete"
+       naming no field, so a list of things that must be present would pass while a
+       twentieth key nobody meant to send sat beside them.
+
+       Three faults are held by this one comparison and each was real:
+
+       - `firstSeason2027` is a BOOLEAN. The form offers the strings „yes" and „no", and
+         `Typed.firstSeason2027` is a `Boolean`, so the word would have been refused by
+         Jackson before the handler ran at all - a bare 400 with no reason in it, which
+         no screen can turn into a sentence.
+       - `photo` IS ABSENT. Its value in the form is the name of a file on somebody's
+         disc („vladan.jpg", which `fillEverythingExceptBirthDate` uploads), and the
+         route does not collect a picture at all (`NOT_COLLECTED_YET`). Spread instead of
+         written out, a stranger's file name would travel for nothing.
+       - `placeId` IS ABSENT. `theTown` takes the codebook's mark or a name with a
+         country and refuses BOTH TOGETHER, so a mark sent beside the name would refuse
+         every registration this portal makes.
+
+       And `passwordRepeat` is here at all only because `FormRenderer` hands it over
+       beside what it sends: `onScreen` drops it, and with one argument this body could
+       not be built. */
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(theBodySent()).toEqual({
+      firstName: 'Vladan',
+      lastName: 'Đurišić',
+      fatherName: 'Milan',
+      birthDate: '1985-04-12',
+      gender: 'M',
+      firstSeason2027: false,
+      email: 'vladan@primer.rs',
+      password: PASSWORD,
+      passwordRepeat: PASSWORD,
+      address: 'Bulevar oslobođenja 12',
+      city: 'Beograd',
+      country: 'RS',
+      idNumber: '123456789',
+      phone: '',
+      shirtSize: 'XXXL',
+      bio: 'Trčim zbog druženja.',
+      healthStatement: true,
+      parentConsent: '',
+      parentRelation: '',
+      referredBy: null,
+    })
+  }, SLOW)
+
+  it('posts it, rather than reading anything', async () => {
+    /* The mutation this exists for is „send nothing at all": put `confirm(...)` back on
+       the press and every other case in this file still passes, because every one of
+       them reads a drawn sentence and the sentence would be drawn. */
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(must(whatWasSent()[0], 'the registration').init?.method).toBe('POST')
+  }, SLOW)
+
+  it('chooses the beginners category as a boolean the other way round too', async () => {
+    /* The second state of the axis. With only the case above, `firstSeason2027: false`
+       is satisfied by a line that answers false to everything. */
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user, GROWN, { beginner: true })
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(Reflect.get(Object(theBodySent()), 'firstSeason2027')).toBe(true)
+  }, SLOW)
+
+  it('carries the signature of a guardian for somebody under sixteen', async () => {
+    /* The other state of the age axis, and the two fields move in opposite directions
+       across it: at sixteen the identity card starts being asked for and the signature
+       stops. Sent for a grown competitor they are empty strings, which is what the case
+       above asserts, and the route reads a blank as nothing. */
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user, A_CHILD)
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    const body = Object(theBodySent())
+
+    expect(Reflect.get(body, 'parentConsent')).toBe('Milan Đurišić')
+    expect(Reflect.get(body, 'parentRelation')).toBe('father')
+    /* And the date is the child's, not the grown competitor's: without this the two
+       cases differ only in two fields nothing else looks at. */
+    expect(Reflect.get(body, 'birthDate')).toBe('2012-05-20')
+  }, SLOW)
+
+  it('carries the referral code itself, and never the empty string', async () => {
+    /* `referredBy: ''` is a third state the record's own type does not have, and it went
+       out for every address that said `?preporuka=` with nothing after it. The screen
+       already refuses to SAY a referral was recorded in that case; this is the half that
+       goes over the wire, which no drawn sentence shows. */
+    const user = setupUser()
+    renderForm(OPEN, '/sr/registracija?preporuka=7f07b38ff7ee7543')
+
+    await fillAndSend(user)
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(Reflect.get(Object(theBodySent()), 'referredBy')).toBe('7f07b38ff7ee7543')
+  }, SLOW)
+
+  it('sends the password exactly as it was typed, spaces and all', async () => {
+    /* THE SECRET IS NOT TRIMMED, and until 21.09.2026 it was: `trimValues` trimmed every
+       string, so „trkackaliga7 " arrived as „trkackaliga7" and the server hashed a string
+       the member had never chosen. Signing in sends the password RAW
+       (`session/SignIn.tsx`), so that member could then never sign in again with what he
+       typed - and nothing said so, because the form compares the two boxes BEFORE the
+       trim and measures the length AFTER it.
+
+       Owner, 21.09.2026, `btl-produkt/ADL.md` A62c: a password is never trimmed anywhere.
+       The fix lives in `trimValues` rather than here, so the next form that asks for a
+       password inherits it.
+
+       BOTH BOXES ARE ASSERTED, and that is the axis rather than a flourish: the repeated
+       password travels through the second argument, which is trimmed by a separate call,
+       so a fix that spared only one side would send two different strings for one typed
+       value and the server would refuse a form filled in correctly.
+
+       AND THE NAME BESIDE IT, which is what keeps this from being satisfied by switching
+       trimming off altogether: „Vladan" is typed with no spaces here, so the name is read
+       from the case below rather than from this one - see the next case. */
+    const user = setupUser()
+    renderForm()
+
+    const withSpace = `${PASSWORD} `
+
+    await fillEverythingExceptBirthDate(user, { password: withSpace })
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    const body = Object(theBodySent())
+
+    expect(Reflect.get(body, 'password')).toBe(withSpace)
+    expect(Reflect.get(body, 'passwordRepeat')).toBe(withSpace)
+  }, SLOW)
+
+  it('goes on trimming everything that is not a secret', async () => {
+    /* The other half, and without it the case above is satisfied by a fix that switches
+       trimming off for the whole form: then „  Vladan  " would be stored with its spaces
+       and no case here would fall. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user, { firstName: '  Vladan  ' })
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(Reflect.get(Object(theBodySent()), 'firstName')).toBe('Vladan')
+  }, SLOW)
+
+  it('sends one registration however many times the button is pressed', async () => {
+    /* WHAT A SECOND PRESS COSTS HERE IS NOT WHAT IT COSTS ELSEWHERE. `/api/registration`
+       writes an account and posts a letter, so the second request is answered 409 - and
+       it is answered 409 because of the FIRST one, which means this very person is told
+       his own address belongs to somebody else.
+
+       Measured while the first answer is still out, which is the only moment the fault
+       exists: the server here is handed a promise that has not come back. */
+    /* Held on an object rather than in a bare `let`, and that is the compiler's habit
+       rather than a taste: an assignment made inside a callback is invisible to the
+       narrowing, so a plain variable stays „null" as far as the types are concerned. */
+    const holding: { answer: ((response: Response) => void) | null } = { answer: null }
+
+    registrationAnswered(
+      () =>
+        new Promise<Response>((resolve) => {
+          holding.answer = resolve
+        }),
+    )
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    /* And the screen says so rather than looking unpressed, which is the reason somebody
+       presses a second time at all. */
+    expect(screen.getByText('Šaljemo prijavu...')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(whatWasSent()).toHaveLength(1)
+
+    must(holding.answer, 'the answer the server was holding')(did())
+
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  }, SLOW)
+})
+
+/**
+ * WHAT THE SCREEN DOES WITH AN ANSWER THAT IS NOT „DONE", WHICH UNTIL 21.09.2026 IT HAD
+ * NO WAY OF HAVING.
+ *
+ * <p>The confirmation was drawn on the press, so a refusal had nowhere to appear and the
+ * form it belonged to was already gone from the history: `useSend` REPLACES the entry
+ * underneath before pushing the confirmation over it.
+ */
+describe('a registration the server refuses', () => {
+  async function fillAndSend(user: ReturnType<typeof setupUser>) {
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+  }
+
+  it('says the address is taken, in as many words, and keeps what was typed', async () => {
+    /* THE 409, WHICH IS THE ONE REFUSAL ON THIS PORTAL THAT IS NOT A 400. Read as
+       anything else it lands on „the server answered 409 and nothing changed, try again
+       in a minute" - wrong twice, since trying again will never work and the one thing
+       he can do was never said.
+
+       That he is told at all is the owner's decision and not a choice of wording here
+       (`btl-produkt/ADL.md`, 08.09.2026): „Registracija na vec zauzetu adresu kaze da je
+       zauzeta." He was shown what it costs - anybody can then test whether an address
+       belongs to a member - and took it. A vaguer sentence would quietly undo that. */
+    registrationAnswered(() => refused('theAddressIsTaken', 409))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    expect(await screen.findByText(/već član lige/)).toBeVisible()
+    /* AND NOTHING MOVED. The confirmation is not drawn, the form is still here, and it
+       still holds what was typed into it: the whole of this change is that the screen
+       waits for an answer before it throws the form away. */
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+    expect(inputElement(screen.getByLabelText(/Adresa elektronske pošte/)).value).toBe(
+      'vladan@primer.rs',
+    )
+    expect(inputElement(screen.getByLabelText(/^Ime$/)).value).toBe('Vladan')
+  }, SLOW)
+
+  it('tells a leaked password apart from a form the route would not take', async () => {
+    /* Three refusals and three sentences, by name and never by number. Folded into one
+       „something went wrong" the reader is handed a form to press again with no idea
+       what to change, which is the fault `askTheServer` was written not to have. */
+    registrationAnswered(() => refused('thePasswordHasLeaked'))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    expect(await screen.findByText(/javno objavljenim provalama/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+  }, SLOW)
+
+  it('says the form was not taken when the route says so, and names no field', async () => {
+    registrationAnswered(() => refused('theFormIsNotComplete'))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    expect(await screen.findByText(/Server nije prihvatio prijavu/)).toBeVisible()
+  }, SLOW)
+
+  it('reads a refusal it has no sentence for out loud, code and all', async () => {
+    /* A screen one release behind its server must not pick the nearest sentence it does
+       have: the nearest sentence tells the reader to fix something that is not wrong.
+       `account/refusals.test.ts` reads the Java source so this branch stays a boundary
+       rather than a plan. */
+    registrationAnswered(() => refused('theMoonIsInTheWrongHouse'))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    expect(await screen.findByText(/theMoonIsInTheWrongHouse/)).toBeVisible()
+  }, SLOW)
+
+  it('says nothing came back when the server never answered', async () => {
+    registrationAnswered(() => {
+      throw new TypeError('Failed to fetch')
+    })
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    expect(await screen.findByText(/nije uspeo da dođe do servera/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+  }, SLOW)
+
+  it('takes the last refusal off the screen while the next attempt is out', async () => {
+    /* MEASURED WHILE THE SECOND REQUEST IS STILL IN FLIGHT, which is the only moment the
+       fault exists. Left standing, somebody who corrected his form and pressed again
+       reads the old sentence over a request that has not been answered, and cannot tell
+       whether it is about the press he just made or the one before it. Once the answer
+       arrives the sentence is replaced either way, so a case that looked afterwards would
+       measure nothing. */
+    registrationAnswered(() => refused('theAddressIsTaken', 409))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(await screen.findByText(/već član lige/)).toBeVisible()
+
+    const holding: { answer: ((response: Response) => void) | null } = { answer: null }
+
+    registrationAnswered(
+      () =>
+        new Promise<Response>((resolve) => {
+          holding.answer = resolve
+        }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByText('Šaljemo prijavu...')).toBeVisible()
+    expect(screen.queryByText(/već član lige/)).toBeNull()
+
+    must(holding.answer, 'the answer the server was holding')(did())
+
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  }, SLOW)
+
+  it('lets a second press through once the first has been refused', async () => {
+    /* The other half of the guard above, and it is not decoration: a guard written with
+       a ref that is never turned back would refuse every press for the rest of the
+       visit, so somebody told to correct his form could never send it again. */
+    registrationAnswered(() => refused('theFormIsNotComplete'))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+    expect(await screen.findByText(/Server nije prihvatio prijavu/)).toBeVisible()
+
+    registrationAnswered(() => did())
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
+  }, SLOW)
 })
