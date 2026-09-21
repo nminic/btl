@@ -93,15 +93,14 @@ function calendarOf(events: BtlEvent[], races: Race[]) {
   )
 }
 
-/* Two days in the middle of a week, the shape the owner named: „Dogadjaj od 17. do 18.
-   jula mora da bude prepoznatljiv kao jedan dogadjaj preko dva dana, a ne dve oznake."
-   17 July 2027 is a Saturday and the 18th a Sunday, so the bar stays inside one row.
+/* Two days in the middle of a week: 17 July 2027 is a Saturday and the 18th a Sunday,
+   so the bar stays inside one row and the week break is measured on its own below.
 
    Entered under the 15th, which is neither of its race days. */
 const TWO_DAY = anEvent(7, 'Dvodnevna trka', '2027-07-15')
 /* And a second event, of one day, in the same month and not the one being measured.
-   „Never the only record of its kind": with the two-day event alone on the screen,
-   „one link carries the range" is also satisfied by every link carrying it. */
+   „Never the only record of its kind": with the two-day event alone on the screen, a
+   claim about what a bar says is also satisfied by every tile saying it. */
 const ONE_DAY = anEvent(9, 'Jednodnevna trka', '2027-07-15')
 
 const RACES = [
@@ -132,32 +131,51 @@ function dayBox(container: HTMLElement, day: number): HTMLElement {
 }
 
 describe('an event that runs over several days', () => {
-  it('is one link with its range in words, however many days it covers', async () => {
+  it('gives every day it covers a link of its own, each saying the whole range', async () => {
+    /* **THE CLAIM THAT ANSWERS THE FAULT OF 22.09.2026, and it holds at every width
+       because it is about the markup and nothing else.** The first draft made one
+       piece a month the link and hid the rest from the accessibility tree; above 780px
+       those were mute stumps and it read well, and below it, where the days stack and
+       nothing hides anything, they were whole tiles nobody could tap and no screen
+       reader could find. 26 of them in the served calendar, measured in a browser.
+
+       `ADL.md` A7 (31.07.2026) is the decision that forbids it in so many words:
+       „Kontrola koja menja natpis po širini ekrana mora zadržati oba natpisa u
+       pristupačnom stablu … Skrivanje se radi pomeranjem van vidnog polja …, nikad
+       uklanjanjem." So nothing here may depend on a stylesheet, and `jsdom` applies
+       none, which is exactly why this case can hold it. */
     const { container, stop } = await july()
 
     try {
-      /* ONE mark and not two, which is the whole of the owner's sentence. Asked by the
-         name a reader hears rather than by a class, so a second tile that merely looks
-         different still fails this. */
       const marks = screen.getAllByRole('link', { name: /Dvodnevna trka/ })
 
-      expect(marks).toHaveLength(1)
-      /* And it says the range out loud, in the case the two prepositions govern: a bar
-         says „two days" with its shape, and shape is the one thing somebody reading
-         with their ears never gets. */
-      expect(first(marks)).toHaveAccessibleName(
-        'Dvodnevna trka, od 17. jula 2027. do 18. jula 2027.' + LENGTH,
-      )
+      expect(marks).toHaveLength(2)
+      /* Both say the same thing, and it is the WHOLE range, in the case the two
+         prepositions govern. The same name on two links is right rather than the
+         „identical labels" fault: that one is about links leading to different places,
+         and both of these lead to the one event. */
+      for (const mark of marks) {
+        expect(mark).toHaveAccessibleName(
+          'Dvodnevna trka, od 17. jula 2027. do 18. jula 2027.' + LENGTH,
+        )
+        expect(mark).toHaveAttribute('href', '/sr/kalendar/dogadjaj-7')
+      }
 
-      /* Both days carry a piece of it all the same, so „one link" is not „drawn on one
-         day". The second piece is not a link and is not spoken. */
+      /* One in each of the two days, so „two links" is not „two in the same day". */
       expect(within(dayBox(container, 17)).getAllByRole('link', { name: /Dvodnevna/ })).toHaveLength(1)
-      expect(within(dayBox(container, 18)).queryAllByRole('link', { name: /Dvodnevna/ })).toHaveLength(0)
-      expect(dayBox(container, 18).querySelectorAll('.chip--scale')).toHaveLength(1)
-      expect(at([...dayBox(container, 18).querySelectorAll('.chip--scale')], 0)).toHaveAttribute(
-        'aria-hidden',
-        'true',
-      )
+      expect(within(dayBox(container, 18)).getAllByRole('link', { name: /Dvodnevna/ })).toHaveLength(1)
+
+      /* And nothing that carries a word is taken out of the accessibility tree. The
+         only `aria-hidden` inside a bar is what says nothing: the coloured dots and the
+         space that holds the stump's line. */
+      const spoken = [...container.querySelectorAll('.chip--scale [aria-hidden="true"]')]
+
+      expect(spoken).not.toHaveLength(0)
+      expect(
+        spoken.every((one) => one.className === 'chip__hold' || one.className.startsWith('length-dot')),
+        'something with a word in it is hidden from a screen reader',
+      ).toBe(true)
+      expect(container.querySelectorAll('.chip--scale[aria-hidden]')).toHaveLength(0)
     } finally {
       stop()
     }
@@ -204,21 +222,28 @@ describe('an event that runs over several days', () => {
     )
 
     try {
-      expect(screen.getByRole('link', { name: /Dvodnevna trka/ })).toHaveAccessibleName(
-        'Dvodnevna trka, od 17. jula 2027. do 19. jula 2027.' + LENGTH,
-      )
+      const marks = screen.getAllByRole('link', { name: /Dvodnevna trka/ })
+
+      /* A third day, a third link, and all three say the longer range. */
+      expect(marks).toHaveLength(3)
+      for (const mark of marks) {
+        expect(mark).toHaveAccessibleName(
+          'Dvodnevna trka, od 17. jula 2027. do 19. jula 2027.' + LENGTH,
+        )
+      }
       expect(within(dayBox(container, 19)).getByText('Dvodnevna trka')).toBeVisible()
-      /* Still one mark, three days on. */
-      expect(screen.getAllByRole('link', { name: /Dvodnevna trka/ })).toHaveLength(1)
     } finally {
       stop()
     }
   })
 
   it('leaves a one-day event exactly as it was', async () => {
-    /* „Jednodnevni ostaju kako jesu; skala ne sme da ih promeni." The class is read
-       here and nowhere else in this file, because this is the one claim that is about
-       a tile carrying no new mark at all. */
+    /* A one-day event is not a bar and takes no mark a bar takes. Derived from the
+       owner's own sentence rather than quoted as it: he asked for a scale „ako se radi
+       o takvom dogadjaju" (`PDL.md:7060-7063`), which says nothing about an event that
+       is not one, so nothing about it changes. The class is read here and nowhere else
+       in this file, because this is the one claim that is about a tile carrying no new
+       mark at all. */
     const { container, stop } = await july()
 
     try {
@@ -237,7 +262,7 @@ describe('an event that runs over several days', () => {
        covers the days between as well.
 
        It also crosses the break between two rows: the 27th is a Sunday and the 28th a
-       Monday. Still one mark and still one range. */
+       Monday. Four days, four links, one range. */
     const rajac = anEvent(7, 'Trka sa razmakom', '2020-09-20')
     const { container, stop } = await july()
 
@@ -250,13 +275,22 @@ describe('an event that runs over several days', () => {
 
       await screen.findByRole('heading', { level: 2, name: 'septembar 2020.' })
 
-      expect(screen.getAllByRole('link', { name: /Trka sa razmakom/ })).toHaveLength(1)
-      expect(screen.getByRole('link', { name: /Trka sa razmakom/ })).toHaveAccessibleName(
-        'Trka sa razmakom, od 27. septembra 2020. do 30. septembra 2020.' + LENGTH,
-      )
+      const marks = screen.getAllByRole('link', { name: /Trka sa razmakom/ })
 
+      expect(marks).toHaveLength(4)
+      for (const mark of marks) {
+        expect(mark).toHaveAccessibleName(
+          'Trka sa razmakom, od 27. septembra 2020. do 30. septembra 2020.' + LENGTH,
+        )
+      }
+
+      /* And one on each of the four days, the two in the middle included, which are
+         the days no race of it is run on. */
       for (const day of [27, 28, 29, 30]) {
-        expect(dayBox(shown, day).querySelectorAll('.chip--scale')).toHaveLength(1)
+        expect(
+          within(dayBox(shown, day)).getAllByRole('link', { name: /Trka sa razmakom/ }),
+          `the ${day}th`,
+        ).toHaveLength(1)
       }
 
       /* The piece that starts the new row opens the bar rather than reaching back into
@@ -271,10 +305,11 @@ describe('an event that runs over several days', () => {
     }
   })
 
-  it('is drawn in both months it touches, and speaks in each of them', async () => {
+  it('is drawn in both months it touches, and says the whole range in each', async () => {
     /* Ultra-trail Stara planina ran 31 May to 1 June 2019 and is the one event in the
-       served file that crosses a month. June holds no first day of it, so read the
-       obvious way June would carry a bar nobody can reach and nobody is told about. */
+       served file that crosses a month. June holds no first day of it, so what is held
+       here is that June draws it and that what it says is the range of the EVENT and
+       not the part of it June happens to hold. */
     const across = anEvent(7, 'Trka preko meseca', '2019-05-20')
     const races = [aRace(1, 7, '2019-05-31'), aRace(2, 7, '2019-06-01')]
     const { stop } = calendarOf([across], races)
@@ -287,8 +322,6 @@ describe('an event that runs over several days', () => {
       const june = screen.getAllByRole('link', { name: /Trka preko meseca/ })
 
       expect(june).toHaveLength(1)
-      /* And what it says is the WHOLE range and not the part of it June holds, because
-         the range is what the event is. */
       expect(first(june)).toHaveAccessibleName(
         'Trka preko meseca, od 31. maja 2019. do 1. juna 2019.' + LENGTH,
       )
@@ -329,7 +362,8 @@ describe('an event that runs over several days', () => {
       ])
 
       /* And on the 2nd the lower one is still second, with an empty line over it. The
-         line is not spoken and is not a link. */
+         line carries no word, which is what lets the sheet take it away on a telephone
+         where there are no lanes to line up with. */
       const second = [...dayBox(container, 2).querySelectorAll('.chip')]
 
       expect(second.map((one) => one.className)).toEqual([
@@ -338,14 +372,14 @@ describe('an event that runs over several days', () => {
       ])
       expect(first(second)).toHaveAttribute('aria-hidden', 'true')
 
-      /* **AND THE DAY HOLDS NO LINK AT ALL, WHICH IS THE COST OF THE OWNER'S RULE
-         WRITTEN DOWN RATHER THAN LEFT TO BE FOUND.** „Prepoznatljiv kao jedan dogadjaj
-         preko dva dana, a ne dve oznake" means one mark per event per month, so a
-         reader with their ears meets Donja trka on the 1st, where the whole range is
-         said, and meets nothing on the 2nd. The other reading - a link on every day it
-         covers - is exactly the two marks the rule refuses. This is a boundary and not
-         an oversight, and it is the line to move if the owner ever wants the other. */
-      expect(within(dayBox(container, 2)).queryAllByRole('link')).toHaveLength(0)
+      /* **And the day still holds its link**, which is the half the first draft got
+         wrong: a reader reaching the 2nd of June finds the event that is run on it,
+         named and with its range, rather than a held lane and a tile nobody can
+         reach (`ADL.md` A7). */
+      expect(within(dayBox(container, 2)).getAllByRole('link')).toHaveLength(1)
+      expect(within(dayBox(container, 2)).getByRole('link')).toHaveAccessibleName(
+        'Donja trka, od 1. juna 2019. do 2. juna 2019.' + LENGTH,
+      )
     } finally {
       stop()
     }
@@ -369,20 +403,24 @@ describe('an event that runs over several days', () => {
 
       await screen.findByRole('heading', { level: 2, name: 'jul 2027.' })
 
-      const mark = screen.getByRole('link', { name: /Višednevni trening/ })
+      const marks = screen.getAllByRole('link', { name: /Višednevni trening/ })
 
-      /* It opens on the Saturday and runs on into the Sunday, so it draws a start and
-         no end. The whole class is read and not a piece of it: asked as „contains
-         chip--training", a bar that also forgot to open or to run on would pass. */
-      expect(mark.className).toBe('chip chip--training chip--scale chip--runs-on')
-      expect(mark).toHaveAccessibleName(
-        `Višednevni trening${sr.event.kind.training}, od 17. jula 2027. do 18. jula 2027.${LENGTH}`,
-      )
-      /* And the piece that only continues it wears the same tile, or the bar changes
-         colour halfway along itself. */
-      expect(at([...dayBox(container, 18).querySelectorAll('.chip--scale')], 0).className).toBe(
+      /* The Saturday opens the bar and runs on into the Sunday, so it draws a start and
+         no end; the Sunday continues it and closes. The whole class is read and not a
+         piece of it: asked as „contains chip--training", a bar that also forgot to open
+         or to run on would pass. */
+      expect(marks.map((one) => one.className)).toEqual([
+        'chip chip--training chip--scale chip--runs-on',
         'chip chip--training chip--scale chip--continues',
-      )
+      ])
+      /* And both say which kind they are, so the word does not stop halfway along the
+         bar either. */
+      for (const mark of marks) {
+        expect(mark).toHaveAccessibleName(
+          `Višednevni trening${sr.event.kind.training}, od 17. jula 2027. do 18. jula 2027.${LENGTH}`,
+        )
+      }
+      expect(dayBox(container, 18).querySelectorAll('.chip--scale')).toHaveLength(1)
     } finally {
       stop()
     }

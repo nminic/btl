@@ -10,7 +10,6 @@ import {
   eventsOnDay,
   monthDrawing,
   monthGrid,
-  eventsInMonth,
   monthsWithEvents,
   bestOfficialSeason,
   bestSingleRaces,
@@ -33,6 +32,7 @@ import {
   monthFrom,
 } from './derive'
 import { teamOf } from './derive'
+import type { Drawn } from './derive'
 import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
 import { DOTS } from './types'
@@ -344,18 +344,14 @@ describe('calendar helpers', () => {
 
   const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
 
-  it('takes one month, in date order', () => {
-    expect(eventsInMonth(events, 2027, 3).map((event) => event.id)).toEqual([2, 1])
-    expect(eventsInMonth(events, 2027, 12)).toEqual([])
-  })
-
+  /* The two cases that stood here measured `eventsInMonth`, and it is gone since
+     22.09.2026: the grid asks `monthDrawing` what each day draws, off the range of an
+     event rather than off the day it was entered under (PDL P35), and nothing else in
+     the portal ever asked the old question. What the second of them was really for is
+     kept, because it is about the data and not about that function: a gathering with
+     no race in it is in the month like anything else (owner, 10.08.2026, an event has
+     a kind and no state). */
   it('draws what is not a race, because the calendar carries those too', () => {
-    /* An event has a kind and no state (owner, 10.08.2026). What used to be
-       here were two tests over a cancelled event, which the calendar left out;
-       there is no such event any more, because one that is off is deleted. What
-       is worth holding in its place is that nothing else is left out either: a
-       gathering with no race in it is in the month like anything else. */
-    expect(eventsInMonth(events, 2027, 4).map((event) => event.id)).toEqual([3])
     expect(monthsWithEvents(events)).toContain('2027-04')
   })
 
@@ -1962,15 +1958,8 @@ describe('the span of an event', () => {
       .map(({ day, drawn }) => ({ day, piece: at(drawn, 0) }))
 
     expect(pieces.map((one) => one.day)).toEqual([12, 13, 14])
-    /* Exactly one of the three speaks, and it is the first: a bar is one event and one
-       mark, not one mark a day. */
-    expect(pieces.map((one) => one.piece.at === 'scale' && one.piece.leads)).toEqual([
-      true,
-      false,
-      false,
-    ])
-    /* And each of the three carries the WHOLE range rather than its own day, because
-       the range is what is said out loud. */
+    /* Each of the three carries the WHOLE range rather than its own day, because the
+       range is what every piece says out loud (`calendar/DayChips.tsx`). */
     expect(
       pieces.every(
         (one) =>
@@ -2017,10 +2006,11 @@ describe('the span of an event', () => {
     ])
   })
 
-  it('carries a bar into the next month and gives it a voice there', () => {
+  it('carries a bar into the next month, saying the whole range in each', () => {
     /* Ultra-trail Stara planina ran 31 May to 1 June 2019 and is the one event in the
-       served file that crosses a month. June holds no first day of it, so without this
-       June would draw a bar nobody can reach and nobody is told about. */
+       served file that crosses a month. June holds no first day of it, so what is held
+       here is that June draws it all the same and that what it says is the range of the
+       EVENT rather than the part of it June happens to hold. */
     const events = [spanning(7, '2019-05-20')]
     /* Three days in June and not the one the served file has, so BOTH halves of the
        clipping are measured: May's last day closes because the month does, and June's
@@ -2034,20 +2024,41 @@ describe('the span of an event', () => {
 
     /* 31 May 2019 is a Friday, so the row does not end there: what ends the bar is the
        month. */
-    expect(may).toEqual([{ at: 'scale', ...whole, opens: true, closes: true, leads: true }])
-    /* June's piece leads as well, and it says the whole range rather than the part of
-       it that fell inside June. */
-    expect(at(june, 0).drawn).toEqual([
-      { at: 'scale', ...whole, opens: true, closes: false, leads: true },
-    ])
-    /* And only one piece of it leads in June, so the bar is still one mark there. The
-       2nd is a Sunday, which is where a row ends and the bar with it. */
-    expect(at(june, 1).drawn).toEqual([
-      { at: 'scale', ...whole, opens: false, closes: true, leads: false },
-    ])
-    expect(at(june, 2).drawn).toEqual([
-      { at: 'scale', ...whole, opens: true, closes: true, leads: false },
-    ])
+    expect(may).toEqual([{ at: 'scale', ...whole, opens: true, closes: true }])
+    /* June's first day opens because the month does, and runs on because the event
+       does; and it carries 31 May in its range, which is the half that says the range
+       is not clipped to what is drawn. */
+    expect(at(june, 0).drawn).toEqual([{ at: 'scale', ...whole, opens: true, closes: false }])
+    /* The 2nd is a Sunday, which is where a row ends and the bar with it. */
+    expect(at(june, 1).drawn).toEqual([{ at: 'scale', ...whole, opens: false, closes: true }])
+    expect(at(june, 2).drawn).toEqual([{ at: 'scale', ...whole, opens: true, closes: true }])
+  })
+
+  it('puts the longer of two bars that start together in the upper lane', () => {
+    /* **The comparator had no case until 22.09.2026 and that is the „two sources, one
+       value" class again**: the only setting that reached it gave both events the SAME
+       range, so „longest first" and „shortest first" both returned nought and either
+       one passed. The spans are different here, so reversing it swaps the two.
+
+       Why the longer one goes up: the bars under it settle into the lanes it leaves,
+       and a short bar over a long one would leave a held lane running for days under
+       a line that ended on the first of them. */
+    const events = [spanning(7, '2027-05-01'), spanning(9, '2027-05-01')]
+    const races = [
+      /* The SHORTER one first in the list and with the LOWER id, so neither the order
+         it arrives in nor its identity can be what puts the other one on top. */
+      on(1, 7, '2027-05-12'),
+      on(2, 7, '2027-05-13'),
+      on(3, 9, '2027-05-12'),
+      on(4, 9, '2027-05-16'),
+    ]
+    const twelfth = at(monthDrawing(events, races, 2027, 5, 5), 11).drawn
+    const idOf = (one: Drawn) => (one.at === 'scale' ? one.event.id : null)
+
+    expect(twelfth.map(idOf)).toEqual([9, 7])
+    /* And the day after the short one ends, the long one is still in the upper lane
+       with nothing held open above it, which is what the order buys. */
+    expect(at(monthDrawing(events, races, 2027, 5, 5), 13).drawn.map(idOf)).toEqual([9])
   })
 
   it('keeps a bar in its own lane on the day the one above it has ended', () => {

@@ -12,6 +12,11 @@ import { ruleFor, ruleInMedia, unconditionalRules } from '../test/stylesheet'
  */
 const calendar = readFileSync(join(process.cwd(), 'src/pages/Calendar.css'), 'utf-8')
 
+/* The portal's own sheet, for the one rule `ADL.md` A7 names by name: hiding by width
+   is done with „ista pravila koja nosi `visually-hidden`", so what those rules are is
+   a question for that sheet rather than for a copy of them kept here. */
+const portal = readFileSync(join(process.cwd(), 'src/index.css'), 'utf-8')
+
 describe('a day of the month', () => {
   it('may be narrower than the longest name in it, down to what it carries', () => {
     /* The one thing the portal never does is move the page sideways (WCAG 2.2 SC
@@ -148,6 +153,76 @@ describe('a bar across several days', () => {
     ).toBe('none')
   })
 
+  it('moves the body of a stump out of sight and never takes it away', () => {
+    /* **`ADL.md` A7, 31.07.2026, in so many words:** „Kontrola koja menja natpis po
+       širini ekrana mora zadržati oba natpisa u pristupačnom stablu … Skrivanje se radi
+       pomeranjem van vidnog polja (ista pravila koja nosi `visually-hidden`), nikad
+       uklanjanjem."
+
+       This rule said `visibility: hidden` until 22.09.2026, which is removal, and the
+       piece it stood on was `aria-hidden` besides. The two together read well above
+       780px, where the piece is a mute stump, and below it left 26 tiles in the served
+       calendar that looked like every other tile, could not be tapped and were not in
+       the accessibility tree at all. The decision above was written after the same
+       trick „ostavio šest dugmadi bez ijednog imena ispod 620px".
+
+       **The floor under this is `.visually-hidden` itself**, read off `index.css` rather
+       than written out here: the decision says „ista pravila koja nosi
+       `visually-hidden`", so the thing that decides whether these are those rules is
+       that rule and not a copy of it. A class cannot be added by a media query, so the
+       declarations have to be repeated; what must not happen is that they drift. */
+    const recipe = ruleFor(portal, '.visually-hidden', 'index.css')
+    const stump = ruleInMedia(calendar, WIDE, '.chip--continues > :not(.chip__hold)', 'Calendar.css')
+    const named = [...recipe].sort()
+
+    /* The floor under the floor: a rule that declared nothing would make every check
+       below vacuous, and so would one somebody reduced to a single property. */
+    expect(named.length, '.visually-hidden in index.css declares nothing').toBeGreaterThan(5)
+
+    for (const property of named) {
+      expect(
+        stump.getPropertyValue(property),
+        `the stump says something else than .visually-hidden does about ${property}`,
+      ).toBe(recipe.getPropertyValue(property))
+    }
+
+    /* And it removes nothing, which is the half the properties above cannot say:
+       `visibility: hidden` and `display: none` each take the name out of the
+       accessibility tree while every rule above is still written. */
+    expect(stump.getPropertyValue('visibility'), 'the body is removed, not moved').toBe('')
+    expect(stump.getPropertyValue('display'), 'the body is removed, not moved').toBe('')
+  })
+
+  it('keeps a held lane off a telephone and gives it its line back on a grid', () => {
+    /* A held lane is the one thing in a day that carries no word at all, so it is the
+       one thing the sheet may take away outright. Below the grid there is nothing for
+       it to hold in line: the days stand one under another, and on 2 June 2019 it drew
+       an empty band the width of the page and spent one of the day's five lines on it.
+
+       Read at both ends, because either one alone says nothing: taken away everywhere,
+       the bar under it climbs a row on the grid and breaks in the middle of itself. */
+    expect(ruleFor(calendar, '.chip--hollow', 'Calendar.css').getPropertyValue('display')).toBe(
+      'none',
+    )
+
+    const onGrid = ruleInMedia(calendar, WIDE, '.chip--hollow', 'Calendar.css')
+
+    expect(onGrid.getPropertyValue('display')).toBe('flex')
+    expect(onGrid.getPropertyValue('visibility')).toBe('hidden')
+
+    /* The space that holds a stump as tall as a tile goes the same way round, and for
+       the same reason: it says nothing, and below the grid a continuing piece is a
+       whole tile that this would only widen. */
+    expect(ruleFor(calendar, '.chip__hold', 'Calendar.css').getPropertyValue('display')).toBe(
+      'none',
+    )
+    expect(
+      ruleInMedia(calendar, WIDE, '.chip--continues > .chip__hold', 'Calendar.css').getPropertyValue(
+        'display',
+      ),
+    ).toBe('inline')
+  })
+
   it('reaches nowhere at all below the width where there is a grid', () => {
     /* **This is the one that costs a page if it is wrong.** Below 48.75em the month is
        one column of days, so there is no day to the left to reach into: the reach would
@@ -160,7 +235,7 @@ describe('a bar across several days', () => {
     const loose = unconditionalRules(calendar, 'Calendar.css').map((rule) => rule.selectorText)
 
     expect(loose).not.toContain('.chip--continues')
-    expect(loose).not.toContain('.chip--continues > *')
+    expect(loose).not.toContain('.chip--continues > :not(.chip__hold)')
     expect(loose).not.toContain('.chip--runs-on')
   })
 
@@ -171,15 +246,8 @@ describe('a bar across several days', () => {
     expect(runs.getPropertyValue('border-end-end-radius')).toBe('0px')
   })
 
-  it('keeps the line of a lane it holds open, rather than taking it away', () => {
-    /* `display: none` is what this looks like it should be and it is the opposite: the
-       line would go and the bar under it would climb a row, which is the very break the
-       held lane exists to prevent. Hidden, the tile keeps the box it always had, and it
-       is made of `.chip` so its height is the tile's own and there is no number here to
-       fall out of step with one. */
-    const hollow = ruleFor(calendar, '.chip--hollow', 'Calendar.css')
-
-    expect(hollow.getPropertyValue('visibility')).toBe('hidden')
-    expect(hollow.getPropertyValue('display')).toBe('')
-  })
+  /* What stood here measured only that a held lane is hidden rather than removed, and
+     that was half the question: it said nothing about the width, so it was green while
+     the lane was drawn as an empty band across a telephone. The case „keeps a held lane
+     off a telephone and gives it its line back on a grid" above reads both ends. */
 })

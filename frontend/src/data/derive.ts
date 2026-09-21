@@ -584,21 +584,13 @@ export function categoriesOf(competitors: Competitor[], gender: Gender): string[
   ].sort()
 }
 
-/**
- * The events of one month, oldest first.
- *
- * Every event there is: an event on the portal is on, and one that is off is
- * deleted rather than marked (owner, 10.08.2026). This used to ask whether the
- * event was cancelled, and asking it here and not in `monthsWithEvents` put a
- * month whose only event was off on the list of months that hold something.
- */
-export function eventsInMonth(events: BtlEvent[], year: number, month: number): BtlEvent[] {
-  const prefix = `${year}-${String(month).padStart(2, '0')}`
-
-  return events
-    .filter((event) => event.date.startsWith(prefix))
-    .sort((left, right) => left.date.localeCompare(right.date))
-}
+/* `eventsInMonth` stood here and is gone since 22.09.2026. It answered „the events
+   entered under a day of this month", which is the question the grid stopped asking
+   when a multi-day event became a bar across its days (PDL P35): `monthDrawing`
+   answers „what each day of this month draws" instead, off the range rather than off
+   the day an event was entered under. Nothing in the portal read it afterwards and
+   only its own case did, which is a guard measuring a function kept alive by its
+   guard. */
 
 /** Every month that holds at least one event, oldest first, as "YYYY-MM". */
 export function monthsWithEvents(events: BtlEvent[]): string[] {
@@ -783,9 +775,6 @@ export type Drawn =
       opens: boolean
       /** Whether it ends it: its last day, the last of the month, or a Sunday. */
       closes: boolean
-      /** Whether this is the piece that carries the link and the spoken range. Exactly
-       *  one piece of one scale in one month does. */
-      leads: boolean
     }
   /** A lane that is empty on this day, holding the bar under it in its own line. */
   | { at: 'hollow' }
@@ -875,12 +864,6 @@ export function monthDrawing(
               to: held.to,
               opens: date === held.from || date === opens || isMonday(date),
               closes: date === held.to || date === shuts || isSunday(date),
-              /* The first day of it this month holds, which is its own first day
-                 unless the event began in the month before. That one case is why this
-                 is not written `date === held.from`: Ultra-trail Stara planina begins
-                 on 31 May, and read that way its June would carry a bar nobody can
-                 reach and no reader is told about. */
-              leads: date === (held.from < opens ? opens : held.from),
             },
       )
     }

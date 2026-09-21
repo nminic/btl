@@ -21,11 +21,19 @@ import '../../styles/table.css'
  * the range where it has one, and the lengths.
  *
  * One body for the tile of a single day and for every piece of a scale, so the two
- * cannot come to say different things about one event. The scale hides this body on
- * the pieces that only continue it, and it hides it **in the stylesheet**: what a
- * reader with their ears meets is decided here, in the markup, and is the same at
- * every width. A piece that continues is `aria-hidden` whole, so nothing in here is
- * spoken twice however it is drawn.
+ * cannot come to say different things about one event.
+ *
+ * **Every piece of a scale carries the whole of this, and the stylesheet only ever
+ * moves it out of SIGHT** (`ADL.md` A7, 31.07.2026: „Kontrola koja menja natpis po
+ * širini ekrana mora zadržati oba natpisa u pristupačnom stablu … Skrivanje se radi
+ * pomeranjem van vidnog polja …, nikad uklanjanjem"). The first draft of the scale
+ * broke that rule in both of the ways that decision was written about: a continuing
+ * piece was `aria-hidden` whole, and its body was taken away with
+ * `visibility: hidden`. Above 780px that looked right, because the piece was a
+ * coloured stump; below it, where the days stack and nothing hides anything, the
+ * same piece stood as a full tile with a name and dots that **could not be tapped
+ * and did not exist for a screen reader at all**. Measured on a running portal at
+ * 360, 390 and 768: 26 such tiles in the served calendar.
  */
 function ChipBody({
   event,
@@ -34,7 +42,7 @@ function ChipBody({
 }: {
   event: BtlEvent
   races: Race[]
-  /** The range, in words, on the one piece that speaks for the whole event. */
+  /** The range, in words. Every piece of a scale says it; a one-day tile has none. */
   said?: string
 }) {
   const { t } = useI18n()
@@ -105,11 +113,27 @@ export function EventChip({ event, races }: { event: BtlEvent; races: Race[] }) 
  * them (PDL P35, 21.09.2026, owner: „napravi skale u Kalendar view koje mogu
  * zauzimati vise dana ako se radi o takvom dogadjaju").
  *
- * **One event and one mark, not one mark a day.** Exactly one piece in a month is a
- * link, and it is the first day of the event that month holds; every other piece is
- * a span and is `aria-hidden` whole. So a reader with their ears meets the event
- * once, with its range said out in words, rather than meeting the same name on each
- * of four days and having to work out that they are one thing.
+ * **EVERY PIECE IS A LINK AND EVERY PIECE IS NAMED**, at every width, because the
+ * markup does not know how wide the screen is and must not pretend to. Each one goes
+ * to the event and says the whole range, so a day of a four-day event is reached and
+ * read exactly like any other day of the calendar.
+ *
+ * **This is the correction of 22.09.2026 and it was a fault of the kind `ADL.md` A7
+ * was written about.** The first draft made one piece a month the link and every
+ * other piece an `aria-hidden` span whose body the sheet took away with
+ * `visibility: hidden`. Both of those are REMOVAL, and A7 (31.07.2026) says hiding by
+ * width is done „pomeranjem van vidnog polja …, nikad uklanjanjem", after a first
+ * attempt at the same trick „ostavio šest dugmadi bez ijednog imena ispod 620px".
+ * Here it left 26 tiles on a telephone that looked like every other tile, could not
+ * be tapped, and were not in the accessibility tree at all: the removal was written
+ * unconditionally while the only thing that made it defensible, the piece being a
+ * mute stump, held only above 780px.
+ *
+ * **The same name on several links is deliberate and is not the „identical labels"
+ * fault.** That one is about links with the same name going to DIFFERENT places
+ * (SC 2.4.4); every piece of one bar goes to one event, so one name is the honest
+ * one. It is the opposite of the shortcut in a day's corner, which carries its day
+ * precisely because those thirty one links lead thirty one different ways.
  *
  * **Why the pieces are drawn in the days rather than over them.** A bar placed on
  * the month grid itself would be a grid item beside the days, which takes the day out
@@ -146,19 +170,22 @@ export function EventScale({ piece, races }: { piece: Extract<Drawn, { at: 'scal
     .filter(Boolean)
     .join(' ')
 
-  return piece.leads ? (
+  return (
     <Link className={className} to={`/${locale}/kalendar/${event.slug}`} title={event.name}>
       <ChipBody event={event} races={races} said={said} />
+      {/* What holds the line where the sheet moves the body out of sight, and drawn
+          nowhere else: above 780px a continuing piece is a stump of the bar, and with
+          its body out of the flow the tile would be only its own padding tall, so the
+          bar would thin out in the middle of itself. Decorative and `aria-hidden`,
+          which is what lets the sheet take it away below that width without taking a
+          word from anybody: the thing A7 forbids removing is the LABEL, and this one
+          says nothing. */}
+      {!piece.opens && (
+        <span className="chip__hold" aria-hidden="true">
+          &nbsp;
+        </span>
+      )}
     </Link>
-  ) : (
-    /* Not a link and not spoken. A second link would be a second place to stop with
-       the tab key and a second name in a reader's list of links, which is the „two
-       marks" the owner's rule is against; and a name drawn twice on a row that wraps
-       is what the eye needs, so the drawing is left to the sheet and the record of
-       what this is stays here. */
-    <span className={className} aria-hidden="true">
-      <ChipBody event={event} races={races} />
-    </span>
   )
 }
 

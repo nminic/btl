@@ -99,6 +99,10 @@ const ALLOWED = new Map([
     'not a step: the letter that opens the rule is 1.5rem tall (.hint__ask), and on the one field whose head runs to several lines the rule hangs under the letter rather than under the head, so the height of the letter is what is written',
   ],
   [
+    'pages/Calendar.css | margin | -1px',
+    'not a space and not chosen here at all: it is one of the declarations `.visually-hidden` carries (index.css), repeated on a rule inside a media query because a class cannot be added by one. `ADL.md` A7 (31.07.2026) says hiding by width is done with „ista pravila koja nosi `visually-hidden`", so the value is that rule\'s and a case holds the two to each other (pages/calendarStyle.test.ts)',
+  ],
+  [
     'pages/Calendar.css | margin-inline-start | calc(-3 * var(--space-8) - 2px)',
     'not a step: how far a piece of a multi-day bar reaches back into the day before it, which is three gaps of the grid and TWO BORDERS OF ONE PIXEL. The three gaps are the token; the two pixels are `border: 1px` on `.day` and there is no token for a hairline, so they are the same kind of value as the `+ 4px` the floor of a day is measured with. Written in `rem` alone the reach is right at exactly one size of text, and wrong at every other: too short leaves a seam through the bar, too long hangs it over the day before',
   ],
@@ -410,8 +414,12 @@ describe('space and corners are chosen from the scale, not typed', () => {
         'the line saying what the star means, on a screen where every card is folded and no star is drawn'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
       [
-        'pages/Calendar.css .chip--continues > *',
-        'the name and the lengths on a piece of a multi-day bar that only continues one: the same bar draws them once at its head, in the same row and a column or two away, and this is the only width at which the days stand side by side for that to be true. Nothing is lost to a reader with their ears at any width, because the piece is aria-hidden in the markup and was never spoken (pages/calendar/DayChips.tsx)',
+        'pages/Calendar.css .chip--continues > :not(.chip__hold)',
+        'the name and the lengths on a piece of a multi-day bar that only continues one, MOVED OUT OF SIGHT and not taken away: these are the declarations `.visually-hidden` itself carries, which is what `ADL.md` A7 prescribes for hiding by width, so the name stays in the accessibility tree at every width and a case holds that they really are those rules (pages/calendarStyle.test.ts). The same bar draws the name once at its head, a column or two away in the same row, and this is the only width at which the days stand side by side for that to be true. It said `visibility: hidden` until 22.09.2026, which IS removal, and that left 26 tiles on a telephone that nobody could tap and no screen reader could find',
+      ],
+      [
+        'pages/Calendar.css .chip--hollow',
+        'a lane held open under a bar so the bar below keeps its line. It is the one thing in a day that carries no word at all: `aria-hidden` in the markup with a single space in it, and it was never spoken to anybody at any width, so hiding it takes nothing from anybody (pages/calendar/DayChips.tsx, HollowLane)',
       ],
     ])
 
