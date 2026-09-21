@@ -211,8 +211,11 @@ import java.util.Optional;
  * answered no seat, so a rule worked out from the seat fell through to „whoever has been
  * here longest" and handed the team to somebody who had not founded it. Measured on the
  * shipped data, 21.09.2026: {@code nisavski-maraton-klub}'s seat names {@code 000005},
- * who joined in 2022, while {@code 000011} joined in 2017 - and {@code 000011} was given
- * the edit screen, the delete and the answering of applications.
+ * who joined in 2022, while FOUR members joined in 2017 - {@code 000011}, {@code 000017},
+ * {@code 000023} and {@code 000029} - so it was the tie break on the member number that
+ * picked one of them, and {@code 000011} was given the edit screen, the delete and the
+ * answering of applications. The half of the rule that looks like a detail is the half
+ * that decided who got the team.
  *
  * <p><b>So the rule MOVES here whole rather than being answered in halves</b>, and that
  * is the owner's decision of 21.09.2026 and not a repair chosen here: „Server primenjuje
