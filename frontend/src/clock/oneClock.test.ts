@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { THE_CLOCKS_OWN_TESTS } from '../test/theDay'
 
 /* The rule this file exists for: nothing on the portal reads the machine's
  * clock except src/clock/context.ts.
@@ -39,25 +40,54 @@ const ALLOWED = join('clock', 'context.ts')
 const READS_THE_CLOCK =
   /new Date\s*(\(\s*\))?(?![(\w])|(?<!new\s+)\bDate\(|Date\.now\(|\.format(ToParts)?\(\s*\)/
 
-function sourceFiles(dir: string): string[] {
+const IS_A_TEST = /\.test\.tsx?$/
+
+function filesUnder(dir: string, wanted: (name: string) => boolean): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = join(dir, entry.name)
 
     if (entry.isDirectory()) {
-      return sourceFiles(full)
+      return filesUnder(full, wanted)
     }
 
-    return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [full] : []
+    return /\.tsx?$/.test(entry.name) && wanted(entry.name) ? [full] : []
   })
 }
 
 describe('the portal has one clock', () => {
   it('is read in exactly one file', () => {
-    const readers = sourceFiles(ROOT)
+    const readers = filesUnder(ROOT, (name) => !IS_A_TEST.test(name))
       .filter((file) => READS_THE_CLOCK.test(readFileSync(file, 'utf-8')))
       .map((file) => relative(ROOT, file))
 
     expect(readers).toEqual([ALLOWED])
+  })
+
+  /* And no test reads it either, which is the half the replacement in
+   * `test/setup.ts` cannot see.
+   *
+   * That replacement pins `realToday` and so pins every screen, but a test that
+   * asks the machine ITSELF what year it is goes around it entirely: measured
+   * 21.09.2026, a case written as `expect(new Date().getFullYear()).toBe(2026)`
+   * is green on both of the days the gate reads the suite as, because the portal
+   * is never asked. It is exactly the shape that was live here -
+   * `rateEvent.test.tsx` compared a card's date with the machine's year, so the
+   * card and the check were two readings of one clock and could never disagree.
+   *
+   * The same question in the same words as the case above it, over the other half
+   * of the same folder, and the same exception for the same reason: the clock's
+   * own tests are ABOUT the machine's clock. `clock.test.tsx` moves the system
+   * time on purpose, and this very file carries every way of reading it written
+   * out as text. One home for that exception (`test/theDay.ts`), because a second
+   * copy of it is a second thing to keep right.
+   */
+  it('and no test reads it either, outside the clock its own tests are about', () => {
+    const readers = filesUnder(ROOT, (name) => IS_A_TEST.test(name))
+      .filter((file) => !THE_CLOCKS_OWN_TESTS.test(file))
+      .filter((file) => READS_THE_CLOCK.test(readFileSync(file, 'utf-8')))
+      .map((file) => relative(ROOT, file))
+
+    expect(readers).toEqual([])
   })
 
   it('notices every way of asking what time it is now', () => {

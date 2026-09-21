@@ -48,10 +48,15 @@ const EVENT = 'fruskogorski-maraton-2010'
 const AHEAD = 'sidski-novogodisnji-maraton-2027'
 /** The day that event is run, so the boundary itself can be stood on. */
 const AHEAD_DAY = '2027-01-16'
-/** A day before it, so the three cases about a race nobody has run say what
- *  they say whatever day the suite is run on. On the real clock they would swap
- *  their answers on 16.01.2027. */
+/** A day before it, so the cases about a race nobody has run say what they say
+ *  whatever day the suite is run on. On the real clock they would swap their
+ *  answers on 16.01.2027. */
 const BEFORE_AHEAD = '2026-12-31'
+/** The day the one rating followed end to end is written on. The card it lands
+ *  on keeps the day it was written, and a case that reads that date has to be
+ *  the one that decided it: read off the machine, the card and the check were
+ *  two readings of one clock and agreed with each other whatever it said. */
+const THE_DAY_IT_WAS_WRITTEN = '2026-09-30'
 /** One nobody has run and nobody has commented on, which is what makes the
  *  whole section absent rather than empty. AHEAD carries a comment on purpose:
  *  it stands for an event moved onto a later date. */
@@ -858,7 +863,17 @@ describe('a comment a moderator lets out', () => {
        event beside the name, and without it an approved rating is published
        under no event at all and disappears with nothing saying so. */
     const user = setupUser()
-    const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'superadmin', ME)
+    /* On a day this case names, because the card below is read for the date it
+       keeps and that date is the day the rating was written. Left to the
+       machine, the walk compared one reading of the clock with another and
+       agreed with itself whatever either said. */
+    const { router } = renderAt(
+      `/sr/kalendar/${EVENT}/ocena`,
+      'superadmin',
+      ME,
+      undefined,
+      THE_DAY_IT_WAS_WRITTEN,
+    )
 
     await screen.findByRole('radiogroup', { name: 'Organizacija' })
     await user.type(screen.getByLabelText(/^Komentar/), 'Prva trka u sezoni i dobro postavljena.')
@@ -916,10 +931,13 @@ describe('a comment a moderator lets out', () => {
       'href',
       `/sr/takmicar/${me.memberNumber}-${slugify(`${me.firstName} ${me.lastName}`)}`,
     )
-    /* The year the suite is running in. The day itself is written by the
-       screen through Intl, and repeating that here would be the source
-       assessing itself. */
-    expect(card.textContent).toContain(String(new Date().getFullYear()))
+    /* The year of the day this case was read as. The day itself is written by
+       the screen through Intl, and repeating that here would be the source
+       assessing itself; the year is enough to tell the day it was written from
+       the day the event was run, which is the thing that was going unwritten.
+       Read off the machine until 21.09.2026, which made the card and the check
+       two readings of one clock that could never disagree. */
+    expect(card.textContent).toContain(THE_DAY_IT_WAS_WRITTEN.slice(0, 4))
 
     /* And the marks themselves, which is what the whole walk is about and was
        the one thing it did not check: four given, four approved, four drawn.
@@ -1568,11 +1586,15 @@ describe('the comments under an event', () => {
        an absence of something; and it leaves the three files in the cache
        (data/client.ts), so the visitor's page is whole at its first paint and
        „not there yet" cannot pass for „not shown". */
-    const { unmount } = renderAt(AHEAD, 'competitor', ME)
+    /* On a day before that race is run, both times, for the same reason every
+       other case about this event names one: read on the real clock this said
+       „still to be run" until 16.01.2027 and the opposite after it, and the
+       whole case is about the side of that boundary it stands on. */
+    const { unmount } = renderAt(AHEAD, 'competitor', ME, undefined, BEFORE_AHEAD)
     await screen.findByRole('list', { name: 'Komentari' })
     unmount()
 
-    renderAt(AHEAD)
+    renderAt(AHEAD, 'visitor', null, undefined, BEFORE_AHEAD)
 
     await screen.findByRole('heading', { level: 1 })
 
