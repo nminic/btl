@@ -71,8 +71,13 @@ describe('opening the screen', () => {
        password sent to a route that could only refuse it. */
     expect(screen.queryByLabelText('Nova lozinka')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Prijava' })).toBeVisible()
-    /* And nothing was asked of the server, which is the other half of "no form". */
-    expect(server.asked.filter((one) => one.path.startsWith('/api'))).toEqual([])
+    /* And nothing was asked of the server, which is the other half of "no form".
+       `GET /api/me` is the shell's own question above every screen since 20.09.2026
+       (app/Shell.tsx, session/useTheServersSession.ts) and is named and set aside
+       rather than the assertion being loosened to „not many requests". */
+    expect(
+      server.asked.filter((one) => one.path.startsWith('/api') && one.path !== '/api/me'),
+    ).toEqual([])
   })
 
   it('says beside the field how long a password has to be, and says the number once', async () => {

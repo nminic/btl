@@ -90,83 +90,19 @@ function renderMembershipOn(today: string, memberNumber = '000032') {
   )
 }
 
-describe('signing in', () => {
-  it('turns a visitor into a competitor and lands on their profile', async () => {
-    const user = setupUser()
-    renderAt('/sr/prijava')
+/* SIGNING IN IS MEASURED IN `pages/member/signIn.test.tsx` SINCE 20.09.2026, AND THE
+   FOUR CASES THAT STOOD HERE ARE GONE RATHER THAN MOVED.
 
-    await user.selectOptions(await screen.findByLabelText('Ko si?'), '000007')
-    await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
+   All four were about a screen that no longer exists: a `select` of the members of the
+   league, a button told off until one was chosen, and a note saying „portal ti veruje
+   na rec". The form now sends an address and a password to `POST /api/sign-in` and
+   takes the role from `GET /api/me`, so there is no member to choose and no word to
+   take. A case rewritten to the new screen would be the new file's case written twice.
 
-    /* Their own profile, which since 23.08.2026 is the profile and nothing else:
-       the row of member links under it went, and the heading over that row went
-       with it. What says this is their profile rather than somebody's is the
-       table of results the screen is built around. */
-    expect(await screen.findByRole('table', { name: 'Rezultati' })).toBeVisible()
-    // And the way into the rest of the member area is the picture in the header.
-    expect(screen.getByRole('button', { name: 'Otvori nalog' })).toBeVisible()
-  })
-
-  it('says the one field it has is obligatory, as every field on the portal does', async () => {
-    /* Owner, 12.08.2026: the rule holds „na svim formama za unos i
-       verifikaciju", and this is the smallest form the portal has. It carried
-       the browser's own `required` and nothing else, so it said nothing to a
-       reader and drew no star (forms/AskedLabel.tsx). */
-    renderAt('/sr/prijava')
-
-    const who = await screen.findByLabelText('Ko si?')
-
-    expect(who).toHaveAttribute('aria-required', 'true')
-    expect(who).not.toHaveAttribute('required')
-    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
-    expect(
-      must(who.closest('.rankings__field'), 'the field it stands in').querySelector(
-        '.field__required',
-      ),
-    ).not.toBeNull()
-  })
-
-  it('will not sign anybody in until somebody is chosen', async () => {
-    /* The `required` this form used to carry was taken off and replaced by a
-       lone `disabled` on the button, which nothing held: delete it and all 1789
-       tests still passed, because an expression in a JSX attribute is not a
-       branch coverage counts. What it was hiding: pressing the button signed the
-       session in as the empty string and walked to a profile headed „Ovog
-       profila nema."
-     *
-       So it is pressed here, not inspected, and told off rather than switched
-       off, which is what the portal does everywhere else it refuses a press. */
-    const user = setupUser()
-    renderAt('/sr/prijava')
-
-    const send = await screen.findByRole('button', { name: 'Prijavi se' })
-
-    expect(send).toHaveAttribute('aria-disabled', 'true')
-    expect(send).not.toBeDisabled()
-    expect(send).toHaveAccessibleDescription('Izaberi člana da bi mogao da se prijaviš.')
-
-    await user.click(send)
-
-    expect(screen.getByLabelText('Ko si?')).toBeVisible()
-    expect(screen.queryByRole('heading', { name: 'Ovog profila nema.' })).not.toBeInTheDocument()
-
-    /* And once somebody is chosen it goes through, so the guard cannot be
-       „refuse always". */
-    await user.selectOptions(screen.getByLabelText('Ko si?'), '000001')
-
-    expect(send).toHaveAttribute('aria-disabled', 'false')
-
-    await user.click(send)
-
-    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
-  })
-
-  it('says the prototype takes your word for it', async () => {
-    renderAt('/sr/prijava')
-
-    expect(await screen.findByText(/veruje na reč/)).toBeVisible()
-  })
-})
+   What did NOT go with them is the rule they were holding - the owner's of 12.08.2026,
+   that every field on every form carries a star, `aria-required` and the line saying
+   what the star means. It is held over both new fields, in that file, and the smallest
+   form on the portal is still where it is worth holding. */
 
 describe('a member looking at their own profile', () => {
   it('opens on Pregled, the same part that is marked from the list of competitors', async () => {

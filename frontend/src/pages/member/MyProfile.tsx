@@ -1,6 +1,5 @@
-import { useSession } from '../../session/useSession'
 import { CompetitorProfile } from '../CompetitorProfile'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /* The same profile everyone else sees, and nothing under it.
@@ -20,11 +19,11 @@ import './Member.css'
  * the same head 26px here and 28px on anybody else's profile at 360px. A wrapper
  * that holds one thing and changes how it looks is a difference nobody decided. */
 export function MyProfile() {
-  const { memberNumber } = useSession()
+  const who = useMemberScreen()
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
 
-  return <CompetitorProfile memberNumber={memberNumber} />
+  return <CompetitorProfile memberNumber={who.memberNumber} />
 }

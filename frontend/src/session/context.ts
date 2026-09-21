@@ -445,10 +445,57 @@ export type Deletions = Record<string, string[]>
 
 export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
 
+/**
+ * WHOEVER IS SIGNED IN, AND WHICH OF THE TWO WAYS IN HE CAME BY.
+ *
+ * <p>There are two, and until the mock is switched off there go on being two. The
+ * header has to ask ONE question - „is anybody signed in" (PDL, owner: „Prijavljen član
+ * vidi istu naslovnu kao gost. Jedina razlika je gore desno, gde umesto Registracija /
+ * Prijava stoji link ka opcijama profila") - and it must not ask it twice and get two
+ * answers.
+ *
+ * <p><b>A real session carries no member number, and that is the server's decision
+ * rather than an oversight here.</b> `GET /api/me` answers `{role, account}` and
+ * {@code MeApi} says at length why the member number is not on it: a moderator has no
+ * member record at all, so the field would be empty for a real signed in administrator
+ * and every screen reading it would carry the branch whether it wanted one or not. So
+ * the two arms of this carry different things because the portal genuinely knows
+ * different things about them.
+ */
+export type SignedIn =
+  /**
+   * The prototype's way in: a member number, chosen on the development switch.
+   *
+   * Every screen that draws a member reads the mock through this, so it wins where both
+   * are set. There is nothing to reconcile - the mock knows members and the server
+   * knows accounts - and the day `/mock` goes off (ADL A50) this arm goes with it.
+   */
+  | { as: 'member'; memberNumber: string }
+  /** A real session, which is an account and nothing more. */
+  | { as: 'account'; account: number }
+
 export type SessionValue = {
   /** Member number of whoever is signed in, or null. */
   memberNumber: string | null
   signIn: (memberNumber: string) => void
+  /**
+   * Whoever the SERVER says is signed in, or null.
+   *
+   * Written from the one answer that knows, `GET /api/me`, and never from the form: the
+   * form is told nothing back, and the answer to the sign in itself is 204 and empty.
+   */
+  account: number | null
+  /** What `GET /api/me` said, remembered for the rest of the visit. */
+  theServerSignedMeIn: (account: number) => void
+  /**
+   * The one question the header asks, answered once here.
+   *
+   * Derived rather than stored, so it cannot drift away from the two facts above: a
+   * third field saying „somebody is signed in" is a third thing to remember to clear on
+   * the way out, and signing out that left it standing would leave a header for a
+   * visitor with a profile menu on it.
+   */
+  signedIn: SignedIn | null
   signOut: () => void
 
   submissions: Submission[]

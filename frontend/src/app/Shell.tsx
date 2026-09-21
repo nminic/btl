@@ -9,6 +9,7 @@ import { totalWaiting } from '../pages/admin/queues'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
+import { useTheServersSession } from '../session/useTheServersSession'
 import { AccountMenu } from './AccountMenu'
 import { Brand } from './Brand'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -137,7 +138,12 @@ export function Shell() {
   /* Signing out has to empty the header. This used to read the role, which the
      development role switch also sets, so the inbox and the cog stayed on
      screen after a member signed out. The session is the one that knows. */
-  const { memberNumber } = useSession()
+  const { signedIn } = useSession()
+  /* And the session is asked of the SERVER here, because this is the one component
+     every address on the portal is drawn inside. The cookie from yesterday's visit is
+     one no script can read, so without this the browser would be signed in and the
+     portal would not know it. */
+  useTheServersSession()
 
   return (
     <div className="shell">
@@ -164,10 +170,10 @@ export function Shell() {
                 Signed out: the two things a visitor is here to do, with joining
                 as the loud one. It is the only control on this page that brings
                 the league any money. */}
-            {memberNumber !== null ? (
+            {signedIn !== null ? (
               <>
                 <MessagesMenu />
-                <AccountMenu memberNumber={memberNumber} />
+                <AccountMenu signedIn={signedIn} />
               </>
             ) : (
               <>

@@ -54,6 +54,15 @@
  * se gasi tek kad sve bude gotovo, odjednom a ne resurs po resurs") is the same
  * day's work as it was the day before.
  *
+ * **And on 20.09.2026 signing in joined them, on exactly the same ground.**
+ * `session/theServer.ts` speaks to `/api/sign-in`, `/api/sign-out` and `/api/me`:
+ * two writes and the question of who is asking. None of the three is a resource,
+ * none has a mock of itself, and the list below is again untouched. What moved
+ * with it is one thing and it is about this file rather than about the mock: the
+ * role a screen draws itself by no longer comes from a control in the header but
+ * from the server, so the portal now has a session that outlives a refresh while
+ * its data still comes off the disc.
+ *
  * The files are served rather than imported so a million and a half bytes of
  * results stay out of the JavaScript bundle, and so the screens go through a
  * real request with a real loading state.

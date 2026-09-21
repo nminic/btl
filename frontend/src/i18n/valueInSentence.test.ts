@@ -380,6 +380,12 @@ describe('a sentence with a value put into it', () => {
          neither can be written into the words. */
       'server.refused',
       'server.wrong',
+      /* The number of the account somebody is signed in as, in the header, and it takes
+         no case at all: the sentence is „Nalog 41", the word stands first and the number
+         after it is a label rather than a thing being counted. It is drawn only where the
+         portal has no member number to name him by, which is a real session against a
+         portal still reading its members out of `/mock` (app/AccountMenu.tsx). */
+      'shell.accountNumber',
       'shell.unread',
       'shell.waiting',
       'teams.editDone',

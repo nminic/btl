@@ -210,6 +210,7 @@
     "noMessages": "Nema poruka.",
     "allMessages": "Sve poruke",
     "account": "Nalog",
+    "accountNumber": "Nalog {number}",
     "settings": "Podešavanja",
     "signIn": "Prijavi se",
     "contact": "Kontakt",
@@ -875,12 +876,17 @@
   },
   "signIn": {
     "title": "Prijava",
-    "prototypeNote": "Ovo je probni portal. Prava prijava sa lozinkom, potvrdom mejla i dvofaktorskom potvrdom za Superadmina radi se sa bazom. Do tada biraš ko si i portal ti veruje na reč.",
-    "whoAreYou": "Ko si?",
+    "email": "Adresa elektronske pošte",
+    "password": "Lozinka",
     "submit": "Prijavi se",
+    "sending": "Prijavljuje se",
     "needed": "Za ovo treba prijava",
     "neededText": "Ovaj deo portala vide samo članovi.",
-    "needsSomebody": "Izaberi člana da bi mogao da se prijaviš."
+    "noRecord": "Ovaj deo je za takmičare",
+    "noRecordText": "Prijavljen si, ali uz ovaj nalog ne stoji takmičarski zapis, pa ovde nema šta da se prikaže.",
+    "needsBoth": "Upiši adresu i lozinku da bi mogao da se prijaviš.",
+    "refused": "Prijava nije uspela. Adresa ili lozinka nisu tačne, ili je nalog privremeno zaključan zbog previše neuspelih pokušaja.",
+    "noWho": "Prijava je prošla, ali portal nije uspeo da sazna ko si. Osveži stranu, pa ako se ponovi, javi nam."
   },
   "newPassword": {
     "title": "Nova lozinka",
@@ -908,7 +914,8 @@
     "refused": "Server je odbio zahtev uz razlog {reason}, koji ovaj ekran ne prepoznaje.",
     "rejected": "Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.",
     "wrong": "Server je odgovorio brojem {status} i ništa nije promenjeno. Pokušaj ponovo za koji minut.",
-    "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo."
+    "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo.",
+    "named": "sa servera"
   },
   "myProfile": {
     "signOut": "Odjavi se",

@@ -2,20 +2,21 @@ import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
 import { formatShortDate } from '../../i18n/format'
 import { useSession } from '../../session/useSession'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /* The inbox lives on the portal, not only in email: a member has to be able to
  * find what was said to them without digging through a mailbox. */
 export function Messages({ only }: { only?: string[] } = {}) {
   const { locale, t } = useI18n()
-  const { memberNumber, inbox: all, markRead } = useSession()
+  const { inbox: all, markRead } = useSession()
+  const who = useMemberScreen()
   // `only` exists so the empty inbox can be seen; nothing in the application
   // passes it.
   const messages = only === undefined ? all : all.filter((one) => only.includes(one.id))
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
 
   const unread = messages.filter((one) => !one.read).length
