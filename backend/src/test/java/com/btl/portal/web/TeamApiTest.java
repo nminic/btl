@@ -4,6 +4,9 @@ import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.Location;
+import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,19 +119,37 @@ class TeamApiTest {
 	private static final String NOBODY_IS_NAMED_TO_THIS_SEAT = "";
 
 	/**
-	 * WHAT V11 SAYS ABOUT AN EMPTY SEAT, QUOTED ONCE HERE AND NOWHERE ELSE IN THIS FILE.
+	 * THE WHOLE COMMENT V11 WRITES OVER {@code team.admin_id}, AS GOLDEN TEXT.
 	 *
 	 * <p>It is a value and not a sentence in a comment, and that is the whole reason it
 	 * is here: a quotation drifts from the document it quotes, and nothing can check a
-	 * comment. {@code theV11ClauseThisCaseQuotesIsStillWhatTheMigrationSays} reads the
-	 * migration off the classpath and compares the two, so this string is the one home
-	 * of the clause and the javadoc below points at it rather than retyping it.
+	 * comment. {@code theV11CommentThisFileKeepsIsStillWhatTheMigrationSays} reads the
+	 * migration through Flyway and compares the two, so this string is the one home of
+	 * that comment in this file and the javadoc below points at it rather than retyping
+	 * it.
+	 *
+	 * <p><b>The WHOLE comment and not the clause the seat case cares about</b>, which is
+	 * the correction of the third round. Held as a fragment, it was compared by finding
+	 * its own opening words in the migration and matching from there to the end, so
+	 * cutting the fragment's HEAD moved the place the comparison started and the whole
+	 * thing stayed green: the text could be cut to seven of its forty four words and
+	 * nothing failed. That is the shape ADL A33's addition of 07.09.2026 is about, a
+	 * reading that has to anchor or filter and therefore has no bottom, and the answer
+	 * written there is this one: compare the whole text with a golden copy. There is no
+	 * anchor left to move.
+	 *
+	 * <p><b>The cost is named rather than discovered:</b> every change to that comment in
+	 * V11 now has to be made here too. That is deliberate and it falls exactly where the
+	 * decision is, because a migration is immutable once merged (ADL A2), so the day
+	 * this has to change is the day somebody is doing something that deserves to be
+	 * read.
 	 */
-	private static final String V11_ON_THE_EMPTY_SEAT =
-			"It EMPTIES rather than blocking anything: when the seat is vacant the portal reads"
-					+ " the member who has been in the team longest, and that is a query, not a"
-					+ " column. So this says who was NAMED, and nothing here pretends it is always"
-					+ " somebody";
+	private static final String V11_ON_THE_ADMIN_ID_COLUMN =
+			"Who administers it. The founder to begin with (owner, 04.09.2026), and a"
+					+ " moderator may hand it to somebody else. It EMPTIES rather than blocking"
+					+ " anything: when the seat is vacant the portal reads the member who has been"
+					+ " in the team longest, and that is a query, not a column. So this says who"
+					+ " was NAMED, and nothing here pretends it is always somebody.";
 
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
@@ -138,6 +159,10 @@ class TeamApiTest {
 
 	@Autowired
 	private JdbcClient db;
+
+	/** Asked where its migrations live and what the applied script is called (V11 above). */
+	@Autowired
+	private Flyway flyway;
 
 	/**
 	 * Three teams, and no two of them alike in anything the answer carries.
@@ -1092,10 +1117,10 @@ class TeamApiTest {
 	 * A SEAT THAT NAMES NOBODY IS ANSWERED EMPTY AND NEVER ABSENT, which is the third
 	 * sentence this field has to say and the one a boolean field never needs.
 	 *
-	 * <p>V11 made {@code team.admin_id} nullable on purpose, and what it says about that
-	 * is {@link #V11_ON_THE_EMPTY_SEAT}, quoted there once instead of being retyped here
-	 * so that {@code theV11ClauseThisCaseQuotesIsStillWhatTheMigrationSays} can hold it
-	 * against the migration itself. So the answer has three things to say: „I am not
+	 * <p>V11 made {@code team.admin_id} nullable on purpose, and what it writes over that
+	 * column is {@link #V11_ON_THE_ADMIN_ID_COLUMN}, kept there once instead of being
+	 * retyped here so that {@code theV11CommentThisFileKeepsIsStillWhatTheMigrationSays}
+	 * can hold it against the migration itself. So the answer has three things to say: „I am not
 	 * telling you", „nobody is named to this seat", and a number. Absent is the first
 	 * and the empty string is the second, which is also the shape the portal already
 	 * reads: the served file writes {@code ""} for the team that has none and
@@ -1144,69 +1169,73 @@ class TeamApiTest {
 	}
 
 	/**
-	 * AND THE CLAUSE THE CASE ABOVE QUOTES IS STILL WHAT THE MIGRATION SAYS.
+	 * AND THE COMMENT THE CASE ABOVE LEANS ON IS STILL WHAT THE MIGRATION SAYS.
 	 *
-	 * <p><b>Written because that claim had no floor.</b> The case above quotes V11 and
-	 * says the quote is whole; until this one existed a line could be taken out of
-	 * {@link #V11_ON_THE_EMPTY_SEAT} and the whole suite stayed green. That is the very
-	 * defect the quote is about: what stood here until 21.09.2026 stopped at the colon,
-	 * one clause short of the sentence that overturns it, and nothing said so.
+	 * <p><b>Written because that claim had no floor.</b> The case above reads V11 and
+	 * says what it reads is whole; until this one existed a line could be taken out of
+	 * {@link #V11_ON_THE_ADMIN_ID_COLUMN} and the whole suite stayed green. That is the
+	 * very defect the text is about: what stood there until 21.09.2026 stopped at the
+	 * colon, one clause short of the sentence that overturns it, and nothing said so.
 	 *
-	 * <p><b>The migration is read off the CLASSPATH and never off a path written here.</b>
-	 * {@code src/main/resources} is on the test classpath already, so this adds no file
-	 * and nothing to the build, and there is no working directory to keep right. It is
-	 * the file system answering a question about a file, which is the one thing that
-	 * cannot be wrong about it.
+	 * <p><b>WHOLE TEXT AND NOT A FRAGMENT, which is the correction of the third round.</b>
+	 * The first two drafts held only the clause the seat cares about and found it in the
+	 * migration by its own opening words, matching from there to the end. Cutting the
+	 * fragment's HEAD moved the place the match began, so the comparison still succeeded:
+	 * measured, the text could be cut to seven of its forty four words and the case
+	 * stayed green. ADL A33's addition of 07.09.2026 names that shape - a reading that
+	 * has to anchor or filter has no bottom, and every round closes one direction and
+	 * leaves the next open - and prescribes this: compare the whole text with a golden
+	 * copy. Nothing here anchors on the constant any more, so there is no head to cut.
 	 *
-	 * <p><b>Compared as EQUALITY against the tail of that comment, and that is what makes
-	 * it WHOLE rather than merely present.</b> {@code contains} is satisfied by one word
-	 * that happens to be in the file, and by the empty string, so it would pass on
-	 * exactly the cut quote this exists to refuse. Equality against everything from the
-	 * quote's own opening words to the end of the comment is satisfied by nothing but
-	 * the whole clause. Whitespace is flattened on both sides, because the migration
-	 * wraps the sentence over four lines inside a comment frame and this file wraps it
-	 * again, and a quotation is not less faithful for being broken differently.
+	 * <p><b>Flyway is asked where the migration lives and what the applied script is
+	 * called.</b> Only the VERSION is named here, because the version is the fact this
+	 * case is about; a path written out would be a second copy of two Flyway settings,
+	 * and a setting written down twice is a setting that moves in one of the two places.
+	 * The form is {@code DatabaseTest.migrationSql}'s, which does exactly this.
 	 *
-	 * <p><b>The opening words are taken from the quote itself</b> rather than written out
-	 * a second time, so there is no list here to fall out of step with it.
+	 * <p><b>Whitespace is flattened on both sides</b>, because the migration wraps the
+	 * comment over four lines inside a comment frame and this file wraps it again. A
+	 * text is not a different text for being broken differently.
 	 */
 	@Test
-	void theV11ClauseThisCaseQuotesIsStillWhatTheMigrationSays() throws Exception {
-		String migration = "/db/migration/V11__team_and_membership.sql";
-		String sql;
+	void theV11CommentThisFileKeepsIsStillWhatTheMigrationSays() throws Exception {
+		String version = "11";
 
-		try (InputStream open = getClass().getResourceAsStream(migration)) {
-			assertThat(open).as("%s is not on the classpath, so this case compares nothing",
-					migration).isNotNull();
+		MigrationInfo applied = java.util.Arrays.stream(flyway.info().applied())
+				.filter(one -> one.getVersion() != null
+						&& version.equals(one.getVersion().getVersion()))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("no migration " + version + " was applied"));
+
+		String folder = java.util.Arrays.stream(flyway.getConfiguration().getLocations())
+				.map(Location::getPath)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Flyway is configured with no location"));
+
+		String sql;
+		try (InputStream open = getClass().getClassLoader()
+				.getResourceAsStream(folder + "/" + applied.getScript())) {
+			assertThat(open).as("%s is not under %s, where Flyway says its migrations are, so this"
+					+ " case compares nothing", applied.getScript(), folder).isNotNull();
 			sql = new String(open.readAllBytes(), StandardCharsets.UTF_8);
 		}
 
 		int column = sql.indexOf("admin_id");
 		assertThat(column).as("%s no longer names an admin_id column, so there is no comment on"
-				+ " one to quote", migration).isNotNegative();
+				+ " one to compare", applied.getScript()).isNotNegative();
 
 		String above = sql.substring(0, column);
 		int closes = above.lastIndexOf("*/");
 		int opens = above.lastIndexOf("/*", closes);
 		assertThat(opens).as("the admin_id column of %s no longer carries a comment above it, so"
-				+ " there is nothing there to quote", migration).isNotNegative();
+				+ " there is nothing there to compare", applied.getScript()).isNotNegative();
 
-		String says = above.substring(opens + 2, closes).replaceAll("\\s+", " ").trim();
-
-		String opening = String.join(" ", java.util.Arrays.stream(
-				V11_ON_THE_EMPTY_SEAT.split(" ")).limit(4).toList());
-		int quoted = says.indexOf(opening);
-		assertThat(quoted).as("the comment on admin_id in %s does not open the quoted clause with"
-						+ " „%s\" any more, so what this file quotes is not in the migration at"
-						+ " all", migration, opening)
-				.isNotNegative();
-
-		assertThat(says.substring(quoted))
-				.as("what this file quotes as V11 and what %s actually says have come apart. The"
-						+ " quote has to run to the END of that comment, which is the whole point:"
-						+ " it used to stop at the colon and leave out the clause saying the"
-						+ " portal still reads an administrator when the seat is empty", migration)
-				.isEqualTo(V11_ON_THE_EMPTY_SEAT + ".");
+		assertThat(above.substring(opens + 2, closes).replaceAll("\\s+", " ").trim())
+				.as("the comment over admin_id in %s and the golden copy of it in this file have"
+						+ " come apart. Whichever moved, the seat case above is reasoning from a"
+						+ " sentence the database no longer carries, and that is how the cut quote"
+						+ " of 21.09.2026 survived in the first place", applied.getScript())
+				.isEqualTo(V11_ON_THE_ADMIN_ID_COLUMN);
 	}
 
 	/**
