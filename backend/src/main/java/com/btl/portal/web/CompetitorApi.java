@@ -1,11 +1,15 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -22,20 +26,34 @@ import java.util.List;
  * effect on 15.09.2026 (risk R4). This server is the other door onto the same
  * fact, and it was shut first.
  *
- * <p><b>What replaces it is the category, and it is not here yet.</b> The age
- * band is worked out from the year and the season, and a member in their first
- * season carries that category instead, which depends on their whole history of
- * points (PDL P7, and the owner's decisions of 03.08. and 11.08.2026). That is
- * its own increment, on the server, the same way the points themselves are.
- * Nothing reads this resource yet.
+ * <p><b>AND SINCE 21.09.2026 WHAT REPLACES IT IS ANSWERED: the age band, which is
+ * the one thing Article 74 says IS public.</b> „Datum rodjenja se nikada ne
+ * prikazuje, ni u punom ni u skraćenom obliku. Javna je samo kategorija koja iz
+ * njega proizlazi." The year is the shortened form and stays; the category that
+ * comes out of it is the sentence's second half and it had been owed since
+ * 13.09.2026, when B52 took the year off {@code public/mock/competitors.json} and
+ * put the band there instead. Until this increment the debt was carried as a NAME
+ * in {@code CompetitorApiTest} rather than as a field, so that it could not be
+ * forgotten; the name is gone because the field is here.
  *
- * <p><b>What changed on 13.09.2026, and what it means for that increment.</b> The
- * screens no longer work the band out from what they have, because they no longer
- * have it: B52 took the year off the served record and put the band itself there.
- * So this resource now owes a field the portal really serves, rather than one it
- * merely will. It is named in {@code CompetitorApiTest} as owed rather than
- * withheld, and that name fails the moment this resource starts answering with it,
- * so the debt cannot be forgotten.
+ * <p><b>THE BAND AND NEVER THE FINISHED CODE, so that the sex is not written
+ * twice.</b> PDL, 13.09.2026, measured and decided exactly this: the served record
+ * carries „pojas a ne gotovu šifru, da pol ne bi bio zapisan dvaput". So this
+ * answers {@code 24-}, {@code 25-39}, {@code 40-54} or {@code 55+}, with no
+ * {@code M} and no {@code Ž} in it, and {@code gender} is the field beside it.
+ * {@code frontend/src/data/categories.ts} puts the two together in
+ * {@code categoryCodeFor}, and that is where the mark belongs. Answering
+ * {@code M40-54} here would publish the same fact twice and give the screen a
+ * second, disagreeing home for it.
+ *
+ * <p><b>AND THE BEGINNERS' CATEGORY IS NOT THIS FIELD AND IS NOT ANSWERED
+ * INSTEAD OF IT.</b> A member in his first season carries {@code R} rather than a
+ * band (PDL P7, owner 03.08. and 11.08.2026), but which of the two a screen draws
+ * is decided by {@code firstSeason2027}, which this resource already answers, and
+ * the band is answered BESIDE it rather than replaced by it - exactly as the
+ * served file does for all thirty two members. Whether somebody may still be in
+ * that category depends on his whole history of points, which this server does not
+ * have yet; nothing here needs it, because nothing here chooses between the two.
  *
  * <p><b>And nothing about the membership fee leaves either.</b> The same article
  * of the rulebook goes on: „Datum rođenja se nikada ne prikazuje, ni u punom ni
@@ -164,10 +182,16 @@ import java.util.List;
  * three</b>: the public side is the answer below, the member's own screens are the
  * two fields above, and the administration is the field this paragraph is about.
  *
- * <p>All five names are named at the call site in {@code CompetitorApiTest},
+ * <p><b>There were five of these names until 21.09.2026 and there are four, because
+ * the age band was never one of them.</b> It stood in that list as a DEBT rather
+ * than a refusal - the one name there that Article 74 makes public - and the list
+ * is checked both ways, so answering the band is what took it out. The four that
+ * are left are withheld for good.
+ *
+ * <p>All four names are named at the call site in {@code CompetitorApiTest},
  * with the reason, and each one is checked to be one the portal really serves. A
  * field that went missing by accident and one left out on purpose look the same
- * from a test; this is what tells them apart. Three of the five are no longer
+ * from a test; this is what tells them apart. Two of the four are no longer
  * omissions from EVERY answer but from the answers of everybody they are not
  * about, and the cases say which is which: {@code noReferralCodeLeavesTheServer}
  * asks the visitor's answer for every code in the database,
@@ -215,15 +239,69 @@ class CompetitorApi {
 
 	private final WhatHeMayDo mayHe;
 
-	CompetitorApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe) {
+	private final Clock clock;
+
+	CompetitorApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe, Clock clock) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.mayHe = mayHe;
+		this.clock = clock;
+	}
+
+	/**
+	 * THE SEASON THE BAND IS WORKED OUT FOR, which is the one that is RUNNING and never
+	 * earlier than the first the league has.
+	 *
+	 * <p><b>One season and never a band per season, and that is a measurement rather
+	 * than a simplification.</b> PDL, 13.09.2026: a map of band-by-season „vraća tačnu
+	 * godinu rođenja" for 25 of the 32 members, because a member who crosses a boundary
+	 * narrows the candidate years to one. „Iz jednog pojasa za tekuću sezonu ne vraća se
+	 * ni za jednog, jer je najuži skup kandidata širok petnaest godina." So the year is
+	 * private BECAUSE only one season is answered, and answering a second would hand
+	 * back the very field this resource was written to withhold. The cost is written
+	 * down in the same place and accepted: a screen drawing a category for an earlier
+	 * season draws today's band.
+	 *
+	 * <p><b>Read off the {@link Clock} bean and in the league's own zone</b>, for the
+	 * reason {@code ResultApi} writes beside its own: a server kept in UTC, as
+	 * containers are, would still be calling it last year for the first hour of every
+	 * New Year in Belgrade, and that hour is a boundary this field moves on.
+	 *
+	 * <p><b>And it is NOT {@code SeasonClock.seasonBeingPaidFor}.</b> That one answers
+	 * from 1 October with NEXT year, which would move every member's band forward a
+	 * season in the autumn without a single birthday - and the band moves once, on 1
+	 * January, which is the whole of PDL P7 („uzrast se utvrđuje jednom, na 1. januar
+	 * sezone"). {@code aBandDoesNotMoveWhenTheNextSeasonGoesOnSale} refuses it.
+	 *
+	 * <p><b>The floor under the plain calendar year is the league's first season</b>,
+	 * the same {@code Math.max} shape {@code frontend/src/data/season.ts} uses: through
+	 * 2026 the calendar answers 2026 and there is no season 2026 (PDL P2), so a band
+	 * worked out for it is a band for a season that does not exist.
+	 *
+	 * <p><b>WHAT IS NOT DECIDED HERE, written down rather than left to be found.</b>
+	 * From 1 January 2028 this answer and the served file part company: the generator
+	 * that wrote {@code competitors.json} holds {@code SEZONA = 2027} as a literal
+	 * ({@code btl-produkt/istorijski-podaci/napravi-mock.py}), so it answers 2027 for
+	 * ever while this follows the running season. This is the reading PDL P7 gives - the
+	 * age is settled on 1 January OF THE SEASON, so a new season settles it again - and
+	 * the file's constant is an artefact of a mock built for a 2027 demo rather than a
+	 * decision. It is named here because the two agree until then and a disagreement
+	 * that starts on a date nobody is watching is the kind that gets found by a member.
+	 */
+	private int theBandsSeason() {
+		return Math.max(SeasonClock.FIRST_SEASON,
+				LocalDate.now(clock.withZone(SeasonClock.ZONE)).getYear());
 	}
 
 	/**
 	 * @param birthdayShown  what the member chose about their birthday, which the
 	 *                       portal needs in order to draw the card at all
+	 * @param ageBand        the band alone and never the finished code, so the sex is
+	 *                       not written twice: see the note on this class. Answered on
+	 *                       every record to everybody, because Article 74 makes it the
+	 *                       one thing about a date of birth that IS public, and it does
+	 *                       not depend on {@code birthdayShown} - that choice hides the
+	 *                       date, not the category it produces (PDL, 06.09.2026)
 	 * @param referralCode   the caller's OWN link, and absent from every other record
 	 *                       and from every answer nobody signed in asked for. Absent
 	 *                       rather than null: see the note on this class for why the
@@ -242,7 +320,7 @@ class CompetitorApi {
 	 *                       fills in
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
-			String city, String country, boolean firstSeason2027, int firstSeason,
+			String city, String country, String ageBand, boolean firstSeason2027, int firstSeason,
 			String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String referralCode,
@@ -288,6 +366,13 @@ class CompetitorApi {
 		   visitor is Spring's anonymous token; the overload takes the caller rather
 		   than reaching for the context, and its own note says what that is for. */
 		boolean administration = member != null && mayHe.may(member, OVER_THE_MEMBERS);
+
+		/* AND THE SEASON THE BANDS BELOW ARE WORKED OUT FOR, read ONCE for the whole
+		   answer rather than per row. Two members with the same year of birth must come
+		   back in the same band, and a clock read inside the mapper can cross midnight
+		   on 1 January between two rows of one list - which is the one night of the year
+		   this field moves on. `theBandsSeason` says which season it is and why. */
+		int season = theBandsSeason();
 
 		return db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
@@ -341,7 +426,25 @@ class CompetitorApi {
 						   standing alone in a `case` has no neighbour to take a type from and
 						   PostgreSQL refuses the statement rather than guessing. */
 						+ " case when cast(:administration as boolean)"
-						+ "  then c.membership_basis end as membership_basis"
+						+ "  then c.membership_basis end as membership_basis,"
+						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE. It is the
+						   input the band is worked out from and it is the one field on this
+						   table the privacy policy is written about, so it is taken LAST and
+						   turned into a band before anything is built out of the row: it
+						   reaches a local and never a component of `Competitor`.
+
+						   THE YEAR AND NOT THE DATE, although the table holds the date since
+						   V8 and `birth_year` is generated off it. `Category` takes a year on
+						   purpose and says why: „the day is not part of the question, and
+						   taking it would invite somebody to use it." Selecting `birth_date`
+						   here to pass the same year would carry the day as far as this
+						   method for no reason at all.
+
+						   `noYearOfBirthLeavesTheServer` reads the whole answer as TEXT
+						   rather than by field name, so it refuses the year however it is
+						   spelt and whatever it is called - which is what makes reading it
+						   here safe to do rather than merely intended to be. */
+						+ " c.birth_year"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -363,6 +466,12 @@ class CompetitorApi {
 				.param("administration", administration)
 				.query((row, one) -> new Competitor(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
+						/* THE RULE IS ASKED FOR, NEVER REPEATED HERE. `Category` is where the
+						   league's bands live and where the decision that age is settled on 1
+						   January rather than on the birthday is written down (PDL P7, changed
+						   from the 2017 rulebook). A second copy of that arithmetic in a
+						   mapper is a second place to fix when a band moves. */
+						Category.ageBandFor(row.getInt(17), season).code(),
 						row.getBoolean(7), row.getInt(8), row.getString(9),
 						row.getObject(10) == null ? null : row.getLong(10),
 						row.getObject(11) == null ? null : row.getInt(11),
