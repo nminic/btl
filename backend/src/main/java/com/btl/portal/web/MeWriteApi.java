@@ -216,9 +216,16 @@ import java.util.Optional;
  *
  * <ul>
  * <li><b>The picture.</b> PDL P11, 12.08.2026 puts changing it in this same panel and ends
- * „Ide u naredni inkrement, ne u tekuci PR". It is a file - multipart, a digest, a crop and
- * a row in {@code photo} - and nothing under {@code backend/src/main} receives one. This
- * route takes no picture and prepares none.
+ * „Ide u naredni inkrement, ne u tekuci PR". What is missing is the half that RECEIVES
+ * one: nothing under {@code backend/src/main} accepts a multipart request -
+ * {@code MultipartFile}, {@code @RequestPart} and {@code spring.servlet.multipart} appear
+ * in none of it - and every writing route on this server declares
+ * {@code consumes = MediaType.APPLICATION_JSON_VALUE}. <b>The digest, the crop and the row
+ * in {@code photo} stood in that list until 20.09.2026 and are struck out of it here</b>,
+ * because {@link PhotoApi} serves a picture's bytes off that row, found by
+ * {@code photo.digest} and opened under {@code String.valueOf} of the row's key, and
+ * {@link TeamApi} answers a team's digest beside the three fractions of its crop. Only the
+ * receiving half is left. This route takes no picture and prepares none.
  * <li><b>The decision.</b> Approving or refusing what waits here belongs to whoever holds
  * {@code queue:profiles} and is its own increment. Nothing here writes
  * {@code competitor.bio}, sets {@code verification.state}, or names a moderator.

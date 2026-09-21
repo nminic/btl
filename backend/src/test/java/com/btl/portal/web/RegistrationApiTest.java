@@ -747,9 +747,14 @@ class RegistrationApiTest {
 				.containsAll(RegistrationApi.NOT_COLLECTED_YET);
 
 		/* AND THE PHOTOGRAPH REALLY IS ABSENT rather than quietly accepted: a registration
-		   goes through without one and the member's row carries no picture. A file is
-		   multipart, a digest and a crop (ADL A36 O8), and none of that exists on this
-		   server yet. */
+		   goes through without one and the member's row carries no picture. What this
+		   server still cannot do is RECEIVE a file (ADL A36 O8): nothing under
+		   backend/src/main accepts a multipart request, and every writing route declares
+		   `consumes = MediaType.APPLICATION_JSON_VALUE`. The digest and the crop used to
+		   be denied in this same breath and no longer can be - PhotoApi finds a row by
+		   `photo.digest` and TeamApi answers a digest beside its crop since 20.09.2026
+		   (ADL A60) - so what the two lines below measure is the ABSENCE of a row, which
+		   is this route collecting nothing, and not the absence of the machinery. */
 		assertThat(register(aGrownUp()).getStatus()).isEqualTo(204);
 		assertThat(theCompetitorBehind(ADDRESS).get("photo_id")).isNull();
 		assertThat(howMany("photo")).isZero();
