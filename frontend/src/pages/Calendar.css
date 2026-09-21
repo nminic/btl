@@ -299,6 +299,35 @@
   transform: translateX(2px);
 }
 
+/* And a bar does not, which is the one thing the lift had to give up. A scale is
+   several pieces in several days and only the one under the pointer would move, so
+   the bar would break in the middle on the way past it. */
+.chip--scale:hover {
+  transform: none;
+}
+
+/* Where the keyboard is, on every tile and so on every piece of a bar. The portal
+   asks 4,5:1 of text and WCAG 2.2 SC 1.4.11 asks 3:1 of a graphic somebody needs in
+   order to read the screen, which a focus ring is. Drawn on the gold that flips with
+   the theme rather than on `gold-500`: that one measures 2,98:1 against a white card,
+   and the ring on today is on this token for that very reason. */
+.chip:focus-visible {
+  outline: 2px solid var(--gold-text);
+  outline-offset: 1px;
+}
+
+/* A lane held open under a bar, so the bar below keeps the line it had in the day
+   before (`data/derive.ts`). It is a tile with one space in it and nothing painted:
+   made of the tile itself, so it is exactly one tile tall and stays that way when the
+   tile changes, and there is no height written anywhere that could fall out of step.
+
+   `visibility` rather than `opacity`, since an invisible tile must not be a target for
+   a pointer either, and rather than `display: none`, which would take the line away
+   and let the bar climb. */
+.chip--hollow {
+  visibility: hidden;
+}
+
 /* The name gives way and the dots do not: the dots are the part somebody scans
    for, and a name cut with an ellipsis still says which race it is once the
    whole of it is in the title and on the day's own page. */
@@ -568,5 +597,64 @@
      thousand pixels off the side of a telephone. */
   .day--first {
     grid-column-start: var(--day-start);
+  }
+
+  /* WHAT MAKES THE PIECES ONE BAR, AND ONLY WHERE THERE IS A ROW FOR A BAR TO CROSS
+     (PDL P35, 21.09.2026).
+
+     Below this width the month is one column of days, one under another, and a scale
+     across columns means nothing there: every piece is left as the tile it already is,
+     with its name and its lengths, which is what a list of days wants. So the whole of
+     the bar is in these three rules and nothing outside them changes for a telephone.
+
+     **What is drawn changes with the width; what is SAID never does.** Exactly one
+     piece of a scale is a link and carries the range in words, and that is decided in
+     the markup (`calendar/DayChips.tsx`). A reader with their ears therefore meets the
+     same one event at every width, and these rules cannot make it two or none. */
+
+  /* A piece that does not start the bar: it reaches back into the day before it and
+     loses the end it would otherwise draw there.
+
+     **The reach is counted, not chosen.** From the content edge of this day leftwards
+     to the content edge of the one before it: this day's padding, this day's border,
+     the gap between them, the other day's border, the other day's padding. Written out
+     of the very tokens those are set from, so moving the padding or the gap moves this
+     with it.
+
+     **It never reaches out of the grid**, and that is what makes the week break cost
+     nothing: the first column of every row is either a Monday or the first of the
+     month, and a piece on either of those opens instead of continuing
+     (`data/derive.ts`). Rajac trek 2020 runs Sunday the 27th to Wednesday the 30th and
+     is the one event in the served file that does this; it ends the row on the Sunday
+     and starts again on the Monday.
+
+     **The left border goes rather than turning transparent.** It is the three pixels
+     that say where a tile begins, and the face is what a bar is made of; the margin
+     places the border box either way, so taking the border away lets the background
+     fill those three pixels and the run is unbroken. The inset edge a gathering and a
+     training wear is the same mark by another method and goes with it. */
+  .chip--continues {
+    margin-inline-start: calc(-3 * var(--space-8) - 2px);
+    border-inline-start-width: 0;
+    box-shadow: none;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+
+  /* And its name and its lengths are drawn once, at the head of the run. Hidden rather
+     than removed: the tile is a row of flexible boxes and with nothing in it the piece
+     would be only its padding tall, so the bar would thin out in the middle of itself.
+     Hidden they still take the line they always took.
+
+     Nothing here decides what is spoken. The piece is `aria-hidden` whole in the
+     markup, for the reason written there, so this rule takes away no word from anybody. */
+  .chip--continues > * {
+    visibility: hidden;
+  }
+
+  /* A piece that does not end the bar: it runs into the next day, so it draws no end. */
+  .chip--runs-on {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
   }
 }

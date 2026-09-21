@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor } from '../test/stylesheet'
+import { ruleFor, ruleInMedia, unconditionalRules } from '../test/stylesheet'
 
 /**
  * One arrangement of the month that no rendered test can see.
@@ -99,5 +99,87 @@ describe('a day of the month', () => {
       row.getPropertyValue('--dot-gap'),
       'the gap is named in tokens.css, not on the row',
     ).toBe('')
+  })
+})
+
+/**
+ * WHAT MAKES THE PIECES OF A BAR ONE BAR (PDL P35, 21.09.2026).
+ *
+ * A multi-day event is drawn as one piece per day, each inside its own day, and the
+ * sheet is what makes them meet: a piece that does not start the bar reaches back over
+ * the gap into the day before it and draws no end there. jsdom lays nothing out, so
+ * what is asked here is that the declarations are written and are written **where they
+ * only apply to a grid**; whether they meet was measured in a browser.
+ */
+const WIDE = '(min-width: 48.75em)'
+
+describe('a bar across several days', () => {
+  it('reaches back over the gutter, and by the very tokens the gutter is made of', () => {
+    /* From the content edge of this day leftwards to the content edge of the one
+       before it: this day's padding, this day's border, the gap between the two, the
+       other day's border, the other day's padding. Three gaps and two borders, out of
+       the tokens `.day` and `.calendar__grid` are themselves set from.
+
+       **Asked as the whole declaration**, which is the lesson the floor above paid for:
+       asked for as a term, `4px` is satisfied by `4px * 6`, and neither a multiplier nor
+       a sign is a piece of text at all. A reach written as a number is a reach that is
+       right at one size of text and wrong at every other, and it would leave a bar with
+       a seam through it or hanging over the day before. */
+    expect(ruleInMedia(calendar, WIDE, '.chip--continues', 'Calendar.css').getPropertyValue(
+      'margin-inline-start',
+    )).toBe('calc(-3 * var(--space-8) - 2px)')
+
+    /* And the three pixels that say „a tile begins here" go, or the bar carries a
+       coloured bar through its own middle once a day. The face fills them, because the
+       margin places the border box whether the border is painted or not. */
+    expect(
+      ruleInMedia(calendar, WIDE, '.chip--continues', 'Calendar.css').getPropertyValue(
+        'border-inline-start-width',
+      ),
+      'jsdom writes a bare nought back as 0px',
+    ).toBe('0px')
+    /* The same mark by the other method, which is how a gathering and a training wear
+       it (`Calendar.css`). Left standing, those two kinds would show it and a race
+       would not, which is one bar drawn two ways. */
+    expect(
+      ruleInMedia(calendar, WIDE, '.chip--continues', 'Calendar.css').getPropertyValue(
+        'box-shadow',
+      ),
+    ).toBe('none')
+  })
+
+  it('reaches nowhere at all below the width where there is a grid', () => {
+    /* **This is the one that costs a page if it is wrong.** Below 48.75em the month is
+       one column of days, so there is no day to the left to reach into: the reach would
+       pull the tile out of the page and the page would scroll sideways, which is the
+       one thing the portal never does (WCAG 2.2 SC 1.4.10, ADL A26).
+
+       Asked as „no unconditional rule carries these" rather than as „the query holds
+       them", because those are different claims and only this one fails when somebody
+       copies the rule out of the query and leaves it at the top of the sheet. */
+    const loose = unconditionalRules(calendar, 'Calendar.css').map((rule) => rule.selectorText)
+
+    expect(loose).not.toContain('.chip--continues')
+    expect(loose).not.toContain('.chip--continues > *')
+    expect(loose).not.toContain('.chip--runs-on')
+  })
+
+  it('draws no end where it runs into the next day', () => {
+    const runs = ruleInMedia(calendar, WIDE, '.chip--runs-on', 'Calendar.css')
+
+    expect(runs.getPropertyValue('border-start-end-radius')).toBe('0px')
+    expect(runs.getPropertyValue('border-end-end-radius')).toBe('0px')
+  })
+
+  it('keeps the line of a lane it holds open, rather than taking it away', () => {
+    /* `display: none` is what this looks like it should be and it is the opposite: the
+       line would go and the bar under it would climb a row, which is the very break the
+       held lane exists to prevent. Hidden, the tile keeps the box it always had, and it
+       is made of `.chip` so its height is the tile's own and there is no number here to
+       fall out of step with one. */
+    const hollow = ruleFor(calendar, '.chip--hollow', 'Calendar.css')
+
+    expect(hollow.getPropertyValue('visibility')).toBe('hidden')
+    expect(hollow.getPropertyValue('display')).toBe('')
   })
 })

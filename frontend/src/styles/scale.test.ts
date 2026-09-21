@@ -98,6 +98,10 @@ const ALLOWED = new Map([
     'forms/FieldHint.css | inset-block-start | calc(1.5rem + var(--space-4))',
     'not a step: the letter that opens the rule is 1.5rem tall (.hint__ask), and on the one field whose head runs to several lines the rule hangs under the letter rather than under the head, so the height of the letter is what is written',
   ],
+  [
+    'pages/Calendar.css | margin-inline-start | calc(-3 * var(--space-8) - 2px)',
+    'not a step: how far a piece of a multi-day bar reaches back into the day before it, which is three gaps of the grid and TWO BORDERS OF ONE PIXEL. The three gaps are the token; the two pixels are `border: 1px` on `.day` and there is no token for a hairline, so they are the same kind of value as the `+ 4px` the floor of a day is measured with. Written in `rem` alone the reach is right at exactly one size of text, and wrong at every other: too short leaves a seam through the bar, too long hangs it over the day before',
+  ],
   /* Four offsets that pull a thing back over the corner it sits on. Each is one
      more value nobody chose, and each is invisible; they are named here rather
      than swept because moving them is a decision about how far a counter hangs
@@ -405,6 +409,10 @@ describe('space and corners are chosen from the scale, not typed', () => {
       ['pages/admin/Verification.css .member:not(:has(.pending__card--open .field__required)) .pending__legend',
         'the line saying what the star means, on a screen where every card is folded and no star is drawn'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
+      [
+        'pages/Calendar.css .chip--continues > *',
+        'the name and the lengths on a piece of a multi-day bar that only continues one: the same bar draws them once at its head, in the same row and a column or two away, and this is the only width at which the days stand side by side for that to be true. Nothing is lost to a reader with their ears at any width, because the piece is aria-hidden in the markup and was never spoken (pages/calendar/DayChips.tsx)',
+      ],
     ])
 
     const taken: string[] = []
