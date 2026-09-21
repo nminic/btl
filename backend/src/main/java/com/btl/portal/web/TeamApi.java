@@ -201,12 +201,13 @@ import java.util.Optional;
  *
  * <p><b>Which leaves exactly one thing owed, and it is smaller than it was.</b> What
  * stood here said the portal cannot tell whether a seat is EMPTY once the number is
- * gone. Since 21.09.2026 the ADMINISTRATION can - that is what the empty string
- * above says, and it is the state {@code teamAdmin.ts} opens with - so what is still
- * owed is the same question asked by a MEMBER, who is answered {@code foundedByMe}
- * and nothing else. {@code false} tells him „the seat is not yours" and cannot tell
- * him „and it is going spare". It is named here, and in {@code TeamApiTest}, rather
- * than guessed at: either this answers a second condition beside the one below, or
+ * gone. Since 21.09.2026 the ADMINISTRATION can tell whether it NAMES anybody - that
+ * is what the empty string above says, and it is the state {@code teamAdmin.ts} opens
+ * with - so what is still owed is the same question asked by a MEMBER, who is answered
+ * {@code foundedByMe} and nothing else. {@code false} tells him „the seat is not
+ * yours" and cannot tell him „and it names nobody". It is named here, and in
+ * {@code TeamApiTest}, rather than guessed at: either this answers a second
+ * condition beside the one below, or
  * the standing rule moves here whole. That is a decision about where a rule lives
  * and it is the owner's to make.
  *
@@ -460,10 +461,10 @@ class TeamApi {
 						/* AND WHETHER THE ONE ASKING IS THE MEMBER THIS SEAT NAMES.
 						   Written as two questions and not one, because `t.admin_id = :me`
 						   alone is NULL for two different reasons - nobody is asking, and
-						   the seat is empty - and those are the two sentences this field
-						   exists to keep apart. The outer `case` answers the visitor with
-						   null, which `@JsonInclude` leaves out; the `coalesce` answers a
-						   signed in member `false` for a team whose seat nobody holds.
+						   nobody is named to the seat - and those are the two sentences this
+						   field exists to keep apart. The outer `case` answers the visitor
+						   with null, which `@JsonInclude` leaves out; the `coalesce` answers
+						   a signed in member `false` for a team whose seat names nobody.
 
 						   `t.admin_id` and never the member number: the number is what must
 						   not leave (see the note on this class), and comparing keys means
@@ -492,7 +493,7 @@ class TeamApi {
 						   `member_number` has been nullable since V16, which names the trap in
 						   as many words: „a row in `competitor` is a PERSON WHO REGISTERED. A
 						   MEMBER is a row whose `member_number` is there." So the empty string
-						   is the seat being empty, and a seat held by somebody with no number
+						   is the seat naming nobody, and a seat held by somebody with no number
 						   comes out of here NULL, which is its own sentence one line down.
 
 						   AND THE CALLER IS NOT ASKED ABOUT HERE, which is the other half of
@@ -513,7 +514,10 @@ class TeamApi {
 						+ " left join photo mark on mark.id = t.logo_id"
 						/* AND THE MEMBER IN THE SEAT, LEFT FOR THE SAME REASON: V11 made
 						   `admin_id` nullable on purpose - „It EMPTIES rather than blocking
-						   anything" - so a team with nobody in the seat is an ordinary team.
+						   anything: when the seat is vacant the portal reads the member who
+						   has been in the team longest, and that is a query, not a column. So
+						   this says who was NAMED, and nothing here pretends it is always
+						   somebody" - so a team whose seat names nobody is an ordinary team.
 						   `competitor.id` is the primary key, so this joins at most one row and
 						   a team still comes back once, which is what
 						   `aTeamComesBackOnceHoweverManyMembersItHas` measures.
