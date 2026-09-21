@@ -4,8 +4,9 @@ import { join } from 'node:path'
 import { must } from '../test/at'
 import { clearResourceCache, loadResource } from './client'
 import { renderAt } from '../test/render'
+import { theCookieNames } from '../test/setup'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
-import { aCompetitor, asAnswered, myOwnRow } from '../test/theAnswer'
+import { aCompetitor, asAnswered, myOwnRecordFromMe, myOwnRow } from '../test/theAnswer'
 import { readerAdministers, teamAdminOf } from './teamAdmin'
 import type { Competitor, Team } from './types'
 
@@ -127,6 +128,32 @@ describe('the answer the harness stands in with', () => {
       stop()
       clearResourceCache()
     }
+  })
+
+  it("carries the caller's own record by the same measure, at /api/me", async () => {
+    /* **THE SAME FLOOR OVER THE ONE ANSWER THAT IS NOT A RESOURCE.** `data/contract.test.ts`
+       holds the record's KEYS against the components `MeApi.MyOwnRecord` declares; this
+       holds what the harness really puts on the wire against that record. The two together
+       are what the fourteen resources have had since round 2, and without this one the
+       harness could go back to writing the whole generated row into `member` - measured
+       21.09.2026, that mutation left every case green, which is the same shape of blindness
+       the hand-written list had.
+
+       Asked of the answer rather than of the function, because that is what the portal
+       parses. */
+    /* The cookie has to name somebody, or the answer is the 401 a visitor gets and there
+       is no record on it at all. `renderAt` does this for every case that goes through
+       the router; this one asks the address straight. */
+    theCookieNames({ role: 'competitor', memberNumber: stillAMember })
+
+    const answered: unknown = await (await fetch('/api/me')).json()
+    const member: unknown =
+      typeof answered === 'object' && answered !== null ? Reflect.get(answered, 'member') : null
+
+    expect(typeof member).toBe('object')
+    expect(Object.keys(member as object).sort()).toEqual(
+      Object.keys(myOwnRecordFromMe).sort(),
+    )
   })
 })
 
