@@ -5,11 +5,15 @@ import { must } from '../test/at'
 import type {
   Attending,
   BtlEvent,
+  Competitor,
   EventComment,
+  League,
   Moderator,
   Race,
+  RacingPair,
   Result,
   StaticPage,
+  Team,
 } from './types'
 import type { DucatFamily } from './ducatRule'
 import type { Place } from './places'
@@ -25,6 +29,15 @@ import type { Place } from './places'
  * answer written down as it came off the wire, and handed to the very types the
  * portal reads it through.
  *
+ * **THE SWITCH HAPPENED ON 21.09.2026 AND THIS FILE IS WHAT IT WAS WAITING FOR, so
+ * it grows rather than goes.** Nothing under `src/` fetches the wire in a test run,
+ * so the only way a case can hold the answer's SHAPE is to write it down, and the
+ * only way to keep a written-down shape honest is to hand it to the types the
+ * screens read it through. That was true while `BASE` was `/mock` and it is true
+ * now; what changed is which resources have been seen, and the five fields a member
+ * was drawn by that the schema said nothing about - three of them are answered
+ * since, one has moved home and one has gone.
+ *
  * **The compiler is the assertion, and that is deliberate.** Each sample below is
  * written as a plain value and then handed to a name that carries the type. A
  * field of the wrong sort, or one the type needs and the answer has not got, is a
@@ -34,13 +47,23 @@ import type { Place } from './places'
  * thing that must be allowed: `/api/leagues` answers with `raceIds` and the
  * portal does not read it yet.
  *
- * **One resource is NOT read by its type, and that is the finding rather than an
- * omission.** `/api/competitors` answers with thirteen fields and the file the
- * portal draws a member from carries eighteen: the band a member competes in,
- * whether the fee is standing and what it stands on, and the two halves of the
- * referral link. The five are named below and not papered over, because what to
- * do about a field the server has not got is the half the owner kept for himself
- * („Uskladi oblike, pa polje po polje odluci", 20.09.2026).
+ * **ALL FIFTEEN ARE READ BY THEIR TYPES SINCE 21.09.2026, WHICH IS THE OTHER HALF
+ * OF THE OWNER'S ORDER CARRIED OUT.** `/api/competitors` answered thirteen fields
+ * on 20.09.2026 and the file the portal drew a member from carried eighteen. „Uskladi
+ * oblike, pa polje po polje odluci" is what happened to the five:
+ *
+ * - `ageBand` is answered, worked out for the season rather than stored (PR 334);
+ * - `membershipBasis` is answered to the administration and to nobody else (PR 332);
+ * - `referralCode` is answered on the caller's own row and on no other (PR 330);
+ * - `referredBy` is GONE and `referredCount` stands where it stood: the column holds
+ *   a KEY and never a code (V7), so the count is worked out on the far side and the
+ *   portal is handed the number;
+ * - `active` is GONE with nothing in its place, because the owner made the absence of
+ *   the ROW carry it (13.09.2026).
+ *
+ * The three that are conditional are optional on the type, which is the same sentence
+ * said in TypeScript: a row that is not the caller's own, or an answer that is not the
+ * administration's, has not got them.
  *
  * **`/api/ducats` was the second such resource until V27 and is not one any
  * more.** It answered with nine of the sixteen names a coin is drawn by, and the
@@ -204,9 +227,14 @@ const aComment = {
 
 /** `/api/competitors` answered with an empty list on the day the samples were
  *  taken, so no row of it has been seen; this is its record, component for
- *  component (`CompetitorApi.Competitor`). It is here for the second half of the
- *  question only - which fields the server has not got - and no name carries it,
- *  because `Competitor` needs five it has not. */
+ *  component (`CompetitorApi.Competitor`).
+ *
+ *  **The three conditional fields are not on it, and that is the sample of a
+ *  VISITOR'S row rather than a shortfall.** `referralCode`, `referredCount` and
+ *  `membershipBasis` answer null unless the one asking is the member himself or the
+ *  administration, and `@JsonInclude(NON_NULL)` leaves a null key out of the answer
+ *  altogether, so the row a visitor is handed has fourteen names and no more. The
+ *  caller's own row is the sample below it. */
 const aCompetitor = {
   memberNumber: '000001',
   firstName: 'Vladan',
@@ -214,6 +242,7 @@ const aCompetitor = {
   gender: 'M' as const,
   city: 'Beograd',
   country: 'RS',
+  ageBand: '40-54' as const,
   firstSeason2027: false,
   firstSeason: 2014,
   bio: '',
@@ -221,6 +250,75 @@ const aCompetitor = {
   teamSince: 2014,
   profileHidden: false,
   birthdayShown: 'none' as const,
+}
+
+/** And the same member's row as HE is answered it, which is the other state of
+ *  every one of the three: his own code, his own count, and the basis - that last
+ *  one because the sample is taken as the administration, which is who the basis
+ *  goes to. */
+const myOwnRow = {
+  ...aCompetitor,
+  referralCode: '7f07b38ff7ee7543',
+  referredCount: 4,
+  membershipBasis: 'payment' as const,
+}
+
+/** A team as the administration is answered one: the seat is a member number, and
+ *  the mark and its square are both there, which is the only way a picture ever
+ *  arrives (`TeamApi`, „both halves or neither"). */
+const aTeam = {
+  id: 1,
+  slug: 'dunavski-trkaci',
+  name: 'Dunavski trkači',
+  city: 'Novi Sad',
+  country: 'RS',
+  bio: '',
+  logo: '/api/photos/7d1f0a2b',
+  crop: { x: 0.5, y: 0.35, size: 0.72 },
+  organizerMemberNumber: '000001',
+}
+
+/** And a team with no mark, answered to a signed in member who did not found it:
+ *  nothing where the picture would be, nothing where its square would be, and no
+ *  seat at all. The two nothings travel together and that is the point of writing
+ *  this one down beside the row above. */
+const aTeamWithNoMark = {
+  ...aTeam,
+  id: 4,
+  slug: 'novoosnovani-tim',
+  name: 'Novoosnovani tim',
+  logo: null,
+  crop: null,
+  organizerMemberNumber: undefined,
+  foundedByMe: false,
+}
+
+/** Both of them, the man first, which is the order the schema stores them in.
+ *  Named rather than written in place so the two are a PAIR and not a list that
+ *  happens to hold two: ADL A14 refuses an assertion here, and a type annotation
+ *  says the same thing without one. */
+const twoMembers: [string, string] = ['000001', '000009']
+
+/** A pair, which is three names and not four: the day it was made is answered to
+ *  nobody (owner, 13.09.2026). */
+const aPair = {
+  id: 1,
+  season: 2019,
+  memberNumbers: twoMembers,
+}
+
+/** A league. `raceIds` is on the answer and not on the type, which is the one
+ *  direction this file deliberately lets through: what the backend has and the
+ *  portal has not is the owner's half. */
+const aLeague = {
+  id: 1,
+  slug: 'btl-liga-2019',
+  name: 'BTL liga 2019',
+  season: 2019,
+  rules: '',
+  prizes: '',
+  raceIds: [275],
+  eventIds: [273],
 }
 
 /** And a comment whose author is gone, which is the other state of the same
@@ -250,6 +348,12 @@ const readAsEnglishTown: Place = anEnglishTown
 const readAsAttendance: Attending = anAttendance
 const readAsComment: EventComment = aComment
 const readAsModerator: Moderator = aModerator
+const readAsVisitorsMember: Competitor = aCompetitor
+const readAsMyOwnRow: Competitor = myOwnRow
+const readAsTeam: Team = aTeam
+const readAsTeamWithNoMark: Team = aTeamWithNoMark
+const readAsPair: RacingPair = aPair
+const readAsLeague: League = aLeague
 
 /** Every row of what the portal serves today, by resource. */
 function servedRows(name: ResourceName): Record<string, unknown>[] {
@@ -360,6 +464,18 @@ describe('the answer the backend gives', () => {
     expect(readAsAttendance.eventId).toBe(273)
     expect(readAsComment.eventId).toBe(273)
     expect(readAsModerator.id).toBe(4)
+    /* The four that had never been seen until 21.09.2026, and for each of them the
+       state that is the whole reason it is written down twice or not at all. */
+    expect(readAsVisitorsMember.membershipBasis).toBeUndefined()
+    expect(readAsMyOwnRow.referredCount).toBe(4)
+    expect(readAsTeam.organizerMemberNumber).toBe('000001')
+    /* Both halves of the mark gone together, which is the arrangement `TeamApi`
+       refuses to answer in any other way. */
+    expect(readAsTeamWithNoMark.logo).toBeNull()
+    expect(readAsTeamWithNoMark.crop).toBeNull()
+    expect(readAsTeamWithNoMark.foundedByMe).toBe(false)
+    expect(readAsPair.memberNumbers).toHaveLength(2)
+    expect(readAsLeague.eventIds).toEqual([273])
   })
 
   it('agrees with the served file about the sort of every field they share', () => {
@@ -407,18 +523,38 @@ describe('the answer the backend gives', () => {
        something out of nothing. */
     expect(missing(aDucat, servedRow('ducats'))).toEqual([])
 
-    /* The five a member is drawn by and the schema says nothing about here: the
-       band they compete in, whether the fee is standing, what it stands on, the
-       code their own link carries, and whose link brought them. `active` is the
-       one with a decision already behind it (13.09.2026: a member whose fee has
-       lapsed is not on this list at all), and the other four are open. */
-    expect(missing(aCompetitor, servedRow('competitors'))).toEqual([
-      'active',
-      'ageBand',
-      'membershipBasis',
-      'referralCode',
-      'referredBy',
-    ])
+    /* **AND THE MEMBER, WHOSE LIST SHRANK FROM FIVE TO TWO ON 21.09.2026 AND WILL NOT
+       GO FURTHER.** The five were the band they compete in, whether the fee is standing,
+       what it stands on, the code their own link carries, and whose link brought them.
+       Three of them are answered since (PRs 330, 332 and 334); the two below are the file
+       carrying names the answer has DECIDED not to have, and both decisions are the
+       owner's:
+
+       - `active`, because a member whose fee has lapsed is not on the list at all
+         (13.09.2026), so the flag has nothing left to say;
+       - `referredBy`, because the column holds the KEY of whoever brought a member (V7)
+         and a key does not leave the server; what the screen wanted it for arrives
+         counted, as `referredCount`.
+
+       So this is no longer „nobody has decided yet" for these two. It is the generated
+       file carrying two fields the portal does not read and the server does not send,
+       and it is written down here because that is exactly the difference somebody has to
+       see before they trust a green suite: `test/setup.ts` answers a resource out of this
+       file, so a case that reads one of these two is reading the seed and not the portal.
+       Nothing does, because neither is on `Competitor` any more. */
+    expect(missing(myOwnRow, servedRow('competitors'))).toEqual(['active', 'referredBy'])
+
+    /* The team, where the file and the answer agree on every name. The seat is on both,
+       although the answer carries it to the administration alone; `missing` is about
+       NAMES and the answer to somebody else is a different question, held by
+       `TeamApiTest`. */
+    expect(missing(aTeam, servedRow('teams'))).toEqual([])
+
+    /* And the pair, where the file carries the one name the owner closed: the day the two
+       of them confirmed (13.09.2026, „ne prikazuje se nikome"). */
+    expect(missing(aPair, servedRow('pairs'))).toEqual(['since'])
+
+    expect(missing(aLeague, servedRow('leagues'))).toEqual([])
   })
 
   it('is measured for every resource the contract names, or the reason is written here', () => {
@@ -434,14 +570,25 @@ describe('the answer the backend gives', () => {
       'attendance',
       'comments',
       'moderators',
+      /* The four that answered 200 with an empty list on the day the samples were
+         taken, so no row of theirs had been seen. They are written down off the
+         record the server declares, the same way the four above them are, and they
+         joined the list on 21.09.2026 because `BASE` moved and a resource the portal
+         reads with nothing said about its shape is exactly what this file exists to
+         forbid. */
+      'competitors',
+      'leagues',
+      'pairs',
+      'teams',
     ]
 
-    /* The four that were not. `competitors`, `leagues`, `pairs` and `teams`
-       answered 200 with an empty list on the day the samples were taken, so no
-       row of theirs has ever been seen; `verification` answered 401 and its whole
-       shape is a decision the owner has not taken (its answer is grouped by tab
-       and carries nine fields fewer than this screen draws). */
-    const notSeen: ResourceName[] = ['competitors', 'leagues', 'pairs', 'teams', 'verification']
+    /* And the one that is not measured, which is now a list of one. `verification`
+       answers 401 and its whole shape is a decision the owner has not taken: the
+       answer is grouped by tab and carries nine fields fewer than the screen draws.
+       The portal asks for it at `/api/verification` like everything else since the
+       switch, and what a moderator sees off that answer is the one thing the switch
+       leaves owing. It is in `PENDING.md` as a question rather than guessed at here. */
+    const notSeen: ResourceName[] = ['verification']
 
     expect([...measured, ...notSeen].sort()).toEqual([...RESOURCE_NAMES].sort())
   })

@@ -83,10 +83,11 @@ export type NumberedResult = Result & { memberNumber: string }
  * without anybody going looking, because it counts the field by how many numbers
  * a season has and would say three people raced where thirty did.
  *
- * **Invisible today, and that is the whole reason it is being written now.**
- * `BASE` is still `/mock` and nothing in the mock is missing a number; on QA all
- * 264 rows of `/api/results` answer with `null`, so the day the mock goes out is
- * the day the table would sum strangers into one line.
+ * **Written the day before it could bite, and biting since 21.09.2026.** It went
+ * in while the portal still read the generated file, where nothing is missing a
+ * number; on QA all 264 rows of `/api/results` answer with `null`, so the day
+ * `BASE` moved to `/api` was the day the table would have summed strangers into one
+ * line without this.
  *
  * **Where the rule stops, said here rather than left for somebody to find.** This
  * is about COUNTING and not about showing. A screen that draws one result
@@ -855,40 +856,27 @@ export function boardOfTen(
   return [...board, ...waiting]
 }
 
-/**
- * Everybody whose membership is running, which is who a screen about now shows.
+/* `fieldFor` STOOD HERE UNTIL 21.09.2026 AND IS GONE RATHER THAN EMPTIED.
  *
- * A member whose fee has run out is in no list of this season and their name
- * carries no link, because their profile is not there to be linked to (PDL P11:
- * "u tabeli tekuće godine se ne pojavljuje uopšte", "link ka profilu postoji
- * samo dok je članarina aktivna"). Their name does stay in the tables of the
- * seasons they raced, as plain text; those are drawn from results and this does
- * not touch them.
- */
-export function activeOnly(competitors: Competitor[]): Competitor[] {
-  return competitors.filter((one) => one.active)
-}
-
-/**
- * Who a list of one season is drawn from (PDL P11).
+ * It answered „who is a list of one season drawn from" (PDL P11): the season
+ * running showed only members whose fee was standing, every season before it
+ * showed everybody who raced it. It did that by filtering on `competitor.active`,
+ * and on the day `BASE` moved to `/api` there was nothing left for it to filter.
+ * The server does not answer for a member whose fee has lapsed at all (owner,
+ * 13.09.2026), so the list the portal is handed IS the field of the season
+ * running, and both branches answered the same list.
  *
- * The season running now shows only members whose fee is paid, because this
- * season the others are not members. Every season before it shows everybody who
- * raced it, exactly as they stood, because they were members then.
+ * A function that answers everything it is asked is a sentence dressed as a
+ * guard, and the five screens that called it carry the sentence at their own call
+ * sites instead.
  *
- * Which season is running comes from the day, and the day comes from the one
- * clock the portal reads (ADL A7). Never from the SEASON constant: that is 2027
- * for ever, so it would go on hiding people from 2027 after 2027 had become the
- * only archive the league has, and would never hide anybody from 2028.
- *
- * Written once because it was being kept in one place out of four. The standing
- * kept it; the front page and the boards of Article 48 are the same season's
- * standing in another shape and did not, and nothing said so, because the data
- * has one member this is true of and they are in none of those lists.
- */
-export function fieldFor(competitors: Competitor[], season: number, today: string): Competitor[] {
-  return season === Number(today.slice(0, 4)) ? activeOnly(competitors) : competitors
-}
+ * **And what the portal lost with it is written down rather than left to be found,
+ * because nothing here can give it back.** A season that is over used to show
+ * everybody who raced it, and their NAMES were read off this same list; a member
+ * who has since lapsed is no longer on it, so a historical row of theirs now has a
+ * number and no name. That is a fact about what `/api/competitors` answers and not
+ * about this file, it follows straight from the decision of 13.09.2026, and it is
+ * in `PENDING.md` as a question for the owner rather than settled here. */
 
 /* The top boards (PDL P12). Each one keeps ten places and each one is ordered
  * down a ladder of measures: volume decides first, and efficiency is only ever

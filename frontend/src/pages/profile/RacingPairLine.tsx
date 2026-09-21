@@ -1,5 +1,4 @@
 import { Link } from 'react-router'
-import { formatShortDate } from '../../i18n/format'
 import { useToday } from '../../clock/useClock'
 import { pairsFrom } from '../../data/derive'
 import { useI18n } from '../../i18n/useI18n'
@@ -48,7 +47,7 @@ export function RacingPairLine({
   /** The pairs that hold now, the file and this visit together (`data/derive.ts`, `pairsNow`). */
   pairs: RacingPair[]
 }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const today = useToday()
   const linkTo = useProfileLink()
   const { memberNumber: reader, pairInvites, breakPair, notify } = useSession()
@@ -109,8 +108,13 @@ export function RacingPairLine({
                 {partner.firstName} {partner.lastName}
               </Link>
             )}{' '}
+            {/* THE SEASON AND NOT THE DAY, SINCE 21.09.2026. Owner, 13.09.2026, of the day a
+                pair was made: it „se ne prikazuje nikome", and when the mock was switched off it
+                „sklanja se i sa ekrana". `/api/pairs` answers `id`, `season` and the two member
+                numbers, so there is no day here to draw even if anybody wanted one. What the
+                sentence said besides the day it still says: which season this pair runs in. */}
             <span className="profile__pair-since">
-              {t('pair.since', { season: pair.season, date: formatShortDate(pair.since, locale) })}
+              {t('pair.forSeason', { season: pair.season })}
             </span>
             {mine && (
               <>

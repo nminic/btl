@@ -16,7 +16,6 @@ import {
   topByTimeOnCourse,
   topPairs,
   pairsNow,
-  fieldFor,
 } from '../data/derive'
 import type { Competitor, RaceCategory, RacingPair, Result } from '../data/types'
 import { combineResources, useCompetitors, usePairs, useResults } from '../data/useResource'
@@ -286,8 +285,10 @@ function Boards({
   const season = seasonParam === null ? fallback : Number(seasonParam)
   /* Who the boards of this season are drawn from (PDL P11). Article 48 is the
      standing of a season in several shapes, so the rule that holds for the table
-     holds here. */
-  const field = useMemo(() => fieldFor(competitors, season, today), [competitors, season, today])
+     holds here.
+
+     The list itself since 21.09.2026, for the reason `Rankings.tsx` writes out. */
+  const field = competitors
 
   /* Held steady across renders (`useProfileLink` is a `useCallback` over the reader and the
      locale), so it may sit in the list below without rebuilding the boards on every render. */

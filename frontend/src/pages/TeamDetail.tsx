@@ -94,7 +94,12 @@ export function TeamDetail() {
         /* Whoever is reading, off the same list as everything else on this screen, and
            what they are called, because an application says who is asking. */
         const me = listedMembers.find((one) => one.memberNumber === memberNumber)
-        const runs = teamAdminOf(team, listedMembers)
+        /* The reader is handed over since 21.09.2026, and is what makes the answer
+           possible at all: a member is not told who sits in the seat, only whether
+           it is his (`data/teamAdmin.ts`, `/api/teams`). Both of the two questions
+           this screen asks of the answer - is there an administrator, and is it the
+           reader - are answerable from that. */
+        const runs = teamAdminOf(team, listedMembers, memberNumber)
         /* The application this member has open, wherever it is: one at a time, because a
            member is in one team and cannot be waiting on two.
 

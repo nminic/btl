@@ -1,6 +1,6 @@
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { defaultSeason, totalsOf, fieldFor } from '../data/derive'
+import { defaultSeason, totalsOf } from '../data/derive'
 import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
@@ -68,8 +68,12 @@ export function Home() {
           const season = defaultSeason(results, today)
           /* Who the widgets of this season are drawn from (PDL P11): a member
              whose fee has run out is not in the season now at all, and the top
-             ten and the chart are that season's standing in another shape. */
-          const field = fieldFor(competitors, season, today)
+             ten and the chart are that season's standing in another shape.
+
+             The list itself since 21.09.2026: `/api/competitors` does not answer
+             for such a member (owner, 13.09.2026), so there is nothing here left
+             to take out. */
+          const field = competitors
           const totals = totalsOf(results.filter((one) => one.date.startsWith(String(season))))
           // The running season is the calendar year, not the year the
           // membership is sold for.

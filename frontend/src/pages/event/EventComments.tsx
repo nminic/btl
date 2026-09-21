@@ -239,10 +239,17 @@ function Comment({
               which is what every other list on the portal asks
               (CompetitorName.tsx, TopBoards.tsx, EventDetail.tsx).
 
+              **AND SINCE 21.09.2026 THOSE TWO ARE ONE QUESTION, which is the
+              switch to `/api` rather than a simplification.** A member whose fee
+              has run out is not in the list the portal is answered with (owner,
+              13.09.2026), so there is no record to find and `who === undefined`
+              is the whole of it. The sentence above stands because it is still
+              why the question is asked this way round.
+
               The name written on the day stands in its place, because there is
               no record left to read one off (owner, 06.08.2026). */}
           <p className="comments__name">
-            {who === undefined || !who.active ? (
+            {who === undefined ? (
               comment.who
             ) : (
               <ProfileLink competitor={who}>

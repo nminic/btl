@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { RESOURCE_NAMES } from './client'
+import { clearResourceCache, loadResource, RESOURCE_NAMES } from './client'
 import { plainly, type Place } from './places'
 import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
@@ -87,12 +87,79 @@ describe('the list of resources', () => {
        **That second half was a real gap when this was written and has a guard of
        its own since the same day:** `data/servedShape.test.ts` writes the answer
        down as it came off the wire and hands it to the very types the screens read
-       it through. What keeps `BASE` on `/mock` is no longer the shapes but the
-       FIELDS the server does not serve, which that guard also names - see the head
-       of `data/client.ts`. */
+       it through. The fields it named as missing were decided one by one over the
+       two days after, and `BASE` moved to `/api` on 21.09.2026 - see the head of
+       `data/client.ts`. */
     const routes = readRoutes()
 
     expect(routes.size).toBeGreaterThan(RESOURCE_NAMES.length)
+  })
+
+  it('is what the portal really asks for, name by name, at the declared address', async () => {
+    /* **THE HALF NOTHING HELD UNTIL 21.09.2026, AND IT IS ABOUT THE SOURCE RATHER
+       THAN THE SHAPE.** The two cases above ask whether the backend DECLARES an
+       address; neither of them asks whether the portal goes there. While `BASE` was
+       `/mock` both of them passed over a portal reading files off a disc, which is
+       exactly what the switch changed and therefore exactly what has to be held: a
+       constant moved back, by hand or by a merge, would leave both of them green.
+
+       **Asked of the request and never of the answer**, which is the whole
+       construction. What comes back here is the generated record, because that is
+       what `test/setup.ts` answers a resource with and what every other case on the
+       portal is written against; if this read the BODY it would be measuring the
+       shape of a file and would pass just the same with `BASE` back on `/mock`.
+       What it reads is the address that was asked for, which is the one thing only
+       the constant decides.
+
+       Every name and not one, because a resource is free to be fetched somewhere
+       else: `places` already has a loader of its own (`data/places.ts`) and a
+       fifteenth could arrive with another. */
+    const asked: string[] = []
+    const disc = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      asked.push(String(input))
+
+      return disc(input, init)
+    }
+
+    try {
+      clearResourceCache()
+
+      await Promise.all(RESOURCE_NAMES.map(async (name) => loadResource(name)))
+
+      expect([...asked].sort()).toEqual(RESOURCE_NAMES.map((name) => `/api/${name}`).sort())
+    } finally {
+      globalThis.fetch = disc
+      clearResourceCache()
+    }
+  })
+
+  it('asks for a resource by name, with no file extension on the end', async () => {
+    /* The other half of the same constant, and it has its own case because it can
+       be got wrong on its own: `/api/events.json` is a declared route with four
+       characters after it, and the backend answers it 404. Nothing above would
+       notice - the name is in the address either way - so the ending is asked about
+       here, over every one of them rather than over a sample. */
+    const asked: string[] = []
+    const disc = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      asked.push(String(input))
+
+      return disc(input, init)
+    }
+
+    try {
+      clearResourceCache()
+
+      await Promise.all(RESOURCE_NAMES.map(async (name) => loadResource(name)))
+
+      expect(asked.filter((one) => /\.[a-z]+$/.test(one))).toEqual([])
+    } finally {
+      globalThis.fetch = disc
+      clearResourceCache()
+    }
   })
 })
 

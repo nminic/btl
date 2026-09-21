@@ -29,7 +29,7 @@ function breakResource(name: ResourceName) {
   const real = globalThis.fetch
 
   globalThis.fetch = (async (input: RequestInfo | URL) =>
-    String(input).endsWith(`/${name}.json`)
+    String(input).endsWith(`/api/${name}`)
       ? new Response('greska', { status: 500 })
       : real(input))
 
@@ -43,7 +43,7 @@ function stallResource(name: ResourceName) {
   const real = globalThis.fetch
 
   globalThis.fetch = (async (input: RequestInfo | URL) =>
-    String(input).endsWith(`/${name}.json`)
+    String(input).endsWith(`/api/${name}`)
       ? new Promise<Response>(() => {})
       : real(input))
 

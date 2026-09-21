@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { monogramFor } from '../app/monogram'
 import { Resource } from '../components/Resource'
 import { hueFor } from './competitorFace'
-import { activeOnly, categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
+import { categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
 import type { Competitor, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { MEMBERS, recordsOf } from './admin/entityForms'
@@ -38,8 +38,14 @@ function CompetitorCards({
 
     /* Members, not everybody who ever was one: a card leads to a profile, and an
        inactive member has none (PDL P11). It put the newest inactive member on
-       this list and on the front page, both linking to "Ovog profila nema." */
-    return activeOnly(competitors)
+       this list and on the front page, both linking to "Ovog profila nema."
+
+       **`activeOnly` stood here until 21.09.2026 and is gone rather than moved.**
+       It filtered on `competitor.active`, and the switch to `/api` left it an
+       identity: a member whose fee has lapsed is not in this list to be filtered
+       out of (owner, 13.09.2026). A function that answers everything it is asked
+       is a sentence dressed as a guard, so the sentence is written here. */
+    return competitors
       .filter((competitor) =>
         `${competitor.firstName} ${competitor.lastName} ${competitor.memberNumber} ${competitor.city}`
           .toLowerCase()

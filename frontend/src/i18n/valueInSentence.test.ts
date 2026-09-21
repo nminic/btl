@@ -332,11 +332,12 @@ describe('a sentence with a value put into it', () => {
          season, whose pair the reader is already in, and who a broken pair was broken for. */
       'pair.brokenBody',
       'pair.endedBody',
+      /* The season a pair runs in, and not the day it was made: that day is answered to
+         nobody since 13.09.2026 and is drawn nowhere. */
+      'pair.forSeason',
       'pair.inviteBody',
       'pair.received',
-      /* The day the two of them confirmed, written the way every other day on a profile is. */
       'pair.sent',
-      'pair.since <- formatShortDate',
       'profile.allDucats',
       'profile.allResults',
       'profile.inClub',

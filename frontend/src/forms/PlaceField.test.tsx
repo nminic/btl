@@ -36,7 +36,7 @@ const CODEBOOK: Place[] = [
 function servingTheCodebook() {
   const real = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL) =>
-    String(input).endsWith('/places.json')
+    String(input).endsWith('/api/places')
       ? new Response(JSON.stringify(CODEBOOK), { status: 200 })
       : real(input))
 
@@ -542,7 +542,7 @@ describe('the town on a form', () => {
     stop()
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/places.json')
+      String(input).endsWith('/api/places')
         ? new Response('', { status: 500 })
         : real(input))
 

@@ -502,7 +502,7 @@
     "mine": "Trkački par",
     "none": "Nije u trkačkom paru.",
     "breakUp": "Raskini trkački par",
-    "since": "Za sezonu {season}, u paru od {date}."
+    "forSeason": "Za sezonu {season}."
   },
   "topBoards": {
     "title": "Top liste",

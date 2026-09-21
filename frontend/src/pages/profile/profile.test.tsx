@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { at, first, must, selectElement } from '../../test/at'
 import { renderAt } from '../../test/render'
+import { membersAsServed } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
 import sr from '../../i18n/sr.json'
@@ -147,15 +148,23 @@ describe('what a competitor has won', () => {
   })
 
   it('is not there at all for a member who is no longer active', async () => {
+    /* On the answer since 21.09.2026: such a member is not on `/api/competitors` at all
+       (owner, 13.09.2026), and the generated file still carries them, so a case read off
+       the file would open the very page PDL P11 closes. */
+    const { stop } = membersAsServed()
     const { router } = renderAt('/sr/takmicar/000032/priznanja')
 
     /* **The home page, and not a page that says the profile is missing.** Since 06.09.2026 an
        address that leads nowhere and an address somebody is hiding behind answer the same way, so
        that a visitor cannot read the difference off the screen (PDL P23). Read off the address,
        because the name of the portal is written on every screen. */
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/sr')
-    })
+    try {
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/sr')
+      })
+    } finally {
+      stop()
+    }
   })
 })
 
@@ -430,6 +439,20 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
 })
 
 describe('a member whose fee has run out', () => {
+  /* **Both cases read the answer and not the generated file, since 21.09.2026.** The rule
+     is the same one it always was (PDL P11) and the portal no longer keeps it: such a
+     member is not on `/api/competitors`, so there is nothing to leave off a list. The file
+     still carries them with a flag, so a case that read it would be measuring the seed. */
+  let putTheDiscBack = () => {}
+
+  beforeEach(() => {
+    putTheDiscBack = membersAsServed().stop
+  })
+
+  afterEach(() => {
+    putTheDiscBack()
+  })
+
   it('is on no list of this season, and nowhere carries a link', async () => {
     /* PDL P11: "u tabeli tekuće godine se ne pojavljuje uopšte", "link ka
        profilu postoji samo dok je članarina aktivna". 000032 is the first such
@@ -552,11 +575,11 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const asked = String(input)
 
-      if (asked.endsWith('/results.json')) {
+      if (asked.endsWith('/api/results')) {
         return new Response(JSON.stringify([race]), { status: 200 })
       }
 
-      return asked.endsWith('/ducats.json')
+      return asked.endsWith('/api/ducats')
         ? new Response(JSON.stringify([family]), { status: 200 })
         : real(input)
     })
@@ -600,10 +623,12 @@ describe('what the portal calls the person whose page it is', () => {
 
   it('says takmičarka on a woman page, and takmičar on a man page', async () => {
     const competitors = await loadResource<Competitor[]>('competitors')
+    /* Being in the answer is what „active" used to say, since 21.09.2026: a member whose fee
+       has run out is not on `/api/competitors` at all (owner, 13.09.2026). */
     const silent = (gender: string) =>
       must(
-        competitors.find((one) => one.gender === gender && one.active && one.bio === ''),
-        `an active ${gender} with no biography`,
+        competitors.find((one) => one.gender === gender && one.bio === ''),
+        `a ${gender} with no biography`,
       )
     renderAt(`/sr/takmicar/${silent('F').memberNumber}`)
     expect(await screen.findByText('Ova takmičarka još nije napisala ništa o sebi.')).toBeVisible()
@@ -660,7 +685,7 @@ describe('a wall of ducats that grows as it is read', () => {
     }))
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/ducats.json')
+      String(input).endsWith('/api/ducats')
         ? new Response(JSON.stringify(many), { status: 200 })
         : real(input))
 

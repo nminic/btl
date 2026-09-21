@@ -87,6 +87,30 @@ export const BIRTHDAY_SHOWN = ['none', 'year', 'full'] as const
 
 export type BirthdayShown = (typeof BIRTHDAY_SHOWN)[number]
 
+/**
+ * A member of the league, as `/api/competitors` answers for one.
+ *
+ * **WHETHER THE FEE IS STANDING IS NOT A FIELD HERE, AND SINCE 21.09.2026 IT IS THE
+ * PRESENCE OF THE ROW.** `active` stood here until the portal read the generated
+ * file, where every member was on the list and a flag said which of them counted.
+ * The server does not answer that way and cannot be made to: the owner closed it on
+ * 13.09.2026, and `CompetitorApi` says why in one line - a member whose fee has
+ * lapsed is not on the list, so that nothing may be read out of the DIFFERENCE
+ * between one answer and another.
+ *
+ * **So every question the flag used to answer is now asked of the list**, and the
+ * two are not the same shape of question. „Is this member active" was a field on a
+ * record somebody already had; „is this member on the list" is a lookup that
+ * answers nothing for a number nobody has - which is the same answer, deliberately
+ * (PDL P23: a profile that cannot be reached and a profile that does not exist read
+ * alike). The five screens that asked it all held the `undefined` half already,
+ * because a member administration had deleted has always been able to leave a
+ * comment or a result behind.
+ *
+ * **What it cost to get wrong, measured before it could:** `profile/visible.ts` read
+ * the flag, and a field the answer has not got arrives `undefined`, so the first
+ * reader of the switched portal would have been refused every profile on it.
+ */
 export type Competitor = {
   memberNumber: string
   firstName: string
@@ -100,9 +124,10 @@ export type Competitor = {
    *
    * **The band is stored and the year of birth is not, since 13.09.2026.** The
    * record carried `birthYear` and the band was worked out from it. That is the
-   * right way round for a database and the wrong way round here: this record is
-   * served as a static file out of `public/mock`, so every field on it is public
-   * to anybody who asks for the address, signed in or not (ADL A8). Član 74 and
+   * right way round for a database and the wrong way round here: every field on
+   * this record that is not behind the question of who is asking is public to
+   * anybody who asks for the address, signed in or not (ADL A8), and the band is
+   * not one of the three that are (`/api/competitors`). Član 74 and
    * the privacy policy both say the date of birth „se nikada ne prikazuje, ni u
    * punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega
    * proizlazi", and a year is the short form. So the portal now carries the
@@ -152,26 +177,51 @@ export type Competitor = {
    */
   firstSeason2027: boolean
   firstSeason: number
-  active: boolean
-  membershipBasis: MembershipBasis
   /**
-   * The code this member's own referral link carries.
+   * How this membership is held, and ONLY TO THE ADMINISTRATION.
+   *
+   * PDL, 793: the basis is administration's to see. `/api/competitors` answers it
+   * on every row or on none, and the condition is the CALLER rather than the row
+   * (`CompetitorApi`), so a screen that is not the administration's gets a record
+   * without the key at all.
+   *
+   * **The `?` is the whole of that sentence and it is not a convenience.** Typed
+   * `MembershipBasis` the portal claimed every member carries it, which was true of
+   * the generated file and is false of the answer; the one screen that draws it
+   * (`pages/admin/AdminMembers.tsx`) is behind the same door the field is.
+   */
+  membershipBasis?: MembershipBasis
+  /**
+   * The code this member's own referral link carries, AND ONLY ON THE CALLER'S OWN
+   * ROW.
    *
    * Not the member number, which is what the link used to carry: that number is
    * public and consecutive, since it is the address of a profile and the sign in
    * list prints it beside every name. Anybody could have assembled somebody
    * else's link, or credited themselves with a member they never brought.
-   */
-  referralCode: string
-  /**
-   * The code of whoever brought this member, if anybody did.
    *
-   * The link records who; it does not record a credit. The credit falls only
-   * when this member's own fee is first activated, which is `active`, so a
-   * member who registered through a link and never paid pays nobody (owner,
-   * 12.08.2026).
+   * **Absent from every other row**, which is the shape `/api/competitors` answers
+   * (`case when c.id = :me then c.referral_code end`) and the reason for the `?`:
+   * a code is what somebody else's link would be assembled out of, so nobody is
+   * given anybody's but their own.
    */
-  referredBy: string | null
+  referralCode?: string
+  /**
+   * How many members this one brought in whose fee is standing, AND ONLY ON THE
+   * CALLER'S OWN ROW.
+   *
+   * **This replaced `referredBy` on 21.09.2026, and the reason is that the portal
+   * cannot work the count out any more.** It used to be counted here, over the
+   * whole list: „everybody whose `referredBy` is my code, and whose fee is
+   * standing". Neither half of that survives the switch to `/api`. A member whose
+   * fee has lapsed is not on the list at all (13.09.2026), and `referredBy` is not
+   * answered for anybody: it is the KEY of whoever brought a member (V7), and a
+   * key is not a thing the portal may be handed. So the count is worked out where
+   * both halves are known, which is the database, and arrives as one number.
+   *
+   * Absent from every other row, for the same reason the code above is.
+   */
+  referredCount?: number
   /**
    * Whether this member has hidden their profile from readers who are not signed in.
    *
@@ -452,14 +502,20 @@ export type Result = {
  *
  * `season` is the season the pair holds for. Forming has to be finished by 31 December for the
  * pair to count in the season that follows (PDL, „Trkacki par"), so a pair is made in one year and
- * raced in the next, and `since` is the day the second of the two confirmed.
+ * raced in the next.
+ *
+ * **THE DAY THE PAIR WAS MADE IS NOT HERE, AND THAT IS THE OWNER'S DECISION RATHER THAN A FIELD
+ * THE SERVER HAS NOT GOT YET.** 13.09.2026, of `pairs.since`: the day „se ne prikazuje nikome",
+ * and when the mock is switched off it „sklanja se i sa ekrana". `/api/pairs` answers `id`,
+ * `season` and the two numbers and nothing else, so a field here would be a promise every row
+ * broke. What the season already says is the thing anybody needed it for: which season the pair
+ * runs in.
  */
 export type RacingPair = {
   id: number
   season: number
   /** Both members, and exactly two: a pair is one man and one woman (PDL). */
   memberNumbers: [string, string]
-  since: string
 }
 
 export type Team = {
@@ -468,7 +524,33 @@ export type Team = {
   name: string
   city: string
   country: string
-  organizerMemberNumber: string
+  /**
+   * Who sits in this team's seat, AND ONLY TO THE ADMINISTRATION.
+   *
+   * PDL P13: the seat is appointed by „Superadmin ili moderator sa pravom nad timovima", and
+   * somebody who may appoint it cannot be refused the sight of who is in it. `/api/teams`
+   * answers this field to them and to nobody else.
+   *
+   * **The `?` and the `null` are two different sentences and both are needed** (`TeamApi`, four
+   * states, 21.09.2026). The key ABSENT is „I am not telling you", which is every reader outside
+   * the administration. An empty string is „nobody holds this seat". A number is the member who
+   * does. JSON `null` is „somebody holds it and he is not a member, so there is no number to give
+   * you" - a row in `competitor` may have no member number since V16, and it may hold a seat.
+   *
+   * **A member is answered `foundedByMe` instead**, which is this reduced to what Article 73 lets
+   * a reader have: nothing about anybody else at all.
+   */
+  organizerMemberNumber?: string | null
+  /**
+   * Whether the one asking founded this team, AND ONLY WHEN SOMEBODY IS ASKING.
+   *
+   * Absent - not false - from a visitor's answer, because „you did not found this" and „I do not
+   * know who you are" are two sentences and a visitor must be told the second (`TeamApi`).
+   *
+   * This is what `data/teamAdmin.ts` reads since 21.09.2026, and the whole reason it may: the
+   * question every screen asks is whether the READER administers the team, never who does.
+   */
+  foundedByMe?: boolean
   /**
    * What the team says about itself, as published.
    *
@@ -497,8 +579,15 @@ export type Team = {
    *
    * The whole picture where nobody chose, which is every team the league
    * started with and every team an administrator enters by hand.
+   *
+   * **Nothing at all for a team with no mark, and that is the answer's shape rather than a
+   * looseness.** `/api/teams` reads the square off the picture's own row, every column of which
+   * is NOT NULL, so the mark and its square „go out together or neither does" (`TeamApi`). Typed
+   * `Crop` the portal claimed a square for a team that has no picture to cut. Nothing breaks at
+   * the one place that reads it, because `components/crop.ts` has answered `WHOLE` for a record
+   * with no square since the day a missing key took a whole table into the error boundary.
    */
-  crop: Crop
+  crop: Crop | null
 }
 
 export type League = {

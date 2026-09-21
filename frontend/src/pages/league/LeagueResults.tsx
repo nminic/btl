@@ -4,9 +4,7 @@ import { ProfileLink } from '../profile/ProfileLink'
 import { Pager } from '../../components/Pager'
 import { PER_PAGE, pageFrom } from '../../components/pageOf'
 import { Resource } from '../../components/Resource'
-import { useToday } from '../../clock/useClock'
 import { genderMark } from '../../data/categories'
-import { fieldFor } from '../../data/derive'
 import type { BtlEvent, Competitor, Gender, League, Race, Result } from '../../data/types'
 import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
 import { formatDayMonth, formatPoints } from '../../i18n/format'
@@ -52,7 +50,6 @@ function Grid({
   gender: Gender
 }) {
   const { locale, t } = useI18n()
-  const today = useToday()
   const [params] = useFilterParams()
   /* Who the grid is drawn from (PDL P11). A member whose fee has run out is not
      in the standing of the season now, and a competition's grid is that standing
@@ -60,8 +57,8 @@ function Grid({
      member raced in 2017 and the three competitions of 2027 have no results at
      all, which is exactly why it had to be asked for rather than noticed. */
   const table = useMemo(
-    () => leagueTable(league, events, races, results, fieldFor(competitors, league.season, today)),
-    [league, events, races, results, competitors, today],
+    () => leagueTable(league, events, races, results, competitors),
+    [league, events, races, results, competitors],
   )
 
   if (table.rows.length === 0) {

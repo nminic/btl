@@ -5,7 +5,6 @@ import { offeredSeason, useSeason } from '../components/season'
 import { MAIN_LEAGUE_SLUG } from '../data/pricing'
 import { LEAGUES } from './admin/entityForms'
 import { recordKey } from '../session/context'
-import { fieldFor } from '../data/derive'
 import type { League } from '../data/types'
 import {
   dataOr,
@@ -105,7 +104,6 @@ function CountedEvents({ league }: { league: League }) {
  */
 function Entrants({ league }: { league: League }) {
   const { t } = useI18n()
-  const today = useToday()
   const eventsState = useEvents()
   const racesState = useRaces()
   const resultsState = useResults()
@@ -129,7 +127,7 @@ function Entrants({ league }: { league: League }) {
     dataOr(eventsState, []),
     dataOr(racesState, []),
     dataOr(resultsState, []),
-    fieldFor(dataOr(competitorsState, []), league.season, today),
+    dataOr(competitorsState, []),
   )
 
   return <>{standing.rows.length}</>

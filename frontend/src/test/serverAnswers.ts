@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { RESOURCE_NAMES } from '../data/client'
+
 /**
  * A SERVER, FOR THE TWO SCREENS THAT HAVE ONE.
  *
@@ -15,6 +19,26 @@
  */
 
 export type Asked = { path: string; init: RequestInit | undefined }
+
+/**
+ * Whether an address is one of the fourteen resources rather than a write or a
+ * question about the visit.
+ *
+ * **Why this exists at all, and it is the switch of 21.09.2026 rather than a
+ * convenience.** Until that day a resource lived under `/mock` and everything the
+ * portal spent on the server lived under `/api`, so „did this screen speak to the
+ * server" was answerable with `path.startsWith('/api')`. Three cases were written
+ * that way and all three are about a screen that must spend NOTHING: two say a
+ * password link that carries no token asks for nothing, and one answers 404 to
+ * everything the screen is not meant to reach.
+ *
+ * Both kinds are under `/api` now, so that question has to be asked in two words.
+ * Derived from `RESOURCE_NAMES` and never listed, so a fifteenth resource is one of
+ * these on the day it is added rather than on the day somebody remembers.
+ */
+export function isResource(path: string): boolean {
+  return RESOURCE_NAMES.some((name) => path === `/api/${name}`)
+}
 
 /**
  * Puts a server in front of the disc reader for the length of one case.
@@ -79,4 +103,82 @@ export function forgetEveryCookie(): void {
       document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`
     }
   }
+}
+
+/**
+ * THE MEMBERS `/api/competitors` REALLY ANSWERS WITH, in front of the disc reader
+ * for the length of one case.
+ *
+ * **Why a case has to build this and cannot read it.** `test/setup.ts` answers a
+ * request for a resource out of the generated file of the same name, which is what
+ * keeps the suite running against real data rather than a fixture. That file is
+ * older than the resource it now stands in for, and it still carries a member whose
+ * fee has lapsed, with a flag saying so. The server carries neither: the owner
+ * closed it on 13.09.2026, so a member whose fee has run out is not on the list at
+ * all, and `CompetitorApi` says why in one line - nothing may be read out of the
+ * DIFFERENCE between one answer and another.
+ *
+ * So a case about what happens to somebody the portal no longer has must be given
+ * the answer the portal will really get, and a case that read the flag instead
+ * would be measuring the file rather than the portal. This is the one place that
+ * knows the two differ.
+ *
+ * @returns the numbers of the members the answer leaves out, and the way to put the
+ *          disc reader back
+ */
+export function membersAsServed(mine?: string): { lapsed: string[]; stop: () => void } {
+  const file: FileMember[] = JSON.parse(
+    readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+  )
+
+  const lapsed = file.filter((one) => !one.active).map((one) => one.memberNumber)
+
+  /* The flag goes with the rows, and that is half of what this is for: left on, a
+     screen could go on reading it and nothing here would notice. `Competitor` has
+     no such field since 21.09.2026, so nothing compiles that tries - and this makes
+     the answer say the same thing the type does.
+
+     `referredBy` goes with it, and it is the other name the answer has not got: on
+     the server that column holds the KEY of whoever brought a member (V7), never a
+     code, and no route hands a key out. */
+  const answered = file
+    .filter((one) => one.active)
+    .map(({ active: _flag, referredBy: _key, ...rest }) => rest)
+    .map((row) =>
+      row.memberNumber === mine ? { ...row, referredCount: broughtIn(file, row) } : row,
+    )
+
+  const { stop } = serverThat((path) =>
+    path === '/api/competitors'
+      ? new Response(JSON.stringify(answered), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      : null,
+  )
+
+  return { lapsed, stop }
+}
+
+/** The generated record, in the two names the answer does not carry. */
+type FileMember = {
+  memberNumber: string
+  active: boolean
+  referralCode: string
+  referredBy: string | null
+}
+
+/**
+ * How many this member brought in whose fee is standing, worked out the way the
+ * server works it out.
+ *
+ * Both halves are the SQL's, said over the generated file rather than copied as a
+ * number: everybody this member's code brought, and of those only the ones whose
+ * fee is standing (`CompetitorApi`, „and brought.active"). Written down as an
+ * arithmetic rather than as a figure so that a change to the seed moves the answer
+ * and the case together, which is the whole reason the portal's cases read the
+ * generated data at all.
+ */
+function broughtIn(file: FileMember[], me: { referralCode: string }): number {
+  return file.filter((one) => one.referredBy === me.referralCode && one.active).length
 }

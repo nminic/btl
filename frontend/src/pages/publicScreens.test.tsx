@@ -5,7 +5,6 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import {
   categoriesOf,
-  fieldFor,
   rankingFor,
   topByCategory,
   topByKilometers,
@@ -21,6 +20,7 @@ import { sep } from 'node:path'
 import { sources } from '../test/sources'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
+import { membersAsServed } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
 import type { Competitor, Result } from '../data/types'
 
@@ -718,22 +718,18 @@ describe('TopBoards', () => {
        (PDL P12), so the lower member number takes the ninth and the other the
        tenth.
 
-       The day is handed to the screen and used here as well, so both sides work
-       the field out for the same one (PDL P11). On this season it changes
-       nothing, because the field is only narrowed for the season that is running;
-       it is written this way so that a season where it does bite is not a test
-       comparing a screen with something worked out for another day. */
+       The day is handed to the screen and used here as well, so both sides are reading
+       one day (PDL P11).
+
+       **The field is the answer itself since 21.09.2026.** `fieldFor` stood here, narrowing
+       the list to members whose fee was standing; `/api/competitors` does not answer for the
+       others at all (owner, 13.09.2026), so the screen and this case are handed the same list
+       without either of them narrowing anything. */
     const [competitors, results] = await Promise.all([
       loadResource<Competitor[]>('competitors'),
       loadResource<Result[]>('results'),
     ])
-    const ranked = topByCategory(
-      fieldFor(competitors, 2016, TODAY),
-      results,
-      2016,
-      'long',
-      10,
-    )
+    const ranked = topByCategory(competitors, results, 2016, 'long', 10)
 
     expect(ranked.map((row) => row.position).slice(-2)).toEqual([9, 10])
 
@@ -918,7 +914,7 @@ describe('TopBoards', () => {
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const answer = await served(input, init)
 
-      if (!String(input).endsWith('/results.json')) {
+      if (!String(input).endsWith('/api/results')) {
         return answer
       }
 
@@ -1097,10 +1093,10 @@ describe('TopBoards', () => {
      *
        What is held here is what a reader gets: both halves drawn, the whole surname in the page,
        and the accessible name still one name. */
-    /* Read on a fixed day, and the same day the case computes the field on: `fieldFor` drops
-       members who are no longer active, so the screen and the case must be asking about one field
-       (review, 07.09.2026). The precedent is the case about a season with no results, which reads
-       on a day of its own for the same reason. */
+    /* Read on a fixed day, the way the case about a season with no results is. It used to have
+       to be the same day the case worked the field out for, because `fieldFor` narrowed the list
+       by the day (review, 07.09.2026); since 21.09.2026 the answer is the field and there is
+       nothing left to keep in step. */
     const TODAY = '2026-08-04'
 
     renderAt('/sr/top-liste?sezona=2019', 'visitor', null, undefined, TODAY)
@@ -1119,10 +1115,11 @@ describe('TopBoards', () => {
        a second source for **which board** as well: they share a leader and part company at once
        (their second places are Radoslav Milovanović and Andrija Pavlović).
      *
-       The day is the one the screen is read on, not a day of the season: `fieldFor` drops members
-       who are no longer active, so a case that asks about a different day asks about a different
-       field, and would one day fail over somebody who has nothing to do with a surname. */
-    const field = fieldFor(await loadResource<Competitor[]>('competitors'), 2019, TODAY)
+       The day is the one the screen is read on, and it stays that way although the field no
+       longer moves with it: `fieldFor` used to drop members who were no longer active, and since
+       21.09.2026 the answer itself does (owner, 13.09.2026), so the screen and this case read
+       one list. The fixed day is kept because the screen reads other things off it. */
+    const field = await loadResource<Competitor[]>('competitors')
     const results = await loadResource<Result[]>('results')
 
     for (const [name, ranked] of [
@@ -1345,7 +1342,7 @@ describe('TopBoards', () => {
     }))
 
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('pairs.json')
+      String(input).includes('/api/pairs')
         ? new Response(JSON.stringify(six), { headers: { 'content-type': 'application/json' } })
         : served(input, init),
     )
@@ -1819,16 +1816,27 @@ describe('CompetitorProfile', () => {
     /* PDL P11: "Nigde na portalu nema vidljiv profil", "softverski je sakriven
        kao da ne postoji". Nothing read the flag, so the profile of somebody who
        had left was public; there was no such member in the data either, so the
-       rule had nothing to be checked against. 000032 is one now. */
+       rule had nothing to be checked against. 000032 is one now.
+
+       **Asked of the answer since 21.09.2026, and there is no flag left to read.** The
+       rule is kept by the shape of the answer: such a member is not on
+       `/api/competitors`, so the profile is refused for the same reason a number nobody
+       has is (PDL P23). The generated file still carries them, so a case read off the
+       file would draw the very page the rule forbids. */
+    const { stop } = membersAsServed()
     const { router } = renderAt('/sr/takmicar/000032')
 
     /* **The home page, and not a page that says the profile is missing.** Since 06.09.2026 an
        address that leads nowhere and an address somebody is hiding behind answer the same way, so
        that a visitor cannot read the difference off the screen (PDL P23). Read off the address,
        because the name of the portal is written on every screen. */
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/sr')
-    })
+    try {
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/sr')
+      })
+    } finally {
+      stop()
+    }
   })
 
   /* Its own limit, and not the whole suite's: `ADL.md` A2 keeps `testTimeout` at the
@@ -2113,7 +2121,7 @@ describe('Teams', () => {
        written and never reached it. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/teams.json')
+      String(input).endsWith('/api/teams')
         ? new Response('[]', { headers: { 'content-type': 'application/json' } })
         : real(input))
 
@@ -2774,39 +2782,52 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
 })
 
 describe('a member whose fee has run out, in the tables', () => {
-  it('stands in the season they raced, with the name but no link', async () => {
-    /* PDL P11 has two halves and this is both of them at once: the name stays
-       in the table of the season they were a member of, and the link goes,
-       because the profile it pointed at is hidden as though it did not exist.
-       000032 raced in 2017 and their fee has since run out. */
+  /* **BOTH CASES BELOW CHANGED ON 21.09.2026, AND THE FIRST OF THEM IS A COST RATHER
+     THAN A DECISION TAKEN HERE.** PDL P11 has two halves: the name stays in the table
+     of the season they were a member of, and the link goes because the profile it
+     pointed at is hidden as though it did not exist. Both halves used to be drawn off
+     the member's own record, which the generated file still carries with a flag on it.
+     `/api/competitors` does not answer for such a member at all (owner, 13.09.2026), so
+     the standing - which is built out of that list - has no row of theirs to draw in
+     any season, history or not.
+
+     Two of the owner's own decisions meet here and only he can part them. It is in
+     `PENDING.md` as a question and measured below as what it is. */
+  it('is not in the table of a season they raced, because the answer has no record', async () => {
     // Read on a day well after 2017, so that season is history.
-    renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2026-06-01')
+    const { stop } = membersAsServed()
 
-    const table = await screen.findByRole('table')
-    const gone = within(table).getByText(/Vojislav Antonijević/)
+    try {
+      renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2026-06-01')
 
-    expect(gone).toBeVisible()
-    expect(
-      within(table).queryByRole('link', { name: /Vojislav Antonijević/ }),
-    ).not.toBeInTheDocument()
-    // Everybody else still has one, or this would pass on a table with no links.
-    expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
+      const table = await screen.findByRole('table')
+
+      expect(within(table).queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
+      // Everybody else is still there and still a link, or this would pass on an empty table.
+      expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
+    } finally {
+      stop()
+    }
   })
 
-  it('is not in the table of the season that is running now', async () => {
-    /* The same table, the same season, read on two different days. 000032 raced
-       in 2017 and their fee has since run out, so on a day in 2017 that table is
-       the season now and they are not in it; on a day after it, it is history
-       and they are.
+  it('is not in the table of the season that is running now either', async () => {
+    /* The same table, the same season, read on a day inside it. This half of the rule
+       is unchanged and is now kept by the answer rather than by the portal: on a day in
+       2017 that table is the season now, and they are not in it because they are not in
+       the list.
      *
-     * Read through the simulated clock and not through the SEASON constant. The
-     * constant is 2027 for ever: on the day 2027 became history it would have
-     * gone on hiding them from the one archive table the league had, and would
-     * never have hidden them from 2028. */
-    renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2017-06-01')
+     * Read through the simulated clock and not through the SEASON constant, which is
+     * 2027 for ever and would say the wrong thing about every year after it. */
+    const { stop } = membersAsServed()
 
-    await screen.findByRole('table')
-    expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
+    try {
+      renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2017-06-01')
+
+      await screen.findByRole('table')
+      expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
   })
 })
 
@@ -2816,17 +2837,27 @@ describe('the top boards, when a member on them has left the league', () => {
        than from the shared component. Nobody in the generated data is both
        inactive and on a board, so the list is made inactive here: without it the
        branch exists and nothing ever walks it. */
+    /* **EVERYBODY HIDING, WHICH IS THE ONE REASON LEFT SINCE 21.09.2026.** This used to
+       answer with every member and `active: false` on each of them. `/api/competitors`
+       has no such flag - a member whose fee has run out is not on the list at all (owner,
+       13.09.2026) - and answering with the empty list instead would be measuring nothing,
+       because the standing is built out of that list and would have no rows to carry a
+       link or not. Hiding is the other half of the same rule (P23) and it is the half
+       that leaves a row standing, which is exactly the arrangement this case is for: rows
+       there, links not. Read as a visitor, because a hidden profile is hidden from nobody
+       else. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) => {
-      if (!String(input).endsWith('/competitors.json')) {
+      if (String(input) !== '/api/competitors') {
         return real(input)
       }
 
-      const all: { active: boolean }[] = await (await real(input)).json()
+      const all: Record<string, unknown>[] = await (await real(input)).json()
 
-      return new Response(JSON.stringify(all.map((one) => ({ ...one, active: false }))), {
-        status: 200,
-      })
+      return new Response(
+        JSON.stringify(all.map((one) => ({ ...one, profileHidden: true }))),
+        { status: 200 },
+      )
     })
 
     try {

@@ -120,7 +120,9 @@ export function EditTeam() {
              answer is two things here: whether this reader may be on the page at all,
              and the name the queue shows beside what they send. A team nobody is in
              answers nobody, and then this address is not a page for anyone. */
-          const admin = members.find((one) => one.memberNumber === teamAdminOf(team, members))
+          const admin = members.find(
+            (one) => one.memberNumber === teamAdminOf(team, members, mine),
+          )
 
           if (admin === undefined || admin.memberNumber !== mine) {
             return <Navigate to={`/${locale}`} replace />

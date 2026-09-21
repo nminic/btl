@@ -7,6 +7,7 @@ import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
 import { loadResource } from '../../data/client'
+import { membersAsServed } from '../../test/serverAnswers'
 import type { BtlEvent, Competitor, EventComment, PendingItem } from '../../data/types'
 import { overall, rated } from './overall'
 
@@ -270,7 +271,7 @@ describe('rating an event', () => {
        result, and every result in the data belongs to somebody the list has. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/competitors.json')
+      String(input).endsWith('/api/competitors')
         ? new Response('[]', { status: 200 })
         : real(input))
 
@@ -630,7 +631,7 @@ describe('a comment a moderator lets out', () => {
     }))
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/comments.json')
+      String(input).endsWith('/api/comments')
         ? new Response(JSON.stringify(many), { status: 200 })
         : real(input))
 
@@ -740,7 +741,7 @@ describe('a comment a moderator lets out', () => {
       }))
 
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/comments.json')
+      String(input).endsWith('/api/comments')
         ? new Response(
             JSON.stringify([
               ...many((await eventAt(EVENT)).id, 23, 1),
@@ -1254,32 +1255,44 @@ describe('the comments under an event', () => {
   })
 
   it('keeps a comment whose author has left the league, with no link on the name', async () => {
-    /* A member whose fee has run out is still in the record and has no visible
-       profile (PDL P11), so the card must not link to one: it did, and the link
-       led to "Ovog takmičara nema". What they wrote stays where it was
-       published, under the name it was published with. */
-    const competitors = await loadResource<Competitor[]>('competitors')
-    const left = must(
-      competitors.find((one) => !one.active),
-      'a member who has left the league',
-    )
-    const comments = await loadResource<EventComment[]>('comments')
-    const theirs = must(
-      comments.find((one) => one.memberNumber === left.memberNumber),
-      'a comment by that member',
-    )
+    /* A member whose fee has run out has no visible profile (PDL P11), so the card must not
+       link to one: it did, and the link led to "Ovog takmičara nema". What they wrote stays
+       where it was published, under the name it was published with.
 
-    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
+       **ON THE ANSWER THE SERVER GIVES AND NOT ON THE GENERATED FILE, SINCE 21.09.2026, AND
+       THAT IS THE WHOLE OF THIS CASE.** It used to find such a member by reading `active` off
+       the file. `/api/competitors` carries no such field and no such row (owner, 13.09.2026),
+       so the question „has this author left the league" is now „is this author in the answer",
+       and a case that went on reading the file would be measuring a fact the portal no longer
+       has. `membersAsServed` is the one place that knows the file still carries both.
 
-    const card = must(
-      (await screen.findAllByRole('listitem')).find((one) =>
-        (one.textContent ?? '').includes(theirs.body),
-      ),
-      'that comment under the event',
-    )
+       The name comes off the COMMENT, which is the other half of the rule and the reason the
+       card still says anything at all: the author's record is gone, so there is nothing else
+       left to read a name from (owner, 06.08.2026). */
+    const { lapsed, stop } = membersAsServed()
 
-    expect(within(card).getByText(`${left.firstName} ${left.lastName}`)).toBeInTheDocument()
-    expect(within(card).queryByRole('link')).not.toBeInTheDocument()
+    try {
+      const gone = first(lapsed)
+      const comments = await loadResource<EventComment[]>('comments')
+      const theirs = must(
+        comments.find((one) => one.memberNumber === gone),
+        'a comment by that member',
+      )
+
+      renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
+
+      const card = must(
+        (await screen.findAllByRole('listitem')).find((one) =>
+          (one.textContent ?? '').includes(theirs.body),
+        ),
+        'that comment under the event',
+      )
+
+      expect(within(card).getByText(theirs.who)).toBeInTheDocument()
+      expect(within(card).queryByRole('link')).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
   })
 
   it('says a comment from before the ratings carries no mark, all four times', async () => {

@@ -1,9 +1,7 @@
 import { SLOW } from '../test/slow'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { Competitor, Result } from '../data/types'
+import type { Result } from '../data/types'
 import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
 import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
@@ -18,6 +16,7 @@ import { first, must } from '../test/at'
 import { readQr } from '../test/readQr'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
+import { membersAsServed } from '../test/serverAnswers'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
 
@@ -25,11 +24,12 @@ import { Messages } from './member/Messages'
  * goes in, the moderator finds it, decides, and the member sees the decision.
  * That sequence is the reason for building the front end before the database. */
 
-/** The members as the prototype serves them, read rather than restated: one test
- *  has to say what the data actually holds, not repeat a sentence about it. */
-const competitors: Competitor[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
-)
+/* THE MEMBERS WERE READ OFF THE GENERATED FILE HERE UNTIL 21.09.2026, for the two
+   cases about the referral balance: they worked the credit out themselves, over
+   `referredBy` and `active`. `/api/competitors` answers neither name, so the count
+   is the server's and arrives as `referredCount`, and the two cases are handed the
+   real answer by `membersAsServed` rather than reading the file behind the
+   screen's back. */
 
 /**
  * Membership on a given day.
@@ -418,36 +418,62 @@ describe('membership', () => {
     expect(amount).toMatch(/RSD$/)
   })
 
-  it('stops crediting a referral for somebody administration has deleted', async () => {
-    /* The credit was counted straight off the generated file, so a member an
-       administrator had deleted was gone from every list and still in this sum:
-       six hundred dinars a year for somebody who does not exist. ADL A8 says
-       deleting a record frees the identity from everything, not only from a
-       list, and every other screen on the portal reads the same overlay. */
+  it('shows the balance the answer carries, and does not recount it here', async () => {
+    /* **THIS CASE MEASURED THE OPPOSITE UNTIL 21.09.2026, AND THE CHANGE IS A COST THE
+       SWITCH TO `/api` BROUGHT WITH IT RATHER THAN A DECISION TAKEN HERE.**
+
+       What it used to hold: the credit was counted on this screen off the generated file,
+       so a member an administrator had deleted was gone from every list and still in this
+       sum, six hundred dinars a year for somebody who does not exist. ADL A8 says deleting
+       a record frees the identity from everything and not only from a list, so the screen
+       was made to count through the overlay and this case walked the deletion.
+
+       What changed: the count cannot be worked out on this side any more. It needed two
+       fields, whose code brought whom and whether a fee is standing, and `/api/competitors`
+       answers NEITHER - `referred_by` holds a KEY and never a code (V7), and a member whose
+       fee has lapsed is not on the list at all (owner, 13.09.2026). So the server counts it,
+       over the same two halves, and hands the number over as `referredCount`.
+
+       **The rule ADL A8 states is not weakened; the moment it takes effect is.** A deletion
+       is written into the overlay, which is a stand-in for a database that does not take
+       writes yet, and a number that was added up before the deletion cannot hear about it.
+       The day the deletion reaches the server the next answer carries the smaller count.
+       That is written down here, and in `PENDING.md`, rather than left for somebody to meet
+       on QA. What this case holds meanwhile is the half that IS this screen's: the balance is
+       the answer's number and this screen does not invent one. */
     const user = setupUser()
-    const brought = competitors.filter((one) => one.referredBy === competitors[0]?.referralCode)
-    const credited = brought.filter((one) => one.active)
+    const { stop } = membersAsServed('000001')
 
-    render(
-      <ClockProvider simulatedDay="2026-11-01">
-        <I18nProvider locale="sr">
-          <MemoryRouter>
-            <SessionProvider initialMemberNumber="000001">
-              <Deleting memberNumber={must(credited[0]?.memberNumber, 'somebody credited')} />
-              <Membership />
-            </SessionProvider>
-          </MemoryRouter>
-        </I18nProvider>
-      </ClockProvider>,
-    )
+    try {
+      const credited = 4
 
-    expect(await screen.findByText(`${(credited.length * 600).toLocaleString('sr-Latn')} RSD`)).toBeVisible()
+      render(
+        <ClockProvider simulatedDay="2026-11-01">
+          <I18nProvider locale="sr">
+            <MemoryRouter>
+              <SessionProvider initialMemberNumber="000001">
+                <Deleting memberNumber="000009" />
+                <Membership />
+              </SessionProvider>
+            </MemoryRouter>
+          </I18nProvider>
+        </ClockProvider>,
+      )
 
-    await user.click(screen.getByRole('button', { name: 'obriši člana' }))
+      expect(
+        await screen.findByText(`${(credited * 600).toLocaleString('sr-Latn')} RSD`),
+      ).toBeVisible()
 
-    expect(
-      screen.getByText(`${((credited.length - 1) * 600).toLocaleString('sr-Latn')} RSD`),
-    ).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'obriši člana' }))
+
+      /* Unchanged, and that is the boundary above said as a measurement: the overlay cannot
+         reach a sum that was worked out on the far side of the wire. */
+      expect(
+        screen.getByText(`${(credited * 600).toLocaleString('sr-Latn')} RSD`),
+      ).toBeVisible()
+    } finally {
+      stop()
+    }
   })
 
   it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
@@ -578,35 +604,43 @@ describe('membership', () => {
        that is six hundred dinars" is a conversion, and the league holds no rate
        (data/pricing.ts). The balance underneath is in the same currency; it said
        „0 EUR" to everybody under a sentence promising dinars. */
-    renderAt('/sr/moja-clanarina', 'competitor', '000001')
+    /* **ON THE ANSWER AND NOT ON THE GENERATED FILE, SINCE 21.09.2026.** The code and the
+       count are answered on the caller's OWN row and on no other (`/api/competitors`), and
+       the file `test/setup.ts` stands in with carries neither. `membersAsServed` is the one
+       place that knows the difference, and it works the count out over that same file the way
+       the server's own SQL does rather than writing a figure down here. */
+    const { stop } = membersAsServed('000001')
 
-    /* The link carries a code and not the member number. That number is public
-       and consecutive, so a link built out of it can be assembled for anybody,
-       by anybody, including for oneself. */
-    expect(await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)).toBeVisible()
-    expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
-    expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
-    /* And the balance is counted. This member brought five, and four of them
-       have had their membership activated: 4 × 600. The fifth registered through
-       the link and never went active, and pays nobody, which is the whole of the
-       „prvi naredni put" half of the rule. Written out as the string „0 RSD"
-       for everybody, no arrangement of the data could ever have shown this.
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-       All four of the four are freed of the fee, and that is the point of choosing them:
-       a review proposed that the credit should require the fee to have been paid,
-       and the owner decided otherwise on 13.08.2026, doslovno „OK je da se za
-       preporuku dobije balans čak i ako je preporučen član oslobođen
-       aktivaciju". Read the data rather than trust the sentence: if somebody
-       later makes those members payers, this test stops proving the decision and
-       says so. */
-    const brought = competitors.filter((one) => one.referredBy === competitors[0]?.referralCode)
+      /* The link carries a code and not the member number. That number is public
+         and consecutive, so a link built out of it can be assembled for anybody,
+         by anybody, including for oneself. */
+      expect(await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)).toBeVisible()
+      expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
+      expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
+      /* And the balance is the count the answer carries. This member brought five, and four
+         of them have had their membership activated: 4 × 600. The fifth registered through
+         the link and never went active, and pays nobody, which is the whole of the
+         „prvi naredni put" half of the rule. Written out as the string „0 RSD" for
+         everybody, no arrangement of the data could ever have shown this.
 
-    expect(brought.filter((one) => one.active && one.membershipBasis === 'feeExempt')).toHaveLength(4)
-    expect(screen.getByText('2.400 RSD')).toBeVisible()
-    /* And when it lands, which is the half that keeps anybody from being paid
-       for an account that was opened and left. */
-    expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
-    expect(screen.getByText('na balansu')).toBeVisible()
+         **Which half of the rule this can still hold, said exactly.** That a member freed of
+         the fee counts all the same (owner, 13.08.2026, „OK je da se za preporuku dobije
+         balans čak i ako je preporučen član oslobođen članarine") used to be read off the
+         records here. It is the server's condition now - it counts on `brought.active` and
+         asks nothing about the basis - so it is measured where it lives, in
+         `CompetitorApiTest`, and this case holds that the screen draws the number it is
+         given rather than one of its own. */
+      expect(screen.getByText('2.400 RSD')).toBeVisible()
+      /* And when it lands, which is the half that keeps anybody from being paid
+         for an account that was opened and left. */
+      expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
+      expect(screen.getByText('na balansu')).toBeVisible()
+    } finally {
+      stop()
+    }
   })
 
   it('promises what administration set, not what the file says', async () => {
@@ -1193,7 +1227,7 @@ async function withOneMoreResult(
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const response = await real(input, init)
 
-    if (!String(input).includes('results.json')) {
+    if (!String(input).includes('/api/results')) {
       return response
     }
 

@@ -182,11 +182,27 @@ export function teamFrom(item: PendingItem, edits: Edits): Proposed {
  * The same shape the addresses beside it already have: `addressesIn` reads the teams
  * through the overlay, so a team made this visit counts. This reads the same list for
  * the same reason.
+ *
+ * **The seat is four shapes since 21.09.2026 and only one of them is a member**
+ * (`/api/teams`, `data/types.ts`): a number, the empty string for a seat nobody
+ * holds, JSON null for a seat held by somebody who has no member number, and the key
+ * absent from every answer that is not the administration's. This screen IS the
+ * administration, so it is answered one of the first three; the fourth is written
+ * out here because the type carries it and a reader should not have to go and find
+ * out which of the four cannot arrive.
+ *
+ * Only a number goes into the list, which is what the list is: member numbers of
+ * people who already have a team. The other three say „nobody with a number holds
+ * this seat", and a proposal is not refused on the strength of that.
  */
 export function organisers(members: { memberNumber: string; teamId: number | null }[], teams: Team[]): string[] {
   return [
     ...members.flatMap((one) => (teamOf(one) === null ? [] : [one.memberNumber])),
-    ...teams.map((one) => one.organizerMemberNumber),
+    ...teams.flatMap((one) =>
+      one.organizerMemberNumber === undefined || one.organizerMemberNumber === null
+        ? []
+        : [one.organizerMemberNumber],
+    ),
   ]
 }
 
