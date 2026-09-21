@@ -19,7 +19,7 @@ import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /**
@@ -57,7 +57,8 @@ import './Member.css'
  */
 export function ProposeTeam() {
   const { locale, t } = useI18n()
-  const { memberNumber, propose } = useSession()
+  const { propose } = useSession()
+  const who = useMemberScreen()
   const today = useToday()
   const overlay = useOverlay()
   /* The teams as well, for one rule: a name already in the league cannot be
@@ -76,9 +77,11 @@ export function ProposeTeam() {
    *  read off a disc with three sliders over it. */
   const [logo, setLogo] = useState<Chosen | null>(null)
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
+
+  const { memberNumber } = who
 
   /* Narrowed once, here, rather than at the call: the early return above has
      already settled it, but the handler below is written inside a callback that

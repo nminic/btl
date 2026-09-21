@@ -6,7 +6,7 @@ import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../
 import { useI18n } from '../../i18n/useI18n'
 import { DeleteRecord } from '../admin/EntityEditor'
 import { useSession } from '../../session/useSession'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /* Everything a member has sent in, in one place: what is still waiting, what
@@ -15,12 +15,15 @@ import './Member.css'
  * where a pending one is visible at all. */
 export function MyResults() {
   const { locale, t } = useI18n()
-  const { memberNumber, submissions, withdraw, remove } = useSession()
+  const { submissions, withdraw, remove } = useSession()
+  const who = useMemberScreen()
   const state = useResults()
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
+
+  const { memberNumber } = who
 
   const mine = submissions.filter((one) => one.memberNumber === memberNumber)
 

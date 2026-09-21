@@ -1,6 +1,9 @@
 import { Link } from 'react-router'
 import { useCompetitors } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
+import { useRole } from '../roles/useRole'
+import type { SignedIn } from '../session/context'
+import { signOutOfTheServer } from '../session/theServer'
 import { useSession } from '../session/useSession'
 import { Dropdown } from './Dropdown'
 import { monogramFor } from './monogram'
@@ -11,29 +14,56 @@ import { ACCOUNT_ROUTES } from './routes'
  * a second door to the same room is one more thing in a header that already has
  * enough (PDL P28a).
  *
- * The shell only renders this when somebody is signed in. */
-export function AccountMenu({ memberNumber }: { memberNumber: string }) {
+ * The shell only renders this when somebody is signed in.
+ *
+ * WHAT IT CAN SAY DEPENDS ON WHICH WAY IN HE CAME BY, and the two are told apart
+ * rather than folded together (session/context.ts, `SignedIn`). A member number is a
+ * name in the file of members and becomes „Strahinja Vukićević"; an account is a
+ * number the server handed back from `GET /api/me` and is not a member number at all -
+ * `MeApi` deliberately carries none, because a moderator has no member record. Writing
+ * one into the slot of the other would be two facts in one home, and the first thing it
+ * would do is look up a member with an account's id and draw whoever happened to sit
+ * there.
+ */
+
+export function AccountMenu({ signedIn }: { signedIn: SignedIn }) {
   const { locale, t } = useI18n()
   const { signOut } = useSession()
+  const { become } = useRole()
   const competitors = useCompetitors()
 
+  /* Asked only where there is a member number to ask about. An account has none, so
+     there is nobody to look for and no wrong answer to find. */
   const member =
-    competitors.status === 'ready'
-      ? competitors.data.find((one) => one.memberNumber === memberNumber)
+    signedIn.as === 'member' && competitors.status === 'ready'
+      ? competitors.data.find((one) => one.memberNumber === signedIn.memberNumber)
       : undefined
+
+  /* The one string this menu has to call somebody by, worked out once so the picture
+     and the line under it can never disagree about who is signed in. */
+  const who =
+    signedIn.as === 'member'
+      ? (member === undefined ? signedIn.memberNumber : `${member.firstName} ${member.lastName}`)
+      : t('shell.accountNumber', { number: signedIn.account })
 
   return (
     <Dropdown
       id="account-menu"
       className="account"
       label={t('shell.openAccount')}
-      trigger={<span className="account__monogram">{monogramFor(member, memberNumber)}</span>}
+      trigger={
+        <span className="account__monogram">
+          {/* The same rule either way, and it is the rule this portal already had: the
+              last two of whatever identifies him, until a name is there to take
+              initials from. An account never gets a name here, because the server does
+              not hand one out. */}
+          {monogramFor(member, signedIn.as === 'member' ? signedIn.memberNumber : String(signedIn.account))}
+        </span>
+      }
     >
       {(close) => (
         <>
-          <p className="account__who">
-            {member === undefined ? memberNumber : `${member.firstName} ${member.lastName}`}
-          </p>
+          <p className="account__who">{who}</p>
           {/* Everything but what has a shorter way in of its own (routes.ts).
               Filtered here rather than dropped there, because that same list is
               what the router is built from. */}
@@ -52,7 +82,25 @@ export function AccountMenu({ memberNumber }: { memberNumber: string }) {
             className="account__link account__link--button"
             onClick={() => {
               close()
+              /* THE SERVER IS TOLD FIRST AND THE PORTAL FORGETS AFTERWARDS, and the
+                 order is the whole of it: told the other way round, a member who
+                 pressed this would watch the header empty while the cookie in his
+                 browser went on opening every route on the server. `SignOutApi`
+                 answers 204 whatever it was sent and sends the cookie back already
+                 over, so there is no answer worth branching on and none is read.
+
+                 The portal forgets even where the request never arrives. A member
+                 pressing „Odjavi se" on a train has asked to be signed out of the
+                 screen in front of him, and leaving him signed in because the network
+                 was not there would be the portal arguing with him. What the server
+                 still holds then runs out on its own (30 days, ADL A43). */
+              void signOutOfTheServer()
               signOut()
+              /* And the role goes back to a visitor. It came from the server
+                 (`GET /api/me`), so it cannot outlive the session it came with: left
+                 standing, a moderator who signed out would keep the administration in
+                 his navigation and find every screen behind it refused. */
+              become('visitor')
             }}
           >
             {t('myProfile.signOut')}

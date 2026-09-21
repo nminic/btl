@@ -16,7 +16,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSend, useSent } from '../sent'
 import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
-import { SignedOut } from '../member/SignedOut'
+import { useMemberScreen } from '../member/memberScreen'
 import '../member/Member.css'
 
 
@@ -60,7 +60,8 @@ export function ReportResult() {
      all this does; the address is written by the row that leads here. */
   const [params] = useFilterParams()
   const today = useToday()
-  const { memberNumber, submit } = useSession()
+  const { submit } = useSession()
+  const who = useMemberScreen()
   const state = combinePair(useEvents(), useRaces())
   /* The points the entry earned, once there has been one, held by the address rather
      than by the screen: the way back from this confirmation is the member's own list of
@@ -69,9 +70,11 @@ export function ReportResult() {
   const done = typeof said === 'number' ? said : null
   const confirm = useSend()
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
+
+  const { memberNumber } = who
 
   const mine = memberNumber
 

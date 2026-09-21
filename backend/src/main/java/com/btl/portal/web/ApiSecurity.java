@@ -85,6 +85,36 @@ class ApiSecurity {
 					"/api/pages");
 
 	/**
+	 * AND THE ONE THING ANYBODY MAY READ THAT IS NOT A WHOLE ADDRESS.
+	 *
+	 * <p><b>A second list rather than a twelfth entry above, and the guards are the
+	 * reason.</b> Every entry on that list is an address a visitor can ask for as it
+	 * stands, and three cases lean on exactly that: {@code noOpenRouteOpensAnythingBesideIt}
+	 * asks each one and requires 200, then requires {@code /2} beside it to be 401;
+	 * {@code nothingOpenForReadingIsOpenForWriting} posts to each one as written. A path
+	 * with a name in it satisfies none of those sentences - {@code /api/photos} answers
+	 * nothing at all, and the whole of what it is FOR sits at the sub-path that list
+	 * requires to be shut. Folded in, it would have had to loosen all three for every
+	 * entry; kept apart, each list is asked the question that is true of it, and nothing
+	 * already open is loosened by a picture.
+	 *
+	 * <p><b>It is written with the variable and not as {@code /api/photos/*}, and that is
+	 * not spelling.</b> It is the SAME string {@link PhotoApi} maps, so what is opened and
+	 * what is mapped are one text rather than two that have to be kept equal - and the
+	 * floor in {@code RightsAtTheDoorTest} reads both this list and the dispatcher, which
+	 * is where two spellings would have been two facts.
+	 *
+	 * <p><b>Reading, and this time not {@code OPTIONS}.</b> The note on the list above
+	 * opens it for the routes there with a reason of its own - „what is open by name has
+	 * nothing to hide about which verbs it takes" - and that reason is about a resource a
+	 * visitor is invited to browse. An {@code Allow} answered at an address made of a
+	 * digest is a sentence with no reader; so this list grants a {@code GET} and the
+	 * {@code HEAD} that is the same read without a body, and the {@code OPTIONS} rule below
+	 * shuts the rest along with everything else under {@code /api}.
+	 */
+	static final List<String> READ_BY_ANYBODY_UNDER_A_NAME = List.of("/api/photos/{name}");
+
+	/**
 	 * @param namedSuperadmins the addresses {@code deploy/.env} names, taken as an ARRAY so
 	 *                         that the property binder does the splitting - it is the thing
 	 *                         that already decides what a list-valued property looks like,
@@ -107,6 +137,7 @@ class ApiSecurity {
 	SecurityFilterChain api(HttpSecurity http, JdbcClient db,
 			@Value("${btl.superadmin.email:}") String[] namedSuperadmins) throws Exception {
 		String[] open = READ_BY_ANYBODY.toArray(String[]::new);
+		String[] openUnderAName = READ_BY_ANYBODY_UNDER_A_NAME.toArray(String[]::new);
 
 		return http
 				.securityMatcher("/api/**")
@@ -140,6 +171,11 @@ class ApiSecurity {
 						   socket, and `anOpenPathIsOpenForReadingAndNotForWriting` holds the
 						   rule itself. */
 						.requestMatchers(HttpMethod.GET, open).permitAll()
+						/* AND THE PICTURES, whose address carries a name. The note on
+						   `READ_BY_ANYBODY_UNDER_A_NAME` says why it is a list of its own and
+						   why it stops at the two reads. */
+						.requestMatchers(HttpMethod.GET, openUnderAName).permitAll()
+						.requestMatchers(HttpMethod.HEAD, openUnderAName).permitAll()
 						/* AND HEAD, which is the same read without the body. Spring serves it
 						   off the GET handler, so leaving it out would not shut a route - it
 						   would make the calendar answer 401 to the one verb that asks whether

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -908,6 +909,231 @@ class WhatEachStackRequiresTest {
 						+ " without touching this sentence leaves it wrong while the suite"
 						+ " stays green", prefixed, postgres, mail, expected)
 				.contains(expected);
+	}
+
+	/**
+	 * THE NAME THE BACKEND IS HANDED FOR THE FOLDER IT KEEPS PICTURES IN.
+	 *
+	 * <p>{@code PhotoApi} binds it through {@code btl.photos.folder}, which Spring's relaxed
+	 * binding spells this way in the environment, and {@code application.properties} defaults
+	 * it to a temporary folder - so a stack that hands it nothing does not fail, it silently
+	 * keeps members' photographs in the container's {@code /tmp}.
+	 */
+	private static final String PHOTOS = "BTL_PHOTOS_FOLDER";
+
+	/**
+	 * AND EVERY DEPLOYED STACK KEEPS ITS PICTURES SOMEWHERE THAT SURVIVES A BUILD, WHICH IS
+	 * ONE FACT WITH TWO HOMES AND THEY ARE COMPARED HERE.
+	 *
+	 * <p><b>Measured 20.09.2026, twice, and each half was its own finding.</b>
+	 *
+	 * <ol>
+	 * <li><b>The path was written by hand in two places in one file</b> - once as the
+	 * setting handed to the backend and once as the target of the mount - and nothing
+	 * compared them. Changing the mount to {@code /var/lib/btl/pictures} left this class
+	 * green over nineteen cases. What a typo does is silent in the worst way: the rows in
+	 * {@code photo} stay, the files go with every {@code up -d --build}, and from outside it
+	 * looks like a portal nobody has ever uploaded to.
+	 * <li><b>{@code compose.prod.yml} had neither of the two.</b> Production would have
+	 * fallen back to {@code application.properties}, which is {@code java.io.tmpdir} - a
+	 * folder every process in the container may write, emptied by every build, and covered by
+	 * no backup. Nothing here saw it, because the whole of this file asks what a stack does
+	 * when a SETTING has no value, and QA's path is written out rather than taken from
+	 * {@code .env}, so it has no row in that table at all.
+	 * </ol>
+	 *
+	 * <p><b>Both halves are read off Compose's rendered configuration</b>, so the comparison
+	 * is between what the container would really be handed and where something would really
+	 * be mounted, not between two pieces of text. The stacks asked are the ones the runbook
+	 * gives a recipe for - QA and production - which leaves the root development stack out by
+	 * derivation rather than by name: on a developer's machine the temporary folder IS the
+	 * right answer, and {@code application.properties} says so in its own note.
+	 *
+	 * <p><b>What it does not claim:</b> that the mount is a named volume rather than a bind.
+	 * ADL A43, 2, decided a named volume and this asks only that SOMETHING durable is
+	 * mounted at the path the backend was told about; the day a stack binds a host folder
+	 * instead, that is a decision for whoever writes it, not a thing for this line to refuse.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void everyDeployedStackMountsSomethingWhereItToldItsBackendToKeepPictures() throws Exception {
+		List<Path> asked = new ArrayList<>();
+
+		for (Path stack : everyStackThisRunbookGivesARecipeFor().toList()) {
+			Map<String, String> distinct = new LinkedHashMap<>();
+
+			settingsOf(stack).forEach(one -> distinct.put(one, PLACEHOLDER + "-" + one));
+
+			Ran rendered = compose(stack, List.of("config"), distinct);
+
+			assertThat(rendered.code())
+					.as("%s could not be rendered even with every setting given a value, so"
+							+ " nothing below reads anything:%n%s", stack, rendered.errors())
+					.isZero();
+
+			Map<String, Object> backend = backendEnvironmentOf(rendered.output(), stack);
+
+			assertThat(backend)
+					.as("%s deploys a backend and hands it no %s, so the portal falls back to"
+							+ " application.properties - which is java.io.tmpdir. Every"
+							+ " photograph a member uploads would go to a folder inside the"
+							+ " container: writable by everything in it, emptied by the next"
+							+ " build, and in no backup", stack, PHOTOS)
+					.containsKey(PHOTOS);
+
+			String folder = String.valueOf(backend.get(PHOTOS));
+
+			Map<String, Object> configured = (Map<String, Object>) new Yaml()
+					.load(rendered.output());
+			Map<String, Object> services = (Map<String, Object>) configured.get("services");
+			Map<String, Object> service = (Map<String, Object>) services.get("backend");
+			Object mounts = service.get("volumes");
+
+			assertThat(mounts)
+					.as("%s tells its backend to keep pictures in %s and mounts nothing at all"
+							+ " into it, so they live in the container's own writable layer and"
+							+ " go with the next build while the rows describing them stay",
+							stack, folder)
+					.isInstanceOf(List.class);
+
+			List<String> targets = ((List<Object>) mounts).stream()
+					.map(one -> one instanceof Map<?, ?> longhand
+							? String.valueOf(longhand.get("target"))
+							/* Compose normalises to the long form, so this is the answer to a
+							   shape that should not arrive rather than a second reader: a
+							   short `source:target` string, whose target is what follows the
+							   last colon. Written as a silent skip it would turn a mount this
+							   case cannot read into a mount this case says is missing. */
+							: String.valueOf(one).substring(String.valueOf(one).lastIndexOf(':') + 1))
+					.toList();
+
+			assertThat(targets)
+					.as("%s hands its backend %s=%s and mounts nothing at that exact path. The"
+							+ " two are written by hand in one file and this is the only thing"
+							+ " that compares them: one letter apart, the uploads go into the"
+							+ " container and the database goes on describing them. Mounted"
+							+ " here: %s", stack, PHOTOS, folder, targets)
+					.contains(folder);
+
+			asked.add(stack);
+		}
+
+		assertThat(asked)
+				.as("no stack this runbook covers deploys a backend at all, so this case"
+						+ " measured nothing and reported green")
+				.hasSizeGreaterThanOrEqualTo(2);
+	}
+
+	/**
+	 * AND THE IMAGE MAKES THAT FOLDER BEFORE IT DROPS PRIVILEGE, SO THE FIRST UPLOAD DOES NOT
+	 * FALL ON IT.
+	 *
+	 * <p><b>Measured 20.09.2026 rather than read.</b> Docker creates a fresh named volume
+	 * mounted at a path the image does not have as {@code root:root drwxr-xr-x}; from the
+	 * same {@code eclipse-temurin:21-jre} as uid 1001, {@code ls} passes and {@code touch}
+	 * comes back „Permission denied". {@code backend/Dockerfile} ends in {@code USER btl},
+	 * uid 1001. So the stack comes up, the health check is green, every picture already
+	 * described by a row answers, and the FIRST upload fails - at a place that has nothing to
+	 * do with uploading. What removes it is the image OWNING the directory before the volume
+	 * is laid over it: Docker copies an existing directory's content AND its ownership into a
+	 * fresh named volume.
+	 *
+	 * <p><b>The path is not written here.</b> It is the one the stack hands its backend,
+	 * rendered by Compose, exactly as in the case above - so the day that path moves, this
+	 * moves with it and the Dockerfile is what has to answer.
+	 *
+	 * <p><b>What it reads and what that is worth.</b> It reads the Dockerfile as text,
+	 * which is the shape this repository distrusts, and the reason it is accepted here is
+	 * that the alternative is building the image and raising a fresh volume inside the gate -
+	 * minutes per run for a fact that changes once. So the claim is kept narrow and literal:
+	 * ONE command, before the {@code USER} line because afterwards it could not, that gives
+	 * the user the image runs as this exact path. A Dockerfile that achieves the same some
+	 * other way fails here and its author says so once, which is the direction the whole of
+	 * this file is written in.
+	 *
+	 * <p><b>ONE ASSERTION AND NOT TWO, WHICH IS THE CORRECTION OF 20.09.2026 AND WAS A
+	 * FINDING.</b> It used to ask separately that the text before {@code USER} carried the
+	 * path and that it carried a {@code chown} naming the user, and the two were not tied to
+	 * each other or to a command. Both halves were measured and both passed on a broken
+	 * image: {@code chown -R btl:btl /app} beside a {@code mkdir} of the right folder left
+	 * the folder {@code root:root} and the case green, and so did replacing the whole
+	 * {@code RUN} line with a COMMENT carrying those words. So the text is stripped of
+	 * comments first - a Dockerfile comment is a line whose first character is {@code #} -
+	 * and what is looked for is a single chown, on a single line, whose subject is the user
+	 * and whose object is the folder.
+	 *
+	 * <p><b>And it is the folder itself and not an ancestor, which is a decision.</b> The
+	 * Dockerfile chowned the PARENT recursively, which does cover the folder - {@code -R}
+	 * reaches it - so nothing was broken. It is written as the exact path for two reasons.
+	 * Accepting an ancestor would make this case do path arithmetic and read a flag, which
+	 * is two more things a pattern can be wrong about, and this file's own header is the
+	 * record of what reading a shape costs. And the exact path is what the day of the move
+	 * needs: the folder comes off the rendered stack, so a stack that moves its pictures to
+	 * another tree leaves the Dockerfile naming a parent that no longer contains them, and a
+	 * recursive chown of the old parent would still be a chown naming the right user.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void theImageOwnsThatFolderBeforeItStopsBeingRoot() throws Exception {
+		List<String> dockerfile = Files.readAllLines(Path.of("..", "backend", "Dockerfile"),
+				StandardCharsets.UTF_8);
+
+		int dropsPrivilege = -1;
+
+		for (int at = 0; at < dockerfile.size(); at++) {
+			if (dockerfile.get(at).strip().startsWith("USER ")) {
+				dropsPrivilege = at;
+			}
+		}
+
+		assertThat(dropsPrivilege)
+				.as("backend/Dockerfile no longer drops privilege at all, so the image runs as"
+						+ " root and this case is asking about a problem that has been replaced"
+						+ " by a larger one")
+				.isNotNegative();
+
+		String whoItRunsAs = dockerfile.get(dropsPrivilege).strip().substring("USER ".length())
+				.strip();
+
+		List<String> commandsBeforeThat = dockerfile.subList(0, dropsPrivilege).stream()
+				.filter(line -> !line.strip().startsWith("#"))
+				.toList();
+
+		for (Path stack : everyStackThisRunbookGivesARecipeFor().toList()) {
+			Map<String, String> distinct = new LinkedHashMap<>();
+
+			settingsOf(stack).forEach(one -> distinct.put(one, PLACEHOLDER + "-" + one));
+
+			Map<String, Object> backend =
+					backendEnvironmentOf(compose(stack, List.of("config"), distinct).output(),
+							stack);
+
+			/* ASKED FOR BEFORE IT IS READ, so that a stack which stopped handing the setting
+			   over fails on the case written about THAT and not here with the word „null"
+			   where a path belongs. The case above is the one that owns that sentence. */
+			assertThat(backend)
+					.as("%s hands its backend no %s, which the case above is the one to report -"
+							+ " this one has no path to hold the image to", stack, PHOTOS)
+					.containsKey(PHOTOS);
+
+			String folder = String.valueOf(backend.get(PHOTOS));
+
+			/* THE USER AND THE FOLDER IN ONE COMMAND, in that order, on one line. The group
+			   is optional because `chown btl` and `chown btl:btl` are the same sentence, and
+			   the folder is followed by whitespace or the end of the line so that a chown of
+			   a LONGER path that merely starts with this one is not read as this one. */
+			Pattern owning = Pattern.compile("chown\\s+(-\\S+\\s+)*" + Pattern.quote(whoItRunsAs)
+					+ "(:\\S+)?\\s+" + Pattern.quote(folder) + "(\\s|$)");
+
+			assertThat(commandsBeforeThat)
+					.as("%s tells its backend to keep pictures in %s, and no command in"
+							+ " backend/Dockerfile gives %s that exact folder before the image"
+							+ " stops being root. A fresh named volume is made root-owned, so the"
+							+ " stack comes up healthy and the FIRST upload is the thing that"
+							+ " falls - and a comment saying so is not a command", stack, folder,
+							whoItRunsAs)
+					.anyMatch(line -> owning.matcher(line).find());
+		}
 	}
 
 	/**

@@ -10,8 +10,23 @@ import { useMay } from './rights'
  *
  * It is fitted by the route table (routeObjects.tsx) rather than by the screens,
  * so a screen cannot be written without one and cannot lose one by being
- * rewritten. In the prototype the role comes from the switch; the server will
- * decide later, and this check is never the boundary that matters.
+ * rewritten.
+ *
+ * WHERE THE ROLE IT READS COMES FROM, AND IT IS NOT THE SWITCH ANY MORE. This said „in
+ * the prototype the role comes from the switch; the server will decide later", and
+ * since 20.09.2026 that is not what happens: a visit asks `GET /api/me` above every
+ * screen (session/useTheServersSession.ts) and signing in asks it again
+ * (pages/member/SignIn.tsx), and both write the answer through the same `become` the
+ * switch calls. Measured by reaching an administrative address on a real superadmin
+ * session without touching the control at all. The switch still sets it too, and is
+ * never built into production (dev/tools.ts).
+ *
+ * THIS IS STILL NOT THE BOUNDARY THAT MATTERS, and the reason has changed with it. It
+ * was „no authentication yet"; it is now that this hides a SCREEN and nothing else. The
+ * server refuses on its own, route by route, whatever the browser drew
+ * (`ApiSecurity`: everything not named in `READ_BY_ANYBODY` falls through to
+ * `anyRequest().authenticated()`), and what these screens actually draw comes out of
+ * `/mock` (data/client.ts), which no chain guards because it is a folder of files.
  *
  * A closed door sends whoever knocked to the front page (owner, 30.07.2026). It
  * used to answer with one of three sentences, one of which named the right to go

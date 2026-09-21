@@ -30,12 +30,11 @@ import {
 import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
 import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
 import { applyChanges } from '../../forms/records'
 import { MEMBERS, PRICING, recordsOf } from '../admin/entityForms'
 import { recordKey } from '../../session/context'
 import { useOverlay } from '../admin/overlay'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /* The account, the name and the seat are the association's own and live with the
@@ -101,7 +100,7 @@ function broughtInBy(me: Competitor, everybody: Competitor[]): number {
 
 export function Membership() {
   const { locale, t } = useI18n()
-  const { memberNumber } = useSession()
+  const who = useMemberScreen()
   /* The referral amount as administration has it, not as the file has it: it is
      a row of the price list and is changed there (AdminPricing).
    *
@@ -119,9 +118,11 @@ export function Membership() {
      reads the same clock as everything else (src/clock). */
   const today = useToday()
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
+
+  const { memberNumber } = who
 
   return (
     <Resource state={state}>

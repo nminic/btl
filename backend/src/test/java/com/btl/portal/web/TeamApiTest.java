@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.method.HandlerMethod;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -30,15 +31,20 @@ import java.util.stream.StreamSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-/** The teams of the league, and the two things that do not leave with them. */
+/** The teams of the league, the mark that leaves with them, and the one thing that does not. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class TeamApiTest {
 
-	/** Named here with the reason, because a lost field and a withheld one look alike. */
+	/**
+	 * Where a team's picture is asked for, which this resource answers with since
+	 * 21.09.2026 and named as an omission before that.
+	 */
 	private static final String THE_TEAMS_MARK = "logo";
+
+	/** Named here with the reason, because a lost field and a withheld one look alike. */
 	private static final String WHO_ADMINISTERS_THE_TEAM = "organizerMemberNumber";
 
 	/** What the seat is answered AS, once the resource knows who is asking. */
@@ -96,10 +102,12 @@ class TeamApiTest {
 	 * different crop and not the same one.</li>
 	 * </ul>
 	 *
-	 * <p><b>And there is a crop in the fixture that no team may answer with</b>: a
-	 * member's own profile picture, written FIRST, so a query that reaches the picture
-	 * through a member rather than through the team answers with numbers that are in
-	 * the database and in nobody's team.
+	 * <p><b>And there is a whole picture in the fixture that no team may answer with</b>:
+	 * a member's own portrait, written FIRST, with a digest and a crop of its own, so a
+	 * query that reaches a picture through a member rather than through the team answers
+	 * with values that are in the database and in nobody's team. Both of its halves are
+	 * measured, and since 21.09.2026 the digest is the half that matters more: a digest
+	 * answered here is the address that portrait is served at.
 	 *
 	 * <p><b>The members are here although the answer carries none of them</b>, and
 	 * that is what the two cases about them measure. One team has three members and
@@ -273,8 +281,8 @@ class TeamApiTest {
 	}
 
 	/**
-	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE TWO THAT ARE NOT THIS
-	 * RESOURCE'S TO ANSWER, and those are named here with the reason.
+	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE ONE THAT IS NOT THIS
+	 * RESOURCE'S TO ANSWER, and it is named here with the reason.
 	 *
 	 * <ul>
 	 * <li><b>Who administers the team.</b> Article 73 makes „Tim" public, which is
@@ -285,12 +293,14 @@ class TeamApiTest {
 	 * a question for the resource that knows who is asking. And the member it names
 	 * may be one whose fee has lapsed, whom the owner's decision of 13.09.2026 keeps
 	 * off {@code /api/competitors} entirely.</li>
-	 * <li><b>The mark.</b> The portal reads it as a path to a picture and this schema
-	 * has none: a {@code photo} row carries a media type, a byte size, a digest and
-	 * the crop (V8, V21), and nothing points at bytes. No route serves a picture;
-	 * pictures are F5. An address invented here would be a broken circle beside every
-	 * team that has a mark.</li>
 	 * </ul>
+	 *
+	 * <p><b>The mark was the second such name until 21.09.2026 and is not one any
+	 * more</b>, which is the whole of this increment as this floor sees it. It was left
+	 * out because the schema had no address for a picture and no route served one; PR
+	 * 327 wrote that route, so the reason went and the name went with it. Taking it out
+	 * of this call is not a tidy-up: {@code Answers} requires a name listed here to be
+	 * ABSENT from the answer, so leaving it would fail the moment the field arrived.
 	 *
 	 * <p>{@code Answers} checks each name against the file the portal serves, so a
 	 * name left here after the portal stopped serving it cannot quietly excuse a field
@@ -302,7 +312,7 @@ class TeamApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/teams", answer(), "teams.json",
-				THE_TEAMS_MARK, WHO_ADMINISTERS_THE_TEAM);
+				WHO_ADMINISTERS_THE_TEAM);
 	}
 
 	@Test
@@ -451,49 +461,169 @@ class TeamApiTest {
 	}
 
 	/**
-	 * AND NO CROP OF ANYBODY'S PROFILE PICTURE LEAVES WITH A TEAM.
+	 * AND NO PART OF ANYBODY'S PROFILE PICTURE LEAVES WITH A TEAM, neither the square
+	 * it is cut to nor the address it is asked for at.
 	 *
 	 * <p>A team's mark and a member's face are rows of one table (V8), cut the same
 	 * way, so „the picture" is a question with two answers and a join that reaches it
 	 * through the member instead of through the team is answered by the database
-	 * without complaining. The member's three numbers are in the fixture and in no
-	 * team.
+	 * without complaining. The member's three numbers and his digest are in the fixture
+	 * and in no team.
 	 *
-	 * <p><b>The numbers are read off the database and not written here</b>, in the
-	 * spelling the column itself gives them, and the marks are looked for BEFORE the
+	 * <p><b>The digest half was added on 21.09.2026 with the address</b>, and it is the
+	 * more serious of the two: a crop off the wrong row draws a picture badly, while a
+	 * digest off the wrong row IS that picture, asked for by anybody. ADL A60 leaves one
+	 * boundary open - {@code competitor.photo_id} counts as public whatever
+	 * {@code profile_hidden} says - and what keeps it shut today is that no resource
+	 * publishes a portrait's digest. This is the case that says so, and it is asked over
+	 * the whole TEXT rather than over a field name, because an omission guarded by a name
+	 * lasts until somebody answers the same fact under another one.
+	 *
+	 * <p><b>The values are read off the database and not written here</b>, in the
+	 * spelling the column itself gives them, and the marks are looked FOR before the
 	 * face is looked against: without that first half this case would pass just as
-	 * happily if the answer carried no crops at all, or carried them in a spelling
-	 * neither loop would ever match.
+	 * happily if the answer carried no crops and no addresses at all, or carried them in
+	 * a spelling neither loop would ever match.
 	 */
 	@Test
-	void noCropOfAnybodysProfilePictureLeavesWithATeam() throws Exception {
+	void noPartOfAnybodysProfilePictureLeavesWithATeam() throws Exception {
 		String whole = whole();
 
-		List<String> marks = db.sql("select unnest(array[crop_x::text, crop_y::text,"
+		List<String> marks = db.sql("select unnest(array[digest, crop_x::text, crop_y::text,"
 						+ " crop_diameter::text]) from photo"
 						+ " where id in (select logo_id from team where logo_id is not null)")
 				.query(String.class).list();
 		assertThat(marks).as("no mark was read out of the database, so this case compares nothing")
-				.hasSize(6);
+				.hasSize(8);
 
-		for (String number : marks) {
-			assertThat(whole).as("the answer does not carry the crop (%s) the column holds, so the"
-							+ " loop below would pass over an answer with no crops in it at all",
-							number)
-					.contains(number);
+		for (String value : marks) {
+			assertThat(whole).as("the answer does not carry the value (%s) the mark's own row"
+							+ " holds, so the loop below would pass over an answer carrying"
+							+ " nothing of any picture at all", value)
+					.contains(value);
 		}
 
-		List<String> theFace = db.sql("select unnest(array[crop_x::text, crop_y::text,"
+		List<String> theFace = db.sql("select unnest(array[digest, crop_x::text, crop_y::text,"
 						+ " crop_diameter::text]) from photo where id ="
 						+ " (select photo_id from competitor where member_number = '000001')")
 				.query(String.class).list();
 		assertThat(theFace).as("the member has no picture, so the loop below asserts nothing")
-				.hasSize(3);
+				.hasSize(4);
 
-		for (String number : theFace) {
-			assertThat(whole).as("a number (%s) off a member's own profile picture left the server"
-							+ " with a team, which is the crop of a face and not of a mark", number)
-					.doesNotContain(number);
+		for (String value : theFace) {
+			assertThat(whole).as("a value (%s) off a member's own profile picture left the server"
+							+ " with a team: that is the face of a member answered as the mark of"
+							+ " a team, and a digest is the address the picture itself is at",
+							value)
+					.doesNotContain(value);
+		}
+	}
+
+	/**
+	 * THE MARK IS THE ADDRESS OF THAT TEAM'S OWN PICTURE, and a team that has none has
+	 * no address at all.
+	 *
+	 * <p><b>The digest is read back out of the row the fixture itself wrote, through the
+	 * team</b>, and never off a constant in this file. Written against a constant, the
+	 * case would be satisfied by a server answering the string this file happens to know,
+	 * which is one string written twice and not a measurement; read through
+	 * {@code team.logo_id}, the only thing that produces it is the join the resource
+	 * makes. Both teams that have a mark are asked, because the marks are handed out
+	 * crosswise in the fixture, so an address read off the other team's picture is a
+	 * different string and not the same one.
+	 *
+	 * <p><b>The WHOLE address and never a substring.</b> An address built out of
+	 * {@code mark.id} still begins with the same prefix and still ends in a name, so
+	 * {@code contains} would pass on it; compared whole, anything but the digest is a
+	 * different string. The key is what {@link PhotoApi} refuses to be addressed by (ADL
+	 * A60, PDL:6165: a key is countable and a digest is not), so this is the decision and
+	 * not the spelling.
+	 *
+	 * <p><b>AND THE ADDRESS IS HANDED BACK TO THE DISPATCHER, which is the floor under
+	 * the literal in {@link TeamApi}.</b> The prefix is written out there, and that is a
+	 * third home for one route beside {@code PhotoApi}'s mapping and
+	 * {@code ApiSecurity}'s open list. Two strings written in this repository and
+	 * compared with each other say nothing the day both of them move together; asked of
+	 * the application, the question stops being about spelling. Either the address a team
+	 * answers with is one the portal maps to the pictures, or it is an address nothing
+	 * serves. Nothing about the BYTES is asked here and nothing needs to be: what this
+	 * resource owes is an address, and what is behind it is {@code PhotoApiTest}'s to
+	 * owe.
+	 */
+	@Test
+	void theMarkIsTheAddressOfThatTeamsOwnPicture() throws Exception {
+		assertThat(db.sql("select count(*) from team where logo_id is not null")
+				.query(Integer.class).single())
+				.as("fewer than two teams in the fixture have a mark, so an address read off the"
+						+ " wrong row could still be the right one")
+				.isEqualTo(2);
+
+		for (String slug : List.of("novosadski-trkaci", "klub-lovcen")) {
+			String digest = db.sql("select p.digest from photo p join team t on t.logo_id = p.id"
+					+ " where t.slug = ?").param(slug).query(String.class).single();
+
+			String address = answerFor(slug).path(THE_TEAMS_MARK).asString();
+
+			assertThat(address)
+					.as("%s did not come back with the address of its own picture. The name in it"
+							+ " is the digest of the content and never the key of the row", slug)
+					.isEqualTo("/api/photos/" + digest);
+
+			assertThat(http.perform(get(address)).andReturn().getHandler())
+					.as("the address %s answered with (%s) is not one the portal maps to a"
+							+ " picture, so it is a circle that will never draw", slug, address)
+					.isInstanceOfSatisfying(HandlerMethod.class,
+							one -> assertThat(one.getBeanType()).isEqualTo(PhotoApi.class));
+		}
+
+		assertThat(answerFor("vardarski-krug").path(THE_TEAMS_MARK).isNull())
+				.as("a team with no mark answered with something rather than with null. An empty"
+						+ " path is an address a browser asks for, and frontend/src/data/types.ts"
+						+ " reads the two apart in as many words: a team that has none is not a"
+						+ " team whose logo is the empty path")
+				.isTrue();
+	}
+
+	/**
+	 * A TEAM ANSWERS WITH BOTH HALVES OF ITS MARK OR WITH NEITHER, which is the thing
+	 * this increment really introduces.
+	 *
+	 * <p>Until the picture had an address the answer could carry a square and no
+	 * picture, which is the square of nothing: three fractions saying which part of an
+	 * image to draw, beside no image. The two are one row and every column of
+	 * {@code photo} is NOT NULL, so the sentence is that they leave together or not at
+	 * all.
+	 *
+	 * <p><b>Asked as a property of every record and not as a list of the records this
+	 * fixture happens to hold.</b> A list has to be right about teams nobody has written
+	 * yet and is wrong the day one arrives; „these two are null together" is right or
+	 * wrong once per record and has no direction in which it can be incomplete.
+	 *
+	 * <p><b>And the property is pinned before it is asserted</b>, because it is vacuous
+	 * over an answer where every team has a mark and equally vacuous over one where none
+	 * has: both states are read off the answer first.
+	 */
+	@Test
+	void aTeamAnswersWithBothHalvesOfItsMarkOrNeither() throws Exception {
+		JsonNode teams = answer();
+
+		List<Boolean> hasAMark = StreamSupport.stream(teams.spliterator(), false)
+				.map(one -> !one.path(THE_TEAMS_MARK).isNull()).toList();
+
+		assertThat(hasAMark)
+				.as("the answer does not hold both states of the mark (%s), so the claim below is"
+						+ " about nothing", hasAMark)
+				.contains(true, false);
+
+		for (JsonNode one : teams) {
+			assertThat(one.path(THE_TEAMS_MARK).isNull())
+					.as("%s answered with one half of its mark and not the other - logo %s, crop"
+							+ " %s. The picture and the square it is cut to are one row, so a"
+							+ " square with no picture is the square of nothing and a picture"
+							+ " with no square is one nobody chose",
+							one.path("slug").asString(), one.path(THE_TEAMS_MARK),
+							one.path("crop"))
+					.isEqualTo(one.path("crop").isNull());
 		}
 	}
 
@@ -543,17 +673,17 @@ class TeamApiTest {
 	 * AND THE MEMBER'S ANSWER CARRIES NOTHING NOBODY NAMED, which is the same floor
 	 * the visitor's answer stands on, asked of the answer that differs.
 	 *
-	 * <p>The two omissions are still omissions - the mark because this schema has no
-	 * address for a picture, the seat because Article 73 makes no role inside a team
-	 * public - and the one thing added is named, with {@code Answers} checking that
-	 * the portal really does not serve that name.
+	 * <p>The one omission is still an omission - the seat, because Article 73 makes no
+	 * role inside a team public - and the one thing added is named, with
+	 * {@code Answers} checking that the portal really does not serve that name. The
+	 * mark left this list on 21.09.2026 in the same commit that gave it an address, and
+	 * both halves of the floor above say why it could not have been left behind.
 	 */
 	@Test
 	void theMembersAnswerCarriesNothingNobodyNamed() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/teams asked by a member",
 				new ObjectMapper().readTree(whole(FOUNDED_THE_SECOND_TEAM)), "teams.json",
-				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE),
-				THE_TEAMS_MARK, WHO_ADMINISTERS_THE_TEAM);
+				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE), WHO_ADMINISTERS_THE_TEAM);
 	}
 
 	/**
