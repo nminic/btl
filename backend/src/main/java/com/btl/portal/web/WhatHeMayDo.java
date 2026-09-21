@@ -55,7 +55,40 @@ class WhatHeMayDo {
 	 * @param right the code as {@code admin_right.code} generates it
 	 */
 	boolean may(String right) {
-		return rightsOf(asking()).may(right);
+		return may(asking(), right);
+	}
+
+	/**
+	 * AND THE SAME QUESTION ASKED ABOUT A CALLER THE ROUTE ALREADY HAS IN ITS HAND,
+	 * which is the only shape an OPEN route may ask it in.
+	 *
+	 * <p><b>Why this overload exists, and it is a guard rather than a convenience.</b>
+	 * {@link #may(String)} takes the principal off the context without asking whether
+	 * there is one, and the note on this class says why that is safe: a route that needs
+	 * a right is a route {@link ApiSecurity} has not opened, so the chain answers 401
+	 * first. {@link CompetitorApi} is the first route to ask "may he" while standing on
+	 * {@code READ_BY_ANYBODY}, where that sentence is false - the principal of a visitor
+	 * is the anonymous token, the cast is a {@code ClassCastException} and the visitor's
+	 * list of members comes back 500. That is the exact hole {@code ApiSecurity} closed
+	 * for writes on 18.09.2026, arriving through a read instead.
+	 *
+	 * <p>Written as {@code may(String)} behind a null check at the call site it would be
+	 * a rule somebody has to remember; taken as a parameter, the caller cannot ask
+	 * without having decided there is somebody to ask about, and
+	 * {@code @AuthenticationPrincipal} is what decided it.
+	 *
+	 * <p><b>It is still ONE place answering</b> (ADL A8, „Odgovara jedno mesto"): the two
+	 * methods are one line apart and read the same {@link #rightsOf}, so no caller can
+	 * arrive at a different verdict by choosing an overload. And it is still not anything
+	 * the caller wrote: what is handed in came off {@link WhoIsAsking}, which worked it
+	 * out from a cookie whose secret the database does not hold.
+	 *
+	 * @param asking whose request this is, as {@code @AuthenticationPrincipal} resolved
+	 *               it - never a value out of the body, a header or a parameter
+	 * @param right  the code as {@code admin_right.code} generates it
+	 */
+	boolean may(WhoIsAsking.Member asking, String right) {
+		return rightsOf(asking).may(right);
 	}
 
 	/**
