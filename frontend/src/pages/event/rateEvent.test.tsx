@@ -1586,10 +1586,10 @@ describe('the comments under an event', () => {
        an absence of something; and it leaves the three files in the cache
        (data/client.ts), so the visitor's page is whole at its first paint and
        „not there yet" cannot pass for „not shown". */
-    /* On a day before that race is run, both times, for the same reason the
-       three cases above name one: read on the real clock this said „still to be
-       run" until 16.01.2027 and the opposite after it, and the whole case is
-       about the side of that boundary it stands on. */
+    /* On a day before that race is run, both times, for the same reason every
+       other case about this event names one: read on the real clock this said
+       „still to be run" until 16.01.2027 and the opposite after it, and the
+       whole case is about the side of that boundary it stands on. */
     const { unmount } = renderAt(AHEAD, 'competitor', ME, undefined, BEFORE_AHEAD)
     await screen.findByRole('list', { name: 'Komentari' })
     unmount()
