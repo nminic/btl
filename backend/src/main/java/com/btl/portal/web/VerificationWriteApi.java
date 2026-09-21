@@ -185,12 +185,25 @@ class VerificationWriteApi {
 	 */
 	private final Clock clock;
 
+	/**
+	 * ONE HOME FOR „WHICH MEMBER IS BEHIND THIS ACCOUNT", rather than a second statement
+	 * here saying the same thing.
+	 *
+	 * <p>{@link MemberOfAccount} already answers it and already carries the reason it is
+	 * written the way it is: {@code JdbcClient.single()} refuses a null result outright even
+	 * when exactly one row came back, which is precisely the ordinary case an account naming
+	 * no member is (V23). A copy of that query here would be the same fact in two places, and
+	 * the copy is the one that gets it wrong.
+	 */
+	private final MemberOfAccount memberOfAccount;
+
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
-			Clock clock) {
+			Clock clock, MemberOfAccount memberOfAccount) {
 		this.db = db;
 		this.mayHe = mayHe;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
+		this.memberOfAccount = memberOfAccount;
 	}
 
 	/** Why something was refused, the shape every writing route on this server answers with. */
@@ -243,6 +256,14 @@ class VerificationWriteApi {
 			return away(response);
 		}
 
+		/* AND NOTHING IS HELD IN A TAB THIS ROUTE CANNOT ANSWER. Without this a moderator
+		   of payments or results could take an item and watch fifteen minutes count down
+		   towards a decision that is refused 409 whatever he presses, which is a worse
+		   answer than the refusal itself: it is the refusal, fifteen minutes late. */
+		if (!CARRIED_OUT_HERE.contains(item.get().queue())) {
+			return no(HttpStatus.CONFLICT, NOT_DECIDED_ON_THIS_PORTAL_YET);
+		}
+
 		Instant now = clock.instant();
 
 		/* NOTHING IS HELD IN ORDER TO BE READ ONCE IT HAS BEEN ANSWERED. Asked after the
@@ -259,18 +280,38 @@ class VerificationWriteApi {
 
 		Instant until = HoldingAnItem.endOfAQuietSpell(now);
 
-		/* ONE ROW PER ITEM, SAID BY THE KEY AND NOT BY A READ FOLLOWED BY A WRITE. Two
-		   moderators arriving in the same instant both pass the check above when nothing
-		   holds the row; `on conflict` makes the second an update rather than a duplicate
-		   key fault, and the last writer holds it. That is the same outcome a lock taken in
-		   either order would give, and it is arrived at without a transaction that has to
-		   be serialisable to be right. */
-		db.sql("insert into verification_lock (verification_id, held_by, held_until)"
+		/* THE CLAIM ITSELF, AND THE CHECK ABOVE IS NOT IT.
+		 *
+		 * Measured on 21.09.2026, two moderators on a barrier against a free item: BOTH were
+		 * answered 200 twelve times out of twelve. The Java check passed for both - nothing
+		 * held the row when either of them looked - and `on conflict do update` with no
+		 * condition then let the second overwrite the first and reported success. One row in
+		 * the table, which the old note here said and was right about, and two men told the
+		 * item was theirs, which it did not say and which is what a moderator sees.
+		 *
+		 * So the condition is written where the row is locked. `insert ... on conflict` takes
+		 * the conflicting row's lock, so the second statement evaluates its WHERE against
+		 * what the first really wrote, and the answer is a count rather than a belief. It
+		 * updates only when the hold is HIS (renewing, which must go on working) or when the
+		 * one there has run out. Otherwise nought rows, and nought rows is 409.
+		 *
+		 * The edge is the one `HoldingAnItem.stillRunning` writes - strictly after - so
+		 * `held_until <= now` is „run out" on both sides and neither can move without the
+		 * other. This is the shape `JoiningATeam` already names: a question answered a moment
+		 * earlier for the sake of a sentence the caller can read, with the database behind it
+		 * as the one that actually decides. */
+		int taken = db.sql("insert into verification_lock (verification_id, held_by, held_until)"
 						+ " values (?, ?, ?)"
 						+ " on conflict (verification_id) do update"
-						+ " set held_by = excluded.held_by, held_until = excluded.held_until")
-				.params(id, asking.account(), Timestamp.from(until))
+						+ " set held_by = excluded.held_by, held_until = excluded.held_until"
+						+ " where verification_lock.held_by = excluded.held_by"
+						+ "    or verification_lock.held_until <= ?")
+				.params(id, asking.account(), Timestamp.from(until), Timestamp.from(now))
 				.update();
+
+		if (taken == 0) {
+			return no(HttpStatus.CONFLICT, SOMEBODY_ELSE_IS_READING_IT);
+		}
 
 		return ResponseEntity.ok(new Held(id, HoldingAnItem.leftOf(
 				new HoldingAnItem.Hold(asking.account(), until), now).toSeconds()));
@@ -326,7 +367,7 @@ class VerificationWriteApi {
 			   write to: a moderator who does not race has no `competitor` row (V23) and
 			   `message.to_id` points at one. */
 			if (!his) {
-				tell(memberBehind(hold.heldBy()), "Stavka vam je oduzeta",
+				tell(memberOfAccount.competitorId(hold.heldBy()), "Stavka vam je oduzeta",
 						"Superadmin je preuzeo stavku koju ste držali u redu za verifikaciju.");
 			}
 
@@ -351,6 +392,22 @@ class VerificationWriteApi {
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
+		/* THE DOOR FIRST, AND NOTHING ABOUT THE BODY BEFORE IT. Measured on a real socket
+		   on 21.09.2026: asked the other way round, a plain competitor holding nothing sent
+		   `{}` and got 400 in 348 bytes, while the same body on a sibling address that maps
+		   nothing got 404 in 425. One request, and he has learnt that an administrative
+		   action lives at that address - which is the whole of what ADL A8 forbids, „ne sme
+		   ni da sazna da radnja postoji". It did not leak WHICH items exist; it leaked that
+		   the route does, which is the same oracle one level up. A refusal about the form is
+		   a refusal only somebody who may decide is entitled to hear. */
+		Optional<Item> found = itemHeMayModerate(id, asking);
+
+		if (found.isEmpty()) {
+			return away(response);
+		}
+
+		Item item = found.get();
+
 		/* AN EMPTY OBJECT, WHICH IS THE ONE INCOMPLETE FORM THAT REACHES HERE. A body that
 		   is missing or unreadable never does: the route declares it consumes JSON and
 		   {@code @RequestBody} is required, so the chain answers 400 before this method
@@ -359,14 +416,6 @@ class VerificationWriteApi {
 		if (typed.approved() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
-
-		Optional<Item> found = itemHeMayModerate(id, asking);
-
-		if (found.isEmpty()) {
-			return away(response);
-		}
-
-		Item item = found.get();
 
 		/* WHETHER THIS ROUTE CAN CARRY THE ANSWER OUT AT ALL, asked before anything about
 		   the answer itself. The four tabs it cannot are refused rather than recorded; the
@@ -407,8 +456,21 @@ class VerificationWriteApi {
 	private ResponseEntity<?> write(Item item, DecidingOnASubmission.Answer answer,
 			WhoIsAsking.Member asking) {
 
-		if (answer.yes()) {
-			Optional<ResponseEntity<?>> refused = carryOut(item);
+		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. Both of these
+		   refuse the answer rather than record it, so they have to be settled before the row
+		   is claimed: asked afterwards they would need the transaction rolled back, and a
+		   rollback inside a test-managed transaction poisons the outer one instead. Nothing
+		   here writes, so there is nothing to undo. */
+		Proposal proposal = TEAMS.equals(item.queue()) ? proposalBehind(item) : null;
+
+		/* THE SEASON, READ ONCE AND USED BY BOTH HALVES. See the head of this class for why
+		   it is this function and not the one beside it, and for the day the portal got it
+		   wrong. Read twice - once to refuse and once to write - it would be the same fact
+		   with two homes, which is the thing this file spends most of its words avoiding. */
+		int season = SeasonClock.transfersTakeEffect(clock.instant().atZone(SeasonClock.ZONE));
+
+		if (answer.yes() && proposal != null) {
+			Optional<ResponseEntity<?>> refused = whyTheTeamCannotBeMade(proposal, season);
 
 			if (refused.isPresent()) {
 				return refused.get();
@@ -432,35 +494,56 @@ class VerificationWriteApi {
 		   what time it is. The Clock bean above decides nothing about when a decision was
 		   made; it decides only whether a fifteen minute spell has run out, which is a
 		   question a case has to be able to move. */
-		db.sql("update verification set state = ?, decided_at = now(),"
+		/* AND THE CONDITION ON THE STATE IS THE WHOLE OF WHAT MAKES THIS ONE DECISION.
+		 *
+		 * Measured on 21.09.2026 over real sockets, two moderators released by a barrier:
+		 * without it BOTH were answered 200, twelve times out of twelve. Worse than a
+		 * duplicate: with one approving and one refusing, six times out of six the team was
+		 * made, the founder was written into it, and he was ALSO sent a message saying his
+		 * item had been refused, while the row settled on `approved`. Two messages in one
+		 * inbox contradicting each other, and no fault anywhere.
+		 *
+		 * `DecidingOnASubmission.decide` had already been asked and had answered - it read
+		 * the state OUTSIDE this transaction, which is a check-then-act, and the owner's own
+		 * precedent says what that is worth: `PaymentNumberConcurrencyTest` exists because
+		 * „Java provera-pa-upis prolazi svaki sekvencijalni slucaj i pada samo ovde".
+		 *
+		 * So the claim is the UPDATE and the answer is the COUNT. `where state = 'waiting'`
+		 * makes the statement take the row's lock and re-read it after the other transaction
+		 * commits; the loser matches nothing, writes nothing, and is told 409, which is the
+		 * owner's own requirement that „drugi moderator na zauzetu stavku dobija odbijenicu,
+		 * ne tihi neuspeh" (PDL P9, 18.09.2026). It is also why every consequence below
+		 * happens AFTER this line and not before it. */
+		int claimed = db.sql("update verification set state = ?, decided_at = now(),"
 						+ " decided_by = a.id,"
 						+ " decided_by_name = a.first_name || ' ' || a.last_name,"
 						+ " reason = ?, photo_id = null"
-						+ " from account a where verification.id = ? and a.id = ?")
+						+ " from account a where verification.id = ? and verification.state = ?"
+						+ " and a.id = ?")
 				.params(state, DecidingOnASubmission.reasonAsItGoesIn(answer), item.id(),
-						asking.account())
+						DecidingOnASubmission.WAITING, asking.account())
 				.update();
+
+		if (claimed == 0) {
+			return no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY);
+		}
 
 		/* AND THE HOLD GOES WITH THE ANSWER. Nothing is being read any more, and a decided
 		   row carrying a hold would be the one shape V28 says it cannot refuse by itself. */
 		db.sql("delete from verification_lock where verification_id = ?").param(item.id()).update();
 
-		if (!answer.yes()) {
+		if (answer.yes()) {
+			if (proposal == null) {
+				publishTheProfile(item);
+			} else {
+				makeTheTeam(proposal, season);
+			}
+		} else {
 			tell(item.competitorId(), "Stavka je odbijena",
 					DecidingOnASubmission.reasonAsItGoesIn(answer));
 		}
 
 		return ResponseEntity.ok(new Decided(item.id(), state));
-	}
-
-	/**
-	 * WHAT AN APPROVAL MEANS IN THE TAB IT STANDS IN.
-	 *
-	 * @return the refusal, when the thing cannot be carried out after all, and nothing when
-	 *         it was
-	 */
-	private Optional<ResponseEntity<?>> carryOut(Item item) {
-		return TEAMS.equals(item.queue()) ? makeTheTeam(item) : publishTheProfile(item);
 	}
 
 	/**
@@ -475,7 +558,7 @@ class VerificationWriteApi {
 	 * statements simply match no member and the decision is still recorded. That is a state
 	 * V9 allows on purpose and this is what it does here.
 	 */
-	private Optional<ResponseEntity<?>> publishTheProfile(Item item) {
+	private void publishTheProfile(Item item) {
 		if (item.photoId() == null) {
 			db.sql("update competitor set bio = ? where id = ?")
 					.params(item.body(), item.competitorId()).update();
@@ -483,8 +566,6 @@ class VerificationWriteApi {
 			db.sql("update competitor set photo_id = ? where id = ?")
 					.params(item.photoId(), item.competitorId()).update();
 		}
-
-		return Optional.empty();
 	}
 
 	/**
@@ -505,26 +586,36 @@ class VerificationWriteApi {
 	 * timske slike ne prezivljava odobravanje predloga, do F5"), so {@code logo_id} is not
 	 * copied and the screen draws initials for a team with no mark.
 	 */
-	private Optional<ResponseEntity<?>> makeTheTeam(Item item) {
-		Proposal proposal = db.sql("select competitor_id, name, bio, link, place_id, city,"
+	private Proposal proposalBehind(Item item) {
+		return db.sql("select competitor_id, name, bio, link, place_id, city,"
 						+ " country_id from team_proposal where id = ?")
 				.param(item.teamProposalId())
 				.query((row, one) -> new Proposal(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getObject(5, Long.class), row.getString(6),
 						row.getObject(7, Long.class)))
 				.single();
+	}
 
-		String slug = EventAddress.written(proposal.name());
-
+	/**
+	 * THE TWO THINGS THAT REFUSE AN APPROVAL, ASKED WITHOUT WRITING ANYTHING.
+	 *
+	 * <p>Both are the decider's to enforce and {@link TeamWriteApi} says so from its own
+	 * side, naming where each is written and measured on the portal's: „Naziv ne sme biti
+	 * zauzet nekim vec odobrenim timom" (PDL P13), and a member may not found a second team
+	 * while he is in one.
+	 *
+	 * <p><b>Separate from {@link #makeTheTeam} because of WHEN each has to run.</b> A refusal
+	 * must be settled before the queue row is claimed, or the claim would have to be rolled
+	 * back; and the writing half must run after it, or an answer nobody won would leave a
+	 * team behind. Split, neither needs a rollback at all.
+	 *
+	 * @return the refusal, or nothing where there is none
+	 */
+	private Optional<ResponseEntity<?>> whyTheTeamCannotBeMade(Proposal proposal, int season) {
 		if (Boolean.TRUE.equals(db.sql("select exists(select 1 from team where slug = ?)")
-				.param(slug).query(Boolean.class).single())) {
+				.param(EventAddress.written(proposal.name())).query(Boolean.class).single())) {
 			return Optional.of(no(HttpStatus.CONFLICT, THE_NAME_IS_TAKEN));
 		}
-
-		/* THE SEASON, READ ONCE AND USED TWICE. See the head of this class for why it is
-		   this function and not the one next to it, and for the day the portal got it
-		   wrong. */
-		int season = SeasonClock.transfersTakeEffect(clock.instant().atZone(SeasonClock.ZONE));
 
 		/* AND WHETHER HE MAY STILL BE PUT IN ONE. `team_membership_one_team_at_a_time` is an
 		   exclusion constraint and would refuse the row anyway, but it would refuse it as a
@@ -540,10 +631,16 @@ class VerificationWriteApi {
 			return Optional.of(no(HttpStatus.CONFLICT, HE_IS_ALREADY_IN_A_TEAM));
 		}
 
+		return Optional.empty();
+	}
+
+	/** And the writing half, which runs only once this answer has claimed the row. */
+	private void makeTheTeam(Proposal proposal, int season) {
 		long team = db.sql("insert into team (slug, name, bio, link, place_id, city, country_id,"
 						+ " first_season, admin_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
-				.params(slug, proposal.name(), proposal.bio(), proposal.link(), proposal.placeId(),
-						proposal.city(), proposal.countryId(), season, proposal.competitorId())
+				.params(EventAddress.written(proposal.name()), proposal.name(), proposal.bio(),
+						proposal.link(), proposal.placeId(), proposal.city(), proposal.countryId(),
+						season, proposal.competitorId())
 				.query(Long.class)
 				.single();
 
@@ -554,8 +651,6 @@ class VerificationWriteApi {
 
 		tell(proposal.competitorId(), "Tim je prihvaćen",
 				"Vaš tim " + proposal.name() + " je prihvaćen i od sada ga vodite.");
-
-		return Optional.empty();
 	}
 
 	/**
@@ -589,12 +684,6 @@ class VerificationWriteApi {
 		   knows. The superadmin holds every right with no tick anywhere (V5's `rights_mode =
 		   'all'`), so a condition over the ticks would refuse him his own portal. */
 		return item.filter(one -> mayHe.may(asking, one.rightCode()));
-	}
-
-	/** The member an account belongs to, or nothing where it belongs to none (V23). */
-	private Long memberBehind(long account) {
-		return db.sql("select competitor_id from account where id = ?")
-				.param(account).query(Long.class).list().get(0);
 	}
 
 	/**
