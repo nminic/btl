@@ -150,10 +150,14 @@ describe('the answer the harness stands in with', () => {
     const member: unknown =
       typeof answered === 'object' && answered !== null ? Reflect.get(answered, 'member') : null
 
-    expect(typeof member).toBe('object')
-    expect(Object.keys(member as object).sort()).toEqual(
-      Object.keys(myOwnRecordFromMe).sort(),
-    )
+    /* Narrowed by asking rather than by asserting (ADL A14): what comes back is the
+       one value on this portal nobody can vouch for, so a cast here would be the file
+       claiming what it is here to measure. An answer that carried no record at all
+       leaves nothing to compare and fails against the seven names below. */
+    const names =
+      typeof member === 'object' && member !== null ? Object.keys(member) : []
+
+    expect(names.sort()).toEqual(Object.keys(myOwnRecordFromMe).sort())
   })
 })
 

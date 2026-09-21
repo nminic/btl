@@ -582,6 +582,16 @@ export function SessionProvider({
     [
       memberNumber,
       account,
+      /* **BOTH OF THESE WERE MISSING UNTIL 21.09.2026, and the reason nothing showed it
+         is the shape this repository keeps being bitten by.** The basis is set in the
+         same breath as the account (`theServerSignedMeIn`), so the memo was rebuilt for
+         the account's sake and the new basis came along with it - the right screen for
+         the wrong reason, and a second writer of either would have parted them. The
+         setter is a `useCallback` over nothing and never changes; it is named here all
+         the same, because a dependency list that leaves out what it reads is a list
+         somebody has to re-derive by hand the next time it grows. */
+      myMembershipBasis,
+      theServerSignedMeIn,
       going,
       setGoing,
       submissions,
