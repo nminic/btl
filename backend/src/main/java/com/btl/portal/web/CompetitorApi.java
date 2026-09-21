@@ -116,13 +116,21 @@ import java.util.List;
  * <p><b>A MEMBER DOES NOT GET HIS OWN THROUGH THIS DOOR, and that is a decision with
  * a measurement behind it rather than an omission.</b> The owner sharpened P8 on
  * 20.09.2026: „Clan vidi SVOJ osnov clanstva; tudji ne vidi niko osim
- * administracije." His own arrives through {@link MeApi}, which is the only door
- * that can carry it: this list is the members whose fee is STANDING (see above), so
- * a member whose fee has lapsed is not on it at all - and he is exactly the man the
- * owner's reason is about, „covek koji ne placa clanarinu treba da zna da je ne
- * placa". A field answered here would therefore be missing from the very people it
- * was sharpened for, while every OTHER signed in member would have to be refused it
- * on the same record. The boundary in both directions, with a case on each side:
+ * administracije." That half cannot be served from here, and the reason is this
+ * resource's own first rule: the list is the members whose fee is STANDING (see
+ * above), so a member whose fee has lapsed is not on it at all - and he is exactly
+ * the man the sharpening is about, „covek koji ne placa clanarinu treba da zna da je
+ * ne placa". Answered here it would reach every member except the ones it was
+ * written for. It belongs on a route that answers about one caller whether or not he
+ * is on any list, which is {@link MeApi}.
+ *
+ * <p><b>AND IT IS NOT THERE YET, said here rather than implied.</b> Measured on
+ * 21.09.2026 against {@code origin/main}: {@code MeApi.WhoIAm} carries {@code role}
+ * and {@code account} and nothing else, so as of this increment the member's own
+ * basis leaves the server through NO route. That is the other half of P8 and it is
+ * its own piece of work; what this one settles is the half about everybody else.
+ *
+ * <p>The boundary in both directions, with a case on each side:
  * {@code theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld} fails if a plain
  * member is answered it anywhere, including on his own row, and
  * {@code aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld} fails if the
@@ -249,13 +257,20 @@ class CompetitorApi {
 	 *               Spring's resolver hands a parameter of this type nothing when the
 	 *               principal is the anonymous token. Measured rather than assumed, by
 	 *               {@code theVisitorsAnswerHasNotMoved}: the visitor's answer carries
-	 *               neither of the two fields below at all
+	 *               none of the three conditional fields below at all
 	 */
 	@GetMapping("/api/competitors")
 	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
 		/* The caller AS A MEMBER, which is a second question and may answer nothing:
 		   an account that does not race has no member behind it at all (V23, owner
-		   14.09.2026), so a signed in moderator gets exactly the visitor's answer.
+		   14.09.2026), so nothing on the two fields below is added for him.
+
+		   THAT USED TO READ „so a signed in moderator gets exactly the visitor's
+		   answer", AND SINCE THE LINE BELOW IT IS NO LONGER TRUE OF EVERY MODERATOR.
+		   It is still true of one who does not hold the right over the members, which
+		   is what `anAccountThatRacesForNobodyIsAnsweredWhatAVisitorIs` holds - and
+		   that case now says out loud which of the two it is measuring.
+
 		   Read here rather than off `WhoIsAsking.Member`, which is the shape that
 		   record's own javadoc invites and `InboxApi` already follows. */
 		Long me = member == null ? null : memberOfAccount.competitorId(member.account());

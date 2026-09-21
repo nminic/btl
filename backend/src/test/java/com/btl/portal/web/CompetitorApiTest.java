@@ -867,11 +867,14 @@ class CompetitorApiTest {
 	 * about the whole list rather than about one person; that is the difference between
 	 * absent and empty, and it is the same one the referral code is held to above.
 	 *
-	 * <p><b>The sharpened half of P8 is the member's own record.</b> „Clan vidi SVOJ
-	 * osnov clanstva" (20.09.2026) is true and is answered by {@code /api/me}: this
-	 * list is the members whose fee is STANDING, so the man the sharpening was written
-	 * about - the one who pays nothing - is not on it at all. Answering it here would
-	 * reach everybody except him.
+	 * <p><b>The sharpened half of P8 is the member's own record, and it is NOT answered
+	 * here or anywhere else today.</b> „Clan vidi SVOJ osnov clanstva" (20.09.2026)
+	 * belongs on a route that answers about one caller whether or not he is on a list,
+	 * because this list is the members whose fee is STANDING and the man the sharpening
+	 * was written about - the one who pays nothing - is not on it at all. Measured on
+	 * 21.09.2026: {@code MeApi.WhoIAm} carries {@code role} and {@code account}, so that
+	 * half leaves the server through no route. It is named rather than assumed, and it
+	 * is why a member is refused here even on his own row.
 	 */
 	@Test
 	void theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld() throws Exception {
