@@ -2,9 +2,10 @@ import { screen, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { must } from '../test/at'
+import { clearResourceCache, loadResource } from './client'
 import { renderAt } from '../test/render'
-import { serverThat } from '../test/serverAnswers'
-import { aCompetitor, asAnswered } from '../test/theAnswer'
+import { membersAsServed, serverThat } from '../test/serverAnswers'
+import { aCompetitor, asAnswered, myOwnRow } from '../test/theAnswer'
 import { readerAdministers, teamAdminOf } from './teamAdmin'
 import type { Competitor, Team } from './types'
 
@@ -88,6 +89,46 @@ function answering(rows: Record<string, unknown>[], at: string) {
       : null,
   )
 }
+
+describe('the answer the harness stands in with', () => {
+  /* **THE FLOOR UNDER THE THING THAT STANDS IN FOR THE SERVER, and it is here because
+     without it the standing-in is not load-bearing.** `test/serverAnswers.ts` is what a
+     case gets when it asks for the answer a member really receives, and it reduces the
+     generated rows to the keys of the record the server declares
+     (`test/theAnswer.ts`). Measured 21.09.2026: taking that reduction away left every
+     case that uses it green, because no screen reads the three names it removes - so
+     nothing held the harness to its own claim, and the next name to be withheld would
+     have gone through unnoticed exactly as `membershipBasis` did.
+
+     Asked of what goes ON THE WIRE rather than of the function, because that is what a
+     screen is handed: the case loads the resource the way the portal does. */
+  it('carries the names the record declares, and not one more', async () => {
+    const { stop } = membersAsServed('000001')
+
+    try {
+      clearResourceCache()
+
+      const answered = await loadResource<Record<string, unknown>[]>('competitors')
+      const mine = must(
+        answered.find((one) => one.memberNumber === '000001'),
+        "the caller's own row",
+      )
+      const somebodyElse = must(
+        answered.find((one) => one.memberNumber !== '000001'),
+        'a row that is not his',
+      )
+
+      /* His own row carries the two the caller is given about himself; every other row
+         carries neither, and no row carries the basis - that one is the
+         administration's and reaches a member through `/api/me` instead. */
+      expect(Object.keys(mine).sort()).toEqual(Object.keys(myOwnRow).sort())
+      expect(Object.keys(somebodyElse).sort()).toEqual(Object.keys(aCompetitor).sort())
+    } finally {
+      stop()
+      clearResourceCache()
+    }
+  })
+})
 
 describe('a profile, on the answer the server gives', () => {
   it('opens for a member the answer carries, although no field says they are active', async () => {
