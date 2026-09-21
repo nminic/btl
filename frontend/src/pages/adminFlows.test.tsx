@@ -502,7 +502,11 @@ describe('the price list', () => {
 
   it('opens the referral amount in the same form every price is changed in', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/cenovnik', 'superadmin')
+    /* On a day before 1 October, said out loud, because the form this opens is
+       shut from that day on and the two cases below stand on either side of the
+       same boundary. Without it this case took whatever day the gate was run on
+       and went red on 1 October 2026 with nothing changed but the date. */
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-09-30')
 
     await screen.findByRole('table', { name: 'Preporuka' })
     await user.click(screen.getByRole('button', { name: 'Otvori: Preporuka novog člana' }))

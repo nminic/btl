@@ -2,10 +2,50 @@ import '@testing-library/jest-dom'
 import { configure } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { beforeEach, vi } from 'vitest'
+import { beforeEach, expect, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
 import { SLOW } from './slow'
+
+/**
+ * NO TEST ON THIS PORTAL READS THE MACHINE'S CLOCK, since 21.09.2026.
+ *
+ * Two cases went red on 1 October 2026 with nothing changed but the date: they
+ * never said what day they were being read as, so they took the machine's, and
+ * the portal shuts the referral amount from 1 October. A gate that only runs
+ * today cannot see that, and it is not a kind of failure that a reviewer finds
+ * either - the diff is green on the day it is read.
+ *
+ * `clock/context.ts` holds the one reader of the machine's clock and
+ * `clock/oneClock.test.ts` holds that over the source, so ONE function pinned
+ * here pins every screen at once. Nothing else is touched: no list of file names
+ * is kept, no fake timers are started, and the 955 places that already name their
+ * day go on naming it - a day handed to `ClockProvider` still wins, exactly as it
+ * did (`clock/ClockProvider.tsx`, `simulated ?? real`).
+ *
+ * **What makes this a floor rather than a second accident.** The gate runs the
+ * suite twice, as two days a season and a year apart (`test/theDay.ts`,
+ * `vitest.anotherDay.config.ts`). A case whose outcome turns on the day now
+ * disagrees with itself between the two passes and is red in one of them, by
+ * name, whatever day the machine is on. That the replacement is really in force
+ * is held by `test/theDay.test.ts`, which the machine cannot satisfy: it is on
+ * one day and the suite is read as two, so it can agree with at most one pass.
+ */
+vi.mock('../clock/context', async (whatItReallyIs) => {
+  const actual = await whatItReallyIs<typeof import('../clock/context')>()
+  const { THE_CLOCKS_OWN_TESTS, theDayTheSuiteIsReadAs } = await import('./theDay')
+
+  return {
+    ...actual,
+    /* The one line of exception, and it is a consequence rather than an alibi:
+       the clock's own tests are ABOUT the machine's clock, and pinning a day
+       there would leave them measuring nothing while still passing. */
+    realToday: (): string =>
+      THE_CLOCKS_OWN_TESTS.test(expect.getState().testPath ?? '')
+        ? actual.realToday()
+        : theDayTheSuiteIsReadAs(),
+  }
+})
 
 /**
  * How long `findBy` and `waitFor` are given, which is the clock that really fires.
