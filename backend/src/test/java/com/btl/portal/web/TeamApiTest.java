@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.flywaydb.core.Flyway;
@@ -55,6 +56,16 @@ class TeamApiTest {
 	private static final String WHETHER_THE_SEAT_IS_MINE = "foundedByMe";
 
 	/**
+	 * AND WHAT THE RULE IS ANSWERED AS, which is a different question from the one above.
+	 *
+	 * <p>The field above is the SEAT and this is the RIGHT. The owner separated them on
+	 * 21.09.2026: „Server primenjuje <b>celo</b> pravilo od 04.09.2026 i odgovara
+	 * <b>jednim poljem</b>, tacno u obliku koji {@code foundedByMe} vec ima... a
+	 * <b>niko ne saznaje ko u sedistu sedi</b>."
+	 */
+	private static final String WHETHER_I_ADMINISTER_IT = "administeredByMe";
+
+	/**
 	 * Founded the team that comes back FIRST, which is the source the next one separates,
 	 * AND SINCE 21.09.2026 THE MODERATOR WHO HOLDS THE RIGHT OVER THE TEAMS.
 	 *
@@ -76,8 +87,73 @@ class TeamApiTest {
 	/** Founded the team that comes back SECOND, so „mine" and „the first" are two places. */
 	private static final String FOUNDED_THE_SECOND_TEAM = "dusan@primer.rs";
 
-	/** In a team and founded none, which is the substitution „is in it" would make. */
+	/**
+	 * In a team and founded none, which is the substitution „is in it" would make.
+	 *
+	 * <p><b>AND SINCE 21.09.2026 THE ONE RECORD THE WHOLE INCREMENT IS FOR.</b> She is the
+	 * only standing member of {@code klub-lovcen}, whose seat names somebody who is not in
+	 * it, so she is the member the owner's rule of 04.09.2026 hands the team to - and she
+	 * is told {@code foundedByMe} false beside {@code administeredByMe} true, which is the
+	 * pair no single field can say.
+	 */
 	private static final String FOUNDED_NOTHING = "ana@primer.rs";
+
+	/**
+	 * IN A TEAM, STANDING, AND NOT THE ONE ITS SEAT NAMES, which is the state that had no
+	 * clean source in this fixture until 21.09.2026.
+	 *
+	 * <p>The other member of {@code novosadski-trkaci} who is not in its seat is
+	 * {@code 000003}, and his fee has lapsed, so „he was told no" had two reasons at once
+	 * and measured neither. This account is {@code 000002}: active, numbered, in the team,
+	 * and not in the seat. The only thing that may answer him no is the seat itself.
+	 *
+	 * <p>He is also the man used to fill a seat from OUTSIDE a team, for the same reason:
+	 * there is nothing else wrong with him.
+	 */
+	private static final String IN_A_TEAM_AND_NOT_IN_ITS_SEAT = "marko@primer.rs";
+
+	/**
+	 * THE FIVE WHO CONTEST THE EMPTY SEAT OF {@code vardarski-krug}, one per axis of the
+	 * rule, and each one wins it if exactly one condition is dropped.
+	 *
+	 * <p>The rule is „clan koji je najduze u timu, dakle najraniji {@code teamSince}, a kod
+	 * izjednacenja manji broj clana", over the members whose membership has not ended and
+	 * whose fee is standing. Five ways to get it wrong, five members:
+	 *
+	 * <ul>
+	 * <li><b>{@link #JOINED_THE_SAME_SEASON_WITH_A_HIGHER_NUMBER}</b> ({@code 000007},
+	 * 2028) is written into {@code competitor} and into {@code team_membership} BEFORE the
+	 * winner and has the smaller key, so an order that ends in {@code id} - or in no tie
+	 * break at all - hands the team to him.</li>
+	 * <li><b>{@link #LONGEST_IN_THE_TEAM_WITH_NO_SEAT}</b> ({@code 000006}, 2028) is the
+	 * answer: same season, smaller number.</li>
+	 * <li><b>{@link #THE_SMALLEST_NUMBER_AND_THE_LATEST_SEASON}</b> ({@code 000005}, 2029)
+	 * is the smallest number in the team and joined last, so an order that reads the number
+	 * before the season hands it to him.</li>
+	 * <li><b>{@link #LEFT_THE_TEAM_HE_JOINED_FIRST}</b> ({@code 000008}, 2027 and gone)
+	 * joined before all of them, so dropping {@code season_to is null} hands it to him.</li>
+	 * <li><b>{@link #IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID}</b> ({@code 000009}, 2027) is
+	 * the same, one condition along: dropping {@code active} hands it to him.</li>
+	 * </ul>
+	 *
+	 * <p>And a sixth contestant has no account because he can be asked about without one:
+	 * a row with no member number whose fee IS standing, written by
+	 * {@link #standingWithNoNumber}. Dropping {@code member_number is not null} hands the
+	 * team to him, and the winner turning false is how that is seen.
+	 */
+	private static final String LONGEST_IN_THE_TEAM_WITH_NO_SEAT = "ivana@primer.rs";
+
+	/** @see #LONGEST_IN_THE_TEAM_WITH_NO_SEAT */
+	private static final String JOINED_THE_SAME_SEASON_WITH_A_HIGHER_NUMBER = "bojan@primer.rs";
+
+	/** @see #LONGEST_IN_THE_TEAM_WITH_NO_SEAT */
+	private static final String THE_SMALLEST_NUMBER_AND_THE_LATEST_SEASON = "nikola@primer.rs";
+
+	/** @see #LONGEST_IN_THE_TEAM_WITH_NO_SEAT */
+	private static final String LEFT_THE_TEAM_HE_JOINED_FIRST = "sanja@primer.rs";
+
+	/** @see #LONGEST_IN_THE_TEAM_WITH_NO_SEAT */
+	private static final String IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID = "zoran@primer.rs";
 
 	/**
 	 * Signed in, no member behind the account at all, AND A MODERATOR WHO HOLDS NOTHING
@@ -109,7 +185,10 @@ class TeamApiTest {
 	 */
 	private static final List<String> NOBODY_WHO_MAY_SEE_THE_SEAT =
 			java.util.Arrays.asList(null, FOUNDED_THE_SECOND_TEAM, FOUNDED_NOTHING,
-					RACES_FOR_NOBODY);
+					RACES_FOR_NOBODY, IN_A_TEAM_AND_NOT_IN_ITS_SEAT,
+					LONGEST_IN_THE_TEAM_WITH_NO_SEAT, JOINED_THE_SAME_SEASON_WITH_A_HIGHER_NUMBER,
+					THE_SMALLEST_NUMBER_AND_THE_LATEST_SEASON, LEFT_THE_TEAM_HE_JOINED_FIRST,
+					IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID);
 
 	/** And the two PDL P13 names, „Superadmin ili moderator sa pravom nad timovima". */
 	private static final List<String> THE_ADMINISTRATION =
@@ -209,6 +288,22 @@ class TeamApiTest {
 	 * three rows; two of the members are named as administrators, and one of those two
 	 * is a member whose fee has lapsed, whom {@code /api/competitors} does not carry at
 	 * all.
+	 *
+	 * <p><b>AND SINCE 21.09.2026 THE TEAM WHOSE SEAT NAMES NOBODY HAS SIX OF THEM</b>,
+	 * which is the half the fixture was missing: with no roster at all, „nobody
+	 * administers it" was true because the seat was empty AND because there was nobody to
+	 * take it, and a rule that got either half wrong answered the same thing. The six are
+	 * one per way of getting the rule wrong and the note on
+	 * {@link #LONGEST_IN_THE_TEAM_WITH_NO_SEAT} pairs each with the condition he defeats.
+	 * Nothing about them reaches the answer either, so the two cases above measure the
+	 * larger roster unchanged.
+	 *
+	 * <p><b>The seats are unchanged and deliberately so.</b> Exactly one team's seat is
+	 * empty, exactly one is held by a member whose fee has lapsed, and no seat is held by
+	 * a row without a member number - three counts four other cases read out of the
+	 * database and lean on. The members added here are in no seat at all; the cases that
+	 * need one put somebody there themselves, with {@link #sits}, the way
+	 * {@code aSeatHeldByARegistrantIsNotAnEmptySeat} already does.
 	 */
 	@BeforeEach
 	void threeTeams() {
@@ -232,6 +327,19 @@ class TeamApiTest {
 		member("000003", "Dusan", "Radic", "M", false, "b7f3a1c2d4e50601", "null");
 		member("000004", "Ana", "Vukotic", "F", true, "c3d2e1f0a9b87704", "null");
 
+		/* AND THE FIVE WHO CONTEST AN EMPTY SEAT, WRITTEN IN AN ORDER THAT IS NOT THE
+		   ANSWER. `000007` is written before `000006` on purpose: they joined the same
+		   season, so the rule is decided by the number alone, and written the other way
+		   round an order ending in `competitor.id` - or ending nowhere - would hand back
+		   the right member for the wrong reason. The note on
+		   `LONGEST_IN_THE_TEAM_WITH_NO_SEAT` says which condition each of them defeats. */
+		member("000007", "Bojan", "Pavlovic", "M", true, "1c2d3e4f5a6b7c05", "null");
+		member("000006", "Ivana", "Kostic", "F", true, "2d3e4f5a6b7c8d06", "null");
+		member("000005", "Nikola", "Jovic", "M", true, "3e4f5a6b7c8d9e07", "null");
+		member("000008", "Sanja", "Lukic", "F", true, "4f5a6b7c8d9e0f08", "null");
+		member("000009", "Zoran", "Ilic", "M", false, "5a6b7c8d9e0f1009", "null");
+		long paidAndUnnumbered = standingWithNoNumber("Petar", "Simic", "6b7c8d9e0f10210a");
+
 		team("vardarski-krug", "Vardarski krug", "", inTheCodebook("Skoplje"), 2027, null, null);
 		team("novosadski-trkaci", "Dunavski trkači", "Okupljamo se sredom uvece na Strandu.",
 				inTheCodebook("Novi Sad"), 2029, theDunavMark, "000001");
@@ -242,6 +350,27 @@ class TeamApiTest {
 		membership("000002", "novosadski-trkaci", 2028);
 		membership("000003", "novosadski-trkaci", 2029);
 		membership("000004", "klub-lovcen", 2027);
+
+		/* AND THE TEAM WHOSE SEAT NAMES NOBODY GETS A ROSTER, which is the half that was
+		   missing: with no members at all, „nobody administers it" was true for two reasons
+		   at once and neither of them was measured.
+
+		   WRITTEN IN AN ORDER THAT IS NOT THE ANSWER, the same way the members were. The
+		   two who joined in 2028 are written higher number first, so the row order and the
+		   answer disagree.
+
+		   AND EVERY ONE OF THEM JOINS IN A SEASON THAT HAS NOT STARTED, which is the axis
+		   PDL:6348 settles („„Nema tim" se cita sa zapisa, ne po sezoni") and the one this
+		   whole fixture would hide if it read the season instead: `season_from` may not be
+		   earlier than 2027 (V11) and the calendar is 2026, so a condition asking who is in
+		   the team TODAY answers nobody, for every team in the league, and the answer would
+		   be false everywhere without one name looking wrong. */
+		membership("000007", "vardarski-krug", 2028);
+		membership("000006", "vardarski-krug", 2028);
+		membership("000005", "vardarski-krug", 2029);
+		leftIn("000008", "vardarski-krug", 2027, 2027, "Presao u drugi tim");
+		membership("000009", "vardarski-krug", 2027);
+		membership(paidAndUnnumbered, "vardarski-krug", 2027);
 
 		/* AND FOUR WAYS OF ASKING, because the answer now depends on who asks. The
 		   teams come back in name order - Dunavski trkaci, Njegosevi trkaci, Vardarski
@@ -267,6 +396,23 @@ class TeamApiTest {
 		belongsTo(FOUNDED_THE_SECOND_TEAM, "000003");
 		account(FOUNDED_NOTHING, "competitor");
 		belongsTo(FOUNDED_NOTHING, "000004");
+		/* AND THE SIX WHOSE ANSWER THE RULE IS READ OFF. Five of them contest one empty
+		   seat and one is in a team whose seat names somebody else; none holds any right,
+		   because what is being measured about them is a member's answer and nothing more.
+		   The row with no member number gets no account: he cannot be asked, and what he
+		   does is seen in the winner's answer turning false. */
+		account(IN_A_TEAM_AND_NOT_IN_ITS_SEAT, "competitor");
+		belongsTo(IN_A_TEAM_AND_NOT_IN_ITS_SEAT, "000002");
+		account(LONGEST_IN_THE_TEAM_WITH_NO_SEAT, "competitor");
+		belongsTo(LONGEST_IN_THE_TEAM_WITH_NO_SEAT, "000006");
+		account(JOINED_THE_SAME_SEASON_WITH_A_HIGHER_NUMBER, "competitor");
+		belongsTo(JOINED_THE_SAME_SEASON_WITH_A_HIGHER_NUMBER, "000007");
+		account(THE_SMALLEST_NUMBER_AND_THE_LATEST_SEASON, "competitor");
+		belongsTo(THE_SMALLEST_NUMBER_AND_THE_LATEST_SEASON, "000005");
+		account(LEFT_THE_TEAM_HE_JOINED_FIRST, "competitor");
+		belongsTo(LEFT_THE_TEAM_HE_JOINED_FIRST, "000008");
+		account(IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID, "competitor");
+		belongsTo(IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID, "000009");
 		/* V23 leaves `account.competitor_id` empty for an account that does not race
 		   (owner, 14.09.2026), which is the case that keeps „signed in" and „is a
 		   member" from being one question. */
@@ -385,16 +531,70 @@ class TeamApiTest {
 				.params(first, last, referralCode).query(Long.class).single();
 	}
 
+	/**
+	 * A ROW WITH NO MEMBER NUMBER WHOSE FEE IS STANDING, which is the one state that tells
+	 * „he is a member" apart from „he has paid".
+	 *
+	 * <p>Its own helper beside {@link #registrant} rather than a flag on either, for the
+	 * reason written over that one: what a row IS is the thing a reader of a fixture has to
+	 * see at the call. {@code registrant} is somebody who has not paid AND has no number, so
+	 * a rule filtering on either condition keeps him out and neither is measured; this row
+	 * is refused by the number alone.
+	 *
+	 * <p><b>Nothing in the schema forbids it, which is why it is here.</b> V16 dropped
+	 * {@code not null} from {@code member_number} and tied it to nothing: there is no
+	 * constraint between that column and {@code active}, so a rule that leant on „anybody
+	 * active has a number" would be leaning on a habit.
+	 *
+	 * @return his {@code competitor.id}, which is what a membership is written by
+	 */
+	private long standingWithNoNumber(String first, String last, String referralCode) {
+		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, city, country_id, first_season,"
+						+ " first_season_2027, active, membership_basis, referral_code, bio,"
+						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
+						+ " health_statement_at, photo_id)"
+						+ " values (null, ?, ?, 'M', date '1992-03-08',"
+						+ " (select id from place where name = 'Beograd'), null, null,"
+						+ " 2027, false, true, 'payment', ?, '', false, 'none', 'Otac',"
+						+ " 'Ulica 3', 'S', timestamptz '2026-09-01 10:00:00+00', null)"
+						+ " returning id")
+				.params(first, last, referralCode).query(Long.class).single();
+	}
+
 	/** Puts somebody in a team's seat by KEY, which is what {@code team.admin_id} is. */
 	private void sits(long competitorId, String slug) {
 		db.sql("update team set admin_id = ? where slug = ?").params(competitorId, slug).update();
 	}
 
 	private void membership(String number, String slug, int from) {
+		membership(competitor(number), slug, from);
+	}
+
+	/** And by KEY, for the row that has no number to be found by. */
+	private void membership(long competitorId, String slug, int from) {
 		db.sql("insert into team_membership (competitor_id, team_id, season_from) values"
-						+ " ((select id from competitor where member_number = ?),"
-						+ " (select id from team where slug = ?), ?)")
-				.params(number, slug, from).update();
+						+ " (?, (select id from team where slug = ?), ?)")
+				.params(competitorId, slug, from).update();
+	}
+
+	/**
+	 * A MEMBERSHIP THAT HAS ENDED, which V11 writes as a season and a reason together.
+	 *
+	 * <p>{@code team_membership_leaving_says_why} refuses one without the other - „a row
+	 * that says he left and will not say when, or that he is still in and left for a
+	 * reason" - so the two travel in one call rather than being two arguments a caller can
+	 * get half right.
+	 */
+	private void leftIn(String number, String slug, int from, int to, String why) {
+		db.sql("insert into team_membership (competitor_id, team_id, season_from, season_to,"
+						+ " left_reason) values (?, (select id from team where slug = ?), ?, ?, ?)")
+				.params(competitor(number), slug, from, to, why).update();
+	}
+
+	private long competitor(String number) {
+		return db.sql("select id from competitor where member_number = ?").param(number)
+				.query(Long.class).single();
 	}
 
 	private String whole() throws Exception {
@@ -435,8 +635,17 @@ class TeamApiTest {
 
 	/** The addresses this caller is told are his to run, in the order they came back. */
 	private List<String> mineAccordingTo(String email) throws Exception {
+		return told(email, WHETHER_THE_SEAT_IS_MINE);
+	}
+
+	/** And the addresses he is told he ADMINISTERS, which is the other question. */
+	private List<String> administeredAccordingTo(String email) throws Exception {
+		return told(email, WHETHER_I_ADMINISTER_IT);
+	}
+
+	private List<String> told(String email, String field) throws Exception {
 		return StreamSupport.stream(new ObjectMapper().readTree(whole(email)).spliterator(), false)
-				.filter(one -> one.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
+				.filter(one -> one.path(field).asBoolean())
 				.map(one -> one.path("slug").asString()).toList();
 	}
 
@@ -520,7 +729,7 @@ class TeamApiTest {
 		List<String> numbers = db.sql("select member_number from competitor"
 				+ " where member_number is not null").query(String.class).list();
 		assertThat(numbers).as("no member number was read out of the database, so the loops below"
-				+ " assert nothing").hasSize(4);
+				+ " assert nothing").hasSize(9);
 
 		for (String nobody : NOBODY_WHO_MAY_SEE_THE_SEAT) {
 			String whole = whole(nobody);
@@ -860,14 +1069,33 @@ class TeamApiTest {
 			assertThat(Answers.fieldsOf(one))
 					.as("a visitor was told something about a seat, on the record of %s",
 							one.path("slug").asString())
-					.doesNotContain(WHETHER_THE_SEAT_IS_MINE);
+					.doesNotContain(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT);
 		}
 
-		assertThat(whole(FOUNDED_THE_SECOND_TEAM)
-				.replace(",\"" + WHETHER_THE_SEAT_IS_MINE + "\":true", "")
-				.replace(",\"" + WHETHER_THE_SEAT_IS_MINE + "\":false", ""))
-				.as("signing in changed something other than the one field it was allowed to")
+		assertThat(withoutTheMembersOwnTwo(whole(FOUNDED_THE_SECOND_TEAM)))
+				.as("signing in changed something other than the two fields it was allowed to")
 				.isEqualTo(whole(null));
+	}
+
+	/**
+	 * THE ANSWER WITH THE TWO FIELDS A MEMBER GETS CUT OUT OF IT, so what is left can be
+	 * compared byte for byte with what a visitor was told.
+	 *
+	 * <p><b>On the TEXT and never through a parser</b>, which is measured rather than
+	 * preferred: the crop is {@code numeric(9,8)} and comes out as {@code 0.62000000},
+	 * which survives being parsed and not being written back, so a comparison of two
+	 * serialisations measures the writer. Cutting the substrings the two fields add leaves
+	 * every other byte exactly as the server wrote it.
+	 */
+	private static String withoutTheMembersOwnTwo(String whole) {
+		String left = whole;
+
+		for (String field : List.of(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT)) {
+			left = left.replace(",\"" + field + "\":true", "")
+					.replace(",\"" + field + "\":false", "");
+		}
+
+		return left;
 	}
 
 	/**
@@ -890,7 +1118,8 @@ class TeamApiTest {
 	void theMembersAnswerCarriesNothingNobodyNamed() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/teams asked by a member",
 				new ObjectMapper().readTree(whole(FOUNDED_THE_SECOND_TEAM)), "teams.json",
-				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE), WHO_ADMINISTERS_THE_TEAM);
+				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT),
+				WHO_ADMINISTERS_THE_TEAM);
 	}
 
 	/**
@@ -1483,8 +1712,7 @@ class TeamApiTest {
 						+ one.path(WHO_ADMINISTERS_THE_TEAM).asString() + "\"", "");
 			}
 
-			assertThat(whole.replace(",\"" + WHETHER_THE_SEAT_IS_MINE + "\":true", "")
-					.replace(",\"" + WHETHER_THE_SEAT_IS_MINE + "\":false", ""))
+			assertThat(withoutTheMembersOwnTwo(whole))
 					.as("%s was answered something other than the visitor's answer with the seat"
 							+ " added: the list itself moved, or a key nobody named arrived with"
 							+ " it", administration)
@@ -1498,9 +1726,10 @@ class TeamApiTest {
 
 		assertThat(Answers.fieldsOf(both))
 				.as("the caller who is BOTH the founder of this team and the administration was"
-						+ " not answered both fields; each is the other's condition somewhere, and"
-						+ " that is what this case exists to refuse")
-				.contains(WHETHER_THE_SEAT_IS_MINE, WHO_ADMINISTERS_THE_TEAM);
+						+ " not answered all three fields; each is the other's condition"
+						+ " somewhere, and that is what this case exists to refuse")
+				.contains(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT,
+						WHO_ADMINISTERS_THE_TEAM);
 		assertThat(both.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
 				.as("the founder of this team was not told it is his").isTrue();
 	}
@@ -1526,7 +1755,8 @@ class TeamApiTest {
 		Answers.everyFieldThePortalReadsIsAnswered(
 				"/api/teams asked by a moderator over the teams",
 				new ObjectMapper().readTree(whole(FOUNDED_THE_FIRST_TEAM_AND_ADMINISTERS_THEM)),
-				"teams.json", java.util.Set.of(WHETHER_THE_SEAT_IS_MINE));
+				"teams.json",
+				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT));
 	}
 
 	/**
@@ -1611,6 +1841,337 @@ class TeamApiTest {
 				.as("an account in the fixture is on neither side of the line PDL P13 draws, so"
 						+ " nothing measures what this resource answers it")
 				.containsExactlyInAnyOrderElementsOf(split);
+	}
+
+	/**
+	 * THE WHOLE RULE OF 04.09.2026, ANSWERED BY THE SERVER, AND ONE MEMBER PER TEAM.
+	 *
+	 * <p>„Administrator tima je onaj ko je tim osnovao. Kad se mesto isprazni, po
+	 * podrazumevanom ga preuzima clan koji je najduze u timu, dakle najraniji
+	 * {@code teamSince}, a kod izjednacenja manji broj clana" (owner, PDL:6428). Until
+	 * 21.09.2026 the server answered the first sentence and the portal worked out the
+	 * second off a seat a member is not told, which is how a member who had founded nothing
+	 * was handed the edit screen of a team whose seat names somebody else.
+	 *
+	 * <p><b>Asked as a map of every caller to every team he is told is his to administer,
+	 * compared whole.</b> A check that the right member is told yes is satisfied by a
+	 * server telling EVERYBODY yes; a check that the wrong ones are told no is satisfied by
+	 * a server telling everybody no. The map holds both at once, and it holds the pairing:
+	 * three different members administer three different teams, so a resource answering the
+	 * right set against the wrong teams fails here.
+	 *
+	 * <p><b>And its keys are read out of the database.</b> Every account that has a member
+	 * behind it has to appear, so an account added tomorrow is given an expected answer
+	 * rather than being measured by nothing - which is the shape this file already uses for
+	 * the two sides of PDL P13's line.
+	 *
+	 * <p><b>The three answers are three different clauses of the rule</b>, which is why
+	 * there are three teams and not one:
+	 *
+	 * <ul>
+	 * <li>{@code novosadski-trkaci} - the seat names a member who is still in it, so the
+	 * FIRST sentence answers and the standing rule is never reached.</li>
+	 * <li>{@code klub-lovcen} - the seat names {@code 000003}, who is in a different team,
+	 * so „mesto se isprazni" and its one standing member takes it. She founded nothing.</li>
+	 * <li>{@code vardarski-krug} - the seat names nobody at all, and six members contest
+	 * it. Five of them win it if exactly one condition of the rule is dropped.</li>
+	 * </ul>
+	 */
+	@Test
+	void theWholeRuleOfTheFourthOfSeptemberIsAnsweredByTheServer() throws Exception {
+		Map<String, List<String>> expected = Map.of(
+				FOUNDED_THE_FIRST_TEAM_AND_ADMINISTERS_THEM, List.of("novosadski-trkaci"),
+				FOUNDED_NOTHING, List.of("klub-lovcen"),
+				LONGEST_IN_THE_TEAM_WITH_NO_SEAT, List.of("vardarski-krug"),
+				FOUNDED_THE_SECOND_TEAM, List.of(),
+				IN_A_TEAM_AND_NOT_IN_ITS_SEAT, List.of(),
+				JOINED_THE_SAME_SEASON_WITH_A_HIGHER_NUMBER, List.of(),
+				THE_SMALLEST_NUMBER_AND_THE_LATEST_SEASON, List.of(),
+				LEFT_THE_TEAM_HE_JOINED_FIRST, List.of(),
+				IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID, List.of());
+
+		assertThat(db.sql("select email from account where competitor_id is not null")
+				.query(String.class).list())
+				.as("an account with a member behind it is not in the map below, so nothing says"
+						+ " what this resource answers him about administering a team")
+				.containsExactlyInAnyOrderElementsOf(expected.keySet());
+
+		assertThat(expected.values().stream().flatMap(List::stream).distinct().toList())
+				.as("two of the callers administer the same team, or they administer fewer than"
+						+ " the three the rule has a different clause for, so answering with a"
+						+ " constant would satisfy this case")
+				.containsExactlyInAnyOrder("novosadski-trkaci", "klub-lovcen", "vardarski-krug");
+
+		for (Map.Entry<String, List<String>> one : expected.entrySet()) {
+			assertThat(administeredAccordingTo(one.getKey()))
+					.as("%s was told he administers the wrong teams. The rule is the founder while"
+							+ " he is still in the team, and otherwise the standing member who has"
+							+ " been in it longest, the smaller member number breaking a tie",
+							one.getKey())
+					.isEqualTo(one.getValue());
+		}
+	}
+
+	/**
+	 * AND THE SIX WHO CONTEST THE EMPTY SEAT DIFFER IN THE SIX WAYS THE RULE IS ABOUT,
+	 * which is what makes the one answer above mean anything.
+	 *
+	 * <p>The case above says {@code 000006} administers {@code vardarski-krug}. That is one
+	 * value, and a value is worth exactly as much as the number of wrong rules it rules
+	 * out. Each pin here is one wrong rule: if it stops holding, the answer stays the same
+	 * and an axis stops being measured, with nothing saying so.
+	 *
+	 * <p><b>Read out of the database rather than written down here</b>, so that a fixture
+	 * changed tomorrow is measured without anybody remembering this case.
+	 */
+	@Test
+	void theSixWhoContestTheEmptySeatDifferInTheSixWaysTheRuleIsAbout() {
+		Map<String, Object> pins = new HashMap<>();
+
+		for (Map.Entry<String, Object> row : db.sql("select c.member_number, c.active,"
+						+ " m.season_from, m.season_to, c.id, m.id"
+						+ " from team_membership m join competitor c on c.id = m.competitor_id"
+						+ " where m.team_id = (select id from team where slug = 'vardarski-krug')")
+				.query((one, number) -> Map.entry(
+						one.getString(1) == null ? "no number at all" : one.getString(1),
+						(Object) (one.getBoolean(2) + "/" + one.getInt(3) + "/"
+								+ one.getObject(4) + "/" + one.getLong(5) + "/" + one.getLong(6))))
+				.list()) {
+			pins.put(row.getKey(), row.getValue());
+		}
+
+		assertThat(pins.keySet())
+				.as("the team whose seat names nobody no longer holds the six members the rule is"
+						+ " measured over")
+				.containsExactlyInAnyOrder("000005", "000006", "000007", "000008", "000009",
+						"no number at all");
+
+		long winner = competitor("000006");
+		long sameSeason = competitor("000007");
+
+		assertThat(db.sql("select m.season_from from team_membership m"
+						+ " where m.competitor_id in (?, ?)").params(winner, sameSeason)
+				.query(Integer.class).list().stream().distinct().toList())
+				.as("the two who decide the tie no longer joined in the same season, so the"
+						+ " smaller member number is not what separates them and the tie break is"
+						+ " measured by nothing (%s)", pins)
+				.hasSize(1);
+
+		assertThat(sameSeason)
+				.as("the member who loses the tie no longer has the smaller key, so an order"
+						+ " ending in competitor.id - or in nothing at all - hands back the right"
+						+ " answer for the wrong reason (%s)", pins)
+				.isLessThan(winner);
+
+		assertThat(db.sql("select m.id from team_membership m where m.competitor_id = ?")
+				.param(sameSeason).query(Long.class).single())
+				.as("the member who loses the tie is no longer the earlier row in"
+						+ " team_membership, so a query with no tie break at all would be likely"
+						+ " to pass (%s)", pins)
+				.isLessThan(db.sql("select m.id from team_membership m where m.competitor_id = ?")
+						.param(winner).query(Long.class).single());
+
+		assertThat(db.sql("select m.season_from from team_membership m"
+						+ " where m.competitor_id = ?").param(competitor("000005"))
+				.query(Integer.class).single())
+				.as("the member with the smallest number in this team no longer joined LAST, so"
+						+ " an order reading the number before the season would agree with the"
+						+ " right answer (%s)", pins)
+				.isGreaterThan(db.sql("select m.season_from from team_membership m"
+						+ " where m.competitor_id = ?").param(winner).query(Integer.class)
+						.single());
+
+		assertThat(pins.get("000008").toString())
+				.as("the member who joined first has not left after all, so dropping season_to"
+						+ " from the rule would change nothing (%s)", pins)
+				.startsWith("true/2027/2027/");
+		assertThat(pins.get("000009").toString())
+				.as("the member whose fee has lapsed no longer joined first, or has paid after"
+						+ " all, so dropping active from the rule would change nothing (%s)", pins)
+				.startsWith("false/2027/null/");
+		assertThat(pins.get("no number at all").toString())
+				.as("the row with no member number no longer joined first, or its fee is no"
+						+ " longer standing, so dropping the member number from the rule would be"
+						+ " measured by the fee instead and the two conditions would be one (%s)",
+						pins)
+				.startsWith("true/2027/null/");
+	}
+
+	/**
+	 * THE MEMBER WHOSE MEMBERSHIP BEGINS IN A SEASON THAT HAS NOT STARTED ADMINISTERS THE
+	 * TEAM TODAY, which is a decision and the one this fixture would hide by accident.
+	 *
+	 * <p>PDL:6348, 05.09.2026: „„Nema tim" se cita sa zapisa ({@code teamId}), ne po
+	 * sezoni", and the owner drew the boundary in both directions with a case on each side
+	 * - a member with no team at all, and a member „upisan u Dunav sa {@code teamSince:
+	 * 2027}, pa ga portal na dan u 2026. <b>ne broji</b> u timu". Being in a team and being
+	 * counted in it for a season are two questions, and this field asks the first.
+	 *
+	 * <p><b>Why it is easy to get wrong here in particular, and why it would be invisible.</b>
+	 * {@code team_membership_season_from_not_before_the_league} (V11) refuses any season
+	 * before {@link SeasonClock#FIRST_SEASON}, so on every day before that season begins
+	 * there is no membership in the league that has started. A server asking who is in the
+	 * team TODAY would answer nobody, for every team, and every record would read
+	 * {@code false} - which is also what a team nobody administers reads. Measured
+	 * 21.09.2026: the calendar was 2026 and the whole database agreed with that mistake.
+	 *
+	 * <p><b>The pin is timeless rather than dated.</b> Every standing member of this team
+	 * joins after the first season the league has, so a rule asking about any season up to
+	 * and including that one answers nobody here whatever year it is run in.
+	 */
+	@Test
+	void theMemberWhoseTeamStartsNextSeasonAdministersItToday() throws Exception {
+		List<Integer> seasons = db.sql("select m.season_from from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " where m.team_id = (select id from team where slug = 'vardarski-krug')"
+						+ " and m.season_to is null and c.active and c.member_number is not null")
+				.query(Integer.class).list();
+
+		assertThat(seasons).as("the team whose seat names nobody has no standing member at all, so"
+				+ " there is nothing for a rule about seasons to get wrong").isNotEmpty();
+
+		assertThat(seasons)
+				.as("a standing member of this team joins in the first season the league has, so a"
+						+ " server reading who is in the team TODAY would find somebody and this"
+						+ " case would pass over the mistake it exists for")
+				.allMatch(one -> one > SeasonClock.FIRST_SEASON);
+
+		assertThat(administeredAccordingTo(LONGEST_IN_THE_TEAM_WITH_NO_SEAT))
+				.as("the member whose membership has not begun was not told he administers the"
+						+ " team. Who is in a team is read off the record and never off the"
+						+ " season (PDL:6348)")
+				.containsExactly("vardarski-krug");
+	}
+
+	/**
+	 * THE SEAT AND THE RIGHT DISAGREE IN BOTH DIRECTIONS, ON TWO RECORDS OF ONE TEAM.
+	 *
+	 * <p>This is what two fields buy that one cannot, and it is asked of {@code klub-lovcen}
+	 * because both sentences are true of it at once. Its seat names {@code 000003}, whose
+	 * fee has lapsed and who is in a different team; its one standing member is
+	 * {@code 000004}, who founded nothing.
+	 *
+	 * <p><b>So neither field is the other's condition</b>, which is the substitution a
+	 * server answering the same expression twice would make. Told in one direction only,
+	 * the case would pass over a resource that answered {@code administeredByMe} as a copy
+	 * of {@code foundedByMe} for everybody it happens to agree with.
+	 *
+	 * <p><b>And the direction that matters is the second one.</b> „You founded this and you
+	 * do not administer it" is a narrowing and costs a member nothing he had; „you founded
+	 * nothing and you administer this" is the owner's rule of 04.09.2026 coming back, and
+	 * it is the sentence the portal could not say between 21.09.2026 and this increment.
+	 */
+	@Test
+	void theSeatAndTheRightDisagreeInBothDirections() throws Exception {
+		JsonNode hisSeat = teamOf(FOUNDED_THE_SECOND_TEAM, "klub-lovcen");
+
+		assertThat(hisSeat.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
+				.as("the member this team's seat names was not told the seat is his, so the two"
+						+ " fields below cannot disagree and this half measures nothing")
+				.isTrue();
+		assertThat(hisSeat.path(WHETHER_I_ADMINISTER_IT).asBoolean())
+				.as("the member this team's seat names was told he administers it although he is"
+						+ " in another team and has not paid. The seat is who founded it; the"
+						+ " right passes on when he goes (PDL:2405, PDL:2429)")
+				.isFalse();
+
+		JsonNode hers = teamOf(FOUNDED_NOTHING, "klub-lovcen");
+
+		assertThat(hers.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
+				.as("the member who founded nothing was told this team's seat is hers, so the two"
+						+ " fields below cannot disagree and this half measures nothing")
+				.isFalse();
+		assertThat(hers.path(WHETHER_I_ADMINISTER_IT).asBoolean())
+				.as("the member who founded nothing and is the only one left in this team was not"
+						+ " told she administers it. That is the owner's rule of 04.09.2026 and"
+						+ " the whole of why this field exists")
+				.isTrue();
+	}
+
+	/**
+	 * AND A SEAT ADMINISTERS ITS TEAM ONLY WHILE THE MAN IN IT IS A STANDING MEMBER OF IT,
+	 * asked of each of the three ways he can stop being one.
+	 *
+	 * <p>„Kad se mesto isprazni" is not only {@code admin_id is null}, and that is read off
+	 * the portal and off the owner rather than decided here.
+	 * {@code frontend/src/data/teamAdmin.ts}: „the founder only while they are still in it.
+	 * The seat is who founded the team and never changes; being its administrator does."
+	 * PDL:2405: „Ako administrator prestane da placa clanarinu i napusti tim, titula
+	 * prelazi." PDL:2429, of an administrator removed or disqualified: „Isto kao kad je
+	 * otisao."
+	 *
+	 * <p><b>Each of the three is seated in turn and differs from the winner in exactly one
+	 * thing</b>, so what refuses him is one condition and not a heap of them. He is
+	 * {@code 000002}, who is standing and numbered and in ANOTHER team; {@code 000009}, who
+	 * is in THIS team and has not paid; and {@code 000008}, who is standing and numbered and
+	 * has LEFT this team. Every one of them is told the seat is his by the field beside it,
+	 * so the case cannot be satisfied by a server that lost the seat.
+	 *
+	 * <p><b>And the fourth is the control, which is the half that keeps the other three
+	 * honest.</b> Seated with somebody who IS a standing member of this team, the answer has
+	 * to move: he administers it and the member who held it by the standing rule stops. Without
+	 * that, a resource answering {@code false} to everybody would pass all three above.
+	 */
+	@Test
+	void theSeatAdministersOnlyWhileTheManInItIsStandingInThatTeam() throws Exception {
+		Map<String, String> theThreeWaysOut = Map.of(
+				"000002", "he is a standing member of ANOTHER team",
+				"000009", "he is in this team and his fee has lapsed",
+				"000008", "he is standing and numbered and has LEFT this team");
+
+		for (Map.Entry<String, String> one : theThreeWaysOut.entrySet()) {
+			sits(competitor(one.getKey()), "vardarski-krug");
+
+			String him = db.sql("select a.email from account a where a.competitor_id ="
+							+ " (select id from competitor where member_number = ?)")
+					.param(one.getKey()).query(String.class).single();
+
+			assertThat(teamOf(him, "vardarski-krug").path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
+					.as("%s was not told the seat of this team is his, so the claim below is"
+							+ " about a caller the seat says nothing about", one.getKey())
+					.isTrue();
+
+			assertThat(administeredAccordingTo(him))
+					.as("%s was told he administers a team although %s", one.getKey(),
+							one.getValue())
+					.isEmpty();
+
+			assertThat(administeredAccordingTo(LONGEST_IN_THE_TEAM_WITH_NO_SEAT))
+					.as("filling the seat with somebody who does not administer the team (%s: %s)"
+							+ " took it away from the member the standing rule gives it to",
+							one.getKey(), one.getValue())
+					.containsExactly("vardarski-krug");
+		}
+
+		/* AND THE CONTROL: somebody who IS a standing member of this team. He is the one who
+		   loses the tie by his member number, so before this line he is told nothing at all;
+		   the seat is the only thing that can change that, and it has to change the other
+		   answer with it. */
+		sits(competitor("000007"), "vardarski-krug");
+
+		assertThat(administeredAccordingTo(JOINED_THE_SAME_SEASON_WITH_A_HIGHER_NUMBER))
+				.as("the seat was filled with a standing member of this team and he was not told"
+						+ " he administers it, so the three claims above are satisfied by a server"
+						+ " answering no to everybody")
+				.containsExactly("vardarski-krug");
+
+		assertThat(administeredAccordingTo(LONGEST_IN_THE_TEAM_WITH_NO_SEAT))
+				.as("the seat now names a standing member of this team and the member who held it"
+						+ " by the standing rule was still told it is his. „Kad se mesto isprazni"
+						+ " is the SECOND sentence of the rule and must not answer over the first")
+				.isEmpty();
+	}
+
+	/** One team's record out of one caller's answer. */
+	private JsonNode teamOf(String email, String slug) throws Exception {
+		List<JsonNode> found = StreamSupport
+				.stream(new ObjectMapper().readTree(whole(email)).spliterator(), false)
+				.filter(one -> one.path("slug").asString().equals(slug)).toList();
+
+		assertThat(found).as("%s did not come back exactly once in the answer to %s, so nothing"
+				+ " below is about it", slug, email).hasSize(1);
+
+		return found.getFirst();
 	}
 
 }
