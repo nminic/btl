@@ -131,7 +131,7 @@ class ConventionsTest extends DatabaseTest {
 				"photo", "place", "price_row",
 				"race", "racing_pair", "result", "result_submission", "role", "season_competitor", "season_league_standing",
 				"season_team", "static_page", "static_page_include", "static_page_section", "team", "team_application",
-				"team_invitation", "team_membership", "team_proposal", "verification");
+				"team_invitation", "team_membership", "team_proposal", "verification", "verification_lock");
 	}
 
 	/**

@@ -60,7 +60,7 @@ class VerificationConstraintsTest extends DatabaseTest {
 	 * {@code pg_tables}: that is the floor that lets each of these files name its
 	 * tables by hand.
 	 */
-	static final List<String> TABLES = List.of("verification");
+	static final List<String> TABLES = List.of("verification", "verification_lock");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 	private static final String AN_INSTANT = "timestamptz '2027-02-02 12:00:00+00'";
@@ -69,6 +69,16 @@ class VerificationConstraintsTest extends DatabaseTest {
 	private static final String AN_ACCOUNT = "(select id from account where email = 'moderator@primer.rs')";
 	private static final String A_PHOTO = "(select id from photo where digest ="
 			+ " '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')";
+
+	/** The row {@code probe} leaves waiting, which is the one a hold can be taken on. */
+	private static final String A_QUEUE_ROW =
+			"(select id from verification where subject = 'Zatecen red')";
+
+	/** A hold on it, in the shape V28 writes one. */
+	private static String held(String item, String account, String until) {
+		return "insert into verification_lock (verification_id, held_by, held_until) values ("
+				+ item + ", " + account + ", " + until + ")";
+	}
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
 			+ " place_id, city, country_id, first_season, first_season_2027, active, membership_basis,"
@@ -266,7 +276,33 @@ class VerificationConstraintsTest extends DatabaseTest {
 								+ " team_proposal_id) select 'teams', " + A_MEMBER + ", 'Naslov', '',"
 								+ " 'waiting', " + A_PROPOSAL + " from generate_series(1, 2)"),
 				Violation.of("verification_only_the_teams_queue_carries_a_proposal",
-						pointingAtProposal("comments", A_PROPOSAL)));
+						pointingAtProposal("comments", A_PROPOSAL)),
+
+				/* AND THE HOLD V28 ADDS, which is a row that is there or is not and therefore
+				   needs no biconditional: both of its columns are NOT NULL, so a hold with a
+				   holder and no end, or an end and no holder, is not a shape the table has.
+				   That is the whole reason it is a table rather than two nullable columns on
+				   `verification`, and these three NOT NULLs are what make the sentence true. */
+				Violation.notNull("verification_lock_verification_id_not_null", "verification_id",
+						held("null", AN_ACCOUNT, AN_INSTANT)),
+				Violation.notNull("verification_lock_held_by_not_null", "held_by",
+						held(A_QUEUE_ROW, "null", AN_INSTANT)),
+				Violation.notNull("verification_lock_held_until_not_null", "held_until",
+						held(A_QUEUE_ROW, AN_ACCOUNT, "null")),
+
+				/* ONE HOLD AT A TIME, SAID BY THE KEY. Two rows for one item would be two
+				   moderators each believing the thing was his, which is the one state the
+				   whole idea exists to prevent. */
+				Violation.of("verification_lock_pk",
+						"insert into verification_lock (verification_id, held_by, held_until)"
+								+ " select " + A_QUEUE_ROW + ", " + AN_ACCOUNT + ", " + AN_INSTANT
+								+ " from generate_series(1, 2)"),
+
+				/* And it hangs off something that is really there, on both sides. */
+				Violation.of("verification_lock_verification_fk",
+						held("(select max(id) + 1 from verification)", AN_ACCOUNT, AN_INSTANT)),
+				Violation.of("verification_lock_account_fk",
+						held(A_QUEUE_ROW, "(select max(id) + 1 from account)", AN_INSTANT)));
 	}
 
 	@ParameterizedTest
