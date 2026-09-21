@@ -965,11 +965,14 @@ export function FormRenderer({
     setRefused(beyond)
 
     if (Object.keys(found).length === 0 && beyond === undefined) {
-      /* Both through `trimValues`, so what agrees is trimmed the same way as what it
-         agrees with. Trimmed on one side only, two passwords that differ by a space
-         would be refused by the form and accepted by the server, or the other way
-         round, depending on which side the space was on. */
-      onSubmit(trimValues(onScreen(filled)), trimValues(agreeing(filled)))
+      /* BOTH THROUGH `trimValues`, AND THE DEFINITION GOES WITH THEM. Handed the same
+         form, the two sides treat a field the same way - which matters most for the one
+         kind of field `trimValues` deliberately leaves alone. A password is not trimmed
+         (ADL A62c), and the repeated one is a password too; trimmed on one side only,
+         two boxes holding the same thing would arrive at the server holding different
+         things, and the comparison there would refuse a form the reader filled in
+         correctly. */
+      onSubmit(trimValues(form, onScreen(filled)), trimValues(form, agreeing(filled)))
     }
   }
 

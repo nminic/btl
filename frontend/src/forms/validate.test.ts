@@ -1,3 +1,5 @@
+import { must } from '../test/at'
+import { FORMS } from './definitions'
 import type { FieldDef, FormDef } from './types'
 import { emptyValues, isVisible, trimValues, validateField, validateForm } from './validate'
 
@@ -164,11 +166,112 @@ describe('validateField', () => {
   })
 })
 
-describe('trimValues', () => {
+/**
+ * THE ONE KIND OF FIELD TRIMMING LEAVES ALONE, AND THE FLOOR UNDER IT.
+ *
+ * <p>Owner, 21.09.2026 (`btl-produkt/ADL.md` A62c): a password is never trimmed
+ * anywhere. A space is a character somebody may legitimately have chosen, and trimming
+ * one off is a silent change to a secret.
+ *
+ * <p><b>What it cost while it was trimmed.</b> Registering with a trailing space stored
+ * the hash of the trimmed string, and signing in sends the password raw
+ * (`session/SignIn.tsx`), so that member could never sign in again with what he chose.
+ * Neither end said anything: the two boxes are compared BEFORE the trim, so they agreed,
+ * and the length is measured AFTER, so it passed.
+ */
+describe('the value that is submitted', () => {
+  const form: FormDef = {
+    id: 'proba',
+    titleKey: 't',
+    submitKey: 's',
+    fields: [
+      text({ name: 'ime' }),
+      text({ name: 'lozinka', type: 'password' }),
+      text({ name: 'ponovo', type: 'password', matches: 'lozinka' }),
+      text({ name: 'saglasnost', type: 'checkbox' }),
+    ],
+  }
+
   it('trims text and leaves everything else alone', () => {
-    expect(trimValues({ ime: '  Vladan  ', saglasnost: true })).toEqual({
+    expect(trimValues(form, { ime: '  Vladan  ', saglasnost: true })).toEqual({
       ime: 'Vladan',
       saglasnost: true,
+    })
+  })
+
+  it('leaves a password exactly as it was typed, at both ends', () => {
+    /* Both ends, because a leading space and a trailing one are two different mistakes
+       to make in a fix and only one of them shows in the obvious case. */
+    expect(
+      trimValues(form, { lozinka: ' trkackaliga7 ', ponovo: ' trkackaliga7 ' }),
+    ).toEqual({ lozinka: ' trkackaliga7 ', ponovo: ' trkackaliga7 ' })
+  })
+
+  it('goes on trimming everything else on a form that has a password on it', () => {
+    /* The mutation this exists for is a fix that switches trimming off altogether: with
+       only the case above, „leave the password alone" and „leave everything alone" are
+       the same green. */
+    expect(trimValues(form, { ime: '  Vladan  ', lozinka: 'tajna ' })).toEqual({
+      ime: 'Vladan',
+      lozinka: 'tajna ',
+    })
+  })
+
+  it('trims a value that belongs to no field at all', () => {
+    /* The country a place field writes beside itself has no field of its own
+       (`forms/types.ts`), so it is not a password and is trimmed like any other value. */
+    expect(trimValues(form, { country: ' RS ' })).toEqual({ country: 'RS' })
+  })
+
+  it('spares every password field this portal actually has, whichever form it is on', () => {
+    /* THE FLOOR, AND IT IS A QUERY OVER THE DEFINITIONS RATHER THAN A LIST OF NAMES.
+       `FORMS` is every form the folder holds, so a password field added to any form
+       tomorrow is covered here on the day it is written - and if somebody narrows the
+       exemption to one name, this goes red naming the field that lost it.
+
+       Written as the map and not as a count, so the failure says WHICH field is trimmed
+       rather than only that the number moved. */
+    const spared = Object.fromEntries(
+      Object.entries(FORMS).flatMap(([file, one]) =>
+        one.fields
+          .filter((field) => field.type === 'password')
+          .map((field) => [
+            `${file} ${field.name}`,
+            trimValues(one, { [field.name]: ' tajna ' })[field.name],
+          ]),
+      ),
+    )
+
+    /* Not empty, or the sweep above would prove nothing by finding nothing. */
+    expect(Object.keys(spared).length).toBeGreaterThan(0)
+    expect(spared).toEqual({
+      'registracija.form.json password': ' tajna ',
+      'registracija.form.json passwordRepeat': ' tajna ',
+    })
+  })
+
+  it('refuses a password of nothing but spaces, and refuses it as a missing answer', () => {
+    /* MEASURED RATHER THAN ASSUMED, because it is the case the owner's decision could
+       have opened: a password left untrimmed might have reached the server as twelve
+       spaces and satisfied a length rule.
+
+       It does not. `validateField` measures the TRIMMED value, so a box holding nothing
+       but spaces reads as empty and is refused for being unanswered - before the length
+       is ever looked at, and whatever `trimValues` then does with it. The measuring and
+       the sending are two different questions and only the sending changed.
+
+       The boundary this leaves is real and is written down rather than fixed here: the
+       length is measured on the trimmed value, so „  lozinka123" is twelve characters the
+       server would take and eleven the form will not. That is a refusal said out loud to
+       somebody who can retype it, which is the opposite of the silent change A62c is
+       about, so it is recorded in `btl-produkt/PENDING.md` and not decided here. */
+    const secret = must(
+      form.fields.find((field) => field.name === 'lozinka'),
+      'the password field',
+    )
+
+    expect(validateField({ ...secret, required: true, minLength: 12 }, '            ')).toEqual({
+      key: 'form.errors.required',
     })
   })
 })

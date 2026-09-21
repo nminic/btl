@@ -124,11 +124,20 @@ function renderForm(today = OPEN, address = '/sr/registracija') {
 
 async function fillEverythingExceptBirthDate(
   user: ReturnType<typeof setupUser>,
-  /** Left out where the test is about the picture being missing: a file input
+  {
+    picture = true,
+    /** What is typed into both password boxes. Handed in for the one pair of cases about
+     *  a secret with a space in it, which is a value the portal must not alter. */
+    password = PASSWORD,
+    /** And the one case beside them about a name with spaces, which the portal must
+     *  still trim. Without that pair nothing tells „leave the password alone" apart from
+     *  „leave everything alone". */
+    firstName = 'Vladan',
+  }: /** Left out where the test is about the picture being missing: a file input
    *  cannot be cleared once it holds something (`user.clear` refuses it). */
-  { picture = true }: { picture?: boolean } = {},
+  { picture?: boolean; password?: string; firstName?: string } = {},
 ) {
-  await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
+  await user.type(screen.getByLabelText(/^Ime$/), firstName)
   await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
   /* Obligatory since 20.08.2026: the register of members the association keeps
      by law asks for the father's name and for the number of an identity
@@ -136,8 +145,8 @@ async function fillEverythingExceptBirthDate(
   await user.type(screen.getByLabelText(/^Ime oca$/), 'Milan')
   await user.type(screen.getByLabelText(/^Broj ličnog dokumenta$/), '123456789')
   await user.type(screen.getByLabelText(/Adresa elektronske pošte/), 'vladan@primer.rs')
-  await user.type(screen.getByLabelText(/^Lozinka$/), PASSWORD)
-  await user.type(screen.getByLabelText(/Ponovi lozinku/), PASSWORD)
+  await user.type(screen.getByLabelText(/^Lozinka$/), password)
+  await user.type(screen.getByLabelText(/Ponovi lozinku/), password)
   /* Buttons since 11.08.2026, not a list: two answers worth seeing at once. */
   await user.click(screen.getByRole('radio', { name: 'Muški' }))
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
@@ -183,8 +192,13 @@ describe('Registration while it is shut', () => {
     ).toBeVisible()
   })
 
-  it('is shut on the route today, since October has not come', async () => {
-    renderAt('/sr/registracija')
+  it('is shut on the route on a day before October', async () => {
+    /* THE DAY IS SET, AND UNTIL 21.09.2026 IT WAS NOT. `renderAt` left alone „runs on
+       the real one", and `REGISTRATION_OPENS` is 2026-10-01: this case was therefore
+       measuring the calendar rather than the route, and would have gone red on the CI on
+       the very morning registration opens, over a screen that had done nothing wrong.
+       Found by a review of this branch; the fault is older than the branch. */
+    renderAt('/sr/registracija', 'visitor', null, undefined, '2026-09-20')
 
     expect(
       await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
@@ -1192,6 +1206,63 @@ describe('what the registration sends', () => {
     expect(Reflect.get(Object(theBodySent()), 'referredBy')).toBe('7f07b38ff7ee7543')
   }, SLOW)
 
+  it('sends the password exactly as it was typed, spaces and all', async () => {
+    /* THE SECRET IS NOT TRIMMED, and until 21.09.2026 it was: `trimValues` trimmed every
+       string, so „trkackaliga7 " arrived as „trkackaliga7" and the server hashed a string
+       the member had never chosen. Signing in sends the password RAW
+       (`session/SignIn.tsx`), so that member could then never sign in again with what he
+       typed - and nothing said so, because the form compares the two boxes BEFORE the
+       trim and measures the length AFTER it.
+
+       Owner, 21.09.2026, `btl-produkt/ADL.md` A62c: a password is never trimmed anywhere.
+       The fix lives in `trimValues` rather than here, so the next form that asks for a
+       password inherits it.
+
+       BOTH BOXES ARE ASSERTED, and that is the axis rather than a flourish: the repeated
+       password travels through the second argument, which is trimmed by a separate call,
+       so a fix that spared only one side would send two different strings for one typed
+       value and the server would refuse a form filled in correctly.
+
+       AND THE NAME BESIDE IT, which is what keeps this from being satisfied by switching
+       trimming off altogether: „Vladan" is typed with no spaces here, so the name is read
+       from the case below rather than from this one - see the next case. */
+    const user = setupUser()
+    renderForm()
+
+    const withSpace = `${PASSWORD} `
+
+    await fillEverythingExceptBirthDate(user, { password: withSpace })
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    const body = Object(theBodySent())
+
+    expect(Reflect.get(body, 'password')).toBe(withSpace)
+    expect(Reflect.get(body, 'passwordRepeat')).toBe(withSpace)
+  }, SLOW)
+
+  it('goes on trimming everything that is not a secret', async () => {
+    /* The other half, and without it the case above is satisfied by a fix that switches
+       trimming off for the whole form: then „  Vladan  " would be stored with its spaces
+       and no case here would fall. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user, { firstName: '  Vladan  ' })
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(Reflect.get(Object(theBodySent()), 'firstName')).toBe('Vladan')
+  }, SLOW)
+
   it('sends one registration however many times the button is pressed', async () => {
     /* WHAT A SECOND PRESS COSTS HERE IS NOT WHAT IT COSTS ELSEWHERE. `/api/registration`
        writes an account and posts a letter, so the second request is answered 409 - and
@@ -1332,6 +1403,43 @@ describe('a registration the server refuses', () => {
 
     expect(await screen.findByText(/nije uspeo da dođe do servera/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+  }, SLOW)
+
+  it('takes the last refusal off the screen while the next attempt is out', async () => {
+    /* MEASURED WHILE THE SECOND REQUEST IS STILL IN FLIGHT, which is the only moment the
+       fault exists. Left standing, somebody who corrected his form and pressed again
+       reads the old sentence over a request that has not been answered, and cannot tell
+       whether it is about the press he just made or the one before it. Once the answer
+       arrives the sentence is replaced either way, so a case that looked afterwards would
+       measure nothing. */
+    registrationAnswered(() => refused('theAddressIsTaken', 409))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(await screen.findByText(/već član lige/)).toBeVisible()
+
+    const holding: { answer: ((response: Response) => void) | null } = { answer: null }
+
+    registrationAnswered(
+      () =>
+        new Promise<Response>((resolve) => {
+          holding.answer = resolve
+        }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByText('Šaljemo prijavu...')).toBeVisible()
+    expect(screen.queryByText(/već član lige/)).toBeNull()
+
+    must(holding.answer, 'the answer the server was holding')(did())
+
+    expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
 
   it('lets a second press through once the first has been refused', async () => {

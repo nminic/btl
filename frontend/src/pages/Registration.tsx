@@ -155,14 +155,20 @@ export function Registration() {
      ever holds is one the reader is owed a sentence about. */
   const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
   const [sending, setSending] = useState(false)
-  /* A REF AND NOT THE STATE BESIDE IT, and the difference is the whole guard.
-   *
-     Two presses inside one tick both read `sending` as false, because React has not
-     redrawn between them, and both would send. What that costs here is not what a second
-     press costs on the screen for a new password: `/api/registration` WRITES A ROW AND
-     POSTS A LETTER, so the second request answers 409 to the very person whose address
-     the first one just took, and he is told his address belongs to somebody else. A ref
-     is read and written in the same tick, so the second press finds it already turned. */
+  /* WHAT A SECOND PRESS COSTS HERE, WHICH IS NOT WHAT IT COSTS ELSEWHERE:
+     `/api/registration` WRITES A ROW AND POSTS A LETTER, so a second request is answered
+     409 BECAUSE OF THE FIRST, and this very person is told his own address belongs to
+     somebody else.
+
+     A ref and not the state beside it, and the comment is careful about what that buys,
+     because an earlier draft of it was not. `sending` would hold every press the cases
+     below make, since React redraws between two awaited clicks. The ref is narrower and
+     correct rather than measurably better: it is read and written in the same tick, so it
+     also refuses two presses that arrive before a redraw. **That narrower half has no
+     case of its own** - a case would have to reach inside React's scheduling to make two
+     presses land in one tick - and it is written down here rather than claimed. What IS
+     measured is the ordinary double press, and that the guard lets go again once the
+     server has answered. */
   const outstanding = useRef(false)
   /* Which side of 1 October the portal is on, from the one clock the whole
      portal reads (src/clock). It used to be a prop with the machine's date
@@ -264,9 +270,12 @@ export function Registration() {
    * history at all.
    */
   async function send(body: object, email: string): Promise<void> {
-    /* Turned before the first `await` and read by the next press in the same tick. */
+    /* Turned before the first `await`, so the next press finds it already turned. */
     outstanding.current = true
     setSending(true)
+    /* AND THE LAST REFUSAL GOES WHILE THIS ONE IS OUT. Left standing, somebody who
+       corrects his form and presses again reads the old sentence over a request that is
+       still in flight, and cannot tell whether it is about the press he just made. */
     setRefusal(null)
 
     const answer = await askTheServer('/api/registration', body)

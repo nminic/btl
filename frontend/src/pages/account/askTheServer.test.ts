@@ -174,6 +174,32 @@ describe('what one answer is taken to mean', () => {
     expect(await askTheServer('/api/password-reset', {})).toEqual({ got: 'wrong', status: 500 })
   })
 
+  it('carries a refusal named by a 409 exactly as one named by a 400', async () => {
+    /* One route answers 409 for one of its three refusals - registering at an address
+       somebody already holds - and names it in the body like every other. The number is
+       deliberately not carried back: a name is what the screen looks a sentence up by,
+       and a screen that told the two numbers apart would be keeping a fact the name
+       already holds. */
+    server = serverThat(() => refused('theAddressIsTaken', 409))
+
+    expect(await askTheServer('/api/registration', {})).toEqual({
+      got: 'refused',
+      reason: 'theAddressIsTaken',
+    })
+  })
+
+  it('says which number it was when a 409 carries no reason anybody can read', async () => {
+    /* THE NUMBER ITSELF, AND IT HAD NO CASE UNTIL 21.09.2026: written back as a literal
+       400 the whole package stayed green, and a 409 whose body nobody could read would
+       have told the reader „Server je odgovorio brojem 400" - a number that was never on
+       the wire. The reason is not invented either, for the same reason the 400 beside
+       this one does not invent one: a refusal nobody can name is not one of the three
+       the screens know. */
+    server = serverThat(() => new Response('not json at all', { status: 409 }))
+
+    expect(await askTheServer('/api/registration', {})).toEqual({ got: 'wrong', status: 409 })
+  })
+
   it('says nothing came back when the request never got an answer', async () => {
     server = serverThat(() => {
       throw new TypeError('Failed to fetch')

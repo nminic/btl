@@ -258,13 +258,45 @@ export function validateForm(
   return errors
 }
 
-/** What actually gets submitted. Validation trims, so submission must too,
- *  or "  Vladan  " passes the length rules and is stored with its spaces. */
-export function trimValues(values: FormValues): FormValues {
+/**
+ * What actually gets submitted. Validation trims, so submission must too, or
+ * "  Vladan  " passes the length rules and is stored with its spaces.
+ *
+ * <p><b>EXCEPT A PASSWORD, WHICH IS NEVER TRIMMED ANYWHERE</b> (owner, 21.09.2026,
+ * `btl-produkt/ADL.md` A62c). A space is a character somebody may legitimately have
+ * chosen, so trimming one off is a silent change to a secret.
+ *
+ * <p><b>What it cost while it was trimmed, measured on this branch.</b> Registering
+ * with „trkackaliga7 " sent „trkackaliga7", so what the server hashed was not what was
+ * typed - and signing in sends the password RAW (`session/SignIn.tsx`), so that member
+ * could never sign in again with the string he chose. Neither side said anything: the
+ * form compares the two boxes BEFORE trimming, so they agreed, and measures the length
+ * AFTER, so it passed. The two ends only disagreed once this screen began to send, which
+ * is why it is fixed here and not left.
+ *
+ * <p><b>Fixed here rather than where the registration is sent</b>, which is the whole
+ * point of the placement: trimming lives in this function, so a fix at one call site
+ * would leave the same fault waiting for the next form that asks for a password.
+ *
+ * <p><b>Two other roads were weighed and refused by the owner</b>, and they are written
+ * down in A62c with their reasons: trimming at sign in as well (the two ends would agree,
+ * but the portal would still be quietly altering a chosen secret, and a password of
+ * nothing but spaces would become the empty string and pass a length measured after the
+ * trim), and refusing a password with spaces at its ends (legitimate passwords out of a
+ * manager would be turned away for no real reason).
+ *
+ * <p><b>Asked of the definition rather than of a list of names.</b> The exemption is the
+ * field's own type, so every password field the portal has - and every one it grows - is
+ * covered without anybody adding it here. A value with no field at all, which is the
+ * country a place writes beside itself, is trimmed like any other.
+ */
+export function trimValues(form: FormDef, values: FormValues): FormValues {
+  const secret = form.fields.filter((field) => field.type === 'password').map((field) => field.name)
   const trimmed: FormValues = {}
 
   for (const [name, value] of Object.entries(values)) {
-    trimmed[name] = typeof value === 'string' ? value.trim() : value
+    trimmed[name] =
+      typeof value === 'string' && !secret.includes(name) ? value.trim() : value
   }
 
   return trimmed
