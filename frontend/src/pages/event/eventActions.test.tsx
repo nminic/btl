@@ -16,6 +16,23 @@ import { nextSeason } from '../admin/nextSeason'
  * result on by whoever is signed in.
  */
 
+/**
+ * How long a case in this file is given, which is twice what a case drawing one screen gets.
+ *
+ * **It also keeps the failure readable, and that part is measured rather than reasoned.**
+ * `asyncUtilTimeout` stays at `SLOW` (`test/setup.ts`), below the case's own clock. Asking one
+ * case here for a button that does not exist prints, on this clock,
+ * `Unable to find role="button" and name "…"`; on `SLOW` the same miss prints
+ * `Test timed out in 20000ms` and names nothing, because the query and the case die at the same
+ * instant. That is the fault `publicScreens.test.tsx` answers with `SLOW / 4` from the other side.
+ *
+ * `SLOW` stays the one home of the number (ADL A31); this is derived from it rather than a
+ * second threshold written out by hand. Named for what separates these cases from the one
+ * screen case `SLOW` was written for, and not `WALKED`, which `member/oneQuestion.test.tsx`
+ * already uses for a list of screens.
+ */
+const SEVERAL_SCREENS = SLOW * 2
+
 /** An event with races on it, by the address the calendar links to. */
 const EVENT = '/sr/kalendar/maraton-maratona-2015'
 /** The same event, named for what it is where that matters, and one that runs over
@@ -175,7 +192,7 @@ describe('who is offered what on an event', () => {
 
       cleanup()
     }
-  })
+  }, SEVERAL_SCREENS)
 
   it('draws no control box at all where there is nothing to press', async () => {
     /* Being signed in stopped being enough on 23.08.2026, when the report moved
@@ -327,7 +344,7 @@ describe('reporting a result from the event', () => {
     await user.click(link)
 
     expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(named)
-  })
+  }, SEVERAL_SCREENS)
 
   it('carries the race into the form, so it asks neither which event nor which race', async () => {
     const user = setupUser()
@@ -342,7 +359,7 @@ describe('reporting a result from the event', () => {
     /* The form opens on it: the time is asked for, the race is not. */
     expect(await screen.findByLabelText(/Sati/)).toBeVisible()
     expect(screen.queryByLabelText(/^Trka/)).toBeNull()
-  })
+  }, SEVERAL_SCREENS)
 })
 
 describe('a race carried into a copy of its event', () => {
@@ -470,7 +487,7 @@ describe('deleting an event', () => {
     } finally {
       confirm.mockRestore()
     }
-  })
+  }, SEVERAL_SCREENS)
 })
 
 
@@ -494,7 +511,7 @@ describe('copying an event', () => {
     expect(date).toHaveFocus()
     /* Everything else came across, so the only thing to do is the date. */
     expect(screen.getByLabelText(/Naziv događaja/)).toHaveValue(name)
-  })
+  }, SEVERAL_SCREENS)
 
   it('offers a season on and a week on, both counted from the event copied', async () => {
     /* Owner, 23.08.2026: two buttons of the same height as the calendar's, in the
@@ -552,7 +569,7 @@ describe('copying an event', () => {
     expect(date, 'the season on was counted from the day typed by hand').toHaveValue(
       fieldDate(nextSeason(copied.date)),
     )
-  })
+  }, SEVERAL_SCREENS)
 
   it('keeps the structure: every race copied, and every copy on the copied event', async () => {
     /* What copying is for (owner, 03.08.2026): the races come across and hang
@@ -601,7 +618,7 @@ describe('copying an event', () => {
     const under = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
 
     expect(under.getAllByRole('row').slice(1)).toHaveLength(races)
-  })
+  }, SEVERAL_SCREENS)
 
   it('never carries being featured across to the copy', async () => {
     /* Being singled out is a choice about this running of the race and not
@@ -617,7 +634,7 @@ describe('copying an event', () => {
     await screen.findByLabelText('Datum')
 
     expect(screen.getByLabelText(/^Istaknuto/)).toHaveValue('no')
-  })
+  }, SEVERAL_SCREENS)
 
   it('gives a second copy an identity of its own', async () => {
     /* The suffix counted the races and not the copies, and the number of races
@@ -641,7 +658,7 @@ describe('copying an event', () => {
     await screen.findByLabelText('Datum')
 
     expect(router.state.location.search).not.toBe(first)
-  })
+  }, SEVERAL_SCREENS)
 
   it('opens the copy as a copy: named so, without the three it keeps, on next season', async () => {
     /* Three of the owner's own sentences from 23.08.2026, and none of them was
@@ -683,7 +700,7 @@ describe('copying an event', () => {
       expect(inputElement(day).value, 'a race stayed in the season it was copied from')
         .toMatch(/\/2016$/)
     }
-  })
+  }, SEVERAL_SCREENS)
 
   it('takes the races with it, and gives the copy an address of its own', async () => {
     /* Entering an event and its five races again by hand is the work this exists
@@ -739,7 +756,7 @@ describe('copying an event', () => {
        its own, so the copy could arrive with no races and nothing would say
        so. */
     expect(at(within(copy).getAllByRole('cell'), 3).textContent).toBe(String(races))
-  })
+  }, SEVERAL_SCREENS)
 
   it('carries the name of a race into the copy, and that it was given by hand', async () => {
     /* A race renamed „Mrazijada, polumaraton" is still that next season, and one
@@ -790,7 +807,7 @@ describe('copying an event', () => {
       screen.getAllByLabelText(/^Trka,/).map((one) => inputElement(one).value),
       'the copy forgot that the race had been renamed by hand',
     ).toContain('Mrazijada, polumaraton')
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('lets a copied race that was never renamed go on following its event', async () => {
     /* The other half of the rule, and the half the guard above cannot reach: the
@@ -835,7 +852,7 @@ describe('copying an event', () => {
       names.every((one) => one === 'Novo ime'),
       `the copy stopped following its event: ${names.join(' | ')}`,
     ).toBe(true)
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('does not hand a third copy the races the second one answers to', async () => {
     /* The third home of one fault, and the last to be put right: the identity of a
@@ -917,11 +934,14 @@ describe('copying an event', () => {
        a **performance** budget rather than a guard against hanging, so a longer one
        has to say what it is paying for. This walk makes three copies of an event of
        four races, opens two forms and saves them, which is the shortest sequence
-       that reaches the fault at all: measured 1390ms warm on this machine, and a
-       package under load has been measured at three to four times its warm time
-       (`adminFlows.test.tsx`, 1,6s warm against 4,4s loaded), which is 4,2 to 5,6s
-       and either side of the default. Fifteen seconds is ten times warm; a fourfold
-       slowdown of the copy itself would still be caught by the other tests of this
-       file, which keep the default. */
-  }, SLOW)
+       that reaches the fault at all, and it is the longest walk in this file: five
+       changes of screen against one or three for the rest.
+
+       Measured 21.09.2026: **2,1 to 2,5 s** with the file run on its own, **3,3 s**
+       across the whole suite, and **14,6 s** with the file run beside sixty
+       processes burning the processor, which is a factor of about six and a half.
+       The twelve cases of this file that never leave the screen they started on keep
+       the default, because a single screen that is slow is what that budget exists
+       to show. */
+  }, SEVERAL_SCREENS)
 })

@@ -25,6 +25,23 @@ import { Messages } from './member/Messages'
  * goes in, the moderator finds it, decides, and the member sees the decision.
  * That sequence is the reason for building the front end before the database. */
 
+/**
+ * How long a case in this file is given, which is twice what a case drawing one screen gets.
+ *
+ * **It also keeps the failure readable, and that part is measured rather than reasoned.**
+ * `asyncUtilTimeout` stays at `SLOW` (`test/setup.ts`), below the case's own clock. Asking one
+ * case here for a button that does not exist prints, on this clock,
+ * `Unable to find role="button" and name "…"`; on `SLOW` the same miss prints
+ * `Test timed out in 20000ms` and names nothing, because the query and the case die at the same
+ * instant. That is the fault `publicScreens.test.tsx` answers with `SLOW / 4` from the other side.
+ *
+ * `SLOW` stays the one home of the number (ADL A31); this is derived from it rather than a
+ * second threshold written out by hand. Named for what separates these cases from the one
+ * screen case `SLOW` was written for, and not `WALKED`, which `member/oneQuestion.test.tsx`
+ * already uses for a list of screens.
+ */
+const SEVERAL_SCREENS = SLOW * 2
+
 /** The members as the prototype serves them, read rather than restated: one test
  *  has to say what the data actually holds, not repeat a sentence about it. */
 const competitors: Competitor[] = JSON.parse(
@@ -244,7 +261,7 @@ describe('my profile', () => {
     await user.click(menu.getByRole('button', { name: 'Odjavi se' }))
 
     expect(screen.getByRole('heading', { name: 'Za ovo treba prijava' })).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 })
 
 describe('membership', () => {
@@ -772,7 +789,7 @@ describe('messages', () => {
     await user.click(await screen.findByRole('link', { name: 'Sve poruke' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Poruke' })).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 
   it('goes to the front page when the address is a message that is not there', async () => {
     // Same road as any address the portal does not have (owner, 30.07.2026).
@@ -870,7 +887,7 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText('Odobreno')).toBeVisible()
 
     unmount()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('carries what the member said about the race to the moderator', async () => {
     /* The form has asked for it all along (`unos-rezultata.form.json`), the
@@ -902,7 +919,7 @@ describe('a result from entry to decision', () => {
     await openTheQueue(user)
 
     expect(await screen.findByText('Sat mi je stao na petom kilometru.')).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 
   it('says the count is not final, where it says the count', async () => {
     /* PDL, 30.08.2026, point 8: the form shows what the result is worth **and
@@ -929,7 +946,7 @@ describe('a result from entry to decision', () => {
 
     expect(await screen.findByText(/BTL poena/)).toBeVisible()
     expect(screen.getByText(/Račun nije konačan/)).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 
   it('refuses a result run in no time at all', async () => {
     const user = setupUser()
@@ -965,18 +982,24 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText('Minuta'), '45')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
     expect(await screen.findByText(/BTL poena/)).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 
   /* Its own limit, because it really does walk the whole way: a member enters a
      result, a moderator sends it back, the member corrects it and sends it again,
-     and the queue is read at every step. Measured 23.08.2026: 1,6 seconds of test
-     time on a warm run and 4,4 under the load of the whole package, against the
-     package's five, and the machine that decides is about half again slower. A test
-     Re-measured 28.08.2026 under the same command: **5,8 and 6,2 seconds**, so it
-     is over the default rather than a little under it, and it is the slowest case
-     in the repo.
-     that genuinely walks carries its own limit rather than raising everybody's (the
-     same rule is written over the turning chart in `publicScreens.test.tsx`). */
+     and the queue is read at every step. Five screens and eleven changes of screen,
+     the longest walk in this file.
+
+     Measured 23.08.2026: 1,6 seconds of test time on a warm run and 4,4 under the
+     load of the whole package, against the package's five, and the machine that
+     decides is about half again slower. Re-measured 28.08.2026 under the same
+     command: **5,8 and 6,2 seconds**, so it is over the default rather than a little
+     under it. Re-measured 21.09.2026 across the whole suite: **4,3 s**, which is the
+     longest single case of the 2933 in the repo, and **16,4 s** with the file run
+     beside sixty processes burning the processor.
+
+     A test that genuinely walks carries its own limit rather than raising
+     everybody's (the same rule is written over the turning chart in
+     `publicScreens.test.tsx`). */
   it('is corrected and sent again, as the same result rather than a second one', async () => {
     /* Owner, 06.08.2026. A refusal is not the end of a result: the member is
        told why, corrects it and sends the same race again, and it goes back into
@@ -1107,7 +1130,7 @@ describe('a result from entry to decision', () => {
     expect(said.getAllByText('540')).toHaveLength(2)
     expect(said.getByText('1:52:10')).toBeVisible()
     expect(said.getByText('23,55')).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('is not sent back without a reason, and the reason reaches the member', async () => {
     const user = setupUser()
@@ -1144,7 +1167,7 @@ describe('a result from entry to decision', () => {
        has one row and „one caveat" is the same answer with the rule and without it
        (review, 31.08.2026). */
     expect(screen.queryByText(/Račun nije konačan/)).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 /**
@@ -1352,7 +1375,7 @@ describe('screens that depend on the date', () => {
     expect(
       screen.queryByRole('heading', { name: 'Registracija još nije otvorena' }),
     ).not.toBeInTheDocument()
-  })
+  }, SEVERAL_SCREENS)
 })
 
 describe('an empty inbox and an empty result list', () => {
