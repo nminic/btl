@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { SLOW } from '../test/slow'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -341,8 +343,23 @@ describe('membership', () => {
        (`session/context.ts`). Rendered as somebody the generated file ALSO calls freed,
        this case passed with the reading put back on the public list, because the same
        word arrived either way and the case said nothing - measured that day. So the
-       member here is one the file calls a payer, and the answer is the thing that says
-       otherwise. */
+       member here is one the file calls a PAYER, and the answer is the thing that says
+       otherwise.
+
+       **And that the file calls him a payer is read off the file rather than claimed in
+       this comment**, which is the precedent `data/theRealAnswer.test.tsx` sets two files
+       away: written as a number with a sentence beside it, moving that member to
+       `feeExempt` in the seed would let the swap of sources pass again, with nothing but
+       prose saying why it should not. */
+    const whoPaysInTheFile = must(
+      JSON.parse(
+        readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+      ).find(
+        (one: { membershipBasis: string; active: boolean }) =>
+          one.membershipBasis === 'payment' && one.active,
+      ),
+      'a member the generated file calls a payer',
+    ).memberNumber
     const { stop } = serverThat((path) =>
       path === '/api/me'
         ? new Response(
@@ -356,7 +373,7 @@ describe('membership', () => {
         : null,
     )
 
-    renderFor('000031')
+    renderFor(String(whoPaysInTheFile))
 
     /* **The season is named, and it is the one this screen is about.** Read as November 2026,
        what is being renewed is 2027, and the sentence carried that year typed into it until

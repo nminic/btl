@@ -454,13 +454,18 @@ export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
  * Registracija / Prijava stoji link ka opcijama profila") - and it must not ask it twice
  * and get two answers.
  *
- * <p><b>A real session carries no member number, and that is the server's decision
- * rather than an oversight here.</b> `GET /api/me` answers `{role, account}` and
- * {@code MeApi} says at length why the member number is not on it: a moderator has no
- * member record at all, so the field would be empty for a real signed in administrator
- * and every screen reading it would carry the branch whether it wanted one or not. So
- * the two arms of this carry different things because the portal genuinely knows
- * different things about them.
+ * <p><b>A real session carries no member number HERE, and since 21.09.2026 that is the
+ * PORTAL'S doing rather than the server's.</b> This said the answer is `{role, account}`
+ * and that {@code MeApi} „says at length why the member number is not on it". Both halves
+ * are out of date, and the second is refused by that class in bold: „AND SINCE 20.09.2026
+ * IT CARRIES A MEMBER NUMBER, which is the sentence this class used to spend four
+ * paragraphs refusing." Measured the same day: a harness that really answers `{role,
+ * account}` and nothing else fails two cases, because the portal does read something out
+ * of the record beside them.
+ *
+ * <p>What the reason has become is smaller and still good: the number is on the answer and
+ * the portal does not take it, because doing so is one increment with the member area and
+ * a moderator's rights in it. Until then the two arms of this carry different things.
  */
 export type SignedIn =
   /**
@@ -471,15 +476,24 @@ export type SignedIn =
    * **THIS SAID THE ARM WOULD GO WITH THE MOCK, AND THAT DAY CAME ON 21.09.2026 AND IT DID
    * NOT GO.** The sentence is corrected here rather than left standing, because a promise
    * about a day that has passed reads as an instruction to carry it out. What it missed is
-   * that the two arms carry different things for a reason the switch does not touch: a
-   * real session is `GET /api/me`, and `session/theServer.ts` reads `role` and `account`
-   * off it and nothing else, so a signed in MEMBER has no member number in the portal and
-   * every screen about „me" would have nothing to draw.
+   * that the two arms carry different things for a reason the switch does not touch: a real
+   * session is `GET /api/me`, and the portal takes no MEMBER NUMBER off it, so a signed in
+   * member has none and every screen about „me" would have nothing to draw.
    *
-   * **The server can answer it and the portal does not ask yet.** `MeApi.WhoIAm` carries
-   * `member.memberNumber` since 20.09.2026, absent for an account that races for nobody.
-   * Reading it is its own increment - the member area and the moderator's rights come off
-   * the same answer - and it is named here rather than smuggled into the switch.
+   * **AND THE CORRECTION ITSELF CARRIED THE NEXT ONE, which is why this paragraph says so
+   * out loud.** It went on to say that `theServer.ts` reads the role and the account „and
+   * nothing else", and that was already false when it was written: the same day's work had
+   * that file reading `member.membershipBasis` as well, because a member is told how his
+   * own fee is held through this answer and through no other. Left standing it was an
+   * instruction to take that reading back out - which is the very thing a round of review
+   * had just called a high finding. Measured 21.09.2026: making it true again, by answering
+   * `null` for the basis, fails five cases.
+   *
+   * **What the portal reads off `/api/me` today, said as a list so the next sentence about
+   * it can be checked rather than believed:** the role, the account, and the caller's own
+   * membership basis. `MeApi.WhoIAm` carries more than that - the member number among it,
+   * since 20.09.2026 - and taking the number off it is its own increment, because the
+   * member area and a moderator's rights come off the same answer.
    */
   | { as: 'member'; memberNumber: string }
   /** A real session, which is an account and nothing more. */

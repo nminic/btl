@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { clearResourceCache, loadResource, RESOURCE_NAMES } from './client'
-import { myOwnRecordFromMe } from '../test/theAnswer'
+import { myOwnRecordFromMe, whoIAm } from '../test/theAnswer'
 import { plainly, type Place } from './places'
 import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
@@ -219,7 +219,17 @@ describe("the caller's own record", () => {
     /* Both directions at once, because a set comparison is both: a name here the server
        has not got fails by name, and a name the server has that is missing here fails the
        same way. */
-    expect(declaredByMyOwnRecord()).toEqual(Object.keys(myOwnRecordFromMe).sort())
+    expect(declaredBy('MyOwnRecord')).toEqual(Object.keys(myOwnRecordFromMe).sort())
+  })
+
+  it('arrives inside the three names the answer itself has, and no more', () => {
+    /* **The floor one storey up, and it was open until 21.09.2026.** The record inside was
+       held to `MyOwnRecord` while the answer AROUND it was written out by hand, so the
+       harness could answer a fourth outer name the server has not got - measured, 141
+       cases stayed green either way. The direction that matters is the harness answering
+       MORE than the server, because that is how a field the server withholds went through
+       a whole suite once already. */
+    expect(declaredBy('WhoIAm')).toEqual(Object.keys(whoIAm).sort())
   })
 
   it('is read off the backend, so the line above is looking at something', () => {
@@ -228,25 +238,33 @@ describe("the caller's own record", () => {
        annotations moved - collapses to a number under this one and says so, instead of
        passing over an empty set that would make the comparison above agree with a record
        nobody wrote. */
-    expect(declaredByMyOwnRecord().length).toBeGreaterThan(4)
+    expect(declaredBy('MyOwnRecord').length).toBeGreaterThan(4)
+    expect(declaredBy('WhoIAm').length).toBeGreaterThan(2)
+    /* And a name nothing declares comes back empty rather than agreeing with whatever is
+       asked of it, which is what keeps the two comparisons above from passing over a
+       reader that has quietly stopped finding anything. */
+    expect(declaredBy('NoSuchRecord')).toEqual([])
   })
 })
 
 /**
- * The component names of `MeApi.MyOwnRecord`, off the backend's own source.
+ * The component names of a record `MeApi` declares, off the backend's own source.
  *
  * Read between the opening bracket and the one that closes it, counted rather than
  * looked for, because the components carry annotations with brackets of their own
  * (`@JsonInclude(JsonInclude.Include.NON_NULL)`). Those are taken off before the list is
  * split, so what is left of each component is „type name" and the name is the last word
  * of it.
+ *
+ * One reader for both records rather than one apiece: they are the same question asked
+ * one storey apart, and two copies of it would be free to stop agreeing.
  */
-function declaredByMyOwnRecord(): string[] {
+function declaredBy(record: string): string[] {
   const source = readFileSync(
     join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web', 'MeApi.java'),
     'utf-8',
   )
-  const opens = source.indexOf('record MyOwnRecord(')
+  const opens = source.indexOf(`record ${record}(`)
 
   if (opens === -1) {
     return []
@@ -255,7 +273,7 @@ function declaredByMyOwnRecord(): string[] {
   let depth = 0
   let closes = opens
 
-  for (let at = opens + 'record MyOwnRecord'.length; at < source.length; at += 1) {
+  for (let at = opens + `record ${record}`.length; at < source.length; at += 1) {
     if (source[at] === '(') {
       depth += 1
     } else if (source[at] === ')') {
@@ -269,7 +287,7 @@ function declaredByMyOwnRecord(): string[] {
   }
 
   return source
-    .slice(opens + 'record MyOwnRecord('.length, closes)
+    .slice(opens + `record ${record}(`.length, closes)
     .replace(/@\w+\([^)]*\)/g, ' ')
     .split(',')
     .map((one) => one.trim().split(/\s+/).slice(-1)[0] ?? '')

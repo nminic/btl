@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
-import { asAnswered, myOwnRecordFromMe } from './theAnswer'
+import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
 import { SLOW } from './slow'
 
 /**
@@ -88,19 +88,25 @@ function whatMeAnswers(): Response {
   )
   const mine = members.find((one) => one.memberNumber === whoTheCookieNames?.memberNumber)
 
-  return new Response(
-    JSON.stringify({
-      role: whoTheCookieNames.role,
-      account: 1,
-      /* Absent altogether for somebody the file has no record of, which is the state
-         `MeApi` writes out: an account that races for nobody carries no member at all,
-         „rather than an object of nulls". */
-      ...(mine === undefined
-        ? {}
-        : { member: { referredCount: 0, ...asAnswered(mine, myOwnRecordFromMe) } }),
-    }),
-    { status: 200, headers: { 'content-type': 'application/json' } },
-  )
+  /* The outer names are cut to the keys of `whoIAm` for the same reason the record
+     inside them is cut to `myOwnRecordFromMe`: written out here, a fourth name the server
+     has not got would be answered by the harness with nothing able to tell, which is the
+     direction `membershipBasis` came through one floor down. */
+  const answered = {
+    role: whoTheCookieNames.role,
+    account: 1,
+    /* Absent altogether for somebody the file has no record of, which is the state
+       `MeApi` writes out: an account that races for nobody carries no member at all,
+       „rather than an object of nulls". */
+    ...(mine === undefined
+      ? {}
+      : { member: { referredCount: 0, ...asAnswered(mine, myOwnRecordFromMe) } }),
+  }
+
+  return new Response(JSON.stringify(asAnswered(answered, whoIAm)), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
 }
 
 /* The data layer fetches /api/<name>, which on QA is Spring and in development is

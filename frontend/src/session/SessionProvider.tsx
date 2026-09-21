@@ -521,7 +521,13 @@ export function SessionProvider({
       theServerSignedMeIn,
       /* One question, one answer, worked out here from the only two facts there are.
          The member number wins where both are set, because every screen that draws a
-         member reads the mock through it and the account knows no member (MeApi). */
+         member reads THROUGH it and the account knows no member (MeApi).
+
+         **It said „reads the mock through it" until 21.09.2026**, and the mock went off
+         that day (`data/client.ts`); measured, putting `BASE` back fails two cases in
+         `data/contract.test.ts`. What the sentence is about did not move: the two facts
+         are a member number and an account, and only one of them names somebody a screen
+         can draw. */
       signedIn:
         memberNumber !== null
           ? { as: 'member', memberNumber }

@@ -180,6 +180,32 @@ export const myOwnRecordFromMe = {
 }
 
 /**
+ * AND THE ANSWER THE RECORD ABOVE ARRIVES INSIDE, which is what `/api/me` really is.
+ *
+ * **Its three names were written out by hand in the harness until 21.09.2026, one floor
+ * above the one that had just been closed.** Measured that day: a harness answering a
+ * FOURTH outer name that `MeApi.WhoIAm` has not got left 141 cases green, and a new
+ * component on `WhoIAm` that the harness never answered left the same 141 green. The
+ * direction that was covered - the harness answering LESS - is covered by behaviour,
+ * because a screen reading a name that is not there draws nothing. The direction that was
+ * open is the harness answering MORE, and that is exactly the direction `membershipBasis`
+ * came through.
+ *
+ * Held the same way the record inside it is: `data/contract.test.ts` reads the components
+ * of `record WhoIAm(` off the backend's own source and requires the same set.
+ *
+ * `member` is absent altogether where the caller races for nobody, which is the state
+ * `MeApi` writes out in as many words - „Absent rather than null, and rather than an
+ * object of nulls". Taking a key away is what the harness does there, and this record is
+ * the whole answer rather than the only shape of it.
+ */
+export const whoIAm = {
+  role: 'competitor',
+  account: 1,
+  member: myOwnRecordFromMe,
+}
+
+/**
  * One row of the generated file reduced to what the server would really answer with.
  *
  * The keys of the record above and nothing else, which is what replaces the list the
