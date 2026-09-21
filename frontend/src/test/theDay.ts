@@ -4,11 +4,12 @@
  * **Why this exists at all, measured and not supposed.** Two cases went red on
  * 1 October 2026 without a line of code changing: they never said what day they
  * were being read as, so they read the machine's, and the portal shuts the
- * referral amount from 1 October (`data/season.ts`). Measured in isolation, twice
- * each and identically: on the real clock 174/174 and exit 0, pinned to
- * `2026-09-30` 174/174 and exit 0, pinned to `2026-10-01` 173/174 and exit 1. A
- * deterministic crossing, not noise - and nothing in the gate could see it coming,
- * because the gate ran on whatever day it happened to be run.
+ * referral amount from 1 October (`data/season.ts`). Reproduced on this branch,
+ * the case unpinned and `pages/adminFlows.test.tsx` read in isolation: on the real
+ * clock 174/174 and exit 0, read as `2026-09-30` 174/174 and exit 0, read as
+ * `2026-10-01` 173/174 and exit 1. A deterministic crossing, not noise - and
+ * nothing in the gate could see it coming, because the gate ran on whatever day it
+ * happened to be run.
  *
  * **The floor, and it is one function rather than a list.** `clock/context.ts`
  * holds the single reader of the machine's clock and `clock/oneClock.test.ts`
