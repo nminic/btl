@@ -257,9 +257,17 @@ class TheEventBeginsWithItsFirstRaceTest extends DatabaseTest {
 	 * DELETING THE WHOLE EVENT TAKES ITS RACES AND SAYS NOTHING.
 	 *
 	 * <p>{@code race_event_fk} cascades, so this fires the rule once for every race of an
-	 * event that is no longer there to be asked about. A rule that read the event without
-	 * allowing for its absence would turn the owner's one action - „Dogadjaj se brise, sa
-	 * svim svojim trkama" (03.08.2026) - into a server fault.
+	 * event that is no longer there to be asked about, and the owner's one action -
+	 * „Dogadjaj se brise, sa svim svojim trkama" (03.08.2026) - must not become a server
+	 * fault.
+	 *
+	 * <p><b>What holds it is the exemption and not a guard, and that is measured.</b> V29's
+	 * first draft returned early when the event was not found; taking that branch away
+	 * changed nothing here, because the races are gone by then too, so the earliest day is
+	 * NULL and the exemption answers. The branch was removed rather than left looking like
+	 * protection. What this case would still catch is a rule asked at the wrong moment: one
+	 * written BEFORE the delete, or one that took the day off {@code OLD} instead of off the
+	 * table, refuses this.
 	 */
 	@Test
 	void deletingTheEventWithItsRacesIsNotRefused() {
@@ -322,8 +330,14 @@ class TheEventBeginsWithItsFirstRaceTest extends DatabaseTest {
 	 * at the end of each statement refuses that route; asked at the end of the change, it
 	 * lets it through.
 	 *
-	 * <p>The mutation is the word {@code DEFERRABLE} in V29: without it this case fails, and
-	 * so does every change the portal makes to an event's day.
+	 * <p><b>WHAT THIS CASE DOES NOT HOLD, and it was found by running the mutation rather
+	 * than by reading it.</b> It asks for the deferral out loud, because the fixture above
+	 * leaves the rule immediate; and {@code SET CONSTRAINTS ALL DEFERRED} defers a rule
+	 * declared {@code INITIALLY IMMEDIATE} just as happily. So this measures that the rule is
+	 * DEFERRABLE and says nothing about which way it is declared - V29 was run with
+	 * {@code initially immediate} in it and this case passed. What the routes rely on is the
+	 * DECLARATION, since neither of them says {@code SET CONSTRAINTS} at all, and that is
+	 * held one case down, by asking the catalogue.
 	 */
 	@Test
 	void theDayAndTheRacesMayDisagreeBetweenTwoStatementsOfOneChange() {
@@ -339,6 +353,35 @@ class TheEventBeginsWithItsFirstRaceTest extends DatabaseTest {
 
 		assertThat(daysOfRacesOn(OVER_TWO_MORNINGS)).containsExactly("2027-03-08", "2027-03-09");
 		assertThat(dayOf(OVER_TWO_MORNINGS)).isEqualTo("2027-03-08");
+	}
+
+	/**
+	 * AND BOTH TRIGGERS ARE DEFERRED BY DECLARATION, NOT BY WHOEVER WRITES.
+	 *
+	 * <p><b>This case exists because the one above turned out not to hold it.</b> Neither
+	 * route says {@code SET CONSTRAINTS}: they simply write their two statements and commit,
+	 * so what decides whether the portal works is the mode V29 DECLARES. A behaviour case
+	 * cannot reach that, because to reproduce the route's window it has to ask for deferral
+	 * itself, and asking defers an {@code INITIALLY IMMEDIATE} rule just the same.
+	 *
+	 * <p>So it is asked of the catalogue instead, which is the one place that knows what was
+	 * declared rather than what this transaction has been told. {@code condeferrable} false
+	 * fails here and so does {@code condeferred} false, and either of them refuses every
+	 * change the portal makes to an event's day.
+	 *
+	 * <p>The names are written out rather than counted, and the floor under that list is
+	 * {@code AxisConstraintsTest.everyConstraintOnTheSixTablesHasARowThatBreaksIt}: a third
+	 * trigger added to either table fails there for want of a row that breaks it.
+	 */
+	@Test
+	void bothTriggersAreDeferredByDeclarationAndNotByWhoeverAsks() {
+		assertThat(db.sql("select con.conname || ' ' || con.condeferrable || ' ' || con.condeferred"
+						+ " from pg_constraint con"
+						+ " where con.conname in (?, ?) order by con.conname")
+				.params(ON_EVENT, ON_RACE).query(String.class).list())
+				.as("a rule the portal's own two-statement writes depend on is declared immediate,"
+						+ " or is not deferrable at all, or is not there")
+				.containsExactly(ON_EVENT + " true true", ON_RACE + " true true");
 	}
 
 	/**

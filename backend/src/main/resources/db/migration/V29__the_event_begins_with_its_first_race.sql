@@ -81,6 +81,14 @@
  * `min(date)` rather than a row ordered and limited: there is no event here to fall back on,
  * only the one number, and an event with no race at all answers NULL - which is the
  * exemption, written as the absence of a value rather than as a count.
+ *
+ * <b>THE EVENT THAT IS NO LONGER THERE NEEDS NO BRANCH OF ITS OWN, and the first draft had
+ * one.</b> `race_event_fk` cascades, so deleting an event deletes its races and fires this
+ * for each of them; it read the event, and if nothing was found it returned early. Measured:
+ * taking that branch away changes NOTHING, because by then the races are gone too, so
+ * `min` answers NULL and the same exemption already covers it. A branch no mutation can
+ * reach is a branch that looks like protection and is not, so it is gone and both facts are
+ * asked in one statement. What holds the case is therefore the exemption and not a guard.
  */
 create function the_event_begins_with_its_first_race() returns trigger
     language plpgsql
@@ -107,21 +115,19 @@ begin
     end if;
 
     foreach which in array touched loop
-        /* The event may be gone: `race_event_fk` cascades, so deleting an event deletes its
-           races and fires this for each of them. Nothing is owed by a row that is no longer
-           there. */
-        select e.date into begun from btl_event e where e.id = which;
+        /* Both facts in one statement, and no row at all where the event has been deleted -
+           in which case both stay NULL and the exemption below answers for it. */
+        select e.date, (select min(r.date) from race r where r.event_id = e.id)
+        into begun, earliest
+        from btl_event e
+        where e.id = which;
 
-        if found then
-            select min(r.date) into earliest from race r where r.event_id = which;
-
-            if earliest is not null and earliest <> begun then
-                raise exception using
-                    errcode = '23514',
-                    message = tg_name || ': event ' || which || ' begins on ' || begun
-                        || ' and the first of its races runs on ' || earliest,
-                    hint = 'PDL P35: the day of an event is the first of the days of its races.';
-            end if;
+        if earliest is not null and earliest <> begun then
+            raise exception using
+                errcode = '23514',
+                message = tg_name || ': event ' || which || ' begins on ' || begun
+                    || ' and the first of its races runs on ' || earliest,
+                hint = 'PDL P35: the day of an event is the first of the days of its races.';
         end if;
     end loop;
 
