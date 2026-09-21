@@ -18,8 +18,14 @@
  * ogranicenjem u bazi ili sekvencom, ne proverom u Javi"
  * (PaymentNumberConcurrencyTest). Four hands can write this fact - the race route, the
  * event route, a migration and a statement typed into psql - and only a rule in the
- * database holds for all four. Measured on the shipped calendar: three events were filed
- * on a morning no race of theirs runs on, every test was green, and nothing refused them.
+ * database holds for all four. Measured on the shipped calendar: FOUR events were filed on a
+ * day that is not the first of their races, every test was green, and nothing refused them.
+ *
+ * The number is four and not three, and the difference is worth a line because it is the same
+ * mistake this file exists to make impossible. Counting „events filed on a morning no race of
+ * theirs runs on" gives three - and that question is NARROWER than the rule. RijekaRun is
+ * filed on a day one of its races does run on, just not the earliest, so it passes the
+ * narrower question and fails the rule. PDL P35 carries the correction.
  *
  * DEFERRED, AND THAT IS MEASURED RATHER THAN CAUTIOUS. EventWriteApi.change writes the
  * event's new day and THEN moves its races by the same number of days (owner, 10.08.2026:

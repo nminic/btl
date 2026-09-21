@@ -141,6 +141,37 @@ class TheEventBeginsWithItsFirstRaceTest extends DatabaseTest {
 	}
 
 	/**
+	 * AND A RACE WRITTEN, NOT MOVED, ON A MORNING BEFORE ITS EVENT BEGINS.
+	 *
+	 * <p><b>This is the arm of the rule the portal will meet most often, and it had no case
+	 * until an independent review measured that taking {@code insert} out of the trigger left
+	 * the whole suite green.</b> ADL A59 says the calendar's own rows arrive by a script
+	 * writing against the live database, so a plain INSERT is how nearly every row of
+	 * `btl_event` and `race` on QA was made; and the script that splits RijekaRun into three
+	 * events writes two of them the same way. The hand the rule exists for is usually this
+	 * one.
+	 *
+	 * <p>The later race is written FIRST and on purpose. It is the control inside the case: a
+	 * trigger that refused every insert under an event would pass the second half on its own,
+	 * and then this would say nothing about the direction.
+	 */
+	@Test
+	void aRaceWrittenBeforeTheDayItsEventBeginsOnIsRefused() {
+		race(OVER_TWO_MORNINGS, "Nova kasna", "2027-03-05");
+
+		assertThat(daysOfRacesOn(OVER_TWO_MORNINGS))
+				.as("a race written after the event began was refused, so what follows measures"
+						+ " inserting rather than the day it was inserted on")
+				.containsExactly("2027-03-01", "2027-03-02", "2027-03-05");
+
+		assertThatThrownBy(() -> race(OVER_TWO_MORNINGS, "Nova rana", "2027-02-20"))
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining(ON_RACE)
+				.hasMessageContaining("begins on 2027-03-01")
+				.hasMessageContaining("runs on 2027-02-20");
+	}
+
+	/**
 	 * AND SO IS THE FIRST RACE MOVED AWAY WITHOUT THE EVENT FOLLOWING IT, which is the same
 	 * sentence with no direction in it.
 	 *
@@ -177,9 +208,18 @@ class TheEventBeginsWithItsFirstRaceTest extends DatabaseTest {
 	 *
 	 * <p><b>This is the axis nothing in the portal measured before today.</b> The event runs
 	 * two races on 03.09 and one on 05.09; taking one of the two away leaves 03.09 still the
-	 * first morning, so the day must stay exactly where it is and the rule must not fire. A
-	 * rule that answered „the event begins on the day of the race that is left" rather than
-	 * „on the earliest" passes every other case in this file and fails this one.
+	 * first morning, so the day must stay exactly where it is and the rule must not fire.
+	 *
+	 * <p><b>What breaks it, measured: a rule that makes the day MOVE whenever a race running
+	 * on it is taken away</b> ({@code if tg_op = 'DELETE' and begun = old.date then raise}).
+	 * That is the confusion this axis exists for - „the race on the event's day is gone" and
+	 * „the event's first morning is gone" are the same sentence until two races share that
+	 * morning - and it is a rule the fixture survives, so it reaches this case.
+	 *
+	 * <p><b>The one-token version does NOT reach it, and saying otherwise was wrong.</b>
+	 * Turning {@code min} into {@code max} refuses the fixture itself, fourteen errors before
+	 * any case runs, so it proves nothing about this one. The sentence that stood here
+	 * claimed that mutation; an independent review measured it and it did not hold.
 	 *
 	 * <p>The other half is the case below, so that this one cannot pass by the rule being
 	 * asleep.
@@ -261,13 +301,21 @@ class TheEventBeginsWithItsFirstRaceTest extends DatabaseTest {
 	 * „Dogadjaj se brise, sa svim svojim trkama" (03.08.2026) - must not become a server
 	 * fault.
 	 *
-	 * <p><b>What holds it is the exemption and not a guard, and that is measured.</b> V29's
-	 * first draft returned early when the event was not found; taking that branch away
-	 * changed nothing here, because the races are gone by then too, so the earliest day is
-	 * NULL and the exemption answers. The branch was removed rather than left looking like
-	 * protection. What this case would still catch is a rule asked at the wrong moment: one
-	 * written BEFORE the delete, or one that took the day off {@code OLD} instead of off the
-	 * table, refuses this.
+	 * <p><b>WHAT BREAKS IT, measured, and it is one thing: a rule that treats an event it
+	 * cannot find as a fault.</b> Written into V29 as {@code if begun is null then raise},
+	 * this case is the only one of the fifteen that falls. That shape is not far-fetched -
+	 * it is what V29's own first draft nearly was, and what anybody adding a branch „just in
+	 * case the event is missing" would write. The rule says nothing instead, because by the
+	 * time it is asked the races are gone too, so the earliest day is NULL and the exemption
+	 * answers for both.
+	 *
+	 * <p><b>And three things that do NOT break it, each written down because each was claimed
+	 * here before it was measured.</b> Removing the exemption leaves this green (it falls on
+	 * the two cases about an event with no races). Taking the day off {@code OLD} rather than
+	 * off the table leaves this green as well, and falls on the two about a race deleted off
+	 * the first morning. And a rule asked BEFORE the delete cannot be written at all:
+	 * {@code create constraint trigger ... before ...} is a syntax error in PostgreSQL 18.
+	 * The sentence that stood here named all three and was wrong about all three.
 	 */
 	@Test
 	void deletingTheEventWithItsRacesIsNotRefused() {
