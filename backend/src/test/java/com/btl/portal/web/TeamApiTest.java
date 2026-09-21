@@ -1109,8 +1109,16 @@ class TeamApiTest {
 							+ "must not read alike", administration)
 					.contains(WHO_ADMINISTERS_THE_TEAM);
 
-			assertThat(vacant.path(WHO_ADMINISTERS_THE_TEAM).asString())
-					.as("a team whose seat nobody holds answered %s with somebody",
+			/* ASKED OF THE NODE, because `asString()` reads a null node back as the EMPTY
+			   STRING and this case is named for telling those two apart. Measured on the
+			   spisak of 21.09.2026: written `path(...).asString()` it sat green through a
+			   query answering null for every empty seat, which is one of the four states
+			   wearing another one's clothes - the very thing the case exists to refuse. */
+			JsonNode seat = vacant.get(WHO_ADMINISTERS_THE_TEAM);
+
+			assertThat(seat.isNull() ? null : seat.asString())
+					.as("a team whose seat nobody holds answered %s with somebody, or with the"
+							+ " null that means „somebody holds it and I cannot name him\"",
 							administration)
 					.isEqualTo(NOBODY_HOLDS_THIS_SEAT);
 		}
