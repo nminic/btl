@@ -30,18 +30,18 @@ import { useSession } from '../session/useSession'
  * separate pass and *inside* that figure rather than beside it: the fetch happens during the wait
  * a `findBy` is already counting, so the two do not add up. Of it, `results.json` at 1,3 MB read
  * thirty three times is 171 ms, so the biggest file on the portal is not what this costs.
- * No single case carries the file (the longest does 0,82 s of work on an idle machine against
- * 16,9 s for the file), nothing is done twice, and the screen they all open already memoises the
- * one expensive thing it holds (`CompetitorProfile.tsx`, the `useMemo` around `resultsOf`, so the
- * fault ADL A2 was written for is not repeated here). Every one of those calls is a step of
- * the walk or an assertion about it, so there is no way to make this shorter that does not make
- * it say less.
+ * No single case carries the file: on an idle machine the longest one measures between 0,64 and
+ * 0,82 s across passes, against 16,9 s for the file. Nothing is done twice, and the screen they
+ * all open already memoises the one expensive thing it holds (`CompetitorProfile.tsx`, the
+ * `useMemo` around `resultsOf`, so the fault ADL A2 was written for is not repeated here). Every
+ * one of those calls is a step of the walk or an assertion about it, so there is no way to make
+ * this shorter that does not make it say less.
  *
  * **So the number is not about the work but about the load.** The longest case here was measured
- * five ways: 0,82 s alone, 2,92 s inside the whole suite, 7,62 s inside the whole suite beside
- * twenty four processes burning the processor, 13,28 s beside sixty, and 18,20 s run alone beside
- * ninety six. That last one passed against `SLOW` by 1,8 seconds, a margin of 1,10; against twice
- * `SLOW` it is 2,20.
+ * five ways: 0,82 s alone at its worst, 2,92 s inside the whole suite, 7,62 s inside the whole
+ * suite beside twenty four processes burning the processor, 13,28 s beside sixty, and 18,20 s run
+ * alone beside ninety six. That last one passed against `SLOW` by 1,8 seconds, a margin of 1,10;
+ * against twice `SLOW` it is 2,20.
  *
  * **And it is not one case sitting on the edge but five.** In that same run five cases are past
  * twelve seconds (18,20 / 16,76 / 14,56 / 14,41 / 14,01). That is why this file has failed as
