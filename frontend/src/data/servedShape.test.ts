@@ -586,12 +586,20 @@ describe('the answer the backend gives', () => {
       'verification',
     ]
 
-    /* AND NOTHING IS EXCUSED ANY MORE. An empty list here is the whole claim of this
-       case: every name the contract carries has been seen and held against the type
-       that reads it. A sixteenth resource cannot arrive without somebody either
-       measuring it or writing down, here, why it is not measured - and the cost of
-       that second road is now on the record. */
+    /* AND NOTHING IS EXCUSED ANY MORE. */
     const notSeen: ResourceName[] = []
+
+    /* THE EMPTINESS IS ASSERTED AND NOT MERELY WRITTEN, and that is a finding rather
+       than a flourish. The line below on its own says every resource is on one list or
+       the other, which is satisfied just as well by moving a name from the first to the
+       second: measured before this line existed, taking `verification` out of `measured`
+       and putting it back in `notSeen` left this case GREEN. That is precisely the road
+       the portal went down once already - the resource was excused here for a day and
+       the screen it feeds threw in front of the owner - so the road is shut.
+
+       A sixteenth resource that genuinely cannot be measured makes this red, on purpose:
+       the way past it is a written decision, not a name quietly added to a list. */
+    expect(notSeen).toEqual([])
 
     expect([...measured, ...notSeen].sort()).toEqual([...RESOURCE_NAMES].sort())
   })
