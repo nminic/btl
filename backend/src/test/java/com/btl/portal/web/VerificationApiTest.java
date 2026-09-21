@@ -18,7 +18,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ArrayNode;
 
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -92,6 +91,9 @@ class VerificationApiTest {
 	/** Just made, and may do nothing yet. */
 	private static final String NO_TICKS = "novi@primer.rs";
 
+	/** A moderator who may work in two tabs and has nothing to do in either of them. */
+	private static final String EMPTY_QUEUES = "jelena@primer.rs";
+
 	/** Signed in and holding nothing whatever, which is every member of the league. */
 	private static final String A_COMPETITOR = "takmicar@primer.rs";
 
@@ -136,6 +138,26 @@ class VerificationApiTest {
 	/** And the day it is on a machine kept in UTC, or in London. */
 	private static final String THE_MACHINES_DAY = "2026-09-14";
 
+	/**
+	 * A TOWN OUT OF THE CODEBOOK, named by its country and not by its rank.
+	 *
+	 * <p>Written as a sub-select rather than a number because the codebook is reference
+	 * data this file does not own: {@code rank} is a position among 1200 rows and the row
+	 * holding it can move, while „the first Serbian town in the book" is a sentence that
+	 * stays true. What matters here is only that its country is NOT the one the typed
+	 * town below names, so „the country of this proposal" and „the country of any
+	 * proposal" cannot answer alike.
+	 */
+	private static final String A_TOWN_IN_THE_CODEBOOK =
+			"(select id from place where country_id = (select id from country where code = 'RS')"
+					+ " order by rank limit 1)";
+
+	/** And a town nobody found in the book, which is V11's other way of holding one. */
+	private static final String TYPED_TOWN = "Podgorica";
+
+	/** In another country, so the two teams rows differ along that axis too. */
+	private static final String TYPED_COUNTRY = "ME";
+
 	private static final String THE_REASON = "Uplatnica nije citljiva";
 
 	private static final String THE_DECIDER = "Moderator Koji Je Odlucio";
@@ -178,12 +200,19 @@ class VerificationApiTest {
 		account(OTHER_QUEUES, "moderator", "Bojan", "Peric");
 		account(ONLY_ENTITIES, "moderator", "Milica", "Ilic");
 		account(NO_TICKS, "moderator", "Novak", "Nedic");
+		account(EMPTY_QUEUES, "moderator", "Jelena", "Jovic");
 		account(A_COMPETITOR, "competitor", "Tijana", "Takic");
 		account(THE_SUPERADMIN, "superadmin", "Sanja", "Simic");
 
 		ticked(TWO_QUEUES, "queue:" + COMMENTS, "queue:" + RESULTS);
 		ticked(OTHER_QUEUES, "queue:" + TEAMS, "queue:" + PROFILES);
 		ticked(ONLY_ENTITIES, "entity:members", "entity:events");
+		/* TWO TICKS, AND BOTH TABS EMPTY, in the two different ways a tab can be: one
+		   worked to the bottom and one that never held anything. He is the only person in
+		   this fixture for whom „may he" and „is there anything for him" part company, and
+		   without him a server that decided the refusal off the ROWS instead of the rights
+		   would answer every case in this file exactly as the right one does. */
+		ticked(EMPTY_QUEUES, "queue:" + RESULTS, "queue:" + SCHEDULE);
 
 		member(MEMBER_ONE, "Ana", "Anic", true);
 		member(MEMBER_TWO, "Bojan", "Bojic", true);
@@ -207,8 +236,37 @@ class VerificationApiTest {
 		waiting(PROFILES, MEMBER_ONE, "Biografija Ane Anic", "Trcim od 2019. godine",
 				"2026-09-06 09:00:00+00", null);
 
+		/* TWO TEAMS ROWS AND NOT ONE, and they differ along every axis this tab is read
+		   along (the rule of 06.09.2026, „ose se prebrajaju, ne pogadjaju"). With one row
+		   apiece, `city`, `country`, `subjectId` and `kind` would each hold one value
+		   across the whole answer, and a server answering any of them with a constant -
+		   or reading the wrong column for it - would pass every case below AND the floor
+		   `noFieldOfAnItemIsTheSameInEveryRecord`, which is the one that exists to refuse
+		   exactly that.
+
+		   The axes, counted:
+
+		   - A NEW TEAM against a CHANGE to one that exists. That is `kind`, and it is
+		     also `subjectId`: a proposal naming no team answers blank, and a change
+		     answers the key of the team it is about. One of each, so „is it a change"
+		     cannot be answered by a constant either way.
+		   - A TOWN FROM THE CODEBOOK against a TOWN SOMEBODY TYPED. V11 lets a proposal
+		     hold its town the one way or the other and never both, so a server reading
+		     only `tp.city` would serve the typed one and lose the other, and a server
+		     reading only `place.name` would do the reverse. Each mistake is green
+		     against a fixture that has only one of the two.
+		   - TWO DIFFERENT COUNTRIES, and neither is the country of the place every other
+		     row in this fixture sits in. Both rows in Serbia, „the country of this
+		     proposal" and „the country of the league" answer alike, and a query that
+		     joined the wrong table would be indistinguishable from one that joined the
+		     right one. */
 		waiting(TEAMS, MEMBER_ONE, "Timocka trkacka druzina", "Devet ljudi iz Zajecara",
 				"2026-07-01 07:00:00+00", null);
+		proposalOn("Timocka trkacka druzina", MEMBER_ONE, null, TYPED_TOWN, TYPED_COUNTRY);
+
+		waiting(TEAMS, MEMBER_TWO, "Dunavski trkaci", "Ime tima se menja",
+				"2026-07-02 07:00:00+00", null);
+		proposalOn("Dunavski trkaci", MEMBER_TWO, aTeamThatExists(), null, null);
 
 		waitingAboutNobodyInParticular(PAYMENTS, "Gordana Goric", "", "2026-08-20 06:00:00+00");
 	}
@@ -264,6 +322,58 @@ class VerificationApiTest {
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, feeStanding, String.format("%016x", ++issued))
 				.update();
+	}
+
+	/**
+	 * A TEAM THAT ALREADY EXISTS, for a proposal that asks to change one.
+	 *
+	 * <p>Its town comes out of the codebook, which is the half of V11's „one way or the
+	 * other" that a typed town cannot stand in for.
+	 */
+	private long aTeamThatExists() {
+		db.sql("insert into team (slug, name, bio, link, place_id, first_season)"
+						+ " values ('dunavski-trkaci', 'Dunavski trkaci', '', '',"
+						+ " " + A_TOWN_IN_THE_CODEBOOK + ", 2027)")
+				.update();
+
+		return db.sql("select id from team where slug = 'dunavski-trkaci'")
+				.query(Long.class).single();
+	}
+
+	/**
+	 * THE PROPOSAL A TEAMS ROW POINTS AT, hung on the row that carries the same subject.
+	 *
+	 * @param teamId     the team this asks to change, or null for a team that does not
+	 *                   exist yet. It is the whole of the difference between the two
+	 *                   kinds of teams row, and the schema is where {@code kind} is read
+	 *                   from
+	 * @param typedTown  a town somebody wrote out, or null to take one from the codebook.
+	 *                   V11 refuses both at once and refuses neither, so exactly one of
+	 *                   this and the codebook is used
+	 * @param typedCountry the code of that town's country, which V11 ties to the typed
+	 *                   town and to nothing else
+	 */
+	private void proposalOn(String subject, String memberNumber, Long teamId, String typedTown,
+			String typedCountry) {
+		/* WHICH OF THE TWO TOWNS IS CHOSEN HERE AND NOT IN THE STATEMENT. Written as
+		   `case when ? is null` it was PostgreSQL that had to decide what sort of thing
+		   the placeholder was, and it refuses to: a parameter compared only against null
+		   has no type to infer from anything. Measured, and it read as eighteen errors
+		   against eighteen tests - the shape the rules call infrastructure and not a
+		   finding. */
+		String fromTheCodebook = typedTown == null ? A_TOWN_IN_THE_CODEBOOK : "null";
+
+		db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link, place_id,"
+						+ " city, country_id) values ("
+						+ " (select id from competitor where member_number = ?), ?, ?, '', '',"
+						+ " " + fromTheCodebook + ", ?,"
+						+ " (select id from country where code = ?))")
+				.params(memberNumber, teamId, subject, typedTown, typedCountry)
+				.update();
+
+		db.sql("update verification set team_proposal_id ="
+						+ " (select id from team_proposal where name = ?) where subject = ?")
+				.params(subject, subject).update();
 	}
 
 	private long photograph() {
@@ -324,55 +434,80 @@ class VerificationApiTest {
 		return new ObjectMapper().readTree(whole(email));
 	}
 
-	/** The tabs one person is served, in the order they came back. */
+	/**
+	 * THE TABS ONE PERSON IS SERVED, once each and in the order they came back.
+	 *
+	 * <p>Read off the ITEMS since 22.09.2026, because that is all the answer holds now: a
+	 * tab reaches this list by having something waiting in it, which is the same sentence
+	 * as „a moderator is served the tabs he may work in" only for the tabs that are not
+	 * empty. {@link #aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal} is the
+	 * other half and says so out loud.
+	 */
 	private List<String> tabsServedTo(String email) throws Exception {
 		List<String> out = new ArrayList<>();
-		for (JsonNode tab : answer(email)) {
-			out.add(tab.path("queue").asString());
-		}
-		return out;
-	}
-
-	/** One tab of somebody's answer, found by its name and never by position. */
-	private JsonNode tab(String email, String queue) throws Exception {
-		for (JsonNode one : answer(email)) {
-			if (queue.equals(one.path("queue").asString())) {
-				return one;
+		for (JsonNode item : answer(email)) {
+			String queue = item.path("queue").asString();
+			if (!out.contains(queue)) {
+				out.add(queue);
 			}
-		}
-		throw new AssertionError(PATH + " did not answer " + email + " with the tab " + queue);
-	}
-
-	/** What one tab holds, as the subjects of its items, which is what a moderator reads. */
-	private List<String> waitingIn(String email, String queue) throws Exception {
-		List<String> out = new ArrayList<>();
-		for (JsonNode item : tab(email, queue).path("waiting")) {
-			out.add(item.path("subject").asString());
 		}
 		return out;
 	}
 
 	/**
-	 * EVERY ITEM OF EVERYBODY'S TAB IN ONE LIST, which is what the two floors of
-	 * {@link Answers} read.
+	 * ONE ITEM OF ONE TAB, by its place in that tab and never by its place in the answer.
 	 *
-	 * <p>They compare the names of one RECORD and the values across records, and the record
-	 * this resource is read for is the item and not the tab it stands in. Flattened here
-	 * rather than by asking for one tab, because a single tab's items share a field or two
-	 * by construction - both comments carry no photograph - and a floor that says „no field
-	 * is the same in every record" would then be asking about a sample chosen to make it
-	 * fail.
+	 * <p>The answer is one list of every tab's items since 22.09.2026, so „the second
+	 * item" means nothing without saying second of WHAT. Counted inside the tab, which is
+	 * the order a moderator works down and the order {@code order by r.target,
+	 * v.raised_at, v.id} produces.
 	 */
-	private JsonNode everyItemServedTo(String email) throws Exception {
-		ArrayNode all = new ObjectMapper().createArrayNode();
-
-		for (JsonNode one : answer(email)) {
-			for (JsonNode item : one.path("waiting")) {
-				all.add(item);
+	private JsonNode itemIn(String email, String queue, int nth) throws Exception {
+		List<JsonNode> out = new ArrayList<>();
+		for (JsonNode item : answer(email)) {
+			if (queue.equals(item.path("queue").asString())) {
+				out.add(item);
 			}
 		}
 
-		return all;
+		assertThat(out.size())
+				.as("%s answered %s with fewer than %d items in the %s tab, so the item this case"
+						+ " reads is not there at all", PATH, email, nth + 1, queue)
+				.isGreaterThan(nth);
+
+		return out.get(nth);
+	}
+
+	/** What one tab holds, as the subjects of its items, which is what a moderator reads. */
+	private List<String> waitingIn(String email, String queue) throws Exception {
+		List<String> out = new ArrayList<>();
+		for (JsonNode item : answer(email)) {
+			if (queue.equals(item.path("queue").asString())) {
+				out.add(item.path("subject").asString());
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * EVERY ITEM SERVED TO SOMEBODY, which is the answer itself and NOT A FLATTENING OF
+	 * IT.
+	 *
+	 * <p><b>This method used to walk into a {@code waiting} array and build a list out of
+	 * it, and that is precisely why the floors below could not see what broke the
+	 * portal.</b> The answer was grouped by tab; the portal asked for a flat list of
+	 * items; and this method quietly did the ungrouping that the portal did not, so every
+	 * field-level floor compared items the server never handed anybody in that shape. A
+	 * guard that has to reshape its subject before it can pass is measuring the shape it
+	 * made itself.
+	 *
+	 * <p>It stays as a name rather than being inlined so the sentence above has somewhere
+	 * to live, and {@link #theAnswerIsAFlatListOfItemsAndNeverAListOfTabs} is what holds
+	 * it: if the answer is ever grouped again, that case fails before any floor here gets
+	 * the chance to hide it.
+	 */
+	private JsonNode everyItemServedTo(String email) throws Exception {
+		return answer(email);
 	}
 
 	/** What the TABLE holds in one tab, which is the floor under every „is not served". */
@@ -491,9 +626,27 @@ class VerificationApiTest {
 	 */
 	@Test
 	void eachModeratorIsServedTheQueuesHisOwnTicksOpenAndNoOthers() throws Exception {
+		/* HIS TWO TICKS, AND ONLY ONE OF THEM CAN SHOW HERE, which is said out loud rather
+		   than quietly expected: the answer carries items since 22.09.2026, so a tab he may
+		   work in and has nothing to do in contributes nothing to it. His other tab is
+		   `results`, and it is empty on purpose - that is what
+		   `aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal` is about. Both
+		   halves of the premise are floored below, so „it is not here" cannot come to mean
+		   „the filter dropped it". */
+		assertThat(ticksOf(TWO_QUEUES))
+				.as("this moderator holds one tick rather than two, so holding any queue and"
+						+ " holding THIS queue answer alike for him and neither half below"
+						+ " measures the filter")
+				.isEqualTo(2);
+		assertThat(reallyInTheQueue(RESULTS, "waiting"))
+				.as("his other tab holds something waiting, so its absence from his answer is a"
+						+ " finding and not the premise of this case")
+				.isEmpty();
+
 		assertThat(tabsServedTo(TWO_QUEUES))
-				.as("a moderator was served a tab he has no tick for, or lost one he has")
-				.containsExactly(COMMENTS, RESULTS);
+				.as("a moderator was served a tab he has no tick for, or lost the one he has"
+						+ " something waiting in")
+				.containsExactly(COMMENTS);
 
 		assertThat(tabsServedTo(OTHER_QUEUES))
 				.as("the other moderator's tabs are not his own, so the two answers are not being"
@@ -546,7 +699,7 @@ class VerificationApiTest {
 	 */
 	@Test
 	void thePictureLeavesOnlyWithTheQueueItHangsOff() throws Exception {
-		assertThat(tab(OTHER_QUEUES, PROFILES).path("waiting").get(0).path("photoId").asLong())
+		assertThat(itemIn(OTHER_QUEUES, PROFILES, 0).path("photoId").asLong())
 				.as("the item that carries the photograph did not answer with it, so its absence"
 						+ " from every other answer says nothing")
 				.isEqualTo(photo);
@@ -563,24 +716,75 @@ class VerificationApiTest {
 	}
 
 	/**
-	 * A TAB WORKED TO THE BOTTOM IS A TAB WITH NOTHING IN IT, NOT A TAB THAT HAS GONE.
+	 * THE ANSWER IS A FLAT LIST OF ITEMS, AND NEVER A LIST OF TABS.
+	 *
+	 * <p><b>This is the case the portal did not have on 22.09.2026, and its absence is the
+	 * whole of the fault the owner met on QA.</b> The answer was grouped - a row per tab,
+	 * each carrying a {@code waiting} array - and the portal asks for this resource as a
+	 * flat {@code PendingItem[]} like the other thirteen. Every wrapper then passed the
+	 * screen's own filter for an item, because a wrapper HAS a {@code queue} field and
+	 * {@code decisions[undefined]} is undefined, so „Administracija → Verifikacija →
+	 * Timovi" drew a wrapper as an item and threw on {@code undefined.trim()}.
+	 *
+	 * <p><b>Written over the SHAPE and not over a field</b>, because that is the mutation
+	 * it has to catch: a record carrying {@code queue} and {@code waiting} satisfies „the
+	 * answer names its tabs" perfectly well, and it is exactly what broke. So this asks
+	 * what a record IS - it carries a subject and no nested list - rather than what it is
+	 * called.
+	 *
+	 * <p><b>And it stands before every floor in this file rather than beside them</b>: the
+	 * two {@link Answers} floors read one record's field names, and grouped, that record
+	 * is a tab. {@code everyItemServedTo} used to do the ungrouping for them, which is how
+	 * a resource whose shape no screen could read passed every case here for a day.
+	 */
+	@Test
+	void theAnswerIsAFlatListOfItemsAndNeverAListOfTabs() throws Exception {
+		assertThat(answer(THE_SUPERADMIN).isArray())
+				.as("%s did not answer with a list at all", PATH)
+				.isTrue();
+
+		for (JsonNode record : answer(THE_SUPERADMIN)) {
+			assertThat(record.has("waiting"))
+					.as("a record of this answer carries a nested list of items, so the answer is"
+							+ " grouped and the portal reads a wrapper as an item: %s", record)
+					.isFalse();
+			assertThat(record.has("subject") && record.has("queue"))
+					.as("a record of this answer is not an item: an item carries what the decision"
+							+ " is about and the tab it stands in, on itself: %s", record)
+					.isTrue();
+		}
+	}
+
+	/**
+	 * A TAB HE MAY WORK IN WITH NOTHING IN IT IS AN EMPTY ANSWER, AND NEVER A REFUSAL.
 	 *
 	 * <p>The owner (PDL P28a, 29.08.2026, „Prazan red ostaje u navigaciji"): „Prazan red
 	 * ostaje u navigaciji i pokazuje nulu. Neka ipak ne nestaju stavke iz Verifikacije kad se
 	 * odobre. Neka ostane vidljiva i neka piše 0."
 	 *
-	 * <p><b>Both ways of being empty, because they break differently.</b> The results tab has
-	 * been answered to the bottom - every row in it is decided - and an INNER join from the
-	 * rows loses it, as does moving the state from the join condition into the where clause.
-	 * The schedule tab never held anything at all, and only the first of those two mistakes
-	 * loses it. A fixture with one of the two in it would pass half the mutations.
+	 * <p><b>What this case measured until 22.09.2026, and why it measures something else
+	 * now.</b> The answer used to carry a row per TAB, so the decision had a shape on this
+	 * side: an empty tab was a row with an empty list, held here by an OUTER join. The
+	 * answer carries items now and an item is what a moderator works on, so a tab with
+	 * nothing waiting contributes nothing - which is what „nothing is waiting" means. The
+	 * nought the owner asked for is drawn where it always was drawn: the screen names its
+	 * tabs off the RIGHTS ({@code usePermittedQueues}) and counts the items it was handed
+	 * ({@code countFor}), and neither of those ever read this answer for the list of tabs.
 	 *
-	 * <p><b>With the floor that says the rows really are there</b>, because „the tab is empty"
-	 * and „the tab was never written" look the same from the answer, and only this file knows
-	 * which of the two it meant.
+	 * <p><b>So what is left of the decision on this side is the half that can still be
+	 * got wrong, and it is the half that matters:</b> a moderator whose tabs happen to be
+	 * empty must be answered 200 and an empty list, NOT the 404 that says the section is
+	 * not there. Answering him 404 would shut the section on a man who may open it, which
+	 * is the same screen the owner refused.
+	 *
+	 * <p><b>Both ways of being empty, because they are different rows in the table.</b>
+	 * One tab has been worked to the bottom - every row in it decided - and one never held
+	 * anything; {@code state = 'waiting'} has to subtract the first without the second
+	 * having to exist. With the floor that says the rows really are in the table, because
+	 * „the tab is empty" and „the tab was never written" look the same from the answer.
 	 */
 	@Test
-	void aTabWithNothingWaitingIsAnsweredWithAnEmptyListAndNotLeftOut() throws Exception {
+	void aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal() throws Exception {
 		assertThat(reallyInTheQueue(RESULTS, "waiting"))
 				.as("the tab this case calls worked to the bottom still has something waiting in it")
 				.isEmpty();
@@ -588,27 +792,35 @@ class VerificationApiTest {
 				.as("the tab this case calls worked to the bottom holds no decided row either, so"
 						+ " it is the other kind of empty and measures the other mutation")
 				.isNotEmpty();
-
-		assertThat(tabsServedTo(TWO_QUEUES))
-				.as("a tab whose every item has been decided fell out of the answer, and the owner"
-						+ " decided on 29.08.2026 that it stays and shows a nought")
-				.contains(RESULTS);
-		assertThat(tab(TWO_QUEUES, RESULTS).path("waiting"))
-				.as("the tab worked to the bottom answered with something waiting in it")
-				.isEmpty();
-
 		assertThat(reallyInTheQueue(SCHEDULE, "waiting").size()
 						+ reallyInTheQueue(SCHEDULE, "approved").size()
 						+ reallyInTheQueue(SCHEDULE, "rejected").size())
-				.as("the tab this case calls untouched holds rows, so it is not the second kind of"
-						+ " empty and this measures the first one twice")
+				.as("the tab this case calls untouched holds rows, so it is not the other kind of"
+						+ " empty")
 				.isZero();
 
-		assertThat(tabsServedTo(THE_SUPERADMIN))
-				.as("a tab that has never held anything fell out of the answer")
-				.contains(SCHEDULE);
-		assertThat(tab(THE_SUPERADMIN, SCHEDULE).path("waiting"))
+		assertThat(waitingIn(TWO_QUEUES, RESULTS))
+				.as("a tab worked to the bottom answered with something waiting in it")
+				.isEmpty();
+		assertThat(waitingIn(THE_SUPERADMIN, SCHEDULE))
 				.as("a tab that has never held anything answered with something in it")
+				.isEmpty();
+
+		/* AND THE HALF THAT WOULD SHUT THE SECTION, asked of the ONE person for whom „may
+		   he" and „is there anything for him" answer differently. Asked of anybody else in
+		   this fixture it would be carried by a tab that happens to hold something, and a
+		   server that refused on an empty answer would pass. */
+		assertThat(ticksOf(EMPTY_QUEUES))
+				.as("this case is about a man who MAY work somewhere, so his ticks are the"
+						+ " premise and not a detail")
+				.isEqualTo(2);
+		assertThat(statusOf(EMPTY_QUEUES))
+				.as("a moderator was refused because the tabs he may work in are empty, which"
+						+ " shuts a section he may open (owner, 29.08.2026) and tells him the"
+						+ " address is not there (ADL A8)")
+				.isEqualTo(200);
+		assertThat(answer(EMPTY_QUEUES))
+				.as("a moderator with nothing to do was served something")
 				.isEmpty();
 	}
 
@@ -707,9 +919,22 @@ class VerificationApiTest {
 						+ " two empty lists")
 				.isNotEmpty();
 
+		/* EVERY QUEUE THE MATRIX HOLDS, LESS THE TWO THAT HAVE NOTHING WAITING, and the
+		   subtraction is MEASURED here rather than written into the expectation. Listing
+		   the four by name would be a list that agrees with the code by hand; taken away
+		   from the matrix's own list, a seventh queue added tomorrow joins this case on
+		   the day it is inserted, exactly as it did before the answer went flat. */
+		List<String> withSomethingWaiting = new ArrayList<>(everyQueueThereIs());
+		withSomethingWaiting.removeIf(queue -> reallyInTheQueue(queue, "waiting").isEmpty());
+
+		assertThat(withSomethingWaiting)
+				.as("every queue of the matrix is empty, so the comparison below says nothing")
+				.hasSizeLessThan(everyQueueThereIs().size());
+
 		assertThat(tabsServedTo(THE_SUPERADMIN))
-				.as("the tabs served are not the queues the rights matrix holds")
-				.isEqualTo(everyQueueThereIs());
+				.as("the tabs served are not the queues the rights matrix holds something waiting"
+						+ " in")
+				.isEqualTo(withSomethingWaiting);
 	}
 
 	/**
@@ -724,9 +949,13 @@ class VerificationApiTest {
 	 */
 	@Test
 	void theTabsAreInTheirOwnOrderAndTheItemsInEachAreOldestFirst() throws Exception {
+		/* The four that hold something, in `admin_right.target` order and not in the order
+		   their rows were written: `teams` was written last and comes last by name too, so
+		   `payments` and `profiles` are what separate the two - both were written after the
+		   comments and both sort before it would have them. */
 		assertThat(tabsServedTo(THE_SUPERADMIN))
 				.as("the tabs came back in an order nobody decided")
-				.containsExactly(COMMENTS, PAYMENTS, PROFILES, RESULTS, SCHEDULE, TEAMS);
+				.containsExactly(COMMENTS, PAYMENTS, PROFILES, TEAMS);
 
 		assertThat(waitingIn(THE_SUPERADMIN, COMMENTS))
 				.as("the items of a tab are not oldest first")
@@ -749,7 +978,7 @@ class VerificationApiTest {
 	 */
 	@Test
 	void theDayAnItemArrivedIsTheDayItWasInBelgrade() throws Exception {
-		JsonNode late = tab(THE_SUPERADMIN, COMMENTS).path("waiting").get(1);
+		JsonNode late = itemIn(THE_SUPERADMIN, COMMENTS, 1);
 
 		assertThat(late.path("subject").asString())
 				.as("the item this case is about is not where it is being read from")
@@ -773,7 +1002,7 @@ class VerificationApiTest {
 	 */
 	@Test
 	void anItemAboutSomebodyWithNoMemberNumberAnswersWithNoneAndKeepsItsSubject() throws Exception {
-		JsonNode nameless = tab(THE_SUPERADMIN, PAYMENTS).path("waiting").get(0);
+		JsonNode nameless = itemIn(THE_SUPERADMIN, PAYMENTS, 0);
 
 		assertThat(nameless.path("subject").asString())
 				.as("the item about somebody with no number is not where it is being read from")
@@ -783,7 +1012,7 @@ class VerificationApiTest {
 				.as("an item about somebody who has registered and has no number answered with one")
 				.isTrue();
 
-		assertThat(tab(THE_SUPERADMIN, TEAMS).path("waiting").get(0).path("memberNumber").asString())
+		assertThat(itemIn(THE_SUPERADMIN, TEAMS, 0).path("memberNumber").asString())
 				.as("an item about a member did not answer with HIS number, so the nothing above is"
 						+ " not being told apart from a number")
 				.isEqualTo(MEMBER_ONE);
@@ -825,56 +1054,63 @@ class VerificationApiTest {
 	}
 
 	/**
-	 * EVERY FIELD THE PORTAL READS IS ONE THE SERVER ANSWERS WITH, EXCEPT THE TWELVE THE
-	 * SCHEMA HAS NOWHERE TO HOLD, AND THOSE ARE NAMED HERE WITH THE REASON.
+	 * EVERY FIELD THE PORTAL READS IS ONE THE SERVER ANSWERS WITH, EXCEPT THE SIX THE
+	 * SCHEMA HAS NOWHERE TO HOLD, AND THOSE ARE NAMED HERE EACH WITH ITS OWN REASON.
 	 *
 	 * <p>V9 says what it is and is not, in as many words: „What this table is NOT. It does not
 	 * model what each tab is about. A comment is a row in {@code event_comment}, a photograph
 	 * is a row in {@code photo}, a result will be a row in {@code result}, and this table
 	 * points at them rather than copying them. What it holds is the part every tab shares: who
-	 * it is about, what was proposed, and what a moderator decided." Twelve of the seventeen
-	 * fields of the served file are the part it does NOT hold:
+	 * it is about, what was proposed, and what a moderator decided."
+	 *
+	 * <p><b>TWELVE NAMES STOOD HERE UNTIL 22.09.2026, UNDER ONE REASON, AND HALF OF THEM HAD
+	 * A COLUMN THE DAY IT WAS WRITTEN.</b> The reason was „there is no column for any of
+	 * them", and it was true of V9 alone. V11 had already given the teams tab a row of its
+	 * own, and a {@code team_proposal} carries the town, the country and the team a change is
+	 * about; {@code competitor} carries the sender's name; and which SORT of thing a row is
+	 * can be read off the schema twice over. Six of the twelve were answerable and were not
+	 * answered, and the screen that reads them threw in front of the owner on QA.
+	 *
+	 * <p><b>That is the cost of one reason covering a list.</b> A name on a list with a true
+	 * reason is a boundary; a name on a list with somebody else's reason is a field nobody
+	 * will look at again. So each of the six below carries the reason that is true of IT.
 	 *
 	 * <ul>
-	 * <li>{@code queue} is not missing: it is on the TAB, which is the row this item stands
-	 * in. Written on both it would be one fact in two places, which is the rule
-	 * PDL P28a, 30.07.2026, „Nijedan broj na portalu ne stoji na dva mesta" states about numbers and
-	 * this resource follows about its tabs.
-	 * <li>{@code kind} - which sort of thing an item is, where one tab holds two (a biography
-	 * against a picture, a new team against a change to one). No column, and the distinction
-	 * is the screen's.
-	 * <li>{@code who} - the prototype keeps the sender beside the subject; V9 keeps one text
-	 * and says it „carries the name in every case".
-	 * <li>{@code subjectId} - what an approval writes a record about. V10 and V11 added the
-	 * two pointers that exist ({@code result_submission_id}, {@code team_proposal_id}) and
-	 * they are for what a WRITE does; this increment writes nothing (ADL A8: the layer of
-	 * 13.09.2026 „ne uvodi nijedan upis"), so serving them would be „za svaki slučaj", which
-	 * ADL P-javno refuses.
-	 * <li>{@code picture} and {@code crop} - the picture as text, which the prototype carries
-	 * because until F5 there is nowhere to put a file. The schema has a row in {@code photo}
-	 * and this answers its id.
+	 * <li>{@code rating} - the three marks of a comment. They are columns of
+	 * {@code event_comment}, which is a comment ALREADY PUBLISHED; a comment waiting for a
+	 * moderator is a row here, and this table has no column for a mark and no pointer to one.
+	 * So the marks a member gave with a comment nobody has approved are, today, nowhere.
+	 * <li>{@code email} - the address a registration waiting for its fee is known by. It is on
+	 * {@code account} and reachable, so this one is a decision about what the payments tab may
+	 * say rather than a missing column, and it is in {@code PENDING.md} as that.
 	 * <li>{@code currentDate}, {@code proposedDate} - the two days a reported change of term
-	 * carries. No columns.
-	 * <li>{@code rating} - the three marks of a comment. They live on {@code event_comment}
-	 * once the comment is out, and the queue row points rather than copies.
-	 * <li>{@code email}, {@code city}, {@code country} - what a registration waiting for its
-	 * fee is known by. On {@code competitor}, not on the queue.
+	 * carries. V9 keeps the day asked for as free TEXT in {@code body} and there is no column
+	 * for either date, nor any pointer from a row here to the event it is about.
+	 * <li>{@code picture}, {@code crop} - NOT a missing column. ADL A60, 20.09.2026: „Slika
+	 * koju drzi samo nesto sto ceka odluku moderatora nije javna: ni verification.photo_id...
+	 * Takva slika odgovara tacno isto kao slika koje nema", and {@link PhotoApi} enforces it by
+	 * serving only what {@code competitor.photo_id} or {@code team.logo_id} holds. An address
+	 * answered here would be asked for and refused, so the card would draw a broken frame -
+	 * worse than drawing none. Letting a moderator see what he is deciding about is a new
+	 * decision about who may see a picture, and it belongs to the owner.
 	 * </ul>
 	 *
-	 * <p><b>And one name is answered that the portal does not read yet</b>, {@code photoId},
-	 * which is V9's own column and the only way a moderator can be shown the picture he is
-	 * deciding about once there is a file behind it.
+	 * <p><b>And one name is answered that the portal does not read</b>, {@code photoId}, which
+	 * is V9's own column. It is the one thing there will be to revisit the day A60 is.
 	 *
 	 * <p><b>{@code Answers} checks both halves of every name</b> - that the file really serves
 	 * it, so a stale name cannot excuse a field that went missing for another reason, and that
-	 * the answer really leaves it out, so each of the twelve is a claim rather than a wish.
+	 * the answer really leaves it out, so each of the six is a claim rather than a wish.
+	 *
+	 * <p><b>It reads the ANSWER and no longer a flattening of it</b>, which is what made this
+	 * floor blind: see {@code everyItemServedTo} and
+	 * {@link #theAnswerIsAFlatListOfItemsAndNeverAListOfTabs}.
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered(PATH, everyItemServedTo(THE_SUPERADMIN),
 				"verification.json", Set.of("photoId"),
-				"queue", "kind", "who", "subjectId", "picture", "crop", "currentDate",
-				"proposedDate", "rating", "email", "city", "country");
+				"picture", "crop", "currentDate", "proposedDate", "rating", "email");
 	}
 
 	/**
@@ -885,22 +1121,23 @@ class VerificationApiTest {
 	 * measurement rather than by memory: „Sekcija „Rešeno" se ukida" means only waiting rows
 	 * come out, so a {@code state} field would be the string {@code waiting} in every record
 	 * and this floor would refuse it.
+	 *
+	 * <p><b>IT ABSORBED A SECOND FLOOR ON 22.09.2026, AND THAT IS SAID HERE RATHER THAN
+	 * LEFT AS A CASE THAT WENT AWAY.</b> Beside it stood
+	 * {@code noFieldOfATabIsTheSameInEveryRecord}, over the TAB records, and its claim was
+	 * that „a resource that handed every tab the same list is a resource where the tab means
+	 * nothing". There are no tab records any longer, and the claim is not lost: {@code queue}
+	 * is a field of the ITEM now, so a server answering every item with one tab - or reading
+	 * the tab off anything but the row - is refused by THIS floor, which is the same mutation
+	 * arriving at the same place by a shorter road.
+	 *
+	 * <p><b>Measured before the old case was removed, and not assumed:</b> with
+	 * {@code r.target} replaced by a literal in the query, this floor fails on {@code queue}.
+	 * That is the rule of 05.09.2026 - a guard is not taken away until its mutations fall on
+	 * whatever replaces it.
 	 */
 	@Test
 	void noFieldOfAnItemIsTheSameInEveryRecord() throws Exception {
 		Answers.noFieldIsTheSameInEveryRecord(PATH, everyItemServedTo(THE_SUPERADMIN));
-	}
-
-	/**
-	 * AND NEITHER IS A FIELD OF A TAB.
-	 *
-	 * <p>The tab carries two things and the second is the one worth measuring: a resource that
-	 * handed every tab the same list - the first tab's items, or one list of everything - is a
-	 * resource where the tab means nothing, and it would satisfy every case above that reads
-	 * one tab by name as long as the tab it reads is the one the list came from.
-	 */
-	@Test
-	void noFieldOfATabIsTheSameInEveryRecord() throws Exception {
-		Answers.noFieldIsTheSameInEveryRecord(PATH, answer(THE_SUPERADMIN));
 	}
 }

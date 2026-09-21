@@ -8,12 +8,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * WHAT IS WAITING FOR A MODERATOR, AND ONLY IN THE QUEUES THIS ONE MAY WORK IN.
@@ -96,16 +92,33 @@ import java.util.Map;
  * The rights are read ONCE for the request ({@link WhatHeMayDo#whichOf}), so the six
  * answers cannot disagree with one another.
  *
- * <p><b>AN EMPTY QUEUE IS A ROW WITH AN EMPTY LIST, NOT A ROW THAT IS MISSING.</b> The
- * owner (PDL P28a, 29.08.2026, „Prazan red ostaje u navigaciji"): „Prazan red ostaje
- * u navigaciji i pokazuje nulu. Neka ipak ne nestaju stavke iz Verifikacije kad se odobre. Neka
- * ostane vidljiva i neka piše 0." That is the same shape {@link ModeratorApi} has for a moderator
- * with no ticks and says out loud - „An empty list is not a broken record" - and it is why the
- * queue is reached by an OUTER join from the rights matrix rather than by an inner join from the
- * rows: a tab whose every item has been decided is precisely the tab this decision is about, and
- * an inner join drops it without a word. For the same reason the state is tested in the JOIN and
- * not in the WHERE - moved there, a tab holding nothing but decided rows disappears again, by a
- * different spelling of the same mistake.
+ * <p><b>THE ANSWER IS A FLAT LIST OF ITEMS, AND UNTIL 22.09.2026 IT WAS GROUPED BY TAB.
+ * THAT SHAPE IS WHAT BROKE THE SCREEN ON QA.</b> The portal asks for this resource
+ * through {@code useResource<PendingItem[]>} ({@code pages/admin/pending.ts}) like the
+ * other thirteen, and {@code PendingItem} carries its own {@code queue}. Grouped, every
+ * wrapper {@code {queue, waiting}} passed the screen's own filter - it has a
+ * {@code queue} field, and {@code decisions[undefined]} is undefined - so a WRAPPER was
+ * drawn as though it were an item and „Timovi" threw on {@code undefined.trim()}. The
+ * mismatch was known: {@code servedShape.test.ts} named {@code verification} as the one
+ * resource it did not measure, „its whole shape is a decision the owner has not taken".
+ * It is taken now, and it is the shape every other resource already had.
+ *
+ * <p><b>WHICH MEANS AN EMPTY TAB IS NO LONGER A ROW, AND THE OWNER'S DECISION STILL
+ * HOLDS.</b> PDL P28a, 29.08.2026, „Prazan red ostaje u navigaciji": „Prazan red ostaje u
+ * navigaciji i pokazuje nulu... Neka ostane vidljiva i neka piše 0." That sentence is
+ * about the NAVIGATION, and the navigation never read it off this answer: the screen
+ * names the tabs a moderator may work in off his RIGHTS ({@code usePermittedQueues} in
+ * {@code pages/admin/mayOpen.ts}) and puts the count beside each by counting the items it
+ * was handed ({@code countFor} in {@code pages/admin/queues.ts}). A tab with nothing
+ * waiting is therefore still drawn, and still shows nought, with nothing in this answer
+ * saying so. What the old shape bought was a row nobody read; what it cost was the one
+ * resource on the portal whose answer no screen could read.
+ *
+ * <p><b>So the join from the rights matrix is INNER, where it used to be OUTER.</b> The
+ * outer join existed for exactly one reason - to produce a row for a tab that had nothing
+ * to join to - and with no row per tab there is nothing for it to produce. The state is
+ * still tested in the JOIN rather than the WHERE, which is now a matter of saying one
+ * thing once rather than of keeping an empty tab alive.
  *
  * <p><b>AND ONLY WHAT IS WAITING COMES OUT.</b> PDL P28a, 06.08.2026, „Red pokazuje samo ono što
  * čeka": „Sekcija „Rešeno" se ukida. Red pokazuje samo ono što čeka; šta je rešeno nije posao
@@ -130,8 +143,10 @@ import java.util.Map;
  * makes for the overall mark: „Ukupna ocena se ne čuva nego se računa gde god se prikaže" (PDL
  * P28a, 07.08.2026, „Ukupna ocena se ne čuva nego se računa").
  *
- * <p><b>The tab is on the ROW and not on the item, for that same rule.</b> A queue is
- * what the item is standing in; written on both it could disagree with itself.
+ * <p><b>The tab is on the ITEM since 22.09.2026, and it is written ONCE.</b> It used to be
+ * on the wrapper, „for that same rule", and the rule is untouched: a queue is what the
+ * item is standing in, and it is answered in one place. With the wrapper gone that place
+ * is the item, which is where {@code PendingItem} always kept it.
  *
  * <p><b>A LAPSED MEMBERSHIP IS NOT FILTERED OUT HERE, AND THAT IS THE ONE PLACE THIS
  * RESOURCE PARTS COMPANY WITH {@link AttendanceApi} AND {@link CommentApi} ON PURPOSE.</b>
@@ -148,22 +163,37 @@ import java.util.Map;
  * <p><b>WHAT THE SCHEMA HAS NOWHERE TO HOLD IS LEFT OUT AND NAMED, never invented.</b> V9
  * says what it is and is not: „What this table is NOT. It does not model what each tab is
  * about... What it holds is the part every tab shares: who it is about, what was
- * proposed, and what a moderator decided." The file the portal serves today carries
- * twelve fields more - the sort of item, the name of whoever sent it in beside the
- * subject, the id of what an approval writes about, the picture and its crop, the two
- * dates a reported change of term carries, the three marks of a comment, and the address,
- * town and country of a registration - and there is no column for any of them.
- * {@code VerificationApiTest.everyFieldThePortalReadsIsOneTheServerAnswersWith} names all
- * twelve with this reason, and {@code Answers} checks both halves of every name, so a
- * field that went missing for some other reason cannot hide behind the list.
+ * proposed, and what a moderator decided."
  *
- * <p><b>And the two pointers V10 and V11 added are left out too, which is a decision
- * rather than an oversight.</b> {@code result_submission_id} and {@code team_proposal_id}
- * exist for what an APPROVAL writes, and this increment writes nothing: the layer of
- * 13.09.2026 „ne uvodi nijedan upis" (ADL A8), and the screen that will need them is not
- * switched to this endpoint (A50 - the portal changes files once, together, when every
- * resource exists). ADL P-javno's rule is to leave out rather than to serve „za svaki
- * slučaj", so they wait for the increment that has a use for them.
+ * <p><b>Twelve fields stood under that sentence until 22.09.2026 and SIX of them had a
+ * home all along, which is the reason the sentence is rewritten rather than extended.</b>
+ * V9 holds the part every tab shares, but V11 gave the teams tab a proposal of its own
+ * ({@code team_proposal}), and a proposal carries the town, the country and the team a
+ * change is about; {@code competitor} carries the sender's name; and which SORT of thing a
+ * row is can be read off the schema twice over. Those six are answered now. Naming a field
+ * as „left out" while a column for it exists is worse than answering it: the list reads as
+ * a reason, and a reason that is not true teaches the next reader to stop looking.
+ *
+ * <p><b>The six that really have no home are still named, each with the reason that is
+ * true today</b>, in {@code VerificationApiTest.everyFieldThePortalReadsIsOneTheServerAnswersWith}:
+ * the three marks of a comment and the id of the event it is about (a WAITING comment is
+ * not a row in {@code event_comment} and nothing points this row at an event), the two
+ * dates a reported change of term carries, the address of a registration, and the picture
+ * with its crop - which is not a missing column at all but ADL A60, 20.09.2026: „Slika
+ * koju drzi samo nesto sto ceka odluku moderatora nije javna... Takva slika odgovara tacno
+ * isto kao slika koje nema", so a digest answered here would draw a broken frame.
+ * {@code Answers} checks both halves of every name, so a field that went missing for some
+ * other reason cannot hide behind the list.
+ *
+ * <p><b>Neither pointer V10 and V11 added is ANSWERED, and {@code team_proposal_id} is
+ * now READ.</b> The two are keys of this side's own tables, and a key is not a fact the
+ * portal has any use for: what the teams tab draws is the town, the country and the team a
+ * change is about, so the proposal is followed here and what it holds comes out under the
+ * portal's own names. {@code result_submission_id} is still neither read nor answered -
+ * the results tab is fed from the session and not from this resource
+ * ({@code countFor} in {@code pages/admin/queues.ts}) - and it waits for the increment
+ * that has a use for it, which is ADL P-javno's rule of leaving out rather than serving
+ * „za svaki slučaj".
  *
  * <p><b>The picture is answered as the id of a row in {@code photo}</b>, which is a name
  * the portal does not read yet and is therefore declared as something answered on
@@ -207,22 +237,12 @@ class VerificationApi {
 	}
 
 	/**
-	 * One tab of the verification screen, as this moderator sees it.
-	 *
-	 * @param queue   the tab, as {@code admin_right.target} spells it and as
-	 *                {@code verification.queue} holds it: {@code results},
-	 *                {@code payments}, {@code teams}, {@code profiles},
-	 *                {@code comments}, {@code schedule}
-	 * @param waiting what is standing in it undecided, oldest first; EMPTY for a tab
-	 *                where everything has been answered, which is a tab showing nought
-	 *                and not a tab that has gone away (owner, 29.08.2026)
-	 */
-	record Queue(String queue, List<Waiting> waiting) {
-	}
-
-	/**
 	 * One item nobody has answered yet.
 	 *
+	 * @param queue        the tab it is standing in, as {@code admin_right.target} spells
+	 *                     it and as {@code verification.queue} holds it: {@code results},
+	 *                     {@code payments}, {@code teams}, {@code profiles},
+	 *                     {@code comments}, {@code schedule}
 	 * @param id           {@code verification.id}
 	 * @param date         the day it arrived in the queue, in the league's own zone
 	 * @param memberNumber whose it is, or nothing at all. Two different states answer
@@ -235,13 +255,44 @@ class VerificationApi {
 	 *                     REGISTERED. A MEMBER is a row whose member_number is there."
 	 * @param subject      what the decision is about, which V9 makes NOT NULL because it
 	 *                     „carries the name in every case"
+	 * @param who          the name of whoever sent it in, or blank where no row in
+	 *                     {@code competitor} is named. Read beside {@code subject} and
+	 *                     never instead of it: on the payments tab the two are the same
+	 *                     person and everywhere else they are not, which is why the screen
+	 *                     draws „poslao" off this one and the heading off the other
+	 * @param subject      what the decision is about, which V9 makes NOT NULL because it
+	 *                     „carries the name in every case"
+	 * @param subjectId    the same thing by its key, WHERE THERE IS ONE, and blank
+	 *                     everywhere else. Today that is the team a proposal asks to
+	 *                     change ({@code team_proposal.team_id}) and nothing besides: the
+	 *                     comments and the schedule tabs draw an id too, and the schema
+	 *                     has no column pointing this row at an event, so they are answered
+	 *                     blank rather than guessed at. Text and not a number, because the
+	 *                     portal compares it against {@code String(team.id)}
 	 * @param body         what was written or proposed, blank for a tab that proposes
 	 *                     nothing - the same shape {@code competitor.bio} has
+	 * @param kind         WHICH SORT OF THING IT IS, where one tab holds more than one,
+	 *                     and blank on the tabs that hold a single sort. Worked out here
+	 *                     rather than stored, because the schema already says it twice
+	 *                     over and a third column could disagree with both: a teams row
+	 *                     carrying a proposal that names a team is a change to that team
+	 *                     ({@code teamEdit}), and a profiles row is a picture exactly when
+	 *                     it still holds one and a biography otherwise. The two words are
+	 *                     the portal's own ({@code ITEM_KINDS} in {@code data/types.ts})
+	 * @param city         the town of a proposed team, and blank on every other tab. The
+	 *                     same {@code coalesce} {@link TeamApi} and {@link CompetitorApi}
+	 *                     already make over the identical three columns, because
+	 *                     {@code team_proposal} holds a town the one way or the other and
+	 *                     never both ({@code team_proposal_town_is_from_the_codebook_or_typed})
+	 * @param country      its country, AS THE CODE AND NEVER THE NAME, which is the shape
+	 *                     both resources above answer with and the shape the portal reads
+	 *                     ({@code countryName} turns it into words). Blank with the town
 	 * @param photoId      the picture while there still is one, and nothing where the tab
 	 *                     carries none
 	 */
-	record Waiting(long id, LocalDate date, String memberNumber, String subject, String body,
-			Long photoId) {
+	record Waiting(String queue, long id, LocalDate date, String memberNumber, String who,
+			String subject, String subjectId, String body, String kind, String city,
+			String country, Long photoId) {
 	}
 
 	/**
@@ -250,7 +301,7 @@ class VerificationApi {
 	 *                 is not answering.
 	 */
 	@GetMapping("/api/verification")
-	List<Queue> verification(HttpServletResponse response) throws IOException {
+	List<Waiting> verification(HttpServletResponse response) throws IOException {
 		List<String> his = mayHe.whichOf(everyQueueThereIs());
 
 		/* NOTHING TO SHOW HIM IS THE SAME AS NOTHING BEING HERE (owner, 13.09.2026,
@@ -287,26 +338,55 @@ class VerificationApi {
 				.query(String.class).list();
 	}
 
-	private List<Queue> waitingIn(List<String> his) {
-		List<Line> lines = db.sql("select r.target, v.id, v.raised_at, c.member_number,"
-						+ " v.subject, v.body, v.photo_id"
-						/* DRIVEN BY THE RIGHTS AND NOT BY THE ROWS, which is the whole of
-						   „Prazan red ostaje i piše 0" (owner, 29.08.2026). Read the other
-						   way round - from `verification` outwards - a tab whose every item
-						   has been answered has no row to drive anything and disappears. */
+	private List<Waiting> waitingIn(List<String> his) {
+		return db.sql("select r.target, v.id, v.raised_at, c.member_number,"
+						/* WHO SENT IT IN. Blank and never null, because the portal's type
+						   says so in as many words - „Who sent it in, or empty" - and reads
+						   `one.who === ''` to decide whether to draw the line at all. */
+						+ " coalesce(c.first_name || ' ' || c.last_name, '') as who,"
+						+ " v.subject,"
+						/* THE TEAM A CHANGE IS ABOUT, and blank everywhere else. Read off the
+						   proposal and never off `subject`: two teams may carry one name, so
+						   a change matched by its name would be filed against whichever was
+						   found first. */
+						+ " coalesce(cast(tp.team_id as text), '') as subject_id,"
+						+ " v.body,"
+						/* WHICH SORT OF THING IT IS, asked of the schema and not of a column
+						   of its own. `tp.team_id` can only be there on the teams tab -
+						   `verification_only_the_teams_queue_carries_a_proposal` says so and
+						   this does not re-derive it - and a profiles row holds a photograph
+						   exactly while the picture is what is being decided. */
+						+ " case when tp.team_id is not null then 'teamEdit'"
+						+ "      when v.queue = 'profiles' and v.photo_id is not null then 'photo'"
+						+ "      when v.queue = 'profiles' then 'bio'"
+						+ "      else '' end as kind,"
+						/* THE TOWN THE ONE WAY OR THE OTHER, which is the same coalesce
+						   `TeamApi` and `CompetitorApi` already make over the identical three
+						   columns. The country is the CODE, as it is in both of those: the
+						   portal turns it into words itself. */
+						+ " coalesce(town.name, tp.city, '') as city,"
+						+ " coalesce(town_country.code, typed_country.code, '') as country,"
+						+ " v.photo_id"
+						/* DRIVEN BY THE RIGHTS AND NOT BY THE ROWS, so the condition that
+						   decides „may he" is the only thing that picks tabs. Read the other
+						   way round - from `verification` outwards - the tabs a moderator
+						   holds would be decided by which rows happen to exist. */
 						+ " from admin_right r"
-						/* LEFT, and the state tested HERE rather than in the where clause.
-						   Either change loses the empty tab: an inner join loses it because
-						   there is nothing to join to, and a `where v.state = 'waiting'`
-						   loses it because the null the outer join produced is not equal to
-						   anything. Two spellings of one mistake, and the case that catches
-						   both is the same one.
-
-						   The join is on `right_code`, which V9 GENERATES as `'queue:' ||
+						/* The join is on `right_code`, which V9 GENERATES as `'queue:' ||
 						   queue` and keys to `admin_right(code)`: the row itself carries the
 						   exact privilege that opens it, and a row cannot exist in a tab that
-						   has no right. Nothing here re-derives that. */
-						+ " left join verification v"
+						   has no right. Nothing here re-derives that.
+
+						   INNER since 22.09.2026, and the paragraph this replaces argued for
+						   an outer join: the answer used to carry a row per TAB, so a tab
+						   worked to the bottom had to survive having nothing to join to. The
+						   answer carries items now and an item is what a moderator works on,
+						   so a tab with nothing waiting contributes nothing, which is what
+						   „nothing is waiting" means. The nought the owner asked for
+						   (29.08.2026) is drawn where it always was: the screen names its
+						   tabs off the RIGHTS (`usePermittedQueues`) and counts the items it
+						   was given (`countFor`), neither of which this answer decides. */
+						+ " join verification v"
 						+ "   on v.right_code = r.code and v.state = 'waiting'"
 						/* AND WHOSE IT IS, WHILE THERE IS A NUMBER TO GIVE. Left, twice over:
 						   `competitor_id` is nullable by V9's decision, and since V16 a
@@ -314,45 +394,31 @@ class VerificationApi {
 						   filtered out - see the note on this class about the tab that exists
 						   for exactly those people. */
 						+ " left join competitor c on c.id = v.competitor_id"
+						/* AND THE PROPOSAL A TEAMS ROW POINTS AT, with the two ways V11 lets
+						   it hold a town. All four are LEFT: every other tab has no proposal,
+						   and a proposal has either a row in the codebook or a town somebody
+						   typed, never both. */
+						+ " left join team_proposal tp on tp.id = v.team_proposal_id"
+						+ " left join place town on town.id = tp.place_id"
+						+ " left join country town_country on town_country.id = town.country_id"
+						+ " left join country typed_country on typed_country.id = tp.country_id"
 						/* THE ONES HE MAY, decided by `WhatHeMayDo` and passed in. Written
 						   here as a condition over the ticks it would be a second home for
 						   „may he" and would answer the superadmin, who holds everything with
 						   no tick anywhere, with nothing at all. */
 						+ " where r.code in (:mine)"
-						/* BY TAB, OLDEST FIRST (V9), and the key last so the order is total. */
+						/* BY TAB, OLDEST FIRST (V9), and the key last so the order is total.
+						   Kept although the answer is no longer grouped: the screen walks one
+						   tab down the list it was given, so two items raised in the same
+						   instant would otherwise reshuffle between two readings of data
+						   nobody touched. */
 						+ " order by r.target, v.raised_at, v.id")
 				.param("mine", his)
-				.query((row, one) -> new Line(row.getString(1), row.getObject(2, Long.class),
-						row.getTimestamp(3), row.getString(4), row.getString(5), row.getString(6),
-						row.getObject(7, Long.class)))
+				.query((row, one) -> new Waiting(row.getString(1), row.getLong(2),
+						row.getTimestamp(3).toInstant().atZone(SeasonClock.ZONE).toLocalDate(),
+						row.getString(4), row.getString(5), row.getString(6), row.getString(7),
+						row.getString(8), row.getString(9), row.getString(10), row.getString(11),
+						row.getObject(12, Long.class)))
 				.list();
-
-		/* GROUPED OUT OF WHAT CAME BACK, and never out of `his`. Seeded from the list of
-		   tabs he may, this fold would quietly DROP a row from a tab he may not - so
-		   taking the condition out of the query above would change nothing anybody could
-		   see, and the filter would be guarded by nothing. Built this way, a tab that
-		   should not be in the answer arrives as a tab in the answer. */
-		Map<String, List<Waiting>> byQueue = new LinkedHashMap<>();
-
-		for (Line line : lines) {
-			List<Waiting> waiting = byQueue.computeIfAbsent(line.queue(), any -> new ArrayList<>());
-
-			/* The null of an outer join: a tab he may work in with nothing waiting in it.
-			   The row for the tab is already there, which is the nought. */
-			if (line.id() != null) {
-				waiting.add(new Waiting(line.id(), line.raised().toInstant()
-						.atZone(SeasonClock.ZONE).toLocalDate(), line.memberNumber(),
-						line.subject(), line.body(), line.photoId()));
-			}
-		}
-
-		return byQueue.entrySet().stream()
-				.map(tab -> new Queue(tab.getKey(), List.copyOf(tab.getValue())))
-				.toList();
-	}
-
-	/** One row of the join, before the tabs and their items are told apart. */
-	private record Line(String queue, Long id, Timestamp raised, String memberNumber,
-			String subject, String body, Long photoId) {
 	}
 }

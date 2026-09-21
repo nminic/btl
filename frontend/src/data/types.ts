@@ -903,3 +903,53 @@ export type PendingItem = {
   city: string
   country: string
 }
+
+/**
+ * THE SAME ITEM AS `/api/verification` REALLY ANSWERS IT, which is `PendingItem`
+ * less the six the schema has nowhere to hold.
+ *
+ * **Derived by `Omit` and never written out, which is the whole point.** A
+ * hand-written list of „what the server sends" is a second home for the shape, and
+ * the one that goes short: a sixteenth field added to `PendingItem` would simply not
+ * be asked of the server, and the screen would read `undefined` in silence. Written
+ * this way the server is asked for every field of `PendingItem` BY DEFAULT, and the
+ * only way out is to add a name below and say why.
+ *
+ * **That silence is not a story: it is what happened on 22.09.2026.** The answer was
+ * grouped by tab and carried six fields fewer, the portal asked for it as
+ * `PendingItem[]`, and „Administracija → Verifikacija → Timovi" threw on
+ * `undefined.trim()` in front of the owner. Nothing compared the two ends.
+ *
+ * **Each name below is a boundary with a reason that is true today**, and each is in
+ * `PENDING.md` with the table that has nowhere to hold it:
+ *
+ * - `rating` — the three marks live on `event_comment`, and that is a comment ALREADY
+ *   PUBLISHED. A comment waiting for a moderator is a row in `verification`, which has
+ *   no column for a mark and no pointer to one.
+ * - `email` — a registration's address. `account.email` exists; serving it here is a
+ *   decision about what the payments queue may say, not a shortfall of this shape.
+ * - `currentDate`, `proposedDate` — a reported change of term. V9 keeps the day asked
+ *   for as free TEXT in `body`, and there is no column for either date, nor any
+ *   pointer from a queue row to the event it is about.
+ * - `picture`, `crop` — ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka
+ *   odluku moderatora nije javna... Takva slika odgovara tacno isto kao slika koje
+ *   nema." `verification.photo_id` is exactly such a holder, so `/api/photos/` answers
+ *   a waiting picture the same as one that was never uploaded. An address answered
+ *   here would draw a broken frame, which is worse than drawing none.
+ *
+ * `photoId` is the one name the answer carries that `PendingItem` has not got. It is
+ * the key of the row in `photo`, and it is here so that the day A60 is revisited there
+ * is something to revisit rather than a field to invent.
+ *
+ * **And `id` is a NUMBER here and a string there, which is a difference of sort rather
+ * than of presence and is therefore written out rather than omitted.** The server
+ * answers `verification.id`, a `bigserial` (`VerificationApi`: „the shapes are the
+ * schema's and not the file's"), and the portal identifies a waiting item by text
+ * because it also holds items this visit made up, which never came out of a sequence.
+ * The one place the two meet turns one into the other, and it is the same place that
+ * fills the six above.
+ */
+export type ServedPendingItem = Omit<
+  PendingItem,
+  'id' | 'rating' | 'email' | 'currentDate' | 'proposedDate' | 'picture' | 'crop'
+> & { id: number; photoId: number | null }

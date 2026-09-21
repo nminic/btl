@@ -1,4 +1,4 @@
-import type { Competitor, League, RacingPair, Team } from '../data/types'
+import type { Competitor, League, RacingPair, ServedPendingItem, Team } from '../data/types'
 
 /**
  * WHAT THE BACKEND ANSWERS WITH, WRITTEN DOWN ONCE.
@@ -143,8 +143,41 @@ export const aLeague = {
 export const readAsVisitorsMember: Competitor = aCompetitor
 export const readAsMyOwnRow: Competitor = myOwnRow
 export const readAsAdministrationsRow: Competitor = aCompetitorToTheAdministration
+/**
+ * ONE ITEM WAITING FOR A MODERATOR, as `/api/verification` answers it since
+ * 22.09.2026.
+ *
+ * **This resource was the one this file did not hold, and that is exactly where the
+ * portal broke.** Until 22.09.2026 `servedShape.test.ts` named `verification` in its
+ * `notSeen` list because „its whole shape is a decision the owner has not taken", and
+ * the answer was grouped by tab: the portal asked for a flat list, was handed
+ * `{queue, waiting}` wrappers, and drew one as though it were an item. Nothing here
+ * held the two ends against each other, so the first person to find out was the owner,
+ * on QA.
+ *
+ * **A teams row and not a comments one, chosen rather than taken first.** The four
+ * fields this increment added are the teams tab's, so a sample off any other tab would
+ * carry them empty and the guard beside it would be satisfied by a server that always
+ * answered empty.
+ */
+export const aWaitingItem = {
+  queue: 'teams' as const,
+  id: 7,
+  date: '2026-09-18',
+  memberNumber: '000001',
+  who: 'Ana Anić',
+  subject: 'Timočka trkačka družina',
+  subjectId: '',
+  body: 'Devet ljudi iz Zaječara',
+  kind: '' as const,
+  city: 'Zaječar',
+  country: 'RS',
+  photoId: null,
+}
+
 export const readAsTeam: Team = aTeam
 export const readAsTeamWithNoMark: Team = aTeamWithNoMark
+export const readAsWaitingItem: ServedPendingItem = aWaitingItem
 export const readAsPair: RacingPair = aPair
 export const readAsLeague: League = aLeague
 
