@@ -127,12 +127,26 @@ import java.util.Set;
  * teams only, so {@code team_id} is null on every row it writes, and that is the mark
  * rather than an omission. The edit is sent from a different screen by a different person
  * - the team's own administrator (PDL P13, 04.09.2026) - and is its own increment.
- * <li><b>The mark.</b> {@code team_proposal.logo_id} points at {@code photo}, and a
- * picture is a file: multipart, a digest, a crop and a name the database issues, none of
- * which exists anywhere under {@code backend/src/main}. This is the same boundary
- * {@link RegistrationApi} names for the member's own photograph, and pictures are F5 (ADL,
- * 15.08.2026). The column is nullable, so a proposal without one is a whole row and not a
- * half filled one, and the screen draws initials for a team with no mark
+ * <li><b>The mark.</b> {@code team_proposal.logo_id} points at {@code photo}, and what
+ * this route has nowhere to send a picture TO is the half that RECEIVES a file: no
+ * signature under {@code backend/src/main/java} carries a {@code MultipartFile} or a
+ * {@code @RequestPart}, so nothing here is written to be handed one. That is read off the
+ * signatures and is not a claim that no file could arrive by any road at all;
+ * {@link RegistrationApi} carries that boundary in full, with the three routes that read
+ * the raw body named. <b>The rest of this sentence is
+ * REVERSED rather than extended, and in the same commit that found it.</b> It used to
+ * name a digest, a crop and a name the database issues beside multipart and say that none
+ * of the four existed anywhere under {@code backend/src/main}; three of the four have
+ * existed since {@link PhotoApi} was written (20.09.2026, ADL A60), which looks a row up
+ * by {@code photo.digest} and opens its file under {@code String.valueOf} of that row's
+ * key, and since {@link TeamApi} began answering a team's digest beside the three
+ * fractions of its crop (21.09.2026). Left standing it would read as an instruction to
+ * the next reader to take those back out. What is unchanged is the decision this entry
+ * exists for: nothing of a team's picture survives a moderator's approval of a proposal,
+ * to F5 (ADL, 15.08.2026, „Nista od timske slike ne prezivljava odobravanje predloga, do
+ * F5"), and {@link RegistrationApi} names the receiving half as the same boundary for the
+ * member's own photograph. The column is nullable, so a proposal without one is a whole
+ * row and not a half filled one, and the screen draws initials for a team with no mark
  * ({@link TeamApi}).
  * <li><b>A town out of the world codebook.</b> V11 lets a team's town be either a row of
  * {@code place} or a name typed with its country, and this route collects only the second.

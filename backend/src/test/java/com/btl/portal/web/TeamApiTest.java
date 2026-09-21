@@ -4,6 +4,9 @@ import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.Location;
+import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,7 @@ import org.springframework.web.method.HandlerMethod;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
@@ -111,8 +115,41 @@ class TeamApiTest {
 	private static final List<String> THE_ADMINISTRATION =
 			List.of(FOUNDED_THE_FIRST_TEAM_AND_ADMINISTERS_THEM, THE_SUPERADMIN);
 
-	/** What a team with nobody in the seat answers the administration with (V11). */
-	private static final String NOBODY_HOLDS_THIS_SEAT = "";
+	/** What a team whose seat names nobody answers the administration with (V11). */
+	private static final String NOBODY_IS_NAMED_TO_THIS_SEAT = "";
+
+	/**
+	 * THE WHOLE COMMENT V11 WRITES OVER {@code team.admin_id}, AS GOLDEN TEXT.
+	 *
+	 * <p>It is a value and not a sentence in a comment, and that is the whole reason it
+	 * is here: a quotation drifts from the document it quotes, and nothing can check a
+	 * comment. {@code theV11CommentThisFileKeepsIsStillWhatTheMigrationSays} reads the
+	 * migration through Flyway and compares the two, so this string is the one home of
+	 * that comment in this file and the javadoc below points at it rather than retyping
+	 * it.
+	 *
+	 * <p><b>The WHOLE comment and not the clause the seat case cares about</b>, which is
+	 * the correction of the third round. Held as a fragment, it was compared by finding
+	 * its own opening words in the migration and matching from there to the end, so
+	 * cutting the fragment's HEAD moved the place the comparison started and the whole
+	 * thing stayed green: the text could be cut to seven of its forty four words and
+	 * nothing failed. That is the shape ADL A33's addition of 07.09.2026 is about, a
+	 * reading that has to anchor or filter and therefore has no bottom, and the answer
+	 * written there is this one: compare the whole text with a golden copy. There is no
+	 * anchor left to move.
+	 *
+	 * <p><b>The cost is named rather than discovered:</b> every change to that comment in
+	 * V11 now has to be made here too. That is deliberate and it falls exactly where the
+	 * decision is, because a migration is immutable once merged (ADL A2), so the day
+	 * this has to change is the day somebody is doing something that deserves to be
+	 * read.
+	 */
+	private static final String V11_ON_THE_ADMIN_ID_COLUMN =
+			"Who administers it. The founder to begin with (owner, 04.09.2026), and a"
+					+ " moderator may hand it to somebody else. It EMPTIES rather than blocking"
+					+ " anything: when the seat is vacant the portal reads the member who has been"
+					+ " in the team longest, and that is a query, not a column. So this says who"
+					+ " was NAMED, and nothing here pretends it is always somebody.";
 
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
@@ -122,6 +159,10 @@ class TeamApiTest {
 
 	@Autowired
 	private JdbcClient db;
+
+	/** Asked where its migrations live and what the applied script is called (V11 above). */
+	@Autowired
+	private Flyway flyway;
 
 	/**
 	 * Three teams, and no two of them alike in anything the answer carries.
@@ -912,11 +953,11 @@ class TeamApiTest {
 				.findFirst().orElseThrow();
 
 		assertThat(Answers.fieldsOf(noSeat))
-				.as("a team whose seat nobody holds answered a signed in member with nothing at"
+				.as("a team whose seat names nobody answered a signed in member with nothing at"
 						+ " all, which is what a visitor is told; the two must not read alike")
 				.contains(WHETHER_THE_SEAT_IS_MINE);
 		assertThat(noSeat.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
-				.as("a team whose seat nobody holds was answered as the caller's own")
+				.as("a team whose seat names nobody was answered as the caller's own")
 				.isFalse();
 	}
 
@@ -977,9 +1018,9 @@ class TeamApiTest {
 	 * staff" instead of „may he" answers him, and nothing about that reads wrong.
 	 *
 	 * <p><b>Asked over EVERY record and by KEY rather than by value.</b> A key carrying
-	 * the empty string says „nobody holds this seat" to a screen that reads it, and it
-	 * would say that about every team in the league; that is the difference between
-	 * absent and empty and it is the whole of this field's shape.
+	 * the empty string says „nobody is named to this seat" to a screen that reads it,
+	 * and it would say that about every team in the league; that is the difference
+	 * between absent and empty and it is the whole of this field's shape.
 	 */
 	@Test
 	void theAdministrationIsTheOnlyOneToldWhoSitsInTheSeat() throws Exception {
@@ -1073,14 +1114,16 @@ class TeamApiTest {
 	}
 
 	/**
-	 * A SEAT NOBODY HOLDS IS ANSWERED EMPTY AND NEVER ABSENT, which is the third
+	 * A SEAT THAT NAMES NOBODY IS ANSWERED EMPTY AND NEVER ABSENT, which is the third
 	 * sentence this field has to say and the one a boolean field never needs.
 	 *
-	 * <p>V11 made {@code team.admin_id} nullable on purpose - „It EMPTIES rather than
-	 * blocking anything" - so the answer has three things to say: „I am not telling
-	 * you", „nobody holds this seat", and a number. Absent is the first and the empty
-	 * string is the second, which is also the shape the portal already reads: the served
-	 * file writes {@code ""} for the team that has none and
+	 * <p>V11 made {@code team.admin_id} nullable on purpose, and what it writes over that
+	 * column is {@link #V11_ON_THE_ADMIN_ID_COLUMN}, kept there once instead of being
+	 * retyped here so that {@code theV11CommentThisFileKeepsIsStillWhatTheMigrationSays}
+	 * can hold it against the migration itself. So the answer has three things to say: „I am not
+	 * telling you", „nobody is named to this seat", and a number. Absent is the first
+	 * and the empty string is the second, which is also the shape the portal already
+	 * reads: the served file writes {@code ""} for the team that has none and
 	 * {@code frontend/src/data/types.ts} types the field {@code string}, not
 	 * {@code string | null}.
 	 *
@@ -1090,7 +1133,7 @@ class TeamApiTest {
 	 * are asked: the key is THERE, and what is in it is the empty string.
 	 */
 	@Test
-	void aSeatNobodyHoldsIsAnsweredEmptyAndNeverAbsent() throws Exception {
+	void aSeatThatNamesNobodyIsAnsweredEmptyAndNeverAbsent() throws Exception {
 		assertThat(db.sql("select count(*) from team where admin_id is null")
 				.query(Integer.class).single())
 				.as("no team in the fixture has an empty seat, so this case asserts nothing")
@@ -1103,9 +1146,10 @@ class TeamApiTest {
 					.findFirst().orElseThrow();
 
 			assertThat(Answers.fieldsOf(vacant))
-					.as("a team whose seat nobody holds answered %s with no key at all, which is"
+					.as("a team whose seat names nobody answered %s with no key at all, which is"
 							+ " what somebody who may not see it is told; „I am not telling you"
-							+ " who administers this" + " " + "and „nobody administers this" + " "
+							+ " who administers this" + " "
+							+ "and „nobody is named to this seat" + " "
 							+ "must not read alike", administration)
 					.contains(WHO_ADMINISTERS_THE_TEAM);
 
@@ -1117,11 +1161,81 @@ class TeamApiTest {
 			JsonNode seat = vacant.get(WHO_ADMINISTERS_THE_TEAM);
 
 			assertThat(seat.isNull() ? null : seat.asString())
-					.as("a team whose seat nobody holds answered %s with somebody, or with the"
+					.as("a team whose seat names nobody answered %s with somebody, or with the"
 							+ " null that means „somebody holds it and I cannot name him\"",
 							administration)
-					.isEqualTo(NOBODY_HOLDS_THIS_SEAT);
+					.isEqualTo(NOBODY_IS_NAMED_TO_THIS_SEAT);
 		}
+	}
+
+	/**
+	 * AND THE COMMENT THE CASE ABOVE LEANS ON IS STILL WHAT THE MIGRATION SAYS.
+	 *
+	 * <p><b>Written because that claim had no floor.</b> The case above reads V11 and
+	 * says what it reads is whole; until this one existed a line could be taken out of
+	 * {@link #V11_ON_THE_ADMIN_ID_COLUMN} and the whole suite stayed green. That is the
+	 * very defect the text is about: what stood there until 21.09.2026 stopped at the
+	 * colon, one clause short of the sentence that overturns it, and nothing said so.
+	 *
+	 * <p><b>WHOLE TEXT AND NOT A FRAGMENT, which is the correction of the third round.</b>
+	 * The first two drafts held only the clause the seat cares about and found it in the
+	 * migration by its own opening words, matching from there to the end. Cutting the
+	 * fragment's HEAD moved the place the match began, so the comparison still succeeded:
+	 * measured, the text could be cut to seven of its forty four words and the case
+	 * stayed green. ADL A33's addition of 07.09.2026 names that shape - a reading that
+	 * has to anchor or filter has no bottom, and every round closes one direction and
+	 * leaves the next open - and prescribes this: compare the whole text with a golden
+	 * copy. Nothing here anchors on the constant any more, so there is no head to cut.
+	 *
+	 * <p><b>Flyway is asked where the migration lives and what the applied script is
+	 * called.</b> Only the VERSION is named here, because the version is the fact this
+	 * case is about; a path written out would be a second copy of two Flyway settings,
+	 * and a setting written down twice is a setting that moves in one of the two places.
+	 * The form is {@code DatabaseTest.migrationSql}'s, which does exactly this.
+	 *
+	 * <p><b>Whitespace is flattened on both sides</b>, because the migration wraps the
+	 * comment over four lines inside a comment frame and this file wraps it again. A
+	 * text is not a different text for being broken differently.
+	 */
+	@Test
+	void theV11CommentThisFileKeepsIsStillWhatTheMigrationSays() throws Exception {
+		String version = "11";
+
+		MigrationInfo applied = java.util.Arrays.stream(flyway.info().applied())
+				.filter(one -> one.getVersion() != null
+						&& version.equals(one.getVersion().getVersion()))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("no migration " + version + " was applied"));
+
+		String folder = java.util.Arrays.stream(flyway.getConfiguration().getLocations())
+				.map(Location::getPath)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Flyway is configured with no location"));
+
+		String sql;
+		try (InputStream open = getClass().getClassLoader()
+				.getResourceAsStream(folder + "/" + applied.getScript())) {
+			assertThat(open).as("%s is not under %s, where Flyway says its migrations are, so this"
+					+ " case compares nothing", applied.getScript(), folder).isNotNull();
+			sql = new String(open.readAllBytes(), StandardCharsets.UTF_8);
+		}
+
+		int column = sql.indexOf("admin_id");
+		assertThat(column).as("%s no longer names an admin_id column, so there is no comment on"
+				+ " one to compare", applied.getScript()).isNotNegative();
+
+		String above = sql.substring(0, column);
+		int closes = above.lastIndexOf("*/");
+		int opens = above.lastIndexOf("/*", closes);
+		assertThat(opens).as("the admin_id column of %s no longer carries a comment above it, so"
+				+ " there is nothing there to compare", applied.getScript()).isNotNegative();
+
+		assertThat(above.substring(opens + 2, closes).replaceAll("\\s+", " ").trim())
+				.as("the comment over admin_id in %s and the golden copy of it in this file have"
+						+ " come apart. Whichever moved, the seat case above is reasoning from a"
+						+ " sentence the database no longer carries, and that is how the cut quote"
+						+ " of 21.09.2026 survived in the first place", applied.getScript())
+				.isEqualTo(V11_ON_THE_ADMIN_ID_COLUMN);
 	}
 
 	/**
@@ -1198,8 +1312,8 @@ class TeamApiTest {
 
 			assertThat(held.path(WHO_ADMINISTERS_THE_TEAM).isNull())
 					.as("a seat HELD by somebody with no member number read to %s exactly like a"
-							+ " seat nobody holds (%s). The administration's screen draws a free"
-							+ " chair off that string and would hand the team away over somebody"
+							+ " seat that names nobody (%s). The administration's screen draws a"
+							+ " free chair off that string and would hand the team away over somebody"
 							+ " sitting in it", administration,
 							held.path(WHO_ADMINISTERS_THE_TEAM))
 					.isTrue();
@@ -1221,9 +1335,9 @@ class TeamApiTest {
 		JsonNode seat = his.get(WHO_ADMINISTERS_THE_TEAM);
 
 		assertThat(seat.isNull() ? null : seat.asString())
-				.as("one record told him „you founded this team\" and „nobody holds this seat\""
-						+ " at once")
-				.isNotEqualTo(NOBODY_HOLDS_THIS_SEAT);
+				.as("one record told him „you founded this team\" and „nobody is named to this"
+						+ " seat\" at once")
+				.isNotEqualTo(NOBODY_IS_NAMED_TO_THIS_SEAT);
 	}
 
 	/**
