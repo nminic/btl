@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * THE TEAMS OF THE LEAGUE, and only what the rulebook publishes about them.
@@ -45,8 +46,62 @@ import java.util.List;
  * decision of 13.09.2026 keeps off {@code /api/competitors} altogether (PDL P11,
  * „ko nije platio, ne vidi se nigde"). A member number answered here and absent
  * there says by subtraction exactly what that decision shut. The fixture holds
- * such a member and names a team after him, so this is measured and not argued.</li>
+ * such a member and names a team after him, so this is measured and not argued.
+ * <b>This third reason stops applying to the administration on 21.09.2026 and the
+ * paragraph below says what it leaves behind instead</b>, because a reason that is
+ * quietly no longer true reads as one that was never checked.</li>
  * </ul>
+ *
+ * <p><b>WHICH LEAVES THE ADMINISTRATION A NUMBER IT CANNOT LOOK UP, AND THAT IS NAMED
+ * HERE RATHER THAN LEFT TO BE FOUND.</b> The third reason above is about subtraction:
+ * a lapsed member is off {@code /api/competitors} entirely, so a number answered here
+ * and missing there told a public reader what PDL P11 shut. The administration may
+ * read the seat, so for it the subtraction is no longer a leak - but the two lists
+ * still disagree, and now they disagree in the administration's hands. Measured on the
+ * fixture: {@code klub-lovcen}'s seat holds {@code 000003}, whose {@code active} is
+ * false; {@code /api/teams} answers the superadmin {@code "organizerMemberNumber":
+ * "000003"} and {@code /api/competitors}, asked with the SAME cookie by the SAME
+ * superadmin, answers {@code 000001}, {@code 000002} and {@code 000004} and no
+ * {@code 000003} at all, because {@code CompetitorApi} ends on {@code where c.active}.
+ * So {@code AdminTeams.tsx} draws a seat it cannot put a name to, and
+ * {@code teamAdmin.ts} finds nobody in the roster to match.
+ *
+ * <p><b>It is not decided here, and the boundary is written down in both directions so
+ * that whoever decides it has the two costs in front of him.</b> Either the
+ * administration's list of members carries the lapsed ones - which is PDL P11 reopened,
+ * for one audience - or the seat answers a lapsed member as null, which is the shape
+ * the paragraph above gives to „there is no number to give you" and would put a HELD
+ * seat and a seat held by a LAPSED member back into one sentence, the very join this
+ * increment spent itself taking apart. The owner's rule of 13.09.2026 governs the gap
+ * in between: „Kad je sporno, polje se IZOSTAVLJA i izostavljanje se imenuje sa
+ * razlogom, pa se vlasniku javi." Nothing is omitted here because the field is already
+ * answered and taking it back out is the second of those two costs; what is done
+ * instead is the rest of that sentence - the case is named, the reason is named, and it
+ * goes to the owner. {@code TeamApiTest} pins the disagreement itself so that a day on
+ * which the two lists agree does not pass unnoticed.
+ *
+ * <p><b>And one half of that choice is already made ELSEWHERE, which is worth the
+ * owner's knowing and is not on its own a reason to follow it here.</b>
+ * {@link CommentApi} meets the same two lists and answers
+ * {@code case when author.active then author.member_number end}, so a lapsed author's
+ * number does not leave at all. Measured, and the difference measured with it: that
+ * resource is PUBLIC, and its reason is the subtraction PDL P11 shut - a number leaving
+ * there and missing from {@code /api/competitors} names whoever has not paid to anybody
+ * who looks. This one answers the seat to the administration alone, which PDL P13 lets
+ * appoint it, so that reason does not carry across and the choice does not follow from
+ * it. What carries across is only the vocabulary, above.
+ *
+ * <p><b>AND ONE DEBT THE PORTAL OWES THE DAY THE MOCK IS SWITCHED OFF, written where
+ * whoever switches it off will be standing.</b> {@code frontend/src/data/types.ts}
+ * types this field {@code organizerMemberNumber: string} - REQUIRED, and neither
+ * optional nor nullable - while the answer leaves the key out for four of the five
+ * callers and, since 21.09.2026, may carry null for the fifth. Nothing is broken today
+ * because the portal still reads {@code /mock} (ADL A50) and the served file writes a
+ * string on every record. On the first day it reads this resource the type has to
+ * become {@code organizerMemberNumber?: string | null}, and the two halves are two
+ * different sentences: the {@code ?} is „I am not telling you" and the {@code null} is
+ * „somebody holds it whom I cannot name". The frontend is not touched by this
+ * increment; this paragraph is the whole of what it is owed.
  *
  * <p><b>AND SINCE 21.09.2026 IT DOES LEAVE TO THE ADMINISTRATION, which is the
  * other half of the same decision rather than a hole in it.</b> ADL, 13.09.2026:
@@ -69,16 +124,56 @@ import java.util.List;
  * {@code forms/definitions/admin-tim.form.json} carries the field of the form. With
  * the field gone the administration of teams would have broken, and silently.
  *
- * <p><b>THE SEAT MAY ALSO BE EMPTY, AND THAT IS A THIRD SENTENCE AND NOT A SECOND.</b>
- * {@code team.admin_id} is nullable by V11's own decision - „It EMPTIES rather than
- * blocking anything" - so the answer has three things to say and not two: „I am not
- * telling you", „nobody holds this seat", and a member number. The first is the key
- * ABSENT, which {@code @JsonInclude} does; the second is the EMPTY STRING, which is
- * what the portal already reads it as ({@code frontend/src/data/types.ts} types the
- * field {@code string} and not {@code string | null}, and the served file writes
- * {@code ""} for the team that has none). Answered null for an empty seat the key
- * would vanish, and the administration would be told „you may not see this" about a
- * team it may see everything about.
+ * <p><b>THE SEAT HAS FOUR STATES AND THE ANSWER HAS FOUR SHAPES, one each, and that
+ * is the correction of 21.09.2026.</b> {@code team.admin_id} is nullable by V11's own
+ * decision - „It EMPTIES rather than blocking anything" - so „nobody holds this seat"
+ * is a sentence of its own beside „I am not telling you" and a member number. What
+ * stood here said those were all the sentences there were, and a fourth was hiding
+ * inside the third:
+ *
+ * <ul>
+ * <li><b>The key ABSENT</b>, which is „I am not telling you" and is what everybody
+ * outside {@link #OVER_THE_TEAMS} is answered. Java {@code null} on the component.</li>
+ * <li><b>The EMPTY STRING</b>, which is „nobody holds this seat" and is read off
+ * {@code t.admin_id is null} and off nothing else. It is also the shape the portal
+ * already reads ({@code frontend/src/data/types.ts} types the field {@code string},
+ * and the served file writes {@code ""} for the team that has none). Answered null
+ * instead, the key would vanish and the administration would be told „you may not see
+ * this" about a team it may see everything about.</li>
+ * <li><b>A member number</b>, which is the member who holds it.</li>
+ * <li><b>JSON null</b>, which is „somebody holds this seat and he is not a member, so
+ * there is no number to give you". {@code Optional.empty()} on the component, and the
+ * portal's own word for that rather than one invented here: {@link CommentApi} answers
+ * {@code memberNumber} as null for an author there is no profile to lead to
+ * ({@code case when author.active then author.member_number end}), and
+ * {@code CommentApiTest} reads it back as {@code path("memberNumber").isNull()}.</li>
+ * </ul>
+ *
+ * <p><b>Why the fourth is a state and not a spelling of the empty one, which is
+ * measured rather than argued.</b> {@code competitor.member_number} has been nullable
+ * since V16, whose own text names the trap - „a row in {@code competitor} is a PERSON
+ * WHO REGISTERED. A MEMBER is a row whose {@code member_number} is there. <b>Any query
+ * that counted members by counting rows now counts applicants too</b>" - and nothing
+ * keeps such a row out of the seat: {@code team_admin_fk} (V11) points at
+ * {@code competitor (id)} with no condition on it, and {@link TeamWriteApi} lets
+ * anybody with a row there put a team forward, {@code JoiningATeam.mayJoin} asking
+ * about the window and his memberships and never about a number. Written
+ * {@code coalesce(seat.member_number, '')} the answer then said „nobody holds this
+ * seat" about a seat that is HELD, and the administration's own screen
+ * ({@code frontend/src/pages/admin/AdminTeams.tsx}) draws a free chair off exactly
+ * that string. <b>And the contradiction is inside one record rather than in the eye of
+ * a reader:</b> {@code foundedByMe} compares {@code t.admin_id} to the caller's KEY, so
+ * the same registrant is told „you founded this team" by the field beside the one
+ * telling him nobody did. {@code aSeatHeldByARegistrantIsNotAnEmptySeat} holds both
+ * halves of that at once.
+ *
+ * <p><b>And it is {@code Optional} rather than a second field, because one fact keeps
+ * one home.</b> A boolean beside the number would be the same fact answered twice, in
+ * a name no screen reads, and the two would be free to disagree. Jackson 3 carries an
+ * {@code Optional} itself, so {@code null} and {@code Optional.empty()} are the key
+ * gone and the key carrying null - four shapes on one field, and
+ * {@code theFourStatesOfTheSeatAreFourDifferentShapes} reads all four off the wire
+ * rather than trusting the annotation.
  *
  * <p><b>WHAT DOES LEAVE, SINCE 20.09.2026, IS THE ANSWER TO THE QUESTION THE
  * NUMBER WAS BEING READ FOR, and only to the one asking it.</b> The paragraph
@@ -287,22 +382,25 @@ class TeamApi {
 	 *                    nobody signed in asked for. False and absent are two
 	 *                    different sentences: „you did not found this" and „I do not
 	 *                    know who you are", and a visitor must be told the second
-	 * @param organizerMemberNumber the member sitting in this team's seat, on every
-	 *                    record of an answer the administration asked for and ABSENT
-	 *                    from every record of anybody else's - a visitor's, a member's
-	 *                    own team included, and a signed in moderator who does not hold
-	 *                    {@link #OVER_THE_TEAMS}. <b>The EMPTY STRING and not null for a
-	 *                    team whose seat nobody holds</b>, which is the one place this
-	 *                    field differs from every other conditional one in the API:
-	 *                    absent is „I am not telling you" and empty is „nobody holds
-	 *                    it", and answered null the second would arrive spelt as the
-	 *                    first. It is also the shape the portal already reads
-	 *                    ({@code frontend/src/data/types.ts}, {@code string})
+	 * @param organizerMemberNumber who sits in this team's seat, said in FOUR shapes
+	 *                    because the seat has four states and no two of them may read
+	 *                    alike. The Java {@code null} is the key ABSENT, which is
+	 *                    „I am not telling you" and is what everybody but the
+	 *                    administration is answered - a visitor's, a member's own team
+	 *                    included, and a signed in moderator who does not hold
+	 *                    {@link #OVER_THE_TEAMS}. {@code Optional.of("")} is
+	 *                    <b>the EMPTY STRING, „nobody holds this seat"</b>, and it is
+	 *                    read off {@code t.admin_id is null} and off nothing else.
+	 *                    {@code Optional.of(number)} is the member who holds it.
+	 *                    {@code Optional.empty()} is <b>JSON null, „somebody holds it
+	 *                    and he is not a member, so there is no number to give you"</b>;
+	 *                    see the note on this class for why that is a state of its own
+	 *                    and not a spelling of the empty one
 	 */
 	record Team(long id, String slug, String name, String city, String country, String bio,
 			String logo, Crop crop,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe,
-			@JsonInclude(JsonInclude.Include.NON_NULL) String organizerMemberNumber) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> organizerMemberNumber) {
 	}
 
 	/**
@@ -371,27 +469,34 @@ class TeamApi {
 						   parameter $1" - rather than guessing. */
 						+ " case when cast(:me as bigint) is null then null"
 						+ "      else coalesce(t.admin_id = :me, false) end as founded_by_me,"
-						/* AND WHO SITS IN THE SEAT, ON EVERY ROW OR ON NONE. The condition is
-						   the CALLER and never the row, which is the whole difference between
-						   this field and the one above it: that one is the caller's own fact and
-						   this is a fact about everybody, answered to the few who may read it.
-						   Written as `t.admin_id = :me` it would hand the administration its own
-						   team and nothing else, which is the shape a copy of the line above
-						   produces and `theAdministrationIsToldWhoSitsInEverySeat` refuses.
+						/* AND WHO SITS IN THE SEAT, WHICH IS A FACT ABOUT THE TEAM AND NOT
+						   ABOUT THE CALLER - the whole difference between this field and the
+						   one above it. That one is the caller's own fact; this is a fact about
+						   everybody, answered to the few who may read it. Written as
+						   `t.admin_id = :me` it would hand the administration its own team and
+						   nothing else, which is the shape a copy of the line above produces
+						   and `theAdministrationIsToldWhoSitsInEverySeat` refuses.
 
-						   THE EMPTY STRING AND NOT NULL FOR AN EMPTY SEAT, and the coalesce is
-						   INSIDE the case rather than around it, which is the whole of the
-						   difference. Around it, everybody else would be answered the empty
-						   string too and the key would arrive for a visitor; inside, false is
-						   still null and `@JsonInclude` still leaves the key out. The three
-						   sentences are then three shapes: no key, an empty string, a number.
+						   THE EMPTY STRING IS READ OFF `t.admin_id` AND OFF NOTHING ELSE, which
+						   is the correction of 21.09.2026 and the reason there is a `case` here
+						   at all rather than a `coalesce`. Written `coalesce(seat.member_number,
+						   '')` the empty string answered TWO different facts - „nobody sits
+						   here" and „somebody sits here who has no member number" - and
+						   `member_number` has been nullable since V16, which names the trap in
+						   as many words: „a row in `competitor` is a PERSON WHO REGISTERED. A
+						   MEMBER is a row whose `member_number` is there." So the empty string
+						   is the seat being empty, and a seat held by somebody with no number
+						   comes out of here NULL, which is its own sentence one line down.
 
-						   CAST, for the same reason the line above carries one: a parameter
-						   standing alone in a `case` has no neighbour to take a type from, and
-						   PostgreSQL refuses the statement rather than guessing. */
-						+ " case when cast(:administration as boolean)"
-						+ "      then coalesce(seat.member_number, '') end"
-						+ "      as organizer_member_number"
+						   AND THE CALLER IS NOT ASKED ABOUT HERE, which is the other half of
+						   the same correction. `:administration` used to wrap this case, and
+						   then „not for you" and „no number to give you" were both SQL null and
+						   the mapper could not tell them apart. One guard, in one place, and it
+						   is the place that can say all four things; a second guard here would
+						   be one no mutation can reach, because the mapper would go on hiding
+						   the field after it was taken away. */
+						+ " case when t.admin_id is null then ''"
+						+ "      else seat.member_number end as organizer_member_number"
 						+ " from team t"
 						+ " left join place town on town.id = t.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -407,9 +512,8 @@ class TeamApi {
 						   `aTeamComesBackOnceHoweverManyMembersItHas` measures.
 
 						   THIS IS THE ONE JOIN IN THIS QUERY THAT REACHES A MEMBER, and nothing
-						   but `member_number` is read off it, inside the case above. The roster
-						   is still not joined; who is IN a team remains /api/competitors' one
-						   answer. */
+						   but `member_number` is read off it. The roster is still not joined;
+						   who is IN a team remains /api/competitors' one answer. */
 						+ " left join competitor seat on seat.id = t.admin_id"
 						/* NOTHING IS JOINED TO `team_membership` HERE, and that is the decision
 						   above rather than an omission: who is in which team is answered by
@@ -417,7 +521,6 @@ class TeamApi {
 						   members. */
 						+ " order by t.name, t.id")
 				.param("me", me)
-				.param("administration", administration)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double. V21 chose `numeric(9, 8)`
 					   for this and said why: the rule is about the exact boundaries 0 and 1, and
@@ -432,6 +535,21 @@ class TeamApi {
 					String mark = row.getString(7);
 					BigDecimal across = row.getBigDecimal(8);
 
+					/* THE ONE GUARD OVER THE SEAT, AND THE ONLY PLACE THAT CAN SAY ALL FOUR
+					   THINGS. `null` is the key gone, which is „I am not telling you";
+					   `Optional.empty()` is the key carrying JSON null, which is „somebody
+					   holds this seat and he is not a member". The query cannot tell those two
+					   apart - both are SQL null - so the question „may he read this" is asked
+					   HERE and nowhere else, off the boolean that already answered it.
+
+					   `@JsonInclude(NON_NULL)` on an `Optional` is what makes the two spellings
+					   two shapes, and it is MEASURED rather than trusted:
+					   `theFourStatesOfTheSeatAreFourDifferentShapes` reads them off the wire.
+					   Jackson 3 carries the Optional itself (3.1.4; the jdk8 types stopped
+					   being a module of their own), so there is nothing to register. */
+					Optional<String> inTheSeat =
+							administration ? Optional.ofNullable(row.getString(12)) : null;
+
 					return new Team(row.getLong(1), row.getString(2), row.getString(3),
 							row.getString(4), row.getString(5), row.getString(6),
 							/* The digest and never the key, and never the empty path for a team
@@ -440,7 +558,7 @@ class TeamApi {
 							mark == null ? null : A_PICTURE_IS_ASKED_FOR_AT + mark,
 							across == null ? null
 									: new Crop(across, row.getBigDecimal(9), row.getBigDecimal(10)),
-							row.getObject(11, Boolean.class), row.getString(12));
+							row.getObject(11, Boolean.class), inTheSeat);
 				})
 				.list();
 	}

@@ -114,6 +114,7 @@ class TeamApiTest {
 	/** What a team with nobody in the seat answers the administration with (V11). */
 	private static final String NOBODY_HOLDS_THIS_SEAT = "";
 
+
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	@Autowired
@@ -316,6 +317,38 @@ class TeamApiTest {
 				.params(slug, name, bio, firstSeason).update();
 	}
 
+	/**
+	 * A PERSON WHO REGISTERED AND IS NOT A MEMBER, which V16 made a row that can exist
+	 * and nothing since has kept out of a team's seat.
+	 *
+	 * <p>Written as its own helper rather than as a null passed to {@link #member} so
+	 * that the two are not one call with a flag: a member and a registrant differ in the
+	 * one column this whole increment turns on, and a reader of the fixture has to see
+	 * which one he is looking at. He is {@code active = false} for the same reason the
+	 * column is empty - he has not paid - which is the state {@code CompetitorApi} keeps
+	 * off its list anyway.
+	 *
+	 * @return his {@code competitor.id}, which is what a seat is filled by
+	 */
+	private long registrant(String first, String last, String referralCode) {
+		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, city, country_id, first_season,"
+						+ " first_season_2027, active, membership_basis, referral_code, bio,"
+						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
+						+ " health_statement_at, photo_id)"
+						+ " values (null, ?, ?, 'M', date '1990-01-01',"
+						+ " (select id from place where name = 'Beograd'), null, null,"
+						+ " 2027, false, false, 'payment', ?, '', false, 'none', 'Otac',"
+						+ " 'Ulica 2', 'L', timestamptz '2026-09-01 10:00:00+00', null)"
+						+ " returning id")
+				.params(first, last, referralCode).query(Long.class).single();
+	}
+
+	/** Puts somebody in a team's seat by KEY, which is what {@code team.admin_id} is. */
+	private void sits(long competitorId, String slug) {
+		db.sql("update team set admin_id = ? where slug = ?").params(competitorId, slug).update();
+	}
+
 	private void membership(String number, String slug, int from) {
 		db.sql("insert into team_membership (competitor_id, team_id, season_from) values"
 						+ " ((select id from competitor where member_number = ?),"
@@ -439,8 +472,12 @@ class TeamApiTest {
 	 */
 	@Test
 	void noMemberNumberLeavesTheServer() throws Exception {
-		List<String> numbers = db.sql("select member_number from competitor").query(String.class)
-				.list();
+		/* The rows that HAVE one, which is what this case is about. V16 made the column
+		   nullable, so „every member number in the database" and „every row in
+		   `competitor`" stopped being the same question, and a null read into the loop
+		   below would ask `doesNotContain(null)` rather than asking anything. */
+		List<String> numbers = db.sql("select member_number from competitor"
+				+ " where member_number is not null").query(String.class).list();
 		assertThat(numbers).as("no member number was read out of the database, so the loops below"
 				+ " assert nothing").hasSize(4);
 
@@ -462,8 +499,8 @@ class TeamApiTest {
 		}
 
 		List<String> inNoSeat = db.sql("select member_number from competitor where id not in"
-				+ " (select admin_id from team where admin_id is not null)").query(String.class)
-				.list();
+				+ " (select admin_id from team where admin_id is not null)"
+				+ " and member_number is not null").query(String.class).list();
 		assertThat(inNoSeat).as("every member in the fixture sits in a seat, so the loop below"
 				+ " asserts nothing about the roster").isNotEmpty();
 
@@ -1077,6 +1114,217 @@ class TeamApiTest {
 							administration)
 					.isEqualTo(NOBODY_HOLDS_THIS_SEAT);
 		}
+	}
+
+	/**
+	 * AND A SEAT HELD BY SOMEBODY WHO IS NOT A MEMBER IS NOT AN EMPTY SEAT, which is a
+	 * FOURTH sentence and was being spelt as the second until 21.09.2026.
+	 *
+	 * <p><b>The row can exist and nothing keeps it out of the seat, which is measured
+	 * here rather than assumed.</b> V16 dropped {@code not null} from
+	 * {@code competitor.member_number} and named the trap itself - „a row in
+	 * {@code competitor} is a PERSON WHO REGISTERED. A MEMBER is a row whose
+	 * {@code member_number} is there. Any query that counted members by counting rows
+	 * now counts applicants too" - and {@code team_admin_fk} (V11) points at
+	 * {@code competitor (id)} with no condition on it. The case does not argue that: it
+	 * writes such a row, seats it, and asks.
+	 *
+	 * <p><b>Written {@code coalesce(seat.member_number, '')} the answer said „nobody
+	 * holds this seat" about a seat that is HELD</b>, and the administration's own
+	 * screen draws a free chair off exactly that string - so a moderator would hand the
+	 * team to somebody else without ever being told there was anyone there.
+	 *
+	 * <p><b>And the contradiction is inside ONE record, which is why this is a state and
+	 * not a taste.</b> The caller here is the registrant himself AND holds the right over
+	 * the teams, so one record of his answer carries both fields: {@code foundedByMe}
+	 * compares {@code t.admin_id} to his KEY and answers true, and the field beside it
+	 * used to answer „nobody founded this". One record cannot say both. That pairing is
+	 * what makes a fourth shape necessary rather than merely tidier, and it is asserted
+	 * rather than described.
+	 *
+	 * <p><b>Three states are pinned before the fourth is asked about</b>, because over a
+	 * fixture where the empty seat had gone, or where every seat were this one, „the
+	 * answer is null everywhere" would satisfy all of it.
+	 */
+	@Test
+	void aSeatHeldByARegistrantIsNotAnEmptySeat() throws Exception {
+		long registrant = registrant("Petar", "Nikolic", "9f8e7d6c5b4a3021");
+		sits(registrant, "klub-lovcen");
+
+		/* HE IS THE ADMINISTRATION AS WELL AS THE MAN IN THE SEAT, so the two fields meet
+		   on one record. Role „moderator" and the tick V5 writes, the same way the fixture
+		   ticks the other one. */
+		String him = "petar@primer.rs";
+		account(him, "moderator");
+		db.sql("update account set competitor_id = ? where email = ?").params(registrant, him)
+				.update();
+		ticked(him, "entity:teams");
+
+		assertThat(db.sql("select count(*) from team t join competitor seat on seat.id = t.admin_id"
+						+ " where seat.member_number is null").query(Integer.class).single())
+				.as("no seat in the fixture is held by somebody without a member number, so this"
+						+ " case is about nothing")
+				.isEqualTo(1);
+		assertThat(db.sql("select count(*) from team where admin_id is null")
+				.query(Integer.class).single())
+				.as("no team has an empty seat any more, so „held by a registrant\" and „empty\""
+						+ " cannot be told apart by this case")
+				.isEqualTo(1);
+		assertThat(db.sql("select count(*) from team t join competitor seat on seat.id = t.admin_id"
+						+ " where seat.member_number is not null").query(Integer.class).single())
+				.as("no seat is held by a member any more, so the third shape is not in the answer"
+						+ " to compare against")
+				.isEqualTo(1);
+
+		for (String administration : List.of(THE_SUPERADMIN, him)) {
+			JsonNode held = StreamSupport.stream(
+							new ObjectMapper().readTree(whole(administration)).spliterator(), false)
+					.filter(one -> one.path("slug").asString().equals("klub-lovcen"))
+					.findFirst().orElseThrow();
+
+			assertThat(Answers.fieldsOf(held))
+					.as("the seat of a team held by somebody with no member number answered %s"
+							+ " with no key at all, which is what somebody who may not see it is"
+							+ " told", administration)
+					.contains(WHO_ADMINISTERS_THE_TEAM);
+
+			assertThat(held.path(WHO_ADMINISTERS_THE_TEAM).isNull())
+					.as("a seat HELD by somebody with no member number read to %s exactly like a"
+							+ " seat nobody holds (%s). The administration's screen draws a free"
+							+ " chair off that string and would hand the team away over somebody"
+							+ " sitting in it", administration,
+							held.path(WHO_ADMINISTERS_THE_TEAM))
+					.isTrue();
+		}
+
+		JsonNode his = StreamSupport.stream(new ObjectMapper().readTree(whole(him)).spliterator(),
+						false).filter(one -> one.path("slug").asString().equals("klub-lovcen"))
+				.findFirst().orElseThrow();
+
+		assertThat(his.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
+				.as("the man in the seat was not told the team is his, so the two fields on this"
+						+ " record cannot contradict one another and the case measures half of"
+						+ " what it says")
+				.isTrue();
+		/* ASKED OF THE NODE AND NOT THROUGH `asString()`, which is the trap this whole
+		   field is about in miniature: a null node reads back as the empty string, so the
+		   two shapes this case exists to keep apart arrive as one the moment anybody
+		   flattens them. */
+		JsonNode seat = his.get(WHO_ADMINISTERS_THE_TEAM);
+
+		assertThat(seat.isNull() ? null : seat.asString())
+				.as("one record told him „you founded this team\" and „nobody holds this seat\""
+						+ " at once")
+				.isNotEqualTo(NOBODY_HOLDS_THIS_SEAT);
+	}
+
+	/**
+	 * AND THE FOUR STATES OF THE SEAT ARE FOUR DIFFERENT SHAPES ON THE WIRE, asked of
+	 * the shapes themselves rather than of any one of them.
+	 *
+	 * <p>The three cases above each hold one sentence. This one holds the thing they
+	 * cannot: that no two of the four READ ALIKE. It is the check that fails the day
+	 * somebody makes two of them agree by making the answer simpler - which is exactly
+	 * how the fourth state came to be spelt as the second.
+	 *
+	 * <p><b>Read off the TEXT and not off a mapper</b>, because that is where the
+	 * difference lives: „the key is not there", „the key is there and holds null", „the
+	 * key is there and holds the empty string" and „the key is there and holds a number"
+	 * are four spellings, and a tree read back through {@code asString()} flattens the
+	 * first three into one.
+	 *
+	 * <p><b>And it is one answer for three of them</b>, so the comparison is between
+	 * records of a single request and not between four requests that could each have
+	 * been right about a different thing.
+	 */
+	@Test
+	void theFourStatesOfTheSeatAreFourDifferentShapes() throws Exception {
+		sits(registrant("Petar", "Nikolic", "9f8e7d6c5b4a3021"), "klub-lovcen");
+
+		JsonNode answer = new ObjectMapper().readTree(whole(THE_SUPERADMIN));
+
+		Map<String, String> shapes = new HashMap<>();
+
+		for (JsonNode one : answer) {
+			String slug = one.path("slug").asString();
+			JsonNode seat = one.get(WHO_ADMINISTERS_THE_TEAM);
+
+			shapes.put(slug, seat == null ? "no key at all"
+					: seat.isNull() ? "the key holding null"
+							: "the key holding \"" + seat.asString() + "\"");
+		}
+
+		assertThat(shapes).as("the administration was not answered the three teams this case"
+				+ " compares").containsOnlyKeys("vardarski-krug", "klub-lovcen",
+						"novosadski-trkaci");
+
+		assertThat(shapes.values()).as("two of the three seats the administration can see read"
+						+ " alike: %s. An empty seat, a seat held by somebody with no member"
+						+ " number, and a seat held by a member are three facts and have to be"
+						+ " three shapes", shapes)
+				.doesNotHaveDuplicates();
+
+		/* AND THE FOURTH, which is not in this answer because it is the answer somebody
+		   else gets: the key absent altogether. Taken from the member who founded the
+		   second team, who is on the far side of PDL P13's line. */
+		assertThat(Answers.fieldsOf(StreamSupport.stream(
+						new ObjectMapper().readTree(whole(FOUNDED_THE_SECOND_TEAM)).spliterator(),
+						false).findFirst().orElseThrow()))
+				.as("somebody who may not see the seat was answered a key, so „I am not telling"
+						+ " you\" is not a shape of its own and the three above are all there are")
+				.doesNotContain(WHO_ADMINISTERS_THE_TEAM);
+	}
+
+	/**
+	 * AND THE SEAT MAY NAME A MEMBER THE ADMINISTRATION'S OWN LIST DOES NOT CARRY, which
+	 * is pinned here because it is the owner's to decide and not this resource's.
+	 *
+	 * <p><b>Both lists are asked with the SAME cookie of the SAME caller</b>, which is
+	 * the whole of the case: a difference between two callers would be authorisation
+	 * working, and a difference between one caller's two lists is two rules disagreeing.
+	 * {@code CompetitorApi} ends on {@code where c.active} by the owner's decision of
+	 * 13.09.2026 (PDL P11, „ko nije platio, ne vidi se nigde"); this resource answers
+	 * the seat whatever the fee has done. So {@code AdminTeams.tsx} is handed a number
+	 * and {@code teamAdmin.ts} finds nobody in the roster to match it.
+	 *
+	 * <p><b>Nothing is decided by this case and that is deliberate.</b> The owner's rule
+	 * of 13.09.2026 for a field in doubt is to leave it out and name the omission, and
+	 * the field is already answered - taking it back out is one of the two costs he has
+	 * to weigh, not a repair this increment may make on its own. What the case does is
+	 * make the disagreement fail loudly on the day somebody closes it from either end,
+	 * so that the decision is taken rather than drifted into.
+	 *
+	 * <p><b>Pinned on a lapsed member who really is in a seat</b>, and the pin is read
+	 * out of the database so a fixture changed tomorrow is measured without anybody
+	 * remembering this case.
+	 */
+	@Test
+	void theSeatMayNameAMemberTheAdministrationsOwnListDoesNotCarry() throws Exception {
+		String lapsed = db.sql("select seat.member_number from team t"
+						+ " join competitor seat on seat.id = t.admin_id where not seat.active")
+				.query(String.class).single();
+
+		String teams = whole(THE_SUPERADMIN);
+		String members = http.perform(get("/api/competitors")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(THE_SUPERADMIN)
+								.secret())))
+				.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+		assertThat(members).as("the superadmin was answered no members at all, so the comparison"
+				+ " below is between a list and nothing").contains("000001");
+
+		assertThat(teams).as("the seat of a team is no longer answered with the member whose fee"
+						+ " has lapsed (%s), so the two lists no longer disagree and this case"
+						+ " measures nothing. If that was decided, this case is what says so",
+						lapsed)
+				.contains(lapsed);
+
+		assertThat(members).as("/api/competitors now carries the member whose fee has lapsed (%s),"
+						+ " so the number the seat answers can be looked up after all. That is PDL"
+						+ " P11 reopened for this audience, and it is a decision rather than a"
+						+ " tidy-up: if it was taken, this case is what has to be rewritten",
+						lapsed)
+				.doesNotContain(lapsed);
 	}
 
 	/**
