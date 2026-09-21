@@ -992,6 +992,132 @@ class VerificationApiTest {
 	}
 
 	/**
+	 * WHICH SORT OF THING AN ITEM IS, ON THE TWO TABS THAT HOLD MORE THAN ONE.
+	 *
+	 * <p>Read off the schema rather than stored: a teams row whose proposal names a team is
+	 * a change to that team, and a profiles row is a picture exactly while it still holds
+	 * one. A third column saying the same thing could disagree with both.
+	 */
+	@Test
+	void whatTheTeamsAndProfilesTabsSayAnItemIsComesOffTheSchemaAndNotOffAGuess()
+			throws Exception {
+		/* WRITTEN BECAUSE A MUTATION PASSED. Before this case existed, killing the
+		   `teamEdit` branch outright - `case when false then 'teamEdit'` - left the whole
+		   package green: the two floors ask whether `kind` is ANSWERED and whether it
+		   VARIES, and it went on varying across `bio`, `photo` and the empty one. So
+		   „which sort of thing is this" had a name and no meaning, on the one tab this
+		   increment is about. */
+		assertThat(itemIn(THE_SUPERADMIN, TEAMS, 0).path("kind").asString())
+				.as("a proposal that names no team is a NEW team, and the empty sort is what"
+						+ " every tab holding one sort of thing carries")
+				.isEqualTo("");
+		assertThat(itemIn(THE_SUPERADMIN, TEAMS, 1).path("kind").asString())
+				.as("a proposal that names the team it is about is a CHANGE to that team"
+						+ " (owner, 04.09.2026), and the screen refuses a change whose team is"
+						+ " gone by reading exactly this")
+				.isEqualTo("teamEdit");
+
+		/* AND THE OTHER TAB THAT HOLDS TWO SORTS, so „read off the schema" is not one
+		   column answered twice. A profiles row is a picture exactly while it still holds
+		   one; the two rows below are one of each and are the two halves of PDL P28a,
+		   06.08.2026, „Biografije i profilne slike postaju jedan red". */
+		assertThat(itemIn(OTHER_QUEUES, PROFILES, 0).path("kind").asString())
+				.as("a profiles row carrying a photograph is not answered as a picture, so the"
+						+ " moderator is asked to write the wrong kind of refusal")
+				.isEqualTo("photo");
+		assertThat(itemIn(OTHER_QUEUES, PROFILES, 1).path("kind").asString())
+				.as("a profiles row carrying no photograph is not answered as a biography, so"
+						+ " the answer above is not being told apart from a constant")
+				.isEqualTo("bio");
+	}
+
+	/**
+	 * AND THE TOWN OF A PROPOSED TEAM COMES OUT WHICHEVER WAY V11 LETS IT BE HELD.
+	 *
+	 * <p>A proposal carries a town from the codebook or one somebody typed, never both and
+	 * never neither ({@code team_proposal_town_is_from_the_codebook_or_typed}). One of each
+	 * here, because a query reading only {@code tp.city} serves the typed one and loses the
+	 * other, and a query reading only {@code place.name} does the reverse - and each of
+	 * those mistakes is green against a fixture holding one of the two.
+	 *
+	 * <p><b>The country is the CODE and never the name</b>, which is what {@link TeamApi}
+	 * and {@link CompetitorApi} answer and what {@code countryName} on the portal expects.
+	 * Two different countries, so „the country of this proposal" cannot be satisfied by a
+	 * query that found the league's own.
+	 */
+	@Test
+	void aProposedTeamAnswersWithItsTownAndItsCountryCode() throws Exception {
+		JsonNode typed = itemIn(THE_SUPERADMIN, TEAMS, 0);
+
+		assertThat(typed.path("city").asString())
+				.as("a proposal whose town was TYPED did not answer with it")
+				.isEqualTo(TYPED_TOWN);
+		assertThat(typed.path("country").asString())
+				.as("a proposal whose town was typed did not answer with that town's country,"
+						+ " as the two-letter code")
+				.isEqualTo(TYPED_COUNTRY);
+
+		JsonNode fromTheBook = itemIn(THE_SUPERADMIN, TEAMS, 1);
+
+		assertThat(fromTheBook.path("city").asString())
+				.as("a proposal whose town came out of the CODEBOOK answered with nothing, so"
+						+ " only one of V11's two ways of holding a town reaches the screen")
+				.isEqualTo(db.sql("select name from place where id = "
+						+ A_TOWN_IN_THE_CODEBOOK).query(String.class).single());
+		assertThat(fromTheBook.path("country").asString())
+				.as("a codebook town did not answer with its own country's code")
+				.isEqualTo("RS");
+
+		assertThat(typed.path("country").asString())
+				.as("both proposals are in one country, so this case cannot tell a query that"
+						+ " read the right country from one that read any country")
+				.isNotEqualTo(fromTheBook.path("country").asString());
+	}
+
+	/**
+	 * AND THE TEAM A CHANGE IS ABOUT IS ANSWERED BY ITS KEY, blank where there is none.
+	 *
+	 * <p>The screen finds the team by {@code String(team.id) === item.subjectId} and refuses
+	 * a change whose team has been deleted meanwhile (review, 05.09.2026). Read off
+	 * {@code team_proposal.team_id} and never off the subject, because two teams may carry
+	 * one name and a change matched by name would be filed against whichever came first.
+	 */
+	@Test
+	void aChangeAnswersWithTheKeyOfTheTeamItIsAboutAndAProposalWithNone() throws Exception {
+		assertThat(itemIn(THE_SUPERADMIN, TEAMS, 1).path("subjectId").asString())
+				.as("a change did not answer with the key of the team it is about, so the screen"
+						+ " cannot find it and refuses every change as though the team were gone")
+				.isEqualTo(String.valueOf(db.sql("select id from team where slug ="
+						+ " 'dunavski-trkaci'").query(Long.class).single()));
+
+		assertThat(itemIn(THE_SUPERADMIN, TEAMS, 0).path("subjectId").asString())
+				.as("a proposal for a team that does not exist yet answered with a key, so the"
+						+ " screen would look for a team nobody has made")
+				.isEqualTo("");
+	}
+
+	/**
+	 * AND WHO SENT IT IN IS ANSWERED BESIDE WHAT IT IS ABOUT, never instead of it.
+	 *
+	 * <p>On the payments tab the two are the same person and everywhere else they are not,
+	 * so a resource answering the subject twice would satisfy every payments case and lose
+	 * the name on the other five.
+	 */
+	@Test
+	void whoSentAnItemInIsAnsweredBesideWhatItIsAbout() throws Exception {
+		JsonNode comment = itemIn(THE_SUPERADMIN, COMMENTS, 0);
+
+		assertThat(comment.path("who").asString())
+				.as("the name of whoever sent an item in is not answered, so the card cannot"
+						+ " name the sender at all")
+				.isEqualTo("Ana Anic");
+		assertThat(comment.path("who").asString())
+				.as("the sender is being answered out of the subject, which is the event on this"
+						+ " tab and not a person at all")
+				.isNotEqualTo(comment.path("subject").asString());
+	}
+
+	/**
 	 * WHOSE ITEM IT IS, AND THE TWO ORDINARY WAYS OF THERE BEING NO NUMBER TO GIVE.
 	 *
 	 * <p>V9 makes {@code competitor_id} nullable on purpose - „A payment waiting to be
