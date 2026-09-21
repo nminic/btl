@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { serverThat } from '../test/serverAnswers'
+import { aCompetitor, asAnswered } from '../test/theAnswer'
 import { readerAdministers, teamAdminOf } from './teamAdmin'
 import type { Competitor, Team } from './types'
 
@@ -45,15 +46,20 @@ const generated: Record<string, unknown>[] = JSON.parse(
 /**
  * Every member `/api/competitors` answers a VISITOR with, off the generated file.
  *
- * Both halves of what the route does, and neither is a tidy-up: the rows whose fee
- * has lapsed are gone, and the flag that said which those were is gone with them.
- * Leaving the flag on would let a screen go on reading it while this file claimed
- * to be measuring the switch.
+ * Both halves of what the route does, and neither is a tidy-up: the rows whose fee has
+ * lapsed are gone, and every name the answer does not carry is gone with them.
+ *
+ * **Reduced by the KEYS of the record the server declares and never by a list of names
+ * to take away** (`test/theAnswer.ts`). A list here would be a second home for the
+ * thing `test/serverAnswers.ts` already keeps, and a second home is how the first one
+ * went short: `active` was on it, `referredBy` was on it, and `membershipBasis` was
+ * not, so a member's own fee screen read a field the server does not give him with
+ * every case green.
  */
 function membersTheServerAnswers(): Record<string, unknown>[] {
   return generated
     .filter((one) => one.active === true)
-    .map(({ active: _flag, referredBy: _key, ...rest }) => rest)
+    .map((one) => asAnswered(one, aCompetitor))
 }
 
 /** And the numbers it leaves out, which is what „their fee has run out" is now. */
