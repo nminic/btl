@@ -19,9 +19,12 @@ type Props = {
  * a token, so the server simply became one more caller of the function the switch was
  * already calling.
  *
- * The development switch is still here and still sets it, because the mock is still on
- * (ADL A50) and every screen that draws a member is walked through it. The day that
- * goes off, the switch goes with it.
+ * The development switch is still here and still sets it. **This said it was because the
+ * mock is still on (ADL A50), and that „the day that goes off, the switch goes with
+ * it". That day was 21.09.2026 and the switch stayed**, so the reason is corrected here
+ * rather than left reading as an instruction: what keeps it is that a real session
+ * carries no MEMBER NUMBER, and every screen that draws a member is walked through one.
+ * `roles/RoleSwitch.tsx` holds that reason in full.
  *
  * The two are set together and never apart. A role and a moderator that could
  * drift out of step would mean a superadmin carrying somebody else's rights, or

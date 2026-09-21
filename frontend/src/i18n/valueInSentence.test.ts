@@ -385,7 +385,11 @@ describe('a sentence with a value put into it', () => {
          no case at all: the sentence is „Nalog 41", the word stands first and the number
          after it is a label rather than a thing being counted. It is drawn only where the
          portal has no member number to name him by, which is a real session against a
-         portal still reading its members out of `/mock` (app/AccountMenu.tsx). */
+         portal that does not read one off `GET /api/me` yet (app/AccountMenu.tsx).
+
+         **This said „a portal still reading its members out of `/mock`" until 21.09.2026,
+         and that went out of date the day the mock was switched off** (`data/client.ts`).
+         The sentence is still drawn, for the reason beside it rather than for that one. */
       'shell.accountNumber',
       'shell.unread',
       'shell.waiting',

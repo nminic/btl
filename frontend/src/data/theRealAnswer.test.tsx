@@ -211,11 +211,33 @@ describe('a member freed of the fee, on the answer the server gives', () => {
     )
   }
 
-  it('is asked for nothing at all, although the list it is drawn from says nothing', async () => {
+  /* **AND THE TWO SOURCES ARE PULLED APART, which is what makes either case able to
+     fail.** The generated file carries a basis of its own on every row, and the case
+     below puts the OTHER word on the wire, so the screen reading the wrong source draws
+     the wrong screen. Written the other way round - the wire agreeing with the file -
+     both cases passed with the bug put back, measured 21.09.2026: the same value reached
+     the screen either way and the case said nothing at all.
+
+     Taken off the file rather than written here, so a change to the seed moves the case
+     with it instead of quietly making the two agree again. */
+  const generatedBasis = (memberNumber: string) =>
+    String(
+      (generated.find((one) => one.memberNumber === memberNumber) ?? {}).membershipBasis ?? '',
+    )
+
+  const whoPaysInTheFile = String(
+    (generated.find((one) => one.membershipBasis === 'payment' && one.active === true) ?? {})
+      .memberNumber ?? '',
+  )
+
+  it('is asked for nothing at all, although the list says he pays', async () => {
+    /* A member the generated file calls a PAYER, told by the answer that he is freed. */
+    expect(generatedBasis(whoPaysInTheFile)).toBe('payment')
+
     const { stop } = meAnswering('feeExempt')
 
     try {
-      renderAt('/sr/moja-clanarina', 'competitor', stillAMember, undefined, '2026-11-01')
+      renderAt('/sr/moja-clanarina', 'competitor', whoPaysInTheFile, undefined, '2026-11-01')
 
       expect(
         await screen.findByText(/Oslobođen si plaćanja članarine za sezonu \d{4}, odlukom/),
@@ -233,9 +255,12 @@ describe('a member freed of the fee, on the answer the server gives', () => {
     }
   })
 
-  it('is asked to pay where the answer says the fee is his to pay', async () => {
-    /* The other state, off the same field and the same door. Without it „nobody is asked
-       to pay" would read exactly like „the screen is right". */
+  it('is asked to pay although the list says he is freed', async () => {
+    /* The other state, off the same field and the same door, and with the two sources
+       crossed the other way: the file calls this one freed. Without this case „nobody is
+       asked to pay" would read exactly like „the screen is right". */
+    expect(generatedBasis(stillAMember)).toBe('feeExempt')
+
     const { stop } = meAnswering('payment')
 
     try {

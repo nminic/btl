@@ -13,12 +13,18 @@ import './RoleSwitch.css'
  *
  * It said „it exists because there is otherwise no way to reach them" until 20.09.2026,
  * and that is no longer the reason: `/api/sign-in` exists, and a real session sets the
- * role through the same `become` this control calls (pages/member/SignIn.tsx). WHAT
- * KEEPS IT IS THE MOCK. Every screen behind these roles draws members, teams and
- * results out of `/mock` (data/client.ts), and a real account has no member number to
- * read them by - `MeApi` carries none on purpose. So signing in really reaches the
- * portal and this control is still the only way to reach the member whose results are
- * on it. The two go off together, when ADL A50 says the mock does.
+ * role through the same `become` this control calls (pages/member/SignIn.tsx).
+ *
+ * **IT THEN SAID WHAT KEEPS IT IS THE MOCK, AND THAT THE TWO GO OFF TOGETHER WHEN ADL
+ * A50 SAYS THE MOCK DOES. That day was 21.09.2026 and this control did not go with
+ * it**, so the sentence is replaced by the reason that really keeps it rather than left
+ * as an instruction to carry out a promise. What keeps it is the MEMBER NUMBER: every
+ * screen behind these roles draws a member, and a real session carries no number to draw
+ * one by. `GET /api/me` answers a role and an account, and `session/theServer.ts` reads
+ * those two and nothing else; `MeApi.WhoIAm` does carry the caller's own record now, and
+ * reading it is its own increment (`session/context.ts`). So signing in really reaches
+ * the portal, and this control is still the only way to reach the member whose results
+ * are on it. It goes when the portal takes its member number off that answer.
  *
  * WHICH WAY THE TWO OF THEM WIN OVER EACH OTHER, written down because since 20.09.2026
  * there are two and nothing said. THE SWITCH OVERTURNS WHAT THE SERVER SAID, in both

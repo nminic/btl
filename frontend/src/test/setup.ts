@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
+import { asAnswered, myOwnRecordFromMe } from './theAnswer'
 import { SLOW } from './slow'
 
 /**
@@ -68,7 +69,15 @@ export function theCookieNames(who: { role: string; memberNumber: string } | nul
  *
  *  The same components `MeApi.WhoIAm` carries and in the same shape: the role, an
  *  account number, and the caller's own record nested under `member`. The account is
- *  a number the portal only ever compares with nothing, so it is a constant here. */
+ *  a number the portal only ever compares with nothing, so it is a constant here.
+ *
+ *  **The record is cut to the KEYS of `myOwnRecordFromMe` and never to a list written
+ *  here, which is the correction of 21.09.2026.** These seven names stood in this file
+ *  by hand, and a harness that answers MORE than the server is exactly how a field the
+ *  server withholds went unnoticed once already: measured that day, adding `active` here
+ *  left the whole package green. `test/theAnswer.ts` is the one home now, and
+ *  `data/contract.test.ts` holds its keys against the components `MeApi.MyOwnRecord`
+ *  really declares. */
 function whatMeAnswers(): Response {
   if (whoTheCookieNames === null) {
     return new Response(null, { status: 401 })
@@ -88,17 +97,7 @@ function whatMeAnswers(): Response {
          „rather than an object of nulls". */
       ...(mine === undefined
         ? {}
-        : {
-            member: {
-              memberNumber: mine.memberNumber,
-              country: mine.country,
-              firstSeason: mine.firstSeason,
-              teamId: mine.teamId,
-              membershipBasis: mine.membershipBasis,
-              referralCode: mine.referralCode,
-              referredCount: 0,
-            },
-          }),
+        : { member: { referredCount: 0, ...asAnswered(mine, myOwnRecordFromMe) } }),
     }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   )

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { clearResourceCache, loadResource, RESOURCE_NAMES } from './client'
+import { myOwnRecordFromMe } from '../test/theAnswer'
 import { plainly, type Place } from './places'
 import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
@@ -171,7 +172,13 @@ describe('the list of resources', () => {
  * about reading a resource, and a resource that only accepts writes answers no
  * screen.
  */
+let routes: Set<string> | null = null
+
 function readRoutes(): Set<string> {
+  if (routes !== null) {
+    return routes
+  }
+
   const java = under(join(process.cwd(), '..', 'backend', 'src', 'main', 'java'), '', ['.java'])
   const found = new Set<string>()
 
@@ -181,7 +188,93 @@ function readRoutes(): Set<string> {
     }
   }
 
+  /* Kept for the same reason the sweep below is: three cases ask for it and the backend
+     does not change under a running package. */
+  routes = found
+
   return found
+}
+
+/**
+ * THE ONE ANSWER THAT IS ABOUT THE CALLER RATHER THAN ABOUT A RESOURCE.
+ *
+ * **Why it needs a home of its own here.** `data/servedShape.test.ts` holds every
+ * resource's answer against the types and against the generated file, and it walks
+ * `RESOURCE_NAMES`. `/api/me` is on no such list - it is not a resource - so nothing
+ * reached it, and the thing that stands in for it in tests kept its seven names written
+ * out by hand. Measured 21.09.2026: adding `active` to that hand-written record - a name
+ * `MeApi` does not carry - left all 179 files and 2959 cases green. The harness answered
+ * more than the server and nothing could tell, which is precisely how the one field the
+ * server withholds from a member got past a whole suite once already.
+ *
+ * **What is held, and where it stops.** The set of component NAMES `MeApi.MyOwnRecord`
+ * declares, against the keys of the record the harness answers with
+ * (`test/theAnswer.ts`). It is read off the backend's own source, the same way the
+ * routes above are and with the same boundary: it holds what is DECLARED, never that the
+ * value at each name is the sort the portal expects. The one name the portal reads by
+ * value has its own cases (`session/theServer.test.ts`, four states).
+ */
+describe("the caller's own record", () => {
+  it('is the seven the backend declares, and not one name more or fewer', () => {
+    /* Both directions at once, because a set comparison is both: a name here the server
+       has not got fails by name, and a name the server has that is missing here fails the
+       same way. */
+    expect(declaredByMyOwnRecord()).toEqual(Object.keys(myOwnRecordFromMe).sort())
+  })
+
+  it('is read off the backend, so the line above is looking at something', () => {
+    /* The floor, and it is the same one the sweep for routes carries: a reader that has
+       stopped recognising the declaration - record renamed, components reformatted,
+       annotations moved - collapses to a number under this one and says so, instead of
+       passing over an empty set that would make the comparison above agree with a record
+       nobody wrote. */
+    expect(declaredByMyOwnRecord().length).toBeGreaterThan(4)
+  })
+})
+
+/**
+ * The component names of `MeApi.MyOwnRecord`, off the backend's own source.
+ *
+ * Read between the opening bracket and the one that closes it, counted rather than
+ * looked for, because the components carry annotations with brackets of their own
+ * (`@JsonInclude(JsonInclude.Include.NON_NULL)`). Those are taken off before the list is
+ * split, so what is left of each component is „type name" and the name is the last word
+ * of it.
+ */
+function declaredByMyOwnRecord(): string[] {
+  const source = readFileSync(
+    join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web', 'MeApi.java'),
+    'utf-8',
+  )
+  const opens = source.indexOf('record MyOwnRecord(')
+
+  if (opens === -1) {
+    return []
+  }
+
+  let depth = 0
+  let closes = opens
+
+  for (let at = opens + 'record MyOwnRecord'.length; at < source.length; at += 1) {
+    if (source[at] === '(') {
+      depth += 1
+    } else if (source[at] === ')') {
+      depth -= 1
+
+      if (depth === 0) {
+        closes = at
+        break
+      }
+    }
+  }
+
+  return source
+    .slice(opens + 'record MyOwnRecord('.length, closes)
+    .replace(/@\w+\([^)]*\)/g, ' ')
+    .split(',')
+    .map((one) => one.trim().split(/\s+/).slice(-1)[0] ?? '')
+    .filter((one) => one !== '')
+    .sort()
 }
 
 describe('the screens that draw a section of a written page', () => {
@@ -568,8 +661,21 @@ describe('what the portal writes down about the codebook of towns', () => {
  * places `src/**` alone could see it. Paths under `public/mock` are given
  * without that prefix, so a file reads as `mock/pages.json`.
  */
+/* **Read once and kept, since 21.09.2026, and that is about the clock rather than
+   about tidiness.** Six cases in this file call it, so the whole of `src` and `public`
+   was walked six times, about four hundred milliseconds each on an idle machine. That
+   is comfortable alone and not comfortable beside another gate: measured that day, two
+   runs of the package minutes apart gave one failure and then two, and every one of them
+   was this file running out of its five seconds in a sweep rather than a case saying
+   anything. Two runs with different numbers means one of them measured nothing
+   (`CLAUDE.md`), so the work is done once instead of the limit being raised.
+
+   Nothing mutates what comes back, and the files do not change while a run is in
+   progress: a case that means to see a changed file writes it and reads it itself. */
+let swept: { path: string; code: string }[] | null = null
+
 function everything(): { path: string; code: string }[] {
-  return [
+  swept ??= [
     ...under(join(process.cwd(), 'src'), '', ['.ts', '.tsx', '.css', '.json']),
     ...under(join(process.cwd(), 'public'), '', ['.json']),
     /* The codebook of the world's towns is not among them, and is dropped
@@ -580,6 +686,8 @@ function everything(): { path: string; code: string }[] {
        a description of its own, which is words a visitor reads. */
     { path: 'index.html', code: readFileSync(join(process.cwd(), 'index.html'), 'utf-8') },
   ].filter((one) => one.path !== 'mock/places.json')
+
+  return swept
 }
 
 function under(dir: string, prefix: string, kinds: string[]): { path: string; code: string }[] {

@@ -512,7 +512,9 @@ export type Result = {
  *
  * **THE DAY THE PAIR WAS MADE IS NOT HERE, AND THAT IS THE OWNER'S DECISION RATHER THAN A FIELD
  * THE SERVER HAS NOT GOT YET.** 13.09.2026, of `pairs.since`: the day „se ne prikazuje nikome",
- * and when the mock is switched off it „sklanja se i sa ekrana". `/api/pairs` answers `id`,
+ * and when the mock was switched off it „sklanja se i sa ekrana". That happened on 21.09.2026 and
+ * the day went off the screen with it; the twin of this sentence, in
+ * `pages/profile/RacingPairLine.tsx`, says the same in the same tense. `/api/pairs` answers `id`,
  * `season` and the two numbers and nothing else, so a field here would be a promise every row
  * broke. What the season already says is the thing anybody needed it for: which season the pair
  * runs in.

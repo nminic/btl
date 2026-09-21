@@ -6,13 +6,13 @@ import { MEMBERSHIP_BASES, type MembershipBasis } from '../data/types'
  * THE THREE THINGS THE PORTAL SAYS TO THE SERVER ABOUT BEING SIGNED IN.
  *
  * <p>Getting in, asking who it thinks you are, and getting out. Nothing else, and
- * nothing about any resource: the fourteen resources still come out of `/mock`
- * (`data/client.ts`) and ADL A50 says they are switched over in one go rather than one
- * at a time. Signing in is not a resource. It is a write, it has no mock of itself, and
- * it moves nothing about that day - no name is added to `RESOURCE_NAMES`, `BASE` is
- * untouched, and no screen that draws data changes. That is the same ground
- * `pages/account` stood on from 19.09.2026, and `data/client.ts` records it in its own
- * head.
+ * nothing about any resource. **This said the fourteen resources „still come out of
+ * `/mock`" and that `BASE` is untouched, and both went out of date on 21.09.2026**, when
+ * ADL A50 was carried out and they moved to `/api` in one go. What that paragraph was
+ * really for survives it: signing in is not a resource, it is a write, and it belongs on
+ * no list of them - no name of it is in `RESOURCE_NAMES` and nothing here goes through
+ * the cache in `data/client.ts`. That is the same ground `pages/account` stood on from
+ * 19.09.2026.
  *
  * <p><b>The token is asked of `askTheServer` rather than copied out of it.</b> That
  * file warns the next reader off IMPORTING AND WIDENING it, and nothing here widens it:

@@ -149,6 +149,37 @@ export const readAsPair: RacingPair = aPair
 export const readAsLeague: League = aLeague
 
 /**
+ * THE CALLER'S OWN RECORD, as `GET /api/me` answers it.
+ *
+ * **Here and not beside the reader that needs it, which is the correction of
+ * 21.09.2026.** The harness kept these seven names written out by hand
+ * (`test/setup.ts`), and a hand-written list of what an answer carries is exactly the
+ * shape that let `membershipBasis` through: measured that day, adding `active` to it -
+ * a name `MeApi` does not carry - left all 179 files and 2959 cases green. The list had
+ * not gone wrong yet; there was simply nothing that could tell.
+ *
+ * So `/api/me` joins the same home the fourteen resources are in, and the harness builds
+ * its answer out of THESE keys. What holds the keys themselves is `data/contract.test.ts`,
+ * which reads the components of `MeApi.MyOwnRecord` off the backend's own source and
+ * requires the two to be the same set - so a name added here that the server has not got
+ * fails by name, and a name the server has that is missing here fails the same way.
+ *
+ * **Not handed to a type, and that is said rather than left as an omission.** The portal
+ * has no type for this record: it reads ONE field off it, how the caller's own membership
+ * is held (`session/theServer.ts`), because that is the only one of the seven with no
+ * other door. A type here would be six names nothing reads.
+ */
+export const myOwnRecordFromMe = {
+  memberNumber: '000001',
+  country: 'RS',
+  firstSeason: 2014,
+  teamId: 1,
+  membershipBasis: 'payment',
+  referralCode: '7f07b38ff7ee7543',
+  referredCount: 4,
+}
+
+/**
  * One row of the generated file reduced to what the server would really answer with.
  *
  * The keys of the record above and nothing else, which is what replaces the list the

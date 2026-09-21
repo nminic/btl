@@ -88,12 +88,30 @@ export function teamAdminOf(team: Team, competitors: Competitor[]): string | nul
  * **So the three readers are answered by three different facts, and each is
  * definite.**
  *
- * - **A member** is answered `foundedByMe`, which says exactly „the seat is yours" or
- *   „the seat is not yours". `false` is a NO and never a maybe: it does not say
- *   whether the seat is empty, so the standing rule may not be reached for it.
- * - **The administration** is answered the seat itself, so the whole rule can be
- *   worked out and compared.
+ * - **Anybody the server knows as a member** is answered `foundedByMe`, which says
+ *   exactly „the seat is yours" or „the seat is not yours". `false` is a NO and never a
+ *   maybe: it does not say whether the seat is empty, so the standing rule may not be
+ *   reached for it.
+ * - **A record that carries the seat and no `foundedByMe`** has the whole rule worked
+ *   out and compared.
  * - **A visitor** is answered neither, and draws no control this decides.
+ *
+ * **WHICH OF THE THREE A REAL ANSWER TAKES, said exactly, because the first draft of
+ * this said something that is not true of `/api/teams`.** It called the second arm „the
+ * administration", and the administration does not go through it: `TeamApi` answers
+ * `founded_by_me` to EVERY caller who has a row in `competitor`, the administration
+ * included, and withholds only the seat. So an administrator who also races meets the
+ * first arm, and one who does not race has no member number in the session and is turned
+ * away by the line above. Measured 21.09.2026: a record carrying `organizerMemberNumber:
+ * '000001'` beside `foundedByMe: false` answers FALSE for reader `000001`, although the
+ * seat names him - and that is the safe side, so the sentence is corrected rather than
+ * the code.
+ *
+ * **What really walks the second arm is the development role switch**, which is where a
+ * team comes from a record that carries the seat and was never answered to anybody
+ * (`roles/RoleSwitch.tsx`, and the records administration enters by hand through the
+ * overlay). It is kept for those, and it is what the cases about the four states of the
+ * seat measure.
  *
  * **The founder only while they are still in it**, which is the half `foundedByMe`
  * cannot carry on its own: it compares the seat to the caller's key and says nothing
@@ -126,7 +144,11 @@ export function readerAdministers(
     )
   }
 
-  /* The administration, which was given the seat and can have the whole rule worked
-     out. A visitor reaches neither line, having been sent away above. */
+  /* A record that carries the seat and no `foundedByMe`, which the whole rule can be
+     worked out from. No answer `/api/teams` gives takes this line - it hands
+     `foundedByMe` to every caller with a row in `competitor` - so what walks it is the
+     development role switch and the records administration enters by hand; the note on
+     this function says so at length. A visitor reaches neither line, having been sent
+     away above. */
   return teamAdminOf(team, competitors) === reader
 }

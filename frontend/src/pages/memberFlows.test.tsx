@@ -17,7 +17,7 @@ import { first, must } from '../test/at'
 import { readQr } from '../test/readQr'
 import { AsksTheServerWhoIAm, expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
-import { membersAsServed } from '../test/serverAnswers'
+import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { theCookieNames } from '../test/setup'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
@@ -317,10 +317,29 @@ describe('membership', () => {
     /* Pravilnik član 15 and PDL P16: a member freed of the fee never has a payment.
        Only the line about their status said so, while the whole of the renewal
        underneath went on being drawn: a price, „Uplati sada", the recipient, a
-       reference number and a QR code for 4.800 RSD they do not owe. Twenty nine
-       of the thirty members in the data are freed of the fee, so that was very nearly
-       the only thing this screen ever showed. */
-    renderFor('000001')
+       reference number and a QR code for money they do not owe.
+
+       **THE TWO SOURCES ARE PULLED APART, since 21.09.2026.** How a member's own fee is
+       held reaches him through `GET /api/me` and through no other door
+       (`session/context.ts`). Rendered as somebody the generated file ALSO calls freed,
+       this case passed with the reading put back on the public list, because the same
+       word arrived either way and the case said nothing - measured that day. So the
+       member here is one the file calls a payer, and the answer is the thing that says
+       otherwise. */
+    const { stop } = serverThat((path) =>
+      path === '/api/me'
+        ? new Response(
+            JSON.stringify({
+              role: 'competitor',
+              account: 1,
+              member: { membershipBasis: 'feeExempt' },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    renderFor('000031')
 
     /* **The season is named, and it is the one this screen is about.** Read as November 2026,
        what is being renewed is 2027, and the sentence carried that year typed into it until
@@ -345,6 +364,10 @@ describe('membership', () => {
     expect(screen.queryByText(/Danas članarina košta/)).not.toBeInTheDocument()
     expect(screen.queryByText(/taksa za obradu plaćanja/)).not.toBeInTheDocument()
     expect(screen.queryByText(/bar jedan dan 14 godina/)).not.toBeInTheDocument()
+
+    /* The disc reader goes back in front, or every case after this one in the file reads
+       an answer written for this one. */
+    stop()
   })
 
   it('quotes a junior the grown fee, because nothing on the record says who is a junior', async () => {
