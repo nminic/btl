@@ -25,8 +25,11 @@ import { useSession } from '../session/useSession'
  * How long a case in this file is given, which is twice what a case drawing one screen gets.
  *
  * **The work was measured before the number was touched, and there is nothing to take out.**
- * Thirty four cases, 21.09.2026: 92% of the time inside them is 186 `user.click`, 134 `findBy`,
- * 93 `getBy` and 50 `queryBy` calls, and turning the files the screens read into objects is 6,8%.
+ * Thirty four cases, 21.09.2026: 92,5% of the time inside them is 186 `user.click`, 134 `findBy`,
+ * 93 `getBy` and 50 `queryBy` calls. Turning the served files into objects is 6,8%, measured in a
+ * separate pass and *inside* that figure rather than beside it: the fetch happens during the wait
+ * a `findBy` is already counting, so the two do not add up. Of it, `results.json` at 1,3 MB read
+ * thirty three times is 171 ms, so the biggest file on the portal is not what this costs.
  * No single case carries the file (the longest does 0,82 s of work on an idle machine against
  * 16,9 s for the file), nothing is done twice, and the screen they all open already memoises the
  * one expensive thing it holds (`CompetitorProfile.tsx`, the `useMemo` around `resultsOf`, so the
