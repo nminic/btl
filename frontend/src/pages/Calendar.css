@@ -62,6 +62,25 @@
 .calendar__grid {
   display: grid;
   gap: var(--space-8);
+  /* **NOTHING THE MONTH DRAWS MAY LEAVE THE MONTH SIDEWAYS**, and this is what bounds
+     the one thing in it that is allowed to overflow: the name of a multi-day bar, which
+     is written across the pieces that follow it and so is deliberately not clipped at
+     the edge of its own day (owner, 22.09.2026: „naziv pise preko cele strafte").
+
+     **Measured rather than feared, and in both directions.** At 1024px with a name of
+     ninety characters on a bar that opens on a Saturday, the page scrolled sideways by
+     **102px**, which is the one thing the portal never does (WCAG 2.2 SC 1.4.10, ADL
+     A26). The longest name the served file actually holds is „Ultimate Nutrition
+     atletska trka prijateljstva" at 45 characters, and it ends 218px inside the grid, so
+     nothing overflows today; but the calendar is filled by hand and „today's data" is
+     not a bound.
+
+     `clip` and not `hidden`: `hidden` would make the grid a scroll container, which puts
+     a month one stray keystroke away from scrolling inside itself. The margin is what
+     keeps a focus ring whole at the two outer columns, where the portal draws it 2px
+     outside a tile with 2px of offset (`index.css`). */
+  overflow-x: clip;
+  overflow-clip-margin: 4px;
   /* Every day of a row is as tall as the tallest day in it (owner, 31.07.2026).
      Written as `start` first, which is the opposite: each box took only its own
      height, so one Saturday with two races stood tall beside six short weekdays
@@ -661,20 +680,28 @@
     border-end-start-radius: 0;
   }
 
-  /* And its name and its lengths are drawn once, at the head of the run.
+  /* ONE NAME AND ONE ROW OF DOTS FOR THE WHOLE RUN, at its two ends (owner,
+   * 22.09.2026: „naziv pise preko cele strafte, dok su tacke skroz na desnom kraju
+   * iste").
+   *
+   * The name belongs to the piece that OPENS the run and the dots to the piece that
+   * ENDS it, so each of the two is moved out of sight exactly where it is not that
+   * piece: the name on everything that continues, the dots on everything that runs on.
+   * A run of one piece is neither, and is drawn as the tile it looks like.
    *
    * **MOVED OUT OF SIGHT, NEVER TAKEN AWAY, and these are the very declarations
    * `.visually-hidden` carries** (`index.css`; `ADL.md` A7, 31.07.2026: „Skrivanje se
    * radi pomeranjem van vidnog polja (ista pravila koja nosi `visually-hidden`), nikad
-   * uklanjanjem"). This rule said `visibility: hidden` until 22.09.2026, which is
+   * uklanjanjem"). These rules said `visibility: hidden` until 22.09.2026, which is
    * removal: the name went out of the accessibility tree at exactly the widths where
    * the piece was a stump, and stayed in it at the widths where the piece was a whole
-   * tile that could not be tapped. Same rule, opposite fault at each end.
+   * tile that could not be tapped. One rule, opposite fault at each end.
    *
    * Written out rather than borrowed, because a class cannot be added by a media
    * query; that they say the same thing is held by a case that reads both rules off
    * disc (`calendarStyle.test.ts`). */
-  .chip--continues > :not(.chip__hold) {
+  .chip--continues .chip__name,
+  .chip--runs-on .chip__lengths {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -686,7 +713,32 @@
     border: 0;
   }
 
-  /* With the body out of the flow, this is what is left holding the line, so the bar
+  /* „Tacke skroz na desnom kraju iste." On the piece that ends the run the name is out
+     of the flow, so without this the dots would sit against its LEFT edge, which is the
+     middle of the bar. */
+  .chip--continues .chip__lengths {
+    margin-inline-start: auto;
+  }
+
+  /* „Naziv pise preko cele strafte." The head of a run that goes on is the only place
+     the name is drawn, and it is let out of its own day to run over the pieces that
+     follow it: they are the same bar.
+
+     **Above them and not under them.** A day is `position: relative` with no z-index,
+     so it opens no stacking context of its own; a later day would otherwise paint its
+     ground over the name, because later in the document is later in the paint. One step
+     of z-index on the name is enough and is the smallest thing that works.
+
+     `text-overflow` goes back to `clip` with the overflow: an ellipsis is what a name
+     wears when it is cut at the edge of ONE day, and this one is not cut there. */
+  .chip--scale.chip--runs-on:not(.chip--continues) .chip__name {
+    position: relative;
+    z-index: 1;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* With the name out of the flow, this is what is left holding the line, so the bar
      keeps the height of a tile all the way along itself. */
   .chip--continues > .chip__hold {
     display: inline;

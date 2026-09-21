@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor, ruleInMedia, unconditionalRules } from '../test/stylesheet'
+import { must } from '../test/at'
+import { ruleFor, ruleInMedia, rulesInMedia, unconditionalRules } from '../test/stylesheet'
 
 /**
  * One arrangement of the month that no rendered test can see.
@@ -118,6 +119,30 @@ describe('a day of the month', () => {
  */
 const WIDE = '(min-width: 48.75em)'
 
+/**
+ * The one rule of the grid's media query written for exactly this list of selectors.
+ *
+ * `ruleInMedia` compares the selector as a string, and a rule written for two selectors
+ * keeps the newline between them in `selectorText`: the guard would then be a guard over
+ * how the sheet is laid out. What is being held here is WHICH selectors the rule is for,
+ * so the list is read as a list.
+ */
+function ruleForAll(selectors: string[]): CSSStyleDeclaration {
+  const asList = (text: string) =>
+    text
+      .split(',')
+      .map((one) => one.trim().replaceAll(/\s+/g, ' '))
+      .sort()
+  const wanted = asList(selectors.join(','))
+  const found = rulesInMedia(calendar, WIDE, 'Calendar.css').filter(
+    (rule) => String(asList(rule.selectorText)) === String(wanted),
+  )
+
+  expect(found.length, `${selectors.join(', ')} is not one rule of ${WIDE}`).toBe(1)
+
+  return must(found[0], 'the rule').style
+}
+
 describe('a bar across several days', () => {
   it('reaches back over the gutter, and by the very tokens the gutter is made of', () => {
     /* From the content edge of this day leftwards to the content edge of the one
@@ -172,7 +197,12 @@ describe('a bar across several days', () => {
        that rule and not a copy of it. A class cannot be added by a media query, so the
        declarations have to be repeated; what must not happen is that they drift. */
     const recipe = ruleFor(portal, '.visually-hidden', 'index.css')
-    const stump = ruleInMedia(calendar, WIDE, '.chip--continues > :not(.chip__hold)', 'Calendar.css')
+    /* **And the two selectors ARE half the claim of the case below**, asked for here by
+       name: the NAME is moved out of sight wherever the piece does not OPEN the run, and
+       the DOTS wherever it does not END it. Written over `.chip--scale` at large, or with
+       the two swapped, the name would be drawn on every piece and the dots on every day,
+       which is the shape the owner said it should not have. */
+    const stump = ruleForAll(['.chip--continues .chip__name', '.chip--runs-on .chip__lengths'])
     const named = [...recipe].sort()
 
     /* The floor under the floor: a rule that declared nothing would make every check
@@ -191,6 +221,40 @@ describe('a bar across several days', () => {
        accessibility tree while every rule above is still written. */
     expect(stump.getPropertyValue('visibility'), 'the body is removed, not moved').toBe('')
     expect(stump.getPropertyValue('display'), 'the body is removed, not moved').toBe('')
+  })
+
+  it('writes one name across the whole run and puts the dots at its far end', () => {
+    /* Owner, 22.09.2026: „naziv pise preko cele strafte, dok su tacke skroz na desnom
+       kraju iste." The two halves are one claim and are read together, because each of
+       them alone is satisfied by a bar that draws the other thing everywhere.
+
+       Which piece hides what is read by the case above, by asking for that rule's two
+       selectors by name. What is left is the two rules that put each of the two where
+       the owner asked. */
+    const dots = ruleInMedia(calendar, WIDE, '.chip--continues .chip__lengths', 'Calendar.css')
+
+    /* Against the right edge of the piece that ends the run. `auto` and not a length,
+       because what the dots are pushed away from is the start of a box as wide as a
+       column of the month, and no number describes that. */
+    expect(dots.getPropertyValue('margin-inline-start')).toBe('auto')
+
+    const name = ruleInMedia(
+      calendar,
+      WIDE,
+      '.chip--scale.chip--runs-on:not(.chip--continues) .chip__name',
+      'Calendar.css',
+    )
+
+    /* Let out of its own day, so it can be written across the pieces that follow it. A
+       tile cuts its name with an ellipsis at the edge of ONE day; this one is not cut
+       there, so the ellipsis goes with the clipping. */
+    expect(name.getPropertyValue('overflow')).toBe('visible')
+    expect(name.getPropertyValue('text-overflow')).toBe('clip')
+    /* And drawn over the pieces rather than under them. A day is positioned with no
+       z-index of its own, so it opens no stacking context, and a later day would paint
+       its ground over a name that came out of an earlier one. Measured in a browser. */
+    expect(name.getPropertyValue('position')).toBe('relative')
+    expect(Number(name.getPropertyValue('z-index'))).toBeGreaterThan(0)
   })
 
   it('keeps a held lane off a telephone and gives it its line back on a grid', () => {
@@ -235,7 +299,9 @@ describe('a bar across several days', () => {
     const loose = unconditionalRules(calendar, 'Calendar.css').map((rule) => rule.selectorText)
 
     expect(loose).not.toContain('.chip--continues')
-    expect(loose).not.toContain('.chip--continues > :not(.chip__hold)')
+    expect(loose).not.toContain('.chip--continues .chip__name, .chip--runs-on .chip__lengths')
+    expect(loose).not.toContain('.chip--continues .chip__lengths')
+    expect(loose).not.toContain('.chip--scale.chip--runs-on:not(.chip--continues) .chip__name')
     expect(loose).not.toContain('.chip--runs-on')
   })
 

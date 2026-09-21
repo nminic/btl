@@ -113,10 +113,23 @@ export function EventChip({ event, races }: { event: BtlEvent; races: Race[] }) 
  * them (PDL P35, 21.09.2026, owner: „napravi skale u Kalendar view koje mogu
  * zauzimati vise dana ako se radi o takvom dogadjaju").
  *
+ * **WHAT THE OWNER ASKED FOR, 22.09.2026, in his own words:** „Horizontalna skala
+ * dogadjaja treba da pocinje u jednom danu kalendara i da prelazi preko narednog ili
+ * narednih, a **naziv pise preko cele strafte**, dok su **tacke skroz na desnom kraju
+ * iste**."
+ *
+ * So the run of pieces carries ONE name and ONE row of dots between them: the name is
+ * drawn by the piece that opens the run and reaches out over the pieces that follow it,
+ * and the dots are drawn by the piece that ends the run, against its right edge. Which
+ * piece does which is said by the two classes below and done in the sheet; the markup
+ * gives every piece the whole body, so what is drawn is a matter of width and what is
+ * SPOKEN never is.
+ *
  * **EVERY PIECE IS A LINK AND EVERY PIECE IS NAMED**, at every width, because the
  * markup does not know how wide the screen is and must not pretend to. Each one goes
  * to the event and says the whole range, so a day of a four-day event is reached and
- * read exactly like any other day of the calendar.
+ * read exactly like any other day of the calendar. Below 780px the days stack, there
+ * is no run to write a name across, and each piece is simply the tile it always was.
  *
  * **This is the correction of 22.09.2026 and it was a fault of the kind `ADL.md` A7
  * was written about.** The first draft made one piece a month the link and every
@@ -172,19 +185,23 @@ export function EventScale({ piece, races }: { piece: Extract<Drawn, { at: 'scal
 
   return (
     <Link className={className} to={`/${locale}/kalendar/${event.slug}`} title={event.name}>
-      <ChipBody event={event} races={races} said={said} />
-      {/* What holds the line where the sheet moves the body out of sight, and drawn
-          nowhere else: above 780px a continuing piece is a stump of the bar, and with
-          its body out of the flow the tile would be only its own padding tall, so the
-          bar would thin out in the middle of itself. Decorative and `aria-hidden`,
+      {/* What holds the line where the sheet moves the name out of sight, and drawn
+          nowhere else: above 780px a piece that does not open the run has no name in
+          the flow, and with nothing in it the tile would be only its own padding tall,
+          so the bar would thin out along its own middle. Decorative and `aria-hidden`,
           which is what lets the sheet take it away below that width without taking a
           word from anybody: the thing A7 forbids removing is the LABEL, and this one
-          says nothing. */}
+          says nothing.
+
+          **First and not last**, so the lengths can be pushed against the right edge of
+          the piece that ends the run: a space standing after them would hold them that
+          much off it. */}
       {!piece.opens && (
         <span className="chip__hold" aria-hidden="true">
           &nbsp;
         </span>
       )}
+      <ChipBody event={event} races={races} said={said} />
     </Link>
   )
 }
