@@ -28,8 +28,9 @@ import { useSession } from '../session/useSession'
  * Thirty four cases, 21.09.2026: 92% of the time inside them is 186 `user.click`, 134 `findBy`,
  * 93 `getBy` and 50 `queryBy` calls, and turning the files the screens read into objects is 6,8%.
  * No single case carries the file (the longest does 0,82 s of work on an idle machine against
- * 16,9 s for the file), nothing is done twice, and the screen they all open memoises the one
- * expensive thing it holds (`CompetitorProfile.tsx:187`). Every one of those calls is a step of
+ * 16,9 s for the file), nothing is done twice, and the screen they all open already memoises the
+ * one expensive thing it holds (`CompetitorProfile.tsx`, the `useMemo` around `resultsOf`, so the
+ * fault ADL A2 was written for is not repeated here). Every one of those calls is a step of
  * the walk or an assertion about it, so there is no way to make this shorter that does not make
  * it say less.
  *
