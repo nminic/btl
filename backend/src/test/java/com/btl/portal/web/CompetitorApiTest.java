@@ -2,14 +2,19 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -18,13 +23,20 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,25 +62,27 @@ class CompetitorApiTest {
 	 * text rather than by field name.
 	 */
 	/**
-	 * SERVED BUT NOT ANSWERED YET, AND THAT IS A DEBT RATHER THAN A REFUSAL.
+	 * AND THIS ONE IS ANSWERED, SINCE 21.09.2026, WHICH IS WHY IT IS NO LONGER IN THE
+	 * LIST BELOW.
 	 *
-	 * <p>This is the one name in this list that is not withheld on purpose. The four
-	 * below are fields Article 73 and Article 74 keep off a public answer for ever. The
-	 * age band is the opposite: it is exactly what Article 74 says IS public („Javna je
-	 * samo kategorija koja iz njega proizlazi"), the portal began serving it on
-	 * 13.09.2026, and this resource owes it.
+	 * <p><b>It stood there as a DEBT rather than a refusal</b>, worded „served but not
+	 * answered yet": the one name in that list that Article 74 makes public („Javna je
+	 * samo kategorija koja iz njega proizlazi") rather than keeps off a public answer
+	 * for ever. The portal began serving it on 13.09.2026 (B52) and this resource owed
+	 * it.
 	 *
-	 * <p>It is not here yet for the reason written on {@link com.btl.portal.web.CompetitorApi}:
-	 * the band is worked out from the year and the season, a member in their first season
-	 * carries that category instead, and which of the two applies depends on their whole
-	 * history of points (PDL P7, owner 03.08. and 11.08.2026). That is its own increment
-	 * on this server, the same way the points are.
+	 * <p><b>The debt cleared itself exactly as it was written to.</b> {@code Answers}
+	 * asserts both halves of a withheld name - that the portal really serves it, and
+	 * that the answer really leaves it out - so the four cases that named it began
+	 * failing the moment the field was answered, and the name had to come out of all
+	 * four. Nothing had to remember it.
 	 *
-	 * <p><b>The debt clears itself.</b> `Answers` asserts that a name in this list really
-	 * is absent from the answer, so the day this resource starts answering with the band
-	 * this case fails and the name has to come out. It cannot be forgotten here.
+	 * <p>What holds it now is the opposite claim, and it is stronger than a name in a
+	 * list: the same four cases require every name the portal serves and is not
+	 * withheld to be ANSWERED, so removing the field fails them again from the other
+	 * side. The band cannot quietly go away any more than it could quietly stay missing.
 	 */
-	private static final String THE_AGE_BAND_THIS_RESOURCE_STILL_OWES = "ageBand";
+	private static final String THE_AGE_BAND = "ageBand";
 	private static final String THE_REFERRAL_CODE = "referralCode";
 	private static final String WHO_HANDED_OUT_THE_CODE = "referredBy";
 	private static final String HOW_THE_MEMBERSHIP_IS_HELD = "membershipBasis";
@@ -179,11 +193,69 @@ class CompetitorApiTest {
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
+	/**
+	 * AUTUMN 2026, WHICH IS A DAY WITH NO SEASON RUNNING AT ALL, and that is why the
+	 * cases stand on it by default.
+	 *
+	 * <p>The league begins in 2027 (PDL P2), so the calendar answer on this day names a
+	 * season the portal does not have. Every band in this file is therefore answered
+	 * through the floor rather than around it, and a server that dropped the floor would
+	 * fail the ordinary cases rather than only the one written about it.
+	 */
+	private static final Instant AUTUMN_2026 = Instant.parse("2026-09-21T10:00:00Z");
+
+	/** The first season the league has, while it is running. */
+	private static final Instant DURING_2027 = Instant.parse("2027-06-15T12:00:00Z");
+
+	/**
+	 * AND THE NEXT ONE, HALF AN HOUR PAST MIDNIGHT IN BELGRADE AND HALF AN HOUR BEFORE
+	 * IT IN UTC, which is the half of „the season that is running" that moves.
+	 *
+	 * <p><b>It is the boundary rather than a day in June, and that is the second thing
+	 * it measures.</b> {@code ResultApiTest.NEW_YEARS_NIGHT} is the same instant for the
+	 * same reason: the clock this fixture hands the server reports {@link ZoneOffset#UTC},
+	 * as a container's does, so a resource that reads the server's own zone instead of the
+	 * league's calls this night 2027 while Belgrade is already in 2028.
+	 *
+	 * <p><b>It was a day in June until 21.09.2026 and the zone was not measured at all</b>:
+	 * review dropped {@code clock.withZone(SeasonClock.ZONE)} from
+	 * {@code CompetitorApi.theBandsSeason} and all thirty cases stayed green. The sentence
+	 * on {@link AClockTheCaseMoves} had been copied from {@code ResultApiTest} without the
+	 * moment that makes it true. {@code theBandMovesWithTheSeasonThatIsRunning} now stands
+	 * here and asks the clock itself whether the two zones still disagree.
+	 */
+	private static final Instant NEW_YEARS_NIGHT_INTO_2028 =
+			Instant.parse("2027-12-31T23:30:00Z");
+
+	/**
+	 * MID OCTOBER OF 2027, the one kind of moment where „which season" has two answers.
+	 *
+	 * <p>From 1 October the transfer window is open and {@code seasonBeingPaidFor}
+	 * answers with NEXT year while the season being RUN is still this one. The other
+	 * three moments above lie outside that window, where the two agree, so a case that
+	 * wants to tell them apart has to stand here. Its own floor asks
+	 * {@link SeasonClock} whether they still disagree at this instant rather than
+	 * remembering that they once did.
+	 */
+	private static final Instant MID_OCTOBER_2027 = Instant.parse("2027-10-15T12:00:00Z");
+
 	@Autowired
 	private MockMvc http;
 
 	@Autowired
 	private JdbcClient db;
+
+	@Autowired
+	private AClockTheCaseMoves clock;
+
+	/**
+	 * And it stands where no season is running, so the floor is load bearing in every
+	 * case rather than in one.
+	 */
+	@BeforeEach
+	void theClockStandsInTheAutumnOf2026() {
+		clock.moveTo(AUTUMN_2026);
+	}
 
 	/**
 	 * Five members, four of them on the list, and no two alike in what the answer
@@ -452,7 +524,9 @@ class CompetitorApiTest {
 	 * basis says who is exempt from paying. The year of birth stood beside it here until
 	 * 13.09.2026, when the portal stopped serving it at all (B52); the constant at the
 	 * head of this class says what happened to it.</li>
-	 * <li><b>The age band</b>, and it is the odd one out: not withheld but owed. See the
+	 * <li><b>The age band is NOT one of them any more</b>, and it was the odd one out
+	 * while it was: named here as owed rather than withheld. It is answered since
+	 * 21.09.2026, so it left this list the only way it could - by failing it. See the
 	 * constant that names it.</li>
 	 * <li><b>The referral code</b> and <b>who handed it out</b>: Article 73 lists what
 	 * is public and neither is on it. The second one hides behind its name: the portal
@@ -467,7 +541,7 @@ class CompetitorApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors", answer(), "competitors.json",
-				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
+				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
 
@@ -797,7 +871,7 @@ class CompetitorApiTest {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors asked by the member himself",
 				new ObjectMapper().createArrayNode().add(recordOf(HER_OWN_ACCOUNT, "000012")),
 				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
-				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, WHO_HANDED_OUT_THE_CODE,
+				WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
 
@@ -1162,7 +1236,7 @@ class CompetitorApiTest {
 		Answers.everyFieldThePortalReadsIsAnswered(
 				"/api/competitors asked by a moderator over the members",
 				answerFor(THE_MODERATOR_OVER_THE_MEMBERS), "competitors.json",
-				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, THE_REFERRAL_CODE,
+				THE_REFERRAL_CODE,
 				WHO_HANDED_OUT_THE_CODE, WHETHER_THE_FEE_IS_STANDING);
 
 		Answers.everyFieldThePortalReadsIsAnswered(
@@ -1170,7 +1244,7 @@ class CompetitorApiTest {
 				new ObjectMapper().createArrayNode().add(
 						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, hisMemberNumber())),
 				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
-				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, WHO_HANDED_OUT_THE_CODE,
+				WHO_HANDED_OUT_THE_CODE,
 				WHETHER_THE_FEE_IS_STANDING);
 	}
 
@@ -1309,6 +1383,412 @@ class CompetitorApiTest {
 				.as("an account in the fixture is on neither side of the line PDL P8 draws, so"
 						+ " nothing measures what this resource answers it")
 				.containsExactlyInAnyOrderElementsOf(split);
+	}
+
+	/**
+	 * THE BANDS THE RULEBOOK HAS, READ OFF THE RULEBOOK'S OWN LIST.
+	 *
+	 * <p>Derived from {@link Category.AgeBand} rather than written out again, so the two
+	 * cannot drift: a fifth band added to the league arrives here without anybody
+	 * remembering this file, and a band renamed breaks the cases below rather than
+	 * quietly widening them.
+	 */
+	private static final Set<String> THE_BANDS_THE_RULEBOOK_HAS =
+			Arrays.stream(Category.AgeBand.values()).map(Category.AgeBand::code)
+					.collect(Collectors.toUnmodifiableSet());
+
+	/**
+	 * EVERY MEMBER IS ANSWERED THE BAND HIS OWN DATE OF BIRTH PUTS HIM IN.
+	 *
+	 * <p><b>The four expected values are written out rather than worked out</b>, and
+	 * that is the whole point of the case. Asking {@code Category.ageBandFor} for the
+	 * expectation would compare the server's arithmetic with itself and pass whatever
+	 * that arithmetic became; these four are read off the rulebook by hand, against the
+	 * dates the fixture writes, and they are what makes the case able to disagree.
+	 *
+	 * <p><b>And no two of them are the same</b>, so the axis is separated the way every
+	 * other axis in this fixture is: all four bands the league has appear exactly once,
+	 * so a server answering a constant, or the wrong column, or the same band twice, is
+	 * a different list rather than the same one.
+	 *
+	 * <p>The arithmetic each one stands on, for the season 2027 (the clock stands in
+	 * 2026 and the floor lifts it - see {@code AUTUMN_2026}): 000007 was born in 1991
+	 * and is 36, 000012 in 1968 and is 59, 000023 in 1985 and is 42, 000045 in 2007 and
+	 * is 20.
+	 */
+	@Test
+	void everyMemberIsAnsweredTheBandHisDateOfBirthPutsHimIn() throws Exception {
+		assertThat(bands())
+				.as("a member is answered a band other than the one the rulebook puts him in")
+				.containsExactly(Map.entry("000007", "25-39"), Map.entry("000012", "55+"),
+						Map.entry("000023", "40-54"), Map.entry("000045", "24-"));
+	}
+
+	/**
+	 * AND IT IS A BAND, NEVER THE FINISHED CATEGORY CODE.
+	 *
+	 * <p>PDL, 13.09.2026: the served record carries „pojas a ne gotovu šifru, da pol ne
+	 * bi bio zapisan dvaput". {@code Category} can answer either - {@code ageBandFor}
+	 * gives the band and {@code codeFor} the code with the sex on the front - and the
+	 * two are one word apart at the call site, so which one leaves the server is
+	 * measured here rather than trusted.
+	 *
+	 * <p><b>The mark is asked of {@code Category.genderMark} rather than written out</b>,
+	 * so a league that renamed its marks tomorrow is still measured, and {@code Ž} does
+	 * not sit in this file as a letter somebody may quietly change.
+	 */
+	@Test
+	void theBandIsTheRulebooksAndCarriesNoMarkOfSex() throws Exception {
+		Map<String, String> bands = bands();
+
+		assertThat(bands).as("no bands came back, so nothing below is asked of anything")
+				.hasSize(4);
+
+		assertThat(bands.values())
+				.as("a band left the server that the rulebook does not have")
+				.allSatisfy(band -> assertThat(THE_BANDS_THE_RULEBOOK_HAS).contains(band));
+
+		assertThat(bands.values())
+				.as("the finished category code left the server instead of the band, so the sex"
+						+ " is written twice in one record")
+				.allSatisfy(band -> assertThat(band)
+						.doesNotStartWith(Category.genderMark("M"))
+						.doesNotStartWith(Category.genderMark("F")));
+	}
+
+	/**
+	 * THE SEX DOES NOT CHANGE THE BAND, and two members born on one day prove it.
+	 *
+	 * <p>The bands are the same four for everybody; what differs by sex is the MARK in
+	 * front of the code, and that mark is the screen's ({@code categoryCodeFor}) and not
+	 * this resource's. So the axis here is not „the two answers differ" but the opposite:
+	 * a server that reached for {@code codeFor}, or that let the sex into the
+	 * arithmetic at all, answers these two differently and fails.
+	 *
+	 * <p>Both are written here rather than taken from the fixture, because no two members
+	 * of the fixture share a year of birth - that separation is what makes its own axes
+	 * work, and it is exactly what this question needs undone.
+	 *
+	 * <p><b>AND BOTH PAIRS SIT ON A BOUNDARY, WHICH IS THE WHOLE OF WHY THIS CASE
+	 * MEASURES ANYTHING.</b> It was written first with a single pair born in 1990 and it
+	 * asserted NOTHING: a mutation that let the sex into the arithmetic - a year added to
+	 * a woman's - was run before the reviewer was called and passed all thirty cases
+	 * green. Born in 1990 a member is 37 in 2027 and 36 with the mutation, and both are
+	 * the same band, so right and wrong gave one answer. The pairs are therefore chosen
+	 * so that ONE year in either direction crosses a boundary: 2002 is 25 and falls to
+	 * {@code 24-} if a year is added, 2003 is 24 and rises to {@code 25-39} if one is
+	 * taken away. A shift of either sign is now a different band for the woman and the
+	 * case fails.
+	 */
+	@Test
+	void theSexDoesNotChangeTheBand() throws Exception {
+		aMemberBornOn("000104", "2002-06-15", "M");
+		aMemberBornOn("000105", "2002-06-15", "F");
+		aMemberBornOn("000106", "2003-06-15", "M");
+		aMemberBornOn("000107", "2003-06-15", "F");
+
+		Map<String, String> bands = bands();
+
+		assertThat(bands.get("000105"))
+				.as("a woman born on the same day as a man is answered a different band, so the"
+						+ " sex is reaching arithmetic that has no business knowing it")
+				.isEqualTo(bands.get("000104"))
+				.isEqualTo("25-39");
+
+		assertThat(bands.get("000107"))
+				.as("the same, on the other side of the boundary, which is what catches a shift"
+						+ " in the opposite direction")
+				.isEqualTo(bands.get("000106"))
+				.isEqualTo("24-");
+	}
+
+	/**
+	 * THE BAND TURNS ON NEW YEAR AND NEVER ON A BIRTHDAY.
+	 *
+	 * <p>PDL P7 and {@code Category}: „uzrast se utvrđuje jednom, na 1. januar sezone",
+	 * changed from the 2017 rulebook where the band moved on the birthday itself and took
+	 * that season's points with it. So the boundary this case stands on is the turn of a
+	 * YEAR of birth and not a day in a year, and it is asked from both sides at once:
+	 *
+	 * <ul>
+	 * <li><b>One day apart, two bands.</b> 31 December 2002 and 1 January 2003 are a day
+	 * apart and are 25 and 24 in 2027, so they are answered different bands. A server
+	 * that worked the age out from the DATE - the age somebody has reached on the day of
+	 * the answer - puts both in the same band and fails here.</li>
+	 * <li><b>Eleven months apart, one band.</b> 1 January 2003 and 31 December 2003 are
+	 * nearly a year apart and are both 24, so they are answered the SAME band. This is
+	 * the half that fails if the day is allowed into the arithmetic at all, and it is
+	 * the half a boundary case usually leaves out.</li>
+	 * </ul>
+	 */
+	@Test
+	void theBandTurnsOnNewYearAndNeverOnABirthday() throws Exception {
+		aMemberBornOn("000101", "2002-12-31", "M");
+		aMemberBornOn("000102", "2003-01-01", "M");
+		aMemberBornOn("000103", "2003-12-31", "M");
+
+		Map<String, String> bands = bands();
+
+		assertThat(bands.get("000101"))
+				.as("a day either side of New Year was answered as one band, so the band is being"
+						+ " worked out from the date rather than from the year")
+				.isEqualTo("25-39");
+		assertThat(bands.get("000102")).as("the first day of a year is in the wrong band")
+				.isEqualTo("24-");
+		assertThat(bands.get("000103"))
+				.as("two members born in one year are in different bands, so the day of the year"
+						+ " is reaching the arithmetic")
+				.isEqualTo(bands.get("000102"));
+	}
+
+	/**
+	 * AND IT MOVES WITH THE SEASON THAT IS RUNNING, at all three boundaries at once.
+	 *
+	 * <p>Three members, each one year short of a different boundary, so moving the clock
+	 * on by a season moves all three and moves each into a DIFFERENT band. A server that
+	 * worked the band out for a season written down as a constant - which is what the
+	 * generator of the served file does, and it is named as a boundary on
+	 * {@code CompetitorApi} - answers the first list twice and fails the second.
+	 *
+	 * <p><b>Both states of the axis are here</b>, which is what makes it an axis: the
+	 * season is read once with 2027 running and once with 2028 running, and a resource
+	 * that ignores the clock cannot tell them apart.
+	 *
+	 * <p><b>AND THE SECOND OF THE TWO IS A NEW YEAR'S NIGHT, WHICH IS WHAT MAKES THE ZONE
+	 * MEASURED RATHER THAN BELIEVED.</b> This is the shape {@code ResultApiTest} carries -
+	 * a fake clock reporting UTC standing at {@code 2027-12-31T23:30:00Z}, which is already
+	 * 2028 in Belgrade - and the shape was copied here on 21.09.2026 WITHOUT that moment,
+	 * so {@code clock.withZone(SeasonClock.ZONE)} could be dropped from
+	 * {@code CompetitorApi.theBandsSeason} with the whole package staying green. Standing
+	 * on the boundary, dropping it answers 2027 and all three members below come back a
+	 * band short.
+	 *
+	 * <p><b>The floor asks the clock rather than remembering that it reports UTC.</b>
+	 * Moved off the boundary, or handed a clock already keeping the league's own time, this
+	 * case would quietly go back to measuring only that the year moved - which is what it
+	 * did until today - and the floor says so instead of passing.
+	 */
+	@Test
+	void theBandMovesWithTheSeasonThatIsRunning() throws Exception {
+		aMemberBornOn("000111", "2003-06-01", "M");
+		aMemberBornOn("000112", "1988-06-01", "M");
+		aMemberBornOn("000113", "1973-06-01", "M");
+
+		clock.moveTo(DURING_2027);
+		assertThat(bands())
+				.as("the bands for the season 2027 are not the ones the rulebook gives")
+				.contains(Map.entry("000111", "24-"), Map.entry("000112", "25-39"),
+						Map.entry("000113", "40-54"));
+
+		assertThat(NEW_YEARS_NIGHT_INTO_2028.atZone(clock.getZone()).getYear())
+				.as("the server's clock already reads this moment in the league's own year, so"
+						+ " the list below is answered the same whether the resource re-reads"
+						+ " the zone or not and the zone is not measured anywhere in this file")
+				.isNotEqualTo(NEW_YEARS_NIGHT_INTO_2028.atZone(SeasonClock.ZONE).getYear());
+
+		clock.moveTo(NEW_YEARS_NIGHT_INTO_2028);
+		assertThat(bands())
+				.as("a season went by and nobody changed band, so the band is worked out for a"
+						+ " season fixed in the code - or read in the server's own zone, which on"
+						+ " this night is still the season that has just ended")
+				.contains(Map.entry("000111", "25-39"), Map.entry("000112", "40-54"),
+						Map.entry("000113", "55+"));
+	}
+
+	/**
+	 * BUT NEVER FOR A SEASON THE LEAGUE DOES NOT HAVE.
+	 *
+	 * <p>The league begins in 2027 (PDL P2) and the calendar through 2026 answers 2026,
+	 * so the plain calendar year names a season that does not exist and a band worked out
+	 * for it is a band for nothing. {@code theBandsSeason} lifts it, the same
+	 * {@code Math.max} shape {@code frontend/src/data/season.ts} uses.
+	 *
+	 * <p><b>The member is chosen so that the floor is the only thing between two
+	 * answers.</b> Born in 2002, he is 24 in 2026 and 25 in 2027 - one on each side of a
+	 * boundary - so dropping the floor does not merely name a different number, it
+	 * answers a different band. Without him the whole fixture would pass either way,
+	 * which is how a floor gets deleted in a tidy-up.
+	 */
+	@Test
+	void theBandIsNeverWorkedOutForASeasonTheLeagueDoesNotHave() throws Exception {
+		aMemberBornOn("000114", "2002-06-01", "M");
+
+		assertThat(SeasonClock.FIRST_SEASON)
+				.as("the league's first season moved, so the clock below no longer stands before"
+						+ " it and this case measures nothing")
+				.isGreaterThan(AUTUMN_2026.atZone(SeasonClock.ZONE).getYear());
+
+		assertThat(bands().get("000114"))
+				.as("the band was worked out for the calendar year 2026, a season the league does"
+						+ " not have, instead of for its first")
+				.isEqualTo("25-39");
+	}
+
+	/**
+	 * AND IT DOES NOT MOVE WHEN THE NEXT SEASON GOES ON SALE.
+	 *
+	 * <p>From 1 October the transfer window opens and {@code SeasonClock.seasonBeingPaidFor}
+	 * begins answering with NEXT year, because that is the membership somebody is buying.
+	 * The band is not that question: it moves once, on 1 January (PDL P7). A resource
+	 * that reached for the renewal screen's clock would move every member forward a band
+	 * for the last three months of every year, without a single birthday.
+	 *
+	 * <p><b>The floor asks {@code SeasonClock} itself rather than remembering.</b> The
+	 * two functions agree for nine months of the year, so a case standing on the wrong
+	 * day would pass whichever of them the resource used - which is exactly how this
+	 * mutation survived 1540 cases in {@code ResultApiTest} until 13.09.2026.
+	 */
+	@Test
+	void aBandDoesNotMoveWhenTheNextSeasonGoesOnSale() throws Exception {
+		aMemberBornOn("000115", "1988-06-01", "M");
+
+		assertThat(SeasonClock.seasonBeingPaidFor(MID_OCTOBER_2027.atZone(SeasonClock.ZONE)))
+				.as("the season being paid for and the season being run agree at this moment, so"
+						+ " swapping one for the other cannot be seen and this case measures nothing")
+				.isEqualTo(2028);
+
+		clock.moveTo(MID_OCTOBER_2027);
+
+		assertThat(bands().get("000115"))
+				.as("the band moved because the NEXT season went on sale, so the resource is"
+						+ " reading the renewal screen's question instead of the running season")
+				.isEqualTo("25-39");
+	}
+
+	/**
+	 * AND EVERYBODY IS ANSWERED THE SAME BANDS, whoever they are.
+	 *
+	 * <p>Article 74 makes the category public, so it is not one of the fields this
+	 * resource hands to some callers and withholds from others. All seven ways of asking
+	 * in this fixture - the visitor, three members, an account that races for nobody, a
+	 * moderator over the members and the superadmin - must come back with one and the
+	 * same map.
+	 *
+	 * <p><b>The list of callers is the fixture's own two</b>, which
+	 * {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther} holds to be exactly
+	 * the accounts in the database. So an eighth account added tomorrow is measured here
+	 * without anybody remembering this case.
+	 *
+	 * <p><b>The floor is over the BANDS and not over the number of records</b>, which is
+	 * the same difference {@code everyMemberIsAnsweredTheBandHisDateOfBirthPutsHimIn}
+	 * rests on. {@code bandsIn} keys the map by member number, so counting it counts
+	 * records: until 21.09.2026 this floor read {@code hasSize(4)} while claiming to
+	 * refuse an answer that carries no bands, and a server handing every record ONE
+	 * constant band satisfied both it and every comparison below. Review measured that
+	 * mutation failing eight cases in this file and NOT this one. What the comparisons
+	 * need is an answer that can disagree, so that is what is asked for.
+	 */
+	@Test
+	void everybodyIsAnsweredTheSameBands() throws Exception {
+		Map<String, String> asAVisitor = bands();
+
+		assertThat(asAVisitor.values())
+				.as("a record came back carrying something that is not a band of the rulebook's,"
+						+ " so what the callers below are compared against is an absence rather"
+						+ " than the category Clan 74 makes public")
+				.isNotEmpty()
+				.allSatisfy(band -> assertThat(THE_BANDS_THE_RULEBOOK_HAS).contains(band));
+
+		assertThat(Set.copyOf(asAVisitor.values()))
+				.as("every record is answered one and the same band, so a server handing"
+						+ " everybody a constant satisfies every comparison below and this case"
+						+ " measures nothing but that the constant is the same constant")
+				.hasSizeGreaterThan(1);
+
+		List<String> everybody = new java.util.ArrayList<>(THE_ADMINISTRATION);
+		NOBODY_WHO_MAY_READ_THE_BASIS.stream().filter(one -> one != null).forEach(everybody::add);
+
+		for (String email : everybody) {
+			assertThat(bandsIn(answerFor(email)))
+					.as("%s is answered different bands from a visitor, and the category is public"
+							+ " to everybody (Clan 74)", email)
+					.isEqualTo(asAVisitor);
+		}
+	}
+
+	/** The band on every record of an answer, by member number and in the answer's order. */
+	private Map<String, String> bandsIn(JsonNode answered) {
+		Map<String, String> bands = new LinkedHashMap<>();
+		answered.forEach(one ->
+				bands.put(one.path("memberNumber").asString(), one.path(THE_AGE_BAND).asString()));
+
+		return bands;
+	}
+
+	private Map<String, String> bands() throws Exception {
+		return bandsIn(answer());
+	}
+
+	/**
+	 * A MEMBER WHO IS ORDINARY IN EVERY WAY EXCEPT THE DAY HE WAS BORN.
+	 *
+	 * <p>Added inside a case rather than to the fixture on purpose: the fixture's own
+	 * floor counts the distinct years and days of birth in the table
+	 * ({@code noYearOfBirthLeavesTheServer}), and every case here rolls back, so a member
+	 * written for one question never reaches another.
+	 *
+	 * <p>His referral code is built from his number so that two of them cannot collide,
+	 * which the schema refuses outright.
+	 */
+	private void aMemberBornOn(String number, String born, String gender) {
+		member(number, "Ime" + number, "Prezime" + number, gender, born,
+				"(select id from place where rank = 1)", "null", "null",
+				2020, false, true, "payment", "", "a0b1c2d3e4f5" + number.substring(2), "null",
+				false, "none");
+	}
+
+	/**
+	 * A CLOCK THE CASE MOVES, because the band turns on a boundary in time.
+	 *
+	 * <p>Copied in shape from {@code ResultApiTest}, including the reason it reports UTC:
+	 * whoever asks what season it is has to re-read the instant in the league's own time,
+	 * and a server that reads this zone instead answers 2027 on a night that is already
+	 * 2028 in Belgrade.
+	 *
+	 * <p><b>That night is {@link #NEW_YEARS_NIGHT_INTO_2028}, and it is named here because
+	 * the sentence above arrived without it.</b> A zone reported by a fake clock is not a
+	 * measurement on its own: every moment this file stood on read the same year in both
+	 * zones, so the sentence was true of the portal and untrue of the cases until
+	 * {@code theBandMovesWithTheSeasonThatIsRunning} was moved onto the boundary.
+	 */
+	static final class AClockTheCaseMoves extends Clock {
+
+		private Instant now;
+
+		private AClockTheCaseMoves(Instant now) {
+			this.now = now;
+		}
+
+		void moveTo(Instant when) {
+			this.now = when;
+		}
+
+		@Override
+		public Instant instant() {
+			return now;
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return ZoneOffset.UTC;
+		}
+
+		@Override
+		public Clock withZone(ZoneId zone) {
+			return Clock.fixed(now, zone);
+		}
+	}
+
+	/** And it stands in for the server's own clock, which is the point of that bean. */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class TheClockTheseCasesUse {
+
+		@Bean
+		@Primary
+		AClockTheCaseMoves aClockTheCaseMoves() {
+			return new AClockTheCaseMoves(AUTUMN_2026);
+		}
+
 	}
 
 }
