@@ -1451,18 +1451,38 @@ class CompetitorApiTest {
 	 * <p>Both are written here rather than taken from the fixture, because no two members
 	 * of the fixture share a year of birth - that separation is what makes its own axes
 	 * work, and it is exactly what this question needs undone.
+	 *
+	 * <p><b>AND BOTH PAIRS SIT ON A BOUNDARY, WHICH IS THE WHOLE OF WHY THIS CASE
+	 * MEASURES ANYTHING.</b> It was written first with a single pair born in 1990 and it
+	 * asserted NOTHING: a mutation that let the sex into the arithmetic - a year added to
+	 * a woman's - was run before the reviewer was called and passed all thirty cases
+	 * green. Born in 1990 a member is 37 in 2027 and 36 with the mutation, and both are
+	 * the same band, so right and wrong gave one answer. The pairs are therefore chosen
+	 * so that ONE year in either direction crosses a boundary: 2002 is 25 and falls to
+	 * {@code 24-} if a year is added, 2003 is 24 and rises to {@code 25-39} if one is
+	 * taken away. A shift of either sign is now a different band for the woman and the
+	 * case fails.
 	 */
 	@Test
 	void theSexDoesNotChangeTheBand() throws Exception {
-		aMemberBornOn("000104", "1990-06-15", "M");
-		aMemberBornOn("000105", "1990-06-15", "F");
+		aMemberBornOn("000104", "2002-06-15", "M");
+		aMemberBornOn("000105", "2002-06-15", "F");
+		aMemberBornOn("000106", "2003-06-15", "M");
+		aMemberBornOn("000107", "2003-06-15", "F");
 
 		Map<String, String> bands = bands();
 
-		assertThat(bands.get("000104"))
-				.as("two members born on one day are answered different bands because of their sex")
-				.isEqualTo(bands.get("000105"))
+		assertThat(bands.get("000105"))
+				.as("a woman born on the same day as a man is answered a different band, so the"
+						+ " sex is reaching arithmetic that has no business knowing it")
+				.isEqualTo(bands.get("000104"))
 				.isEqualTo("25-39");
+
+		assertThat(bands.get("000107"))
+				.as("the same, on the other side of the boundary, which is what catches a shift"
+						+ " in the opposite direction")
+				.isEqualTo(bands.get("000106"))
+				.isEqualTo("24-");
 	}
 
 	/**
