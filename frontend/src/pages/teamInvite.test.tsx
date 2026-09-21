@@ -21,6 +21,53 @@ import { useSession } from '../session/useSession'
  * member's mail, and the notice is in a third member's.
  */
 
+/**
+ * How long a case in this file is given, which is twice what a case drawing one screen gets.
+ *
+ * **The work was measured before the number was touched, and there is nothing to take out.**
+ * Thirty four cases, 21.09.2026: 92,5% of the time inside them is 186 `user.click`, 134 `findBy`,
+ * 93 `getBy` and 50 `queryBy` calls. Turning the served files into objects is 6,8%, measured in a
+ * separate pass and *inside* that figure rather than beside it: the fetch happens during the wait
+ * a `findBy` is already counting, so the two do not add up. Of it, `results.json` at 1,3 MB read
+ * thirty three times is 171 ms, so the biggest file on the portal is not what this costs.
+ * No single case carries the file: on an idle machine the longest one measures between 0,64 and
+ * 0,82 s across passes, against 16,9 s for the file. Nothing is done twice, and the screen they
+ * all open already memoises the one expensive thing it holds (`CompetitorProfile.tsx`, the
+ * `useMemo` around `resultsOf`, so the fault ADL A2 was written for is not repeated here). Every
+ * one of those calls is a step of the walk or an assertion about it, so there is no way to make
+ * this shorter that does not make it say less.
+ *
+ * **So the number is not about the work but about the load.** The longest case here was measured
+ * five ways: 0,82 s alone at its worst, 2,92 s inside the whole suite, 7,62 s inside the whole
+ * suite beside twenty four processes burning the processor, 13,28 s beside sixty, and 18,20 s run
+ * alone beside ninety six. That last one passed against `SLOW` by 1,8 seconds, a margin of 1,10;
+ * against twice `SLOW` it is 2,20.
+ *
+ * **And it is not one case sitting on the edge but five.** In that same run five cases are past
+ * twelve seconds (18,20 / 16,76 / 14,56 / 14,41 / 14,01). That is why this file has failed as
+ * three timeouts at once and then passed thirty four out of thirty four on its own: nothing is
+ * wrong in any one of them, they are simply close enough together that one step of load takes
+ * several over at the same moment.
+ *
+ * **Splitting the file was measured instead of assumed, and it does not do this.** The thirteen
+ * cases of the last five blocks, run on their own, take 5464 ms against 4261 ms as the tail of the
+ * whole file: 0,78, because two files warm up twice. The per case clock is what goes red, and
+ * halving the file does not move it.
+ *
+ * **It also keeps the failure readable, and that part is measured rather than reasoned.**
+ * `asyncUtilTimeout` stays at `SLOW` (`test/setup.ts`), below the case's own clock. Asking one
+ * case here for a button that does not exist prints, on this clock,
+ * `Unable to find role="button" and name "…"`; on `SLOW` the same miss prints
+ * `Test timed out in 20000ms` and names nothing, because the query and the case die at the same
+ * instant. That is the fault `publicScreens.test.tsx` answers with `SLOW / 4` from the other side.
+ *
+ * `SLOW` stays the one home of the number (ADL A31); this is derived from it rather than a second
+ * threshold written out by hand. Named for what separates these cases from the one screen case
+ * `SLOW` was written for, and not `WALKED`, which `member/oneQuestion.test.tsx` already uses for
+ * a list of screens.
+ */
+const SEVERAL_SCREENS = SLOW * 2
+
 /** The reader becomes somebody else inside one visit. */
 function Become({ who }: { who: string }) {
   const { signIn } = useSession()
@@ -170,7 +217,7 @@ describe('who is offered „Pozovi u tim"', () => {
        (PDL, 06.09.2026). */
     expect(screen.queryByRole('button', { name: 'Pozovi u tim' })).toBeNull()
     expect(screen.getByText(/Poziv u tim „Dunavski trkači" je poslat/)).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('is still offered by the same team about somebody else', async () => {
     const user = setupUser()
@@ -185,7 +232,7 @@ describe('who is offered „Pozovi u tim"', () => {
        member from that comparison leaves everything green, and a club that has invited anybody
        can never invite again. */
     expect(await screen.findByRole('button', { name: 'Pozovi u tim' })).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('what the invitation does', () => {
@@ -221,7 +268,7 @@ describe('what the invitation does', () => {
 
     expect(await screen.findByRole('button', { name: 'Prihvati' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Odbij' })).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('puts the member in the team from the next season when it is accepted', async () => {
     const user = setupUser()
@@ -266,7 +313,7 @@ describe('what the invitation does', () => {
        05.09.2026). Read off the line rather than off the page, so „2027" cannot be answered by
        a result, a season control or the invitation still sitting in the header panel. */
     expect(clubLine()).toContain('U klubu Dunavski trkači od 2027.')
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('writes nothing when it is refused, and says so where the buttons were', async () => {
     const user = setupUser()
@@ -295,7 +342,7 @@ describe('what the invitation does', () => {
       await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ }),
     ).toBeVisible()
     expect(clubLine()).toContain('Bez tima')
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('a member who is asked by more than one team', () => {
@@ -340,7 +387,7 @@ describe('a member who is asked by more than one team', () => {
        others, so „already answered" cannot be a flag on any one of them (PDL, 06.09.2026). */
     expect(await screen.findByText(/U međuvremenu si ušao\/la u tim/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('tells the team that was left waiting, and not the team that was joined', async () => {
     const user = setupUser()
@@ -393,7 +440,7 @@ describe('a member who is asked by more than one team', () => {
     expect(
       await screen.findByText(/Relja Momčilović je u međuvremenu ušao\/la u tim „Dunavski trkači"/),
     ).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('what the team sees of what it sent', () => {
@@ -442,7 +489,7 @@ describe('what the team sees of what it sent', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /Dunavski trkači/ })).toBeVisible()
     expect(screen.queryByRole('list', { name: 'Poslati pozivi' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('what is left when a team goes away', () => {
@@ -459,7 +506,7 @@ describe('what is left when a team goes away', () => {
        Written against the identity alone it would go on offering the button to somebody who
        is in no team, and the press would file an invitation from a team they left. */
     expect(screen.queryByRole('button', { name: 'Pozovi u tim' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('says so, instead of two buttons, when the team that asked is gone', async () => {
     const user = setupUser()
@@ -486,7 +533,7 @@ describe('what is left when a team goes away', () => {
        is what every other closed invitation does. */
     expect(await screen.findByText(/Tim koji te je pozvao više ne postoji/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('tells nobody about a missed invitation when the team that sent it has emptied', async () => {
     const user = setupUser()
@@ -538,7 +585,7 @@ describe('what is left when a team goes away', () => {
     expect(
       (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
     ).toEqual([])
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('the transfer window holds the answer as well as the question', () => {
@@ -582,7 +629,7 @@ describe('the transfer window holds the answer as well as the question', () => {
     await user.click(screen.getByRole('button', { name: 'Odbij' }))
 
     expect(await screen.findByText(/Ovaj poziv više ne stoji/)).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('the third door writes the season the other two write', () => {
@@ -625,7 +672,7 @@ describe('the third door writes the season the other two write', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
     expect(clubLine()).toContain('U klubu Trkači Morave od 2028.')
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('which day the answer is read off', () => {
@@ -663,7 +710,7 @@ describe('which day the answer is read off', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
     expect(clubLine()).toContain('U klubu Dunavski trkači od 2028.')
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('dates the notice by the day it is sent, not by the day the invitation was', async () => {
     const user = setupUser()
@@ -707,7 +754,7 @@ describe('which day the answer is read off', () => {
     const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
 
     expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('15. 10. 2027.')
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('dates a sent invitation by the day it was sent, not by the day the page is read', async () => {
     const user = setupUser()
@@ -750,7 +797,7 @@ describe('which day the answer is read off', () => {
 
     expect(said.filter((one) => /Relja Momčilović/.test(one) && /15\. 10\. 2026\./.test(one))).toHaveLength(1)
     expect(said.filter((one) => /Časlav Radenković/.test(one) && /20\. 12\. 2026\./.test(one))).toHaveLength(1)
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('the day the notice carries, on the other two doors', () => {
@@ -797,7 +844,7 @@ describe('the day the notice carries, on the other two doors', () => {
     const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
 
     expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('15. 10. 2027.')
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('dates it by the day the proposal was approved, not by the day it was sent', async () => {
     const user = setupUser()
@@ -852,7 +899,7 @@ describe('the day the notice carries, on the other two doors', () => {
     expect(must(told[0], 'the notice Dunavski trkači were sent').textContent).toMatch(
       /(?<!\d)5\. 1\. 2027\./,
     )
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('a team is told whichever road the member took in', () => {
@@ -914,7 +961,7 @@ describe('a team is told whichever road the member took in', () => {
     expect(
       await screen.findByText(/Relja Momčilović je u međuvremenu ušao\/la u tim „Dunavski trkači"/),
     ).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('leaves nothing open on the team page after the member is taken in elsewhere', async () => {
     const user = setupUser()
@@ -948,7 +995,7 @@ describe('a team is told whichever road the member took in', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /Vardar/ })).toBeVisible()
     expect(screen.queryByRole('list', { name: 'Poslati pozivi' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('the third door, and the team that was joined', () => {
@@ -1013,7 +1060,7 @@ describe('the third door, and the team that was joined', () => {
     expect(
       (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
     ).toEqual([])
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('names the member and the club they went to, on the road through the queue', async () => {
     const user = setupUser()
@@ -1070,7 +1117,7 @@ describe('the third door, and the team that was joined', () => {
     expect(
       await screen.findByText(/Relja Momčilović je u međuvremenu ušao\/la u tim „Trkači Morave"/),
     ).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('does not tell the team the member has just joined about its own invitation', async () => {
     const user = setupUser()
@@ -1104,7 +1151,7 @@ describe('the third door, and the team that was joined', () => {
     expect(
       (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
     ).toEqual([])
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('the way to the answer', () => {
@@ -1135,7 +1182,7 @@ describe('the way to the answer', () => {
     await user.click(list.getByRole('link', { name: /Poziv u tim/ }))
 
     expect(await screen.findByRole('button', { name: 'Prihvati' })).toBeVisible()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
 
 describe('what the invitation must not be confused with', () => {
@@ -1172,7 +1219,7 @@ describe('what the invitation must not be confused with', () => {
 
     expect(await screen.findByText(/Ovaj poziv više ne stoji/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('leaves every message that is not an invitation exactly as it was', async () => {
     const user = setupUser()
@@ -1190,7 +1237,7 @@ describe('what the invitation must not be confused with', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
     expect(screen.queryByText(/poziv/i)).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('ends the other clubs\' questions for good, and not only while the member has a club', async () => {
     const user = setupUser()
@@ -1236,7 +1283,7 @@ describe('what the invitation must not be confused with', () => {
 
     expect(await screen.findByText(/Ovaj poziv više ne stoji/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('does not come back to life when the club that took them in is deleted', async () => {
     const user = setupUser()
@@ -1274,7 +1321,7 @@ describe('what the invitation must not be confused with', () => {
 
     expect(await screen.findByText(/Tim koji te je pozvao više ne postoji/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 
   it('ends only the invitations of the member who joined', async () => {
     const user = setupUser()
@@ -1309,5 +1356,5 @@ describe('what the invitation must not be confused with', () => {
 
     expect(within(sent).getByText(/Časlav Radenković/)).toBeVisible()
     expect(within(sent).queryByText(/Relja Momčilović/)).toBeNull()
-  }, SLOW)
+  }, SEVERAL_SCREENS)
 })
