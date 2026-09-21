@@ -349,6 +349,24 @@ class MeApiTest {
 	 * everybody is active. There is a row with no number, and there is a row that has a number
 	 * and is not active, so both of the states the portal really does write are here and the
 	 * refusal above is a refusal rather than a tautology.
+	 *
+	 * <p><b>AND THE BOUNDARY, WHICH IS REAL AND IS NAMED HERE RATHER THAN LEFT FOR A REVIEW TO
+	 * FIND: this refuses what the portal cannot write to {@code competitor}, and says nothing
+	 * about {@code team} or {@code team_membership}.</b> It cannot, because <b>nothing on this
+	 * portal writes either of them yet</b> - {@link TeamWriteApi} writes {@code team_proposal}
+	 * and says so in its own words, „nothing writes {@code team_membership} at all", and no
+	 * migration seeds a team. So the three teams and the four memberships below are states no
+	 * route can produce TODAY, and a refusal in the shape of the one above would have to refuse
+	 * the fixture outright and take the {@code teamId} measurement with it.
+	 *
+	 * <p>That is a different thing from the state this case does refuse, and the difference is
+	 * worth being exact about. An {@code active} row with no member number is a state the
+	 * portal <b>writes the other way round</b> and will never write, so a case leaning on it
+	 * measures a difference nobody will ever see. A membership row is a state <b>nothing writes
+	 * yet</b>: the schema holds it, the constraints govern it
+	 * ({@code team_membership_one_team_at_a_time}), {@link CompetitorApi} reads it through the
+	 * identical clause, and the approval that will write it is one increment away. The day
+	 * something does write one, this fixture is what that writer has to agree with.
 	 */
 	@Test
 	void everyRowHereIsAStateThePortalCanWrite() {
