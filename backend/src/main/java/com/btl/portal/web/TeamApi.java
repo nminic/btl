@@ -126,15 +126,17 @@ import java.util.Optional;
  *
  * <p><b>THE SEAT HAS FOUR STATES AND THE ANSWER HAS FOUR SHAPES, one each, and that
  * is the correction of 21.09.2026.</b> {@code team.admin_id} is nullable by V11's own
- * decision - „It EMPTIES rather than blocking anything" - so „nobody holds this seat"
- * is a sentence of its own beside „I am not telling you" and a member number. What
- * stood here said those were all the sentences there were, and a fourth was hiding
- * inside the third:
+ * decision - „It EMPTIES rather than blocking anything: when the seat is vacant the
+ * portal reads the member who has been in the team longest, and that is a query, not
+ * a column. So this says who was NAMED, and nothing here pretends it is always
+ * somebody" - so „nobody is named to this seat" is a sentence of its own beside „I am
+ * not telling you" and a member number. What stood here said those were all the
+ * sentences there were, and a fourth was hiding inside the third:
  *
  * <ul>
  * <li><b>The key ABSENT</b>, which is „I am not telling you" and is what everybody
  * outside {@link #OVER_THE_TEAMS} is answered. Java {@code null} on the component.</li>
- * <li><b>The EMPTY STRING</b>, which is „nobody holds this seat" and is read off
+ * <li><b>The EMPTY STRING</b>, which is „nobody is named to this seat" and is read off
  * {@code t.admin_id is null} and off nothing else. It is also the shape the portal
  * already reads ({@code frontend/src/data/types.ts} types the field {@code string},
  * and the served file writes {@code ""} for the team that has none). Answered null
@@ -389,8 +391,8 @@ class TeamApi {
 	 *                    administration is answered - a visitor's, a member's own team
 	 *                    included, and a signed in moderator who does not hold
 	 *                    {@link #OVER_THE_TEAMS}. {@code Optional.of("")} is
-	 *                    <b>the EMPTY STRING, „nobody holds this seat"</b>, and it is
-	 *                    read off {@code t.admin_id is null} and off nothing else.
+	 *                    <b>the EMPTY STRING, „nobody is named to this seat"</b>, and it
+	 *                    is read off {@code t.admin_id is null} and off nothing else.
 	 *                    {@code Optional.of(number)} is the member who holds it.
 	 *                    {@code Optional.empty()} is <b>JSON null, „somebody holds it
 	 *                    and he is not a member, so there is no number to give you"</b>;
@@ -426,15 +428,20 @@ class TeamApi {
 		   `me` would refuse the ordinary case outright - the superadmin races for nobody.
 
 		   `member != null` IS NOT A NICETY, and it is the whole of what stands between a
-		   visitor and a 500. `WhatHeMayDo.may` takes the principal off the context and
-		   casts it without asking whether there is one, and its own note says why that is
-		   safe: a route that needs a right is a route `ApiSecurity` has not opened, so the
-		   chain answers 401 first. This route stands on READ_BY_ANYBODY, where that
-		   sentence is false and the principal of a visitor is Spring's anonymous token.
-		   What holds the guard is not this comment: `nobodyHasToSignInToSeeTheTeams` asks
-		   for 200 without a cookie and `theVisitorsAnswerHasNotMoved` compares the
-		   visitor's answer byte for byte, so taking the guard away fails both. */
-		boolean administration = member != null && mayHe.may(OVER_THE_TEAMS);
+		   visitor and a 500. This route hands `member` straight to
+		   `WhatHeMayDo.may(WhoIsAsking.Member, String)`, the overload written for exactly
+		   this shape of caller - open to everybody, asking "may he" of whoever there is.
+		   That overload's own safety note assumes a route that needs a right is one
+		   `ApiSecurity` has already shut to anybody not signed in; this route stands on
+		   READ_BY_ANYBODY, where that is false, so the assumption has to be made true by
+		   hand. Taken away, a null `member` would reach `rightsOf` and fail on
+		   `asking.role()` - a `NullPointerException` rather than the
+		   `ClassCastException` the single-argument overload throws on the same visitor -
+		   but he is answered 500 either way. What holds the guard is not this comment:
+		   `nobodyHasToSignInToSeeTheTeams` asks for 200 without a cookie and
+		   `theVisitorsAnswerHasNotMoved` compares the visitor's answer byte for byte, so
+		   taking the guard away fails both. */
+		boolean administration = member != null && mayHe.may(member, OVER_THE_TEAMS);
 
 		return db.sql("select t.id, t.slug, t.name,"
 						/* The town in the two shapes V11 allows, and the country off whichever
