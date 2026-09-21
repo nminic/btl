@@ -36,7 +36,73 @@ configure({ asyncUtilTimeout: SLOW })
 beforeEach(() => {
   clearResourceCache()
   sessionStorage.clear()
+  whoTheCookieNames = null
 })
+
+/**
+ * WHO THE COOKIE NAMES, for the one answer that is about the caller rather than about
+ * a resource.
+ *
+ * **Why the harness has to answer this at all, since 21.09.2026.** `GET /api/me` is
+ * where a member is told how his own membership is held: `/api/competitors` decides
+ * that field by asking whether the CALLER is the administration rather than whether
+ * the row is his (`CompetitorApi`), so it is withheld from a member even on his own
+ * row. The screen about his fee reads it off `/api/me` now, and a harness that went on
+ * answering that address 404 would leave every such case measuring „I was not told".
+ *
+ * **Set in one place and not in three hundred.** `test/render.tsx` sets it from the
+ * member a case is rendered as, so nothing in a case changes; a case that wants
+ * another answer puts its own server in front (`test/serverAnswers.ts`), which is what
+ * `pages/member/oneQuestion.test.tsx` does.
+ *
+ * Cleared before every case, like the caches above it: a visit that named somebody
+ * must not name them for the next one.
+ */
+let whoTheCookieNames: { role: string; memberNumber: string } | null = null
+
+export function theCookieNames(who: { role: string; memberNumber: string } | null): void {
+  whoTheCookieNames = who
+}
+
+/** What `/api/me` answers, off the generated record of whoever the cookie names.
+ *
+ *  The same components `MeApi.WhoIAm` carries and in the same shape: the role, an
+ *  account number, and the caller's own record nested under `member`. The account is
+ *  a number the portal only ever compares with nothing, so it is a constant here. */
+function whatMeAnswers(): Response {
+  if (whoTheCookieNames === null) {
+    return new Response(null, { status: 401 })
+  }
+
+  const members: Record<string, unknown>[] = JSON.parse(
+    readFileSync(join(PUBLIC_DIR, 'mock/competitors.json'), 'utf-8'),
+  )
+  const mine = members.find((one) => one.memberNumber === whoTheCookieNames?.memberNumber)
+
+  return new Response(
+    JSON.stringify({
+      role: whoTheCookieNames.role,
+      account: 1,
+      /* Absent altogether for somebody the file has no record of, which is the state
+         `MeApi` writes out: an account that races for nobody carries no member at all,
+         „rather than an object of nulls". */
+      ...(mine === undefined
+        ? {}
+        : {
+            member: {
+              memberNumber: mine.memberNumber,
+              country: mine.country,
+              firstSeason: mine.firstSeason,
+              teamId: mine.teamId,
+              membershipBasis: mine.membershipBasis,
+              referralCode: mine.referralCode,
+              referredCount: 0,
+            },
+          }),
+    }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  )
+}
 
 /* The data layer fetches /api/<name>, which on QA is Spring and in development is
  * the proxy in front of it. In tests there is no server, so a request for a
@@ -77,7 +143,13 @@ function fileFor(path: string): string {
 }
 
 vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
-  const at = fileFor(String(input))
+  const asked = String(input)
+
+  if (asked === '/api/me') {
+    return whatMeAnswers()
+  }
+
+  const at = fileFor(asked)
 
   try {
     const body = readFileSync(join(PUBLIC_DIR, at), 'utf-8')

@@ -24,49 +24,32 @@ import type { Competitor, Team } from './types'
  * already edits. That is the whole of „sme da dodeli drugog": the standing rule
  * below is what happens when nobody does.
  *
- * **WHO SITS IN THE SEAT IS NOW ASKED IN TWO WORDS, NOT ONE, AND THAT IS THE
- * SWITCH TO `/api` RATHER THAN A SECOND RULE** (21.09.2026). `/api/teams` answers
- * `organizerMemberNumber` to the administration alone, because a member number is
- * not a thing Article 73 makes public (P-javno, 13.09.2026). Every other reader is
- * answered `foundedByMe`, which is that same fact reduced to what concerns them:
- * whether the seat is theirs.
+ * **WHAT THIS ANSWERS SINCE 21.09.2026, SAID NARROWLY, because it used to answer
+ * two questions and one of them it cannot.** This is „who administers this team",
+ * a fact about the TEAM, and it is answered off the seat the ANSWER carries.
+ * `/api/teams` gives `organizerMemberNumber` to the administration alone, because a
+ * member number is not a thing Article 73 makes public (P-javno, 13.09.2026). So
+ * this is whole for the administration, and for everybody else it is the standing
+ * rule alone - which is the right answer to „is there anybody here to decide" and
+ * the WRONG answer to „may I decide".
  *
- * So the seat is read off whichever of the two this reader was given, and the rule
- * below is unchanged for both. The administration reads a number and may therefore
- * ask about anybody; a member reads a yes or a no and may therefore ask only about
- * himself, which is every question a member's screen has (`TeamDetail`, `EditTeam`).
- *
- * **The boundary, written here because nothing below can close it.** A member is
- * told „you did not found this" and cannot be told „and nobody else did either",
- * so when the seat is empty and the founder has left, a member's answer falls
- * through to the standing rule while the administration's does not have to. Both
- * answer the same member in every arrangement the portal can reach today, because
- * the standing rule is what the empty seat means; they part only on a seat held by
- * somebody who is not in the team, and that is `TeamApi`'s own open question rather
- * than one to settle here.
- *
- * @param reader the member asking, where one is asking. Nothing for the
- *               administration and for a visitor, both of which are answered by
- *               the seat itself or by neither field.
+ * **„May I decide" is `readerAdministers` below, and the split is a security fix
+ * rather than tidiness.** Measured 21.09.2026: read through this, a member who had
+ * NOT founded a team was handed its administrator's controls, because a member is
+ * not told who sits in the seat and this fell through to the standing rule. A
+ * definite „no" became „maybe yes". The two questions are separated so that the one
+ * about a permission can be definite and the one about a recipient can go on being
+ * a best guess.
  */
-export function teamAdminOf(
-  team: Team,
-  competitors: Competitor[],
-  reader: string | null = null,
-): string | null {
+export function teamAdminOf(team: Team, competitors: Competitor[]): string | null {
   const inTeam = competitors.filter((one) => one.teamId === team.id)
 
-  /* Whichever of the two the answer carries, and never both: `foundedByMe` is
-     absent unless somebody is signed in, and the number is absent unless they are
-     the administration. Nothing where it is neither, which is a visitor, and a
-     visitor draws no button this decides. */
-  const seat = team.foundedByMe === true ? reader : (team.organizerMemberNumber ?? null)
-
-  /* Still in the team, which is what makes this the seat rather than the record of
-     who founded it. An empty string and a nothing are both „no member has this
-     number" here, and neither needs a branch of its own: no member number is empty
-     and none is missing (`Competitor.memberNumber`), so the comparison below is
-     false for both without being asked twice. */
+  /* The seat as the ANSWER gives it, and nothing where the reader was not told:
+     an empty string („nobody holds it"), a JSON null („somebody with no number
+     holds it") and the key being absent („not for you") all fail the comparison
+     below without a branch of their own, because no member number is any of the
+     three. */
+  const seat = team.organizerMemberNumber ?? null
   const founder = inTeam.find((one) => one.memberNumber === seat)
 
   if (founder !== undefined) {
@@ -86,4 +69,64 @@ export function teamAdminOf(
   )
 
   return ordered[0]?.memberNumber ?? null
+}
+
+/**
+ * WHETHER THIS READER MAY ADMINISTER THIS TEAM, and it is the question every screen
+ * with a control on it actually asks.
+ *
+ * **Why it is not `teamAdminOf(...) === reader`, which is what it was until
+ * 21.09.2026 and was a hole.** That reads the seat, and a member is not told who sits
+ * in it: `/api/teams` gives `organizerMemberNumber` to the administration alone and
+ * answers everybody else `foundedByMe` (P-javno, 13.09.2026, and `TeamApi`). With no
+ * seat to read, the comparison fell through to the standing rule - „whoever has been
+ * here longest takes an empty seat" - and handed the team to a member who had not
+ * founded it and whose seat was held by somebody else. Measured on a team whose seat
+ * names one member while another has been in it longer: the second was given the
+ * whole edit screen, and with it the way to delete the team and to decide who joins.
+ *
+ * **So the three readers are answered by three different facts, and each is
+ * definite.**
+ *
+ * - **A member** is answered `foundedByMe`, which says exactly „the seat is yours" or
+ *   „the seat is not yours". `false` is a NO and never a maybe: it does not say
+ *   whether the seat is empty, so the standing rule may not be reached for it.
+ * - **The administration** is answered the seat itself, so the whole rule can be
+ *   worked out and compared.
+ * - **A visitor** is answered neither, and draws no control this decides.
+ *
+ * **The founder only while they are still in it**, which is the half `foundedByMe`
+ * cannot carry on its own: it compares the seat to the caller's key and says nothing
+ * about the roster, and a moderator moving the founder to another team empties the
+ * seat without changing that field.
+ *
+ * **What this costs, written down rather than left to be found.** A member who did
+ * not found a team can no longer take an empty seat by having been there longest, and
+ * that is the half of the owner's rule of 04.09.2026 the answer cannot reach.
+ * `TeamApi` names the same gap from its own side: „what is still owed is the same
+ * question asked by a MEMBER, who is answered `foundedByMe` and nothing else". It is
+ * in `PENDING.md` as a question for the owner rather than settled here, and the safe
+ * side is the one taken meanwhile.
+ */
+export function readerAdministers(
+  team: Team,
+  competitors: Competitor[],
+  reader: string | null,
+): boolean {
+  if (reader === null) {
+    return false
+  }
+
+  if (team.foundedByMe !== undefined) {
+    /* A member. The seat is his or it is not, and „his" still needs him in the team:
+       the field is about the seat and says nothing about the roster. */
+    return (
+      team.foundedByMe &&
+      competitors.some((one) => one.teamId === team.id && one.memberNumber === reader)
+    )
+  }
+
+  /* The administration, which was given the seat and can have the whole rule worked
+     out. A visitor reaches neither line, having been sent away above. */
+  return teamAdminOf(team, competitors) === reader
 }

@@ -11,12 +11,14 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS, recordKey } from '../session/context'
 import { PRICING } from './admin/entityForms'
 import { SessionProvider } from '../session/SessionProvider'
+import { RoleProvider } from '../roles/RoleProvider'
 import { useSession } from '../session/useSession'
 import { first, must } from '../test/at'
 import { readQr } from '../test/readQr'
-import { expectFrontPage, renderAt } from '../test/render'
+import { AsksTheServerWhoIAm, expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
 import { membersAsServed } from '../test/serverAnswers'
+import { theCookieNames } from '../test/setup'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
 
@@ -77,13 +79,27 @@ function Administration({
    grown one of them living in Serbia. His membership is not active, which this
    screen has no branch for and which none of these tests is about. */
 function renderMembershipOn(today: string, memberNumber = '000032') {
+  /* **AND THE COOKIE NAMES HIM, which this screen needs and `renderAt` does for every
+     case that goes through the router.** How a member's own fee is held reaches him
+     through `GET /api/me` and through nothing else: `/api/competitors` decides that
+     field by asking whether the CALLER is the administration (`CompetitorApi`), so it
+     is withheld from a member even on his own row. This helper mounts the screen
+     directly rather than at an address, so it says who is asking itself. */
+  theCookieNames({ role: 'competitor', memberNumber })
+
   return render(
     <ClockProvider simulatedDay={today}>
       <I18nProvider locale="sr">
         <MemoryRouter>
-          <SessionProvider initialMemberNumber={memberNumber}>
-            <Membership />
-          </SessionProvider>
+          {/* The portal is never drawn outside one, and the question below reads the
+              role through it. */}
+          <RoleProvider initialRole="competitor">
+            <SessionProvider initialMemberNumber={memberNumber}>
+              {/* The shell'''s own question, which this render is outside of. */}
+              <AsksTheServerWhoIAm />
+              <Membership />
+            </SessionProvider>
+          </RoleProvider>
         </MemoryRouter>
       </I18nProvider>
     </ClockProvider>,

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { RESOURCE_NAMES } from '../data/client'
+import { aCompetitor, asAnswered, myOwnRow } from './theAnswer'
 
 /**
  * A SERVER, FOR THE TWO SCREENS THAT HAVE ONE.
@@ -133,19 +134,19 @@ export function membersAsServed(mine?: string): { lapsed: string[]; stop: () => 
 
   const lapsed = file.filter((one) => !one.active).map((one) => one.memberNumber)
 
-  /* The flag goes with the rows, and that is half of what this is for: left on, a
-     screen could go on reading it and nothing here would notice. `Competitor` has
-     no such field since 21.09.2026, so nothing compiles that tries - and this makes
-     the answer say the same thing the type does.
-
-     `referredBy` goes with it, and it is the other name the answer has not got: on
-     the server that column holds the KEY of whoever brought a member (V7), never a
-     code, and no route hands a key out. */
+  /* **NO LIST OF FIELDS TO TAKE AWAY, AND THAT IS THE POINT** (21.09.2026). This kept
+     one, and a hand-written list is the thing that goes short: `active` was on it,
+     `referredBy` was on it, and `membershipBasis` was not, so a member's own fee screen
+     went on reading a field the server does not give him with every case green. What is
+     kept now is the KEYS of the record the server declares (`test/theAnswer.ts`), so a
+     field the answer has not got has no key to be copied into and nothing has to
+     remember it. */
   const answered = file
     .filter((one) => one.active)
-    .map(({ active: _flag, referredBy: _key, ...rest }) => rest)
     .map((row) =>
-      row.memberNumber === mine ? { ...row, referredCount: broughtIn(file, row) } : row,
+      row.memberNumber === mine
+        ? { ...asAnswered(row, myOwnRow), referredCount: broughtIn(file, row) }
+        : asAnswered(row, aCompetitor),
     )
 
   const { stop } = serverThat((path) =>
@@ -160,7 +161,7 @@ export function membersAsServed(mine?: string): { lapsed: string[]; stop: () => 
   return { lapsed, stop }
 }
 
-/** The generated record, in the two names the answer does not carry. */
+/** The generated record, in the names the answer does not carry. */
 type FileMember = {
   memberNumber: string
   active: boolean

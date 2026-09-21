@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { serverThat } from '../test/serverAnswers'
-import { teamAdminOf } from './teamAdmin'
+import { readerAdministers, teamAdminOf } from './teamAdmin'
 import type { Competitor, Team } from './types'
 
 /**
@@ -138,6 +138,70 @@ describe('a profile, on the answer the server gives', () => {
   })
 })
 
+describe('a member freed of the fee, on the answer the server gives', () => {
+  /* **THE ONE SCREEN THAT ASKS FOR MONEY, MEASURED AGAINST THE ANSWER A MEMBER REALLY
+     GETS.** The owner's sentence has two halves and one answer keeps each: „Clan vidi
+     SVOJ osnov clanstva; tudj ne vidi niko osim administracije" (20.09.2026).
+     `/api/competitors` keeps the second by asking whether the CALLER is the
+     administration and never whether the row is his, so it withholds the field from a
+     member about himself; `/api/me` keeps the first, on one row, and that row is his.
+
+     Read off the public list the field came back nothing for every member, „freed of
+     the fee" was false, and this screen opened the renewal panel with a payment slip on
+     it: a member who owes the league nothing, asked to pay. Nothing failed, because the
+     generated file still carries the field and the whole suite reads that file.
+
+     Both states of the axis, because one of them alone says nothing: a member the
+     league has freed is shown no renewal, and a member who pays is shown one. */
+  function meAnswering(membershipBasis: string) {
+    return serverThat((path) =>
+      path === '/api/me'
+        ? new Response(
+            JSON.stringify({ role: 'competitor', account: 1, member: { membershipBasis } }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+  }
+
+  it('is asked for nothing at all, although the list it is drawn from says nothing', async () => {
+    const { stop } = meAnswering('feeExempt')
+
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', stillAMember, undefined, '2026-11-01')
+
+      expect(
+        await screen.findByText(/Oslobođen si plaćanja članarine za sezonu \d{4}, odlukom/),
+      ).toBeVisible()
+      /* **AND NO WAY TO PAY ANYWHERE ON THE SCREEN, which is the harm rather than the
+         sentence.** A slip, a code and an amount are what a member acts on, and a member
+         freed of the fee was being shown all three. The renewal panel itself stays, and
+         says there is nothing to pay: that is the portal answering the question rather
+         than hiding it. */
+      expect(screen.getByText(/nema šta da uplatiš/)).toBeVisible()
+      expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Kartica' })).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
+  it('is asked to pay where the answer says the fee is his to pay', async () => {
+    /* The other state, off the same field and the same door. Without it „nobody is asked
+       to pay" would read exactly like „the screen is right". */
+    const { stop } = meAnswering('payment')
+
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', stillAMember, undefined, '2026-11-01')
+
+      expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+      expect(screen.queryByText(/Oslobođen si plaćanja/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+})
+
 describe('the referral link, on the answer the server gives', () => {
   it('carries no code where the answer carried none, rather than the word undefined', async () => {
     /* **The three conditional fields are answered on the CALLER'S OWN ROW and on no
@@ -207,6 +271,65 @@ describe('a racing pair, on the answer the server gives', () => {
   })
 })
 
+/** Every team as a signed in MEMBER is answered one: no seat at all, and a yes or a
+ *  no about his own. Built out of the generated file rather than written here, so the
+ *  rosters and the seats stay the portal's own. */
+function teamsAsAMemberIsAnswered(reader: string): Record<string, unknown>[] {
+  const file: Record<string, unknown>[] = JSON.parse(
+    readFileSync(join(process.cwd(), 'public/mock/teams.json'), 'utf-8'),
+  )
+
+  return file.map(({ organizerMemberNumber: seat, ...rest }) => ({
+    ...rest,
+    foundedByMe: seat === reader,
+  }))
+}
+
+describe('the controls of a team, on the answer a member is given', () => {
+  it('refuses the edit screen to a member who founded nothing', async () => {
+    /* **MEASURED ON THE PORTAL'S OWN DATA, AND THIS IS THE HOLE THIS ROUND CLOSED.**
+       One team's seat names a member who joined it later than another member did. Read
+       through „who administers this team, compared with me", the second member was
+       handed the whole edit screen - and with it the way to change the team, to delete
+       it, and to decide who joins - because a member is not told who sits in the seat
+       and the comparison fell through to „whoever has been here longest".
+
+       The answer here is the one a member really gets: no seat on any team, and
+       `foundedByMe` false on all of them. */
+    const { stop } = answering(teamsAsAMemberIsAnswered('000011'), '/api/teams')
+
+    try {
+      const { router } = renderAt('/sr/tim/nisavski-maraton-klub/izmena', 'competitor', '000011')
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/sr')
+      })
+
+      expect(screen.queryByRole('heading', { name: 'Izmena tima' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Pošalji izmenu/ })).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
+  it('opens it for the member whose seat it is, so the refusal is not of everybody', async () => {
+    /* The other side of the same answer, and the reason the case above says something:
+       `foundedByMe` true opens the screen. Without this, „nobody may edit" would read
+       exactly like „the guard is right". */
+    const { stop } = answering(teamsAsAMemberIsAnswered('000005'), '/api/teams')
+
+    try {
+      renderAt('/sr/tim/nisavski-maraton-klub/izmena', 'competitor', '000005')
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Izmena tima' }),
+      ).toBeVisible()
+    } finally {
+      stop()
+    }
+  })
+})
+
 describe('who administers a team, on the answer a member is given', () => {
   /* A member is never told who sits in a team's seat: the number leaves to the
      administration alone, and what a member gets instead is whether the seat is his
@@ -248,25 +371,62 @@ describe('who administers a team, on the answer a member is given', () => {
        `organizerMemberNumber`, which this answer has not got, the standing rule would
        hand the team to 000002. */
     expect(
-      teamAdminOf(
+      readerAdministers(
         team({ foundedByMe: true }),
         [member('000001', 2019), member('000002', 2017)],
         '000001',
       ),
-    ).toBe('000001')
+    ).toBe(true)
   })
 
   it('is not the reader where the answer says they founded nothing', () => {
     /* False and absent are two sentences and this is the first: somebody is asking,
-       and the seat is not theirs. The standing rule answers, which is the longest
-       serving member, and that is somebody else. */
+       and the seat is not theirs. */
     expect(
-      teamAdminOf(
+      readerAdministers(
         team({ foundedByMe: false }),
         [member('000001', 2019), member('000002', 2017)],
         '000001',
       ),
-    ).toBe('000002')
+    ).toBe(false)
+  })
+
+  it('is STILL not the reader where the standing rule would have taken them', () => {
+    /* **THE OTHER STATE OF THE SAME AXIS, AND THE ONE THIS WAS WRONG ABOUT UNTIL
+       21.09.2026.** The case above is a setup where the standing rule refuses the
+       reader anyway, so it passed with the hole wide open. Here the reader IS the
+       longest-serving member, so the old reading - the seat the member is not told
+       about, falling through to that rule - handed him the team, its deletion and its
+       applications. `false` is a definite no: it does not say whether the seat is
+       empty, and the rule may not be reached for it. */
+    expect(
+      readerAdministers(
+        team({ foundedByMe: false }),
+        [member('000001', 2017), member('000002', 2019)],
+        '000001',
+      ),
+    ).toBe(false)
+  })
+
+  it('is not the reader whose seat it is once they have left the team', () => {
+    /* `foundedByMe` compares the seat with the caller and says nothing about the
+       roster, so the half of the rule it cannot carry is asked here: a moderator
+       moving the founder to another team empties the seat without touching the
+       field. */
+    expect(
+      readerAdministers(
+        team({ foundedByMe: true }),
+        [{ ...member('000001', 2019), teamId: 2 }, member('000002', 2017)],
+        '000001',
+      ),
+    ).toBe(false)
+  })
+
+  it('is nobody at all where nobody is asking', () => {
+    /* A visitor is answered neither field and draws no control this decides. */
+    expect(
+      readerAdministers(team({}), [member('000001', 2019)], null),
+    ).toBe(false)
   })
 
   it('reads the seat itself where the administration is the one asking', () => {

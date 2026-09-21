@@ -1,19 +1,34 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { RESOURCE_NAMES, type ResourceName } from './client'
+/* The answers themselves live in one place, because the harness that stands in for the
+   server has to read the same thing this holds (`test/theAnswer.ts` says why). */
+import {
+  aCompetitor,
+  aCompetitorToTheAdministration,
+  aLeague,
+  aPair,
+  aTeam,
+  aTeamWithNoMark,
+  myOwnRow,
+  readAsAdministrationsRow,
+  readAsLeague,
+  readAsMyOwnRow,
+  readAsPair,
+  readAsTeam,
+  readAsTeamWithNoMark,
+  readAsVisitorsMember,
+} from '../test/theAnswer'
 import { must } from '../test/at'
+import { asAnswered } from '../test/theAnswer'
 import type {
   Attending,
   BtlEvent,
-  Competitor,
   EventComment,
-  League,
   Moderator,
   Race,
-  RacingPair,
   Result,
   StaticPage,
-  Team,
 } from './types'
 import type { DucatFamily } from './ducatRule'
 import type { Place } from './places'
@@ -225,102 +240,6 @@ const aComment = {
   body: 'Odlična organizacija.',
 }
 
-/** `/api/competitors` answered with an empty list on the day the samples were
- *  taken, so no row of it has been seen; this is its record, component for
- *  component (`CompetitorApi.Competitor`).
- *
- *  **The three conditional fields are not on it, and that is the sample of a
- *  VISITOR'S row rather than a shortfall.** `referralCode`, `referredCount` and
- *  `membershipBasis` answer null unless the one asking is the member himself or the
- *  administration, and `@JsonInclude(NON_NULL)` leaves a null key out of the answer
- *  altogether, so the row a visitor is handed has fourteen names and no more. The
- *  caller's own row is the sample below it. */
-const aCompetitor = {
-  memberNumber: '000001',
-  firstName: 'Vladan',
-  lastName: 'Đurišić',
-  gender: 'M' as const,
-  city: 'Beograd',
-  country: 'RS',
-  ageBand: '40-54' as const,
-  firstSeason2027: false,
-  firstSeason: 2014,
-  bio: '',
-  teamId: 1,
-  teamSince: 2014,
-  profileHidden: false,
-  birthdayShown: 'none' as const,
-}
-
-/** And the same member's row as HE is answered it, which is the other state of
- *  every one of the three: his own code, his own count, and the basis - that last
- *  one because the sample is taken as the administration, which is who the basis
- *  goes to. */
-const myOwnRow = {
-  ...aCompetitor,
-  referralCode: '7f07b38ff7ee7543',
-  referredCount: 4,
-  membershipBasis: 'payment' as const,
-}
-
-/** A team as the administration is answered one: the seat is a member number, and
- *  the mark and its square are both there, which is the only way a picture ever
- *  arrives (`TeamApi`, „both halves or neither"). */
-const aTeam = {
-  id: 1,
-  slug: 'dunavski-trkaci',
-  name: 'Dunavski trkači',
-  city: 'Novi Sad',
-  country: 'RS',
-  bio: '',
-  logo: '/api/photos/7d1f0a2b',
-  crop: { x: 0.5, y: 0.35, size: 0.72 },
-  organizerMemberNumber: '000001',
-}
-
-/** And a team with no mark, answered to a signed in member who did not found it:
- *  nothing where the picture would be, nothing where its square would be, and no
- *  seat at all. The two nothings travel together and that is the point of writing
- *  this one down beside the row above. */
-const aTeamWithNoMark = {
-  ...aTeam,
-  id: 4,
-  slug: 'novoosnovani-tim',
-  name: 'Novoosnovani tim',
-  logo: null,
-  crop: null,
-  organizerMemberNumber: undefined,
-  foundedByMe: false,
-}
-
-/** Both of them, the man first, which is the order the schema stores them in.
- *  Named rather than written in place so the two are a PAIR and not a list that
- *  happens to hold two: ADL A14 refuses an assertion here, and a type annotation
- *  says the same thing without one. */
-const twoMembers: [string, string] = ['000001', '000009']
-
-/** A pair, which is three names and not four: the day it was made is answered to
- *  nobody (owner, 13.09.2026). */
-const aPair = {
-  id: 1,
-  season: 2019,
-  memberNumbers: twoMembers,
-}
-
-/** A league. `raceIds` is on the answer and not on the type, which is the one
- *  direction this file deliberately lets through: what the backend has and the
- *  portal has not is the owner's half. */
-const aLeague = {
-  id: 1,
-  slug: 'btl-liga-2019',
-  name: 'BTL liga 2019',
-  season: 2019,
-  rules: '',
-  prizes: '',
-  raceIds: [275],
-  eventIds: [273],
-}
-
 /** And a comment whose author is gone, which is the other state of the same
  *  field: the comment stays and the link to a profile goes (`CommentApi`). */
 const anOrphanedComment = { ...aComment, id: 2, memberNumber: null }
@@ -348,12 +267,6 @@ const readAsEnglishTown: Place = anEnglishTown
 const readAsAttendance: Attending = anAttendance
 const readAsComment: EventComment = aComment
 const readAsModerator: Moderator = aModerator
-const readAsVisitorsMember: Competitor = aCompetitor
-const readAsMyOwnRow: Competitor = myOwnRow
-const readAsTeam: Team = aTeam
-const readAsTeamWithNoMark: Team = aTeamWithNoMark
-const readAsPair: RacingPair = aPair
-const readAsLeague: League = aLeague
 
 /** Every row of what the portal serves today, by resource. */
 function servedRows(name: ResourceName): Record<string, unknown>[] {
@@ -466,8 +379,14 @@ describe('the answer the backend gives', () => {
     expect(readAsModerator.id).toBe(4)
     /* The four that had never been seen until 21.09.2026, and for each of them the
        state that is the whole reason it is written down twice or not at all. */
+    /* The three conditional fields, each in the state its own condition puts it in:
+       nothing for a visitor, the caller's own two on his own row, and the basis only
+       where the CALLER is the administration - which is a different condition from the
+       other two and is what a screen was wrong about until 21.09.2026. */
     expect(readAsVisitorsMember.membershipBasis).toBeUndefined()
     expect(readAsMyOwnRow.referredCount).toBe(4)
+    expect(readAsMyOwnRow.membershipBasis).toBeUndefined()
+    expect(readAsAdministrationsRow.membershipBasis).toBe('payment')
     expect(readAsTeam.organizerMemberNumber).toBe('000001')
     /* Both halves of the mark gone together, which is the arrangement `TeamApi`
        refuses to answer in any other way. */
@@ -523,38 +442,80 @@ describe('the answer the backend gives', () => {
        something out of nothing. */
     expect(missing(aDucat, servedRow('ducats'))).toEqual([])
 
-    /* **AND THE MEMBER, WHOSE LIST SHRANK FROM FIVE TO TWO ON 21.09.2026 AND WILL NOT
-       GO FURTHER.** The five were the band they compete in, whether the fee is standing,
-       what it stands on, the code their own link carries, and whose link brought them.
-       Three of them are answered since (PRs 330, 332 and 334); the two below are the file
-       carrying names the answer has DECIDED not to have, and both decisions are the
-       owner's:
+    /* **AND THE FOUR THAT WERE NEVER SEEN UNTIL 21.09.2026, COUNTED RATHER THAN
+       LISTED.** Every name the generated file carries that the answer does not, over
+       every resource there is a record of, in one place. That set is the whole of what
+       `test/setup.ts` can hide: it answers a resource out of that file, so a screen
+       reading a name on this list is reading the seed and not the portal.
+
+       Written as one derived table and not as four assertions, because the question is
+       about the CLASS: „is there a field the file carries and the server does not, that
+       nobody has swept". Three of the four were found that way rather than remembered,
+       and the fourth was missed by a hand-written list and cost a round.
+
+       Each name on it is a decision that has been taken, and the decision is beside it:
 
        - `active`, because a member whose fee has lapsed is not on the list at all
-         (13.09.2026), so the flag has nothing left to say;
+         (owner, 13.09.2026), so the flag has nothing left to say;
        - `referredBy`, because the column holds the KEY of whoever brought a member (V7)
          and a key does not leave the server; what the screen wanted it for arrives
-         counted, as `referredCount`.
+         counted, as `referredCount`;
+       - `membershipBasis`, which a member is not given even on his own row - the
+         condition is the CALLER and never the row - and which reaches him through
+         `/api/me` instead (owner, 20.09.2026, „Clan vidi SVOJ osnov clanstva");
+       - `since`, the day a pair was made, answered to nobody (owner, 13.09.2026). */
+    const answers: [ResourceName, Record<string, unknown>][] = [
+      ['competitors', myOwnRow],
+      ['teams', aTeam],
+      ['pairs', aPair],
+      ['leagues', aLeague],
+    ]
 
-       So this is no longer „nobody has decided yet" for these two. It is the generated
-       file carrying two fields the portal does not read and the server does not send,
-       and it is written down here because that is exactly the difference somebody has to
-       see before they trust a green suite: `test/setup.ts` answers a resource out of this
-       file, so a case that reads one of these two is reading the seed and not the portal.
-       Nothing does, because neither is on `Competitor` any more. */
-    expect(missing(myOwnRow, servedRow('competitors'))).toEqual(['active', 'referredBy'])
+    const held = answers.flatMap(([name, answer]) =>
+      missing(answer, servedRow(name)).map((field) => `${name}.${field}`),
+    )
 
-    /* The team, where the file and the answer agree on every name. The seat is on both,
-       although the answer carries it to the administration alone; `missing` is about
-       NAMES and the answer to somebody else is a different question, held by
-       `TeamApiTest`. */
-    expect(missing(aTeam, servedRow('teams'))).toEqual([])
+    expect(held).toEqual([
+      'competitors.active',
+      'competitors.membershipBasis',
+      'competitors.referredBy',
+      'pairs.since',
+    ])
 
-    /* And the pair, where the file carries the one name the owner closed: the day the two
-       of them confirmed (13.09.2026, „ne prikazuje se nikome"). */
-    expect(missing(aPair, servedRow('pairs'))).toEqual(['since'])
+    /* **AND THE HARNESS TAKES AWAY EXACTLY THOSE, which is the floor the list it used
+       to keep never had.** `membersAsServed` builds its answer out of the KEYS of the
+       records above (`test/theAnswer.ts`), so this is not two lists agreeing: it is the
+       same record read twice. A name that leaves the answer leaves the harness on the
+       same day, and this says out loud that it did. */
+    const asTheServerWould = asAnswered(servedRow('competitors'), myOwnRow)
 
-    expect(missing(aLeague, servedRow('leagues'))).toEqual([])
+    expect(
+      Object.keys(servedRow('competitors')).filter((one) => !(one in asTheServerWould)).sort(),
+    ).toEqual(['active', 'membershipBasis', 'referredBy'])
+
+    /* **AND THE SAME QUESTION ASKED OF THE OTHER TWO READERS, which is what makes the
+       list above a statement about the CALLER rather than about the field.** A visitor
+       is given neither the basis nor the code; the administration is given the basis on
+       every row and the code on none but its own. Only `active` and `referredBy` are
+       missing whoever asks, and those two are the fields the server has no answer for
+       at all. */
+    expect(missing(aCompetitor, servedRow('competitors'))).toEqual([
+      'active',
+      'membershipBasis',
+      'referralCode',
+      'referredBy',
+    ])
+
+    expect(missing(aCompetitorToTheAdministration, servedRow('competitors'))).toEqual([
+      'active',
+      'referralCode',
+      'referredBy',
+    ])
+
+    /* The team with no mark, whose two nothings are the state the file has no row of:
+       every generated team carries a square, so the answer's own `null` is only ever
+       read here. */
+    expect(missing(aTeamWithNoMark, servedRow('teams'))).toEqual([])
   })
 
   it('is measured for every resource the contract names, or the reason is written here', () => {

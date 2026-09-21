@@ -497,7 +497,25 @@ export type SessionValue = {
    */
   account: number | null
   /** What `GET /api/me` said, remembered for the rest of the visit. */
-  theServerSignedMeIn: (account: number) => void
+  theServerSignedMeIn: (account: number, membershipBasis: MembershipBasis | null) => void
+  /**
+   * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, as the server answered it, or null where
+   * it did not say.
+   *
+   * **It is here and not on the member's record in the public list, and that is the
+   * owner's decision rather than a convenience.** 20.09.2026: „Clan vidi SVOJ osnov
+   * clanstva; tudj ne vidi niko osim administracije." `/api/competitors` keeps the
+   * second half by asking about the CALLER and not about the row, so it withholds the
+   * field from a member even on his own row; `/api/me` is where the first half lives
+   * (`session/theServer.ts` writes out what reading it the other way cost).
+   *
+   * **Only this one of the seven the answer carries**, because only this one has no
+   * other door. The member number, the country, the first season and the team are on
+   * the public list; the referral code and the count are on the caller's own row of it.
+   * A field remembered here with no reader would be a second home for a fact that
+   * already has one.
+   */
+  myMembershipBasis: MembershipBasis | null
   /**
    * The one question the header asks, answered once here.
    *

@@ -10,6 +10,8 @@ import { RIGHTS } from '../pages/admin/rights'
 import { RoleProvider } from '../roles/RoleProvider'
 import type { Role } from '../roles/context'
 import { SessionProvider } from '../session/SessionProvider'
+import { theCookieNames } from './setup'
+import { useTheServersSession } from '../session/useTheServersSession'
 
 /**
  * A moderator holding exactly the rights given, for the tests that care which.
@@ -65,6 +67,14 @@ export function renderAt(
    */
   probe: ReactNode = null,
 ) {
+  /* **AND THE COOKIE NAMES THE SAME PERSON THE SWITCH DOES**, since 21.09.2026. One
+     answer on the portal is about the caller rather than about a resource: `GET /api/me`,
+     which is where a member is told how his own membership is held (`session/context.ts`).
+     Set here rather than in each case, so that a case reads as it always did; a case that
+     means to measure a different answer puts its own server in front
+     (`test/serverAnswers.ts`). Nothing where a case renders as nobody. */
+  theCookieNames(memberNumber === null ? null : { role, memberNumber })
+
   const router = createMemoryRouter(routeObjects, { initialEntries: [path] })
 
   return {
@@ -103,4 +113,23 @@ export function renderWithI18n(ui: ReactNode, locale: Locale = DEFAULT_LOCALE) {
       <I18nProvider locale={locale}>{ui}</I18nProvider>
     </ClockProvider>,
   )
+}
+
+/**
+ * THE QUESTION THE SHELL ASKS ABOVE EVERY SCREEN, for a case that mounts one directly.
+ *
+ * `GET /api/me` is asked once a visit from `app/Shell.tsx`, so a screen rendered at an
+ * address gets it for nothing (`renderAt`). A case that mounts a component on its own
+ * is not inside the shell and never asks, and since 21.09.2026 one screen needs the
+ * answer: how a member's own fee is held reaches him through that route and no other
+ * (`session/context.ts`).
+ *
+ * Put beside the screen rather than around it, the same way every other probe in these
+ * tests is: it draws nothing, and what it changes it changes through the session both
+ * of them are inside.
+ */
+export function AsksTheServerWhoIAm() {
+  useTheServersSession()
+
+  return null
 }

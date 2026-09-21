@@ -1,6 +1,7 @@
 import { addressOf } from '../../app/head'
 import { countryName } from '../../data/countryName'
 import { useToday } from '../../clock/useClock'
+import { useSession } from '../../session/useSession'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
 import { bestOfficialSeason } from '../../data/derive'
@@ -102,6 +103,7 @@ function inTheirCurrency(
 export function Membership() {
   const { locale, t } = useI18n()
   const who = useMemberScreen()
+  const { myMembershipBasis } = useSession()
   /* The referral amount as administration has it, not as the file has it: it is
      a row of the price list and is changed there (AdminPricing).
    *
@@ -161,7 +163,19 @@ export function Membership() {
         const junior = applyChanges(JUNIOR, edits[recordKey(PRICING.id, JUNIOR.key)])
         /* A member freed of the fee owes nothing at all (Pravilnik član 15, PDL P16),
            and twenty nine of the thirty two members in the data are freed of the fee. */
-        const feeExempt = me.membershipBasis === 'feeExempt'
+        /* **OFF THE ANSWER THAT CARRIES IT TO HIM, AND NOT OFF THE PUBLIC LIST**
+           (21.09.2026). This read `me.membershipBasis`, and `/api/competitors` decides
+           that field by asking whether the CALLER is the administration rather than
+           whether the row is his (`CompetitorApi`), so a member is not given it even on
+           his own row. Read there it came back nothing for every member, „freed of the
+           fee" was false, and this screen opened the renewal with a payment slip on it:
+           a member who owes the league nothing, asked for money.
+
+           The owner's decision has both halves in one sentence, 20.09.2026: „Clan vidi
+           SVOJ osnov clanstva; tudj ne vidi niko osim administracije." `/api/me` is
+           where the first half lives, and the session remembers what it said
+           (`session/context.ts`). */
+        const feeExempt = myMembershipBasis === 'feeExempt'
         /* THE LIST OF MEMBERS USED TO BE READ HERE AND IS NOT ANY MORE, and the
            reason it was is worth keeping: the credit was counted off it, and counted
            straight off the FILE somebody an administrator had deleted went on earning

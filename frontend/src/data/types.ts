@@ -80,7 +80,13 @@ export type Attending = {
   memberNumber: string
 }
 
-export type MembershipBasis = 'payment' | 'feeExempt'
+/* The two ways a membership is held. A list rather than a union, so what the server
+   said can be looked FOR among them rather than asserted to be one of them (ADL A14,
+   and the shape `SIGNED_IN_ROLES` already has): a word the answer carries that the
+   portal does not know is „I was not told", not a third basis. */
+export const MEMBERSHIP_BASES = ['payment', 'feeExempt'] as const
+
+export type MembershipBasis = (typeof MEMBERSHIP_BASES)[number]
 
 /** What a member shows of their birthday on their own profile. */
 export const BIRTHDAY_SHOWN = ['none', 'year', 'full'] as const

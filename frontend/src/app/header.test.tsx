@@ -282,6 +282,7 @@ function renderInbox(inbox: Message[]) {
     signIn: vi.fn(),
     account: null,
     theServerSignedMeIn: vi.fn(),
+  myMembershipBasis: null,
     signedIn: { as: 'member', memberNumber: '000007' },
     signOut: vi.fn(),
     submissions: [],

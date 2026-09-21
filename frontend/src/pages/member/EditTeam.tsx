@@ -5,7 +5,7 @@ import { WHOLE } from '../../components/crop'
 import { Resource } from '../../components/Resource'
 import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import { NO_RATING } from '../../data/types'
-import { teamAdminOf } from '../../data/teamAdmin'
+import { readerAdministers } from '../../data/teamAdmin'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { predlogTima } from '../../forms/definitions'
 import type { FieldError, FormValues } from '../../forms/types'
@@ -116,15 +116,28 @@ export function EditTeam() {
              deeplink... treba da se preusmeri na homepage." A screen explaining the
              refusal is a screen that argues with somebody who cannot do anything
              about it; the button is not drawn for them either. */
-          /* Who administers it, as a record rather than as a number, because the same
-             answer is two things here: whether this reader may be on the page at all,
-             and the name the queue shows beside what they send. A team nobody is in
-             answers nobody, and then this address is not a page for anyone. */
-          const admin = members.find(
-            (one) => one.memberNumber === teamAdminOf(team, members, mine),
-          )
+          /* **ASKED AS A PERMISSION AND NOT AS A COMPARISON, SINCE 21.09.2026.** This
+             read „who administers it" and compared the answer with the reader, and a
+             member is not told who sits in the seat: the comparison fell through to the
+             standing rule and let a member who had founded nothing onto this page, with
+             the way to change the team and to delete it. `readerAdministers` answers the
+             question this line is really asking, and answers it definitely for each of
+             the three kinds of reader (`data/teamAdmin.ts`). */
+          /* The reader's own record, for the name the queue shows beside what they send,
+             and it is looked up BEFORE the permission rather than after. Asked the other
+             way round the second question could never answer „nothing": both arms of
+             `readerAdministers` require the reader to be in the team, so a record that is
+             not there is a state that arm cannot produce, and a branch nothing can walk
+             is a branch nothing holds.
 
-          if (admin === undefined || admin.memberNumber !== mine) {
+             Asked first it is one state the portal really has: a member number the list
+             does not carry, which is every visit whose number came from somewhere other
+             than this answer. Both reasons end the same way, which is the whole of the
+             owner's rule of 05.09.2026: „Ako neko proba deeplink... treba da se
+             preusmeri na homepage." */
+          const admin = members.find((one) => one.memberNumber === mine)
+
+          if (admin === undefined || !readerAdministers(team, members, mine)) {
             return <Navigate to={`/${locale}`} replace />
           }
 
