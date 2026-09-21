@@ -1,7 +1,10 @@
 import { screen, within } from '@testing-library/react'
 import { join, relative, sep } from 'node:path'
+import { isValidElement } from 'react'
+import { matchRoutes } from 'react-router'
 import ts from 'typescript'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { routeObjects } from '../../app/routeObjects'
 import { renderAt } from '../../test/render'
 import { answeredWith, forgetEveryCookie, serverThat, type Asked } from '../../test/serverAnswers'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
@@ -96,13 +99,41 @@ function modulesNaming(wanted: string): { walked: number; naming: string[] } {
 const HOOK = 'pages/member/memberScreen.tsx'
 
 /**
+ * Every module of the portal, as the bundler itself resolves them.
+ *
+ * Lazily, so that asking which module the router hangs at an address costs the eleven
+ * modules the table names and not two hundred and twenty seven.
+ *
+ * Swept from the PROJECT ROOT, which is the one spelling that does not change with whoever
+ * asks. Measured: the same sweep written relative to this folder comes back keyed
+ * `./MyProfile.tsx` and `../event/RateEvent.tsx`, so the key a row would have to guess at
+ * depends on where the row is written down. That is the class of fault four drafts of one
+ * guard were lost to on 07.09.2026, and the root-relative form has none of it.
+ *
+ * A prefix written out by hand cannot narrow this quietly: were it wrong, no row at all
+ * would find its module and every one of them would fail below.
+ */
+const MODULES = import.meta.glob<Record<string, unknown>>('/src/**/*.tsx')
+
+/** What is at an address the router does not serve. A module cannot export it, so „nothing
+ *  is there" can never be mistaken for „the row's own module is there". */
+const NOTHING = Symbol('no screen at this address')
+
+/**
  * Every screen that asks the question, and one address each.
  *
- * <p><b>The list is written by hand and it has a floor.</b> Which modules ask is derived
- * below from the module graph, and a row is required for every one of them; what cannot be
- * derived is the ADDRESS, because a module knows nothing about where the router hangs it.
- * That is the shape `pages/publicData.test.tsx` already uses: a hand table that fails on
- * the day there is something it has no row for.
+ * <p><b>The list is written by hand and both of its columns have a floor.</b> Which modules
+ * ask is derived from the module graph, and a row is required for every one of them; which
+ * screen the router hangs at an address is derived from the router. That is the shape
+ * `pages/publicData.test.tsx` already uses: a hand table that fails on the day there is
+ * something it has no row for.
+ *
+ * <p><b>The address had no floor until 21.09.2026 and that was a hole, not a limit.</b> A
+ * module knows nothing about where it is hung, so this file long said the address could not
+ * be derived at all. It can: the ROUTER knows, and is asked below. What the missing floor
+ * allowed, measured by a review: a row naming the right module and pointing at ANOTHER
+ * walked screen's address left that screen visited by nothing, and `Messages.tsx` given a
+ * second door beside the hook passed the whole package of 2932 cases.
  *
  * <p><b>The addresses that carry a value carry a real one</b> - an event that was run, a
  * team that exists, a message that was sent. A made up slug would let a screen that bailed
@@ -207,6 +238,59 @@ describe('the one door to „nobody is signed in"', () => {
 
     expect(walked, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
     expect(naming.toSorted()).toEqual(WALKED.map((one) => one.screen).toSorted())
+  })
+
+  /**
+   * The floor under the OTHER column, and it is the router that lays it.
+   *
+   * <p>Which module a row names is derived above. WHERE that module is hung was written out
+   * by hand and had nothing under it, so a row was free to name the right module and point
+   * at the address of a different screen on the very same list. That screen is then visited
+   * by nothing on the portal while every case here goes on passing, which a review proved
+   * twice: the swap alone left all twenty nine of them green, and with `Messages.tsx` given
+   * a second door beside the hook the whole package of 2932 cases stayed green too.
+   *
+   * <p>A SECOND DOOR and not a screen naming `SignedOut` again, and the difference was
+   * measured on 21.09.2026: a screen that names it is caught by the module graph above
+   * whatever the address column says, so it proves nothing about this. The regression that
+   * really hid behind a wrong address is one that names nothing new - it keeps the hook and
+   * answers the third case itself - and with the address put right that one falls on the
+   * walk, one case out of 2933.
+   *
+   * <p><b>What is asked, and of whom.</b> A module knows nothing about where it is hung, but
+   * the router does: `matchRoutes` hands back the very element `routeObjects` serves at an
+   * address. So the question is put to the router and answered BY IDENTITY - is the thing
+   * drawn there one of the things this row's module exports - never by a name, because a
+   * name is a spelling and spellings are what sink guards like this one.
+   *
+   * <p>Both halves fail loudly rather than quietly. A module the sweep does not hold exports
+   * nothing, and an address the router does not serve draws {@link NOTHING}; either way the
+   * row reports what is really there instead of its own module, so an accidentally narrowed
+   * sweep cannot read as a clean portal.
+   *
+   * <p><b>Where this is narrower than it looks, said rather than left to be found.</b> It is
+   * the LEAF the router serves that must be the row's module, so a row pointing at an
+   * administrative address would fail here even if the screen behind the door were right:
+   * what is hung there is the door (`routeObjects.tsx`). No screen of the member area is
+   * behind one today, and the answer on the day one is would be to ask this for the door's
+   * child, never to stop asking.
+   */
+  it('has the router hanging that very module at the address written beside it', async () => {
+    const hung = await Promise.all(
+      WALKED.map(async ({ screen: itsModule, at }) => {
+        const load = MODULES[`/src/${itsModule}`]
+        const element = matchRoutes(routeObjects, at)?.at(-1)?.route.element
+        const drawn = isValidElement(element) ? element.type : NOTHING
+        const exported = load === undefined ? [] : Object.values(await load())
+        /* What IS there, for the row that is wrong. A component's name carries no slash and
+           no suffix, so this can never spell one of the modules and pass by accident. */
+        const instead = typeof drawn === 'function' ? drawn.name : String(drawn)
+
+        return `${at} · ${exported.includes(drawn) ? itsModule : instead}`
+      }),
+    )
+
+    expect(hung).toEqual(WALKED.map((one) => `${one.at} · ${one.screen}`))
   })
 })
 

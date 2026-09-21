@@ -35,8 +35,17 @@ import { SignedOut } from './SignedOut'
  * back into all six with the package staying green. „Which screens belong to one person"
  * cannot be answered by an address, so `pages/member/oneQuestion.test.tsx` asks the module
  * graph instead - which modules of the portal name `SignedOut` - and requires the answer to
- * be this file and nothing else. A screen that decides for itself again has to name it, and
- * naming it is what fails.
+ * be this file and nothing else.
+ *
+ * <p><b>And that catches ONE of the two ways back, which is why the walk beside it is not
+ * spare.</b> A screen that writes the sentence for itself again has to name `SignedOut`, and
+ * naming it is what fails there. What the module graph cannot see is a screen that keeps
+ * this hook and reads the session BESIDE it: two doors to one answer, and not one new name
+ * anywhere in the graph. Measured on 21.09.2026 - that mutation leaves all three of the
+ * graph's cases green and is caught only by the walk, which opens every address of the member
+ * area and reads what is on it. So the walk is the only thing standing between the portal and
+ * the fault this file was written to remove, and „the graph already covers it" is not a reason
+ * to shorten it.
  */
 export type MemberScreen =
   /** Whose screen this is, for a screen that may draw itself. */
