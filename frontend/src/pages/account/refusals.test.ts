@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { WHEN_CONFIRMING_AN_ADDRESS, WHEN_SETTING_A_PASSWORD } from './refusals'
+import { WHEN_CONFIRMING_AN_ADDRESS, WHEN_REGISTERING, WHEN_SETTING_A_PASSWORD } from './refusals'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -42,11 +42,17 @@ function reasonsIn(file: string): string[] {
 describe('the reasons the server can name', () => {
   const routes: [file: string, screen: Record<string, string>, howMany: number][] = [
     /* The counts are here so that a regular expression which stopped matching cannot
-       pass as "this route names nothing". Three and one are what the two files hold
-       today; a fourth is exactly the event this file exists for, and it arrives as a
+       pass as "this route names nothing". Three, one and three are what the files hold
+       today; one more is exactly the event this file exists for, and it arrives as a
        red gate with the number in the message. */
     ['PasswordResetApi.java', WHEN_SETTING_A_PASSWORD, 3],
     ['EmailConfirmationApi.java', WHEN_CONFIRMING_AN_ADDRESS, 1],
+    /* The third route, added 21.09.2026 when the registration screen began to send.
+       It is the first one here whose refusals do not all arrive under 400: the taken
+       address is a 409. That changes nothing in this file, and the reason it does not
+       is the point - the gate is over the NAMES a route declares, and a name is what
+       the screen looks a sentence up by, whichever number carried it. */
+    ['RegistrationApi.java', WHEN_REGISTERING, 3],
   ]
 
   it.each(routes)('are all answered on the screen that meets %s', (file, screen, howMany) => {

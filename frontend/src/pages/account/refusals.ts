@@ -41,3 +41,30 @@ export const WHEN_SETTING_A_PASSWORD: Record<string, string> = {
 export const WHEN_CONFIRMING_AN_ADDRESS: Record<string, string> = {
   theLinkIsNotValid: 'confirmAddress.linkIsNotValid',
 }
+
+/**
+ * `RegistrationApi`, which names three, and one of them arrives under 409 rather than
+ * 400.
+ *
+ * <p><b>The number is the route's business and not this table's.</b> `askTheServer`
+ * reads both numbers the same way because both carry a named reason, so all three land
+ * here by name. A table keyed by number would have to be right about which refusal got
+ * which, and it has no way to be.
+ *
+ * <p><b>„The address is taken" says so plainly, and that is a decision rather than a
+ * choice of words.</b> `btl-produkt/ADL.md`, 08.09.2026: „Registracija na vec zauzetu
+ * adresu kaze da je zauzeta." The owner weighed it against silently sending a fresh
+ * link to whoever holds the box, was shown the price - anybody can then test whether an
+ * address belongs to a member - and chose the explicit message. A vaguer sentence here
+ * would quietly undo that, so the sentence names the thing.
+ */
+export const WHEN_REGISTERING: Record<string, string> = {
+  /* One name for a great many causes, exactly as on the other route: a field left
+     empty, a date that is not one, a town neither the codebook nor a country resolves,
+     two passwords that disagree, and a password under the length. The route names none
+     of them apart on purpose („Why a registration was refused, and never which field"),
+     so the sentence cannot point at a field either and says what it honestly can. */
+  theFormIsNotComplete: 'registration.formIsNotComplete',
+  thePasswordHasLeaked: 'registration.passwordHasLeaked',
+  theAddressIsTaken: 'registration.addressIsTaken',
+}

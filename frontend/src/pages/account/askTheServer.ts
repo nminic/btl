@@ -11,8 +11,18 @@
  *
  * **It is not a client for the portal and must not become one.** Two screens of one
  * increment share it because the alternative is two homes for one fact, and the fact
- * here is the token below. The screen after these may copy this file and change it
- * rather than import it and widen it; that is the cheaper mistake of the two.
+ * here is the token below. ~~The screen after these may copy this file and change it
+ * rather than import it and widen it; that is the cheaper mistake of the two.~~
+ *
+ * **That last sentence was weighed when the third screen arrived, on 21.09.2026, and
+ * the other road was taken.** Registration was widened into rather than copied out of,
+ * and the reason is the sentence above it: the fact being shared is the token, and
+ * copying would have made a third home for it. What the widening cost is one branch -
+ * 409 read exactly as 400 - because the shape was already right: these routes refuse
+ * BY NAME, and a name is a name whichever number carries it. Copying would have cost
+ * the token, the cookie jar, the read that hands it out, and the four answers, all
+ * twice. The sentence stands as a warning about what this file must not grow into; it
+ * was not a warning against this.
  *
  * **THE TOKEN, WHICH IS THE ONLY PART OF THIS THAT IS NOT OBVIOUS.** `ApiSecurity`
  * configures `csrf.spa()`, which keeps the token in a cookie readable by script and
@@ -60,9 +70,17 @@ const A_READ_THAT_HANDS_OUT_THE_TOKEN = '/api/countries'
  * idea what to change.
  */
 export type Answer =
-  /** 204, which is what both routes answer when they did the thing. */
+  /** 204, which is what these routes answer when they did the thing. */
   | { got: 'done' }
-  /** 400, and the reason the route itself named. */
+  /**
+   * A refusal the route named, whether it numbered it 400 or 409.
+   *
+   * <p><b>The number is deliberately not carried and the name is.</b> Two numbers mean
+   * one thing here - „no, and here is why" - and a screen that told them apart would be
+   * keeping a fact the reason already carries. `/api/registration` answers 409 for one
+   * refusal of its three (`theAddressIsTaken`) and 400 for the other two, and all three
+   * end in the same place: a sentence chosen by name.
+   */
   | { got: 'refused'; reason: string }
   /** 403: the token did not match, or there was none to send. */
   | { got: 'rejected' }
@@ -167,10 +185,23 @@ export async function askTheServer(path: string, said: object): Promise<Answer> 
     return { got: 'rejected' }
   }
 
-  if (answer.status === 400) {
+  /* 409 READ EXACTLY AS 400 IS, and it is one route's one refusal that puts it here.
+     Registering at an address somebody already holds is answered 409 with the reason
+     named in the body, like every other refusal these routes make. Left out, that body
+     fell to the branch below and the reader was told „the server answered 409 and
+     nothing changed, try again in a minute" - wrong twice over, since trying again will
+     never work and the one thing he can act on was never said.
+
+     That he is told at all is the owner's own decision and not this file's caution
+     (`btl-produkt/ADL.md`, 08.09.2026): „Registracija na vec zauzetu adresu kaze da je
+     zauzeta." He was shown the price before choosing it - anybody can then test whether
+     an address is a member of the league - and took it. */
+  if (answer.status === 400 || answer.status === 409) {
     const reason = await reasonIn(answer)
 
-    return reason === null ? { got: 'wrong', status: 400 } : { got: 'refused', reason }
+    return reason === null
+      ? { got: 'wrong', status: answer.status }
+      : { got: 'refused', reason }
   }
 
   return { got: 'wrong', status: answer.status }
