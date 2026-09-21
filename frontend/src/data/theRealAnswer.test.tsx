@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { serverThat } from '../test/serverAnswers'
 import { teamAdminOf } from './teamAdmin'
@@ -62,9 +63,14 @@ const lapsed = generated
 
 /** Somebody the answer does carry, for the half of every case that says „and this
  *  one is fine", so „nobody is drawn" cannot pass for „this one is not". */
-const stillAMember = String(
-  (generated.find((one) => one.active === true) ?? {}).memberNumber ?? '',
-)
+const theMember = generated.find((one) => one.active === true) ?? {}
+
+const stillAMember = String(theMember.memberNumber ?? '')
+
+/** And what they are called, because a page has to be read by the one thing only
+ *  that page says. Taken off the record rather than written here, so a change to the
+ *  seed moves the case with it. */
+const theirName = `${String(theMember.firstName ?? '')} ${String(theMember.lastName ?? '')}`
 
 function answering(rows: Record<string, unknown>[], at: string) {
   return serverThat((path) =>
@@ -87,10 +93,18 @@ describe('a profile, on the answer the server gives', () => {
     const { stop } = answering(membersTheServerAnswers(), '/api/competitors')
 
     try {
-      renderAt(`/sr/takmicar/${stillAMember}`)
+      const { router } = renderAt(`/sr/takmicar/${stillAMember}`)
 
-      expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
-      expect(screen.queryByText('Ovog takmičara nema.')).not.toBeInTheDocument()
+      /* **BY THEIR NAME, AND NOT BY „there is a heading".** Written as
+         `findByRole('heading', { level: 1 })` this passed with the reading of `active`
+         put back, measured 21.09.2026: a profile that may not be read sends the reader
+         to the front page (PDL P23), and the front page has a heading of its own. The
+         assertion was satisfied by the very screen it was meant to refuse. */
+      expect(await screen.findByRole('heading', { level: 1, name: theirName })).toBeVisible()
+      /* And the reader is still where they asked to be, which is the other half of the
+         same mistake: a redirect is what „refused" looks like, so it is the address that
+         says the profile opened. */
+      expect(router.state.location.pathname).toContain(stillAMember)
     } finally {
       stop()
     }
@@ -169,10 +183,24 @@ describe('a racing pair, on the answer the server gives', () => {
     try {
       renderAt(`/sr/takmicar/${stillAMember}`, 'competitor', stillAMember, undefined, '2026-11-01')
 
-      expect(await screen.findByText('Za sezonu 2027.')).toBeVisible()
-      /* Nothing that reads like a date, and nothing that reads like a failed one. */
-      expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument()
-      expect(screen.queryByText(/u paru od/)).not.toBeInTheDocument()
+      const said = await screen.findByText('Za sezonu 2027.')
+
+      expect(said).toBeVisible()
+
+      /* **ASKED AS A PROPERTY OF THE WHOLE LINE, not as a list of days to refuse.**
+         Written as „it does not say 20. 11. 2026" the case passed while the line carried
+         any OTHER day, which is what a portal reading a field the answer has not got
+         would draw: `undefined` through a formatter is „Invalid Date", and `undefined`
+         through none is nothing at all. So what is read is the line, whole, and what is
+         refused is anything shaped like a day - digits with dots between them, which is
+         how every date on this portal is written (`i18n/format.ts`, sr-Latn).
+
+         The season is a number too, and it survives: it has no dots. */
+      const line = must(said.closest('p'), 'the line the pair is said on').textContent ?? ''
+
+      expect(line).toContain('Za sezonu 2027.')
+      expect(line).not.toMatch(/\d{1,2}\.\s*\d{1,2}\./)
+      expect(line).not.toContain('Invalid Date')
     } finally {
       stop()
     }
