@@ -257,6 +257,39 @@ describe('a bar across several days', () => {
     expect(Number(name.getPropertyValue('z-index'))).toBeGreaterThan(0)
   })
 
+  it('lets nothing it draws leave the month sideways', () => {
+    /* **The one thing in the month that is allowed to overflow is the name of a bar**,
+       and it is allowed on purpose: it is written across the pieces that follow it and
+       so is deliberately not cut at the edge of its own day. That makes it the one
+       thing that can push the page sideways, which is what the portal never does
+       (WCAG 2.2 SC 1.4.10, ADL A26).
+
+       **Measured in a browser rather than feared** (22.09.2026): at 1024px, on a bar
+       that opens on a Saturday, a name of ninety characters scrolled the page by
+       **102px**; with this rule the same name scrolls it by **0**. The longest name the
+       served file actually holds is „Ultimate Nutrition atletska trka prijateljstva",
+       45 characters, and it ends 218px inside the grid, so nothing overflows today.
+       That is why this exists: today's data is not a bound, and a calendar is filled by
+       hand.
+
+       **This case is here because the series found it missing.** The rule was written
+       straight after the measurement above, and taking it away again left the whole
+       suite green (mutation R3-f, 22.09.2026). `jsdom` lays nothing out, so what is
+       asked here is that the declaration stands; the two numbers it is worth were
+       measured where numbers can be. */
+    const grid = ruleFor(calendar, '.calendar__grid', 'Calendar.css')
+
+    /* `clip` and not `hidden`: `hidden` makes the month a scroll container, which puts
+       it one stray keystroke away from scrolling inside itself. */
+    expect(grid.getPropertyValue('overflow-x')).toBe('clip')
+    expect(grid.getPropertyValue('overflow')).toBe('')
+    /* And the margin that keeps a focus ring whole at the two outer columns, where the
+       portal draws it 2px wide with 2px of offset (`index.css`). */
+    expect(Number.parseFloat(grid.getPropertyValue('overflow-clip-margin'))).toBeGreaterThanOrEqual(
+      4,
+    )
+  })
+
   it('keeps a held lane off a telephone and gives it its line back on a grid', () => {
     /* A held lane is the one thing in a day that carries no word at all, so it is the
        one thing the sheet may take away outright. Below the grid there is nothing for
