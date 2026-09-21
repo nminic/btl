@@ -34,11 +34,16 @@ import { useSession } from '../session/useSession'
  * it say less.
  *
  * **So the number is not about the work but about the load.** The longest case here was measured
- * four ways: 0,82 s alone, 2,92 s inside the whole suite, 7,62 s inside the whole suite beside
- * twenty four processes burning the processor, and 13,28 s beside sixty. Against `SLOW` that last
- * one is 1,5 away from red, and that was the run in which forty one cases in eleven other files
- * went over their own clocks while this one did not. Against twice `SLOW` it is 3,0 away, which is
- * about the room `SLOW` leaves a one screen case in the same run.
+ * five ways: 0,82 s alone, 2,92 s inside the whole suite, 7,62 s inside the whole suite beside
+ * twenty four processes burning the processor, 13,28 s beside sixty, and 18,20 s run alone beside
+ * ninety six. That last one passed against `SLOW` by 1,8 seconds, a margin of 1,10; against twice
+ * `SLOW` it is 2,20.
+ *
+ * **And it is not one case sitting on the edge but five.** In that same run five cases are past
+ * twelve seconds (18,20 / 16,76 / 14,56 / 14,41 / 14,01). That is why this file has failed as
+ * three timeouts at once and then passed thirty four out of thirty four on its own: nothing is
+ * wrong in any one of them, they are simply close enough together that one step of load takes
+ * several over at the same moment.
  *
  * **Splitting the file was measured instead of assumed, and it does not do this.** The thirteen
  * cases of the last five blocks, run on their own, take 5464 ms against 4261 ms as the tail of the
