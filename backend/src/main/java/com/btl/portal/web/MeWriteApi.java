@@ -217,10 +217,12 @@ import java.util.Optional;
  * <ul>
  * <li><b>The picture.</b> PDL P11, 12.08.2026 puts changing it in this same panel and ends
  * „Ide u naredni inkrement, ne u tekuci PR". What is missing is the half that RECEIVES
- * one: nothing under {@code backend/src/main} accepts a multipart request -
- * {@code MultipartFile}, {@code @RequestPart} and {@code spring.servlet.multipart} appear
- * in none of it - and every writing route on this server declares
- * {@code consumes = MediaType.APPLICATION_JSON_VALUE}. <b>The digest, the crop and the row
+ * one: no signature under {@code backend/src/main/java} carries a {@code MultipartFile} or
+ * a {@code @RequestPart}, so nothing here is written to be handed a file. <b>THIS route is
+ * one of the three that read the whole body off the {@code HttpServletRequest} themselves</b>
+ * (see {@link #write}), so what keeps a {@code multipart/form-data} body from reaching it
+ * is its own {@code consumes = MediaType.APPLICATION_JSON_VALUE} and not the absence of a
+ * parameter; {@link RegistrationApi} carries that boundary in full. <b>The digest, the crop and the row
  * in {@code photo} stood in that list until 20.09.2026 and are struck out of it here</b>,
  * because {@link PhotoApi} serves a picture's bytes off that row, found by
  * {@code photo.digest} and opened under {@code String.valueOf} of the row's key, and

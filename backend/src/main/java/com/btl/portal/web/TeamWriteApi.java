@@ -128,11 +128,12 @@ import java.util.Set;
  * rather than an omission. The edit is sent from a different screen by a different person
  * - the team's own administrator (PDL P13, 04.09.2026) - and is its own increment.
  * <li><b>The mark.</b> {@code team_proposal.logo_id} points at {@code photo}, and what
- * this route has nowhere to send a picture TO is the half that RECEIVES a file: nothing
- * under {@code backend/src/main} accepts a multipart request - {@code MultipartFile},
- * {@code @RequestPart} and {@code spring.servlet.multipart} appear in none of it, and
- * every writing route on this server declares
- * {@code consumes = MediaType.APPLICATION_JSON_VALUE}. <b>The rest of this sentence is
+ * this route has nowhere to send a picture TO is the half that RECEIVES a file: no
+ * signature under {@code backend/src/main/java} carries a {@code MultipartFile} or a
+ * {@code @RequestPart}, so nothing here is written to be handed one. That is read off the
+ * signatures and is not a claim that no file could arrive by any road at all;
+ * {@link RegistrationApi} carries that boundary in full, with the three routes that read
+ * the raw body named. <b>The rest of this sentence is
  * REVERSED rather than extended, and in the same commit that found it.</b> It used to
  * name a digest, a crop and a name the database issues beside multipart and say that none
  * of the four existed anywhere under {@code backend/src/main}; three of the four have

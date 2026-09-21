@@ -748,9 +748,12 @@ class RegistrationApiTest {
 
 		/* AND THE PHOTOGRAPH REALLY IS ABSENT rather than quietly accepted: a registration
 		   goes through without one and the member's row carries no picture. What this
-		   server still cannot do is RECEIVE a file (ADL A36 O8): nothing under
-		   backend/src/main accepts a multipart request, and every writing route declares
-		   `consumes = MediaType.APPLICATION_JSON_VALUE`. The digest and the crop used to
+		   server still cannot do is RECEIVE a file (ADL A36 O8): no signature under
+		   backend/src/main/java carries a `MultipartFile` or a `@RequestPart`, so nothing
+		   there is written to be handed one. That is read off the signatures and is not a
+		   claim that no file could arrive by any road; RegistrationApi's own note names
+		   the three routes that read the raw body and what stops them. The digest and the
+		   crop used to
 		   be denied in this same breath and no longer can be - PhotoApi finds a row by
 		   `photo.digest` and TeamApi answers a digest beside its crop since 20.09.2026
 		   (ADL A60) - so what the two lines below measure is the ABSENCE of a row, which
