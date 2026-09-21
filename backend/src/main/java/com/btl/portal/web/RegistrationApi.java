@@ -111,10 +111,26 @@ import java.util.regex.Pattern;
  * <li><b>The photograph.</b> {@link WhatRegistrationAsksFor#OF_EVERYBODY} asks for it
  *     and the owner made it compulsory on 11.08.2026, so it is not optional and this
  *     route does not pretend it is: it is named in {@link #NOT_COLLECTED_YET}, which
- *     is what keeps the omission visible. A picture is a file, and a file is
- *     multipart, a digest, a crop and a name the database issues (ADL A36 O8, A12a) -
- *     none of which exists anywhere under {@code backend/src/main} today, measured
- *     before this was written. {@code competitor.photo_id} is nullable, so the row is
+ *     is what keeps the omission visible. A picture is a file (ADL A36 O8, A12a), and
+ *     what is missing under {@code backend/src/main} is the half that RECEIVES one: no
+ *     signature under {@code backend/src/main/java} carries a {@code MultipartFile} or a
+ *     {@code @RequestPart}, so nothing here is written to be handed a file. <b>That is
+ *     read off the signatures, and it is deliberately NOT widened into „a file could not
+ *     arrive", which would be a claim about every road into a handler and is not what was
+ *     counted here.</b> Three routes do take the {@code HttpServletRequest} itself and read
+ *     the whole body - {@link InboxWriteApi}, {@link MeWriteApi} and
+ *     {@link NotificationWriteApi} - and what keeps a {@code multipart/form-data} body
+ *     from reaching them is the {@code consumes = MediaType.APPLICATION_JSON_VALUE} each
+ *     of those three declares, which {@link InboxWriteApi} measured and wrote up beside
+ *     its own mapping („{@code consumes} goes on refusing before anything is dispatched").
+ *     <b>The three things this
+ *     sentence used to deny alongside it are no longer missing, so it is reversed here
+ *     rather than left for a reader to trip over.</b> {@link PhotoApi} finds a row by
+ *     {@code photo.digest} and opens its file under {@code String.valueOf} of that row's
+ *     key (20.09.2026, ADL A60), and {@link TeamApi} answers a digest beside the three
+ *     fractions of a crop (21.09.2026): the digest, the crop and the name the database
+ *     issues are all read under {@code backend/src/main} today.
+ *     {@code competitor.photo_id} is nullable, so the row is
  *     legitimate without one, and a member without a picture is a state the portal has
  *     to be able to draw in any case.
  * <li><b>The day registration opens, which is the one rule here that is NOT
