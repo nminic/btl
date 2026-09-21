@@ -19,7 +19,7 @@ import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { Submission } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /* The same form without the two questions a counted result does not ask.
@@ -104,7 +104,8 @@ function filledFrom(one: Submission): FormValues {
 
 export function NewResult() {
   const { locale, t } = useI18n()
-  const { memberNumber, submissions, submit, resubmit } = useSession()
+  const { submissions, submit, resubmit } = useSession()
+  const who = useMemberScreen()
   /**
    * What the last entry earned and whether it was a correction, once there has
    * been one.
@@ -170,7 +171,7 @@ export function NewResult() {
      read out of the address, so without this anybody could open somebody else's
      result by typing its number. */
   const correcting = submissions.find(
-    (one) => one.id === again && one.memberNumber === memberNumber && one.status !== 'approved',
+    (one) => one.id === again && one.memberNumber === who.memberNumber && one.status !== 'approved',
   )
   /* And the counted one this is a correction of, read the same way and against
      the same member: an identity out of the address opens nobody else's result.
@@ -185,13 +186,13 @@ export function NewResult() {
      oldest. Measured by a review on 28.08.2026. */
   const waiting = submissions.some(
     (one) =>
-      one.memberNumber === memberNumber &&
+      one.memberNumber === who.memberNumber &&
       one.status === 'pending' &&
       String(one.corrects?.id) === fixing,
   )
   const fixingOne = waiting
     ? undefined
-    : counted.find((one) => String(one.id) === fixing && one.memberNumber === memberNumber)
+    : counted.find((one) => String(one.id) === fixing && one.memberNumber === who.memberNumber)
   /* Whichever of the two this is, when it is either: the race is read off the
      record on both roads in, and one name for that saves the next reader from
      having to notice that there are two. */
@@ -223,13 +224,17 @@ export function NewResult() {
         { kind: raceKind(race.kind), city: event.city, country: event.country }
   }, [fixingOne, races, events])
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
 
   /** Who is signed in, held once. The check above narrows it and a function
-   *  written below does not see that narrowing. */
-  const me = memberNumber
+   *  written below does not see that narrowing.
+   *
+   *  Read off `who` rather than bound above it, because three of the lists this screen
+   *  filters are worked out BEFORE that check and a binding below them is a binding they
+   *  cannot see: written the other way round the screen threw on its own first render. */
+  const me = who.memberNumber
 
   function onSubmit(values: FormValues) {
     const distanceKm = Number(values.distanceKm)

@@ -9,10 +9,19 @@ type Props = {
   children: ReactNode
 }
 
-/* Until real authentication exists, the role is just application state that the
- * developer switch changes. When sessions arrive, this provider reads the role
- * from the session and the switch disappears; nothing else has to change,
- * because screens ask useRole() and never look at a token.
+/* WHO IS AT THE KEYBOARD, AND SINCE 20.09.2026 THERE ARE TWO THINGS THAT MAY SAY SO.
+ *
+ * This said „until real authentication exists, the role is just application state that
+ * the developer switch changes", and the first half of that is no longer true: a real
+ * session sets it through `become` as well, from `GET /api/me` and from nowhere else
+ * (session/useTheServersSession.ts, pages/member/SignIn.tsx). The second half still
+ * holds and is why nothing else had to change - screens ask useRole() and never look at
+ * a token, so the server simply became one more caller of the function the switch was
+ * already calling.
+ *
+ * The development switch is still here and still sets it, because the mock is still on
+ * (ADL A50) and every screen that draws a member is walked through it. The day that
+ * goes off, the switch goes with it.
  *
  * The two are set together and never apart. A role and a moderator that could
  * drift out of step would mean a superadmin carrying somebody else's rights, or

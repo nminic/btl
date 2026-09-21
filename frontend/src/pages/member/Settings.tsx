@@ -9,7 +9,7 @@ import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { ProfileBio } from './ProfileBio'
 import { ProfilePicture } from './ProfilePicture'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 const THEMES: Theme[] = ['dark', 'light']
@@ -20,16 +20,19 @@ const THEMES: Theme[] = ['dark', 'light']
  * press every visit (PDL P28a). */
 export function Settings() {
   const { t } = useI18n()
-  const { memberNumber, notifications, setNotification, editRecord } = useSession()
+  const { notifications, setNotification, editRecord } = useSession()
+  const who = useMemberScreen()
   const overlay = useOverlay()
   const { theme, choose } = useTheme()
   /* Above the early return, because a hook is: called after it, the order of
      hooks changes between a signed in reader and a signed out one. */
   const competitors = useCompetitors()
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
+
+  const { memberNumber } = who
 
   return (
     <div className="member">

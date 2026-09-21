@@ -15,7 +15,7 @@ import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, addressOf, nameError } from '../admin/teamProposal'
 import { useSession } from '../../session/useSession'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /* The proposal form under another name, built once at module load rather than per
@@ -54,7 +54,8 @@ const IZMENA_TIMA = {
 export function EditTeam() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
-  const { memberNumber, propose } = useSession()
+  const { propose } = useSession()
+  const who = useMemberScreen()
   const today = useToday()
   const overlay = useOverlay()
   const state = combinePair(useCompetitors(), useTeams())
@@ -65,9 +66,11 @@ export function EditTeam() {
   const sent = typeof said === 'string' ? said : null
   const confirm = useSend()
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
+
+  const { memberNumber } = who
 
   /* Narrowed once here, because the handler below is written inside a callback
      the compiler cannot see runs after the return above. */

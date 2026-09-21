@@ -11,7 +11,7 @@ import { InvitationAnswer } from './InvitationAnswer'
 import { PairInviteAnswer } from './PairInviteAnswer'
 import { NotFound } from '../NotFound'
 import { Resource } from '../../components/Resource'
-import { SignedOut } from './SignedOut'
+import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
 /* Where a subject in the header panel leads: the message, opened out, on its
@@ -28,7 +28,8 @@ import './Member.css'
 export function MessageDetail() {
   const { locale } = useI18n()
   const { id } = useParams()
-  const { memberNumber, inbox, markRead, pairsMade, pairsBroken } = useSession()
+  const { inbox, markRead, pairsMade, pairsBroken } = useSession()
+  const who = useMemberScreen()
   const state = combineResources(useCompetitors(), useTeams(), usePairs())
   const overlay = useOverlay()
   /* Out of the inbox rather than out of the store, so an address that names
@@ -51,8 +52,8 @@ export function MessageDetail() {
     }
   }, [unread, id, markRead])
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
 
   if (message === undefined) {

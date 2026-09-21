@@ -311,6 +311,13 @@ describe('what a screen says in its own voice', () => {
       'transform',
       'type',
       'unit',
+      /* The identity of a choice and never its words: a reader hears what stands between
+         the tags of an `<option>`, which is a sentence of the dictionary in all four the
+         portal writes. Three of those four carry an empty one, which this reading does
+         not count as a value at all; the fourth is the choice the role switch offers for
+         a moderator the server named (roles/RoleSwitch.tsx), and „moderator" there is the
+         word `become` is called with. */
+      'value',
       'viewBox',
       'why',
       'width',

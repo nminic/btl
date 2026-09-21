@@ -20,7 +20,7 @@ import { WHOLE } from '../../components/crop'
 import { useI18n } from '../../i18n/useI18n'
 import { useSend, useSent } from '../sent'
 import { useSession } from '../../session/useSession'
-import { SignedOut } from '../member/SignedOut'
+import { useMemberScreen } from '../member/memberScreen'
 import { NotRunYet } from './NotRunYet'
 import '../member/Member.css'
 
@@ -63,7 +63,8 @@ function RateOne() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
   const today = useToday()
-  const { memberNumber, propose } = useSession()
+  const { propose } = useSession()
+  const who = useMemberScreen()
   const state = combineFour(useEvents(), useCompetitors(), useResults(), useRaces())
   const [rating, setRating] = useState<EventRating>(NO_RATING)
   const [comment, setComment] = useState('')
@@ -73,9 +74,11 @@ function RateOne() {
   const sent = useSent() !== undefined
   const confirm = useSend()
 
-  if (memberNumber === null) {
-    return <SignedOut />
+  if (who.memberNumber === null) {
+    return who.instead
   }
+
+  const { memberNumber } = who
 
   const mine = memberNumber
 

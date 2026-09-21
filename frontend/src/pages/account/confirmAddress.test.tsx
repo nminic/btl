@@ -167,7 +167,13 @@ describe('arriving without one', () => {
     expect(
       await screen.findByText(/Ova adresa ne nosi vezu iz poruke, pa nema šta da se potvrdi/),
     ).toBeVisible()
-    expect(server.asked.filter((one) => one.path.startsWith('/api'))).toEqual([])
+    /* The shell asks `GET /api/me` above every screen since 20.09.2026
+       (app/Shell.tsx, session/useTheServersSession.ts). That is the portal asking who
+       is signed in, not this screen spending anything, so it is named and set aside
+       here rather than the assertion being loosened to „not many requests". */
+    expect(
+      server.asked.filter((one) => one.path.startsWith('/api') && one.path !== '/api/me'),
+    ).toEqual([])
   })
 })
 
