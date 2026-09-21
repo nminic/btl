@@ -76,10 +76,19 @@ export function did(): Response {
   return new Response(null, { status: 204 })
 }
 
-/** What a route answers when it refused and named why. */
-export function refused(reason: string): Response {
+/**
+ * What a route answers when it refused and named why.
+ *
+ * <p><b>The number is an argument because one refusal on the portal does not use 400.</b>
+ * `/api/registration` answers 409 for `theAddressIsTaken` and 400 for its other two.
+ * Nailed to 400, this helper could not express that refusal at all, so the case about a
+ * taken address would have had to build its own `Response` - and a case that builds its
+ * own body is a case that can quietly stop looking like what the server really sends.
+ * The default is 400 because that is what most of them are, so no existing caller moves.
+ */
+export function refused(reason: string, status = 400): Response {
   return new Response(JSON.stringify({ reason }), {
-    status: 400,
+    status,
     headers: { 'content-type': 'application/json' },
   })
 }

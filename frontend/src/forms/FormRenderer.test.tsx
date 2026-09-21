@@ -6,7 +6,7 @@ import { useState, type ReactNode } from 'react'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
 import { setupUser } from '../test/user'
-import { registracija } from './definitions'
+import { FORMS, registracija } from './definitions'
 import { FormRenderer } from './FormRenderer'
 import { plainWords, worded } from './worded'
 import type { FieldDef, FormDef, FormValues } from './types'
@@ -515,8 +515,14 @@ describe('FormRenderer', () => {
     await user.type(screen.getByLabelText(/proba.beleska/), 'beleška')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
+    /* The empty object beside it is the second argument every form is handed since
+       21.09.2026: the fields that only agree with another one, of which this form has
+       none. Written out rather than left off, because `toHaveBeenCalledWith` compares the
+       WHOLE list of arguments - so a case that left it off would go red the day the
+       component started handing something over, which is the day it should not. */
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ ime: 'Vladan', saglasnost: true, pol: 'M', beleska: 'beleška' }),
+      {},
     )
   })
 
@@ -529,7 +535,7 @@ describe('FormRenderer', () => {
     await user.click(screen.getByLabelText(/proba.saglasnost/))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ ime: 'Vladan' }))
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ ime: 'Vladan' }), {})
   })
 
   /* A form keeps all its values in one place, so unless a field is left alone
@@ -1483,5 +1489,146 @@ describe('the legend, once the last star goes', () => {
     await attach(user)
 
     expect(screen.queryByText(sr.form.requiredNote)).toBeNull()
+  })
+})
+
+/**
+ * THE SECOND ARGUMENT `onSubmit` IS HANDED, AND THE FLOOR THAT KEEPS IT FROM REACHING
+ * ANY FORM THAT DID NOT ASK FOR IT.
+ *
+ * <p><b>Why the argument exists.</b> `onScreen` drops every field carrying `matches`,
+ * because a secret sent twice is a second home for it. `/api/registration` nevertheless
+ * asks for `passwordRepeat` by name, so with one argument this component could not build
+ * a body that route accepts. Copying the first password into the second was weighed and
+ * refused: the server's comparison would become theatre, and `NewPassword.tsx` calls
+ * that very move a mistake in as many words.
+ *
+ * <p><b>Why a floor, when the argument is additive.</b> Additive is an argument about
+ * the type, and the question somebody will ask in a year is about behaviour: does any
+ * form this portal draws now send something it did not send before. That is asked here
+ * of `FORMS` - every definition the folder holds, which is itself held to the folder by
+ * `definitions.test.ts` - rather than of a list written out by hand.
+ */
+describe('what a form hands over beside what it sends', () => {
+  const agreeingForm: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [
+      { name: 'lozinka', type: 'password', labelKey: 'proba.lozinka', required: true },
+      {
+        name: 'ponovo',
+        type: 'password',
+        labelKey: 'proba.ponovo',
+        matches: 'lozinka',
+        required: true,
+      },
+    ],
+  }
+
+  const plainForm: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [{ name: 'ime', type: 'text', labelKey: 'proba.ime', required: true }],
+  }
+
+  it('hands over the field that only agrees, under its own name and with its own value', async () => {
+    /* WHAT IS MEASURED HERE IS THE SPLIT ITSELF: the agreeing field is NOT in the first
+       argument and IS in the second. Asked of the registration screen instead, it could
+       not be: a form refuses to submit until the two agree, so there the two values are
+       one value and a body built from either source looks the same. That is a real
+       boundary and it is written down in the pull request rather than papered over; what
+       can be measured is measured, and it is measured here, where the two arguments are
+       two objects and the difference between them is visible. */
+    const onSubmit = vi.fn()
+    const user = setupUser()
+    renderWithI18n(<FormRenderer form={agreeingForm} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText('proba.lozinka'), 'ista-lozinka')
+    await user.type(screen.getByLabelText('proba.ponovo'), 'ista-lozinka')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({ lozinka: 'ista-lozinka' })
+    expect(onSubmit.mock.calls[0]?.[1]).toEqual({ ponovo: 'ista-lozinka' })
+  })
+
+  it('hands over nothing at all for a form with no such field', async () => {
+    /* The default, and the reason no other screen on the portal is moved by this: eleven
+       of the twelve definitions are this shape, so their second argument is an empty
+       object and a handler that never reads it sees exactly what it saw before. */
+    const onSubmit = vi.fn()
+    const user = setupUser()
+    renderWithI18n(<FormRenderer form={plainForm} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText('proba.ime'), 'Vladan')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0]?.[1]).toEqual({})
+  })
+
+  it('is the registration alone, out of every form this portal draws, that has one', () => {
+    /* THE FLOOR, AND IT IS A QUERY OVER THE SOURCE OF TRUTH RATHER THAN A LIST. `FORMS`
+       is every definition the folder holds - a file added and not read there is a form
+       nothing can draw, which `definitions.test.ts` already holds - so a thirteenth form
+       that grows a field of this kind turns this red on the day it is written, instead of
+       quietly starting to send a repeated secret to whatever route it posts to.
+     *
+       Written as the whole map and not as „registracija has one", so the answer says
+       which forms have such a field rather than only whether one of them does. */
+    const withAgreeing = Object.fromEntries(
+      Object.entries(FORMS).map(([file, form]) => [
+        file,
+        form.fields.filter((field) => field.matches !== undefined).map((field) => field.name),
+      ]),
+    )
+
+    expect(withAgreeing).toEqual({
+      'admin-cena.form.json': [],
+      'admin-clan.form.json': [],
+      'admin-dogadjaj.form.json': [],
+      'admin-liga.form.json': [],
+      'admin-moderator.form.json': [],
+      'admin-strana.form.json': [],
+      'admin-tim.form.json': [],
+      'admin-trka.form.json': [],
+      'predlog-tima.form.json': [],
+      'prijava-sa-trke.form.json': [],
+      'registracija.form.json': ['passwordRepeat'],
+      'unos-rezultata.form.json': [],
+    })
+  })
+
+  it('leaves out a field that only agrees and was never shown', async () => {
+    /* A field nobody was shown is a field nobody typed, so handing its empty value over
+       would let a screen send an agreement that was never made. The visibility question
+       `onScreen` asks of every other field is asked of these too. */
+    const hidden: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'rodjen', type: 'date', labelKey: 'proba.datum', required: true },
+        { name: 'lozinka', type: 'password', labelKey: 'proba.lozinka' },
+        {
+          name: 'ponovo',
+          type: 'password',
+          labelKey: 'proba.ponovo',
+          matches: 'lozinka',
+          showWhenYoungerThan: { field: 'rodjen', years: 16 },
+        },
+      ],
+    }
+    const onSubmit = vi.fn()
+    const user = setupUser()
+    renderWithI18n(<FormRenderer form={hidden} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText('proba.datum'), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0]?.[1]).toEqual({})
   })
 })

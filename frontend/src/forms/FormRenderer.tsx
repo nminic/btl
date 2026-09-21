@@ -40,7 +40,33 @@ import './FormRenderer.css'
 
 type Props = {
   form: FormDef
-  onSubmit: (values: FormValues) => void
+  /**
+   * What the form sends, and beside it the fields that only agree with another one.
+   *
+   * <p><b>Two arguments and not one, and the second exists for exactly one reader.</b>
+   * `onScreen` below drops every field carrying `matches`, and says in its own words
+   * why: a secret sent twice is a second home for it. That reasoning is about what the
+   * portal puts in a body **by default**, and it still holds for every form here. But
+   * `/api/registration` asks for `passwordRepeat` by name
+   * (`WhatRegistrationAsksFor.OF_EVERYBODY`), so with one argument this component
+   * cannot produce a body that route accepts at all.
+   *
+   * <p><b>Why the second argument rather than sending the first password twice.</b>
+   * That was weighed and refused: the server's comparison would become theatre, and
+   * the day somebody breaks the agreement rule in the form, nothing would catch it.
+   * `NewPassword.tsx` calls that very move a mistake, in as many words, and that
+   * sentence stands. What a person actually typed is what travels.
+   *
+   * <p><b>Nothing else on the portal is moved by this, and that is measured rather
+   * than asserted.</b> The second argument is additive: a handler declaring one
+   * parameter is assignable here and is handed the extra one it never reads. The
+   * floor is in `FormRenderer.test.tsx`, which walks `FORMS` - every definition this
+   * portal has - and demands the second argument be **empty** for each form that has
+   * no `matches` field. Eleven of the twelve are empty today, so no other caller can
+   * see a difference, and a thirteenth form that grows such a field arrives as a red
+   * gate rather than as a body somebody has to notice.
+   */
+  onSubmit: (values: FormValues, agreeing: FormValues) => void
   /**
    * What the screen draws between the fields and the button that sends them.
    *
@@ -882,6 +908,31 @@ export function FormRenderer({
     )
   }
 
+  /**
+   * The fields `onScreen` dropped because they only agree with another one.
+   *
+   * <p>Handed to the caller beside what is sent rather than folded into it, so that
+   * the default stays what it was: a form does not put a repeated secret in a body
+   * unless the screen asks for it by reading this. One route asks
+   * (`/api/registration`, which requires `passwordRepeat` by name) and no other does.
+   *
+   * <p><b>Visibility is asked here too, and it is not decoration.</b> A field nobody
+   * was shown is a field nobody typed, and handing its empty value over would let a
+   * screen send an agreement that was never made. The same question `onScreen` asks
+   * of every other field, asked of these.
+   */
+  function agreeing(all: FormValues): FormValues {
+    /* Named, then filtered out of `all`, which is the shape `onScreen` above has: an
+       index into the values would have to answer for a key that is not there, and the
+       fallback it would need is a branch nothing can reach, since `filled` holds one
+       value for every field of the form. Kept side by side, the two read as one idea. */
+    const confirming = form.fields
+      .filter((field) => field.matches !== undefined && isVisible(field, all, today))
+      .map((field) => field.name)
+
+    return Object.fromEntries(Object.entries(all).filter(([name]) => confirming.includes(name)))
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     /* The rules in the definition win over the handed in check: a field that is
@@ -914,7 +965,11 @@ export function FormRenderer({
     setRefused(beyond)
 
     if (Object.keys(found).length === 0 && beyond === undefined) {
-      onSubmit(trimValues(onScreen(filled)))
+      /* Both through `trimValues`, so what agrees is trimmed the same way as what it
+         agrees with. Trimmed on one side only, two passwords that differ by a space
+         would be refused by the form and accepted by the server, or the other way
+         round, depending on which side the space was on. */
+      onSubmit(trimValues(onScreen(filled)), trimValues(agreeing(filled)))
     }
   }
 
