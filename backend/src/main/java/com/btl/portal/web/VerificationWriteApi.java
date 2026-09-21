@@ -351,7 +351,12 @@ class VerificationWriteApi {
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
-		if (typed == null || typed.approved() == null) {
+		/* AN EMPTY OBJECT, WHICH IS THE ONE INCOMPLETE FORM THAT REACHES HERE. A body that
+		   is missing or unreadable never does: the route declares it consumes JSON and
+		   {@code @RequestBody} is required, so the chain answers 400 before this method
+		   runs. A null check over {@code typed} would be a branch no request can reach,
+		   and a branch nothing can measure is one nobody can be sure of. */
+		if (typed.approved() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -501,12 +506,12 @@ class VerificationWriteApi {
 	 * copied and the screen draws initials for a team with no mark.
 	 */
 	private Optional<ResponseEntity<?>> makeTheTeam(Item item) {
-		Proposal proposal = db.sql("select id, competitor_id, name, bio, link, place_id, city,"
+		Proposal proposal = db.sql("select competitor_id, name, bio, link, place_id, city,"
 						+ " country_id from team_proposal where id = ?")
 				.param(item.teamProposalId())
-				.query((row, one) -> new Proposal(row.getLong(1), row.getLong(2), row.getString(3),
-						row.getString(4), row.getString(5), row.getObject(6, Long.class),
-						row.getString(7), row.getObject(8, Long.class)))
+				.query((row, one) -> new Proposal(row.getLong(1), row.getString(2), row.getString(3),
+						row.getString(4), row.getObject(5, Long.class), row.getString(6),
+						row.getObject(7, Long.class)))
 				.single();
 
 		String slug = EventAddress.written(proposal.name());
@@ -631,7 +636,7 @@ class VerificationWriteApi {
 	}
 
 	/** What a member asked for, in the shape an approval copies across. */
-	private record Proposal(long id, long competitorId, String name, String bio, String link,
+	private record Proposal(long competitorId, String name, String bio, String link,
 			Long placeId, String city, Long countryId) {
 	}
 }

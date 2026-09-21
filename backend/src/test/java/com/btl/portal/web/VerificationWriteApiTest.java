@@ -467,6 +467,20 @@ class VerificationWriteApiTest {
 		assertThat(stateOf(anasText)).isEqualTo("waiting");
 	}
 
+	/**
+	 * AN EMPTY OBJECT IS A FORM NOBODY FILLED IN, and it is the only incomplete body that
+	 * reaches the method at all: a missing or unreadable one is refused by the chain, which
+	 * is why the route carries no null check over it.
+	 */
+	@Test
+	void aBodyThatSaysNothingAtAllIsNotADecision() throws Exception {
+		assertThat(http.perform(asking(PROFILES_MODERATOR, post(decision(anasText)))
+						.contentType(MediaType.APPLICATION_JSON).content("{}"))
+				.andReturn().getResponse().getStatus()).isEqualTo(400);
+
+		assertThat(stateOf(anasText)).isEqualTo("waiting");
+	}
+
 	@Test
 	void aRefusalWithNoBoxAtAllIsNotADecisionEither() throws Exception {
 		assertThat(answer(PROFILES_MODERATOR, anasText, false, null)).isEqualTo(400);
