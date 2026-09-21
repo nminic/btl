@@ -145,6 +145,8 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"a surrogate key, and the name the file is written under, so nothing may move it"),
 			// V9: a surrogate, because a queue row is looked up by nothing a person types
 			new Key("verification_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("verification_lock_pk", false,
+					"the item itself, because one hold at a time is the whole of what a hold is"),
 			/* V10. The first is a surrogate like every other. The second is the one key in the
 			   schema that exists to say ONE: a run waits in the queue once, because a run
 			   approved twice is a result written twice with nothing to say which was meant. */
@@ -351,6 +353,8 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("verification_competitor_idx", "what is waiting on one member, which his own screen asks"),
 			new Index("verification_photo_idx", "the queue row a photograph is waiting in"),
 			new Index("verification_decided_by_idx", "what one moderator has decided"),
+			new Index("verification_lock_held_by_idx",
+					"whose holds these are, which is the side a superadmin takes one away from"),
 			/* V10. The first is how a member's own screen draws what he has sent in, and the
 			   other three are the ends of the three keys that point out of the submission. The
 			   race one is over two columns because the key it answers is. */
