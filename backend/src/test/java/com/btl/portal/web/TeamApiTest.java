@@ -111,8 +111,8 @@ class TeamApiTest {
 	private static final List<String> THE_ADMINISTRATION =
 			List.of(FOUNDED_THE_FIRST_TEAM_AND_ADMINISTERS_THEM, THE_SUPERADMIN);
 
-	/** What a team with nobody in the seat answers the administration with (V11). */
-	private static final String NOBODY_HOLDS_THIS_SEAT = "";
+	/** What a team whose seat names nobody answers the administration with (V11). */
+	private static final String NOBODY_IS_NAMED_TO_THIS_SEAT = "";
 
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
@@ -912,11 +912,11 @@ class TeamApiTest {
 				.findFirst().orElseThrow();
 
 		assertThat(Answers.fieldsOf(noSeat))
-				.as("a team whose seat nobody holds answered a signed in member with nothing at"
+				.as("a team whose seat names nobody answered a signed in member with nothing at"
 						+ " all, which is what a visitor is told; the two must not read alike")
 				.contains(WHETHER_THE_SEAT_IS_MINE);
 		assertThat(noSeat.path(WHETHER_THE_SEAT_IS_MINE).asBoolean())
-				.as("a team whose seat nobody holds was answered as the caller's own")
+				.as("a team whose seat names nobody was answered as the caller's own")
 				.isFalse();
 	}
 
@@ -977,9 +977,9 @@ class TeamApiTest {
 	 * staff" instead of „may he" answers him, and nothing about that reads wrong.
 	 *
 	 * <p><b>Asked over EVERY record and by KEY rather than by value.</b> A key carrying
-	 * the empty string says „nobody holds this seat" to a screen that reads it, and it
-	 * would say that about every team in the league; that is the difference between
-	 * absent and empty and it is the whole of this field's shape.
+	 * the empty string says „nobody is named to this seat" to a screen that reads it,
+	 * and it would say that about every team in the league; that is the difference
+	 * between absent and empty and it is the whole of this field's shape.
 	 */
 	@Test
 	void theAdministrationIsTheOnlyOneToldWhoSitsInTheSeat() throws Exception {
@@ -1073,16 +1073,18 @@ class TeamApiTest {
 	}
 
 	/**
-	 * A SEAT NOBODY HOLDS IS ANSWERED EMPTY AND NEVER ABSENT, which is the third
+	 * A SEAT THAT NAMES NOBODY IS ANSWERED EMPTY AND NEVER ABSENT, which is the third
 	 * sentence this field has to say and the one a boolean field never needs.
 	 *
 	 * <p>V11 made {@code team.admin_id} nullable on purpose - „It EMPTIES rather than
-	 * blocking anything" - so the answer has three things to say: „I am not telling
-	 * you", „nobody holds this seat", and a number. Absent is the first and the empty
-	 * string is the second, which is also the shape the portal already reads: the served
-	 * file writes {@code ""} for the team that has none and
-	 * {@code frontend/src/data/types.ts} types the field {@code string}, not
-	 * {@code string | null}.
+	 * blocking anything: when the seat is vacant the portal reads the member who has
+	 * been in the team longest, and that is a query, not a column. So this says who was
+	 * NAMED, and nothing here pretends it is always somebody" - so the answer has three
+	 * things to say: „I am not telling you", „nobody is named to this seat", and a
+	 * number. Absent is the first and the empty string is the second, which is also the
+	 * shape the portal already reads: the served file writes {@code ""} for the team
+	 * that has none and {@code frontend/src/data/types.ts} types the field
+	 * {@code string}, not {@code string | null}.
 	 *
 	 * <p><b>Answered null the second would arrive spelt as the first</b>, because
 	 * {@code @JsonInclude} takes the key out - and the administration would be told „you
@@ -1090,7 +1092,7 @@ class TeamApiTest {
 	 * are asked: the key is THERE, and what is in it is the empty string.
 	 */
 	@Test
-	void aSeatNobodyHoldsIsAnsweredEmptyAndNeverAbsent() throws Exception {
+	void aSeatThatNamesNobodyIsAnsweredEmptyAndNeverAbsent() throws Exception {
 		assertThat(db.sql("select count(*) from team where admin_id is null")
 				.query(Integer.class).single())
 				.as("no team in the fixture has an empty seat, so this case asserts nothing")
@@ -1103,9 +1105,10 @@ class TeamApiTest {
 					.findFirst().orElseThrow();
 
 			assertThat(Answers.fieldsOf(vacant))
-					.as("a team whose seat nobody holds answered %s with no key at all, which is"
+					.as("a team whose seat names nobody answered %s with no key at all, which is"
 							+ " what somebody who may not see it is told; „I am not telling you"
-							+ " who administers this" + " " + "and „nobody administers this" + " "
+							+ " who administers this" + " "
+							+ "and „nobody is named to this seat" + " "
 							+ "must not read alike", administration)
 					.contains(WHO_ADMINISTERS_THE_TEAM);
 
@@ -1117,10 +1120,10 @@ class TeamApiTest {
 			JsonNode seat = vacant.get(WHO_ADMINISTERS_THE_TEAM);
 
 			assertThat(seat.isNull() ? null : seat.asString())
-					.as("a team whose seat nobody holds answered %s with somebody, or with the"
+					.as("a team whose seat names nobody answered %s with somebody, or with the"
 							+ " null that means „somebody holds it and I cannot name him\"",
 							administration)
-					.isEqualTo(NOBODY_HOLDS_THIS_SEAT);
+					.isEqualTo(NOBODY_IS_NAMED_TO_THIS_SEAT);
 		}
 	}
 
@@ -1198,8 +1201,8 @@ class TeamApiTest {
 
 			assertThat(held.path(WHO_ADMINISTERS_THE_TEAM).isNull())
 					.as("a seat HELD by somebody with no member number read to %s exactly like a"
-							+ " seat nobody holds (%s). The administration's screen draws a free"
-							+ " chair off that string and would hand the team away over somebody"
+							+ " seat that names nobody (%s). The administration's screen draws a"
+							+ " free chair off that string and would hand the team away over somebody"
 							+ " sitting in it", administration,
 							held.path(WHO_ADMINISTERS_THE_TEAM))
 					.isTrue();
@@ -1221,9 +1224,9 @@ class TeamApiTest {
 		JsonNode seat = his.get(WHO_ADMINISTERS_THE_TEAM);
 
 		assertThat(seat.isNull() ? null : seat.asString())
-				.as("one record told him „you founded this team\" and „nobody holds this seat\""
-						+ " at once")
-				.isNotEqualTo(NOBODY_HOLDS_THIS_SEAT);
+				.as("one record told him „you founded this team\" and „nobody is named to this"
+						+ " seat\" at once")
+				.isNotEqualTo(NOBODY_IS_NAMED_TO_THIS_SEAT);
 	}
 
 	/**
