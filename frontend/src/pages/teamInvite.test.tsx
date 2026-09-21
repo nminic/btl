@@ -54,11 +54,12 @@ import { useSession } from '../session/useSession'
  * whole file: 0,78, because two files warm up twice. The per case clock is what goes red, and
  * halving the file does not move it.
  *
- * **It also keeps the failure readable.** `asyncUtilTimeout` stays at `SLOW` (`test/setup.ts`), so
- * a `findBy` that really finds nothing now loses first and names what it looked for, with the case
- * still holding twenty seconds to report it. On the same clock as the case, vitest prints a bare
- * „Test timed out" naming nothing, which is what `publicScreens.test.tsx` answers with `SLOW / 4`
- * from the other side.
+ * **It also keeps the failure readable, and that part is measured rather than reasoned.**
+ * `asyncUtilTimeout` stays at `SLOW` (`test/setup.ts`), below the case's own clock. Asking one
+ * case here for a button that does not exist prints, on this clock,
+ * `Unable to find role="button" and name "…"`; on `SLOW` the same miss prints
+ * `Test timed out in 20000ms` and names nothing, because the query and the case die at the same
+ * instant. That is the fault `publicScreens.test.tsx` answers with `SLOW / 4` from the other side.
  *
  * `SLOW` stays the one home of the number (ADL A31); this is derived from it rather than a second
  * threshold written out by hand.
