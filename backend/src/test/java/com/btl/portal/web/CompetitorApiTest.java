@@ -93,8 +93,54 @@ class CompetitorApiTest {
 	/** A second member, who brought in nobody and is in no team. */
 	private static final String THE_OTHER_MEMBER = "strahinja@primer.rs";
 
-	/** Signed in, and no member behind the account at all. */
+	/**
+	 * Signed in, no member behind the account at all, AND A MODERATOR WHO HOLDS
+	 * NOTHING OVER THE MEMBERS.
+	 *
+	 * <p>He is the state of „who is asking" that is easiest to miss and the one the
+	 * rule is really about: PDL P8 gives the basis to „Superadmin i moderatori sa
+	 * pravom nad clanovima", so a moderator WITHOUT that tick is on the far side of
+	 * the line while looking like somebody on the near one. He is deliberately ticked
+	 * for something else, so what refuses him is the right this resource asks for and
+	 * not the absence of any right at all - {@code AdminRights.mayDoAnything} would
+	 * answer yes about him.
+	 */
 	private static final String RACES_FOR_NOBODY = "moderator@primer.rs";
+
+	/**
+	 * AND THE MODERATOR WHO DOES HOLD IT, who is also a member, and whose own
+	 * membership is held on a basis the rows he looks at do not all share.
+	 *
+	 * <p><b>He is 000031, whose fee has lapsed, and that is the point of choosing
+	 * him.</b> He is not on the list at all (the resource answers only the members
+	 * whose fee is standing), so „his own row" and „a row he is looking at" are never
+	 * the same record - which is what makes the substitution measurable: served his
+	 * own basis instead of each row's, every record would read {@code payment} and
+	 * 000012 is {@code feeExempt}. Served on the caller's own row the way the referral
+	 * code is, he would be answered nothing at all.
+	 */
+	private static final String THE_MODERATOR_OVER_THE_MEMBERS = "clanovi@primer.rs";
+
+	/** And the other half of „Superadmin i moderatori sa pravom", who races for nobody. */
+	private static final String THE_SUPERADMIN = "superadmin@primer.rs";
+
+	/**
+	 * THE FIVE STATES OF „WHO IS ASKING", SPLIT BY THE ONE LINE PDL P8 DRAWS.
+	 *
+	 * <p>Written out rather than derived, because what each account IS is the thing the
+	 * fixture decides and nothing can read back. What IS derived is that the split is
+	 * complete: {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther} reads
+	 * every address out of {@code account} and requires these two lists to be exactly
+	 * that set, so a sixth account added tomorrow has to be put on a side rather than
+	 * quietly measured by nothing. The visitor is the {@code null} below, which is the
+	 * same request without the cookie and is not an account.
+	 */
+	private static final List<String> NOBODY_WHO_MAY_READ_THE_BASIS =
+			java.util.Arrays.asList(null, HER_OWN_ACCOUNT, THE_OTHER_MEMBER, RACES_FOR_NOBODY);
+
+	/** And the two PDL P8 names, „Superadmin i moderatori sa pravom nad clanovima". */
+	private static final List<String> THE_ADMINISTRATION =
+			List.of(THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN);
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -195,6 +241,30 @@ class CompetitorApiTest {
 		   (owner, 14.09.2026). He is the case that separates „signed in" from „is a
 		   member". */
 		account(RACES_FOR_NOBODY, "moderator");
+		/* AND HE HOLDS A RIGHT, just not this one, so what refuses him is the right this
+		   resource asks for rather than his holding nothing at all. */
+		ticked(RACES_FOR_NOBODY, "entity:events");
+
+		/* AND THE TWO WHO MAY, which is the whole of PDL P8's „Superadmin i moderatori
+		   sa pravom nad clanovima" and no third kind.
+
+		   ONE OF THEM RACES AND THE OTHER DOES NOT, on purpose. The superadmin is the
+		   ordinary case V23 describes and the one that catches a condition written
+		   against the caller's MEMBER: with no member at all he would be answered
+		   nothing. The moderator is a member, so a resource serving him his own basis
+		   instead of each row's has something wrong to serve. */
+		account(THE_MODERATOR_OVER_THE_MEMBERS, "moderator");
+		ticked(THE_MODERATOR_OVER_THE_MEMBERS, CompetitorApi.OVER_THE_MEMBERS);
+		belongsTo(THE_MODERATOR_OVER_THE_MEMBERS, "000031");
+
+		account(THE_SUPERADMIN, "superadmin");
+	}
+
+	/** One box of the matrix, ticked for one named account (V18). */
+	private void ticked(String email, String right) {
+		db.sql("insert into account_admin_right (account_id, right_code)"
+						+ " values ((select id from account where email = ?), ?)")
+				.params(email, right).update();
 	}
 
 	private void account(String email, String role) {
@@ -343,7 +413,21 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * AND NOTHING IN THE ANSWER SAYS WHO PAYS AND WHO DOES NOT.
+	 * AND NOTHING IN THE ANSWER SAYS WHO PAYS AND WHO DOES NOT, TO ANYBODY BUT THE
+	 * ADMINISTRATION.
+	 *
+	 * <p>PDL P8, 28.07.2026: „Osnov clanstva se nikad ne prikazuje javno. Ni na
+	 * profilu, ni u tabelama, nigde. Vide ga samo Superadmin i moderatori sa pravom nad
+	 * clanovima." Sharpened on 20.09.2026: „Clan vidi SVOJ osnov clanstva; tudji ne vidi
+	 * niko osim administracije" - and his own arrives through {@code /api/me}, not here,
+	 * for the reason written on {@link CompetitorApi}.
+	 *
+	 * <p><b>Three callers and not one, because „javno" is not „bez prijave".</b> The
+	 * visitor, the member (whose OWN record is in this answer, so this is the sharpened
+	 * half as well), and a signed in moderator who holds a right but not this one. The
+	 * third is the state that is easiest to write as covered and hardest to cover: he
+	 * reaches every line of this resource that the administration reaches, and only the
+	 * answer to „may he" differs.
 	 *
 	 * <p>Asked of the text and not of a field name, because the basis is a short word
 	 * that could arrive under any name at all.
@@ -361,24 +445,28 @@ class CompetitorApiTest {
 	 */
 	@Test
 	void nothingAboutTheMembershipFeeLeavesTheServer() throws Exception {
-		String whole = http.perform(get("/api/competitors")).andReturn().getResponse()
-				.getContentAsString();
-
-		assertThat(whole).as("the answer carries nothing at all, so it says nothing about what it"
-				+ " leaves out").contains("000007", "000012", "000045");
-
 		String rule = db.sql("select pg_get_constraintdef(oid) from pg_constraint"
 						+ " where conname = ?").param("competitor_membership_basis_known")
 				.query(String.class).single();
 		List<String> everyBasis = Pattern.compile("'([a-zA-Z]+)'").matcher(rule).results()
 				.map(one -> one.group(1)).toList();
-		assertThat(everyBasis).as("the schema named no basis at all, so the loop below asserts"
+		assertThat(everyBasis).as("the schema named no basis at all, so the loops below assert"
 				+ " nothing; the rule it read was: %s", rule).hasSizeGreaterThan(1);
 
-		for (String basis : everyBasis) {
-			assertThat(whole).as("the basis a membership is held on (%s) left the server, and Clan 74"
-					+ " puts everything to do with the fee beside the date of birth", basis)
-					.doesNotContain(basis);
+		for (String nobody : NOBODY_WHO_MAY_READ_THE_BASIS) {
+			String whole = whole(nobody);
+
+			assertThat(whole).as("the answer to %s carries nothing at all, so it says nothing"
+					+ " about what it leaves out", nobody)
+					.contains("000007", "000012", "000045");
+
+			for (String basis : everyBasis) {
+				assertThat(whole).as("the basis a membership is held on (%s) left the server to"
+						+ " %s, who is not the administration; Clan 74 puts everything to do with"
+						+ " the fee beside the date of birth, and PDL P8 names the two who may"
+						+ " read it", basis, nobody)
+						.doesNotContain(basis);
+			}
 		}
 	}
 
@@ -723,9 +811,233 @@ class CompetitorApiTest {
 				.as("the account names a member after all, so this case measures the wrong thing")
 				.isNull();
 
+		/* AND HE HOLDS NOTHING OVER THE MEMBERS, which this case has said since the
+		   basis started leaving to the administration. Without the line, ticking that
+		   box for him tomorrow would turn the sentence above into a different one and
+		   nothing would say so. */
+		assertThat(db.sql("select count(*) from account_admin_right"
+						+ " where account_id = (select id from account where email = ?)"
+						+ " and right_code = ?")
+				.params(RACES_FOR_NOBODY, CompetitorApi.OVER_THE_MEMBERS)
+				.query(Integer.class).single())
+				.as("this moderator holds the right over the members after all, so he is no longer"
+						+ " answered what a visitor is for a reason that has nothing to do with"
+						+ " racing for nobody")
+				.isZero();
+
 		assertThat(whole(RACES_FOR_NOBODY))
 				.as("an account with no member behind it was answered more than a visitor is")
 				.isEqualTo(whole(null));
+	}
+
+	/**
+	 * THE ADMINISTRATION IS THE ONLY ONE TOLD HOW A MEMBERSHIP IS HELD, AND EVERYBODY
+	 * ELSE IS NOT TOLD ON ANY RECORD - THEIR OWN INCLUDED.
+	 *
+	 * <p>PDL P8, 28.07.2026: „Osnov clanstva se nikad ne prikazuje javno. Ni na
+	 * profilu, ni u tabelama, nigde. Vide ga samo Superadmin i moderatori sa pravom nad
+	 * clanovima." The owner's reason names the shape: „to je podatak o novcu, a ne o
+	 * trcanju, i nikoga se ne tice ko je pocascen."
+	 *
+	 * <p><b>Five kinds of caller and not two, and the moderator WITHOUT the right is
+	 * the one this case exists for.</b> He is signed in, he is a moderator, he holds a
+	 * right - and he is on the far side of the line. A resource that asked „is he
+	 * staff" instead of „may he" answers him, and nothing about that reads wrong.
+	 *
+	 * <p><b>Asked over EVERY record and by key rather than by value.</b> A key carrying
+	 * null says „he is not exempt" to a screen that draws a tag off it, and it says it
+	 * about the whole list rather than about one person; that is the difference between
+	 * absent and empty, and it is the same one the referral code is held to above.
+	 *
+	 * <p><b>The sharpened half of P8 is the member's own record.</b> „Clan vidi SVOJ
+	 * osnov clanstva" (20.09.2026) is true and is answered by {@code /api/me}: this
+	 * list is the members whose fee is STANDING, so the man the sharpening was written
+	 * about - the one who pays nothing - is not on it at all. Answering it here would
+	 * reach everybody except him.
+	 */
+	@Test
+	void theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld() throws Exception {
+		for (String nobody : NOBODY_WHO_MAY_READ_THE_BASIS) {
+			for (JsonNode one : answerFor(nobody)) {
+				assertThat(Answers.fieldsOf(one))
+						.as("%s was answered how a membership is held, on the record of %s; PDL P8"
+								+ " names the superadmin and a moderator with the right over the"
+								+ " members, and nobody else", nobody,
+								one.path("memberNumber").asString())
+						.doesNotContain(HOW_THE_MEMBERSHIP_IS_HELD);
+			}
+		}
+
+		for (String administration : THE_ADMINISTRATION) {
+			JsonNode answer = answerFor(administration);
+
+			assertThat(StreamSupport.stream(answer.spliterator(), false)
+					.filter(one -> !Answers.fieldsOf(one).contains(HOW_THE_MEMBERSHIP_IS_HELD))
+					.map(one -> one.path("memberNumber").asString()).toList())
+					.as("%s is the administration and a record of his answer does not say how that"
+							+ " membership is held", administration)
+					.isEmpty();
+
+			assertThat(answer).as("%s was answered an empty list, so the check above compared"
+					+ " nothing", administration).isNotEmpty();
+		}
+	}
+
+	/**
+	 * AND THE WORD HE IS TOLD IS THE ONE ON THAT MEMBER'S ROW, NOT THE ONE ON HIS OWN.
+	 *
+	 * <p><b>This is the substitution the referral code's own shape invites.</b> The two
+	 * fields above are answered {@code case when c.id = :me}, and the same line copied
+	 * onto this field would hand a moderator his own basis and nothing else - or, worse,
+	 * his own basis written across every record. Both are refused here, and the fixture
+	 * is arranged so that they are refused by a value and not by a length: the moderator
+	 * who holds the right is 000031, whose fee has lapsed, so he is not on the list at
+	 * all; his basis is {@code payment} and 000012's is {@code feeExempt}.
+	 *
+	 * <p><b>What is compared is read out of the database</b>, so a fixture changed
+	 * tomorrow is measured without anybody remembering this case - and the map is
+	 * compared whole, which holds the pairing as well as the words. A resource
+	 * answering the right words against the wrong members passes a check on the set and
+	 * fails this one.
+	 */
+	@Test
+	void aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld() throws Exception {
+		Map<String, String> onTheRows = new HashMap<>();
+
+		for (Map.Entry<String, String> row : db.sql("select member_number, membership_basis"
+						+ " from competitor where active")
+				.query((one, number) -> Map.entry(one.getString(1), one.getString(2))).list()) {
+			onTheRows.put(row.getKey(), row.getValue());
+		}
+
+		assertThat(onTheRows.values().stream().distinct().toList())
+				.as("every member on the list is held on the same basis, so answering with a"
+						+ " constant would satisfy this case")
+				.hasSizeGreaterThan(1);
+
+		String his = db.sql("select membership_basis from competitor where id ="
+						+ " (select competitor_id from account where email = ?)")
+				.param(THE_MODERATOR_OVER_THE_MEMBERS).query(String.class).single();
+
+		assertThat(onTheRows.values().stream().filter(one -> !one.equals(his)).toList())
+				.as("no row the moderator looks at is held on a basis other than his own (%s), so"
+						+ " serving him his own across the whole answer would pass", his)
+				.isNotEmpty();
+
+		assertThat(onTheRows).as("the moderator's own basis stands on no row he looks at, so this"
+						+ " case cannot tell his own from the row's").containsValue(his);
+
+		for (String administration : THE_ADMINISTRATION) {
+			Map<String, String> answered = new HashMap<>();
+
+			for (JsonNode one : answerFor(administration)) {
+				answered.put(one.path("memberNumber").asString(),
+						one.path(HOW_THE_MEMBERSHIP_IS_HELD).asString());
+			}
+
+			assertThat(answered)
+					.as("%s was told a basis that is not the one standing on that member's row;"
+							+ " his own is %s", administration, his)
+					.isEqualTo(onTheRows);
+		}
+	}
+
+	/**
+	 * AND THE ADMINISTRATION'S ANSWER IS THE VISITOR'S WITH ONE KEY ADDED PER RECORD,
+	 * which is the half no check on a name can measure.
+	 *
+	 * <p>The same sentence {@code theVisitorsAnswerHasNotMoved} holds from the other
+	 * end: it keeps the number of records, their order and every other value in them,
+	 * so a condition written as a join - the one shape that can give a member two rows
+	 * or drop one - fails here although every name is still right. It also refuses the
+	 * key arriving empty rather than absent for everybody else, because what is cut out
+	 * is built from the values the answer itself carries.
+	 *
+	 * <p>Both of the administration are asked, and neither of them races for anybody on
+	 * the list, so neither carries the two fields a member is answered about himself.
+	 */
+	@Test
+	void theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded() throws Exception {
+		for (String administration : THE_ADMINISTRATION) {
+			String whole = whole(administration);
+
+			for (JsonNode one : answerFor(administration)) {
+				whole = whole.replace(",\"" + HOW_THE_MEMBERSHIP_IS_HELD + "\":\""
+						+ one.path(HOW_THE_MEMBERSHIP_IS_HELD).asString() + "\"", "");
+			}
+
+			assertThat(whole)
+					.as("%s was answered something other than the visitor's answer with the basis"
+							+ " added: the list itself moved, or a key nobody named arrived with"
+							+ " it", administration)
+					.isEqualTo(whole(null));
+		}
+	}
+
+	/**
+	 * AND THE ADMINISTRATION'S RECORD CARRIES NOTHING NOBODY NAMED EITHER.
+	 *
+	 * <p>The same floor the visitor's answer and the member's own record stand on,
+	 * moved onto the third audience. Three of the five names are still omissions for
+	 * him - the age band because it is owed, the referrer's code because the count
+	 * replaces it, the fee flag because he is on the list at all - and the referral
+	 * code is one too, because this caller is not the member whose row it is.
+	 */
+	@Test
+	void theAdministrationsRecordCarriesNothingNobodyNamed() throws Exception {
+		Answers.everyFieldThePortalReadsIsAnswered(
+				"/api/competitors asked by a moderator over the members",
+				answerFor(THE_MODERATOR_OVER_THE_MEMBERS), "competitors.json",
+				THE_AGE_BAND_THIS_RESOURCE_STILL_OWES, THE_REFERRAL_CODE,
+				WHO_HANDED_OUT_THE_CODE, WHETHER_THE_FEE_IS_STANDING);
+	}
+
+	/**
+	 * THE RIGHT THIS RESOURCE ASKS FOR IS ONE THE MATRIX REALLY HOLDS.
+	 *
+	 * <p><b>A floor and not a spelling check.</b> {@code RightIsNeeded} writes out what
+	 * a misspelt right costs: every moderator is refused it and the SUPERADMIN is let
+	 * through, because his mode answers yes to any string there is. So a typo here is a
+	 * door that reads shut in every case written with a moderator and stands open for
+	 * the one account that can do the most damage.
+	 *
+	 * <p><b>It is asked of {@code admin_right} because the annotations' own floor
+	 * cannot see this one.</b> {@code everyRightARouteAsksForIsOneTheMatrixHolds} reads
+	 * what the dispatcher declares; this route declares nothing, because it is open to
+	 * everybody and only one field of its answer is guarded.
+	 */
+	@Test
+	void theRightThisResourceAsksForIsOneTheMatrixHolds() {
+		List<String> held = db.sql("select code from admin_right").query(String.class).list();
+
+		assertThat(held).as("the matrix holds no rights at all, so anything would be in it")
+				.isNotEmpty();
+
+		assertThat(held)
+				.as("this resource guards its field with a right the matrix does not hold; every"
+						+ " moderator is refused it and the superadmin is let through, because his"
+						+ " mode answers yes to any string there is")
+				.contains(CompetitorApi.OVER_THE_MEMBERS);
+	}
+
+	/**
+	 * AND EVERY ACCOUNT IN THE FIXTURE IS ON ONE SIDE OF THAT LINE OR THE OTHER.
+	 *
+	 * <p><b>The floor under the two lists at the head of this class</b>, and the reason
+	 * they may be written by hand at all: what an account IS cannot be read back, but
+	 * WHICH accounts exist can. A sixth added tomorrow has to be put on a side, and
+	 * until it is, this case says so instead of the two lists quietly measuring four
+	 * callers out of five.
+	 */
+	@Test
+	void everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther() {
+		List<String> split = new java.util.ArrayList<>(THE_ADMINISTRATION);
+		NOBODY_WHO_MAY_READ_THE_BASIS.stream().filter(one -> one != null).forEach(split::add);
+
+		assertThat(db.sql("select email from account").query(String.class).list())
+				.as("an account in the fixture is on neither side of the line PDL P8 draws, so"
+						+ " nothing measures what this resource answers it")
+				.containsExactlyInAnyOrderElementsOf(split);
 	}
 
 }

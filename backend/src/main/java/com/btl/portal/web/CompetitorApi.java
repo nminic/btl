@@ -104,32 +104,68 @@ import java.util.List;
  * it was before this increment, which is what {@code /mock} is being aligned
  * against while this is written.
  *
- * <p><b>What is NOT answered here, and why each one is a decision rather than an
- * oversight.</b> {@code membershipBasis} is not the member's to see through this
- * door: PDL P8, 28.07.2026, „Osnov clanstva se nikad ne prikazuje javno. Ni na
- * profilu, ni u tabelama, nigde. <b>Vide ga samo Superadmin i moderatori sa pravom
- * nad clanovima.</b>" That is an administrative resource and this is not it.
- * {@code referredBy} itself - the code of whoever brought the CALLER in - is
- * answered by nothing, because no screen in the portal reads it about oneself; what
- * every reader of it wanted is the count above.
+ * <p><b>AND SINCE 21.09.2026 THE ADMINISTRATION IS ANSWERED THE ONE FIELD THAT IS
+ * ITS OWN, on every record and nobody else's.</b> PDL P8, 28.07.2026: „Osnov
+ * clanstva se nikad ne prikazuje javno. Ni na profilu, ni u tabelama, nigde.
+ * <b>Vide ga samo Superadmin i moderatori sa pravom nad clanovima.</b>" The owner's
+ * reason is the shape of the rule: „to je podatak o novcu, a ne o trcanju, i nikoga
+ * se ne tice ko je pocascen". So {@code membershipBasis} is answered when, and only
+ * when, whoever is asking holds {@link #OVER_THE_MEMBERS} - which the superadmin
+ * holds by his mode and a moderator holds one tick at a time (V5).
  *
- * <p>All four omissions are the reason this resource exists. PDL, 06.09.2026,
+ * <p><b>A MEMBER DOES NOT GET HIS OWN THROUGH THIS DOOR, and that is a decision with
+ * a measurement behind it rather than an omission.</b> The owner sharpened P8 on
+ * 20.09.2026: „Clan vidi SVOJ osnov clanstva; tudji ne vidi niko osim
+ * administracije." His own arrives through {@link MeApi}, which is the only door
+ * that can carry it: this list is the members whose fee is STANDING (see above), so
+ * a member whose fee has lapsed is not on it at all - and he is exactly the man the
+ * owner's reason is about, „covek koji ne placa clanarinu treba da zna da je ne
+ * placa". A field answered here would therefore be missing from the very people it
+ * was sharpened for, while every OTHER signed in member would have to be refused it
+ * on the same record. The boundary in both directions, with a case on each side:
+ * {@code theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld} fails if a plain
+ * member is answered it anywhere, including on his own row, and
+ * {@code aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld} fails if the
+ * administration is answered it nowhere.
+ *
+ * <p><b>The fact has two homes today and this reads the older one on purpose.</b>
+ * {@code competitor.membership_basis} stands per PERSON (V7); {@code membership.basis}
+ * stands per person per SEASON (V22) and is the shape the owner decided on 13.09.2026.
+ * V22 left the column where it is with the reason written out - „it is read today, and
+ * dropping a column that is read is a different increment from adding a table that is
+ * not" - and PDL records the two homes as a boundary rather than passing over them.
+ * This resource answers the field the PORTAL reads, and the portal reads the column:
+ * {@code frontend/src/data/types.ts} declares {@code membershipBasis} and
+ * {@code AdminMembers.tsx} draws it as a tag. Reading the table instead would answer
+ * nothing at all for anybody honorary, because the screen that grants an honorary
+ * membership does not exist yet and no such row is ever written (PDL, B50). Moving
+ * the fact is the increment that removes {@code competitor.active}, and it moves both
+ * homes and all eight readers at once.
+ *
+ * <p><b>What is NOT answered here, and why each one is a decision rather than an
+ * oversight.</b> {@code referredBy} itself - the code of whoever brought the CALLER
+ * in - is answered by nothing, because no screen in the portal reads it about
+ * oneself; what every reader of it wanted is the count above.
+ *
+ * <p>All of these omissions are the reason this resource exists. PDL, 06.09.2026,
  * measured and named exactly these fields as the ones that cannot leave the
  * public file „dok portal nema bekend", because one file was serving the public
  * side, the member's own screens and the administration at once. This is that
  * backend, and it must not repeat the file it replaces. <b>The three audiences are
- * now three different answers rather than one file</b>: the public side is the
- * answer below, the member's own screens are the two fields above, and the
- * administration is still owed a resource of its own.
+ * now three different answers out of one resource rather than one file read by
+ * three</b>: the public side is the answer below, the member's own screens are the
+ * two fields above, and the administration is the field this paragraph is about.
  *
- * <p>All five omissions are named at the call site in {@code CompetitorApiTest},
- * with the reason, and each name is checked to be one the portal really serves. A
+ * <p>All five names are named at the call site in {@code CompetitorApiTest},
+ * with the reason, and each one is checked to be one the portal really serves. A
  * field that went missing by accident and one left out on purpose look the same
- * from a test; this is what tells them apart. Two of the five are now omissions
- * from the VISITOR's answer rather than from every answer, and the cases say which
- * is which: {@code noReferralCodeLeavesTheServer} asks the visitor's answer for
- * every code in the database, and {@code aMemberIsHandedHisOwnCodeAndNobodyElses}
- * asks the member's for the other three.
+ * from a test; this is what tells them apart. Three of the five are no longer
+ * omissions from EVERY answer but from the answers of everybody they are not
+ * about, and the cases say which is which: {@code noReferralCodeLeavesTheServer}
+ * asks the visitor's answer for every code in the database,
+ * {@code aMemberIsHandedHisOwnCodeAndNobodyElses} asks the member's for the other
+ * three, and {@code theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld} asks
+ * the answers of all five kinds of caller for the basis.
  *
  * <p><b>A hidden profile is still in this list.</b> Hiding a profile is about the
  * profile PAGE (PDL P23); the member number and the name stay public (Article
@@ -144,13 +180,37 @@ import java.util.List;
 @RestController
 class CompetitorApi {
 
+	/**
+	 * THE BOX THE SUPERADMIN TICKS FOR SOMEBODY HE TRUSTS WITH THE MEMBERS, which is
+	 * what PDL P8's „moderatori sa pravom nad clanovima" is in the matrix.
+	 *
+	 * <p><b>The code as {@code admin_right.code} generates it</b>, {@code scope:target}
+	 * over the row V5 writes as {@code ('entity', 'members')}. It is a constant and not
+	 * a {@link RightIsNeeded} annotation because this route is open to everybody and
+	 * only one FIELD of the answer is guarded; an annotation would shut the list of
+	 * members to the league.
+	 *
+	 * <p><b>That costs it the floor annotations get, so it is given its own.</b>
+	 * {@code everyRightARouteAsksForIsOneTheMatrixHolds} reads the annotations off the
+	 * dispatcher and cannot see a string in a query, and the thing it guards is not a
+	 * typo but a leak: a misspelt right is refused to every moderator and ALLOWED to the
+	 * superadmin, whose mode answers yes to any string there is (see
+	 * {@link RightIsNeeded}). So it would be a door that reads shut in every case
+	 * written with a moderator. {@code theRightThisResourceAsksForIsOneTheMatrixHolds}
+	 * asks {@code admin_right} itself, in the same commit as this line.
+	 */
+	static final String OVER_THE_MEMBERS = "entity:members";
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
 
-	CompetitorApi(JdbcClient db, MemberOfAccount memberOfAccount) {
+	private final WhatHeMayDo mayHe;
+
+	CompetitorApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.mayHe = mayHe;
 	}
 
 	/**
@@ -163,13 +223,23 @@ class CompetitorApi {
 	 * @param referredCount  how many members the caller brought in whose fee is
 	 *                       standing, on the caller's own record and nowhere else.
 	 *                       The COUNT and never the column it is counted from
+	 * @param membershipBasis on what basis the membership on THIS record is held, on
+	 *                       every record of an answer the administration asked for and
+	 *                       ABSENT from every record of anybody else's - a visitor's, a
+	 *                       member's own included, and a signed in moderator who does
+	 *                       not hold {@link #OVER_THE_MEMBERS}. Absent rather than null
+	 *                       or empty, for the reason written on {@code referralCode}:
+	 *                       „I am not telling you" and „he pays nothing" must not be the
+	 *                       same shape, and a key carrying null is a key the next change
+	 *                       fills in
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, boolean firstSeason2027, int firstSeason,
 			String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String referralCode,
-			@JsonInclude(JsonInclude.Include.NON_NULL) Integer referredCount) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) Integer referredCount,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis) {
 	}
 
 	/**
@@ -189,6 +259,17 @@ class CompetitorApi {
 		   Read here rather than off `WhoIsAsking.Member`, which is the shape that
 		   record's own javadoc invites and `InboxApi` already follows. */
 		Long me = member == null ? null : memberOfAccount.competitorId(member.account());
+
+		/* AND WHETHER HE IS THE ADMINISTRATION, which is a third question and none of
+		   the two above. It is asked of the ACCOUNT and never of the member: a
+		   moderator who does not race has no member at all (V23), so reading it off
+		   `me` would refuse the ordinary case outright.
+
+		   `member != null` is not a nicety here. This is the first route to ask „may
+		   he" while standing on `ApiSecurity.READ_BY_ANYBODY`, so the principal of a
+		   visitor is Spring's anonymous token; the overload takes the caller rather
+		   than reaching for the context, and its own note says what that is for. */
+		boolean administration = member != null && mayHe.may(member, OVER_THE_MEMBERS);
 
 		return db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
@@ -217,7 +298,24 @@ class CompetitorApi {
 						   a whole number that fits the portal's own type. */
 						+ " case when c.id = :me then cast((select count(*) from competitor brought"
 						+ "  where brought.referred_by = c.id and brought.active) as integer)"
-						+ " end as referred_count"
+						+ " end as referred_count,"
+						/* AND THE BASIS, ON EVERY ROW OR ON NONE. The condition is the CALLER
+						   and never the row, which is the whole difference between this field
+						   and the two above: those are the caller's own fact and this is a fact
+						   about everybody, answered to the few who may read it. Written as
+						   `c.id = :me` it would hand the administration its own basis and
+						   nothing else, which is the shape a copy of the line above produces
+						   and `aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld` refuses.
+
+						   FALSE ANSWERS NULL AND NOT AN EMPTY STRING, so `@JsonInclude` leaves
+						   the key out and the answer of everybody else is what it was to the
+						   byte - the same rule the two fields above stand on.
+
+						   CAST, for the reason `TeamApi` writes out beside its own: a parameter
+						   standing alone in a `case` has no neighbour to take a type from and
+						   PostgreSQL refuses the statement rather than guessing. */
+						+ " case when cast(:administration as boolean)"
+						+ "  then c.membership_basis end as membership_basis"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -236,13 +334,15 @@ class CompetitorApi {
 						+ " where c.active"
 						+ " order by c.member_number")
 				.param("me", me)
+				.param("administration", administration)
 				.query((row, one) -> new Competitor(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
 						row.getBoolean(7), row.getInt(8), row.getString(9),
 						row.getObject(10) == null ? null : row.getLong(10),
 						row.getObject(11) == null ? null : row.getInt(11),
 						row.getBoolean(12), row.getString(13),
-						row.getString(14), row.getObject(15, Integer.class)))
+						row.getString(14), row.getObject(15, Integer.class),
+						row.getString(16)))
 				.list();
 	}
 }
