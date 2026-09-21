@@ -448,11 +448,11 @@ export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
 /**
  * WHOEVER IS SIGNED IN, AND WHICH OF THE TWO WAYS IN HE CAME BY.
  *
- * <p>There are two, and until the mock is switched off there go on being two. The
- * header has to ask ONE question - „is anybody signed in" (PDL, owner: „Prijavljen član
- * vidi istu naslovnu kao gost. Jedina razlika je gore desno, gde umesto Registracija /
- * Prijava stoji link ka opcijama profila") - and it must not ask it twice and get two
- * answers.
+ * <p>There are two, and there go on being two AFTER the mock was switched off on
+ * 21.09.2026. The header has to ask ONE question - „is anybody signed in" (PDL, owner:
+ * „Prijavljen član vidi istu naslovnu kao gost. Jedina razlika je gore desno, gde umesto
+ * Registracija / Prijava stoji link ka opcijama profila") - and it must not ask it twice
+ * and get two answers.
  *
  * <p><b>A real session carries no member number, and that is the server's decision
  * rather than an oversight here.</b> `GET /api/me` answers `{role, account}` and
@@ -466,9 +466,20 @@ export type SignedIn =
   /**
    * The prototype's way in: a member number, chosen on the development switch.
    *
-   * Every screen that draws a member reads the mock through this, so it wins where both
-   * are set. There is nothing to reconcile - the mock knows members and the server
-   * knows accounts - and the day `/mock` goes off (ADL A50) this arm goes with it.
+   * Every screen that draws a member reads through this, so it wins where both are set.
+   *
+   * **THIS SAID THE ARM WOULD GO WITH THE MOCK, AND THAT DAY CAME ON 21.09.2026 AND IT DID
+   * NOT GO.** The sentence is corrected here rather than left standing, because a promise
+   * about a day that has passed reads as an instruction to carry it out. What it missed is
+   * that the two arms carry different things for a reason the switch does not touch: a
+   * real session is `GET /api/me`, and `session/theServer.ts` reads `role` and `account`
+   * off it and nothing else, so a signed in MEMBER has no member number in the portal and
+   * every screen about „me" would have nothing to draw.
+   *
+   * **The server can answer it and the portal does not ask yet.** `MeApi.WhoIAm` carries
+   * `member.memberNumber` since 20.09.2026, absent for an account that races for nobody.
+   * Reading it is its own increment - the member area and the moderator's rights come off
+   * the same answer - and it is named here rather than smuggled into the switch.
    */
   | { as: 'member'; memberNumber: string }
   /** A real session, which is an account and nothing more. */

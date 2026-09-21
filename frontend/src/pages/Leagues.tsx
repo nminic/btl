@@ -53,14 +53,16 @@ import './Leagues.css'
  * nothing after it for as long as those take. That is the same bargain `Entrants` beside it
  * already makes, and the same three states, so the screen itself still draws immediately.
  *
- * **And the difference that is being paid for is real even though today only the mock shows it.**
- * `LeagueApi` builds `eventIds` by aggregating over the races it counts, so a server answer can
- * never carry an event with no counted races; the mock's `brdska-2019` can, because its list was
- * written by hand. Two readings follow, and the one taken here is deliberate: the row could have
- * kept reading `eventIds` and been right again the day /mock is switched off, OR it can read what
- * the box reads and be right on both sides of that day. The second is chosen because the first is
- * right only while somebody remembers why, and a number that disagrees with the list under it is
- * the kind of thing a member notices and nobody can explain.
+ * **And the difference that was being paid for was real, which the switch of 21.09.2026 has now
+ * settled rather than removed.** `LeagueApi` builds `eventIds` by aggregating over the races it
+ * counts, so a server answer can never carry an event with no counted races; the generated file's
+ * `brdska-2019` can, because its list was written by hand. Two readings followed, and the one taken
+ * here was deliberate: the row could have kept reading `eventIds` and been right again on the day
+ * `BASE` moved, OR it could read what the box reads and be right on both sides of that day. The
+ * second was chosen because the first is right only while somebody remembers why, and a number that
+ * disagrees with the list under it is the kind of thing a member notices and nobody can explain.
+ * The cases in this file still run against the generated file, so the arrangement that made the two
+ * readings differ is still measured.
  */
 function CountedEvents({ league }: { league: League }) {
   const { t } = useI18n()
