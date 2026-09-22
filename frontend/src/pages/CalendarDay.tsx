@@ -1,6 +1,7 @@
 import { useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { Resource } from '../components/Resource'
+import { eventsOnDay } from '../data/derive'
 import { combinePair, useEvents, useRaces } from '../data/useResource'
 import { formatDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -72,7 +73,13 @@ export function CalendarDay() {
 
       <Resource state={state}>
         {([events, races]) => {
-          const onThatDay = asked === null ? [] : events.filter((one) => one.date === asked)
+          /* Every event RUN on that day and not only the ones entered under it
+             (PDL P35, 21.09.2026). The grid sends a day with more on it than fits to
+             this page, so the two have to agree about what is on a day: read by the
+             day it was entered under, an event that began the day before is missing
+             here while the grid counted it in, and the promise the „Još N" link makes
+             is broken on exactly the days a bar exists for. */
+          const onThatDay = asked === null ? [] : eventsOnDay(events, races, asked)
 
           return onThatDay.length === 0 ? (
             <p className="calendar__empty">{t('calendar.dayEmpty')}</p>

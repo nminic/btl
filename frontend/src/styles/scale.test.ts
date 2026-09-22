@@ -1,4 +1,5 @@
 import { at } from '../test/at'
+import { cutsIn } from '../test/stylesheet'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -97,6 +98,14 @@ const ALLOWED = new Map([
   [
     'forms/FieldHint.css | inset-block-start | calc(1.5rem + var(--space-4))',
     'not a step: the letter that opens the rule is 1.5rem tall (.hint__ask), and on the one field whose head runs to several lines the rule hangs under the letter rather than under the head, so the height of the letter is what is written',
+  ],
+  [
+    'pages/Calendar.css | margin | -1px',
+    'not a space and not chosen here at all: it is one of the declarations `.visually-hidden` carries (index.css), repeated on a rule inside a media query because a class cannot be added by one. `ADL.md` A7 (31.07.2026) says hiding by width is done with „ista pravila koja nosi `visually-hidden`", so the value is that rule\'s and a case holds the two to each other (pages/calendarStyle.test.ts)',
+  ],
+  [
+    'pages/Calendar.css | margin-inline-start | calc(-3 * var(--space-8) - 2px)',
+    'not a step: how far a piece of a multi-day bar reaches back into the day before it, which is three gaps of the grid and TWO BORDERS OF ONE PIXEL. The three gaps are the token; the two pixels are `border: 1px` on `.day` and there is no token for a hairline, so they are the same kind of value as the `+ 4px` the floor of a day is measured with. Written in `rem` alone the reach is right at exactly one size of text, and wrong at every other: too short leaves a seam through the bar, too long hangs it over the day before',
   ],
   /* Four offsets that pull a thing back over the corner it sits on. Each is one
      more value nobody chose, and each is invisible; they are named here rather
@@ -389,11 +398,22 @@ describe('space and corners are chosen from the scale, not typed', () => {
        space instead of at the word, is told no, and every `clip-path: none` on
        the portal reads as a rule that hides something. */
     const TAKING_AWAY =
-      /display\s*:\s*none|visibility\s*:\s*hidden|clip-path\s*:(?!\s*none\b)|overflow\s*:\s*hidden|text-overflow\s*:\s*ellipsis/
+      /display\s*:\s*none|visibility\s*:\s*hidden|clip-path\s*:(?!\s*none\b)|text-overflow\s*:\s*ellipsis/
     /* A measured width, not `auto`: the reveal half of a label swap says
        `width: auto`, which is the opposite of narrowing a column. */
     const NARROWS = /(?:max-)?(?:inline-size|width)\s*:\s*[\d.]/
-    const CLIPS = /overflow\s*:\s*hidden|text-overflow\s*:\s*ellipsis/
+    const CLIPS = /text-overflow\s*:\s*ellipsis/
+
+    /* **And the `overflow` half is asked of the sheet, not of a pattern typed here**
+       (`test/stylesheet.ts`, `cutsIn`). It read `overflow\s*:\s*hidden` until
+       22.09.2026, which is a list of one spelling: `overflow-x: clip` was written on
+       the calendar's month that same week, took eight day boxes off a 1440px screen at
+       200% text with no scrollbar anywhere, and went through this untouched because
+       nobody had typed those characters here. The case below this one is what stops
+       the next spelling doing the same. */
+    const takesAway = (body: string) =>
+      TAKING_AWAY.test(body) || cutsIn(body).some((one) => one.cuts)
+    const clips = (body: string) => CLIPS.test(body) || cutsIn(body).some((one) => one.cuts)
 
     /* Read as `sheet selector`, each with why it costs the reader nothing. */
     const ALLOWED_TO_HIDE = new Map([
@@ -405,6 +425,14 @@ describe('space and corners are chosen from the scale, not typed', () => {
       ['pages/admin/Verification.css .member:not(:has(.pending__card--open .field__required)) .pending__legend',
         'the line saying what the star means, on a screen where every card is folded and no star is drawn'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
+      [
+        'pages/Calendar.css .chip--continues .chip__name, .chip--runs-on .chip__lengths',
+        'one name and one row of dots for a whole multi-day bar, at its two ends (owner, 22.09.2026: „naziv pise preko cele strafte, dok su tacke skroz na desnom kraju iste"), so the name is out of sight on every piece that does not OPEN the run and the dots on every piece that does not END it. MOVED OUT OF SIGHT and not taken away: these are the declarations `.visually-hidden` itself carries, which is what `ADL.md` A7 prescribes for hiding by width, so both stay in the accessibility tree at every width and a case holds that they really are those rules (pages/calendarStyle.test.ts). Each is still drawn once, in the same row and a column or two away, and this is the only width at which the days stand side by side for that to be true. It said `visibility: hidden` until 22.09.2026, which IS removal, and that left 26 tiles on a telephone that nobody could tap and no screen reader could find',
+      ],
+      [
+        'pages/Calendar.css .chip--hollow',
+        'a lane held open under a bar so the bar below keeps its line. It is the one thing in a day that carries no word at all: `aria-hidden` in the markup with a single space in it, and it was never spoken to anybody at any width, so hiding it takes nothing from anybody (pages/calendar/DayChips.tsx, HollowLane)',
+      ],
     ])
 
     const taken: string[] = []
@@ -417,7 +445,7 @@ describe('space and corners are chosen from the scale, not typed', () => {
       /* What this sheet clips wherever it says so, for the second shape. */
       const clipped = new Set(
         [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-          .filter((rule) => CLIPS.test(rule[2] ?? ''))
+          .filter((rule) => clips(rule[2] ?? ''))
           .map((rule) => (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')),
       )
 
@@ -438,7 +466,7 @@ describe('space and corners are chosen from the scale, not typed', () => {
           const selector = (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')
           const body = rule[2] ?? ''
 
-          if (TAKING_AWAY.test(body) || (NARROWS.test(body) && clipped.has(selector))) {
+          if (takesAway(body) || (NARROWS.test(body) && clipped.has(selector))) {
             taken.push(`${sheet.path} ${selector}`)
           }
         }
@@ -446,6 +474,38 @@ describe('space and corners are chosen from the scale, not typed', () => {
     }
 
     expect([...new Set(taken)].filter((one) => !ALLOWED_TO_HIDE.has(one))).toEqual([])
+  })
+
+  /**
+   * THE FLOOR UNDER THE CASE ABOVE: every way this portal cuts a box is a way somebody
+   * has classified.
+   *
+   * The case above used to name one spelling, `overflow: hidden`, and that is the whole
+   * story of `overflow-x: clip` on the calendar's month: written on 22.09.2026 to bound
+   * the name of a multi-day bar, it took eight day boxes off a 1440px screen at 200%
+   * text, every Sunday of the month whole, with **nought** of page scroll and nothing
+   * on the screen saying a day was missing. `ADL.md` A26 forbids exactly that shape.
+   * The pattern never saw it, because nobody had typed those five characters into it.
+   *
+   * **So the spelling is not guessed at.** Every `overflow` declaration in every sheet
+   * is read and matched against what `test/stylesheet.ts` says those keywords mean, and
+   * a value or a property nobody has said anything about fails HERE, once, with its own
+   * name in the message, instead of passing every guard that reads for it.
+   *
+   * This is the floor and not the rule: it does not say a box may not be cut. It says
+   * the portal may not cut one in a way its own guards cannot see.
+   */
+  it('cuts a box in no way that is not written down', () => {
+    /* Every sheet under `src`, `styles/tokens.css` among them: `sheets` above leaves
+       the token file out because the scale is what it declares, and that has nothing to
+       do with which boxes the portal cuts. */
+    const unclassified = stylesheets().flatMap((sheet) =>
+      cutsIn(sheet.css)
+        .filter((one) => !one.known)
+        .map((one) => `${sheet.path} ${one.property}: ${one.value}`),
+    )
+
+    expect(unclassified, 'name it in OVERFLOW_PROPERTIES or OVERFLOW_VALUES first').toEqual([])
   })
 })
 

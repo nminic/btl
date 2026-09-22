@@ -23,15 +23,21 @@ import java.util.regex.Pattern;
  * <p><b>THIS IS A SECOND HOME FOR A RULE THE PORTAL ALREADY SPELLS, AND THAT IS
  * SAID HERE RATHER THAN LEFT TO BE FOUND.</b> {@code frontend/src/pages/rulebookToc.ts}
  * carries {@code slugify} and {@code entityForms.ts} carries {@code eventSlug}, and
- * they are what builds the addresses in the file the portal serves today. Two homes
- * for one rule is the thing this repository refuses everywhere else, and it is
- * accepted here for one increment for one reason: ADL A3246 says the prototype's
- * {@code /mock} is switched off all at once and at the end, so until that day the
- * screen builds addresses and this server builds them too. What keeps the two from
- * drifting is not this sentence but {@code EventAddressTest}, which takes all 1167
- * events of {@code mock/events.json} and demands this class rebuild the address each
- * one was shipped with. A rule that disagrees with the portal fails on the shipped
- * data rather than on somebody noticing.
+ * they are what built the addresses in the file the portal served until
+ * 21.09.2026. Two homes for one rule is the thing this repository refuses
+ * everywhere else, and it was accepted here for one increment for one reason: ADL
+ * A50 said the prototype's {@code /mock} would switch off all at once and at the
+ * end, so until that day the screen built addresses and this server built them
+ * too. <b>PR 340 was that day</b>: {@code BASE} moved from {@code /mock} to
+ * {@code /api}, and {@code entityForms.ts} and {@code rulebookToc.ts} were not
+ * touched by it, so the second home this paragraph excused is still standing
+ * rather than closed - a question for the owner this class does not decide on its
+ * own. What keeps the two from drifting is not this sentence but
+ * {@code EventAddressTest}, which takes all 1167 events of {@code mock/events.json}
+ * - the shipped calendar's own frozen copy now, rather than anything {@code BASE}
+ * still points at - and demands this class rebuild the address each one was
+ * shipped with. A rule that disagrees with the portal fails on the shipped data
+ * rather than on somebody noticing.
  *
  * <p><b>The Cyrillic table is forty letters and the five Latin ones are written out,
  * which is the shape {@code slugify} argues for on its own side.</b> A table says

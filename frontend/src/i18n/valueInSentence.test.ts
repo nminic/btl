@@ -279,6 +279,12 @@ describe('a sentence with a value put into it', () => {
          the nominative, and that is what this formatter gives. */
       'calendar.dayTitle <- formatDate',
       'calendar.more',
+      /* „od {from} do {to}", the range a bar across several days says out loud
+         (PDL P35, 21.09.2026). Both prepositions govern the genitive, so both dates
+         take the case this formatter makes: „od 31. maja 2019. do 1. juna 2019." The
+         nominative would give „od 31. maj 2019.", which is the very fault
+         `formatDayInSentence` was written for on 05.09.2026. */
+      'calendar.spanDays <- formatDayInSentence',
       'competitors.count',
       'crop.share <- formatNumber',
       'crop.tooSmall',
