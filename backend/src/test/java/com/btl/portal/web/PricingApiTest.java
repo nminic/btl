@@ -38,10 +38,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * fails here; a price changed in a migration at all fails there.
  *
  * <p><b>WHAT THIS FILE CANNOT DO, named rather than left to be found.</b> The two
- * codebooks are tied to the file the portal serves - {@code CountryApiTest} and
- * {@code DucatApiTest} both compare the whole answer with
- * {@code frontend/public/mock/...} - and the price list has no such file. It lives
- * in {@code frontend/src/data/pricing.ts}, which is TypeScript and not data:
+ * codebooks are each tied to a file of their own: {@code DucatApiTest} compares the
+ * whole answer with {@code frontend/public/mock/ducats.json}, and
+ * {@code CountryApiTest} compares it with the bundled
+ * {@code frontend/src/data/countries.json} - and the price list has no such file. It
+ * lives in {@code frontend/src/data/pricing.ts}, which is TypeScript and not data:
  * {@code PriceListRowsTest} says so in as many words and that is why it holds the
  * decision instead. So the floor {@code Answers.everyFieldThePortalReadsIsAnswered}
  * gives every other resource is not available to this one, and the field NAMES are

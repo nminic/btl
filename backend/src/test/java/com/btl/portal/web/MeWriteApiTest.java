@@ -575,15 +575,22 @@ class MeWriteApiTest {
 								sessions.get(MODERATOR_OF_PROFILES).secret())))
 				.andReturn().getResponse().getContentAsString());
 
+		/* The answer is a flat list of items since 22.09.2026 and the tab is on the item;
+		   it used to be a row per tab with a `waiting` array under it. Read the old way
+		   this loop found no tab to walk into and quietly compared an EMPTY list, which is
+		   a shape change reaching a case that is not about shapes at all. */
 		List<String> onTheProfilesTab = new ArrayList<>();
 
-		for (JsonNode tab : queues) {
-			if (THE_PROFILES_TAB.equals(tab.path("queue").asString())) {
-				for (JsonNode item : tab.path("waiting")) {
-					onTheProfilesTab.add(item.path("body").asString());
-				}
+		for (JsonNode item : queues) {
+			if (THE_PROFILES_TAB.equals(item.path("queue").asString())) {
+				onTheProfilesTab.add(item.path("body").asString());
 			}
 		}
+
+		assertThat(onTheProfilesTab)
+				.as("the profiles tab came back empty, so the assertion below would be measuring"
+						+ " the shape of this walk rather than where the text went")
+				.isNotEmpty();
 
 		assertThat(onTheProfilesTab)
 				.as("what the member sent never reached the tab a moderator works in, so it waits"

@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
-import type { PendingItem } from '../../data/types'
+import type { PendingItem, ServedPendingItem } from '../../data/types'
+import { NO_RATING } from '../../data/types'
+import { WHOLE } from '../../components/crop'
 import { useResource, type ResourceState } from '../../data/useResource'
 import type { Decisions } from '../../session/context'
 import { useSession } from '../../session/useSession'
@@ -41,13 +43,115 @@ import { useSession } from '../../session/useSession'
  *  is the text the file gives it rather than a number out of a sequence. */
 export const WAITING = 'waiting'
 
+/**
+ * ONE WAITING ITEM AS THE SCREEN NEEDS IT, out of the one the server gives.
+ *
+ * **The six it fills are not invented, they are the portal's own word for „not
+ * here".** `PendingItem` says it of itself - „One shape for all seven, with every
+ * field always present and empty where it does not apply" - and every queue has
+ * always carried the five or six that are not its own as empty. What is new is only
+ * that the emptiness now arrives from this side, because the server has nowhere to
+ * read these six from (`ServedPendingItem` names each one and why).
+ *
+ * **The absent values are the ones the portal already reads as absent**, and never a
+ * plausible-looking stand-in: `NO_RATING` is „nobody has given a mark", which the card
+ * draws with the event page's own words for a comment nobody marked, and `WHOLE` is what
+ * `cropIn` returns for a record with no square of its own. Five of the six are held to
+ * that by a case; the sixth is `WHOLE` and cannot be, which is the paragraph at the
+ * bottom of this one.
+ *
+ * **`picture` is the empty string and this is the one that matters**, because the
+ * card asks `one.picture !== ''` before it draws a frame. Left undefined - which is
+ * what reading a field the answer has not got gives you - that test passes and the
+ * frame is drawn around nothing. The emptiness has to be a VALUE.
+ *
+ * **It fills what is missing rather than overwriting what is there, and the
+ * difference is not academic.** The answers this portal is fed do not all come off
+ * `VerificationApi`: the file under `public/mock` is a richer stand-in and is what
+ * every screen case is driven by, so a queue whose six fields the server cannot reach
+ * is still exercised end to end there. Blanking them would take eleven cases over the
+ * owner's own decisions - the address a registration is known by (PDL P8), the marks a
+ * comment carries (PDL P6), and a change of term that „stvarno upisuje nov datum"
+ * (PDL P28a, 06.08.2026) - and leave nothing measuring them.
+ *
+ * **What keeps that from being a lie is that the gap is measured elsewhere and not
+ * excused here**: `ServedPendingItem` names each of the six and why the schema cannot
+ * reach it, `servedShape.test.ts` holds the declared answer against `PendingItem` and
+ * prints exactly these six as the difference, and `PENDING.md` carries each with the
+ * table that has nowhere to hold it. A screen fed by the server shows them empty
+ * today, and that is a decision the owner has yet to take rather than something this
+ * function hides.
+ *
+ * **AND FIVE OF THE SIX VALUES ARE NOW MEASURED ON A SCREEN, which they were not until
+ * 22.09.2026 and which is why the paragraph above could have said anything it liked.**
+ * Every moderation case is fed `public/mock/verification.json`, and that file carries all
+ * six with values of its own, so nothing here decided anything and any value at all was
+ * green. `data/theRealAnswer.test.tsx` walks four of the queue screens through the answer
+ * the server really gives, in five cases, and each of `picture`, `currentDate`,
+ * `proposedDate`, `email` and `rating` set to something plausible instead of empty turns
+ * exactly one of those five red.
+ *
+ * **The sixth is `crop`, it has no reader at all, and that is written here rather than
+ * left to be found.** Measured the same day: `crop` set to a quarter of the picture
+ * leaves every case green. The one thing that reads it is `CropWindow`, and a card only
+ * draws that where `one.picture !== ''` - so while ADL A60 keeps a waiting picture out of
+ * every address the portal could ask for it at, there is nothing for a square to be a
+ * square OF. It is `WHOLE` because that is what `cropIn` answers for a record with no
+ * square of its own, and the day A60 is revisited the two come back together and this
+ * boundary goes with them.
+ */
+const ABSENT = {
+  picture: '',
+  crop: WHOLE,
+  currentDate: '',
+  proposedDate: '',
+  rating: NO_RATING,
+  email: '',
+}
+
+function itemFrom({ photoId: _photoId, ...served }: ServedPendingItem): PendingItem {
+  /* WHAT DID NOT ARRIVE IS FILLED IN; WHAT DID ARRIVE WINS. The spread order is the
+     whole rule and it is written this way round on purpose: the day the server starts
+     answering one of the six, nothing here changes and the value simply comes through.
+     Written the other way round, this file would have to be edited to stop overwriting
+     a field that had just been decided, and nothing would fail if somebody forgot. */
+  return {
+    ...ABSENT,
+    ...served,
+    id: String(served.id),
+    /* AND THE TWO NAMES THE SERVER ANSWERS IN ANOTHER SORT, which is a different thing
+       from the six above and is why they are written after the spread rather than
+       before it: those are absent, these arrive and arrive as something else.
+
+       The number is text here because a waiting item is also made up during a visit
+       and never came out of a sequence. The member number is text OR NOTHING there
+       (`ServedPendingItem` says why twice over) and is always text here, and the empty
+       string is the portal's own word for the nothing: „Who sent it in, or empty"
+       (`PendingItem.memberNumber`), with PDL P10 and the decision of 30.07.2026 for
+       the two ways of there being nobody.
+
+       **IT HAS TO BE TURNED HERE AND NOWHERE ELSE.** `canSendBack` refuses to hand an
+       item back where there is no member to hand it to, and it asks
+       `item.memberNumber !== ''` - which a null PASSES. What is on the other side of
+       that door is not a missing name on a card: an empty recipient in this portal is
+       the WHOLE LEAGUE (`session/context.ts`, `Message.to`), so a refusal addressed to
+       null would either reach nobody or, one instruction away, reach everybody. The
+       comment over that door has said since it was written that this is „exactly the
+       kind of safety that lasts until the backend hands over the first row that does
+       not" carry a number, and this is that row. */
+    memberNumber: served.memberNumber ?? '',
+  }
+}
+
 export function usePending(): ResourceState<PendingItem[]> {
-  const state = useResource<PendingItem[]>('verification')
+  const state = useResource<ServedPendingItem[]>('verification')
   const { proposals } = useSession()
 
   return useMemo(
     () =>
-      state.status === 'ready' ? { status: 'ready', data: [...state.data, ...proposals] } : state,
+      state.status === 'ready'
+        ? { status: 'ready', data: [...state.data.map(itemFrom), ...proposals] }
+        : state,
     [state, proposals],
   )
 }

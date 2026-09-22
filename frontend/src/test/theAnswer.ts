@@ -1,4 +1,4 @@
-import type { Competitor, League, RacingPair, Team } from '../data/types'
+import type { Competitor, League, RacingPair, ServedPendingItem, Team } from '../data/types'
 
 /**
  * WHAT THE BACKEND ANSWERS WITH, WRITTEN DOWN ONCE.
@@ -143,8 +143,71 @@ export const aLeague = {
 export const readAsVisitorsMember: Competitor = aCompetitor
 export const readAsMyOwnRow: Competitor = myOwnRow
 export const readAsAdministrationsRow: Competitor = aCompetitorToTheAdministration
+/**
+ * ONE ITEM WAITING FOR A MODERATOR, as `/api/verification` answers it since
+ * 22.09.2026.
+ *
+ * **This resource was the one this file did not hold, and that is exactly where the
+ * portal broke.** Until 22.09.2026 `servedShape.test.ts` named `verification` in its
+ * `notSeen` list because „its whole shape is a decision the owner has not taken", and
+ * the answer was grouped by tab: the portal asked for a flat list, was handed
+ * `{queue, waiting}` wrappers, and drew one as though it were an item. Nothing here
+ * held the two ends against each other, so the first person to find out was the owner,
+ * on QA.
+ *
+ * **A teams row and not a comments one, chosen rather than taken first.** The four
+ * fields this increment added are the teams tab's, so a sample off any other tab would
+ * carry them empty and the guard beside it would be satisfied by a server that always
+ * answered empty.
+ */
+export const aWaitingItem = {
+  queue: 'teams' as const,
+  id: 7,
+  date: '2026-09-18',
+  memberNumber: '000001',
+  who: 'Ana Anić',
+  subject: 'Timočka trkačka družina',
+  subjectId: '',
+  body: 'Devet ljudi iz Zaječara',
+  kind: '' as const,
+  city: 'Zaječar',
+  country: 'RS',
+  photoId: null,
+}
+
+/**
+ * AND ONE ABOUT SOMEBODY WITH NO MEMBER NUMBER, which is the other state of that field
+ * and has to be written down separately for the same reason `aCountedResult` is.
+ *
+ * **Two ordinary ways of there being no number, and the payments tab exists for both.**
+ * `verification.competitor_id` is nullable by V9's own decision - „A payment waiting to
+ * be recognised may be about a person who is not one yet" - and since V16 somebody who
+ * has registered and whose fee is not recorded IS a row in `competitor` and has none.
+ *
+ * **JSON null and not an empty string**, which is what `/api/comments` and
+ * `/api/results` already answer for the same fact and what `TeamApi` wrote down the
+ * measurement for: the empty string is a sentence of its own on the screen that reads
+ * it, so the two must not be spelled alike.
+ */
+export const aWaitingItemAboutNobody = {
+  ...aWaitingItem,
+  id: 8,
+  queue: 'payments' as const,
+  memberNumber: null,
+  who: 'Gordana Gorić',
+  subject: 'Gordana Gorić',
+  subjectId: '',
+  body: '',
+  city: 'Kraljevo',
+}
+
 export const readAsTeam: Team = aTeam
 export const readAsTeamWithNoMark: Team = aTeamWithNoMark
+export const readAsWaitingItem: ServedPendingItem = aWaitingItem
+/* The compiler is the assertion here as everywhere in this file: with
+   `ServedPendingItem.memberNumber` back to plain text this line does not build, which is
+   the whole of the claim that the server may answer nothing. */
+export const readAsWaitingItemWithNoNumber: ServedPendingItem = aWaitingItemAboutNobody
 export const readAsPair: RacingPair = aPair
 export const readAsLeague: League = aLeague
 
