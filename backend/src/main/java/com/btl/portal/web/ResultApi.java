@@ -21,7 +21,7 @@ import java.util.List;
  * nobody can check.
  *
  * <p><b>The names are joined and not stored, and that is the whole point of the
- * shape.</b> What the portal serves today carries the name of the race, the name
+ * shape.</b> What the portal serves carries the name of the race, the name
  * of the event and the address of the event beside every result, because a screen
  * with no database has to. Measured on that data those copies had drifted in two
  * hundred and twenty three places out of seventeen thousand six hundred and forty
@@ -36,7 +36,7 @@ import java.util.List;
  * its race's day. Reading either is reading the same fact; this reads the one the
  * rule names.
  *
- * <p><b>In the order they were run.</b> The file the portal serves today is in
+ * <p><b>In the order they were run.</b> The file the portal serves is in
  * the order the rows were written, which for an imported history is no order at
  * all; a history is read by its days.
  *

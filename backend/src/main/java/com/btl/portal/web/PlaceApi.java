@@ -32,7 +32,7 @@ class PlaceApi {
 	 * Every town, as the portal already receives them.
 	 *
 	 * <p><b>A row is an array and not an object</b>, which is what the portal
-	 * serves today. Three keys repeated forty-seven thousand times are the better
+	 * serves. Three keys repeated forty-seven thousand times are the better
 	 * part of a megabyte of the word "geonamesId" and its two companions, on top
 	 * of the largest thing the portal fetches. The shape is a decision about this
 	 * one resource, taken because of its size, and it is not the shape the rest of

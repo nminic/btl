@@ -68,7 +68,7 @@ class PairApiTest {
 	 * FIVE PAIRS, WHICH IS MORE THAN THE PORTAL SERVES, and every axis separated on
 	 * purpose.
 	 *
-	 * <p>The file the portal serves today carries two pairs (owner, 07.09.2026: „neka
+	 * <p>The file the portal serves carries two pairs (owner, 07.09.2026: „neka
 	 * dva para"), and two records cannot say much: a field that never varies is a field
 	 * a constant would answer, and an order that holds for two holds for half the orders
 	 * there are. Each list below says which wrong answer it refuses:
