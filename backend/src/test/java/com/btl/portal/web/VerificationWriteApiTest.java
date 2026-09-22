@@ -19,9 +19,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -1168,6 +1170,55 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * PDL P10b, owner 22.09.2026: AN EVENT WITH A RESULT ALREADY WRITTEN MAY NOT BE CARRIED
+	 * ACROSS 1 JANUARY, ON THE SCHEDULE QUEUE EXACTLY AS ON THE ADMINISTRATOR'S OWN TWO
+	 * ROUTES. P10b itself says so - „Ovo nikad nije bilo o prijavi termina... bilo bi
+	 * dostizno i da prijave nikad nije bilo" - so this queue is refused by the identical
+	 * question {@code EventWriteApiTest} and {@code RaceWriteApiTest} ask, not by a copy of
+	 * it.
+	 *
+	 * <p><b>Two races ten days apart</b>, so the proposal's plain seven-day shift carries the
+	 * LATER race across 1 January and leaves the earlier one on the near side of it - the
+	 * multi-day shape P10b's own boundary names, reached here through an approval instead of
+	 * through the administrator's PUT. The result sits on the race that crosses.
+	 *
+	 * <p><b>And the refusal is settled BEFORE the row is claimed</b>, the same place the
+	 * team's two refusals are settled and for the same reason: {@code stateOf(proposal)} is
+	 * still {@code "waiting"} afterwards, not spent on an approval that then did nothing.
+	 */
+	@Test
+	void approvingAScheduleChangeIsRefusedWhenItWouldCarryAResultIntoAnotherYear()
+			throws Exception {
+		long theDecemberEvent = event("decembarski-2026", "Decembarski", LocalDate.of(2026, 12, 20));
+		race(theDecemberEvent, LocalDate.of(2026, 12, 20));
+		race(theDecemberEvent, LocalDate.of(2026, 12, 30));
+		resultOf(ANA, theDecemberEvent, LocalDate.of(2026, 12, 30));
+
+		long proposal = scheduleProposalWaitingFor(ANA, theDecemberEvent, "Pomeranje decembarskog",
+				LocalDate.of(2026, 12, 20), LocalDate.of(2026, 12, 27));
+
+		MockHttpServletResponse response = decide(THE_SUPERADMIN, proposal, true, null);
+
+		assertThat(response.getStatus())
+				.as("a result already written was carried into another year and nothing refused it")
+				.isEqualTo(409);
+		assertThat(reasonIn(response))
+				.isEqualTo("Događaj ima upisane rezultate koje bi ovaj datum prebacio u drugu godinu.");
+		assertThat(stateOf(proposal))
+				.as("a refused approval claimed the queue row anyway")
+				.isEqualTo("waiting");
+		assertThat(db.sql("select date from btl_event where id = ?").param(theDecemberEvent)
+						.query((row, one) -> row.getDate(1).toLocalDate()).single())
+				.as("a refused move changed the event's day anyway")
+				.isEqualTo(LocalDate.of(2026, 12, 20));
+		assertThat(db.sql("select date from race where event_id = ? order by date")
+						.param(theDecemberEvent)
+						.query((row, one) -> row.getDate(1).toLocalDate()).list())
+				.as("a refused move changed the calendar anyway")
+				.containsExactly(LocalDate.of(2026, 12, 20), LocalDate.of(2026, 12, 30));
+	}
+
+	/**
 	 * THE FLOOR UNDER THE LIST OF TABS THIS ROUTE CARRIES OUT.
 	 *
 	 * <p>It asks the DATABASE for every queue there is rather than repeating a list, so a
@@ -1237,13 +1288,25 @@ class VerificationWriteApiTest {
 	}
 
 	private int answer(String email, long id, boolean approved, String reason) throws Exception {
+		return decide(email, id, approved, reason).getStatus();
+	}
+
+	/** The same call {@link #answer} makes, with the body kept rather than thrown away -
+	 *  what a PDL P10b refusal needs, since the status alone does not say which of this
+	 *  route's several 409s answered. */
+	private MockHttpServletResponse decide(String email, long id, boolean approved, String reason)
+			throws Exception {
 		String body = reason == null
 				? "{\"approved\":" + approved + "}"
 				: "{\"approved\":" + approved + ",\"reason\":\"" + reason + "\"}";
 
 		return http.perform(asking(email, post(decision(id)))
 						.contentType(MediaType.APPLICATION_JSON).content(body))
-				.andReturn().getResponse().getStatus();
+				.andReturn().getResponse();
+	}
+
+	private String reasonIn(MockHttpServletResponse response) throws Exception {
+		return new ObjectMapper().readTree(response.getContentAsString()).path("reason").asString();
 	}
 
 	private String stateOf(long id) {
@@ -1376,6 +1439,18 @@ class VerificationWriteApiTest {
 						+ " distance_km, ascent_m, descent_m) values (?, 'Trka', false, ?, 'length',"
 						+ " 0, 10.00, 100, 100)")
 				.params(eventId, date)
+				.update();
+	}
+
+	/** A result at the race of this event that runs on this day, for PDL P10b: the day
+	 *  comes off the race and not off the result, exactly as {@code EventWriteApiTest} and
+	 *  {@code RaceWriteApiTest} write it, which is what the composite key demands. */
+	private void resultOf(String memberNumber, long eventId, LocalDate raceDate) {
+		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m,"
+						+ " descent_m, seconds, points)"
+						+ " select (select id from competitor where member_number = ?), id, date,"
+						+ " 10.00, 100, 100, 3600, 12.34 from race where event_id = ? and date = ?")
+				.params(memberNumber, eventId, raceDate)
 				.update();
 	}
 

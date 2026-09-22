@@ -710,6 +710,123 @@ class RaceWriteApiTest {
 	}
 
 	/**
+	 * PDL P10b, owner 22.09.2026: A RACE THAT CARRIES A RESULT ALREADY WRITTEN MAY NOT BE
+	 * MOVED ACROSS 1 JANUARY.
+	 *
+	 * <p>„Ako događaj ima upisane rezultate a pomeraj datuma bi ih preveo u drugu godinu,
+	 * portal odbija izmenu i kaže zašto." „Duga" carries the fixture's only result and
+	 * stands on {@link #ITS_DAY} (2027); moved to the same December day the two address
+	 * cases below use, it would carry that result into 2026.
+	 */
+	@Test
+	void aRaceWithAResultAlreadyWrittenIsRefusedAcrossTheYear() throws Exception {
+		List<String> daysBefore = daysOfRacesOn(acted);
+
+		MockHttpServletResponse answer =
+				change(raceCalled("Duga"), anEdit().called("Duga", true)
+						.on(LocalDate.parse("2026-12-30")));
+
+		assertThat(answer.getStatus())
+				.as("a race with a result already written was carried into another year")
+				.isEqualTo(409);
+		assertThat(reasonIn(answer))
+				.isEqualTo(RaceWriteApi.THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+		assertThat(daysOfRacesOn(acted))
+				.as("the move was refused and the calendar changed anyway")
+				.isEqualTo(daysBefore);
+		assertThat(dayOfResultOn("Duga"))
+				.as("the move was refused and the result's own day changed anyway")
+				.isEqualTo(ITS_DAY.toString());
+	}
+
+	/**
+	 * PDL P10b AGAIN, NOW WITH THE RACE'S OWN DAY AND THE EVENT'S DAY IN DIFFERENT YEARS -
+	 * THE CASE {@code currentDateOfTheRace} EXISTS FOR, AND THE CASE ABOVE CANNOT REACH.
+	 *
+	 * <p>„Duga" is the earliest race of {@link #acted}, so its own day and the event's are
+	 * the same value; moving it, however far, cannot tell a server reading
+	 * {@code currentDateOfTheRace(id)} apart from one reading {@code event.get().date()}
+	 * instead, since the two read the same day. This event has two races instead, and the
+	 * one moved is the LATER of them, so the two days are two different values.
+	 *
+	 * <p><b>Reachable one route call at a time, not a row built by hand.</b> An event begun
+	 * on 2026-12-25, a second race added onto 2027-01-04 - the event's day stays in 2026,
+	 * „a race entered on a later morning leaves the event where it began" - a result written
+	 * onto that later race, and then a PUT walking it back to 2026-12-28. The race's OWN day
+	 * crosses 1 January backwards carrying a result with it; the event's day, asked of
+	 * {@link EventWriteApi#wouldStrandAResultInAnotherYear(JdbcClient, long, LocalDate,
+	 * LocalDate)} in its place, never moves at all and would see nothing to refuse.
+	 */
+	@Test
+	void aRaceWithAResultIsRefusedAcrossItsOwnYearEvenWhenTheEventsDayStaysPut() throws Exception {
+		long weekend = event("peti-2026", "Peti maraton", "2026-12-25");
+		race("peti-2026", "Rana pod petim", "2026-12-25");
+		race("peti-2026", "Kasna pod petim", "2027-01-04");
+
+		long runner = db.sql("select id from competitor where member_number = ?")
+				.param("000901").query(Long.class).single();
+		result(runner, raceCalled("Kasna pod petim"));
+
+		MockHttpServletResponse answer = change(raceCalled("Kasna pod petim"),
+				anEdit().under(weekend).called("Kasna pod petim", true)
+						.on(LocalDate.parse("2026-12-28")));
+
+		assertThat(answer.getStatus())
+				.as("the race's own day carried a result across 1 January and the event's day,"
+						+ " which never moved, was asked instead")
+				.isEqualTo(409);
+		assertThat(reasonIn(answer))
+				.isEqualTo(RaceWriteApi.THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+		assertThat(daysOfRacesOn(weekend))
+				.as("the move was refused and the calendar changed anyway")
+				.containsExactly("2026-12-25", "2027-01-04");
+		assertThat(dayOfResultOn("Kasna pod petim"))
+				.as("the move was refused and the result's own day changed anyway")
+				.isEqualTo("2027-01-04");
+	}
+
+	/**
+	 * AND THE OPPOSITE DIRECTION: A MOVE THAT NEVER LEAVES THE RACE'S OWN YEAR IS NOT
+	 * REFUSED JUST BECAUSE THE EVENT'S DAY SITS IN A DIFFERENT ONE.
+	 *
+	 * <p>The schedule reversed from the case above. The EARLIER race sets the event's day,
+	 * in 2027; the LATER race - the one carrying the result - already stands a full year
+	 * past it, in 2028, and this moves it again without ever leaving 2028.
+	 * {@link EventWriteApi#wouldStrandAResultInAnotherYear(JdbcClient, long, LocalDate,
+	 * LocalDate)} reads „from" and „to" the same calendar year and refuses nothing, no
+	 * matter what the race carries; a server asking the EVENT's day instead compares 2027
+	 * against 2028, finds them apart, and refuses a change that was never near a boundary.
+	 *
+	 * <p><b>Without this half, the case above alone would leave „the race's own day
+	 * decides" indistinguishable from „refuse whenever the two disagree".</b> That second,
+	 * narrower rule would pass every case up to here, and only this one catches it.
+	 */
+	@Test
+	void aRaceWithAResultMovesFreelyInsideItsOwnYearEvenWhenTheEventsDaySitsInAnotherOne()
+			throws Exception {
+		long weekend = event("sesti-2027", "Sesti maraton", "2027-01-04");
+		race("sesti-2027", "Rana pod sestim", "2027-01-04");
+		race("sesti-2027", "Kasna pod sestim", "2028-01-10");
+
+		long runner = db.sql("select id from competitor where member_number = ?")
+				.param("000901").query(Long.class).single();
+		result(runner, raceCalled("Kasna pod sestim"));
+
+		MockHttpServletResponse answer = change(raceCalled("Kasna pod sestim"),
+				anEdit().under(weekend).called("Kasna pod sestim", true)
+						.on(LocalDate.parse("2028-01-20")));
+
+		assertThat(answer.getStatus())
+				.as("a move that never left the race's own year was refused over the event's")
+				.isEqualTo(200);
+		assertThat(daysOfRacesOn(weekend))
+				.containsExactly("2027-01-04", "2028-01-20");
+		assertThat(dayOfResultOn("Kasna pod sestim"))
+				.as("the race moved and its result stayed on the day it no longer runs on")
+				.isEqualTo("2028-01-20");
+	}
+
+	/**
 	 * A RACE THAT MOVES ITS EVENT INTO ANOTHER YEAR MOVES THE EVENT'S ADDRESS WITH IT.
 	 *
 	 * <p>Owner, 10.08.2026: „Adresa dogadjaja je naziv i godina." The portal's own screen
@@ -720,11 +837,19 @@ class RaceWriteApiTest {
 	 * <p>The event's stored address is {@code drugi-2027} and its name is „Drugi maraton",
 	 * which do not build each other - so the address that comes back is the one the RULE
 	 * built out of the new year and cannot be the old one with a digit changed.
+	 *
+	 * <p><b>Moves {@code theMiddleRace} rather than „Duga", and that is PDL P10b's doing
+	 * (22.09.2026) and not a change of what this case measures.</b> „Duga" carries the
+	 * fixture's only result on this event, and P10b refuses exactly this move - a year
+	 * crossing - when a result would travel with it; asked of „Duga" this case would be
+	 * measuring that refusal instead of the address rule. {@code theMiddleRace} carries no
+	 * result, and the address rule reads the EVENT's name and its new earliest day, neither
+	 * of which cares which race got it there.
 	 */
 	@Test
 	void aRaceThatTakesItsEventIntoAnotherYearTakesTheAddressToo() throws Exception {
 		MockHttpServletResponse answer =
-				change(raceCalled("Duga"), anEdit().on(LocalDate.parse("2026-12-30")));
+				change(theMiddleRace, anEdit().on(LocalDate.parse("2026-12-30")));
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(answeredAddress(answer))
@@ -771,6 +896,12 @@ class RaceWriteApiTest {
 	 * hole in one of them is a hole. The race day, the event day and the address are all
 	 * read back afterwards: a refusal that had already written half of itself would answer
 	 * 409 and leave the calendar changed.
+	 *
+	 * <p><b>The "change" half moves {@code theMiddleRace}, not „Duga" - PDL P10b again.</b>
+	 * „Duga" carries the fixture's only result, and this move already crosses a year on its
+	 * own; asked of „Duga" the 409 below could be P10b's rather than the address collision
+	 * this case exists to measure. {@code theMiddleRace} carries none, so the only refusal
+	 * left standing in its way is the one this case is about.
 	 */
 	@ParameterizedTest
 	@CsvSource({"add", "change"})
@@ -782,7 +913,7 @@ class RaceWriteApiTest {
 
 		MockHttpServletResponse answer = how.equals("add")
 				? add(aForm().on(LocalDate.parse("2026-12-30")))
-				: change(raceCalled("Duga"), anEdit().on(LocalDate.parse("2026-12-30")));
+				: change(theMiddleRace, anEdit().on(LocalDate.parse("2026-12-30")));
 
 		assertThat(answer.getStatus())
 				.as("%s moved an event onto an address another event already answers at", how)

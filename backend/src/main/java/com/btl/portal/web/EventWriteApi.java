@@ -103,6 +103,11 @@ class EventWriteApi {
 
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
+	/** PDL P10b: an event with a result already written may not be moved across 1 January
+	 *  on the race that result was run at. */
+	static final String THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR =
+			"theDateWouldMoveAResultToAnotherYear";
+
 	private final JdbcClient db;
 
 	/**
@@ -239,6 +244,14 @@ class EventWriteApi {
 	 * {@code result_race_fk} is {@code on update cascade} over {@code (race_id,
 	 * race_date)}, so the database rewrites every result the moment a race is moved.
 	 *
+	 * <p><b>UNLESS THAT REWRITE WOULD LAND A RESULT IN ANOTHER YEAR (PDL P10b, owner
+	 * 22.09.2026), in which case nothing is written at all.</b> A frozen season (V17) is a
+	 * record and not a calculation, so a result cascaded into a year it was not frozen
+	 * under leaves two tables disagreeing with nothing to say so.
+	 * {@link #wouldStrandAResultInAnotherYear(JdbcClient, long, long)} asks the question
+	 * before either statement below runs, and a race with nothing recorded at it may still
+	 * cross the boundary freely - the hazard is a result moving, not a date moving.
+	 *
 	 * <p>Written without a branch on whether the day moved at all, because adding zero
 	 * days is what "it did not move" means, and a branch nothing distinguishes is a branch
 	 * nothing can measure.
@@ -271,6 +284,16 @@ class EventWriteApi {
 				return wrong;
 			}
 
+			/* PDL P10b, ASKED BEFORE ANYTHING IS WRITTEN so a refusal never leaves the
+			   event half moved. The delta is worked out once, here, and carried into the
+			   update below rather than recomputed, so the two cannot disagree about how
+			   far the races are moving. */
+			long deltaDays = ChronoUnit.DAYS.between(before.get().date(), typed.date());
+
+			if (wouldStrandAResultInAnotherYear(db, id, deltaDays)) {
+				return no(HttpStatus.CONFLICT, THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+			}
+
 			Checked checked = checked(typed);
 
 			/* THE ADDRESS AN EDIT LEAVES BEHIND, WHICH IS NOT ALWAYS THE ONE THE RULE WOULD
@@ -294,7 +317,7 @@ class EventWriteApi {
 					.update();
 
 			db.sql("update race set date = date + cast(? as int) where event_id = ?")
-					.params(ChronoUnit.DAYS.between(before.get().date(), typed.date()), id)
+					.params(deltaDays, id)
 					.update();
 
 			return ResponseEntity.ok(new Written(id, address));
@@ -442,6 +465,56 @@ class EventWriteApi {
 		return Boolean.TRUE.equals(db.sql(
 						"select exists(select 1 from btl_event where slug = ? and id <> ?)")
 				.params(address, id).query(Boolean.class).single());
+	}
+
+	/**
+	 * WHETHER SHIFTING EVERY RACE OF THIS EVENT BY THIS MANY DAYS WOULD MOVE A RESULT
+	 * ALREADY WRITTEN INTO ANOTHER CALENDAR YEAR (PDL P10b).
+	 *
+	 * <p>Owner, 22.09.2026: „Ako događaj ima upisane rezultate a pomeraj datuma bi ih
+	 * preveo u drugu godinu, portal odbija izmenu i kaže zašto." {@code result_race_fk} is
+	 * {@code on update cascade} over {@code (race_id, race_date)} (V7), so a race carried
+	 * into another year silently drags every result run at it along, while a frozen season
+	 * (V17) goes on reading whatever it was told to freeze - two records that disagree and
+	 * nothing that says so.
+	 *
+	 * <p><b>Asked of EACH race's OWN day, never of the event's single {@code date}
+	 * column.</b> A weekend event can carry one race across 1 January and leave the other
+	 * on the near side of it, and the owner's sentence is about the RESULTS moving - a
+	 * result moves exactly when the race under it does, not when the event's own column
+	 * happens to.
+	 *
+	 * <p><b>The join to {@code result} is what scopes this to races a move can actually
+	 * corrupt.</b> A race with nothing recorded at it carries nothing for the cascade to
+	 * rewrite, so carrying THAT race across the boundary is not the hazard this decision
+	 * answers - and is why {@code THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR} is refused
+	 * only where a result is the thing that would move.
+	 *
+	 * @param deltaDays the same expression {@code race.date + cast(? as int)} the write
+	 *                  below applies, asked here first so the two cannot disagree
+	 */
+	static boolean wouldStrandAResultInAnotherYear(JdbcClient db, long eventId, long deltaDays) {
+		return Boolean.TRUE.equals(db.sql(
+						"select exists(select 1 from race ra join result re on re.race_id = ra.id"
+								+ " where ra.event_id = ? and extract(year from ra.date)"
+								+ " <> extract(year from (ra.date + cast(? as int))))")
+				.params(eventId, deltaDays).query(Boolean.class).single());
+	}
+
+	/**
+	 * The same question as {@link #wouldStrandAResultInAnotherYear(JdbcClient, long, long)},
+	 * asked of ONE race moved to an explicit new day rather than of a whole event shifted by
+	 * a uniform delta - which is what {@link RaceWriteApi#change} needs, since only the one
+	 * race being edited moves and the rest of its event stands still.
+	 */
+	static boolean wouldStrandAResultInAnotherYear(JdbcClient db, long raceId, LocalDate from,
+			LocalDate to) {
+		if (from.getYear() == to.getYear()) {
+			return false;
+		}
+
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from result where race_id = ?)")
+				.param(raceId).query(Boolean.class).single());
 	}
 
 	private static boolean isNothing(String value) {
