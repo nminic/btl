@@ -239,8 +239,8 @@ describe('an event that runs over several days', () => {
 
   it('leaves a one-day event exactly as it was', async () => {
     /* A one-day event is not a bar and takes no mark a bar takes. Derived from the
-       owner's own sentence rather than quoted as it: he asked for a scale „ako se radi
-       o takvom dogadjaju" (`PDL.md:7060-7063`), which says nothing about an event that
+       owner's own sentence rather than quoted as it: he asked for a scale, PDL P35, „ako se radi
+       o takvom dogadjaju", which says nothing about an event that
        is not one, so nothing about it changes. The class is read here and nowhere else
        in this file, because this is the one claim that is about a tile carrying no new
        mark at all. */

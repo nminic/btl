@@ -59,7 +59,8 @@ class DecidingOnASubmissionTest {
 	 * THE ONE QUEUE WHERE A REFUSAL NEEDS NOTHING IN THE BOX AT ALL.
 	 *
 	 * <p>ADL A64, 22.09.2026: a comment is „ne odbija nego brise", and the note beside it is
-	 * optional and meant for a moderator rather than owed to the member (PDL 3267, 4255). So a
+	 * optional and meant for a moderator rather than owed to the member (PDL P22, „ne odbija
+	 * nego brise, a napomena je neobavezna"). So a
 	 * {@link Submission} that says {@code reasonIsOptional} must let the same empty box through
 	 * that {@link #aRefusalWithNothingInTheBoxIsRefused} just refused for the other five - the
 	 * two cases are read side by side on purpose, because a change that widened both by

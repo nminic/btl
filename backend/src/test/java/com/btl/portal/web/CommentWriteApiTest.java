@@ -506,7 +506,7 @@ class CommentWriteApiTest {
 	}
 
 	/**
-	 * THE COMMENT MAY BE LEFT EMPTY. PDL 370: „Komentar je fakultativan" - the marks are
+	 * THE COMMENT MAY BE LEFT EMPTY. PDL P6, „Komentar je fakultativan" - the marks are
 	 * not, and the two are refused on different terms.
 	 */
 	@Test
@@ -643,7 +643,8 @@ class CommentWriteApiTest {
 
 	/**
 	 * THE FORM DOES NOT ASK WHETHER THIS MEMBER RAN THE EVENT, AND NEITHER DOES THIS
-	 * ROUTE - PDL 371 names two places that do, the screen and the moderator, and this is
+	 * ROUTE - PDL P6, „forma je ne nudi kome ne pripada, a moderator vidi šta je stiglo"
+	 * names two places that do, the screen and the moderator, and this is
 	 * not a third.
 	 */
 	@Test
@@ -665,8 +666,10 @@ class CommentWriteApiTest {
 
 	/**
 	 * A SECOND RATING OF ONE EVENT BY ONE MEMBER IS ACCEPTED WHILE THE FIRST STILL WAITS -
-	 * PDL 3206 says abuse is not expected of somebody signed in, and the moderator is the
-	 * gate PDL 371 already names, not this route.
+	 * PDL P21, „Rezultate prijavljuju samo ulogovani korisnici, pa se tu ne očekuje
+	 * zloupotreba" says abuse is not expected of somebody signed in, and the moderator is
+	 * the gate PDL P6, „forma je ne nudi kome ne pripada, a moderator vidi šta je stiglo"
+	 * already names, not this route.
 	 */
 	@Test
 	void aSecondRatingOfOneEventByOneMemberIsAcceptedWhileTheFirstStillWaits() throws Exception {

@@ -452,8 +452,9 @@ class PhotoApiTest {
 	/**
 	 * THE THREE WAYS OF BEING TOLD THERE IS NO PICTURE ARE ONE ANSWER.
 	 *
-	 * <p>PDL:6165, the owner's decision of 13.09.2026 arriving here: „Preusmerenje mora da
-	 * se ponasa isto i za profil koga nema... Oba slucaja dobijaju isti ishod." A row whose
+	 * <p>PDL „Privatnost profila", „Preusmerenje mora da se ponasa isto i za profil koga
+	 * nema" - the owner's decision of 13.09.2026 arriving here, and, further down the same
+	 * passage, „Oba slucaja dobijaju isti ishod." A row whose
 	 * file has gone must not be told apart from a digest nobody ever wrote, or a caller with
 	 * no session learns which digests name rows, one request at a time.
 	 *
@@ -812,7 +813,7 @@ class PhotoApiTest {
 	/**
 	 * AND A PICTURE THAT IS NOT PUBLIC IS ANSWERED EXACTLY WHAT A DIGEST NOBODY WROTE IS.
 	 *
-	 * <p>PDL:6165, the owner: „Oba slucaja dobijaju isti ishod." Told apart by anything at
+	 * <p>PDL „Privatnost profila", „Oba slucaja dobijaju isti ishod", the owner. Told apart by anything at
 	 * all, the refusal would say „this digest names a picture somebody is having moderated",
 	 * which is the very sentence being withheld - and at an address nobody hands out, the
 	 * only way to learn a digest is to be the person whose picture it is or to have taken it

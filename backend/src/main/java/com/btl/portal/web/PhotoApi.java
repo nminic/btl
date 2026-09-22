@@ -39,10 +39,11 @@ import java.util.regex.Pattern;
  * Climbing out of the folder is therefore not refused here, it is unsayable.
  *
  * <p><b>THE ADDRESS IS THE DIGEST AND NOT THE KEY, and that is the decision of
- * 13.09.2026 arriving at a second resource.</b> PDL:6165: „Preusmerenje mora da se ponasa
- * isto i za profil koga nema. Ako skriven profil vodi na naslovnu a nepostojeci kaze 'nije
- * pronadjen', posetilac po razlici saznaje koji brojevi pripadaju skrivenim clanovima, sto
- * je upravo ono sto se krije." A picture addressed by {@code photo.id} is countable: a
+ * 13.09.2026 arriving at a second resource.</b> PDL „Privatnost profila", „Preusmerenje
+ * mora da se ponasa isto i za profil koga nema. Ako skriven profil vodi na naslovnu a
+ * nepostojeci kaze 'nije pronadjen', posetilac po razlici saznaje koji brojevi pripadaju
+ * skrivenim clanovima, sto je upravo ono sto se krije." A picture addressed by {@code
+ * photo.id} is countable: a
  * visitor walking 1, 2, 3 learns how many pictures the portal holds and, the day a hidden
  * member has one, that his exists. Sixty four hexadecimal characters are not walked.
  * <b>It is not a substitute for a rule about WHICH pictures are public</b>, and the
@@ -72,12 +73,12 @@ import java.util.regex.Pattern;
  * rather than left to be found:</b> a picture nothing holds at all - uploaded and not yet
  * attached to anything - answers the same as a digest nobody wrote, and that is the
  * direction P-javno asks for. <b>And a picture that IS refused answers exactly what an
- * absent one answers</b>, by PDL:6165's „Oba slucaja dobijaju isti ishod": told apart, the
- * refusal would say „this digest names a picture somebody is having moderated", which is
+ * absent one answers</b>, by PDL „Privatnost profila", „Oba slucaja dobijaju isti ishod":
+ * told apart, the refusal would say „this digest names a picture somebody is having moderated", which is
  * the very thing being withheld. {@code PhotoApiTest} keeps one case per holder, because
  * this is a fact with four states and not two.
  *
- * <p><b>The whole picture and never the crop.</b> PDL:1653: „Odseceni deo se ne baca.
+ * <p><b>The whole picture and never the crop.</b> PDL P11, „Odseceni deo se ne baca.
  * Slika ostaje cela, a isecak se pamti pored nje." The three fractions are answered beside
  * the thing they belong to - {@link TeamApi} already serves a team's - and nothing here
  * reads them: a route that cut the bytes would be the one place in the portal where the
@@ -100,8 +101,9 @@ import java.util.regex.Pattern;
  *
  * <p><b>A row whose file is not there is answered exactly as a digest nobody wrote.</b>
  * Any other number would be a sentence about the database: 500 or 410 would say „this
- * digest names a row and the row is broken", which is the same subtraction PDL:6165 shuts
- * for profiles, available to anybody with no session. So the operator is told - the WARN
+ * digest names a row and the row is broken", which is the same subtraction PDL „Privatnost
+ * profila", „Oba slucaja dobijaju isti ishod" shuts for profiles, available to anybody with
+ * no session. So the operator is told - the WARN
  * below is the only place that fault exists - and the caller is told what a caller of an
  * address that is not there is told. The two answers are not merely the same NUMBER: both
  * go out through {@code sendError}, so the container's own ERROR dispatch writes both, and

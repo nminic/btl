@@ -331,7 +331,7 @@ class VerificationWriteApiTest {
 
 		anasScheduleChange = scheduleProposalWaitingFor(ANA, theWeekendEvent,
 				"Promena termina prvog dogadjaja", SATURDAY, A_WEEK_LATER);
-		/* BACKWARDS (PDL 1056), and off the bare event so this row's axis is purely the
+		/* BACKWARDS (PDL P9, „kalendar sme da se menja unazad"), and off the bare event so this row's axis is purely the
 		   direction and not entangled with whether races move too. */
 		verasScheduleChange = scheduleProposalWaitingFor(VERA, theBareEvent,
 				"Promena termina treceg dogadjaja", THE_BARE_EVENTS_DAY, EARLIER_IN_THE_CALENDAR);
@@ -1002,8 +1002,8 @@ class VerificationWriteApiTest {
 	/**
 	 * A COMMENT IS NEVER REFUSED FOR WANT OF A REASON (ADL A64 A4).
 	 *
-	 * <p>PDL 3267 and 4255, the same sentence twice: „ne odbija nego brise, a napomena je
-	 * neobavezna". So the empty box that turns {@link #aRefusalWithNothingInTheBoxIsNotADecision}
+	 * <p>PDL P22, „ne odbija nego brise, a napomena je
+	 * neobavezna", the same sentence stated twice in the diary. So the empty box that turns {@link #aRefusalWithNothingInTheBoxIsNotADecision}
 	 * into a 400 on the profiles tab must turn into a plain 200 here, and nothing is
 	 * published: {@code publishTheComment} is never called on a refusal, which this proves
 	 * by there being no row in {@code event_comment} afterwards.
@@ -1018,8 +1018,9 @@ class VerificationWriteApiTest {
 				.as("a refused comment was published anyway")
 				.isZero();
 
-		/* AND NOBODY IS TOLD, which is the other half of PDL 3267: the note beside a deleted
-		   comment is „namenjena moderatorima", never a reason handed to the member the way
+		/* AND NOBODY IS TOLD, which is the other half of PDL P22, „Jedini red bez njega je red
+		   komentara, gde se ne odbija nego brise, a napomena je neobavezna i namenjena
+		   moderatorima": the note beside a deleted comment is never a reason handed to the member the way
 		   PDL P22 hands one to every other queue's refusal. */
 		assertThat(db.sql("select count(*) from message").query(Integer.class).single())
 				.as("a comment's refusal reached somebody's inbox")
@@ -1124,7 +1125,7 @@ class VerificationWriteApiTest {
 				.containsExactly(A_WEEK_LATER, A_WEEK_LATER.plusDays(1));
 	}
 
-	/** The calendar may be changed backwards (PDL 1056), and {@code verasScheduleChange}
+	/** The calendar may be changed backwards (PDL P9, „kalendar sme da se menja unazad"), and {@code verasScheduleChange}
 	 *  asks for exactly that: a day earlier than the one the event stood on. */
 	@Test
 	void approvingAScheduleChangeMayMoveTheCalendarBackwards() throws Exception {
