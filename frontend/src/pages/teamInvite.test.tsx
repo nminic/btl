@@ -1,12 +1,35 @@
 import { screen, within } from '@testing-library/react'
 import { must } from '../test/at'
+import { clearResourceCache } from '../data/client'
+import { fakeQueue } from '../test/fakeQueue'
 import { renderAt } from '../test/render'
+import { theCookieNames } from '../test/setup'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useClock } from '../clock/useClock'
 import { recordKey } from '../session/context'
 import { MEMBERS } from './admin/entityForms'
 import { useSession } from '../session/useSession'
+import type { Asked } from '../test/serverAnswers'
+
+/* A SERVER IN FRONT OF `POST /api/teams`, THE FOUR CASES HERE THAT PROPOSE ONE THROUGH
+ * THE FORM AND THEN OPEN THE MODERATOR'S QUEUE IN THE SAME VISIT. `test/setup.ts`
+ * answers a bare 201 by default, which is enough for the thirty-odd cases in this file
+ * that never touch `/sr/novi-tim` at all; `fakeQueue()` is the fuller stand-in for the
+ * four that walk on, the identical shape `proposeTeam.test.tsx` installs for the
+ * identical reason. Each of the four also asks for a fresh page before reading the
+ * queue (`clearResourceCache()`), because `data/client.ts` caches `verification` for
+ * the length of a visit and nothing invalidates it after a write. */
+let queue: { asked: Asked[]; stop: () => void } | null = null
+
+beforeEach(() => {
+  queue = fakeQueue()
+})
+
+afterEach(() => {
+  queue?.stop()
+  queue = null
+})
 
 /* „Pozovi u tim", from the press to the answer.
  *
@@ -68,12 +91,29 @@ import { useSession } from '../session/useSession'
  */
 const SEVERAL_SCREENS = SLOW * 2
 
-/** The reader becomes somebody else inside one visit. */
+/**
+ * The reader becomes somebody else inside one visit.
+ *
+ * <p><b>And the fake server is told the same thing, since 22.09.2026.</b> This button
+ * has no real counterpart at all - a superadmin cannot actually become a member's
+ * session in production, this is purely a way to walk several people's screens without
+ * a `renderAt` each - so there is no real route whose behaviour it need match. What DOES
+ * need to agree is `fakeQueue()`, which stands in for `TeamWriteApi` reading the
+ * submitter off the session: without this, a proposal sent after „postani 000002" would
+ * still be recorded under whoever `renderAt` first named, which is a different member
+ * for every case in this file that becomes somebody before it proposes.
+ */
 function Become({ who }: { who: string }) {
   const { signIn } = useSession()
 
   return (
-    <button type="button" onClick={() => { signIn(who) }}>
+    <button
+      type="button"
+      onClick={() => {
+        signIn(who)
+        theCookieNames({ role: 'competitor', memberNumber: who })
+      }}
+    >
       postani {who}
     </button>
   )
@@ -662,6 +702,7 @@ describe('the third door writes the season the other two write', () => {
        What it writes now is the first season that has not begun, which is what the other two
        doors write and what the concept is called (`transfersTakeEffect`). */
     await user.click(screen.getByRole('button', { name: 'danas je 2027-01-05' }))
+    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -880,6 +921,7 @@ describe('the day the notice carries, on the other two doors', () => {
 
     await user.click(screen.getByRole('button', { name: 'danas je 2027-01-05' }))
     await user.click(screen.getByRole('button', { name: 'postani 000007' }))
+    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -1031,6 +1073,7 @@ describe('the third door, and the team that was joined', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
+    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -1094,6 +1137,7 @@ describe('the third door, and the team that was joined', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
+    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })

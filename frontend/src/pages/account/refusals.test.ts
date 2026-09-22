@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { WHEN_CONFIRMING_AN_ADDRESS, WHEN_REGISTERING, WHEN_SETTING_A_PASSWORD } from './refusals'
+import {
+  WHEN_CONFIRMING_AN_ADDRESS,
+  WHEN_PROPOSING_A_TEAM,
+  WHEN_RATING_AN_EVENT,
+  WHEN_REGISTERING,
+  WHEN_SETTING_A_PASSWORD,
+} from './refusals'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -53,6 +59,12 @@ describe('the reasons the server can name', () => {
        is the point - the gate is over the NAMES a route declares, and a name is what
        the screen looks a sentence up by, whichever number carried it. */
     ['RegistrationApi.java', WHEN_REGISTERING, 3],
+    /* The fourth and fifth, added 22.09.2026 when ProposeTeam.tsx and RateEvent.tsx
+       began to send: two more members' writes that answer 201 rather than 204, which
+       is `askTheServer`'s own widening and not a fact this gate has any reason to
+       know about - the reasons a route can name are still just names. */
+    ['TeamWriteApi.java', WHEN_PROPOSING_A_TEAM, 5],
+    ['CommentWriteApi.java', WHEN_RATING_AN_EVENT, 3],
   ]
 
   it.each(routes)('are all answered on the screen that meets %s', (file, screen, howMany) => {

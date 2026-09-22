@@ -1,11 +1,56 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
-import { measurePicture } from '../../test/picture'
+import { clearResourceCache } from '../../data/client'
+import { fakeQueue } from '../../test/fakeQueue'
 import { renderAt } from '../../test/render'
+import { refused, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { Saved } from '../../test/saved'
 import { setupUser } from '../../test/user'
+import type { Asked } from '../../test/serverAnswers'
+
+/**
+ * A FRESH VISIT, SIMULATED IN PLACE, for a case that proposes and then reads the
+ * moderator's queue in the same test.
+ *
+ * <p><b>Why a case needs this at all.</b> `data/client.ts` caches a resource for the
+ * length of a visit, and nothing in the application invalidates it after a write - that
+ * is true today regardless of this file, and is not something a test screen should paper
+ * over. A superadmin who also races (`MODERATE_AND_RACE` is exactly this person on the
+ * Java side) proposing a team and then opening the queue WITHOUT a fresh page in between
+ * would see this same staleness for real; what stands between them and it in production
+ * is that nobody has yet decided whether or how the cache should be invalidated. A case
+ * that wants to read the queue after proposing has to ask for that fresh page honestly,
+ * the same way a reader would have to reload one - never by teaching the fake server to
+ * invalidate a cache the real one does not.
+ */
+function asIfNewlyLoaded(): void {
+  clearResourceCache()
+}
+
+/* EVERY CASE HERE HAS A SERVER IN FRONT OF IT, BECAUSE SINCE 22.09.2026 THIS SCREEN
+ * SPEAKS TO ONE.
+ *
+ * Before that a press wrote straight into the session and the queue read the same
+ * session back, so a case that proposed and then opened the moderator's queue was
+ * really reading its own local state twice. `TeamWriteApi` is real now, and
+ * `test/setup.ts` answers a bare 201 by default - enough for a case that only asks
+ * whether the confirmation appeared. `fakeQueue()` is the fuller stand-in, remembering
+ * what was posted and answering `GET /api/verification` with it added to the file, for
+ * every case that walks on into the queue in the same visit. Installed once here
+ * because it is a strict superset of the file it stands in front of: a case that posts
+ * nothing sees exactly what the file already held. */
+let queue: { asked: Asked[]; stop: () => void } | null = null
+
+beforeEach(() => {
+  queue = fakeQueue()
+})
+
+afterEach(() => {
+  queue?.stop()
+  queue = null
+})
 
 /* A team put forward by a member, and the queue that has been waiting for one.
  *
@@ -204,57 +249,56 @@ describe('a proposal a member sends', () => {
     expect(screen.getByText(/„Trkači Morave" čeka odluku moderatora/)).toBeVisible()
   })
 
-  it('carries the logo and the square of it the member chose, all the way to the team', async () => {
-    /* Owner, 12.08.2026: cropping inside the site is for profile pictures and
-       team pictures, and whoever approves „treba da vidi isto fokus na vidljiv
-       deo slike i zatamnjen ali dovoljno vidljiv ostatak".
+  it('offers no way to attach a logo, and the request names none', async () => {
+    /* Owner, 12.08.2026: cropping inside the site is for profile pictures and team
+       pictures. This screen offered it until 22.09.2026, through a `CropChooser` a
+       member could choose a picture into and cut - and until that day, choosing and
+       cutting travelled all the way to the moderator's card, because the press wrote
+       straight into the session and the queue read the very same session back.
 
-       So this walks the whole way: choose a picture, cut it, send it, read it on
-       the moderator's card, approve, and find it on the team. Each half was
-       written separately and each half passed alone; what nothing checked was
-       that the same picture came out of the other end. */
+       WHAT CHANGED ON 22.09.2026: `TeamWriteApi` is the route now, and its own javadoc
+       says at length that no signature under the backend carries a picture from this
+       address. A field that still let a member choose and cut one kept confirming a
+       send that then silently dropped it, which is worse than not offering it at all -
+       the owner's own words, „Skloni polje dok put ne postoji". So this case no longer
+       measures a boundary between choosing and sending (there is nothing left to
+       choose): it measures that the field is gone from the screen, and that what this
+       screen sends still names nothing of it - the same shape `EditTeam.tsx` has drawn
+       round its own form from the start. */
     const user = setupUser()
-    /* Signed in as somebody who may also decide, because this walks both
-       ends of the flow and the administration is shut to a competitor. */
-    const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
-    await user.upload(
-      await screen.findByLabelText(/Znak tima/),
-      new File(['znak'], 'znak-tima.png', { type: 'image/png' }),
-    )
-    await measurePicture()
+    /* Waited for rather than asked outright: `Resource` above draws nothing of the
+       form until the competitors and the teams have loaded, and a query fired before
+       that settles finds no label at all - not because there is no logo field, but
+       because there is no form yet. `findByLabelText` on a field this form still has
+       is what proves the screen has actually settled before the absence below is
+       asked about. */
+    await screen.findByLabelText(/Naziv tima/)
 
-    const cutting = within(await screen.findByRole('group', { name: 'Isecanje slike' }))
-
-    fireEvent.change(cutting.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
-    fireEvent.change(cutting.getByLabelText('Pomeri gore i dole'), { target: { value: '0' } })
+    expect(screen.queryByLabelText(/Znak tima/)).toBeNull()
 
     await fill(user, 'Trkači Morave')
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
-    await router.navigate('/sr/administracija/verifikacija/timovi')
-
-    const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
-    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
-
-    /* The moderator sees the picture, cut where the member cut it, with the rest
-       still under the shade. */
-    const shown = must(
-      card.getByAltText(/Slika koju je poslao/).closest('.crop'),
-      'the picture on the card',
+    /* By the verb as well as the path: `ProposeTeam.tsx` also reads `GET /api/teams`
+       for the name check at the door, and that request landed in this same list
+       first. */
+    const sent = must(
+      must(queue, 'the fake server').asked.find(
+        (one) => one.path === '/api/teams' && one.init?.method === 'POST',
+      ),
+      'the proposal this case sent',
     )
 
-    expect(must(shown.querySelector('.crop__frame'), 'the lit square')).toHaveStyle({
-      inlineSize: '50%',
-      insetBlockStart: '0%',
-    })
-
-    await user.click(card.getByRole('button', { name: 'Odobri' }))
-    await router.navigate('/sr/administracija/timovi')
-
-    const list = within(await screen.findByRole('table', { name: 'Timovi' }))
-
-    expect(list.getByText('Trkači Morave')).toBeVisible()
+    expect(Object.keys(JSON.parse(String(sent.init?.body))).sort()).toEqual([
+      'bio',
+      'city',
+      'country',
+      'link',
+      'name',
+      'note',
+    ])
   })
 
   it('refuses to send without the three things it asks for', async () => {
@@ -265,6 +309,76 @@ describe('a proposal a member sends', () => {
 
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
     expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(3)
+  })
+
+  it('says why when the server refuses a proposal, and changes nothing on the screen', async () => {
+    /* A case about the answer rather than about any rule that produces it - the door
+       already refuses an unknown country nowhere this fixture can reach, so the server
+       is told to say it anyway. This is testing what the screen does with a refusal,
+       not which refusals `TeamWriteApi` really makes here. */
+    const server = serverThat((path, init) =>
+      path === '/api/teams' && init?.method === 'POST' ? refused('theCountryIsNotKnown') : null,
+    )
+
+    try {
+      const user = setupUser()
+      renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+      await fill(user, 'Trkači Morave')
+
+      expect(await screen.findByText('Izabrana država nije prepoznata.')).toBeVisible()
+      /* Nothing moved: the form still holds what was typed. */
+      expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
+      expect(screen.getByLabelText(/Naziv tima/)).toHaveValue('Trkači Morave')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('refuses a second press while the first is still out', async () => {
+    /* The guard `Registration.tsx` and `RateEvent.tsx` both keep, measured here rather
+       than assumed: a request is held open with a promise nothing has resolved yet
+       (`test/serverAnswers.ts`, „the only way to measure what a screen does while it is
+       waiting"), and a second press while it is out must not send a second request. */
+    let letGo: (() => void) | null = null
+    const server = serverThat((path, init) => {
+      if (path !== '/api/teams' || init?.method !== 'POST') {
+        return null
+      }
+
+      return new Promise<Response>((resolve) => {
+        letGo = () =>
+          resolve(
+            new Response(JSON.stringify({ id: 1, name: 'Trkači Morave' }), {
+              status: 201,
+              headers: { 'content-type': 'application/json' },
+            }),
+          )
+      })
+    })
+
+    try {
+      const user = setupUser()
+      renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+      await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+
+      const send = screen.getByRole('button', { name: 'Pošalji predlog' })
+
+      await user.click(send)
+      await user.click(send)
+
+      must<() => void>(letGo, 'the way to answer the request this case is holding open')()
+
+      expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
+      expect(
+        server.asked.filter((one) => one.path === '/api/teams' && one.init?.method === 'POST'),
+      ).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
   })
 })
 
@@ -289,6 +403,9 @@ describe('a member who founds a team', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
+    /* A fresh page for the moderator half of this member, honestly asked for rather
+       than assumed: see `asIfNewlyLoaded`'s own note. */
+    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -326,6 +443,7 @@ describe('a member who has founded one team', () => {
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
+    asIfNewlyLoaded()
   }
 
   const approve = async (user: ReturnType<typeof setupUser>, name: string) => {
@@ -708,6 +826,7 @@ describe('a proposal from somebody the member list does not hold', () => {
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
 
+    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
 
@@ -731,6 +850,7 @@ describe('the queue of new teams', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
+    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
@@ -739,9 +859,20 @@ describe('the queue of new teams', () => {
     /* Beside the ones from the file, not instead of them. */
     expect(items.length).toBeGreaterThan(1)
     expect(within(waiting).getByText('Trkači Morave')).toBeVisible()
-    /* Carrying who asked and what they said, which is what a moderator decides
-       on: a name and a town with nobody attached is not a thing to judge. */
-    expect(within(waiting).getByText(/Čačak, Srbija\. Trčimo zajedno već tri godine\./)).toBeVisible()
+
+    const card = within(
+      must(items.find((one) => /Trkači Morave/.test(one.textContent ?? '')), 'the card just sent'),
+    )
+
+    /* Carrying what they said, which is what a moderator decides on: `body` is
+       the note alone (`TeamWriteApi.write`: „note is not the team's description
+       ... a sentence addressed to a moderator is not a thing the team would
+       afterwards carry"), and the town is not built into it - it is on the card
+       as its own two fields, which `TeamFields` draws as inputs a moderator may
+       still correct (owner, 03.08.2026). */
+    expect(card.getByText('Trčimo zajedno već tri godine.')).toBeVisible()
+    expect(card.getByLabelText('Mesto')).toHaveValue('Čačak')
+    expect(card.getByLabelText(/^Država/)).toHaveValue('RS')
   })
 
   it('names a country from outside the region, not its code', async () => {
@@ -762,11 +893,24 @@ describe('the queue of new teams', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
+    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
+    const card = within(
+      must(
+        within(waiting)
+          .getAllByRole('listitem')
+          .find((one) => /Kranjski tekači/.test(one.textContent ?? '')),
+        'the card just sent',
+      ),
+    )
 
-    expect(within(waiting).getByText(/Kranj, Slovenija\./)).toBeVisible()
+    /* The country is on the card as its own field now (`TeamFields`), read by the
+       code the form sent and drawn as the name the select already shows it under -
+       never composed into a sentence here, which is what answered `country.SI`
+       when the select was asked for a code it had no name for. */
+    expect(card.getByLabelText(/^Država/)).toHaveValue('SI')
     expect(within(waiting).queryByText(/country\./)).toBeNull()
   })
 
@@ -797,6 +941,7 @@ describe('the queue of new teams', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
+    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
     await screen.findByRole('list', { name: /Čeka/ })
 
@@ -814,6 +959,7 @@ describe('a proposal a moderator accepts', () => {
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
+    asIfNewlyLoaded()
   }
 
   it('writes to the member who asked for it, in the inbox', async () => {

@@ -1,27 +1,22 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
 import { RequiredNote } from '../../forms/AskedLabel'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
-import {
-  combineFour,
-  useCompetitors,
-  useEvents,
-  useRaces,
-  useResults,
-} from '../../data/useResource'
+import { combineResources, useEvents, useRaces, useResults } from '../../data/useResource'
 import { ran } from './ran'
 import { prijava } from '../../forms/definitions'
 import { LongBox } from '../../forms/LongBox'
 import { limitOf } from '../../forms/records'
-import { WHOLE } from '../../components/crop'
 import { useI18n } from '../../i18n/useI18n'
 import { useSend, useSent } from '../sent'
-import { useSession } from '../../session/useSession'
 import { useMemberScreen } from '../member/memberScreen'
 import { NotRunYet } from './NotRunYet'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { WHEN_RATING_AN_EVENT } from '../account/refusals'
+import { ServerSaid } from '../account/ServerSaid'
 import '../member/Member.css'
 
 /**
@@ -63,9 +58,13 @@ function RateOne() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
   const today = useToday()
-  const { propose } = useSession()
   const who = useMemberScreen()
-  const state = combineFour(useEvents(), useCompetitors(), useResults(), useRaces())
+  /* THREE RESOURCES AND NOT FOUR, since 22.09.2026: the competitor list was read only
+     to put a display name on the local proposal this screen used to write. The name a
+     moderator sees now comes off `verification.competitor_id`, read live by
+     `VerificationApi` at the moment the queue is drawn - never a copy this screen
+     carries in the request. One fewer resource this screen waits on. */
+  const state = combineResources(useEvents(), useResults(), useRaces())
   const [rating, setRating] = useState<EventRating>(NO_RATING)
   const [comment, setComment] = useState('')
   /* Held by the address rather than by the screen, so that the way back from this
@@ -73,6 +72,18 @@ function RateOne() {
      05.09.2026). */
   const sent = useSent() !== undefined
   const confirm = useSend()
+  /* What the server answered, where it has answered anything that is not „done". A
+     rating that succeeded leaves this screen altogether (`confirm` below), so the
+     only answer this ever holds is one the reader is owed a sentence about - the
+     same shape `Registration.tsx` keeps for the identical reason. */
+  const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  const [sending, setSending] = useState(false)
+  /* A second press while the first is still out would send the same rating twice;
+     `TeamWriteApi`'s own screen (`ProposeTeam.tsx`) and `Registration.tsx` both guard
+     the identical race with a ref rather than the state beside it, since the ref is
+     read and written in the same tick and a redraw cannot land between two presses
+     that arrive before one. */
+  const outstanding = useRef(false)
 
   if (who.memberNumber === null) {
     return who.instead
@@ -94,7 +105,7 @@ function RateOne() {
   return (
     <div className="member">
       <Resource state={state}>
-        {([events, competitors, results, races]) => {
+        {([events, results, races]) => {
           const found = events.find((one) => one.slug === slug)
 
           if (found === undefined) {
@@ -117,45 +128,61 @@ function RateOne() {
             return <NotRunYet why="notRanIt" />
           }
 
-          const me = competitors.find((one) => one.memberNumber === mine)
-          const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
           /* Nothing to send until all three are given: the overall is their
              average, so a mark left out is published as a nought. */
           const waiting = RATING_MARKS.some((mark) => rating[mark] === 0)
 
-          function send() {
-            /* Says so rather than being switched off, so nothing stops the
-               press but this: the rating is not complete and the reason is on
-               the screen beside the button. */
-            if (waiting) {
+          /**
+           * Sends the rating, and decides what the reader sees by what came back.
+           *
+           * <p><b>THE CONFIRMATION IS DRAWN ONLY AFTER 201</b>, `Registration.tsx`'s own
+           * shape: the rating and the comment go to the queue a moderator reads
+           * (PDL P22), and until the server has said so there is nothing sent to be
+           * confirmed.
+           *
+           * <p><b>Refused, nothing moves.</b> The three stars and the box stay exactly
+           * as they were, and the sentence appears beneath the button - never the reason
+           * the button is already disabled for (`waiting`), which is said in its own
+           * place and needs no round trip to know.
+           */
+          async function submit(): Promise<void> {
+            outstanding.current = true
+            setSending(true)
+            /* AND THE LAST REFUSAL GOES WHILE THIS ONE IS OUT, for the reason
+               `Registration.tsx` gives it: a reader who presses again should not read
+               the old sentence over a request that is still in flight. */
+            setRefusal(null)
+
+            const answer = await askTheServer('/api/comments', {
+              eventId: event.id,
+              organisation: rating.organisation,
+              value: rating.value,
+              ambience: rating.ambience,
+              body: comment,
+            })
+
+            outstanding.current = false
+            setSending(false)
+
+            if (answer.got === 'done') {
+              confirm(`/${locale}/kalendar/${slug}`, true)
+
               return
             }
 
-            propose({
-              queue: 'comments',
-              /* No picture on this queue, and so no square of one: five of
-                 the seven carry neither (data/types.ts). */
-              picture: '',
-              crop: WHOLE,
-              /* No sorts on this queue: one is only told apart where a queue
-                 holds two (data/types.ts, `kind`). */
-              kind: '',
-              date: today,
-              memberNumber: mine,
-              who,
-              subject: event.name,
-              /* By the id as well, because approving it publishes a comment about
-                 this edition and not about whatever else carries the name. */
-              subjectId: String(event.id),
-              body: comment,
-              currentDate: '',
-              proposedDate: '',
-              email: '',
-              city: '',
-              country: '',
-              rating,
-            })
-            confirm(`/${locale}/kalendar/${slug}`, true)
+            setRefusal(answer)
+          }
+
+          function send() {
+            /* Says so rather than being switched off, so nothing stops the
+               press but this: the rating is not complete and the reason is on
+               the screen beside the button. A second press while the first is
+               still out is refused the same silent way. */
+            if (waiting || outstanding.current) {
+              return
+            }
+
+            void submit()
           }
 
           return (
@@ -252,6 +279,15 @@ function RateOne() {
                 <p id="send-waits" className="rate__hint" role="status">
                   {t('event.commentNeedsMarks')}
                 </p>
+              )}
+
+              {/* Said out loud rather than left to a button that looks unpressed,
+                  the same reasoning `Registration.tsx` keeps beside its own
+                  `role="status"` (WCAG 2.2, 4.1.3). */}
+              {sending && <p role="status">{t('event.commentSending')}</p>}
+
+              {refusal !== null && (
+                <ServerSaid answer={refusal} refusals={WHEN_RATING_AN_EVENT} />
               )}
             </>
           )

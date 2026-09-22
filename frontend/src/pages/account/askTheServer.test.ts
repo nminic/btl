@@ -141,6 +141,12 @@ describe('what one answer is taken to mean', () => {
     expect(await askTheServer('/api/password-reset', {})).toEqual({ got: 'done' })
   })
 
+  it('reads 201 as done too, which is what /api/teams and /api/comments answer', async () => {
+    server = serverThat(() => answeredWith(201))
+
+    expect(await askTheServer('/api/teams', {})).toEqual({ got: 'done' })
+  })
+
   it('reads 403 as a request nobody proved came from the portal', async () => {
     server = serverThat(() => answeredWith(403))
 

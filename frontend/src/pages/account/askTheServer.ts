@@ -70,7 +70,16 @@ const A_READ_THAT_HANDS_OUT_THE_TOKEN = '/api/countries'
  * idea what to change.
  */
 export type Answer =
-  /** 204, which is what these routes answer when they did the thing. */
+  /**
+   * 204, which is what signing in, signing out and registering answer when they did
+   * the thing - or 201, which is what `/api/teams` and `/api/comments` answer instead,
+   * because a proposal and a rating are each a ROW now standing in a queue rather than
+   * a state simply changed. Read as one outcome and not two: both mean the write went
+   * through, and neither screen this file has been widened for since 21.09.2026 reads
+   * anything out of the body a 201 carries beside a 204 - `TeamWriteApi`'s own `Made`
+   * and `CommentWriteApi`'s answer with an id nothing here parses, the same way `done`
+   * has never carried the 204 body either.
+   */
   | { got: 'done' }
   /**
    * A refusal the route named, whether it numbered it 400 or 409.
@@ -177,7 +186,10 @@ export async function askTheServer(path: string, said: object): Promise<Answer> 
     return { got: 'nothing' }
   }
 
-  if (answer.status === 204) {
+  /* 201 READ EXACTLY AS 204 IS, the identical widening `askTheServer.test.ts` measures
+     for 409 beside 400: both numbers say the write happened, and which of the two a
+     route answers with is that route's business and not a fact this file keeps twice. */
+  if (answer.status === 204 || answer.status === 201) {
     return { got: 'done' }
   }
 
