@@ -830,6 +830,13 @@ class EventWriteApiTest {
 	 * the other, and the day is years before the day the case runs rather than yesterday -
 	 * so a server comparing against today and one comparing against nothing cannot agree
 	 * by accident.
+	 *
+	 * <p><b>The edit lands on the event just written, never on {@code acted}.</b> PDL P10b
+	 * (22.09.2026) refuses a move that would carry a result already written across a
+	 * calendar year, and {@code acted}'s race „Duga" carries the fixture's only one on this
+	 * event - a decade-long jump would trip that refusal and this case would then be
+	 * measuring P10b instead of the freedom to edit the past. The event just written has no
+	 * race at all, so the two rules cannot collide here.
 	 */
 	@Test
 	void anEventLongPastIsWrittenAndChangedLikeAnyOther() throws Exception {
@@ -840,7 +847,7 @@ class EventWriteApiTest {
 				.as("an event that was run years ago could not be entered")
 				.isEqualTo(201);
 
-		assertThat(change(acted, aForm().withPlace(aKnownTown())
+		assertThat(change(writtenId(written), aForm().withPlace(aKnownTown())
 				.withDay(LocalDate.parse("2018-05-05"))).getStatus())
 				.as("an event could not be moved into the past")
 				.isEqualTo(200);
@@ -971,6 +978,143 @@ class EventWriteApiTest {
 				.withDay(ITS_DAY)).getStatus())
 				.as("an event could not be saved again at the address it already has")
 				.isEqualTo(200);
+	}
+
+	// ----- PDL P10b: an event with a result already written may not cross the year ------
+
+	/**
+	 * A RESULT ALREADY WRITTEN REFUSES A MOVE THAT WOULD CARRY IT INTO ANOTHER YEAR.
+	 *
+	 * <p>Owner, 22.09.2026: „Ako događaj ima upisane rezultate a pomeraj datuma bi ih
+	 * preveo u drugu godinu, portal odbija izmenu i kaže zašto." {@code acted}'s race
+	 * „Duga" carries the fixture's only result on this event, and moving the whole event
+	 * back into 2026 carries both its races - and that result - across 1 January with it.
+	 */
+	@Test
+	void anEventWithAResultAlreadyWrittenIsRefusedAcrossTheYear() throws Exception {
+		List<String> daysBefore = daysOfRacesOn(acted);
+
+		MockHttpServletResponse answer = change(acted, aForm().withPlace(aKnownTown())
+				.withName("Trka drugi-2027").withDay(LocalDate.parse("2026-12-25")));
+
+		assertThat(answer.getStatus())
+				.as("an event with a result already written carried that result into another year")
+				.isEqualTo(409);
+		assertThat(reasonIn(answer))
+				.isEqualTo(EventWriteApi.THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+		assertThat(slugOf(acted))
+				.as("the move was refused and the address changed anyway")
+				.isEqualTo("drugi-2027");
+		assertThat(daysOfRacesOn(acted))
+				.as("the move was refused and the calendar changed anyway")
+				.isEqualTo(daysBefore);
+		assertThat(dayOfResultOn("Duga"))
+				.as("the move was refused and the result's own day changed anyway")
+				.isEqualTo(ITS_DAY.toString());
+	}
+
+	/**
+	 * AND ONE WITH NO RESULT AT ALL MAY CROSS THE YEAR FREELY.
+	 *
+	 * <p>The other side of the same boundary: „Ne odbija se kad dogadjaj nema nijedan
+	 * rezultat, ma koliko se pomerao." A fresh event with a single race and no result run
+	 * at it yet is moved a full year back, which is exactly the move the case above
+	 * refuses on {@code acted} - the only difference between the two is the result.
+	 */
+	@Test
+	void anEventWithNoResultAtAllMayCrossTheYear() throws Exception {
+		long freshEvent = event("bez-rezultata-2027", "2027-11-20", A_TOWN);
+		race(freshEvent, "Prva", "2027-11-20");
+
+		MockHttpServletResponse answer = change(freshEvent, aForm().withPlace(aKnownTown())
+				.withName("Trka bez-rezultata-2027").withDay(LocalDate.parse("2026-11-20")));
+
+		assertThat(answer.getStatus())
+				.as("an event with no result at all was refused for crossing the year")
+				.isEqualTo(200);
+		assertThat(daysOfRacesOn(freshEvent)).containsExactly("2026-11-20");
+	}
+
+	/**
+	 * AND ONE THAT STAYS INSIDE ITS YEAR IS NEVER REFUSED, NO MATTER HOW FAR IT MOVES.
+	 *
+	 * <p>„Ne odbija se kad pomeraj ostaje unutar iste godine, ma koliko bio velik." Moves
+	 * {@code acted} - the same event the first case above refuses - by five months, all
+	 * of it inside 2027, and it is not refused despite „Duga" carrying a result.
+	 */
+	@Test
+	void anEventWithAResultMovedFarButInsideItsYearIsNotRefused() throws Exception {
+		MockHttpServletResponse answer = change(acted, aForm().withPlace(aKnownTown())
+				.withName("Trka drugi-2027").withDay(LocalDate.parse("2027-01-02")));
+
+		assertThat(answer.getStatus())
+				.as("a move that stayed inside 2027 was refused for crossing a year")
+				.isEqualTo(200);
+		assertThat(dayOfResultOn("Duga")).isEqualTo("2027-01-02");
+	}
+
+	/**
+	 * THE MULTI-DAY CASE: A SHIFT THAT CARRIES ONLY THE LATER RACE ACROSS THE YEAR IS
+	 * REFUSED WHEN THE RESULT SITS ON THAT RACE.
+	 *
+	 * <p>„Trke mogu biti na dva dana, i pomeraj koji jednu trku prevodi preko godine a
+	 * drugu ne mora da se odbije." Two races ten days apart, so a plain five-day shift
+	 * carries the later one across 1 January and leaves the earlier one on the near side
+	 * of it - a server that asked only about the event's own day, „Rana", would not see
+	 * this at all.
+	 */
+	@Test
+	void aWeekendEventIsRefusedWhenTheCrossingRaceCarriesTheResult() throws Exception {
+		long weekend = event("vikend-2026", "2026-12-20", A_TOWN);
+		race(weekend, "Rana", "2026-12-20");
+		race(weekend, "Kasna", "2026-12-30");
+
+		long runner = db.sql("select id from competitor where member_number = ?")
+				.param("000901").query(Long.class).single();
+		result(runner, raceCalled("Kasna"));
+
+		MockHttpServletResponse answer = change(weekend, aForm().withPlace(aKnownTown())
+				.withName("Trka vikend-2026").withDay(LocalDate.parse("2026-12-25")));
+
+		assertThat(answer.getStatus())
+				.as("the later race, carrying the result, crossed into 2027 and was not refused")
+				.isEqualTo(409);
+		assertThat(reasonIn(answer))
+				.isEqualTo(EventWriteApi.THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+		assertThat(daysOfRacesOn(weekend))
+				.as("the move was refused and the calendar changed anyway")
+				.containsExactly("2026-12-20", "2026-12-30");
+	}
+
+	/**
+	 * AND THE SAME SHAPE MOVES FREELY WHEN THE CROSSING RACE CARRIES NO RESULT, EVEN
+	 * THOUGH THE EVENT CARRIES ONE ELSEWHERE.
+	 *
+	 * <p><b>This is the case that tells the two possible readings of P10b apart.</b> The
+	 * event overall DOES carry a result - on „Rana", the race that stays inside 2026 - so
+	 * a check asking only "does this event have a result anywhere" would refuse this move.
+	 * The race that actually crosses, „Kasna", carries none, and a result moves exactly
+	 * when the race under it does (P10b's own „ih" points at the results, not the event),
+	 * so this must be allowed.
+	 */
+	@Test
+	void aWeekendEventMovesFreelyWhenTheCrossingRaceCarriesNoResult() throws Exception {
+		long weekend = event("vikend-2026b", "2026-12-20", A_TOWN);
+		race(weekend, "Rana", "2026-12-20");
+		race(weekend, "Kasna", "2026-12-30");
+
+		long runner = db.sql("select id from competitor where member_number = ?")
+				.param("000901").query(Long.class).single();
+		result(runner, raceCalled("Rana"));
+
+		MockHttpServletResponse answer = change(weekend, aForm().withPlace(aKnownTown())
+				.withName("Trka vikend-2026b").withDay(LocalDate.parse("2026-12-25")));
+
+		assertThat(answer.getStatus())
+				.as("a result elsewhere on the event refused a race that carries none of its own")
+				.isEqualTo(200);
+		assertThat(daysOfRacesOn(weekend))
+				.containsExactly("2026-12-25", "2027-01-04");
 	}
 
 	/**
