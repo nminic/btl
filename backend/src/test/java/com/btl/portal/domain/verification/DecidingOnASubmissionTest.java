@@ -56,6 +56,40 @@ class DecidingOnASubmissionTest {
 	}
 
 	/**
+	 * THE ONE QUEUE WHERE A REFUSAL NEEDS NOTHING IN THE BOX AT ALL.
+	 *
+	 * <p>ADL A64, 22.09.2026: a comment is „ne odbija nego brise", and the note beside it is
+	 * optional and meant for a moderator rather than owed to the member (PDL 3267, 4255). So a
+	 * {@link Submission} that says {@code reasonIsOptional} must let the same empty box through
+	 * that {@link #aRefusalWithNothingInTheBoxIsRefused} just refused for the other five - the
+	 * two cases are read side by side on purpose, because a change that widened both by
+	 * accident would still pass either alone.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"", "   ", "\n\t"})
+	void theCommentsQueueLetsARefusalThroughWithNothingInTheBox(String nothing) {
+		Submission mayGoWithoutAReason = new Submission(DecidingOnASubmission.WAITING, true);
+
+		assertThat(DecidingOnASubmission.decide(mayGoWithoutAReason, new Answer(false, nothing)))
+				.as("'%s' was refused on a queue ADL A64 says needs no reason at all", nothing)
+				.isEqualTo(Outcome.REJECT_IT);
+
+		assertThat(DecidingOnASubmission.decide(mayGoWithoutAReason, new Answer(false, null)))
+				.isEqualTo(Outcome.REJECT_IT);
+	}
+
+	/**
+	 * AND A REAL REASON IS STILL RECORDED THERE, the exception is about the ABSENCE and not
+	 * about refusing to hear one out.
+	 */
+	@Test
+	void theCommentsQueueStillRecordsARealReasonWhenOneWasGiven() {
+		Submission mayGoWithoutAReason = new Submission(DecidingOnASubmission.WAITING, true);
+
+		assertThat(DecidingOnASubmission.decide(mayGoWithoutAReason, NO)).isEqualTo(Outcome.REJECT_IT);
+	}
+
+	/**
 	 * AND WHAT SOMEBODY ELSE ALREADY ANSWERED IS NOT ANSWERED AGAIN.
 	 *
 	 * <p>Both ways round, and both ways of answering, because a queue is a list two

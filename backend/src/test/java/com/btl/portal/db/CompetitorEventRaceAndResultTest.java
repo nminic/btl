@@ -451,6 +451,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   it is, because a merged migration is not rewritten (ADL A2). */
 				"btl_event.btl_event_country_fk restrict",
 				"btl_event.btl_event_place_fk restrict",
+				/* V30. A waiting comment goes with the event it was written about (V10's own
+				   sentence, applied one table over) and with its member, the same as a waiting
+				   result (PDL P21) and unlike a PUBLISHED comment, which V7 tombstones instead:
+				   this row is what a comment is BEFORE it exists, so nothing about it survives
+				   being decided at all. */
+				"comment_submission.comment_submission_competitor_fk cascade",
+				"comment_submission.comment_submission_event_fk cascade",
 				"competitor.competitor_country_fk restrict",
 				/* V8: a photograph may be taken away without taking the member, which is what
 				   moderation does when it refuses a picture. The other direction is not a rule
@@ -534,6 +541,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"result_submission.result_submission_country_fk restrict",
 				"result_submission.result_submission_place_fk restrict",
 				"result_submission.result_submission_race_fk cascade",
+				/* V30. A reported change of term goes with the event it is about (V11's own
+				   sentence about a team proposal - „an edit of a team that is gone is an edit
+				   of nothing" - applied here) and with the member who sent it, cascade rather
+				   than the set-null ADL A64 B6 weighed and refused: a member's rows go with
+				   him (ADL A42), and a report is one of his rows. */
+				"schedule_proposal.schedule_proposal_competitor_fk cascade",
+				"schedule_proposal.schedule_proposal_event_fk cascade",
 				/* V11, i svaki od njih kaze nesto drugo o tome sta je tim. Sastav i predlozi idu sa
 				   timom i sa clanom; oba sifarnika RESTRICT, kao svuda; a znak i imenovani
 				   administrator se PRAZNE, jer slika sme da se obrise a administrator sme da trazi
@@ -577,6 +591,9 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   decision was made and stays made. The photograph empties for the same reason and
 				   because a decided row may not hold one at all. And the tab itself RESTRICTS: a
 				   right cannot be taken away while rows are still filed under it. */
+				/* V30, no different from V10's own fifth key below: a decision about a
+				   comment submission that is gone is a decision about nothing. */
+				"verification.verification_comment_submission_fk cascade",
 				"verification.verification_competitor_fk cascade",
 				"verification.verification_decided_by_fk set null",
 				"verification.verification_photo_fk set null",
@@ -584,6 +601,8 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				/* And V10's fifth: a decision about a run that is gone is a decision about
 				   nothing, so it goes with it. */
 				"verification.verification_result_submission_fk cascade",
+				// V30's other pointer, the same sentence once more.
+				"verification.verification_schedule_proposal_fk cascade",
 				/* I sesti kljuc reda za verifikaciju, iz istog razloga kao peti: predlog koga nema
 				   je predlog ni o cemu. */
 				"verification.verification_team_proposal_fk cascade",

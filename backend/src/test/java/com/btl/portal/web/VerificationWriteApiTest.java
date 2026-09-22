@@ -27,6 +27,7 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.HashMap;
@@ -133,6 +134,15 @@ class VerificationWriteApiTest {
 
 	private static final String THE_TEAM = "Timocka trkacka druzina";
 
+	/** The whole of {@code verification.body} for a comments row (dva izvora, jedna vrednost):
+	 *  {@link #commentSubmissionWaitingFor} gives {@code comment_submission.body} the real
+	 *  submitted text and {@code verification.body} this fixed literal instead - never a
+	 *  concatenation of the two, or the real text would still be a substring of the queue's
+	 *  own column and a case that checked for its absence would find it anyway. So a write
+	 *  that published the queue copy and a read that served the submitted text are each caught
+	 *  by a case that would otherwise pass on two columns that happened to agree. */
+	private static final String QUEUE_BODY_MARKER = "STAVKA U REDU, NIJE OBJAVLJENI TEKST";
+
 	@Autowired
 	private MockMvc http;
 
@@ -160,6 +170,56 @@ class VerificationWriteApiTest {
 
 	/** The team proposal Bojan sent. */
 	private long bojansTeam;
+
+	/** A waiting comment about the event with two races, one Saturday and one Sunday. */
+	private long anasComment;
+
+	/** A waiting comment, never rated, for the refusal cases - made LAST of the three by id,
+	 *  after {@code bojansComment} was moved off that spot in round 7 (PR 354 review): see
+	 *  the field comment below for why the middle spot is the one that matters. */
+	private long verasComment;
+
+	/** A third waiting comment, made SECOND, NEITHER FIRST NOR LAST BY id (PR 354 review,
+	 *  round 4, blizanac visokog iz kruga 1; moved off the last spot in round 7, where a
+	 *  commit had claimed this shape while the code still made it last). With only
+	 *  {@code anasComment} and {@code verasComment}, the one this fixture ever approves -
+	 *  {@code anasComment} - was made FIRST and so always happened to equal
+	 *  {@code min(comment_submission.id)} too; a write that read the lowest id in the table
+	 *  instead of the one the queue row actually named agreed with every comments case by
+	 *  accident, exactly the fault the event axis of the same statement is already guarded
+	 *  against below. {@code bojansComment} is neither {@code anasComment} nor
+	 *  {@code verasComment}'s twin: it is approved in its own case, and made second, neither
+	 *  an id below it nor one above it is the right answer, so that case is caught by a query
+	 *  that fell back to the lowest id in the table and by one that fell back to the highest,
+	 *  not only by one of the two. */
+	private long bojansComment;
+
+	/** A reported change of term for the same two-race event, unapproved yet. */
+	private long anasScheduleChange;
+
+	/** A reported change of term for the event with no races at all, moving backwards. */
+	private long verasScheduleChange;
+
+	/** The event two races stand under, one Saturday and one Sunday. */
+	private long theWeekendEvent;
+
+	/** A second, unrelated event: what proves a move does not touch a stranger's races. */
+	private long anotherEvent;
+
+	/** A third event with no races, kept simple for the axis that is purely about dates. */
+	private long theBareEvent;
+
+	private static final LocalDate SATURDAY = LocalDate.of(2027, 4, 10);
+
+	private static final LocalDate SUNDAY = LocalDate.of(2027, 4, 11);
+
+	private static final LocalDate A_WEEK_LATER = LocalDate.of(2027, 4, 17);
+
+	private static final LocalDate THE_OTHER_EVENTS_DAY = LocalDate.of(2027, 5, 1);
+
+	private static final LocalDate THE_BARE_EVENTS_DAY = LocalDate.of(2027, 6, 1);
+
+	private static final LocalDate EARLIER_IN_THE_CALENDAR = LocalDate.of(2027, 5, 20);
 
 	/**
 	 * A CLOCK THE CASE MOVES, copied from {@code PairWriteApiTest} with its reason.
@@ -238,11 +298,46 @@ class VerificationWriteApiTest {
 
 		bojansTeam = teamProposalWaitingFor(BOJAN, THE_TEAM);
 
-		/* AND ONE ROW IN EVERY OTHER TAB, which is what the floor over the six reads. */
-		waiting("comments", ANA, "Komentar", "Odlicna staza", null);
+		/* THREE EVENTS, NOT ONE, so a move that forgot its `where event_id = ?` or read the
+		   wrong one has somewhere else to be caught reaching.
+		   AND theWeekendEvent IS MADE SECOND, NEITHER FIRST NOR LAST BY id (PR 354 review):
+		   a write that filed a comment under `min(id)` or under `max(id)` instead of the
+		   event it was actually about used to agree with this fixture by accident, because
+		   theWeekendEvent - the one every comments case below is about - was made first and
+		   so carried the lowest id of the three. Made second, neither an id below it nor one
+		   above it is the right answer, and both wrong answers are somewhere else to land. */
+		anotherEvent = event("drugi-dogadjaj-v30", "Drugi dogadjaj", THE_OTHER_EVENTS_DAY);
+		race(anotherEvent, THE_OTHER_EVENTS_DAY);
+
+		theWeekendEvent = event("prvi-dogadjaj-v30", "Prvi dogadjaj", SATURDAY);
+		race(theWeekendEvent, SATURDAY);
+		/* THE SECOND RACE OF THE SAME EVENT, ON THE SUNDAY: with only one race „move the
+		   event" and „move its races" read alike, and the shape of a weekend is exactly
+		   what that hides (the plan's own measured reason for this axis). */
+		race(theWeekendEvent, SUNDAY);
+
+		theBareEvent = event("treci-dogadjaj-v30", "Treci dogadjaj", THE_BARE_EVENTS_DAY);
+
+		anasComment = commentSubmissionWaitingFor(ANA, theWeekendEvent, "Komentar o prvom dogadjaju",
+				4, 5, 3, "Odlicna staza");
+		/* MADE SECOND ON PURPOSE (PR 354 review, round 4; moved off the last spot in round 7):
+		   see the field comment above for why the id axis needs a third row in the middle,
+		   between the other two, and not at either end. */
+		bojansComment = commentSubmissionWaitingFor(BOJAN, theWeekendEvent, "Komentar Bojana",
+				5, 4, 5, "Sjajna organizacija");
+		verasComment = commentSubmissionWaitingFor(VERA, theWeekendEvent, "Komentar Vere", 0, 0, 0, "");
+
+		anasScheduleChange = scheduleProposalWaitingFor(ANA, theWeekendEvent,
+				"Promena termina prvog dogadjaja", SATURDAY, A_WEEK_LATER);
+		/* BACKWARDS (PDL 1056), and off the bare event so this row's axis is purely the
+		   direction and not entangled with whether races move too. */
+		verasScheduleChange = scheduleProposalWaitingFor(VERA, theBareEvent,
+				"Promena termina treceg dogadjaja", THE_BARE_EVENTS_DAY, EARLIER_IN_THE_CALENDAR);
+
+		/* AND ONE ROW IN EVERY OTHER TAB, which is what the floor over the six reads. The
+		   comments and schedule rows above already are that one row each. */
 		waiting("results", ANA, "Rezultat", "", null);
 		waiting("payments", VERA, "Uplata", "", null);
-		waiting("schedule", ANA, "Promena termina", "", null);
 	}
 
 	// ----- the doors -------------------------------------------------------------------
@@ -254,6 +349,12 @@ class VerificationWriteApiTest {
 		assertThat(http.perform(asking(null, delete(hold(anasText))))
 				.andReturn().getResponse().getStatus()).isEqualTo(401);
 		assertThat(answer(null, anasText, true, null)).isEqualTo(401);
+
+		/* AND ON THE TWO TABS V30 ADDED (PR 354 review, ADL A8): the door runs before
+		   `itemHeMayModerate` ever reads which tab the row stands in, so it must refuse
+		   somebody not signed in exactly as readily here as on profiles above. */
+		assertThat(answer(null, anasComment, true, null)).isEqualTo(401);
+		assertThat(answer(null, anasScheduleChange, true, null)).isEqualTo(401);
 	}
 
 	@Test
@@ -277,6 +378,34 @@ class VerificationWriteApiTest {
 
 		/* AND THE ROW IS UNTOUCHED, which is the half a status alone does not say. */
 		assertThat(stateOf(anasText)).isEqualTo("waiting");
+	}
+
+	/**
+	 * THE SAME AXIS, ASKED OF THE TWO TABS V30 ADDED (PR 354 review, ADL A8).
+	 *
+	 * <p>Until this case, every door test in this file asked only about a {@code profiles}
+	 * row, so a door that opened {@code comments} to anybody signed in - the shape the
+	 * review's mutation took - answered every one of them exactly as it always had and
+	 * failed nothing.
+	 */
+	@Test
+	void aModeratorIsToldNothingAboutAWaitingCommentWhenHeDoesNotHoldThatQueue() throws Exception {
+		assertThat(answer(PROFILES_MODERATOR, anasComment, true, null)).isEqualTo(404);
+		assertThat(take(PROFILES_MODERATOR, anasComment)).isEqualTo(404);
+		assertThat(letGo(PROFILES_MODERATOR, anasComment)).isEqualTo(404);
+
+		assertThat(stateOf(anasComment)).isEqualTo("waiting");
+	}
+
+	/** The same case again, for {@code schedule} (PR 354 review, ADL A8). */
+	@Test
+	void aModeratorIsToldNothingAboutAWaitingScheduleChangeWhenHeDoesNotHoldThatQueue()
+			throws Exception {
+		assertThat(answer(PROFILES_MODERATOR, anasScheduleChange, true, null)).isEqualTo(404);
+		assertThat(take(PROFILES_MODERATOR, anasScheduleChange)).isEqualTo(404);
+		assertThat(letGo(PROFILES_MODERATOR, anasScheduleChange)).isEqualTo(404);
+
+		assertThat(stateOf(anasScheduleChange)).isEqualTo("waiting");
 	}
 
 	/**
@@ -740,15 +869,313 @@ class VerificationWriteApiTest {
 				.param(THE_TEAM).query(Integer.class).single()).isZero();
 	}
 
+	// ----- comments, and the one refusal that needs no reason (ADL A64) -----------------
+
+	/**
+	 * THE SUBMISSION BECOMES A PUBLISHED COMMENT, under the event it was written about and
+	 * not under whichever event a query happened to find first.
+	 *
+	 * <p>{@code theWeekendEvent} is not the only event in the fixture and is neither the
+	 * first nor the last one made ({@code anotherEvent} is made before it and
+	 * {@code theBareEvent} after), so a write that filed the comment under the lowest id,
+	 * the highest id, or under none at all, is caught here and not only by a query that
+	 * never had another event to confuse it with.
+	 */
+	@Test
+	void approvingACommentPublishesItUnderTheEventItWasWrittenAboutAndRemovesItFromTheQueue()
+			throws Exception {
+		assertThat(answer(COMMENTS_MODERATOR, anasComment, true, null)).isEqualTo(200);
+
+		assertThat(stateOf(anasComment)).isEqualTo("approved");
+
+		assertThat(db.sql("select count(*) from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single())
+				.as("the comment did not land under the event it was written about")
+				.isOne();
+
+		assertThat(db.sql("select who from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single()).isEqualTo("Ana Anic");
+		assertThat(db.sql("select rating_organisation from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(4);
+		assertThat(db.sql("select rating_value from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(5);
+		assertThat(db.sql("select rating_ambience from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(3);
+		assertThat(db.sql("select body from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single()).isEqualTo("Odlicna staza");
+
+		assertThat(db.sql("select count(*) from event_comment where event_id = ?")
+				.param(anotherEvent).query(Integer.class).single())
+				.as("a comment about the weekend event was filed under a different one too")
+				.isZero();
+	}
+
+	/**
+	 * AND THE SUBMISSION A CASE APPROVES IS NEVER CONFUSED WITH WHICHEVER ROW HAPPENS TO
+	 * CARRY THE FIXTURE'S LOWEST OR HIGHEST {@code comment_submission.id} (PR 354 review,
+	 * round 4, blizanac visokog iz kruga 1 - jednu tabelu dalje; widened to guard both ends
+	 * in round 7, after a commit claimed this shape a round early while the row it names was
+	 * still the one made last).
+	 *
+	 * <p>{@code bojansComment} is not the only comment submission in the fixture and is made
+	 * SECOND, neither first nor last by id: {@code anasComment}, the one every other case
+	 * above approves, is made FIRST and so always happens to equal
+	 * {@code min(comment_submission.id)}, and {@code verasComment} is made LAST and so always
+	 * happens to equal {@code max(comment_submission.id)}. A write that read either the
+	 * lowest or the highest id in the table instead of the id the queue row actually named is
+	 * therefore caught here, and this is the axis round 2 counted for the event a comment is
+	 * filed under but not, until round 7, for the submission a comment is read from, in the
+	 * very same statement.
+	 */
+	@Test
+	void approvingACommentMadeBetweenTheOthersIsNotConfusedWithTheFixturesLowestOrHighestId()
+			throws Exception {
+		assertThat(answer(COMMENTS_MODERATOR, bojansComment, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select who from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single())
+				.as("the comment made between the other two in the fixture published under a"
+						+ " different author's name")
+				.isEqualTo("Bojan Bojic");
+		assertThat(db.sql("select rating_organisation from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(5);
+		assertThat(db.sql("select rating_value from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(4);
+		assertThat(db.sql("select rating_ambience from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(5);
+		assertThat(db.sql("select body from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single())
+				.isEqualTo("Sjajna organizacija");
+	}
+
+	/**
+	 * AND UNDER THE NAME THE MEMBER CARRIES AT THE MOMENT OF PUBLISHING, NEVER THE ONE
+	 * CAPTURED WHEN HE SENT IT IN (ADL A64 A5, 22.09.2026).
+	 *
+	 * <p>Ana renames herself between sending {@code anasComment} in and a moderator
+	 * approving it, so her name at submission ("Ana Anic") and her name at the moment of
+	 * approval ("Ana Novic") disagree on purpose - the one axis a name read from anywhere
+	 * but fresh off {@code competitor}, at the moment {@code publishTheComment} runs, cannot
+	 * be told apart from the fix by, since both would answer "Ana Anic" when nobody has
+	 * renamed anybody.
+	 */
+	@Test
+	void approvingACommentPublishesItUnderTheNameTheMemberCarriesNowNotTheOneHeSentItUnder()
+			throws Exception {
+		db.sql("update competitor set first_name = 'Ana', last_name = 'Novic'"
+						+ " where member_number = ?")
+				.param(ANA).update();
+
+		assertThat(answer(COMMENTS_MODERATOR, anasComment, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select who from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single())
+				.as("the published comment carried the name captured at submission,"
+						+ " not the one the member carries now")
+				.isEqualTo("Ana Novic");
+	}
+
+	/**
+	 * A WAITING COMMENT IS SERVED ITS OWN QUEUE BODY, NEVER THE SUBMITTED TEXT (dva izvora,
+	 * jedna vrednost, PR 354 review).
+	 *
+	 * <p>{@link #commentSubmissionWaitingFor} gives {@code verification.body} and
+	 * {@code comment_submission.body} different text on purpose - see its own comment - so
+	 * a read that joined to the submission's text instead of the queue row's own column is
+	 * caught here and not only by the two happening to agree.
+	 */
+	@Test
+	void aWaitingCommentIsServedItsOwnQueueBodyNeverTheSubmittedText() throws Exception {
+		String served = http.perform(asking(COMMENTS_MODERATOR, get("/api/verification")))
+				.andReturn().getResponse().getContentAsString();
+
+		assertThat(served)
+				.as("the queue did not serve its own body column at all")
+				.contains(QUEUE_BODY_MARKER);
+		assertThat(served)
+				.as("the queue served the submitted text instead of its own body column")
+				.doesNotContain("Odlicna staza");
+	}
+
+	/**
+	 * A COMMENT IS NEVER REFUSED FOR WANT OF A REASON (ADL A64 A4).
+	 *
+	 * <p>PDL 3267 and 4255, the same sentence twice: „ne odbija nego brise, a napomena je
+	 * neobavezna". So the empty box that turns {@link #aRefusalWithNothingInTheBoxIsNotADecision}
+	 * into a 400 on the profiles tab must turn into a plain 200 here, and nothing is
+	 * published: {@code publishTheComment} is never called on a refusal, which this proves
+	 * by there being no row in {@code event_comment} afterwards.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"", "   "})
+	void refusingACommentNeedsNoReasonAndNeverTellsTheMemberWhy(String nothing) throws Exception {
+		assertThat(answer(COMMENTS_MODERATOR, anasComment, false, nothing)).isEqualTo(200);
+
+		assertThat(stateOf(anasComment)).isEqualTo("rejected");
+		assertThat(db.sql("select count(*) from event_comment").query(Integer.class).single())
+				.as("a refused comment was published anyway")
+				.isZero();
+
+		/* AND NOBODY IS TOLD, which is the other half of PDL 3267: the note beside a deleted
+		   comment is „namenjena moderatorima", never a reason handed to the member the way
+		   PDL P22 hands one to every other queue's refusal. */
+		assertThat(db.sql("select count(*) from message").query(Integer.class).single())
+				.as("a comment's refusal reached somebody's inbox")
+				.isZero();
+	}
+
+	/**
+	 * AND WHEN A MODERATOR DOES TYPE A NOTE, IT IS STILL KEPT - on the row, for whichever
+	 * moderator reads it next - AND STILL NEVER SENT.
+	 *
+	 * <p>Read beside the case above on purpose: the exception is about the ABSENCE of a
+	 * reason, not about refusing to record one that was given. A change that widened the
+	 * exception into „comments never keeps a reason at all" would pass the case above and
+	 * fail only this one.
+	 */
+	@Test
+	void refusingACommentWithARealReasonStoresItButStillTellsNobody() throws Exception {
+		assertThat(answer(COMMENTS_MODERATOR, verasComment, false, THE_REASON)).isEqualTo(200);
+
+		assertThat(db.sql("select reason from verification where id = ?")
+				.param(verasComment).query(String.class).single())
+				.isEqualTo(THE_REASON);
+		assertThat(db.sql("select count(*) from message").query(Integer.class).single()).isZero();
+	}
+
+	// ----- schedule, and the event that moves with its races (ADL A64 A2, A3) -----------
+
+	/**
+	 * APPROVING MOVES THE EVENT TO THE PROPOSED DAY AND BOTH ITS RACES WITH IT, BY THE SAME
+	 * NUMBER OF DAYS, AND TOUCHES NOBODY ELSE'S CALENDAR.
+	 *
+	 * <p>Two races on two different days under {@code theWeekendEvent}, Saturday and Sunday,
+	 * so a write that moved only the first would leave the second stranded and the shape of
+	 * the weekend broken - the axis the plan measured this increment's whole design against.
+	 * {@code anotherEvent} carries a race of its own on a third day entirely, so a write
+	 * that forgot {@code where event_id = ?} moves it too and this case catches that as well.
+	 */
+	@Test
+	void approvingAScheduleChangeMovesTheEventAndBothItsRacesAndTouchesNoOtherCalendar()
+			throws Exception {
+		assertThat(answer(THE_SUPERADMIN, anasScheduleChange, true, null)).isEqualTo(200);
+
+		assertThat(stateOf(anasScheduleChange)).isEqualTo("approved");
+
+		assertThat(db.sql("select date from btl_event where id = ?")
+				.param(theWeekendEvent).query((row, one) -> row.getDate(1).toLocalDate()).single())
+				.isEqualTo(A_WEEK_LATER);
+
+		List<LocalDate> raceDays = db.sql("select date from race where event_id = ? order by date")
+				.param(theWeekendEvent)
+				.query((row, one) -> row.getDate(1).toLocalDate())
+				.list();
+
+		assertThat(raceDays)
+				.as("the weekend's two races did not move by the same seven days as their event")
+				.containsExactly(A_WEEK_LATER, A_WEEK_LATER.plusDays(1));
+
+		assertThat(db.sql("select date from race where event_id = ?")
+				.param(anotherEvent).query((row, one) -> row.getDate(1).toLocalDate()).single())
+				.as("a race under a different event moved when only one event's change was approved")
+				.isEqualTo(THE_OTHER_EVENTS_DAY);
+	}
+
+	/**
+	 * THE DAY MOVED FROM IS THE EVENT'S DAY NOW, NEVER THE STALE DAY THE REPORT NAMED
+	 * (ADL A64 A2).
+	 *
+	 * <p><b>Why this reads the RACES and not the event's own date.</b> {@code moveTheEvent}
+	 * writes {@code btl_event.date} as the literal {@code proposed_date}, so the event's own
+	 * final day is correct whichever date the delta was struck against and proves nothing
+	 * about which one was used - measured while writing this case, exactly the trap the
+	 * portal's own rule about two sources of one value warns against. The delta only shows
+	 * up in how far the RACES move, so this is where the case has to look.
+	 *
+	 * <p>An administrator moves {@code theWeekendEvent} three days AFTER the report was
+	 * sent - the same edit {@code EventWriteApi.change} makes, event and races together -
+	 * so by the time {@code anasScheduleChange} is approved,
+	 * {@code schedule_proposal.event_date} (still {@code SATURDAY}) disagrees with
+	 * {@code btl_event.date} (now three days on) by exactly three days. A delta struck
+	 * against the stale column lands the races three days short of {@code A_WEEK_LATER}.
+	 */
+	@Test
+	void approvingAScheduleChangeReadsTheEventsDayAsItStandsNowNotAsTheReportSawIt()
+			throws Exception {
+		LocalDate movedByAnAdminAfterTheReport = SATURDAY.plusDays(3);
+
+		db.sql("update btl_event set date = ? where id = ?")
+				.params(movedByAnAdminAfterTheReport, theWeekendEvent)
+				.update();
+		db.sql("update race set date = date + 3 where event_id = ?").param(theWeekendEvent).update();
+
+		assertThat(answer(THE_SUPERADMIN, anasScheduleChange, true, null)).isEqualTo(200);
+
+		List<LocalDate> raceDays = db.sql("select date from race where event_id = ? order by date")
+				.param(theWeekendEvent)
+				.query((row, one) -> row.getDate(1).toLocalDate())
+				.list();
+
+		assertThat(raceDays)
+				.as("the races landed where a delta struck against the stale report date would"
+						+ " put them, three days short of where the live event actually stood")
+				.containsExactly(A_WEEK_LATER, A_WEEK_LATER.plusDays(1));
+	}
+
+	/** The calendar may be changed backwards (PDL 1056), and {@code verasScheduleChange}
+	 *  asks for exactly that: a day earlier than the one the event stood on. */
+	@Test
+	void approvingAScheduleChangeMayMoveTheCalendarBackwards() throws Exception {
+		assertThat(EARLIER_IN_THE_CALENDAR).isBefore(THE_BARE_EVENTS_DAY);
+
+		assertThat(answer(THE_SUPERADMIN, verasScheduleChange, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select date from btl_event where id = ?")
+				.param(theBareEvent).query((row, one) -> row.getDate(1).toLocalDate()).single())
+				.isEqualTo(EARLIER_IN_THE_CALENDAR);
+	}
+
+	/**
+	 * A REFUSED SCHEDULE CHANGE TELLS THE MEMBER WHY, LIKE EVERY QUEUE BUT COMMENTS.
+	 *
+	 * <p>Written beside the comments cases above on purpose: ADL A64 A4 is an exception
+	 * named for ONE queue, and this is the case that would catch it widening to a second by
+	 * accident.
+	 */
+	@Test
+	void refusingAScheduleChangeTellsTheMemberWhyLikeTheOtherQueues() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, verasScheduleChange, false, THE_REASON)).isEqualTo(200);
+
+		assertThat(stateOf(verasScheduleChange)).isEqualTo("rejected");
+		assertThat(db.sql("select body from message where to_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(VERA).query(String.class).single())
+				.isEqualTo(THE_REASON);
+
+		assertThat(db.sql("select date from btl_event where id = ?")
+				.param(theBareEvent).query((row, one) -> row.getDate(1).toLocalDate()).single())
+				.as("a refused change moved the event anyway")
+				.isEqualTo(THE_BARE_EVENTS_DAY);
+	}
+
+	/** A refusal needs a reason on the schedule tab exactly as it does on profiles: the
+	 *  exception in ADL A64 A4 is comments alone. */
+	@ParameterizedTest
+	@ValueSource(strings = {"", "   "})
+	void aScheduleRefusalWithNothingInTheBoxIsNotADecisionEither(String nothing) throws Exception {
+		assertThat(answer(THE_SUPERADMIN, verasScheduleChange, false, nothing)).isEqualTo(400);
+		assertThat(stateOf(verasScheduleChange)).isEqualTo("waiting");
+	}
+
 	/**
 	 * THE FLOOR UNDER THE LIST OF TABS THIS ROUTE CARRIES OUT.
 	 *
 	 * <p>It asks the DATABASE for every queue there is rather than repeating a list, so a
 	 * seventh tab - or a sixth that grows a consequence - fails here until somebody decides
-	 * what answering it means. Four of the six are refused today and one of those four,
-	 * {@code results}, is refused because ADL A36 keeps its transactional boundary expressly
-	 * undecided: „trece mesto, verifikacija rezultata, i dalje NIJE odluceno i ostaje
-	 * otvoreno."
+	 * what answering it means. Two of the six are refused today, {@code payments} and
+	 * {@code results}, and the second of those is refused because ADL A36 keeps its
+	 * transactional boundary expressly undecided: „trece mesto, verifikacija rezultata, i
+	 * dalje NIJE odluceno i ostaje otvoreno."
 	 */
 	@Test
 	void everyTabIsEitherCarriedOutOrRefusedAndNoneIsQuietlyRecorded() throws Exception {
@@ -765,7 +1192,7 @@ class VerificationWriteApiTest {
 
 			int status = answer(THE_SUPERADMIN, item, true, null);
 
-			if (List.of("profiles", "teams").contains(tab)) {
+			if (List.of("profiles", "teams", "comments", "schedule").contains(tab)) {
 				assertThat(status).as(tab + " is carried out").isEqualTo(200);
 				assertThat(stateOf(item)).isEqualTo("approved");
 			} else {
@@ -930,6 +1357,84 @@ class VerificationWriteApiTest {
 						+ " (select id from competitor where member_number = ?), ?, '', ?)"
 						+ " returning id")
 				.params(memberNumber, name, proposal)
+				.query(Long.class).single();
+	}
+
+	/** A minimal event, no town chosen by anybody in particular and no races of its own
+	 *  until {@link #race} adds one. */
+	private long event(String slug, String name, LocalDate date) {
+		return db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values (?, ?, ?,"
+						+ " (select id from place where rank = 1), 'race', false, '', '')"
+						+ " returning id")
+				.params(slug, name, date)
+				.query(Long.class).single();
+	}
+
+	private void race(long eventId, LocalDate date) {
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, 'Trka', false, ?, 'length',"
+						+ " 0, 10.00, 100, 100)")
+				.params(eventId, date)
+				.update();
+	}
+
+	/**
+	 * A COMMENT WAITING TO BE PUBLISHED, with the event already on it, the shape
+	 * {@code comment_submission} carries under ADL A64 A1. It carries no name of its own
+	 * (ADL A64 A5, 22.09.2026): {@code publishTheComment} reads that fresh off
+	 * {@code competitor} through {@code competitor_id} instead, so this fixture does not
+	 * hand it one either.
+	 *
+	 * <p><b>{@code verification.body} is deliberately NOT {@code body} (PR 354 review, dva
+	 * izvora jedna vrednost).</b> The two used to carry the same text, so a write that
+	 * published the queue's own column instead of the submission's, or a read that served
+	 * the submission's instead of the queue's own, each agreed with the assertions by
+	 * accident. {@link #QUEUE_BODY_MARKER} never appears in {@code comment_submission.body}
+	 * and {@code body} itself never appears in {@code verification.body}, so either swap is
+	 * now somewhere to be caught.
+	 */
+	private long commentSubmissionWaitingFor(String memberNumber, long eventId, String subject,
+			int organisation, int value, int ambience, String body) {
+		long submission = db
+				.sql("insert into comment_submission (event_id, competitor_id,"
+						+ " rating_organisation, rating_value, rating_ambience, body) values (?,"
+						+ " (select id from competitor where member_number = ?), ?, ?, ?, ?)"
+						+ " returning id")
+				.params(eventId, memberNumber, organisation, value, ambience, body)
+				.query(Long.class).single();
+
+		return db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " comment_submission_id) values ('comments',"
+						+ " (select id from competitor where member_number = ?), ?, ?, ?)"
+						+ " returning id")
+				.params(memberNumber, subject, QUEUE_BODY_MARKER, submission)
+				.query(Long.class).single();
+	}
+
+	/**
+	 * A REPORTED CHANGE OF TERM, waiting to be judged, the shape {@code schedule_proposal}
+	 * carries under ADL A64 A2.
+	 *
+	 * @param eventDate    the day the reporter SAW when they sent this in - captured and
+	 *                     never resynced, which is the whole reason A2 exists
+	 * @param proposedDate the day they are asking the event to move to
+	 */
+	private long scheduleProposalWaitingFor(String memberNumber, long eventId, String subject,
+			LocalDate eventDate, LocalDate proposedDate) {
+		long proposal = db
+				.sql("insert into schedule_proposal (competitor_id, event_id, event_date,"
+						+ " proposed_date) values"
+						+ " ((select id from competitor where member_number = ?), ?, ?, ?)"
+						+ " returning id")
+				.params(memberNumber, eventId, eventDate, proposedDate)
+				.query(Long.class).single();
+
+		return db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " schedule_proposal_id) values ('schedule',"
+						+ " (select id from competitor where member_number = ?), ?, '', ?)"
+						+ " returning id")
+				.params(memberNumber, subject, proposal)
 				.query(Long.class).single();
 	}
 }

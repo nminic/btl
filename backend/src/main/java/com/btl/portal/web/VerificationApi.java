@@ -165,64 +165,78 @@ import java.util.List;
  * about... What it holds is the part every tab shares: who it is about, what was
  * proposed, and what a moderator decided."
  *
- * <p><b>Twelve fields stood under that sentence until 22.09.2026 and SIX of them had a
- * home all along, which is the reason the sentence is rewritten rather than extended.</b>
- * V9 holds the part every tab shares, but V11 gave the teams tab a proposal of its own
+ * <p><b>Twelve fields stood under that sentence until 22.09.2026 and NINE of them have a
+ * home, which is the reason the sentence is rewritten rather than extended.</b> V9 holds
+ * the part every tab shares, but V11 gave the teams tab a proposal of its own
  * ({@code team_proposal}), and a proposal carries the town, the country and the team a
- * change is about; {@code competitor} carries the sender's name; and which SORT of thing a
- * row is can be read off the schema twice over. Those six are answered now. Naming a field
- * as „left out" while a column for it exists is worse than answering it: the list reads as
- * a reason, and a reason that is not true teaches the next reader to stop looking.
+ * change is about; {@code competitor} carries the sender's name; which SORT of thing a
+ * row is can be read off the schema twice over; and V30 gave the comments and the schedule
+ * tabs a proposal of their own too ({@code comment_submission}, {@code schedule_proposal}),
+ * closing the pointer this class had none of before - see the paragraph below. Naming a
+ * field as „left out" while a column for it exists is worse than answering it: the list
+ * reads as a reason, and a reason that is not true teaches the next reader to stop looking.
  *
- * <p><b>The six that really have no home are still named, each with the reason that is
+ * <p><b>The three that really have no home are still named, each with the reason that is
  * true today</b>, in {@code VerificationApiTest.everyFieldThePortalReadsIsOneTheServerAnswersWith}:
- * the three marks of a comment and the id of the event it is about (a WAITING comment is
- * not a row in {@code event_comment} and nothing points this row at an event), the two
- * dates a reported change of term carries, the address of a registration, and the picture
- * with its crop - which is not a missing column at all but ADL A60, 20.09.2026: „Slika
- * koju drzi samo nesto sto ceka odluku moderatora nije javna... Takva slika odgovara tacno
- * isto kao slika koje nema", so a digest answered here would draw a broken frame.
- * {@code Answers} checks both halves of every name, so a field that went missing for some
- * other reason cannot hide behind the list.
+ * the address of a registration, and the picture with its crop - which is not a missing
+ * column at all but ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka odluku
+ * moderatora nije javna... Takva slika odgovara tacno isto kao slika koje nema", so a
+ * digest answered here would draw a broken frame. {@code Answers} checks both halves of
+ * every name, so a field that went missing for some other reason cannot hide behind the
+ * list.
  *
- * <p><b>AND WHAT THOSE BOUNDARIES COST IS AN ACTION AND NOT AN EMPTY BOX.</b> That is
- * measured rather than described, and it is written here because the milder sentence - „the
- * cards carry an empty address, nought marks and empty dates" - stood for a day and is only
- * half of it. Two of the fields are read by the portal in order to DO something, so a blank
- * does not arrive as a gap on a card; it arrives as a decision that quietly does nothing:
- *
- * <ul>
- * <li><b>{@code subjectId} is blank on the comments tab</b>, and the column that would fill
- * it does not exist: {@code verification} has no pointer to {@code btl_event} and none to
- * {@code event_comment}, the only two V10 and V11 gave it being
- * {@code result_submission_id} and {@code team_proposal_id}. The portal turns an approved
- * comment into a record with {@code eventId: Number(item.subjectId)}
- * ({@code frontend/src/data/comment.ts}), and {@code Number("")} is NOUGHT - so a comment a
- * moderator approves is filed under an event that does not exist instead of under the one
- * it is about, and the event page it was written for never shows it.
- * <li><b>{@code proposedDate} is blank on the schedule tab</b>, for that same missing
- * pointer and one missing column besides: V9 keeps the day asked for as free TEXT inside
- * {@code body}. The screen moves an event only when it has a day to move it to
+ * <p><b>WHAT USED TO COST AN ACTION AND NOT AN EMPTY BOX, until 22.09.2026 (ADL A64).</b>
+ * That is measured rather than described, and it is kept here rather than deleted because
+ * the shape of the fault is worth knowing even solved: a blank never arrived as a gap on a
+ * card, it arrived as a decision that quietly did nothing. {@code subjectId} was blank on
+ * the comments tab - the column that would fill it did not exist, and the portal turns an
+ * approved comment into a record with {@code eventId: Number(item.subjectId)}
+ * ({@code frontend/src/data/comment.ts}), where {@code Number("")} is NOUGHT, so a comment
+ * a moderator approved was filed under an event that did not exist rather than the one it
+ * was about. {@code proposedDate} was blank on the schedule tab for the same missing
+ * pointer, and the screen moves an event only when it has a day to move it to
  * ({@code frontend/src/pages/admin/PendingQueue.tsx}), so approving a reported change of
- * term moves nothing - which is the whole of what the owner asked that tab for on
- * 06.08.2026.
- * </ul>
+ * term moved nothing at all - the whole of what the owner asked that tab for on 06.08.2026,
+ * silently undone by an empty string. Both are named as a fixed fault rather than an open
+ * one in {@code PENDING.md} now, and both are cases below rather than boundaries.
  *
- * <p>Both are in {@code PENDING.md} beside the table that lacks the column, and both wait on
- * a decision that is the owner's: a pointer from this row to {@code btl_event}, and then
- * either a date column beside it or a rule for reading one out of {@code body}. They are
- * named here rather than filled in here, because either invention would be a queue row
- * claiming to know which event it is about.
+ * <p><b>THREE POINTERS OUT OF THIS ROW NOW, WHERE V9 GAVE IT NONE.</b> {@code team_proposal_id}
+ * (V11), {@code comment_submission_id} and {@code schedule_proposal_id} (both V30) are keys
+ * of this side's own tables, and a key is not a fact the portal has any use for: what each
+ * tab draws is what the pointed-at row holds under the portal's own names, so the proposal
+ * is followed here and never answered by its id alone. {@code result_submission_id} is
+ * still neither read nor answered - the results tab is fed from the session and not from
+ * this resource ({@code countFor} in {@code pages/admin/queues.ts}) - and it waits for the
+ * increment that has a use for it, which is ADL P-javno's rule of leaving out rather than
+ * serving „za svaki slučaj".
  *
- * <p><b>Neither pointer V10 and V11 added is ANSWERED, and {@code team_proposal_id} is
- * now READ.</b> The two are keys of this side's own tables, and a key is not a fact the
- * portal has any use for: what the teams tab draws is the town, the country and the team a
- * change is about, so the proposal is followed here and what it holds comes out under the
- * portal's own names. {@code result_submission_id} is still neither read nor answered -
- * the results tab is fed from the session and not from this resource
- * ({@code countFor} in {@code pages/admin/queues.ts}) - and it waits for the increment
- * that has a use for it, which is ADL P-javno's rule of leaving out rather than serving
- * „za svaki slučaj".
+ * <p><b>{@code subjectId} NOW ANSWERS THE EVENT AN ITEM IS ABOUT ON TWO TABS, NEVER THE
+ * SAME COLUMN OF TWO DIFFERENT TABLES BY ACCIDENT.</b> {@code comment_submission.event_id}
+ * on the comments tab, {@code schedule_proposal.event_id} on the schedule tab, and
+ * {@code team_proposal.team_id} still on the teams tab as it always did - three sources
+ * for one field, and the three cannot collide: {@code verification_only_the_<queue>_queue_carries_a_<x>}
+ * (V30, and V11 before it) means at most one of the three pointers a row carries is ever
+ * non-null. {@code PendingQueue.tsx} finds the event this way already -
+ * {@code eventOf = (one) => allEvents.find((each) => String(each.id) === one.subjectId)}
+ * - for BOTH the comments tab ({@code commentFrom}) and the schedule tab
+ * ({@code moveEvent}), so one column answers what that one file already expected of it.
+ *
+ * <p><b>{@code rating}, {@code currentDate} AND {@code proposedDate} ANSWER NOW TOO</b>, off
+ * {@code comment_submission} and {@code schedule_proposal} (V30). {@code rating} is nought
+ * on every tab but comments, the same {@code NO_RATING} the portal itself hands out for a
+ * comment written before the marks existed - so a moderator reading a WAITING comment sees
+ * exactly what he will see once it is published. {@code currentDate} is the day the event
+ * stands on RIGHT NOW, read live off {@code btl_event.date} and never off
+ * {@code schedule_proposal.event_date} - the label it is drawn under is present tense,
+ * {@code i18n/sr.json} {@code "currentDate": "Datum u kalendaru"}, and the mock data this
+ * portal shipped before a server answered any of this already ties the two together: event
+ * 1133's own {@code date} and every schedule item about it agree, digit for digit
+ * ({@code events.json}, {@code verification.json}). {@code schedule_proposal.event_date} -
+ * the day the reporter SAW, captured and unpinned (ADL A64 A2) - is stored for history and
+ * read by nothing yet, the same boundary {@code photoId} already draws on this class. The
+ * day the event is actually moved FROM, when a report is approved, is a third question again
+ * and is asked fresh of {@code btl_event.date} at that moment - {@link VerificationWriteApi}'s
+ * to ask, never this field's to answer.
  *
  * <p><b>The picture is answered as the id of a row in {@code photo}</b>, which is a name
  * the portal does not read yet and is therefore declared as something answered on
@@ -290,12 +304,16 @@ class VerificationApi {
 	 * @param subject      what the decision is about, which V9 makes NOT NULL because it
 	 *                     „carries the name in every case"
 	 * @param subjectId    the same thing by its key, WHERE THERE IS ONE, and blank
-	 *                     everywhere else. Today that is the team a proposal asks to
-	 *                     change ({@code team_proposal.team_id}) and nothing besides: the
-	 *                     comments and the schedule tabs draw an id too, and the schema
-	 *                     has no column pointing this row at an event, so they are answered
-	 *                     blank rather than guessed at. Text and not a number, because the
-	 *                     portal compares it against {@code String(team.id)}
+	 *                     everywhere else. Three sources since V30 and never more than one
+	 *                     of them on a row: the team a proposal asks to change
+	 *                     ({@code team_proposal.team_id}, blank for a proposal of a new
+	 *                     team), the event a waiting comment is about
+	 *                     ({@code comment_submission.event_id}), and the event a reported
+	 *                     change of term is about ({@code schedule_proposal.event_id}).
+	 *                     Text and not a number, because the portal compares it against
+	 *                     {@code String(team.id)} on the teams tab and against
+	 *                     {@code String(each.id)} on the other two
+	 *                     ({@code pages/admin/PendingQueue.tsx}, {@code eventOf})
 	 * @param body         what was written or proposed, blank for a tab that proposes
 	 *                     nothing - the same shape {@code competitor.bio} has
 	 * @param kind         WHICH SORT OF THING IT IS, where one tab holds more than one,
@@ -338,10 +356,36 @@ class VerificationApi {
 	 *                     looks right and is not
 	 * @param photoId      the picture while there still is one, and nothing where the tab
 	 *                     carries none
+	 * @param rating       what a member thought of the event, on the comments tab and
+	 *                     {@code NO_RATING} - nought on all three marks - everywhere else,
+	 *                     off {@code comment_submission} (V30). The portal's own default
+	 *                     for a comment nobody has rated, so a moderator reading a WAITING
+	 *                     one sees the same nought a published one with no marks would show
+	 * @param currentDate  the day the event about a reported change of term stands on
+	 *                     NOW, read live off {@code btl_event.date} and never off
+	 *                     {@code schedule_proposal.event_date}, blank everywhere else.
+	 *                     Matches the label it is drawn under, {@code i18n/sr.json}
+	 *                     {@code "currentDate": "Datum u kalendaru"} - present tense - so
+	 *                     a moderator is never shown a day an administrator has already
+	 *                     corrected since the report was sent
+	 * @param proposedDate the day the report asks to move the event to
+	 *                     ({@code schedule_proposal.proposed_date}, V30), blank everywhere
+	 *                     else. Read by {@code pages/admin/PendingQueue.tsx} to decide
+	 *                     whether there is anything to move and, once there is, handed to
+	 *                     {@code moveEvent} together with the event's day AS IT STANDS NOW
+	 *                     - never as {@code currentDate} above has it
 	 */
 	record Waiting(String queue, long id, LocalDate date, String memberNumber, String who,
 			String subject, String subjectId, String body, String kind, String city,
-			String country, Long photoId) {
+			String country, Long photoId, Rating rating, String currentDate, String proposedDate) {
+	}
+
+	/**
+	 * The three marks PDL P6 fixes, off {@code comment_submission} on the comments tab and
+	 * nought on the other five - the same shape and the same names {@link CommentApi.Rating}
+	 * already answers with, once a comment is published rather than waiting.
+	 */
+	record Rating(int organisation, int value, int ambience) {
 	}
 
 	/**
@@ -394,11 +438,16 @@ class VerificationApi {
 						   `one.who === ''` to decide whether to draw the line at all. */
 						+ " coalesce(c.first_name || ' ' || c.last_name, '') as who,"
 						+ " v.subject,"
-						/* THE TEAM A CHANGE IS ABOUT, and blank everywhere else. Read off the
-						   proposal and never off `subject`: two teams may carry one name, so
-						   a change matched by its name would be filed against whichever was
-						   found first. */
-						+ " coalesce(cast(tp.team_id as text), '') as subject_id,"
+						/* THE THING A DECISION IS ABOUT, BY ITS KEY, and blank everywhere else.
+						   Three sources since V30 and never two at once on one row -
+						   `verification_only_the_<queue>_queue_carries_a_<x>` (V11, V30) makes
+						   that unreachable by construction, the same way `kind` below already
+						   relies on it. Read off the proposal and never off `subject`: two
+						   teams may carry one name, so a change matched by its name would be
+						   filed against whichever was found first, and two events may carry one
+						   too (PDL P6, an event copied into the next season keeps its name). */
+						+ " coalesce(cast(tp.team_id as text), cast(cs.event_id as text),"
+						+ "     cast(sp.event_id as text), '') as subject_id,"
 						+ " v.body,"
 						/* WHICH SORT OF THING IT IS, asked of the schema and not of a column
 						   of its own. `tp.team_id` can only be there on the teams tab -
@@ -435,7 +484,32 @@ class VerificationApi {
 						+ "      then coalesce(his_towns_country.code, his_typed_country.code, '')"
 						+ "      else coalesce(town_country.code, typed_country.code, '') end"
 						+ "      as country,"
-						+ " v.photo_id"
+						+ " v.photo_id,"
+						/* WHAT A MEMBER THOUGHT OF THE EVENT, off `comment_submission` (V30),
+						   and nought on the other five tabs - the portal's own word for a
+						   comment nobody has rated (`NO_RATING`), so a moderator sees exactly
+						   what a published comment with no marks would show him too. */
+						+ " coalesce(cs.rating_organisation, 0) as rating_organisation,"
+						+ " coalesce(cs.rating_value, 0) as rating_value,"
+						+ " coalesce(cs.rating_ambience, 0) as rating_ambience,"
+						/* THE TWO DAYS A REPORTED CHANGE OF TERM CARRIES, and blank on the other
+						   five tabs. `report_date` and not `current_date`: PostgreSQL reserves
+						   the second as a function, and an alias is read positionally here
+						   regardless, so nothing is bought by risking it.
+
+						   `currentDate` READS THE EVENT'S OWN `btl_event.date`, LIVE, AND NEVER
+						   `schedule_proposal.event_date` - measured against the label it is
+						   drawn under before this was written: `i18n/sr.json`,
+						   `"currentDate": "Datum u kalendaru"`, „the day IN THE CALENDAR", present
+						   tense. An administrator may have corrected the event again since the
+						   report was sent (A2's whole point), and showing the moderator the day
+						   the reporter saw back then - now stale - would be showing him a
+						   complaint about a problem that may already be fixed. `sp.event_date`
+						   is still stored, exactly as ADL A64 A2 requires, and is captured for
+						   history rather than served here; nothing reads it yet, the same
+						   boundary `photoId` already draws on this class. */
+						+ " coalesce(to_char(sp_event.date, 'YYYY-MM-DD'), '') as report_date,"
+						+ " coalesce(to_char(sp.proposed_date, 'YYYY-MM-DD'), '') as proposed_date"
 						/* DRIVEN BY THE RIGHTS AND NOT BY THE ROWS, so the condition that
 						   decides „may he" is the only thing that picks tabs. Read the other
 						   way round - from `verification` outwards - the tabs a moderator
@@ -482,6 +556,17 @@ class VerificationApi {
 						+ "   on his_towns_country.id = his_town.country_id"
 						+ " left join country his_typed_country"
 						+ "   on his_typed_country.id = c.country_id"
+						/* AND THE TWO PROPOSALS V30 GAVE THE COMMENTS AND SCHEDULE TABS, each
+						   LEFT for the reason every proposal join here is: only its own tab
+						   ever carries one, by the same pair of constraints that already keeps
+						   `tp` off every row but the teams tab's. */
+						+ " left join comment_submission cs on cs.id = v.comment_submission_id"
+						+ " left join schedule_proposal sp on sp.id = v.schedule_proposal_id"
+						/* AND THE EVENT A SCHEDULE PROPOSAL IS ABOUT, read for its LIVE
+						   `date` and never for `sp.event_date` - see the note on
+						   `report_date` above. LEFT for the same reason every join off `sp`
+						   is: only the schedule tab ever has one. */
+						+ " left join btl_event sp_event on sp_event.id = sp.event_id"
 						/* THE ONES HE MAY, decided by `WhatHeMayDo` and passed in. Written
 						   here as a condition over the ticks it would be a second home for
 						   „may he" and would answer the superadmin, who holds everything with
@@ -498,7 +583,9 @@ class VerificationApi {
 						row.getTimestamp(3).toInstant().atZone(SeasonClock.ZONE).toLocalDate(),
 						row.getString(4), row.getString(5), row.getString(6), row.getString(7),
 						row.getString(8), row.getString(9), row.getString(10), row.getString(11),
-						row.getObject(12, Long.class)))
+						row.getObject(12, Long.class),
+						new Rating(row.getInt(13), row.getInt(14), row.getInt(15)),
+						row.getString(16), row.getString(17)))
 				.list();
 	}
 }

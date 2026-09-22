@@ -686,22 +686,21 @@ describe('commentFrom', () => {
   })
 
   it('files a comment whose row cannot say which event it is about under no event at all', () => {
-    /* **THE BOUNDARY, MEASURED RATHER THAN DESCRIBED (22.09.2026).** `/api/verification`
-       answers `subjectId` blank on the comments tab, and that is not a shortfall of the
-       route: `verification` has no pointer to `btl_event` and none to `event_comment`,
-       the only two V10 and V11 gave it being `result_submission_id` and
-       `team_proposal_id`. It is in `PENDING.md` beside the table that lacks the column,
-       and it waits on a decision that is the owner's.
+    /* **THIS WAS A CLAIM ABOUT `/api/verification` UNTIL 22.09.2026, AND IS NOW A CLAIM
+       ABOUT `commentFrom` ALONE (ADL A64 A1).** The route used to answer `subjectId`
+       blank on every comments row, because `verification` had no pointer to `btl_event`
+       and none to `event_comment` - the only two V10 and V11 had given it being
+       `result_submission_id` and `team_proposal_id` - so this case measured the real,
+       then-unavoidable shape of the server's answer. V30 closed that: a waiting comment
+       answers with the key of its event now (`comment_submission.event_id`), and
+       `VerificationApiTest.aWaitingCommentAnswersWithTheKeyOfTheEventItIsAbout` is what
+       measures the route's side of it.
 
-       **What the boundary costs is written down here because the milder sentence - „the
-       cards carry empty fields" - is only half of it.** `Number('')` is NOUGHT, so a
-       comment a moderator approves is filed under an event that does not exist rather
-       than under the one it was written for, and the event page it belongs to never
-       shows it. The approval looks as if it worked.
-
-       This is a claim about the boundary and not about what is right: the day the
-       pointer exists, this case is what has to change, which is exactly why it is a case
-       and not a comment. */
+       **`commentFrom` itself is untouched, and the type it reads still allows a blank
+       `subjectId`**, so what a blank one does to the arithmetic is still worth knowing.
+       `Number('')` is NOUGHT: this fixture is a deliberately built edge case and not a
+       row the server answers with any more, and the claim below is about the function
+       alone, not about what `/api/verification` sends. */
     const withNoEvent: PendingItem = {
       id: 'ver-kom-9',
       queue: 'comments',

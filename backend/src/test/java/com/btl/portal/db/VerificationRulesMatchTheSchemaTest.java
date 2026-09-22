@@ -60,11 +60,18 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 	 * appears, in the order the expression names them, so a rule mentioning one
 	 * column twice is given the same value twice. Counting the question marks left
 	 * behind would not do: a pattern can hold one of its own.
+	 *
+	 * <p><b>{@code queue}, since V30 (ADL A64 A4).</b> {@code verification_refusal_says_why}
+	 * names a third column now - {@code queue = 'comments' or (...)} - so a condition
+	 * that used to be answered by state and reason alone no longer is, on the one queue
+	 * the exception reaches. {@code verification_state_known} names no such column, and
+	 * the regex simply finds nothing to replace there: the same method answers both
+	 * without either constraint having to know about the other's shape.
 	 */
-	private boolean theSchemaTakes(String constraint, String state, String reason) {
+	private boolean theSchemaTakes(String constraint, String state, String reason, String queue) {
 		String condition = conditionOf(constraint);
 		List<String> inOrder = new ArrayList<>();
-		Matcher named = Pattern.compile("\\b(state|reason)\\b").matcher(condition);
+		Matcher named = Pattern.compile("\\b(state|reason|queue)\\b").matcher(condition);
 		StringBuilder asked = new StringBuilder();
 
 		while (named.find()) {
@@ -77,10 +84,33 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 		var query = db.sql("select " + asked);
 
 		for (int at = 0; at < inOrder.size(); at++) {
-			query = query.param(at + 1, "state".equals(inOrder.get(at)) ? state : reason);
+			String column = inOrder.get(at);
+			String value = switch (column) {
+				case "state" -> state;
+				case "reason" -> reason;
+				default -> queue;
+			};
+
+			query = query.param(at + 1, value);
 		}
 
 		return Boolean.TRUE.equals(query.query(Boolean.class).single());
+	}
+
+	/**
+	 * The five queues {@code verification_refusal_says_why} makes no exception for, and
+	 * the value every case that is not itself about the exception asks the schema with.
+	 * Any one of the five would do; {@code results} is V10's own tab and the tab
+	 * {@code VerificationConstraintsTest}'s own good/bad reason rows already use.
+	 */
+	private static final String A_QUEUE_WITHOUT_THE_EXCEPTION = "results";
+
+	/** The overload every case before V30 already called, now answering for a queue the
+	 *  reason rule makes no exception for. {@code verification_state_known} never reads
+	 *  {@code queue} at all, so this is exact for both constraints and not an approximation
+	 *  for the one that does. */
+	private boolean theSchemaTakes(String constraint, String state, String reason) {
+		return theSchemaTakes(constraint, state, reason, A_QUEUE_WITHOUT_THE_EXCEPTION);
 	}
 
 	@Test
@@ -163,5 +193,58 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 				DecidingOnASubmission.APPROVED, "predomislio sam se"))
 				.as("an approval carrying a reason would be held")
 				.isFalse();
+	}
+
+	/**
+	 * AND ON THE ONE QUEUE THE RULE EXCEPTS, WHAT THE CLASS WOULD WRITE IS STILL WHAT
+	 * THE TABLE HOLDS - INCLUDING THE ONE ROW THE OTHER FIVE QUEUES REFUSE (ADL A64 A4).
+	 *
+	 * <p>{@code DecidingOnASubmission.Submission#reasonIsOptional} is the class's half of
+	 * this exception; {@code verification_refusal_says_why}'s {@code queue = 'comments'}
+	 * disjunct is the schema's. Read together with
+	 * {@link #theTwoRowsTheCodeNeverWritesTheSchemaRefuses}, which measures the same two
+	 * shapes with {@code reasonIsOptional} false: a change that widened the schema's
+	 * exception to a second queue, or widened the class's past comments alone, is caught
+	 * by whichever of the two cases stopped agreeing.
+	 *
+	 * <p><b>THE OTHER FIVE ARE READ OFF THE SCHEMA, NEVER WRITTEN DOWN (PR 354 review).</b>
+	 * A single hand-picked queue for „the other five" - this class used
+	 * {@code A_QUEUE_WITHOUT_THE_EXCEPTION} here too until the review found it - only
+	 * proves the exception has not reached that ONE queue; a widening to any of the
+	 * remaining four would pass unnoticed. {@code admin_right} is asked for the whole set
+	 * instead, the same floor {@code VerificationWriteApiTest.everyTabIsEitherCarriedOutOrRefusedAndNoneIsQuietlyRecorded}
+	 * already reads it through, so a widening to ANY of the five fails here and not only to
+	 * the one this file used to name.
+	 */
+	@Test
+	void onTheCommentsQueueTheSchemaHoldsARefusalWithNoReasonToo() {
+		Submission mayGoWithoutAReason = new Submission(DecidingOnASubmission.WAITING, true);
+
+		Outcome outcome = DecidingOnASubmission.decide(mayGoWithoutAReason, new Answer(false, null));
+
+		assertThat(outcome).isEqualTo(Outcome.REJECT_IT);
+		assertThat(theSchemaTakes("verification_refusal_says_why", DecidingOnASubmission.REJECTED,
+				null, "comments"))
+				.as("the class let a comments refusal with no reason through and the table held it,"
+						+ " but the class did not")
+				.isTrue();
+
+		/* AND ONLY COMMENTS, never any of the five queues this exception must not reach - asked
+		   of the schema's own list rather than of one queue remembered here. */
+		List<String> everyOtherQueue = db.sql("select target from admin_right"
+						+ " where scope = 'queue' and target <> 'comments'")
+				.query(String.class).list();
+
+		assertThat(everyOtherQueue)
+				.as("the schema's own list of queues besides comments is short, so this measures"
+						+ " less than it claims to")
+				.hasSize(5);
+
+		for (String queue : everyOtherQueue) {
+			assertThat(theSchemaTakes("verification_refusal_says_why", DecidingOnASubmission.REJECTED,
+					null, queue))
+					.as("the exception reached '%s', a queue named nowhere in ADL A64 A4", queue)
+					.isFalse();
+		}
 	}
 }
