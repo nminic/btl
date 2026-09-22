@@ -91,21 +91,33 @@ SPRINGS_OWN = "ANY /error"
 LIMITS_NO_VERB = "ANY"
 
 
-def git(*args):
-    done = subprocess.run(["git", *args], cwd=REPO, capture_output=True)
-    if done.returncode != 0:
-        sys.exit("git %s failed: %s" % (" ".join(args), done.stderr.decode()[:400]))
-    return done.stdout.decode("utf-8", "replace")
-
-
 class Unreadable(Exception):
     """A ref this tool cannot answer for: fatal for the control, one line for a target.
 
-    It was `sys.exit` everywhere, and the day a second open list arrived that was measured
-    to be wrong: every ref branched before it lost a constant this tool now reads, and
-    because the exit sat inside the loop over targets, ONE stale ref killed the WHOLE
+    It was `sys.exit` EVERYWHERE, and the day a second open list arrived that was measured
+    to be wrong: every ref branched before it lost a constant this tool had begun to read,
+    and because the exit sat inside the loop over targets, ONE bad ref killed the WHOLE
     multi-branch report - the branches in flight, which are the only reason this exists.
+
+    The first fix caught that for ONE cause and a review measured the other three, which is
+    why this sits above `git` now rather than below it. A stale ref was the mild case. The
+    sharp one is an ordinary branch in review whose mapping names its path with a constant
+    instead of a literal: its own problem silenced every OTHER branch, and the run printed
+    the PREDICTION heading with nothing under it, which reads exactly like "no branch adds
+    anything". A typo in a ref name did the same.
+
+    So every way a single target can fail raises this, and the caller decides: the control
+    dies, because its own message says nothing else is worth reading; a target gets a line.
+    The control calls `git` before the loop, so git being broken outright is still fatal
+    there and an exit code of 0 stays impossible for it.
     """
+
+
+def git(*args):
+    done = subprocess.run(["git", *args], cwd=REPO, capture_output=True)
+    if done.returncode != 0:
+        raise Unreadable("git %s failed: %s" % (" ".join(args), done.stderr.decode()[:400]))
+    return done.stdout.decode("utf-8", "replace")
 
 
 def textAt(ref, path):
@@ -139,7 +151,8 @@ def routesAt(ref):
     files = [one for one in git("ls-tree", "-r", "--name-only", ref, WEB).splitlines()
              if one.endswith(".java")]
     if not files:
-        sys.exit("no controller found at %s, so this would report an empty portal" % ref)
+        raise Unreadable("no controller found at %s, so this would report an empty"
+                         " portal" % ref)
 
     out = {}
     for rel in files:
@@ -152,8 +165,9 @@ def routesAt(ref):
 
             paths = QUOTED.findall(found.group(2))
             if not paths:
-                sys.exit("a mapping in %s names no literal path at %s, so this cannot"
-                         " report on it: %r" % (rel, ref, found.group(0)[:120]))
+                raise Unreadable("a mapping in %s names no literal path at %s, so this"
+                                 " cannot report on it: %r"
+                                 % (rel, ref, found.group(0)[:120]))
 
             # Annotations sit between the end of the javadoc and the method body, so
             # that is the window, on both sides of the mapping itself.
