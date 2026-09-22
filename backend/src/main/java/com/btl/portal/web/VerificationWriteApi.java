@@ -77,9 +77,12 @@ import java.util.Set;
  * ({@code comment_submission}, {@code schedule_proposal}), and ADL A64's A3 is the owner
  * saying this file should carry them out rather than go on only serving their fields. Nothing
  * writes a {@code result_submission} still - measured, not assumed: {@code insert into
- * verification} appears three times now under {@code backend/src/main}
- * ({@link MeWriteApi}, {@link TeamWriteApi}, and the two new tabs still wait on the increment
- * that lets a member reach them at all) - so {@code payments} and {@code results} are refused
+ * verification} exists today in exactly two places under {@code backend/src/main}
+ * ({@link MeWriteApi}, {@link TeamWriteApi} - a third grep hit is {@code insert into
+ * verification_lock}, a different table), the same count V30's own header measures before
+ * this file carried out a third and a fourth queue. And the two new tabs still wait on the
+ * increment that lets a member reach them at all - so {@code payments} and {@code results} are
+ * refused
  * for the same reason they always were: recording the decision and doing nothing else would
  * be worse than refusing, since an approved result that never enters the rankings (PDL P9,
  * „Rezultat ulazi u rang liste tek posle odobrenja") has left the queue for ever and reached
@@ -644,13 +647,21 @@ class VerificationWriteApi {
 	 * THE SUBMISSION BECOMES A COMMENT, under the event it was written about (ADL A64 A1
 	 * and A3).
 	 *
-	 * <p>A straight copy and nothing decided along the way: {@code who}, the three marks
-	 * and the text are exactly what {@code comment_submission} already holds, because A1
-	 * built that table in the shape {@code event_comment} takes rather than in a shape
-	 * this method would have to translate. {@code published_at} is the one column not
-	 * copied - it is the instant this statement runs, which is what makes V7's „the name
-	 * as it was when the comment went out" true of {@code who} at the moment it actually
-	 * does.
+	 * <p>THE EVENT, THE THREE MARKS AND THE TEXT ARE A STRAIGHT COPY, exactly what
+	 * {@code comment_submission} already holds, because A1 built that table in the shape
+	 * {@code event_comment} takes rather than in a shape this method would have to
+	 * translate. {@code published_at} is the one column not copied - it is the instant
+	 * this statement runs.
+	 *
+	 * <p><b>{@code who} is NOT a straight copy (ADL A64 A5, 22.09.2026).</b> V7 says
+	 * {@code event_comment.who} is „the name as it was when the comment went out", and
+	 * *went out* means published rather than sent in - a review of PR 354 found the two
+	 * reading apart, because the moderator's own card already draws the CURRENT name
+	 * ({@link VerificationApi#waitingIn}) while this statement copied the one captured at
+	 * submission. So this reads {@code competitor.first_name || ' ' || competitor.last_name}
+	 * FRESH, at the moment it runs, off the same {@code competitor_id} the submission
+	 * carries, and falls back to {@code comment_submission.who} only where that member is
+	 * gone by then - the one case with no current name left to read.
 	 *
 	 * <p><b>Nothing is deleted here, and that is on purpose and not an omission.</b> PDL
 	 * says a REFUSED comment „se ne odbija nego brise" (3267, 4255); an APPROVED one is
@@ -663,9 +674,12 @@ class VerificationWriteApi {
 	private void publishTheComment(Item item) {
 		db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
-						+ " select event_id, competitor_id, who, now(),"
-						+ " rating_organisation, rating_value, rating_ambience, body"
-						+ " from comment_submission where id = ?")
+						+ " select cs.event_id, cs.competitor_id,"
+						+ " coalesce(c.first_name || ' ' || c.last_name, cs.who), now(),"
+						+ " cs.rating_organisation, cs.rating_value, cs.rating_ambience, cs.body"
+						+ " from comment_submission cs"
+						+ " left join competitor c on c.id = cs.competitor_id"
+						+ " where cs.id = ?")
 				.param(item.commentSubmissionId())
 				.update();
 	}

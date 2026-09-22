@@ -134,6 +134,15 @@ class VerificationWriteApiTest {
 
 	private static final String THE_TEAM = "Timocka trkacka druzina";
 
+	/** The whole of {@code verification.body} for a comments row (dva izvora, jedna vrednost):
+	 *  {@link #commentSubmissionWaitingFor} gives {@code comment_submission.body} the real
+	 *  submitted text and {@code verification.body} this fixed literal instead - never a
+	 *  concatenation of the two, or the real text would still be a substring of the queue's
+	 *  own column and a case that checked for its absence would find it anyway. So a write
+	 *  that published the queue copy and a read that served the submitted text are each caught
+	 *  by a case that would otherwise pass on two columns that happened to agree. */
+	private static final String QUEUE_BODY_MARKER = "STAVKA U REDU, NIJE OBJAVLJENI TEKST";
+
 	@Autowired
 	private MockMvc http;
 
@@ -273,16 +282,22 @@ class VerificationWriteApiTest {
 		bojansTeam = teamProposalWaitingFor(BOJAN, THE_TEAM);
 
 		/* THREE EVENTS, NOT ONE, so a move that forgot its `where event_id = ?` or read the
-		   wrong one has somewhere else to be caught reaching. */
+		   wrong one has somewhere else to be caught reaching.
+		   AND theWeekendEvent IS MADE SECOND, NEITHER FIRST NOR LAST BY id (PR 354 review):
+		   a write that filed a comment under `min(id)` or under `max(id)` instead of the
+		   event it was actually about used to agree with this fixture by accident, because
+		   theWeekendEvent - the one every comments case below is about - was made first and
+		   so carried the lowest id of the three. Made second, neither an id below it nor one
+		   above it is the right answer, and both wrong answers are somewhere else to land. */
+		anotherEvent = event("drugi-dogadjaj-v30", "Drugi dogadjaj", THE_OTHER_EVENTS_DAY);
+		race(anotherEvent, THE_OTHER_EVENTS_DAY);
+
 		theWeekendEvent = event("prvi-dogadjaj-v30", "Prvi dogadjaj", SATURDAY);
 		race(theWeekendEvent, SATURDAY);
 		/* THE SECOND RACE OF THE SAME EVENT, ON THE SUNDAY: with only one race „move the
 		   event" and „move its races" read alike, and the shape of a weekend is exactly
 		   what that hides (the plan's own measured reason for this axis). */
 		race(theWeekendEvent, SUNDAY);
-
-		anotherEvent = event("drugi-dogadjaj-v30", "Drugi dogadjaj", THE_OTHER_EVENTS_DAY);
-		race(anotherEvent, THE_OTHER_EVENTS_DAY);
 
 		theBareEvent = event("treci-dogadjaj-v30", "Treci dogadjaj", THE_BARE_EVENTS_DAY);
 
@@ -312,6 +327,12 @@ class VerificationWriteApiTest {
 		assertThat(http.perform(asking(null, delete(hold(anasText))))
 				.andReturn().getResponse().getStatus()).isEqualTo(401);
 		assertThat(answer(null, anasText, true, null)).isEqualTo(401);
+
+		/* AND ON THE TWO TABS V30 ADDED (PR 354 review, ADL A8): the door runs before
+		   `itemHeMayModerate` ever reads which tab the row stands in, so it must refuse
+		   somebody not signed in exactly as readily here as on profiles above. */
+		assertThat(answer(null, anasComment, true, null)).isEqualTo(401);
+		assertThat(answer(null, anasScheduleChange, true, null)).isEqualTo(401);
 	}
 
 	@Test
@@ -335,6 +356,34 @@ class VerificationWriteApiTest {
 
 		/* AND THE ROW IS UNTOUCHED, which is the half a status alone does not say. */
 		assertThat(stateOf(anasText)).isEqualTo("waiting");
+	}
+
+	/**
+	 * THE SAME AXIS, ASKED OF THE TWO TABS V30 ADDED (PR 354 review, ADL A8).
+	 *
+	 * <p>Until this case, every door test in this file asked only about a {@code profiles}
+	 * row, so a door that opened {@code comments} to anybody signed in - the shape the
+	 * review's mutation took - answered every one of them exactly as it always had and
+	 * failed nothing.
+	 */
+	@Test
+	void aModeratorIsToldNothingAboutAWaitingCommentWhenHeDoesNotHoldThatQueue() throws Exception {
+		assertThat(answer(PROFILES_MODERATOR, anasComment, true, null)).isEqualTo(404);
+		assertThat(take(PROFILES_MODERATOR, anasComment)).isEqualTo(404);
+		assertThat(letGo(PROFILES_MODERATOR, anasComment)).isEqualTo(404);
+
+		assertThat(stateOf(anasComment)).isEqualTo("waiting");
+	}
+
+	/** The same case again, for {@code schedule} (PR 354 review, ADL A8). */
+	@Test
+	void aModeratorIsToldNothingAboutAWaitingScheduleChangeWhenHeDoesNotHoldThatQueue()
+			throws Exception {
+		assertThat(answer(PROFILES_MODERATOR, anasScheduleChange, true, null)).isEqualTo(404);
+		assertThat(take(PROFILES_MODERATOR, anasScheduleChange)).isEqualTo(404);
+		assertThat(letGo(PROFILES_MODERATOR, anasScheduleChange)).isEqualTo(404);
+
+		assertThat(stateOf(anasScheduleChange)).isEqualTo("waiting");
 	}
 
 	/**
@@ -804,10 +853,11 @@ class VerificationWriteApiTest {
 	 * THE SUBMISSION BECOMES A PUBLISHED COMMENT, under the event it was written about and
 	 * not under whichever event a query happened to find first.
 	 *
-	 * <p>{@code theWeekendEvent} is not the only event in the fixture and is not the first
-	 * one made ({@code anotherEvent} and {@code theBareEvent} both exist too), so a write
-	 * that filed the comment under the wrong one, or under none at all, is caught here and
-	 * not only by a query that never had a second event to confuse it with.
+	 * <p>{@code theWeekendEvent} is not the only event in the fixture and is neither the
+	 * first nor the last one made ({@code anotherEvent} is made before it and
+	 * {@code theBareEvent} after), so a write that filed the comment under the lowest id,
+	 * the highest id, or under none at all, is caught here and not only by a query that
+	 * never had another event to confuse it with.
 	 */
 	@Test
 	void approvingACommentPublishesItUnderTheEventItWasWrittenAboutAndRemovesItFromTheQueue()
@@ -836,6 +886,54 @@ class VerificationWriteApiTest {
 				.param(anotherEvent).query(Integer.class).single())
 				.as("a comment about the weekend event was filed under a different one too")
 				.isZero();
+	}
+
+	/**
+	 * AND UNDER THE NAME THE MEMBER CARRIES AT THE MOMENT OF PUBLISHING, NEVER THE ONE
+	 * CAPTURED WHEN HE SENT IT IN (ADL A64 A5, 22.09.2026).
+	 *
+	 * <p>Ana renames herself between sending {@code anasComment} in and a moderator
+	 * approving it, so {@code comment_submission.who} ("Ana Anic", captured at submission)
+	 * and her name at the moment of approval ("Ana Novic") disagree on purpose - the one
+	 * axis a straight copy of {@code who} cannot be told apart from the fix by, since both
+	 * read the same column when nobody has renamed anybody.
+	 */
+	@Test
+	void approvingACommentPublishesItUnderTheNameTheMemberCarriesNowNotTheOneHeSentItUnder()
+			throws Exception {
+		db.sql("update competitor set first_name = 'Ana', last_name = 'Novic'"
+						+ " where member_number = ?")
+				.param(ANA).update();
+
+		assertThat(answer(COMMENTS_MODERATOR, anasComment, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select who from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single())
+				.as("the published comment carried the name captured at submission,"
+						+ " not the one the member carries now")
+				.isEqualTo("Ana Novic");
+	}
+
+	/**
+	 * A WAITING COMMENT IS SERVED ITS OWN QUEUE BODY, NEVER THE SUBMITTED TEXT (dva izvora,
+	 * jedna vrednost, PR 354 review).
+	 *
+	 * <p>{@link #commentSubmissionWaitingFor} gives {@code verification.body} and
+	 * {@code comment_submission.body} different text on purpose - see its own comment - so
+	 * a read that joined to the submission's text instead of the queue row's own column is
+	 * caught here and not only by the two happening to agree.
+	 */
+	@Test
+	void aWaitingCommentIsServedItsOwnQueueBodyNeverTheSubmittedText() throws Exception {
+		String served = http.perform(asking(COMMENTS_MODERATOR, get("/api/verification")))
+				.andReturn().getResponse().getContentAsString();
+
+		assertThat(served)
+				.as("the queue did not serve its own body column at all")
+				.contains(QUEUE_BODY_MARKER);
+		assertThat(served)
+				.as("the queue served the submitted text instead of its own body column")
+				.doesNotContain("Odlicna staza");
 	}
 
 	/**
@@ -1223,6 +1321,14 @@ class VerificationWriteApiTest {
 	/**
 	 * A COMMENT WAITING TO BE PUBLISHED, with the event and the sender's own name already
 	 * on it, the shape {@code comment_submission} carries under ADL A64 A1.
+	 *
+	 * <p><b>{@code verification.body} is deliberately NOT {@code body} (PR 354 review, dva
+	 * izvora jedna vrednost).</b> The two used to carry the same text, so a write that
+	 * published the queue's own column instead of the submission's, or a read that served
+	 * the submission's instead of the queue's own, each agreed with the assertions by
+	 * accident. {@link #QUEUE_BODY_MARKER} never appears in {@code comment_submission.body}
+	 * and {@code body} itself never appears in {@code verification.body}, so either swap is
+	 * now somewhere to be caught.
 	 */
 	private long commentSubmissionWaitingFor(String memberNumber, long eventId, String subject,
 			int organisation, int value, int ambience, String body) {
@@ -1240,7 +1346,7 @@ class VerificationWriteApiTest {
 						+ " comment_submission_id) values ('comments',"
 						+ " (select id from competitor where member_number = ?), ?, ?, ?)"
 						+ " returning id")
-				.params(memberNumber, subject, body, submission)
+				.params(memberNumber, subject, QUEUE_BODY_MARKER, submission)
 				.query(Long.class).single();
 	}
 

@@ -65,10 +65,14 @@
  * (nullable, the same tombstone axis `event_comment.competitor_id` already carries - V7), the
  * name to show either way, the three marks and the text.
  *
- * `who` IS NOT NULL HERE TOO, on purpose and not by habit: `event_comment.who` is „the name as
- * it was when the comment went out", so a straight copy on approval needs nothing looked up
- * again at that moment, and a submission with a blank name is not a shape this table accepts
- * any more than `event_comment` does.
+ * `who` IS NOT NULL HERE TOO, on purpose and not by habit, though it is no longer a straight
+ * copy on approval (ADL A64 A5, 22.09.2026, a correction found by the review of PR 354):
+ * `event_comment.who` is „the name as it was when the comment went out", and *went out* means
+ * PUBLISHED, so the row this table becomes reads the member's name fresh off `competitor` at
+ * that moment and falls back to this column only where the member behind the submission is
+ * gone by then - the same tombstone axis `competitor_id` above already carries. A submission
+ * with a blank name is still not a shape this table accepts any more than `event_comment`
+ * does, because the fallback has to have something to fall back to.
  */
 create table comment_submission (
     id                   bigserial not null,
