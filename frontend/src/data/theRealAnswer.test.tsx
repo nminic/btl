@@ -512,6 +512,67 @@ describe('a queue of things waiting, on the answer the server gives', () => {
     }
   })
 
+  it('leaves a registration without an address rather than inventing one', async () => {
+    /* **THE ADDRESS IS THE ONE OF THE SIX THAT IS NOT A MISSING COLUMN**: `account.email`
+       exists and is reachable through `account.competitor_id`, so what the payments tab
+       may say about it is a decision and it is the owner's (`PENDING.md`). Until he takes
+       it the card has to be plainly without one, which is a different thing from a card
+       with a plausible address on it that belongs to nobody: a moderator activates a
+       membership by reading exactly that line (PDL P8).
+
+       Asked as „nothing on this row is an address" rather than as a list of addresses to
+       refuse, because the question is about the shape and not about a value. Every
+       address has the sign in it and nothing else on this row does. */
+    const { stop } = answering(queueAsServed(), '/api/verification')
+
+    try {
+      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+
+      const table = await screen.findByRole('table', { name: /Uplate/ })
+      const row = must(
+        within(table)
+          .getAllByRole('row')
+          .find((one) => (one.textContent ?? '').includes('Miodrag Stanković')),
+        'the registration waiting for its fee',
+      )
+
+      expect(row.textContent ?? '').not.toContain('@')
+
+      /* **And the town beside it IS drawn, which is the other half of this round.** The
+         query read `team_proposal` alone, so this column was empty on every row while
+         `competitor` carried the columns to fill it (V7). Read here off what the answer
+         carries, and off the schema on the side that decides it
+         (`VerificationApiTest.aRegistrationAnswersWithTheTownItsSenderLivesIn...`). */
+      expect(within(row).getByText('Kraljevo')).toBeVisible()
+    } finally {
+      stop()
+    }
+  })
+
+  it('says a waiting comment carries no marks rather than showing nought out of five', async () => {
+    /* **The three marks of a comment are columns of `event_comment`, and that is a
+       comment ALREADY PUBLISHED**; one waiting for a moderator is a row in
+       `verification`, which has no column for a mark and no pointer to one. So they
+       arrive as the portal's own „nobody has marked this" - `NO_RATING` - and the card
+       has to say so in the same words the event page uses, because two screens showing
+       one record must not answer „Bez ocene" and „0,0" to the same question.
+
+       Filled in with any real mark instead, a moderator would be shown a rating the
+       member never gave, on the tab where he decides whether it goes out. */
+    const { stop } = answering(queueAsServed(), '/api/verification')
+
+    try {
+      renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const card = cardSaying(waiting, 'Trčao sam ovo tri godine zaredom')
+
+      expect(within(card).getByText('Bez ocene')).toBeVisible()
+    } finally {
+      stop()
+    }
+  })
+
   it('names the two days it has not got rather than drawing empty ones', async () => {
     /* **THE BOUNDARY MEASURED RATHER THAN DESCRIBED, and it is in `PENDING.md` with the
        table that lacks the column.** `verification` has no pointer to `btl_event` and no

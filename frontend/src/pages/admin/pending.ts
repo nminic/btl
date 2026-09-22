@@ -79,6 +79,23 @@ export const WAITING = 'waiting'
  * table that has nowhere to hold it. A screen fed by the server shows them empty
  * today, and that is a decision the owner has yet to take rather than something this
  * function hides.
+ *
+ * **AND FIVE OF THE SIX VALUES ARE NOW MEASURED ON A SCREEN, which they were not until
+ * 22.09.2026 and which is why the paragraph above could have said anything it liked.**
+ * Every moderation case is fed `public/mock/verification.json`, and that file carries all
+ * six with values of its own, so nothing here decided anything and any value at all was
+ * green. `data/theRealAnswer.test.tsx` walks five queue screens through the answer the
+ * server really gives, and each of `picture`, `currentDate`, `proposedDate`, `email` and
+ * `rating` set to something plausible instead of empty turns one of those cases red.
+ *
+ * **The sixth is `crop`, it has no reader at all, and that is written here rather than
+ * left to be found.** Measured the same day: `crop` set to a quarter of the picture
+ * leaves every case green. The one thing that reads it is `CropWindow`, and a card only
+ * draws that where `one.picture !== ''` - so while ADL A60 keeps a waiting picture out of
+ * every address the portal could ask for it at, there is nothing for a square to be a
+ * square OF. It is `WHOLE` because that is what `cropIn` answers for a record with no
+ * square of its own, and the day A60 is revisited the two come back together and this
+ * boundary goes with them.
  */
 const ABSENT = {
   picture: '',
