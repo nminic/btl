@@ -151,9 +151,12 @@ class TheEventBeginsWithItsFirstRaceTest extends DatabaseTest {
 	 * events writes two of them the same way. The hand the rule exists for is usually this
 	 * one.
 	 *
-	 * <p>The later race is written FIRST and on purpose. It is the control inside the case: a
-	 * trigger that refused every insert under an event would pass the second half on its own,
-	 * and then this would say nothing about the direction.
+	 * <p>The later race is written FIRST and on purpose, before the earlier one that this case
+	 * expects refused. That order is not what protects it from a trigger that refuses every
+	 * insert, though: such a trigger already fails the shared {@code @BeforeEach}, which
+	 * inserts a race that is not the earliest, before this case's body ever runs. What this
+	 * case alone catches, measured, is {@code insert} taken out of the trigger's own
+	 * declaration.
 	 */
 	@Test
 	void aRaceWrittenBeforeTheDayItsEventBeginsOnIsRefused() {

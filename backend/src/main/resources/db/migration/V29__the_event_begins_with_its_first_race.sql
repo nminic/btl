@@ -18,14 +18,17 @@
  * ogranicenjem u bazi ili sekvencom, ne proverom u Javi"
  * (PaymentNumberConcurrencyTest). Four hands can write this fact - the race route, the
  * event route, a migration and a statement typed into psql - and only a rule in the
- * database holds for all four. Measured on the shipped calendar: FOUR events were filed on a
+ * database holds for all four. Measured on the shipped calendar: THREE events were filed on a
  * day that is not the first of their races, every test was green, and nothing refused them.
  *
- * The number is four and not three, and the difference is worth a line because it is the same
- * mistake this file exists to make impossible. Counting „events filed on a morning no race of
- * theirs runs on" gives three - and that question is NARROWER than the rule. RijekaRun is
- * filed on a day one of its races does run on, just not the earliest, so it passes the
- * narrower question and fails the rule. PDL P35 carries the correction.
+ * The two questions are not the same, and the gap is worth a line even though it does not
+ * change the count here. Counting „events filed on a morning no race of theirs runs on" is
+ * NARROWER than the rule, which asks whether the day equals the earliest race and not merely
+ * whether a race falls on it: an event filed on a day one race runs on, just not the earliest,
+ * would pass the narrower question and fail the rule. RijekaRun looked like exactly that case
+ * and is not one: every race it has in the database runs on 2027-04-10, the day it is filed,
+ * because its two earlier races were never imported - the list was built before the owner's
+ * split of 21.09.2026. PDL P35 carries the correction.
  *
  * DEFERRED, AND THAT IS MEASURED RATHER THAN CAUTIOUS. EventWriteApi.change writes the
  * event's new day and THEN moves its races by the same number of days (owner, 10.08.2026:
@@ -53,20 +56,19 @@
  * a morning nothing has to do with it.
  *
  * WHAT THIS MIGRATION DOES NOT DO, and it is the whole of the data. Three events shipped on
- * QA are filed on a day no race of theirs runs on, and a fourth is filed on a day its races
- * do run on but not the earliest. None of them is repaired here, and that is ADL A59 rather
- * than an omission: `btl_event` and `race` are domain tables, the whole test suite is built
- * on them starting empty, and an attempt to carry that calendar in a migration failed the
- * gate with eight failures and was reverted. A repair written here would touch zero rows in
- * every database a test ever sees, so no case could prove it. It is done the way those rows
- * arrived, by a script against the live database.
+ * QA were filed on a day no race of theirs runs on. None of them is repaired here, and that
+ * is ADL A59 rather than an omission: `btl_event` and `race` are domain tables, the whole
+ * test suite is built on them starting empty, and an attempt to carry that calendar in a
+ * migration failed the gate with eight failures and was reverted. A repair written here
+ * would touch zero rows in every database a test ever sees, so no case could prove it. It is
+ * done the way those rows arrived, by a script against the live database.
  *
- * SO THIS RULE LANDS ON A DATABASE THAT ALREADY BREAKS IT, and that is stated rather than
- * discovered. A constraint trigger, unlike a CHECK, is not validated against the rows that
- * are already there: creating it over a table holding a row that breaks it succeeds
- * (measured 21.09.2026). Those four rows therefore stand untouched - and are frozen until
- * the script repairs them, because the first write that touches one of them is refused. The
- * fifth such row can no longer appear.
+ * A CONSTRAINT TRIGGER, UNLIKE A CHECK, IS NOT VALIDATED AGAINST THE ROWS THAT ARE ALREADY
+ * THERE: creating it over a table holding a row that breaks it succeeds (measured
+ * 21.09.2026), so it does not need existing data fixed first. Three rows on QA stood
+ * divergent this way until the owner ran `parser-dogadjaji-2027/popravi-datume.sql` against
+ * QA on 22.09.2026, ahead of this migration; none disagrees any longer. A fourth such row can
+ * no longer appear.
  */
 
 
