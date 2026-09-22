@@ -313,13 +313,24 @@ describe('a bar across several days', () => {
        on 22.09.2026: with the basis left alone the name box is 64,94px wide on a
        four-day bar, with `flex: none` it is 324,88px.
 
-       **Asked as the two halves that matter and not as the word**, since `flex: none` is
-       three values in a coat: what a width needs is a basis that is not nought, so the
-       width is what sizes the box, and no growing, so the tile cannot hand it room of
-       its own on top. Either half alone leaves the fault: a basis of nought grows to the
-       tile and stops there whatever the width says. */
+       **Asked as the three parts that matter and not as the word**, since `flex: none`
+       is three values in a coat: a basis that is not nought is what a width needs to
+       size the box, no growing keeps the tile from handing it room of its own on top,
+       and no shrinking is the part that actually holds that width once drawn. Measured
+       in a browser on 22.09.2026: `flex: none` replaced with exactly the other two terms
+       this case already asked for, `flex-grow: 0; flex-basis: auto`, and shrink left at
+       its default of 1, still satisfies both expectations below, and the name box
+       computes to 63,97px against the 328,75px `flex: none` draws, cut 334,94px before
+       the end of its own bar. That is the same break this rule exists to fix. Any one of
+       the three left out leaves the fault: a basis of nought grows to the tile regardless
+       of the width, growth left on hands the tile's spare room back to the box, and
+       shrink left on lets the row crush the box back down the moment it runs short. */
     expect(name.getPropertyValue('flex-basis'), 'a basis of nought ignores the width').toBe('auto')
     expect(name.getPropertyValue('flex-grow'), 'the tile must not add room of its own').toBe('0')
+    expect(
+      name.getPropertyValue('flex-shrink'),
+      'shrink is what actually holds the width once drawn; left at its default the row crushes it back down the moment it runs short',
+    ).toBe('0')
 
     /* The ellipsis is NOT written here, and that is the point: it comes back from
        `.chip__name` itself, where the portal says once what a name does when it does not
