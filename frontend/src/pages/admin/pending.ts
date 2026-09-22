@@ -86,9 +86,10 @@ export const WAITING = 'waiting'
  * 22.09.2026 and which is why the paragraph above could have said anything it liked.**
  * Every moderation case is fed `public/mock/verification.json`, and that file carries all
  * six with values of its own, so nothing here decided anything and any value at all was
- * green. `data/theRealAnswer.test.tsx` walks five queue screens through the answer the
- * server really gives, and each of `picture`, `currentDate`, `proposedDate`, `email` and
- * `rating` set to something plausible instead of empty turns one of those cases red.
+ * green. `data/theRealAnswer.test.tsx` walks four of the queue screens through the answer
+ * the server really gives, in five cases, and each of `picture`, `currentDate`,
+ * `proposedDate`, `email` and `rating` set to something plausible instead of empty turns
+ * exactly one of those five red.
  *
  * **The sixth is `crop`, it has no reader at all, and that is written here rather than
  * left to be found.** Measured the same day: `crop` set to a quarter of the picture
