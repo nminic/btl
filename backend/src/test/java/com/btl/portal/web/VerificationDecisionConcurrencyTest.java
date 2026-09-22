@@ -94,8 +94,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * the key V28 gives it, which the {@code FOR UPDATE} here conflicts with. <b>Both forced cases
  * ask the LOCK MANAGER whether the requests have arrived</b> ({@code blockedBehindThisHold}),
  * and both assert that neither request had been ANSWERED while they were stopped there -
- * which is what names the branch, since the two refusals each route can give carry the same
- * words and the same status.
+ * which is what names the branch. Each route has a PAIR of refusals that cannot be told
+ * apart from outside: on the deciding route the row read as already answered and the update
+ * that matched nothing, both {@code SOMEBODY_ANSWERED_IT_ALREADY}; on the holding route the
+ * check before the insert and the count after it, both {@code SOMEBODY_ELSE_IS_READING_IT}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -359,12 +361,14 @@ class VerificationDecisionConcurrencyTest {
 					throw new RuntimeException(e);
 				}
 
-				/* AND NEITHER HAS BEEN ANSWERED, which is what names the branch. Both 409s this
-				   route can give an item that is waiting carry the same words, so a status on
-				   its own cannot say which of them came back. A request refused by the check
-				   before the update is answered without touching the row again and its Future
-				   is done by now; both of these are inside the database, stopped by this
-				   connection, with nothing written and nothing said. */
+				/* AND NEITHER HAS BEEN ANSWERED, which is what names the branch. The refusal
+				   `decide` gives when it reads a row already answered and the one `write`
+				   gives when its update matches nothing are the same words, `SOMEBODY_ANSWERED
+				   _IT_ALREADY`, so a status on its own cannot say which came back - which is
+				   the very pair the note at the head of this class says a green barrier run
+				   cannot tell apart. A request refused on the read is answered without going
+				   near the row again and its Future is done by now; both of these are inside
+				   the database, stopped by this connection, with nothing written. */
 				assertThat(submitted)
 						.as("a request that is not held up by this hold was refused before it"
 								+ " reached the update, which is the branch this case is written"
