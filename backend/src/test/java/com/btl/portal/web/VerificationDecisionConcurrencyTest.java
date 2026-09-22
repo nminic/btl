@@ -559,8 +559,21 @@ class VerificationDecisionConcurrencyTest {
 	 * lock manager has no such second version of the truth.
 	 *
 	 * <p><b>The floor under it is in the cases themselves</b>: each asserts this answers
-	 * {@code 0} with the row locked and nothing submitted yet, so a predicate stuck at two -
-	 * or one that counts the suite rather than these requests - fails before the race begins.
+	 * {@code 0} with the row locked and nothing submitted yet, so a predicate stuck at two
+	 * fails before the race begins. Two mutations say the rest of it is load-bearing rather
+	 * than decorative: rooted at a pid that is not this one, and cut to a single level, the
+	 * wait above times out in both cases.
+	 *
+	 * <p><b>AND THE LIMIT, measured 22.09.2026 rather than argued.</b> Put the old seed back -
+	 * every backend with {@code wait_event_type = 'Lock'} that is not this one - and both cases
+	 * stay GREEN, because in a run of this class alone the only backends blocked anywhere are
+	 * the two they submitted themselves. So neither case can tell the two predicates apart, and
+	 * nothing here should be read as saying they can. What the rooted form buys is measured
+	 * somewhere else and is worth writing down: with the root swapped for a pid that exists
+	 * nowhere, {@code pg_stat_activity} at the moment of the timeout held two backends waiting
+	 * on {@code Lock} whose pid was not this connection's. The old form counts exactly those
+	 * two whoever they belong to, and in the full suite against one shared container they will
+	 * one day belong to somebody else.
 	 */
 	private int blockedBehindThisHold() {
 		return db.sql("with recursive behind_this_hold(pid) as ("
