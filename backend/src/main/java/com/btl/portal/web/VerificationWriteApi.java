@@ -131,8 +131,11 @@ import java.util.Set;
  *
  * <p><b>WHAT THE MEMBER IS TOLD, AND WHAT HE IS NOT.</b> A refusal reaches his inbox with
  * the reason in it, from every queue and not only from his profile: PDL P22, 15.08.2026,
- * „Poruka o odbijanju ide sa svih redova verifikacije, ne samo sa trkackog profila...
- * razlog stize u sanduce onome ko je stavku poslao". An approved team reaches him too, which
+ * „Poruka o odbijanju ide sa svih redova verifikacije, ne samo sa trkackog profila". The
+ * same decision says where it lands - the reason reaches the inbox of whoever sent the item
+ * in - but that is a SECOND sentence further down, and joining the two with an ellipsis left
+ * a quotation that exists nowhere, which is what the citation floor caught.
+ * An approved team reaches him too, which
  * is the owner's own sentence of 03.08.2026: „clanu odmah treba da stigne obavestenje u
  * portal inboks da je njihov tim prihvacen." An approved PROFILE does not, and that is
  * absence rather than omission - nothing decided that it should, and ADL P-javno's rule is

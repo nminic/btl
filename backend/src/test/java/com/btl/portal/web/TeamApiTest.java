@@ -2101,8 +2101,7 @@ class TeamApiTest {
 	 * the portal and off the owner rather than decided here.
 	 * {@code frontend/src/data/teamAdmin.ts}: „the founder only while they are still in it.
 	 * The seat is who founded the team and never changes; being its administrator does."
-	 * PDL „Razreseno istog dana, cetiri odgovora", 04.09.2026, „Administrator tima je onaj
-	 * ko je tim osnovao" - and, in the same decision, the seat that empties is taken by
+	 * PDL „Inkrement 133", 04.09.2026, „Administrator tima je onaj ko je tim osnovao" - and, in the same decision, the seat that empties is taken by
 	 * whoever has been in the team longest. PDL P13, of an administrator removed or
 	 * disqualified: „Isto kao kad je otisao."
 	 *
