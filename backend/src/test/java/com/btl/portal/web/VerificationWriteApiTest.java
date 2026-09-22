@@ -177,6 +177,18 @@ class VerificationWriteApiTest {
 	/** A second waiting comment, never rated, for the refusal cases. */
 	private long verasComment;
 
+	/** A third waiting comment, made LAST, after both of the two above (PR 354 review,
+	 *  round 4, blizanac visokog iz kruga 1). With only {@code anasComment} and
+	 *  {@code verasComment}, the one this fixture ever approves - {@code anasComment} - was
+	 *  made FIRST and so always happened to equal {@code min(comment_submission.id)} too; a
+	 *  write that read the lowest id in the table instead of the one the queue row actually
+	 *  named agreed with every comments case by accident, exactly the fault the event axis of
+	 *  the same statement is already guarded against below. {@code bojansComment} is neither
+	 *  {@code anasComment} nor {@code verasComment}'s twin: it is approved in its own case,
+	 *  and it is the one made last, so that case is caught by a query that fell back to the
+	 *  lowest id in the table and not only by one that fell back to the highest. */
+	private long bojansComment;
+
 	/** A reported change of term for the same two-race event, unapproved yet. */
 	private long anasScheduleChange;
 
@@ -304,6 +316,11 @@ class VerificationWriteApiTest {
 		anasComment = commentSubmissionWaitingFor(ANA, theWeekendEvent, "Komentar o prvom dogadjaju",
 				4, 5, 3, "Odlicna staza");
 		verasComment = commentSubmissionWaitingFor(VERA, theWeekendEvent, "Komentar Vere", 0, 0, 0, "");
+		/* MADE LAST ON PURPOSE (PR 354 review, round 4): see the field comment above for why
+		   the id axis needs a third row and why it has to be this one made after the other
+		   two rather than swapped with either of them. */
+		bojansComment = commentSubmissionWaitingFor(BOJAN, theWeekendEvent, "Komentar Bojana",
+				5, 4, 5, "Sjajna organizacija");
 
 		anasScheduleChange = scheduleProposalWaitingFor(ANA, theWeekendEvent,
 				"Promena termina prvog dogadjaja", SATURDAY, A_WEEK_LATER);
@@ -886,6 +903,39 @@ class VerificationWriteApiTest {
 				.param(anotherEvent).query(Integer.class).single())
 				.as("a comment about the weekend event was filed under a different one too")
 				.isZero();
+	}
+
+	/**
+	 * AND THE SUBMISSION A CASE APPROVES IS NEVER CONFUSED WITH WHICHEVER ROW HAPPENS TO
+	 * CARRY THE FIXTURE'S LOWEST {@code comment_submission.id} (PR 354 review, round 4,
+	 * blizanac visokog iz kruga 1 - jednu tabelu dalje).
+	 *
+	 * <p>{@code bojansComment} is not the only comment submission in the fixture and is made
+	 * LAST, after both {@code anasComment} and {@code verasComment}, so a write that read
+	 * {@code min(comment_submission.id)} instead of the id the queue row actually named is
+	 * caught here: with only the other two rows, the one every other case above approves,
+	 * {@code anasComment}, was made first and so always happened to equal that lowest id too,
+	 * and this is the axis round 2 counted for the event a comment is filed under but not for
+	 * the submission a comment is read from, in the very same statement.
+	 */
+	@Test
+	void approvingTheLastMadeCommentIsNotConfusedWithTheFixturesLowestId() throws Exception {
+		assertThat(answer(COMMENTS_MODERATOR, bojansComment, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select who from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single())
+				.as("the comment made last in the fixture published under a different"
+						+ " author's name")
+				.isEqualTo("Bojan Bojic");
+		assertThat(db.sql("select rating_organisation from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(5);
+		assertThat(db.sql("select rating_value from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(4);
+		assertThat(db.sql("select rating_ambience from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(5);
+		assertThat(db.sql("select body from event_comment where event_id = ?")
+				.param(theWeekendEvent).query(String.class).single())
+				.isEqualTo("Sjajna organizacija");
 	}
 
 	/**
