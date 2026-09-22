@@ -313,6 +313,7 @@ class ConstraintsTest extends DatabaseTest {
 						AxisConstraintsTest.TABLES, RegistrationConstraintsTest.TABLES,
 						VerificationConstraintsTest.TABLES, ResultSubmissionConstraintsTest.TABLES,
 						TeamConstraintsTest.TABLES,
+						CommentSubmissionConstraintsTest.TABLES, ScheduleProposalConstraintsTest.TABLES,
 						JoiningConstraintsTest.TABLES, InboxConstraintsTest.TABLES,
 						LeagueConstraintsTest.TABLES, DucatConstraintsTest.TABLES,
 						PaymentConstraintsTest.TABLES, MembershipConstraintsTest.TABLES,

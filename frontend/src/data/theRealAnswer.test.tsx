@@ -549,16 +549,20 @@ describe('a queue of things waiting, on the answer the server gives', () => {
     }
   })
 
-  it('says a waiting comment carries no marks rather than showing nought out of five', async () => {
-    /* **The three marks of a comment are columns of `event_comment`, and that is a
-       comment ALREADY PUBLISHED**; one waiting for a moderator is a row in
-       `verification`, which has no column for a mark and no pointer to one. So they
-       arrive as the portal's own „nobody has marked this" - `NO_RATING` - and the card
-       has to say so in the same words the event page uses, because two screens showing
-       one record must not answer „Bez ocene" and „0,0" to the same question.
+  it('says a waiting comment carries no marks where the member gave none', async () => {
+    /* **The three marks of a comment answer for real now, off `comment_submission`**
+       (ADL A64 A1, 22.09.2026); until then `verification` had no column for a mark and
+       no pointer to one, and this case measured that every comment arrived as the
+       portal's own „nobody has marked this" - `NO_RATING` - whether the member had
+       rated it or not. `ver-kom-4` (`Resolution Run`, Borivoje Jovanović) is genuinely
+       nought on all three in the generated file, which is what a comment predating the
+       ratings looks like (V7), so this case still holds - now measuring the SERVER'S
+       nought and not a fill-in this side invented. The card has to say so in the same
+       words the event page uses, because two screens showing one record must not answer
+       „Bez ocene" and „0,0" to the same question.
 
-       Filled in with any real mark instead, a moderator would be shown a rating the
-       member never gave, on the tab where he decides whether it goes out. */
+       The next case below is the other half: a comment that IS rated has to show what
+       it was rated, not nought either. */
     const { stop } = answering(queueAsServed(), '/api/verification')
 
     try {
@@ -573,19 +577,49 @@ describe('a queue of things waiting, on the answer the server gives', () => {
     }
   })
 
-  it('names the two days it has not got rather than drawing empty ones', async () => {
-    /* **THE BOUNDARY MEASURED RATHER THAN DESCRIBED, and it is in `PENDING.md` with the
-       table that lacks the column.** `verification` has no pointer to `btl_event` and no
-       column for either day: V9 keeps the day asked for as free TEXT inside `body`. So a
-       reported change of term arrives with both dates empty, and `datesOf`
-       (`pages/admin/PendingQueue.tsx`) drops an empty one rather than printing a blank
-       label - which is the difference between a moderator seeing nothing and a moderator
-       seeing „Prijavljen datum:" with nothing after it.
+  it('shows the marks a member actually gave, on the comment they belong to', async () => {
+    /* **THE OTHER STATE OF THE SAME AXIS, and the one no case held before 22.09.2026.**
+       Every comment used to arrive nought on all three marks regardless of what the
+       member wrote, so a fixture where the only comment sampled was genuinely unrated -
+       `ver-kom-4` above - could not tell a server that fills in real marks from one that
+       fills in nothing at all. `ver-kom-1` (`Južni pripravnički FG maraton`, Nemanja
+       Cvetković) is rated 5/4/5 in the generated file and always has been; this is the
+       first case to read it as a rating rather than as a nought to discard. */
+    const { stop } = answering(queueAsServed(), '/api/verification')
 
-       **What it costs is an action and not a gap**, and that is why this is a case: the
-       screen moves the event only where there is a day to move it to, so approving a
-       report on this tab moves nothing at all. The day the owner decides on the pointer,
-       this case is what has to change. */
+    try {
+      renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const card = cardSaying(waiting, 'Organizacija na nivou')
+
+      expect(within(card).queryByText('Bez ocene')).not.toBeInTheDocument()
+      expect(within(card).getByRole('img', { name: 'Organizacija: 5 od 5' })).toBeInTheDocument()
+      expect(
+        within(card).getByRole('img', { name: 'Vrednost za novac: 4 od 5' }),
+      ).toBeInTheDocument()
+      expect(within(card).getByRole('img', { name: 'Ambijent: 5 od 5' })).toBeInTheDocument()
+      /* (5 + 4 + 5) / 3 rounded to one decimal, in the portal's own words for a number
+         (`i18n/format.ts`, sr-Latn comma). */
+      expect(within(card).getByText('4,7')).toBeVisible()
+    } finally {
+      stop()
+    }
+  })
+
+  it('draws both days of a reported change of term now that the server answers them', async () => {
+    /* **THE BOUNDARY THIS CASE USED TO MEASURE IS CLOSED (ADL A64 A2, 22.09.2026).** Until
+       then `verification` had no pointer to `btl_event` and no column for either day, so a
+       reported change of term arrived with both dates empty and `datesOf`
+       (`pages/admin/PendingQueue.tsx`) dropped both - this case asserted exactly that
+       absence. V30 gave the schedule tab `schedule_proposal`, and the generated file this
+       case reads has carried both dates on every schedule row since before that fix
+       existed (`ver-ter-2`: `currentDate: "2027-04-03"`, `proposedDate: "2027-04-10"`),
+       so `queueAsServed` now hands the screen real values and both labels draw.
+
+       **What used to cost an action and not a gap, and now does not.** The screen moves
+       the event only where there is a day to move it to; with both dates real, approving
+       this report moves it, which is the whole point of ADL A64. */
     const { stop } = answering(queueAsServed(), '/api/verification')
 
     try {
@@ -594,11 +628,27 @@ describe('a queue of things waiting, on the answer the server gives', () => {
       const waiting = await screen.findByRole('list', { name: /Čeka/ })
       const card = cardSaying(waiting, 'Pisao sam organizatoru')
 
-      /* What the member wrote is there, which is the one thing about this report the
-         schema really holds. */
+      /* What the member wrote is still there, beside the two days now. */
       expect(within(card).getByText(/potvrdio mi je nov datum mejlom/)).toBeVisible()
-      expect(within(card).queryByText('Prijavljen datum')).not.toBeInTheDocument()
-      expect(within(card).queryByText('Datum u kalendaru')).not.toBeInTheDocument()
+
+      const calendarDay = within(card).getByText('Datum u kalendaru')
+      const reportedDay = within(card).getByText('Prijavljen datum')
+
+      expect(calendarDay).toBeVisible()
+      expect(reportedDay).toBeVisible()
+
+      /* **THE TWO VALUES, AND THEY DIFFER**, which is „the difference is the thing on
+         screen" (`PendingItem.currentDate`) made concrete: a card that drew the same day
+         twice could not tell a screen reading both columns from one reading only one of
+         them twice. Read as the shape every date on this portal is written in - digits
+         with dots between them (sr-Latn) - and never as the exact spacing `Intl` chooses,
+         which is `data/servedShape.test.ts`'s to hold and not this file's. */
+      const calendarValue = calendarDay.nextElementSibling?.textContent ?? ''
+      const reportedValue = reportedDay.nextElementSibling?.textContent ?? ''
+
+      expect(calendarValue).toMatch(/\d{1,2}\.\s*\d{1,2}\.\s*2027\.?/)
+      expect(reportedValue).toMatch(/\d{1,2}\.\s*\d{1,2}\.\s*2027\.?/)
+      expect(calendarValue).not.toEqual(reportedValue)
     } finally {
       stop()
     }

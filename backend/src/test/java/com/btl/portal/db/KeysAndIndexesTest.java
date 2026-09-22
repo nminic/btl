@@ -304,7 +304,19 @@ class KeysAndIndexesTest extends DatabaseTest {
 							+ " screen reorders one is the day this becomes one too, against data that can"
 							+ " prove it"),
 			new Key("static_page_include_once_per_page", false,
-					"whether one page already takes another in is looked up, not counted from one end"));
+					"whether one page already takes another in is looked up, not counted from one end"),
+
+			/* V30. Two surrogates, following the shape V10 and V11 both already have, and the two
+			   keys that say "one waits once" over the two new pointers - the same reason
+			   `verification_result_submission_unique` and `verification_team_proposal_unique`
+			   exist: without it the same comment or the same reported change could sit in the
+			   queue twice and be decided twice. */
+			new Key("comment_submission_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("verification_comment_submission_unique", false,
+					"one comment waits once; a pointer is looked up as it is written and carries no order"),
+			new Key("schedule_proposal_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("verification_schedule_proposal_unique", false,
+					"one reported change waits once; a pointer is looked up as it is written and carries no order"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -439,7 +451,18 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("account_admin_right_right_idx", "everybody who has been given one right"),
 			/* V24, the other end of static_page_include_included_fk: which pages take one
 			   page in, the same shape league_race_race_idx serves for league_race. */
-			new Index("static_page_include_included_idx", "every page that takes one page in"));
+			new Index("static_page_include_included_idx", "every page that takes one page in"),
+			/* V30. The first two are the other ends of the keys that point out of a waiting
+			   comment; the second two the same for a reported change of term; and the last
+			   two are the ends of the two pointers `verification` gained, the same shape
+			   `result_submission_id`'s and `team_proposal_id`'s own ends already have. */
+			new Index("comment_submission_event_idx", "the waiting comments about one event"),
+			new Index("comment_submission_competitor_idx", "the waiting comments one member has sent in"),
+			new Index("schedule_proposal_event_idx", "the reported changes of term about one event"),
+			new Index("schedule_proposal_competitor_idx", "the reported changes of term one member has sent in"),
+			new Index("verification_comment_submission_idx", "the queue row a waiting comment is standing in"),
+			new Index("verification_schedule_proposal_idx",
+					"the queue row a reported change of term is standing in"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

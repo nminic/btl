@@ -9,23 +9,26 @@ import java.util.Set;
  * <p>Every queue on the portal is the same table and the same three states, and
  * this is the one place that says how a row moves between them. A result, a
  * comment, a photograph and a proposed team all arrive here, and the differences
- * between them are what the queue is called, not what a decision does.
+ * between them are what the queue is called, not what a decision does - WITH ONE
+ * NAMED EXCEPTION, below, and it is the only fact a {@link Submission} carries
+ * beside its state.
  *
- * <p><b>A refusal carries its reason and an approval carries none.</b> PDL P21,
- * under „Razlog odbijanja": „obavezan razlog stoji na svakom odbijanju, jer se
- * sve odbijeno vraca clanu", and the moderator is asked for a precise
- * instruction rather than „ne valja". A refusal nobody can answer is a decision
- * nobody can appeal. There is nothing to explain about a yes, and a reason
- * beside one is a note nobody reads - which is why the schema does not merely
- * allow the absence but requires it.
+ * <p><b>A refusal carries its reason and an approval carries none, on five of the
+ * six queues.</b> PDL P21, under „Razlog odbijanja": „obavezan razlog stoji na
+ * svakom odbijanju, jer se sve odbijeno vraca clanu", and the moderator is asked
+ * for a precise instruction rather than „ne valja". A refusal nobody can answer
+ * is a decision nobody can appeal. There is nothing to explain about a yes, and a
+ * reason beside one is a note nobody reads - which is why the schema does not
+ * merely allow the absence but requires it.
  *
- * <p><b>And the one queue PDL exempts never reaches here.</b> The same sentence
- * goes on: „Jedini red bez njega je red komentara, gde se ne odbija nego brise,
- * a napomena je neobavezna i namenjena moderatorima." A comment is not refused,
- * it is removed, so it never becomes a row in the state this class would have to
- * put a reason on. Written down because it reads like a contradiction until
- * somebody notices that the exception is about a queue that does not produce
- * this outcome at all.
+ * <p><b>THE SIXTH IS COMMENTS, AND ITS REFUSAL CARRIES NO OBLIGATION AT ALL</b>
+ * (owner, ADL A64, 22.09.2026). PDL 3267 and 4255, the same sentence twice: „Jedini
+ * red bez njega je red komentara, gde se ne odbija nego brise, a napomena je
+ * neobavezna i namenjena moderatorima" - a note where there is one is a trace for
+ * a moderator, never a reason the member is owed, so nothing here may refuse a
+ * comments answer for want of one. {@link Submission#reasonIsOptional} is that
+ * one fact, and the caller says it rather than this class guessing it from a
+ * queue name this class has never otherwise needed to know.
  *
  * <p>Cited by section and by its own words rather than by a line number: PDL
  * says of itself that a copied number is one more place that drifts from the
@@ -68,8 +71,15 @@ public final class DecidingOnASubmission {
 	private DecidingOnASubmission() {
 	}
 
-	/** A row in a queue, reduced to the one thing this decision turns on. */
-	public record Submission(String state) {
+	/**
+	 * A row in a queue, reduced to the two things this decision turns on.
+	 *
+	 * @param reasonIsOptional whether a refusal of THIS row may go without a reason - true for
+	 *                         the comments queue and false for the other five (ADL A64). The
+	 *                         caller says which, because that is a fact about the QUEUE and
+	 *                         this class has never otherwise had to know one.
+	 */
+	public record Submission(String state, boolean reasonIsOptional) {
 
 		public Submission {
 			Objects.requireNonNull(state, "state");
@@ -77,6 +87,11 @@ public final class DecidingOnASubmission {
 			if (!STATES.contains(state)) {
 				throw new IllegalArgumentException("'" + state + "' is not a state a submission can be in");
 			}
+		}
+
+		/** The five queues where a refusal is never optional. */
+		public Submission(String state) {
+			this(state, false);
 		}
 	}
 
@@ -121,19 +136,27 @@ public final class DecidingOnASubmission {
 			return Outcome.APPROVE_IT;
 		}
 
-		return blank(answer.reason()) ? Outcome.A_REFUSAL_NEEDS_A_REASON : Outcome.REJECT_IT;
+		return submission.reasonIsOptional() || !blank(answer.reason())
+				? Outcome.REJECT_IT : Outcome.A_REFUSAL_NEEDS_A_REASON;
 	}
 
 	/**
 	 * THE REASON AS IT GOES INTO THE ROW, which is not always the reason that was
 	 * typed.
 	 *
-	 * <p>{@code verification_refusal_says_why} is a biconditional: a refusal must
-	 * carry a reason and an approval must carry none. A moderator who types
+	 * <p>{@code verification_refusal_says_why} is a biconditional on five of the six queues:
+	 * a refusal must carry a reason and an approval must carry none. A moderator who types
 	 * something in the box, changes his mind and presses yes would otherwise have
 	 * his note written beside an approval, and the row would be thrown out. So the
 	 * class that judges the answer also says what to store, and nothing between
 	 * the two is left to whoever writes the insert.
+	 *
+	 * <p><b>The sixth queue needs nothing extra here.</b> A blank box already comes back
+	 * {@code null} whatever {@link Submission#reasonIsOptional} says - this method never reads
+	 * that flag - and {@code verification_refusal_says_why}'s own exception for
+	 * {@code queue = 'comments'} (ADL A64) accepts a rejected row with no reason exactly as
+	 * readily as it accepts one with a moderator's trace on it. What changed is only whether
+	 * {@link #decide} lets the answer through at all with the box empty.
 	 *
 	 * @return the reason for a refusal, and {@code null} for an approval
 	 */

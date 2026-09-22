@@ -98,6 +98,14 @@ class VerificationConstraintsTest extends DatabaseTest {
 	/** Refused: the same, and it says why. */
 	private static final String GOOD_REJECTED = row("'results', " + A_MEMBER + ", 'Probni rezultat', '',"
 			+ " null, 'rejected', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Slika ne pokazuje vreme'");
+	/** Refused with NO reason at all, on the one queue V30 excepts from
+	 *  {@code verification_refusal_says_why} (ADL A64 A4): PDL 3267 and 4255 both say a
+	 *  comment „ne odbija nego brise, a napomena je neobavezna". Read beside
+	 *  {@code GOOD_REJECTED}, which is the same shape on a queue the exception does not
+	 *  reach, so the difference between the two IS the exception. */
+	private static final String GOOD_REJECTED_COMMENT_WITH_NO_REASON = row(
+			"'comments', " + A_MEMBER + ", 'Probni komentar bez razloga', '',"
+					+ " null, 'rejected', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', null");
 
 	private static String row(String values) {
 		return "insert into verification (" + COLUMNS + ") values (" + values + ")";
@@ -113,6 +121,17 @@ class VerificationConstraintsTest extends DatabaseTest {
 	private static final String A_PROPOSAL =
 			"(select id from team_proposal where name = 'Probni predlog')";
 
+	/** The event V30 gives both new tables something to point at. */
+	private static final String AN_EVENT = "(select id from btl_event where slug = 'probni-dogadjaj-v30')";
+
+	/** The submission V30 gives the comments tab to point at. */
+	private static final String A_COMMENT_SUBMISSION =
+			"(select id from comment_submission where who = 'Probni Posiljalac')";
+
+	/** The proposal V30 gives the schedule tab to point at. */
+	private static final String A_SCHEDULE_PROPOSAL =
+			"(select id from schedule_proposal where event_id = " + AN_EVENT + ")";
+
 	/** The same, for the other subject. */
 	private static String pointingAtProposal(String queue, String proposal) {
 		return "insert into verification (queue, competitor_id, subject, body, state,"
@@ -124,6 +143,20 @@ class VerificationConstraintsTest extends DatabaseTest {
 		return "insert into verification (queue, competitor_id, subject, body, state,"
 				+ " result_submission_id) values ('" + queue + "', " + A_MEMBER + ", 'Naslov', '',"
 				+ " 'waiting', " + submission + ")";
+	}
+
+	/** The same, for the submission V30 gives the comments tab. */
+	private static String pointingAtCommentSubmission(String queue, String submission) {
+		return "insert into verification (queue, competitor_id, subject, body, state,"
+				+ " comment_submission_id) values ('" + queue + "', " + A_MEMBER + ", 'Naslov', '',"
+				+ " 'waiting', " + submission + ")";
+	}
+
+	/** The same, for the proposal V30 gives the schedule tab. */
+	private static String pointingAtScheduleProposal(String queue, String proposal) {
+		return "insert into verification (queue, competitor_id, subject, body, state,"
+				+ " schedule_proposal_id) values ('" + queue + "', " + A_MEMBER + ", 'Naslov', '',"
+				+ " 'waiting', " + proposal + ")";
 	}
 
 	/**
@@ -159,6 +192,20 @@ class VerificationConstraintsTest extends DatabaseTest {
 				+ A_TOWN + ", null, null, null)").update();
 
 		db.sql(row("'teams', " + A_MEMBER + ", 'Zatecen red', '', null, 'waiting', null, null, null, null")).update();
+
+		/* An event for the two tables V30 adds to point at, and one waiting submission and
+		   one waiting proposal on it, for the six constraints V30 adds. */
+		db.sql("insert into btl_event (slug, name, date, place_id, kind, featured, description, link)"
+				+ " values ('probni-dogadjaj-v30', 'Probni dogadjaj', date '2027-04-04', " + A_TOWN
+				+ ", 'race', false, '', '')").update();
+
+		db.sql("insert into comment_submission (event_id, competitor_id, who, rating_organisation,"
+				+ " rating_value, rating_ambience, body) values (" + AN_EVENT + ", " + A_MEMBER
+				+ ", 'Probni Posiljalac', 4, 5, 3, 'Probni tekst')").update();
+
+		db.sql("insert into schedule_proposal (competitor_id, event_id, event_date, proposed_date)"
+				+ " values (" + A_MEMBER + ", " + AN_EVENT + ", date '2027-04-04', date '2027-04-11')")
+				.update();
 	}
 
 	static List<Violation> violations() {
@@ -278,6 +325,29 @@ class VerificationConstraintsTest extends DatabaseTest {
 				Violation.of("verification_only_the_teams_queue_carries_a_proposal",
 						pointingAtProposal("comments", A_PROPOSAL)),
 
+				/* AND THE SUBMISSION V30 GIVES THE COMMENTS TAB (ADL A64 A1), in the same three
+				   shapes once again: a submission that is not there, the same submission
+				   waiting twice, and one hanging off a tab that does not judge comments. */
+				Violation.of("verification_comment_submission_fk",
+						pointingAtCommentSubmission("comments", "999999")),
+				Violation.of("verification_comment_submission_unique",
+						"insert into verification (queue, competitor_id, subject, body, state,"
+								+ " comment_submission_id) select 'comments', " + A_MEMBER + ", 'Naslov', '',"
+								+ " 'waiting', " + A_COMMENT_SUBMISSION + " from generate_series(1, 2)"),
+				Violation.of("verification_only_the_comments_queue_carries_a_submission",
+						pointingAtCommentSubmission("teams", A_COMMENT_SUBMISSION)),
+
+				/* AND THE PROPOSAL V30 GIVES THE SCHEDULE TAB (ADL A64 A2), the same three
+				   shapes again. */
+				Violation.of("verification_schedule_proposal_fk",
+						pointingAtScheduleProposal("schedule", "999999")),
+				Violation.of("verification_schedule_proposal_unique",
+						"insert into verification (queue, competitor_id, subject, body, state,"
+								+ " schedule_proposal_id) select 'schedule', " + A_MEMBER + ", 'Naslov', '',"
+								+ " 'waiting', " + A_SCHEDULE_PROPOSAL + " from generate_series(1, 2)"),
+				Violation.of("verification_only_the_schedule_queue_carries_a_proposal",
+						pointingAtScheduleProposal("teams", A_SCHEDULE_PROPOSAL)),
+
 				/* AND THE HOLD V28 ADDS, which is a row that is there or is not and therefore
 				   needs no biconditional: both of its columns are NOT NULL, so a hold with a
 				   holder and no end, or an end and no holder, is not a shape the table has.
@@ -351,7 +421,7 @@ class VerificationConstraintsTest extends DatabaseTest {
 	/** Read through a method rather than an annotation: the three are built by a
 	 *  helper, and an annotation takes a constant. */
 	static List<String> legitimateRows() {
-		return List.of(GOOD_WAITING, GOOD_APPROVED, GOOD_REJECTED);
+		return List.of(GOOD_WAITING, GOOD_APPROVED, GOOD_REJECTED, GOOD_REJECTED_COMMENT_WITH_NO_REASON);
 	}
 
 	@ParameterizedTest
@@ -412,6 +482,30 @@ class VerificationConstraintsTest extends DatabaseTest {
 				.query(Long.class)
 				.single())
 				.as("the row went in with an empty pointer, so nothing here is about V11 at all")
+				.isOne();
+	}
+
+	/** And the comments tab carries the submission it is about (ADL A64 A1). */
+	@Test
+	void theCommentsTabCarriesTheSubmissionItIsAbout() {
+		assertThat(db.sql(pointingAtCommentSubmission("comments", A_COMMENT_SUBMISSION)).update()).isOne();
+
+		assertThat(db.sql("select count(*) from verification where comment_submission_id is not null")
+				.query(Long.class)
+				.single())
+				.as("the row went in with an empty pointer, so nothing here is about V30 at all")
+				.isOne();
+	}
+
+	/** And the schedule tab carries the proposal it is about (ADL A64 A2). */
+	@Test
+	void theScheduleTabCarriesTheProposalItIsAbout() {
+		assertThat(db.sql(pointingAtScheduleProposal("schedule", A_SCHEDULE_PROPOSAL)).update()).isOne();
+
+		assertThat(db.sql("select count(*) from verification where schedule_proposal_id is not null")
+				.query(Long.class)
+				.single())
+				.as("the row went in with an empty pointer, so nothing here is about V30 at all")
 				.isOne();
 	}
 

@@ -156,9 +156,15 @@ export const readAsAdministrationsRow: Competitor = aCompetitorToTheAdministrati
  * on QA.
  *
  * **A teams row and not a comments one, chosen rather than taken first.** The four
- * fields this increment added are the teams tab's, so a sample off any other tab would
- * carry them empty and the guard beside it would be satisfied by a server that always
- * answered empty.
+ * fields the 22.09.2026 increment added are the teams tab's, so a sample off any other
+ * tab would carry them empty and the guard beside it would be satisfied by a server
+ * that always answered empty.
+ *
+ * **`rating`, `currentDate` and `proposedDate` are blank here on the same ground**
+ * (ADL A64, 22.09.2026). They answer for real off the comments and the schedule tabs;
+ * a teams row carries them nought and empty exactly as the server really sends them
+ * for every tab but its own, which is the value this sample has to show and not
+ * merely the presence of the key.
  */
 export const aWaitingItem = {
   queue: 'teams' as const,
@@ -173,6 +179,9 @@ export const aWaitingItem = {
   city: 'Zaječar',
   country: 'RS',
   photoId: null,
+  rating: { organisation: 0, value: 0, ambience: 0 },
+  currentDate: '',
+  proposedDate: '',
 }
 
 /**

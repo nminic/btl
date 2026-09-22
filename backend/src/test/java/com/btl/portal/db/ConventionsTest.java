@@ -125,11 +125,11 @@ class ConventionsTest extends DatabaseTest {
 	@Test
 	void theSchemaHoldsOnlyTheTablesTheseMigrationsCreate() {
 		assertThat(tablesInTheSchema()).containsExactly("account", "account_admin_right", "account_session",
-				"admin_right", "attending", "btl_event",
+				"admin_right", "attending", "btl_event", "comment_submission",
 				"competitor", "competitor_document", "country", "ducat", "ducat_award", "ducat_kind", "email_verification_token", "event_comment", "league", "league_race", "membership", "message",
 				"message_read", "notification_setting", "pair_invite", "parental_consent", "password_reset_token", "payment",
 				"photo", "place", "price_row",
-				"race", "racing_pair", "result", "result_submission", "role", "season_competitor", "season_league_standing",
+				"race", "racing_pair", "result", "result_submission", "role", "schedule_proposal", "season_competitor", "season_league_standing",
 				"season_team", "static_page", "static_page_include", "static_page_section", "team", "team_application",
 				"team_invitation", "team_membership", "team_proposal", "verification", "verification_lock");
 	}

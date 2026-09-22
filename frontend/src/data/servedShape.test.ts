@@ -457,31 +457,25 @@ describe('the answer the backend gives', () => {
        something out of nothing. */
     expect(missing(aDucat, servedRow('ducats'))).toEqual([])
 
-    /* AND THE SIX OF THE QUEUE, WHICH ARE SIX AND NOT TWELVE (22.09.2026). Twelve
-       names stood on the server's own list with one reason for all of them - „there is
-       no column for any of them" - and half of them had a column the day it was
-       written: V11 gave a proposal its own row with the town, the country and the team
-       a change is about, `competitor` carries the sender's name, and which sort of
-       thing a row is can be read off the schema twice over. Those six are answered.
+    /* AND THREE OF THE QUEUE, WHICH ARE THREE AND NOT TWELVE ANY MORE (22.09.2026,
+       ADL A64). Twelve names stood on the server's own list with one reason for all of
+       them - „there is no column for any of them" - and it was true of none of them by
+       22.09.2026: V11 had already given a proposal its own row with the town, the
+       country and the team a change is about, `competitor` carries the sender's name,
+       which sort of thing a row is can be read off the schema twice over, and V30 gave
+       the comments and the schedule tabs a row of their own too, so `rating`,
+       `currentDate` and `proposedDate` answer for real off those. Nine of the twelve
+       are answered now.
 
-       The six below have no home, each for its own reason, and each is in `PENDING.md`
-       with the table that lacks it: the three marks of a comment and the address of a
-       registration have no column, the two dates of a reported change of term have
-       neither a column nor a pointer to the event, and the picture and its square are
-       not a missing column at all but ADL A60 - a picture held only by something
-       awaiting a decision answers exactly as a picture that is not there, so an
-       address served here would draw a broken frame.
+       The three below still have no home, each for its own reason, and each is in
+       `PENDING.md` with the table that lacks it: the address of a registration has no
+       column, and the picture and its square are not a missing column at all but ADL
+       A60 - a picture held only by something awaiting a decision answers exactly as a
+       picture that is not there, so an address served here would draw a broken frame.
 
        `crop` reads as three names because the file nests it and this compares the
        names of one record; that is the same subtraction the ducats made above. */
-    expect(missing(aWaitingItem, servedRow('verification'))).toEqual([
-      'crop',
-      'currentDate',
-      'email',
-      'picture',
-      'proposedDate',
-      'rating',
-    ])
+    expect(missing(aWaitingItem, servedRow('verification'))).toEqual(['crop', 'email', 'picture'])
 
     /* **AND THE FOUR THAT WERE NEVER SEEN UNTIL 21.09.2026, COUNTED RATHER THAN
        LISTED.** Every name the generated file carries that the answer does not, over

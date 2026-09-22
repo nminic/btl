@@ -906,7 +906,8 @@ export type PendingItem = {
 
 /**
  * THE SAME ITEM AS `/api/verification` REALLY ANSWERS IT, which is `PendingItem`
- * less the six the schema has nowhere to hold.
+ * less the three the schema still has nowhere to hold (or nowhere it may be read
+ * from).
  *
  * **Derived by `Omit` and never written out, which is the whole point.** A
  * hand-written list of „what the server sends" is a second home for the shape, and
@@ -920,17 +921,15 @@ export type PendingItem = {
  * `PendingItem[]`, and „Administracija → Verifikacija → Timovi" threw on
  * `undefined.trim()` in front of the owner. Nothing compared the two ends.
  *
- * **Each name below is a boundary with a reason that is true today**, and each is in
- * `PENDING.md` with the table that has nowhere to hold it:
+ * **`rating`, `currentDate` and `proposedDate` left this list the same day** (ADL A64,
+ * 22.09.2026): V30 gave the comments tab a table of its own to hold a mark in
+ * (`comment_submission`) and the schedule tab one to hold both days in
+ * (`schedule_proposal`), closing the pointer `verification` had none of before. The
+ * three that are left carry the reason that is true of EACH of them, in `PENDING.md`
+ * too:
  *
- * - `rating` — the three marks live on `event_comment`, and that is a comment ALREADY
- *   PUBLISHED. A comment waiting for a moderator is a row in `verification`, which has
- *   no column for a mark and no pointer to one.
  * - `email` — a registration's address. `account.email` exists; serving it here is a
  *   decision about what the payments queue may say, not a shortfall of this shape.
- * - `currentDate`, `proposedDate` — a reported change of term. V9 keeps the day asked
- *   for as free TEXT in `body`, and there is no column for either date, nor any
- *   pointer from a queue row to the event it is about.
  * - `picture`, `crop` — ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka
  *   odluku moderatora nije javna... Takva slika odgovara tacno isto kao slika koje
  *   nema." `verification.photo_id` is exactly such a holder, so `/api/photos/` answers
@@ -977,12 +976,5 @@ export type PendingItem = {
  */
 export type ServedPendingItem = Omit<
   PendingItem,
-  | 'id'
-  | 'memberNumber'
-  | 'rating'
-  | 'email'
-  | 'currentDate'
-  | 'proposedDate'
-  | 'picture'
-  | 'crop'
+  'id' | 'memberNumber' | 'email' | 'picture' | 'crop'
 > & { id: number; memberNumber: string | null; photoId: number | null }
