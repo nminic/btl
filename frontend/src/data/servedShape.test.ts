@@ -13,6 +13,7 @@ import {
   aWaitingItem,
   myOwnRow,
   readAsWaitingItem,
+  readAsWaitingItemWithNoNumber,
   readAsAdministrationsRow,
   readAsLeague,
   readAsMyOwnRow,
@@ -369,6 +370,12 @@ describe('the answer the backend gives', () => {
        sample that lost either would be the shape that broke the screen. */
     expect(readAsWaitingItem.queue).toBe('teams')
     expect(readAsWaitingItem.id).toBe(7)
+    /* And the second state of the one field of a queue item that has two, which is the
+       same shape `copiedFrom` and `memberNumber` are written down twice for above: the
+       server answers nothing where there is no member number to give, and the portal's
+       empty string is a different sentence that must not stand in for it. */
+    expect(readAsWaitingItemWithNoNumber.memberNumber).toBeNull()
+    expect(readAsWaitingItem.memberNumber).toBe('000001')
 
     expect(readAsEvent.id).toBe(273)
     expect(readAsEvent.copiedFrom).toBeNull()

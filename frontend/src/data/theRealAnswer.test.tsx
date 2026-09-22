@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { must } from '../test/at'
@@ -6,7 +6,13 @@ import { clearResourceCache, loadResource } from './client'
 import { renderAt } from '../test/render'
 import { theCookieNames } from '../test/setup'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
-import { aCompetitor, asAnswered, myOwnRecordFromMe, myOwnRow } from '../test/theAnswer'
+import {
+  aCompetitor,
+  asAnswered,
+  aWaitingItem,
+  myOwnRecordFromMe,
+  myOwnRow,
+} from '../test/theAnswer'
 import { readerAdministers, teamAdminOf } from './teamAdmin'
 import type { Competitor, Team } from './types'
 
@@ -368,6 +374,170 @@ describe('a racing pair, on the answer the server gives', () => {
       expect(line).toContain('Za sezonu 2027.')
       expect(line).not.toMatch(/\d{1,2}\.\s*\d{1,2}\./)
       expect(line).not.toContain('Invalid Date')
+    } finally {
+      stop()
+    }
+  })
+})
+
+/**
+ * THE QUEUE AS `/api/verification` REALLY ANSWERS IT, out of the generated file.
+ *
+ * **Why this one had nothing and had to get something, which is measured and not
+ * argued.** Every case that draws a moderation screen is answered out of
+ * `public/mock/verification.json` by `test/setup.ts`, and that file carries all
+ * SEVENTEEN names a card is drawn by. The answer carries twelve: the six that have no
+ * home in the schema are filled in on this side (`pages/admin/pending.ts`), the key is a
+ * number rather than text, and the member number may be nothing at all. So no case on the
+ * portal had ever walked a queue screen through the world the server really makes, and it
+ * showed: `pages/admin/pending.ts` put back to the day before this increment left all 944
+ * cases green and `npm run build` at nought, although it is the whole of the half that
+ * makes the answer readable.
+ *
+ * **Reduced by the KEYS of the record the server declares and never by a list of names
+ * to take away** (`test/theAnswer.ts`), which is the same floor `membersTheServerAnswers`
+ * stands on above and for the same reason: a list written here is a second home for the
+ * shape, and it is the home that goes short.
+ *
+ * **What it claims, said exactly, because it is not everything.** The set of field NAMES
+ * a row carries, and the two whose SORT differs. The VALUES beside them are the file's:
+ * where the server's value differs by tab - the town it answers on two tabs and not on
+ * six, the key of the team a change is about - that is measured on the side that decides
+ * it (`VerificationApiTest`), and saying it twice would be two homes for one fact.
+ */
+function queueAsServed(): Record<string, unknown>[] {
+  const file: Record<string, unknown>[] = JSON.parse(
+    readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'),
+  )
+
+  return file.map((row, nth) => ({
+    ...asAnswered(row, aWaitingItem),
+    /* `verification.id` is a `bigserial` and the file's are text slugs, which is the
+       first of the two differences of sort the portal's own type writes out. */
+    id: nth + 1,
+    /* And the second: the server answers nothing where there is no member number to
+       give, and the file spells the same state as an empty string. */
+    memberNumber: row.memberNumber === '' ? null : row.memberNumber,
+    /* The key of the row in `photo`, which the portal does not read and the answer
+       carries. Nothing here, because ADL A60 keeps a picture that is waiting for a
+       decision out of every address the portal could ask for it at. */
+    photoId: null,
+  }))
+}
+
+/** One card off a queue screen, by something only that card says. */
+function cardSaying(waiting: HTMLElement, said: string): HTMLElement {
+  return must(
+    within(waiting)
+      .getAllByRole('listitem')
+      .find((one) => (one.textContent ?? '').includes(said)),
+    `the card that says ${said}`,
+  )
+}
+
+describe('a queue of things waiting, on the answer the server gives', () => {
+  /* **THE FLOOR UNDER THE ANSWER THE CASES BELOW ARE FED, and it is the one this
+     resource never had.** `servedShape.test.ts` holds the declared record against the
+     generated file and prints the six the server has nowhere to read; this holds what
+     really goes to a screen against that same record. Written as a comparison of the two
+     key sets rather than as six names, so a seventh name leaving the answer - or one of
+     the six quietly coming back - is red here on the day it happens. */
+  it('carries the names the queue item declares, and not one more', () => {
+    const served = must(queueAsServed()[0], 'a first item of the answer')
+
+    expect(Object.keys(served).sort()).toEqual(Object.keys(aWaitingItem).sort())
+  })
+
+  it('draws no frame where the answer carries no picture', async () => {
+    /* **`ABSENT.picture` is the empty string and its own docstring calls that the one
+       that matters**, because the card asks `one.picture !== ''` before it draws a
+       frame. Nothing measured it: every row of the generated file carries `picture: ""`
+       of its own, so the fill-in had nothing to do and `ABSENT.picture` could be set to
+       any file name at all with the whole package green. Here the name does not arrive,
+       so this side is the only thing deciding, and a frame drawn around nothing is a
+       moderator looking at a broken image instead of at what he is judging. */
+    const { stop } = answering(queueAsServed(), '/api/verification')
+
+    try {
+      renderAt('/sr/administracija/verifikacija/trkacki-profil', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const card = cardSaying(waiting, 'profilna-sa-maratona.jpg')
+
+      /* The file name is what a moderator reads and it is still there, so „nothing is
+         drawn" cannot pass for „the card is not on the screen". */
+      expect(within(card).getByText('profilna-sa-maratona.jpg')).toBeVisible()
+      expect(
+        within(card).queryByRole('img', { name: /Slika koju je poslao/ }),
+      ).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
+  it('refuses to hand back a reported change nobody sent, and says why on the card', async () => {
+    /* **THE ROW THE COMMENT OVER `canSendBack` HAS BEEN WAITING FOR.** It says: „Every
+       picture in the data carries a number today, which is exactly the kind of safety
+       that lasts until the backend hands over the first row that does not." The server
+       answers a member number as nothing - `verification.competitor_id` is nullable by
+       V9's decision, and since V16 somebody who registered and has not paid has no
+       number - and `canSendBack` asks `item.memberNumber !== ''`, which a null PASSES.
+
+       What is on the other side of that door is not a blank name on a card: an empty
+       recipient in this portal is the WHOLE LEAGUE (`session/context.ts`, `Message.to`),
+       so a refusal built from this item would be addressed to nothing and reach nobody,
+       one instruction away from reaching everybody. A change of term may be reported by
+       somebody with no account at all (PDL P10), so this is an ordinary row and not a
+       broken one. */
+    const { stop } = answering(queueAsServed(), '/api/verification')
+
+    try {
+      renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const fromNobody = cardSaying(waiting, 'Pisao sam organizatoru')
+
+      expect(within(fromNobody).getByText(/nema člana kome bi odgovor stigao/)).toBeVisible()
+      expect(within(fromNobody).queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
+
+      /* **And the card beside it, which is what makes this about the ROW rather than
+         about the tab.** Written without it, a portal that had stopped offering the way
+         back on the whole of this queue would read exactly like a portal that reads the
+         member number. */
+      const fromAMember = cardSaying(waiting, 'Borivoje Jovanović')
+
+      expect(within(fromAMember).getByRole('button', { name: 'Odbij' })).toBeVisible()
+    } finally {
+      stop()
+    }
+  })
+
+  it('names the two days it has not got rather than drawing empty ones', async () => {
+    /* **THE BOUNDARY MEASURED RATHER THAN DESCRIBED, and it is in `PENDING.md` with the
+       table that lacks the column.** `verification` has no pointer to `btl_event` and no
+       column for either day: V9 keeps the day asked for as free TEXT inside `body`. So a
+       reported change of term arrives with both dates empty, and `datesOf`
+       (`pages/admin/PendingQueue.tsx`) drops an empty one rather than printing a blank
+       label - which is the difference between a moderator seeing nothing and a moderator
+       seeing „Prijavljen datum:" with nothing after it.
+
+       **What it costs is an action and not a gap**, and that is why this is a case: the
+       screen moves the event only where there is a day to move it to, so approving a
+       report on this tab moves nothing at all. The day the owner decides on the pointer,
+       this case is what has to change. */
+    const { stop } = answering(queueAsServed(), '/api/verification')
+
+    try {
+      renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
+
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+      const card = cardSaying(waiting, 'Pisao sam organizatoru')
+
+      /* What the member wrote is there, which is the one thing about this report the
+         schema really holds. */
+      expect(within(card).getByText(/potvrdio mi je nov datum mejlom/)).toBeVisible()
+      expect(within(card).queryByText('Prijavljen datum')).not.toBeInTheDocument()
+      expect(within(card).queryByText('Datum u kalendaru')).not.toBeInTheDocument()
     } finally {
       stop()
     }

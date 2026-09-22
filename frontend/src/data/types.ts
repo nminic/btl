@@ -941,15 +941,48 @@ export type PendingItem = {
  * the key of the row in `photo`, and it is here so that the day A60 is revisited there
  * is something to revisit rather than a field to invent.
  *
- * **And `id` is a NUMBER here and a string there, which is a difference of sort rather
- * than of presence and is therefore written out rather than omitted.** The server
- * answers `verification.id`, a `bigserial` (`VerificationApi`: „the shapes are the
- * schema's and not the file's"), and the portal identifies a waiting item by text
- * because it also holds items this visit made up, which never came out of a sequence.
- * The one place the two meet turns one into the other, and it is the same place that
+ * **TWO NAMES DIFFER BY SORT RATHER THAN BY PRESENCE, and those are written out rather
+ * than omitted**, because a field that arrives as the wrong sort is read in silence
+ * where a field that does not arrive at all is read as `undefined`.
+ *
+ * - `id` is a NUMBER here and text there. The server answers `verification.id`, a
+ *   `bigserial` (`VerificationApi`: „the shapes are the schema's and not the file's"),
+ *   and the portal identifies a waiting item by text because it also holds items this
+ *   visit made up, which never came out of a sequence.
+ * - `memberNumber` is a number OR NOTHING here and always text there, and the nothing is
+ *   ordinary twice over: `verification.competitor_id` is nullable by V9's own decision
+ *   („A payment waiting to be recognised may be about a person who is not one yet"), and
+ *   since V16 somebody who has registered and whose fee is not recorded is a row in
+ *   `competitor` with no number at all.
+ *
+ * **That nothing is JSON null and not an empty string, and that is the portal's own
+ * word measured rather than chosen here.** `/api/comments` answers `memberNumber` as
+ * null for an author there is no profile to lead to, `/api/results` does the same for a
+ * result of somebody with no number, and `TeamApi` wrote down why the other spelling was
+ * refused: `coalesce(seat.member_number, '')` made the answer say „nobody holds this
+ * seat" about a seat that is HELD, because the empty string already means something on
+ * the screen that reads it.
+ *
+ * **It means something here too, which is why the two meet in one place.**
+ * `PendingItem.memberNumber` is „who sent it in, or empty", with two written reasons for
+ * the empty - a change of date may be reported by somebody with no account at all (PDL
+ * P10), and a registration whose fee is not recorded has no number yet (30.07.2026) -
+ * and `canSendBack` refuses to hand an item back to it, because an empty recipient in
+ * this portal is not nobody but the WHOLE LEAGUE (`session/context.ts`, `Message.to`).
+ * A null travelling on into the screen passes `item.memberNumber !== ''`, so a
+ * moderator's reason for refusing one person's picture would be addressed to null and
+ * delivered to nobody at all. The one place these two shapes meet turns the nothing into
+ * the portal's own empty, and it is the same place that turns the number into text and
  * fills the six above.
  */
 export type ServedPendingItem = Omit<
   PendingItem,
-  'id' | 'rating' | 'email' | 'currentDate' | 'proposedDate' | 'picture' | 'crop'
-> & { id: number; photoId: number | null }
+  | 'id'
+  | 'memberNumber'
+  | 'rating'
+  | 'email'
+  | 'currentDate'
+  | 'proposedDate'
+  | 'picture'
+  | 'crop'
+> & { id: number; memberNumber: string | null; photoId: number | null }

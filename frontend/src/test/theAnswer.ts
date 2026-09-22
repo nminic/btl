@@ -175,9 +175,39 @@ export const aWaitingItem = {
   photoId: null,
 }
 
+/**
+ * AND ONE ABOUT SOMEBODY WITH NO MEMBER NUMBER, which is the other state of that field
+ * and has to be written down separately for the same reason `aCountedResult` is.
+ *
+ * **Two ordinary ways of there being no number, and the payments tab exists for both.**
+ * `verification.competitor_id` is nullable by V9's own decision - „A payment waiting to
+ * be recognised may be about a person who is not one yet" - and since V16 somebody who
+ * has registered and whose fee is not recorded IS a row in `competitor` and has none.
+ *
+ * **JSON null and not an empty string**, which is what `/api/comments` and
+ * `/api/results` already answer for the same fact and what `TeamApi` wrote down the
+ * measurement for: the empty string is a sentence of its own on the screen that reads
+ * it, so the two must not be spelled alike.
+ */
+export const aWaitingItemAboutNobody = {
+  ...aWaitingItem,
+  id: 8,
+  queue: 'payments' as const,
+  memberNumber: null,
+  who: 'Gordana Gorić',
+  subject: 'Gordana Gorić',
+  subjectId: '',
+  body: '',
+  city: 'Kraljevo',
+}
+
 export const readAsTeam: Team = aTeam
 export const readAsTeamWithNoMark: Team = aTeamWithNoMark
 export const readAsWaitingItem: ServedPendingItem = aWaitingItem
+/* The compiler is the assertion here as everywhere in this file: with
+   `ServedPendingItem.memberNumber` back to plain text this line does not build, which is
+   the whole of the claim that the server may answer nothing. */
+export const readAsWaitingItemWithNoNumber: ServedPendingItem = aWaitingItemAboutNobody
 export const readAsPair: RacingPair = aPair
 export const readAsLeague: League = aLeague
 

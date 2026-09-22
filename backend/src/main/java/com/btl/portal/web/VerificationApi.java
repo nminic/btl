@@ -185,6 +185,35 @@ import java.util.List;
  * {@code Answers} checks both halves of every name, so a field that went missing for some
  * other reason cannot hide behind the list.
  *
+ * <p><b>AND WHAT THOSE BOUNDARIES COST IS AN ACTION AND NOT AN EMPTY BOX.</b> That is
+ * measured rather than described, and it is written here because the milder sentence - „the
+ * cards carry an empty address, nought marks and empty dates" - stood for a day and is only
+ * half of it. Two of the fields are read by the portal in order to DO something, so a blank
+ * does not arrive as a gap on a card; it arrives as a decision that quietly does nothing:
+ *
+ * <ul>
+ * <li><b>{@code subjectId} is blank on the comments tab</b>, and the column that would fill
+ * it does not exist: {@code verification} has no pointer to {@code btl_event} and none to
+ * {@code event_comment}, the only two V10 and V11 gave it being
+ * {@code result_submission_id} and {@code team_proposal_id}. The portal turns an approved
+ * comment into a record with {@code eventId: Number(item.subjectId)}
+ * ({@code frontend/src/data/comment.ts}), and {@code Number("")} is NOUGHT - so a comment a
+ * moderator approves is filed under an event that does not exist instead of under the one
+ * it is about, and the event page it was written for never shows it.
+ * <li><b>{@code proposedDate} is blank on the schedule tab</b>, for that same missing
+ * pointer and one missing column besides: V9 keeps the day asked for as free TEXT inside
+ * {@code body}. The screen moves an event only when it has a day to move it to
+ * ({@code frontend/src/pages/admin/PendingQueue.tsx}), so approving a reported change of
+ * term moves nothing - which is the whole of what the owner asked that tab for on
+ * 06.08.2026.
+ * </ul>
+ *
+ * <p>Both are in {@code PENDING.md} beside the table that lacks the column, and both wait on
+ * a decision that is the owner's: a pointer from this row to {@code btl_event}, and then
+ * either a date column beside it or a rule for reading one out of {@code body}. They are
+ * named here rather than filled in here, because either invention would be a queue row
+ * claiming to know which event it is about.
+ *
  * <p><b>Neither pointer V10 and V11 added is ANSWERED, and {@code team_proposal_id} is
  * now READ.</b> The two are keys of this side's own tables, and a key is not a fact the
  * portal has any use for: what the teams tab draws is the town, the country and the team a
@@ -253,8 +282,6 @@ class VerificationApi {
 	 *                     whose fee is not recorded, who since V16 is a {@code competitor}
 	 *                     with no number - „A row in competitor is a PERSON WHO
 	 *                     REGISTERED. A MEMBER is a row whose member_number is there."
-	 * @param subject      what the decision is about, which V9 makes NOT NULL because it
-	 *                     „carries the name in every case"
 	 * @param who          the name of whoever sent it in, or blank where no row in
 	 *                     {@code competitor} is named. Read beside {@code subject} and
 	 *                     never instead of it: on the payments tab the two are the same
@@ -279,14 +306,36 @@ class VerificationApi {
 	 *                     ({@code teamEdit}), and a profiles row is a picture exactly when
 	 *                     it still holds one and a biography otherwise. The two words are
 	 *                     the portal's own ({@code ITEM_KINDS} in {@code data/types.ts})
-	 * @param city         the town of a proposed team, and blank on every other tab. The
-	 *                     same {@code coalesce} {@link TeamApi} and {@link CompetitorApi}
-	 *                     already make over the identical three columns, because
-	 *                     {@code team_proposal} holds a town the one way or the other and
-	 *                     never both ({@code team_proposal_town_is_from_the_codebook_or_typed})
+	 * @param city         THE TOWN, ON THE TWO TABS THAT HAVE ONE, and blank on the other
+	 *                     four. The portal says which two and why in as many words
+	 *                     ({@code PendingItem.city} in {@code data/types.ts}): „On the
+	 *                     payments, because how a member pays follows the country they live
+	 *                     in (PDL P8)... On the new teams, because approving a proposal is
+	 *                     what makes the team and these are two of the four things it is
+	 *                     made from (PDL P13). Empty on the other five." So the two tabs
+	 *                     read it from two different places and the SAME
+	 *                     {@code coalesce} {@link TeamApi} and {@link CompetitorApi} already
+	 *                     make is made twice: off {@code team_proposal} for a proposal, off
+	 *                     {@code competitor} for a registration. Each of those tables holds
+	 *                     a town the one way or the other and never both, by a constraint
+	 *                     of the same shape
+	 *                     ({@code team_proposal_town_is_from_the_codebook_or_typed},
+	 *                     {@code competitor_town_is_from_the_codebook_or_typed}).
+	 *
+	 *                     <p>Which of the two is read is decided by the TAB and never by
+	 *                     which row happens to join: written as one long {@code coalesce}
+	 *                     falling through from the proposal to the sender, the four tabs the
+	 *                     portal says carry no town would carry the sender's, and a
+	 *                     moderator reading a comment would be shown where its author lives.
+	 *                     Until 22.09.2026 it was read off {@code team_proposal} alone, so
+	 *                     the payments tab drew its own „Mesto" column
+	 *                     ({@code pages/admin/Payments.tsx}) empty on every row
 	 * @param country      its country, AS THE CODE AND NEVER THE NAME, which is the shape
 	 *                     both resources above answer with and the shape the portal reads
-	 *                     ({@code countryName} turns it into words). Blank with the town
+	 *                     ({@code countryName} turns it into words). Blank with the town,
+	 *                     and off the same side of the same {@code case}: a row answering
+	 *                     one tab's town beside another tab's country is the one shape that
+	 *                     looks right and is not
 	 * @param photoId      the picture while there still is one, and nothing where the tab
 	 *                     carries none
 	 */
@@ -363,9 +412,29 @@ class VerificationApi {
 						/* THE TOWN THE ONE WAY OR THE OTHER, which is the same coalesce
 						   `TeamApi` and `CompetitorApi` already make over the identical three
 						   columns. The country is the CODE, as it is in both of those: the
-						   portal turns it into words itself. */
-						+ " coalesce(town.name, tp.city, '') as city,"
-						+ " coalesce(town_country.code, typed_country.code, '') as country,"
+						   portal turns it into words itself.
+
+						   AND OFF TWO DIFFERENT TABLES, BY THE TAB, since 22.09.2026. The
+						   portal draws a town on the payments tab and on the teams tab and
+						   on no other (`PendingItem.city`), and the two are two different
+						   facts: the town a proposal asks for, and the town the person
+						   registering lives in - which is what PDL P8 hangs the way he pays
+						   on. Both tables hold one the same two ways, so the coalesce is the
+						   same and only the columns differ.
+
+						   BY THE TAB AND NOT BY WHICH ROW JOINS, and that is the whole of
+						   this `case`. Written as one coalesce falling from the proposal
+						   through to the sender, a comment or a reported change of term
+						   would answer with its AUTHOR'S town - four tabs the portal says
+						   carry none, showing a moderator where a member lives beside a
+						   text he is deciding about. */
+						+ " case when v.queue = 'payments'"
+						+ "      then coalesce(his_town.name, c.city, '')"
+						+ "      else coalesce(town.name, tp.city, '') end as city,"
+						+ " case when v.queue = 'payments'"
+						+ "      then coalesce(his_towns_country.code, his_typed_country.code, '')"
+						+ "      else coalesce(town_country.code, typed_country.code, '') end"
+						+ "      as country,"
 						+ " v.photo_id"
 						/* DRIVEN BY THE RIGHTS AND NOT BY THE ROWS, so the condition that
 						   decides „may he" is the only thing that picks tabs. Read the other
@@ -402,6 +471,17 @@ class VerificationApi {
 						+ " left join place town on town.id = tp.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
 						+ " left join country typed_country on typed_country.id = tp.country_id"
+						/* AND THE TOWN THE SENDER HIMSELF LIVES IN, which the payments tab
+						   draws and the other five do not. The same three columns in the
+						   same two ways, on `competitor` this time
+						   (`competitor_town_is_from_the_codebook_or_typed`), and all three
+						   LEFT for the same reason `competitor` itself is: a payment waiting
+						   to be recognised may be about nobody in the record at all. */
+						+ " left join place his_town on his_town.id = c.place_id"
+						+ " left join country his_towns_country"
+						+ "   on his_towns_country.id = his_town.country_id"
+						+ " left join country his_typed_country"
+						+ "   on his_typed_country.id = c.country_id"
 						/* THE ONES HE MAY, decided by `WhatHeMayDo` and passed in. Written
 						   here as a condition over the ticks it would be a second home for
 						   „may he" and would answer the superadmin, who holds everything with

@@ -95,7 +95,32 @@ function itemFrom({ photoId: _photoId, ...served }: ServedPendingItem): PendingI
      answering one of the six, nothing here changes and the value simply comes through.
      Written the other way round, this file would have to be edited to stop overwriting
      a field that had just been decided, and nothing would fail if somebody forgot. */
-  return { ...ABSENT, ...served, id: String(served.id) }
+  return {
+    ...ABSENT,
+    ...served,
+    id: String(served.id),
+    /* AND THE TWO NAMES THE SERVER ANSWERS IN ANOTHER SORT, which is a different thing
+       from the six above and is why they are written after the spread rather than
+       before it: those are absent, these arrive and arrive as something else.
+
+       The number is text here because a waiting item is also made up during a visit
+       and never came out of a sequence. The member number is text OR NOTHING there
+       (`ServedPendingItem` says why twice over) and is always text here, and the empty
+       string is the portal's own word for the nothing: „Who sent it in, or empty"
+       (`PendingItem.memberNumber`), with PDL P10 and the decision of 30.07.2026 for
+       the two ways of there being nobody.
+
+       **IT HAS TO BE TURNED HERE AND NOWHERE ELSE.** `canSendBack` refuses to hand an
+       item back where there is no member to hand it to, and it asks
+       `item.memberNumber !== ''` - which a null PASSES. What is on the other side of
+       that door is not a missing name on a card: an empty recipient in this portal is
+       the WHOLE LEAGUE (`session/context.ts`, `Message.to`), so a refusal addressed to
+       null would either reach nobody or, one instruction away, reach everybody. The
+       comment over that door has said since it was written that this is „exactly the
+       kind of safety that lasts until the backend hands over the first row that does
+       not" carry a number, and this is that row. */
+    memberNumber: served.memberNumber ?? '',
+  }
 }
 
 export function usePending(): ResourceState<PendingItem[]> {

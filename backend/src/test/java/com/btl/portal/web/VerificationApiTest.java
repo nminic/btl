@@ -158,6 +158,25 @@ class VerificationApiTest {
 	/** In another country, so the two teams rows differ along that axis too. */
 	private static final String TYPED_COUNTRY = "ME";
 
+	/**
+	 * THE TOWN EVERY PERSON IN THIS FIXTURE LIVES IN, out of the codebook.
+	 *
+	 * <p>Named here because the payments tab answers with the town of the PERSON rather
+	 * than with a proposal's, so it is a fact of the fixture and no longer an unread column
+	 * of {@code competitor}. It is neither of the two towns a proposal carries, which is
+	 * what lets „the town of this row" be told apart from „the town of any row".
+	 */
+	private static final String EVERYBODYS_TOWN = "(select id from place where rank = 1)";
+
+	/** And one person written into a town nobody found in the book, which is
+	 *  {@code competitor}'s other way of holding one and the half a query reading only
+	 *  {@code place.name} would lose. */
+	private static final String HER_TYPED_TOWN = "Mostar";
+
+	/** In a fourth country, so no two towns in this fixture share one and a query that
+	 *  found any country cannot pass for one that found hers. */
+	private static final String HER_TYPED_COUNTRY = "BA";
+
 	private static final String THE_REASON = "Uplatnica nije citljiva";
 
 	private static final String THE_DECIDER = "Moderator Koji Je Odlucio";
@@ -190,8 +209,12 @@ class VerificationApiTest {
 	 * other way.
 	 * <li>{@code profiles} waits twice and one of the two carries a photograph.
 	 * <li>{@code teams} waits once, so a tab with a single item is in the fixture too.
-	 * <li>{@code payments} waits once, about somebody who has registered and has no number,
-	 * which V16 made an ordinary state rather than a broken row.
+	 * <li>{@code payments} waits twice, along the two axes that tab is read along. Whose it
+	 * is: somebody who has registered and has no number, which V16 made an ordinary state
+	 * rather than a broken row, and a member whose fee has run out and who therefore has
+	 * one. And where they live: one town out of the codebook and one somebody typed, which
+	 * is {@code competitor}'s „one way or the other" and the reason a single row here could
+	 * not tell a query reading {@code place.name} from one reading {@code competitor.city}.
 	 * </ul>
 	 */
 	@BeforeEach
@@ -269,6 +292,17 @@ class VerificationApiTest {
 		proposalOn("Dunavski trkaci", MEMBER_TWO, aTeamThatExists(), null, null);
 
 		waitingAboutNobodyInParticular(PAYMENTS, "Gordana Goric", "", "2026-08-20 06:00:00+00");
+
+		/* AND A SECOND PAYMENTS ROW, because this tab is read along two axes and one row
+		   holds one value on each of them. Whose it is: the row above is about somebody with
+		   no member number, so without this one „nothing" and „his number" cannot be told
+		   apart on the tab where the difference lives. And where he lives: the row above
+		   takes its town out of the codebook, so a query reading only `competitor.city`
+		   would answer it blank and a query reading only `place.name` would answer this one
+		   blank, and each of those mistakes is green against a fixture holding one of the
+		   two. */
+		livesInATownSomebodyTyped(LAPSED, HER_TYPED_TOWN, HER_TYPED_COUNTRY);
+		waiting(PAYMENTS, LAPSED, "Vera Veric", "", "2026-08-21 06:00:00+00", null);
 	}
 
 	private void account(String email, String role, String first, String last) {
@@ -317,11 +351,26 @@ class VerificationApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, ?, 'payment',"
+						+ " " + EVERYBODYS_TOWN + ", 2027, false, ?, 'payment',"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, feeStanding, String.format("%016x", ++issued))
 				.update();
+	}
+
+	/**
+	 * MOVES ONE PERSON OUT OF THE CODEBOOK AND INTO A TOWN SOMEBODY WROTE OUT.
+	 *
+	 * <p>Both columns at once, because {@code competitor_town_is_from_the_codebook_or_typed}
+	 * refuses a row holding both and refuses one holding neither, exactly as V11 does for a
+	 * proposal. Written as an update rather than as a second insert helper so that every
+	 * person in this fixture is still made the one way, and only this axis differs.
+	 */
+	private void livesInATownSomebodyTyped(String number, String town, String countryCode) {
+		db.sql("update competitor set place_id = null, city = ?,"
+						+ " country_id = (select id from country where code = ?)"
+						+ " where member_number = ?")
+				.params(town, countryCode, number).update();
 	}
 
 	/**
@@ -1075,6 +1124,75 @@ class VerificationApiTest {
 	}
 
 	/**
+	 * AND THE PAYMENTS TAB ANSWERS WITH THE TOWN THE PERSON HIMSELF LIVES IN.
+	 *
+	 * <p><b>Two tabs draw a town and until 22.09.2026 only one of them was answered one.</b>
+	 * The portal says which two and why in as many words ({@code PendingItem.city}): the
+	 * teams tab because approving a proposal is what makes the team out of them (PDL P13),
+	 * and the payments tab because how a member pays follows the country he lives in (PDL
+	 * P8). The query read {@code team_proposal} alone, so the „Mesto" column the payments
+	 * screen draws ({@code pages/admin/Payments.tsx}) was empty on every row while the
+	 * columns to fill it sat on {@code competitor} (V7).
+	 *
+	 * <p><b>Both of {@code competitor}'s two ways of holding a town</b>, which is the same
+	 * axis the proposals above are read along and for the same reason: a query reading only
+	 * {@code place.name} and a query reading only {@code competitor.city} each answer one of
+	 * these two rows and lose the other, and each is green against a fixture with one row.
+	 *
+	 * <p><b>And the four tabs that carry no town are asked too, which is the half that makes
+	 * this about the TAB rather than about the join.</b> Written as one {@code coalesce}
+	 * falling from the proposal through to the sender - the shortest way to make the two
+	 * assertions above pass - a comment and a racing profile would answer with their
+	 * author's town, and a moderator deciding about a text would be shown where its writer
+	 * lives. Everybody in this fixture lives somewhere, so those rows are blank only if the
+	 * tab decides it.
+	 */
+	@Test
+	void aRegistrationAnswersWithTheTownItsSenderLivesInAndTheOtherTabsWithNone()
+			throws Exception {
+		JsonNode fromTheBook = itemIn(THE_SUPERADMIN, PAYMENTS, 0);
+
+		assertThat(fromTheBook.path("city").asString())
+				.as("a registration whose sender's town came out of the CODEBOOK answered with"
+						+ " nothing, so the payments screen draws its own column empty")
+				.isEqualTo(db.sql("select name from place where rank = 1")
+						.query(String.class).single());
+		assertThat(fromTheBook.path("country").asString())
+				.as("a codebook town did not answer with its own country's code, which is what"
+						+ " PDL P8 hangs the way a member pays on")
+				.isEqualTo(db.sql("select c.code from country c join place p on p.country_id = c.id"
+						+ " where p.rank = 1").query(String.class).single());
+
+		JsonNode typed = itemIn(THE_SUPERADMIN, PAYMENTS, 1);
+
+		assertThat(typed.path("city").asString())
+				.as("a registration whose sender TYPED his town answered with nothing, so only one"
+						+ " of the two ways `competitor` holds a town reaches the screen")
+				.isEqualTo(HER_TYPED_TOWN);
+		assertThat(typed.path("country").asString())
+				.as("a typed town did not answer with the country typed beside it")
+				.isEqualTo(HER_TYPED_COUNTRY);
+
+		assertThat(typed.path("country").asString())
+				.as("both payments rows are in one country, so this case cannot tell a query that"
+						+ " read the right country from one that read any country")
+				.isNotEqualTo(fromTheBook.path("country").asString());
+
+		assertThat(itemIn(THE_SUPERADMIN, COMMENTS, 0).path("city").asString())
+				.as("a comment answered with a town, and the only town anywhere near it is where"
+						+ " its AUTHOR lives - which is not this tab's to show")
+				.isEmpty();
+		assertThat(itemIn(OTHER_QUEUES, PROFILES, 0).path("city").asString())
+				.as("a racing profile answered with a town, which the portal says that tab has"
+						+ " not got")
+				.isEmpty();
+		assertThat(itemIn(THE_SUPERADMIN, COMMENTS, 0).path("country").asString())
+				.as("a comment answered with a country, so the country is falling through where"
+						+ " the town is not and the two halves of one fact have parted")
+				.isEmpty();
+	}
+
+	/**
 	 * AND THE TEAM A CHANGE IS ABOUT IS ANSWERED BY ITS KEY, blank where there is none.
 	 *
 	 * <p>The screen finds the team by {@code String(team.id) === item.subjectId} and refuses
@@ -1093,6 +1211,21 @@ class VerificationApiTest {
 		assertThat(itemIn(THE_SUPERADMIN, TEAMS, 0).path("subjectId").asString())
 				.as("a proposal for a team that does not exist yet answered with a key, so the"
 						+ " screen would look for a team nobody has made")
+				.isEqualTo("");
+
+		/* AND THE TAB THAT DRAWS AN ID AND HAS NO COLUMN TO READ ONE FROM, which is a
+		   BOUNDARY and is asserted so that it stays one. `verification` points at
+		   `result_submission` (V10) and at `team_proposal` (V11) and at nothing else: there
+		   is no pointer to `btl_event` and none to `event_comment`, so the comments tab is
+		   answered blank rather than guessed at. What that costs is in `PENDING.md` and is
+		   measured on the portal's side (`data/data.test.tsx`, `commentFrom`): the screen
+		   turns an approved comment into `eventId: Number("")`, which is nought, so it is
+		   filed under no event at all. The day a pointer exists this assertion is what has
+		   to change, which is why it is written down rather than left as a blank nobody
+		   asked about. */
+		assertThat(itemIn(THE_SUPERADMIN, COMMENTS, 0).path("subjectId").asString())
+				.as("a waiting comment answered with the key of an event, which this schema has"
+						+ " no column to hold, so the key was guessed from somewhere")
 				.isEqualTo("");
 	}
 
@@ -1142,6 +1275,16 @@ class VerificationApiTest {
 				.as("an item about a member did not answer with HIS number, so the nothing above is"
 						+ " not being told apart from a number")
 				.isEqualTo(MEMBER_ONE);
+
+		/* AND THE SAME TWO STATES ON ONE TAB, which is what makes the nothing a property of
+		   the ROW rather than of the queue it is standing in. A server answering every
+		   payments row with nothing - filtering the join, or reading the column off the
+		   wrong side - passes the two assertions above and fails this one. */
+		assertThat(itemIn(THE_SUPERADMIN, PAYMENTS, 1).path("memberNumber").asString())
+				.as("a payments row about a member whose fee has run out answered with no number,"
+						+ " so nothing is being answered for the whole tab rather than for the"
+						+ " row that has none")
+				.isEqualTo(LAPSED);
 	}
 
 	/**
