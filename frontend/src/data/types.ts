@@ -903,3 +903,86 @@ export type PendingItem = {
   city: string
   country: string
 }
+
+/**
+ * THE SAME ITEM AS `/api/verification` REALLY ANSWERS IT, which is `PendingItem`
+ * less the six the schema has nowhere to hold.
+ *
+ * **Derived by `Omit` and never written out, which is the whole point.** A
+ * hand-written list of „what the server sends" is a second home for the shape, and
+ * the one that goes short: a sixteenth field added to `PendingItem` would simply not
+ * be asked of the server, and the screen would read `undefined` in silence. Written
+ * this way the server is asked for every field of `PendingItem` BY DEFAULT, and the
+ * only way out is to add a name below and say why.
+ *
+ * **That silence is not a story: it is what happened on 22.09.2026.** The answer was
+ * grouped by tab and carried six fields fewer, the portal asked for it as
+ * `PendingItem[]`, and „Administracija → Verifikacija → Timovi" threw on
+ * `undefined.trim()` in front of the owner. Nothing compared the two ends.
+ *
+ * **Each name below is a boundary with a reason that is true today**, and each is in
+ * `PENDING.md` with the table that has nowhere to hold it:
+ *
+ * - `rating` — the three marks live on `event_comment`, and that is a comment ALREADY
+ *   PUBLISHED. A comment waiting for a moderator is a row in `verification`, which has
+ *   no column for a mark and no pointer to one.
+ * - `email` — a registration's address. `account.email` exists; serving it here is a
+ *   decision about what the payments queue may say, not a shortfall of this shape.
+ * - `currentDate`, `proposedDate` — a reported change of term. V9 keeps the day asked
+ *   for as free TEXT in `body`, and there is no column for either date, nor any
+ *   pointer from a queue row to the event it is about.
+ * - `picture`, `crop` — ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka
+ *   odluku moderatora nije javna... Takva slika odgovara tacno isto kao slika koje
+ *   nema." `verification.photo_id` is exactly such a holder, so `/api/photos/` answers
+ *   a waiting picture the same as one that was never uploaded. An address answered
+ *   here would draw a broken frame, which is worse than drawing none.
+ *
+ * `photoId` is the one name the answer carries that `PendingItem` has not got. It is
+ * the key of the row in `photo`, and it is here so that the day A60 is revisited there
+ * is something to revisit rather than a field to invent.
+ *
+ * **TWO NAMES DIFFER BY SORT RATHER THAN BY PRESENCE, and those are written out rather
+ * than omitted**, because a field that arrives as the wrong sort is read in silence
+ * where a field that does not arrive at all is read as `undefined`.
+ *
+ * - `id` is a NUMBER here and text there. The server answers `verification.id`, a
+ *   `bigserial` (`VerificationApi`: „the shapes are the schema's and not the file's"),
+ *   and the portal identifies a waiting item by text because it also holds items this
+ *   visit made up, which never came out of a sequence.
+ * - `memberNumber` is a number OR NOTHING here and always text there, and the nothing is
+ *   ordinary twice over: `verification.competitor_id` is nullable by V9's own decision
+ *   („A payment waiting to be recognised may be about a person who is not one yet"), and
+ *   since V16 somebody who has registered and whose fee is not recorded is a row in
+ *   `competitor` with no number at all.
+ *
+ * **That nothing is JSON null and not an empty string, and that is the portal's own
+ * word measured rather than chosen here.** `/api/comments` answers `memberNumber` as
+ * null for an author there is no profile to lead to, `/api/results` does the same for a
+ * result of somebody with no number, and `TeamApi` wrote down why the other spelling was
+ * refused: `coalesce(seat.member_number, '')` made the answer say „nobody holds this
+ * seat" about a seat that is HELD, because the empty string already means something on
+ * the screen that reads it.
+ *
+ * **It means something here too, which is why the two meet in one place.**
+ * `PendingItem.memberNumber` is „who sent it in, or empty", with two written reasons for
+ * the empty - a change of date may be reported by somebody with no account at all (PDL
+ * P10), and a registration whose fee is not recorded has no number yet (30.07.2026) -
+ * and `canSendBack` refuses to hand an item back to it, because an empty recipient in
+ * this portal is not nobody but the WHOLE LEAGUE (`session/context.ts`, `Message.to`).
+ * A null travelling on into the screen passes `item.memberNumber !== ''`, so a
+ * moderator's reason for refusing one person's picture would be addressed to null and
+ * delivered to nobody at all. The one place these two shapes meet turns the nothing into
+ * the portal's own empty, and it is the same place that turns the number into text and
+ * fills the six above.
+ */
+export type ServedPendingItem = Omit<
+  PendingItem,
+  | 'id'
+  | 'memberNumber'
+  | 'rating'
+  | 'email'
+  | 'currentDate'
+  | 'proposedDate'
+  | 'picture'
+  | 'crop'
+> & { id: number; memberNumber: string | null; photoId: number | null }

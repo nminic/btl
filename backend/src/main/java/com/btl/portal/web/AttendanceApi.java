@@ -74,14 +74,16 @@ import java.util.List;
  * not half-answered: there is no partial shape between "in" and "out" for a pair this
  * bare.
  *
- * <p><b>What the file the portal serves TODAY carries is not read as a floor for
- * this.</b> {@code mock/attendance.json} still names member {@code 000032} (whose fee
- * has lapsed) and {@code 999999} (no competitor by that number exists at all) against
- * the same event - prototype fixtures older than the decision above, not a
- * requirement it has to keep meeting. Mock data is temporary and is never imported
- * (`CLAUDE.md`); the frontend that reads that file is not switched to this endpoint by
- * this increment (A50: the portal changes files once, together, when every resource
- * exists), so nothing wired today reads what this class answers with.
+ * <p><b>What the file the portal served until 21.09.2026 carries is not read as a
+ * floor for this.</b> {@code mock/attendance.json} still names member {@code 000032}
+ * (whose fee has lapsed) and {@code 999999} (no competitor by that number exists at
+ * all) against the same event - prototype fixtures older than the decision above,
+ * and never a requirement this class had to keep meeting. Mock data is temporary and
+ * is never imported (`CLAUDE.md`); until that day the frontend read that file rather
+ * than this endpoint (A50: the portal changes files once, together, when every
+ * resource exists), so nothing wired then read what this class answers with. PR 340
+ * was the day A50 named, and {@code attendance} is one of the fourteen names the
+ * same commit carried to {@code /api}, so what is wired now does.
  *
  * <p><b>Nor does a departed member need a tombstone the way a comment does.</b> Both
  * of {@code attending}'s foreign keys are {@code on delete cascade} - an intention

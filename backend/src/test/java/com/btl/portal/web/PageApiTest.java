@@ -75,7 +75,7 @@ class PageApiTest {
 	}
 
 	/**
-	 * THE ANSWER IS EXACTLY WHAT frontend/public/mock/pages.json HOLDS TODAY: the same
+	 * THE ANSWER IS EXACTLY WHAT frontend/public/mock/pages.json HOLDS: the same
 	 * four pages, in the same order, each with the same title, the same sections in the
 	 * same order, and the same gallery on each.
 	 *

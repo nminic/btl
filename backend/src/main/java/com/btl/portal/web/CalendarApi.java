@@ -18,19 +18,22 @@ import java.util.List;
  * for races.
  *
  * <p><b>In date order, ascending, and the order is the answer.</b> That is the
- * order the portal serves today and the order a calendar is read in. Sorted by
+ * order the portal serves and the order a calendar is read in. Sorted by
  * the key instead, the list would come back in whatever order the rows were
  * written, which for an imported history is no order at all.
  *
  * <p><b>The shapes are the schema's and not the file's, and that is a decision
- * taken on 12.09.2026 rather than an oversight.</b> What the portal serves today
- * carries text identifiers like {@code evt-fruskogorski-maraton-2010-05-08} and
- * the strings {@code "no"} and {@code "yes"} where a yes or no belongs; both are
- * artefacts of one import. The schema says {@code bigserial} and {@code boolean},
- * A36 O1 having refused a speaking natural key with a measured reason, and the
- * server answers with what the schema says. What the portal must keep is the
- * NAMES of the fields, which is what {@code CalendarApiTest} holds against the
- * file it serves.
+ * taken on 12.09.2026 rather than an oversight.</b> Until 20.09.2026 the file
+ * carried text identifiers like {@code evt-fruskogorski-maraton-2010-05-08} and
+ * the strings {@code "no"} and {@code "yes"} where a yes or no belongs, both
+ * artefacts of one import, while the schema said {@code bigserial} and
+ * {@code boolean} - A36 O1 having refused a speaking natural key with a measured
+ * reason - and the server answered with what the schema said regardless. PR 325
+ * rewrote the file into the schema's own shapes that day, so the two agree now;
+ * what the decision still governs is that the server answers with the schema
+ * and never with the file, if they ever disagree again. What the portal must
+ * keep is the NAMES of the fields, which is what {@code CalendarApiTest} holds
+ * against the file it serves.
  *
  * <p><b>A town is one of two things and never two.</b> From the codebook it is
  * {@code place_id} and its name and country are the codebook's; typed by hand it

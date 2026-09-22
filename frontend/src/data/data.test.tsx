@@ -684,6 +684,50 @@ describe('commentFrom', () => {
       body: 'Reci koje je clan napisao.',
     })
   })
+
+  it('files a comment whose row cannot say which event it is about under no event at all', () => {
+    /* **THE BOUNDARY, MEASURED RATHER THAN DESCRIBED (22.09.2026).** `/api/verification`
+       answers `subjectId` blank on the comments tab, and that is not a shortfall of the
+       route: `verification` has no pointer to `btl_event` and none to `event_comment`,
+       the only two V10 and V11 gave it being `result_submission_id` and
+       `team_proposal_id`. It is in `PENDING.md` beside the table that lacks the column,
+       and it waits on a decision that is the owner's.
+
+       **What the boundary costs is written down here because the milder sentence - „the
+       cards carry empty fields" - is only half of it.** `Number('')` is NOUGHT, so a
+       comment a moderator approves is filed under an event that does not exist rather
+       than under the one it was written for, and the event page it belongs to never
+       shows it. The approval looks as if it worked.
+
+       This is a claim about the boundary and not about what is right: the day the
+       pointer exists, this case is what has to change, which is exactly why it is a case
+       and not a comment. */
+    const withNoEvent: PendingItem = {
+      id: 'ver-kom-9',
+      queue: 'comments',
+      kind: '',
+      date: '2026-08-06',
+      memberNumber: '000007',
+      who: 'Ime Prezime',
+      subject: 'Fruškogorski maraton',
+      subjectId: '',
+      body: 'Reci koje je clan napisao.',
+      picture: '',
+      crop: { x: 0.5, y: 0.5, size: 1 },
+      currentDate: '',
+      proposedDate: '',
+      email: '',
+      city: '',
+      country: '',
+      rating: { organisation: 0, value: 0, ambience: 0 },
+    }
+
+    expect(commentFrom(withNoEvent).eventId).toBe(0)
+    /* And the name of the event is still on the record, which is what makes the nought
+       a lost LINK rather than a lost comment: everything a reader would need is there
+       except the one thing that files it. */
+    expect(commentFrom(withNoEvent).who).toBe('Ime Prezime')
+  })
 })
 
 describe('the credit the codebook of towns asks for', () => {

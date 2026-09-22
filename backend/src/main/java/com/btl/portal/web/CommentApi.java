@@ -109,9 +109,10 @@ import java.util.List;
  * reads by: {@code EventComments.tsx} takes the whole list and keeps the ones belonging
  * to the event being drawn, together with the ones from its earlier runnings, which is
  * a rule about events rather than about comments („komentar za Beogradski maraton 2026.
- * mora biti vidljiv i uz izdanje iz 2027"). A resource answering per event would have to
- * know that rule as well, and the portal stays on its own files until every resource
- * exists and then switches once (A50).
+ * mora biti vidljiv i uz izdanje iz 2027"). A resource answering per event would have had
+ * to know that rule as well, and until 21.09.2026 the portal stayed on its own files
+ * until every resource existed and then switched once (A50); PR 340 was that switch, and
+ * {@code comments} is one of the fourteen names it carried to {@code /api}.
  */
 @RestController
 class CommentApi {
