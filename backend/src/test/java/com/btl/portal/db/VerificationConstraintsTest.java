@@ -99,8 +99,8 @@ class VerificationConstraintsTest extends DatabaseTest {
 	private static final String GOOD_REJECTED = row("'results', " + A_MEMBER + ", 'Probni rezultat', '',"
 			+ " null, 'rejected', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Slika ne pokazuje vreme'");
 	/** Refused with NO reason at all, on the one queue V30 excepts from
-	 *  {@code verification_refusal_says_why} (ADL A64 A4): PDL 3267 and 4255 both say a
-	 *  comment „ne odbija nego brise, a napomena je neobavezna". Read beside
+	 *  {@code verification_refusal_says_why} (ADL A64 A4): PDL P22, „ne odbija nego brise, a
+	 *  napomena je neobavezna", the same sentence stated twice in the diary. Read beside
 	 *  {@code GOOD_REJECTED}, which is the same shape on a queue the exception does not
 	 *  reach, so the difference between the two IS the exception. */
 	private static final String GOOD_REJECTED_COMMENT_WITH_NO_REASON = row(

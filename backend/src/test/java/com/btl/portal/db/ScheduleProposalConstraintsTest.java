@@ -79,7 +79,7 @@ class ScheduleProposalConstraintsTest extends DatabaseTest {
 	 *  matching column NOT NULL. */
 	private static final String GOOD_BY_NOBODY_IN_PARTICULAR =
 			row("null, " + AN_EVENT + ", date '2027-04-04', date '2027-04-11'");
-	/** Backwards (PDL 1056, „kalendar sme da se menja unazad"), which is ordinary and not a
+	/** Backwards (PDL P9, „kalendar sme da se menja unazad"), which is ordinary and not a
 	 *  fourth shape the check below may refuse. */
 	private static final String GOOD_BACKWARDS =
 			row(A_MEMBER + ", " + AN_EVENT + ", date '2027-04-04', date '2027-03-28'");
@@ -176,7 +176,7 @@ class ScheduleProposalConstraintsTest extends DatabaseTest {
 	 * Without this every constraint above could be replaced by one that rejects everything
 	 * and the file would still be green. The three are what the two axes this table carries
 	 * are about: whether anybody sent it in (PDL 1582), and which way the calendar moves
-	 * (PDL 1056).
+	 * (PDL P9, „kalendar sme da se menja unazad").
 	 */
 	static List<String> legitimateRows() {
 		return List.of(GOOD_BY_A_MEMBER, GOOD_BY_NOBODY_IN_PARTICULAR, GOOD_BACKWARDS);

@@ -99,8 +99,9 @@ import java.util.Set;
  * hand (ADL A64 A4): the constraint now carries an exception for {@code queue = 'comments'},
  * and {@link DecidingOnASubmission.Submission#reasonIsOptional} is how this file tells the
  * domain layer which row that is. What follows for THIS class is that a refusal of a comments
- * item never reaches {@link #tell} - see {@link #write} - because PDL 3267 and 4255 both say
- * the note is „namenjena moderatorima" and not a reason owed to the member the other five
+ * item never reaches {@link #tell} - see {@link #write} - because PDL P22, „Jedini red bez
+ * njega je red komentara, gde se ne odbija nego brise, a napomena je neobavezna i namenjena
+ * moderatorima" says the note is not a reason owed to the member the other five
  * queues owe one to.
  *
  * <p><b>THE SEASON A TEAM STARTS IN IS {@link SeasonClock#transfersTakeEffect} AND NOT
@@ -464,7 +465,8 @@ class VerificationWriteApi {
 				new DecidingOnASubmission.Answer(typed.approved(), typed.reason());
 
 		/* COMMENTS IS THE ONE QUEUE WHOSE REFUSAL NEEDS NOTHING IN THE BOX (ADL A64 A4): PDL
-		   3267 and 4255 both say a comment „ne odbija nego brise", and the note beside it,
+		   P22, „ne odbija nego brise, a napomena je neobavezna", the same sentence stated
+		   twice in the diary, and the note beside it,
 		   where there is one, is a trace for a moderator and never a reason the member is
 		   owed. Asked of `item.queue()` rather than remembered as a second list: the schema
 		   already names this queue by the same literal in `verification_refusal_says_why`. */
@@ -606,9 +608,10 @@ class VerificationWriteApi {
 				publishTheProfile(item);
 			}
 		} else if (!COMMENTS.equals(item.queue())) {
-			/* COMMENTS NEVER REACHES HERE (ADL A64 A4). PDL 3267 and 4255 both say the note
-			   beside a deleted comment - where there is one - is „namenjena moderatorima"
-			   and not a reason owed to the member, unlike the other three that reach this
+			/* COMMENTS NEVER REACHES HERE (ADL A64 A4). PDL P22, „Jedini red bez njega je red
+			   komentara, gde se ne odbija nego brise, a napomena je neobavezna i namenjena
+			   moderatorima" says the note beside a deleted comment - where there is one - is
+			   not a reason owed to the member, unlike the other three that reach this
 			   branch, which PDL P22 requires the opposite of: „razlog stize u sanduce onome
 			   ko je stavku poslao". */
 			tell(item.competitorId(), "Stavka je odbijena",

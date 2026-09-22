@@ -127,7 +127,8 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 						row("999999, " + A_MEMBER + ", 0, 0, 0, ''")),
 
 				/* NOT NULL as of ADL A64 A6, 22.09.2026: a comment can only be about a
-				   member who wrote it, never about nobody - PDL 324, 3320 and 3252, the
+				   member who wrote it, never about nobody - PDL P6, „Komentare vide samo
+				   prijavljeni clanovi" (3320 and 3252 make the same point), the
 				   opposite of the reading `schedule_proposal.competitor_id` gets (PDL 1582),
 				   which stays nullable. The FK below catches the other half of the same
 				   column: a member who is not there, as opposed to one left out. */

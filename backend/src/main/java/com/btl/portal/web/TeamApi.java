@@ -201,10 +201,10 @@ import java.util.Optional;
  *
  * <p><b>AND SINCE 21.09.2026 THE STANDING RULE IS ANSWERED TOO, WHICH IS THIS PARAGRAPH
  * REVERSED RATHER THAN EXTENDED.</b> What stood here said that who ADMINISTERS a team is
- * more than who founded it - „Administrator tima je onaj ko je tim osnovao. Kad se mesto
- * isprazni, po podrazumevanom ga preuzima clan koji je najduze u timu, dakle najraniji
- * {@code teamSince}, a kod izjednacenja manji broj clana" (owner, PDL:6428, 04.09.2026)
- * - and that the second half of it „is worked out from the roster and lives in
+ * more than who founded it - owner, PDL „Inkrement 133", 04.09.2026, „Administrator tima je
+ * onaj ko je tim osnovao" (organizerMemberNumber): kad se mesto isprazni, po podrazumevanom ga
+ * preuzima clan koji je najduze u timu, dakle najraniji {@code teamSince}, a kod izjednacenja
+ * manji broj clana - and that the second half of it „is worked out from the roster and lives in
  * {@code frontend/src/data/teamAdmin.ts}; this resource does not repeat it, because two
  * homes for one rule drift". <b>The reason was right and the conclusion is now the
  * opposite one</b>, because the other home stopped being able to hold it: a member is
@@ -284,8 +284,8 @@ import java.util.Optional;
  *
  * <p><b>The address is the DIGEST and never {@code photo.id}</b>, and that is
  * {@link PhotoApi}'s decision arriving at its first publisher rather than a choice
- * made a second time here (ADL A60, 20.09.2026, and PDL:6165, „Oba slucaja dobijaju
- * isti ishod"). A key is countable, so an address built on one would let anybody
+ * made a second time here (ADL A60, 20.09.2026, and PDL „Privatnost profila", „Oba
+ * slucaja dobijaju isti ishod"). A key is countable, so an address built on one would let anybody
  * walk 1, 2, 3 and learn which rows the portal holds; sixty four hexadecimal
  * characters are not walked. The shape is READ OFF the route and not invented:
  * {@code GET /api/photos/} takes the digest as the whole of the name, with no
@@ -500,23 +500,24 @@ class TeamApi {
 
 		return db.sql(
 						/* WHO IS A STANDING MEMBER OF WHICH TEAM, WRITTEN ONCE BECAUSE THE RULE
-						   BELOW ASKS IT TWICE. „Administrator tima je onaj ko je tim osnovao. Kad
-						   se mesto isprazni, po podrazumevanom ga preuzima clan koji je najduze u
-						   timu" (owner, PDL:6428, 04.09.2026) asks the same question of the man in
-						   the seat and of everybody who might take it from him, and a condition
-						   written twice is a condition that drifts on one of the two days it is
-						   edited. THIS IS THE ONLY PLACE THE ROSTER IS READ, and it is read as a
+						   BELOW ASKS IT TWICE. Owner, PDL „Inkrement 133", 04.09.2026, „Administrator
+						   tima je onaj ko je tim osnovao" (organizerMemberNumber): kad se mesto
+						   isprazni, po podrazumevanom ga preuzima clan koji je najduze u timu - asks
+						   the same question of the man in the seat and of everybody who might take it
+						   from him, and a condition written twice is a condition that drifts on one of
+						   the two days it is edited. THIS IS THE ONLY PLACE THE ROSTER IS READ, and it is read as a
 						   condition: nothing off it reaches the answer.
 
 						   THE MEMBERSHIP THAT HAS NOT ENDED, and never a membership that has.
 						   V11 writes `season_to` as „the last season he is in it, or empty while
-						   he still is", so a row with one is somebody who LEFT, and PDL:2429 says
-						   what that does to the seat in as many words: a departed administrator
-						   „biva isto sto i kad je otisao sam", the title passes on.
+						   he still is", so a row with one is somebody who LEFT, and PDL P13, „Isto
+						   kao kad je otisao" says what that does to the seat in as many words: a
+						   departed administrator's title passes on the same as if he had left on
+						   his own.
 
 						   AND THE SEASON IS NOT ASKED ABOUT AT ALL, which is a decision and not an
-						   omission. PDL:6348, 05.09.2026: „„Nema tim" se cita sa zapisa (`teamId`),
-						   ne po sezoni", with the boundary drawn in both directions and a named
+						   omission. PDL „Inkrement 133", 05.09.2026, „Nema tim se cita sa zapisa
+						   (teamId), ne po sezoni", with the boundary drawn in both directions and a named
 						   case on each side. It has teeth here rather than being a nicety:
 						   `team_membership_season_from_not_before_the_league` (V11) refuses
 						   anything before 2027, so on any day of 2026 a condition written
@@ -525,8 +526,9 @@ class TeamApi {
 						   say so.
 
 						   AND THE FEE, WHICH IS THE OWNER'S RULE OF 19.09.2026 ARRIVING HERE:
-						   „Clan kome je istekla clanarina... se sve akcije za njega brane"
-						   (PDL:2301). Administering a team is such an action. It is also what
+						   PDL P13, 19.09.2026, „Clan kome je istekla clanarina dopire samo do strane
+						   za obnovu": every action for him is refused. Administering a team is such
+						   an action. It is also what
 						   `/api/competitors` already does to the roster `teamAdmin.ts` read this
 						   rule off, so the server and the screen agree rather than differing by a
 						   condition.
@@ -594,7 +596,8 @@ class TeamApi {
 						   off the portal rather than decided here. `frontend/src/data/teamAdmin.ts`
 						   has said since it was written that it is „the founder only while they are
 						   still in it. The seat is who founded the team and never changes; being its
-						   administrator does", and PDL:2405 and PDL:2429 say the same from the
+						   administrator does", and PDL „Inkrement 133", „Administrator tima je onaj ko
+						   je tim osnovao" and PDL P13, „Isto kao kad je otisao" say the same from the
 						   owner's side - the title passes when the administrator leaves or stops
 						   paying, whatever the column still holds. A seat naming somebody who is not
 						   in `standing` for THIS team simply misses the first subquery, so there is

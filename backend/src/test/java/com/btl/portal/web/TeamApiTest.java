@@ -360,7 +360,8 @@ class TeamApiTest {
 		   answer disagree.
 
 		   AND EVERY ONE OF THEM JOINS IN A SEASON THAT HAS NOT STARTED, which is the axis
-		   PDL:6348 settles („„Nema tim" se cita sa zapisa, ne po sezoni") and the one this
+		   PDL „Inkrement 133", 05.09.2026, „Nema tim se cita sa zapisa (teamId), ne po sezoni"
+		   settles, and the one this
 		   whole fixture would hide if it read the season instead: `season_from` may not be
 		   earlier than 2027 (V11) and the calendar is 2026, so a condition asking who is in
 		   the team TODAY answers nobody, for every team in the league, and the answer would
@@ -946,7 +947,8 @@ class TeamApiTest {
 	 * {@code mark.id} still begins with the same prefix and still ends in a name, so
 	 * {@code contains} would pass on it; compared whole, anything but the digest is a
 	 * different string. The key is what {@link PhotoApi} refuses to be addressed by (ADL
-	 * A60, PDL:6165: a key is countable and a digest is not), so this is the decision and
+	 * A60, PDL „Privatnost profila", „Preusmerenje mora da se ponasa isto i za profil koga
+	 * nema": a key is countable and a digest is not), so this is the decision and
 	 * not the spelling.
 	 *
 	 * <p><b>AND THE ADDRESS IS HANDED BACK TO THE DISPATCHER, which is the floor under
@@ -1846,9 +1848,10 @@ class TeamApiTest {
 	/**
 	 * THE WHOLE RULE OF 04.09.2026, ANSWERED BY THE SERVER, AND ONE MEMBER PER TEAM.
 	 *
-	 * <p>„Administrator tima je onaj ko je tim osnovao. Kad se mesto isprazni, po
+	 * <p>Owner, PDL „Inkrement 133", „Administrator tima je onaj ko je tim osnovao"
+	 * (organizerMemberNumber): kad se mesto isprazni, po
 	 * podrazumevanom ga preuzima clan koji je najduze u timu, dakle najraniji
-	 * {@code teamSince}, a kod izjednacenja manji broj clana" (owner, PDL:6428). Until
+	 * {@code teamSince}, a kod izjednacenja manji broj clana. Until
 	 * 21.09.2026 the server answered the first sentence and the portal worked out the
 	 * second off a seat a member is not told, which is how a member who had founded nothing
 	 * was handed the edit screen of a team whose seat names somebody else.
@@ -2001,7 +2004,7 @@ class TeamApiTest {
 	 * THE MEMBER WHOSE MEMBERSHIP BEGINS IN A SEASON THAT HAS NOT STARTED ADMINISTERS THE
 	 * TEAM TODAY, which is a decision and the one this fixture would hide by accident.
 	 *
-	 * <p>PDL:6348, 05.09.2026: „„Nema tim" se cita sa zapisa ({@code teamId}), ne po
+	 * <p>PDL „Inkrement 133", 05.09.2026, „Nema tim se cita sa zapisa (teamId), ne po
 	 * sezoni", and the owner drew the boundary in both directions with a case on each side
 	 * - a member with no team at all, and a member „upisan u Dunav sa {@code teamSince:
 	 * 2027}, pa ga portal na dan u 2026. <b>ne broji</b> u timu". Being in a team and being
@@ -2037,9 +2040,10 @@ class TeamApiTest {
 				.allMatch(one -> one > SeasonClock.FIRST_SEASON);
 
 		assertThat(administeredAccordingTo(LONGEST_IN_THE_TEAM_WITH_NO_SEAT))
+				/* PDL „Inkrement 133", 05.09.2026, „Nema tim se cita sa zapisa (teamId), ne po sezoni" */
 				.as("the member whose membership has not begun was not told he administers the"
 						+ " team. Who is in a team is read off the record and never off the"
-						+ " season (PDL:6348)")
+						+ " season")
 				.containsExactly("vardarski-krug");
 	}
 
@@ -2070,9 +2074,10 @@ class TeamApiTest {
 						+ " fields below cannot disagree and this half measures nothing")
 				.isTrue();
 		assertThat(hisSeat.path(WHETHER_I_ADMINISTER_IT).asBoolean())
+				/* PDL „Inkrement 133", „Administrator tima je onaj ko je tim osnovao"; PDL P13, „Isto kao kad je otisao" */
 				.as("the member this team's seat names was told he administers it although he is"
 						+ " in another team and has not paid. The seat is who founded it; the"
-						+ " right passes on when he goes (PDL:2405, PDL:2429)")
+						+ " right passes on when he goes")
 				.isFalse();
 
 		JsonNode hers = teamOf(FOUNDED_NOTHING, "klub-lovcen");
@@ -2097,7 +2102,7 @@ class TeamApiTest {
 	 * {@code frontend/src/data/teamAdmin.ts}: „the founder only while they are still in it.
 	 * The seat is who founded the team and never changes; being its administrator does."
 	 * PDL:2405: „Ako administrator prestane da placa clanarinu i napusti tim, titula
-	 * prelazi." PDL:2429, of an administrator removed or disqualified: „Isto kao kad je
+	 * prelazi." PDL P13, of an administrator removed or disqualified: „Isto kao kad je
 	 * otisao."
 	 *
 	 * <p><b>Each of the three is seated in turn and differs from the winner in exactly one

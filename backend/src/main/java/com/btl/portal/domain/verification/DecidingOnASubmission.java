@@ -22,9 +22,9 @@ import java.util.Set;
  * merely allow the absence but requires it.
  *
  * <p><b>THE SIXTH IS COMMENTS, AND ITS REFUSAL CARRIES NO OBLIGATION AT ALL</b>
- * (owner, ADL A64, 22.09.2026). PDL 3267 and 4255, the same sentence twice: „Jedini
- * red bez njega je red komentara, gde se ne odbija nego brise, a napomena je
- * neobavezna i namenjena moderatorima" - a note where there is one is a trace for
+ * (owner, ADL A64, 22.09.2026). PDL P22, „Jedini red bez njega je red komentara, gde
+ * se ne odbija nego brise, a napomena je neobavezna i namenjena moderatorima" - the
+ * same sentence stands twice in the diary, and a note where there is one is a trace for
  * a moderator, never a reason the member is owed, so nothing here may refuse a
  * comments answer for want of one. {@link Submission#reasonIsOptional} is that
  * one fact, and the caller says it rather than this class guessing it from a
