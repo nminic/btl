@@ -63,6 +63,25 @@ NAMED_METHOD = re.compile(r"method\s*=\s*(?:RequestMethod\.)?(\w+)")
 # What the chain grants on an open path. Assumed, and held by the control above.
 READING = ("GET", "HEAD", "OPTIONS")
 
+# ApiSecurity keeps TWO open lists, and they do not grant the same verbs. Reading only
+# the first made this tool say `GET /api/photos/{name}` "would have to be NAMED" on a ref
+# where the floor is green, which is the control failing on main itself.
+#
+# The second list is not a copy with a variable segment in it: its own note says so, and
+# the chain says so in lines of its own. `READ_BY_ANYBODY` is permitted for GET, HEAD and
+# OPTIONS; `READ_BY_ANYBODY_UNDER_A_NAME` for GET and HEAD, and OPTIONS is left out ON
+# PURPOSE - an OPTIONS digest of one photograph is a sentence with no reader.
+#
+# So this is a pair per list and not a union of paths. A union would excuse
+# `OPTIONS /api/photos/{name}` as well, and the day a controller maps it this tool would
+# fall silent about a route the floor WOULD name - the one failure mode a prediction must
+# not have. The verbs live beside their list for the same reason: a third list tomorrow is
+# one line here, and a list whose verbs differ cannot be added without saying which.
+OPEN_LISTS = (
+    ("READ_BY_ANYBODY", READING),
+    ("READ_BY_ANYBODY_UNDER_A_NAME", ("GET", "HEAD")),
+)
+
 # The one route the portal does not write and therefore cannot be read out of it:
 # Spring's own BasicErrorController, mapped with no method condition, which is why
 # the floor keys it ANY. Held by the control too - drop it and the control says a
@@ -121,14 +140,20 @@ def routesAt(ref):
 
 
 def wouldBeListed(ref):
-    openPaths = constantAt(ref, SECURITY, "READ_BY_ANYBODY")
-    if not openPaths:
-        sys.exit("the open list is empty at %s" % ref)
+    # One entry per open list, each carrying the verbs THAT list grants. Empty is fatal
+    # for the same reason it always was: a list this tool cannot read would quietly excuse
+    # nothing, and every open route would be reported as missing from the snapshot.
+    excuses = []
+    for name, verbs in OPEN_LISTS:
+        paths = constantAt(ref, SECURITY, name)
+        if not paths:
+            sys.exit("%s is empty at %s" % (name, ref))
+        excuses.append((paths, verbs))
 
     listed = {SPRINGS_OWN}
     for key, guarded in routesAt(ref).items():
         verb, path = key.split(" ", 1)
-        excused = path in openPaths and verb in READING
+        excused = any(path in paths and verb in verbs for paths, verbs in excuses)
         if not guarded and not excused:
             listed.add(key)
     return listed
