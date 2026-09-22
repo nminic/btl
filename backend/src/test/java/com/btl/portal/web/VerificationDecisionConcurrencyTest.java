@@ -15,10 +15,12 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -63,6 +65,24 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * threads reaches the row first is not something a case may claim; what must hold is that
  * exactly one of them was told yes, exactly one consequence exists, and the consequence is
  * the one the winner asked for.
+ *
+ * <p><b>THE BARRIER ABOVE CANNOT PROMISE THAT {@code write}'s {@code claimed == 0} IS EVER
+ * REACHED, and CI measured the gap it leaves.</b> {@link CyclicBarrier} only makes both
+ * threads START at the same instant; if the scheduler then runs one thread's whole request,
+ * read, update and commit, before the other thread's read even happens, the second read
+ * meets a row {@link DecidingOnASubmission#decide} already calls {@code ALREADY_DECIDED} on
+ * its own, OUTSIDE this route's transaction, and {@code write} is never entered at all. That
+ * refusal and the one this file is named for carry the same reason and the same status, so a
+ * green barrier test cannot say which of the two it exercised. Measured 21.09.2026: {@code
+ * main} at a commit and a PR touching two unrelated frontend files at the SAME commit gave
+ * the SAME {@code Tests run: 2482, Failures: 0, Errors: 0}, and JaCoCo told the two apart -
+ * {@code web/VerificationWriteApi} missing exactly the one branch the barrier had not, that
+ * run, forced. {@code theLoserMeetsARowAlreadyClaimedEveryTimeAndNotOnlyWhenTheSchedulerRaces}
+ * below exists because of that measurement: it takes the ordering away from the scheduler by
+ * holding the row's own lock, so the branch is covered every run and not only when the two
+ * threads happen to overlap. It is additional to the barrier tests above and not a
+ * replacement for them - they still are the only cases that leave the ORDER of the two
+ * requests to chance, which is what an invariant rather than a forced outcome has to do.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -94,6 +114,14 @@ class VerificationDecisionConcurrencyTest {
 
 	@Autowired
 	private JdbcClient db;
+
+	/**
+	 * THE ROW'S OWN LOCK, HELD FROM THIS THREAD, so the two requests below queue behind it
+	 * rather than behind a barrier the scheduler is free to honour or not. See the class
+	 * comment for why the {@link CyclicBarrier} tests above cannot do this on their own.
+	 */
+	@Autowired
+	private TransactionTemplate holdingTheRow;
 
 	private long founder;
 
@@ -265,6 +293,117 @@ class VerificationDecisionConcurrencyTest {
 		assertThat(holder)
 				.as("the item is held by the moderator who was refused it")
 				.isEqualTo(accountOf(winner));
+	}
+
+	/**
+	 * THE LOSER MEETS A ROW ALREADY CLAIMED BECAUSE THE LOCK SAYS SO, NOT BECAUSE THE
+	 * SCHEDULER HAPPENED TO RUN THE TWO REQUESTS CLOSE ENOUGH TOGETHER.
+	 *
+	 * <p>This case holds {@code verification}'s own row on a connection neither HTTP thread
+	 * ever touches, before either is asked to decide anything. Nothing has written to the row
+	 * yet, so both threads' read of it inside {@code itemHeMayModerate} finds {@code waiting}
+	 * regardless of which the scheduler happens to run first; both then reach the update inside
+	 * {@code VerificationWriteApi.write}, and both queue behind the SAME lock this case is
+	 * holding - the identical "update takes the conflicting row's lock" behaviour the comment
+	 * over {@code hold} already measures for that route. Only once {@code pg_stat_activity}
+	 * itself reports two OTHER backends waiting on a lock does releasing the lock mean anything:
+	 * one of the two then updates the row and commits, and the other, unblocked in turn,
+	 * re-reads a row that no longer says {@code waiting} and matches nothing - which is the
+	 * branch this whole file exists to force rather than to hope for.
+	 *
+	 * <p><b>The wait for both to arrive happens WHILE the lock is held</b>, and the two
+	 * {@code Future.get} calls happen only AFTER {@code holdingTheRow.execute} returns and the
+	 * lock is released - reversed, the two requests could never finish and this case would
+	 * hang rather than fail.
+	 */
+	@Test
+	void theLoserMeetsARowAlreadyClaimedEveryTimeAndNotOnlyWhenTheSchedulerRaces() throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			Callable<MockHttpServletResponse> theApproval =
+					() -> answer(ONE_MODERATOR, teamItem, true, null);
+			Callable<MockHttpServletResponse> theRefusal =
+					() -> answer(THE_OTHER_MODERATOR, teamItem, false, THE_REASON);
+
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update")
+						.param(teamItem).query(Integer.class).single();
+
+				submitted.add(pool.submit(theApproval));
+				submitted.add(pool.submit(theRefusal));
+
+				try {
+					waitUntilBothDecisionsAreBlockedOnTheRow(submitted);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				return null;
+			});
+
+			MockHttpServletResponse approval = submitted.get(0).get(30, TimeUnit.SECONDS);
+			MockHttpServletResponse refusal = submitted.get(1).get(30, TimeUnit.SECONDS);
+
+			assertThat(List.of(approval.getStatus(), refusal.getStatus()).stream().sorted().toList())
+					.as("holding the row's lock until pg_stat_activity shows both requests queued"
+							+ " behind it must still leave exactly one decision recorded and one"
+							+ " refused, whichever the database let through first")
+					.containsExactly(200, 409);
+
+			assertThat(db.sql("select state from verification where id = ?")
+					.param(teamItem).query(String.class).single())
+					.isIn("approved", "rejected");
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * Polled rather than assumed, the same discipline {@code RegistrationOverRealHttpTest}
+	 * already applies to {@code pg_stat_activity}: a fixed sleep would either run too short on
+	 * a loaded machine and release the lock before both requests arrive - the very flakiness
+	 * this case exists to remove - or run so long it slows the suite for nothing.
+	 *
+	 * <p><b>Read on {@code wait_event_type} alone, and not on {@code query} text.</b> Measured
+	 * 21.09.2026 against this same container: the two backends genuinely queued behind the held
+	 * lock (confirmed by their {@code Future}s staying un-done, and by one waiting on a
+	 * {@code tuple} and the other in turn on a {@code transactionid} - exactly Postgres's own
+	 * queueing order for a second waiter on a row a first waiter already contests) reported
+	 * {@code state = 'idle'} and {@code query} as their connection's setup statement, not the
+	 * update actually blocked. A condition written against the query text - this route's update
+	 * and nothing else - never saw them and timed out with both futures still not done, which is
+	 * what sent this case looking at {@code wait_event_type} on its own instead. Excluding this
+	 * connection's own {@code pid} is enough to keep the count to the two this test itself
+	 * blocks, since nothing else runs while this case does.
+	 */
+	private void waitUntilBothDecisionsAreBlockedOnTheRow(
+			List<Future<MockHttpServletResponse>> submitted) throws InterruptedException {
+		Instant deadline = Instant.now().plusSeconds(10);
+
+		while (db.sql("select count(*) from pg_stat_activity"
+						+ " where wait_event_type = 'Lock' and pid <> pg_backend_pid()")
+				.query(Integer.class).single() < 2) {
+
+			if (Instant.now().isAfter(deadline)) {
+				List<String> snapshot = db.sql("select pid || ' ' || state || ' ' || coalesce("
+								+ "wait_event_type, '-') || ' ' || coalesce(wait_event, '-') || ' | '"
+								+ " || coalesce(query, '-') from pg_stat_activity"
+								+ " where datname = current_database()")
+						.query(String.class).list();
+				List<String> futureState = submitted.stream()
+						.map(f -> "done=" + f.isDone() + " cancelled=" + f.isCancelled())
+						.toList();
+
+				throw new IllegalStateException(
+						"both decisions should have been queued behind the held row lock within"
+								+ " ten seconds, and pg_stat_activity never showed two. Futures: "
+								+ futureState + " Snapshot: " + snapshot);
+			}
+
+			Thread.sleep(20);
+		}
 	}
 
 	/** Two calls released together, in the order they were given. */
