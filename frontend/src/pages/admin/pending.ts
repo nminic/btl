@@ -54,9 +54,11 @@ export const WAITING = 'waiting'
  * read these six from (`ServedPendingItem` names each one and why).
  *
  * **The absent values are the ones the portal already reads as absent**, and never a
- * plausible-looking stand-in: `NO_RATING` is „nobody has given a mark", and `WHOLE`
- * is what `cropIn` returns for a record with no square of its own, so a card cannot
- * tell this apart from a record that genuinely has none.
+ * plausible-looking stand-in: `NO_RATING` is „nobody has given a mark", which the card
+ * draws with the event page's own words for a comment nobody marked, and `WHOLE` is what
+ * `cropIn` returns for a record with no square of its own. Five of the six are held to
+ * that by a case; the sixth is `WHOLE` and cannot be, which is the paragraph at the
+ * bottom of this one.
  *
  * **`picture` is the empty string and this is the one that matters**, because the
  * card asks `one.picture !== ''` before it draws a frame. Left undefined - which is

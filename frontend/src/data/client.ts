@@ -47,10 +47,15 @@
  * not enough: grouped, each `{queue, waiting}` wrapper passed this portal's own filter
  * for an item - it has a `queue`, and `decisions[undefined]` is undefined - so the
  * Timovi tab drew a wrapper as though it were an item and threw on `undefined.trim()`.
- * The answer is a flat list of `PendingItem` now, like the other thirteen, and the
- * shape is measured rather than named: `servedShape.test.ts` has no resource left in
- * its `notSeen` list. The fields it still does not carry are in `PENDING.md`, each
- * with the table that has nowhere to hold it.
+ * The answer is a flat list now, like the other thirteen, and the shape is measured
+ * rather than named: `servedShape.test.ts` has no resource left in its `notSeen` list.
+ * A list of `ServedPendingItem` and not of `PendingItem`, which is a distinction worth
+ * the two words: six names have no home in the schema and are filled in by
+ * `pages/admin/pending.ts`, and two more arrive in another SORT - the key as a number,
+ * and the member number as text or as nothing at all. The fields it still does not
+ * carry are in `PENDING.md`, each with the table that has nowhere to hold it, and what
+ * the screens do with the answer as it really comes is measured in
+ * `data/theRealAnswer.test.tsx`.
  *
  * **Two more things speak to `/api` and are not resources, and that has been true
  * since before the switch.** `pages/account` spends a link out of a message on
