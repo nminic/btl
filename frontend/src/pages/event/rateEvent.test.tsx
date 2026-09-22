@@ -6,10 +6,38 @@ import { limitOf } from '../../forms/records'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
-import { loadResource } from '../../data/client'
-import { membersAsServed } from '../../test/serverAnswers'
+import { clearResourceCache, loadResource } from '../../data/client'
+import { fakeQueue } from '../../test/fakeQueue'
+import { membersAsServed, refused, serverThat } from '../../test/serverAnswers'
+import type { Asked } from '../../test/serverAnswers'
 import type { BtlEvent, Competitor, EventComment, PendingItem } from '../../data/types'
 import { overall, rated } from './overall'
+
+/* EVERY CASE HERE HAS A SERVER IN FRONT OF IT FOR `POST /api/comments`, BECAUSE SINCE
+ * 22.09.2026 `RateEvent.tsx` SENDS TO ONE.
+ *
+ * `test/setup.ts` answers a bare 201 by default, enough for a case that only checks the
+ * confirmation appeared - the great majority of the cases in this file, most of which
+ * never submit anything at all. `fakeQueue()` is the fuller stand-in for the handful
+ * that walk on into the moderator's queue in the same visit; installed once here
+ * because it is a strict superset of the file it stands in front of, exactly as
+ * `proposeTeam.test.tsx` installs it for the identical reason.
+ *
+ * A CASE THAT WALKS ON STILL HAS TO ASK FOR A FRESH PAGE, HONESTLY, BEFORE READING THE
+ * QUEUE. `data/client.ts` caches a resource for the length of a visit and nothing in
+ * the application invalidates it after a write - true regardless of this file - so
+ * `clearResourceCache()` stands in for the reload a real reader would need, at exactly
+ * the cases that need it and nowhere else. */
+let queue: { asked: Asked[]; stop: () => void } | null = null
+
+beforeEach(() => {
+  queue = fakeQueue()
+})
+
+afterEach(() => {
+  queue?.stop()
+  queue = null
+})
 
 /** The two letters a portrait draws for a name. */
 const initialsOf = (who: string) =>
@@ -275,10 +303,16 @@ describe('rating an event', () => {
        without one: since 11.08.2026 the rating opens only for somebody with a
        result, and every result in the data belongs to somebody the list has. */
     const real = globalThis.fetch
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
+    /* THE SECOND ARGUMENT IS FORWARDED, WHICH IS NEW SINCE 22.09.2026. Every
+       fallthrough here used to be a bare GET with nothing in it to lose; this
+       screen now POSTs a rating with a method, headers and a body, and dropping
+       `init` on the way to `real` turned that POST into a bare GET that answered
+       200 off the mock file instead of the 201 `askTheServer` reads as done -
+       measured as a 5-second timeout on a sentence that never arrived. */
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
       String(input).endsWith('/api/competitors')
         ? new Response('[]', { status: 200 })
-        : real(input))
+        : real(input, init))
 
     try {
       const user = setupUser()
@@ -406,6 +440,10 @@ describe('rating an event', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
 
+    /* A fresh page for the moderator half of this same superadmin, honestly asked
+       for rather than assumed - `data/client.ts` caches `verification` for the
+       length of a visit and nothing invalidates it after a write. */
+    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/komentari')
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
@@ -421,6 +459,36 @@ describe('rating an event', () => {
       expect(within(mine).getByRole('img', { name: `${mark}: 5 od 5` })).toBeInTheDocument()
     }
     expect(within(mine).getByText('5,0')).toBeInTheDocument()
+  })
+
+  it('says why when the server refuses a rating, and changes nothing on the screen', async () => {
+    /* A case about the answer rather than about any rule that produces it - the same
+       question `Registration.test.tsx` asks of its own route. Nothing in this fixture
+       can really make `CommentWriteApi` answer `theEventHasNotBeenRun` here (the form
+       would already have refused to open), so the server is told to say it anyway: this
+       is testing what the screen does with a refusal, not which refusals are real. */
+    const server = serverThat((path) =>
+      path === '/api/comments' ? refused('theEventHasNotBeenRun') : null,
+    )
+
+    try {
+      const user = setupUser()
+      renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+      await screen.findByRole('radiogroup', { name: 'Organizacija' })
+      await user.type(screen.getByLabelText(/^Komentar/), 'Nešto što ostaje u kutiji.')
+      await rateAll(user, 4)
+      await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+
+      expect(
+        await screen.findByText('Rezultat i ocena se unose tek kad se trka istrči.'),
+      ).toBeVisible()
+      /* Nothing moved: the three marks and the words are still on the screen. */
+      expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
+      expect(screen.getByLabelText(/^Komentar/)).toHaveValue('Nešto što ostaje u kutiji.')
+    } finally {
+      server.stop()
+    }
   })
 
   it('is not offered to somebody who is not signed in', async () => {
@@ -635,10 +703,13 @@ describe('a comment a moderator lets out', () => {
       body: `Komentar broj ${String(at + 1)}.`,
     }))
 
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
+    /* `init` forwarded on the fallthrough as a matter of course now - see the note
+       on the same shape earlier in this file - though nothing this test renders
+       posts anything. */
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
       String(input).endsWith('/api/comments')
         ? new Response(JSON.stringify(many), { status: 200 })
-        : real(input))
+        : real(input, init))
 
     const user = setupUser()
     renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
@@ -745,7 +816,7 @@ describe('a comment a moderator lets out', () => {
         body: `Komentar ${String(from + at)}.`,
       }))
 
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
       String(input).endsWith('/api/comments')
         ? new Response(
             JSON.stringify([
@@ -754,7 +825,7 @@ describe('a comment a moderator lets out', () => {
             ]),
             { status: 200 },
           )
-        : real(input))
+        : real(input, init))
 
     try {
       const user = setupUser()
@@ -881,6 +952,9 @@ describe('a comment a moderator lets out', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
 
+    /* A fresh page for the moderator half of this same superadmin - see the note
+       at the head of this file on why the cache needs asking rather than assuming. */
+    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/komentari')
 
     const mineHere = await cardFor('Prva trka u sezoni i dobro postavljena.')

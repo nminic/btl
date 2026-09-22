@@ -105,6 +105,14 @@ export function theCookieNames(who: { role: string; memberNumber: string } | nul
   whoTheCookieNames = who
 }
 
+/** The other direction of {@link theCookieNames}, for a fake server that has to answer
+ *  as whoever `renderAt` rendered the case as (`test/fakeQueue.ts`): a real server reads
+ *  a submission's author off the session and never off the body, and a fake one has
+ *  nowhere else to read it from either. */
+export function whoTheCookieCurrentlyNames(): { role: string; memberNumber: string } | null {
+  return whoTheCookieNames
+}
+
 /** What `/api/me` answers, off the generated record of whoever the cookie names.
  *
  *  The same components `MeApi.WhoIAm` carries and in the same shape: the role, an
@@ -187,11 +195,34 @@ function fileFor(path: string): string {
   return resource === null ? path : `/mock/${resource[1] ?? ''}.json`
 }
 
-vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+/**
+ * THE TWO WRITES THAT ANSWER 201 RATHER THAN A FILE, standing in for
+ * `TeamWriteApi` and `CommentWriteApi` when a case installs no server of its own.
+ *
+ * <p>Read by the VERB and not by the path alone, and asked before {@link fileFor}
+ * ever runs: that function does not look at the method at all, so a bare path
+ * match would answer this POST with the very file the matching GET reads - 200,
+ * an array, and none of it what `askTheServer` reads as done (204 or 201). A case
+ * that measures what was sent, a refusal, or what a moderator sees afterwards
+ * puts its own server in front (`test/serverAnswers.ts`, `test/fakeQueue.ts`);
+ * this is only ever the floor underneath it, the same relationship
+ * `whatMeAnswers` has with every case that wants a different answer to
+ * `/api/me`.
+ */
+const WRITES_THAT_QUEUE = new Set(['/api/teams', '/api/comments'])
+
+vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
   const asked = String(input)
 
   if (asked === '/api/me') {
     return whatMeAnswers()
+  }
+
+  if (init?.method === 'POST' && WRITES_THAT_QUEUE.has(asked)) {
+    return new Response(JSON.stringify({ id: 1 }), {
+      status: 201,
+      headers: { 'content-type': 'application/json' },
+    })
   }
 
   const at = fileFor(asked)
