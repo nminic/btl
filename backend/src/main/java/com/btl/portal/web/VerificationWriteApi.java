@@ -660,8 +660,14 @@ class VerificationWriteApi {
 	 * ({@link VerificationApi#waitingIn}) while this statement copied the one captured at
 	 * submission. So this reads {@code competitor.first_name || ' ' || competitor.last_name}
 	 * FRESH, at the moment it runs, off the same {@code competitor_id} the submission
-	 * carries, and falls back to {@code comment_submission.who} only where that member is
-	 * gone by then - the one case with no current name left to read.
+	 * carries.
+	 *
+	 * <p><b>THERE IS NO FALLBACK TO {@code comment_submission.who} HERE (ADL A64 A6,
+	 * 22.09.2026).</b> {@code competitor_id} is {@code not null} there and its foreign key is
+	 * {@code on delete cascade}, so a submission still waiting for a decision can never point
+	 * at a member who is gone - the row would have gone with him. {@code who} exists only to
+	 * seed {@code event_comment.who}, the tombstone that takes over once this statement runs,
+	 * not to stand in for {@code competitor} before that.
 	 *
 	 * <p><b>Nothing is deleted here, and that is on purpose and not an omission.</b> PDL
 	 * says a REFUSED comment „se ne odbija nego brise" (3267, 4255); an APPROVED one is
@@ -675,7 +681,7 @@ class VerificationWriteApi {
 		db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
 						+ " select cs.event_id, cs.competitor_id,"
-						+ " coalesce(c.first_name || ' ' || c.last_name, cs.who), now(),"
+						+ " c.first_name || ' ' || c.last_name, now(),"
 						+ " cs.rating_organisation, cs.rating_value, cs.rating_ambience, cs.body"
 						+ " from comment_submission cs"
 						+ " left join competitor c on c.id = cs.competitor_id"

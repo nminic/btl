@@ -85,10 +85,6 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 	 *  copies it straight across. */
 	private static final String GOOD_UNRATED =
 			row(ANOTHER_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, 0, 0, ''");
-	/** About nobody in the record, the same tombstone axis {@code event_comment} carries
-	 *  (V7), moved one table earlier. */
-	private static final String GOOD_ABOUT_NOBODY =
-			row(AN_EVENT + ", null, 'Nepoznat Posiljalac', 0, 0, 0, ''");
 
 	private static String row(String values) {
 		return "insert into comment_submission (" + COLUMNS + ") values (" + values + ")";
@@ -130,9 +126,13 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 				Violation.of("comment_submission_event_fk",
 						row("999999, " + A_MEMBER + ", 'Probni Clan', 0, 0, 0, ''")),
 
-				/* NULLABLE, and the fault this key catches is a member who is not there,
-				   never the absence of one - `GOOD_ABOUT_NOBODY` above is what proves the
-				   absence is accepted. */
+				/* NOT NULL as of ADL A64 A6, 22.09.2026: a comment can only be about a
+				   member who wrote it, never about nobody - PDL 324, 3320 and 3252, the
+				   opposite of the reading `schedule_proposal.competitor_id` gets (PDL 1582),
+				   which stays nullable. The FK below catches the other half of the same
+				   column: a member who is not there, as opposed to one left out. */
+				Violation.notNull("comment_submission_competitor_id_not_null", "competitor_id",
+						row(AN_EVENT + ", null, 'Nepoznat Posiljalac', 0, 0, 0, ''")),
 				Violation.of("comment_submission_competitor_fk",
 						row(AN_EVENT + ", 999999, 'Probni Clan', 0, 0, 0, ''")),
 
@@ -201,14 +201,16 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * Rated, unrated and about nobody all go in - the three shapes an approval has to copy
-	 * across without deciding anything.
+	 * Rated and unrated both go in - the two shapes an approval has to copy across without
+	 * deciding anything. About nobody used to be a third; ADL A64 A6 made
+	 * {@code competitor_id} not null, and {@code comment_submission_competitor_id_not_null}
+	 * above now proves that shape is rejected, not accepted.
 	 *
 	 * Without this every constraint above could be replaced by one that rejects everything
 	 * and the file would still be green.
 	 */
 	static List<String> legitimateRows() {
-		return List.of(GOOD_RATED, GOOD_UNRATED, GOOD_ABOUT_NOBODY);
+		return List.of(GOOD_RATED, GOOD_UNRATED);
 	}
 
 	@ParameterizedTest

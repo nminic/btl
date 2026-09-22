@@ -62,29 +62,37 @@
  * The doslovni presedan is V10's own sentence about itself, unchanged by the noun: „a table for
  * the thing before it becomes the thing, in the shape it will take." What `event_comment`
  * carries once a comment is real, this table carries before it is: the event, who sent it in
- * (nullable, the same tombstone axis `event_comment.competitor_id` already carries - V7), the
- * name to show either way, the three marks and the text.
+ * (never null - ADL A64 A6, 22.09.2026 - a comment can only be WRITTEN by a member, PDL 324
+ * and 3320), the name to show either way, the three marks and the text.
  *
  * `who` IS NOT NULL HERE TOO, on purpose and not by habit, though it is no longer a straight
  * copy on approval (ADL A64 A5, 22.09.2026, a correction found by the review of PR 354):
  * `event_comment.who` is „the name as it was when the comment went out", and *went out* means
  * PUBLISHED, so the row this table becomes reads the member's name fresh off `competitor` at
- * that moment and falls back to this column only where the member behind the submission is
- * gone by then - the same tombstone axis `competitor_id` above already carries. A submission
- * with a blank name is still not a shape this table accepts any more than `event_comment`
- * does, because the fallback has to have something to fall back to.
+ * that moment. There is no fallback to this column at publish time (ADL A64 A6, 22.09.2026):
+ * `competitor_id` below is `not null` and its foreign key is `on delete cascade`, so a
+ * submission still waiting for a decision can never point at a member who is gone - the row
+ * would have gone with him. `who` exists to seed `event_comment.who`, the tombstone that
+ * takes over once this row is copied into it, not to stand in for `competitor` before that. A
+ * submission with a blank name is still not a shape this table accepts any more than
+ * `event_comment` does.
  */
 create table comment_submission (
     id                   bigserial not null,
 
     event_id             bigint    not null,
-    /* Nullable: the same axis `event_comment.competitor_id` carries (V7), moved one table
-       earlier. `on delete cascade` and not `set null`, unlike `event_comment`: this row is
-       what a comment is BEFORE it exists, so nothing about it survives being decided at all,
-       the same as a waiting result does not outlive its member (V10). There is no tombstone
-       to protect here yet - that is `event_comment.who`'s day, once this row is copied into
-       it. */
-    competitor_id        bigint,
+    /* NOT NULL (ADL A64 A6, 22.09.2026): a comment can only be WRITTEN by a member, never a
+       visitor - PDL 324 draws that line for reading a published one and writing is the
+       stronger act, PDL 3320 lets even a minor write one, PDL 3252 sends a refusal back
+       to the member who wrote it, and no PDL sentence opens this door the way 1582 opens
+       `schedule_proposal.competitor_id`'s. This is NOT the tombstone axis
+       `event_comment.competitor_id` carries (V7) moved one table earlier: that column
+       survives its member's departure by `set null`, and this one does not - the foreign key
+       below is `on delete cascade`, so a member deleted mid-review takes the whole waiting
+       row with him, the same as a waiting result does not outlive its member (V10). There is
+       no tombstone to protect here yet - that is `event_comment.who`'s day, once this row is
+       copied into it. */
+    competitor_id        bigint    not null,
     who                  text      not null collate sr_latn,
 
     /* The same three marks, the same scale, the same names - PDL P6 fixes the list at three
