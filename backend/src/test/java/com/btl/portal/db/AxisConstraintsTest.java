@@ -506,6 +506,13 @@ class AxisConstraintsTest extends DatabaseTest {
 						"insert into btl_event (" + EVENT_COLUMNS + ") values ('treca-proba-2027', 'Treca proba',"
 								+ " date '2027-05-05', " + A_TOWN + ", null, null, 'race', false, null, '', null)"),
 				Violation.notNull("btl_event_link_not_null", "link", eventWithLink("null")),
+				/* V29, PDL P35: the day an event begins on is the first of the days of
+				   its races, and this is the half of it that catches the event being
+				   moved away from races that stay where they are. Written as an UPDATE
+				   and not an INSERT, because an event written has no races yet and there
+				   is nothing for it to disagree with. */
+				Violation.of("btl_event_begins_with_its_first_race",
+						"update btl_event set date = date '2027-05-05' where slug = '" + PROBE_SLUG + "'"),
 
 				// ------------------------------------------------------------------- race
 				/* The same id on another day, so the key is the only reason: the same
@@ -581,6 +588,12 @@ class AxisConstraintsTest extends DatabaseTest {
 				Violation.notNull("race_descent_m_not_null", "descent_m",
 						race(PROBE_EVENT + ", 'Treca probna trka', false, " + PROBE_RACE_DAY
 								+ ", 'length', 0, 5.00, 0, null")),
+				/* And the other half of V29, from the race's side: the probe's only race
+				   moved off the morning its event begins on. The event is untouched, so
+				   what is refused is the race leaving the day behind rather than any
+				   disagreement the statement also wrote. */
+				Violation.of("race_leaves_its_event_beginning_on_its_first_race",
+						"update race set date = date '2027-05-05' where name = 'Probna trka'"),
 
 				// ----------------------------------------------------------------- result
 				Violation.of("result_pk",
@@ -750,9 +763,23 @@ class AxisConstraintsTest extends DatabaseTest {
 		return "insert into event_comment (" + COMMENT_COLUMNS + ") values (" + values + ")";
 	}
 
+	/**
+	 * <b>The question is asked NOW, and that is what two of the rows above need.</b> Every
+	 * constraint V7 writes is checked as its statement ends, so this said nothing for any of
+	 * them and says nothing for them still. The two V29 adds are DEFERRABLE INITIALLY
+	 * DEFERRED, because the routes that write this column write it in two statements and
+	 * disagree in between; asked at a commit, they would never speak in a class that is
+	 * rolled back, and both of their rows would pass against a database with V29 deleted.
+	 *
+	 * <p>Issued before the row rather than after it, so what throws is still the statement
+	 * the row names and the shape of this case is unchanged. The probe is consistent when it
+	 * arrives here, so nothing else fires on the way.
+	 */
 	@ParameterizedTest
 	@MethodSource("violations")
 	void theConstraintRejectsTheRowThatBreaksIt(Violation violation) {
+		db.sql("set constraints all immediate").update();
+
 		assertThatThrownBy(() -> db.sql(violation.sql()).update())
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining(violation.evidence());

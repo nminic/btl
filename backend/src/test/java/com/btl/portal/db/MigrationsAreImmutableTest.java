@@ -88,7 +88,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("25", "V25__the_exact_distance_is_kept.sql", 1913240119),
 			new Applied("26", "V26__the_policy_names_the_cookie_it_sets.sql", 1404863051),
 			new Applied("27", "V27__the_coin_carries_its_own_legend.sql", -1219505638),
-			new Applied("28", "V28__holding_an_item_while_it_is_read.sql", -1101042005));
+			new Applied("28", "V28__holding_an_item_while_it_is_read.sql", -1101042005),
+			new Applied("29", "V29__the_event_begins_with_its_first_race.sql", 1719152331));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
