@@ -11,8 +11,8 @@ is red and somebody is writing a paragraph in a hurry.
 
 This works the answer out BEFORE the merge. It reads every controller straight
 out of git for a ref it never checks out, pairs each mapping with the guard
-annotation beside it, reads `READ_BY_ANYBODY` out of `ApiSecurity` at that same
-ref, and prints the (VERB PATH) pairs the floor would list. Nothing is checked
+annotation beside it, reads the open lists and the verbs each one grants out of the
+floor's own table at that same ref, and prints the (VERB PATH) pairs the floor would list. Nothing is checked
 out, nothing is written, no branch is touched.
 
 Measured on 19.09.2026, which is why it exists: over `main` plus two branches in
@@ -24,12 +24,16 @@ IT IS A PREDICTION AND SAYS SO. The authority is the real run, for a reason
 written down rather than left to be found: the floor asks
 `WebInvocationPrivilegeEvaluator`, a live object built out of the chain, and
 this asks no running application anything. Where the floor asks the chain which
-verbs an open path grants, this ASSUMES the three in READING below.
+verbs an open path grants, this READS the sentence the floor already writes:
+`RightsAtTheDoorTest.WHAT_EACH_OPEN_LIST_GRANTS`, which names each open list and
+the verbs somebody DECIDED to open on it. That table is held in both directions
+against the lists reflected out of `ApiSecurity`, so a list arriving with no row
+there fails the gate rather than arriving here unmeasured.
 
-WHAT KEEPS THAT ASSUMPTION HONEST IS THE FIRST ARGUMENT. Given the ref whose
-snapshot is being carried, the prediction over THAT ref must equal THAT snapshot
-exactly, and nothing else is reported until it does. An assumption that is too
-wide is caught there rather than in the report: were POST in READING,
+WHAT KEEPS ALL OF IT HONEST IS THE FIRST ARGUMENT. Given the ref whose snapshot
+is being carried, the prediction over THAT ref must equal THAT snapshot exactly,
+and nothing else is reported until it does. A verb read too widely is caught there
+rather than in the report: were POST among the verbs an open list grants,
 `POST /api/teams` would be excused and the control would say a named route has
 stopped being a route. The same control is what holds SPRINGS_OWN below.
 
@@ -60,27 +64,23 @@ MAPPING = re.compile(r"@(Get|Post|Put|Delete|Patch|Request)Mapping\s*\(([^()]*)\
 QUOTED = re.compile(r'"([^"]+)"')
 NAMED_METHOD = re.compile(r"method\s*=\s*(?:RequestMethod\.)?(\w+)")
 
-# What the chain grants on an open path. Assumed, and held by the control above.
-READING = ("GET", "HEAD", "OPTIONS")
-
-# ApiSecurity keeps TWO open lists, and they do not grant the same verbs. Reading only
-# the first made this tool say `GET /api/photos/{name}` "would have to be NAMED" on a ref
-# where the floor is green, which is the control failing on main itself.
+# ApiSecurity keeps MORE THAN ONE open list and they do not grant the same verbs. Reading
+# only `READ_BY_ANYBODY` made this tool say `GET /api/photos/{name}` "would have to be
+# NAMED" on a ref where the floor is green - the control failing on main itself.
 #
-# The second list is not a copy with a variable segment in it: its own note says so, and
-# the chain says so in lines of its own. `READ_BY_ANYBODY` is permitted for GET, HEAD and
-# OPTIONS; `READ_BY_ANYBODY_UNDER_A_NAME` for GET and HEAD, and OPTIONS is left out ON
-# PURPOSE - an OPTIONS digest of one photograph is a sentence with no reader.
+# The first draft of that fix wrote the pairs out here BY HAND, and a review measured that
+# the hand-written half had no floor: giving the second list OPTIONS back, which is exactly
+# the union the comment argued against, left every case green. No controller maps HEAD or
+# OPTIONS at all today, so GET is the only falsifiable verb. Correct, mirroring the floor,
+# and nothing would have noticed it drifting back.
 #
-# So this is a pair per list and not a union of paths. A union would excuse
-# `OPTIONS /api/photos/{name}` as well, and the day a controller maps it this tool would
-# fall silent about a route the floor WOULD name - the one failure mode a prediction must
-# not have. The verbs live beside their list for the same reason: a third list tomorrow is
-# one line here, and a list whose verbs differ cannot be added without saying which.
-OPEN_LISTS = (
-    ("READ_BY_ANYBODY", READING),
-    ("READ_BY_ANYBODY_UNDER_A_NAME", ("GET", "HEAD")),
-)
+# So the table is not copied, it is READ. `WHAT_EACH_OPEN_LIST_GRANTS` in the floor is the
+# same pairing, and the floor holds it in BOTH directions against the lists it reflects out
+# of `ApiSecurity`, so a list arriving with no row there fails the gate. Reading it costs
+# nothing - that file is already fetched for the snapshot - and it takes the list NAMES out
+# of here too, which a review on 20.09.2026 had already asked of the floor itself, for the
+# reason that a list somebody has to remember is a list somebody forgets.
+GRANTS = re.compile(r'"([A-Z_]+)"\s*,\s*List\.of\(([^)]*)\)')
 
 # The one route the portal does not write and therefore cannot be read out of it:
 # Spring's own BasicErrorController, mapped with no method condition, which is why
@@ -98,12 +98,40 @@ def git(*args):
     return done.stdout.decode("utf-8", "replace")
 
 
+class Unreadable(Exception):
+    """A ref this tool cannot answer for: fatal for the control, one line for a target.
+
+    It was `sys.exit` everywhere, and the day a second open list arrived that was measured
+    to be wrong: every ref branched before it lost a constant this tool now reads, and
+    because the exit sat inside the loop over targets, ONE stale ref killed the WHOLE
+    multi-branch report - the branches in flight, which are the only reason this exists.
+    """
+
+
+def textAt(ref, path):
+    return git("show", "%s:%s" % (ref, path))
+
+
 def constantAt(ref, path, name):
     """The quoted strings of a `static final ... NAME = ...;` at that ref."""
-    text = git("show", "%s:%s" % (ref, path))
+    text = textAt(ref, path)
     if (name + " =") not in text:
-        sys.exit("%s holds no %s at %s" % (path, name, ref))
+        raise Unreadable("%s holds no %s at %s" % (path, name, ref))
     return set(QUOTED.findall(text.split(name + " =", 1)[1].split(";", 1)[0]))
+
+
+def grantsAt(ref):
+    """Each open list at that ref, with the verbs the floor says somebody opened on it."""
+    name = "WHAT_EACH_OPEN_LIST_GRANTS"
+    text = textAt(ref, DOOR)
+    if (name + " =") not in text:
+        raise Unreadable("%s holds no %s at %s" % (DOOR, name, ref))
+
+    body = text.split(name + " =", 1)[1].split(";", 1)[0]
+    grants = [(one, tuple(QUOTED.findall(verbs))) for one, verbs in GRANTS.findall(body)]
+    if not grants:
+        raise Unreadable("%s at %s names no list this tool can read" % (name, ref))
+    return grants
 
 
 def routesAt(ref):
@@ -140,14 +168,15 @@ def routesAt(ref):
 
 
 def wouldBeListed(ref):
-    # One entry per open list, each carrying the verbs THAT list grants. Empty is fatal
-    # for the same reason it always was: a list this tool cannot read would quietly excuse
-    # nothing, and every open route would be reported as missing from the snapshot.
+    # One entry per open list, each carrying the verbs THAT list grants, both read off the
+    # ref rather than remembered. Empty stays fatal for the reason it always was: a list
+    # this tool could not read would quietly excuse nothing, and every open route would be
+    # reported as missing from the snapshot.
     excuses = []
-    for name, verbs in OPEN_LISTS:
+    for name, verbs in grantsAt(ref):
         paths = constantAt(ref, SECURITY, name)
         if not paths:
-            sys.exit("%s is empty at %s" % (name, ref))
+            raise Unreadable("%s is empty at %s" % (name, ref))
         excuses.append((paths, verbs))
 
     listed = {SPRINGS_OWN}
@@ -175,14 +204,20 @@ def main():
         sys.exit(__doc__.strip().splitlines()[2].strip())
 
     home, targets = sys.argv[1], sys.argv[2:]
-    carried = constantAt(home, DOOR, "ANSWERS_WITHOUT_A_RIGHT")
+    try:
+        carried = constantAt(home, DOOR, "ANSWERS_WITHOUT_A_RIGHT")
+    except Unreadable as why:
+        sys.exit(str(why))
 
     if not any(" " in one for one in carried):
         sys.exit("the snapshot at %s is still keyed by bare path, and this reports pairs;"
                  " point the first argument at a ref that carries the verb-keyed one" % home)
 
     print("CONTROL: the prediction over %s must equal the snapshot it carries" % home)
-    extra, gone = report(home, carried, "(control)")
+    try:
+        extra, gone = report(home, carried, "(control)")
+    except Unreadable as why:
+        sys.exit("CONTROL UNREADABLE: %s" % why)
     if extra or gone:
         sys.exit("CONTROL FAILED: this tool disagrees with the floor on the ref the"
                  " snapshot comes from, so nothing it says about any other ref is worth"
@@ -192,7 +227,13 @@ def main():
 
     print("PREDICTION (the authority is the real run after the merge):")
     for ref in targets:
-        report(ref, carried, "")
+        # One target this tool cannot answer for is not a reason to say nothing about the
+        # others; it is a reason to say so about that one.
+        try:
+            report(ref, carried, "")
+        except Unreadable as why:
+            print("  %-34s NOT REPORTED" % ref)
+            print("      %s" % why)
 
 
 main()
