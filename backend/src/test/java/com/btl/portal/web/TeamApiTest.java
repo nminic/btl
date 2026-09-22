@@ -2101,9 +2101,15 @@ class TeamApiTest {
 	 * the portal and off the owner rather than decided here.
 	 * {@code frontend/src/data/teamAdmin.ts}: „the founder only while they are still in it.
 	 * The seat is who founded the team and never changes; being its administrator does."
-	 * PDL:2405: „Ako administrator prestane da placa clanarinu i napusti tim, titula
-	 * prelazi." PDL P13, of an administrator removed or disqualified: „Isto kao kad je
-	 * otisao."
+	 * PDL „Razreseno istog dana, cetiri odgovora", 04.09.2026, „Administrator tima je onaj
+	 * ko je tim osnovao" - and, in the same decision, the seat that empties is taken by
+	 * whoever has been in the team longest. PDL P13, of an administrator removed or
+	 * disqualified: „Isto kao kad je otisao."
+	 *
+	 * <p>This used to cite a line that said the title passes when he stops paying AND
+	 * leaves. That sentence is struck out in the journal, overturned on 11.08.2026, so it
+	 * was not a citation into the void but a citation into a dead decision - which reads
+	 * the same to anybody following it and is worse, because it looks alive.
 	 *
 	 * <p><b>Each of the three is seated in turn and differs from the winner in exactly one
 	 * thing</b>, so what refuses him is one condition and not a heap of them. He is

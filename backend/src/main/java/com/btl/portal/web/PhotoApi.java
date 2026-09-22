@@ -102,8 +102,8 @@ import java.util.regex.Pattern;
  * <p><b>A row whose file is not there is answered exactly as a digest nobody wrote.</b>
  * Any other number would be a sentence about the database: 500 or 410 would say „this
  * digest names a row and the row is broken", which is the same subtraction PDL „Privatnost
- * profila", „Time je pravilo jedno i celo" shuts for profiles, available to anybody with no
- * session. So the operator is told - the WARN
+ * profila", „Oba slucaja dobijaju isti ishod" shuts for profiles, available to anybody with
+ * no session. So the operator is told - the WARN
  * below is the only place that fault exists - and the caller is told what a caller of an
  * address that is not there is told. The two answers are not merely the same NUMBER: both
  * go out through {@code sendError}, so the container's own ERROR dispatch writes both, and
