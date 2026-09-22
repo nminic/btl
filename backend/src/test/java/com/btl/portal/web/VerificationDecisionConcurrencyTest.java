@@ -83,6 +83,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * threads happen to overlap. It is additional to the barrier tests above and not a
  * replacement for them - they still are the only cases that leave the ORDER of the two
  * requests to chance, which is what an invariant rather than a forced outcome has to do.
+ *
+ * <p><b>TAKING A HOLD HAS THE SAME GAP AND IT IS WIDER, so it is forced the same way.</b>
+ * {@code hold} refuses at {@code HoldingAnItem.mayTouch}, which is a plain read outside any
+ * transaction, so a sequential „take it twice" stops there every time and the count the claim
+ * answers with ({@code taken == 0}) is unreachable except by a real collision. {@code
+ * theSecondHoldIsRefusedByTheRowItselfAndNotByTheCheckThatCameBeforeIt} takes the ordering
+ * away from the scheduler for that route too, and it does it with the same held row: writing
+ * into {@code verification_lock} takes {@code FOR KEY SHARE} on {@code verification} through
+ * the key V28 gives it, which the {@code FOR UPDATE} here conflicts with. <b>Both forced cases
+ * ask the LOCK MANAGER whether the requests have arrived</b> ({@code blockedBehindThisHold}),
+ * and both assert that neither request had been ANSWERED while they were stopped there -
+ * which is what names the branch, since the two refusals each route can give carry the same
+ * words and the same status.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -116,9 +129,9 @@ class VerificationDecisionConcurrencyTest {
 	private JdbcClient db;
 
 	/**
-	 * THE ROW'S OWN LOCK, HELD FROM THIS THREAD, so the two requests below queue behind it
-	 * rather than behind a barrier the scheduler is free to honour or not. See the class
-	 * comment for why the {@link CyclicBarrier} tests above cannot do this on their own.
+	 * THE ROW'S OWN LOCK, HELD FROM THIS THREAD, so the requests of the two forced cases below
+	 * queue behind it rather than behind a barrier the scheduler is free to honour or not. See
+	 * the class comment for why the {@link CyclicBarrier} tests cannot do this on their own.
 	 */
 	@Autowired
 	private TransactionTemplate holdingTheRow;
@@ -331,14 +344,32 @@ class VerificationDecisionConcurrencyTest {
 				db.sql("select 1 from verification where id = ? for update")
 						.param(teamItem).query(Integer.class).single();
 
+				assertThat(blockedBehindThisHold())
+						.as("the row is locked and nothing has been submitted yet, so a count of"
+								+ " backends held up by this connection that is not nought is"
+								+ " counting something other than the two requests below")
+						.isZero();
+
 				submitted.add(pool.submit(theApproval));
 				submitted.add(pool.submit(theRefusal));
 
 				try {
-					waitUntilBothDecisionsAreBlockedOnTheRow(submitted);
+					waitUntilBothRequestsAreBlockedBehindThisHold(submitted);
 				} catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
+
+				/* AND NEITHER HAS BEEN ANSWERED, which is what names the branch. Both 409s this
+				   route can give an item that is waiting carry the same words, so a status on
+				   its own cannot say which of them came back. A request refused by the check
+				   before the update is answered without touching the row again and its Future
+				   is done by now; both of these are inside the database, stopped by this
+				   connection, with nothing written and nothing said. */
+				assertThat(submitted)
+						.as("a request that is not held up by this hold was refused before it"
+								+ " reached the update, which is the branch this case is written"
+								+ " to keep away from")
+						.hasSize(2).noneMatch(Future::isDone);
 
 				return null;
 			});
@@ -361,34 +392,128 @@ class VerificationDecisionConcurrencyTest {
 	}
 
 	/**
+	 * THE SECOND HOLD IS REFUSED BY THE ROW ITSELF AND NOT BY THE CHECK THAT CAME BEFORE IT.
+	 *
+	 * <p><b>The sequential case cannot reach this branch and never will.</b> {@code hold} asks
+	 * {@code HoldingAnItem.mayTouch} first, off a plain read taken outside any transaction, and
+	 * refuses there the moment a live hold belonging to somebody else is on the row. So „take it
+	 * twice" - the shape every other case in {@code VerificationWriteApiTest} is written in -
+	 * stops at that check every single time, and the count the claim itself answers with
+	 * ({@code taken == 0}) is reached only when two moderators really are inside the statement
+	 * together. {@code twoModeratorsTakingOneFreeItemLeaveOneHolderAndOneRefusal} above leaves
+	 * that to a {@link CyclicBarrier}, which starts them together and then hands the ordering
+	 * to the scheduler - the same dependence measured on the deciding route on 21.09.2026,
+	 * where two runs of identical code gave identical test counts and different coverage.
+	 *
+	 * <p><b>What this case does instead.</b> It locks {@code verification}'s own row from a
+	 * connection neither HTTP thread ever touches. Nothing holds the item yet, so both threads'
+	 * read finds it free and both pass {@code mayTouch} whichever runs first; both then reach
+	 * the insert, and the insert cannot proceed, because writing a child row takes {@code FOR
+	 * KEY SHARE} on the parent through {@code verification_lock_verification_fk} and that
+	 * conflicts with the {@code FOR UPDATE} held here. Measured 22.09.2026 against an empty
+	 * {@code postgres:18.6} with this same key: {@code for update} stops that insert and
+	 * {@code for no key update} does not, which is why the lock this case takes is the stronger
+	 * one and why swapping it is the first mutation this case has to fail on.
+	 *
+	 * <p><b>THE BRANCH IS NAMED BY THE BLOCKING AND NOT BY THE STATUS, and that is a limit of
+	 * this route written down rather than left to be found.</b> Both refusals {@code hold} can
+	 * give an item that is still waiting - the check before the insert and the count after it -
+	 * answer 409 with {@code SOMEBODY_ELSE_IS_READING_IT}, byte for byte the same response. No
+	 * assertion over the answer, the body, the table or the holder can tell them apart, because
+	 * from outside they are the same thing: one man was told somebody else has it. What IS
+	 * observable is that neither request had been answered at a moment when both were stopped
+	 * inside the database by this connection's lock - a request refused by the check would have
+	 * been answered long before, having touched the row once and never come back. That pair of
+	 * assertions, and not the 409, is what says the loser met the count.
+	 */
+	@Test
+	void theSecondHoldIsRefusedByTheRowItselfAndNotByTheCheckThatCameBeforeIt() throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			Callable<MockHttpServletResponse> oneTaking = () -> take(ONE_MODERATOR, profileItem);
+			Callable<MockHttpServletResponse> theOtherTaking =
+					() -> take(THE_OTHER_MODERATOR, profileItem);
+
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update")
+						.param(profileItem).query(Integer.class).single();
+
+				assertThat(blockedBehindThisHold())
+						.as("the row is locked and nothing has been submitted yet, so a count of"
+								+ " backends held up by this connection that is not nought is"
+								+ " counting something other than the two requests below")
+						.isZero();
+
+				submitted.add(pool.submit(oneTaking));
+				submitted.add(pool.submit(theOtherTaking));
+
+				try {
+					waitUntilBothRequestsAreBlockedBehindThisHold(submitted);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				/* AND NEITHER HAS BEEN ANSWERED. See the note above: this is the whole of what
+				   tells this branch from the check before it, since the two refusals are the
+				   same bytes. Both are stopped inside the insert, so both got past the check
+				   with the item free, and whichever loses will lose on the count. */
+				assertThat(submitted)
+						.as("a request that is not held up by this hold was refused before it"
+								+ " reached the insert, which is the branch this case is written"
+								+ " to keep away from")
+						.hasSize(2).noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			MockHttpServletResponse one = submitted.get(0).get(30, TimeUnit.SECONDS);
+			MockHttpServletResponse theOther = submitted.get(1).get(30, TimeUnit.SECONDS);
+
+			assertThat(List.of(one.getStatus(), theOther.getStatus()).stream().sorted().toList())
+					.as("both moderators were inside the insert with the item free, and the row"
+							+ " let them both out saying yes - so one of them is about to read"
+							+ " something the other is deciding")
+					.containsExactly(200, 409);
+
+			assertThat(db.sql("select count(*) from verification_lock where verification_id = ?")
+					.param(profileItem).query(Integer.class).single()).isEqualTo(1);
+
+			/* AND THE ONE HOLDING IT IS THE ONE WHO WAS TOLD SO, the same sentence the barrier
+			   case makes: a count of one is satisfied by the loser holding it just as well. */
+			long holder = db.sql("select held_by from verification_lock where verification_id = ?")
+					.param(profileItem).query(Long.class).single();
+
+			String winner = one.getStatus() == 200 ? ONE_MODERATOR : THE_OTHER_MODERATOR;
+
+			assertThat(holder)
+					.as("the item is held by the moderator who was refused it")
+					.isEqualTo(accountOf(winner));
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
 	 * Polled rather than assumed, the same discipline {@code RegistrationOverRealHttpTest}
 	 * already applies to {@code pg_stat_activity}: a fixed sleep would either run too short on
 	 * a loaded machine and release the lock before both requests arrive - the very flakiness
-	 * this case exists to remove - or run so long it slows the suite for nothing.
+	 * these cases exist to remove - or run so long it slows the suite for nothing.
 	 *
-	 * <p><b>Read on {@code wait_event_type} alone, and not on {@code query} text.</b> Measured
-	 * 21.09.2026 against this same container: the two backends genuinely queued behind the held
-	 * lock (confirmed by their {@code Future}s staying un-done, and by one waiting on a
-	 * {@code tuple} and the other in turn on a {@code transactionid} - exactly Postgres's own
-	 * queueing order for a second waiter on a row a first waiter already contests) reported
-	 * {@code state = 'idle'} and {@code query} as their connection's setup statement, not the
-	 * update actually blocked. A condition written against the query text - this route's update
-	 * and nothing else - never saw them and timed out with both futures still not done, which is
-	 * what sent this case looking at {@code wait_event_type} on its own instead. Excluding this
-	 * connection's own {@code pid} is enough to keep the count to the two this test itself
-	 * blocks, since nothing else runs while this case does.
+	 * <p>One method for both forced cases, because they are one question - „are both requests
+	 * now stopped inside the database by the row this connection is holding" - and two copies
+	 * of it would be free to drift apart while both went on looking green.
 	 */
-	private void waitUntilBothDecisionsAreBlockedOnTheRow(
+	private void waitUntilBothRequestsAreBlockedBehindThisHold(
 			List<Future<MockHttpServletResponse>> submitted) throws InterruptedException {
 		Instant deadline = Instant.now().plusSeconds(10);
 
-		while (db.sql("select count(*) from pg_stat_activity"
-						+ " where wait_event_type = 'Lock' and pid <> pg_backend_pid()")
-				.query(Integer.class).single() < 2) {
-
+		while (blockedBehindThisHold() < 2) {
 			if (Instant.now().isAfter(deadline)) {
 				List<String> snapshot = db.sql("select pid || ' ' || state || ' ' || coalesce("
-								+ "wait_event_type, '-') || ' ' || coalesce(wait_event, '-') || ' | '"
+								+ "wait_event_type, '-') || ' ' || coalesce(wait_event, '-')"
+								+ " || ' blocked_by=' || pg_blocking_pids(pid)::text || ' | '"
 								+ " || coalesce(query, '-') from pg_stat_activity"
 								+ " where datname = current_database()")
 						.query(String.class).list();
@@ -397,13 +522,55 @@ class VerificationDecisionConcurrencyTest {
 						.toList();
 
 				throw new IllegalStateException(
-						"both decisions should have been queued behind the held row lock within"
-								+ " ten seconds, and pg_stat_activity never showed two. Futures: "
-								+ futureState + " Snapshot: " + snapshot);
+						"both requests should have been queued behind the held row lock within"
+								+ " ten seconds, and the lock manager never showed two behind this"
+								+ " connection. Futures: " + futureState + " Snapshot: " + snapshot);
 			}
 
 			Thread.sleep(20);
 		}
+	}
+
+	/**
+	 * HOW MANY BACKENDS ARE STOPPED BY THE LOCK <b>THIS CONNECTION</b> IS HOLDING, asked of the
+	 * lock manager itself rather than read off anybody's state.
+	 *
+	 * <p><b>Of this connection, and that word is the whole of it.</b> One Testcontainers
+	 * database is shared by the whole suite, so a count of every backend with {@code
+	 * wait_event_type = 'Lock'} is satisfied by any other context blocked on anything at all -
+	 * and the sentence these two cases assert, that the two requests they submitted are stopped
+	 * behind the row they locked, would then be true about somebody else's backends.
+	 * {@code pg_blocking_pids} answers who is blocking whom, so rooting the set at {@code
+	 * pg_backend_pid()} lets nothing in that this connection is not the reason for.
+	 *
+	 * <p><b>RECURSIVE, because Postgres queues the SECOND waiter behind the FIRST and not
+	 * behind the holder.</b> Measured 21.09.2026 on this same container: of the two backends
+	 * genuinely stopped behind a held row, one waits on a {@code transactionid} - this
+	 * connection's - and the other on a {@code tuple} the first waiter already holds. Rooted at
+	 * this pid and read one level deep the count is 1 and the wait above would time out on a
+	 * pair that had arrived. The closure is the shape of the queue rather than a guess at its
+	 * depth: whatever chain leads back here is counted, and nothing else can.
+	 *
+	 * <p><b>Nothing is read off {@code state} or {@code query}, and that is not a preference.</b>
+	 * Measured the same day: a backend really stopped on a row lock reports {@code state =
+	 * 'idle'} through PgJDBC's extended protocol, with {@code query} still showing its
+	 * connection's setup statement rather than the statement that is blocked. A condition
+	 * written against either never saw the two and timed out with both futures un-done. The
+	 * lock manager has no such second version of the truth.
+	 *
+	 * <p><b>The floor under it is in the cases themselves</b>: each asserts this answers
+	 * {@code 0} with the row locked and nothing submitted yet, so a predicate stuck at two -
+	 * or one that counts the suite rather than these requests - fails before the race begins.
+	 */
+	private int blockedBehindThisHold() {
+		return db.sql("with recursive behind_this_hold(pid) as ("
+						+ " select a.pid from pg_stat_activity a"
+						+ " where pg_backend_pid() = any(pg_blocking_pids(a.pid))"
+						+ " union"
+						+ " select a.pid from pg_stat_activity a, behind_this_hold b"
+						+ " where b.pid = any(pg_blocking_pids(a.pid)))"
+						+ " select count(*) from behind_this_hold")
+				.query(Integer.class).single();
 	}
 
 	/** Two calls released together, in the order they were given. */
