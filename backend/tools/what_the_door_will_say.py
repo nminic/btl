@@ -150,10 +150,6 @@ def routesAt(ref):
     """Every mapping the portal's own controllers declare, and whether it is guarded."""
     files = [one for one in git("ls-tree", "-r", "--name-only", ref, WEB).splitlines()
              if one.endswith(".java")]
-    if not files:
-        raise Unreadable("no controller found at %s, so this would report an empty"
-                         " portal" % ref)
-
     out = {}
     for rel in files:
         text = git("show", "%s:%s" % (ref, rel))
@@ -178,6 +174,22 @@ def routesAt(ref):
             for path in paths:
                 key = "%s %s" % (verb, path)
                 out[key] = out.get(key, True) and guarded
+
+    # ASKED OF THE ANSWER, NOT OF THE FILE LIST, and a review measured why. The check
+    # used to be `if not files`, and it was DEAD: `ApiSecurity.java` lives in this very
+    # directory and is read a moment later, so a ref that reaches here always has at
+    # least one `.java` and the list is never empty. Meanwhile the state that message
+    # names - a ref with the controllers gone - sailed through: `1 pairs`, nothing that
+    # "would have to be NAMED", every real route under "named but NOT A ROUTE", exit 0.
+    # That report reads exactly like "this branch is simply behind", which is the one
+    # sentence this tool must never say by accident.
+    #
+    # "Is the file list empty" is a question about where the answer came from. "Are
+    # there any mappings" is a question about the answer itself: complete by
+    # construction, reachable, and it subsumes the empty directory it replaced.
+    if not out:
+        raise Unreadable("no mapping found under %s at %s, so this would report an"
+                         " empty portal" % (WEB, ref))
     return out
 
 
