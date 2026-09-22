@@ -193,6 +193,11 @@ class VerificationWriteApi {
 
 	private static final String HE_IS_ALREADY_IN_A_TEAM = "Osnivač je već u nekom timu.";
 
+	/** PDL P10b, owner 22.09.2026: an event with a result already written may not be moved
+	 *  across 1 January on the race that result was run at. */
+	private static final String THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR =
+			"Događaj ima upisane rezultate koje bi ovaj datum prebacio u drugu godinu.";
+
 	/** Who the member hears from, which is the league and never the moderator by name. */
 	private static final String THE_PORTAL = "Verifikacija";
 
@@ -493,6 +498,14 @@ class VerificationWriteApi {
 		   here writes, so there is nothing to undo. */
 		Proposal proposal = TEAMS.equals(item.queue()) ? proposalBehind(item) : null;
 
+		/* THE SAME "ASKED FIRST AND WRITING NOTHING", and read exactly once: the row
+		   scheduleMoveBehind reads is the row PDL P10b's guard below judges AND the row
+		   moveTheEvent later writes from, so a refusal and the write it would otherwise
+		   precede cannot end up reading two different answers to "what day does this event
+		   stand on right now" (ADL A64 A2 already makes the same point about
+		   schedule_proposal.event_date, which this is one door further down from). */
+		ScheduleMove move = SCHEDULE.equals(item.queue()) ? scheduleMoveBehind(item) : null;
+
 		/* THE SEASON, READ ONCE AND USED BY BOTH HALVES. See the head of this class for why
 		   it is this function and not the one beside it, and for the day the portal got it
 		   wrong. Read twice - once to refuse and once to write - it would be the same fact
@@ -505,6 +518,18 @@ class VerificationWriteApi {
 			if (refused.isPresent()) {
 				return refused.get();
 			}
+		}
+
+		/* PDL P10b, owner 22.09.2026: „Ako dogadjaj ima upisane rezultate a pomeraj datuma bi
+		   ih preveo u drugu godinu, portal odbija izmenu i kaze zasto." Settled before the
+		   claim for the identical reason the team's refusal above is. Asked of
+		   EventWriteApi.wouldStrandAResultInAnotherYear rather than a copy of the same
+		   query written here: the plan for THIS increment does touch that class, unlike the
+		   plan for the increment that wrote moveTheEvent, so there is no reason left to
+		   repeat the shape instead of calling it. */
+		if (answer.yes() && move != null
+				&& EventWriteApi.wouldStrandAResultInAnotherYear(db, move.eventId(), move.deltaDays())) {
+			return no(HttpStatus.CONFLICT, THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
 		}
 
 		String state = answer.yes() ? DecidingOnASubmission.APPROVED : DecidingOnASubmission.REJECTED;
@@ -576,7 +601,7 @@ class VerificationWriteApi {
 			} else if (COMMENTS.equals(item.queue())) {
 				publishTheComment(item);
 			} else if (SCHEDULE.equals(item.queue())) {
-				moveTheEvent(item);
+				moveTheEvent(move);
 			} else {
 				publishTheProfile(item);
 			}
@@ -687,6 +712,33 @@ class VerificationWriteApi {
 	}
 
 	/**
+	 * WHAT A SCHEDULE PROPOSAL ASKS FOR, READ ONCE BEFORE THE ROW IS CLAIMED: the event,
+	 * the day it stands on right now, and the day it is being asked to move to.
+	 *
+	 * <p><b>THE DAY MOVED FROM IS READ FRESH, NEVER FROM THE PROPOSAL (ADL A64 A2).</b> An
+	 * administrator may have moved this event again since the report was sent, and A2's
+	 * whole point is that the report survives that disagreement rather than pretending it
+	 * did not happen: {@code schedule_proposal.event_date} is the day the reporter SAW,
+	 * not the day that is true now, so {@code btl_event.date} is read inside THIS
+	 * transaction instead - exactly as {@code EventWriteApi.change} reads its own
+	 * {@code before} fresh rather than trusting what the caller believed the day to be.
+	 *
+	 * <p><b>READ HERE AND CARRIED, RATHER THAN READ AGAIN IN {@link #moveTheEvent}
+	 * (PDL P10b).</b> The row this method returns is what the P10b guard in {@link #write}
+	 * judges AND what {@link #moveTheEvent} then writes from; read twice, the two could
+	 * answer "what day does this event stand on" differently if an administrator moved it
+	 * for a second time in between, and the write would apply a delta the guard never saw.
+	 */
+	private ScheduleMove scheduleMoveBehind(Item item) {
+		return db.sql("select e.id, e.date, sp.proposed_date from schedule_proposal sp"
+						+ " join btl_event e on e.id = sp.event_id where sp.id = ?")
+				.param(item.scheduleProposalId())
+				.query((row, one) -> new ScheduleMove(row.getLong(1), row.getDate(2).toLocalDate(),
+						row.getDate(3).toLocalDate()))
+				.single();
+	}
+
+	/**
 	 * THE EVENT MOVES TO THE PROPOSED DAY, AND ITS RACES MOVE WITH IT BY THE SAME NUMBER
 	 * OF DAYS (ADL A64 A3).
 	 *
@@ -697,32 +749,18 @@ class VerificationWriteApi {
 	 * as a file it does not touch, so the shape is repeated here instead of extracted,
 	 * and both copies answer to the same owner's sentence rather than to each other.
 	 *
-	 * <p><b>THE DAY MOVED FROM IS READ FRESH, NEVER FROM THE PROPOSAL (ADL A64 A2).</b> An
-	 * administrator may have moved this event again since the report was sent, and A2's
-	 * whole point is that the report survives that disagreement rather than pretending it
-	 * did not happen: {@code schedule_proposal.event_date} is the day the reporter SAW,
-	 * not the day that is true now, so the delta below is struck against
-	 * {@code btl_event.date} read inside THIS transaction - exactly as
-	 * {@code EventWriteApi.change} reads its own {@code before} fresh rather than trusting
-	 * what the caller believed the day to be.
+	 * <p><b>By the time this runs, PDL P10b has already been asked and answered.</b>
+	 * {@link #write} judges {@code move} before the queue row is claimed and only calls
+	 * this method once that has passed, so nothing here asks again whether the move is
+	 * allowed - the same division {@link #whyTheTeamCannotBeMade} and
+	 * {@link #makeTheTeam} already keep.
 	 *
 	 * <p>Written without a branch on whether the day moved at all, the same reason
 	 * {@code EventWriteApi.change} has none: adding zero days is what "it did not move"
 	 * means, and {@code schedule_proposal_proposes_another_day} already keeps a proposal
 	 * from ever asking for exactly that.
 	 */
-	private void moveTheEvent(Item item) {
-		ScheduleMove move = db
-				.sql("select event_id, proposed_date from schedule_proposal where id = ?")
-				.param(item.scheduleProposalId())
-				.query((row, one) -> new ScheduleMove(row.getLong(1), row.getDate(2).toLocalDate()))
-				.single();
-
-		LocalDate before = db.sql("select date from btl_event where id = ?")
-				.param(move.eventId())
-				.query((row, one) -> row.getDate(1).toLocalDate())
-				.single();
-
+	private void moveTheEvent(ScheduleMove move) {
 		db.sql("update btl_event set date = ? where id = ?")
 				.params(move.proposedDate(), move.eventId())
 				.update();
@@ -731,14 +769,19 @@ class VerificationWriteApi {
 		   race under a DIFFERENT event untouched, the same filter EventWriteApi.change
 		   applies for the identical reason. */
 		db.sql("update race set date = date + cast(? as int) where event_id = ?")
-				.params(ChronoUnit.DAYS.between(before, move.proposedDate()), move.eventId())
+				.params(move.deltaDays(), move.eventId())
 				.update();
 	}
 
-	/** The event a schedule proposal is about and the day it asks to move it to, read once
-	 *  rather than twice so the two statements in {@link #moveTheEvent} cannot disagree
-	 *  about which proposal they are reading. */
-	private record ScheduleMove(long eventId, LocalDate proposedDate) {
+	/** The event a schedule proposal is about, the day it stands on right now, and the day
+	 *  it is being asked to move to - read once by {@link #scheduleMoveBehind} rather than
+	 *  twice, so a PDL P10b refusal and the write it would otherwise precede cannot end up
+	 *  reading two different answers to "what day is this, right now". */
+	private record ScheduleMove(long eventId, LocalDate before, LocalDate proposedDate) {
+
+		private long deltaDays() {
+			return ChronoUnit.DAYS.between(before, proposedDate);
+		}
 	}
 
 	/**
