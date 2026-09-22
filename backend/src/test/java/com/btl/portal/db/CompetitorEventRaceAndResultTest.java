@@ -586,7 +586,14 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"verification.verification_result_submission_fk cascade",
 				/* I sesti kljuc reda za verifikaciju, iz istog razloga kao peti: predlog koga nema
 				   je predlog ni o cemu. */
-				"verification.verification_team_proposal_fk cascade");
+				"verification.verification_team_proposal_fk cascade",
+				/* A HOLD IS SOMEBODY READING SOMETHING RIGHT NOW, so it goes when either end
+				   of it goes. This is where it differs from the DECISION one column over,
+				   which survives its moderator and keeps his name: a hold is worth nothing
+				   once its holder is gone, and an item nobody can free is the exact failure
+				   the owner refused when he chose expiry over explicit release (18.09.2026). */
+				"verification_lock.verification_lock_account_fk cascade",
+				"verification_lock.verification_lock_verification_fk cascade");
 	}
 
 	/**

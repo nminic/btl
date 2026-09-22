@@ -1413,7 +1413,13 @@ describe('the races of an event', () => {
        makes on this screen. */
     const user = setupUser()
 
-    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    /* A fortnight before the day the event is entered for, said out loud rather
+       than left to the machine. The list of events with nothing searched for
+       carries only what is still ahead (`AdminEvents.tsx`, `one.date >= today`),
+       so read on a day after 1 June 2027 this case would look for a row that
+       screen no longer draws - and it would start doing that on its own, with
+       nothing changed but the date. */
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, '2027-05-18')
 
     await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
     await user.type(screen.getByLabelText(/^Naziv događaja/), 'Trka bez trka')

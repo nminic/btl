@@ -115,11 +115,25 @@ class RightsOverRealHttpTest {
 	 */
 	private static final String THE_QUEUE = "/api/verification";
 
+	/**
+	 * AND THE THREE WRITES UNDER IT, whose refusal is written by the same resource.
+	 *
+	 * <p>The id is a real row's and is filled in per case, because the error document carries
+	 * the path that was asked for: a twin is built from the address actually used.
+	 */
+	private static final String THE_QUEUE_ITEM = "/api/verification/%d";
+
+	/** Holds {@code queue:profiles}, which is the tab the row below stands in. */
+	private static final String HOLDS_THE_PROFILES_TAB = "profili-kroz-mrezu@primer.rs";
+
 	/** The token is any value at all, which is the point of it being sent twice. */
 	private static final String A_TOKEN = "11111111-2222-3333-4444-555555555555";
 
 	@LocalServerPort
 	private int port;
+
+	/** The queue row the three writes below are asked about. */
+	private long waitingItem;
 
 	@Autowired
 	private JdbcClient db;
@@ -156,10 +170,19 @@ class RightsOverRealHttpTest {
 		account(A_COMPETITOR, "competitor");
 		account(EVERY_TICK, "moderator");
 		account(THE_SUPERADMIN, "superadmin");
+		account(HOLDS_THE_PROFILES_TAB, "moderator");
 
 		ticked(HOLDS_THE_TICK, ProbeRoutes.THE_RIGHT_IT_NEEDS);
 		ticked(WITHOUT_THE_TICK, ProbeRoutes.THE_OTHER_RIGHT, "entity:events");
 		ticked(EVERY_TICK, everyRightThereIs().toArray(String[]::new));
+		ticked(HOLDS_THE_PROFILES_TAB, "queue:profiles");
+
+		/* ONE ITEM STANDING IN THE PROFILES TAB, ABOUT NOBODY IN THE RECORD. V9 makes
+		   `competitor_id` nullable on purpose, and taking that road here means this fixture
+		   needs no competitor of its own to clean up afterwards. */
+		waitingItem = db.sql("insert into verification (queue, competitor_id, subject, body)"
+						+ " values ('profiles', null, 'Kroz mrezu', 'Tekst') returning id")
+				.query(Long.class).single();
 	}
 
 	/**
@@ -172,6 +195,8 @@ class RightsOverRealHttpTest {
 	 */
 	@AfterEach
 	void takeThemBackOut() {
+		db.sql("delete from verification where id = ?").param(waitingItem).update();
+
 		for (String email : sessions.keySet()) {
 			db.sql("delete from account where email = ?").param(email).update();
 		}
@@ -694,6 +719,63 @@ class RightsOverRealHttpTest {
 				.containsExactly("competitor", "moderator");
 
 		answersTheSameWay("GET", THE_QUEUE, twinOf(THE_QUEUE), asking);
+	}
+
+	/**
+	 * AND SO DO THE THREE WRITES UNDER IT, WHICH IS WHERE THE PORTAL ACTUALLY LEAKED.
+	 *
+	 * <p>{@code VerificationApiTest} and {@code VerificationWriteApiTest} can compare the
+	 * NUMBERS and nothing else: MockMvc does not run the container's ERROR dispatch, so the
+	 * error document is never written and two answers look alike to it whichever way the code
+	 * is written. Measured on 21.09.2026 rather than argued: replacing {@code sendError} with
+	 * a status written onto the response leaves <b>92 cases green and the exit code nought</b>,
+	 * while on the wire the same change turns the refusal into <b>262 bytes against 421</b> on
+	 * all three of these addresses. Nothing in the suite held that until this case.
+	 *
+	 * <p><b>And the case that looks as if it did cannot.</b>
+	 * {@code VerificationWriteApiTest.anItemHeMayNotSeeAnswersExactlyAsOneThatIsNotThere}
+	 * compares two answers that both come out of the same {@code away()} call, so it stays
+	 * green under that mutation by construction. It holds something else and something useful
+	 * - that the key is not an oracle for what is in the queue - but indistinguishability of
+	 * two calls to one method is not indistinguishability on the wire.
+	 *
+	 * <p><b>The three askers are refused for three different reasons</b>, which is what keeps
+	 * this from measuring one setting three times. {@link #A_COMPETITOR} holds nothing at all;
+	 * {@link #HOLDS_THE_TICK} holds a right that is not a queue; and {@link #WITHOUT_THE_TICK}
+	 * holds {@code queue:results}, a queue that is not THIS row's - the one asker who tells
+	 * „may he moderate this tab" apart from „does he hold any tab", and the one a fixture
+	 * built out of a plain competitor cannot produce.
+	 *
+	 * <p><b>The body and its type are sent</b> because the decision route declares what it
+	 * consumes: without the header the mapping answers 415 and the comparison would be about
+	 * content negotiation. The empty object is deliberate too - it is the body that used to be
+	 * answered 400 before the door was asked, which is the finding this case is here for.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {A_COMPETITOR, HOLDS_THE_TICK, WITHOUT_THE_TICK})
+	void theWritesOnTheQueueSayNothingEitherToSomebodyWhoMayNotUseThem(String asking)
+			throws Exception {
+		String item = THE_QUEUE_ITEM.formatted(waitingItem);
+		String json = "Content-Type: application/json\r\n";
+
+		assertThat(answerTo("POST", item + "/hold", HOLDS_THE_PROFILES_TAB, A_TOKEN))
+				.as("the moderator who holds this row's tab cannot take it either, so every"
+						+ " comparison below is between two addresses that are simply missing")
+				.startsWith("HTTP/1.1 200");
+
+		assertThat(ticksOf(WITHOUT_THE_TICK))
+				.as("the moderator who is meant to hold ANOTHER queue holds a number of rights"
+						+ " that cannot be one queue and one entity")
+				.isEqualTo(2);
+		assertThat(List.of(roleOf(A_COMPETITOR), roleOf(HOLDS_THE_TICK), roleOf(WITHOUT_THE_TICK)))
+				.as("the three askers are not three different kinds, so this runs one setting"
+						+ " three times")
+				.containsExactly("competitor", "moderator", "moderator");
+
+		answersTheSameWay("POST", item + "/hold", twinOf(item + "/hold"), asking);
+		answersTheSameWay("DELETE", item + "/hold", twinOf(item + "/hold"), asking);
+		answersTheSameWay("POST", item + "/decision", twinOf(item + "/decision"), asking,
+				A_TOKEN, json, "{}");
 	}
 
 	/**

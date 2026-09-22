@@ -2069,7 +2069,11 @@ describe('Teams', () => {
   const standing = async () => within(await screen.findByRole('table'))
 
   it('ranks teams by the plain sum of their members', async () => {
-    renderAt('/sr/timovi')
+    /* The same day the rest of this screen's cases stand on. The standing is a
+       season's, so which season is running decides whether there is a podium at
+       all, and a case that says nothing about the day says nothing about that
+       either. */
+    renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
 
     const rows = (await standing()).getAllByRole('row').slice(1)
 
