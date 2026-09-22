@@ -20,11 +20,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * THE SERVER'S ANSWER IS THE LIST THE PORTAL ALREADY CARRIES.
  *
- * <p>The portal bundles its countries rather than fetching them, so this is not a
- * resource waiting to be replaced the way `/mock` is. It is the same catalogue
- * held twice, and two copies of one list move apart. Comparing the answer to the
- * bundled file is what keeps them from doing so, and it is the day one of them
- * moves that this says which.
+ * <p>The portal bundles its countries rather than fetching them, so this was never a
+ * resource waiting to be replaced the way `/mock` was (PR 340, 21.09.2026, ADL A50). It
+ * is the same catalogue held twice, and two copies of one list move apart. Comparing the
+ * answer to the bundled file is what keeps them from doing so, and it is the day one of
+ * them moves that this says which.
  *
  * <p><b>Compared as parsed JSON and not as text</b>, which is the difference from
  * the places case. That file is written on one line by a generator, so its bytes

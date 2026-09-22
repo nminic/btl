@@ -10,7 +10,10 @@ import {
   aPair,
   aTeam,
   aTeamWithNoMark,
+  aWaitingItem,
   myOwnRow,
+  readAsWaitingItem,
+  readAsWaitingItemWithNoNumber,
   readAsAdministrationsRow,
   readAsLeague,
   readAsMyOwnRow,
@@ -362,6 +365,18 @@ describe('the answer the backend gives', () => {
     /* The compiler has already said so by the time this runs; what is left is to
        name the values, so that a sample deleted in a tidy-up takes a failing case
        with it rather than going quietly. */
+    /* The queue's item, and the two halves of it that the wrapper hid: the tab is ON
+       the item, and the key is a number here where the portal identifies by text. A
+       sample that lost either would be the shape that broke the screen. */
+    expect(readAsWaitingItem.queue).toBe('teams')
+    expect(readAsWaitingItem.id).toBe(7)
+    /* And the second state of the one field of a queue item that has two, which is the
+       same shape `copiedFrom` and `memberNumber` are written down twice for above: the
+       server answers nothing where there is no member number to give, and the portal's
+       empty string is a different sentence that must not stand in for it. */
+    expect(readAsWaitingItemWithNoNumber.memberNumber).toBeNull()
+    expect(readAsWaitingItem.memberNumber).toBe('000001')
+
     expect(readAsEvent.id).toBe(273)
     expect(readAsEvent.copiedFrom).toBeNull()
     expect(readAsRace.renamed).toBe(false)
@@ -441,6 +456,32 @@ describe('the answer the backend gives', () => {
        because an empty list is the claim: a name that comes back is a screen drawing
        something out of nothing. */
     expect(missing(aDucat, servedRow('ducats'))).toEqual([])
+
+    /* AND THE SIX OF THE QUEUE, WHICH ARE SIX AND NOT TWELVE (22.09.2026). Twelve
+       names stood on the server's own list with one reason for all of them - „there is
+       no column for any of them" - and half of them had a column the day it was
+       written: V11 gave a proposal its own row with the town, the country and the team
+       a change is about, `competitor` carries the sender's name, and which sort of
+       thing a row is can be read off the schema twice over. Those six are answered.
+
+       The six below have no home, each for its own reason, and each is in `PENDING.md`
+       with the table that lacks it: the three marks of a comment and the address of a
+       registration have no column, the two dates of a reported change of term have
+       neither a column nor a pointer to the event, and the picture and its square are
+       not a missing column at all but ADL A60 - a picture held only by something
+       awaiting a decision answers exactly as a picture that is not there, so an
+       address served here would draw a broken frame.
+
+       `crop` reads as three names because the file nests it and this compares the
+       names of one record; that is the same subtraction the ducats made above. */
+    expect(missing(aWaitingItem, servedRow('verification'))).toEqual([
+      'crop',
+      'currentDate',
+      'email',
+      'picture',
+      'proposedDate',
+      'rating',
+    ])
 
     /* **AND THE FOUR THAT WERE NEVER SEEN UNTIL 21.09.2026, COUNTED RATHER THAN
        LISTED.** Every name the generated file carries that the answer does not, over
@@ -541,15 +582,31 @@ describe('the answer the backend gives', () => {
       'leagues',
       'pairs',
       'teams',
+      /* THE FIFTEENTH, AND THE ONE THIS LIST USED TO EXCUSE (22.09.2026). What stood
+         below said `verification` „answers 401 and its whole shape is a decision the
+         owner has not taken: the answer is grouped by tab and carries nine fields fewer
+         than the screen draws", and left it out on that ground. Both halves were true,
+         and leaving it out is what let the two ends drift until „Administracija →
+         Verifikacija → Timovi" threw in front of the owner: the portal read a
+         `{queue, waiting}` wrapper as an item. The answer is a flat list of items now,
+         so there is a shape to write down, and it is written down. */
+      'verification',
     ]
 
-    /* And the one that is not measured, which is now a list of one. `verification`
-       answers 401 and its whole shape is a decision the owner has not taken: the
-       answer is grouped by tab and carries nine fields fewer than the screen draws.
-       The portal asks for it at `/api/verification` like everything else since the
-       switch, and what a moderator sees off that answer is the one thing the switch
-       leaves owing. It is in `PENDING.md` as a question rather than guessed at here. */
-    const notSeen: ResourceName[] = ['verification']
+    /* AND NOTHING IS EXCUSED ANY MORE. */
+    const notSeen: ResourceName[] = []
+
+    /* THE EMPTINESS IS ASSERTED AND NOT MERELY WRITTEN, and that is a finding rather
+       than a flourish. The line below on its own says every resource is on one list or
+       the other, which is satisfied just as well by moving a name from the first to the
+       second: measured before this line existed, taking `verification` out of `measured`
+       and putting it back in `notSeen` left this case GREEN. That is precisely the road
+       the portal went down once already - the resource was excused here for a day and
+       the screen it feeds threw in front of the owner - so the road is shut.
+
+       A sixteenth resource that genuinely cannot be measured makes this red, on purpose:
+       the way past it is a written decision, not a name quietly added to a list. */
+    expect(notSeen).toEqual([])
 
     expect([...measured, ...notSeen].sort()).toEqual([...RESOURCE_NAMES].sort())
   })

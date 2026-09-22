@@ -40,12 +40,22 @@
  * oblike, pa polje po polje odluci". The fields were decided one by one over the two
  * days after it, through PRs 327 to 334, and this is the day after the last of them.
  *
- * **One shape is still not the portal's, and it is named rather than switched.**
- * `verification` answers grouped by queue and carries nine fields fewer than the
- * screen draws, and its shape is a decision the owner has not taken. It is on the
- * list below like the other thirteen because the list is the CONTRACT - what the
- * backend has to answer for - and the address is real. What a moderator sees off it
- * is the one screen this switch leaves owing something, and `PENDING.md` carries it.
+ * **That one shape WAS `verification`, and it reached the owner as a crash before it
+ * reached anybody as a decision (22.09.2026).** What stood here said it „answers
+ * grouped by queue and carries nine fields fewer than the screen draws, and its shape
+ * is a decision the owner has not taken". Both halves were true and naming them was
+ * not enough: grouped, each `{queue, waiting}` wrapper passed this portal's own filter
+ * for an item - it has a `queue`, and `decisions[undefined]` is undefined - so the
+ * Timovi tab drew a wrapper as though it were an item and threw on `undefined.trim()`.
+ * The answer is a flat list now, like the other thirteen, and the shape is measured
+ * rather than named: `servedShape.test.ts` has no resource left in its `notSeen` list.
+ * A list of `ServedPendingItem` and not of `PendingItem`, which is a distinction worth
+ * the two words: six names have no home in the schema and are filled in by
+ * `pages/admin/pending.ts`, and two more arrive in another SORT - the key as a number,
+ * and the member number as text or as nothing at all. The fields it still does not
+ * carry are in `PENDING.md`, each with the table that has nowhere to hold it, and what
+ * the screens do with the answer as it really comes is measured in
+ * `data/theRealAnswer.test.tsx`.
  *
  * **Two more things speak to `/api` and are not resources, and that has been true
  * since before the switch.** `pages/account` spends a link out of a message on

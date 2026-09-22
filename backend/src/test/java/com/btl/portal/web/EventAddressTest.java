@@ -19,11 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>Why this is a floor and not a list.</b> {@link EventAddress} is a second home for
  * a rule the portal already spells in {@code entityForms.ts}, accepted for one increment
- * because ADL A3246 switches {@code /mock} off all at once and at the end. Two homes for
- * one rule drift, and a handful of examples chosen by whoever wrote them drift quietly:
+ * because ADL A50 said {@code /mock} would switch off all at once and at the end. PR 340
+ * was that day (21.09.2026); {@code entityForms.ts} was not rewritten to call this server,
+ * so the second home the increment excused is still standing rather than closed. Two homes
+ * for one rule drift, and a handful of examples chosen by whoever wrote them drift quietly:
  * they exercise the letters somebody thought of. What cannot drift quietly is the file the
- * portal serves, which carries 1167 events whose addresses were built by the other home.
- * Every one of them is rebuilt here.
+ * portal shipped, which still carries the same 1167 events whose addresses were built by
+ * the other home. Every one of them is rebuilt here.
  *
  * <p><b>The rule for a collision is DERIVED and not counted.</b> The owner's decision of
  * 10.08.2026 makes one name in one year a single address, and the imported history has
