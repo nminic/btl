@@ -103,6 +103,21 @@ class CommentWriteApiTest {
 	/** The member every case rates with, written third and never first. */
 	private static final String ME = "000300";
 
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED, the „clanarina istekla" half of the axis the plan
+	 * names by name.
+	 *
+	 * <p>Not gated on here, and that absence is measured rather than assumed:
+	 * {@code competitor.active} governs what a PUBLIC answer links back to
+	 * ({@link CommentApi}'s own {@code case when author.active}), and no WRITE on this
+	 * server reads it at all - {@link TeamWriteApi}, the literal precedent this class
+	 * carries over, has no such check either. A route that refused this member would be
+	 * inventing a fourth gate PDL never asked for, on the strength of a reading between
+	 * lines about a screen ({@code Membership.tsx}) that is not this file's to enforce a
+	 * second time.
+	 */
+	private static final String LAPSED = "000400";
+
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
 	/** Two years apart, the same name, so „by id" and „by name" can disagree. */
@@ -184,15 +199,17 @@ class CommentWriteApiTest {
 	void fourMembersAndSixEvents() {
 		clock.moveTo(ORDINARY_MOMENT);
 
-		competitor(FIRST_WRITTEN);
-		competitor(SOMEONE_ELSE);
-		competitor(MODERATE_AND_RACE);
-		competitor(ME);
+		competitor(FIRST_WRITTEN, true);
+		competitor(SOMEONE_ELSE, true);
+		competitor(MODERATE_AND_RACE, true);
+		competitor(ME, true);
+		competitor(LAPSED, false);
 
 		account("prvi@primer.rs", FIRST_WRITTEN, "competitor");
 		account("neko-drugi@primer.rs", SOMEONE_ELSE, "competitor");
 		account("moderator-trka@primer.rs", MODERATE_AND_RACE, "moderator");
 		account("ja@primer.rs", ME, "competitor");
+		account("isteklo@primer.rs", LAPSED, "competitor");
 		moderatorWithNoCompetitor(MODERATOR_WHO_DOES_NOT_RACE);
 
 		/* FIRST BY ID, ASKED BY NOBODY: a rule that read the first event rather than the
@@ -224,16 +241,18 @@ class CommentWriteApiTest {
 				.param(FIRST_WRITTEN).update();
 	}
 
-	private void competitor(String number) {
+	/** @param active whether the fee is standing - false is „clanarina istekla", the
+	 *  half of the axis {@link #LAPSED} carries. */
+	private void competitor(String number, boolean active) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, first_season_2027, active, membership_basis,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, ?, 'payment',"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
-				.params(number, String.format("%016x", ++issued))
+				.params(number, active, String.format("%016x", ++issued))
 				.update();
 	}
 
@@ -418,6 +437,12 @@ class CommentWriteApiTest {
 				.as("the comments tab and the whole table start apart, so a count that lost its"
 						+ " filter can be seen")
 				.isEqualTo(1);
+
+		assertThat(db.sql("select active from competitor where member_number = ?").param(LAPSED)
+						.query(Boolean.class).single())
+				.as("the member standing for a lapsed fee really has one, or the axis measures"
+						+ " nothing")
+				.isFalse();
 	}
 
 	/**
@@ -603,6 +628,18 @@ class CommentWriteApiTest {
 	@Test
 	void aMemberWithNoResultOnTheEventIsNotRefusedByTheServer() throws Exception {
 		assertThat(rateAs(FIRST_WRITTEN, form(run, 4, 4, 4, "")).getStatus()).isEqualTo(201);
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS RATED EXACTLY LIKE ANYBODY ELSE - see the note on
+	 * {@link #LAPSED} for where that absence is measured rather than assumed.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsNotRefusedByTheServer() throws Exception {
+		MockHttpServletResponse answer = rateAs(LAPSED, form(run, 4, 4, 4, "I dalje trčim."));
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(rowFor(run, LAPSED).get(6)).isEqualTo("I dalje trčim.");
 	}
 
 	/**

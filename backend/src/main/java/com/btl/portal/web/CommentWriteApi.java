@@ -104,14 +104,20 @@ import java.util.Optional;
  * is {@code text} with no check - and neither does any other writing route on this
  * server, {@link TeamWriteApi} says so of its own {@code bio}/{@code link}/{@code note}
  * in as many words. Left out here rather than invented, for the day somebody decides one.
- * <li><b>Whether the member's fee is current.</b> V23 makes {@code account.competitor_id}
- * the only fact this route reads to find him, and PDL 3178's „registrovan a neplaćen ne
- * može ništa" is about an account with NO competitor behind it at all - the case
- * {@link #away()} already answers - not about a member whose fee has since lapsed. No
- * write on this server gates on {@code competitor.active}; it governs what a PUBLIC
- * answer links back to ({@link CommentApi}'s own {@code case when author.active}), never
- * who may submit. A lapsed member's rating waits and is decided exactly like anybody
- * else's.
+ * <li><b>Whether the member's fee is current, on EITHER of the two walls PDL keeps
+ * apart.</b> PDL 3179's „registrovan a neplaćen... nigde nije vidljiv i ne može ništa"
+ * is about an account with NO competitor behind it at all - the case {@link #away()}
+ * already answers - not about a member whose fee has since lapsed. The second wall, PDL
+ * 907-910 (19.09.2026): a member whose fee has LAPSED is meant to have only the renewal
+ * page, „prvi jos nije usao, drugi je izasao" - measured here and found to be a decision
+ * with nowhere built yet to carry it out. No write on this server gates on
+ * {@code competitor.active} - not {@link TeamWriteApi}, the literal precedent this class
+ * copies, and not {@link MeWriteApi} either - and no route this class could find reads it
+ * for anything but what a PUBLIC answer links back to ({@link CommentApi}'s own
+ * {@code case when author.active}). Gating here alone would be this route enforcing a
+ * portal-wide decision by itself, in one of many places it would need to be enforced;
+ * flagged rather than built, since building it here and nowhere else would be a boundary
+ * that looks decided and is not.
  * </ul>
  *
  * <p><b>THE SUBJECT IS READ LIVE, IN THE SAME STATEMENT THAT WRITES IT, NEVER CAPTURED
