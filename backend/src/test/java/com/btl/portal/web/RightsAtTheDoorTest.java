@@ -232,9 +232,9 @@ class RightsAtTheDoorTest {
 	 * route answers without a right.
 	 *
 	 * <p><b>And what this list will say after a merge can be asked BEFORE the merge.</b>
-	 * {@code backend/tools/what_the_door_will_say.py} reads the controllers, the open list
-	 * and this snapshot straight out of git for a ref it never checks out, and prints the
-	 * pairs the floor would list; it refuses to report at all unless it first reproduces this
+	 * {@code backend/tools/what_the_door_will_say.py} reads the controllers, the open lists,
+	 * {@link #WHAT_EACH_OPEN_LIST_GRANTS} below and this snapshot straight out of git for a
+	 * ref it never checks out, and prints the pairs the floor would list; it refuses to report at all unless it first reproduces this
 	 * snapshot exactly over the ref that carries it. It found all three of the entries above
 	 * while their branches were still in review, which is the alternative to finding them one
 	 * at a time on a red gate.
