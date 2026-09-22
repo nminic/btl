@@ -68,3 +68,40 @@ export const WHEN_REGISTERING: Record<string, string> = {
   thePasswordHasLeaked: 'registration.passwordHasLeaked',
   theAddressIsTaken: 'registration.addressIsTaken',
 }
+
+/**
+ * `TeamWriteApi`, which names five, and answers a member proposing a team.
+ *
+ * <p><b>Two of the five say what the form already checks at the door</b>
+ * ({@code nameError} in {@code pages/admin/teamProposal.ts}, read by
+ * {@code ProposeTeam.tsx}'s own {@code check}), so the sentences these two names draw
+ * are the same ones a member normally never reaches the server to hear: a name already
+ * taken, and a name that makes no address at all. They are answered here all the same,
+ * because the door only checks the team list as it stood at the last render, and a name
+ * taken a moment before this request lands is a race the form cannot see.
+ */
+export const WHEN_PROPOSING_A_TEAM: Record<string, string> = {
+  theFormIsNotComplete: 'teams.proposeFormIncomplete',
+  theCountryIsNotKnown: 'teams.proposeCountryUnknown',
+  theNameMakesNoAddress: 'teams.proposeNoAddress',
+  theLinkIsNotShaped: 'teams.proposeLinkNotShaped',
+  theAddressIsTaken: 'teams.proposeTaken',
+}
+
+/**
+ * `CommentWriteApi`, which names three, and answers a member rating an event.
+ *
+ * <p><b>Two of the three reuse a sentence the screen already draws for a client-side
+ * reason</b>, because the two questions are the same question asked twice: the button
+ * that sends a rating is already disabled while any of the three marks is missing
+ * ({@code event.commentNeedsMarks}), and the event page already refuses to open the
+ * form at all for a race still to come ({@code event.notRunYetWhy}). Both can still
+ * reach the server - a typed address, or a race the calendar has since moved - and the
+ * server answers with the identical words rather than a second sentence for the same
+ * fact.
+ */
+export const WHEN_RATING_AN_EVENT: Record<string, string> = {
+  theFormIsNotComplete: 'event.commentNeedsMarks',
+  theEventIsNotKnown: 'event.commentEventUnknown',
+  theEventHasNotBeenRun: 'event.notRunYetWhy',
+}

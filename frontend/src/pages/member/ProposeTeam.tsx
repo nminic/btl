@@ -1,16 +1,11 @@
-import { countryName } from '../../data/countryName'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { teamOf } from '../../data/derive'
 import { inYearlyWindow } from '../../data/season'
 import { useSend, useSent } from '../sent'
-import { CropChooser } from '../../components/CropChooser'
-import type { Chosen } from '../../components/CropChooser'
-import { WHOLE } from '../../components/crop'
 import { Resource } from '../../components/Resource'
 import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
-import { NO_RATING } from '../../data/types'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { predlogTima } from '../../forms/definitions'
 import type { FieldError, FormValues } from '../../forms/types'
@@ -18,8 +13,10 @@ import { useI18n } from '../../i18n/useI18n'
 import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, nameError } from '../admin/teamProposal'
-import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { WHEN_PROPOSING_A_TEAM } from '../account/refusals'
+import { ServerSaid } from '../account/ServerSaid'
 import './Member.css'
 
 /**
@@ -57,7 +54,6 @@ import './Member.css'
  */
 export function ProposeTeam() {
   const { locale, t } = useI18n()
-  const { propose } = useSession()
   const who = useMemberScreen()
   const today = useToday()
   const overlay = useOverlay()
@@ -72,10 +68,14 @@ export function ProposeTeam() {
   const said = useSent()
   const sent = typeof said === 'string' ? said : null
   const confirm = useSend()
-  /** The logo, if the member has one to hand. Held here and not in the form
-   *  definition: a form field is a value typed into a box, and this is a file
-   *  read off a disc with three sliders over it. */
-  const [logo, setLogo] = useState<Chosen | null>(null)
+  /* What the server answered, where it has answered anything that is not „done" -
+     `RateEvent.tsx`'s own shape, for the identical reason: a proposal that succeeded
+     leaves this screen altogether. */
+  const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  const [sending, setSending] = useState(false)
+  /* A second press while the first is still out would propose the same team twice;
+     `Registration.tsx`'s own guard, a ref rather than the state beside it. */
+  const outstanding = useRef(false)
 
   if (who.memberNumber === null) {
     return who.instead
@@ -101,10 +101,13 @@ export function ProposeTeam() {
     <div className="member">
       <Resource state={state}>
         {([competitors, teams]) => {
-          /* Who is proposing, by the name the rest of the portal knows them by.
-             The queue shows a name beside every waiting item, and a member
-             number on its own tells a moderator nothing about who to ask. */
-          /* Through the overlay, and that is the whole of whether this door shuts:
+          /* Whether THIS member already has a team, which is the one thing `me` is
+             still read for since 22.09.2026: `TeamWriteApi` writes `competitor_id` off the
+             session and never off a value this screen sends („never a value the caller
+             supplies"), and the name a moderator reads beside a waiting proposal comes
+             from that pointer, live, at `VerificationApi`'s own join - never a copy this
+             screen builds and carries in the request.
+             Through the overlay, and that is the whole of whether this door shuts:
              approving a proposal writes the team onto the member's record in the
              session (`admin/PendingQueue.tsx`), and the file on the disc knows
              nothing of it. Read straight from the file, the door let the founder of
@@ -114,7 +117,6 @@ export function ProposeTeam() {
           const me = recordsOf(MEMBERS, competitors, overlay).find(
             (one) => one.memberNumber === mine,
           )
-          const who = me === undefined ? '' : `${me.firstName} ${me.lastName}`
 
           /* **An address that is not for this member is not a page, it is a
              redirect.** Owner, 05.09.2026: „Ukoliko neko već ima tim, dugme za
@@ -137,75 +139,72 @@ export function ProposeTeam() {
             return <Navigate to={`/${locale}`} replace />
           }
 
+          /**
+           * Sends the proposal, and decides what the reader sees by what came back -
+           * `RateEvent.tsx`'s own shape, which is `Registration.tsx`'s before it.
+           *
+           * <p><b>THE FORM ASKS FOR NO LOGO, AND THAT IS A BOUNDARY RATHER THAN AN
+           * OMISSION HERE.</b> `TeamWriteApi` carries no field for one: its own javadoc
+           * says so at length - no signature under the backend reads a picture from this
+           * route. A `CropChooser` stood above these fields until 22.09.2026, so a member
+           * could choose one, cut it, read „Predlog je poslat" - and nobody ever saw what
+           * they chose. Owner, 22.09.2026: „Skloni polje dok put ne postoji", the cost
+           * named and accepted: a screen with no such option is a better answer than one
+           * that quietly keeps a false promise. The same boundary `EditTeam.tsx` has
+           * drawn round its own form from the start („What is not asked here. The
+           * logo..."). It returns the day a route exists to receive one.
+           */
+          async function submit(body: object, name: string): Promise<void> {
+            outstanding.current = true
+            setSending(true)
+            setRefusal(null)
+
+            const answer = await askTheServer('/api/teams', body)
+
+            outstanding.current = false
+            setSending(false)
+
+            if (answer.got === 'done') {
+              confirm(`/${locale}/timovi`, name)
+
+              return
+            }
+
+            setRefusal(answer)
+          }
+
           function onSubmit(values: FormValues) {
+            if (outstanding.current) {
+              return
+            }
+
             const name = String(values.name)
 
-            propose({
-              queue: 'teams',
-              /* No sorts on this queue: one is only told apart where a queue
-                 holds two (data/types.ts, `kind`). */
-              kind: '',
-              date: today,
-              memberNumber: mine,
-              who,
-              subject: name,
-              /* A team does not exist yet, so there is no id to file it under. */
-              subjectId: '',
-              /* What the moderator reads before deciding. The town and the
-                 country belong in it rather than in fields of their own: the
-                 queue shows one piece of text per item, the same on all seven,
-                 and a shape that grew a column for every queue is the thing that
-                 one shape was chosen to avoid (src/data/types.ts). */
-              body: t('teams.proposeBody', {
-                city: String(values.city),
-                country: countryName(String(values.country)),
+            void submit(
+              {
+                name,
                 note: String(values.note),
-              }),
-              currentDate: '',
-              proposedDate: '',
-              /* Nothing to rate: a team is not an event. */
-              rating: NO_RATING,
-              email: '',
-              /* In their own fields as well as in the words above, because
-                 approving the proposal makes the team out of them (PDL P13):
-                 the words are for the moderator to read, these are what the
-                 record is built from. */
-              city: String(values.city),
-              country: String(values.country),
-              /* The logo and the square of it the member chose, which the
-                 approval turns into the team's own (PendingQueue.tsx). Empty
-                 where they proposed without one, and the whole picture with
-                 it: a crop over nothing is nothing to draw. */
-              picture: logo === null ? '' : logo.picture,
-              crop: logo === null ? WHOLE : logo.crop,
-            })
-
-            confirm(`/${locale}/timovi`, name)
+                /* Asked for before the form does (`TeamWriteApi.ASKED_FOR_BEFORE_THE_FORM_ASKS`):
+                   the form has neither field yet, so both go in empty rather than
+                   missing from the body at all. */
+                bio: '',
+                link: '',
+                city: String(values.city),
+                country: String(values.country),
+              },
+              name,
+            )
           }
 
           return (
             <>
               <FormRenderer
                 form={predlogTima}
-                /* Above the fields and under the heading, so the heading is the
-                   first thing on the page. Drawn here before, the file field
-                   stood ahead of it and the page began without a heading at all
-                   (owner, 01.09.2026). */
-                above={
-                  <>
-                    <p className="member__note">{t('teams.proposeNote2')}</p>
-                    <CropChooser
-                      id="team-logo"
-                      label={t('teams.proposeLogo')}
-                      alt={t('teams.proposeLogoAlt')}
-                      /* A team may be proposed without a logo, and most are: the
-                         league has four teams and one logo between them. */
-                      asked={false}
-                      chosen={logo}
-                      onChange={setLogo}
-                    />
-                  </>
-                }
+                /* Above the note and under the heading, so the heading is the first
+                   thing on the page (owner, 01.09.2026). A `CropChooser` stood beside
+                   the note here too until 22.09.2026; see `submit`'s own note on why
+                   it does not any more. */
+                above={<p className="member__note">{t('teams.proposeNote2')}</p>}
                 /* By the address the name makes, which is what has to be
                    unique and is what the queue compares (teamProposal.ts).
                    Comparing names let "Dunavski Trkaci" through to sit in the
@@ -221,6 +220,15 @@ export function ProposeTeam() {
                 }
                 onSubmit={onSubmit}
               />
+
+              {/* `Registration.tsx`'s own pair: said out loud rather than left to a
+                  button that looks unpressed (WCAG 2.2, 4.1.3), and a refusal named
+                  by the route rather than a sentence of ours built on top of it. */}
+              {sending && <p role="status">{t('teams.proposeSending')}</p>}
+
+              {refusal !== null && (
+                <ServerSaid answer={refusal} refusals={WHEN_PROPOSING_A_TEAM} />
+              )}
             </>
           )
         }}

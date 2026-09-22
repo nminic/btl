@@ -301,6 +301,19 @@ class RightsAtTheDoorTest {
 	 * address and this line would never have been written. It was invisible for the length of
 	 * one merge.
 	 *
+	 * <p><b>AND {@code POST /api/comments} IS THE SAME SENTENCE OVER A DIFFERENT NOUN,
+	 * ADDED 22.09.2026.</b> Rating an event is what every member may do, not a box a
+	 * superadmin ticks, so {@link RightIsNeeded} could only name a privilege that shuts it
+	 * to the people it is for - the identical shape {@code POST /api/teams} is on this list
+	 * for. What stands in its place is the same as there: the rating is not published, it
+	 * goes into {@code comment_submission} and a moderator's queue, so the privilege sits on
+	 * the DECISION and {@code CommentWriteApi} is where an account naming no member is
+	 * refused, before a byte of the body is read. It also arrives by the address that would
+	 * have hidden it under the old, bare-path floor: {@code GET /api/comments} was already
+	 * named here, so a {@code POST} added to that same path would have been excused by a
+	 * line written about a read, exactly the fault {@code PUT /api/me/notifications} below
+	 * was the first correction to pay for.
+	 *
 	 * <p><b>AND {@code PUT /api/me} IS THE FIRST LINE THE PAIRS BOUGHT, which is the
 	 * correction above paying for itself within the day.</b> {@code /api/me} was already
 	 * named here for its {@code GET}, so under bare paths a write added to that same address
@@ -352,7 +365,7 @@ class RightsAtTheDoorTest {
 					"GET /api/me/notifications",
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
-					"POST /api/password-reset/request", "POST /api/teams",
+					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",
 					"POST /api/pairs", "PUT /api/pairs/{id}", "PUT /api/me/notifications",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
