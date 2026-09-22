@@ -179,6 +179,29 @@ koja hvata i sadržaj i prelom reda, jer `git diff` o prelomu reda ćuti.
   nije merenje nego infrastruktura. `Errors:` jednak broju `Tests run:` je skoro uvek
   infrastruktura, a **ista mutacija puštena dvaput mora da da isti broj**.
 
+## `pg_stat_activity` ume da prijavi `idle` za bekend koji stvarno čeka na red-lock (21.09.2026)
+
+Nađeno pri pisanju testa koji namerno drži `select ... for update` da bi prisilio dva zahteva da se
+sudare na `write()`-ovom `update ... where state = 'waiting'`, umesto da se to prepusti
+`CyclicBarrier`-u i nadi da će se poklopiti (`VerificationDecisionConcurrencyTest`,
+`theLoserMeetsARowAlreadyClaimedEveryTimeAndNotOnlyWhenTheSchedulerRaces`).
+
+**Prvi pokušaj je gledao `state = 'active'` i `query ilike '<tekst update-a>'`.** Ni jedan uslov
+nije nikad pogodio, deset sekundi zaredom, iako su oba `Future` objekta ostajala `done=false` sav
+to vreme - dokaz da su zahtevi stvarno bili zaustavljeni, ne završeni.
+
+**Šta `pg_stat_activity` stvarno pokazuje dok su tako zaustavljeni:** oba bekenda nose
+`state = idle`, a `query` i dalje pokazuje **prethodnu, davno završenu** komandu
+(`SET application_name = ...`), ne `update` koji ih drži. Jedini trag koji se pouzdano menja je
+par `wait_event`: jedan `tuple`, drugi `transactionid` - tačno redosled kojim Postgres reda
+DRUGOG čekača na red-lock iza prvog, pa je to i jedini dokaz da je red stvarno bio zaustavljen na
+tom redu i ni na čemu drugom.
+
+**Šta se radi:** broji se `wait_event_type = 'Lock' and pid <> pg_backend_pid()`, bez ijednog
+uslova nad `state` ili `query`. `pg_backend_pid()` isključuje sopstvenu konekciju koja postavlja
+pitanje; ništa se ne pretpostavlja o tome kako `state`/`query` izgledaju dok je bekend stvarno
+zaustavljen, jer je upravo ta pretpostavka ono što je ovde palo.
+
 ## Proces
 
 - **Nikad `git add -A` dok recenzija radi u istom radnom direktorijumu.** Recenzent dokazuje nalaz tako što namerno pokvari fajl, pokrene test i vrati ga. Ako se u tom prozoru zapiše sve što je izmenjeno, tuđa privremena mutacija ulazi u commit i CI pada na nečemu što u kodu ne postoji. Desilo se 13.08.2026: član `000004` je za jedan prolaz testa postao platiša i tako gurnut na granu. Zapisuju se **imenovane putanje** onoga što je stvarno menjano, ili recenzija dobija svoj worktree.
