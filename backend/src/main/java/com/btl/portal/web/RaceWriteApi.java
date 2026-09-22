@@ -149,6 +149,13 @@ class RaceWriteApi {
 
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
+	/** PDL P10b: a race that carries a result already written may not be moved across
+	 *  1 January. The same literal {@link EventWriteApi#THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR}
+	 *  holds, declared again rather than referenced - the same choice this class already
+	 *  made for {@link #THE_ADDRESS_IS_TAKEN}. */
+	static final String THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR =
+			"theDateWouldMoveAResultToAnotherYear";
+
 	/** What a race that fixes no measure of that sort carries (V7, and PDL on 0/0). */
 	private static final BigDecimal NO_DISTANCE = BigDecimal.ZERO;
 
@@ -319,6 +326,14 @@ class RaceWriteApi {
 	 * the day on every result and every submission the moment a race is moved. Written any
 	 * other way, the reference would be violated and an administrator would meet a 500.
 	 *
+	 * <p><b>UNLESS THAT REWRITE WOULD LAND A RESULT IN ANOTHER YEAR (PDL P10b, owner
+	 * 22.09.2026), in which case the write is refused before anything happens.</b> A frozen
+	 * season (V17) reads a record rather than computing one, so a result cascaded into a
+	 * year it was never frozen under leaves two tables disagreeing with nothing to say so.
+	 * {@link EventWriteApi#wouldStrandAResultInAnotherYear(JdbcClient, long, LocalDate,
+	 * LocalDate)} asks it of THIS race's own current day, never of the event's, since this
+	 * route moves one race and leaves the rest of its event standing.
+	 *
 	 * <p><b>A FIELD LEFT OUT IS REFUSED HERE, AND THAT IS THE ONE PLACE THIS ROUTE IS NOT
 	 * {@link #add}.</b> ADL A54, owner, 19.09.2026, on three offered outcomes: „`PUT` koji
 	 * ne posalje neko polje odbija se sa 400, i kaze se sta fali."
@@ -432,6 +447,14 @@ class RaceWriteApi {
 			   the question is the one the constraint itself asks. */
 			if (countsInALeagueOfAnotherSeason(id, checked.date().getYear())) {
 				return no(HttpStatus.CONFLICT, THE_RACE_COUNTS_IN_A_LEAGUE_OF_ITS_SEASON);
+			}
+
+			/* PDL P10b, asked before anything is written for the same reason the league
+			   check above is: a refusal that had already moved the race would answer 409
+			   and leave the calendar changed. */
+			if (EventWriteApi.wouldStrandAResultInAnotherYear(db, id, currentDateOfTheRace(id),
+					checked.date())) {
+				return no(HttpStatus.CONFLICT, THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
 			}
 
 			LocalDate beginning = theDayItWillBeginOn(event.get(), id, checked.date());
@@ -568,6 +591,17 @@ class RaceWriteApi {
 		return db.sql("select e.id, e.slug, e.name, e.date, e.kind from race r"
 						+ " join btl_event e on e.id = r.event_id where r.id = ?")
 				.param(race).query(RaceWriteApi::standing).optional();
+	}
+
+	/**
+	 * THE DAY THIS RACE STANDS ON RIGHT NOW, asked fresh for PDL P10b rather than read off
+	 * {@link Standing}, which carries the EVENT'S day and not this one race's - the two
+	 * agree only when the race being edited happens to be the first of its event, and a
+	 * race entered second or third on the calendar is exactly the ordinary case.
+	 */
+	private LocalDate currentDateOfTheRace(long id) {
+		return db.sql("select date from race where id = ?").param(id)
+				.query((row, one) -> row.getDate(1).toLocalDate()).single();
 	}
 
 	/** One home for reading an event's standing, since two routes ask for it two ways. */
