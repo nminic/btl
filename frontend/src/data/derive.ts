@@ -775,6 +775,22 @@ export type Drawn =
       opens: boolean
       /** Whether it ends it: its last day, the last of the month, or a Sunday. */
       closes: boolean
+      /**
+       * How many days of THIS row the bar still covers, this one counted.
+       *
+       * One on the piece that closes the run, and on the piece that opens it the whole
+       * length of the run as it is drawn in that row. It is a count of days and never
+       * of dates: a bar that carries on into the next row is two runs on the screen,
+       * and the name of each is written across the row it is in.
+       *
+       * **Why the drawing needs a number the markup cannot work out for itself** (owner,
+       * 22.09.2026): the name is drawn by the piece that opens the run and is let out of
+       * its own day to be written across the pieces that follow it, so the room it has
+       * is the room the RUN has, and a day knows nothing about the run it is part of.
+       * The stylesheet is handed this and counts the width out of its own tokens
+       * (`pages/Calendar.css`).
+       */
+      across: number
     }
   /** A lane that is empty on this day, holding the bar under it in its own line. */
   | { at: 'hollow' }
@@ -818,6 +834,28 @@ export function monthDrawing(
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   const opens = named(1)
   const shuts = named(days.length)
+
+  /** Where a bar that reaches `last` stops being drawn: its own end, the end of the
+   *  month, or the end of a row. */
+  const closesOn = (at: string, last: string) => at === last || at === shuts || isSunday(at)
+
+  /**
+   * The last day of THIS row that the bar reaching `last` covers, counting from `from`.
+   *
+   * Walked rather than worked out of the weekday, because the three things that close a
+   * run are already written in one place above and a second arithmetic for the same
+   * question is a second answer. It always ends: the last day of the month closes every
+   * run, so the walk meets `shuts` if it meets nothing sooner.
+   */
+  const runsTo = (from: number, last: string) => {
+    let at = from
+
+    while (!closesOn(named(at), last)) {
+      at += 1
+    }
+
+    return at
+  }
 
   const spans = events
     .map((event) => ({ event, ...eventSpan(event, races) }))
@@ -863,7 +901,8 @@ export function monthDrawing(
               from: held.from,
               to: held.to,
               opens: date === held.from || date === opens || isMonday(date),
-              closes: date === held.to || date === shuts || isSunday(date),
+              closes: closesOn(date, held.to),
+              across: runsTo(day, held.to) - day + 1,
             },
       )
     }

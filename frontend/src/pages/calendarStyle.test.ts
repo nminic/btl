@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { must } from '../test/at'
-import { ruleFor, ruleInMedia, rulesInMedia, unconditionalRules } from '../test/stylesheet'
+import { cutsIn, everyRule, ruleFor, ruleInMedia, rulesInMedia, unconditionalRules } from '../test/stylesheet'
 
 /**
  * One arrangement of the month that no rendered test can see.
@@ -120,6 +120,18 @@ describe('a day of the month', () => {
 const WIDE = '(min-width: 48.75em)'
 
 /**
+ * A declaration with the spaces taken out of it, for the three arithmetics below.
+ *
+ * **Not the same cost the floor under a day pays**, and the difference is who does the
+ * spacing. That one is compared as it is written, because nobody but a person touches
+ * it. These three are read back through jsdom, which writes `3 * var(--x)` out as
+ * `3*var(--x)`, and one of them is long enough that the formatter decides where it
+ * breaks: both are facts about a tool. Every name, number, sign and multiplier is still
+ * compared, which is the whole of what a wrong arithmetic would differ in.
+ */
+const written = (declaration: string) => declaration.replaceAll(/\s+/g, '')
+
+/**
  * The one rule of the grid's media query written for exactly this list of selectors.
  *
  * `ruleInMedia` compares the selector as a string, and a rule written for two selectors
@@ -154,10 +166,22 @@ describe('a bar across several days', () => {
        asked for as a term, `4px` is satisfied by `4px * 6`, and neither a multiplier nor
        a sign is a piece of text at all. A reach written as a number is a reach that is
        right at one size of text and wrong at every other, and it would leave a bar with
-       a seam through it or hanging over the day before. */
+       a seam through it or hanging over the day before.
+
+       **[ISPRAVLJENO 22.09.2026] Counted once and read twice.** The reach and the width
+       of the name written across a run are the same arithmetic over the same tokens, and
+       written out in both places they are one fact in two hands: the reach moves, the
+       name does not, and the suite stays green while the name runs off the end of its
+       bar. It is the fault `--length-dots-row` and `--dot-gap` were named for on
+       05.09.2026, one sheet over. So the tokens are counted into `--bar-reach` on the
+       grid and both rules read that, and what is asked here is both halves: that the
+       name says what it is made of, and that the reach is nothing but the name. */
+    expect(
+      written(ruleFor(calendar, '.calendar__grid', 'Calendar.css').getPropertyValue('--bar-reach')),
+    ).toBe(written('calc(3 * var(--space-8) + 2px)'))
     expect(ruleInMedia(calendar, WIDE, '.chip--continues', 'Calendar.css').getPropertyValue(
       'margin-inline-start',
-    )).toBe('calc(-3 * var(--space-8) - 2px)')
+    )).toBe('calc(-1 * var(--bar-reach))')
 
     /* And the three pixels that say „a tile begins here" go, or the bar carries a
        coloured bar through its own middle once a day. The face fills them, because the
@@ -245,11 +269,70 @@ describe('a bar across several days', () => {
       'Calendar.css',
     )
 
-    /* Let out of its own day, so it can be written across the pieces that follow it. A
-       tile cuts its name with an ellipsis at the edge of ONE day; this one is not cut
-       there, so the ellipsis goes with the clipping. */
-    expect(name.getPropertyValue('overflow')).toBe('visible')
-    expect(name.getPropertyValue('text-overflow')).toBe('clip')
+    /* **AND IT STOPS WHERE ITS OWN BAR STOPS** (owner, 22.09.2026): „Ime pocinje na
+       levom kraju trake i sme da tece preko narednih dana, ali se **zaustavlja tamo gde
+       pocinju tacke**, sa trotackom ako je predugo."
+
+       What stood here until that sentence was `overflow: visible` with `text-overflow:
+       clip` and no width at all, so the only thing that stopped the name was the edge of
+       the month. Measured at 1024px on the served calendar with a name of 120
+       characters, which is what the form allows: the ink ended **282,67px past the end
+       of its own bar**, over the tile of an unrelated event two days later, and
+       `document.elementFromPoint` 20px inside that tile answered with THIS name, so the
+       click opened the wrong event.
+
+       **Asked as the whole declaration**, which is the habit this sheet already pays
+       for twice over (the floor under a day, the reach of a continuing piece): asked as
+       terms, a width is satisfied by the same names in the wrong arithmetic, and neither
+       a multiplier nor a sign is a piece of text at all. A width that is too large by
+       one term is a name over somebody else's tile again.
+
+       `jsdom` lays nothing out, so what is asked here is that the declaration stands.
+       What it is worth was measured in a browser on 22.09.2026: at 1024px the name ends
+       71px inside its own bar, at 1440px on 200% text 145px inside it, and at 360, 390
+       and 768 there is no run at all and the rule does not apply.
+
+       **Read with the spaces taken out, and that is not the same cost the floor under a
+       day pays.** That one is compared as it is written because nobody but a person
+       touches it; this line is long enough that the formatter breaks it, and where it
+       breaks is a fact about the formatter. Every name, number, sign and multiplier is
+       still here, which is the whole of what a wrong width would differ in. */
+    expect(written(name.getPropertyValue('inline-size'))).toBe(
+      written('calc(var(--run-days) * (100% + var(--bar-day)) - var(--bar-day) - var(--length-dots-row) - var(--space-6))'),
+    )
+    /* And how much a further day of the bar is worth, read off the grid rather than out
+       of this line, and out of the reach the pieces already meet by. */
+    expect(
+      written(ruleFor(calendar, '.calendar__grid', 'Calendar.css').getPropertyValue('--bar-day')),
+    ).toBe(written('calc(var(--bar-reach) + 3px + 2 * var(--space-8))'))
+
+    /* **`flex: none`, or the width above is a ceiling on something that never grows to
+       meet it.** `.chip__name` is `flex: 1`, a basis of nought that takes the room its
+       own tile has; a wider `inline-size` beside that basis changes nothing at all, and
+       the name goes on being cut at the edge of its day. Measured both ways in a browser
+       on 22.09.2026: with the basis left alone the name box is 64,94px wide on a
+       four-day bar, with `flex: none` it is 324,88px.
+
+       **Asked as the two halves that matter and not as the word**, since `flex: none` is
+       three values in a coat: what a width needs is a basis that is not nought, so the
+       width is what sizes the box, and no growing, so the tile cannot hand it room of
+       its own on top. Either half alone leaves the fault: a basis of nought grows to the
+       tile and stops there whatever the width says. */
+    expect(name.getPropertyValue('flex-basis'), 'a basis of nought ignores the width').toBe('auto')
+    expect(name.getPropertyValue('flex-grow'), 'the tile must not add room of its own').toBe('0')
+
+    /* The ellipsis is NOT written here, and that is the point: it comes back from
+       `.chip__name` itself, where the portal says once what a name does when it does not
+       fit. The rule that stood here turned it off, which is why a bar cut at the right
+       edge of a row was cut with no ellipsis at all. */
+    expect(name.getPropertyValue('overflow'), 'the base rule is what clips').toBe('')
+    expect(name.getPropertyValue('text-overflow'), 'the base rule is what elides').toBe('')
+
+    const base = ruleFor(calendar, '.chip__name', 'Calendar.css')
+
+    expect(base.getPropertyValue('overflow')).toBe('hidden')
+    expect(base.getPropertyValue('text-overflow')).toBe('ellipsis')
+
     /* And drawn over the pieces rather than under them. A day is positioned with no
        z-index of its own, so it opens no stacking context, and a later day would paint
        its ground over a name that came out of an earlier one. Measured in a browser. */
@@ -257,37 +340,110 @@ describe('a bar across several days', () => {
     expect(Number(name.getPropertyValue('z-index'))).toBeGreaterThan(0)
   })
 
-  it('lets nothing it draws leave the month sideways', () => {
-    /* **The one thing in the month that is allowed to overflow is the name of a bar**,
-       and it is allowed on purpose: it is written across the pieces that follow it and
-       so is deliberately not cut at the edge of its own day. That makes it the one
-       thing that can push the page sideways, which is what the portal never does
-       (WCAG 2.2 SC 1.4.10, ADL A26).
+  it('takes no day of the month off the screen', () => {
+    /* **[ZAMENJUJE „lets nothing it draws leave the month sideways", 22.09.2026]** That
+       case held `overflow-x: clip` on the month, and the rule it held was the fault.
+       Written to bound a bar's name, it bounded the month: measured at 1440px on 200%
+       text, March 2022, **eight day boxes** crossed the cut, every Sunday whole (236px
+       gone out of a box 168px wide), page scroll **nought**, and nothing anywhere saying
+       a day was missing. `ADL.md` A26, 23.08.2026, in so many words: „Strana se ne
+       pomera, pa nista na ekranu ne kaze da je nesto odseceno. To je tacno ono sto PDL
+       P24 zabranjuje."
+     *
+       The name is bounded by its own bar now, so there is nothing left for a cut to
+       bound. Measured after taking it away, same screen and same month: page scroll 42px
+       and **no day out of reach**; at 1024px on 200% text, 295px of page scroll and no
+       day out of reach. What moves the page there is the floor under a day, which is
+       `PDL.md` P24's own entry: a month with no bar in it at all gives the same 1272px
+       of content in the same 1036px box, measured the same day.
+     *
+       **Asked of the whole sheet and not of the one rule**, and the classes are read out
+       of `test/stylesheet.ts` rather than typed here. A guard naming `overflow-x` would
+       have been green the day somebody wrote `overflow: clip`, and a guard naming
+       `clip` green the day somebody wrote `hidden`: this asks what the keyword MEANS,
+       and a keyword nobody has classified fails `styles/scale.test.ts` by name.
+     *
+       **The sheet does cut two boxes, and neither of them is a day**, so they are named
+       with the reason, the way `styles/scale.test.ts` names what may be hidden. Anything
+       else, on any selector, is a day of the month disappearing behind an edge. */
+    const named = new Map([
+      [
+        '.chip__name',
+        'a name too long for the tile it is in, cut onto an ellipsis. Nothing is lost: the whole of it is in the tile\'s `title` and on the day\'s own page, and the ellipsis says out loud that there is more',
+      ],
+      [
+        '.chip--continues .chip__name, .chip--runs-on .chip__lengths',
+        'the recipe `.visually-hidden` carries, written out because a class cannot be added by a media query (`ADL.md` A7). It moves a body out of SIGHT and leaves it in the accessibility tree, and the case above holds that it really is that recipe',
+      ],
+    ])
 
-       **Measured in a browser rather than feared** (22.09.2026): at 1024px, on a bar
-       that opens on a Saturday, a name of ninety characters scrolled the page by
-       **102px**; with this rule the same name scrolls it by **0**. The longest name the
-       served file actually holds is „Ultimate Nutrition atletska trka prijateljstva",
-       45 characters, and it ends 218px inside the grid, so nothing overflows today.
-       That is why this exists: today's data is not a bound, and a calendar is filled by
-       hand.
-
-       **This case is here because the series found it missing.** The rule was written
-       straight after the measurement above, and taking it away again left the whole
-       suite green (mutation R3-f, 22.09.2026). `jsdom` lays nothing out, so what is
-       asked here is that the declaration stands; the two numbers it is worth were
-       measured where numbers can be. */
-    const grid = ruleFor(calendar, '.calendar__grid', 'Calendar.css')
-
-    /* `clip` and not `hidden`: `hidden` makes the month a scroll container, which puts
-       it one stray keystroke away from scrolling inside itself. */
-    expect(grid.getPropertyValue('overflow-x')).toBe('clip')
-    expect(grid.getPropertyValue('overflow')).toBe('')
-    /* And the margin that keeps a focus ring whole at the two outer columns, where the
-       portal draws it 2px wide with 2px of offset (`index.css`). */
-    expect(Number.parseFloat(grid.getPropertyValue('overflow-clip-margin'))).toBeGreaterThanOrEqual(
-      4,
+    const cuts = everyRule(calendar, 'Calendar.css').flatMap((rule) =>
+      [...rule.style]
+        .filter((property) => property.startsWith('overflow'))
+        .flatMap((property) =>
+          cutsIn(`${property}: ${rule.style.getPropertyValue(property)};`)
+            .filter((one) => one.cuts)
+            .map(() => ({
+              selector: rule.selectorText.replaceAll(/\s+/g, ' '),
+              said: `${property}: ${rule.style.getPropertyValue(property)}`,
+            })),
+        ),
     )
+
+    expect(
+      cuts.filter((one) => !named.has(one.selector)).map((one) => `${one.selector} { ${one.said} }`),
+    ).toEqual([])
+  })
+
+  it('says once, and in one place, that the dots stand at the far end of the run', () => {
+    /* „Tacke skroz na desnom kraju iste" (owner, 22.09.2026) is held today by ONE
+       declaration, `margin-inline-start: auto`, and a declaration is only ever as strong
+       as the cascade around it. Measured 22.09.2026: a rule of greater weight written
+       into this very sheet, `.chip--continues .chip__lengths { margin-inline-start: 0 }`,
+       left the whole suite green (3019 passed) and moved the dots from 8px off the end
+       of the bar back to 82,9px, which is its middle.
+     *
+       **The half about the NAME has a width to be asked for and this half has nothing**:
+       `auto` against a box as wide as a column of the month is not a number, and jsdom
+       lays nothing out (ADL A33). `styles/lengthDots.test.ts` is this portal's record of
+       what happens to a guard that stands in for geometry with a reading of the text:
+       five drafts of one, each beaten by a longhand, a query or another sheet.
+     *
+       **So this does not read the geometry. It reads the CASCADE, which is text.** Every
+       rule of this sheet that says anything at all about a margin on `.chip__lengths` is
+       gathered through jsdom's own parser, queries and all, and there may be exactly the
+       two that are meant to: the row pushed to the far end on a piece that continues a
+       run, and the `-1px` that is part of moving a body out of sight where the piece
+       does not END one. A third, wherever in the sheet it is written and whatever its
+       weight, fails here.
+     *
+       **Its boundary, written down rather than left to be found:** a rule in ANOTHER
+       sheet is not seen. `.chip__lengths` is written nowhere else today, and what a
+       browser resolves is a question for a browser; what this holds is that the sheet
+       the row is drawn by does not contradict itself. */
+    const said = everyRule(calendar, 'Calendar.css')
+      .filter((rule) => rule.selectorText.includes('.chip__lengths'))
+      .flatMap((rule) => {
+        const margins = [...rule.style].filter((property) => property.startsWith('margin'))
+        /* The shorthand and the four sides it sets are ONE declaration: jsdom hands back
+           `margin` and `margin-top` and the rest of them for a rule that wrote the
+           shorthand, and reporting five is reporting the same `-1px` five times. The
+           logical longhands are not among them, so `margin-inline-start` still answers
+           for itself, which is the one this case exists for. */
+        const whole = margins.includes('margin')
+
+        return margins
+          .filter((property) => !whole || !/^margin-(top|right|bottom|left)$/.test(property))
+          .map(
+            (property) =>
+              `${rule.selectorText.replaceAll(/\s+/g, ' ')} { ${property}: ${rule.style.getPropertyValue(property)} }`,
+          )
+      })
+
+    expect(said.sort()).toEqual([
+      '.chip--continues .chip__lengths { margin-inline-start: auto }',
+      '.chip--continues .chip__name, .chip--runs-on .chip__lengths { margin: -1px }',
+    ])
   })
 
   it('keeps a held lane off a telephone and gives it its line back on a grid', () => {

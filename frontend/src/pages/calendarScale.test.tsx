@@ -305,6 +305,56 @@ describe('an event that runs over several days', () => {
     }
   })
 
+  it('tells the sheet how many days of ITS OWN ROW the bar still covers', async () => {
+    /* **The one number the stylesheet cannot work out for itself** (owner, 22.09.2026):
+       „Ime pocinje na levom kraju trake i sme da tece preko narednih dana, ali se
+       zaustavlja tamo gde pocinju tacke, sa trotackom ako je predugo." The name is drawn
+       by the piece that opens the run and let out of its own day across the pieces that
+       follow it, so how much room it has is how long the RUN is, and a day knows only
+       its own piece. Without this the rule computes to nothing and the name goes back to
+       running as far as the letters take it: measured at 1024px, 282,67px past the end
+       of its own bar and over the tile of an unrelated event.
+
+       **It is days of a ROW and never days of the event, and the two are pulled apart
+       here**, because on most bars they are the same number and a case on one of those
+       measures nothing. 25 September 2020 is a Friday and the event runs to the 30th:
+       six days of event, **three** of row, and the Sunday closes the run whether the
+       event ends or not.
+
+       The second event is the one already measured above, 27 to 30 September, whose run
+       begins again on the Monday. Between them every answer the count can give is here:
+       a run closed by the row, one closed by the event, one closed by both on its first
+       day, and the days in the middle counting down. */
+    const long = anEvent(7, 'Trka preko dve nedelje', '2020-09-20')
+    const { stop } = calendarOf(
+      [long],
+      [aRace(1, 7, '2020-09-25'), aRace(2, 7, '2020-09-30')],
+    )
+
+    /** What the piece in one day hands the stylesheet. */
+    const across = (container: HTMLElement, day: number) =>
+      at([...dayBox(container, day).querySelectorAll<HTMLElement>('.chip--scale')], 0).style
+        .getPropertyValue('--run-days')
+
+    try {
+      const { container } = renderAt('/sr/kalendar?mesec=2020-09')
+
+      await screen.findByRole('heading', { level: 2, name: 'septembar 2020.' })
+
+      /* Friday, Saturday, Sunday: the run is three days long and the Sunday ends it,
+         although the event has three more days to run. */
+      expect(across(container, 25), 'Friday the 25th').toBe('3')
+      expect(across(container, 26), 'Saturday the 26th').toBe('2')
+      expect(across(container, 27), 'Sunday the 27th').toBe('1')
+      /* And it starts over on the Monday, where the event's own last day closes it. */
+      expect(across(container, 28), 'Monday the 28th').toBe('3')
+      expect(across(container, 29), 'Tuesday the 29th').toBe('2')
+      expect(across(container, 30), 'Wednesday the 30th').toBe('1')
+    } finally {
+      stop()
+    }
+  })
+
   it('is drawn in both months it touches, and says the whole range in each', async () => {
     /* Ultra-trail Stara planina ran 31 May to 1 June 2019 and is the one event in the
        served file that crosses a month. June holds no first day of it, so what is held

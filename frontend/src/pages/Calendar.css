@@ -62,25 +62,41 @@
 .calendar__grid {
   display: grid;
   gap: var(--space-8);
-  /* **NOTHING THE MONTH DRAWS MAY LEAVE THE MONTH SIDEWAYS**, and this is what bounds
-     the one thing in it that is allowed to overflow: the name of a multi-day bar, which
-     is written across the pieces that follow it and so is deliberately not clipped at
-     the edge of its own day (owner, 22.09.2026: „naziv pise preko cele strafte").
+  /* **[UKLONJENO 22.09.2026] `overflow-x: clip` i `overflow-clip-margin` su stajali ovde
+     i pravili su tacno ono sto `ADL.md` A26 zabranjuje.** They were written to bound a
+     bar's name, which until then ran as far as the letters took it; measured at 1440px
+     on 200% text, March 2022, they took **eight day boxes** off the screen behind the
+     cut, every Sunday whole (236px lost out of a box 168px wide), with **nought** of
+     page scroll and nothing anywhere saying a day was missing. A26, 23.08.2026: „Strana
+     se ne pomera, pa nista na ekranu ne kaze da je nesto odseceno. To je tacno ono sto
+     PDL P24 zabranjuje."
 
-     **Measured rather than feared, and in both directions.** At 1024px with a name of
-     ninety characters on a bar that opens on a Saturday, the page scrolled sideways by
-     **102px**, which is the one thing the portal never does (WCAG 2.2 SC 1.4.10, ADL
-     A26). The longest name the served file actually holds is „Ultimate Nutrition
-     atletska trka prijateljstva" at 45 characters, and it ends 218px inside the grid, so
-     nothing overflows today; but the calendar is filled by hand and „today's data" is
-     not a bound.
+     **What bounds the name instead is the name's own bar**, which is where the owner put
+     the bound on 22.09.2026: „Ime pocinje na levom kraju trake i sme da tece preko
+     narednih dana, ali se zaustavlja tamo gde pocinju tacke, sa trotackom ako je
+     predugo." A name that stops at the end of its own bar cannot leave the month at all,
+     so there is nothing left for a cut to bound (see the run's two lengths below).
 
-     `clip` and not `hidden`: `hidden` would make the grid a scroll container, which puts
-     a month one stray keystroke away from scrolling inside itself. The margin is what
-     keeps a focus ring whole at the two outer columns, where the portal draws it 2px
-     outside a tile with 2px of offset (`index.css`). */
-  overflow-x: clip;
-  overflow-clip-margin: 4px;
+     What is left over is `PDL.md` P24's own entry, the month pushing the page sideways
+     at 200% text because a day may not shrink under its floor. That is older than this
+     branch, is recorded there as known and unfixed, and is not made worse by taking
+     these two away: with them the page did not move and the content was gone. */
+  /* HOW LONG A BAR IS, IN THE TOKENS THE GRID IS BUILT OUT OF, and named here because
+     two rules count with it and they are not in one subtree: the reach of a continuing
+     piece and the width of the name written across the run. Written out in both, they
+     are one fact in two hands and come apart with the suite green, which is the lesson
+     `--length-dots-row` and `--dot-gap` were moved for (`styles/tokens.css`,
+     05.09.2026). Here rather than in the tokens because both readers are inside this
+     grid and nothing outside it counts days of a bar. */
+  /* From the content edge of one day leftwards to the content edge of the one before
+     it: this day's padding, this day's border, the gap between them, the other day's
+     border, the other day's padding. Three gaps and two borders. */
+  --bar-reach: calc(3 * var(--space-8) + 2px);
+  /* And what one further day of a bar adds to the room its NAME has. The name is ink let
+     out of its own tile, so over each further day it gets that day's whole tile: the
+     reach above, plus the tile's own left edge and its padding at both ends, none of
+     which holds a name on a piece that continues a run. */
+  --bar-day: calc(var(--bar-reach) + 3px + 2 * var(--space-8));
   /* Every day of a row is as tall as the tallest day in it (owner, 31.07.2026).
      Written as `start` first, which is the opposite: each box took only its own
      height, so one Saturday with two races stood tall beside six short weekdays
@@ -652,11 +668,9 @@
   /* A piece that does not start the bar: it reaches back into the day before it and
      loses the end it would otherwise draw there.
 
-     **The reach is counted, not chosen.** From the content edge of this day leftwards
-     to the content edge of the one before it: this day's padding, this day's border,
-     the gap between them, the other day's border, the other day's padding. Written out
-     of the very tokens those are set from, so moving the padding or the gap moves this
-     with it.
+     **The reach is counted, not chosen**, and it is counted once: `--bar-reach` on the
+     grid, out of the very tokens the padding and the gap are set from, so moving either
+     moves this and the width of a bar's name together.
 
      **It never reaches out of the grid**, and that is what makes the week break cost
      nothing: the first column of every row is either a Monday or the first of the
@@ -673,7 +687,7 @@
   .chip--continues {
     /* What the body is moved out of sight against, below. */
     position: relative;
-    margin-inline-start: calc(-3 * var(--space-8) - 2px);
+    margin-inline-start: calc(-1 * var(--bar-reach));
     border-inline-start-width: 0;
     box-shadow: none;
     border-start-start-radius: 0;
@@ -724,18 +738,53 @@
      the name is drawn, and it is let out of its own day to run over the pieces that
      follow it: they are the same bar.
 
-     **Above them and not under them.** A day is `position: relative` with no z-index,
-     so it opens no stacking context of its own; a later day would otherwise paint its
-     ground over the name, because later in the document is later in the paint. One step
-     of z-index on the name is enough and is the smallest thing that works.
+     **AND IT STOPS WHERE ITS OWN BAR STOPS** (owner, 22.09.2026): „Ime pocinje na levom
+     kraju trake i sme da tece preko narednih dana, ali se **zaustavlja tamo gde pocinju
+     tacke**, sa trotackom ako je predugo."
 
-     `text-overflow` goes back to `clip` with the overflow: an ellipsis is what a name
-     wears when it is cut at the edge of ONE day, and this one is not cut there. */
+     **What stood here until then was `overflow: visible` with no width at all, and the
+     edge of the month was its only bound.** Measured at 1024px on the served calendar
+     with a name of 120 characters, which is what the form allows
+     (`forms/definitions/admin-dogadjaj.form.json`): the ink ended **282,67px past the
+     end of its own bar**, straight across the tile of an unrelated event two days
+     later, and a click 20px inside that tile opened the WRONG event
+     (`document.elementFromPoint` at the tile's own middle answered this name). A name
+     that stops at its bar cannot reach a tile that is not part of it.
+
+     **The width is the run's, counted out of the grid's own tokens.** `--run-days` is
+     how many days of this row the bar covers and is handed over by the markup, which is
+     the only place that knows it (`calendar/DayChips.tsx`, `data/derive.ts`). `100%` is
+     one tile's content, `--bar-day` is what each further day of the bar adds, and what
+     comes off the end is the row of dots and the gap before it, since the dots are drawn
+     against the right edge of the piece that ends the run and the name stops where they
+     begin. Five dots is the widest that row ever is, so a bar carrying fewer leaves a
+     little air rather than running under them.
+
+     **Never more than the bar, at any size of text.** A weekend column is 2,1fr against
+     a weekday's 1fr, so a day further along a row is never narrower than this one, and
+     `--run-days` times this tile is therefore never wider than the run. Where the
+     columns are all at their floor instead, which is what 200% text does, they are equal
+     and the count is exact.
+
+     `flex: none` because the name is `flex: 1` in the tile it lives in, and a flex item
+     with a basis of nought takes the room the tile has and no more: a width written
+     beside that basis is a ceiling on something that never grows to meet it. The
+     `overflow: hidden` and the ellipsis come back from `.chip__name` itself, which is
+     where the portal already says what a name does when it does not fit.
+
+     **Above the pieces and not under them.** A day is `position: relative` with no
+     z-index, so it opens no stacking context of its own; a later day would otherwise
+     paint its ground over the name, because later in the document is later in the
+     paint. One step of z-index on the name is enough and is the smallest thing that
+     works. */
   .chip--scale.chip--runs-on:not(.chip--continues) .chip__name {
     position: relative;
     z-index: 1;
-    overflow: visible;
-    text-overflow: clip;
+    flex: none;
+    inline-size: calc(
+      var(--run-days) * (100% + var(--bar-day)) - var(--bar-day) - var(--length-dots-row) -
+        var(--space-6)
+    );
   }
 
   /* With the name out of the flow, this is what is left holding the line, so the bar

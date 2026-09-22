@@ -125,6 +125,15 @@ export function EventChip({ event, races }: { event: BtlEvent; races: Race[] }) 
  * gives every piece the whole body, so what is drawn is a matter of width and what is
  * SPOKEN never is.
  *
+ * **AND THE NAME STOPS AT THE END OF ITS OWN BAR**, which is the owner's answer of the
+ * same day to what „preko cele strafte" means where the name is longer than the bar:
+ * „Ime pocinje na levom kraju trake i sme da tece preko narednih dana, ali se zaustavlja
+ * tamo gde pocinju tacke, sa trotackom ako je predugo." The first drawing of it had no
+ * bound but the edge of the month, and a name of 120 characters, which is what the form
+ * allows, ran 282,67px past its own bar and took the click off the tile of an unrelated
+ * event (measured at 1024px, March 2022). How long the bar is comes down as
+ * `--run-days` below.
+ *
  * **EVERY PIECE IS A LINK AND EVERY PIECE IS NAMED**, at every width, because the
  * markup does not know how wide the screen is and must not pretend to. Each one goes
  * to the event and says the whole range, so a day of a four-day event is reached and
@@ -184,7 +193,27 @@ export function EventScale({ piece, races }: { piece: Extract<Drawn, { at: 'scal
     .join(' ')
 
   return (
-    <Link className={className} to={`/${locale}/kalendar/${event.slug}`} title={event.name}>
+    <Link
+      className={className}
+      /* HOW LONG THE BAR IS, for the sheet to write the name across and no further
+         (owner, 22.09.2026: „Ime pocinje na levom kraju trake i sme da tece preko
+         narednih dana, ali se zaustavlja tamo gde pocinju tacke, sa trotackom ako je
+         predugo").
+
+         A day cannot work this out: it knows its own piece and nothing about the run
+         the piece belongs to, and the run is what the name has room in. So it is
+         counted where the lanes are laid out, once for the whole month
+         (`data/derive.ts`), and handed to the stylesheet the same way the month hands
+         over which column its first day sits in (`Calendar.tsx`, `--day-start`).
+
+         On every piece and not only on the one that opens the run: which piece draws
+         the name is the sheet's business and depends on the width, and a number that
+         is there at one width and missing at another is a rule that computes to
+         nothing at the width where it is needed. */
+      style={{ '--run-days': piece.across }}
+      to={`/${locale}/kalendar/${event.slug}`}
+      title={event.name}
+    >
       {/* What holds the line where the sheet moves the name out of sight, and drawn
           nowhere else: above 780px a piece that does not open the run has no name in
           the flow, and with nothing in it the tile would be only its own padding tall,

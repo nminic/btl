@@ -2023,15 +2023,26 @@ describe('the span of an event', () => {
     const whole = { event: at(events, 0), from: '2019-05-31', to: '2019-06-03' }
 
     /* 31 May 2019 is a Friday, so the row does not end there: what ends the bar is the
-       month. */
-    expect(may).toEqual([{ at: 'scale', ...whole, opens: true, closes: true }])
+       month. `across` counts the days of the row the bar still covers, this one in, so
+       a day that closes the run carries one and the number never runs past the month
+       either: the walk that counts it meets the last day of the month if it meets
+       nothing sooner. */
+    expect(may).toEqual([{ at: 'scale', ...whole, opens: true, closes: true, across: 1 }])
     /* June's first day opens because the month does, and runs on because the event
        does; and it carries 31 May in its range, which is the half that says the range
-       is not clipped to what is drawn. */
-    expect(at(june, 0).drawn).toEqual([{ at: 'scale', ...whole, opens: true, closes: false }])
+       is not clipped to what is drawn. It is a Saturday, so the run it opens is two days
+       long and ends on the Sunday, although the event has two more days to run: this is
+       the one number here that days-of-the-event would get wrong. */
+    expect(at(june, 0).drawn).toEqual([
+      { at: 'scale', ...whole, opens: true, closes: false, across: 2 },
+    ])
     /* The 2nd is a Sunday, which is where a row ends and the bar with it. */
-    expect(at(june, 1).drawn).toEqual([{ at: 'scale', ...whole, opens: false, closes: true }])
-    expect(at(june, 2).drawn).toEqual([{ at: 'scale', ...whole, opens: true, closes: true }])
+    expect(at(june, 1).drawn).toEqual([
+      { at: 'scale', ...whole, opens: false, closes: true, across: 1 },
+    ])
+    expect(at(june, 2).drawn).toEqual([
+      { at: 'scale', ...whole, opens: true, closes: true, across: 1 },
+    ])
   })
 
   it('puts the longer of two bars that start together in the upper lane', () => {

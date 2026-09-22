@@ -193,6 +193,46 @@ export function unconditionalRules(css: string, named: string): CSSStyleRule[] {
 }
 
 /**
+ * EVERY RULE OF A SHEET, wherever it is written: at the top, inside a query, inside a
+ * query inside a query.
+ *
+ * `unconditionalRules` and `rulesInMedia` each answer „is this one rule written where I
+ * think it is", which is the question a guard over one declaration asks. This answers
+ * the opposite one: „is there anywhere else in this sheet that says something about
+ * this", which is what a guard over a cascade has to ask, since a rule of greater weight
+ * written anywhere beats the one being held no matter which query it is in.
+ *
+ * Read through jsdom's own parser and not by cutting the text, for the reason `ADL.md`
+ * A18 gives: a tail of a longer selector reads the same as the selector, and a rule cut
+ * at the first closing brace says nothing about what it is nested in.
+ */
+export function everyRule(css: string, named: string): CSSStyleRule[] {
+  const tag = document.createElement('style')
+
+  tag.textContent = css
+  document.head.append(tag)
+
+  const sheet = tag.sheet
+
+  expect(sheet, `jsdom did not parse ${named}`).not.toBeNull()
+
+  const gather = (rules: CSSRule[]): CSSStyleRule[] =>
+    rules.flatMap((rule) =>
+      rule instanceof CSSStyleRule
+        ? [rule]
+        : rule instanceof CSSGroupingRule
+          ? gather([...rule.cssRules])
+          : [],
+    )
+
+  const found = gather([...(sheet?.cssRules ?? [])])
+
+  tag.remove()
+
+  return found
+}
+
+/**
  * Every rule of one media query, read the way a browser reads it.
  *
  * `unconditionalRules` above deliberately refuses these, because a rule wrapped in
@@ -303,4 +343,89 @@ export function sheetsOf(at: string, code: string, seen = new Set<string>()): Se
   }
 
   return seen
+}
+
+/**
+ * WHAT EVERY `overflow` DECLARATION IN A SHEET DOES TO WHAT IS INSIDE THE BOX.
+ *
+ * **Written 22.09.2026 after a cut that nothing on the portal could see.** The month of
+ * the calendar was given `overflow-x: clip` to bound the name of a multi-day bar, and at
+ * 1440px on 200% text that took eight day boxes off the screen, every Sunday of the
+ * month whole, with **no scrollbar anywhere** and nothing saying a day was missing
+ * (`pages/Calendar.css`). `ADL.md` A26 names that shape: „Strana se ne pomera, pa nista
+ * na ekranu ne kaze da je nesto odseceno."
+ *
+ * The guard that should have caught it read `overflow\s*:\s*hidden` out of a pattern
+ * typed by hand, so a spelling nobody had thought of went straight through it
+ * (`styles/scale.test.ts`). **A list of the ways to cut a box is not a list anybody can
+ * finish by thinking about it**, which is a lesson this portal has paid for more than
+ * once, so a longer list is not what holds this. What holds it is that **every value any
+ * sheet actually writes has to be classified here**, and one that is not fails the guard
+ * that asks instead of passing it.
+ *
+ * So the two maps below are small and closed on purpose. They are not „the overflow
+ * values the portal happens to use"; they are what these CSS keywords mean, and the
+ * floor is `known`.
+ */
+const OVERFLOW_PROPERTIES = new Map([
+  /* The three that decide whether a box cuts what sticks out of it. */
+  ['overflow', true],
+  ['overflow-x', true],
+  ['overflow-y', true],
+  /* And the two of the same family that decide nothing of the sort: where a long word
+     may be broken, and how far outside the box a cut is made once there is one. */
+  ['overflow-wrap', false],
+  ['overflow-clip-margin', false],
+])
+
+const OVERFLOW_VALUES = new Map([
+  /* Nothing is cut. */
+  ['visible', false],
+  /* Cut, but the box is scrollable and a reader can reach what is outside it, which is
+     what `ADL.md` A26 asks of anything that does not fit. */
+  ['auto', false],
+  ['scroll', false],
+  /* Cut with no way back. `hidden` leaves the box scrollable to a script and to nobody
+     else; `clip` does not even do that. */
+  ['hidden', true],
+  ['clip', true],
+])
+
+/** One `overflow` declaration of a sheet, and what it does. */
+export type Cut = {
+  property: string
+  value: string
+  /** Whether it takes content off the screen with no way to reach it. */
+  cuts: boolean
+  /** Whether this file has anything to say about it at all. */
+  known: boolean
+}
+
+/**
+ * Every declaration of the `overflow` family in a stylesheet, each classified.
+ *
+ * Comments are blanked first, here as everywhere in this file: a note explaining why a
+ * box is not cut is not a rule that cuts one, and every sheet on this portal explains
+ * itself at least as often as it declares anything.
+ *
+ * The value is read word by word, because `overflow` is a shorthand: `overflow: hidden
+ * auto` cuts in one direction and scrolls in the other, and a reading of the whole
+ * string would call that a spelling nobody has classified.
+ */
+export function cutsIn(css: string): Cut[] {
+  return [...unremarked(css).matchAll(/(?<![-\w])(overflow[a-z-]*)\s*:\s*([^;{}]+);/g)].map(
+    (one) => {
+      const property = one[1] ?? ''
+      const value = (one[2] ?? '').replace('!important', '').trim()
+      const words = value.split(/\s+/)
+      const decides = OVERFLOW_PROPERTIES.get(property) === true
+
+      return {
+        property,
+        value,
+        cuts: decides && words.some((word) => OVERFLOW_VALUES.get(word) === true),
+        known: OVERFLOW_PROPERTIES.has(property) && (!decides || words.every((word) => OVERFLOW_VALUES.has(word))),
+      }
+    },
+  )
 }

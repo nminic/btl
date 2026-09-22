@@ -1,4 +1,5 @@
 import { at } from '../test/at'
+import { cutsIn } from '../test/stylesheet'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -397,11 +398,22 @@ describe('space and corners are chosen from the scale, not typed', () => {
        space instead of at the word, is told no, and every `clip-path: none` on
        the portal reads as a rule that hides something. */
     const TAKING_AWAY =
-      /display\s*:\s*none|visibility\s*:\s*hidden|clip-path\s*:(?!\s*none\b)|overflow\s*:\s*hidden|text-overflow\s*:\s*ellipsis/
+      /display\s*:\s*none|visibility\s*:\s*hidden|clip-path\s*:(?!\s*none\b)|text-overflow\s*:\s*ellipsis/
     /* A measured width, not `auto`: the reveal half of a label swap says
        `width: auto`, which is the opposite of narrowing a column. */
     const NARROWS = /(?:max-)?(?:inline-size|width)\s*:\s*[\d.]/
-    const CLIPS = /overflow\s*:\s*hidden|text-overflow\s*:\s*ellipsis/
+    const CLIPS = /text-overflow\s*:\s*ellipsis/
+
+    /* **And the `overflow` half is asked of the sheet, not of a pattern typed here**
+       (`test/stylesheet.ts`, `cutsIn`). It read `overflow\s*:\s*hidden` until
+       22.09.2026, which is a list of one spelling: `overflow-x: clip` was written on
+       the calendar's month that same week, took eight day boxes off a 1440px screen at
+       200% text with no scrollbar anywhere, and went through this untouched because
+       nobody had typed those characters here. The case below this one is what stops
+       the next spelling doing the same. */
+    const takesAway = (body: string) =>
+      TAKING_AWAY.test(body) || cutsIn(body).some((one) => one.cuts)
+    const clips = (body: string) => CLIPS.test(body) || cutsIn(body).some((one) => one.cuts)
 
     /* Read as `sheet selector`, each with why it costs the reader nothing. */
     const ALLOWED_TO_HIDE = new Map([
@@ -433,7 +445,7 @@ describe('space and corners are chosen from the scale, not typed', () => {
       /* What this sheet clips wherever it says so, for the second shape. */
       const clipped = new Set(
         [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-          .filter((rule) => CLIPS.test(rule[2] ?? ''))
+          .filter((rule) => clips(rule[2] ?? ''))
           .map((rule) => (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')),
       )
 
@@ -454,7 +466,7 @@ describe('space and corners are chosen from the scale, not typed', () => {
           const selector = (rule[1] ?? '').trim().replaceAll(/\s+/g, ' ')
           const body = rule[2] ?? ''
 
-          if (TAKING_AWAY.test(body) || (NARROWS.test(body) && clipped.has(selector))) {
+          if (takesAway(body) || (NARROWS.test(body) && clipped.has(selector))) {
             taken.push(`${sheet.path} ${selector}`)
           }
         }
@@ -462,6 +474,38 @@ describe('space and corners are chosen from the scale, not typed', () => {
     }
 
     expect([...new Set(taken)].filter((one) => !ALLOWED_TO_HIDE.has(one))).toEqual([])
+  })
+
+  /**
+   * THE FLOOR UNDER THE CASE ABOVE: every way this portal cuts a box is a way somebody
+   * has classified.
+   *
+   * The case above used to name one spelling, `overflow: hidden`, and that is the whole
+   * story of `overflow-x: clip` on the calendar's month: written on 22.09.2026 to bound
+   * the name of a multi-day bar, it took eight day boxes off a 1440px screen at 200%
+   * text, every Sunday of the month whole, with **nought** of page scroll and nothing
+   * on the screen saying a day was missing. `ADL.md` A26 forbids exactly that shape.
+   * The pattern never saw it, because nobody had typed those five characters into it.
+   *
+   * **So the spelling is not guessed at.** Every `overflow` declaration in every sheet
+   * is read and matched against what `test/stylesheet.ts` says those keywords mean, and
+   * a value or a property nobody has said anything about fails HERE, once, with its own
+   * name in the message, instead of passing every guard that reads for it.
+   *
+   * This is the floor and not the rule: it does not say a box may not be cut. It says
+   * the portal may not cut one in a way its own guards cannot see.
+   */
+  it('cuts a box in no way that is not written down', () => {
+    /* Every sheet under `src`, `styles/tokens.css` among them: `sheets` above leaves
+       the token file out because the scale is what it declares, and that has nothing to
+       do with which boxes the portal cuts. */
+    const unclassified = stylesheets().flatMap((sheet) =>
+      cutsIn(sheet.css)
+        .filter((one) => !one.known)
+        .map((one) => `${sheet.path} ${one.property}: ${one.value}`),
+    )
+
+    expect(unclassified, 'name it in OVERFLOW_PROPERTIES or OVERFLOW_VALUES first').toEqual([])
   })
 })
 
