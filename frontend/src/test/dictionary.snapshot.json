@@ -801,8 +801,6 @@
     "proposeSending": "Šalje se",
     "proposeNote": "Zašto ovaj tim",
     "proposeNote2": "Tim postoji tek kad ga odobri moderator. Do tada nije vidljiv nigde na portalu.",
-    "proposeLogo": "Znak tima",
-    "proposeLogoAlt": "Znak koji si izabrao za tim, sa uokvirenim delom koji će se videti",
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",

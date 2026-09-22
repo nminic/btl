@@ -377,6 +377,16 @@ class CommentWriteApiTest {
 	 * {@code single()} throws rather than silently reading a wrong row - which is why
 	 * {@code comment_submission_id} is not read back out and compared a second time.
 	 *
+	 * <p><b>{@code v.competitor_id} IS READ HERE TOO, AND WAS NOT UNTIL THIS ROUND.</b>
+	 * {@link VerificationApi} draws the name and the number on a moderator's card off
+	 * {@code v.competitor_id}, and {@link VerificationWriteApi#publishTheComment} draws the
+	 * published comment's author off {@code cs.competitor_id} - two different columns,
+	 * written by {@link CommentWriteApi#write}'s two different {@code insert}s, and nothing
+	 * before this line ever read the first of them back. A write that let the two disagree -
+	 * the card naming one member, the eventual comment crediting another - passed every case
+	 * in this file silently, since the join above matches on {@code comment_submission_id}
+	 * and neither insert's {@code competitor_id} is asked about by the {@code where} clause.
+	 *
 	 * <p>Read as strings past the identity, {@link TeamWriteApiTest}'s own reason: what
 	 * {@code getObject} hands back for a {@code smallint} and what an {@code int} literal
 	 * autoboxes to are not the same class, and {@code containsExactly} tells them apart even
@@ -384,8 +394,8 @@ class CommentWriteApiTest {
 	 */
 	private List<Object> rowFor(long eventId, String memberNumber) {
 		return db.sql("select cs.id, cs.event_id, cs.competitor_id, cs.rating_organisation,"
-						+ " cs.rating_value, cs.rating_ambience, cs.body, v.queue, v.subject, v.body,"
-						+ " v.state"
+						+ " cs.rating_value, cs.rating_ambience, cs.body, v.queue, v.competitor_id,"
+						+ " v.subject, v.body, v.state"
 						+ " from comment_submission cs join verification v"
 						+ " on v.comment_submission_id = cs.id"
 						+ " where cs.event_id = ?"
@@ -394,8 +404,8 @@ class CommentWriteApiTest {
 				.query((row, one) -> List.of(row.getObject(1), String.valueOf(row.getObject(2)),
 						String.valueOf(row.getObject(3)), String.valueOf(row.getObject(4)),
 						String.valueOf(row.getObject(5)), String.valueOf(row.getObject(6)),
-						row.getString(7), row.getString(8), row.getString(9), row.getString(10),
-						row.getString(11)))
+						row.getString(7), row.getString(8), String.valueOf(row.getObject(9)),
+						row.getString(10), row.getString(11), row.getString(12)))
 				.single();
 	}
 
@@ -449,10 +459,19 @@ class CommentWriteApiTest {
 	 * A MEMBER WITH ALL THREE MARKS GIVEN RATES A RACE THAT HAS BEEN RUN, AND IT IS
 	 * STANDING IN THE COMMENTS QUEUE.
 	 *
-	 * <p>Both tables are read back whole, because the two halves of this write are two
+	 * <p>Both tables are read back together, because the two halves of this write are two
 	 * facts: a submission nobody queued reaches no moderator, and a queue row pointing at
 	 * nothing is a card with nothing on it - the identical reasoning
 	 * {@code TeamWriteApiTest} gives for reading its own two tables back together.
+	 *
+	 * <p><b>Not whole, and that is named rather than implied.</b> {@code rowFor} reads
+	 * {@code verification.competitor_id} because {@link CommentWriteApi#write}'s two
+	 * {@code insert}s could name a different member on each (see the note on
+	 * {@code rowFor} itself), which is a fact this route's own write could get wrong.
+	 * {@code photo_id}, {@code right_code} and {@code decided_at} stay unread: no branch of
+	 * this route's write ever sets the first (that is {@code publishTheProfile}'s column,
+	 * never {@code publishTheComment}'s), and the other two are V9's own defaults that
+	 * nothing under test here computes.
 	 */
 	@Test
 	void aMemberRatesARaceThatHasBeenRunAndItWaitsInTheQueue() throws Exception {
@@ -467,12 +486,14 @@ class CommentWriteApiTest {
 
 		assertThat(row)
 				.as("the submission does not carry the event, the member, the three marks and the"
-						+ " text as they were sent, or the queue row does not carry the tab, the"
+						+ " text as they were sent, or the queue row does not carry the tab, THE"
+						+ " MEMBER off its own competitor_id (not merely off the submission's), the"
 						+ " event's OWN name (never a text built here), the same words, and a state"
 						+ " that is still waiting")
 				.containsExactly(row.get(0), String.valueOf(run), String.valueOf(competitorId(ME)),
-						"4", "5", "4", "Staza je bila jasno obeležena.", "comments", RUN_NAME,
-						"Staza je bila jasno obeležena.", "waiting");
+						"4", "5", "4", "Staza je bila jasno obeležena.", "comments",
+						String.valueOf(competitorId(ME)), RUN_NAME, "Staza je bila jasno obeležena.",
+						"waiting");
 	}
 
 	@Test

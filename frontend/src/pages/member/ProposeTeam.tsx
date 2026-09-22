@@ -4,8 +4,6 @@ import { useToday } from '../../clock/useClock'
 import { teamOf } from '../../data/derive'
 import { inYearlyWindow } from '../../data/season'
 import { useSend, useSent } from '../sent'
-import { CropChooser } from '../../components/CropChooser'
-import type { Chosen } from '../../components/CropChooser'
 import { Resource } from '../../components/Resource'
 import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
@@ -70,10 +68,6 @@ export function ProposeTeam() {
   const said = useSent()
   const sent = typeof said === 'string' ? said : null
   const confirm = useSend()
-  /** The logo, if the member has one to hand. Held here and not in the form
-   *  definition: a form field is a value typed into a box, and this is a file
-   *  read off a disc with three sliders over it. */
-  const [logo, setLogo] = useState<Chosen | null>(null)
   /* What the server answered, where it has answered anything that is not „done" -
      `RateEvent.tsx`'s own shape, for the identical reason: a proposal that succeeded
      leaves this screen altogether. */
@@ -149,13 +143,16 @@ export function ProposeTeam() {
            * Sends the proposal, and decides what the reader sees by what came back -
            * `RateEvent.tsx`'s own shape, which is `Registration.tsx`'s before it.
            *
-           * <p><b>The logo does not travel with this request, and that is a boundary
-           * rather than an omission here.</b> `TeamWriteApi` carries no field for one:
-           * its own javadoc says so at length - no signature under the backend reads a
-           * picture from this route, and `RegistrationApi` is where that half of the
-           * boundary lives instead. Choosing and cropping one is left on the form
-           * below because the day a road for it exists, this is the one place a
-           * request would gain a field; nothing here claims that day is today.
+           * <p><b>THE FORM ASKS FOR NO LOGO, AND THAT IS A BOUNDARY RATHER THAN AN
+           * OMISSION HERE.</b> `TeamWriteApi` carries no field for one: its own javadoc
+           * says so at length - no signature under the backend reads a picture from this
+           * route. A `CropChooser` stood above these fields until 22.09.2026, so a member
+           * could choose one, cut it, read „Predlog je poslat" - and nobody ever saw what
+           * they chose. Owner, 22.09.2026: „Skloni polje dok put ne postoji", the cost
+           * named and accepted: a screen with no such option is a better answer than one
+           * that quietly keeps a false promise. The same boundary `EditTeam.tsx` has
+           * drawn round its own form from the start („What is not asked here. The
+           * logo..."). It returns the day a route exists to receive one.
            */
           async function submit(body: object, name: string): Promise<void> {
             outstanding.current = true
@@ -203,25 +200,11 @@ export function ProposeTeam() {
             <>
               <FormRenderer
                 form={predlogTima}
-                /* Above the fields and under the heading, so the heading is the
-                   first thing on the page. Drawn here before, the file field
-                   stood ahead of it and the page began without a heading at all
-                   (owner, 01.09.2026). */
-                above={
-                  <>
-                    <p className="member__note">{t('teams.proposeNote2')}</p>
-                    <CropChooser
-                      id="team-logo"
-                      label={t('teams.proposeLogo')}
-                      alt={t('teams.proposeLogoAlt')}
-                      /* A team may be proposed without a logo, and most are: the
-                         league has four teams and one logo between them. */
-                      asked={false}
-                      chosen={logo}
-                      onChange={setLogo}
-                    />
-                  </>
-                }
+                /* Above the note and under the heading, so the heading is the first
+                   thing on the page (owner, 01.09.2026). A `CropChooser` stood beside
+                   the note here too until 22.09.2026; see `submit`'s own note on why
+                   it does not any more. */
+                above={<p className="member__note">{t('teams.proposeNote2')}</p>}
                 /* By the address the name makes, which is what has to be
                    unique and is what the queue compares (teamProposal.ts).
                    Comparing names let "Dunavski Trkaci" through to sit in the

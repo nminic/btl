@@ -1,9 +1,8 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { clearResourceCache } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
-import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import { refused, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -250,35 +249,34 @@ describe('a proposal a member sends', () => {
     expect(screen.getByText(/„Trkači Morave" čeka odluku moderatora/)).toBeVisible()
   })
 
-  it('lets a member choose and cut a logo, but does not send it: TeamWriteApi has nowhere to receive one', async () => {
-    /* Owner, 12.08.2026: cropping inside the site is for profile pictures and
-       team pictures, and this screen still offers it - `CropChooser` is a form
-       field like any other and the day a road for it exists this is the one
-       place a request gains it.
-
-       WHAT CHANGED ON 22.09.2026: choosing and cutting one used to travel all
-       the way to the moderator's card, because the press before that day wrote
+  it('offers no way to attach a logo, and the request names none', async () => {
+    /* Owner, 12.08.2026: cropping inside the site is for profile pictures and team
+       pictures. This screen offered it until 22.09.2026, through a `CropChooser` a
+       member could choose a picture into and cut - and until that day, choosing and
+       cutting travelled all the way to the moderator's card, because the press wrote
        straight into the session and the queue read the very same session back.
-       `TeamWriteApi` is the route now, and its own javadoc says at length that
-       no signature under the backend carries a picture from this address. So the
-       walk this case used to make - choose, cut, send, find it on the card - no
-       longer has a second half to find, and asserting one would be measuring a
-       screen this route cannot serve. What is measured instead is the boundary
-       itself: the picture is chosen and cut exactly as it always could be, and
-       what leaves the browser carries none of it. */
+
+       WHAT CHANGED ON 22.09.2026: `TeamWriteApi` is the route now, and its own javadoc
+       says at length that no signature under the backend carries a picture from this
+       address. A field that still let a member choose and cut one kept confirming a
+       send that then silently dropped it, which is worse than not offering it at all -
+       the owner's own words, „Skloni polje dok put ne postoji". So this case no longer
+       measures a boundary between choosing and sending (there is nothing left to
+       choose): it measures that the field is gone from the screen, and that what this
+       screen sends still names nothing of it - the same shape `EditTeam.tsx` has drawn
+       round its own form from the start. */
     const user = setupUser()
     renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
-    await user.upload(
-      await screen.findByLabelText(/Znak tima/),
-      new File(['znak'], 'znak-tima.png', { type: 'image/png' }),
-    )
-    await measurePicture()
+    /* Waited for rather than asked outright: `Resource` above draws nothing of the
+       form until the competitors and the teams have loaded, and a query fired before
+       that settles finds no label at all - not because there is no logo field, but
+       because there is no form yet. `findByLabelText` on a field this form still has
+       is what proves the screen has actually settled before the absence below is
+       asked about. */
+    await screen.findByLabelText(/Naziv tima/)
 
-    const cutting = within(await screen.findByRole('group', { name: 'Isecanje slike' }))
-
-    fireEvent.change(cutting.getByLabelText('Veličina isečka'), { target: { value: '0.5' } })
-    fireEvent.change(cutting.getByLabelText('Pomeri gore i dole'), { target: { value: '0' } })
+    expect(screen.queryByLabelText(/Znak tima/)).toBeNull()
 
     await fill(user, 'Trkači Morave')
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -293,7 +291,6 @@ describe('a proposal a member sends', () => {
       'the proposal this case sent',
     )
 
-    expect(sent.init?.body).not.toContain('znak')
     expect(Object.keys(JSON.parse(String(sent.init?.body))).sort()).toEqual([
       'bio',
       'city',
