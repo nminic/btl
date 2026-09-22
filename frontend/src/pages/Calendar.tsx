@@ -5,17 +5,18 @@ import { useMay } from './admin/rights'
 import { Resource } from '../components/Resource'
 import {
   defaultMonth,
-  eventsInMonth,
   monthDays,
+  monthDrawing,
   monthFrom,
   monthNumbers,
   shiftMonth,
 } from '../data/derive'
-import type { BtlEvent, Race } from '../data/types'
+import type { Drawn } from '../data/derive'
+import type { Race } from '../data/types'
 import { combinePair, useEvents, useRaces } from '../data/useResource'
 import { formatDate, formatMonth, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
-import { EventChip } from './calendar/DayChips'
+import { EventChip, EventScale, HollowLane } from './calendar/DayChips'
 import { LengthLegend } from './calendar/LengthLegend'
 import './Calendar.css'
 import { useFilterParams } from '../app/useFilterParams'
@@ -23,7 +24,15 @@ import { useFilterParams } from '../app/useFilterParams'
 /* How many events a day shows before the rest go to the day's own page (owner,
  * 31.07.2026). Five: a day with six is rare enough that sending it to a page of
  * its own costs almost nobody a click, and a day with twelve would otherwise
- * make its whole row twelve chips tall. */
+ * make its whole row twelve chips tall.
+ *
+ * **Five LINES and not five events since 21.09.2026**, when a multi-day event became
+ * a bar across its days (PDL P35). A lane held open under a bar is a line and counts
+ * as one, so the height this number was chosen for is the height it still buys; what
+ * it no longer promises is that five events are always drawn, and the count on the
+ * way to the day's own page says how many were not. Measured over the served file
+ * that day: of 27 days the rule changes, exactly one crosses this number at all
+ * (1 June 2019, five to six). */
 const EVENTS_PER_DAY = 5
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
@@ -48,7 +57,8 @@ function Day({
   month,
   today,
   weekend,
-  events,
+  drawn,
+  hidden,
   races,
   first,
 }: {
@@ -57,7 +67,12 @@ function Day({
   today: string
   /** Saturday or Sunday. */
   weekend: boolean
-  events: BtlEvent[]
+  /** What this day draws, in order: the lanes of the bars that cross it, then the
+   *  events run on it alone. Worked out for the whole month at once, because a bar
+   *  has to sit at the same height in every day it crosses (`data/derive.ts`). */
+  drawn: Drawn[]
+  /** How many events the day holds that did not fit. */
+  hidden: number
   races: Race[]
   /** Which column the first of the month sits in, on the days it is the first. */
   first?: number
@@ -68,8 +83,6 @@ function Day({
      them (PDL P10, 12.08.2026). */
   const may = useMay()
   const date = `${month}-${String(day).padStart(2, '0')}`
-  const shown = events.slice(0, EVENTS_PER_DAY)
-  const hidden = events.length - shown.length
 
   return (
     <div
@@ -116,9 +129,19 @@ function Day({
         </Link>
       )}
 
-      {shown.map((event) => (
-        <EventChip key={event.id} event={event} races={races} />
-      ))}
+      {/* A bar across several days, a day of its own, or a lane held open under a
+          bar. Keyed by the event where there is one and by the lane where there is
+          not: a hollow lane has no identity of its own, and its place in the day IS
+          what it is (`data/derive.ts`). */}
+      {drawn.map((one, lane) =>
+        one.at === 'hollow' ? (
+          <HollowLane key={`lane-${lane}`} />
+        ) : one.at === 'scale' ? (
+          <EventScale key={one.event.id} piece={one} races={races} />
+        ) : (
+          <EventChip key={one.event.id} event={one.event} races={races} />
+        ),
+      )}
 
       {hidden > 0 && (
         <Link className="day__more" to={`/${locale}/kalendar/dan/${date}`}>
@@ -178,12 +201,12 @@ export function Calendar() {
         {([events, races]) => {
           const month = monthFrom(params.get('mesec'), defaultMonth(events, today))
           const { year, index } = monthNumbers(month)
-          const { days, offset } = monthDays(year, index)
-          const byDay = new Map<string, BtlEvent[]>()
-
-          for (const event of eventsInMonth(events, year, index)) {
-            byDay.set(event.date, [...(byDay.get(event.date) ?? []), event])
-          }
+          const { offset } = monthDays(year, index)
+          /* Worked out for the whole month in one go rather than day by day, and
+             that is the shape of the thing rather than a saving: a bar has to sit at
+             the same height in every day it crosses, so which lane it takes is a fact
+             about the month and cannot be decided inside one day (PDL P35). */
+          const drawing = monthDrawing(events, races, year, index, EVENTS_PER_DAY)
 
           return (
             <>
@@ -242,13 +265,14 @@ export function Calendar() {
                   </div>
                 ))}
 
-                {days.map((day) => (
+                {drawing.map(({ day, drawn, hidden }) => (
                   <Day
                     key={day}
                     day={day}
                     month={month}
                     today={today}
-                    events={byDay.get(`${month}-${String(day).padStart(2, '0')}`) ?? []}
+                    drawn={drawn}
+                    hidden={hidden}
                     races={races}
                     /* Which day of the week it is, worked out from the column the
                        month starts in: the week runs from Monday, so the last two

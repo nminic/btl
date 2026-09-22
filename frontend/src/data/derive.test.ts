@@ -6,8 +6,10 @@ import {
   topByCategory,
   defaultMonth,
   defaultSeason,
+  eventSpan,
+  eventsOnDay,
+  monthDrawing,
   monthGrid,
-  eventsInMonth,
   monthsWithEvents,
   bestOfficialSeason,
   bestSingleRaces,
@@ -30,6 +32,7 @@ import {
   monthFrom,
 } from './derive'
 import { teamOf } from './derive'
+import type { Drawn } from './derive'
 import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
 import { DOTS } from './types'
@@ -341,18 +344,14 @@ describe('calendar helpers', () => {
 
   const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
 
-  it('takes one month, in date order', () => {
-    expect(eventsInMonth(events, 2027, 3).map((event) => event.id)).toEqual([2, 1])
-    expect(eventsInMonth(events, 2027, 12)).toEqual([])
-  })
-
+  /* The two cases that stood here measured `eventsInMonth`, and it is gone since
+     22.09.2026: the grid asks `monthDrawing` what each day draws, off the range of an
+     event rather than off the day it was entered under (PDL P35), and nothing else in
+     the portal ever asked the old question. What the second of them was really for is
+     kept, because it is about the data and not about that function: a gathering with
+     no race in it is in the month like anything else (owner, 10.08.2026, an event has
+     a kind and no state). */
   it('draws what is not a race, because the calendar carries those too', () => {
-    /* An event has a kind and no state (owner, 10.08.2026). What used to be
-       here were two tests over a cancelled event, which the calendar left out;
-       there is no such event any more, because one that is off is deleted. What
-       is worth holding in its place is that nothing else is left out either: a
-       gathering with no race in it is in the month like anything else. */
-    expect(eventsInMonth(events, 2027, 4).map((event) => event.id)).toEqual([3])
     expect(monthsWithEvents(events)).toContain('2027-04')
   })
 
@@ -1855,5 +1854,322 @@ describe('the racing pairs that hold now', () => {
     expect(pairOf(two, '000002', 2027)?.id).toBe(24)
     expect(pairOf(two, '000009', 2027)).toBe(null)
     expect(pairOf(two, '000004', 2027)).toBe(null)
+  })
+})
+
+/**
+ * The bar a multi-day event draws across its days (PDL P35, 21.09.2026, owner:
+ * „napravi skale u Kalendar view koje mogu zauzimati vise dana ako se radi o takvom
+ * dogadjaju", and „Raspon se IZVODI, ne upisuje").
+ *
+ * **Every event here is entered under a day its races are not run on.** Over the
+ * served file on 21.09.2026 every one of the 1167 events carries the day of its own
+ * first race, so a case built the way the data looks cannot tell „read off the races"
+ * from „read off the event": both answers are the same string and the case says
+ * nothing at all. The two are pulled apart here on purpose, and the day written on
+ * the event is one no race of it is run on, so the wrong source is wrong at both ends.
+ */
+describe('the span of an event', () => {
+  /** An event whose own day is deliberately none of its race days. */
+  const spanning = (id: number, date: string): BtlEvent => ({
+    id,
+    slug: `e${id}`,
+    name: `Događaj ${id}`,
+    date,
+    city: 'Niš',
+    country: 'RS',
+    kind: 'race',
+    description: '',
+    link: '',
+    copiedFrom: null,
+    featured: false,
+  })
+
+  const on = (id: number, eventId: number, date: string): Race => ({
+    id,
+    eventId,
+    name: 'Trka',
+    renamed: false,
+    kind: 'length',
+    limitSeconds: 0,
+    date,
+    distanceKm: 10,
+    ascentM: 0,
+    descentM: 0,
+    category: 'short',
+  })
+
+  it('is the first and the last day a race of it is run on, never the day it was entered under', () => {
+    /* The event says the 10th and no race of it is run then. Read off the event this
+       answers „10th to 10th"; read off the races it answers „12th to 14th", and the
+       two share neither end. */
+    const event = spanning(7, '2027-05-10')
+    const races = [
+      /* Out of order and not first in the list, so „the earliest" cannot be satisfied
+         by „whichever one stands in front". */
+      on(2, 7, '2027-05-14'),
+      on(3, 9, '2027-05-01'),
+      on(1, 7, '2027-05-12'),
+      on(4, 9, '2027-05-30'),
+    ]
+
+    expect(eventSpan(event, races)).toEqual({ from: '2027-05-12', to: '2027-05-14' })
+    /* And another event's races are not its own, which is the axis a single event in
+       the list cannot measure. */
+    expect(eventSpan(spanning(9, '2027-05-20'), races)).toEqual({
+      from: '2027-05-01',
+      to: '2027-05-30',
+    })
+  })
+
+  it('is the day it was entered under only where it holds no race at all', () => {
+    /* Four of the 1167 events in the served file are like that, and an event with no
+       race has no other day to be drawn on. */
+    expect(eventSpan(spanning(7, '2027-05-10'), [on(1, 9, '2027-05-12')])).toEqual({
+      from: '2027-05-10',
+      to: '2027-05-10',
+    })
+  })
+
+  it('reaches over the days between two races that are not run one after the other', () => {
+    /* Rajac trek 2020 is the one in the served file: races on the 27th and on the 30th
+       and nothing between. „Najranija i najkasnija trka" is what the owner wrote, so
+       the bar covers the 28th and the 29th as well. */
+    const races = [on(1, 7, '2020-09-27'), on(2, 7, '2020-09-30')]
+
+    expect(eventSpan(spanning(7, '2020-09-20'), races)).toEqual({
+      from: '2020-09-27',
+      to: '2020-09-30',
+    })
+  })
+
+  it('draws a piece on every day it covers, and speaks for itself on exactly one', () => {
+    const events = [spanning(7, '2027-05-01'), spanning(9, '2027-05-01')]
+    const races = [
+      on(1, 7, '2027-05-12'),
+      on(2, 7, '2027-05-14'),
+      /* A second event, run on one day only, so „a piece per day" cannot pass by
+         drawing a piece for everything there is. */
+      on(3, 9, '2027-05-20'),
+    ]
+    const month = monthDrawing(events, races, 2027, 5, 5)
+    const pieces = month
+      .filter(({ drawn }) => drawn.some((one) => one.at === 'scale'))
+      .map(({ day, drawn }) => ({ day, piece: at(drawn, 0) }))
+
+    expect(pieces.map((one) => one.day)).toEqual([12, 13, 14])
+    /* Each of the three carries the WHOLE range rather than its own day, because the
+       range is what every piece says out loud (`calendar/DayChips.tsx`). */
+    expect(
+      pieces.every(
+        (one) =>
+          one.piece.at === 'scale' && one.piece.from === '2027-05-12' && one.piece.to === '2027-05-14',
+      ),
+    ).toBe(true)
+    /* The middle day is the one that measures the ends: it neither opens nor closes,
+       and a bar drawn without that reads as three separate tiles. */
+    expect(pieces.map((one) => one.piece.at === 'scale' && one.piece.opens)).toEqual([
+      true,
+      false,
+      false,
+    ])
+    expect(pieces.map((one) => one.piece.at === 'scale' && one.piece.closes)).toEqual([
+      false,
+      false,
+      true,
+    ])
+    /* The single day is a tile and not a bar: „jednodnevni ostaju kako jesu". */
+    expect(at(month, 19).drawn).toEqual([{ at: 'chip', event: at(events, 1) }])
+  })
+
+  it('starts the bar again where a row starts, and ends it where a row ends', () => {
+    /* 27 September 2020 is a Sunday and the 30th a Wednesday, so this one crosses the
+       break between two rows of the grid. It is the only event in the served file that
+       does. A piece in the first column of a row cannot reach back into the day before
+       it, because the day before it is at the other end of the row above. */
+    const events = [spanning(7, '2020-09-20')]
+    const races = [on(1, 7, '2020-09-27'), on(2, 7, '2020-09-30')]
+    const month = monthDrawing(events, races, 2020, 9, 5)
+    const ends = [27, 28, 29, 30].map((day) => {
+      const piece = at(at(month, day - 1).drawn, 0)
+
+      return piece.at === 'scale' ? [piece.opens, piece.closes] : null
+    })
+
+    /* The Sunday opens the bar and closes the row; the Monday opens the row again and
+       runs on; the Wednesday is the end of the event. */
+    expect(ends).toEqual([
+      [true, true],
+      [true, false],
+      [false, false],
+      [false, true],
+    ])
+  })
+
+  it('carries a bar into the next month, saying the whole range in each', () => {
+    /* Ultra-trail Stara planina ran 31 May to 1 June 2019 and is the one event in the
+       served file that crosses a month. June holds no first day of it, so what is held
+       here is that June draws it all the same and that what it says is the range of the
+       EVENT rather than the part of it June happens to hold. */
+    const events = [spanning(7, '2019-05-20')]
+    /* Three days in June and not the one the served file has, so BOTH halves of the
+       clipping are measured: May's last day closes because the month does, and June's
+       first day opens because the month does and then runs on because the event does.
+       Stara planina itself ends on the 1st, where „closes at the end of the event" and
+       „closes at the end of what is drawn" are the same answer and neither is proved. */
+    const races = [on(1, 7, '2019-05-31'), on(2, 7, '2019-06-03')]
+    const may = at(monthDrawing(events, races, 2019, 5, 5), 30).drawn
+    const june = monthDrawing(events, races, 2019, 6, 5)
+    const whole = { event: at(events, 0), from: '2019-05-31', to: '2019-06-03' }
+
+    /* 31 May 2019 is a Friday, so the row does not end there: what ends the bar is the
+       month. `across` counts the days of the row the bar still covers, this one in, so
+       a day that closes the run carries one and the number never runs past the month
+       either: the walk that counts it meets the last day of the month if it meets
+       nothing sooner. */
+    expect(may).toEqual([{ at: 'scale', ...whole, opens: true, closes: true, across: 1 }])
+    /* June's first day opens because the month does, and runs on because the event
+       does; and it carries 31 May in its range, which is the half that says the range
+       is not clipped to what is drawn. It is a Saturday, so the run it opens is two days
+       long and ends on the Sunday, although the event has two more days to run: this is
+       the one number here that days-of-the-event would get wrong. */
+    expect(at(june, 0).drawn).toEqual([
+      { at: 'scale', ...whole, opens: true, closes: false, across: 2 },
+    ])
+    /* The 2nd is a Sunday, which is where a row ends and the bar with it. */
+    expect(at(june, 1).drawn).toEqual([
+      { at: 'scale', ...whole, opens: false, closes: true, across: 1 },
+    ])
+    expect(at(june, 2).drawn).toEqual([
+      { at: 'scale', ...whole, opens: true, closes: true, across: 1 },
+    ])
+  })
+
+  it('puts the longer of two bars that start together in the upper lane', () => {
+    /* **The comparator had no case until 22.09.2026 and that is the „two sources, one
+       value" class again**: the only setting that reached it gave both events the SAME
+       range, so „longest first" and „shortest first" both returned nought and either
+       one passed. The spans are different here, so reversing it swaps the two.
+
+       Why the longer one goes up: the bars under it settle into the lanes it leaves,
+       and a short bar over a long one would leave a held lane running for days under
+       a line that ended on the first of them. */
+    const events = [spanning(7, '2027-05-01'), spanning(9, '2027-05-01')]
+    const races = [
+      /* The SHORTER one first in the list and with the LOWER id, so neither the order
+         it arrives in nor its identity can be what puts the other one on top. */
+      on(1, 7, '2027-05-12'),
+      on(2, 7, '2027-05-13'),
+      on(3, 9, '2027-05-12'),
+      on(4, 9, '2027-05-16'),
+    ]
+    const twelfth = at(monthDrawing(events, races, 2027, 5, 5), 11).drawn
+    const idOf = (one: Drawn) => (one.at === 'scale' ? one.event.id : null)
+
+    expect(twelfth.map(idOf)).toEqual([9, 7])
+    /* And the day after the short one ends, the long one is still in the upper lane
+       with nothing held open above it, which is what the order buys. */
+    expect(at(monthDrawing(events, races, 2027, 5, 5), 13).drawn.map(idOf)).toEqual([9])
+  })
+
+  it('keeps a bar in its own lane on the day the one above it has ended', () => {
+    /* Measured over the served file: 2 June 2019 is the one day in seventeen years
+       where this matters. Stara planina runs 31 May to 1 June and Palić 1 to 2 June, so
+       on the 2nd the upper lane is empty and Palić has to stay where it was on the 1st,
+       or its bar climbs a row and breaks in the middle of itself. */
+    const events = [spanning(7, '2019-05-20'), spanning(9, '2019-05-20')]
+    const races = [
+      on(1, 7, '2019-05-31'),
+      on(2, 7, '2019-06-01'),
+      on(3, 9, '2019-06-01'),
+      on(4, 9, '2019-06-02'),
+    ]
+    const june = monthDrawing(events, races, 2019, 6, 5)
+
+    expect(at(june, 0).drawn.map((one) => one.at)).toEqual(['scale', 'scale'])
+    expect(at(june, 1).drawn.map((one) => one.at)).toEqual(['hollow', 'scale'])
+    /* And the one still in the lower lane is Palić rather than whatever happened to be
+       drawn first. */
+    const second = at(at(june, 1).drawn, 1)
+
+    expect(second.at === 'scale' && second.event.id).toBe(9)
+  })
+
+  it('holds no lane open under nothing', () => {
+    /* A lane is kept only where something below it needs the line. Past the end of
+       every bar a day is as short as its own tiles, or a month with one long event in
+       it would leave every later day with an empty line at the top. */
+    const events = [spanning(7, '2027-05-01'), spanning(9, '2027-05-01')]
+    const races = [on(1, 7, '2027-05-12'), on(2, 7, '2027-05-13'), on(3, 9, '2027-05-20')]
+
+    expect(at(monthDrawing(events, races, 2027, 5, 5), 19).drawn).toEqual([
+      { at: 'chip', event: at(events, 1) },
+    ])
+  })
+
+  it('counts the events a day could not draw, and never the lanes', () => {
+    /* The cap was chosen for the height of a day (owner, 31.07.2026) and goes on
+       measuring that, so it counts lines. What it reports as missing is events,
+       because an empty lane is not something the day's own page could show. */
+    const events = Array.from({ length: 7 }, (_, index) => spanning(index + 1, '2027-05-01'))
+    const races = events.map((event, index) => on(index + 1, event.id, '2027-05-12'))
+    const twelfth = at(monthDrawing(events, races, 2027, 5, 5), 11)
+
+    expect(twelfth.drawn).toHaveLength(5)
+    expect(twelfth.hidden).toBe(2)
+  })
+
+  it('counts a bar it could not draw even where the lanes alone fill the day', () => {
+    /* **The question the owner's rule leaves open, asked outright: what happens when
+       more bars cross one day than a day has room for.** Measured over the served file
+       on 21.09.2026, the deepest stack anywhere in seventeen years is two, so nothing
+       in the data comes near this; what is held here is that the answer is the one the
+       day already had, which is „the rest are on the day's own page".
+
+       Seven bars all starting on the 12th, each one day longer than the last. On the
+       18th only the seventh is still running, so the six lanes over it are held open,
+       they fill the cap of five on their own, and the bar itself is cut off the day.
+
+       **This is also the one shape where counting lines and counting events part
+       company**, and until it was written the difference between them was a claim with
+       nothing behind it: with every held lane inside the cap the two arithmetics give
+       the same number, and a swap between them passed the whole series green
+       (mutation 8, 21.09.2026). */
+    /* Six bars that all end on the 12th and start a day apart, so they overlap there
+       and take six lanes in the order they start; then a seventh that starts on the
+       12th and runs on to the 20th, which lands it in the seventh lane. On the 13th
+       the six are over, their lanes are held open above the one still running, and the
+       five the day has room for are all of them empty. */
+    const events = Array.from({ length: 7 }, (_, index) => spanning(index + 1, '2027-05-01'))
+    const races = events.flatMap((event, index) => [
+      on(index * 2 + 1, event.id, `2027-05-${String(6 + index).padStart(2, '0')}`),
+      on(index * 2 + 2, event.id, index === 6 ? '2027-05-20' : '2027-05-12'),
+    ])
+    const month = monthDrawing(events, races, 2027, 5, 5)
+    const thirteenth = at(month, 12)
+
+    expect(thirteenth.drawn.map((one) => one.at)).toEqual([
+      'hollow',
+      'hollow',
+      'hollow',
+      'hollow',
+      'hollow',
+      /* and the bar itself, in the seventh lane, is past the cap */
+    ])
+    /* ONE event did not fit, and not the two the lines alone would say. */
+    expect(thirteenth.hidden).toBe(1)
+  })
+
+  it('says an event is run on every day of its range, for the page that draws a day alone', () => {
+    /* The grid sends a day with more on it than fits to a page of its own, so the two
+       have to agree about what is on a day. */
+    const events = [spanning(7, '2027-05-10'), spanning(9, '2027-05-10')]
+    const races = [on(1, 7, '2027-05-12'), on(2, 7, '2027-05-14'), on(3, 9, '2027-05-13')]
+
+    expect(eventsOnDay(events, races, '2027-05-13').map((one) => one.id)).toEqual([7, 9])
+    expect(eventsOnDay(events, races, '2027-05-14').map((one) => one.id)).toEqual([7])
+    /* And the day they were ENTERED under holds nothing, which is the whole difference:
+       read off `event.date` this would answer with both of them. */
+    expect(eventsOnDay(events, races, '2027-05-10')).toEqual([])
   })
 })

@@ -584,21 +584,13 @@ export function categoriesOf(competitors: Competitor[], gender: Gender): string[
   ].sort()
 }
 
-/**
- * The events of one month, oldest first.
- *
- * Every event there is: an event on the portal is on, and one that is off is
- * deleted rather than marked (owner, 10.08.2026). This used to ask whether the
- * event was cancelled, and asking it here and not in `monthsWithEvents` put a
- * month whose only event was off on the list of months that hold something.
- */
-export function eventsInMonth(events: BtlEvent[], year: number, month: number): BtlEvent[] {
-  const prefix = `${year}-${String(month).padStart(2, '0')}`
-
-  return events
-    .filter((event) => event.date.startsWith(prefix))
-    .sort((left, right) => left.date.localeCompare(right.date))
-}
+/* `eventsInMonth` stood here and is gone since 22.09.2026. It answered „the events
+   entered under a day of this month", which is the question the grid stopped asking
+   when a multi-day event became a bar across its days (PDL P35): `monthDrawing`
+   answers „what each day of this month draws" instead, off the range rather than off
+   the day an event was entered under. Nothing in the portal read it afterwards and
+   only its own case did, which is a guard measuring a function kept alive by its
+   guard. */
 
 /** Every month that holds at least one event, oldest first, as "YYYY-MM". */
 export function monthsWithEvents(events: BtlEvent[]): string[] {
@@ -708,6 +700,253 @@ export function monthGrid(year: number, month: number): (number | null)[] {
   }
 
   return cells
+}
+
+/** A race as the span arithmetic needs it: which event it belongs to and which day
+ *  it is run on, and nothing else it happens to carry. */
+type Dated = { eventId: number; date: string }
+
+/**
+ * The first and the last day an event is run on (PDL P35, 21.09.2026).
+ *
+ * **Derived from the races and never written down**, which is the whole of the
+ * owner's rule: „Raspon se IZVODI, ne upisuje: `race.date` je `not null`, pa su
+ * granice najranija i najkasnija trka." The event's own day is the first of them by
+ * the rule above it in the same decision, so reading the range off the event would
+ * answer right for the start and say nothing at all about the end.
+ *
+ * **An event with no races at all falls back to its own day**, and that is the one
+ * place here that reads `event.date`. Measured over the served file on 21.09.2026:
+ * four of the 1167 events have no race under them, and an event with no race has no
+ * other day to be drawn on. Written as a fallback rather than left to `undefined`,
+ * because a calendar that cannot place an event does not draw it and the day it was
+ * entered on is the one thing known about it.
+ *
+ * **Gaps are not holes.** Rajac trek 2020 has two races, on the 27th and the 30th,
+ * and nothing between: the range is the 27th to the 30th, four days, because that is
+ * what „najranija i najkasnija trka" says. One event in the served file is like that.
+ */
+export function eventSpan(
+  event: { id: number; date: string },
+  races: Dated[],
+): { from: string; to: string } {
+  let from = ''
+  let to = ''
+
+  for (const race of races) {
+    if (race.eventId !== event.id) {
+      continue
+    }
+
+    if (from === '' || race.date < from) {
+      from = race.date
+    }
+
+    if (to === '' || race.date > to) {
+      to = race.date
+    }
+  }
+
+  return from === '' ? { from: event.date, to: event.date } : { from, to }
+}
+
+/** Monday, which is where a week of this grid starts. */
+function isMonday(date: string): boolean {
+  return new Date(`${date}T00:00:00Z`).getUTCDay() === 1
+}
+
+/** Sunday, which is where one ends. */
+function isSunday(date: string): boolean {
+  return new Date(`${date}T00:00:00Z`).getUTCDay() === 0
+}
+
+/** One piece of what a day of the grid draws, in the order the day draws them. */
+export type Drawn =
+  /** A day of a multi-day event: one piece of the scale that runs across all of them. */
+  | {
+      at: 'scale'
+      event: BtlEvent
+      /** The whole range, never the part of it that falls inside this month: what is
+       *  spoken is what the event is, and what is drawn is what fits. */
+      from: string
+      to: string
+      /** Whether this piece starts the bar: its first day, the first of the month, or
+       *  the first column of a row. */
+      opens: boolean
+      /** Whether it ends it: its last day, the last of the month, or a Sunday. */
+      closes: boolean
+      /**
+       * How many days of THIS row the bar still covers, this one counted.
+       *
+       * One on the piece that closes the run, and on the piece that opens it the whole
+       * length of the run as it is drawn in that row. It is a count of days and never
+       * of dates: a bar that carries on into the next row is two runs on the screen,
+       * and the name of each is written across the row it is in.
+       *
+       * **Why the drawing needs a number the markup cannot work out for itself** (owner,
+       * 22.09.2026): the name is drawn by the piece that opens the run and is let out of
+       * its own day to be written across the pieces that follow it, so the room it has
+       * is the room the RUN has, and a day knows nothing about the run it is part of.
+       * The stylesheet is handed this and counts the width out of its own tokens
+       * (`pages/Calendar.css`).
+       */
+      across: number
+    }
+  /** A lane that is empty on this day, holding the bar under it in its own line. */
+  | { at: 'hollow' }
+  /** An event that is run on this day and no other. */
+  | { at: 'chip'; event: BtlEvent }
+
+/**
+ * What every day of one month draws, and how much of it did not fit.
+ *
+ * **The scales first and in lanes, then the single days.** A bar that reads as one
+ * thing has to sit at the same height in every day it crosses, so the multi-day
+ * events of the month are given lanes once, greedily, longest first: each takes the
+ * lowest lane no overlapping one holds. Measured over the served file on 21.09.2026,
+ * the deepest stack anywhere in seventeen years of data is **two**.
+ *
+ * **A lane that is empty on a day is still a line**, or the bar under it climbs a
+ * row and breaks in the middle. One day in the served file needs that and it is
+ * 2019-06-02: Ultra-trail Stara planina ran 31 May to 1 June and Ultramaraton Palić
+ * 1 to 2 June, so on the 2nd the upper lane is empty and Palić must stay where it
+ * was on the 1st.
+ *
+ * **The cap counts LINES and not events**, which is the rule the day already had
+ * (owner, 31.07.2026: a day shows five and sends the rest to a page of its own) read
+ * over what is now drawn. A hollow lane is a line, so no day is taller than it was
+ * before scales existed; what does not fit is counted in `hidden` and only real
+ * events are counted there, since a hollow lane is not something a day page can show.
+ */
+export function monthDrawing(
+  events: BtlEvent[],
+  races: Dated[],
+  year: number,
+  month: number,
+  perDay: number,
+): { day: number; drawn: Drawn[]; hidden: number }[] {
+  /* The days from the one place that knows how long a month is, and handed back day
+     by day rather than by date: the screen walks what this returns instead of asking
+     it for each of its own days, so there is no lookup that could come back empty and
+     no answer for what a day outside the month draws. */
+  const { days } = monthDays(year, month)
+  const named = (day: number) =>
+    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const opens = named(1)
+  const shuts = named(days.length)
+
+  /** Where a bar that reaches `last` stops being drawn: its own end, the end of the
+   *  month, or the end of a row. */
+  const closesOn = (at: string, last: string) => at === last || at === shuts || isSunday(at)
+
+  /**
+   * The last day of THIS row that the bar reaching `last` covers, counting from `from`.
+   *
+   * Walked rather than worked out of the weekday, because the three things that close a
+   * run are already written in one place above and a second arithmetic for the same
+   * question is a second answer. It always ends: the last day of the month closes every
+   * run, so the walk meets `shuts` if it meets nothing sooner.
+   */
+  const runsTo = (from: number, last: string) => {
+    let at = from
+
+    while (!closesOn(named(at), last)) {
+      at += 1
+    }
+
+    return at
+  }
+
+  const spans = events
+    .map((event) => ({ event, ...eventSpan(event, races) }))
+    .filter((one) => one.from <= shuts && opens <= one.to)
+
+  /* Longest first among those that start together, so a bar that will cross more days
+     takes the upper lane and the shorter ones settle under it. Then by identity, so
+     two events of the same shape are laid out the same way on every reading. */
+  const scales = spans
+    .filter((one) => one.from < one.to)
+    .sort(
+      (left, right) =>
+        left.from.localeCompare(right.from) ||
+        right.to.localeCompare(left.to) ||
+        left.event.id - right.event.id,
+    )
+
+  const lanes: (typeof scales)[] = []
+
+  for (const scale of scales) {
+    let lane = 0
+
+    while (lanes[lane]?.some((other) => other.from <= scale.to && scale.from <= other.to)) {
+      lane += 1
+    }
+
+    lanes[lane] = [...(lanes[lane] ?? []), scale]
+  }
+
+  return days.map((day) => {
+    const date = named(day)
+    const lines: Drawn[] = []
+
+    for (const lane of lanes) {
+      const held = lane.find((one) => one.from <= date && date <= one.to)
+
+      lines.push(
+        held === undefined
+          ? { at: 'hollow' }
+          : {
+              at: 'scale',
+              event: held.event,
+              from: held.from,
+              to: held.to,
+              opens: date === held.from || date === opens || isMonday(date),
+              closes: closesOn(date, held.to),
+              across: runsTo(day, held.to) - day + 1,
+            },
+      )
+    }
+
+    /* A lane nothing reaches on this day is dropped where no lane UNDER it holds a bar,
+       and that is why the lanes are trimmed before the single days are added rather
+       than after. A hollow is there to hold a bar in the line it had yesterday; a
+       hollow over a tile holds nothing and would only push every quiet day down by one
+       line for as long as the month's longest event lasts. A hollow BETWEEN two bars
+       stays, which is the case it exists for. */
+    while (lines.at(-1)?.at === 'hollow') {
+      lines.pop()
+    }
+
+    for (const single of spans) {
+      if (single.from === single.to && single.from === date) {
+        lines.push({ at: 'chip', event: single.event })
+      }
+    }
+
+    /* The cap is over the LINES, so no day grows taller than it was before bars
+       existed; what is counted as missing is only the EVENTS, because a hollow lane is
+       not something the day's own page could show. */
+    const drawn = lines.slice(0, perDay)
+    const held = (one: Drawn) => one.at !== 'hollow'
+
+    return { day, drawn, hidden: lines.filter(held).length - drawn.filter(held).length }
+  })
+}
+
+/**
+ * Whether an event is run on a given day, anywhere in its range (PDL P35).
+ *
+ * The day of the calendar asks the same question the grid does, and asks it of the
+ * same arithmetic: a grid that sends a day to a page of its own promises that the
+ * page holds what the day could not, and the two reading the range differently is
+ * that promise broken on exactly the days this rule exists for.
+ */
+export function eventsOnDay(events: BtlEvent[], races: Dated[], date: string): BtlEvent[] {
+  return events.filter((event) => {
+    const { from, to } = eventSpan(event, races)
+
+    return from <= date && date <= to
+  })
 }
 
 export type SeriesEntry = {
