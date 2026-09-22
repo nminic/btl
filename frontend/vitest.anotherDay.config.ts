@@ -18,6 +18,14 @@ import base from './vite.config.ts'
  * **No coverage here.** It is the same suite over the same lines; the thresholds
  * are measured once, in the pass beside this one, and paying for the
  * instrumentation twice would buy nothing.
+ *
+ * **What this file cannot prove about itself.** That `BTL_THE_OTHER_DAY` really
+ * reaches the process is not something a test running inside either pass can
+ * see: from inside, a pass where the flag silently failed to arrive reads
+ * exactly like a correct pass on THE_DAY, and nothing in that pass says which
+ * one it is. Only comparing the two passes' recorded results from outside
+ * catches that, and nothing here does it yet (`btl-produkt/PENDING.md`,
+ * 21.09.2026, recorded as a boundary rather than guarded).
  */
 export default mergeConfig(base, {
   test: { env: { BTL_THE_OTHER_DAY: '1' } },
