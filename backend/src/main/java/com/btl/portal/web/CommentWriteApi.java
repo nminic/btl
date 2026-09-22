@@ -20,8 +20,8 @@ import java.util.Optional;
  * SAME KIND OF WRITE: THE SECOND ROUTE ON THIS PORTAL THAT ENDS IN THE MODERATOR'S QUEUE
  * RATHER THAN IN THE THING IT IS ABOUT.
  *
- * <p>Owner, PDL P22/P28a, 06.08.2026: „Komentari idu kroz odobrenje pre objave" (PDL
- * 3098). So this route makes no {@code event_comment}. It makes a {@code
+ * <p>Owner, PDL P22/P28a, 06.08.2026: „Komentari idu kroz odobrenje pre objave" (PDL P18,
+ * „Komentari idu kroz odobrenje pre objave"). So this route makes no {@code event_comment}. It makes a {@code
  * comment_submission} and the {@code verification} row that carries it to whoever
  * decides, and until that decision the rating and the words are visible to nobody but
  * the member who sent them - {@link CommentApi} reads {@code event_comment} alone and
@@ -63,7 +63,7 @@ import java.util.Optional;
  * request are one state from here, the same way {@link TeamWriteApi#isNothing} treats
  * absent, blank and a run of spaces as one answer rather than three.
  *
- * <p><b>THE COMMENT ITSELF MAY BE EMPTY.</b> PDL 370: „Komentar je fakultativan" - the
+ * <p><b>THE COMMENT ITSELF MAY BE EMPTY.</b> PDL P6, „Komentar je fakultativan" - the
  * text is optional, the marks are not, and the two are asked apart rather than folded
  * into one completeness check.
  *
@@ -84,8 +84,8 @@ import java.util.Optional;
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
- * <li><b>Whether this member ran the event.</b> PDL 371 names the two places that ask:
- * „forma je ne nudi kome ne pripada, a moderator vidi šta je stiglo" - the FORM (through
+ * <li><b>Whether this member ran the event.</b> PDL P6, „forma je ne nudi kome ne
+ * pripada, a moderator vidi šta je stiglo" names the two places that ask - the FORM (through
  * {@code ran(results, races, event.id, mine)}, checked before the screen ever draws a
  * star) and the MODERATOR reading the card. This route is not the third place, and it is
  * not added on the strength of a reading between those lines: PDL names two and this
@@ -93,11 +93,13 @@ import java.util.Optional;
  * it, and the answer he gets is 201 - the same boundary {@link TeamWriteApi} draws
  * around its own three refusals rather than inventing a fourth.
  * <li><b>A second comment on an event this member has already written one about.</b>
- * Nothing here refuses it, because nothing decided that it should: PDL 3206 says abuse
+ * Nothing here refuses it, because nothing decided that it should: PDL P21, „Rezultate
+ * prijavljuju samo ulogovani korisnici, pa se tu ne očekuje zloupotreba" says abuse
  * is not expected of somebody signed in, and {@link TeamWriteApi} already answers the
  * identical question about a second proposal the same way - „nothing decided that it
  * should be refused" - while {@link MyApplicationsApi}'s own one-at-a-time rule guards a
- * single profile rather than a per-event count. The moderator is the gate PDL 371 names,
+ * single profile rather than a per-event count. The moderator is the gate PDL P6, „forma
+ * je ne nudi kome ne pripada, a moderator vidi šta je stiglo" names,
  * and he sees every waiting item on the tab, including two from one member about one
  * race.
  * <li><b>A length on the text.</b> The schema names none - {@code comment_submission.body}
@@ -105,11 +107,11 @@ import java.util.Optional;
  * server, {@link TeamWriteApi} says so of its own {@code bio}/{@code link}/{@code note}
  * in as many words. Left out here rather than invented, for the day somebody decides one.
  * <li><b>Whether the member's fee is current, on EITHER of the two walls PDL keeps
- * apart.</b> PDL 3179's „registrovan a neplaćen... nigde nije vidljiv i ne može ništa"
- * is about an account with NO competitor behind it at all - the case {@link #away()}
+ * apart.</b> PDL P21, „nigde nije vidljiv i ne može ništa" is about an account with NO
+ * competitor behind it at all - the case {@link #away()}
  * already answers - not about a member whose fee has since lapsed. The second wall, PDL
- * 907-910 (19.09.2026): a member whose fee has LAPSED is meant to have only the renewal
- * page, „prvi jos nije usao, drugi je izasao" - measured here and found to be a decision
+ * P8, 19.09.2026, „prvi jos nije usao, drugi je izasao" - a member whose fee has LAPSED
+ * is meant to have only the renewal page, measured here and found to be a decision
  * with nowhere built yet to carry it out. No write on this server gates on
  * {@code competitor.active} - not {@link TeamWriteApi}, the literal precedent this class
  * copies, and not {@link MeWriteApi} either - and no route this class could find reads it
@@ -195,7 +197,7 @@ class CommentWriteApi {
 	 * @param organisation PDL P6's first mark, 0 to 5
 	 * @param value        the second, „vrednost za novac"
 	 * @param ambience     the third, „ambijent"
-	 * @param body         what the member wrote, which may be empty (PDL 370)
+	 * @param body         what the member wrote, which may be empty (PDL P6, „Komentar je fakultativan")
 	 */
 	record Rated(long eventId, int organisation, int value, int ambience, String body) {
 	}
@@ -294,7 +296,7 @@ class CommentWriteApi {
 		return mark >= 1 && mark <= 5;
 	}
 
-	/** {@code comment_submission.body} is NOT NULL and may be empty (V30, PDL 370). */
+	/** {@code comment_submission.body} is NOT NULL and may be empty (V30, PDL P6, „Komentar je fakultativan"). */
 	private static String orEmpty(String value) {
 		return value == null ? "" : value.strip();
 	}
