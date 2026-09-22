@@ -174,19 +174,24 @@ class VerificationWriteApiTest {
 	/** A waiting comment about the event with two races, one Saturday and one Sunday. */
 	private long anasComment;
 
-	/** A second waiting comment, never rated, for the refusal cases. */
+	/** A waiting comment, never rated, for the refusal cases - made LAST of the three by id,
+	 *  after {@code bojansComment} was moved off that spot in round 7 (PR 354 review): see
+	 *  the field comment below for why the middle spot is the one that matters. */
 	private long verasComment;
 
-	/** A third waiting comment, made LAST, after both of the two above (PR 354 review,
-	 *  round 4, blizanac visokog iz kruga 1). With only {@code anasComment} and
-	 *  {@code verasComment}, the one this fixture ever approves - {@code anasComment} - was
-	 *  made FIRST and so always happened to equal {@code min(comment_submission.id)} too; a
-	 *  write that read the lowest id in the table instead of the one the queue row actually
-	 *  named agreed with every comments case by accident, exactly the fault the event axis of
-	 *  the same statement is already guarded against below. {@code bojansComment} is neither
-	 *  {@code anasComment} nor {@code verasComment}'s twin: it is approved in its own case,
-	 *  and it is the one made last, so that case is caught by a query that fell back to the
-	 *  lowest id in the table and not only by one that fell back to the highest. */
+	/** A third waiting comment, made SECOND, NEITHER FIRST NOR LAST BY id (PR 354 review,
+	 *  round 4, blizanac visokog iz kruga 1; moved off the last spot in round 7, where a
+	 *  commit had claimed this shape while the code still made it last). With only
+	 *  {@code anasComment} and {@code verasComment}, the one this fixture ever approves -
+	 *  {@code anasComment} - was made FIRST and so always happened to equal
+	 *  {@code min(comment_submission.id)} too; a write that read the lowest id in the table
+	 *  instead of the one the queue row actually named agreed with every comments case by
+	 *  accident, exactly the fault the event axis of the same statement is already guarded
+	 *  against below. {@code bojansComment} is neither {@code anasComment} nor
+	 *  {@code verasComment}'s twin: it is approved in its own case, and made second, neither
+	 *  an id below it nor one above it is the right answer, so that case is caught by a query
+	 *  that fell back to the lowest id in the table and by one that fell back to the highest,
+	 *  not only by one of the two. */
 	private long bojansComment;
 
 	/** A reported change of term for the same two-race event, unapproved yet. */
@@ -315,12 +320,12 @@ class VerificationWriteApiTest {
 
 		anasComment = commentSubmissionWaitingFor(ANA, theWeekendEvent, "Komentar o prvom dogadjaju",
 				4, 5, 3, "Odlicna staza");
-		verasComment = commentSubmissionWaitingFor(VERA, theWeekendEvent, "Komentar Vere", 0, 0, 0, "");
-		/* MADE LAST ON PURPOSE (PR 354 review, round 4): see the field comment above for why
-		   the id axis needs a third row and why it has to be this one made after the other
-		   two rather than swapped with either of them. */
+		/* MADE SECOND ON PURPOSE (PR 354 review, round 4; moved off the last spot in round 7):
+		   see the field comment above for why the id axis needs a third row in the middle,
+		   between the other two, and not at either end. */
 		bojansComment = commentSubmissionWaitingFor(BOJAN, theWeekendEvent, "Komentar Bojana",
 				5, 4, 5, "Sjajna organizacija");
+		verasComment = commentSubmissionWaitingFor(VERA, theWeekendEvent, "Komentar Vere", 0, 0, 0, "");
 
 		anasScheduleChange = scheduleProposalWaitingFor(ANA, theWeekendEvent,
 				"Promena termina prvog dogadjaja", SATURDAY, A_WEEK_LATER);
@@ -907,25 +912,30 @@ class VerificationWriteApiTest {
 
 	/**
 	 * AND THE SUBMISSION A CASE APPROVES IS NEVER CONFUSED WITH WHICHEVER ROW HAPPENS TO
-	 * CARRY THE FIXTURE'S LOWEST {@code comment_submission.id} (PR 354 review, round 4,
-	 * blizanac visokog iz kruga 1 - jednu tabelu dalje).
+	 * CARRY THE FIXTURE'S LOWEST OR HIGHEST {@code comment_submission.id} (PR 354 review,
+	 * round 4, blizanac visokog iz kruga 1 - jednu tabelu dalje; widened to guard both ends
+	 * in round 7, after a commit claimed this shape a round early while the row it names was
+	 * still the one made last).
 	 *
 	 * <p>{@code bojansComment} is not the only comment submission in the fixture and is made
-	 * LAST, after both {@code anasComment} and {@code verasComment}, so a write that read
-	 * {@code min(comment_submission.id)} instead of the id the queue row actually named is
-	 * caught here: with only the other two rows, the one every other case above approves,
-	 * {@code anasComment}, was made first and so always happened to equal that lowest id too,
-	 * and this is the axis round 2 counted for the event a comment is filed under but not for
-	 * the submission a comment is read from, in the very same statement.
+	 * SECOND, neither first nor last by id: {@code anasComment}, the one every other case
+	 * above approves, is made FIRST and so always happens to equal
+	 * {@code min(comment_submission.id)}, and {@code verasComment} is made LAST and so always
+	 * happens to equal {@code max(comment_submission.id)}. A write that read either the
+	 * lowest or the highest id in the table instead of the id the queue row actually named is
+	 * therefore caught here, and this is the axis round 2 counted for the event a comment is
+	 * filed under but not, until round 7, for the submission a comment is read from, in the
+	 * very same statement.
 	 */
 	@Test
-	void approvingTheLastMadeCommentIsNotConfusedWithTheFixturesLowestId() throws Exception {
+	void approvingACommentMadeBetweenTheOthersIsNotConfusedWithTheFixturesLowestOrHighestId()
+			throws Exception {
 		assertThat(answer(COMMENTS_MODERATOR, bojansComment, true, null)).isEqualTo(200);
 
 		assertThat(db.sql("select who from event_comment where event_id = ?")
 				.param(theWeekendEvent).query(String.class).single())
-				.as("the comment made last in the fixture published under a different"
-						+ " author's name")
+				.as("the comment made between the other two in the fixture published under a"
+						+ " different author's name")
 				.isEqualTo("Bojan Bojic");
 		assertThat(db.sql("select rating_organisation from event_comment where event_id = ?")
 				.param(theWeekendEvent).query(Integer.class).single()).isEqualTo(5);
@@ -943,10 +953,11 @@ class VerificationWriteApiTest {
 	 * CAPTURED WHEN HE SENT IT IN (ADL A64 A5, 22.09.2026).
 	 *
 	 * <p>Ana renames herself between sending {@code anasComment} in and a moderator
-	 * approving it, so {@code comment_submission.who} ("Ana Anic", captured at submission)
-	 * and her name at the moment of approval ("Ana Novic") disagree on purpose - the one
-	 * axis a straight copy of {@code who} cannot be told apart from the fix by, since both
-	 * read the same column when nobody has renamed anybody.
+	 * approving it, so her name at submission ("Ana Anic") and her name at the moment of
+	 * approval ("Ana Novic") disagree on purpose - the one axis a name read from anywhere
+	 * but fresh off {@code competitor}, at the moment {@code publishTheComment} runs, cannot
+	 * be told apart from the fix by, since both would answer "Ana Anic" when nobody has
+	 * renamed anybody.
 	 */
 	@Test
 	void approvingACommentPublishesItUnderTheNameTheMemberCarriesNowNotTheOneHeSentItUnder()
@@ -1369,8 +1380,11 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * A COMMENT WAITING TO BE PUBLISHED, with the event and the sender's own name already
-	 * on it, the shape {@code comment_submission} carries under ADL A64 A1.
+	 * A COMMENT WAITING TO BE PUBLISHED, with the event already on it, the shape
+	 * {@code comment_submission} carries under ADL A64 A1. It carries no name of its own
+	 * (ADL A64 A5, 22.09.2026): {@code publishTheComment} reads that fresh off
+	 * {@code competitor} through {@code competitor_id} instead, so this fixture does not
+	 * hand it one either.
 	 *
 	 * <p><b>{@code verification.body} is deliberately NOT {@code body} (PR 354 review, dva
 	 * izvora jedna vrednost).</b> The two used to carry the same text, so a write that
@@ -1383,13 +1397,11 @@ class VerificationWriteApiTest {
 	private long commentSubmissionWaitingFor(String memberNumber, long eventId, String subject,
 			int organisation, int value, int ambience, String body) {
 		long submission = db
-				.sql("insert into comment_submission (event_id, competitor_id, who,"
+				.sql("insert into comment_submission (event_id, competitor_id,"
 						+ " rating_organisation, rating_value, rating_ambience, body) values (?,"
-						+ " (select id from competitor where member_number = ?),"
-						+ " (select first_name || ' ' || last_name from competitor"
-						+ "  where member_number = ?), ?, ?, ?, ?)"
+						+ " (select id from competitor where member_number = ?), ?, ?, ?, ?)"
 						+ " returning id")
-				.params(eventId, memberNumber, memberNumber, organisation, value, ambience, body)
+				.params(eventId, memberNumber, organisation, value, ambience, body)
 				.query(Long.class).single();
 
 		return db.sql("insert into verification (queue, competitor_id, subject, body,"

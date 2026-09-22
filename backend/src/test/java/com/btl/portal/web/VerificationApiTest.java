@@ -489,18 +489,18 @@ class VerificationApiTest {
 	 * same subject - the shape {@link #proposalOn} already uses for the teams tab, moved
 	 * one table over (ADL A64 A1).
 	 *
-	 * <p>Whose it is and what name to publish it under are read off the VERIFICATION row's
-	 * own {@code competitor_id} rather than asked for again, so the two can never name two
-	 * different members by a slip in a second parameter.
+	 * <p>Whose it is is read off the VERIFICATION row's own {@code competitor_id} rather
+	 * than asked for again, so the two can never name two different members by a slip in
+	 * a second parameter. The submission carries no name of its own to publish under (ADL
+	 * A64 A5): {@code publishTheComment} reads that fresh off {@code competitor} instead.
 	 */
 	private void commentOn(String subject, long eventId, int organisation, int value, int ambience) {
 		long submission = db
-				.sql("insert into comment_submission (event_id, competitor_id, who,"
+				.sql("insert into comment_submission (event_id, competitor_id,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
 						+ " select ?, v.competitor_id,"
-						+ " coalesce(c.first_name || ' ' || c.last_name, 'Nepoznat Posiljalac'),"
 						+ " ?, ?, ?, ''"
-						+ " from verification v left join competitor c on c.id = v.competitor_id"
+						+ " from verification v"
 						+ " where v.subject = ? returning id")
 				.params(eventId, organisation, value, ambience, subject)
 				.query(Long.class).single();

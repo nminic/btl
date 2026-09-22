@@ -63,19 +63,14 @@
  * the thing before it becomes the thing, in the shape it will take." What `event_comment`
  * carries once a comment is real, this table carries before it is: the event, who sent it in
  * (never null - ADL A64 A6, 22.09.2026 - a comment can only be WRITTEN by a member, PDL 324
- * and 3320), the name to show either way, the three marks and the text.
+ * and 3320), the three marks and the text.
  *
- * `who` IS NOT NULL HERE TOO, on purpose and not by habit, though it is no longer a straight
- * copy on approval (ADL A64 A5, 22.09.2026, a correction found by the review of PR 354):
- * `event_comment.who` is „the name as it was when the comment went out", and *went out* means
- * PUBLISHED, so the row this table becomes reads the member's name fresh off `competitor` at
- * that moment. There is no fallback to this column at publish time (ADL A64 A6, 22.09.2026):
- * `competitor_id` below is `not null` and its foreign key is `on delete cascade`, so a
- * submission still waiting for a decision can never point at a member who is gone - the row
- * would have gone with him. `who` exists to seed `event_comment.who`, the tombstone that
- * takes over once this row is copied into it, not to stand in for `competitor` before that. A
- * submission with a blank name is still not a shape this table accepts any more than
- * `event_comment` does.
+ * NO COLUMN NAMES THE SENDER HERE, on purpose and not an oversight (ADL A64 A5, 22.09.2026, a
+ * correction found by the review of PR 354): `event_comment.who` is „the name as it was when
+ * the comment went out", and *went out* means PUBLISHED, not sent in, so the row this table
+ * becomes reads the member's name fresh off `competitor`, through `competitor_id` below, at
+ * that moment - never off a copy captured here. `VerificationWriteApi.publishTheComment` is
+ * where that read happens; this file only carries the pointer it reads through.
  */
 create table comment_submission (
     id                   bigserial not null,
@@ -93,7 +88,6 @@ create table comment_submission (
        no tombstone to protect here yet - that is `event_comment.who`'s day, once this row is
        copied into it. */
     competitor_id        bigint    not null,
-    who                  text      not null collate sr_latn,
 
     /* The same three marks, the same scale, the same names - PDL P6 fixes the list at three
        and V7 already chose the words. Copied rather than referenced so that this table reads
@@ -113,7 +107,6 @@ create table comment_submission (
     constraint comment_submission_competitor_fk foreign key (competitor_id)
         references competitor (id) on delete cascade,
 
-    constraint comment_submission_who_not_blank check (btrim(who) <> ''),
     constraint comment_submission_organisation_in_scale
         check (rating_organisation between 0 and 5),
     constraint comment_submission_value_in_scale check (rating_value between 0 and 5),

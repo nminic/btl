@@ -124,9 +124,12 @@ class VerificationConstraintsTest extends DatabaseTest {
 	/** The event V30 gives both new tables something to point at. */
 	private static final String AN_EVENT = "(select id from btl_event where slug = 'probni-dogadjaj-v30')";
 
-	/** The submission V30 gives the comments tab to point at. */
+	/** The submission V30 gives the comments tab to point at. Read back by its event rather
+	 *  than by a name: `probe` writes exactly one {@code comment_submission} row and
+	 *  {@code AN_EVENT} is exactly as unique, and the table has carried no display name of
+	 *  its own since ADL A64 A5 moved that read onto {@code competitor}. */
 	private static final String A_COMMENT_SUBMISSION =
-			"(select id from comment_submission where who = 'Probni Posiljalac')";
+			"(select id from comment_submission where event_id = " + AN_EVENT + ")";
 
 	/** The proposal V30 gives the schedule tab to point at. */
 	private static final String A_SCHEDULE_PROPOSAL =
@@ -199,9 +202,9 @@ class VerificationConstraintsTest extends DatabaseTest {
 				+ " values ('probni-dogadjaj-v30', 'Probni dogadjaj', date '2027-04-04', " + A_TOWN
 				+ ", 'race', false, '', '')").update();
 
-		db.sql("insert into comment_submission (event_id, competitor_id, who, rating_organisation,"
+		db.sql("insert into comment_submission (event_id, competitor_id, rating_organisation,"
 				+ " rating_value, rating_ambience, body) values (" + AN_EVENT + ", " + A_MEMBER
-				+ ", 'Probni Posiljalac', 4, 5, 3, 'Probni tekst')").update();
+				+ ", 4, 5, 3, 'Probni tekst')").update();
 
 		db.sql("insert into schedule_proposal (competitor_id, event_id, event_date, proposed_date)"
 				+ " values (" + A_MEMBER + ", " + AN_EVENT + ", date '2027-04-04', date '2027-04-11')")

@@ -75,16 +75,16 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	private static final String COLUMNS =
-			"event_id, competitor_id, who, rating_organisation, rating_value, rating_ambience, body";
+			"event_id, competitor_id, rating_organisation, rating_value, rating_ambience, body";
 
 	/** Rated, with a member behind it. */
 	private static final String GOOD_RATED =
-			row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 4, 5, 3, 'Odlicna staza'");
+			row(AN_EVENT + ", " + A_MEMBER + ", 4, 5, 3, 'Odlicna staza'");
 	/** Unrated - a comment nobody has marked yet, nought on all three, which V7 already
 	 *  allows on {@code event_comment} and this table has to allow too, since an approval
 	 *  copies it straight across. */
 	private static final String GOOD_UNRATED =
-			row(ANOTHER_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, 0, 0, ''");
+			row(ANOTHER_EVENT + ", " + A_MEMBER + ", 0, 0, 0, ''");
 
 	private static String row(String values) {
 		return "insert into comment_submission (" + COLUMNS + ") values (" + values + ")";
@@ -116,15 +116,15 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 		return List.of(
 				Violation.notNull("comment_submission_id_not_null", "id",
 						"insert into comment_submission (id, " + COLUMNS + ") values (null, " + AN_EVENT
-								+ ", " + A_MEMBER + ", 'Probni Clan', 0, 0, 0, '')"),
+								+ ", " + A_MEMBER + ", 0, 0, 0, '')"),
 				Violation.of("comment_submission_pk",
 						"insert into comment_submission (id, " + COLUMNS + ") select id, " + AN_EVENT + ", "
-								+ A_MEMBER + ", 'Probni Clan', 0, 0, 0, '' from comment_submission limit 1"),
+								+ A_MEMBER + ", 0, 0, 0, '' from comment_submission limit 1"),
 
 				Violation.notNull("comment_submission_event_id_not_null", "event_id",
-						row("null, " + A_MEMBER + ", 'Probni Clan', 0, 0, 0, ''")),
+						row("null, " + A_MEMBER + ", 0, 0, 0, ''")),
 				Violation.of("comment_submission_event_fk",
-						row("999999, " + A_MEMBER + ", 'Probni Clan', 0, 0, 0, ''")),
+						row("999999, " + A_MEMBER + ", 0, 0, 0, ''")),
 
 				/* NOT NULL as of ADL A64 A6, 22.09.2026: a comment can only be about a
 				   member who wrote it, never about nobody - PDL 324, 3320 and 3252, the
@@ -132,38 +132,33 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 				   which stays nullable. The FK below catches the other half of the same
 				   column: a member who is not there, as opposed to one left out. */
 				Violation.notNull("comment_submission_competitor_id_not_null", "competitor_id",
-						row(AN_EVENT + ", null, 'Nepoznat Posiljalac', 0, 0, 0, ''")),
+						row(AN_EVENT + ", null, 0, 0, 0, ''")),
 				Violation.of("comment_submission_competitor_fk",
-						row(AN_EVENT + ", 999999, 'Probni Clan', 0, 0, 0, ''")),
-
-				Violation.notNull("comment_submission_who_not_null", "who",
-						row(AN_EVENT + ", " + A_MEMBER + ", null, 0, 0, 0, ''")),
-				Violation.of("comment_submission_who_not_blank",
-						row(AN_EVENT + ", " + A_MEMBER + ", '   ', 0, 0, 0, ''")),
+						row(AN_EVENT + ", 999999, 0, 0, 0, ''")),
 
 				Violation.notNull("comment_submission_rating_organisation_not_null", "rating_organisation",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', null, 0, 0, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", null, 0, 0, ''")),
 				Violation.of("comment_submission_organisation_in_scale",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 6, 0, 0, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", 6, 0, 0, ''")),
 				Violation.of("comment_submission_organisation_in_scale",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', -1, 0, 0, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", -1, 0, 0, ''")),
 
 				Violation.notNull("comment_submission_rating_value_not_null", "rating_value",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, null, 0, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", 0, null, 0, ''")),
 				Violation.of("comment_submission_value_in_scale",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, 6, 0, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", 0, 6, 0, ''")),
 				Violation.of("comment_submission_value_in_scale",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, -1, 0, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", 0, -1, 0, ''")),
 
 				Violation.notNull("comment_submission_rating_ambience_not_null", "rating_ambience",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, 0, null, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", 0, 0, null, ''")),
 				Violation.of("comment_submission_ambience_in_scale",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, 0, 6, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", 0, 0, 6, ''")),
 				Violation.of("comment_submission_ambience_in_scale",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, 0, -1, ''")),
+						row(AN_EVENT + ", " + A_MEMBER + ", 0, 0, -1, ''")),
 
 				Violation.notNull("comment_submission_body_not_null", "body",
-						row(AN_EVENT + ", " + A_MEMBER + ", 'Probni Clan', 0, 0, 0, null")));
+						row(AN_EVENT + ", " + A_MEMBER + ", 0, 0, 0, null")));
 	}
 
 	@ParameterizedTest
