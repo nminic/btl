@@ -375,9 +375,24 @@ class LeagueWriteApi {
 				return no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_OF_THE_LEAGUES_SEASON);
 			}
 
+			/* THE SEASON IS NOT ASKED ABOUT TWICE, AND THAT IS A MEASUREMENT RATHER THAN A
+			   preference. This statement carried `join race r on r.season = l.season` until
+			   24.09.2026, a second copy of the question the line above has just answered -
+			   and the mutation series proved it could not be killed: turned into
+			   `r.season = r.season`, the whole suite stayed green, because the count refuses
+			   before this runs. A line no mutation can reach is a line that looks like
+			   protection and is not.
+
+			   WORSE THAN USELESS, IN THE ONE CASE IT COULD EVER HAVE REACHED. If a race were
+			   moved into another year between the count and this insert, the join would
+			   write NOTHING and this route would answer 204 for a write that did not happen.
+			   Without it, `league_race_race_fk` refuses the row and the caller meets a fault
+			   - which is loud, and a competition that silently counts nothing is not.
+
+			   The season written is still the LEAGUE'S, which is what V19 requires and what
+			   `l.season` says here. */
 			db.sql("insert into league_race (league_id, season, race_id)"
-							+ " select l.id, l.season, r.id from league l join race r"
-							+ " on r.season = l.season"
+							+ " select l.id, l.season, r.id from league l, race r"
 							+ " where l.id = ? and " + whichRaces(oneRace)
 							+ " on conflict on constraint league_race_pk do nothing")
 					.params(id, oneRace ? asked.raceId() : asked.eventId())
@@ -467,14 +482,16 @@ class LeagueWriteApi {
 	 * year cannot count a race of another" is the database's sentence and not something
 	 * anybody has to remember, and {@code race.season} is a GENERATED column off
 	 * {@code race.date} so it cannot disagree with the day. What is asked below is that same
-	 * pairing, {@code r.season = l.season}, written once and used both to count and to
-	 * write.
+	 * pairing, {@code r.season = l.season}, and this method is the one place in this class
+	 * that asks it.
 	 *
-	 * <p><b>Which leaves the schema as the floor and this as the sentence.</b> Drop the join
-	 * condition from the write below and the row is handed to PostgreSQL, which refuses it
-	 * on {@code league_race_race_fk}; the administrator then meets a 500 instead of being
-	 * told which race does not belong. That is the mutation this method exists against, and
-	 * it is the one {@code LeagueWriteApiTest} runs.
+	 * <p><b>Which leaves the schema as the floor and this as the sentence, and since
+	 * 24.09.2026 this is the ONLY place the question is asked.</b> Take the pairing out of
+	 * here and the row is handed to PostgreSQL, which refuses it on
+	 * {@code league_race_race_fk}; the administrator then meets a fault instead of being told
+	 * which race does not belong. That is the mutation this method exists against, and the
+	 * note on the write itself says why a second copy of the same condition was removed from
+	 * there rather than left as belt and braces.
 	 */
 	private long howManyOfThemPairWithTheLeaguesSeason(long id, Counting asked) {
 		boolean oneRace = asked.raceId() != null;

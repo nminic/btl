@@ -475,6 +475,57 @@ class LeagueWriteApiTest {
 		assertThat(seasonOf(frozen)).isEqualTo(FROZEN);
 	}
 
+	/**
+	 * AND A FORM IS JUDGED ON THE WAY IN HERE TOO, WHICH IS THE HALF THIS FILE WAS MISSING.
+	 *
+	 * <p><b>Found by the coverage gate on 24.09.2026 and not by reading.</b> Every other
+	 * case sent this route a form that was already good, so the branch that hands a refusal
+	 * back was written, shipped and never once taken - one line and one branch of the whole
+	 * class. {@link LeagueWriteApi#whatIsWrongWith} exists so that a league written and a
+	 * league changed are judged by one set of rules; that it HAS two callers said nothing
+	 * about whether the second one was ever measured.
+	 *
+	 * <p><b>The season out of range is asked of the league that counts NOTHING, and that is
+	 * the axis rather than tidiness.</b> A league that counts a race is refused a season it
+	 * may not have AND a season it may not move to, by two different rules with two different
+	 * sentences, and a case over such a league cannot say which of the two answered. Asked of
+	 * {@link #empty}, only one of them can.
+	 */
+	@Test
+	void aFormThisRouteWouldNotHaveAcceptedIsRefusedOnTheWayInHereToo() throws Exception {
+		MockHttpServletResponse blank = change(acted,
+				new LeagueWriteApi.Upsert("   ", "druga-2028", RUNNING, "", ""));
+
+		assertThat(blank.getStatus()).isEqualTo(400);
+		assertThat(blank.getContentAsString()).contains(LeagueWriteApi.THE_FORM_IS_NOT_COMPLETE);
+
+		MockHttpServletResponse shaped = change(acted,
+				new LeagueWriteApi.Upsert("Druga liga 2028", "Druga Liga", RUNNING, "", ""));
+
+		assertThat(shaped.getStatus()).isEqualTo(400);
+		assertThat(shaped.getContentAsString())
+				.contains(LeagueWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+
+		MockHttpServletResponse far = change(empty,
+				new LeagueWriteApi.Upsert("Naredna liga 2029", "naredna-2029", TOO_FAR, "", ""));
+
+		assertThat(far.getStatus()).isEqualTo(400);
+		assertThat(far.getContentAsString())
+				.as("a league that counts nothing was refused for the season it may not MOVE to"
+						+ " rather than for the season it may not have, so the two refusals are"
+						+ " one answer here")
+				.contains(LeagueWriteApi.THE_SEASON_IS_NOT_THIS_ONE_OR_THE_NEXT);
+
+		/* AND NONE OF THE THREE WROTE ANYTHING, which is the half a status code does not
+		   carry: a route that refused after it had already updated the row would answer 400
+		   and leave the league renamed. */
+		assertThat(db.sql("select slug, name, season from league where id = ?").param(acted)
+				.query((row, one) -> List.of(row.getString(1), row.getString(2), row.getInt(3)))
+				.single())
+				.containsExactly("druga-2028", "Druga liga 2028", RUNNING);
+		assertThat(seasonOf(empty)).isEqualTo(NEXT);
+	}
+
 	@Test
 	void changingALeagueThatIsNotThereIsAnsweredWithNothingAtAll() throws Exception {
 		MockHttpServletResponse answer = change(theKeyNobodyHolds(),
