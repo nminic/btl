@@ -23,7 +23,7 @@
       "type": "number",
       "labelKey": "rankings.season",
       "required": true,
-      "min": 2014,
+      "min": 2027,
       "max": 2100
     },
     {

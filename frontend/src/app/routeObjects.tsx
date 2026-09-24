@@ -150,19 +150,21 @@ const DETAILS: RouteObject[] = [
   { path: 'liga/:slug', element: <LeagueDetail /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
-  /* The six verification queues (PDL P28a). The addresses live in QUEUES, which
+  /* The five verification queues (PDL P28a). The addresses live in QUEUES, which
      is also what the list of queues links with, so a queue cannot end up with a
      row that points nowhere.
 
      Seven until 24.08.2026, when the proposed leagues left: a league is not
      proposed by anybody, the Administrator makes it (owner, 23.08.2026), so a
-     queue for deciding on proposals had nothing that could ever reach it. */
+     queue for deciding on proposals had nothing that could ever reach it. Six
+     until 22.09.2026, when the schedule queue left with it (PDL P10a): nobody
+     reports a term any more, so a queue for deciding on one had nothing left
+     to decide either. */
   { path: QUEUE.results.path, element: <ReviewQueue /> },
   { path: QUEUE.payments.path, element: <Payments /> },
   { path: QUEUE.teams.path, element: <PendingQueue queue={QUEUE.teams} /> },
   { path: QUEUE.profiles.path, element: <PendingQueue queue={QUEUE.profiles} /> },
   { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },
-  { path: QUEUE.schedule.path, element: <PendingQueue queue={QUEUE.schedule} /> },
 ].map((route) => ({ ...route, element: guarded(route.path, route.element) }))
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */

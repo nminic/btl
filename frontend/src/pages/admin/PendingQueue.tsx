@@ -3,15 +3,7 @@ import { tim } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import {
-  combinePair,
-  dataOr,
-  failed,
-  useCompetitors,
-  useEvents,
-  useRaces,
-  useTeams,
-} from '../../data/useResource'
+import { combinePair, dataOr, failed, useCompetitors, useTeams } from '../../data/useResource'
 import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
@@ -24,11 +16,10 @@ import { overall, rated } from '../event/overall'
 import countries from '../../data/countries.json'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { moveEvent } from './moveEvent'
 import { usePending, WAITING, waitingIn } from './pending'
 import { recordKey } from '../../session/context'
 import type { PendingItem, Team } from '../../data/types'
-import { EVENTS, idFor, MEMBERS, RACES, recordsOf, TEAMS } from './entityForms'
+import { idFor, MEMBERS, recordsOf, TEAMS } from './entityForms'
 import {
   addressesAgainst,
   addressesIn,
@@ -48,15 +39,16 @@ import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
 
-/* One screen for four queues: new teams, racing profiles, comments, and reported
- * changes of date. Five until 24.08.2026, when the proposed leagues left, because
- * a league is made by the Administrator and nobody proposes one (owner).
+/* One screen for three queues: new teams, racing profiles and comments. Four
+ * until PDL P10a, 22.09.2026 took the reported changes of date away, „Redova je
+ * pet, ne šest"; five before that, until 24.08.2026, when the proposed leagues
+ * left, because a league is made by the Administrator and nobody proposes one
+ * (owner).
  *
- * One screen rather than four because the work is the same work every time. The
+ * One screen rather than three because the work is the same work every time. The
  * moderator reads a piece of text somebody wrote, and then decides what becomes
- * of it. What differs is the word for the text, whether there are two dates to
- * compare, and what the decision other than "yes" is, and none of those is a
- * screen.
+ * of it. What differs is the word for the text and what the decision other than
+ * "yes" is, and neither of those is a screen.
  *
  * That last one is the only difference the moderator can feel, and there are three
  * of them (queues.ts, PDL P22). Two queues go their own way: a comment is
@@ -72,7 +64,7 @@ import './Verification.css'
  */
 
 /** Whether a queue has a second decision that hands the work back to its
- *  author. Six of the seven, and both sorts on the racing profile: a text is
+ *  author. Four of the five, and both sorts on the racing profile: a text is
  *  refused with a reason and a picture with an instruction precise enough to
  *  work from. The comments are the one exception, deleted rather than returned
  *  (queues.ts). Said as "five plus the pictures" until 15.08.2026, which was
@@ -252,23 +244,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
   const state = combinePair(usePending(), useTeams())
-  /* The races, because accepting a reported change of date moves the event and
-     everything that runs at it (moveEvent). Read for what they are worth: no
-     card here draws a race, and a queue that would not open because the races
-     have not arrived is a queue held up by a file it does not show
-     (resourceScope.test). Where they are missing nothing is moved, and the day
-     of the event alone would be the half-move this is here to prevent. So the
-     decision waits for them, and only the decision: the screen draws, the cards
-     are read, and the buttons say what they are waiting for
-     (`whyNoDecision`). */
-  const racesState = useRaces()
-  /* Through the overlay, like every other screen that reads records: a race
-     whose day an administrator corrected during this visit is moved from the day
-     it now has, and a race entered during it is moved at all. */
-  const allRaces = recordsOf(RACES, dataOr(racesState, []), overlay)
-  const eventsState = useEvents()
-  const allEvents = recordsOf(EVENTS, dataOr(eventsState, []), overlay)
-  /* And the members, for the one rule a team proposal cannot be decided without:
+  /* The members, for the one rule a team proposal cannot be decided without:
      a member is in one team at a time (PDL P13), so a proposal from somebody who
      already has one cannot be approved. Read through the overlay like everything
      else, because the team a member got a minute ago in this same visit is in
@@ -276,48 +252,31 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const membersState = useCompetitors()
   const allMembers = recordsOf(MEMBERS, dataOr(membersState, []), overlay)
 
-  /** The event a reported change is about, as the list has it now: the decision
-   *  waits for the events, so by the time one is taken this is there. */
-  const eventOf = (one: PendingItem) => allEvents.find((each) => String(each.id) === one.subjectId)
   /**
    * Why no decision can be taken on this queue just now, or nothing.
    *
-   * Only the reported changes of date, and over both the races and the events:
-   * accepting one moves the event and everything run at it by the same number of
-   * days (moveEvent). Without the races the event moves alone. Without the
-   * events the day it is moved from is the day the report claims, and a second
-   * report about the same event then moves the races again from a day that is no
-   * longer the event's: two reports of one change, and the races a week past the
-   * event they are run at. Nothing brings either back.
+   * Only the queue of teams, and only for the members: approving a proposal
+   * without them would make a second team for somebody who already has one, and
+   * nothing brings that back.
    *
-   * Three states and not two, because `dataOr` answers the same for a file on
-   * its way and one that failed. Told to wait for something that will never
-   * come, a moderator who holds the right is refused it for good and reads a
-   * sentence that is not true (AdminEvents does the same thing for the same
-   * reason).
+   * Two states and not one, because `dataOr` answers the same for a file on its
+   * way and one that failed. Told to wait for something that will never come, a
+   * moderator who holds the right is refused it for good and reads a sentence
+   * that is not true (AdminEvents does the same thing for the same reason).
+   *
+   * The schedule queue asked the identical question of the races and the events
+   * until PDL P10a, 22.09.2026 took the queue itself away: „Redova je pet, ne
+   * šest." What answered it, `verification.racesFailed` and
+   * `verification.waitingForRaces`, left the dictionary the same day nothing here
+   * asked for them any more.
    */
   const whyNoDecision =
-    queue.id === 'schedule' && !(racesState.status === 'ready' && eventsState.status === 'ready')
-      ? failed(racesState, eventsState)
-        ? t('verification.racesFailed')
-        : t('verification.waitingForRaces')
-      : /* And the same three states for the members on the queue of teams, for the
-           same reason: approving without them would make a second team for somebody
-           who already has one, and nothing brings that back either. */
-        queue.id === 'teams' && membersState.status !== 'ready'
-        ? failed(membersState)
-          ? t('verification.membersFailed')
-          : t('verification.waitingForMembers')
-        : null
-  const racesUnknown = whyNoDecision !== null
-
-  /* Both dates of a reported change, so the difference is the thing on screen
-     and not something the reader works out. Empty on the other four queues. */
-  const datesOf = (one: PendingItem) =>
-    [
-      { key: 'verification.currentDate', value: one.currentDate },
-      { key: 'verification.proposedDate', value: one.proposedDate },
-    ].filter((fact) => fact.value !== '')
+    queue.id === 'teams' && membersState.status !== 'ready'
+      ? failed(membersState)
+        ? t('verification.membersFailed')
+        : t('verification.waitingForMembers')
+      : null
+  const decisionUnknown = whyNoDecision !== null
 
   /**
    * Approving, one item or forty, with everything the next one has to know.
@@ -381,25 +340,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
         publish(one.id, commentFrom(one))
       }
 
-      /* And what an approval on the queue of dates does: the event moves. Until
-         06.08.2026 it did nothing at all beyond taking the card off the screen,
-         so a moderator who agreed that a race had been put off left the calendar
-         saying the old day, and the next visitor read the wrong date from a
-         report the league had already accepted (owner).
-
-         Written into the same overlay the administration writes an edited event
-         into, and against the id the report carries rather than the name: two
-         events across two seasons carry one name (PDL P6). */
-      /* From the day the event is on now and not from the day the report says it
-         was on: a report written a fortnight ago may name a day the event has
-         since been moved off, and the races follow the event rather than the
-         report. Where the event is not in the list at all there is nothing to
-         move: a report about an event somebody has deleted. */
-      const about = queue.id === 'schedule' && one.proposedDate !== '' ? eventOf(one) : undefined
-
-      if (about !== undefined) {
-        moveEvent(about.id, about.date, one.proposedDate, allRaces, editRecord)
-      }
+      /* The queue of dates used to move the event here on approval, in the same
+         overlay the administration writes an edited event into (owner,
+         06.08.2026). PDL P10a, 22.09.2026 removed the queue rather than leaving
+         a second road to the one thing `EventWriteApi` already does from the
+         event's own screen: „Redova je pet, ne šest." */
 
       if (made === null) {
         continue
@@ -612,20 +557,21 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     promises no number, because a proposal the sweep cannot take
                     is left standing: promising two and settling one is the same
                     lie in the question that the line under the button was
-                    written to avoid. On the other five nothing is ever left
+                    written to avoid. On the other four nothing is ever left
                     standing, so there the question says the number, and a
-                    hedge on all five would be a hedge that means nothing. */}
+                    hedge on all four would be a hedge that means nothing. */}
                 {waiting.length > 0 && (
                   <button
                     type="button"
                     className="button button--secondary"
                     /* Held back for the same reason one card is: the sweep is
                        the same decision taken forty times, and taken without the
-                       races it is forty half-moves. */
-                    aria-disabled={racesUnknown}
-                    aria-describedby={racesUnknown ? `${waitingId}-blocked` : undefined}
+                       members it is forty guesses at whether each one already
+                       has a team. */
+                    aria-disabled={decisionUnknown}
+                    aria-describedby={decisionUnknown ? `${waitingId}-blocked` : undefined}
                     onClick={() => {
-                      if (racesUnknown) {
+                      if (decisionUnknown) {
                         return
                       }
 
@@ -757,9 +703,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           }
                         >
                         <p className="submissions__meta">
-                          {/* A change of date may be reported by somebody with no
-                              account at all (PDL P10), so the sender is a name and
-                              a number, or nobody. */}
+                          {/* A row may be about nobody in the record at all (V9:
+                              „A payment waiting to be recognised may be about a
+                              person who is not one yet"), so the sender is a name
+                              and a number, or nobody. */}
                           {one.who === ''
                             ? t('verification.sentByAnonymous')
                             : t('verification.sentBy', {
@@ -769,23 +716,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                         </p>
 
                         {/* The three things the team will be made of, before it
-                            is made (owner, 03.08.2026). Only here: the other five
+                            is made (owner, 03.08.2026). Only here: the other four
                             queues decide about something that already exists. */}
                         {queue.id === 'teams' && <TeamFields item={one} />}
 
                         {/* What the member thought of it, which is the half of a
                             comment the moderator was deciding about without
                             seeing (owner, 06.08.2026). Only here: a rating is
-                            about an event and the other six queues are not. */}
+                            about an event and the other four queues are not. */}
                         {queue.id === 'comments' && <RatingGiven rating={one.rating} />}
 
                         <dl className="pending__facts">
-                          {datesOf(one).map((fact) => (
-                            <div key={fact.key}>
-                              <dt>{t(fact.key)}</dt>
-                              <dd>{formatShortDate(fact.value, locale)}</dd>
-                            </div>
-                          ))}
                           <div className="pending__text">
                             <dt>{bodyLabelFor(one)}</dt>
                             {/* Read, not edited. A biography used to be
@@ -915,7 +856,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                  could be deleted without the compiler saying a
                                  word: a review replaced it with `if (true)` and
                                  all 1902 tests passed, while a refusal on any
-                                 of the other five queues then wrote „null" to
+                                 of the other four queues then wrote „null" to
                                  whoever `memberNumber` named, which where that
                                  is empty is the whole league. `String()` is not
                                  on the list ADL A14 bans, and it lies in
@@ -948,21 +889,20 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                  takes the keyboard with it, and this one is meant
                                  to be reachable so its reason can be read. It says
                                  it cannot act and points at why. */
-                              aria-disabled={why !== null || racesUnknown}
+                              aria-disabled={why !== null || decisionUnknown}
                               aria-describedby={
                                 why !== null
                                   ? `${one.id}-blocked`
-                                  : racesUnknown
+                                  : decisionUnknown
                                     ? `${waitingId}-blocked`
                                     : undefined
                               }
                               onClick={() => {
-                                /* Accepting a change of date moves the races
-                                   with the event, so until they are here there
-                                   is nothing to move them by: the event alone
-                                   would be the half-move this decision is meant
-                                   to make whole (moveEvent). */
-                                if (!racesUnknown) {
+                                /* Approving a proposed team without the members
+                                   would risk a second team for somebody who
+                                   already has one, so until they are here there
+                                   is nothing safe to decide (whyNoDecision). */
+                                if (!decisionUnknown) {
                                   approveAll([one], teams)
                                 }
                               }}

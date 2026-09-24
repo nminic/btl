@@ -85,7 +85,7 @@ public final class WhatAResultChangeSays {
 	 * that file would fail that case - and that case is there because a message with no words
 	 * behind it throws at the worst possible moment.
 	 */
-	private static final String WORDS = "notices/sr";
+	private static final String WORDS = "notices/results";
 
 	/** One set of words, and {@code mail/sr.properties} is it - {@link WhatTheMessageSays}
 	 *  carries the reason at length and this does not repeat it. */

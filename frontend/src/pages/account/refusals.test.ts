@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   WHEN_CONFIRMING_AN_ADDRESS,
+  WHEN_LEAVING_A_TEAM,
   WHEN_PROPOSING_A_TEAM,
   WHEN_RATING_AN_EVENT,
   WHEN_REGISTERING,
@@ -45,35 +46,56 @@ function reasonsIn(file: string): string[] {
   return [...java.matchAll(/static final String \w+ = "([^"]+)";/g)].map((one) => one[1] ?? '')
 }
 
+/**
+ * A FILE IS READ AGAINST THE SCREENS THAT MEET IT, AND SINCE 24.09.2026 THERE CAN BE MORE
+ * THAN ONE.
+ *
+ * <p>It was one screen per file until `TeamWriteApi` gained a second act: proposing a team
+ * and leaving one are two addresses in one class, and the reasons of the two are answered on
+ * two different screens. Folded into one dictionary they would still have passed this gate,
+ * and a reader of that dictionary would have had to work out which of its names can reach
+ * which screen.
+ *
+ * <p><b>The count is still over the FILE and is what keeps this honest.</b> The union only
+ * widens where a reason may be answered; it does not excuse one that is answered nowhere,
+ * and a reason added to either route still has to arrive as a red gate with a number in the
+ * message.
+ */
 describe('the reasons the server can name', () => {
-  const routes: [file: string, screen: Record<string, string>, howMany: number][] = [
+  const routes: [file: string, screens: Record<string, string>[], howMany: number][] = [
     /* The counts are here so that a regular expression which stopped matching cannot
        pass as "this route names nothing". Three, one and three are what the files hold
        today; one more is exactly the event this file exists for, and it arrives as a
        red gate with the number in the message. */
-    ['PasswordResetApi.java', WHEN_SETTING_A_PASSWORD, 3],
-    ['EmailConfirmationApi.java', WHEN_CONFIRMING_AN_ADDRESS, 1],
+    ['PasswordResetApi.java', [WHEN_SETTING_A_PASSWORD], 3],
+    ['EmailConfirmationApi.java', [WHEN_CONFIRMING_AN_ADDRESS], 1],
     /* The third route, added 21.09.2026 when the registration screen began to send.
        It is the first one here whose refusals do not all arrive under 400: the taken
        address is a 409. That changes nothing in this file, and the reason it does not
        is the point - the gate is over the NAMES a route declares, and a name is what
        the screen looks a sentence up by, whichever number carried it. */
-    ['RegistrationApi.java', WHEN_REGISTERING, 3],
+    ['RegistrationApi.java', [WHEN_REGISTERING], 3],
     /* The fourth and fifth, added 22.09.2026 when ProposeTeam.tsx and RateEvent.tsx
        began to send: two more members' writes that answer 201 rather than 204, which
        is `askTheServer`'s own widening and not a fact this gate has any reason to
        know about - the reasons a route can name are still just names. */
-    ['TeamWriteApi.java', WHEN_PROPOSING_A_TEAM, 5],
-    ['CommentWriteApi.java', WHEN_RATING_AN_EVENT, 3],
+    /* And the sixth reason of the fourth, added 24.09.2026 with DELETE
+       /api/teams/{id}/membership: one class, two acts, two screens. The count is the
+       file's and went from five to six; `WHEN_LEAVING_A_TEAM` is where the sixth is
+       answered, and the note on it says why it is not a line in the dictionary above. */
+    ['TeamWriteApi.java', [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM], 6],
+    ['CommentWriteApi.java', [WHEN_RATING_AN_EVENT], 3],
   ]
 
-  it.each(routes)('are all answered on the screen that meets %s', (file, screen, howMany) => {
+  it.each(routes)('are all answered on the screen that meets %s', (file, screens, howMany) => {
     const reasons = reasonsIn(file)
 
     expect(reasons, `${file} names no reason at all, so this measures nothing`).toHaveLength(
       howMany,
     )
-    expect(reasons.filter((reason) => !Object.hasOwn(screen, reason))).toEqual([])
+    expect(
+      reasons.filter((reason) => !screens.some((screen) => Object.hasOwn(screen, reason))),
+    ).toEqual([])
   })
 
   it('and the screens claim no reason their route cannot answer', () => {
@@ -81,7 +103,7 @@ describe('the reasons the server can name', () => {
        server dropped is a sentence in the dictionary that nothing can ever draw, and
        the next reader has no way to tell it from one that is live. */
     const known = new Set(routes.flatMap(([file]) => reasonsIn(file)))
-    const claimed = routes.flatMap(([, screen]) => Object.keys(screen))
+    const claimed = routes.flatMap(([, screens]) => screens.flatMap((one) => Object.keys(one)))
 
     expect(claimed.filter((reason) => !known.has(reason))).toEqual([])
   })

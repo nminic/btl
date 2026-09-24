@@ -95,10 +95,10 @@ class WhatHeMayDo {
 	 * WHICH OF THESE he may do, in the order they were given.
 	 *
 	 * <p><b>Asked as one question because the answer has to be one answer.</b>
-	 * {@link VerificationApi} needs six of these at once - „Moderator vidi samo redove
+	 * {@link VerificationApi} needs five of these at once - „Moderator vidi samo redove
 	 * i entitete za koje ima pravo" (owner, PDL P28a, 30.07.2026, „Moderator vidi samo
-	 * redove i entitete") - and asking {@link #may(String)} six times would read the role and the
-	 * ticks six times, so a tick taken away between the third and the fourth reading would leave one
+	 * redove i entitete") - and asking {@link #may(String)} five times would read the role and the
+	 * ticks five times, so a tick taken away between the third and the fourth reading would leave one
 	 * answer describing two different moderators. Read once, the answer is a snapshot of one account
 	 * at one moment.
 	 *

@@ -39,7 +39,7 @@ class WhatAResultChangeSaysTest {
 			new BigDecimal("9.5"), 12, 7, 2645, new BigDecimal("8.10"));
 
 	private static ResourceBundle words() {
-		return ResourceBundle.getBundle("notices/sr", Locale.ROOT);
+		return ResourceBundle.getBundle("notices/results", Locale.ROOT);
 	}
 
 	/**

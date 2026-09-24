@@ -223,10 +223,10 @@ function usePathname(): string {
  * The queues this moderator may work in, each with what is waiting in it.
  *
  * Only the ones he may open (owner, 30.07.2026). A moderator is not to be aware
- * that there are actions nobody gave him: naming seven queues to somebody who
- * may work in one is telling him about six doors, and every one of them is an
- * invitation to ask what is behind it. The superadmin sees all seven, because he
- * may open all seven.
+ * that there are actions nobody gave him: naming five queues to somebody who
+ * may work in one is telling him about four doors, and every one of them is an
+ * invitation to ask what is behind it. The superadmin sees all five, because he
+ * may open all five.
  *
  * Counted through countFor, one queue at a time (queues.ts). A decision taken
  * on the right is a decision written into the session, and the number beside the
@@ -286,7 +286,7 @@ function QueuesSector() {
         count: countFor(waiting, queue),
       }))}
       /* With the numbers, because that is where the numbers are now. A file that
-         failed counts every queue it feeds as nought, and six quiet noughts read
+         failed counts every queue it feeds as nought, and five quiet noughts read
          as an afternoon's work already done. This used to be said on the hub,
          which was the only screen the numbers were on; the hub draws nothing of
          its own now (owner, 06.08.2026), so the numbers stand in the navigation,
@@ -295,8 +295,8 @@ function QueuesSector() {
          **It answers a file that failed, and only that.** `failed` is one of
          three states, and while the file is still on its way the third is the
          one holding: `dataOr(items, [])` counts every queue it feeds as nought
-         and this raises nothing, so the column reads six noughts with not a word
-         beside them. Measured on this branch, with the file left unanswered: six
+         and this raises nothing, so the column reads five noughts with not a word
+         beside them. Measured on this branch, with the file left unanswered: five
          rows at „0 na čekanju" and no alert in this sector at all. That is not
          new and it is not what 29.08.2026 changed, but the sentence that used to
          be here said the alarm covered it, and it does not.

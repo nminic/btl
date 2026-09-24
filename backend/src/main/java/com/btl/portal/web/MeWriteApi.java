@@ -11,11 +11,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * A MEMBER CHANGING WHAT THE PORTAL SAYS ABOUT HIM, WHICH IS ONE REQUEST TAKING TWO
@@ -25,7 +29,7 @@ import java.util.Optional;
  * and his answer on 18.09.2026 when asked what a written {@code /api/me} would carry:
  * „upis bio i slike ide SA VERIFIKACIJOM". Beside it, PDL P23, 06.09.2026: „Skrivanje
  * profila se pravi. Jedno polje na clanu i jedan prekidac u Podesavanjima." So one screen
- * sends two things and they do NOT end in the same place:
+ * sends things that do NOT end in the same place:
  *
  * <ul>
  * <li><b>The text waits.</b> PDL P11: „Profil ima trkacku biografiju koju popunjava
@@ -37,7 +41,24 @@ import java.util.Optional;
  * posetilaca koji nisu clanovi; od drugih clanova ne sme", and P23 calls it „jedno polje
  * na clanu". No decision anywhere puts it in front of anybody, and there is nothing about
  * it for a moderator to judge: it is the member's own choice over his own page.
+ * <li><b>AND THE PERSONAL DATA TAKE EFFECT AT ONCE TOO, WHICH IS THE OWNER'S DECISION OF
+ * 24.09.2026.</b> PDL P28b, 1: „Licni podaci (adresa, telefon, grad, ime, prezime) stupaju
+ * odmah. Red za proveru ceka samo ono sto javnost vidi kao sadrzaj: biografija i slika."
+ * That entry says in as many words what it does to the sentence that was here before it:
+ * PDL P18 („Sva polja clan uredjuje sam, administrator potvrdjuje") „se doslovno citalo
+ * tako da i promena telefona ceka odobrenje. Vlasnik je izabrao uze citanje", and the cost
+ * of the wide one was put to him first - „siroko citanje bi trazilo da red nosi razliku
+ * SVAKOG polja", which is a queue card with nothing on it for a moderator to judge.
  * </ul>
+ *
+ * <p><b>AND TWO FIELDS OF THE MEMBER'S OWN FORM ARE REFUSED RATHER THAN IGNORED.</b> PDL
+ * P28b, 2, 24.09.2026: „Datum rodjenja i pol menja samo administrator, jer iz njih se
+ * izvode kategorija i uzrasna grupa, pa bi slobodna izmena znacila da clan bira u kojoj
+ * kategoriji trci i menja vec odigran poredak unazad." Refused and not dropped, and the
+ * difference is ADL A54's: a field Jackson throws away is a field the member believes he
+ * changed, and the next thing he reads is his old date of birth with no sentence anywhere
+ * saying why. {@link #ONLY_AN_ADMINISTRATOR_CHANGES} carries them and
+ * {@link #NOT_YOURS_TO_CHANGE} is what he is told.
  *
  * <p><b>A SEPARATE CLASS FROM {@link MeApi} AND NOT A SECOND METHOD ON IT</b>, which is
  * the split the portal already makes three times over - {@link TeamApi} and
@@ -300,11 +321,65 @@ class MeWriteApi {
 	static final String A_TEXT_ALREADY_WAITS = "aTextAlreadyWaits";
 
 	/**
+	 * A field of the member's own form that only an administrator moves.
+	 *
+	 * <p>PDL P28b, 2, 24.09.2026. The answer names WHICH of them arrived, because a
+	 * refusal that does not is a form the member has to take apart himself to find the box
+	 * the server would not take - which is the same sentence ADL A54 makes about what is
+	 * missing, asked about what is not his.
+	 */
+	static final String NOT_YOURS_TO_CHANGE = "onlyAnAdministratorChangesThese";
+
+	/** Longer than the box on the member's own form, and the answer says which box. */
+	static final String A_FIELD_IS_TOO_LONG = "aFieldIsTooLong";
+
+	/**
+	 * Emptied, where the form says the portal must have it.
+	 *
+	 * <p>Not the same refusal as a field left OUT: out means „do not touch it", which is
+	 * this route's whole reading of ADL A54, and empty means „I have none", which for a
+	 * column V7 and V8 declare NOT NULL is a request the database could not hold even if
+	 * the portal agreed to it.
+	 */
+	static final String A_FIELD_IS_BLANK = "aFieldIsBlank";
+
+	/**
+	 * A town named in both ways at once, or in neither, when the request named one at all.
+	 *
+	 * <p>The same word {@link EventWriteApi} answers, because it is the same sentence about
+	 * a different row - see {@link #theTownNamed} for what is shared here and what is not.
+	 */
+	static final String THE_TOWN_IS_NOT_SAID_ONCE = "theTownIsNotSaidOnce";
+
+	/** A town of the codebook nothing maps, or a country code nothing maps. */
+	static final String THE_TOWN_IS_NOT_KNOWN = "theTownIsNotKnown";
+
+	/**
+	 * THE TWO FIELDS OF HIS OWN FORM A MEMBER MAY NOT MOVE, and the reason is one thing.
+	 *
+	 * <p>PDL P28b, 2, 24.09.2026: both of them are read by the portal to work out which
+	 * CATEGORY somebody races in (PDL P5, P12), so a member who could edit them could
+	 * choose his category and could change a table of a season already run. The owner gave
+	 * that reason himself and put the change where it already was: „Menja ih samo
+	 * administrator."
+	 *
+	 * <p><b>Spelt as the FORM spells them and not as the columns are spelt</b>, because
+	 * what arrives here is a body built by that form: {@code birthDate} and {@code gender},
+	 * which {@code registracija.form.json} carries and {@code competitor} holds as
+	 * {@code birth_date} and {@code gender}. The floor in {@code MeWriteApiTest} partitions
+	 * every field of that file into what this route takes, what it refuses here, and what
+	 * it carries nowhere - so a thirteenth field on the form tomorrow fails the build until
+	 * somebody says which of the three it is, instead of being dropped in silence.
+	 */
+	static final List<String> ONLY_AN_ADMINISTRATOR_CHANGES = List.of("birthDate", "gender");
+
+	/**
 	 * THE TAB THIS WAITS IN, and the only one it could wait in.
 	 *
-	 * <p>V5 carries the six queues of the rights matrix and V9 generates
-	 * {@code verification.right_code} out of the tab and keys it to them, so a row cannot
-	 * stand in a tab nobody has the right to moderate. This is the tab PDL P28a,
+	 * <p>V5 carried six queues of the rights matrix and V31 (PDL P10a, 22.09.2026) took
+	 * one away, so the matrix carries five now; V9 generates {@code verification.right_code}
+	 * out of the tab and keys it to them, so a row cannot stand in a tab nobody has the
+	 * right to moderate. This is the tab PDL P28a,
 	 * 06.08.2026 calls „Profili: trkacke biografije i profilne slike".
 	 */
 	private static final String THE_PROFILES_TAB = "profiles";
@@ -358,7 +433,88 @@ class MeWriteApi {
 	 * so a third field added to the request tomorrow fails the build until somebody decides
 	 * whether leaving it out is a refusal.
 	 */
-	static final List<String> WHAT_THIS_ROUTE_TAKES = List.of("bio", "profileHidden");
+	static final List<String> WHAT_THIS_ROUTE_TAKES = List.of("bio", "profileHidden",
+			"firstName", "lastName", "address", "phone", "placeId", "city", "country");
+
+	/**
+	 * THE PERSONAL FIELDS, EACH WITH THE LENGTH OF THE MEMBER'S OWN BOX AND THE WAY OUT OF
+	 * THE REQUEST.
+	 *
+	 * <p><b>Written by hand with its floor in the same commit</b>, which is the arrangement
+	 * this file already has for {@link #AS_LONG_AS_THE_FORM_ALLOWS} and the one
+	 * {@code CLAUDE.md} demands of any list in a guard: {@code MeWriteApiTest} reads
+	 * {@code registracija.form.json} and requires every number here to be that field's own
+	 * {@code maxLength}, and requires this map to hold an entry for every TEXT field of the
+	 * form this route takes. A box the owner moves stops the build until the server moves
+	 * with it, and a tenth field added to {@link Change} with no box behind it stops it too.
+	 *
+	 * <p><b>{@code country} is not here and that is not an omission.</b> It is a code out of
+	 * the codebook, not a box somebody types prose into: what bounds it is whether
+	 * {@code country} holds a row with that code, which is asked of the table rather than
+	 * of a number. {@code placeId} is a key and is bounded the same way. Both are refused
+	 * with {@link #THE_TOWN_IS_NOT_KNOWN} and neither can be „too long".
+	 *
+	 * <p><b>Counted in the units the box counts in</b>, for the same reason the biography is:
+	 * HTML's {@code maxlength} is a code-unit length, which is what {@link String#length()}
+	 * answers.
+	 */
+	static final Map<String, Personal> EACH_BOX_ON_THE_FORM = Map.of(
+			"firstName", new Personal(60, Change::firstName),
+			"lastName", new Personal(60, Change::lastName),
+			"address", new Personal(120, Change::address),
+			"city", new Personal(80, Change::city),
+			"phone", new Personal(30, Change::phone),
+			/* AND THE BIOGRAPHY IS HERE TOO, WHICH IS THE FLOOR ABOVE CATCHING A REAL GAP
+			   RATHER THAN AN EXCEPTION BEING WRITTEN FOR IT.
+
+			   The first draft left it out, on the reasoning that it has a constant and a
+			   refusal of its own from before 24.09.2026. The floor went red and it was right
+			   to: its question is „is every box this route takes bounded by the form's own
+			   number", and an answer of „yes, but somewhere else" is two homes for one kind
+			   of fact. `CLAUDE.md` of 14.09.2026 asks exactly this of every exception a guard
+			   needs in order to pass - „zasto se to uopste razlikuje?" - and the honest answer
+			   here was „it does not, it is just written twice".
+
+			   WHAT DOES NOT CHANGE IS THE ANSWER THE MEMBER GETS. `AS_LONG_AS_THE_FORM_ALLOWS`
+			   is still the number and still has its own floor over the same file, and the
+			   biography is still judged before `boxesOverflowed` runs, so a text that is too
+			   long is still refused with `THE_TEXT_IS_TOO_LONG` and never as one of the
+			   personal boxes. Every caller reading that word reads it unchanged. */
+			"bio", new Personal(AS_LONG_AS_THE_FORM_ALLOWS, Change::bio));
+
+	/**
+	 * THE THREE FIELDS OF THE FORM THIS ROUTE TAKES THAT MAY NEVER BE EMPTIED, and the one
+	 * that may.
+	 *
+	 * <p>V7 and V8 settle it rather than this class: {@code competitor_first_name_not_blank},
+	 * {@code competitor_last_name_not_blank} and {@code competitor_address_not_blank} refuse
+	 * a blank outright, while {@code competitor_phone_not_blank} is written
+	 * {@code phone is null or btrim(phone) <> ''} with V8's own reason beside it - „Optional,
+	 * and the only optional field of the thirteen, so an empty string would be a second way
+	 * of saying the same absence. There is one way: no phone is NULL."
+	 *
+	 * <p>So a blank phone is a REMOVAL, exactly as a blank biography is since the owner's
+	 * decision of 19.09.2026, and a blank name is a request that is refused before anything
+	 * is written rather than one the database refuses afterwards - a constraint violation
+	 * aborts the transaction and takes the switch and the queue row down with it, which is a
+	 * 500 where the member should have been told which box he emptied.
+	 *
+	 * <p><b>{@code city} is not on either list</b>, because emptying it is not a fact about a
+	 * column but about the TOWN, which is three columns and one rule; see
+	 * {@link #theTownNamed}.
+	 */
+	static final List<String> NEVER_EMPTIED = List.of("firstName", "lastName", "address");
+
+	/**
+	 * One box of the member's own form: how long it is, and how to get its value out of what
+	 * arrived.
+	 *
+	 * <p>The reader is a method reference onto {@link Change} rather than a name looked up by
+	 * reflection, so a field renamed on the record does not compile instead of quietly
+	 * reading nothing.
+	 */
+	record Personal(int longest, Function<Change, String> in) {
+	}
 
 	private final JdbcClient db;
 
@@ -408,16 +564,44 @@ class MeWriteApi {
 	 * the owner's decision of 19.09.2026 a blank text is „skloni moju biografiju", so null
 	 * and blank are two different instructions and a primitive could not carry the first.
 	 *
-	 * <p>There is no member number, no name, no town and no birthday choice: this route
-	 * changes the caller's own record and reads who that is off the session.
+	 * <p><b>THE PERSONAL FIELDS ARE BOXED BY THE SAME SENTENCE AND CARRY A THIRD MEANING
+	 * ONLY ONE OF THEM HAS.</b> Null is „do not touch", a value is „make it this", and for
+	 * {@code phone} - and for {@code phone} alone among them - blank is „I have none", which
+	 * is V8's own reading of its column. A blank name or address is refused; see
+	 * {@link #NEVER_EMPTIED}.
+	 *
+	 * <p>There is no member number, no date of birth, no gender and no birthday choice:
+	 * the two the member may not move are named in {@link #ONLY_AN_ADMINISTRATOR_CHANGES}
+	 * and refused rather than carried here, and this route changes the caller's own record
+	 * and reads who that is off the session.
+	 *
+	 * <p><b>AND NO ADDRESS OF ELECTRONIC MAIL, which is a boundary rather than an
+	 * omission.</b> PDL P28b, 2, 24.09.2026: „Adresu elektronske poste clan menja sam, ali
+	 * mora da potvrdi novu. Posta je ujedno prijava na portal, pa izmena bez potvrde znaci
+	 * preuzimanje naloga." A field that took effect here would be exactly the takeover that
+	 * sentence refuses, and one that waited for a confirmation would be a third road with a
+	 * second table behind it - so it is not on this route at all, and the sentence at the
+	 * head of this class says where that work is.
 	 *
 	 * @param bio           what the member would say about himself. A text goes to a
 	 *                      moderator and not to the profile; BLANK removes what stands
 	 *                      there, at once; null leaves it alone
 	 * @param profileHidden whether visitors who are not signed in may reach his profile
 	 *                      page. Null leaves it alone
+	 * @param firstName     his own name, which is not the name on the account (PDL P21)
+	 * @param lastName      his own surname, the same
+	 * @param address       where a shirt and a medal are sent, and the address of residence
+	 *                      in the register of members - the owner settled on 11.08.2026
+	 *                      that both readings are one field
+	 * @param phone         optional throughout: blank removes it, null leaves it alone
+	 * @param placeId       a town of the world codebook, by its {@code geonames_id} and not
+	 *                      by its key - which carries its own country, so no country may be
+	 *                      sent beside it (owner, 11.08.2026)
+	 * @param city          a town typed by hand instead, which then names its country
+	 * @param country       the code of that country, {@code RS}, never its key
 	 */
-	record Change(String bio, Boolean profileHidden) {
+	record Change(String bio, Boolean profileHidden, String firstName, String lastName,
+			String address, String phone, Long placeId, String city, String country) {
 	}
 
 	/** Why a change could not be made. */
@@ -440,6 +624,24 @@ class MeWriteApi {
 	}
 
 	/**
+	 * A refusal that is ABOUT NAMED FIELDS, and says which.
+	 *
+	 * <p>The same shape as {@link NotComplete} and for the same half of ADL A54 - „kad se
+	 * forma odbije, kaze se sta fali" - with {@code reason} first so every caller that
+	 * reads a refusal by its reason reads this one unchanged. The name of the list differs
+	 * because the sentence does: {@code missing} is what the server could not SEE, and
+	 * {@code fields} is what it saw and would not take.
+	 *
+	 * <p>Three refusals wear it, and each one is a different sentence about the same list:
+	 * a field only an administrator moves, a field longer than its own box, and a field
+	 * emptied where the portal must have one. One record and not three, because a caller
+	 * that draws the fault beside the box reads all three the same way and only the
+	 * {@code reason} decides what it says.
+	 */
+	record NotAllowed(String reason, List<String> fields) {
+	}
+
+	/**
 	 * WHAT IS TRUE AFTER THE REQUEST, READ BACK OUT OF THE DATABASE AND NOT OFF THE
 	 * REQUEST.
 	 *
@@ -455,8 +657,22 @@ class MeWriteApi {
 	 *                      or null where none stands. Not „what this request wrote": a
 	 *                      member who sent only the switch is told about the text that was
 	 *                      already waiting, because that is what is true
+	 * @param firstName     his name as the row now holds it, which after a request carrying
+	 *                      one IS what was sent - nobody approves it (PDL P28b, 1)
+	 * @param lastName      the same
+	 * @param address       the same
+	 * @param phone         the same, and null where he has none
+	 * @param placeId       the {@code geonames_id} of his town where it came out of the
+	 *                      codebook, and null where he typed one. Answered as the codebook's
+	 *                      own number and never as {@code place.id}, which is this
+	 *                      database's key and means nothing to a caller
+	 * @param city          the town he typed, and null where it came out of the codebook
+	 * @param country       the code of that country, and null where the town is the
+	 *                      codebook's - which carries its own
 	 */
-	record Changed(String bio, boolean profileHidden, Long waiting) {
+	record Changed(String bio, boolean profileHidden, Long waiting, String firstName,
+			String lastName, String address, String phone, Long placeId, String city,
+			String country) {
 	}
 
 	/**
@@ -519,13 +735,33 @@ class MeWriteApi {
 			return away(response);
 		}
 
-		Change typed = read(request.getInputStream().readAllBytes());
+		JsonNode sent = read(request.getInputStream().readAllBytes());
+
+		/* WHAT IS NOT HIS TO MOVE IS ASKED OF THE BODY AS IT ARRIVED, AND BEFORE ANYTHING
+		   ELSE IS LOOKED AT.
+
+		   Of the TREE and not of `Change`, because the whole point is that these two names
+		   are NOT on that record: bound into it they would be two fields this route takes,
+		   and `WHAT_THIS_ROUTE_TAKES` - which its own floor reads off the record - would
+		   then tell every caller that the portal accepts a date of birth. Asked here, the
+		   record goes on describing exactly what this route writes, and the refusal is a
+		   sentence about the request rather than a field quietly ignored (ADL A54).
+
+		   Asked FIRST, because a body carrying a date of birth AND a name too long is a
+		   request whose first fault is that half of it was never this member's to send. */
+		List<String> notHis = named(sent, ONLY_AN_ADMINISTRATOR_CHANGES);
+
+		if (!notHis.isEmpty()) {
+			return ResponseEntity.badRequest().body(new NotAllowed(NOT_YOURS_TO_CHANGE, notHis));
+		}
+
+		Change typed = typedFrom(sent);
 
 		/* A BODY THAT CHANGES NOTHING AT ALL, and one this portal could not read: one answer
 		   and not two, because neither carries a single value this route could act on.
 		   Answered 200, the first would be the portal agreeing to do nothing and reporting
 		   that it had. */
-		if (typed == null || (typed.bio() == null && typed.profileHidden() == null)) {
+		if (typed == null || nothingWasNamed(typed)) {
 			return ResponseEntity.badRequest()
 					.body(new NotComplete(THE_FORM_IS_NOT_COMPLETE, WHAT_THIS_ROUTE_TAKES));
 		}
@@ -537,7 +773,94 @@ class MeWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_TEXT_IS_TOO_LONG);
 		}
 
-		return inOneTransaction.execute(committing -> write(me, typed));
+		List<String> tooLong = boxesOverflowed(typed);
+
+		if (!tooLong.isEmpty()) {
+			return ResponseEntity.badRequest().body(new NotAllowed(A_FIELD_IS_TOO_LONG, tooLong));
+		}
+
+		List<String> emptied = boxesEmptied(typed);
+
+		if (!emptied.isEmpty()) {
+			return ResponseEntity.badRequest().body(new NotAllowed(A_FIELD_IS_BLANK, emptied));
+		}
+
+		/* THE TOWN IS RESOLVED BEFORE THE TRANSACTION OPENS, so a town nothing maps is a
+		   refusal that has written nothing rather than one decided over a switch that was
+		   already moved - the same order every other refusal on this route keeps. */
+		Optional<Town> town = theTownNamed(typed);
+
+		if (town.isPresent() && town.orElseThrow().refused() != null) {
+			return no(HttpStatus.BAD_REQUEST, town.orElseThrow().refused());
+		}
+
+		return inOneTransaction.execute(committing -> write(me, typed, town.orElse(null)));
+	}
+
+	/**
+	 * WHICH OF THESE NAMES THE BODY ACTUALLY CARRIED, in the order they are declared in.
+	 *
+	 * <p>{@code has} and not „is not null": a field sent as {@code null} is still a field
+	 * the member's form put in the request, and telling him it was ignored because its
+	 * value happened to be empty would be the silence this refusal exists to break.
+	 */
+	private static List<String> named(JsonNode sent, List<String> among) {
+		List<String> found = new ArrayList<>();
+
+		for (String one : among) {
+			if (sent != null && sent.has(one)) {
+				found.add(one);
+			}
+		}
+
+		return found;
+	}
+
+	/**
+	 * Whether the request named nothing this route could act on.
+	 *
+	 * <p>Written over {@link #WHAT_THIS_ROUTE_TAKES} through the record's own readers rather
+	 * than as nine comparisons, so the day a tenth field is added the only thing that has to
+	 * move is the record and the two lists whose floor already compares them.
+	 */
+	private static boolean nothingWasNamed(Change typed) {
+		return typed.bio() == null && typed.profileHidden() == null && typed.firstName() == null
+				&& typed.lastName() == null && typed.address() == null && typed.phone() == null
+				&& typed.placeId() == null && typed.city() == null && typed.country() == null;
+	}
+
+	/** The boxes whose contents would not fit the member's own form, oldest rule first. */
+	private static List<String> boxesOverflowed(Change typed) {
+		List<String> over = new ArrayList<>();
+
+		for (String name : WHAT_THIS_ROUTE_TAKES) {
+			Personal box = EACH_BOX_ON_THE_FORM.get(name);
+			String value = box == null ? null : box.in().apply(typed);
+
+			/* MEASURED OVER WHAT WOULD BE STORED, exactly as the biography is: the text is
+			   stripped on the way in, so a member who ends a full box with a space is not
+			   refused for a character that is thrown away before the row is written. */
+			if (value != null && value.strip().length() > box.longest()) {
+				over.add(name);
+			}
+		}
+
+		return over;
+	}
+
+	/** The boxes that arrived empty where V7 says the portal must have something. */
+	private static List<String> boxesEmptied(Change typed) {
+		List<String> blank = new ArrayList<>();
+
+		for (String name : NEVER_EMPTIED) {
+			String value = EACH_BOX_ON_THE_FORM.get(name).in().apply(typed);
+
+			if (value != null && value.isBlank()) {
+				blank.add(name);
+			}
+		}
+
+		return blank;
 	}
 
 	/**
@@ -551,14 +874,132 @@ class MeWriteApi {
 	 * terse.</b> {@code readAllBytes} answers an empty array for a request that carried
 	 * nothing, and Jackson refuses empty input exactly as it refuses input it cannot parse,
 	 * so a check for one would be a branch beside a road that already goes where it should.
+	 *
+	 * <p><b>THE TREE AND NOT THE RECORD, since 24.09.2026.</b> Two questions are asked of
+	 * one body and only one of them is about a field this route takes: „did he send a date
+	 * of birth" is about a name that is deliberately NOT on {@link Change}, and a record
+	 * cannot be asked about a field it does not have. Read once into a tree, both questions
+	 * are asked of the same bytes; read twice, a body could parse one way and not the
+	 * other.
 	 */
-	private Change read(byte[] sent) {
+	private JsonNode read(byte[] sent) {
 		try {
-			return json.readValue(sent, Change.class);
+			return json.readTree(sent);
 		}
 		catch (JacksonException cannot) {
 			return null;
 		}
+	}
+
+	/**
+	 * THE TREE TURNED INTO THE RECORD, or nothing at all.
+	 *
+	 * <p>Through the application's own {@link ObjectMapper}, so the conversion is the one
+	 * {@code @RequestBody} would have made - unknown fields dropped and all. A body that is
+	 * valid JSON but not an object at all (a number, a list, {@code null}) parses into a
+	 * tree and fails here, and it is the same answer as a body that did not parse: neither
+	 * carries a single value this route could act on.
+	 */
+	private Change typedFrom(JsonNode sent) {
+		if (sent == null || !sent.isObject()) {
+			return null;
+		}
+
+		try {
+			return json.treeToValue(sent, Change.class);
+		}
+		catch (JacksonException cannot) {
+			/* A field of the right NAME carrying the wrong SORT - `placeId: "Beograd"`,
+			   `profileHidden: 7` - which the tree happily held and the record cannot. The
+			   same answer a body nobody could parse gets, for the same reason. */
+			return null;
+		}
+	}
+
+	/**
+	 * THE TOWN THE REQUEST NAMED, or nothing where it named none.
+	 *
+	 * <p><b>Nothing and „a town that is wrong" are two different answers</b>, which is why
+	 * this hands back an {@link Optional} of a record that may itself carry a refusal
+	 * instead of a bare null: a request that says nothing about where the member lives
+	 * leaves all three columns alone, and a request that says something the portal cannot
+	 * resolve is refused rather than quietly ignored.
+	 *
+	 * <p><b>THE THREE COLUMNS ARE ONE FACT AND THE SCHEMA SAYS SO.</b> V7:
+	 * {@code competitor_town_is_from_the_codebook_or_typed check ((place_id is null) <>
+	 * (city is null))} and {@code competitor_typed_town_names_its_country check ((city is
+	 * null) = (country_id is null))}. So they cannot be written one at a time the way the
+	 * other personal columns are: {@code coalesce} on each of them separately would let a
+	 * member who typed a town clear his {@code place_id} and break the first check, which
+	 * V7's own note spells out. Either the request names the whole town or it names none of
+	 * it, and {@link #write} writes all three together or leaves all three alone.
+	 *
+	 * <p><b>A THIRD HOME FOR THIS RULE, NAMED RATHER THAN HIDDEN, AND WITH THE MUTATION
+	 * THAT CATCHES IT DRIFTING.</b> {@link RegistrationApi#theTown} answers it for a member
+	 * being made and {@link EventWriteApi} for an event, and the two already differ on
+	 * purpose - one hands back nothing at all and the other names WHICH of the two faults
+	 * it is. Folding the three into one class would have to settle that difference and
+	 * would reach into both of those files, which is its own piece of work rather than a
+	 * line of this one. What is done instead is what {@code CLAUDE.md} asks of a fact that
+	 * lives in more than one place: the place that decides FOR A MEMBER'S OWN ROW is this
+	 * one, and {@code MeWriteApiTest.theSameMalformedTownIsRefusedWhereverItIsSent} sends
+	 * one body that names a town in both ways at once to this route and to
+	 * {@code /api/registration} and requires both to refuse it. Loosened here alone, that
+	 * case goes red.
+	 */
+	private Optional<Town> theTownNamed(Change typed) {
+		boolean fromTheCodebook = typed.placeId() != null;
+		boolean typedByHand = !isNothing(typed.city()) || !isNothing(typed.country());
+
+		if (!fromTheCodebook && !typedByHand) {
+			return Optional.empty();
+		}
+
+		/* BOTH WAYS AT ONCE IS NOT A TOWN. A codebook town „nosi svoju drzavu, koja se ne
+		   menja" (owner, 11.08.2026), so a country sent beside one would be the portal
+		   letting somebody put Belgrade in France. And half of the typed shape is not a town
+		   either: a name with no country, or a country with no name. */
+		if (fromTheCodebook == typedByHand
+				|| (typedByHand && (isNothing(typed.city()) || isNothing(typed.country())))) {
+
+			return Optional.of(Town.refusedWith(THE_TOWN_IS_NOT_SAID_ONCE));
+		}
+
+		if (fromTheCodebook) {
+			return Optional.of(db.sql("select id from place where geonames_id = ?")
+					.param(typed.placeId()).query(Long.class).optional()
+					.map(one -> new Town(one, null, null, null))
+					.orElseGet(() -> Town.refusedWith(THE_TOWN_IS_NOT_KNOWN)));
+		}
+
+		return Optional.of(db.sql("select id from country where code = ?")
+				.param(typed.country().strip()).query(Long.class).optional()
+				.map(one -> new Town(null, typed.city().strip(), one, null))
+				.orElseGet(() -> Town.refusedWith(THE_TOWN_IS_NOT_KNOWN)));
+	}
+
+	/**
+	 * A town resolved into the three columns V7 holds, or the word for why it could not be.
+	 *
+	 * <p>Exactly one of {@code placeKey} and {@code city} is ever set on a resolved town,
+	 * which is the schema's own check read as a shape instead of as a refusal.
+	 *
+	 * @param placeKey {@code place.id}, THIS DATABASE'S KEY, resolved from the
+	 *                 {@code geonames_id} the request carried - the two are never the same
+	 *                 number and never confused, which is the distinction
+	 *                 {@link EventWriteApi} draws by naming its own field {@code placeKey}
+	 * @param refused  the reason, on a town that resolved to nothing. Null on a real one
+	 */
+	private record Town(Long placeKey, String city, Long countryId, String refused) {
+
+		static Town refusedWith(String reason) {
+			return new Town(null, null, null, reason);
+		}
+	}
+
+	/** Null, empty or nothing but spaces, which are one answer about a box nobody filled. */
+	private static boolean isNothing(String value) {
+		return value == null || value.isBlank();
 	}
 
 	/**
@@ -600,25 +1041,66 @@ class MeWriteApi {
 	 * TheSwitchAndTheTextAreOneThingTest} measures, is this statement together with the queue
 	 * row, where a lever does exist.
 	 */
-	private ResponseEntity<?> write(long me, Change typed) {
+	private ResponseEntity<?> write(long me, Change typed, Town town) {
 		boolean removing = typed.bio() != null && typed.bio().isBlank();
 
 		if (typed.bio() != null && !removing && theTextThatWaits(me).isPresent()) {
 			return no(HttpStatus.CONFLICT, A_TEXT_ALREADY_WAITS);
 		}
 
-		if (typed.profileHidden() != null || removing) {
+		/* THE PHONE IS THE ONE FIELD WHOSE „NOT SENT" AND WHOSE VALUE ARE BOTH NULL, so it
+		   cannot ride on `coalesce` the way the rest do: the parameter that would mean
+		   „leave it alone" is the same parameter that means „he has none". What tells them
+		   apart is a second value that is not the phone at all. */
+		boolean phoneNamed = typed.phone() != null;
+		String phone = phoneNamed && typed.phone().isBlank() ? null : strippedOrNull(typed.phone());
+
+		if (typed.profileHidden() != null || removing || phoneNamed || town != null
+				|| typed.firstName() != null || typed.lastName() != null
+				|| typed.address() != null) {
+
 			/* THE MEMBER THE SESSION NAMES AND NOBODY ELSE. `me` came from
 			   `MemberOfAccount`, which read `account.competitor_id` off the signed in
 			   account; nothing the caller sent reaches this line.
 
 			   The casts are written out rather than left to inference: a null parameter
 			   arrives with no type of its own, and `coalesce` is the one place on this
-			   statement where nothing else would say what it should be. */
+			   statement where nothing else would say what it should be.
+
+			   ONE STATEMENT AND NOT SIX, which is what the head of this class means by „the
+			   switch and a DELETION are one statement, so nothing can come between them".
+			   Since 24.09.2026 that sentence covers the personal fields too: a request that
+			   moves a member's address and his town either moves both or moves neither, and
+			   there is no moment at which a row could carry half of what he sent.
+
+			   AND THE TOWN IS THREE COLUMNS UNDER ONE CONDITION rather than three
+			   `coalesce`s, because V7 binds them to each other - see `theTownNamed`. Written
+			   separately, a member who typed a town and then chose one out of the codebook
+			   would leave `city` standing beside a `place_id` and the row would be refused
+			   by `competitor_town_is_from_the_codebook_or_typed`, which is a 500 where he
+			   should have been told something. */
 			db.sql("update competitor set bio = coalesce(cast(? as text), bio),"
-							+ " profile_hidden = coalesce(cast(? as boolean), profile_hidden)"
+							+ " profile_hidden = coalesce(cast(? as boolean), profile_hidden),"
+							+ " first_name = coalesce(cast(? as text), first_name),"
+							+ " last_name = coalesce(cast(? as text), last_name),"
+							+ " address = coalesce(cast(? as text), address),"
+							+ " phone = case when cast(? as boolean) then cast(? as text)"
+							+ "   else phone end,"
+							+ " place_id = case when cast(? as boolean) then cast(? as bigint)"
+							+ "   else place_id end,"
+							+ " city = case when cast(? as boolean) then cast(? as text)"
+							+ "   else city end,"
+							+ " country_id = case when cast(? as boolean) then cast(? as bigint)"
+							+ "   else country_id end"
 							+ " where id = ?")
-					.params(removing ? "" : null, typed.profileHidden(), me)
+					.params(removing ? "" : null, typed.profileHidden(),
+							strippedOrNull(typed.firstName()), strippedOrNull(typed.lastName()),
+							strippedOrNull(typed.address()),
+							phoneNamed, phone,
+							town != null, town == null ? null : town.placeKey(),
+							town != null, town == null ? null : town.city(),
+							town != null, town == null ? null : town.countryId(),
+							me)
 					.update();
 		}
 
@@ -627,6 +1109,16 @@ class MeWriteApi {
 		}
 
 		return ResponseEntity.ok(whatStandsFor(me));
+	}
+
+	/**
+	 * What is stored for a box somebody filled in, and nothing for one he did not touch.
+	 *
+	 * <p>Stripped for the same reason the biography is: the box the member types into keeps
+	 * whatever spaces he left around his name, and the portal draws what it stored.
+	 */
+	private static String strippedOrNull(String value) {
+		return value == null ? null : value.strip();
 	}
 
 	/**
@@ -709,17 +1201,33 @@ class MeWriteApi {
 	 * Read out first, the answer depends on nothing but the two values.
 	 */
 	private Changed whatStandsFor(long me) {
-		Standing standing = db.sql("select bio, profile_hidden from competitor where id = ?")
+		/* THE TOWN COMES BACK THE WAY IT WENT IN, which is two joins rather than the two
+		   keys the row holds. `place_id` and `country_id` are this database's own keys and
+		   mean nothing to a caller; what a screen can draw again, and what the member sent,
+		   is the codebook's `geonames_id` and the country's code. Answered as the keys, this
+		   record would be the one place in the portal where a member's own row hands back a
+		   number he could not have sent. */
+		Standing standing = db.sql("select c.bio, c.profile_hidden, c.first_name, c.last_name,"
+						+ " c.address, c.phone, p.geonames_id, c.city, k.code"
+						+ " from competitor c"
+						+ " left join place p on p.id = c.place_id"
+						+ " left join country k on k.id = c.country_id"
+						+ " where c.id = ?")
 				.param(me)
-				.query((row, one) -> new Standing(row.getString(1), row.getBoolean(2)))
+				.query((row, one) -> new Standing(row.getString(1), row.getBoolean(2),
+						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
+						(Long) row.getObject(7), row.getString(8), row.getString(9)))
 				.single();
 
 		return new Changed(standing.bio(), standing.profileHidden(),
-				theTextThatWaits(me).orElse(null));
+				theTextThatWaits(me).orElse(null), standing.firstName(), standing.lastName(),
+				standing.address(), standing.phone(), standing.placeId(), standing.city(),
+				standing.country());
 	}
 
-	/** The member's own two columns, before the queue is asked about anything. */
-	private record Standing(String bio, boolean profileHidden) {
+	/** The member's own columns, before the queue is asked about anything. */
+	private record Standing(String bio, boolean profileHidden, String firstName, String lastName,
+			String address, String phone, Long placeId, String city, String country) {
 	}
 
 	/**

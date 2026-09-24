@@ -205,8 +205,8 @@ describe('the names the portal composes out of a list', () => {
 })
 
 describe('the words the search engine is given', () => {
-  it('names each of the seven queues, within the same 160 characters', () => {
-    /* The seven queues share one address pattern, so their words are composed
+  it('names each of the five queues, within the same 160 characters', () => {
+    /* The five queues share one address pattern, so their words are composed
        rather than written out (QueueMeta). A search engine cuts a description at
        the same place whether it was composed or not. */
     const composed = QUEUES.map((queue) => ({

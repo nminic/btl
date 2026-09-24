@@ -500,10 +500,32 @@ export function SessionProvider({
    * on five cases about signing out, all of which came back with the account menu still
    * on the header.
    */
-  const theServerSignedMeIn = useCallback((said: number, basis: MembershipBasis | null) => {
-    setAccount(said)
-    setMyMembershipBasis(basis)
-  }, [])
+  const theServerSignedMeIn = useCallback(
+    (who: {
+      account: number
+      memberNumber: string | null
+      membershipBasis: MembershipBasis | null
+    }) => {
+      setAccount(who.account)
+      /* **WRITTEN EVEN WHEN IT IS NULL, and that is the half that carries a fault if it
+         is skipped.** The tempting shape is „only write a number the answer really has",
+         so that nothing can clear what was already there. It would be wrong on the one
+         road where this is called twice in a visit: `SignIn` signs somebody in, navigates
+         away, and the form can be walked back to and used by SOMEBODY ELSE. A moderator
+         signing in after a member, on an answer with no record in it, would keep that
+         member's number and be handed his profile, his messages and his settings -
+         eleven screens of another person's, with the header naming the moderator.
+
+         Nothing in production is being trampled by writing it: `App` mounts this
+         provider with no member number, and the only other writer (`signIn`) is called by
+         no screen, both measured 24.09.2026. `useTheServersSession` keeps the other half
+         of the rule - an answer that never came writes nothing at all - and it keeps it
+         by not calling this at all, which is where that decision belongs. */
+      setMemberNumber(who.memberNumber)
+      setMyMembershipBasis(who.membershipBasis)
+    },
+    [],
+  )
 
   /* What the person at the keyboard is allowed to see: what was written to them,
    * and what was written to the whole league. The store holds everybody's. */
@@ -521,7 +543,10 @@ export function SessionProvider({
       theServerSignedMeIn,
       /* One question, one answer, worked out here from the only two facts there are.
          The member number wins where both are set, because every screen that draws a
-         member reads THROUGH it and the account knows no member (MeApi).
+         member reads THROUGH it: the account number names a row of `account` and the
+         member number names a person in the league, and only the second is somebody a
+         screen can draw. Since 24.09.2026 both arrive in the SAME answer, so „both set"
+         is no longer two sources disagreeing but one answer read whole.
 
          **It said „reads the mock through it" until 21.09.2026**, and the mock went off
          that day (`data/client.ts`); measured, putting `BASE` back fails two cases in
