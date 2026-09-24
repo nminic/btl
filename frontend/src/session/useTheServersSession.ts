@@ -62,7 +62,11 @@ export function useTheServersSession(): void {
       }
 
       become(who.role, holding.current)
-      theServerSignedMeIn(who.account, who.membershipBasis)
+      /* Whole, which is what makes coming back tomorrow the same session as signing in
+         today. The number is in it since 24.09.2026, and the bold sentence above is what
+         keeps its other half: an answer that never came leaves everything alone, and it
+         does so by returning before this line rather than by this line being careful. */
+      theServerSignedMeIn(who)
     }
 
     void ask()

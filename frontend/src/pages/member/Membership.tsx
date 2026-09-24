@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
 import { countryName } from '../../data/countryName'
 import { useToday } from '../../clock/useClock'
@@ -133,7 +134,36 @@ export function Membership() {
         const me = competitors.find((one) => one.memberNumber === memberNumber)
 
         if (me === undefined) {
-          return <h1>{t('profile.notFound')}</h1>
+          /**
+           * A HEADING WITH A WAY OUT, and until 25.09.2026 it was a heading alone.
+           *
+           * **Who is really standing here, measured rather than assumed.** Not a mistyped
+           * number: a member WHOSE FEE HAS LAPSED. `CompetitorApi` ends `where c.active`
+           * so he is not in the list this screen searches, while `GET /api/me` answers him
+           * with his number on purpose - that is half of why {@code MeApi} exists beside
+           * it, in its own words: „the profile and the historical tables of a member whose
+           * fee has lapsed need a resource that knows them, and it is not this one."
+           *
+           * **So he met a bare `h1` on the one page PDL P8 means him to reach**, with no
+           * link anywhere on it, and the portal had just stopped telling him anything else.
+           * Measured 25.09.2026 on the answer the real server gives: the page carried zero
+           * links and zero buttons.
+           *
+           * The way out is the front page and the words are the portal's own
+           * (`shell.home`), which is the shape `SignedOut` and `NotRacing` already use for
+           * a screen somebody may not draw. **Nothing is invented here**: what he should be
+           * TOLD, and whether this page should read his record off `/api/me` so that he can
+           * actually renew, are two decisions that are not this screen's to take and are
+           * recorded as owed.
+           */
+          return (
+            <div className="member">
+              <h1>{t('profile.notFound')}</h1>
+              <Link className="button button--primary" to={`/${locale}`}>
+                {t('shell.home')}
+              </Link>
+            </div>
+          )
         }
 
         /* What the beginners' category is decided by, and it is not what this

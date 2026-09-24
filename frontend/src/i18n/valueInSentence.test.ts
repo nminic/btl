@@ -404,12 +404,14 @@ describe('a sentence with a value put into it', () => {
       /* The number of the account somebody is signed in as, in the header, and it takes
          no case at all: the sentence is „Nalog 41", the word stands first and the number
          after it is a label rather than a thing being counted. It is drawn only where the
-         portal has no member number to name him by, which is a real session against a
-         portal that does not read one off `GET /api/me` yet (app/AccountMenu.tsx).
+         league has given the caller no number - administration, and somebody who has
+         registered and is not a member yet (app/AccountMenu.tsx).
 
-         **This said „a portal still reading its members out of `/mock`" until 21.09.2026,
-         and that went out of date the day the mock was switched off** (`data/client.ts`).
-         The sentence is still drawn, for the reason beside it rather than for that one. */
+         **This is the THIRD reason written here and the first two both expired**: „a
+         portal still reading its members out of `/mock`", which went with the mock on
+         21.09.2026, and „a portal that does not read one off `GET /api/me` yet", which
+         went on 24.09.2026 when it began to. The sentence is still drawn, and what has
+         changed each time is only who reads it. */
       'shell.accountNumber',
       'shell.unread',
       'shell.waiting',
