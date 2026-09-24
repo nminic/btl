@@ -541,13 +541,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"result_submission.result_submission_country_fk restrict",
 				"result_submission.result_submission_place_fk restrict",
 				"result_submission.result_submission_race_fk cascade",
-				/* V30. A reported change of term goes with the event it is about (V11's own
-				   sentence about a team proposal - „an edit of a team that is gone is an edit
-				   of nothing" - applied here) and with the member who sent it, cascade rather
-				   than the set-null ADL A64 B6 weighed and refused: a member's rows go with
-				   him (ADL A42), and a report is one of his rows. */
-				"schedule_proposal.schedule_proposal_competitor_fk cascade",
-				"schedule_proposal.schedule_proposal_event_fk cascade",
+				/* V30 gave a reported change of term the identical pair, cascade off both the
+				   event it was about and the member who sent it - the same two reasons the
+				   comment submission above carries, applied one table over. PDL P10a,
+				   22.09.2026 took the table away with the tab it served (V31), so neither key
+				   is here to name any more. */
 				/* V11, i svaki od njih kaze nesto drugo o tome sta je tim. Sastav i predlozi idu sa
 				   timom i sa clanom; oba sifarnika RESTRICT, kao svuda; a znak i imenovani
 				   administrator se PRAZNE, jer slika sme da se obrise a administrator sme da trazi
@@ -601,8 +599,9 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				/* And V10's fifth: a decision about a run that is gone is a decision about
 				   nothing, so it goes with it. */
 				"verification.verification_result_submission_fk cascade",
-				// V30's other pointer, the same sentence once more.
-				"verification.verification_schedule_proposal_fk cascade",
+				/* V30's other pointer carried the same sentence once more,
+				   `verification_schedule_proposal_fk cascade`, until PDL P10a, 22.09.2026 took
+				   it away with the column it stood on (V31). */
 				/* I sesti kljuc reda za verifikaciju, iz istog razloga kao peti: predlog koga nema
 				   je predlog ni o cemu. */
 				"verification.verification_team_proposal_fk cascade",

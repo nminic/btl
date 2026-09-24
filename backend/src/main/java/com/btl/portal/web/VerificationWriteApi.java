@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,8 +34,8 @@ import java.util.Set;
  *
  * <p><b>THE RIGHT IS ASKED OF THE ROW AND NOT OF THE ROUTE, which is the one thing this
  * file inherits from {@link VerificationApi} and may not lose.</b> That class says why at
- * length: {@link RightIsNeeded} names ONE code, there are SIX queues, and a single code on
- * the route „would either shut the route to five moderators out of six or open all six
+ * length: {@link RightIsNeeded} names ONE code, there are FIVE queues, and a single code on
+ * the route „would either shut the route to four moderators out of five or open all five
  * queues to any one of them". So these routes carry no annotation either, they are named in
  * {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT} with that reason, and what opens an
  * item is {@code verification.right_code} - which V9 GENERATES as {@code 'queue:' || queue}
@@ -70,24 +68,25 @@ import java.util.Set;
  * „the address is there and the thing you asked for cannot happen now", which is what 409
  * says. {@link PaymentApi} already answers 409 to the same shape of thing.
  *
- * <p><b>THIS ROUTE CARRIES OUT FOUR QUEUES OF THE SIX NOW, WHERE UNTIL 22.09.2026 IT CARRIED
- * OUT TWO, AND THE REMAINING TWO ARE STILL REFUSED RATHER THAN RECORDED.</b> {@code profiles}
- * and {@code teams} were the only two anything on this server could put a row into; V30 gave
- * {@code comments} and {@code schedule} a row of their own too
- * ({@code comment_submission}, {@code schedule_proposal}), and ADL A64's A3 is the owner
- * saying this file should carry them out rather than go on only serving their fields. Nothing
- * writes a {@code result_submission} still - measured, not assumed: {@code insert into
- * verification} exists today in exactly two places under {@code backend/src/main}
- * ({@link MeWriteApi}, {@link TeamWriteApi} - a third grep hit is {@code insert into
- * verification_lock}, a different table), the same count V30's own header measures before
- * this file carried out a third and a fourth queue. And the two new tabs still wait on the
- * increment that lets a member reach them at all - so {@code payments} and {@code results} are
- * refused
- * for the same reason they always were: recording the decision and doing nothing else would
- * be worse than refusing, since an approved result that never enters the rankings (PDL P9,
- * „Rezultat ulazi u rang liste tek posle odobrenja") has left the queue for ever and reached
- * nothing, the one outcome a screen cannot undo. <b>And {@code results} is not merely unbuilt
- * but UNDECIDED</b>: ADL A36, „Transakcione granice", says in as many words that the „trece
+ * <p><b>THIS ROUTE CARRIES OUT THREE QUEUES OF THE FIVE NOW, WHERE UNTIL 22.09.2026 IT
+ * CARRIED OUT TWO, AND THE REMAINING TWO ARE STILL REFUSED RATHER THAN RECORDED.</b>
+ * {@code profiles} and {@code teams} were the only two anything on this server could put a
+ * row into; V30 gave {@code comments} a row of its own too ({@code comment_submission}), and
+ * ADL A64's A3 is the owner saying this file should carry it out rather than go on only
+ * serving its fields. V30 gave {@code schedule} the identical shape
+ * ({@code schedule_proposal}) and this file carried that tab out too, from the same day
+ * until PDL P10a, 22.09.2026 took the tab away: „Redova je pet, ne šest." Nothing writes a
+ * {@code result_submission} still - measured, not assumed: {@code insert into verification}
+ * exists today in exactly two places under {@code backend/src/main} ({@link MeWriteApi},
+ * {@link TeamWriteApi} - a third grep hit is {@code insert into verification_lock}, a
+ * different table), the same count V30's own header measures before this file carried out a
+ * third queue. And {@code payments} still waits on the increment that lets a member reach it
+ * at all - so {@code payments} and {@code results} are refused for the same reason they
+ * always were: recording the decision and doing nothing else would be worse than refusing,
+ * since an approved result that never enters the rankings (PDL P9, „Rezultat ulazi u rang
+ * liste tek posle odobrenja") has left the queue for ever and reached nothing, the one
+ * outcome a screen cannot undo. <b>And {@code results} is not merely unbuilt but
+ * UNDECIDED</b>: ADL A36, „Transakcione granice", says in as many words that the „trece
  * mesto, verifikacija rezultata, i dalje NIJE odluceno i ostaje otvoreno", so what is inside
  * the transaction and what is after it has no answer yet and this increment must not invent
  * one.
@@ -101,7 +100,7 @@ import java.util.Set;
  * domain layer which row that is. What follows for THIS class is that a refusal of a comments
  * item never reaches {@link #tell} - see {@link #write} - because PDL P22, „Jedini red bez
  * njega je red komentara, gde se ne odbija nego brise, a napomena je neobavezna i namenjena
- * moderatorima" says the note is not a reason owed to the member the other five
+ * moderatorima" says the note is not a reason owed to the member the other four
  * queues owe one to.
  *
  * <p><b>THE SEASON A TEAM STARTS IN IS {@link SeasonClock#transfersTakeEffect} AND NOT
@@ -158,7 +157,7 @@ import java.util.Set;
 @RestController
 class VerificationWriteApi {
 
-	/** {@code verification.queue} for the four tabs this route can carry out. */
+	/** {@code verification.queue} for the three tabs this route can carry out. */
 	private static final String PROFILES = "profiles";
 
 	private static final String TEAMS = "teams";
@@ -167,19 +166,21 @@ class VerificationWriteApi {
 	 *  publishes a row into {@code event_comment} rather than refusing 409 (A3). */
 	private static final String COMMENTS = "comments";
 
-	/** ADL A64, 22.09.2026: the row whose approval moves an event and its races (A3). */
-	private static final String SCHEDULE = "schedule";
-
 	/**
 	 * THE TABS AN APPROVAL HERE KNOWS WHAT TO DO WITH.
 	 *
 	 * <p>A written list, and the floor under it asks the DATABASE for every queue there is
 	 * ({@code admin_right where scope = 'queue'}) and requires each one to be either carried
-	 * out or refused with the reason below. A seventh tab, or a sixth that grows a
+	 * out or refused with the reason below. A sixth tab, or a fifth that grows a
 	 * consequence, fails that case until somebody decides what it means - which is the
-	 * opposite of a list that quietly goes on being five-sixths right.
+	 * opposite of a list that quietly goes on being four-fifths right.
+	 *
+	 * <p>A fourth name stood here from V30 until PDL P10a, 22.09.2026: {@code SCHEDULE}, the
+	 * row whose approval moved an event and its races (ADL A64 A3). The tab left „Redova je
+	 * pet, ne šest", and {@code moveTheEvent}, {@code scheduleMoveBehind} and
+	 * {@code ScheduleMove} left with it rather than standing here unreachable.
 	 */
-	private static final Set<String> CARRIED_OUT_HERE = Set.of(PROFILES, TEAMS, COMMENTS, SCHEDULE);
+	private static final Set<String> CARRIED_OUT_HERE = Set.of(PROFILES, TEAMS, COMMENTS);
 
 	private static final String NOT_DECIDED_ON_THIS_PORTAL_YET =
 			"Odluka o ovom redu još nije uvedena.";
@@ -197,17 +198,14 @@ class VerificationWriteApi {
 
 	private static final String HE_IS_ALREADY_IN_A_TEAM = "Osnivač je već u nekom timu.";
 
-	/** PDL P10b, owner 22.09.2026: an event with a result already written may not be moved
-	 *  across 1 January on the race that result was run at. */
-	private static final String THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR =
-			"Događaj ima upisane rezultate koje bi ovaj datum prebacio u drugu godinu.";
-
-	/** V19: a race counted by a league of its own year may not be carried out of that year,
-	 *  because {@code league_race_race_fk} is composite over {@code (race_id, season)} and
-	 *  does not cascade an update. The same refusal {@code EventWriteApi.change} and
-	 *  {@code RaceWriteApi.change} make, said in this queue's own voice. */
-	private static final String THE_DATE_WOULD_TAKE_A_RACE_OUT_OF_ITS_LEAGUE =
-			"Događaj ima trku koja se boduje u ligi te sezone, pa ne može u drugu godinu.";
+	/* PDL P10b, owner 22.09.2026: an event with a result already written may not be moved
+	   across 1 January on the race that result was run at. This route asked that question
+	   of its own approvals, over a schedule proposal's move, from V30 until PDL P10a,
+	   22.09.2026 took the queue away the same day: „Ovo nikad nije bilo o prijavi termina...
+	   bilo bi dostizno i da prijave nikad nije bilo." The guard itself is untouched and
+	   lives where it always did, {@code EventWriteApi.wouldStrandAResultInAnotherYear},
+	   asked from the event's own screen; only the second road to it, through an approval
+	   here, is gone. */
 
 	/** Who the member hears from, which is the league and never the moderator by name. */
 	private static final String THE_PORTAL = "Verifikacija";
@@ -503,20 +501,16 @@ class VerificationWriteApi {
 	private ResponseEntity<?> write(Item item, DecidingOnASubmission.Answer answer,
 			WhoIsAsking.Member asking) {
 
-		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. Both of these
-		   refuse the answer rather than record it, so they have to be settled before the row
-		   is claimed: asked afterwards they would need the transaction rolled back, and a
-		   rollback inside a test-managed transaction poisons the outer one instead. Nothing
-		   here writes, so there is nothing to undo. */
+		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. It has to be
+		   settled before the row is claimed: asked afterwards it would need the transaction
+		   rolled back, and a rollback inside a test-managed transaction poisons the outer one
+		   instead. Nothing here writes, so there is nothing to undo.
+		   A schedule proposal's own day asked the identical question of PDL P10b here, read
+		   once and carried to a write further down for the same reason team proposals are -
+		   from V30 until PDL P10a, 22.09.2026 took the queue away with the question still
+		   answered where it always was, {@code EventWriteApi.wouldStrandAResultInAnotherYear},
+		   just no longer asked a second time from this route. */
 		Proposal proposal = TEAMS.equals(item.queue()) ? proposalBehind(item) : null;
-
-		/* THE SAME "ASKED FIRST AND WRITING NOTHING", and read exactly once: the row
-		   scheduleMoveBehind reads is the row PDL P10b's guard below judges AND the row
-		   moveTheEvent later writes from, so a refusal and the write it would otherwise
-		   precede cannot end up reading two different answers to "what day does this event
-		   stand on right now" (ADL A64 A2 already makes the same point about
-		   schedule_proposal.event_date, which this is one door further down from). */
-		ScheduleMove move = SCHEDULE.equals(item.queue()) ? scheduleMoveBehind(item) : null;
 
 		/* THE SEASON, READ ONCE AND USED BY BOTH HALVES. See the head of this class for why
 		   it is this function and not the one beside it, and for the day the portal got it
@@ -530,33 +524,6 @@ class VerificationWriteApi {
 			if (refused.isPresent()) {
 				return refused.get();
 			}
-		}
-
-		/* PDL P10b, owner 22.09.2026: „Ako dogadjaj ima upisane rezultate a pomeraj datuma bi
-		   ih preveo u drugu godinu, portal odbija izmenu i kaze zasto." Settled before the
-		   claim for the identical reason the team's refusal above is. Asked of
-		   EventWriteApi.wouldStrandAResultInAnotherYear rather than a copy of the same
-		   query written here: the plan for THIS increment does touch that class, unlike the
-		   plan for the increment that wrote moveTheEvent, so there is no reason left to
-		   repeat the shape instead of calling it. */
-		if (answer.yes() && move != null
-				&& EventWriteApi.wouldStrandAResultInAnotherYear(db, move.eventId(), move.deltaDays())) {
-			return no(HttpStatus.CONFLICT, THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
-		}
-
-		/* AND THE SAME FOR A LEAGUE (V19), settled in the same place and asked of the same
-		   shared question rather than of a copy of it.
-
-		   THIS QUEUE IS THE THIRD DOOR ON ONE `update race set date = date + ...`, and until
-		   24.09.2026 it was one of the two that did not ask. `RaceWriteApi` has refused a
-		   single race since B40; this and `EventWriteApi.change` move races by the armful,
-		   and `league_race_race_fk` - composite over `(race_id, season)` and without
-		   `on update cascade` - answered them with a server fault instead. A moderator
-		   pressing „Prihvati" on a perfectly ordinary proposal met a 500. */
-		if (answer.yes() && move != null
-				&& EventWriteApi.wouldTakeARaceOutOfItsLeaguesSeason(db, move.eventId(),
-						move.deltaDays())) {
-			return no(HttpStatus.CONFLICT, THE_DATE_WOULD_TAKE_A_RACE_OUT_OF_ITS_LEAGUE);
 		}
 
 		String state = answer.yes() ? DecidingOnASubmission.APPROVED : DecidingOnASubmission.REJECTED;
@@ -614,21 +581,21 @@ class VerificationWriteApi {
 		   row carrying a hold would be the one shape V28 says it cannot refuse by itself. */
 		db.sql("delete from verification_lock where verification_id = ?").param(item.id()).update();
 
-		/* FOUR QUEUES, FOUR MEANINGS, and the chain ends on an unconditional `else` rather
-		   than on a fourth named check: `item.queue()` is one of exactly the four
+		/* THREE QUEUES, THREE MEANINGS, and the chain ends on an unconditional `else` rather
+		   than on a third named check: `item.queue()` is one of exactly the three
 		   `CARRIED_OUT_HERE` names by the time this runs - `decide` above already refused
-		   anything else - so asking a fourth time would be a branch nothing can ever take
+		   anything else - so asking a third time would be a branch nothing can ever take
 		   the other way, which is the shape this file removes rather than writes (V29's own
 		   trigger function says why in as many words). PROFILES is the one left as the
 		   catch, because it is the one queue this method already reads straight off `item`
-		   with no proposal of its own to fetch. */
+		   with no proposal of its own to fetch. A fourth branch stood here for SCHEDULE,
+		   calling {@code moveTheEvent}, from V30 until PDL P10a, 22.09.2026 took the queue
+		   away the same day: „Redova je pet, ne šest." */
 		if (answer.yes()) {
 			if (TEAMS.equals(item.queue())) {
 				makeTheTeam(proposal, season);
 			} else if (COMMENTS.equals(item.queue())) {
 				publishTheComment(item);
-			} else if (SCHEDULE.equals(item.queue())) {
-				moveTheEvent(move);
 			} else {
 				publishTheProfile(item);
 			}
@@ -636,7 +603,7 @@ class VerificationWriteApi {
 			/* COMMENTS NEVER REACHES HERE (ADL A64 A4). PDL P22, „Jedini red bez njega je red
 			   komentara, gde se ne odbija nego brise, a napomena je neobavezna i namenjena
 			   moderatorima" says the note beside a deleted comment - where there is one - is
-			   not a reason owed to the member, unlike the other three that reach this
+			   not a reason owed to the member, unlike the other two that reach this
 			   branch, which PDL P22 requires the opposite of: „razlog stize u sanduce onome
 			   ko je stavku poslao". */
 			tell(item.competitorId(), "Stavka je odbijena",
@@ -739,78 +706,16 @@ class VerificationWriteApi {
 				.update();
 	}
 
-	/**
-	 * WHAT A SCHEDULE PROPOSAL ASKS FOR, READ ONCE BEFORE THE ROW IS CLAIMED: the event,
-	 * the day it stands on right now, and the day it is being asked to move to.
-	 *
-	 * <p><b>THE DAY MOVED FROM IS READ FRESH, NEVER FROM THE PROPOSAL (ADL A64 A2).</b> An
-	 * administrator may have moved this event again since the report was sent, and A2's
-	 * whole point is that the report survives that disagreement rather than pretending it
-	 * did not happen: {@code schedule_proposal.event_date} is the day the reporter SAW,
-	 * not the day that is true now, so {@code btl_event.date} is read inside THIS
-	 * transaction instead - exactly as {@code EventWriteApi.change} reads its own
-	 * {@code before} fresh rather than trusting what the caller believed the day to be.
-	 *
-	 * <p><b>READ HERE AND CARRIED, RATHER THAN READ AGAIN IN {@link #moveTheEvent}
-	 * (PDL P10b).</b> The row this method returns is what the P10b guard in {@link #write}
-	 * judges AND what {@link #moveTheEvent} then writes from; read twice, the two could
-	 * answer "what day does this event stand on" differently if an administrator moved it
-	 * for a second time in between, and the write would apply a delta the guard never saw.
+	/*
+	 * WHAT A SCHEDULE PROPOSAL ASKED FOR, AND HOW THE EVENT MOVED, stood here from V30
+	 * until PDL P10a, 22.09.2026 - `scheduleMoveBehind`, `moveTheEvent` and the
+	 * `ScheduleMove` record that carried one read of "what day is this, right now"
+	 * between the P10b guard in `write` and the write itself. The owner's decision the
+	 * same day, in as many words: „Redova je pet, ne šest." What the two methods did -
+	 * move an event and its races together, by the same number of days - is still done,
+	 * from the one place P10a leaves it: `EventWriteApi.change`, the shape both copies
+	 * answered to rather than to each other, on the administrator's own screen.
 	 */
-	private ScheduleMove scheduleMoveBehind(Item item) {
-		return db.sql("select e.id, e.date, sp.proposed_date from schedule_proposal sp"
-						+ " join btl_event e on e.id = sp.event_id where sp.id = ?")
-				.param(item.scheduleProposalId())
-				.query((row, one) -> new ScheduleMove(row.getLong(1), row.getDate(2).toLocalDate(),
-						row.getDate(3).toLocalDate()))
-				.single();
-	}
-
-	/**
-	 * THE EVENT MOVES TO THE PROPOSED DAY, AND ITS RACES MOVE WITH IT BY THE SAME NUMBER
-	 * OF DAYS (ADL A64 A3).
-	 *
-	 * <p>Owner, 10.08.2026, quoted in {@link EventWriteApi}: „Kad se datum dogadjaja
-	 * pomeri, trke se pomeraju sa njim, za isti broj dana ... Isto vazi i za obicnu
-	 * ispravku datuma, ne samo za kopiju." The two statements below ARE that sentence,
-	 * copied rather than called: the plan for this increment names {@link EventWriteApi}
-	 * as a file it does not touch, so the shape is repeated here instead of extracted,
-	 * and both copies answer to the same owner's sentence rather than to each other.
-	 *
-	 * <p><b>By the time this runs, PDL P10b has already been asked and answered.</b>
-	 * {@link #write} judges {@code move} before the queue row is claimed and only calls
-	 * this method once that has passed, so nothing here asks again whether the move is
-	 * allowed - the same division {@link #whyTheTeamCannotBeMade} and
-	 * {@link #makeTheTeam} already keep.
-	 *
-	 * <p>Written without a branch on whether the day moved at all, the same reason
-	 * {@code EventWriteApi.change} has none: adding zero days is what "it did not move"
-	 * means, and {@code schedule_proposal_proposes_another_day} already keeps a proposal
-	 * from ever asking for exactly that.
-	 */
-	private void moveTheEvent(ScheduleMove move) {
-		db.sql("update btl_event set date = ? where id = ?")
-				.params(move.proposedDate(), move.eventId())
-				.update();
-
-		/* AND ONLY THIS EVENT'S RACES: `where event_id = ?` is the whole of what keeps a
-		   race under a DIFFERENT event untouched, the same filter EventWriteApi.change
-		   applies for the identical reason. */
-		db.sql("update race set date = date + cast(? as int) where event_id = ?")
-				.params(move.deltaDays(), move.eventId())
-				.update();
-	}
-
-	/** The event a schedule proposal is about, the day it stands on right now, and the day
-	 *  it is being asked to move to - read once by {@link #scheduleMoveBehind} rather than
-	 *  twice, so a PDL P10b refusal and the write it would otherwise precede cannot end up
-	 *  reading two different answers to "what day is this, right now". */
-	private record ScheduleMove(long eventId, LocalDate before, LocalDate proposedDate) {
-
-		private long deltaDays() {
-			return ChronoUnit.DAYS.between(before, proposedDate);
-		}
-	}
 
 	/**
 	 * THE TWO THINGS THAT REFUSE AN APPROVAL, ASKED WITHOUT WRITING ANYTHING.
@@ -883,7 +788,7 @@ class VerificationWriteApi {
 	private Optional<Item> itemHeMayModerate(long id, WhoIsAsking.Member asking) {
 		Optional<Item> item = db.sql("select v.id, v.queue, v.right_code, v.state, v.competitor_id,"
 						+ " v.photo_id, v.team_proposal_id, v.comment_submission_id,"
-						+ " v.schedule_proposal_id, v.body, l.held_by, l.held_until"
+						+ " v.body, l.held_by, l.held_until"
 						+ " from verification v"
 						+ " left join verification_lock l on l.verification_id = v.id"
 						+ " where v.id = ?")
@@ -891,10 +796,10 @@ class VerificationWriteApi {
 				.query((row, one) -> new Item(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getObject(5, Long.class), row.getObject(6, Long.class),
 						row.getObject(7, Long.class), row.getObject(8, Long.class),
-						row.getObject(9, Long.class), row.getString(10),
-						row.getObject(11, Long.class) == null ? null
-								: new HoldingAnItem.Hold(row.getLong(11),
-										row.getTimestamp(12).toInstant())))
+						row.getString(9),
+						row.getObject(10, Long.class) == null ? null
+								: new HoldingAnItem.Hold(row.getLong(10),
+										row.getTimestamp(11).toInstant())))
 				.optional();
 
 		/* MAY HE, ASKED OF THE ONE PLACE THAT ANSWERS IT (ADL A8, „Odgovara jedno mesto"),
@@ -939,8 +844,8 @@ class VerificationWriteApi {
 
 	/** One queue row with whatever holds it, as one reading of one moment. */
 	private record Item(long id, String queue, String rightCode, String state, Long competitorId,
-			Long photoId, Long teamProposalId, Long commentSubmissionId, Long scheduleProposalId,
-			String body, HoldingAnItem.Hold hold) {
+			Long photoId, Long teamProposalId, Long commentSubmissionId, String body,
+			HoldingAnItem.Hold hold) {
 	}
 
 	/** What a member asked for, in the shape an approval copies across. */

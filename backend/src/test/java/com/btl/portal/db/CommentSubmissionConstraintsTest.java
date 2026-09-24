@@ -132,9 +132,7 @@ class CommentSubmissionConstraintsTest extends DatabaseTest {
 				   settles that comments are a members-only affair and not that each one has
 				   an author. The trail used to carry two more line numbers here; they were
 				   measured on 22.09.2026 to have moved onto suspension and onto the day
-				   somebody was born, so they are gone rather than dressed up. The
-				   opposite of the reading `schedule_proposal.competitor_id` gets (PDL 1582),
-				   which stays nullable. The FK below catches the other half of the same
+				   somebody was born, so they are gone rather than dressed up. The FK below catches the other half of the same
 				   column: a member who is not there, as opposed to one left out. */
 				Violation.notNull("comment_submission_competitor_id_not_null", "competitor_id",
 						row(AN_EVENT + ", null, 0, 0, 0, ''")),

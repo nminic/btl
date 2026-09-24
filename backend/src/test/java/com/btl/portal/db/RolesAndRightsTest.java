@@ -16,21 +16,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The roles the portal has, and the twelve boxes of the matrix of rights.
+ * The roles the portal has, and the eleven boxes of the matrix of rights.
  *
- * V5 loads sixteen rows written by hand, so the question this file has to
+ * V5 loaded sixteen rows written by hand and V31 took one away, so the question this file has to
  * answer is the one a hand written list always raises: what is underneath it.
  * The answer differs per claim, and saying which is which is the point of this
  * comment, because a claim with nothing under it is worth knowing about before
  * a review rather than after one.
  *
  * <ul>
- * <li><b>The twelve rights have a floor</b>, and it is the portal's own
+ * <li><b>The eleven rights have a floor</b>, and it is the portal's own
  * dictionary. Every right carries the key its column is headed with,
  * {@code rights.column.entity.<id>} and {@code rights.column.queue.<id>}, and
  * the front end's own suite refuses a right whose keys the dictionary cannot
  * answer (rights.test.tsx, "carry no key the dictionary cannot answer"). So a
- * tenth entity or a seventh queue reaches the dictionary on the day it is
+ * tenth entity or a sixth queue reaches the dictionary on the day it is
  * added, and fails here until the migration carries it too. Read out of the
  * JSON rather than out of the TypeScript that builds RIGHTS: a guard that reads
  * source text is answering a question about how something is written, and this
@@ -127,7 +127,7 @@ class RolesAndRightsTest extends DatabaseTest {
 	}
 
 	/**
-	 * Twelve boxes: six entities and six queues.
+	 * Eleven boxes: six entities and five queues.
 	 *
 	 * Six and not seven entities, because the moderators are the one entity no
 	 * tick can ever open (ADL A8, 30.07.2026): a column for it was a box the
@@ -136,23 +136,50 @@ class RolesAndRightsTest extends DatabaseTest {
 	 * the same reason it is left out of the matrix, so the floor sees six on
 	 * both sides without being told about the exception.
 	 *
+	 * Five and not six queues since PDL P10a, 22.09.2026: „Redova je pet, ne
+	 * šest." The schedule queue left the matrix in V31, the same migration that
+	 * took the row out of `admin_right`, so the two sides of this floor still
+	 * see the same set without either being told about the removal by hand.
+	 *
 	 * Compared as sets and not in order. The order of the columns is read off
 	 * ENTITY_FORMS and QUEUES and is the front end's own; the database holds no
 	 * order and this is where that decision is visible.
 	 */
 	@Test
-	void theTwelveRightsAreTheBoxesOfTheMatrix() {
+	void theElevenRightsAreTheBoxesOfTheMatrix() {
 		JsonNode columns = read(DICTIONARY).get("rights").get("column");
 
 		List<String> expected = new ArrayList<>();
 		addKeys(expected, columns, "entity");
 		addKeys(expected, columns, "queue");
 
-		assertThat(expected).hasSize(12);
+		assertThat(expected).hasSize(11);
 
 		List<String> loaded = db.sql("select code from admin_right").query(String.class).list();
 
 		assertThat(loaded).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	/**
+	 * FIVE QUEUES AND NOT SIX, the floor under PDL P10a's own words: „Redova je
+	 * pet, ne šest."
+	 *
+	 * Asked of {@code admin_right} alone rather than folded into the eleven
+	 * above, because that count stays eleven whether a sixth queue traded
+	 * places with a fifth entity or the schedule row came back exactly where it
+	 * left: {@code containsExactlyInAnyOrderElementsOf} against the dictionary
+	 * would still balance if both sides grew by one. This reads {@code scope =
+	 * 'queue'} by itself, off nothing but the table, and 'schedule' by name, so
+	 * a reinstated row fails here even on a day the dictionary and the matrix
+	 * agree on some other number entirely.
+	 */
+	@Test
+	void theFiveQueuesAreTheOnesPDLP10aLeft() {
+		List<String> queues = db.sql("select target from admin_right where scope = 'queue'")
+				.query(String.class).list();
+
+		assertThat(queues).hasSize(5);
+		assertThat(queues).doesNotContain("schedule");
 	}
 
 	/**
@@ -258,17 +285,17 @@ class RolesAndRightsTest extends DatabaseTest {
 	 *
 	 * <p>{@code admin_right.code} is generated as {@code scope:target}, so a right
 	 * asked about in any other shape can never be true for a moderator however many
-	 * ticks he has. This reads the twelve back and asks the model about each one.
+	 * ticks he has. This reads the eleven back and asks the model about each one.
 	 */
 	@Test
 	void everyRightTheSchemaGeneratesIsOneTheRightsModelCanAnswerAbout() {
 		List<String> codes = db.sql("select code from admin_right order by code").query(String.class).list();
 
-		assertThat(codes).hasSize(12);
+		assertThat(codes).hasSize(11);
 
 		/* AND EVERY ONE OF THEM IS THE SHAPE THE COLUMN GENERATES, which is what this floor can
 		   really say. A round on 11.09.2026 pointed out that the three assertions below are a
-		   set lookup asked with the set it was built from, so they would pass for any twelve
+		   set lookup asked with the set it was built from, so they would pass for any eleven
 		   strings at all - the shape is the part that ties them to the schema. `admin_right.code`
 		   is generated as `scope || ':' || target`, and a right asked about in any other shape
 		   can never be true for a moderator however many ticks he has. */
