@@ -401,7 +401,7 @@ export const TEAMS: EntityDef = {
  * league has (`SeasonClock.FIRST_SEASON` on the far side). It is the nearest a written
  * definition can come: „this year or the next" is an answer that changes with the day,
  * and a JSON file cannot read a clock. `LeagueWriteApi.add` holds the whole sentence and
- * refuses everything else BY NAME, which is what `pages/admin/LeagueModeration.tsx`
+ * refuses everything else BY NAME, which is what `pages/admin/LeagueRaceModeration.tsx`
  * draws.
  */
 export const LEAGUES: EntityDef = {

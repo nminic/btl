@@ -167,24 +167,31 @@ async function reasonIn(answer: Response): Promise<string | null> {
  * @param said the body, which is the only place anything given here is written
  * @param how  the verb, and `POST` where nothing says otherwise.
  *
- *             **Widened on 24.09.2026, on the same reasoning that widened this file for
- *             registration and for the same measured reason: the fact being shared is the
- *             TOKEN.** The moderation of a competition changes a record and takes one away
- *             (`PUT /api/leagues/{id}`, `DELETE /api/leagues/{id}/races/{raceId}`), and a
+ *             **Widened on 24.09.2026 for ONE verb and no more, on the same reasoning that
+ *             widened this file for registration: the fact being shared is the TOKEN.**
+ *             Taking a race out of a competition is `DELETE
+ *             /api/leagues/{id}/races/{raceId}` (`admin/LeagueRaceModeration.tsx`), and a
  *             copy of this file with one word changed would have been a second home for the
- *             cookie jar, the read that hands the token out and the four answers - all so
- *             that one string could differ. Everything else about these routes is the shape
- *             this file already had: they refuse BY NAME, and a name is a name whichever
- *             verb carried it.
+ *             cookie jar, the read that hands the token out and the five answers - all so
+ *             that one string could differ. Everything else about that route is the shape
+ *             this file already had: it refuses BY NAME, and a name is a name whichever verb
+ *             carried it.
  *
- *             **What is NOT widened, said plainly, because it is the warning at the top of
- *             this file:** nothing here learns anything about a resource. It takes an
- *             address and a body and reports one of five answers, exactly as before.
+ *             **`PUT` STOOD HERE FOR AN AFTERNOON AND IS GONE, and it is worth the line.**
+ *             It was added for `PUT /api/leagues/{id}`, and this sentence named that route
+ *             as the reason - a claim about a caller that did not exist, because the league
+ *             record is still changed through the session overlay like the other six
+ *             entities. A branch of a shared helper that no screen reaches is exactly what
+ *             the warning at the top of this file is about, and „it will be needed soon" is
+ *             not a measurement. It comes back with its caller.
+ *
+ *             **What is NOT widened:** nothing here learns anything about a resource. It
+ *             takes an address and a body and reports one of five answers, as before.
  */
 export async function askTheServer(
   path: string,
   said: object,
-  how: 'POST' | 'PUT' | 'DELETE' = 'POST',
+  how: 'POST' | 'DELETE' = 'POST',
 ): Promise<Answer> {
   let answer: Response
 
@@ -209,14 +216,13 @@ export async function askTheServer(
      for 409 beside 400: both numbers say the write happened, and which of the two a
      route answers with is that route's business and not a fact this file keeps twice.
 
-     AND 200 SINCE 24.09.2026, WHICH IS THE SAME SENTENCE ONE VERB ALONG. A route that
-     CHANGES a record answers with the record rather than with nothing - the shape
-     `EventWriteApi.change` has always had and `LeagueWriteApi.change` copies - so the
-     number that says „it was written" is 200 there. Left out, an edit that succeeded
-     came back as „the server answered 200 and nothing changed", which is wrong twice
-     over. Nothing is read out of the body here, exactly as nothing is read out of the
-     one a 201 carries. */
-  if (answer.status === 204 || answer.status === 201 || answer.status === 200) {
+     200 STOOD BESIDE THEM FOR AN AFTERNOON AND IS GONE, with `PUT`, and for the same
+     reason. It was here because a route that CHANGES a record answers with the record
+     rather than with nothing, which is true of `LeagueWriteApi.change` - and nothing on
+     this portal calls that route, so no screen could ever have read the branch. Removing
+     it leaves all 3058 cases green, which is the measurement: a branch whose deletion
+     nothing notices is a branch nothing was measuring. It comes back with its caller. */
+  if (answer.status === 204 || answer.status === 201) {
     return { got: 'done' }
   }
 

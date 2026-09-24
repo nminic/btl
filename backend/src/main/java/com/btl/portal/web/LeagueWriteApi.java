@@ -254,21 +254,54 @@ class LeagueWriteApi {
 				return wrong;
 			}
 
-			if (addressIsTakenBySomebodyElse(typed.slug(), id)) {
-				return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
-			}
-
 			int wasSeason = before.get().season();
 
 			if (typed.season() != wasSeason && countsAnything(id)) {
 				return no(HttpStatus.CONFLICT, THE_SEASON_CANNOT_MOVE_WHILE_RACES_COUNT);
 			}
 
-			db.sql("update league set slug = ?, name = ?, season = ?, rules = ?, prizes = ?"
-							+ " where id = ?")
+			/* THE ADDRESS IS JUDGED BY THE WRITE ITSELF, WHICH IS WHAT {@link #add} ALREADY
+			   SAID AND THIS METHOD DID NOT DO.
+
+			   It asked `addressIsTakenBySomebodyElse` and then updated - „a `select` and an
+			   `insert` are two moments", in my own words three methods up, and the same two
+			   moments with `update` in place of `insert`. A review on 24.09.2026 quoted that
+			   sentence back at this method, and it was right to.
+
+			   `not exists` inside the statement is what closes most of it: the question and
+			   the write are now one statement against one snapshot rather than two. The rest
+			   is `league_slug_unique`, which is the only thing that can settle a collision
+			   between two transactions that neither can see, and which refuses the row
+			   outright rather than letting both through.
+
+			   WHAT IS LEFT, NAMED RATHER THAN CLAIMED AWAY: two requests that commit inside
+			   each other's window still end with the loser meeting a fault instead of a
+			   sentence. That window is one statement wide instead of two, and closing it
+			   completely needs a savepoint, which this application's JPA transaction manager
+			   does not give. `EventWriteApi.change` carries the WIDER version of the same
+			   window and is not this increment's to change; it is written down here so the
+			   next reader finds it named. */
+			int written = db.sql("update league set slug = ?, name = ?, season = ?, rules = ?,"
+							+ " prizes = ? where id = ?"
+							+ " and not exists(select 1 from league other"
+							+ " where other.slug = ? and other.id <> ?)")
 					.params(typed.slug(), typed.name().strip(), typed.season(),
-							orEmpty(typed.rules()), orEmpty(typed.prizes()), id)
+							orEmpty(typed.rules()), orEmpty(typed.prizes()), id,
+							typed.slug(), id)
 					.update();
+
+			/* Nothing written means the address belongs to somebody else, which is what the
+			   clause above refuses and the only thing this route can do anything about.
+
+			   THE ONE OTHER WAY TO REACH NOUGHT ROWS IS NAMED RATHER THAN CLAIMED AWAY: a
+			   concurrent transaction deleting this league between the read at the top and
+			   this statement is visible under READ COMMITTED, and the caller would then be
+			   told the address is taken when it is the league that is gone. Both answers
+			   refuse, neither writes, and telling them apart would mean asking a second
+			   question about a row that no longer exists. */
+			if (written == 0) {
+				return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
+			}
 
 			return ResponseEntity.ok(new Written(id, typed.slug()));
 		});
@@ -533,18 +566,14 @@ class LeagueWriteApi {
 				.optional();
 	}
 
-	/**
-	 * Whether this address belongs to a DIFFERENT league.
-	 *
-	 * <p>{@code id <> ?} is the whole of it and is why this is not the question {@link #add}
-	 * asks: an edit that leaves the address alone finds its own row, and refusing there
-	 * would make a league impossible to save twice.
-	 */
-	private boolean addressIsTakenBySomebodyElse(String address, long id) {
-		return Boolean.TRUE.equals(db.sql(
-						"select exists(select 1 from league where slug = ? and id <> ?)")
-				.params(address, id).query(Boolean.class).single());
-	}
+	/* `addressIsTakenBySomebodyElse` STOOD HERE AND IS GONE (review, 24.09.2026). It asked
+	   whether an address belonged to a different league, and {@link #change} asked it and
+	   then wrote - two moments, which is the very shape {@link #add}'s own note refuses. The
+	   question moved INTO the write as a `not exists` clause, so there is nothing left for a
+	   second reader of it to drift from, and the method is deleted rather than left standing
+	   with no caller. `id <> ?` survives inside that clause, and it is still the whole
+	   difference from the question {@link #add} asks: an edit that leaves the address alone
+	   finds its own row, and refusing there would make a league impossible to save twice. */
 
 	private boolean countsAnything(long id) {
 		return countOf("select count(*) from league_race where league_id = ?", id) > 0;

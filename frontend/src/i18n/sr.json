@@ -1226,7 +1226,7 @@
     "leagueRaceAdded": "Trka je dodata u ligu.",
     "leagueRaceDropped": "Trka je izbačena iz lige.",
     "leagueRefused": {
-      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta, pa se spisak trka više ne menja.",
+      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta, pa se trka više ne dodaje. Izbacivanje i dalje radi.",
       "theRaceIsNotOfTheLeaguesSeason": "Ta trka nije iz sezone ove lige.",
       "theEventHoldsNoRaces": "Taj događaj još nema nijednu trku.",
       "theRaceIsNotKnown": "Portal ne poznaje tu trku.",

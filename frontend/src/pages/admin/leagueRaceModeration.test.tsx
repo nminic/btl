@@ -3,7 +3,7 @@ import { clearResourceCache } from '../../data/client'
 import { renderAt } from '../../test/render'
 import { did, isResource, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
-import { must } from '../../test/at'
+import { first, must } from '../../test/at'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -290,7 +290,7 @@ describe('which races count towards a competition', () => {
     await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Sezona ove lige je zamrznuta, pa se spisak trka više ne menja.',
+      'Sezona ove lige je zamrznuta, pa se trka više ne dodaje. Izbacivanje i dalje radi.',
     )
     /* And nothing was counted, so the list and the server do not disagree about a race that
        never went in.
@@ -303,6 +303,19 @@ describe('which races count towards a competition', () => {
     const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
 
     expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
+
+    /* AND THE SECOND HALF OF THAT SENTENCE IS MEASURED AND NOT MERELY CLAIMED.
+       „Izbacivanje i dalje radi" is the owner's own decision (PDL P15c: „Pod 2, mogu da je
+       izbacim ručno"), and the route really does allow it after the freeze
+       (`LeagueWriteApiTest.aRaceLeavesALeagueWhoseSeasonHasFrozen`). What is asked here is
+       that the SCREEN goes on offering it: a panel that greyed the controls out after a
+       refusal about adding would make the sentence a lie at the moment it is read.
+
+       The sentence said „spisak trka se više ne menja" until 24.09.2026, which told a
+       moderator the opposite of what he may do. */
+    await user.click(first(within(box).getAllByRole('button', { name: /^Izbaci trku/ })))
+
+    expect(writes(server.asked).map((one) => one.how)).toContain('DELETE')
 
     server.stop()
   }, SLOW)
