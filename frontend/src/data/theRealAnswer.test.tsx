@@ -386,7 +386,9 @@ describe('a racing pair, on the answer the server gives', () => {
  * **Why this one had nothing and had to get something, which is measured and not
  * argued.** Every case that draws a moderation screen is answered out of
  * `public/mock/verification.json` by `test/setup.ts`, and that file carries all
- * SEVENTEEN names a card is drawn by. The answer carries twelve: the six that have no
+ * FIFTEEN names a card is drawn by (seventeen until PDL P10a, 22.09.2026 took
+ * `currentDate` and `proposedDate` off every row with the schedule tab). The answer
+ * carries twelve: the six that have no
  * home in the schema are filled in on this side (`pages/admin/pending.ts`), the key is a
  * number rather than text, and the member number may be nothing at all. So no case on the
  * portal had ever walked a queue screen through the world the server really makes, and it
@@ -470,43 +472,6 @@ describe('a queue of things waiting, on the answer the server gives', () => {
       expect(
         within(card).queryByRole('img', { name: /Slika koju je poslao/ }),
       ).not.toBeInTheDocument()
-    } finally {
-      stop()
-    }
-  })
-
-  it('refuses to hand back a reported change nobody sent, and says why on the card', async () => {
-    /* **THE ROW THE COMMENT OVER `canSendBack` HAS BEEN WAITING FOR.** It says: „Every
-       picture in the data carries a number today, which is exactly the kind of safety
-       that lasts until the backend hands over the first row that does not." The server
-       answers a member number as nothing - `verification.competitor_id` is nullable by
-       V9's decision, and since V16 somebody who registered and has not paid has no
-       number - and `canSendBack` asks `item.memberNumber !== ''`, which a null PASSES.
-
-       What is on the other side of that door is not a blank name on a card: an empty
-       recipient in this portal is the WHOLE LEAGUE (`session/context.ts`, `Message.to`),
-       so a refusal built from this item would be addressed to nothing and reach nobody,
-       one instruction away from reaching everybody. A change of term may be reported by
-       somebody with no account at all (PDL P10), so this is an ordinary row and not a
-       broken one. */
-    const { stop } = answering(queueAsServed(), '/api/verification')
-
-    try {
-      renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
-
-      const waiting = await screen.findByRole('list', { name: /Čeka/ })
-      const fromNobody = cardSaying(waiting, 'Pisao sam organizatoru')
-
-      expect(within(fromNobody).getByText(/nema člana kome bi odgovor stigao/)).toBeVisible()
-      expect(within(fromNobody).queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
-
-      /* **And the card beside it, which is what makes this about the ROW rather than
-         about the tab.** Written without it, a portal that had stopped offering the way
-         back on the whole of this queue would read exactly like a portal that reads the
-         member number. */
-      const fromAMember = cardSaying(waiting, 'Borivoje Jovanović')
-
-      expect(within(fromAMember).getByRole('button', { name: 'Odbij' })).toBeVisible()
     } finally {
       stop()
     }
@@ -602,53 +567,6 @@ describe('a queue of things waiting, on the answer the server gives', () => {
       /* (5 + 4 + 5) / 3 rounded to one decimal, in the portal's own words for a number
          (`i18n/format.ts`, sr-Latn comma). */
       expect(within(card).getByText('4,7')).toBeVisible()
-    } finally {
-      stop()
-    }
-  })
-
-  it('draws both days of a reported change of term now that the server answers them', async () => {
-    /* **THE BOUNDARY THIS CASE USED TO MEASURE IS CLOSED (ADL A64 A2, 22.09.2026).** Until
-       then `verification` had no pointer to `btl_event` and no column for either day, so a
-       reported change of term arrived with both dates empty and `datesOf`
-       (`pages/admin/PendingQueue.tsx`) dropped both - this case asserted exactly that
-       absence. V30 gave the schedule tab `schedule_proposal`, and the generated file this
-       case reads has carried both dates on every schedule row since before that fix
-       existed (`ver-ter-2`: `currentDate: "2027-04-03"`, `proposedDate: "2027-04-10"`),
-       so `queueAsServed` now hands the screen real values and both labels draw.
-
-       **What used to cost an action and not a gap, and now does not.** The screen moves
-       the event only where there is a day to move it to; with both dates real, approving
-       this report moves it, which is the whole point of ADL A64. */
-    const { stop } = answering(queueAsServed(), '/api/verification')
-
-    try {
-      renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
-
-      const waiting = await screen.findByRole('list', { name: /Čeka/ })
-      const card = cardSaying(waiting, 'Pisao sam organizatoru')
-
-      /* What the member wrote is still there, beside the two days now. */
-      expect(within(card).getByText(/potvrdio mi je nov datum mejlom/)).toBeVisible()
-
-      const calendarDay = within(card).getByText('Datum u kalendaru')
-      const reportedDay = within(card).getByText('Prijavljen datum')
-
-      expect(calendarDay).toBeVisible()
-      expect(reportedDay).toBeVisible()
-
-      /* **THE TWO VALUES, AND THEY DIFFER**, which is „the difference is the thing on
-         screen" (`PendingItem.currentDate`) made concrete: a card that drew the same day
-         twice could not tell a screen reading both columns from one reading only one of
-         them twice. Read as the shape every date on this portal is written in - digits
-         with dots between them (sr-Latn) - and never as the exact spacing `Intl` chooses,
-         which is `data/servedShape.test.ts`'s to hold and not this file's. */
-      const calendarValue = calendarDay.nextElementSibling?.textContent ?? ''
-      const reportedValue = reportedDay.nextElementSibling?.textContent ?? ''
-
-      expect(calendarValue).toMatch(/\d{1,2}\.\s*\d{1,2}\.\s*2027\.?/)
-      expect(reportedValue).toMatch(/\d{1,2}\.\s*\d{1,2}\.\s*2027\.?/)
-      expect(calendarValue).not.toEqual(reportedValue)
     } finally {
       stop()
     }

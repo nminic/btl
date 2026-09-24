@@ -110,8 +110,6 @@ class VerificationApiTest {
 
 	private static final String PAYMENTS = "payments";
 
-	private static final String SCHEDULE = "schedule";
-
 	private static final String MEMBER_ONE = "000010";
 
 	private static final String MEMBER_TWO = "000020";
@@ -195,7 +193,8 @@ class VerificationApiTest {
 	private long photo;
 
 	/**
-	 * SIX ACCOUNTS, FOUR PEOPLE IN THE RECORD, SIX TABS AND TWELVE ROWS, OF WHICH NINE WAIT.
+	 * SEVEN ACCOUNTS, FOUR PEOPLE IN THE RECORD, FIVE TABS AND ELEVEN ROWS, OF WHICH EIGHT
+	 * WAIT.
 	 *
 	 * <p>The tabs are laid out so that every sentence the owner wrote about this screen has
 	 * a row that would break if it stopped being true:
@@ -207,10 +206,6 @@ class VerificationApiTest {
 	 * (ADL A64 A1).
 	 * <li>{@code results} has been worked to the bottom - one approved, one refused - which
 	 * is the tab „Neka ipak ne nestaju stavke iz Verifikacije kad se odobre" is about.
-	 * <li>{@code schedule} waits once, off a third event again, carrying both the day
-	 * reported and the day proposed (ADL A64 A2). It held nothing at all until 22.09.2026,
-	 * and the one case that still needs that other kind of empty makes it so again for
-	 * itself, in {@code aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal}.
 	 * <li>{@code profiles} waits twice and one of the two carries a photograph.
 	 * <li>{@code teams} waits once, so a tab with a single item is in the fixture too.
 	 * <li>{@code payments} waits twice, along the two axes that tab is read along. Whose it
@@ -220,9 +215,16 @@ class VerificationApiTest {
 	 * is {@code competitor}'s „one way or the other" and the reason a single row here could
 	 * not tell a query reading {@code place.name} from one reading {@code competitor.city}.
 	 * </ul>
+	 *
+	 * <p>A sixth tab, {@code schedule}, waited once here off a third event, carrying both
+	 * the day reported and the day proposed (ADL A64 A2), from 22.09.2026 until PDL P10a
+	 * took the tab away the same day: „Redova je pet, ne šest." Its row was also this
+	 * fixture's example of the tab that holds nothing at all - the flavour of empty
+	 * {@code aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal} still measures,
+	 * now off {@code profiles} instead.
 	 */
 	@BeforeEach
-	void sixAccountsAndSixTabs() {
+	void sevenAccountsAndFiveTabs() {
 		account(TWO_QUEUES, "moderator", "Vesna", "Vasic");
 		account(OTHER_QUEUES, "moderator", "Bojan", "Peric");
 		account(ONLY_ENTITIES, "moderator", "Milica", "Ilic");
@@ -235,11 +237,14 @@ class VerificationApiTest {
 		ticked(OTHER_QUEUES, "queue:" + TEAMS, "queue:" + PROFILES);
 		ticked(ONLY_ENTITIES, "entity:members", "entity:events");
 		/* TWO TICKS, AND BOTH TABS EMPTY, in the two different ways a tab can be: one
-		   worked to the bottom and one that never held anything. He is the only person in
-		   this fixture for whom „may he" and „is there anything for him" part company, and
-		   without him a server that decided the refusal off the ROWS instead of the rights
-		   would answer every case in this file exactly as the right one does. */
-		ticked(EMPTY_QUEUES, "queue:" + RESULTS, "queue:" + SCHEDULE);
+		   worked to the bottom and one that never held anything - `profiles` here, by the
+		   one case that deletes its two rows to get back to that state
+		   ({@code aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal}). He is the
+		   only person in this fixture for whom „may he" and „is there anything for him"
+		   part company, and without him a server that decided the refusal off the ROWS
+		   instead of the rights would answer every case in this file exactly as the right
+		   one does. */
+		ticked(EMPTY_QUEUES, "queue:" + RESULTS, "queue:" + PROFILES);
 
 		member(MEMBER_ONE, "Ana", "Anic", true);
 		member(MEMBER_TWO, "Bojan", "Bojic", true);
@@ -329,29 +334,6 @@ class VerificationApiTest {
 		   two. */
 		livesInATownSomebodyTyped(LAPSED, HER_TYPED_TOWN, HER_TYPED_COUNTRY);
 		waiting(PAYMENTS, LAPSED, "Vera Veric", "", "2026-08-21 06:00:00+00", null);
-
-		/* AND ONE ROW ON THE SCHEDULE TAB, since 22.09.2026 (ADL A64 A2): V30 gave this tab
-		   a pointer, and `currentDate`/`proposedDate` now answer for real on every record of
-		   this whole resource, which means they need a record where they are not blank to
-		   vary against - `noFieldOfAnItemIsTheSameInEveryRecord` refuses a field that is the
-		   same in every record, and blank on six records out of six is exactly that. Until
-		   this row existed the tab was empty on purpose, to hold the OTHER flavour of empty
-		   a moderator's screen has to survive; that flavour moved to its own smaller case,
-		   {@link #aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal}, because no
-		   tab in this fixture can be both „holds nothing at all, ever" and „holds what its
-		   own cases need" once this one does either.
-
-		   THE EVENT WAS MOVED SINCE THE REPORT WAS SENT, on purpose: `scheduleChangeOn`'s
-		   `eventDate` is `2027-07-25`, what the reporter SAW, and the event's own live day
-		   is `2027-08-08`, set an administrator's edit later. `currentDate` has to answer
-		   the second and never the first - the label it is drawn under is present tense
-		   (`i18n/sr.json`, „Datum u kalendaru") - so a fixture where the two agree could
-		   not tell a query reading the live day from one reading the stale column. */
-		long scheduleEvent = event("dogadjaj-za-izmenu-termina-ver", "Dogadjaj za izmenu termina",
-				"2027-08-08");
-		waiting(SCHEDULE, MEMBER_ONE, "Dogadjaj za izmenu termina", "",
-				"2026-09-12 09:00:00+00", null);
-		scheduleChangeOn("Dogadjaj za izmenu termina", scheduleEvent, "2027-07-25", "2027-08-22");
 	}
 
 	private void account(String email, String role, String first, String last) {
@@ -510,26 +492,6 @@ class VerificationApiTest {
 				.update();
 	}
 
-	/**
-	 * THE PROPOSAL A SCHEDULE ROW POINTS AT, the same shape as {@link #commentOn} one table
-	 * over (ADL A64 A2).
-	 *
-	 * @param eventDate    the day the reporter SAW, captured and never resynced
-	 * @param proposedDate the day they are asking the event to move to
-	 */
-	private void scheduleChangeOn(String subject, long eventId, String eventDate, String proposedDate) {
-		long proposal = db
-				.sql("insert into schedule_proposal (competitor_id, event_id, event_date,"
-						+ " proposed_date)"
-						+ " select v.competitor_id, ?, date '" + eventDate + "', date '" + proposedDate
-						+ "' from verification v where v.subject = ? returning id")
-				.params(eventId, subject)
-				.query(Long.class).single();
-
-		db.sql("update verification set schedule_proposal_id = ? where subject = ?")
-				.params(proposal, subject)
-				.update();
-	}
 
 	private long photograph() {
 		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
@@ -775,9 +737,9 @@ class VerificationApiTest {
 	 * each of them a list containing what he expected and this would pass. Crossed, the same
 	 * query hands each of them the other's tabs as well and both halves fail.
 	 *
-	 * <p><b>And neither of them is served the two tabs NOBODY in this fixture holds</b>
-	 * ({@code payments}, {@code schedule}), which is the half a mutation swapping one
-	 * moderator's rights for the other's would still satisfy.
+	 * <p><b>And neither of them is served the one tab NOBODY in this fixture holds</b>
+	 * ({@code payments}), which is the half a mutation swapping one moderator's rights
+	 * for the other's would still satisfy.
 	 */
 	@Test
 	void eachModeratorIsServedTheQueuesHisOwnTicksOpenAndNoOthers() throws Exception {
@@ -938,19 +900,20 @@ class VerificationApiTest {
 	 * having to exist. With the floor that says the rows really are in the table, because
 	 * „the tab is empty" and „the tab was never written" look the same from the answer.
 	 *
-	 * <p><b>{@code schedule} carries the row {@link #sixAccountsAndSixTabs} needs since
-	 * 22.09.2026</b> - {@code currentDate} and {@code proposedDate} answer for real now
-	 * (ADL A64 A2), and a field blank on every other record needs one record where it is
-	 * not, or {@code noFieldOfAnItemIsTheSameInEveryRecord} refuses it. So THIS case, and
-	 * only this one, deletes that one row first: the „never held anything" flavour is still
-	 * worth its own measurement, and the row it needs gone belongs to no other case here.
-	 */
+	 * <p><b>{@code profiles} carries the two rows {@link #sevenAccountsAndFiveTabs} needs
+	 * for its own axis (the picture and the biography), so THIS case, and only this one,
+	 * deletes both first: the „never held anything" flavour is still worth its own
+	 * measurement, and the rows it needs gone belong to no other case here. It stood on
+	 * {@code schedule} until PDL P10a, 22.09.2026 took that tab away the same day
+	 * {@code currentDate} and {@code proposedDate} had started answering for real
+	 * (ADL A64 A2) - the fixture had to carry a schedule row for that other floor by then,
+	 * so this one moved to a tab nothing else needs empty. */
 	@Test
 	void aTabHeMayWorkInWithNothingInItIsAnEmptyAnswerAndNotARefusal() throws Exception {
-		assertThat(db.sql("delete from verification where queue = ?").param(SCHEDULE).update())
-				.as("the fixture no longer has exactly the one schedule row this case removes to"
+		assertThat(db.sql("delete from verification where queue = ?").param(PROFILES).update())
+				.as("the fixture no longer has exactly the two profiles rows this case removes to"
 						+ " get back to a tab that has never held anything")
-				.isOne();
+				.isEqualTo(2);
 
 		assertThat(reallyInTheQueue(RESULTS, "waiting"))
 				.as("the tab this case calls worked to the bottom still has something waiting in it")
@@ -959,9 +922,9 @@ class VerificationApiTest {
 				.as("the tab this case calls worked to the bottom holds no decided row either, so"
 						+ " it is the other kind of empty and measures the other mutation")
 				.isNotEmpty();
-		assertThat(reallyInTheQueue(SCHEDULE, "waiting").size()
-						+ reallyInTheQueue(SCHEDULE, "approved").size()
-						+ reallyInTheQueue(SCHEDULE, "rejected").size())
+		assertThat(reallyInTheQueue(PROFILES, "waiting").size()
+						+ reallyInTheQueue(PROFILES, "approved").size()
+						+ reallyInTheQueue(PROFILES, "rejected").size())
 				.as("the tab this case calls untouched holds rows, so it is not the other kind of"
 						+ " empty")
 				.isZero();
@@ -969,7 +932,7 @@ class VerificationApiTest {
 		assertThat(waitingIn(TWO_QUEUES, RESULTS))
 				.as("a tab worked to the bottom answered with something waiting in it")
 				.isEmpty();
-		assertThat(waitingIn(THE_SUPERADMIN, SCHEDULE))
+		assertThat(waitingIn(THE_SUPERADMIN, PROFILES))
 				.as("a tab that has never held anything answered with something in it")
 				.isEmpty();
 
@@ -1117,15 +1080,16 @@ class VerificationApiTest {
 	 */
 	@Test
 	void theTabsAreInTheirOwnOrderAndTheItemsInEachAreOldestFirst() throws Exception {
-		/* The five that hold something, in `admin_right.target` order and not in the order
+		/* The four that hold something, in `admin_right.target` order and not in the order
 		   their rows were written: `teams` was written last and comes last by name too, so
-		   `payments`, `profiles` and `schedule` are what separate the two - all three were
-		   written after the comments and all three sort before `teams` would have them.
-		   `schedule` waits once since 22.09.2026 (ADL A64 A2), so this floor now names five
-		   tabs rather than the four it named while that one was still empty on purpose. */
+		   `payments` and `profiles` are what separate the two - both were written after the
+		   comments and both sort before `teams` would have them. This floor named a fifth,
+		   `schedule`, from 22.09.2026 (ADL A64 A2) until PDL P10a took the tab away the same
+		   day; the four left are the same four it always named while that one was empty on
+		   purpose, now for a different reason. */
 		assertThat(tabsServedTo(THE_SUPERADMIN))
 				.as("the tabs came back in an order nobody decided")
-				.containsExactly(COMMENTS, PAYMENTS, PROFILES, SCHEDULE, TEAMS);
+				.containsExactly(COMMENTS, PAYMENTS, PROFILES, TEAMS);
 
 		assertThat(waitingIn(THE_SUPERADMIN, COMMENTS))
 				.as("the items of a tab are not oldest first")
@@ -1381,33 +1345,11 @@ class VerificationApiTest {
 	}
 
 	/**
-	 * AND A REPORTED CHANGE OF TERM ANSWERS WITH BOTH ITS DAYS.
-	 *
-	 * <p><b>Four different days, the axis „dva izvora, jedna vrednost" warns against</b>:
-	 * the event's LIVE day ({@code 2027-08-08}), the day the reporter SAW before an
-	 * administrator corrected it ({@code 2027-07-25}, stored on {@code schedule_proposal}
-	 * but read by nothing here), the day proposed ({@code 2027-08-22}) and the day the
-	 * item was raised ({@code 2026-09-12}). {@code currentDate} must answer the FIRST of
-	 * these and none of the other three.
-	 */
-	@Test
-	void aReportedChangeOfTermAnswersWithTheDayReportedAndTheDayProposed() throws Exception {
-		JsonNode item = itemIn(THE_SUPERADMIN, SCHEDULE, 0);
-
-		assertThat(item.path("currentDate").asString())
-				.as("currentDate did not answer with the event's own LIVE day - it answered with"
-						+ " the stale day the reporter saw, with raised_at, or with today, and all"
-						+ " three are the wrong source for a label that reads \"Datum u kalendaru\"")
-				.isEqualTo("2027-08-08");
-		assertThat(item.path("proposedDate").asString()).isEqualTo("2027-08-22");
-	}
-
-	/**
 	 * AND WHO SENT IT IN IS ANSWERED BESIDE WHAT IT IS ABOUT, never instead of it.
 	 *
 	 * <p>On the payments tab the two are the same person and everywhere else they are not,
 	 * so a resource answering the subject twice would satisfy every payments case and lose
-	 * the name on the other five.
+	 * the name on the other four.
 	 */
 	@Test
 	void whoSentAnItemInIsAnsweredBesideWhatItIsAbout() throws Exception {
@@ -1512,8 +1454,10 @@ class VerificationApiTest {
 	 * {@code team_proposal} carries the town, the country and the team a change is about;
 	 * {@code competitor} carries the sender's name; which SORT of thing a row is can be read
 	 * off the schema twice over; and V30 gave the comments and the schedule tabs a row of
-	 * their own too, closing the last three of the nine (ADL A64). The screen that read six
-	 * of the twelve as always blank threw in front of the owner on QA before any of this.
+	 * their own too, closing the last three of the nine (ADL A64) - two of which, the
+	 * schedule tab's, closed only until PDL P10a reopened them by taking the tab away
+	 * whole, the same day. The screen that read six of the twelve as always blank threw in
+	 * front of the owner on QA before any of this.
 	 *
 	 * <p><b>That is the cost of one reason covering a list.</b> A name on a list with a true
 	 * reason is a boundary; a name on a list with somebody else's reason is a field nobody
@@ -1532,11 +1476,17 @@ class VerificationApiTest {
 	 * decision about who may see a picture, and it belongs to the owner.
 	 * </ul>
 	 *
-	 * <p><b>{@code rating}, {@code currentDate} and {@code proposedDate} left this list on
-	 * 22.09.2026</b> (ADL A64 A1, A2), off {@code comment_submission} and
-	 * {@code schedule_proposal}; {@link #aWaitingCommentAnswersWithWhatItWasRatedAndAnUnratedOneAnswersWithNought}
-	 * and {@link #aReportedChangeOfTermAnswersWithTheDayReportedAndTheDayProposed} are the
-	 * cases that hold them now rather than this one holding their absence.
+	 * <p><b>{@code rating} left this list on 22.09.2026</b> (ADL A64 A1), off
+	 * {@code comment_submission};
+	 * {@link #aWaitingCommentAnswersWithWhatItWasRatedAndAnUnratedOneAnswersWithNought} is
+	 * the case that holds it now rather than this one holding its absence.
+	 * {@code currentDate} and {@code proposedDate} left the same day, off
+	 * {@code schedule_proposal} (ADL A64 A2), and came BACK the same day: PDL P10a removed
+	 * the schedule tab before a screen fed from the real server ever read either one, so
+	 * both are absent again and neither needs a case of its own or a name on the list
+	 * below - {@code verification.json} carries neither field any more either, so this
+	 * floor's two sides agree on the two of them without either being named as an
+	 * exception.
 	 *
 	 * <p><b>And one name is answered that the portal does not read</b>, {@code photoId}, which
 	 * is V9's own column. It is the one thing there will be to revisit the day A60 is.

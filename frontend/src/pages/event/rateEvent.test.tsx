@@ -580,7 +580,7 @@ describe('a comment a moderator lets out', () => {
   })
 
   it('draws the marks on the comments queue and on none of the others', async () => {
-    /* A rating is about an event and the other six queues are not, so a card in
+    /* A rating is about an event and the other four queues are not, so a card in
        them carrying "Organizacija / Vrednost za novac / Ambijent / Ukupna
        ocena: Bez ocene" is four lines of nothing on every biography, every
        photograph and every payment. The condition was written and held nowhere:
@@ -593,7 +593,7 @@ describe('a comment a moderator lets out', () => {
 
     for (const [address, named] of [
       ['trkacki-profil', 'Trkački profil'],
-      ['termini', 'Prijave promene termina'],
+      ['timovi', 'Novi timovi'],
     ] as const) {
       await router.navigate(`/sr/administracija/verifikacija/${address}`)
       /* Waited for by the name of the queue that was asked for: the list of
@@ -1047,48 +1047,21 @@ describe('a comment a moderator lets out', () => {
     expect(list.textContent).not.toContain('8. 5. 2010.')
   })
 
-  it('publishes nothing from the queues that are not about comments', async () => {
-    /* The merge asks two things of a waiting item: that it was approved, and
-       that it is a comment. Without the second, approving a reported change of
-       date publishes a card with no words and no marks under a real event, and
-       nothing on any screen would say where it came from. */
-    const user = setupUser()
-    const about = must(
-      (await loadResource<PendingItem[]>('verification')).find((one) => one.queue === 'schedule'),
-      'a change of date in the record',
-    )
-    /* Its own event, not one picked in advance: what a widened merge would
-       publish is a card on the event the item names, so an event chosen
-       anywhere else is a screen the mistake never reaches. */
-    const slug = (await eventWithId(about.subjectId)).slug
-
-    /* Read after that event, so the comments are drawn at all: before the race
-       the whole section is absent (EventComments.tsx), and "no card appeared"
-       would then be true of every screen. */
-    const { router } = renderAt(
-      '/sr/administracija/verifikacija/termini',
-      'superadmin',
-      null,
-      undefined,
-      '2027-05-01',
-    )
-
-    const waiting = await screen.findByRole('list', { name: /Čeka/ })
-    const card = must(
-      within(waiting)
-        .getAllByRole('listitem')
-        .find((one) => (one.textContent ?? '').includes(about.who)),
-      'that change of date in the queue',
-    )
-
-    await user.click(within(card).getByRole('button', { name: 'Odobri' }))
-    await router.navigate(`/sr/kalendar/${slug}`)
-
-    /* The event has no comments, so the sentence that says so is what stands
-       there. A card published by mistake takes it away. */
-    expect(await screen.findByText('Za ovaj događaj još nema odobrenih komentara.')).toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'Komentari' })).toBeNull()
-  })
+  /*
+   * „PUBLISHES NOTHING FROM THE QUEUES THAT ARE NOT ABOUT COMMENTS" stood here, and PDL
+   * P10a, 22.09.2026 is why it does not any more rather than standing rewritten to a
+   * weaker shape. It approved the schedule tab's own item on purpose: that queue was the
+   * only one beside comments whose `subjectId` ever named a REAL, navigable event
+   * (`comment_submission.event_id` and `schedule_proposal.event_id` were the two sources
+   * `VerificationApi` ever read `subjectId` off), so a merge widened past `queue.id ===
+   * 'comments'` had somewhere real to be caught reaching - the event the report was
+   * about, checked on its own page. Every other queue's `subjectId` is blank
+   * (`Number('')` is nought) or names a team, neither of which is a page this case could
+   * render and inspect, so the same case written against any of them would pass whether
+   * the guard held or not - the „dva izvora, jedna vrednost" shape a case must never
+   * take. With the schedule tab gone, no queue but comments names an event any more, and
+   * the condition this case existed to catch has nothing left to widen into.
+   */
 
   it('stays off the portal when it is deleted rather than approved', async () => {
     const user = setupUser()

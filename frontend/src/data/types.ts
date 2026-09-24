@@ -687,7 +687,7 @@ export type StaticPage = {
   includes?: string[]
 }
 
-/* What is waiting for a decision, in the seven queues that are read from a file.
+/* What is waiting for a decision, in the four queues that are read from a file.
  *
  * Here rather than beside the screens that draw it, because it describes a file
  * under `public/mock` and `src/data` is the only place that says what the
@@ -695,14 +695,12 @@ export type StaticPage = {
  * competitor proposes a team during a visit, and that proposal joins the same
  * queue as everything read off the disc, so both ends need the shape and neither
  * may import the other.
+ *
+ * Five until 22.09.2026: PDL P10a removed the schedule queue „u celini, zajedno
+ * sa pravom za njega", so this list is one shorter than the row count V5 seeded
+ * used to be.
  */
-export const PENDING_QUEUE_IDS = [
-  'payments',
-  'teams',
-  'profiles',
-  'comments',
-  'schedule',
-] as const
+export const PENDING_QUEUE_IDS = ['payments', 'teams', 'profiles', 'comments'] as const
 
 export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
 
@@ -870,8 +868,19 @@ export type PendingItem = {
    * carries no picture holds.
    */
   crop: Crop
-  /** A reported change of date carries both dates, so the difference is the
-   *  thing on screen. Empty on every other queue. */
+  /**
+   * The two days a reported change of term carried, off the one queue that asked for
+   * them, and empty everywhere else since V9 first wrote this shape.
+   *
+   * **The queue that populated these is gone (PDL P10a, 22.09.2026): „Ne postoji
+   * nepotvrđen termin... Redova je pet, ne šest."** Between 22.09.2026 (ADL A64) and
+   * that same day's later decision the schedule tab answered both for real; kept here,
+   * required rather than dropped, because `ServedPendingItem` already had a place for a
+   * field no queue can fill (`email`, `picture`, `crop`) and this is now two more of
+   * that same shape rather than a shape of its own. See `ServedPendingItem` for where
+   * the two are omitted from what the server answers, and `pages/admin/pending.ts` for
+   * what fills them in for every screen regardless.
+   */
   currentDate: string
   proposedDate: string
   /**
@@ -890,7 +899,7 @@ export type PendingItem = {
   rating: EventRating
   /** The payments queue only. Until the fee is recorded there is no number to go
    *  by, so a waiting registration is known by its name and its address (PDL
-   *  P8). Empty on the other six. */
+   *  P8). Empty on the other four. */
   email: string
   /**
    * The town and the country, on the two queues that have one.
@@ -898,7 +907,7 @@ export type PendingItem = {
    * On the payments, because how a member pays follows the country they live in
    * (PDL P8), so it belongs beside the fee. On the new teams, because approving
    * a proposal is what makes the team and these are two of the four things it is
-   * made from (PDL P13). Empty on the other five.
+   * made from (PDL P13). Empty on the other three.
    */
   city: string
   country: string
@@ -906,8 +915,8 @@ export type PendingItem = {
 
 /**
  * THE SAME ITEM AS `/api/verification` REALLY ANSWERS IT, which is `PendingItem`
- * less the three the schema still has nowhere to hold (or nowhere it may be read
- * from).
+ * less the five the schema has nowhere to hold, has nowhere to read from, or no
+ * longer has a queue to fill.
  *
  * **Derived by `Omit` and never written out, which is the whole point.** A
  * hand-written list of „what the server sends" is a second home for the shape, and
@@ -921,12 +930,15 @@ export type PendingItem = {
  * `PendingItem[]`, and „Administracija → Verifikacija → Timovi" threw on
  * `undefined.trim()` in front of the owner. Nothing compared the two ends.
  *
- * **`rating`, `currentDate` and `proposedDate` left this list the same day** (ADL A64,
- * 22.09.2026): V30 gave the comments tab a table of its own to hold a mark in
- * (`comment_submission`) and the schedule tab one to hold both days in
- * (`schedule_proposal`), closing the pointer `verification` had none of before. The
- * three that are left carry the reason that is true of EACH of them, in `PENDING.md`
- * too:
+ * **`rating` left this list on 22.09.2026 and stayed** (ADL A64): V30 gave the
+ * comments tab a table of its own to hold a mark in (`comment_submission`), closing
+ * the pointer `verification` had none of before. **`currentDate` and `proposedDate`
+ * left the same day and came BACK the same day, the two names on this list PDL P10a
+ * touches.** V30 gave the schedule tab the identical shape
+ * (`schedule_proposal`) within hours of `rating` gaining its table, and the owner's
+ * later decision that same 22.09.2026 took the tab away before either date was read
+ * by a screen fed from the real server: „Redova je pet, ne šest." The five that are
+ * left carry the reason that is true of EACH of them, in `PENDING.md` too:
  *
  * - `email` — a registration's address. `account.email` exists; serving it here is a
  *   decision about what the payments queue may say, not a shortfall of this shape.
@@ -935,6 +947,10 @@ export type PendingItem = {
  *   nema." `verification.photo_id` is exactly such a holder, so `/api/photos/` answers
  *   a waiting picture the same as one that was never uploaded. An address answered
  *   here would draw a broken frame, which is worse than drawing none.
+ * - `currentDate`, `proposedDate` — PDL P10a, 22.09.2026: the one queue that asked a
+ *   member for either day is gone „u celini, zajedno sa pravom za njega", and an event
+ *   carries one date and no state for anybody to report a change against any more.
+ *   Not a shortfall either: there is nothing left to answer.
  *
  * `photoId` is the one name the answer carries that `PendingItem` has not got. It is
  * the key of the row in `photo`, and it is here so that the day A60 is revisited there
@@ -963,10 +979,11 @@ export type PendingItem = {
  * the screen that reads it.
  *
  * **It means something here too, which is why the two meet in one place.**
- * `PendingItem.memberNumber` is „who sent it in, or empty", with two written reasons for
- * the empty - a change of date may be reported by somebody with no account at all (PDL
- * P10), and a registration whose fee is not recorded has no number yet (30.07.2026) -
- * and `canSendBack` refuses to hand an item back to it, because an empty recipient in
+ * `PendingItem.memberNumber` is „who sent it in, or empty", written for a registration
+ * whose fee is not recorded and so has no number yet (30.07.2026) - a change of date
+ * used to be the second reason, reported by somebody with no account at all (PDL P10),
+ * until PDL P10a took the whole queue away and left this the only one - and
+ * `canSendBack` refuses to hand an item back to it, because an empty recipient in
  * this portal is not nobody but the WHOLE LEAGUE (`session/context.ts`, `Message.to`).
  * A null travelling on into the screen passes `item.memberNumber !== ''`, so a
  * moderator's reason for refusing one person's picture would be addressed to null and
@@ -976,5 +993,5 @@ export type PendingItem = {
  */
 export type ServedPendingItem = Omit<
   PendingItem,
-  'id' | 'memberNumber' | 'email' | 'picture' | 'crop'
+  'id' | 'memberNumber' | 'email' | 'picture' | 'crop' | 'currentDate' | 'proposedDate'
 > & { id: number; memberNumber: string | null; photoId: number | null }

@@ -2333,12 +2333,12 @@ describe('verification', () => {
        most: they are not left standing on a screen the navigation beside them
        says is not there. */
     const user = setupUser()
-    /* The reported dates and not the new teams, for the reason written out where
+    /* The racing profiles and not the new teams, for the reason written out where
        the same swap was made below: a team whose name is taken keeps its button
        after an approval, so this loop would never end. */
-    renderAt(`/sr/${QUEUE.schedule.path}`, 'moderator')
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'moderator')
 
-    await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
 
     const nav = () => within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
@@ -2347,7 +2347,7 @@ describe('verification', () => {
     }
 
     expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
-    expect(nav().getByRole('link', { name: /Prijave promene termina/ })).toBeVisible()
+    expect(nav().getByRole('link', { name: /Trkački profil/ })).toBeVisible()
   })
 
   it('says nothing beside Verification while nothing is waiting', async () => {
@@ -2668,7 +2668,7 @@ describe('the queue of memberships waiting to be activated', () => {
   })
 })
 
-describe('the six queues read from the file', () => {
+describe('the five queues read from the file', () => {
   /** What is waiting on one queue, read off the file the screen reads. */
   const itemsOf = (queue: string): PendingItem[] =>
     JSON.parse(
@@ -2693,7 +2693,7 @@ describe('the six queues read from the file', () => {
 
   const QUEUES: [PendingQueueId, string, number][] = [
     ['teams', 'Novi timovi', 3],
-    ['schedule', 'Prijave promene termina', 3],
+    ['profiles', 'Trkački profil', 4],
   ]
 
   it.each(QUEUES)(
@@ -2753,65 +2753,6 @@ describe('the six queues read from the file', () => {
      it is a trace for whoever reads the queue next, not a reason given to
      anybody. A trace nobody is obliged to leave is a trace that gets left; one
      that is obliged is three dots typed to get past a button. */
-  it('moves the event when a reported change of date is approved', async () => {
-    /* Owner, 06.08.2026. Approving used to do nothing beyond taking the card off
-       the screen: a moderator who agreed that a race had been put off left the
-       calendar saying the old day, and the next visitor read the wrong date from
-       a report the league had already accepted. */
-    const user = setupUser()
-    const { router } = renderAt(`/sr/${QUEUE.schedule.path}`, 'superadmin')
-
-    await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
-
-    const card = within(
-      must(
-        within(screen.getByRole('list', { name: /Čeka proveru/ }))
-          .getAllByRole('listitem')
-          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
-        'a reported change of date',
-      ),
-    )
-
-    expect(card.getByText('10. 4. 2027.')).toBeVisible()
-
-    await user.click(card.getByRole('button', { name: 'Odobri' }))
-
-    /* Where the administration reads it. */
-    await router.navigate('/sr/administracija/dogadjaji')
-    await user.type(await screen.findByLabelText(/Pretraga/), 'Beogradski maraton')
-
-    const rows = within(await screen.findByRole('table', { name: 'Događaji' }))
-
-    expect(rows.getByText('10. 4. 2027.')).toBeVisible()
-    expect(rows.queryByText('3. 4. 2027.')).toBeNull()
-
-    /* And the races with it, by the same number of days. This event runs over
-       two mornings, so approving the report used to leave both races a week
-       before the event they belong to, and the page a visitor reads said so. */
-    const listed = must(
-      within(await screen.findByRole('table', { name: 'Događaji' }))
-        .getAllByRole('row')
-        /* The 2027 one: the name has been run every year since 2010 and the
-           list holds every year of it. */
-        .find(
-          (one) =>
-            /Beogradski maraton/.test(one.textContent ?? '') && /2027/.test(one.textContent ?? ''),
-        ),
-      'the event that was moved',
-    )
-
-    await user.click(within(listed).getByRole('button', { name: /^Otvori/ }))
-
-    /* Read out of the boxes rather than off the text of the cells: since
-       23.08.2026 a race's day is a picker in its own row and holds `dd/mm/gggg`
-       (owner). */
-    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByLabelText(/^Datum/)
-      .map((box) => inputElement(box).value)
-
-    expect(races).toEqual(['10/04/2027', '11/04/2027'])
-  })
-
   it('folds a card open and shut, one at a time', async () => {
     /* On a telephone a card is a screenful, so five of them mean scrolling
        through four to reach the third (owner, 06.08.2026). The control is drawn
@@ -2874,127 +2815,18 @@ describe('the six queues read from the file', () => {
     expect(document.getElementById(String(opens))).not.toBeNull()
   })
 
-  /* Its own limit, because it really does walk a screen: it opens the calendar from
-     the administration, enters a race in the table, moves the event, answers two
-     reports in the queue and opens the event again to read the days. Four seconds
-     and a half here, and the machine that decides is about half again slower, which
-     put it over the package's five and failed a branch that had nothing to do with
-     it. A test that genuinely waits carries its own limit rather than raising the
-     package's (the same rule is written over the turning chart in
-     `publicScreens.test.tsx`). */
-  it('moves a race entered during the visit, and moves it from the day it now has', async () => {
-    /* Two things the queue reads through the session rather than off the file:
-       a race entered or re-dated during this visit is moved with its event, and
-       the day it is moved from is the day the event is on now. A report written
-       a fortnight ago may name a day the event has since left. */
-    const user = setupUser()
-    const { router } = renderAt('/sr/administracija/dogadjaji', 'superadmin')
-
-    const find2027 = async () => {
-      const search = await screen.findByLabelText(/Pretraga/)
-
-      await user.clear(search)
-      await user.type(search, 'Beogradski maraton')
-
-      return must(
-        within(await screen.findByRole('table', { name: 'Događaji' }))
-          .getAllByRole('row')
-          .find(
-            (one) =>
-              /Beogradski maraton/.test(one.textContent ?? '') &&
-              /2027/.test(one.textContent ?? ''),
-          ),
-        'the event of 2027',
-      )
-    }
-
-    /* A race added to it this visit, on the day the event begins. */
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
-    await user.click(await screen.findByRole('button', { name: 'Nova trka' }))
-
-    /* Into the row that was just opened, which is the last one: since 23.08.2026
-       every race of the event has a box of its own in the table (owner). */
-    const lengths = () => screen.getAllByLabelText(/^Dužina/)
-
-    await user.type(must(lengths()[lengths().length - 1], 'the row just opened'), '5')
-
-    /* And the event moved a day on before the report is answered, so the day the
-       report names is a day the event has already left. In the same sitting as the
-       race above, because one press saves the whole screen since 23.08.2026: two
-       sittings would be two opens of a list of eleven hundred, and this test was
-       over five seconds on the machine that decides. */
-    /* The date of the event itself, named by nothing else: since the column of a race
-       was renamed „Datum" on 24.08.2026 („Treći kao sada, i nije dan nego datum!",
-       owner) every row of the table answers to that name as well, each carrying the
-       race it belongs to („Datum, 1. trka"). The event's own field carries nothing
-       after it, so it is asked for whole. */
-    const date = screen.getByLabelText('Datum')
-
-    await user.clear(date)
-    await user.type(date, '04042027')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    /* And the change of date accepted, onto 10 April: six days from where the
-       event stands now, not seven from where the report says it stood. */
-    await router.navigate(`/sr/${QUEUE.schedule.path}`)
-
-    const card = within(
-      must(
-        within(await screen.findByRole('list', { name: /Čeka proveru/ }))
-          .getAllByRole('listitem')
-          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
-        'the reported change of date',
-      ),
-    )
-
-    await user.click(card.getByRole('button', { name: 'Odobri' }))
-
-    await router.navigate('/sr/administracija/dogadjaji')
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
-
-    const races = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-    /* Found by its length, since a race carries no name of its own
-       (data/types.ts). Five kilometres is a length no other race of this event
-       has, which is why it was the one entered. */
-    const mine = must(
-      races
-        .getAllByRole('row')
-        .find((one) => within(one).queryByDisplayValue('5') !== null),
-      'the race entered during the visit',
-    )
-
-    /* Moved with everything else, rather than left on the day it was entered on,
-       and moved by six days rather than seven. Read out of the box, because the
-       day of a race is a picker in its own row since 23.08.2026. */
-    expect(within(mine).getByLabelText(/^Datum/)).toHaveValue('10/04/2027')
-
-    /* And the second report of the same change moves nothing more. Two
-       independent reports are what a reported change is made of (PDL P10), so
-       answering both is the ordinary case, and answering the second from the day
-       the first one named would move the races a second time. */
-    await router.navigate(`/sr/${QUEUE.schedule.path}`)
-
-    const second = within(
-      must(
-        within(await screen.findByRole('list', { name: /Čeka proveru/ }))
-          .getAllByRole('listitem')
-          .find((one) => (one.textContent ?? '').includes('Beogradski maraton')),
-        'the second report of the same change',
-      ),
-    )
-
-    await user.click(second.getByRole('button', { name: 'Odobri' }))
-
-    await router.navigate('/sr/administracija/dogadjaji')
-    await user.click(within(await find2027()).getByRole('button', { name: /^Otvori/ }))
-
-    const after = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-      .getAllByLabelText(/^Datum/)
-      .map((box) => inputElement(box).value)
-
-    expect(after).toEqual(['10/04/2027', '10/04/2027', '11/04/2027'])
-  }, SLOW)
+  /*
+   * „MOVES A RACE ENTERED DURING THE VISIT, AND MOVES IT FROM THE DAY IT NOW HAS" stood
+   * here, walking a race added during the visit through an approval on the schedule
+   * queue to prove the move picked it up and read the event's day fresh rather than
+   * stale. PDL P10a, 22.09.2026 removed the only thing that made this its own case
+   * rather than a duplicate: `moveTheEvent` (backend) and `moveEvent` (`pages/admin/
+   * moveEvent.ts`, deleted with it) were the one road a session-added race could be
+   * carried across by anything other than the administrator's own save, which this
+   * file's other case over `EventWriteApi` (`AdminEvents.tsx`) already covers on its
+   * own terms - one screen, one save, nothing left to read a second time from a
+   * report.
+   */
 
   it('deletes a comment with a note nobody has to write', async () => {
     const user = await open('comments', 'Komentari')
@@ -3264,24 +3096,29 @@ describe('the six queues read from the file', () => {
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
   })
 
-  /* The other three queues that write to the member, each with the one card in
-     the seed that carries a member number, and the heading their refusal has to
-     arrive under.
+  /* The other two queues that write to the member, each with the one card in the seed
+     that carries a member number, and the heading their refusal has to arrive under.
+     The racing profile writes too and is tested on its own above, under its own
+     two-sided heading (a text or a picture); a third row here would test the bio
+     heading a second time rather than guard a heading this table does not already
+     hold.
    *
-     Written as a table rather than as three tests because the fault it guards is
+     Written as a table rather than as two tests because the fault it guards is
      a heading swapped for another heading, and a table is what makes that
      visible: the rows stand beside each other. A review swapped the league's
      heading for the schedule's and all 1940 tests passed, so a member whose
      league was refused would have been told „Prijava promene termina je
-     vraćena". The headings of the screens were measured; the headings of the
+     vraćena" - the schedule queue this measured is gone since (PDL P10a,
+     22.09.2026), and the racing profile's own bio heading stands in its place
+     below. The headings of the screens were measured; the headings of the
      messages were not, and those are the ones a member reads. */
   const WRITES_TO = [
     { queue: QUEUE.teams, who: 'Časlav Radenković', member: '000004', heading: 'Predlog tima je vraćen' },
     {
-      queue: QUEUE.schedule,
-      who: 'Borivoje Jovanović',
-      member: '000019',
-      heading: 'Prijava promene termina je vraćena',
+      queue: QUEUE.profiles,
+      who: 'Miloje Stanojlović',
+      member: '000010',
+      heading: 'Tekst o sebi je vraćen',
     },
   ] as const
 
@@ -3631,7 +3468,7 @@ describe('the six queues read from the file', () => {
        on the same queue for a while, and `open` had already waited for that very
        heading before the press: the assertion was satisfied before the action, and
        taking the press away left it green. */
-    const user = await open('schedule', 'Prijave promene termina')
+    const user = await open('profiles', 'Trkački profil')
 
     await user.click(sectionNav().getByRole('link', { name: /Novi timovi/ }))
 
@@ -3796,11 +3633,11 @@ describe('the six queues read from the file', () => {
        was left standing open over nothing, which is also a reason half written
        about a proposal already decided.
 
-       The reported dates and not the new teams, for the reason written out twice
+       The racing profile and not the new teams, for the reason written out twice
        above: a team whose name is taken is left standing by the sweep, so the
        card the box belongs to would still be there and the test would pass for
        the wrong reason. */
-    const user = await open('schedule', 'Prijave promene termina')
+    const user = await open('profiles', 'Trkački profil')
 
     const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
@@ -3845,13 +3682,14 @@ describe('the six queues read from the file', () => {
   })
 
   it('says so when the last item has been decided', async () => {
-    /* Asked of the reported dates rather than of the new teams, which is where
+    /* Asked of the racing profile rather than of the new teams, which is where
        this stood until the queue of proposed leagues left on 24.08.2026: a team
        whose name is already taken is left standing by an approval rather than
        settled (`refusal` in PendingQueue), so a queue of two would not empty in
        two presses and the emptiness this test is about would never be reached. */
-    const user = await open('schedule', 'Prijave promene termina')
+    const user = await open('profiles', 'Trkački profil')
 
+    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))

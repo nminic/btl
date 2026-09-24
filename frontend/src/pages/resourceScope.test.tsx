@@ -376,87 +376,13 @@ describe('a screen waits only on the data it shows', () => {
     expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
   })
 
-  it('holds back a change of date while the races of the event are on their way', async () => {
-    /* Accepting one moves the event and its races by the same number of days
-       (moveEvent). Until the races are here there is nothing to move them by,
-       and the event alone is the half-move the decision exists to make whole:
-       an event a week later than the races it is run with. */
-    const stalled = stallResource('races')
-    restore = stalled.restore
-    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
-
-    const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
-    const approve = first(cards.getAllByRole('button', { name: 'Odobri' }))
-
-    expect(approve).toHaveAttribute('aria-disabled', 'true')
-    /* Said once for the queue rather than on every card. */
-    expect(screen.getByText(/Odluka čeka događaj/)).toBeVisible()
-    /* And the same hold on the one decision that settles the whole queue: taken
-       without the races it is forty half-moves rather than one. */
-    expect(screen.getByRole('button', { name: 'Odobri sve' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-
-    /* Reachable and pressable, so the reason can be read; it simply does not
-       decide. */
-    await setupUser().click(approve)
-
-    /* Answered yes, so what holds the sweep back is the hold and not the
-       question: unanswered, jsdom's confirm is a no and the sweep would stop
-       there whatever the code did. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      await setupUser().click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
-      expect(screen.queryByText(/Rešeno je/)).toBeNull()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('holds back a change of date while the events themselves are still coming', async () => {
-    /* The other half of the same hold. Without the events the day the event is
-       moved from is the day the report claims, and a second report about the
-       same change then moves the races again from a day the event has already
-       left: two reports of one change, and the races a week past the event they
-       are run at. The queue holds both reports of the Beogradski maraton, which
-       is what a reported change is made of. */
-    const stalled = stallResource('events')
-    restore = stalled.restore
-
-    const user = setupUser()
-    renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
-
-    const cards = within(await screen.findByRole('list', { name: /Čeka proveru/ }))
-    const approve = first(cards.getAllByRole('button', { name: 'Odobri' }))
-
-    expect(approve).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByText(/Odluka čeka događaj/)).toBeVisible()
-
-    await user.click(approve)
-
-    expect(await screen.findByRole('heading', { level: 2, name: /^Čeka proveru 3/ })).toBeVisible()
-  })
-
-  it.each(BOTH)(
-    'says %s failed rather than that it is waiting for it',
-    async (name) => {
-      /* Two different things, and `dataOr` answers the same for both: told to
-         wait for a file that will never come, a moderator who holds the right is
-         refused it for good and reads a sentence that is not true. */
-      restore = breakResource(name)
-      renderAt('/sr/administracija/verifikacija/termini', 'superadmin')
-
-      await screen.findByRole('list', { name: /Čeka proveru/ })
-
-      expect(screen.getByText(/se ne mogu učitati/)).toBeVisible()
-      expect(screen.queryByText(/Odluka čeka/)).toBeNull()
-    },
-  )
-
+  /*
+   * THREE CASES STOOD HERE, ABOUT THE SCHEDULE QUEUE'S OWN HOLD ON `races` AND `events`,
+   * from the day that hold existed until PDL P10a, 22.09.2026 took the queue away the
+   * same day: „Redova je pet, ne šest." The other half of the same rule - that a screen
+   * must still fail on data it does show - is what the case below still holds, over a
+   * screen that has not gone with the queue.
+   */
 
   /* The other half of the same rule: a screen must still fail on data it does
    * show, so the cases above cannot be satisfied by swallowing every error. */
