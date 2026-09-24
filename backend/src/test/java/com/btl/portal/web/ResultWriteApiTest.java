@@ -80,6 +80,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li><b>{@link #SOMEONE_ELSE} has a result on the SAME race with the same distance, climb
  * and fall.</b> Only the time and the points differ, so a statement that lost its
  * {@code competitor_id} reads a row that looks almost right.
+ * <li><b>{@link #FIRST_WRITTEN} has a result too, on the one race kind the other two
+ * miss.</b> {@link #myResult} is on a race of a length and {@link #myOtherResult} is on a
+ * free one; without a result on {@link #timeRace} the axis „which figure the race fixes"
+ * had only one live state on the correction route, which is exactly what let
+ * {@link ResultWriteApi#change} take all four figures from the member and no case notice
+ * it (finding of 25.09.2026, PR 365).
  * <li><b>The race was run on a day that is not today.</b> {@link #ORDINARY_MOMENT} is
  * 15.06.2027 and every race in the fixture is earlier, so „the day of the race" and „the day
  * somebody typed it in" can never be the same string (ADL A12, 2c).
@@ -178,6 +184,12 @@ class ResultWriteApiTest {
 	/** Somebody else's, on the same race and with the same three figures. */
 	private long somebodyElsesResult;
 
+	/** {@link #FIRST_WRITTEN}'s, on {@link #timeRace} - the one race kind neither
+	 *  {@link #myResult} nor {@link #myOtherResult} stands on, and the one a correction
+	 *  used to get wrong in the other direction from a race of a length (finding of
+	 *  25.09.2026, PR 365). */
+	private long timedResult;
+
 	/** A clock the case moves, the shape {@code CommentWriteApiTest} and
 	 *  {@code TeamWriteApiTest} both carry: a boundary in time needs both of its edges asked
 	 *  from one fixture, and reporting UTC as its zone is what makes a route reading the
@@ -221,7 +233,7 @@ class ResultWriteApiTest {
 	}
 
 	@BeforeEach
-	void threeMembersFourRacesAndThreeResults() {
+	void threeMembersFourRacesAndFourResults() {
 		clock.moveTo(ORDINARY_MOMENT);
 
 		competitor(FIRST_WRITTEN, "Ana", "Prva");
@@ -245,6 +257,8 @@ class ResultWriteApiTest {
 				"130.00");
 		myOtherResult = ran(ME, freeRace, "2027-03-03", "12.00", 10, 20, 3000, "45.60");
 		myResult = ran(ME, lengthRace, "2027-05-05", "42.20", 350, 410, 12000, "123.45");
+		timedResult = ran(FIRST_WRITTEN, timeRace, "2027-04-04", "63.75", 120, 130, 21600,
+				"210.00");
 
 		/* THREE MESSAGES ALREADY IN THE INBOX, and the third is addressed to nobody: V13 says
 		   an empty `to_id` means the whole league, so without it „he was told" and „everybody
@@ -738,8 +752,14 @@ class ResultWriteApiTest {
 				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
 	}
 
-	/** AND ON A CORRECTION, where all four are the member's by PDL's own words („izmena
-	 *  brojeva i dokaza"), so each of the four is judged there too. */
+	/** AND ON A CORRECTION OF A RESULT ON A RACE THAT FIXES NOTHING, where all four stay
+	 *  the member's exactly as they do on a fresh report of the same kind
+	 *  ({@link #everyWayARunOnAFreeRaceCanFailToHoldTogether}), so each of the four is
+	 *  judged there too. A correction of a race that fixes something is a different case:
+	 *  what the race fixes there is never even asked of the request, so sending it broken
+	 *  is not refused - it is ignored
+	 *  ({@link #aCorrectionOnARaceOfALengthTakesTheLengthTheClimbAndTheFallOffTheRaceToo},
+	 *  {@link #aCorrectionOnATimedRaceTakesTheTimeOffTheRaceAndTheRestFromTheMember}). */
 	@ParameterizedTest(name = "{0} = {1}")
 	@CsvSource(delimiter = '|', value = {
 			"distanceKm | <out>   ",
@@ -749,14 +769,15 @@ class ResultWriteApiTest {
 			"ascentM    | -1      ",
 			"descentM   | -1      ",
 			"seconds    | 0       "})
-	void everyWayACorrectionCanFailToHoldTogether(String field, String value) throws Exception {
+	void everyWayACorrectionOnAFreeRaceCanFailToHoldTogether(String field, String value)
+			throws Exception {
 		Map<String, Object> fields = new HashMap<>();
 
-		fields.put("distanceKm", "42.20");
-		fields.put("ascentM", 350);
-		fields.put("descentM", 410);
-		fields.put("seconds", 11400);
-		fields.put("link", "https://rezultati.rs/ispravka");
+		fields.put("distanceKm", "12.00");
+		fields.put("ascentM", 10);
+		fields.put("descentM", 20);
+		fields.put("seconds", 3000);
+		fields.put("link", "https://rezultati.rs/ispravka-slobodne");
 
 		if ("<out>".equals(value)) {
 			fields.remove(field);
@@ -764,13 +785,13 @@ class ResultWriteApiTest {
 			fields.put(field, value);
 		}
 
-		assertThat(reasonIn(correctedAs(ME, myResult, form(fields))))
-				.as("a correction with %s = %s was taken", field, value)
+		assertThat(reasonIn(correctedAs(ME, myOtherResult, form(fields))))
+				.as("a correction on a free race with %s = %s was taken", field, value)
 				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
 
-		assertThat(secondsOf(myResult))
+		assertThat(secondsOf(myOtherResult))
 				.as("a refused correction moved the result all the same")
-				.isEqualTo(12000);
+				.isEqualTo(3000);
 	}
 
 	/** The one described request that works, for a case to break one thing about. */
@@ -877,14 +898,77 @@ class ResultWriteApiTest {
 				.containsEntry("race_id", lengthRace)
 				.containsEntry("race_date", LocalDate.of(2027, 5, 5))
 				.containsEntry("seconds", 11400)
-				/* A correction carries the numbers the MEMBER sent, never the race's: PDL,
-				   27.08.2026, „Time ispravka ostaje izmena BROJEVA i dokaza." */
-				.containsEntry("distance_km", new BigDecimal("42.2000"))
+				/* NOT the 42,20 that was sent: a race of a length fixes the distance on a
+				   correction exactly as it does on a fresh report (figuresOf, and the class
+				   note on ResultWriteApi). */
+				.containsEntry("distance_km", MEASURED_EXACTLY)
 				.containsEntry("race_name", null);
 
 		assertThat(secondsOf(myResult))
 				.as("sending a correction moved the result that is still in the standings")
 				.isEqualTo(12000);
+	}
+
+	/**
+	 * A CORRECTION ON A RACE OF A LENGTH TAKES THE LENGTH, THE CLIMB AND THE FALL OFF THE
+	 * RACE TOO, exactly as a fresh report does.
+	 *
+	 * <p>Sent a length, a climb and a fall that would each refuse a FRESH report on their
+	 * own ({@link #everyWayARunOnAFreeRaceCanFailToHoldTogether}'s own values), to prove
+	 * two things at once: the row that comes out carries the race's figures and not these,
+	 * and the request is not refused for them either, because a race of a length does not
+	 * ask the member for them in the first place. PDL, owner, 03.08.2026: „ispravka
+	 * [duzine, uspona, spusta] stize svima koji su je istrcali, a ne na jednoj prijavi" -
+	 * which a correction that accepted them from the member, or refused him for them,
+	 * would defeat either way.
+	 */
+	@Test
+	void aCorrectionOnARaceOfALengthTakesTheLengthTheClimbAndTheFallOffTheRaceToo()
+			throws Exception {
+		MockHttpServletResponse answered = correctedAs(ME, myResult, correction(
+				"0", -1, -1, 11400, "https://rezultati.rs/ispravka-duzine", ""));
+
+		assertThat(answered.getStatus())
+				.as("a length, a climb or a fall that would refuse a fresh report blocked a"
+						+ " correction the race does not even ask them of")
+				.isEqualTo(200);
+
+		assertThat(theSubmission(idIn(answered)))
+				.as("a length, a climb or a fall nothing like what was sent reached the row")
+				.containsEntry("distance_km", MEASURED_EXACTLY)
+				.containsEntry("ascent_m", 350)
+				.containsEntry("descent_m", 410)
+				/* And the time is still his to correct - a race of a length does not fix it. */
+				.containsEntry("seconds", 11400);
+	}
+
+	/**
+	 * AND ON A TIMED RACE IT IS THE OTHER WAY ROUND: THE TIME COMES OFF THE RACE AND THE
+	 * REST IS THE MEMBER'S.
+	 *
+	 * <p>Owner, 29.08.2026: „Na vremenskoj trci clan unosi duzinu, uspon i spust. Vreme ne
+	 * unosi, jer je zadato trkom." Sent a time of nought, which would refuse a fresh
+	 * report outright ({@code result_submission_seconds_positive}), to prove the same two
+	 * things the length case above does: the row carries the race's own limit and not
+	 * this, and the request is not refused for it either.
+	 */
+	@Test
+	void aCorrectionOnATimedRaceTakesTheTimeOffTheRaceAndTheRestFromTheMember()
+			throws Exception {
+		MockHttpServletResponse answered = correctedAs(FIRST_WRITTEN, timedResult, correction(
+				"70.50", 140, 150, 0, "https://rezultati.rs/ispravka-vremenske", ""));
+
+		assertThat(answered.getStatus())
+				.as("a time that would refuse a fresh report blocked a correction the race"
+						+ " does not even ask it of")
+				.isEqualTo(200);
+
+		assertThat(theSubmission(idIn(answered)))
+				.as("a time nothing like what was sent reached the row")
+				.containsEntry("seconds", 21600)
+				.containsEntry("distance_km", new BigDecimal("70.5000"))
+				.containsEntry("ascent_m", 140)
+				.containsEntry("descent_m", 150);
 	}
 
 	/** A CORRECTION ASKS FOR THE PROOF AGAIN (owner, 27.08.2026: „menja i dostavlja dokaz za

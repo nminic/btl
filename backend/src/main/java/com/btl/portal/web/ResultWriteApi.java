@@ -101,24 +101,27 @@ import java.util.Optional;
  * member does, not a box the superadmin ticks, which is why all three routes stand in
  * {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT} beside {@code POST /api/comments}.
  *
- * <p><b>WHAT THE FORM ASKS FOR IS NOT WHAT THE RACE ANSWERS FOR, AND THE TWO WRITES SPLIT
- * THAT DIFFERENTLY ON PURPOSE.</b>
+ * <p><b>WHAT THE FORM ASKS FOR IS NOT WHAT THE RACE ANSWERS FOR, AND A CORRECTION ASKS
+ * THE RACE THE SAME QUESTION A FRESH REPORT DOES.</b> Which figures a race fixes depends
+ * on its kind, and {@link #figuresOf} is the one place that decides it - called from both
+ * writers rather than boxed by each in its own words, so they cannot come to answer
+ * „whose figure is this" two different ways. A race of a LENGTH fixes the distance, the
+ * climb and the fall; a race to a LIMIT fixes the time, „jer je zadato trkom" (owner,
+ * 29.08.2026); a FREE race fixes neither - the split {@code pages/event/reportedResult.ts}
+ * already makes. PDL, owner, 03.08.2026: „Duzina, uspon i spust se ne unose, nego se
+ * uzimaju sa izabrane trke. To su zvanicni podaci i moderator ih ispravlja na trci, gde
+ * ispravka stize svima koji su je istrcali, a ne na jednoj prijavi" - true only if a
+ * correction cannot set them either, „na jednoj prijavi" being exactly what a correction
+ * is.
  *
- * <ul>
- * <li><b>A fresh report of a race the calendar holds takes the figures off the race.</b>
- * PDL, owner, 03.08.2026: „Duzina, uspon i spust se ne unose, nego se uzimaju sa izabrane
- * trke. To su zvanicni podaci i moderator ih ispravlja na trci, gde ispravka stize svima
- * koji su je istrcali, a ne na jednoj prijavi." Which figures a race fixes depends on its
- * kind, and this copies the split the portal already makes in
- * {@code pages/event/reportedResult.ts} rather than inventing a second one: a race of a
- * LENGTH fixes the distance, the climb and the fall; a race to a LIMIT fixes the time,
- * „jer je zadato trkom" (owner, 29.08.2026); a FREE race fixes neither.
- * <li><b>A correction takes all four from the member.</b> PDL, owner, 27.08.2026:
- * „Menja se sve osim trke... Time ispravka ostaje izmena BROJEVA i dokaza, a ne ponovno
- * otvaranje celog izbora." The numbers are what a correction IS, and {@code result} carries
- * its own four rather than reading the race's precisely so that they may differ (V7: „a
- * race edited afterwards must not silently rescore what was already run").
- * </ul>
+ * <p><b>„Menja se sve osim trke" (PDL, owner, 27.08.2026) is not the same question, and
+ * reading it as one was a fault this class carried until 25.09.2026.</b> „Time ispravka
+ * ostaje izmena BROJEVA i dokaza, a ne ponovno otvaranje celog izbora" names what a
+ * correction may touch against what it may not - the race itself, five days before the
+ * split above was even written - and says nothing about who a figure belongs to. Read
+ * the other way, a correction of one run could rewrite the length every OTHER result on
+ * the same race of a length still carries as official: exactly the „na jednoj prijavi"
+ * the 03.08.2026 decision refuses.
  *
  * <p><b>THE POINTS ARE COMPUTED HERE AND NEVER ACCEPTED FROM A REQUEST.</b> PDL: „Bodovi
  * ostaju izracunata vrednost", and the formula is {@link BtlScoreCalculator}, whose golden
@@ -328,6 +331,11 @@ class ResultWriteApi {
 	 * „menja i dostavlja dokaz za tu izmenu (PONOVO)". A counted result carries none of its
 	 * own to fall back on - the picture is deleted on decision (ADL A12) and the link was
 	 * the moderator's to read at the time.
+	 *
+	 * <p><b>The four figures go through {@link #figuresOf}</b>, the very function
+	 * {@link #fromTheCalendar} calls, so which of them is the member's to correct still
+	 * depends on what the race fixes (see the class note) - a correction does not get a
+	 * second, looser answer to that question just for being a correction.
 	 */
 	@PutMapping(path = "/api/results/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
@@ -350,15 +358,23 @@ class ResultWriteApi {
 			return proof;
 		}
 
-		if (notADistance(typed.distanceKm()) || notAClimb(typed.ascentM())
-				|| notAClimb(typed.descentM()) || notATime(typed.seconds())) {
+		/* THE RACE ANSWERS FOR WHAT IT FIXES HERE TOO (see the class note). `result_race_fk`
+		   cascades on the result this row corrects, so the race it names cannot have been
+		   deleted out from under it and `orElseThrow` never actually throws. */
+		Counted before = standing.get();
+		TheRace race = raceOf(before.raceId()).orElseThrow();
+		Figures figures = figuresOf(race, typed.distanceKm(), typed.ascentM(), typed.descentM(),
+				typed.seconds());
+
+		if (notADistance(figures.distanceKm()) || notAClimb(figures.ascentM())
+				|| notAClimb(figures.descentM()) || notATime(figures.seconds())) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		Counted before = standing.get();
-		Run after = new Run(before.raceName(), before.day(), typed.distanceKm(), typed.ascentM(),
-				typed.descentM(), typed.seconds(),
-				pointsFor(typed.distanceKm(), typed.ascentM(), typed.descentM(), typed.seconds()));
+		Run after = new Run(before.raceName(), before.day(), figures.distanceKm(),
+				figures.ascentM(), figures.descentM(), figures.seconds(), pointsFor(
+						figures.distanceKm(), figures.ascentM(), figures.descentM(),
+						figures.seconds()));
 
 		Said said = WhatAResultChangeSays.changed(before.run(), after);
 
@@ -457,36 +473,58 @@ class ResultWriteApi {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
-		/* WHICH FIGURES THE RACE HANDS OVER, which is the split `reportedResult.ts` already
-		   makes and the owner's words of 29.08.2026 behind it. A race of a length gives the
-		   three it measured; a race to a limit gives the time, because on such a race the
-		   time is the same for everyone who finished and it is what the formula scores it
-		   against; a free race gives neither. */
-		boolean ofALength = WhatARaceCarries.OF_A_LENGTH.equals(race.kind());
-		boolean toALimit = WhatARaceCarries.TO_A_LIMIT.equals(race.kind());
+		Figures figures = figuresOf(race, typed.distanceKm(), typed.ascentM(), typed.descentM(),
+				typed.seconds());
 
-		/* THE RACE'S SIDE IS BOXED BY HAND, AND THAT IS NOT STYLE - IT WAS A 500.
-		   Written `ofALength ? race.ascentM() : typed.ascentM()`, with an `int` on one side
-		   and an `Integer` on the other, Java promotes: the conditional UNBOXES the request's
-		   value before anything looks at it, so a form with no climb in it threw a
-		   NullPointerException here, before the guard below could answer 400. Measured on
-		   three of the four figures at once (`everyWayARunOnAFreeRaceCanFailToHoldTogether`);
-		   the length was safe only because both of its sides are already BigDecimal. */
-		BigDecimal distanceKm = ofALength ? race.distanceKm() : typed.distanceKm();
-		Integer ascentM = ofALength ? Integer.valueOf(race.ascentM()) : typed.ascentM();
-		Integer descentM = ofALength ? Integer.valueOf(race.descentM()) : typed.descentM();
-		Integer seconds = toALimit ? Integer.valueOf(race.limitSeconds()) : typed.seconds();
-
-		if (notADistance(distanceKm) || notAClimb(ascentM) || notAClimb(descentM)
-				|| notATime(seconds)) {
+		if (notADistance(figures.distanceKm()) || notAClimb(figures.ascentM())
+				|| notAClimb(figures.descentM()) || notATime(figures.seconds())) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		Run run = new Run(race.name(), race.day(), distanceKm, ascentM, descentM, seconds,
-				pointsFor(distanceKm, ascentM, descentM, seconds));
+		Run run = new Run(race.name(), race.day(), figures.distanceKm(), figures.ascentM(),
+				figures.descentM(), figures.seconds(), pointsFor(figures.distanceKm(),
+						figures.ascentM(), figures.descentM(), figures.seconds()));
 
 		return write(asking, me, typed.raceId(), race.day(), null, null, null, null, null, run,
 				typed, race.name());
+	}
+
+	/**
+	 * WHICH FOUR FIGURES A RUN CARRIES, ASKED OF THE RACE EXACTLY ONCE FOR BOTH WRITERS.
+	 *
+	 * <p>{@link #fromTheCalendar} and {@link #change} both call this rather than each
+	 * boxing the race's side by hand, which is the whole of what the class note above
+	 * means by „they cannot come to answer the question two different ways": one function
+	 * decides it now, not two that could drift apart. A race of a length gives the three
+	 * it measured; a race to a limit gives the time, because on such a race the time is
+	 * the same for everyone who finished and it is what the formula scores it against; a
+	 * free race gives neither, so every figure below is the request's own (owner,
+	 * 29.08.2026).
+	 *
+	 * <p><b>THE RACE'S SIDE IS BOXED BY HAND, AND THAT IS NOT STYLE - IT WAS A 500.</b>
+	 * Written {@code ofALength ? race.ascentM() : typedAscentM}, with an {@code int} on
+	 * one side and an {@code Integer} on the other, Java promotes: the conditional UNBOXES
+	 * the typed value before anything looks at it, so a form with no climb in it threw a
+	 * NullPointerException here, before the guard after this call could answer 400.
+	 * Measured on three of the four figures at once
+	 * ({@code everyWayARunOnAFreeRaceCanFailToHoldTogether}); the length was safe only
+	 * because both of its sides are already {@code BigDecimal}.
+	 */
+	private static Figures figuresOf(TheRace race, BigDecimal typedDistanceKm,
+			Integer typedAscentM, Integer typedDescentM, Integer typedSeconds) {
+		boolean ofALength = WhatARaceCarries.OF_A_LENGTH.equals(race.kind());
+		boolean toALimit = WhatARaceCarries.TO_A_LIMIT.equals(race.kind());
+
+		return new Figures(
+				ofALength ? race.distanceKm() : typedDistanceKm,
+				ofALength ? Integer.valueOf(race.ascentM()) : typedAscentM,
+				ofALength ? Integer.valueOf(race.descentM()) : typedDescentM,
+				toALimit ? Integer.valueOf(race.limitSeconds()) : typedSeconds);
+	}
+
+	/** The four figures {@link #figuresOf} decides between the race and the request. */
+	private record Figures(BigDecimal distanceKm, Integer ascentM, Integer descentM,
+			Integer seconds) {
 	}
 
 	/**
