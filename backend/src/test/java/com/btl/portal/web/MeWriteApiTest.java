@@ -1649,9 +1649,12 @@ class MeWriteApiTest {
 		for (String taken : MeWriteApi.WHAT_THIS_ROUTE_TAKES) {
 			if (onTheForm.containsKey(taken)) {
 				assertThat(MeWriteApi.EACH_BOX_ON_THE_FORM)
-						.as("this route takes %s, the form bounds it, and the server does not -"
-								+ " so a request that never passed through the form is unbounded",
-								taken)
+						.as("this route takes %s and the member's own form bounds it, but the"
+								+ " number is not in the one place this floor reads. Either the"
+								+ " server does not bound it at all - and then a request that"
+								+ " never passed through the form is unbounded - or it bounds it"
+								+ " SOMEWHERE ELSE, which is the same fact living in two homes"
+								+ " and free to disagree the day one of them is edited", taken)
 						.containsKey(taken);
 			}
 		}
@@ -1798,14 +1801,23 @@ class MeWriteApiTest {
 	 * <p>Refused rather than half-written, and the case reads the row afterwards to say so.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = { "both", "cityAlone", "countryAlone" })
+	@ValueSource(strings = { "both", "cityAlone", "countryAlone", "cityBlank", "countryBlank" })
 	void aTownSaidTwiceOrHalfSaidIsRefused(String how) throws Exception {
 		String country = aCountryCode();
 		String body = switch (how) {
 			case "both" -> changing("placeId", anotherTownOfTheCodebook(), "city", "Nis",
 					"country", country);
 			case "cityAlone" -> changing("city", "Nis");
-			default -> changing("country", country);
+			case "countryAlone" -> changing("country", country);
+			/* SENT AND EMPTY, WHICH IS NOT THE SAME REQUEST AS NOT SENT, and the two rows
+			   below are here because the coverage gate named the branch that tells them
+			   apart. A form posts an untouched box as an empty value, so „he cleared the
+			   town's name but left its country" is a request that really arrives - and it is
+			   half a town, exactly like naming one of the two and nothing else. Read as „not
+			   sent" it would be a country written beside a name that is no longer there,
+			   which V7's `competitor_typed_town_names_its_country` refuses at the row. */
+			case "cityBlank" -> changing("city", "   ", "country", country);
+			default -> changing("city", "Nis", "country", "");
 		};
 
 		List<String> before = personalOf(ME);

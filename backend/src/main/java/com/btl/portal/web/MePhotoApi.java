@@ -433,9 +433,29 @@ class MePhotoApi {
 	 * profilne slike" - and „razlikuje se samo sta moderator pise, jer se slika menja po
 	 * instrukciji a tekst se pise ponovo".
 	 *
-	 * <p>{@code state = 'waiting'} and not merely „a row in this tab": a picture that has
-	 * been decided, approved or refused alike, stands in the table for ever (V9, ADL A42),
-	 * and being refused and sending another is the whole errand.
+	 * <p><b>{@code state = 'waiting'} IS WRITTEN HERE AND CANNOT BE MEASURED HERE, AND THAT
+	 * IS SAID OUT LOUD RATHER THAN LEFT FOR A REVIEWER.</b> A mutation that loosened it to
+	 * „any state at all" was run before this was opened and the whole file stayed green, 31
+	 * of 31. The reason is not a missing case but V9:
+	 * {@code verification_decided_keeps_no_photo check (state = 'waiting' or photo_id is
+	 * null)} - read the other way round, a row whose {@code photo_id} is NOT null is
+	 * necessarily still waiting. So for PICTURES the condition below is implied by the one
+	 * beside it, and no fixture can separate them, because the database refuses to hold the
+	 * row that would.
+	 *
+	 * <p><b>It stays, for two reasons that are not habit.</b> It says what this query means
+	 * to a reader who has not got V9 open, and it goes on being right the day that constraint
+	 * is relaxed - at which point the condition stops being redundant and starts being the
+	 * only thing keeping a decided picture out of this answer. <b>What IS measured is the
+	 * thing that really holds it:</b>
+	 * {@code MePhotoApiTest.theSchemaRefusesADecidedRowThatStillHoldsAPicture} asks the
+	 * database to write exactly that row and requires it to refuse. That is the floor under
+	 * this line, and it is a case about behaviour rather than a case about a string.
+	 *
+	 * <p><b>Note that the same condition on {@link MeWriteApi}'s TEXT query is load bearing
+	 * and is not redundant at all</b>, because a decided text keeps its {@code body}: there
+	 * the two halves of this tab really do differ, which is what PDL P28a means by one row
+	 * holding two sorts.
 	 *
 	 * <p>Oldest first with the key last and {@code limit 1}, which is how V9 indexes the
 	 * queue and how {@link VerificationApi} reads it.

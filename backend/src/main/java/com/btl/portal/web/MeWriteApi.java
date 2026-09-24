@@ -462,7 +462,24 @@ class MeWriteApi {
 			"lastName", new Personal(60, Change::lastName),
 			"address", new Personal(120, Change::address),
 			"city", new Personal(80, Change::city),
-			"phone", new Personal(30, Change::phone));
+			"phone", new Personal(30, Change::phone),
+			/* AND THE BIOGRAPHY IS HERE TOO, WHICH IS THE FLOOR ABOVE CATCHING A REAL GAP
+			   RATHER THAN AN EXCEPTION BEING WRITTEN FOR IT.
+
+			   The first draft left it out, on the reasoning that it has a constant and a
+			   refusal of its own from before 24.09.2026. The floor went red and it was right
+			   to: its question is „is every box this route takes bounded by the form's own
+			   number", and an answer of „yes, but somewhere else" is two homes for one kind
+			   of fact. `CLAUDE.md` of 14.09.2026 asks exactly this of every exception a guard
+			   needs in order to pass - „zasto se to uopste razlikuje?" - and the honest answer
+			   here was „it does not, it is just written twice".
+
+			   WHAT DOES NOT CHANGE IS THE ANSWER THE MEMBER GETS. `AS_LONG_AS_THE_FORM_ALLOWS`
+			   is still the number and still has its own floor over the same file, and the
+			   biography is still judged before `boxesOverflowed` runs, so a text that is too
+			   long is still refused with `THE_TEXT_IS_TOO_LONG` and never as one of the
+			   personal boxes. Every caller reading that word reads it unchanged. */
+			"bio", new Personal(AS_LONG_AS_THE_FORM_ALLOWS, Change::bio));
 
 	/**
 	 * THE THREE FIELDS OF THE FORM THIS ROUTE TAKES THAT MAY NEVER BE EMPTIED, and the one

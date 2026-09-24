@@ -89,26 +89,25 @@ import java.util.Optional;
  * <p><b>WHAT THIS ROUTE DOES NOT DO, each named rather than discovered.</b>
  *
  * <ul>
- * <li><b>IT SENDS NO MESSAGE, AND THAT IS AN OPEN QUESTION RATHER THAN A CLOSED ONE.</b>
- * The first draft of this paragraph said „PDL P22 decides what is mailed and does not mention
- * this", and that sentence was <b>false</b>: PDL P22, 11.08.2026, lists „Sest obaveznih
- * mejlova u prvoj verziji: kreiranje naloga i potvrda mejla, <b>promena lozinke</b>, unet
- * rezultat..." and adds „Sest mejlova iz spiska su obavezni i clan ih ne moze iskljuciti."
+ * <li><b>IT SENDS NO MESSAGE, AND THAT IS A DECISION OF THE OWNER'S THIS ROUTE DOES NOT YET
+ * CARRY OUT.</b> The first draft of this paragraph said „PDL P22 decides what is mailed and
+ * does not mention this", and that sentence was <b>false</b>. PDL P22, 11.08.2026: „Sest
+ * obaveznih mejlova u prvoj verziji: kreiranje naloga i potvrda mejla, <b>promena lozinke</b>,
+ * unet rezultat, promenjen rezultat, dodatni zahtev za verifikaciju, krupna izmena na
+ * portalu", and beside it „Sest mejlova iz spiska su obavezni i clan ih ne moze iskljuciti."
  * It was found by running {@code btl-produkt/odluke-za-resurs.py} over this route, which is
- * exactly the class of fault that tool exists for - a claim about a precedent made from
- * memory rather than from a reading.
- * <p><b>What the entry does not settle is WHICH message.</b> „Promena lozinke" is already
- * carried by {@link com.btl.portal.domain.mail.WhatTheMessageSays.Message#SET_A_NEW_PASSWORD}
- * - the link a forgotten password is renewed through, which ADL A-poruke of the same period
- * calls „obnova lozinke" among the messages „vezane za radnju" - and a notice saying „your
- * password has just been changed" is a different message with a different reader. Nothing
- * says which of the two the owner meant, and the second one is the security half of the
- * decision he took on 24.09.2026, so it is worth asking rather than guessing.
- * <p><b>So nothing is invented here and the gap is named instead.</b> A message written on a
- * guess would be the portal promising a warning nobody asked for, and one left out silently
- * would be a mandatory message quietly missing. The day it is answered it is a
- * {@link com.btl.portal.domain.mail.WhatTheMessageSays.Message}, a bundle key and a
- * {@code Postman} call after the commit, not a line of this method.
+ * exactly the class of fault that tool exists for: a claim about a precedent made from memory
+ * instead of from a reading.
+ * <p><b>So this is a GAP and not a boundary, and the difference is worth the word.</b> A
+ * boundary is something nobody decided; this was decided, and the portal owes it. What is
+ * missing is a {@link com.btl.portal.domain.mail.WhatTheMessageSays.Message} of its own, its
+ * bundle key, and a {@code Postman} call AFTER the commit - which is the shape
+ * {@link RegistrationApi} measured and wrote up at length, because a relay waiting inside an
+ * open transaction holds a connection out of a pool of ten.
+ * <p><b>It is not written on this branch because it is not this branch's subject</b>, and
+ * inventing the text of a message the owner has not seen would be the portal promising a
+ * warning in words nobody chose. It is named here so that the next reader finds it rather
+ * than assuming the silence was decided.
  * <li><b>It does not touch {@code email_confirmed_at}.</b> {@link PasswordResetApi} writes
  * it in exactly one case - an account that had NO password, for which spending the link is
  * the first proof anybody has of the mailbox - and this route is the opposite case by

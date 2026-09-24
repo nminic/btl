@@ -658,7 +658,12 @@ class MePhotoApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({ "-0.1, 0.5, 0.5", "0.5, 1.1, 0.5", "0.5, 0.5, 0", "0.5, 0.5, 1.5",
-			"blizu, 0.5, 0.5", "0.5, 0.5, 0.123456789" })
+			"blizu, 0.5, 0.5", "0.5, 0.5, 0.123456789",
+			/* SENT AND EMPTY, which is not the same request as NOT SENT: a form posts an
+			   untouched box as an empty value, and a condition written only for the absent
+			   one would hand this to `new BigDecimal("")`. Added because the coverage gate
+			   named the branch; kept because it is the shape a browser really sends. */
+			"'', 0.5, 0.5", "0.5, '   ', 0.5" })
 	void aCropThatIsNotThreeFractionsIsRefused(String x, String y, String size) throws Exception {
 		long before = howManyRowsInTheQueue();
 
@@ -694,14 +699,36 @@ class MePhotoApiTest {
 		assertThat(reasonIn(answer)).isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
 	}
 
-	/** And a request carrying no file at all is told the form is not complete. */
+	/**
+	 * AND A REQUEST CARRYING NO PICTURE IS TOLD THE FORM IS NOT COMPLETE, in both ways it can
+	 * carry none.
+	 *
+	 * <p><b>Two rows and not one, and the second was added because the coverage gate asked
+	 * for it rather than because it looked tidy.</b> A part that is THERE and empty and a
+	 * part that was never sent AT ALL are two different requests: the first is a member who
+	 * pressed send with nothing chosen, and the second is a form that posted its other fields
+	 * and left the file out - which is what a browser does when the input has no file and the
+	 * form is built by hand. {@code @RequestPart(required = false)} turns the second into a
+	 * null, and a condition written for only one of them would answer 500 to the other.
+	 */
 	@Test
 	void aRequestWithNoFileIsToldTheFormIsNotComplete() throws Exception {
-		MockHttpServletResponse answer = sending(ME, new byte[0], MediaType.IMAGE_JPEG_VALUE,
+		MockHttpServletResponse empty = sending(ME, new byte[0], MediaType.IMAGE_JPEG_VALUE,
 				"portret.jpg", "0.5", "0.5", "0.5");
 
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(answer)).isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(empty.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(empty)).isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
+
+		MockHttpServletResponse none = http.perform(multipart("/api/me/photo").with(csrf())
+						.param("cropX", "0.5").param("cropY", "0.5").param("cropSize", "0.5")
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(ME))))
+				.andReturn().getResponse();
+
+		assertThat(none.getStatus())
+				.as("a multipart request that carried no picture part at all was not answered by"
+						+ " this route, which is what a missing argument looks like")
+				.isEqualTo(400);
+		assertThat(reasonIn(none)).isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
 	}
 
 	/**
@@ -866,6 +893,65 @@ class MePhotoApiTest {
 				.as("the answer does not name the picture that is still waiting, so the member is"
 						+ " left believing his profile is empty for good")
 				.isPositive();
+	}
+
+	/**
+	 * THE FLOOR UNDER A CONDITION THAT CANNOT BE MEASURED WHERE IT IS WRITTEN.
+	 *
+	 * <p><b>Found by a mutation rather than by reading.</b> Loosening
+	 * {@code state = 'waiting'} to „any state at all" in {@link MePhotoApi}'s own query left
+	 * this whole file green, 31 of 31. That is not a case missing: V9's
+	 * {@code verification_decided_keeps_no_photo check (state = 'waiting' or photo_id is
+	 * null)} means a row holding a picture is necessarily still waiting, so no fixture can
+	 * separate the two conditions - the database refuses to hold the row that would.
+	 *
+	 * <p><b>So the measurement moves to where it can be made.</b> Instead of pretending a
+	 * case measures that line, this asks the database for the row the whole arrangement rests
+	 * on and requires it to be refused. The day somebody relaxes that constraint, this goes
+	 * red and the note in {@link MePhotoApi} is where to come back to.
+	 *
+	 * <p><b>Both halves, because a case that only asserted the refusal would pass against a
+	 * database that refused everything.</b> The same row with {@code photo_id} left empty is
+	 * written without complaint.
+	 *
+	 * <p><b>AND THE ORDER OF THE TWO HALVES IS LOAD BEARING, WHICH COST A ROUND TO FIND.</b>
+	 * Written the other way round - the refusal first - the second half failed too, and not
+	 * because the row was wrong: PostgreSQL aborts the WHOLE transaction on any error at all
+	 * ({@code RegistrationApi} writes that out at length as its reason for
+	 * {@code on conflict do nothing}), and this case runs inside the test's transaction. So
+	 * everything after the refused statement is refused with „current transaction is
+	 * aborted", which says nothing about the constraint and reads exactly like the finding
+	 * this case exists to report. The row that must be ACCEPTED therefore goes first.
+	 */
+	@Test
+	void theSchemaRefusesADecidedRowThatStillHoldsAPicture() {
+		long picture = picture();
+
+		assertThat(db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " state, decided_at, decided_by_name, reason)"
+						+ " values (?, (select id from competitor where member_number = ?),"
+						+ " 'Neko Nekic', '', 'rejected',"
+						+ " timestamptz '2026-09-01 10:00:00+00', 'Moderator Bezimeni',"
+						+ " 'Lice nije u fokusu.')")
+				.params(THE_PROFILES_TAB, ME).update())
+				.as("a decided row WITHOUT a picture is refused too, so what is measured below"
+						+ " would be a database refusing everything rather than this one"
+						+ " constraint")
+				.isEqualTo(1);
+
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> db.sql(
+						"insert into verification (queue, competitor_id, subject, body, photo_id,"
+								+ " state, decided_at, decided_by_name, reason)"
+								+ " values (?, (select id from competitor where member_number = ?),"
+								+ " 'Neko Nekic', '', ?, 'rejected',"
+								+ " timestamptz '2026-09-01 10:00:00+00', 'Moderator Bezimeni',"
+								+ " 'Lice nije u fokusu.')")
+				.params(THE_PROFILES_TAB, ME, picture).update())
+				.as("the database accepted a DECIDED row that still holds a picture, so"
+						+ " `photo_id is not null` no longer implies `state = 'waiting'` and"
+						+ " MePhotoApi.thePictureThatWaits is relying on something that is no"
+						+ " longer true")
+				.hasMessageContaining("verification_decided_keeps_no_photo");
 	}
 
 	/** And a member with nothing waiting is told exactly that. */
