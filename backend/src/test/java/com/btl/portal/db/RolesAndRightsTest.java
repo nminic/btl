@@ -161,6 +161,28 @@ class RolesAndRightsTest extends DatabaseTest {
 	}
 
 	/**
+	 * FIVE QUEUES AND NOT SIX, the floor under PDL P10a's own words: „Redova je
+	 * pet, ne šest."
+	 *
+	 * Asked of {@code admin_right} alone rather than folded into the eleven
+	 * above, because that count stays eleven whether a sixth queue traded
+	 * places with a fifth entity or the schedule row came back exactly where it
+	 * left: {@code containsExactlyInAnyOrderElementsOf} against the dictionary
+	 * would still balance if both sides grew by one. This reads {@code scope =
+	 * 'queue'} by itself, off nothing but the table, and 'schedule' by name, so
+	 * a reinstated row fails here even on a day the dictionary and the matrix
+	 * agree on some other number entirely.
+	 */
+	@Test
+	void theFiveQueuesAreTheOnesPDLP10aLeft() {
+		List<String> queues = db.sql("select target from admin_right where scope = 'queue'")
+				.query(String.class).list();
+
+		assertThat(queues).hasSize(5);
+		assertThat(queues).doesNotContain("schedule");
+	}
+
+	/**
 	 * The key of a right is spelt once, and there is no second place to spell it.
 	 *
 	 * Both halves matter and they are one decision. The composed half says the

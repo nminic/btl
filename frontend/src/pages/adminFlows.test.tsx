@@ -306,7 +306,7 @@ describe('the panel', () => {
 
     const said = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })
 
-    expect(said).toHaveAccessibleName('Administracija, 17 na čekanju')
+    expect(said).toHaveAccessibleName('Administracija, 14 na čekanju')
   })
 })
 
@@ -2087,38 +2087,18 @@ describe('verification', () => {
     expect(within(results).getByText('1')).toBeVisible()
   })
 
-  it('counts no more beside a queue than the screen behind it can show', async () => {
-    const user = setupUser()
-    const served = globalThis.fetch
-    /* A date whose freshness clock has run out is under check as well (PDL P10),
-       and the calendar used to be counted towards this queue for it. The screen
-       behind the row reads the reports somebody sent in and nothing else, so the
-       row said four, the screen showed three, and the fourth was a piece of work
-       nobody could do. */
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/events')
-        ? new Response(JSON.stringify([{ id: 'e1', status: 'checking', date: '2027-04-01' }]), {
-            status: 200,
-          })
-        : served(input))
-
-    try {
-      renderAt('/sr/administracija/verifikacija', 'moderator')
-
-      const row = await screen.findByRole('link', { name: /Prijave promene termina/ })
-      const counted = Number(within(row).getByText(/^\d+$/).textContent)
-
-      await user.click(row)
-      await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
-
-      expect(
-        screen.getByRole('heading', { level: 2, name: `Čeka proveru ${counted}` }),
-      ).toBeVisible()
-      expect(screen.getAllByRole('button', { name: 'Odobri' })).toHaveLength(counted)
-    } finally {
-      globalThis.fetch = served
-    }
-  })
+  /*
+   * „COUNTS NO MORE BESIDE A QUEUE THAN THE SCREEN BEHIND IT CAN SHOW" stood
+   * here, feeding a fake `/api/events` response in and checking that the
+   * schedule tab's own row count stayed equal to what its screen could
+   * actually list, back when a date whose freshness clock ran out (PDL P10)
+   * used to be counted towards that queue from the calendar rather than from
+   * what a visitor had sent in. PDL P10a, 22.09.2026 removed the queue this
+   * measured along with the only reason `/api/events` was ever in reach of a
+   * queue's count. None of the four that remain reads that endpoint or has
+   * ever been asked to, so mocking it beside any of them would prove nothing
+   * a passing test could tell from a vacuous one.
+   */
 
   it('keeps the rows a broken file has nothing to do with', async () => {
     const served = globalThis.fetch
@@ -2744,6 +2724,49 @@ describe('the five queues read from the file', () => {
     },
   )
 
+  it('does nothing when a decision is pressed while the member list is still unknown', async () => {
+    /* `aria-disabled` marks both buttons and only marks them: unlike the native
+       attribute it does not stop a click from reaching the handler, so each
+       handler has to refuse the press itself (PendingQueue.tsx,
+       `decisionUnknown`, read off `whyNoDecision`). Without its own check a
+       sweep, or a single card's own „Odobri", would run against a list the
+       screen had just said it could not vouch for, and two proposals from the
+       same person could both go through unrefused. Teams is the one queue
+       this reaches: `whyNoDecision` asks nothing of `membersState` on any
+       other, so both checks live only here. */
+    const confirm = vi.spyOn(window, 'confirm')
+    const served = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/api/competitors')
+        ? new Response('nema', { status: 500 })
+        : served(input))
+
+    try {
+      const user = await open('teams', 'Novi timovi')
+
+      const sweep = await screen.findByRole('button', { name: 'Odobri sve' })
+      expect(sweep).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(sweep)
+
+      // Never reached: no confirmation asked, no card settled.
+      expect(confirm).not.toHaveBeenCalled()
+
+      const single = first(screen.getAllByRole('button', { name: 'Odobri' }))
+
+      expect(single).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(single)
+
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' }),
+      ).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+      globalThis.fetch = served
+    }
+  })
+
   /* Comments go their own way (PDL P22, 30.07.2026): accepted or deleted, and
      nothing at all is sent to the member either way. The word is half the
      decision. "Odbijeno" reads as a refused comment being kept somewhere it
@@ -3096,31 +3119,37 @@ describe('the five queues read from the file', () => {
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
   })
 
-  /* The other two queues that write to the member, each with the one card in the seed
-     that carries a member number, and the heading their refusal has to arrive under.
-     The racing profile writes too and is tested on its own above, under its own
-     two-sided heading (a text or a picture); a third row here would test the bio
-     heading a second time rather than guard a heading this table does not already
-     hold.
-   *
-     Written as a table rather than as two tests because the fault it guards is
-     a heading swapped for another heading, and a table is what makes that
-     visible: the rows stand beside each other. A review swapped the league's
-     heading for the schedule's and all 1940 tests passed, so a member whose
-     league was refused would have been told „Prijava promene termina je
-     vraćena" - the schedule queue this measured is gone since (PDL P10a,
-     22.09.2026), and the racing profile's own bio heading stands in its place
-     below. The headings of the screens were measured; the headings of the
-     messages were not, and those are the ones a member reads. */
+  /* The other queue that writes to the member, with the one card in the seed
+     that carries a member number, and the heading its refusal has to arrive
+     under. The racing profile writes too and is tested on its own above,
+     under its own two-sided heading (a text or a picture); a row for it here
+     would test the bio heading a second time rather than guard a heading
+     this table does not already hold.
+
+     Two rows stood here until PDL P10a, 22.09.2026 removed the second,
+     schedule, and nothing takes its seat: results carries no item at all in
+     the seed (EMPTY_QUEUES above), and payments carries no item with a real
+     member number, so a row for either would find no card to refuse.
+
+     One row is what is left to render, but the cross-check below does not
+     need a second live row to stay a cross-check: every heading a refusal
+     could arrive under is read out of the dictionary instead, the same
+     source a live row would have carried it from. A review once swapped the
+     league's heading for the schedule's and all 1940 tests passed, so a
+     member whose league was refused would have been told „Prijava promene
+     termina je vraćena"; the dictionary lookup below is what would have
+     caught that swap, and goes on catching its like without needing the
+     schedule queue itself alive to do it. */
   const WRITES_TO = [
     { queue: QUEUE.teams, who: 'Časlav Radenković', member: '000004', heading: 'Predlog tima je vraćen' },
-    {
-      queue: QUEUE.profiles,
-      who: 'Miloje Stanojlović',
-      member: '000010',
-      heading: 'Tekst o sebi je vraćen',
-    },
   ] as const
+
+  /** Every heading a refusal could arrive under, read off the dictionary rather
+   *  than written out again here, so a heading added to it joins this guard
+   *  without anybody having to remember to. */
+  const EVERY_RETURNED_HEADING = Object.entries(sr.verification)
+    .filter((entry): entry is [string, string] => entry[0].endsWith('Returned') && typeof entry[1] === 'string')
+    .map(([, text]) => text)
 
   it.each(WRITES_TO)(
     'sends the refusal on $queue.id under the heading that queue owns',
@@ -3150,9 +3179,9 @@ describe('the five queues read from the file', () => {
       /* And it is not one of the others, which is the whole point: the fault is
          a heading that belongs to a different queue, and a test that only asks
          „is there a heading" cannot see it. */
-      for (const other of WRITES_TO) {
-        if (other.heading !== heading) {
-          expect(screen.queryByText(other.heading)).not.toBeInTheDocument()
+      for (const other of EVERY_RETURNED_HEADING) {
+        if (other !== heading) {
+          expect(screen.queryByText(other)).not.toBeInTheDocument()
         }
       }
     },
@@ -3487,8 +3516,8 @@ describe('the five queues read from the file', () => {
     expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
 
     // Away without cancelling, then back.
-    await user.click(sectionNav().getByRole('link', { name: /Prijave promene termina/ }))
-    await screen.findByRole('heading', { level: 1, name: 'Prijave promene termina' })
+    await user.click(sectionNav().getByRole('link', { name: /Trkački profil/ }))
+    await screen.findByRole('heading', { level: 1, name: 'Trkački profil' })
 
     // The box must not be standing open on a screen just arrived at, with the
     // focus taken into it (SendBack takes the focus as it appears).
@@ -3722,22 +3751,16 @@ describe('the five queues read from the file', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'dunavski trkači' })).toBeVisible()
   })
 
-  it('keeps two independent reports of the same date apart', async () => {
-    const user = await open('schedule', 'Prijave promene termina')
-
-    /* Two reports of a change set the date under check by themselves (PDL P10),
-       and both are shown: deciding one says nothing about the other. */
-    expect(screen.getAllByRole('heading', { level: 3, name: 'Beogradski maraton' })).toHaveLength(2)
-    expect(screen.getAllByText('Datum u kalendaru')).toHaveLength(3)
-    expect(screen.getAllByText('Prijavljen datum')).toHaveLength(3)
-    // The button is open to people with no account at all (PDL P10).
-    expect(screen.getByText('Prijavio posetilac bez naloga')).toBeVisible()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
-    expect(screen.getAllByRole('heading', { level: 3, name: 'Beogradski maraton' })).toHaveLength(1)
-  })
+  /*
+   * „KEEPS TWO INDEPENDENT REPORTS OF THE SAME DATE APART" stood here, opening
+   * the schedule tab on a race with two separate visitor reports of a changed
+   * date and checking that approving one left the other's own heading and its
+   * own pair of dates in place. PDL P10a, 22.09.2026 removed the tab along with
+   * the only thing the case measured: a proposed date sitting beside the
+   * calendar's own, and two rows about one race being decided independently.
+   * No remaining queue carries two competing reports of the same fact, so no
+   * substitute reaches what this test was for.
+   */
 
   it('closes the reason without deciding anything', async () => {
     const user = await open('profiles', 'Trkački profil')
@@ -3823,7 +3846,7 @@ describe('what is counted beside a queue', () => {
         item('a', 'profiles'),
         item('b', 'profiles'),
         item('c', 'comments'),
-        item('d', 'schedule'),
+        item('d', 'teams'),
       ],
       decisions: {},
     })
@@ -3832,7 +3855,7 @@ describe('what is counted beside a queue', () => {
     expect(counts.payments).toBe(1)
     expect(counts.profiles).toBe(2)
     expect(counts.comments).toBe(1)
-    expect(counts.schedule).toBe(1)
+    expect(counts.teams).toBe(1)
   })
 
   it('counts a membership from the queue and never from the member list', () => {
@@ -3849,7 +3872,7 @@ describe('what is counted beside a queue', () => {
     expect(countsFor({ ...empty, items: [item('u', 'payments')] }).payments).toBe(1)
   })
 
-  it('counts a date under check only from what somebody sent in', () => {
+  it('carries no count from the calendar it no longer reads', () => {
     /* The calendar used to be counted here as well, for the dates whose freshness
        clock ran out (PDL P10). An event carries no clock and has no card on the
        screen behind the row, so the row said one more than the screen could ever
@@ -3857,7 +3880,10 @@ describe('what is counted beside a queue', () => {
        moderator can decide, and nothing else, which is why the calendar is not
        even handed in any more. */
     expect(Object.keys(empty)).not.toContain('events')
-    expect(countsFor({ ...empty, items: [item('a', 'schedule')] }).schedule).toBe(1)
+    /* The queue this case used to count beside that check, the dates under
+       check themselves, is gone in its own right now (PDL P10a, 22.09.2026).
+       What is left to say about counting one item sent in against one queue
+       is already said in full by 'counts every queue from the one place'. */
   })
 
   it('stops counting an item once it has been decided', () => {

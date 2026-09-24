@@ -805,11 +805,12 @@ export type PendingItem = {
   /** The day it arrived in the queue. */
   date: string
   /**
-   * Who sent it in, or empty. A change of date may be reported by somebody with
-   * no account at all (PDL P10), and on the payments queue it is empty for a
-   * different reason: a registration whose fee is not recorded has no member
-   * number yet, which is the whole of the 30.07.2026 decision made visible in
-   * the data.
+   * Who sent it in, or empty. A row may be about nobody in the record at all
+   * (V9: „A payment waiting to be recognised may be about a person who is not
+   * one yet"), the same reason an uploaded photo nobody has claimed carries no
+   * sender; and on the payments queue it is empty for a second reason too: a
+   * registration whose fee is not recorded has no member number yet, which is
+   * the whole of the 30.07.2026 decision made visible in the data.
    */
   memberNumber: string
   who: string
@@ -824,11 +825,10 @@ export type PendingItem = {
    * its subject would land on whichever of them was looked up first.
    *
    * Read today by the comments queue alone, whose approval writes a record filed
-   * under the event. The reported changes of date carry it as well and nothing
-   * reads it yet: moving the event and its races onto the new date is the next
-   * thing asked for on that queue (owner, 06.08.2026), and it is the id that
-   * will say which event to move. Empty on the four that decide about something
-   * with no id yet, or about a person rather than a record.
+   * under the event. The reported changes of date used to carry it as well, to
+   * say which event to move onto a newly confirmed date; PDL P10a, 22.09.2026
+   * removed that queue and the move with it. Empty on the three that decide
+   * about something with no id yet, or about a person rather than a record.
    */
   subjectId: string
   /** The text to read before deciding: the biography, the comment, the reason

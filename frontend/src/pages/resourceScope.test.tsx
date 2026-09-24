@@ -1,9 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, type ResourceName } from '../data/client'
-import { first, must } from '../test/at'
+import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
-import { setupUser } from '../test/user'
 
 /* A screen must wait only on the data it actually shows.
  *
