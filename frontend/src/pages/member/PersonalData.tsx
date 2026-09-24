@@ -10,8 +10,8 @@ import {
   WHAT_THIS_SCREEN_SENDS,
   WHEN_CHANGING_MY_DATA,
   whatChanged,
-  type Box,
-  type Sent,
+  type Standing,
+  type Typed,
 } from './myAccount'
 
 /**
@@ -62,13 +62,13 @@ export function PersonalData({ me }: { me: Competitor }) {
      successful save moves it and nothing refetches the resource. After the first save the
      address and the telephone are no longer unknown - the portal put them there - so the
      sentence about not knowing them goes at the moment it stops being true. */
-  const [standing, setStanding] = useState<Record<Sent, string | null>>({
+  const [standing, setStanding] = useState<Standing>({
     firstName: me.firstName,
     lastName: me.lastName,
     address: null,
     phone: null,
   })
-  const [typed, setTyped] = useState<Record<Sent, string>>({
+  const [typed, setTyped] = useState<Typed>({
     firstName: me.firstName,
     lastName: me.lastName,
     address: '',
@@ -78,10 +78,7 @@ export function PersonalData({ me }: { me: Competitor }) {
   const [answer, setAnswer] = useState<Answer | null>(null)
   const said = useRef<HTMLParagraphElement>(null)
 
-  const boxes = Object.fromEntries(
-    WHAT_THIS_SCREEN_SENDS.map((name) => [name, { standing: standing[name], typed: typed[name] }]),
-  ) as Record<Sent, Box>
-  const changed = whatChanged(boxes)
+  const changed = whatChanged(standing, typed)
   const nothing = Object.keys(changed).length === 0
   const saved = answer !== null && answer.got === 'done'
   const refusal = answer !== null && answer.got !== 'done' ? answer : null
@@ -209,7 +206,10 @@ export function PersonalData({ me }: { me: Competitor }) {
           {t('account.lockedTitle')}
         </h2>
 
-        <dl className="member__facts">
+        {/* A bare list, which is what `admin/EntityEditor.tsx` draws for the same thing -
+            pairs of „what it is called" and „what it says" - rather than a class name of my
+            own with no rule anywhere behind it. */}
+        <dl>
           <div>
             <dt>{t('registration.gender')}</dt>
             <dd>{t(me.gender === 'M' ? 'rankings.men' : 'rankings.women')}</dd>

@@ -10,8 +10,8 @@ import {
   WHEN_CHANGING_MY_DATA,
   WHEN_CHANGING_MY_PASSWORD,
   whatChanged,
-  type Box,
-  type Sent,
+  type Standing,
+  type Typed,
 } from './myAccount'
 
 /** Where the server's own words live, spelled as `pages/account/refusals.test.ts` spells it. */
@@ -38,26 +38,32 @@ function reasonsIn(file: string): string[] {
   return [...java.matchAll(/^\s*static final String \w+ = "([^"]+)";/gm)].map((one) => one[1] ?? '')
 }
 
-/** A box with nothing standing behind it and nothing typed into it. */
-function boxes(some: Partial<Record<Sent, Box>>): Record<Sent, Box> {
-  return {
-    firstName: { standing: 'Strahinja', typed: 'Strahinja' },
-    lastName: { standing: 'Vukićević', typed: 'Vukićević' },
-    address: { standing: null, typed: '' },
-    phone: { standing: null, typed: '' },
-    ...some,
-  }
+/**
+ * A screen nobody has touched: two fields the portal can see, holding what it sees, and two
+ * it cannot, holding nothing.
+ *
+ * <p>A case says only what it moves, so what it is measuring is the one line it writes rather
+ * than four lines of setup it has to be read past.
+ */
+function asOpened(moved: { standing?: Partial<Standing>; typed?: Partial<Typed> } = {}): [
+  Standing,
+  Typed,
+] {
+  return [
+    { firstName: 'Strahinja', lastName: 'Vukićević', address: null, phone: null, ...moved.standing },
+    { firstName: 'Strahinja', lastName: 'Vukićević', address: '', phone: '', ...moved.typed },
+  ]
 }
 
 describe('what of the member’s own form actually travels', () => {
   it('is nothing at all while nothing has been touched', () => {
-    expect(whatChanged(boxes({}))).toEqual({})
+    expect(whatChanged(...asOpened())).toEqual({})
   })
 
   it('is the one field that moved, and never the ones beside it', () => {
-    expect(whatChanged(boxes({ firstName: { standing: 'Strahinja', typed: 'Strahinje' } }))).toEqual(
-      { firstName: 'Strahinje' },
-    )
+    expect(whatChanged(...asOpened({ typed: { firstName: 'Strahinje' } }))).toEqual({
+      firstName: 'Strahinje',
+    })
   })
 
   /**
@@ -71,12 +77,7 @@ describe('what of the member’s own form actually travels', () => {
    * to measure is not „did the change arrive" but „did anything else".
    */
   it('leaves out every field that did not move, so a save rewrites nothing else', () => {
-    const changed = whatChanged(
-      boxes({
-        firstName: { standing: 'Strahinja', typed: 'Strahinje' },
-        phone: { standing: null, typed: '' },
-      }),
-    )
+    const changed = whatChanged(...asOpened({ typed: { firstName: 'Strahinje' } }))
 
     expect(Object.keys(changed)).toEqual(['firstName'])
   })
@@ -89,11 +90,11 @@ describe('what of the member’s own form actually travels', () => {
    * server to CLEAR a column the form requires, which is its own refusal.
    */
   it('leaves out an unseen field that was never typed into', () => {
-    expect(whatChanged(boxes({ address: { standing: null, typed: '   ' } }))).toEqual({})
+    expect(whatChanged(...asOpened({ typed: { address: '   ' } }))).toEqual({})
   })
 
   it('carries an unseen field the moment something is typed into it', () => {
-    expect(whatChanged(boxes({ phone: { standing: null, typed: ' 065 1234 ' } }))).toEqual({
+    expect(whatChanged(...asOpened({ typed: { phone: ' 065 1234 ' } }))).toEqual({
       phone: '065 1234',
     })
   })
@@ -109,15 +110,24 @@ describe('what of the member’s own form actually travels', () => {
    * only makes sure the question reaches it.
    */
   it('carries a seen field that was emptied, so the server is the one that refuses it', () => {
-    expect(whatChanged(boxes({ lastName: { standing: 'Vukićević', typed: '' } }))).toEqual({
-      lastName: '',
-    })
+    expect(whatChanged(...asOpened({ typed: { lastName: '' } }))).toEqual({ lastName: '' })
   })
 
   it('reads what is typed as trimmed, so spaces alone are not a change', () => {
-    expect(whatChanged(boxes({ firstName: { standing: 'Strahinja', typed: '  Strahinja  ' } }))).toEqual(
-      {},
-    )
+    expect(whatChanged(...asOpened({ typed: { firstName: '  Strahinja  ' } }))).toEqual({})
+  })
+
+  /**
+   * <p>AND THE OTHER DIRECTION OF THE SAME KNOWLEDGE, which nothing above measures: once a
+   * save has happened the portal DOES know what is in an address, so from then on that field
+   * behaves like a name and an unchanged box sends nothing. Without this, a rule reading „a
+   * field that was ever unseen always travels" would pass every case above and send the same
+   * address again on every press.
+   */
+  it('stops treating a once-unseen field as unseen after something was written to it', () => {
+    expect(
+      whatChanged(...asOpened({ standing: { phone: '065 1234' }, typed: { phone: '065 1234' } })),
+    ).toEqual({})
   })
 })
 
@@ -343,8 +353,11 @@ describe('telling the server to change something', () => {
 
     expect(asked.map((one) => one.path)).toEqual(['/api/countries', '/api/me'])
 
-    const headers = asked.find((one) => one.path === '/api/me')?.init?.headers as Record<string, string>
+    /* Read through `Headers` rather than claimed to be a record (ADL A14): what `init` holds
+       is a `HeadersInit`, which is three shapes, and the browser reads it through exactly
+       this constructor. */
+    const headers = new Headers(asked.find((one) => one.path === '/api/me')?.init?.headers)
 
-    expect(headers['X-XSRF-TOKEN']).toBe('a-token')
+    expect(headers.get('X-XSRF-TOKEN')).toBe('a-token')
   })
 })

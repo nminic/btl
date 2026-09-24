@@ -29,12 +29,9 @@ import { limitOf } from '../../forms/records'
  * nothing, and the screen says so instead of drawing an empty box that reads as „you have
  * none".
  */
-export type Box = {
-  /** What the server holds today, or `null` where nothing serves it. */
-  standing: string | null
-  /** What is in the box now. */
-  typed: string
-}
+export type Standing = Record<Sent, string | null>
+
+export type Typed = Record<Sent, string>
 
 /**
  * THE FIELDS THIS SCREEN SENDS, AND THE LENGTH OF EACH ONE'S BOX.
@@ -92,19 +89,27 @@ export const AS_LONG_AS_THE_FORM_ALLOWS: Record<Sent, number> = {
  * keeps and gives its reason for: the rule is the server's, and a screen holding a second
  * copy of it is a second thing to be wrong.
  *
- * @param boxes every field this screen carries, with what stands and what is typed
+ * <p><b>The two records are taken side by side rather than zipped into one</b>, which is
+ * what keeps this file free of a type assertion: a record built with `Object.fromEntries`
+ * comes back as `Record<string, …>` and would have to be claimed to be narrower, and that
+ * claim is exactly what ADL A14 forbids. Written this way `Record<Sent, …>` also makes the
+ * compiler demand a value for EVERY field this screen sends, so a fifth one cannot be added
+ * to the list and quietly left out of the reading.
+ *
+ * @param standing what the server holds for each field, `null` where nothing serves it
+ * @param typed    what is in each box now
  * @return only what changed, which is empty when nothing did
  */
-export function whatChanged(boxes: Record<Sent, Box>): Partial<Record<Sent, string>> {
+export function whatChanged(standing: Standing, typed: Typed): Partial<Record<Sent, string>> {
   const changed: Partial<Record<Sent, string>> = {}
 
   for (const name of WHAT_THIS_SCREEN_SENDS) {
-    const { standing, typed } = boxes[name]
-    const written = typed.trim()
+    const held = standing[name]
+    const written = typed[name].trim()
 
     /* The portal knows nothing about this one, so „changed" can only mean „something was
        typed". */
-    if (standing === null) {
+    if (held === null) {
       if (written !== '') {
         changed[name] = written
       }
@@ -112,7 +117,7 @@ export function whatChanged(boxes: Record<Sent, Box>): Partial<Record<Sent, stri
       continue
     }
 
-    if (written !== standing.trim()) {
+    if (written !== held.trim()) {
       changed[name] = written
     }
   }
