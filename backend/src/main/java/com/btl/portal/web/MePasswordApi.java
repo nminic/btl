@@ -3,18 +3,24 @@ package com.btl.portal.web;
 import com.btl.portal.domain.account.BreachedPasswords;
 import com.btl.portal.domain.account.PasswordPolicy;
 import com.btl.portal.domain.account.StoredPassword;
+import com.btl.portal.domain.mail.WhatANoticeSays;
+import com.btl.portal.domain.mail.WhatANoticeSays.Notice;
 import com.btl.portal.domain.token.SecretToken;
+import com.btl.portal.mail.Postman;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mail.MailException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Optional;
+import java.time.Instant;
 
 /**
  * A MEMBER CHANGING HIS PASSWORD WHILE HE IS SIGNED IN, WHICH IS TWO THINGS AND NOT ONE.
@@ -86,28 +92,28 @@ import java.util.Optional;
  * answer is the one every other wrong old password gets, and the case that holds it gives a
  * member a session and no hash.
  *
- * <p><b>WHAT THIS ROUTE DOES NOT DO, each named rather than discovered.</b>
+ * <p><b>WHAT ELSE THIS ROUTE DOES AND DELIBERATELY DOES NOT DO, each named rather than
+ * discovered.</b>
  *
  * <ul>
- * <li><b>IT SENDS NO MESSAGE, AND THAT IS A DECISION OF THE OWNER'S THIS ROUTE DOES NOT YET
- * CARRY OUT.</b> The first draft of this paragraph said „PDL P22 decides what is mailed and
- * does not mention this", and that sentence was <b>false</b>. PDL P22, 11.08.2026: „Sest
- * obaveznih mejlova u prvoj verziji: kreiranje naloga i potvrda mejla, <b>promena lozinke</b>,
- * unet rezultat, promenjen rezultat, dodatni zahtev za verifikaciju, krupna izmena na
- * portalu", and beside it „Sest mejlova iz spiska su obavezni i clan ih ne moze iskljuciti."
- * It was found by running {@code btl-produkt/odluke-za-resurs.py} over this route, which is
- * exactly the class of fault that tool exists for: a claim about a precedent made from memory
- * instead of from a reading.
- * <p><b>So this is a GAP and not a boundary, and the difference is worth the word.</b> A
- * boundary is something nobody decided; this was decided, and the portal owes it. What is
- * missing is a {@link com.btl.portal.domain.mail.WhatTheMessageSays.Message} of its own, its
- * bundle key, and a {@code Postman} call AFTER the commit - which is the shape
- * {@link RegistrationApi} measured and wrote up at length, because a relay waiting inside an
- * open transaction holds a connection out of a pool of ten.
- * <p><b>It is not written on this branch because it is not this branch's subject</b>, and
- * inventing the text of a message the owner has not seen would be the portal promising a
- * warning in words nobody chose. It is named here so that the next reader finds it rather
- * than assuming the silence was decided.
+ * <li><b>IT TELLS HIM BY POST, AND THAT IS ONE OF THE OWNER'S SIX MANDATORY MESSAGES.</b> PDL
+ * P22, 11.08.2026: „Sest obaveznih mejlova u prvoj verziji: kreiranje naloga i potvrda mejla,
+ * <b>promena lozinke</b>, unet rezultat, promenjen rezultat, dodatni zahtev za verifikaciju,
+ * krupna izmena na portalu", and beside it „Sest mejlova iz spiska su obavezni i clan ih ne
+ * moze iskljuciti." An earlier draft of this class claimed P22 „does not mention this", which
+ * was false and was found by running {@code btl-produkt/odluke-za-resurs.py} over this route.
+ * <p><b>It is a {@link WhatANoticeSays.Notice} and NOT a
+ * {@link com.btl.portal.domain.mail.WhatTheMessageSays.Message}</b>, and that class says at
+ * length why the two are apart: a message carries a link and a screen and a lifetime, and two
+ * floors are built on every one of them having all three. This carries none, so folding it in
+ * would have made both floors say less.
+ * <p><b>AND IT CARRIES NO PASSWORD, OLD OR NEW.</b> PDL P9 says a notice „MORA da sadrzi staru
+ * vrednost, jer ona nigde drugde ne prezivljava" - and that decision is about an administrator
+ * changing somebody else's RESULT, where the old value is the old time on a race. Carried
+ * across to a password it would mean posting the old one, which this portal cannot do (V18
+ * keeps a BCrypt hash, „A stolen copy of this database lets nobody sign in as anybody") and
+ * must not. What the notice carries instead is what really survives nowhere else: WHEN it
+ * changed, and how many other devices were signed out by it.
  * <li><b>It does not touch {@code email_confirmed_at}.</b> {@link PasswordResetApi} writes
  * it in exactly one case - an account that had NO password, for which spending the link is
  * the first proof anybody has of the mailbox - and this route is the opposite case by
@@ -151,11 +157,26 @@ class MePasswordApi {
 	/** Long enough, and already known to have leaked. */
 	static final String THE_PASSWORD_HAS_LEAKED = "thePasswordHasLeaked";
 
+	private static final Logger LOG = LoggerFactory.getLogger(MePasswordApi.class);
+
 	private final JdbcClient db;
 
 	private final StoredPassword keeping;
 
 	private final PasswordPolicy passwords;
+
+	private final Postman postman;
+
+	/**
+	 * Written by hand rather than left on the method, and the reason is the notice.
+	 *
+	 * <p>With {@code @Transactional} on the handler the whole request is one transaction, so
+	 * the only place left to send from would be INSIDE it - and {@link RegistrationApi}
+	 * measured what that does: a request waiting on somebody else's SMTP server holds a
+	 * connection out of a pool of ten. Held here, the writing is a transaction and the sending
+	 * is after it, which is {@link EmailConfirmationApi#resend}'s own arrangement.
+	 */
+	private final TransactionTemplate inOneTransaction;
 
 	/**
 	 * Both are built here rather than injected, which is what {@link PasswordResetApi} and
@@ -164,8 +185,10 @@ class MePasswordApi {
 	 * once by {@code BreachedPasswords.fromResource} and held in memory by the object it
 	 * hands back.
 	 */
-	MePasswordApi(JdbcClient db) {
+	MePasswordApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction) {
 		this.db = db;
+		this.postman = postman;
+		this.inOneTransaction = inOneTransaction;
 		this.keeping = new StoredPassword();
 		this.passwords = new PasswordPolicy(BreachedPasswords.fromResource());
 	}
@@ -195,11 +218,42 @@ class MePasswordApi {
 	 *                survives
 	 */
 	@PutMapping(path = "/api/me/password", consumes = MediaType.APPLICATION_JSON_VALUE)
-	@Transactional
 	ResponseEntity<Refused> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@CookieValue(name = SessionCookie.NAME) String carried,
 			@RequestBody Change typed) {
 
+		Done done = inOneTransaction.execute(committing -> write(asking.account(), carried, typed));
+
+		/* THE NOTICE GOES AFTER THE COMMIT, AND NOTHING ABOUT IT CAN UNDO THE CHANGE.
+		   `RegistrationApi` measured why at length and the reasoning carries over word for
+		   word: a request that waits on somebody else's SMTP server with a transaction open
+		   holds a connection out of a pool of ten. And the answer is already true by the time
+		   the relay is asked - his password HAS changed and his other devices ARE signed out -
+		   so a relay that is down must not turn that into a refusal. It is logged for the
+		   operator instead; the way out for the member is the reset link, which is the road
+		   this class sits beside. */
+		if (done.refusal() == null) {
+			tell(done);
+		}
+
+		return done.refusal() == null ? ResponseEntity.noContent().build() : done.refusal();
+	}
+
+	/**
+	 * What one committed change leaves behind for the notice to be built from, or the refusal.
+	 *
+	 * <p>{@code EmailConfirmationApi.ToSend}'s own shape: the transaction hands back the facts
+	 * rather than the message, so nothing under {@code domain.mail} is touched while a
+	 * transaction is open and nothing about the relay reaches a decision.
+	 *
+	 * @param others how many OTHER sessions were ended, which is the count the statement itself
+	 *               returned rather than one counted again afterwards - counted again it would
+	 *               be a second question about a table that has changed in between
+	 */
+	private record Done(ResponseEntity<Refused> refusal, String address, Instant at, int others) {
+	}
+
+	private Done write(long account, String carried, Change typed) {
 		if (isNothing(typed.oldPassword()) || isNothing(typed.password())
 				|| isNothing(typed.passwordRepeat())
 				|| !typed.password().equals(typed.passwordRepeat())) {
@@ -211,16 +265,29 @@ class MePasswordApi {
 		   whether to spend it: two requests racing this one must not both read the old hash
 		   and both write over it, which would leave the loser's password stored and the
 		   winner told 204 about one that is not there. */
-		Optional<String> stored = db.sql("select password_hash from account where id = ? for update")
-				.param(asking.account())
-				.query(String.class)
-				.optional();
+		/* `.single()` AND NOT `.optional()`, AND THE DIFFERENCE IS A DEAD BRANCH RATHER THAN
+		   A PREFERENCE. The row is the account of whoever got this far, already resolved once
+		   by `WhoIsAsking` out of the session, so there is no request that reaches this line
+		   and finds no row. An `.optional()` here left `isEmpty()` unreachable - measured, it
+		   was the one branch the coverage gate named on an otherwise green run - and a branch
+		   nothing can reach is a branch nothing can measure ({@code SignOutApi} says the same
+		   of its own).
+
+		   IT IS ALSO SAFE IN THE WAY `MemberOfAccount` WARNS ABOUT. That class reads a column
+		   through `.list().get(0)` because `.single()` refuses a null RESULT, „Result value is
+		   null but no null value expected", and the column it reads is nullable. Here the
+		   result is a `Held`, which the mapper always builds; the nullable thing is a FIELD on
+		   it, and that is what the line below asks about. */
+		Held stored = db.sql("select password_hash, email from account where id = ? for update")
+				.param(account)
+				.query((row, one) -> new Held(row.getString(1), row.getString(2)))
+				.single();
 
 		/* AN ACCOUNT WITH NO PASSWORD AT ALL, which V18 makes a real state and the head of
 		   this class says how one could be holding a session. `.optional()` answers empty
 		   for a null column as well as for no row, and both are the same sentence here:
 		   there is nothing stored for the old password to be. */
-		if (stored.isEmpty() || !keeping.matches(typed.oldPassword(), stored.orElseThrow())) {
+		if (stored.hash() == null || !keeping.matches(typed.oldPassword(), stored.hash())) {
 			return no(THE_OLD_PASSWORD_IS_WRONG);
 		}
 
@@ -242,7 +309,7 @@ class MePasswordApi {
 		   signed in is the one person who can end that by moving the password. */
 		db.sql("update account set password_hash = ?, failed_sign_ins = 0, locked_until = null"
 						+ " where id = ?")
-				.params(keeping.of(typed.password()), asking.account())
+				.params(keeping.of(typed.password()), account)
 				.update();
 
 		/* EVERY OTHER SESSION ENDS HERE, AND IT ENDS AFTER THE PASSWORD IS WRITTEN. The
@@ -258,11 +325,40 @@ class MePasswordApi {
 		   OSTALE" adds to the sentence `PasswordResetApi` already carries. The case that
 		   holds it gives the member THREE sessions and requires the two he is not asking
 		   from to be gone and the one he is asking from to go on answering. */
-		db.sql("delete from account_session where account_id = ? and token_hash <> ?")
-				.params(asking.account(), SecretToken.hashOf(carried))
+		int others = db.sql("delete from account_session where account_id = ? and token_hash <> ?")
+				.params(account, SecretToken.hashOf(carried))
 				.update();
 
-		return ResponseEntity.noContent().build();
+		return new Done(null, stored.address(), Instant.now(), others);
+	}
+
+	/** The two columns the decision needs off the account, read in one statement. */
+	private record Held(String hash, String address) {
+	}
+
+	/**
+	 * THE NOTICE, BUILT AND SENT ONLY ONCE THE CHANGE IS COMMITTED.
+	 *
+	 * <p>A relay that will not take it is a warning the member does not get, and nothing
+	 * more: his password has changed and his other devices are signed out either way. So it
+	 * is logged for whoever runs the portal rather than turned into an answer, which is the
+	 * shape {@link RegistrationApi} and {@link EmailConfirmationApi} both settled on.
+	 *
+	 * <p><b>Neither password reaches this method</b>, and that is by construction rather than
+	 * by care: {@link Done} carries an address, a moment and a count, and there is no field
+	 * on it that could hold one.
+	 */
+	private void tell(Done done) {
+		try {
+			postman.send(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED,
+					WhatANoticeSays.moment(done.at()), String.valueOf(done.others())),
+					done.address());
+		}
+		catch (MailException theRelayDidNotTakeIt) {
+			LOG.warn("the notice that account {} changed its password did not go out; the"
+					+ " password IS changed and every other session IS ended", done.address(),
+					theRelayDidNotTakeIt);
+		}
 	}
 
 	/**
@@ -281,7 +377,7 @@ class MePasswordApi {
 		return value == null || value.isBlank();
 	}
 
-	private static ResponseEntity<Refused> no(String reason) {
-		return ResponseEntity.badRequest().body(new Refused(reason));
+	private static Done no(String reason) {
+		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), null, null, 0);
 	}
 }

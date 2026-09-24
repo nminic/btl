@@ -4,10 +4,13 @@ import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.account.StoredPassword;
 import com.btl.portal.domain.token.SecretToken;
+import com.icegreen.greenmail.junit5.GreenMailExtension;
+import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +19,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -66,8 +70,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
+@TestPropertySource(properties = {
+		"spring.mail.host=127.0.0.1",
+		"spring.mail.port=3331",
+		"spring.mail.properties.mail.smtp.auth=false",
+		"btl.portal.address=https://probni-portal.primer.rs"})
 @Transactional
 class MePasswordApiTest {
+
+	/**
+	 * A REAL MAIL SERVER, ON A PORT OF THIS CLASS'S OWN.
+	 *
+	 * <p>The same arrangement the other four sending routes have, and 3331 because 3325 to
+	 * 3330 are already taken. {@link MailServerForACase} says why the number is handed in
+	 * rather than counted here, and what sharing one costs: twenty-nine errors in one class,
+	 * every one of them a failure to bind, with not a single case run and an exit code that
+	 * reads exactly like a caught mutation.
+	 */
+	@RegisterExtension
+	static final GreenMailExtension SMTP = new GreenMailExtension(MailServerForACase.on(3331));
 
 	/** Written first, asks for nothing, and must never move. */
 	private static final String FIRST_WRITTEN = "prvi@primer.rs";
@@ -197,6 +218,19 @@ class MePasswordApiTest {
 
 	private String reasonIn(MockHttpServletResponse answer) throws Exception {
 		return mapper.readTree(answer.getContentAsString()).path("reason").asString();
+	}
+
+	private MimeMessage waitForOne() {
+		assertThat(SMTP.waitForIncomingEmail(5000, 1))
+				.as("no message reached the mail server in five seconds")
+				.isTrue();
+
+		return SMTP.getReceivedMessages()[0];
+	}
+
+	/** Subject and body as one string, which is what „nothing of his leaked" is asked over. */
+	private static String wholeOf(MimeMessage message) throws Exception {
+		return message.getSubject() + "\n" + message.getContent().toString();
 	}
 
 	/**
@@ -433,6 +467,112 @@ class MePasswordApiTest {
 		assertThat(after.get("locked_until"))
 				.as("the account is still locked after its owner changed its password")
 				.isNull();
+	}
+
+	/**
+	 * THE MEMBER IS TOLD BY POST, AND THE NOTICE CARRIES NEITHER PASSWORD.
+	 *
+	 * <p>PDL P22, 11.08.2026 makes „promena lozinke" one of the six mandatory messages. What
+	 * it carries is the owner's own reading of P9 applied correctly: WHEN it changed and how
+	 * many other devices were signed out - never the old password, which this portal does not
+	 * hold at all (V18 keeps a BCrypt hash).
+	 *
+	 * <p><b>The last assertion is a SWEEP and not a spot check</b>, which is the shape
+	 * {@code newPassword.test.tsx} uses on the other side of the repository for the same
+	 * question: every place a value could land is looked at, subject and body together, rather
+	 * than the one place somebody thought of.
+	 */
+	@Test
+	void theMemberIsPostedANoticeThatCarriesNeitherPassword() throws Exception {
+		assertThat(asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus())
+				.isEqualTo(204);
+
+		MimeMessage posted = waitForOne();
+
+		assertThat(posted.getAllRecipients()[0].toString())
+				.as("the notice went to somebody who is not the member whose password moved")
+				.isEqualTo(ME);
+
+		String whole = wholeOf(posted);
+
+		/* THE COUNT IS READ AS „OTHERS" AND NOT AS „ALL", and the first draft of this
+		   assertion could not tell them apart: it asked for the character `2`, which the
+		   moment supplies four times over in „24.09.2026". Two sources for one value, which
+		   is the very fault this branch spent the day measuring in other people's fixtures.
+
+		   The member holds THREE sessions and asks from one, so „others" is 2 and „all" is 3.
+		   Asked over the rendered pair - a colon, the number, a full stop - the two are
+		   different strings, and a route that counted every session instead of every other
+		   one comes back visibly wrong rather than accidentally right. */
+		assertThat(whole)
+				.as("the notice does not say how many other devices were signed out, which is"
+						+ " the half of the owner's decision of 24.09.2026 a member cannot see"
+						+ " anywhere else")
+				.contains(": 2.");
+
+		assertThat(whole)
+				.as("the notice counted EVERY session rather than every OTHER one, so it tells"
+						+ " the member the browser he is reading in was signed out too")
+				.doesNotContain(": 3.");
+
+		assertThat(whole)
+				.as("A PASSWORD LEFT THIS PORTAL BY POST. The old one cannot even be produced"
+						+ " (V18 keeps a hash) and the new one is the member's secret; PDL P9's"
+						+ " rule about carrying the old value is about an administrator editing"
+						+ " a RESULT, and it does not carry across to this")
+				.doesNotContain(MY_OLD_PASSWORD)
+				.doesNotContain(MY_NEW_PASSWORD)
+				.doesNotContain(SOMEBODY_ELSES_PASSWORD);
+	}
+
+	/**
+	 * AND A REFUSED REQUEST POSTS NOTHING AT ALL.
+	 *
+	 * <p><b>The mutation this is written against:</b> sending before the refusal is decided,
+	 * or sending on every road out of the handler. A member told „your password has changed"
+	 * about a change that did not happen would be worse than not being told at all: it is the
+	 * portal teaching him to ignore exactly the warning that is meant to alarm him.
+	 */
+	@Test
+	void aRefusedRequestPostsNothing() throws Exception {
+		assertThat(asking(theSessionIAskFrom(),
+				body("ovo.nije.moja.stara.lozinka", MY_NEW_PASSWORD, MY_NEW_PASSWORD))
+				.getStatus()).isEqualTo(400);
+
+		assertThat(SMTP.getReceivedMessages())
+				.as("a refused change told the member his password had moved")
+				.isEmpty();
+	}
+
+	/**
+	 * A RELAY THAT WILL NOT TAKE THE NOTICE DOES NOT UNDO THE CHANGE.
+	 *
+	 * <p>{@code EmailConfirmationApiTest.aRelayThatRefusesTheMessageStillLeavesTheTokenBehind}
+	 * is the precedent, and the reason is the same one: by the time the relay is asked, the
+	 * answer is already true. His password HAS changed and his other devices ARE signed out,
+	 * so turning a relay's silence into a refusal would tell him nothing happened while
+	 * everything had.
+	 *
+	 * <p>What he loses is the warning, and that is written down rather than pretended away:
+	 * the way out is the reset link, which is the road this class sits beside.
+	 */
+	@Test
+	void aRelayThatWillNotTakeTheNoticeLeavesThePasswordChanged() throws Exception {
+		SMTP.getSmtp().stopService();
+
+		assertThat(asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus())
+				.as("a relay that would not take the notice turned a change that really happened"
+						+ " into an error")
+				.isEqualTo(204);
+
+		assertThat(new StoredPassword().matches(MY_NEW_PASSWORD, passwordHashOf(ME)))
+				.as("the new password did not survive a relay that refused the notice")
+				.isTrue();
+		assertThat(howManySessionsOf(ME))
+				.as("the other sessions did not stay ended when the notice could not go out")
+				.isEqualTo(1);
 	}
 
 	@Test
