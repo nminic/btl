@@ -104,12 +104,20 @@ import java.util.List;
  * {@code competitor.active}, and the row in {@code racing_pair} is untouched.
  * (Deleting the person is a different door and it does take the pair along, since
  * V12 writes both of its keys {@code on delete cascade}; that door is not this
- * one.) Nothing else writes the ending either - {@code racing_pair} is named in
- * one migration and in this class and nowhere else under {@code src/main}, so no
- * trigger and no flow breaks a pair. The row stays and this reader is the only
- * thing between a pair that does not exist and a public answer. When the increment that really
- * breaks pairs lands, whoever writes it may take this condition out and say so;
- * until then a sentence promising it is an instruction to put the leak back.
+ * one.) The row stays and this reader is the only thing between a pair that does
+ * not exist and a public answer.
+ *
+ * <p><b>THE INCREMENT THAT REALLY BREAKS PAIRS HAS LANDED SINCE 24.09.2026, AND
+ * THE CONDITION STAYS.</b> This paragraph used to invite whoever wrote it to take
+ * the condition out, and to say that {@code racing_pair} was „named in one
+ * migration and in this class and nowhere else". Both are out of date:
+ * {@link PairWriteApi} writes the table and its {@code DELETE} removes a row on
+ * request, by the owner's decision that „par sme da raskine svaka strana, bilo
+ * kad". <b>What has NOT changed is the case this condition is for.</b> A fee that
+ * lapses still deletes nobody, and nothing on this server turns a lapsed
+ * membership into a deleted pair - the 1 January job that would is PDL P13,
+ * 19.09.2026's and does not exist. So the row of a pair whose half stopped paying
+ * is still there to be served, and this is still the only thing that stops it.
  *
  * <p><b>And leaving it in would name, by subtraction, whoever has not paid.</b> A
  * member whose fee has lapsed is not on {@code /api/competitors} at all (owner,

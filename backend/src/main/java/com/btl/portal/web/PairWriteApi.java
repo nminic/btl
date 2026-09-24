@@ -711,10 +711,32 @@ class PairWriteApi {
 		db.sql("delete from racing_pair where id = ?").param(pair).update();
 
 		tell(his.get().other(), THE_PAIR_IS_BROKEN,
-				"Trkački par sa " + his.get().myName() + " za sezonu " + his.get().season()
-						+ " je raskinut.");
+				theBrokenPairReads(his.get().myName(), his.get().season()));
 
 		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * WHAT THE OTHER HALF READS, BUILT IN ONE PLACE SO THAT A FLOOR CAN COMPARE IT WITH THE
+	 * PORTAL'S OWN DICTIONARY.
+	 *
+	 * <p>The sentence is {@code pair.endedBody} from {@code frontend/src/i18n/sr.json}, sign
+	 * for sign, with its two values filled in - which is the whole reason it is a method
+	 * rather than a concatenation inside {@link #end}. <b>Two homes for one Serbian sentence
+	 * and nothing tying them together is how the server and the screen drift apart</b>, and
+	 * {@code PairWriteApiTest.theTwoSentencesAreThePortalsOwnWords} is the tie: it reads the
+	 * dictionary, substitutes the same two values into the template, and requires this to
+	 * answer the same string.
+	 *
+	 * <p><b>The substitution is the dictionary's own, not a formatter.</b> The portal writes
+	 * {@code {who}} and {@code {season}} and its own {@code t()} replaces them; a
+	 * {@code MessageFormat} here would be a second convention for one sentence.
+	 *
+	 * @param who    the half who pressed „Raskini", by the name his profile carries
+	 * @param season the season the pair held for, off the row rather than off the clock
+	 */
+	static String theBrokenPairReads(String who, int season) {
+		return "Trkački par sa " + who + " za sezonu " + season + " je raskinut.";
 	}
 
 	/**

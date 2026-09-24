@@ -23,8 +23,11 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -1526,6 +1529,113 @@ class PairWriteApiTest {
 		assertThat(howManyMessages())
 				.as("one act, one message")
 				.isOne();
+	}
+
+	/**
+	 * THE SEASON IN THE MESSAGE IS THE PAIR'S OWN AND NEVER THE ONE BEING FORMED.
+	 *
+	 * <p><b>A review found that the case above cannot say this and this one exists to say
+	 * it.</b> That case ends a pair of {@link #BEING_FORMED}, and {@link #BEING_FORMED} is
+	 * defined as „the season a pair confirmed at {@link #IN_MARCH} holds for" - which is
+	 * exactly what {@link SeasonClock#transfersTakeEffect} answers at that moment. Expected
+	 * value and wrong source are one number there, so replacing {@code p.season} with the
+	 * clock left the whole class green, twice, with the same count.
+	 *
+	 * <p><b>Here the two differ by a season and the fixture says so out loud.</b> The pair
+	 * ended is {@link #HE_ASKED_HER}'s of {@link #STILL_RUNNING} - 2027 - while a change
+	 * agreed on this file's own day takes effect in 2028. A member who ends the pair he is
+	 * RUNNING would otherwise be told about the season that follows, and his partner would
+	 * read that a pair they never made is over.
+	 *
+	 * <p><b>And it presses on the pair that is NOT the one being formed</b>, which is the
+	 * other half of the same trap: a route that ignored the key and ended whatever pair the
+	 * caller holds would pass the case above and fail here.
+	 */
+	@Test
+	void theSeasonInTheMessageIsThePairsOwnAndNotTheOneBeingFormed() throws Exception {
+		assertThat(SeasonClock.transfersTakeEffect(IN_MARCH.atZone(SeasonClock.ZONE)))
+				.as("the season being formed and the season being run are one number on this"
+						+ " file's day, so this case cannot tell one source from the other")
+				.isNotEqualTo(STILL_RUNNING);
+
+		named(HE_ASKED_HER, "Ime" + HE_ASKED_HER);
+
+		long running = pairOf(HE_ASKED_HER, RUNNING_WOMAN, STILL_RUNNING);
+
+		assertThat(endAs(HE_ASKED_HER, running).getStatus()).isEqualTo(204);
+
+		assertThat(postFor(RUNNING_WOMAN))
+				.as("the woman he was running the season with was told about a season nobody"
+						+ " has run yet")
+				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
+						+ " Trkački par sa Ime" + HE_ASKED_HER + " Probic" + HE_ASKED_HER
+						+ " za sezonu " + STILL_RUNNING + " je raskinut.");
+
+		assertThat(seasonsPairedIn(HE_ASKED_HER))
+				.as("the pair of the season being formed went instead of the one that was named")
+				.containsExactly(BEING_FORMED);
+	}
+
+	/**
+	 * AND THE TWO SERBIAN SENTENCES ARE THE PORTAL'S OWN WORDS, ASKED OF THE DICTIONARY.
+	 *
+	 * <p>{@code PairWriteApi.THE_PAIR_IS_BROKEN} and {@link PairWriteApi#theBrokenPairReads}
+	 * are {@code pair.brokenSubject} and {@code pair.endedBody} sign for sign, and until this
+	 * case nothing said so: one sentence lived in two files and either could be edited alone.
+	 * A member would then read one thing in the inbox the server writes and another on the
+	 * screen the portal draws, about one act.
+	 *
+	 * <p><b>The sender is asked the same way and for the same reason.</b> PDL P13, 19.09.2026
+	 * decided that a message the portal writes itself is signed with the name of the league,
+	 * and {@code app.name} is where the portal keeps that name.
+	 *
+	 * <p><b>Reading the frontend's dictionary from a backend case is the portal's own
+	 * shape</b>, not a liberty taken here: {@code db/RolesAndRightsTest} has read the same
+	 * file since it was written, with the same reason - the fact being held lives on the
+	 * other side of a boundary the gate runs over anyway.
+	 */
+	@Test
+	void theTwoSentencesAreThePortalsOwnWords() {
+		JsonNode dictionary = theDictionary();
+		JsonNode pair = dictionary.get("pair");
+
+		assertThat(pair.get("brokenSubject").stringValue())
+				.as("the subject the server writes and the one the screen draws are two"
+						+ " sentences about one act")
+				.isEqualTo(PairWriteApi.THE_PAIR_IS_BROKEN);
+
+		assertThat(pair.get("endedBody").stringValue()
+				.replace("{who}", "Petar Petrović").replace("{season}", String.valueOf(2031)))
+				.as("the body the server writes is not the sentence the dictionary holds")
+				.isEqualTo(PairWriteApi.theBrokenPairReads("Petar Petrović", 2031));
+
+		assertThat(dictionary.get("app").get("name").stringValue())
+				.as("the portal signs its own message with a name it does not call itself"
+						+ " anywhere else (PDL P13, 19.09.2026)")
+				.isEqualTo(PairWriteApi.THE_LEAGUE);
+	}
+
+	/**
+	 * The portal's dictionary, read off the working tree rather than described.
+	 *
+	 * <p>The path is {@code TeamWriteApiTest.THE_MEMBERS_FORM}'s shape, which is this
+	 * package's own way of reaching the other half of the repository;
+	 * {@code db/RolesAndRightsTest} climbs to the repository root instead, and its helper is
+	 * package private, so widening it for this one reader would be a visibility change made
+	 * for a caller's convenience.
+	 *
+	 * <p>Never skipped when the file is not there: a floor that steps aside when it cannot
+	 * find its source goes quiet on exactly the day the dictionary moved, which is the day it
+	 * is needed.
+	 */
+	private static JsonNode theDictionary() {
+		Path source = Path.of("..", "frontend", "src", "i18n", "sr.json");
+
+		assertThat(Files.isRegularFile(source))
+				.as("dictionary %s", source.toAbsolutePath())
+				.isTrue();
+
+		return new ObjectMapper().readTree(source);
 	}
 
 	/**

@@ -126,6 +126,15 @@ class TeamWriteApiTest {
 	 */
 	private static final String IN_A_TEAM_NOW = "000500";
 
+	/**
+	 * A SECOND MEMBER OF WHICHEVER TEAM IS BEING LEFT, written by the case that needs him.
+	 *
+	 * <p>{@link #alsoInTheTeam} says why he cannot be in the fixture and what a team of one
+	 * hides: two statements that may both drop {@code competitor_id} and take the whole team
+	 * out on one member's button.
+	 */
+	private static final String A_TEAM_MATE = "000600";
+
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
 	/** The team whose name is taken, which is NOT the team anybody is in. */
@@ -1063,6 +1072,30 @@ class TeamWriteApiTest {
 				.query(String.class).single();
 	}
 
+	/**
+	 * A SECOND MEMBER OF THE TEAM BEING LEFT, WHICH IS THE ONE THING THE FIXTURE CANNOT GIVE.
+	 *
+	 * <p>{@code @BeforeEach} puts each of its two members in a team OF HIS OWN, so „his row in
+	 * this team" and „every open row of this team" are the same row and neither write can be
+	 * told from the other. <b>Measured by a review:</b> both statements in {@code leaving},
+	 * the ending and the removal, stripped of {@code competitor_id = ?} and keyed on
+	 * {@code team_id} alone, left all fifty-one cases green. <b>In production that is one
+	 * member pressing a button and the WHOLE TEAM leaving</b>, each row carrying the reason
+	 * „izašao iz tima".
+	 *
+	 * <p>It is added inside the cases that need it rather than to the fixture, because
+	 * {@code theFixtureSeparatesTheAxesItSaysItSeparates} names exactly who holds an open
+	 * membership and a third one would have to be written into that sentence as well - which
+	 * would loosen the axis it is there to hold for forty other cases.
+	 *
+	 * @param seasonFrom his own, so that the team-mate is not a second copy of the leaver
+	 */
+	private void alsoInTheTeam(String memberNumber, String teamSlug, int seasonFrom) {
+		competitor(memberNumber);
+		account(memberNumber + "@primer.rs", memberNumber);
+		inATeam(memberNumber, teamSlug, seasonFrom);
+	}
+
 	private void sitsInTheSeatOf(String memberNumber, String slug) {
 		db.sql("update team set admin_id = (select id from competitor where member_number = ?)"
 						+ " where slug = ?")
@@ -1107,11 +1140,22 @@ class TeamWriteApiTest {
 
 		clock.moveTo(Instant.parse(moment));
 
+		/* AND HE IS NOT THE ONLY ONE IN IT, which is what tells „his row in this team" from
+		   „every open row of this team". Without it both statements in `leaving` may drop
+		   `competitor_id` and nothing moves. */
+		alsoInTheTeam(A_TEAM_MATE, THE_OTHER_TEAM, A_SEASON_ALREADY_RUNNING);
+
 		long rowsBefore = howManyMemberships();
 
 		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus())
 				.as("a member inside the transfer window was refused the way out of his team")
 				.isEqualTo(204);
+
+		assertThat(membershipsOf(A_TEAM_MATE))
+				.as("%s: the man beside him left the team he never pressed anything about, which"
+						+ " is one member's button emptying a whole team", what)
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
+						+ "-open still in it");
 
 		assertThat(membershipsOf(IN_A_TEAM_NOW))
 				.as("%s: the row was removed, or ended in the wrong season, or ended with the"
@@ -1147,6 +1191,10 @@ class TeamWriteApiTest {
 	 */
 	@Test
 	void aMembershipThatHasNotBegunIsRemovedRatherThanEnded() throws Exception {
+		/* THE SAME TEAM-MATE AS ON THE OTHER BRANCH, and for the identical reason: the
+		   removal may lose `competitor_id` too, and a team of one cannot see it. */
+		alsoInTheTeam(A_TEAM_MATE, HIS_TEAM, A_SEASON_STILL_TO_COME);
+
 		long rowsBefore = howManyMemberships();
 
 		assertThat(leaveAs(HAS_A_TEAM, HIS_TEAM).getStatus()).isEqualTo(204);
@@ -1155,6 +1203,11 @@ class TeamWriteApiTest {
 				.as("a membership that never began was kept, saying he was in the team for a"
 						+ " season he never saw")
 				.isEmpty();
+
+		assertThat(membershipsOf(A_TEAM_MATE))
+				.as("the man beside him was removed from the team he never pressed anything"
+						+ " about, which is one member's button emptying a whole team")
+				.containsExactly(HIS_TEAM + " " + A_SEASON_STILL_TO_COME + "-open still in it");
 
 		assertThat(howManyMemberships()).isEqualTo(rowsBefore - 1);
 
@@ -1281,19 +1334,35 @@ class TeamWriteApiTest {
 	 * window is one of two refusals told apart and a member is not to learn which stopped him;
 	 * here the only caller who gets this far is somebody the portal agrees is in this team,
 	 * asking about his own membership, so there is nothing left to hide.
+	 *
+	 * <p><b>AND IT IS ASKED OF BOTH MEMBERS, BECAUSE THE WINDOW GUARDS TWO BRANCHES AND A
+	 * REVIEW FOUND ONLY ONE OF THEM MEASURED.</b> Leaving writes one of two things - it ends
+	 * a membership that has begun, or it removes one that has not - and pressed only as
+	 * {@link #IN_A_TEAM_NOW} this case covered three of the four cells: begun inside,
+	 * begun outside, not-begun inside. Moving the window's question onto
+	 * {@code his.get().covers(running)}, so that it guarded the ending alone, left all
+	 * fifty-one cases green. <b>What that costs in production:</b> a member who joined a team
+	 * in October for next season could delete that membership in June, which is the thing the
+	 * owner's decision of 24.09.2026 exists to stop.
+	 *
+	 * @param who      which member presses, and therefore which of the two branches is asked
+	 * @param expected 204 inside the window, 409 outside it
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-09-30T21:59:00Z, 409, the last minute of September in Belgrade",
-			"2027-09-30T22:00:00Z, 204, midnight opening 1 October in Belgrade",
-			"2027-12-31T22:59:00Z, 204, the last minute of 31 December in Belgrade",
-			"2027-12-31T23:00:00Z, 409, midnight opening 1 January in Belgrade"})
-	void aMemberLeavesHisTeamOnlyInsideTheTransferWindow(String moment, int expected, String what)
-			throws Exception {
+			"2027-09-30T21:59:00Z, 000500, 409, a begun membership, last minute of September",
+			"2027-09-30T22:00:00Z, 000500, 204, a begun membership, 1 October opening",
+			"2027-12-31T22:59:00Z, 000500, 204, a begun membership, last minute of December",
+			"2027-12-31T23:00:00Z, 000500, 409, a begun membership, 1 January opening",
+			"2027-09-30T21:59:00Z, 000200, 409, a membership NOT begun, September",
+			"2027-06-15T10:00:00Z, 000200, 409, a membership NOT begun, the middle of June",
+			"2027-10-03T09:00:00Z, 000200, 204, a membership NOT begun, inside the window"})
+	void aMemberLeavesHisTeamOnlyInsideTheTransferWindow(String moment, String who, int expected,
+			String what) throws Exception {
 
 		clock.moveTo(Instant.parse(moment));
 
-		MockHttpServletResponse answer = leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM);
+		MockHttpServletResponse answer = leaveAs(who, teamOf(who));
 
 		assertThat(answer.getStatus())
 				.as("%s (%s) was answered wrongly", what, moment)
@@ -1304,11 +1373,22 @@ class TeamWriteApiTest {
 					.as("%s: the member was refused without being told what stopped him", what)
 					.isEqualTo(TeamWriteApi.THE_WINDOW_IS_SHUT);
 
-			assertThat(membershipsOf(IN_A_TEAM_NOW))
+			assertThat(membershipsOf(who))
 					.as("%s: the membership was written to on a day the window is shut", what)
-					.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
-							+ "-open still in it");
+					.containsExactly(theOpenMembershipOf(who));
 		}
+	}
+
+	/** Which team each of the two members in the fixture is in. */
+	private static String teamOf(String memberNumber) {
+		return IN_A_TEAM_NOW.equals(memberNumber) ? THE_OTHER_TEAM : HIS_TEAM;
+	}
+
+	/** And what his untouched row reads as, which is the two halves of the axis apart. */
+	private static String theOpenMembershipOf(String memberNumber) {
+		return IN_A_TEAM_NOW.equals(memberNumber)
+				? THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING + "-open still in it"
+				: HIS_TEAM + " " + A_SEASON_STILL_TO_COME + "-open still in it";
 	}
 
 	/**
@@ -1322,9 +1402,28 @@ class TeamWriteApiTest {
 	 * <p><b>The second of the four is the one that matters</b>: a route that read „his open
 	 * membership" and ignored the team in the address would end the wrong team's membership
 	 * and answer 204, and a fixture with one team in it could not tell the two apart.
+	 *
+	 * <p><b>AND IT IS ASKED ON A DAY THE WINDOW IS SHUT AS WELL, WHICH IS THE ORDER OF THE TWO
+	 * REFUSALS AND NOT A REPETITION.</b> {@code leaving} settles „is this membership yours"
+	 * BEFORE it looks at the calendar, and a review found that nothing said so: every 404 case
+	 * stood on a day inside the window, so asking the window first left all fifty-one green.
+	 * <b>What it costs when they are the wrong way round:</b> in June a stranger asking about
+	 * somebody else's team is answered 409 with a body naming the transfer window, while the
+	 * same request in October is answered an empty 404 - and the difference between those two
+	 * answers is ADL A8's whole subject, a caller learning that an address is there for
+	 * somebody.
+	 *
+	 * @param moment the day the caller asks on, inside the window and outside it
 	 */
-	@Test
-	void aTeamHeIsNotInAnswersWhatAnAddressThatIsNotThereAnswers() throws Exception {
+	@ParameterizedTest
+	@CsvSource({
+			"2027-10-03T09:00:00Z, inside the transfer window",
+			"2027-06-15T10:00:00Z, the middle of June, with the window shut"})
+	void aTeamHeIsNotInAnswersWhatAnAddressThatIsNotThereAnswers(String moment, String what)
+			throws Exception {
+
+		clock.moveTo(Instant.parse(moment));
+
 		long rowsBefore = howManyMemberships();
 
 		MockHttpServletResponse noTeamAtAll = leaveAs(ME, THE_OTHER_TEAM);
