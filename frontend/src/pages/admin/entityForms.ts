@@ -386,6 +386,24 @@ export const TEAMS: EntityDef = {
 /** Which events count towards a league is not on the form: there is no field
  *  type for a list of records, and inventing one to hold forty-six event ids
  *  would be a worse screen than the one that assigns them properly. */
+/**
+ * A competition that runs alongside the league, which is what this table is for and
+ * the Balkan league is not one (PDL P15a, owner 22.09.2026: „Ne kreira se i ne
+ * moderira", „BTL ne treba da se čuva na isti način kao ostale lige").
+ *
+ * **THE SEASON THE FORM OFFERS AND THE SEASON THE ROUTE TAKES.** Until 24.09.2026 the
+ * form offered every year from 2014, the schema demanded 2027 or later, and the owner's
+ * decision said „tekuća ili naredna" - three answers to one question, and the first entry
+ * with 2014 passed the form and came back a 500. He settled it the same day: the ROUTE
+ * decides, the form agrees with it, the schema stays as the floor.
+ *
+ * The floor here is `admin-liga.form.json`, whose `min` is now the first season the
+ * league has (`SeasonClock.FIRST_SEASON` on the far side). It is the nearest a written
+ * definition can come: „this year or the next" is an answer that changes with the day,
+ * and a JSON file cannot read a clock. `LeagueWriteApi.add` holds the whole sentence and
+ * refuses everything else BY NAME, which is what `pages/admin/LeagueModeration.tsx`
+ * draws.
+ */
 export const LEAGUES: EntityDef = {
   id: 'leagues',
   labelKey: 'admin.leagues',
@@ -576,9 +594,9 @@ export function takenAddress(
 ): Record<string, FieldError> {
   /* The field the address is typed into, which is the identity for a written
      page and a field of its own for a league: a league is filed under an id it
-     never shows and answers at an address somebody chose (`btl-2027` is not what
-     the rule would make of "Balkanska trkačka liga 2027"). Either way it is the
-     one field two records must not share. */
+     never shows and answers at an address somebody chose (`zimska-liga` is not
+     what the rule would make of "Zimska liga 2028"). Either way it is the one
+     field two records must not share. */
   const named = addressField(entity)
   const typed = String(values[named] ?? '').trim()
 

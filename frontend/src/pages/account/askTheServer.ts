@@ -165,8 +165,27 @@ async function reasonIn(answer: Response): Promise<string | null> {
  *
  * @param path what is being asked, an address under `/api`
  * @param said the body, which is the only place anything given here is written
+ * @param how  the verb, and `POST` where nothing says otherwise.
+ *
+ *             **Widened on 24.09.2026, on the same reasoning that widened this file for
+ *             registration and for the same measured reason: the fact being shared is the
+ *             TOKEN.** The moderation of a competition changes a record and takes one away
+ *             (`PUT /api/leagues/{id}`, `DELETE /api/leagues/{id}/races/{raceId}`), and a
+ *             copy of this file with one word changed would have been a second home for the
+ *             cookie jar, the read that hands the token out and the four answers - all so
+ *             that one string could differ. Everything else about these routes is the shape
+ *             this file already had: they refuse BY NAME, and a name is a name whichever
+ *             verb carried it.
+ *
+ *             **What is NOT widened, said plainly, because it is the warning at the top of
+ *             this file:** nothing here learns anything about a resource. It takes an
+ *             address and a body and reports one of five answers, exactly as before.
  */
-export async function askTheServer(path: string, said: object): Promise<Answer> {
+export async function askTheServer(
+  path: string,
+  said: object,
+  how: 'POST' | 'PUT' | 'DELETE' = 'POST',
+): Promise<Answer> {
   let answer: Response
 
   try {
@@ -181,15 +200,23 @@ export async function askTheServer(path: string, said: object): Promise<Answer> 
       headers[TOKEN_HEADER] = token
     }
 
-    answer = await fetch(path, { method: 'POST', headers, body: JSON.stringify(said) })
+    answer = await fetch(path, { method: how, headers, body: JSON.stringify(said) })
   } catch {
     return { got: 'nothing' }
   }
 
   /* 201 READ EXACTLY AS 204 IS, the identical widening `askTheServer.test.ts` measures
      for 409 beside 400: both numbers say the write happened, and which of the two a
-     route answers with is that route's business and not a fact this file keeps twice. */
-  if (answer.status === 204 || answer.status === 201) {
+     route answers with is that route's business and not a fact this file keeps twice.
+
+     AND 200 SINCE 24.09.2026, WHICH IS THE SAME SENTENCE ONE VERB ALONG. A route that
+     CHANGES a record answers with the record rather than with nothing - the shape
+     `EventWriteApi.change` has always had and `LeagueWriteApi.change` copies - so the
+     number that says „it was written" is 200 there. Left out, an edit that succeeded
+     came back as „the server answered 200 and nothing changed", which is wrong twice
+     over. Nothing is read out of the body here, exactly as nothing is read out of the
+     one a 201 carries. */
+  if (answer.status === 204 || answer.status === 201 || answer.status === 200) {
     return { got: 'done' }
   }
 
