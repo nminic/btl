@@ -390,6 +390,13 @@ class RightsAtTheDoorTest {
 					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",
 					"POST /api/pairs", "PUT /api/pairs/{id}", "DELETE /api/pairs/{id}",
 					"DELETE /api/teams/{id}/membership", "PUT /api/me/notifications",
+					/* A MEMBER'S OWN ACCOUNT AND HIS OWN PORTRAIT, ADDED 24.09.2026 WITH
+					   INCREMENT A. Each of the three is here for the reason `PUT /api/me` is:
+					   no box anybody could tick would let one member change another's
+					   password or another's picture, so there is no right at the door to
+					   read - what decides is the session, inside the handler, and the account
+					   or the member it names. See `MePasswordApi` and `MePhotoApi`. */
+					"PUT /api/me/password", "POST /api/me/photo", "DELETE /api/me/photo",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
 					"ANY /error");
