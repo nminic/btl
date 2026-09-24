@@ -1424,6 +1424,15 @@ class PairWriteApiTest {
 				.andReturn().getResponse();
 	}
 
+	/**
+	 * Gives one member a first name of his own, because the fixture gives all thirteen the
+	 * same one and a case that reads a first name would otherwise read a constant.
+	 */
+	private void named(String memberNumber, String firstName) {
+		db.sql("update competitor set first_name = ? where member_number = ?")
+				.params(firstName, memberNumber).update();
+	}
+
 	/** Whether that row is still there, asked by its key and by nothing else. */
 	private boolean pairStillThere(long pair) {
 		return db.sql("select count(*) from racing_pair where id = ?").param(pair)
@@ -1482,6 +1491,18 @@ class PairWriteApiTest {
 		long pair = pairOf(THE_FOURTH, SHE_ANSWERS, BEING_FORMED);
 		long pairsBefore = howManyPairs();
 
+		/* AND THE TWO OF THEM ARE GIVEN DIFFERENT FIRST NAMES, WHICH IS NOT DECORATION.
+		   `member()` writes „Probni" as the first name of all thirteen, so one constant
+		   stands for thirteen roles and „whose first name is in the message" is a question
+		   with one answer whatever the server does. Measured: the mutation that swaps the
+		   two halves in the `first_name` arm of the query PASSED the whole class, green,
+		   because both names it can pick are the same string. The surname already carries
+		   the member number and caught its own arm; this makes the other arm answerable too,
+		   and it is done HERE rather than in `member()` so that forty-three other cases keep
+		   the fixture they were written against. */
+		named(who, "Ime" + who);
+		named(told, "Ime" + told);
+
 		assertThat(endAs(who, pair).getStatus())
 				.as("a half of the pair was refused the one button PDL puts on his own profile")
 				.isEqualTo(204);
@@ -1495,8 +1516,8 @@ class PairWriteApiTest {
 				.as("the half who pressed nothing was told nothing, which is the fault PDL calls"
 						+ " a portal telling through one door and staying silent through another")
 				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
-						+ " Trkački par sa Probni Probic" + who + " za sezonu " + BEING_FORMED
-						+ " je raskinut.");
+						+ " Trkački par sa Ime" + who + " Probic" + who + " za sezonu "
+						+ BEING_FORMED + " je raskinut.");
 
 		assertThat(postFor(who))
 				.as("the one who pressed the button was told about his own press")

@@ -186,6 +186,26 @@ class TeamWriteApiTest {
 	/** No country is served under it, and the fixture says so out loud below. */
 	private static final String A_COUNTRY_NOBODY_SERVES = "QQ";
 
+	/**
+	 * THE WORD A VOLUNTARY EXIT WRITES INTO {@code left_reason}, SPELLED OUT HERE AND NOT
+	 * READ OFF {@link Membership#LEFT_ON_HIS_OWN}.
+	 *
+	 * <p><b>A mutation found this and nothing else would have.</b> Written as the constant,
+	 * both sides of the assertion came from ONE source: changing the production value changed
+	 * the expectation with it, so „the reason the portal writes" was measured by nothing at
+	 * all and the mutation that replaces it passed green. That is „nikad jedna konstanta za
+	 * dve uloge" in its plainest form, and the only way to tell the two roles apart is for the
+	 * case to carry its own copy of what it expects.
+	 *
+	 * <p><b>Two homes is the price and it is the right one here.</b> The other home is the
+	 * record's, and this one is a fixture: it says what a reader of the database will find,
+	 * the way {@code pages/publicData.test.tsx} carries a hand written table of addresses. If
+	 * somebody changes the word, this fails and asks whether the change was meant - which is
+	 * exactly the question a column that has to tell a voluntary exit from the 1 January job
+	 * should raise once.
+	 */
+	private static final String THE_REASON_A_MEMBER_LEAVING_WRITES = "izašao iz tima";
+
 	@Autowired
 	private MockMvc http;
 
@@ -1094,10 +1114,10 @@ class TeamWriteApiTest {
 				.isEqualTo(204);
 
 		assertThat(membershipsOf(IN_A_TEAM_NOW))
-				.as("%s: the row was removed, or ended in the wrong season, or ended without a"
-						+ " reason", what)
+				.as("%s: the row was removed, or ended in the wrong season, or ended with the"
+						+ " wrong reason", what)
 				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING + "-" + seasonTo
-						+ " " + Membership.LEFT_ON_HIS_OWN);
+						+ " " + THE_REASON_A_MEMBER_LEAVING_WRITES);
 
 		assertThat(howManyMemberships())
 				.as("somebody else's membership went with his")
@@ -1326,6 +1346,54 @@ class TeamWriteApiTest {
 				.isEqualTo(404);
 
 		assertThat(howManyMemberships()).as("a membership went").isEqualTo(rowsBefore);
+		assertThat(membershipsOf(IN_A_TEAM_NOW))
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
+						+ "-open still in it");
+	}
+
+	/**
+	 * AND AN ACCOUNT THAT NAMES NO MEMBER LEAVES NOTHING EITHER.
+	 *
+	 * <p>V23 lets {@code account.competitor_id} be null for „a moderator who does not race,
+	 * which is the ordinary case and not a fault". There is nobody here whose membership this
+	 * could be, so the answer is {@code propose}'s and {@link InboxApi}'s: 404 with nothing in
+	 * it, by ADL A8.
+	 *
+	 * <p><b>This case exists because the coverage gate found the branch, not because the
+	 * branch looked doubtful.</b> {@code JaCoCo} reported one line and one of two branches
+	 * uncovered in {@code TeamWriteApi.leave}, and it was exactly this one: {@code propose}
+	 * asks the same first question and has been measured since it was written, while the way
+	 * out asked it and nobody ever arrived. A branch nothing reaches is a branch nothing holds
+	 * - swap the {@code return away()} for anything at all and no case moves.
+	 *
+	 * <p>{@code PairWriteApi.breakUp} asks the identical question and
+	 * {@code anAccountThatNamesNoMemberEndsNothing} is its case, which is why the report named
+	 * one class and not two. The class was swept in both routes rather than in the one that
+	 * was red.
+	 */
+	@Test
+	void anAccountThatNamesNoMemberLeavesNothing() throws Exception {
+		long rowsBefore = howManyMemberships();
+
+		MockHttpServletResponse answer = http.perform(
+						delete("/api/teams/" + teamId(THE_OTHER_TEAM) + "/membership").with(csrf())
+								.cookie(new Cookie(SessionCookie.NAME,
+										sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret())))
+				.andReturn().getResponse();
+
+		assertThat(answer.getStatus())
+				.as("an account with no member behind it reached a membership that is not his")
+				.isEqualTo(404);
+
+		assertThat(answer.getContentAsString())
+				.as("the refusal explains itself, and the owner deleted the sentence that did"
+						+ " (PDL P13, 05.09.2026)")
+				.isEmpty();
+
+		assertThat(howManyMemberships())
+				.as("a membership went on behalf of an account that names nobody")
+				.isEqualTo(rowsBefore);
+
 		assertThat(membershipsOf(IN_A_TEAM_NOW))
 				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
 						+ "-open still in it");
