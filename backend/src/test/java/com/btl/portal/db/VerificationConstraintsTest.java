@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Every constraint the queue of V9 carries, with the row that breaks it.
  *
- * <p>The queue is one table for six tabs, and the six are not a list written
+ * <p>The queue is one table for five tabs, and the five are not a list written
  * anywhere here: the table generates the right's code out of the tab and points a
  * foreign key at {@code admin_right}, so a tab exists exactly as long as somebody
  * has the right to moderate it.
@@ -131,10 +131,6 @@ class VerificationConstraintsTest extends DatabaseTest {
 	private static final String A_COMMENT_SUBMISSION =
 			"(select id from comment_submission where event_id = " + AN_EVENT + ")";
 
-	/** The proposal V30 gives the schedule tab to point at. */
-	private static final String A_SCHEDULE_PROPOSAL =
-			"(select id from schedule_proposal where event_id = " + AN_EVENT + ")";
-
 	/** The same, for the other subject. */
 	private static String pointingAtProposal(String queue, String proposal) {
 		return "insert into verification (queue, competitor_id, subject, body, state,"
@@ -155,12 +151,6 @@ class VerificationConstraintsTest extends DatabaseTest {
 				+ " 'waiting', " + submission + ")";
 	}
 
-	/** The same, for the proposal V30 gives the schedule tab. */
-	private static String pointingAtScheduleProposal(String queue, String proposal) {
-		return "insert into verification (queue, competitor_id, subject, body, state,"
-				+ " schedule_proposal_id) values ('" + queue + "', " + A_MEMBER + ", 'Naslov', '',"
-				+ " 'waiting', " + proposal + ")";
-	}
 
 	/**
 	 * A member, an account to decide with, and a photograph to attach.
@@ -196,8 +186,8 @@ class VerificationConstraintsTest extends DatabaseTest {
 
 		db.sql(row("'teams', " + A_MEMBER + ", 'Zatecen red', '', null, 'waiting', null, null, null, null")).update();
 
-		/* An event for the two tables V30 adds to point at, and one waiting submission and
-		   one waiting proposal on it, for the six constraints V30 adds. */
+		/* An event for the table V30 adds to point at, and one waiting submission on it,
+		   for the three constraints V30 adds. */
 		db.sql("insert into btl_event (slug, name, date, place_id, kind, featured, description, link)"
 				+ " values ('probni-dogadjaj-v30', 'Probni dogadjaj', date '2027-04-04', " + A_TOWN
 				+ ", 'race', false, '', '')").update();
@@ -205,20 +195,16 @@ class VerificationConstraintsTest extends DatabaseTest {
 		db.sql("insert into comment_submission (event_id, competitor_id, rating_organisation,"
 				+ " rating_value, rating_ambience, body) values (" + AN_EVENT + ", " + A_MEMBER
 				+ ", 4, 5, 3, 'Probni tekst')").update();
-
-		db.sql("insert into schedule_proposal (competitor_id, event_id, event_date, proposed_date)"
-				+ " values (" + A_MEMBER + ", " + AN_EVENT + ", date '2027-04-04', date '2027-04-11')")
-				.update();
 	}
 
 	static List<Violation> violations() {
 		return List.of(
 				Violation.notNull("verification_queue_not_null", "queue",
 						row("null, " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, null, null, null")),
-				/* A seventh tab, which nobody has the right to moderate. This is the
-				   whole of what makes the six a floor rather than a list: it is not
-				   refused because a CHECK names six words, it is refused because
-				   `queue:results` and its five siblings are rows in the rights matrix
+				/* A sixth tab, which nobody has the right to moderate. This is the
+				   whole of what makes the five a floor rather than a list: it is not
+				   refused because a CHECK names five words, it is refused because
+				   `queue:results` and its four siblings are rows in the rights matrix
 				   and `queue:sponsors` is not. */
 				Violation.of("verification_queue_fk",
 						row("'sponsors', " + A_MEMBER + ", 'Naslov', '', null, 'waiting', null, null, null, null")),
@@ -340,16 +326,11 @@ class VerificationConstraintsTest extends DatabaseTest {
 				Violation.of("verification_only_the_comments_queue_carries_a_submission",
 						pointingAtCommentSubmission("teams", A_COMMENT_SUBMISSION)),
 
-				/* AND THE PROPOSAL V30 GIVES THE SCHEDULE TAB (ADL A64 A2), the same three
-				   shapes again. */
-				Violation.of("verification_schedule_proposal_fk",
-						pointingAtScheduleProposal("schedule", "999999")),
-				Violation.of("verification_schedule_proposal_unique",
-						"insert into verification (queue, competitor_id, subject, body, state,"
-								+ " schedule_proposal_id) select 'schedule', " + A_MEMBER + ", 'Naslov', '',"
-								+ " 'waiting', " + A_SCHEDULE_PROPOSAL + " from generate_series(1, 2)"),
-				Violation.of("verification_only_the_schedule_queue_carries_a_proposal",
-						pointingAtScheduleProposal("teams", A_SCHEDULE_PROPOSAL)),
+				/* V30 gave the schedule tab the identical three shapes, off `schedule_proposal`
+				   (ADL A64 A2), until PDL P10a, 22.09.2026 took the tab and the table both away
+				   (V31): `verification_schedule_proposal_fk`,
+				   `verification_schedule_proposal_unique`,
+				   `verification_only_the_schedule_queue_carries_a_proposal`. */
 
 				/* AND THE HOLD V28 ADDS, which is a row that is there or is not and therefore
 				   needs no biconditional: both of its columns are NOT NULL, so a hold with a
@@ -500,18 +481,6 @@ class VerificationConstraintsTest extends DatabaseTest {
 				.isOne();
 	}
 
-	/** And the schedule tab carries the proposal it is about (ADL A64 A2). */
-	@Test
-	void theScheduleTabCarriesTheProposalItIsAbout() {
-		assertThat(db.sql(pointingAtScheduleProposal("schedule", A_SCHEDULE_PROPOSAL)).update()).isOne();
-
-		assertThat(db.sql("select count(*) from verification where schedule_proposal_id is not null")
-				.query(Long.class)
-				.single())
-				.as("the row went in with an empty pointer, so nothing here is about V30 at all")
-				.isOne();
-	}
-
 	@Test
 	void theResultsTabCarriesTheRunItIsAbout() {
 		assertThat(db.sql(pointingAt("results", A_SUBMISSION)).update()).isOne();
@@ -527,10 +496,10 @@ class VerificationConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * The six tabs are the six rights, and neither list is written here.
+	 * The five tabs are the five rights, and neither list is written here.
 	 *
 	 * <p>This is the half the foreign key cannot say by itself: the key refuses a
-	 * seventh tab, but it would go on refusing it if the rights matrix had shrunk to
+	 * sixth tab, but it would go on refusing it if the rights matrix had shrunk to
 	 * one. So both sides are read - the queue rights out of {@code admin_right}, and
 	 * the tabs the queue will accept out of what actually goes in - and they have to
 	 * be the same set.

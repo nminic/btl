@@ -33,6 +33,33 @@ export function Decided() {
 }
 
 /**
+ * What has been let out onto an event's own page during this visit, the queue
+ * item beside the event it landed on.
+ *
+ * `published` is written down at the moment a comment is let out precisely so
+ * the event page never has to read the queue to find out
+ * (`session/context.ts`, `SessionProvider`). A case that only asked whether
+ * ANYTHING had been published could not tell a comment let out from the right
+ * queue item apart from one let out from any other item on any other queue;
+ * this reads the pair the session itself carries, the queue item's own id
+ * beside the event id the comment was filed under, so a decision on one item
+ * publishing under a different item's name - or under a queue that should
+ * never publish at all - is visible here too, and an empty list is the claim
+ * that nothing was.
+ */
+export function Published() {
+  const { published } = useSession()
+
+  return (
+    <ul aria-label="session published">
+      {published.map(({ from, comment }) => (
+        <li key={from}>{`${from} | ${comment.eventId}`}</li>
+      ))}
+    </ul>
+  )
+}
+
+/**
  * What is in the inbox of whoever the session is, subject by subject.
  *
  * The one thing about a message that no administrative screen shows, and the

@@ -160,11 +160,16 @@ export const readAsAdministrationsRow: Competitor = aCompetitorToTheAdministrati
  * tab would carry them empty and the guard beside it would be satisfied by a server
  * that always answered empty.
  *
- * **`rating`, `currentDate` and `proposedDate` are blank here on the same ground**
- * (ADL A64, 22.09.2026). They answer for real off the comments and the schedule tabs;
- * a teams row carries them nought and empty exactly as the server really sends them
- * for every tab but its own, which is the value this sample has to show and not
- * merely the presence of the key.
+ * **`rating` is blank here on the same ground** (ADL A64 A1, 22.09.2026). It answers
+ * for real off the comments tab; a teams row carries it nought exactly as the server
+ * really sends it for every tab but its own, which is the value this sample has to
+ * show and not merely the presence of the key.
+ *
+ * **`currentDate` and `proposedDate` are not here at all, since PDL P10a, 22.09.2026.**
+ * They answered for real off the schedule tab, from V30 until the owner's later
+ * decision the same day took the tab away: „Redova je pet, ne šest." `ServedPendingItem`
+ * omits both now, the same as `email`, `picture` and `crop` - fields the schema has
+ * nowhere to hold - so this sample has nothing to carry blank for them any more.
  */
 export const aWaitingItem = {
   queue: 'teams' as const,
@@ -180,8 +185,6 @@ export const aWaitingItem = {
   country: 'RS',
   photoId: null,
   rating: { organisation: 0, value: 0, ambience: 0 },
-  currentDate: '',
-  proposedDate: '',
 }
 
 /**

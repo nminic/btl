@@ -302,9 +302,10 @@ class MeWriteApi {
 	/**
 	 * THE TAB THIS WAITS IN, and the only one it could wait in.
 	 *
-	 * <p>V5 carries the six queues of the rights matrix and V9 generates
-	 * {@code verification.right_code} out of the tab and keys it to them, so a row cannot
-	 * stand in a tab nobody has the right to moderate. This is the tab PDL P28a,
+	 * <p>V5 carried six queues of the rights matrix and V31 (PDL P10a, 22.09.2026) took
+	 * one away, so the matrix carries five now; V9 generates {@code verification.right_code}
+	 * out of the tab and keys it to them, so a row cannot stand in a tab nobody has the
+	 * right to moderate. This is the tab PDL P28a,
 	 * 06.08.2026 calls „Profili: trkacke biografije i profilne slike".
 	 */
 	private static final String THE_PROFILES_TAB = "profiles";

@@ -8,9 +8,11 @@ import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
 import { clearResourceCache, loadResource } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
+import { Published } from '../../test/decided'
 import { membersAsServed, refused, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
 import type { BtlEvent, Competitor, EventComment, PendingItem } from '../../data/types'
+import { QUEUE } from '../admin/queues'
 import { overall, rated } from './overall'
 
 /* EVERY CASE HERE HAS A SERVER IN FRONT OF IT FOR `POST /api/comments`, BECAUSE SINCE
@@ -580,7 +582,7 @@ describe('a comment a moderator lets out', () => {
   })
 
   it('draws the marks on the comments queue and on none of the others', async () => {
-    /* A rating is about an event and the other six queues are not, so a card in
+    /* A rating is about an event and the other four queues are not, so a card in
        them carrying "Organizacija / Vrednost za novac / Ambijent / Ukupna
        ocena: Bez ocene" is four lines of nothing on every biography, every
        photograph and every payment. The condition was written and held nowhere:
@@ -593,7 +595,7 @@ describe('a comment a moderator lets out', () => {
 
     for (const [address, named] of [
       ['trkacki-profil', 'Trkački profil'],
-      ['termini', 'Prijave promene termina'],
+      ['timovi', 'Novi timovi'],
     ] as const) {
       await router.navigate(`/sr/administracija/verifikacija/${address}`)
       /* Waited for by the name of the queue that was asked for: the list of
@@ -1047,47 +1049,77 @@ describe('a comment a moderator lets out', () => {
     expect(list.textContent).not.toContain('8. 5. 2010.')
   })
 
-  it('publishes nothing from the queues that are not about comments', async () => {
-    /* The merge asks two things of a waiting item: that it was approved, and
-       that it is a comment. Without the second, approving a reported change of
-       date publishes a card with no words and no marks under a real event, and
-       nothing on any screen would say where it came from. */
-    const user = setupUser()
-    const about = must(
-      (await loadResource<PendingItem[]>('verification')).find((one) => one.queue === 'schedule'),
-      'a change of date in the record',
-    )
-    /* Its own event, not one picked in advance: what a widened merge would
-       publish is a card on the event the item names, so an event chosen
-       anywhere else is a screen the mistake never reaches. */
-    const slug = (await eventWithId(about.subjectId)).slug
+  /*
+   * „PUBLISHES NOTHING FROM THE QUEUES THAT ARE NOT ABOUT COMMENTS" stood here and was
+   * DELETED on 24.09.2026, on the wrong reading that no queue's `subjectId` names a real,
+   * navigable event any more once the schedule tab left (PDL P10a). Review of PR 363
+   * measured the opposite: a `teamEdit` item's `subjectId` is a real team id (teams.json,
+   * 1..4) and `events.json` carries ids in the same range, so the very case below is
+   * still writable, and `queue.id === 'comments'` swapped for `true` left the whole
+   * frontend package green, 3030/3030, while it stood deleted - a regression nothing
+   * would have seen. Rewritten rather than restored, against `published` itself
+   * (`session/context.ts`, the same probe `app/header.test.tsx` builds by hand) instead
+   * of the event page: `commentFrom` (data/comment.ts) would file a team edit's approval
+   * under `eventId: Number(item.subjectId)` with an EMPTY body, and a page that renders
+   * comments by body text is the wrong place to look for one that carries none.
+   */
+  it('publishes nothing when a team edit is approved, which is not about comments', async () => {
+    const teamEdit: PendingItem = {
+      id: 'ver-team-edit-1',
+      queue: 'teams',
+      kind: 'teamEdit',
+      date: '2026-07-01',
+      // Team 1, „Dunavski trkači", administered by 000001 (teams.json,
+      // competitors.json): the one pair `teamProposal.ts`'s own `refusal`
+      // accepts for a change, so approval is not itself refused first. Team 1
+      // is also `EVENT` above by coincidence of range, not of kind - a team
+      // edit's subjectId lands on a REAL, navigable event either way.
+      memberNumber: '000001',
+      who: 'Vladan Đurišić',
+      subject: 'Dunavski trkači',
+      subjectId: '1',
+      body: '',
+      picture: '',
+      crop: { x: 0.5, y: 0.5, size: 1 },
+      currentDate: '',
+      proposedDate: '',
+      rating: { organisation: 0, value: 0, ambience: 0 },
+      email: '',
+      city: 'Novi Sad',
+      country: 'RS',
+    }
+    const served = globalThis.fetch
 
-    /* Read after that event, so the comments are drawn at all: before the race
-       the whole section is absent (EventComments.tsx), and "no card appeared"
-       would then be true of every screen. */
-    const { router } = renderAt(
-      '/sr/administracija/verifikacija/termini',
-      'superadmin',
-      null,
-      undefined,
-      '2027-05-01',
-    )
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/api/verification')
+        ? new Response(JSON.stringify([teamEdit]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : served(input))
 
-    const waiting = await screen.findByRole('list', { name: /Čeka/ })
-    const card = must(
-      within(waiting)
-        .getAllByRole('listitem')
-        .find((one) => (one.textContent ?? '').includes(about.who)),
-      'that change of date in the queue',
-    )
+    try {
+      const user = setupUser()
 
-    await user.click(within(card).getByRole('button', { name: 'Odobri' }))
-    await router.navigate(`/sr/kalendar/${slug}`)
+      renderAt(
+        `/sr/${QUEUE.teams.path}`,
+        'moderator',
+        null,
+        undefined,
+        null,
+        <Published />,
+      )
 
-    /* The event has no comments, so the sentence that says so is what stands
-       there. A card published by mistake takes it away. */
-    expect(await screen.findByText('Za ovaj događaj još nema odobrenih komentara.')).toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'Komentari' })).toBeNull()
+      await user.click(await screen.findByRole('button', { name: 'Odobri' }))
+
+      /* The decision itself still has to land - a card gone from the queue is
+         the only sign this test would otherwise have that anything happened
+         at all - before the absence beside it means something. */
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Odobri' })).toBeNull())
+      expect(screen.getByRole('list', { name: 'session published' })).toBeEmptyDOMElement()
+    } finally {
+      globalThis.fetch = served
+    }
   })
 
   it('stays off the portal when it is deleted rather than approved', async () => {
