@@ -370,6 +370,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 			/* V10. The first is how a member's own screen draws what he has sent in, and the
 			   other three are the ends of the three keys that point out of the submission. The
 			   race one is over two columns because the key it answers is. */
+			new Index("result_submission_amends_idx", "the corrections waiting on one result, which "
+					+ "is the other end of result_submission_amends_fk and what a deletion of that "
+					+ "result cascades through (V32)"),
 			new Index("result_submission_competitor_idx", "the runs one member has sent in"),
 			new Index("result_submission_race_idx", "what is waiting on one race, and the other end of "
 					+ "result_submission_race_fk, which is over two columns and so is this"),

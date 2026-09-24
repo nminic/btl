@@ -125,6 +125,55 @@ public final class WhatAResultChangeSays {
 	}
 
 	/**
+	 * THE THREE OCCASIONS, AND EACH SAYS HOW MANY FACTS ITS WORDS TAKE.
+	 *
+	 * <p><b>An enum rather than three keys typed at three call sites, and the count is what
+	 * makes it one.</b> {@code MessageFormat} does not complain about a hole nobody fills: a
+	 * body written with {@code {1}} in it and handed one value renders the literal
+	 * „{1}" into a member's letter, and a body written with one hole and handed two drops the
+	 * second silently. So the number is declared here and
+	 * {@code WhatAResultChangeSaysTest.everyOccasionTakesAsManyFactsAsItsWordsHaveHolesFor}
+	 * compares it with the holes the dictionary really uses.
+	 *
+	 * <p><b>This is deliberately the shape {@code WhatANoticeSays} has on the branch that will
+	 * absorb it</b> - an occasion, a key, a count, and floors that sweep {@code values()} and
+	 * the dictionary's own {@code keySet()} so that no list is typed anywhere. Folding the two
+	 * together is then three constants moving across and {@link #inWords} staying behind,
+	 * rather than two classes being reconciled.
+	 */
+	public enum Told {
+
+		/** „unet rezultat", PDL P22's third mandatory message. */
+		A_RESULT_WAS_ENTERED("resultEntered", 1),
+
+		/** „promenjen rezultat", its fourth, and the one that carries both values. */
+		A_RESULT_WAS_CHANGED("resultChanged", 2),
+
+		/** Not on the list of six by that name, and required by the same decision all the
+		 *  same: „Isto obavestenje ide i kad se obrise verifikovan rezultat." */
+		A_RESULT_WAS_DELETED("resultDeleted", 1);
+
+		private final String key;
+
+		private final int facts;
+
+		Told(String key, int facts) {
+			this.key = key;
+			this.facts = facts;
+		}
+
+		/** What the words are filed under, and the floor over the bundle reads this. */
+		public String key() {
+			return key;
+		}
+
+		/** How many values its words take, which is what the same floor measures. */
+		public int facts() {
+			return facts;
+		}
+	}
+
+	/**
 	 * A RESULT HAS BEEN SENT IN, and there is no old value because there was nothing
 	 * there before.
 	 *
@@ -137,7 +186,7 @@ public final class WhatAResultChangeSays {
 	public static Said entered(Run sent) {
 		Objects.requireNonNull(sent, "sent");
 
-		return said("resultEntered", inWords(sent));
+		return said(Told.A_RESULT_WAS_ENTERED, inWords(sent));
 	}
 
 	/**
@@ -150,21 +199,23 @@ public final class WhatAResultChangeSays {
 		Objects.requireNonNull(before, "before");
 		Objects.requireNonNull(after, "after");
 
-		return said("resultChanged", inWords(before), inWords(after));
+		return said(Told.A_RESULT_WAS_CHANGED, inWords(before), inWords(after));
 	}
 
 	/** A RESULT HAS BEEN DELETED, and what it said is the whole of the message. */
 	public static Said deleted(Run before) {
 		Objects.requireNonNull(before, "before");
 
-		return said("resultDeleted", inWords(before));
+		return said(Told.A_RESULT_WAS_DELETED, inWords(before));
 	}
 
-	private static Said said(String key, Object... values) {
+	/** The words of one occasion, filled in. Package visible so the floor over the
+	 *  dictionary can ask for every occasion rather than for the three somebody remembers. */
+	static Said said(Told told, Object... values) {
 		ResourceBundle words = ResourceBundle.getBundle(WORDS, ONE_SET_OF_WORDS);
 
-		return new Said(words.getString(key + ".subject"),
-				new MessageFormat(words.getString(key + ".body"), ONE_SET_OF_WORDS)
+		return new Said(words.getString(told.key() + ".subject"),
+				new MessageFormat(words.getString(told.key() + ".body"), ONE_SET_OF_WORDS)
 						.format(values));
 	}
 
