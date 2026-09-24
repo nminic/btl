@@ -366,6 +366,15 @@ class RightsAtTheDoorTest {
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",
+					/* A MEMBER'S OWN RUN, ALL THREE VERBS. Sending in a result, correcting it and
+					   taking it back are what every member does with his own data, not a box the
+					   superadmin ticks: PDL, owner, 27.08.2026, „clan ga ili brise (ima pravo na
+					   to, iako je verifikovan) ili menja i dostavlja dokaz za tu izmenu". Whose
+					   result it is stands in the `where` of the statement that reads it, so
+					   somebody else's is answered 404 by the route rather than by a right (ADL
+					   A8). Unauthenticated is 401 from the chain: `/api/results` is opened for
+					   GET, HEAD and OPTIONS alone, so these three never reach `permitAll`. */
+					"POST /api/results", "PUT /api/results/{id}", "DELETE /api/results/{id}",
 					"POST /api/pairs", "PUT /api/pairs/{id}", "PUT /api/me/notifications",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
