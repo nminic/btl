@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -332,9 +333,35 @@ class MeWriteApiTest {
 				.param(memberNumber).query(String.class).single()).secret();
 	}
 
-	/** The ordinary request, built out of the record so its own shape is what is sent. */
+	/**
+	 * The ordinary request, built out of the record so its own shape is what is sent.
+	 *
+	 * <p>Since 24.09.2026 the record carries the personal fields too, and this helper leaves
+	 * every one of them null - which is exactly what the cases that use it are about: a
+	 * request that names only the biography and the switch must go on behaving as it did
+	 * before a single personal field existed. {@link #changing} is the one that names them.
+	 */
 	private String change(String bio, Boolean profileHidden) {
-		return mapper.writeValueAsString(new MeWriteApi.Change(bio, profileHidden));
+		return mapper.writeValueAsString(new MeWriteApi.Change(bio, profileHidden, null, null,
+				null, null, null, null, null));
+	}
+
+	/**
+	 * A request naming ONLY the fields given, spelt as the form spells them.
+	 *
+	 * <p>Written as a map rather than through the record, because half of what these cases
+	 * send is deliberately NOT on the record - a date of birth is what the refusal is about -
+	 * and because „the field was left out" and „the field was sent as null" have to be two
+	 * different requests here, which a record cannot express through Jackson.
+	 */
+	private String changing(Object... namesAndValues) {
+		Map<String, Object> body = new LinkedHashMap<>();
+
+		for (int i = 0; i < namesAndValues.length; i += 2) {
+			body.put(String.valueOf(namesAndValues[i]), namesAndValues[i + 1]);
+		}
+
+		return mapper.writeValueAsString(body);
 	}
 
 	private MockHttpServletResponse changeAs(String memberNumber, String body) throws Exception {
@@ -957,10 +984,18 @@ class MeWriteApiTest {
 	 * <p><b>And a body this portal cannot read is the same answer</b>, because neither
 	 * carries a single value this route could act on. That case is here rather than in a
 	 * file of its own because it is the same sentence about the same request.
+	 *
+	 * <p><b>Two of the rows are about reading the body in TWO STEPS, which is what this route
+	 * has done since 24.09.2026</b> - a tree first, so that „did he send a date of birth" can
+	 * be asked of a name that is deliberately not on {@link MeWriteApi.Change}, and the
+	 * record after it. Each step has its own way of failing and neither may become a 500:
+	 * {@code []} is valid JSON that is not an object at all, and a field of the right NAME
+	 * carrying the wrong SORT is one a tree holds happily and a record cannot.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"{}", "{\"bio\": null, \"profileHidden\": null}",
-			"{\"memberNumber\": \"000100\"}", "{oops", ""})
+			"{\"memberNumber\": \"000100\"}", "{oops", "", "[]",
+			"{\"placeId\": \"Beograd\"}", "{\"profileHidden\": \"mozda\"}"})
 	void aBodyThatNamesNeitherFieldIsRefusedAndSaysWhatIsMissing(String body) throws Exception {
 		long before = howManyRowsInTheQueue();
 
@@ -1272,5 +1307,600 @@ class MeWriteApiTest {
 				.as("an address that maps nothing no longer answers 404, so there is nothing being"
 						+ " compared here")
 				.isEqualTo(answer.getStatus());
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   THE PERSONAL DATA, WHICH TAKE EFFECT AT ONCE - OWNER, PDL P28b, 1, 24.09.2026.
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * One member's personal columns, read back in a fixed order.
+	 *
+	 * <p>Every one of them as TEXT, null included, so that „the column is empty" and „the
+	 * column holds the word null" are one value here and a case comparing two of these lists
+	 * never compares a null with a null and calls it agreement.
+	 */
+	private List<String> personalOf(String memberNumber) {
+		return db.sql("select c.first_name, c.last_name, c.address, c.phone, p.geonames_id,"
+						+ " c.city, k.code from competitor c"
+						+ " left join place p on p.id = c.place_id"
+						+ " left join country k on k.id = c.country_id"
+						+ " where c.member_number = ?")
+				.param(memberNumber)
+				.query((row, one) -> List.of(String.valueOf(row.getString(1)),
+						String.valueOf(row.getString(2)), String.valueOf(row.getString(3)),
+						String.valueOf(row.getString(4)), String.valueOf(row.getObject(5)),
+						String.valueOf(row.getString(6)), String.valueOf(row.getString(7))))
+				.single();
+	}
+
+	/** A town of the codebook that is NOT the one every member in this fixture starts on. */
+	private long anotherTownOfTheCodebook() {
+		return db.sql("select geonames_id from place where rank <> 1 order by rank limit 1")
+				.query(Long.class).single();
+	}
+
+	private String aCountryCode() {
+		return db.sql("select code from country order by code limit 1").query(String.class)
+				.single();
+	}
+
+	private List<String> fieldsIn(MockHttpServletResponse answer) throws Exception {
+		List<String> named = new ArrayList<>();
+
+		for (JsonNode one : answerIn(answer).path("fields")) {
+			named.add(one.asString());
+		}
+
+		return named;
+	}
+
+	/**
+	 * A NAME, AN ADDRESS AND A TELEPHONE MOVE THE MOMENT THEY ARE SENT, AND NOTHING IS
+	 * QUEUED FOR THEM.
+	 *
+	 * <p>Owner, PDL P28b, 1, 24.09.2026: „Licni podaci (adresa, telefon, grad, ime, prezime)
+	 * stupaju odmah. Red za proveru ceka samo ono sto javnost vidi kao sadrzaj: biografija i
+	 * slika." The entry says in as many words what it did to the wider reading of PDL P18
+	 * that stood before it, which „se doslovno citalo tako da i promena telefona ceka
+	 * odobrenje".
+	 *
+	 * <p><b>The values are sent with spaces around them</b>, so an answer echoed off the
+	 * request and a row read out of the table are two different strings - and the row is what
+	 * is read here.
+	 */
+	@Test
+	void aMembersOwnNameAddressAndTelephoneTakeEffectAtOnce() throws Exception {
+		long before = howManyRowsInTheQueue();
+
+		MockHttpServletResponse answer = changeAs(ME, changing(
+				"firstName", "  Jovana  ", "lastName", "  Jovanovic  ",
+				"address", "  Bulevar oslobodjenja 12  ", "phone", "  +381641234567  "));
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+
+		assertThat(personalOf(ME).subList(0, 4))
+				.as("a personal field the owner put on the immediate road did not reach the row,"
+						+ " or reached it with the spaces the member's box left around it")
+				.containsExactly("Jovana", "Jovanovic", "Bulevar oslobodjenja 12",
+						"+381641234567");
+
+		assertThat(howManyRowsInTheQueue())
+				.as("a moderator was given something to judge about a telephone number, which is"
+						+ " the wide reading of PDL P18 the owner overturned on 24.09.2026")
+				.isEqualTo(before);
+
+		assertThat(profileOf(ME))
+				.as("the biography moved while the personal fields did, so the two roads are one")
+				.isEqualTo(List.of(THE_TEXT_ON_MY_PROFILE, false));
+	}
+
+	/**
+	 * AND WHAT COMES BACK IS THE ROW AND NOT THE REQUEST.
+	 *
+	 * <p>The same claim {@code Changed} already makes about the biography, asked of the
+	 * fields added on 24.09.2026. <b>The mutation this is written against is the one that
+	 * would pass otherwise:</b> answering off {@code typed} instead of off the table. It is
+	 * caught because the request carries spaces and the row does not, and because
+	 * {@code placeId} is answered as the codebook's own number while the row holds this
+	 * database's key - a route that echoed the request would agree with itself.
+	 */
+	@Test
+	void theAnswerIsReadBackOutOfTheRowAndNotOffTheRequest() throws Exception {
+		long town = anotherTownOfTheCodebook();
+
+		JsonNode answered = answerIn(changeAs(ME, changing(
+				"firstName", "  Ana  ", "address", "  Kneza Milosa 1  ", "placeId", town)));
+
+		assertThat(answered.path("firstName").asString()).isEqualTo("Ana");
+		assertThat(answered.path("address").asString()).isEqualTo("Kneza Milosa 1");
+		assertThat(answered.path("placeId").asLong())
+				.as("the town came back as something other than the codebook number the member"
+						+ " sent, so a screen could not draw what it just asked for")
+				.isEqualTo(town);
+		assertThat(answered.path("lastName").asString())
+				.as("a field this request never named came back changed")
+				.isEqualTo(MY_SURNAME);
+		assertThat(answered.path("city").isNull())
+				.as("a town out of the codebook answered a typed name beside it, which is the one"
+						+ " shape V7 refuses")
+				.isTrue();
+	}
+
+	/**
+	 * A PERSONAL FIELD MOVES ONE MEMBER'S ROW AND NOBODY ELSE'S.
+	 *
+	 * <p><b>The mutation this is written against:</b> a statement that lost its
+	 * {@code where id = ?}, or took the member off the request instead of off the session.
+	 * {@link #ME} is written THIRD, so „the member asking" is never „the first row", and the
+	 * two members compared afterwards start with names of their own.
+	 */
+	@Test
+	void changingOnesOwnNameLeavesEverybodyElseAlone() throws Exception {
+		assertThat(changeAs(ME, changing("firstName", "Zorana")).getStatus()).isEqualTo(200);
+
+		assertThat(personalOf(FIRST_WRITTEN).get(0))
+				.as("the first member by key had his name changed by somebody else's request")
+				.isEqualTo("Prvi");
+		assertThat(personalOf(SOMEONE_ELSE).get(0)).isEqualTo("Sasa");
+		assertThat(personalOf(ME).get(0)).isEqualTo("Zorana");
+	}
+
+	/**
+	 * THE DATE OF BIRTH AND THE GENDER ARE REFUSED, AND THE ANSWER SAYS WHICH ARRIVED.
+	 *
+	 * <p>Owner, PDL P28b, 2, 24.09.2026: „Datum rodjenja i pol menja samo administrator, jer
+	 * iz njih se izvode kategorija i uzrasna grupa, pa bi slobodna izmena znacila da clan
+	 * bira u kojoj kategoriji trci i menja vec odigran poredak unazad."
+	 *
+	 * <p><b>Refused and not dropped, which is the whole of the case.</b> Neither name is on
+	 * {@link MeWriteApi.Change}, so Jackson would throw both away and answer 200 - and the
+	 * member would read his old date of birth back with no sentence anywhere saying why. The
+	 * mutation that proves this line is alive is taking the name off
+	 * {@link MeWriteApi#ONLY_AN_ADMINISTRATOR_CHANGES}: the request then succeeds.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "birthDate", "gender" })
+	void whatOnlyAnAdministratorMovesIsRefusedRatherThanIgnored(String field) throws Exception {
+		Object value = "birthDate".equals(field) ? "1980-05-05" : "M";
+
+		MockHttpServletResponse answer = changeAs(ME, changing(field, value));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.NOT_YOURS_TO_CHANGE);
+		assertThat(fieldsIn(answer))
+				.as("the refusal does not say which field the member may not move, so he has to"
+						+ " take his own form apart to find it")
+				.containsExactly(field);
+
+		assertThat(db.sql("select birth_date::text || ' ' || gender from competitor"
+						+ " where member_number = ?").param(ME).query(String.class).single())
+				.as("the row moved although the request was refused")
+				.isEqualTo("1990-01-01 F");
+	}
+
+	/**
+	 * AND A REQUEST CARRYING ONE OF THEM BESIDE A LEGAL FIELD CHANGES NOTHING AT ALL.
+	 *
+	 * <p><b>Two axes at once, and both are the point.</b> The legal half must not be written
+	 * „while we are here", because the member would then be told 400 over a change that was
+	 * kept - which is the mistake {@code MeWriteApi} already writes down about deciding a 409
+	 * after the switch had moved. And the refusal must still be about what is not his rather
+	 * than about the form being incomplete, which a request naming only a date of birth
+	 * could not tell apart.
+	 */
+	@Test
+	void aRequestThatMixesTheForbiddenWithTheAllowedWritesNeither() throws Exception {
+		long before = howManyRowsInTheQueue();
+
+		MockHttpServletResponse answer = changeAs(ME, changing(
+				"firstName", "Nikada", "gender", "M", "bio", "Tekst koji ne sme da prodje."));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.NOT_YOURS_TO_CHANGE);
+		assertThat(fieldsIn(answer)).containsExactly("gender");
+
+		assertThat(personalOf(ME).get(0))
+				.as("the half of the request that WAS his to send was written although the request"
+						+ " was refused")
+				.isEqualTo(MY_NAME);
+		assertThat(howManyRowsInTheQueue())
+				.as("a text was queued by a request the portal answered 400")
+				.isEqualTo(before);
+	}
+
+	/**
+	 * A BLANK TELEPHONE REMOVES IT, AND A TELEPHONE LEFT OUT LEAVES IT ALONE.
+	 *
+	 * <p>Three instructions and not two, which is V8's own reading of its column:
+	 * {@code competitor_phone_not_blank check (phone is null or btrim(phone) <> '')} with the
+	 * reason written beside it - „an empty string would be a second way of saying the same
+	 * absence. There is one way: no phone is NULL." It is the same shape the owner gave the
+	 * biography on 19.09.2026.
+	 *
+	 * <p><b>The order is deliberate:</b> the phone is set first, because measured against a
+	 * member who never had one „the column was emptied" and „the column was not touched" are
+	 * one answer.
+	 */
+	@Test
+	void aBlankTelephoneIsARemovalAndAnAbsentOneIsNotTouched() throws Exception {
+		assertThat(changeAs(ME, changing("phone", "0641112223")).getStatus()).isEqualTo(200);
+		assertThat(personalOf(ME).get(3)).isEqualTo("0641112223");
+
+		assertThat(changeAs(ME, changing("firstName", "Iva")).getStatus()).isEqualTo(200);
+		assertThat(personalOf(ME).get(3))
+				.as("a request that never named the telephone emptied it, which is exactly the"
+						+ " silent change ADL A54 refuses")
+				.isEqualTo("0641112223");
+
+		assertThat(changeAs(ME, changing("phone", "   ")).getStatus()).isEqualTo(200);
+		assertThat(personalOf(ME).get(3))
+				.as("a blank telephone was stored as a blank string or was ignored, and V8 says"
+						+ " there is exactly one way to say a member has no telephone")
+				.isEqualTo("null");
+	}
+
+	/**
+	 * EMPTYING A FIELD THE PORTAL MUST HAVE IS REFUSED, AND THE ANSWER SAYS WHICH.
+	 *
+	 * <p>V7 puts {@code competitor_first_name_not_blank}, {@code competitor_last_name_not_blank}
+	 * and V8 puts {@code competitor_address_not_blank} on the three, so the database would
+	 * refuse them anyway - and that is precisely why this is asked here: a constraint
+	 * violation aborts the whole transaction and comes back 500, taking the switch and the
+	 * queue row with it, where the member should have been told which box he emptied.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "firstName", "lastName", "address" })
+	void emptyingSomethingThePortalMustHaveIsRefusedBeforeAnythingIsWritten(String field)
+			throws Exception {
+
+		MockHttpServletResponse answer = changeAs(ME, changing(field, "   ", "phone", "0611"));
+
+		assertThat(answer.getStatus())
+				.as("emptying %s came back as something other than a refusal this member can act"
+						+ " on, which is what a constraint violation would look like", field)
+				.isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.A_FIELD_IS_BLANK);
+		assertThat(fieldsIn(answer)).containsExactly(field);
+
+		assertThat(personalOf(ME).get(3))
+				.as("the rest of the request was written although it was refused")
+				.isEqualTo("null");
+	}
+
+	/**
+	 * A BOX FILLED PAST WHAT THE MEMBER'S OWN FORM HOLDS IS REFUSED, AND THE ANSWER SAYS
+	 * WHICH BOX.
+	 *
+	 * <p>The same reasoning {@link MeWriteApi#AS_LONG_AS_THE_FORM_ALLOWS} carries for the
+	 * biography, and {@link com.btl.portal.domain.registration.WhatRegistrationAsksFor} for
+	 * what is required: „the form is JavaScript in somebody else's browser, and a request
+	 * that never passed through it" is the one that puts a name of nine hundred characters
+	 * on a card with room for one.
+	 *
+	 * <p><b>Both directions on one axis</b>, which is what makes the boundary a boundary: a
+	 * value of exactly the box's length is taken, and one character more is not.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "firstName", "lastName", "address", "city", "phone" })
+	void aBoxFilledPastTheFormsOwnLimitIsRefusedAndOneThatFitsIsTaken(String field)
+			throws Exception {
+
+		int longest = MeWriteApi.EACH_BOX_ON_THE_FORM.get(field).longest();
+
+		MockHttpServletResponse over = changeAs(ME,
+				"city".equals(field)
+						? changing(field, "a".repeat(longest + 1), "country", aCountryCode())
+						: changing(field, "a".repeat(longest + 1)));
+
+		assertThat(over.getStatus())
+				.as("%s was taken at %d characters, which is one more than the member's own box"
+						+ " holds", field, longest + 1)
+				.isEqualTo(400);
+		assertThat(reasonIn(over)).isEqualTo(MeWriteApi.A_FIELD_IS_TOO_LONG);
+		assertThat(fieldsIn(over)).containsExactly(field);
+
+		MockHttpServletResponse exactly = changeAs(ME,
+				"city".equals(field)
+						? changing(field, "a".repeat(longest), "country", aCountryCode())
+						: changing(field, "a".repeat(longest)));
+
+		assertThat(exactly.getStatus())
+				.as("%s at exactly the length of its own box was refused, so the boundary is in"
+						+ " the wrong place", field)
+				.isEqualTo(200);
+	}
+
+	/**
+	 * AND EVERY ONE OF THOSE NUMBERS IS THE FORM'S OWN, READ OFF THE FILE.
+	 *
+	 * <p>The floor under {@link MeWriteApi#EACH_BOX_ON_THE_FORM}, in the same commit as the
+	 * map, and it is the arrangement this file already has for the biography. Two directions,
+	 * because a map can be wrong either way: a number here that the form does not carry is a
+	 * limit nobody decided, and a text box on the form that this route takes and has no entry
+	 * for is a box the server does not bound at all.
+	 */
+	@Test
+	void everyBoxTheServerBoundsIsBoundedByTheNumberOnTheForm() throws Exception {
+		Map<String, Integer> onTheForm = new LinkedHashMap<>();
+
+		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_THE_BOX_IS_ON))
+				.path("fields")) {
+
+			if (field.has("maxLength")) {
+				onTheForm.put(field.path("name").asString(), field.path("maxLength").asInt());
+			}
+		}
+
+		assertThat(onTheForm)
+				.as("%s carries no maxLength at all, so this compares nothing",
+						THE_FORM_THE_BOX_IS_ON)
+				.isNotEmpty();
+
+		for (Map.Entry<String, MeWriteApi.Personal> one
+				: MeWriteApi.EACH_BOX_ON_THE_FORM.entrySet()) {
+
+			assertThat(onTheForm.get(one.getKey()))
+					.as("the server bounds %s and the member's own form does not, so that number"
+							+ " is a limit nobody decided", one.getKey())
+					.isEqualTo(one.getValue().longest());
+		}
+
+		for (String taken : MeWriteApi.WHAT_THIS_ROUTE_TAKES) {
+			if (onTheForm.containsKey(taken)) {
+				assertThat(MeWriteApi.EACH_BOX_ON_THE_FORM)
+						.as("this route takes %s, the form bounds it, and the server does not -"
+								+ " so a request that never passed through the form is unbounded",
+								taken)
+						.containsKey(taken);
+			}
+		}
+	}
+
+	/**
+	 * EVERY FIELD OF THE MEMBER'S OWN FORM IS IN EXACTLY ONE OF THREE STATES, AND THIS IS
+	 * THE FLOOR THAT SAYS SO.
+	 *
+	 * <p><b>Written this way because a list cannot be finished by thinking about the
+	 * list</b> ({@code CLAUDE.md}, 05.09.2026). The three states are: this route takes it,
+	 * this route refuses it by name, or it is carried somewhere else entirely and named here
+	 * with the reason. A field added to {@code registracija.form.json} tomorrow belongs to
+	 * none of the three and fails here, so nobody can add a box to the member's form and have
+	 * the server silently throw its contents away.
+	 *
+	 * <p>The third list is written out because each entry is a different sentence and none of
+	 * them can be derived; what CANNOT happen is a field that is in none of the three.
+	 */
+	@Test
+	void everyFieldOfTheMembersFormIsTakenRefusedOrNamedAsLivingElsewhere() throws Exception {
+		/* NOT ON THIS ROUTE AT ALL, each with the reason it is not. */
+		Map<String, String> elsewhere = new LinkedHashMap<>();
+
+		elsewhere.put("fatherName", "in the register of members the law on sport prescribes"
+				+ " (PDL P32); never drawn on a screen and not named among the personal data"
+				+ " the owner freed on 24.09.2026, so it waits for him rather than being"
+				+ " decided here");
+		elsewhere.put("shirtSize", "the same: not among the five he named, and a shirt already"
+				+ " sent is not a field a member may change afterwards without somebody"
+				+ " deciding what that means");
+		elsewhere.put("firstSeason2027", "decides the CATEGORY exactly as the date of birth"
+				+ " does (PDL P5), and the owner's reason for refusing those two covers it");
+		elsewhere.put("email", "PDL P28b, 2: changed by the member himself but only against a"
+				+ " confirmation of the new address, which is a second table and its own"
+				+ " route - see the head of MeWriteApi");
+		elsewhere.put("password", "MePasswordApi, which asks for the old one and ends every"
+				+ " other session (PDL P28b, 5)");
+		elsewhere.put("passwordRepeat", "the same route; it is not data at all but the form"
+				+ " checking itself");
+		elsewhere.put("photo", "MePhotoApi, because a picture is a file and waits for a"
+				+ " moderator (PDL P11)");
+		elsewhere.put("idNumber", "ADL A12 keeps it out of the table the portal's screens"
+				+ " read, in competitor_document, with its own right of access");
+		elsewhere.put("healthStatement", "a moment recorded once at registration, not a"
+				+ " setting");
+		elsewhere.put("parentConsent", "evidence that a consent was given, which cannot be"
+				+ " edited afterwards without being something else (V8, parental_consent)");
+		elsewhere.put("parentRelation", "the same row");
+
+		List<String> unaccounted = new ArrayList<>();
+
+		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_THE_BOX_IS_ON))
+				.path("fields")) {
+
+			String name = field.path("name").asString();
+
+			if (!MeWriteApi.WHAT_THIS_ROUTE_TAKES.contains(name)
+					&& !MeWriteApi.ONLY_AN_ADMINISTRATOR_CHANGES.contains(name)
+					&& !elsewhere.containsKey(name)) {
+
+				unaccounted.add(name);
+			}
+		}
+
+		assertThat(unaccounted)
+				.as("a box on the member's own form is neither taken by this route, nor refused"
+						+ " by it, nor named as living somewhere else - so whatever a member"
+						+ " types into it is thrown away in silence")
+				.isEmpty();
+
+		assertThat(MeWriteApi.WHAT_THIS_ROUTE_TAKES)
+				.as("a field cannot be both taken and refused")
+				.doesNotContainAnyElementsOf(MeWriteApi.ONLY_AN_ADMINISTRATOR_CHANGES);
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   THE TOWN, WHICH IS THREE COLUMNS AND ONE FACT (V7).
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * A TOWN OUT OF THE CODEBOOK EMPTIES THE TYPED ONE, AND A TYPED ONE EMPTIES THE KEY.
+	 *
+	 * <p>V7: {@code competitor_town_is_from_the_codebook_or_typed check ((place_id is null)
+	 * <> (city is null))} and {@code competitor_typed_town_names_its_country check ((city is
+	 * null) = (country_id is null))}. So the three columns are one fact and cannot be
+	 * written one at a time - which is exactly what a {@code coalesce} on each of them would
+	 * do, and the row would then be refused by the constraint rather than by anybody.
+	 *
+	 * <p><b>Both directions in one case, and in this order</b>, because a member who starts
+	 * on a codebook town (which every member in this fixture does) and moves to a typed one
+	 * measures only half of it: the other half is moving BACK, which is the direction that
+	 * has to empty {@code city} and {@code country_id} together.
+	 */
+	@Test
+	void theTownIsWrittenWholeInBothDirections() throws Exception {
+		String country = aCountryCode();
+
+		assertThat(changeAs(ME, changing("city", "  Zrenjanin  ", "country", country))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(personalOf(ME).subList(4, 7))
+				.as("a town typed by hand left the codebook key standing beside it, which V7"
+						+ " refuses outright")
+				.containsExactly("null", "Zrenjanin", country);
+
+		long town = anotherTownOfTheCodebook();
+
+		assertThat(changeAs(ME, changing("placeId", town)).getStatus()).isEqualTo(200);
+
+		assertThat(personalOf(ME).subList(4, 7))
+				.as("a town chosen out of the codebook left the typed name or its country"
+						+ " standing, so the member lives in two places at once")
+				.containsExactly(String.valueOf(town), "null", "null");
+	}
+
+	/**
+	 * AND A REQUEST THAT SAYS NOTHING ABOUT THE TOWN LEAVES ALL THREE COLUMNS ALONE.
+	 *
+	 * <p>ADL A54 on this route's own terms: „izostavljeno polje... sme da znaci 'ne diraj',
+	 * nikad 'vrati na podrazumevano'." Read the other way, a member mending his telephone
+	 * number would be moved out of his own town, and there is no default a town could fall
+	 * back to that anybody chose.
+	 */
+	@Test
+	void aRequestThatNamesNoTownLeavesTheTownAlone() throws Exception {
+		List<String> before = personalOf(ME).subList(4, 7);
+
+		assertThat(changeAs(ME, changing("phone", "0601234")).getStatus()).isEqualTo(200);
+
+		assertThat(personalOf(ME).subList(4, 7))
+				.as("a request that never mentioned the town moved it")
+				.isEqualTo(before);
+	}
+
+	/**
+	 * A TOWN SAID IN BOTH WAYS AT ONCE, OR IN HALF OF ONE, IS NOT A TOWN.
+	 *
+	 * <p>The owner, 11.08.2026: a town of the codebook „nosi svoju drzavu, koja se ne menja",
+	 * so a country sent beside one would be the portal letting somebody put Belgrade in
+	 * France. And half of the typed shape is not a town either - a name with no country, or a
+	 * country with no name - because V7 binds those two to each other.
+	 *
+	 * <p>Refused rather than half-written, and the case reads the row afterwards to say so.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "both", "cityAlone", "countryAlone" })
+	void aTownSaidTwiceOrHalfSaidIsRefused(String how) throws Exception {
+		String country = aCountryCode();
+		String body = switch (how) {
+			case "both" -> changing("placeId", anotherTownOfTheCodebook(), "city", "Nis",
+					"country", country);
+			case "cityAlone" -> changing("city", "Nis");
+			default -> changing("country", country);
+		};
+
+		List<String> before = personalOf(ME);
+		MockHttpServletResponse answer = changeAs(ME, body);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.THE_TOWN_IS_NOT_SAID_ONCE);
+		assertThat(personalOf(ME))
+				.as("the row moved although the town was refused")
+				.isEqualTo(before);
+	}
+
+	/**
+	 * AND A TOWN OR A COUNTRY THE CODEBOOK DOES NOT HAVE IS REFUSED BY THE PORTAL.
+	 *
+	 * <p>Told apart from the refusal above, because the member's way out differs: one is
+	 * „you filled in two boxes that are alternatives" and the other is „nothing here is that
+	 * place". Left to the foreign key, both would be a 500.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "place", "country" })
+	void aTownNothingMapsIsRefusedByThePortalAndNotByAForeignKey(String which) throws Exception {
+		String body = "place".equals(which)
+				? changing("placeId", 999999999L)
+				: changing("city", "Nis", "country", "ZZ");
+
+		List<String> before = personalOf(ME);
+		MockHttpServletResponse answer = changeAs(ME, body);
+
+		assertThat(answer.getStatus())
+				.as("a %s nothing maps came back as something other than a refusal the member can"
+						+ " act on, which is what a foreign key violation would look like", which)
+				.isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.THE_TOWN_IS_NOT_KNOWN);
+		assertThat(personalOf(ME)).isEqualTo(before);
+	}
+
+	/**
+	 * THE SAME MALFORMED TOWN IS REFUSED WHEREVER IT IS SENT, AND THIS IS THE MUTATION THAT
+	 * CATCHES THE TWO HOMES DRIFTING APART.
+	 *
+	 * <p><b>Why it exists.</b> {@code CLAUDE.md}, 19.09.2026: „Svaka cinjenica koja zivi na
+	 * dva mesta se imenuje pre koda, zajedno sa tim koje mesto odlucuje i kojom mutacijom se
+	 * hvata da su se razisla." What shapes of town this portal accepts is such a fact:
+	 * {@link RegistrationApi} answers it for a member being made, {@link EventWriteApi} for
+	 * an event, and {@link MeWriteApi} for a member's own row. The place that decides FOR THE
+	 * MEMBER'S OWN ROW is {@code MeWriteApi}; what this case holds is that loosening it alone
+	 * goes red.
+	 *
+	 * <p>The two routes answer different things - registration refuses the whole form with
+	 * its own word, and this one names the town - so what is compared is the only thing both
+	 * of them promise: neither writes the row.
+	 */
+	@Test
+	void theSameMalformedTownIsRefusedWhereverItIsSent() throws Exception {
+		long town = anotherTownOfTheCodebook();
+		String country = aCountryCode();
+
+		assertThat(changeAs(ME, changing("placeId", town, "city", "Nis", "country", country))
+				.getStatus())
+				.as("a town named in both ways at once was taken on the member's own row")
+				.isEqualTo(400);
+
+		long before = db.sql("select count(*) from competitor").query(Long.class).single();
+
+		Map<String, Object> registering = new LinkedHashMap<>();
+
+		registering.put("firstName", "Petar");
+		registering.put("lastName", "Petrovic");
+		registering.put("fatherName", "Milorad");
+		registering.put("birthDate", "1990-01-01");
+		registering.put("gender", "M");
+		registering.put("firstSeason2027", true);
+		registering.put("email", "nov-clan@primer.rs");
+		registering.put("password", "ovo je jedna duga lozinka");
+		registering.put("passwordRepeat", "ovo je jedna duga lozinka");
+		registering.put("address", "Ulica slobode 15");
+		registering.put("placeId", town);
+		registering.put("city", "Nis");
+		registering.put("country", country);
+		registering.put("idNumber", "AB1234567");
+		registering.put("shirtSize", "M");
+		registering.put("healthStatement", true);
+
+		assertThat(http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.post("/api/registration").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(mapper.writeValueAsString(registering)))
+				.andReturn().getResponse().getStatus())
+				.as("the same town named in both ways at once was taken by registration, so the"
+						+ " two homes of this rule have drifted apart")
+				.isEqualTo(400);
+
+		assertThat(db.sql("select count(*) from competitor").query(Long.class).single())
+				.as("a member was written from a form carrying a town named twice")
+				.isEqualTo(before);
 	}
 }
