@@ -17,14 +17,23 @@ import './RoleSwitch.css'
  *
  * **IT THEN SAID WHAT KEEPS IT IS THE MOCK, AND THAT THE TWO GO OFF TOGETHER WHEN ADL
  * A50 SAYS THE MOCK DOES. That day was 21.09.2026 and this control did not go with
- * it**, so the sentence is replaced by the reason that really keeps it rather than left
- * as an instruction to carry out a promise. What keeps it is the MEMBER NUMBER: every
- * screen behind these roles draws a member, and a real session carries no number to draw
- * one by. `GET /api/me` answers a role and an account, and `session/theServer.ts` reads
- * those two and nothing else; `MeApi.WhoIAm` does carry the caller's own record now, and
- * reading it is its own increment (`session/context.ts`). So signing in really reaches
- * the portal, and this control is still the only way to reach the member whose results
- * are on it. It goes when the portal takes its member number off that answer.
+ * it**, so that sentence was replaced by the MEMBER NUMBER: every screen behind these
+ * roles draws a member, a real session carried no number to draw one by, and this control
+ * was the only way to reach the member whose results are on it. It ended „It goes when the
+ * portal takes its member number off that answer."
+ *
+ * **THAT DAY WAS 24.09.2026, AND THIS IS THE SECOND PROMISE ABOUT A DAY THAT HAS PASSED
+ * TO BE CORRECTED IN THIS ONE COMMENT.** The portal takes the number off `GET /api/me`
+ * now (`session/theServer.ts`), so a real session names a member and every one of those
+ * screens draws him. The reason written above is therefore spent, and it is said here
+ * rather than quietly dropped because two promises in a row is the shape rather than the
+ * accident: a comment that names a future condition ends up describing the past.
+ *
+ * <b>So what keeps this control is no longer a reason but an open question, and it is not
+ * answered here.</b> It still switches ROLES, which is the thing a walk through the
+ * prototype needs and which no sign in gives without an account per role. Whether that is
+ * worth a control that can overturn the server is the owner's to say, and taking it away
+ * is its own increment rather than a line in this one.
  *
  * WHICH WAY THE TWO OF THEM WIN OVER EACH OTHER, written down because since 20.09.2026
  * there are two and nothing said. THE SWITCH OVERTURNS WHAT THE SERVER SAID, in both

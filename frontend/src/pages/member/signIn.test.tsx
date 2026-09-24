@@ -374,8 +374,14 @@ describe('the header, which is the one thing that differs for a signed in member
     expect(screen.queryByRole('link', { name: 'Učlani se' })).not.toBeInTheDocument()
   })
 
-  it('names the account, because a real session carries no member number', async () => {
-    /* Three digits and not one, so „the LAST two" is a claim the case can fail: an
+  it('names the account where the league has given the caller no number', async () => {
+    /* **The name said „because a real session carries no member number" until
+       24.09.2026, and that stopped being true that day**: a real session names a member
+       now, and this sentence is drawn only for somebody the league has given no number.
+       What the case sets up did not move - the answer below carries no record - so only
+       the reason it is in did.
+
+       Three digits and not one, so „the LAST two" is a claim the case can fail: an
        account of 7 reads the same whichever end is taken. */
     aServerWhere({ role: 'competitor', account: 107 }, true)
     const user = setupUser()

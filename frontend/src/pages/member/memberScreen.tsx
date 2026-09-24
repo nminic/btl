@@ -38,21 +38,39 @@ import { SignedOut } from './SignedOut'
  * here; and <b>somebody who has registered and has not been given a number</b> (ADL A44,
  * owner 11.09.2026: „Osoba je `competitor` od registracije, a clan postaje kad dobije
  * broj"). The third of those is told „uz ovaj nalog ne stoji takmicarski zapis", and for
- * him that sentence is not true - he has a record, and what he has not got is a number.
- * <b>No decision anywhere says what he should be shown</b>, so he is not given an
- * invented screen: the boundary is written down here and goes to the owner as a question.
+ * him that sentence is not quite true - he has a record, and what he has not got is a
+ * number.
+ *
+ * <p><b>He is nonetheless in the right place, and that is a decision rather than this
+ * hook's guess.</b> PDL, 19.09.2026, deriving it from what was already written rather
+ * than asking again: registered and never paid „NIJE otvoreno pitanje i ne trazi trece
+ * stanje", and what he may do is „vidi javne strane (kalendar, rang liste, tudje
+ * profile) a ne moze nista da uradi". That is what this answer is: the public portal, and
+ * one way back to it. So the screen is settled and only the SENTENCE on it is loose,
+ * which is worth a word to the owner and not a fourth state.
  *
  * <p><b>AND ONE THING THIS HOOK DOES NOT DO, named so that a reader does not take its
- * silence for a rule.</b> PDL P8, owner 19.09.2026: „clanu kome je clanarina istekla je
- * dostupna samo strana za obnovu." This hook cannot keep that and does not pretend to.
- * `GET /api/me` answers a member whose fee has lapsed - deliberately, it is half of why
- * {@code MeApi} exists beside {@code CompetitorApi} - but it does not answer WHETHER the
- * fee is standing: `c.active` is on no component of {@code MeApi.MyOwnRecord}, and the
- * only `active` in its query counts who he brought in. So the portal cannot tell a
- * lapsed member from a standing one and opens all eleven screens to both. Measured
- * 22.09.2026 that no route on the server keeps P8 either. What this changes for such a
- * member is that he can now reach „Moja clanarina" at all, which is the page he renews
- * on and which answered him „Ovaj deo je za takmicare" until today.
+ * silence for a rule.</b> PDL P8, owner 19.09.2026: „Zelim da od svih mesta clan kojem je
+ * istekla clanarina moze da pristupa samo strani za obnovu clanarine, dok ga verifikator
+ * ne odobri." This hook does not keep that, and it is written here rather than left to be
+ * noticed.
+ *
+ * <p><b>It is not this hook's to keep, by that decision's own words</b>, which name where
+ * the refusal goes: „prijava uspeva, a odbijaju vrata svake pojedinacne rute". The door of
+ * each route on the server, and the sign in deliberately untouched. Measured 22.09.2026
+ * that no route keeps it yet.
+ *
+ * <p><b>And it could not be kept here even if it were</b>, which is a fact about the
+ * answer rather than an argument: `GET /api/me` answers a member whose fee has lapsed -
+ * deliberately, it is half of why {@code MeApi} exists beside {@code CompetitorApi} - but
+ * it does not answer WHETHER the fee is standing. `c.active` is on no component of
+ * {@code MeApi.MyOwnRecord}, and the only `active` in that query counts who he brought in.
+ *
+ * <p>So this hook opens all eleven screens to a lapsed member and to a standing one alike,
+ * and <b>it cannot tell them apart</b>. What that changed for him on 24.09.2026 is that he
+ * can reach „Moja clanarina" at all, which is the page he renews on and the one place P8
+ * means him to be; until that day it answered him „Ovaj deo je za takmicare" along with
+ * the other ten.
  *
  * <p><b>What it must NOT say is that nobody is signed in</b>, which is what those eleven
  * screens said. Somebody is: the cookie is in the browser, the header knows their number

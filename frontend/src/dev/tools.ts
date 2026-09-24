@@ -6,12 +6,13 @@
  * This said „the flows have to be walked and approved before there is any
  * authentication to reach them with"; there is authentication now (`/api/sign-in`,
  * and a real session sets the role through the same `become` the switch calls).
- * What keeps the switch is the MEMBER NUMBER rather than the want of a sign in, and
- * `roles/RoleSwitch.tsx` carries that reason in full so there is one home for it: every
- * screen behind these roles draws a member, and a real session carries no number to draw
- * one by. **It said „the mock" until 21.09.2026, which was the same fact wearing the name
- * of a thing that has since gone** (`data/client.ts` reads `/api`); the reason itself did
- * not move.
+ * It then said what keeps the switch is the MEMBER NUMBER rather than the want of a sign
+ * in - every screen behind these roles draws a member, and a real session carried no
+ * number to draw one by - and before that it said „the mock", until 21.09.2026.
+ * **Both are spent: on 24.09.2026 `session/theServer.ts` began reading the number off
+ * `GET /api/me`, so a real session names a member and those screens draw him.** What is
+ * left of the reason is a question rather than an answer, and `roles/RoleSwitch.tsx`
+ * carries it in full so there is one home for it.
  *
  * The second half is untouched. Half of what the portal does depends on the date:
  * registration opens on 1 October, the price changes three times, renewal only

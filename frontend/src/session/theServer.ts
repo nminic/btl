@@ -37,7 +37,16 @@ import { MEMBERSHIP_BASES, type MembershipBasis } from '../data/types'
 
 /**
  * What the server says back about whoever is asking: `MeApi.WhoIAm`, and no more than
- * that. There is no member number in it and `MeApi` says at length why.
+ * that.
+ *
+ * <p><b>This said „there is no member number in it and `MeApi` says at length why", and
+ * that was false when it was written.</b> That class has carried one since 20.09.2026 and
+ * refuses the sentence in bold - „AND SINCE 20.09.2026 IT CARRIES A MEMBER NUMBER, which
+ * is the sentence this class used to spend four paragraphs refusing." It is corrected here
+ * rather than deleted because of what it cost: a sentence saying a field is not there is
+ * an instruction to the next reader not to look for it, and nobody did for four days,
+ * which is exactly as long as every member of the league was locked out of his own
+ * screens.
  *
  * <p><b>Three roles and not four.</b> This answer only exists for somebody the chain has
  * already let through, and „visitor" is the portal's own word for nobody being let
