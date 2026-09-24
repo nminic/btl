@@ -16,14 +16,22 @@ import { ACCOUNT_ROUTES } from './routes'
  *
  * The shell only renders this when somebody is signed in.
  *
- * WHAT IT CAN SAY DEPENDS ON WHICH WAY IN HE CAME BY, and the two are told apart
- * rather than folded together (session/context.ts, `SignedIn`). A member number is a
- * name in the file of members and becomes „Strahinja Vukićević"; an account is a
- * number the server handed back from `GET /api/me` and is not a member number at all -
- * `MeApi` deliberately carries none, because a moderator has no member record. Writing
- * one into the slot of the other would be two facts in one home, and the first thing it
- * would do is look up a member with an account's id and draw whoever happened to sit
- * there.
+ * WHAT IT CAN SAY DEPENDS ON WHETHER THE LEAGUE HAS GIVEN HIM A NUMBER, and the two are
+ * told apart rather than folded together (session/context.ts, `SignedIn`). A member
+ * number is a name in the file of members and becomes „Strahinja Vukićević"; an account
+ * is a number the server handed back from `GET /api/me` and is not a member number at
+ * all. Writing one into the slot of the other would be two facts in one home, and the
+ * first thing it would do is look up a member with an account's id and draw whoever
+ * happened to sit there.
+ *
+ * <p><b>The reason given here for there being an account arm at all was „`MeApi`
+ * deliberately carries none", and that was false: it has carried a member number since
+ * 20.09.2026.</b> The arm is right and the reason was not. What really puts somebody in
+ * it is that the league has given him no number - administration, which has no competitor
+ * record at all (PDL P21), and anybody who has registered and is not a member yet (ADL
+ * A44). Until 24.09.2026 every signed in MEMBER was in it too, because the portal read
+ * past the number, and this menu named him „Nalog 41" while his own name sat one field
+ * away in the same answer.
  */
 
 export function AccountMenu({ signedIn }: { signedIn: SignedIn }) {

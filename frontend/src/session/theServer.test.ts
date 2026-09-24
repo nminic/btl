@@ -35,7 +35,12 @@ describe('who the server says I am', () => {
   it('is the role and the account it answered with', async () => {
     server = serverThat(() => saying(JSON.stringify({ role: 'superadmin', account: 41, membershipBasis: null })))
 
-    expect(await whoTheServerSaysIAm()).toEqual({ role: 'superadmin', account: 41, membershipBasis: null })
+    expect(await whoTheServerSaysIAm()).toEqual({
+      role: 'superadmin',
+      account: 41,
+      memberNumber: null,
+      membershipBasis: null,
+    })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
   })
 
@@ -100,6 +105,7 @@ describe('who the server says I am', () => {
       expect(await whoTheServerSaysIAm(), role).toEqual({
         role,
         account: 41,
+        memberNumber: null,
         membershipBasis: null,
       })
     }
@@ -132,6 +138,40 @@ describe('who the server says I am', () => {
     )
 
     expect((await whoTheServerSaysIAm())?.membershipBasis).toBe(expected)
+  })
+
+  /* **WHICH MEMBER OF THE LEAGUE THE CALLER IS, WHICH IS THE FOURTH THING THIS ANSWER
+     CARRIES, SINCE 24.09.2026, and the axis has four states rather than two.** `MeApi`
+     has sent it since 20.09.2026 and this file read past it, which cost the whole member
+     area: `useMemberScreen` asks whether the session names a member, nothing else on the
+     portal sets one, so eleven screens of a signed in member's own - his profile among
+     them - answered „Ovaj deo je za takmicare". Owner, 24.09.2026: „Trenutno ne mogu cak
+     ni svojim profilom da se igram, podesavam, prilozim slika."
+
+     The four states are not one repeated. Two of them are ordinary answers a real server
+     really sends, and the portal draws the same screen for both while telling only the
+     first of them the truth (`pages/member/memberScreen.tsx` carries that boundary). */
+  it.each([
+    ['a member the league has given a number', { member: { memberNumber: '000012' } }, '000012'],
+    /* An account that races for nobody: the record is ABSENT altogether, which is
+       administration for good (PDL P21). */
+    ['an account that races for nobody', {}, null],
+    /* AND A RECORD WITH NO NUMBER IN IT, which is the state ADL A44 created and is the
+       one a hasty reader turns into the member number `undefined`: „Osoba je `competitor`
+       od registracije, a clan postaje kad dobije broj" (owner, 11.09.2026). */
+    ['somebody registered who has no number yet', { member: { membershipBasis: 'payment' } }, null],
+    /* And a number that is not a string, which is a server saying something this portal
+       has no screen for: looked for and never asserted (ADL A14), exactly as the role and
+       the basis above are. Believed, the session would name the member `[object Object]`
+       and every screen would look him up and find nobody. */
+    ['a number that is not one', { member: { memberNumber: { value: '000012' } } }, null],
+  ])('says which member is asking for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.memberNumber).toBe(expected)
   })
 
   it('is nobody when the role is not one the portal knows at all', async () => {
