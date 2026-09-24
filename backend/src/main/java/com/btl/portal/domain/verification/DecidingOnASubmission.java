@@ -13,15 +13,15 @@ import java.util.Set;
  * NAMED EXCEPTION, below, and it is the only fact a {@link Submission} carries
  * beside its state.
  *
- * <p><b>A refusal carries its reason and an approval carries none, on five of the
- * six queues.</b> PDL P21, under „Razlog odbijanja": „obavezan razlog stoji na
+ * <p><b>A refusal carries its reason and an approval carries none, on four of the
+ * five queues.</b> PDL P21, under „Razlog odbijanja": „obavezan razlog stoji na
  * svakom odbijanju, jer se sve odbijeno vraca clanu", and the moderator is asked
  * for a precise instruction rather than „ne valja". A refusal nobody can answer
  * is a decision nobody can appeal. There is nothing to explain about a yes, and a
  * reason beside one is a note nobody reads - which is why the schema does not
  * merely allow the absence but requires it.
  *
- * <p><b>THE SIXTH IS COMMENTS, AND ITS REFUSAL CARRIES NO OBLIGATION AT ALL</b>
+ * <p><b>THE FIFTH IS COMMENTS, AND ITS REFUSAL CARRIES NO OBLIGATION AT ALL</b>
  * (owner, ADL A64, 22.09.2026). PDL P22, „Jedini red bez njega je red komentara, gde
  * se ne odbija nego brise, a napomena je neobavezna i namenjena moderatorima" - the
  * same sentence stands twice in the diary, and a note where there is one is a trace for
@@ -144,14 +144,14 @@ public final class DecidingOnASubmission {
 	 * THE REASON AS IT GOES INTO THE ROW, which is not always the reason that was
 	 * typed.
 	 *
-	 * <p>{@code verification_refusal_says_why} is a biconditional on five of the six queues:
+	 * <p>{@code verification_refusal_says_why} is a biconditional on four of the five queues:
 	 * a refusal must carry a reason and an approval must carry none. A moderator who types
 	 * something in the box, changes his mind and presses yes would otherwise have
 	 * his note written beside an approval, and the row would be thrown out. So the
 	 * class that judges the answer also says what to store, and nothing between
 	 * the two is left to whoever writes the insert.
 	 *
-	 * <p><b>The sixth queue needs nothing extra here.</b> A blank box already comes back
+	 * <p><b>The fifth queue needs nothing extra here.</b> A blank box already comes back
 	 * {@code null} whatever {@link Submission#reasonIsOptional} says - this method never reads
 	 * that flag - and {@code verification_refusal_says_why}'s own exception for
 	 * {@code queue = 'comments'} (ADL A64) accepts a rejected row with no reason exactly as

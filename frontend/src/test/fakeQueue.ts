@@ -100,8 +100,6 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
          and into no column of team_proposal". The town is what `TeamFields` draws
          from `city`/`country` below, on the card itself. */
       body: sent.note.trim(),
-      currentDate: '',
-      proposedDate: '',
       rating: NO_RATING,
       city: sent.city.trim(),
       country: sent.country.trim(),
@@ -138,8 +136,6 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
       subject: event === undefined ? '' : event.name,
       subjectId: String(sent.eventId),
       body: sent.body,
-      currentDate: '',
-      proposedDate: '',
       rating: { organisation: sent.organisation, value: sent.value, ambience: sent.ambience },
       city: '',
       country: '',

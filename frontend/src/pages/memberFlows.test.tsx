@@ -360,13 +360,23 @@ describe('membership', () => {
       ),
       'a member the generated file calls a payer',
     ).memberNumber
+    /* **AND THE ANSWER NAMES HIM, since 24.09.2026.** The record used to carry the basis
+       alone, which no real answer ever does: `MeApi.MyOwnRecord` sends the number beside
+       it for anybody who has one. That was harmless while the portal read past the number
+       and took the session's from the prop; now it reads it, so an answer that leaves it
+       out is the server saying „this account races for nobody" and the screen below is
+       rightly „Ovaj deo je za takmicare". His number is the one the swap of sources turns
+       on, so it is the file's own rather than a constant written here. */
     const { stop } = serverThat((path) =>
       path === '/api/me'
         ? new Response(
             JSON.stringify({
               role: 'competitor',
               account: 1,
-              member: { membershipBasis: 'feeExempt' },
+              member: {
+                memberNumber: String(whoPaysInTheFile),
+                membershipBasis: 'feeExempt',
+              },
             }),
             { status: 200, headers: { 'content-type': 'application/json' } },
           )
@@ -790,9 +800,29 @@ describe('membership', () => {
   })
 
   it('says so when the member does not exist', async () => {
+    /* **NAMED BY THE SESSION AND MISSING FROM THE LIST, which is a state a real member is
+       really in and not a hole in the harness.** `CompetitorApi` ends `where c.active`, so
+       a member whose fee has lapsed is answered by `/api/me` and is absent from
+       `/api/competitors`. That is the person this screen exists for: „Moja clanarina" is
+       where he goes to renew. The harness answers it that way since 24.09.2026
+       (`test/setup.ts`), which is the day the portal began reading the number off the
+       answer rather than off the prop below. */
     renderAt('/sr/moja-clanarina', 'competitor', 'M9999')
 
     expect(await screen.findByRole('heading', { name: 'Ovog profila nema.' })).toBeVisible()
+
+    /* **AND A WAY OUT, which this screen did not have until 25.09.2026.** Measured that
+       day with the answer the real server gives a member whose fee has lapsed - named by
+       `/api/me`, absent from `/api/competitors` - this page carried the heading above and
+       ZERO links and ZERO buttons. He is the person PDL P8 sends here to renew, and the
+       portal had just stopped drawing him the other ten screens' way home as well.
+
+       Read inside `main` rather than on the page, because the sign of the league in the
+       header is a way to the front page too and would answer this without the screen
+       having changed at all. */
+    const mine = within(screen.getByRole('main'))
+
+    expect(mine.getByRole('link', { name: 'Naslovna strana' })).toHaveAttribute('href', '/sr')
   })
 })
 

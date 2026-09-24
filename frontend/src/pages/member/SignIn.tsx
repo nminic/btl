@@ -97,11 +97,28 @@ export function SignIn() {
     }
 
     become(who.role)
-    /* The whole of what the answer said, and not the account on its own: the basis a
-       member's own fee is held on comes through this one door (`session/context.ts`),
-       and a sign in that set the account without it would leave „Moja clanarina"
-       reading „I was not told" until the visit was refreshed. */
-    theServerSignedMeIn(who.account, who.membershipBasis)
+    /* THE WHOLE OF WHAT THE ANSWER SAID, and not the account on its own. Two facts have
+       already been left out of this call one at a time and each cost a screen: the basis
+       a member's own fee is held on, without which „Moja clanarina" read „I was not told"
+       until the visit was refreshed (21.09.2026), and the MEMBER NUMBER, without which a
+       member who had just signed in was nobody the portal could draw - all eleven screens
+       of his own answered „Ovaj deo je za takmicare", the line below sent him to the
+       first of them, and that is what the owner ran into on 24.09.2026.
+
+       Handed over whole rather than picked apart, and <b>that is worth exactly one thing
+       rather than the two this comment used to claim</b>. It said „a field that arrives
+       on `/api/me` tomorrow is a field this call already carries", and a review called
+       that false; measured here 25.09.2026 rather than argued: a fourth REQUIRED field on
+       `WhoTheServerSaysIAm`, filled in by the reader, gives `tsc -b --force` exit code 0
+       and not one complaint. `theServerSignedMeIn` names three fields, so anything else
+       on the object is dropped in silence - which is this very fault's shape, and the
+       reason this comment must not promise the next reader that it is handled.
+
+       What passing the whole object DOES buy is that the three cannot be put in each
+       other's places by counting wrong. It does not make them safe: measured the same
+       day, writing `memberNumber: who.membershipBasis` compiles clean, because
+       `MembershipBasis | null` goes into `string | null` without a word. */
+    theServerSignedMeIn(who)
     navigate(`/${locale}/moj-profil`)
   }
 

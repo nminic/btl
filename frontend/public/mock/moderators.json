@@ -15,8 +15,7 @@
       "queue:payments",
       "queue:teams",
       "queue:profiles",
-      "queue:comments",
-      "queue:schedule"
+      "queue:comments"
     ]
   },
   {
@@ -43,8 +42,7 @@
     "rights": [
       "entity:events",
       "queue:profiles",
-      "queue:comments",
-      "queue:schedule"
+      "queue:comments"
     ]
   }
 ]

@@ -89,6 +89,30 @@ export const WHEN_PROPOSING_A_TEAM: Record<string, string> = {
 }
 
 /**
+ * `TeamWriteApi` again, for the OTHER act it holds: a member leaving his team.
+ *
+ * <p><b>A second dictionary and not a sixth line in the one above</b>, because the two
+ * are two acts at two addresses and a reader of that one should not have to work out
+ * which of its names can reach which screen. One file now names the reasons of both,
+ * which is why `refusals.test.ts` reads a file against the union of the screens that
+ * meet it rather than against one.
+ *
+ * <p><b>The sentence is one the portal already draws, and that is the point.</b>
+ * `membership.transferShut` is what the Članarina page says when the window is shut,
+ * and its last clause is this refusal word for word - „Ako se do tada ništa ne dogovori,
+ * ostaješ tamo gde jesi." A second sentence for the same fact would be the portal
+ * saying one thing on one page and another here. It is the shape `WHEN_RATING_AN_EVENT`
+ * already uses for two of its three.
+ *
+ * <p><b>And it is the one refusal this route names.</b> Everything else it turns away -
+ * a team he is not in, a team that is not there, a member whose fee has lapsed - is one
+ * empty 404, by ADL A8, so there is nothing for a screen to say about any of them.
+ */
+export const WHEN_LEAVING_A_TEAM: Record<string, string> = {
+  theWindowIsShut: 'membership.transferShut',
+}
+
+/**
  * `CommentWriteApi`, which names three, and answers a member rating an event.
  *
  * <p><b>Two of the three reuse a sentence the screen already draws for a client-side

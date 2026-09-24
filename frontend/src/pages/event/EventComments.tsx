@@ -99,8 +99,8 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
            only "not yet". The same answer the results above give, and the same
            shape: what is suppressed is the sentence, never a comment. An event
            moved onto a later date keeps everything already published under it,
-           which is what the schedule queue does to events (types.ts,
-           `subjectId`).
+           tied to the event's own id rather than to the date it falls on (the
+           same linking `subjectId` in types.ts describes).
 
            And before the race a visitor is told nothing either way, whether the
            chain of editions carries anything or not. Otherwise the line saying

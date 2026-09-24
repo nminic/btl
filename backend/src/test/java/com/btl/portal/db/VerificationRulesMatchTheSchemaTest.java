@@ -98,9 +98,9 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 	}
 
 	/**
-	 * The five queues {@code verification_refusal_says_why} makes no exception for, and
+	 * The four queues {@code verification_refusal_says_why} makes no exception for, and
 	 * the value every case that is not itself about the exception asks the schema with.
-	 * Any one of the five would do; {@code results} is V10's own tab and the tab
+	 * Any one of the four would do; {@code results} is V10's own tab and the tab
 	 * {@code VerificationConstraintsTest}'s own good/bad reason rows already use.
 	 */
 	private static final String A_QUEUE_WITHOUT_THE_EXCEPTION = "results";
@@ -197,7 +197,7 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 
 	/**
 	 * AND ON THE ONE QUEUE THE RULE EXCEPTS, WHAT THE CLASS WOULD WRITE IS STILL WHAT
-	 * THE TABLE HOLDS - INCLUDING THE ONE ROW THE OTHER FIVE QUEUES REFUSE (ADL A64 A4).
+	 * THE TABLE HOLDS - INCLUDING THE ONE ROW THE OTHER FOUR QUEUES REFUSE (ADL A64 A4).
 	 *
 	 * <p>{@code DecidingOnASubmission.Submission#reasonIsOptional} is the class's half of
 	 * this exception; {@code verification_refusal_says_why}'s {@code queue = 'comments'}
@@ -207,13 +207,13 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 	 * exception to a second queue, or widened the class's past comments alone, is caught
 	 * by whichever of the two cases stopped agreeing.
 	 *
-	 * <p><b>THE OTHER FIVE ARE READ OFF THE SCHEMA, NEVER WRITTEN DOWN (PR 354 review).</b>
-	 * A single hand-picked queue for „the other five" - this class used
+	 * <p><b>THE OTHER FOUR ARE READ OFF THE SCHEMA, NEVER WRITTEN DOWN (PR 354 review).</b>
+	 * A single hand-picked queue for „the other four" - this class used
 	 * {@code A_QUEUE_WITHOUT_THE_EXCEPTION} here too until the review found it - only
 	 * proves the exception has not reached that ONE queue; a widening to any of the
-	 * remaining four would pass unnoticed. {@code admin_right} is asked for the whole set
+	 * remaining three would pass unnoticed. {@code admin_right} is asked for the whole set
 	 * instead, the same floor {@code VerificationWriteApiTest.everyTabIsEitherCarriedOutOrRefusedAndNoneIsQuietlyRecorded}
-	 * already reads it through, so a widening to ANY of the five fails here and not only to
+	 * already reads it through, so a widening to ANY of the four fails here and not only to
 	 * the one this file used to name.
 	 */
 	@Test
@@ -229,7 +229,7 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 						+ " but the class did not")
 				.isTrue();
 
-		/* AND ONLY COMMENTS, never any of the five queues this exception must not reach - asked
+		/* AND ONLY COMMENTS, never any of the four queues this exception must not reach - asked
 		   of the schema's own list rather than of one queue remembered here. */
 		List<String> everyOtherQueue = db.sql("select target from admin_right"
 						+ " where scope = 'queue' and target <> 'comments'")
@@ -238,7 +238,7 @@ class VerificationRulesMatchTheSchemaTest extends DatabaseTest {
 		assertThat(everyOtherQueue)
 				.as("the schema's own list of queues besides comments is short, so this measures"
 						+ " less than it claims to")
-				.hasSize(5);
+				.hasSize(4);
 
 		for (String queue : everyOtherQueue) {
 			assertThat(theSchemaTakes("verification_refusal_says_why", DecidingOnASubmission.REJECTED,

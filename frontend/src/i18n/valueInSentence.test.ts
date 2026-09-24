@@ -256,12 +256,26 @@ describe('a sentence with a value put into it', () => {
          a name written out here: `refusals[answer.reason]`. Which sentence that is
          cannot be read off the call at all, which is the case this row stands for. */
       '? (ServerSaid.tsx)',
+      /* „Izbaci trku {race} iz lige": the race is named by `raceLabel`, which writes the
+         race's own name and adds what parts it from the races beside it. No case to be
+         wrong in - it stands after „trku" as the thing being named, and a proper name in
+         Serbian keeps its written form there. */
+      'admin.dropRaceNamed',
       'admin.form.deleteNamed',
       'admin.form.deleteSureNamed',
       'admin.form.keepNamed',
       'admin.form.openNamed',
       'admin.form.raceNumber',
       'admin.form.removeRow',
+      /* „Trke u ligi {name}", the accessible name of the box that folds on the list of
+         competitions. The name of a competition stands after „u ligi", which governs the
+         locative - and a competition's name is a proper name the portal never declines
+         anywhere („Poredak takmičenja", „Događaji i trke, {name}"), so this is the same
+         answer `leagues.countingOf` already gives one screen along. */
+      'admin.leagueRacesOf',
+      /* „U kalendaru nema nijednog događaja iz sezone {season}.", and the season is a
+         number: a year written in figures has no case to be wrong in. */
+      'admin.noEventsOfSeason',
       'admin.ofMany',
       'admin.processingFee',
       'admin.racesOf',
@@ -390,12 +404,14 @@ describe('a sentence with a value put into it', () => {
       /* The number of the account somebody is signed in as, in the header, and it takes
          no case at all: the sentence is „Nalog 41", the word stands first and the number
          after it is a label rather than a thing being counted. It is drawn only where the
-         portal has no member number to name him by, which is a real session against a
-         portal that does not read one off `GET /api/me` yet (app/AccountMenu.tsx).
+         league has given the caller no number - administration, and somebody who has
+         registered and is not a member yet (app/AccountMenu.tsx).
 
-         **This said „a portal still reading its members out of `/mock`" until 21.09.2026,
-         and that went out of date the day the mock was switched off** (`data/client.ts`).
-         The sentence is still drawn, for the reason beside it rather than for that one. */
+         **This is the THIRD reason written here and the first two both expired**: „a
+         portal still reading its members out of `/mock`", which went with the mock on
+         21.09.2026, and „a portal that does not read one off `GET /api/me` yet", which
+         went on 24.09.2026 when it began to. The sentence is still drawn, and what has
+         changed each time is only who reads it. */
       'shell.accountNumber',
       'shell.unread',
       'shell.waiting',

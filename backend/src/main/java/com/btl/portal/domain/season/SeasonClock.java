@@ -147,4 +147,85 @@ public final class SeasonClock {
 	public static int transfersTakeEffect(ZonedDateTime at) {
 		return Math.max(at.withZoneSameInstant(ZONE).getYear() + 1, FIRST_SEASON);
 	}
+
+	/**
+	 * THE SEASON BEING RUN AT THIS MOMENT, which is the LAST one a side agreed now is still
+	 * part of.
+	 *
+	 * <p>It exists for leaving rather than for joining, and the owner's decision of
+	 * 24.09.2026 is why: „Iz tima se izlazi u istom prozoru u kom se i ulazi (1.10-31.12)",
+	 * with his reason - „tim nosi bodove kroz sezonu, pa bi izlazak usred nje znacio da
+	 * tabela u januaru i tabela u junu govore razlicito o istoj sezoni." A member who leaves
+	 * inside the window is therefore in his team for the whole of THIS season and out of it
+	 * from the next, and {@code team_membership.season_to} is „the last season he is in it"
+	 * (V11), so this is the number that goes in that column.
+	 *
+	 * <p><b>Written as {@link #transfersTakeEffect} minus one and not as the calendar year,
+	 * and that is the whole point of it.</b> Leaving and joining are two ends of one
+	 * sentence - the season a change takes effect IN, and the season it is the end OF - so
+	 * one of them derived from the other cannot drift from it. Spelt {@code getYear()} here
+	 * it would be a second reading of the same moment, free to disagree the day either the
+	 * zone or the clamp moves, which is exactly the fault {@link #transfersTakeEffect}'s own
+	 * note describes between itself and {@link #seasonBeingPaidFor}.
+	 *
+	 * <p><b>AND IT CAN NAME A YEAR THAT IS NOT A SEASON, which is said here rather than
+	 * clamped away.</b> Through 2026 the answer is 2026, and there is no season 2026 (PDL
+	 * P2). Clamping it to {@link #FIRST_SEASON} would be worse than leaving it: it would say
+	 * that the season being run in October 2026 is 2027, and a membership ended with
+	 * {@code season_to = 2027} is a member who WAS in his team for a season that has not
+	 * started. The callers guard it instead, and they can: every membership the schema
+	 * allows begins at 2027 or later ({@code team_membership_season_from_not_before_the_
+	 * league}), so on any day of 2026 every one of them is a membership that has not BEGUN,
+	 * which {@code TeamWriteApi} answers by removing the row rather than by ending it.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's,
+	 *           which is ADL A36 O2 („sezona se racuna u zoni Europe/Belgrade")
+	 */
+	public static int seasonBeingRun(ZonedDateTime at) {
+		return transfersTakeEffect(at) - 1;
+	}
+
+	/**
+	 * THE SEASON A LEAGUE MAY BE MADE FOR: THIS ONE OR THE NEXT, AND NOTHING ELSE
+	 * (PDL P15a, owner 22.09.2026).
+	 *
+	 * <p>Owner, carrying out his own sentence of 23.08.2026 to the letter: a league is
+	 * made "za tekucu ili narednu" year. He was shown what that costs and took it: "liga
+	 * za 2029 se ne moze pripremiti unapred, a istorijske lige koje portal pominje
+	 * (Gradska 2017, Brdska 2019) ne mogu da se unesu kroz portal uopste."
+	 *
+	 * <p><b>WHY THE RUNNING YEAR IS CLAMPED AND NOT TAKEN AS IT COMES.</b> PDL P2 and
+	 * the owner's sentence of 31.07.2026, "Nigde na portalu nema sezone pre 2027", mean
+	 * the calendar answer through 2026 is a year that is not a season at all - and
+	 * {@code league_season_not_before_the_league} refuses it outright, so an unclamped
+	 * answer would offer a season the database will not take. {@link #seasonBeingPaidFor}
+	 * clamps the same way and for the same sentence.
+	 *
+	 * <p><b>The clamp is applied to the RUNNING year and the next one is counted off the
+	 * result</b>, so today, in 2026, the pair is 2027 and 2028 rather than 2027 twice.
+	 * That is read off the cost the owner accepted rather than guessed at: the league he
+	 * named as the one that cannot be prepared yet is <b>2029</b>, which is true of this
+	 * shape and not of the other.
+	 *
+	 * <p><b>THIS IS NOT {@link #seasonBeingPaidFor} AND MUST NOT BE WRITTEN AS IT.</b>
+	 * That one answers what is on SALE and steps into next year on 1 October, so from
+	 * October to December it would refuse a league for the year that is still running -
+	 * and PDL P15a's fourth decision says races enter a league "i tokom godine te lige",
+	 * which is that very stretch of it. Two questions about a season are two methods
+	 * here, which is the split {@link #transfersTakeEffect} was already made for.
+	 *
+	 * <p><b>Nothing here asks whether the season is frozen, and it does not have to.</b>
+	 * A season freezes on 1 January at 16:00 of the year AFTER it (see
+	 * {@link #tablesFreeze}), by which time the running year has already moved on, so a
+	 * frozen season is never the current one nor the next. That is a property of the two
+	 * moments rather than a second rule, and {@code SeasonClockTest} measures it.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's,
+	 *           which is ADL A36 O2
+	 */
+	public static boolean aLeagueMayBeMadeFor(int season, ZonedDateTime at) {
+		int running = Math.max(at.withZoneSameInstant(ZONE).getYear(), FIRST_SEASON);
+
+		return season == running || season == running + 1;
+	}
 }
