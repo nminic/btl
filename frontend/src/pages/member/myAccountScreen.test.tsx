@@ -46,6 +46,19 @@ const SOMEBODY_ELSE = must(
   'the seed still has a second member with another name',
 )
 
+/**
+ * AND A MEMBER OF THE OTHER GENDER, because gender is an axis with two states and a screen
+ * measured on one of them is measured on half of itself.
+ *
+ * <p>Taken out of the file rather than named, like the rest: the word beside „Pol" and the
+ * letter the category starts with both come off this one field, so a screen that had it
+ * written in would pass every case above and say „Muškarci" to every woman in the league.
+ */
+const HER = must(
+  members.find((one) => one.gender === 'F'),
+  'the seed still has a member whose gender is the other one',
+)
+
 /** The panel a case is talking about, so a query cannot wander into the one below it. */
 function panelOf(heading: string): HTMLElement {
   return must(
@@ -157,6 +170,45 @@ describe('a member’s own data', () => {
     expect(within(panel).queryByText(sr.account.saved)).not.toBeInTheDocument()
   })
 
+  /**
+   * TWO PRESSES WHILE THE FIRST IS STILL OUT ARE ONE REQUEST.
+   *
+   * <p>The answer is held open on purpose rather than raced for: a case that pressed twice
+   * and hoped the second landed first would pass or fail by scheduling. Holding the promise
+   * makes the second press certainly happen while the first is in flight, which is the only
+   * state this guard is about.
+   *
+   * <p>Without the guard the member sends the same change twice and is told about the
+   * SECOND one, which by then is a request that changes nothing.
+   */
+  it('sends one request for two presses while the first is still out', async () => {
+    const user = setupUser()
+    let release = (): void => {}
+    const held = new Promise<Response>((resolve) => {
+      release = () => resolve(answeredWith(200))
+    })
+    let asked: Asked[] = []
+    ;({ stop, asked } = serverThat((path, init) =>
+      path === '/api/me' && init?.method === 'PUT' ? held : null,
+    ))
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+
+    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
+    const save = within(panel).getByRole('button', { name: sr.account.save })
+
+    await user.click(save)
+    await user.click(save)
+    release()
+
+    expect(await within(panel).findByText(sr.account.saved)).toBeInTheDocument()
+    expect(
+      asked.filter((one) => one.path === '/api/me' && one.init?.method === 'PUT'),
+    ).toHaveLength(1)
+  })
+
   /** A refusal nobody named is still said out loud, number and all, rather than folded away. */
   it('says the number of an answer it cannot read', async () => {
     const user = setupUser()
@@ -172,6 +224,30 @@ describe('a member’s own data', () => {
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
     expect(await within(panel).findByText(/500/)).toBeInTheDocument()
+  })
+
+  /**
+   * <p><b>„Kept" must not outlive the thing it was said about.</b> Left standing over a box
+   * being edited it says what is on the screen is what the server holds, which it is not: the
+   * member would read his own unsaved typing as saved and leave.
+   */
+  it('takes back the confirmation the moment a box is edited again', async () => {
+    const user = setupUser()
+    ;({ stop } = serverThat((path, init) =>
+      path === '/api/me' && init?.method === 'PUT' ? answeredWith(200) : null,
+    ))
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+
+    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
+    await user.click(within(panel).getByRole('button', { name: sr.account.save }))
+    await within(panel).findByText(sr.account.saved)
+
+    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '9')
+
+    expect(within(panel).queryByText(sr.account.saved)).not.toBeInTheDocument()
   })
 
   /**
@@ -212,6 +288,18 @@ describe('the things a member may not change himself', () => {
     expect(within(panel).queryByRole('textbox', { name: /Pol/ })).not.toBeInTheDocument()
     expect(within(panel).queryByRole('textbox', { name: /Datum rođenja/ })).not.toBeInTheDocument()
     expect(within(panel).getByText(sr.account.lockedNote)).toBeInTheDocument()
+  })
+
+  /** The other state of the same axis, and both words come off the one field. */
+  it('says the other gender, and the other category letter, to a member who is one', async () => {
+    renderAt('/sr/podesavanja', 'competitor', HER.memberNumber)
+    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
+
+    const panel = panelOf(sr.account.lockedTitle)
+
+    expect(within(panel).getByText(sr.rankings.women)).toBeInTheDocument()
+    expect(within(panel).getByText(`Ž${HER.ageBand}`)).toBeInTheDocument()
+    expect(within(panel).queryByText(sr.rankings.men)).not.toBeInTheDocument()
   })
 
   /**
@@ -377,6 +465,37 @@ describe('changing a password from inside', () => {
     await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
 
     expect(await within(panel).findByText(/12/)).toBeInTheDocument()
+  })
+
+  /** The same guard the panel above has, and for a password the cost of losing it is higher:
+   *  two requests, and the reader answered about the second. */
+  it('sends one request for two presses while the first is still out', async () => {
+    const user = setupUser()
+    let release = (): void => {}
+    const held = new Promise<Response>((resolve) => {
+      release = () => resolve(answeredWith(204))
+    })
+    let asked: Asked[] = []
+    ;({ stop, asked } = serverThat((path, init) =>
+      path === '/api/me/password' && init?.method === 'PUT' ? held : null,
+    ))
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+
+    await user.type(within(panel).getByLabelText(/Trenutna lozinka/), 'the old one')
+    await user.type(within(panel).getByLabelText(/^Nova lozinka/), 'a brand new one')
+    await user.type(within(panel).getByLabelText(/Ponovi novu lozinku/), 'a brand new one')
+
+    const button = within(panel).getByRole('button', { name: sr.account.passwordSubmit })
+
+    await user.click(button)
+    await user.click(button)
+    release()
+
+    expect(await within(panel).findByText(sr.account.passwordDone)).toBeInTheDocument()
+    expect(asked.filter((one) => one.path === '/api/me/password')).toHaveLength(1)
   })
 
   it('says so when the portal could not be reached at all', async () => {
