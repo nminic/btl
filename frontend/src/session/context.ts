@@ -454,49 +454,54 @@ export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
  * Registracija / Prijava stoji link ka opcijama profila") - and it must not ask it twice
  * and get two answers.
  *
- * <p><b>A real session carries no member number HERE, and since 21.09.2026 that is the
- * PORTAL'S doing rather than the server's.</b> This said the answer is `{role, account}`
- * and that {@code MeApi} „says at length why the member number is not on it". Both halves
- * are out of date, and the second is refused by that class in bold: „AND SINCE 20.09.2026
- * IT CARRIES A MEMBER NUMBER, which is the sentence this class used to spend four
- * paragraphs refusing." Measured the same day: a harness that really answers `{role,
- * account}` and nothing else fails two cases, because the portal does read something out
- * of the record beside them.
+ * <p><b>A REAL SESSION CARRIES A MEMBER NUMBER SINCE 24.09.2026, and this paragraph is
+ * the third correction of one sentence rather than a fourth home for it.</b> It said the
+ * answer was `{role, account}`; then that the number was on the answer and „the portal
+ * does not take it, because doing so is one increment with the member area". That
+ * increment is this one, and it was the whole of what the owner was locked out of:
+ * `useMemberScreen` asks which of these two arms the session is, so a member who really
+ * signed in was the second arm and met „Ovaj deo je za takmicare" on all eleven screens
+ * of his own - his profile, his settings and his picture among them. Owner, 24.09.2026:
+ * „Trenutno ne mogu cak ni svojim profilom da se igram, podesavam, prilozim slika."
  *
- * <p>What the reason has become is smaller and still good: the number is on the answer and
- * the portal does not take it, because doing so is one increment with the member area and
- * a moderator's rights in it. Until then the two arms of this carry different things.
+ * <p><b>So the two arms no longer divide „the prototype" from „a real session", and that
+ * is the point.</b> They divide somebody the league has given a number from somebody it
+ * has not, which is a fact about the person rather than about how he got in - a moderator
+ * and a superadmin are the second arm for good (PDL P21), and so is anybody who has
+ * registered and has no number yet (ADL A44).
  */
 export type SignedIn =
   /**
-   * The prototype's way in: a member number, chosen on the development switch.
+   * SOMEBODY THE LEAGUE HAS GIVEN A NUMBER, which is what „a member" means (ADL A44).
    *
    * Every screen that draws a member reads through this, so it wins where both are set.
    *
-   * **THIS SAID THE ARM WOULD GO WITH THE MOCK, AND THAT DAY CAME ON 21.09.2026 AND IT DID
-   * NOT GO.** The sentence is corrected here rather than left standing, because a promise
-   * about a day that has passed reads as an instruction to carry it out. What it missed is
-   * that the two arms carry different things for a reason the switch does not touch: a real
-   * session is `GET /api/me`, and the portal takes no MEMBER NUMBER off it, so a signed in
-   * member has none and every screen about „me" would have nothing to draw.
+   * **Where the number comes from, said as a list so the next sentence about it can be
+   * checked rather than believed:** `GET /api/me`, through `session/theServer.ts`, and
+   * nothing else on the portal. The `signIn` setter beside this type is a second door and
+   * is called by no screen - measured 24.09.2026, `grep` over `src` outside the tests and
+   * outside its own definition comes back empty - so what a member sees is what the server
+   * says he is.
    *
-   * **AND THE CORRECTION ITSELF CARRIED THE NEXT ONE, which is why this paragraph says so
-   * out loud.** It went on to say that `theServer.ts` reads the role and the account „and
-   * nothing else", and that was already false when it was written: the same day's work had
-   * that file reading `member.membershipBasis` as well, because a member is told how his
-   * own fee is held through this answer and through no other. Left standing it was an
-   * instruction to take that reading back out - which is the very thing a round of review
-   * had just called a high finding. Measured 21.09.2026: making it true again, by answering
-   * `null` for the basis, fails five cases.
-   *
-   * **What the portal reads off `/api/me` today, said as a list so the next sentence about
-   * it can be checked rather than believed:** the role, the account, and the caller's own
-   * membership basis. `MeApi.WhoIAm` carries more than that - the member number among it,
-   * since 20.09.2026 - and taking the number off it is its own increment, because the
-   * member area and a moderator's rights come off the same answer.
+   * **AND THE CORRECTION THAT CAME BEFORE IT, kept because the class of fault is the
+   * reason this paragraph exists at all.** This said `theServer.ts` reads the role and the
+   * account „and nothing else", and that was false the day it was written: the same day's
+   * work had it reading `member.membershipBasis` too. Left standing it was an instruction
+   * to take that reading back out, which a round of review had just called a high finding.
+   * Measured 21.09.2026: making it true again, by answering `null` for the basis, fails
+   * five cases. The list above is in the same danger and is held the same way, by cases
+   * rather than by this sentence.
    */
   | { as: 'member'; memberNumber: string }
-  /** A real session, which is an account and nothing more. */
+  /**
+   * SOMEBODY SIGNED IN WHOM THE LEAGUE HAS GIVEN NO NUMBER, which is an account and
+   * nothing more.
+   *
+   * <b>A permanent state rather than a moment on the way to the arm above</b>, and that
+   * is why it is an arm and not a wait: a moderator and a superadmin have no competitor
+   * record at all (PDL P21, owner 14.09.2026), and somebody who has registered and has
+   * not been given a number has a record and no number (ADL A44).
+   */
   | { as: 'account'; account: number }
 
 export type SessionValue = {
@@ -510,8 +515,24 @@ export type SessionValue = {
    * form is told nothing back, and the answer to the sign in itself is 204 and empty.
    */
   account: number | null
-  /** What `GET /api/me` said, remembered for the rest of the visit. */
-  theServerSignedMeIn: (account: number, membershipBasis: MembershipBasis | null) => void
+  /**
+   * What `GET /api/me` said, remembered for the rest of the visit.
+   *
+   * **ONE ARGUMENT AND NOT THREE, which is the „set together and never apart" rule made
+   * structural instead of written down.** It took two positionally until 24.09.2026, and
+   * the member number arriving beside them is what made that shape unsafe rather than
+   * merely wordy: `MembershipBasis | null` goes into a `string | null` without a
+   * complaint, so a call that swapped the basis and the number compiled, and a member
+   * would have been signed in under the number „payment". Named fields cannot be
+   * swapped, and a field left out is a call that does not build.
+   */
+  theServerSignedMeIn: (who: {
+    account: number
+    /** Null for all three of the ways there is no number; `session/theServer.ts` names
+     *  them, and `pages/member/memberScreen.tsx` carries what the portal draws for each. */
+    memberNumber: string | null
+    membershipBasis: MembershipBasis | null
+  }) => void
   /**
    * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, as the server answered it, or null where
    * it did not say.

@@ -97,11 +97,18 @@ export function SignIn() {
     }
 
     become(who.role)
-    /* The whole of what the answer said, and not the account on its own: the basis a
-       member's own fee is held on comes through this one door (`session/context.ts`),
-       and a sign in that set the account without it would leave „Moja clanarina"
-       reading „I was not told" until the visit was refreshed. */
-    theServerSignedMeIn(who.account, who.membershipBasis)
+    /* THE WHOLE OF WHAT THE ANSWER SAID, and not the account on its own. Two facts have
+       already been left out of this call one at a time and each cost a screen: the basis
+       a member's own fee is held on, without which „Moja clanarina" read „I was not told"
+       until the visit was refreshed (21.09.2026), and the MEMBER NUMBER, without which a
+       member who had just signed in was nobody the portal could draw - all eleven screens
+       of his own answered „Ovaj deo je za takmicare", the line below sent him to the
+       first of them, and that is what the owner ran into on 24.09.2026.
+
+       Handed over whole rather than picked apart, which is what stops a third: the
+       answer is one object and `theServerSignedMeIn` takes one, so a field that arrives
+       on `/api/me` tomorrow is a field this call already carries. */
+    theServerSignedMeIn(who)
     navigate(`/${locale}/moj-profil`)
   }
 

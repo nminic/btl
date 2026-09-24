@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -43,7 +43,9 @@ let server: { asked: Asked[]; stop: () => void } | null = null
 
 /** What the server is holding: whether a session is open, and whom it belongs to. */
 let open = false
-let holder: { role: string; account: number } | null = null
+/** What `/api/me` answers once a session is open. `member` is present exactly when the
+ *  league has given the caller a number, which is what `MeApi.MyOwnRecord` does. */
+let holder: { role: string; account: number; member?: { memberNumber: string } } | null = null
 let signInSays: () => Response | Promise<Response> = did
 
 /**
@@ -55,7 +57,7 @@ let signInSays: () => Response | Promise<Response> = did
  *                second tab and a visit tomorrow both look like
  */
 function aServerWhere(
-  who: { role: string; account: number } | null,
+  who: { role: string; account: number; member?: { memberNumber: string } } | null,
   already = false,
   signIn: () => Response | Promise<Response> = did,
 ): void {
@@ -518,7 +520,98 @@ describe('when the server says no', () => {
   })
 })
 
+describe('what the session is left holding', () => {
+  /**
+   * THE OTHER DOOR OF THE 24.09.2026 INCREMENT, and it is measured because it is a
+   * SECOND door and not because the first one was in doubt.
+   *
+   * <p>Two things write the session from `GET /api/me`: this screen, when somebody signs
+   * in, and `useTheServersSession`, when a browser that is already carrying a cookie
+   * opens the portal. `pages/member/oneQuestion.test.tsx` walks the member area through
+   * the second. A fault put into this one alone is invisible there, and this is the door
+   * the owner came through on 24.09.2026.
+   *
+   * <p><b>The number is not the account, and the case cannot pass on either by
+   * accident</b>: 7 is an account and `000012` is a member, and the arm the session
+   * reports is named after which of the two it took.
+   */
+  it('signs in a MEMBER as a member, off the record the answer carries', async () => {
+    aServerWhere({ role: 'competitor', account: 7, member: { memberNumber: '000012' } })
+    openSignIn()
+
+    await signIn()
+
+    expect(await screen.findByTestId('signed-in')).toHaveTextContent('member')
+  })
+
+  it('signs in an account that races for nobody as an account', async () => {
+    /* THE OTHER HALF OF THE SAME AXIS. Read alone, the case above is satisfied by a
+       screen that calls everybody a member, which is the fault one answer along: a
+       moderator would be handed a member area with nobody in it. */
+    aServerWhere({ role: 'moderator', account: 7 })
+    openSignIn()
+
+    await signIn()
+
+    expect(await screen.findByTestId('signed-in')).toHaveTextContent('account')
+  })
+
+  /**
+   * AND THE FORM CAN BE WALKED BACK TO, WHICH IS WHY THE NUMBER IS WRITTEN EVEN WHEN IT
+   * IS NULL.
+   *
+   * <p>The comfortable way to write the increment is „set the member number only when the
+   * answer really carries one", so that nothing already there can be cleared. This is the
+   * road it is wrong on: a member signs in, goes back to the form, and somebody else signs
+   * in on the same visit. Written the comfortable way the first man's number survives the
+   * second man's answer, and a moderator is handed that member's profile, his messages and
+   * his settings - eleven screens of another person's - with the header naming the
+   * moderator.
+   */
+  it('does not leave one member signed in behind another sign in', async () => {
+    aServerWhere({ role: 'competitor', account: 7, member: { memberNumber: '000012' } })
+    const { router } = openSignIn()
+
+    await signIn()
+    expect(await screen.findByTestId('signed-in')).toHaveTextContent('member')
+
+    /* The same visit and the same session, with somebody else at the keyboard: the
+       server now answers an account that races for nobody. */
+    holder = { role: 'moderator', account: 11 }
+    await act(async () => {
+      await router.navigate('/sr/prijava')
+    })
+    await signIn('drugi@primer.rs')
+
+    expect(await screen.findByTestId('signed-in')).toHaveTextContent('account')
+  })
+})
+
 describe('signing out', () => {
+  /**
+   * AND SIGNING OUT TAKES THE MEMBER NUMBER WITH IT, which is the arm no case held until
+   * 24.09.2026 because no real session could be in it.
+   *
+   * <p>The case beside this one signs a moderator out and reads `signedIn` going to
+   * „nikom", which is the account arm. A member is the other arm and is cleared by a
+   * different line (`SessionProvider`, `signOut` sets both): left standing, a member who
+   * signed out would keep every screen of his own open against a server that has already
+   * forgotten his cookie.
+   */
+  it('takes the member number with it, and not only the account', async () => {
+    aServerWhere({ role: 'competitor', account: 7, member: { memberNumber: '000012' } }, true)
+    const user = setupUser()
+    openSignIn('/sr')
+
+    expect(await screen.findByTestId('signed-in')).toHaveTextContent('member')
+
+    await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
+    await user.click(screen.getByRole('button', { name: 'Odjavi se' }))
+
+    expect(await screen.findByRole('link', { name: 'Prijavi se' })).toBeVisible()
+    expect(screen.getByTestId('signed-in')).toHaveTextContent('nikom')
+  })
+
   it('tells the server, and the header goes back to offering the way in', async () => {
     aServerWhere({ role: 'moderator', account: 11 }, true)
     const user = setupUser()

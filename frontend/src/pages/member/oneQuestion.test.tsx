@@ -20,10 +20,18 @@ import { sources, WHOLE_PORTAL } from '../../test/sources'
  *
  * <p><b>What this is for.</b> `session/context.ts` says the question „is anybody signed
  * in" „must not be asked twice and get two answers", and until 20.09.2026 it was: the
- * header read `signedIn` and eleven screens behind the picture read the member number.
- * A real session carries no member number - `GET /api/me` answers a role and an account
- * and {@code MeApi} says at length why - so every link in the menu behind a signed in
- * member's own picture led to „Za ovo treba prijava".
+ * header read `signedIn` and eleven screens behind the picture read the member number,
+ * so every link in the menu behind a signed in member's own picture led to „Za ovo treba
+ * prijava".
+ *
+ * <p><b>AND THE ONE DOOR THEN ANSWERED THE WRONG THING FOR EVERY MEMBER, for four days,
+ * with this file green.</b> `GET /api/me` had carried a member number since 20.09.2026
+ * and `session/theServer.ts` read past it, so the session knew an account and no person
+ * and the hook rightly said „Ovaj deo je za takmicare" - on the owner's own profile.
+ * Nothing here saw it because every case in this file signed somebody in as an ACCOUNT,
+ * which was the only session the portal could make: the second half of the axis, a
+ * member, had no case at all. That half is the first `describe` below, and it is the
+ * whole reason to read this file for the shape rather than for the subject.
  *
  * <p><b>WHY THE QUESTION HERE IS ABOUT MODULES AND NOT ABOUT ADDRESSES.</b> The first
  * draft of this file walked `ACCOUNT_ROUTES` and called those five addresses „every screen
@@ -170,9 +178,30 @@ let server: { asked: Asked[]; stop: () => void } | null = null
  * administration has no member to be.
  */
 function aSignedInAccount(role = 'competitor', account = 107): void {
+  aServerAnswering({ role, account })
+}
+
+/**
+ * A server holding a session for a MEMBER: the same answer with his own record in it.
+ *
+ * <p>Which is what `GET /api/me` really sends anybody the league has given a number, and
+ * has sent since 20.09.2026. The portal read past it until 24.09.2026, so every real
+ * member was the account above and met „Ovaj deo je za takmicare" on all eleven screens
+ * of his own.
+ *
+ * <p><b>The account number is not the member number and is deliberately nothing like
+ * it.</b> 107 is not a member of anything; `000001` is a row of the generated file with a
+ * name on it. Read off the wrong one, a screen looks for member 107 and finds nobody, and
+ * the two could not be told apart if the case let one number play both parts.
+ */
+function aSignedInMember(memberNumber = '000001', role = 'competitor', account = 107): void {
+  aServerAnswering({ role, account, member: { memberNumber } })
+}
+
+function aServerAnswering(said: object): void {
   server = serverThat((path) => {
     if (path === '/api/me') {
-      return new Response(JSON.stringify({ role, account }), {
+      return new Response(JSON.stringify(said), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       })
@@ -304,6 +333,104 @@ describe('the one door to „nobody is signed in"', () => {
   })
 })
 
+/** The two things the member area says INSTEAD of itself, and the only two. */
+const REFUSALS = ['Za ovo treba prijava', 'Ovaj deo je za takmičare']
+
+/**
+ * The screen's own heading, once the server has answered who is asking.
+ *
+ * <p><b>WAITED FOR ON THE HEADER FIRST, and that is not tidiness.</b> A visit begins with
+ * nobody signed in and `GET /api/me` answers a tick later, so „Za ovo treba prijava" is
+ * really on screen for one render. Read without this wait, every case below finds that
+ * heading and reports the increment as undone - measured 24.09.2026, all eleven failed on
+ * the sentence they exist to prove is gone. The sibling `describe` carries the same wait
+ * and the same reason.
+ *
+ * <p>The account menu is the header saying it knows somebody is signed in, which is the
+ * very question the screen behind it is being asked, and the two are written in one pass:
+ * `SignIn` and `useTheServersSession` both set the role and the session together.
+ */
+async function theHeadingOnceTheAnswerHasArrived(): Promise<HTMLElement> {
+  expect(await screen.findByRole('button', { name: 'Otvori nalog' })).toBeVisible()
+
+  /* AND THEN WAITED FOR AGAIN, because the answer and the screen are two arrivals and
+     not one. The menu appearing says the session knows who is asking; the screen behind
+     it may still be fetching the lists it draws from and carry no heading at all for a
+     tick. Measured 24.09.2026: three of the eleven were in that state at this line.
+
+     Sound to wait rather than read, and the reason is not patience: once the session
+     names a member, `useMemberScreen` answers the same thing for the rest of the visit,
+     so no refusal can appear AFTER this point. What is waited for can only be the
+     screen's own heading. */
+  return screen.findByRole('heading', { level: 1 })
+}
+
+describe('every screen of the member area, to a MEMBER the server has signed in', () => {
+  /**
+   * THE INCREMENT OF 24.09.2026, MEASURED ON EVERY ONE OF THE ELEVEN AND NOT ON ONE.
+   *
+   * <p>Owner, that day: „Trenutno ne mogu cak ni svojim profilom da se igram, podesavam,
+   * prilozim slika." All three of those are addresses on this list and all three drew
+   * „Ovaj deo je za takmicare", and so did the other eight: the session took no member
+   * number off `GET /api/me`, so `useMemberScreen` had nobody to name.
+   *
+   * <p><b>Why the whole list rather than his profile.</b> One fact is read in one place
+   * and every screen of the area hangs off it, so a case about one of them would measure
+   * the hook and report it as a screen. The list is the module graph's (above), which is
+   * what makes „every screen" mean every screen rather than the ones somebody remembered.
+   *
+   * <p><b>What is asserted, and why it is not the heading each screen really draws.</b>
+   * That there IS a level one heading and that it is neither refusal. Named headings
+   * would be a table about eleven screens, and this is one fact about one hook: the
+   * screens have their own cases. „Not a refusal" alone would be satisfied by a screen
+   * that draws nothing at all, which is a worse fault reported as none - `findByRole`
+   * requires the heading to be there, so both halves have to hold.
+   */
+  it.each(WALKED)('draws $at rather than one of the two refusals', async ({ at }) => {
+    aSignedInMember()
+    /* A VISITOR AND NO MEMBER NUMBER HANDED IN, which is a browser that has touched no
+       development control and a case that cannot pass on the prop: the only thing that
+       makes this a member is the answer above. */
+    renderAt(at, 'visitor', null)
+
+    expect(REFUSALS).not.toContain((await theHeadingOnceTheAnswerHasArrived()).textContent)
+  })
+
+  /**
+   * AND IT IS HIS SCREEN, WHICH IS A SECOND QUESTION AND THE ONE THE NUMBER ANSWERS.
+   *
+   * <p>Every case above is satisfied by a member area that draws SOMEBODY. What says the
+   * portal read the member number and not the account number is a name, and only one of
+   * the two facts in the answer leads to one: `000001` is a row of the generated file
+   * called Vladan Đurišić, and 107 is a number no member has.
+   */
+  it('names the member off the answer, and never the account beside him', async () => {
+    aSignedInMember()
+    renderAt('/sr/moj-profil', 'visitor', null)
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Vladan Đurišić' })).toBeVisible()
+  })
+
+  /**
+   * AND THE NUMBER IS THE ONE THE ANSWER CARRIES, not the first member the portal can
+   * find.
+   *
+   * <p>The case above is read against a file whose first row is that same member, so „the
+   * answer's number" and „whoever comes first" are one string there and it tells them
+   * apart nowhere. A second member, named by the answer and not first in anything, is the
+   * only thing that does.
+   */
+  it('names the member the answer carries, and not the first one on the list', async () => {
+    aSignedInMember('000009')
+    renderAt('/sr/moj-profil', 'visitor', null)
+
+    const drawn = await theHeadingOnceTheAnswerHasArrived()
+
+    expect(drawn.textContent).not.toBe('Vladan Đurišić')
+    expect(REFUSALS).not.toContain(drawn.textContent)
+  })
+})
+
 describe('every screen of the member area, to somebody the server has signed in', () => {
   it.each(WALKED)('does not send $at back to the sign in', async ({ at }) => {
     aSignedInAccount()
@@ -387,16 +514,46 @@ describe('the member number the screens read', () => {
    * apart is WHOSE screen is drawn: only the member number names a person in the file of
    * members, and only one of the two homes carries it.
    */
-  it('is the member number and never the account number', async () => {
+  it('is taken from the answer even when a number is handed in beside it', async () => {
+    /* **THE MUTATION THIS EXISTS FOR IS THE COMFORTABLE VERSION OF THE 24.09.2026
+       CHANGE**, and it is comfortable because it looks careful: write the member number
+       only when the answer really carries one, so that nothing can be cleared. It is
+       wrong on the road where the answer is asked twice in a visit - `SignIn` can be
+       walked back to and used by somebody else - and a moderator signing in after a
+       member would keep the member's number and be handed his profile, his messages and
+       his settings, with the header naming the moderator.
+
+       Here the server says the account races for nobody and a number is handed in
+       beside it. Written the careful way, the number survives and this screen draws
+       Vladan Đurišić to somebody the server has just said is not him. */
     aSignedInAccount()
-    /* The development switch, which is the one thing that carries a member number
-       today, and an account answering beside it with a DIFFERENT number. Read off the
-       account, this screen would look for member 107; read off the member number it
-       looks for 000001. Neither is the other, and one of them is a real member. */
     renderAt('/sr/moj-profil', 'competitor', '000001')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Vladan Đurišić' }),
+      await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
+    ).toBeVisible()
+  })
+
+  /**
+   * AND A RECORD WITH NO NUMBER IN IT IS THE THIRD WAY OF BEING NOBODY, which is a state
+   * of the server's making rather than of this portal's.
+   *
+   * <p>ADL A44, owner 11.09.2026: „Osoba je `competitor` od registracije, a clan postaje
+   * kad dobije broj", so `MeApi.MyOwnRecord` leaves `memberNumber` out for somebody who
+   * has registered and has not been given one. Read as „the record is here, so he is a
+   * member", such a person is signed in as the member number `undefined`.
+   *
+   * <p><b>What he is told is not true of him and that is a boundary rather than a
+   * decision</b>: „uz ovaj nalog ne stoji takmicarski zapis" - his account has one, and
+   * what it has not got is a number. No decision anywhere says what his screen should be,
+   * so he is not given an invented one (`memberScreen.tsx` carries this).
+   */
+  it('is missing rather than invented when the record carries no number', async () => {
+    aServerAnswering({ role: 'competitor', account: 107, member: { membershipBasis: 'payment' } })
+    renderAt('/sr/moj-profil', 'visitor', null)
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
     ).toBeVisible()
   })
 

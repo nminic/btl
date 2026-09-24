@@ -51,6 +51,28 @@ export type WhoTheServerSaysIAm = {
   role: SignedInRole
   account: number
   /**
+   * WHICH MEMBER OF THE LEAGUE THE CALLER IS, and null where he is none.
+   *
+   * **This is the only door it can come through, and until 24.09.2026 the portal did not
+   * open it.** `MeApi` has carried the number since 20.09.2026 and said so in bold; this
+   * file read the role, the account and the basis past it. The cost was the whole member
+   * area: `useMemberScreen` asks whether the session names a member, nothing else on the
+   * portal sets one (`signIn` has no caller outside the tests, measured 24.09.2026), so
+   * all eleven screens behind a signed in member's own picture - his profile among them -
+   * answered „Ovaj deo je za takmicare". Owner, 24.09.2026: „Trenutno ne mogu cak ni
+   * svojim profilom da se igram, podesavam, prilozim slika."
+   *
+   * **Null on all THREE of the ways there is no number, which are not one state.** No
+   * `member` key at all is an account that races for nobody, which is what a moderator
+   * and a superadmin permanently are (PDL P21). The key present with no `memberNumber`
+   * inside it is somebody who registered and has not been given one (ADL A44, owner
+   * 11.09.2026: „Osoba je `competitor` od registracije, a clan postaje kad dobije broj").
+   * A word the answer carries that is not a string is a server saying something this
+   * portal does not know. The portal draws one screen for all three and that is written
+   * down as a boundary rather than left to be found (`pages/member/memberScreen.tsx`).
+   */
+  memberNumber: string | null
+  /**
    * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, and null where the answer did not say.
    *
    * **This is the only door it can come through, and that is measured rather than
@@ -154,30 +176,65 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
      somebody in as a visitor. See `WhoTheServerSaysIAm` above. */
   const role = SIGNED_IN_ROLES.find((one) => one === said)
 
-  return role === undefined || typeof account !== 'number'
-    ? null
-    : { role, account, membershipBasis: basisIn(body) }
+  if (role === undefined || typeof account !== 'number') {
+    return null
+  }
+
+  /* READ ONCE AND HANDED TO BOTH, rather than dug out twice. Two readers walking to the
+     same record by themselves are two places that can disagree about where it is, and
+     the fact they are reading - „does this caller race for anybody" - is one fact. */
+  const mine = recordIn(body)
+
+  return { role, account, memberNumber: numberIn(mine), membershipBasis: basisIn(mine) }
+}
+
+/**
+ * The caller's own record out of the answer, or nothing.
+ *
+ * Absent altogether for an account that races for nobody (`MeApi.WhoIAm`, „Absent rather
+ * than null, and rather than an object of nulls"), which is the state a moderator and a
+ * superadmin are permanently in.
+ *
+ * Written as its own function rather than inline because two fields are read out of it
+ * and the reader above is already the longest sentence in this file.
+ */
+function recordIn(body: object): object | null {
+  const member: unknown = Reflect.get(body, 'member')
+
+  return typeof member !== 'object' || member === null ? null : member
+}
+
+/**
+ * Which member of the league the caller is, or nothing.
+ *
+ * **Looked for and never asserted**, the same shape the role above is read with. The
+ * number is ABSENT from a record that has one owner and no number yet (ADL A44), so the
+ * key missing is an ordinary answer rather than a broken one; and a number that is not a
+ * string is a server saying something this portal has no screen for, which must end as
+ * „no member" and never as a member whose number is an object.
+ */
+function numberIn(mine: object | null): string | null {
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, 'memberNumber')
+
+  return typeof said === 'string' ? said : null
 }
 
 /**
  * The caller's own membership basis out of the answer, or nothing.
  *
- * **Looked for and never asserted**, the same shape the role above is read with: the
- * record is absent altogether for an account that races for nobody (`MeApi.WhoIAm`,
- * „Absent rather than null, and rather than an object of nulls"), and a word inside it
- * that the portal does not know is a word it may not act on.
- *
- * Written as its own function rather than inline because it walks two levels and the
- * reader above is already the longest sentence in this file.
+ * **Looked for and never asserted**, for the reason written above: a word inside the
+ * record that the portal does not know is a word it may not act on.
  */
-function basisIn(body: object): MembershipBasis | null {
-  const member: unknown = Reflect.get(body, 'member')
-
-  if (typeof member !== 'object' || member === null) {
+function basisIn(mine: object | null): MembershipBasis | null {
+  if (mine === null) {
     return null
   }
 
-  const said: unknown = Reflect.get(member, 'membershipBasis')
+  const said: unknown = Reflect.get(mine, 'membershipBasis')
 
   return MEMBERSHIP_BASES.find((one) => one === said) ?? null
 }

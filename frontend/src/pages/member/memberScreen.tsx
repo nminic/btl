@@ -11,18 +11,48 @@ import { SignedOut } from './SignedOut'
  * (session/context.ts, which says in its own words that the question „must not be asked
  * twice and get two answers"). Those were two homes for one fact and they disagreed the
  * moment a real session existed: a member who signed in against the server got a header
- * with his account menu on it and „Za ovo treba prijava" behind every link in that menu,
- * because `GET /api/me` carries no member number and nothing else sets one. Measured on
- * all eleven, which is five more than the menu behind the picture draws.
+ * with his account menu on it and „Za ovo treba prijava" behind every link in that menu.
+ * Measured on all eleven, which is five more than the menu behind the picture draws.
  *
  * <p><b>There are three answers and not two, and the third is not a waiting room.</b> A
  * signed in account with no competitor record is a permanent state and not a moment on
  * the way to being a member: a moderator and a superadmin have no competitor record at
  * all, by the owner's decision of 14.09.2026 („Jedan nalog je tacno jedan clan", PDL
- * P21) and by what {@code MeApi} says about the empty link. Today every signed in member
- * is in it too, because `/api/me` does not yet carry the number, and that half of it goes
- * away on its own when the answer grows one. The half that belongs to administration
- * never does, which is why this has a sentence of its own rather than a spinner.
+ * P21) and by what {@code MeApi} says about the empty link. That is why this has a
+ * sentence of its own rather than a spinner.
+ *
+ * <p><b>AND UNTIL 24.09.2026 EVERY SIGNED IN MEMBER WAS IN THE THIRD ANSWER TOO, which
+ * is the fault this hook was built to remove arriving through the one door it does not
+ * watch.</b> The hook was right and the session was empty: `GET /api/me` had carried a
+ * member number since 20.09.2026 and `session/theServer.ts` read past it, so the portal
+ * knew an account and no person. Said here in the old tense rather than deleted, because
+ * this file promised that „that half goes away on its own when the answer grows one" -
+ * the answer had already grown it, and nothing went away on its own. What closed it was
+ * `theServer.ts` reading the field and `SessionProvider` writing it; a sentence waiting
+ * for a day that has already come is a job nobody is doing.
+ *
+ * <p><b>WHAT THE THIRD ANSWER NOW HOLDS, and one of the three is a boundary rather than
+ * a decision.</b> It is „the session names no member", and there are three ways to be
+ * there: an account that races for nobody, which is administration and is permanent; a
+ * server saying something this portal does not know, which must land somewhere and lands
+ * here; and <b>somebody who has registered and has not been given a number</b> (ADL A44,
+ * owner 11.09.2026: „Osoba je `competitor` od registracije, a clan postaje kad dobije
+ * broj"). The third of those is told „uz ovaj nalog ne stoji takmicarski zapis", and for
+ * him that sentence is not true - he has a record, and what he has not got is a number.
+ * <b>No decision anywhere says what he should be shown</b>, so he is not given an
+ * invented screen: the boundary is written down here and goes to the owner as a question.
+ *
+ * <p><b>AND ONE THING THIS HOOK DOES NOT DO, named so that a reader does not take its
+ * silence for a rule.</b> PDL P8, owner 19.09.2026: „clanu kome je clanarina istekla je
+ * dostupna samo strana za obnovu." This hook cannot keep that and does not pretend to.
+ * `GET /api/me` answers a member whose fee has lapsed - deliberately, it is half of why
+ * {@code MeApi} exists beside {@code CompetitorApi} - but it does not answer WHETHER the
+ * fee is standing: `c.active` is on no component of {@code MeApi.MyOwnRecord}, and the
+ * only `active` in its query counts who he brought in. So the portal cannot tell a
+ * lapsed member from a standing one and opens all eleven screens to both. Measured
+ * 22.09.2026 that no route on the server keeps P8 either. What this changes for such a
+ * member is that he can now reach „Moja clanarina" at all, which is the page he renews
+ * on and which answered him „Ovaj deo je za takmicare" until today.
  *
  * <p><b>What it must NOT say is that nobody is signed in</b>, which is what those eleven
  * screens said. Somebody is: the cookie is in the browser, the header knows their number
