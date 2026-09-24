@@ -418,8 +418,9 @@ describe('LeagueDetail', () => {
        box and not the one belonging to another competition.
 
        2027 and not 2019, because 2019 holds one competition and a claim about telling two
-       apart needs two. `MAIN_LEAGUE_SLUG` is filtered off this screen, so what is left is
-       RunTrace and Planinska. */
+       apart needs two. The two held in 2027 are RunTrace and Planinska; nothing is filtered
+       off this screen since 24.09.2026, when the decision the filter rested on was settled
+       the other way (PDL P15a). */
     renderAt('/sr/lige?sezona=2027')
 
     const boxes = await screen.findAllByRole('heading', { level: 2, name: /liga/i })
@@ -640,24 +641,18 @@ describe('LeagueDetail', () => {
   }, SLOW)
 
   it('says so when nothing runs alongside the league', async () => {
-    // Only the main league exists, and that one is never listed.
+    /* NOBODY HAS MADE A COMPETITION YET, which is the state the portal is in before every
+       season and the state the live database is in today (`league` holds no rows).
+
+       Until 24.09.2026 this case served ONE league at `btl-2027` and relied on that row being
+       filtered off the screen. The owner settled that no such row exists (PDL P15a), the
+       filter went with the decision, and what this case is about - the sentence a reader is
+       shown when there is nothing to list - is measured on an answer that really holds
+       nothing. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
       String(input).endsWith('/api/leagues')
-        ? new Response(
-            JSON.stringify([
-              {
-                id: 'league-btl-2027',
-                slug: 'btl-2027',
-                name: 'RunTrace liga 2027',
-                season: 2027,
-                rules: '',
-                prizes: '',
-                eventIds: [],
-              },
-            ]),
-            { status: 200 },
-          )
+        ? new Response(JSON.stringify([]), { status: 200 })
         : real(input))
 
     renderAt('/sr/lige')

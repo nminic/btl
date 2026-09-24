@@ -184,4 +184,48 @@ public final class SeasonClock {
 	public static int seasonBeingRun(ZonedDateTime at) {
 		return transfersTakeEffect(at) - 1;
 	}
+
+	/**
+	 * THE SEASON A LEAGUE MAY BE MADE FOR: THIS ONE OR THE NEXT, AND NOTHING ELSE
+	 * (PDL P15a, owner 22.09.2026).
+	 *
+	 * <p>Owner, carrying out his own sentence of 23.08.2026 to the letter: a league is
+	 * made "za tekucu ili narednu" year. He was shown what that costs and took it: "liga
+	 * za 2029 se ne moze pripremiti unapred, a istorijske lige koje portal pominje
+	 * (Gradska 2017, Brdska 2019) ne mogu da se unesu kroz portal uopste."
+	 *
+	 * <p><b>WHY THE RUNNING YEAR IS CLAMPED AND NOT TAKEN AS IT COMES.</b> PDL P2 and
+	 * the owner's sentence of 31.07.2026, "Nigde na portalu nema sezone pre 2027", mean
+	 * the calendar answer through 2026 is a year that is not a season at all - and
+	 * {@code league_season_not_before_the_league} refuses it outright, so an unclamped
+	 * answer would offer a season the database will not take. {@link #seasonBeingPaidFor}
+	 * clamps the same way and for the same sentence.
+	 *
+	 * <p><b>The clamp is applied to the RUNNING year and the next one is counted off the
+	 * result</b>, so today, in 2026, the pair is 2027 and 2028 rather than 2027 twice.
+	 * That is read off the cost the owner accepted rather than guessed at: the league he
+	 * named as the one that cannot be prepared yet is <b>2029</b>, which is true of this
+	 * shape and not of the other.
+	 *
+	 * <p><b>THIS IS NOT {@link #seasonBeingPaidFor} AND MUST NOT BE WRITTEN AS IT.</b>
+	 * That one answers what is on SALE and steps into next year on 1 October, so from
+	 * October to December it would refuse a league for the year that is still running -
+	 * and PDL P15a's fourth decision says races enter a league "i tokom godine te lige",
+	 * which is that very stretch of it. Two questions about a season are two methods
+	 * here, which is the split {@link #transfersTakeEffect} was already made for.
+	 *
+	 * <p><b>Nothing here asks whether the season is frozen, and it does not have to.</b>
+	 * A season freezes on 1 January at 16:00 of the year AFTER it (see
+	 * {@link #tablesFreeze}), by which time the running year has already moved on, so a
+	 * frozen season is never the current one nor the next. That is a property of the two
+	 * moments rather than a second rule, and {@code SeasonClockTest} measures it.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's,
+	 *           which is ADL A36 O2
+	 */
+	public static boolean aLeagueMayBeMadeFor(int season, ZonedDateTime at) {
+		int running = Math.max(at.withZoneSameInstant(ZONE).getYear(), FIRST_SEASON);
+
+		return season == running || season == running + 1;
+	}
 }

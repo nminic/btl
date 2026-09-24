@@ -55,8 +55,18 @@ import java.util.Optional;
  * rules, including that a copy is never featured (PDL, 11.08.2026), and none of it is
  * written here. {@code copied_from} is therefore only ever null on a row this class
  * writes, which is what an event nobody copied carries.
- * <li><b>Leagues.</b> Which leagues an event counts for is {@code league_event} (V14),
- * which nothing writes today.
+ * <li><b>Leagues.</b> Which races count towards which league is {@code league_race} (V19),
+ * and this class does not write it: {@link LeagueWriteApi} does.
+ * <p><b>BOTH HALVES OF THE SENTENCE THAT STOOD HERE WERE FALSE BY 24.09.2026, and it was
+ * a comment at the exact place the miss happened.</b> It named {@code league_event}, which
+ * V20 dropped, and said nothing writes it, which stopped being true the day
+ * {@link LeagueWriteApi} shipped. A search for the name of the table would have landed
+ * here and found the one home of that fact in the repository saying the opposite - which
+ * is why a sentence asserting an overturned decision is treated here as a fault and not as
+ * untidiness.
+ * <p>What this class DOES owe the table is not a write but a refusal, and it is in
+ * {@link #change}: moving an event moves its races, and a race carried out of its league's
+ * year is a row {@code league_race_race_fk} will not have.
  * <li><b>A state.</b> Owner, 10.08.2026, in as many words: „Status dogadjaja ne treba da
  * postoji, podrazumevam logicki da je potvrdjen ako se unosi na portal. Nemoj to vise
  * nigde pratiti." There is no column for one and this class invents none. The same
@@ -107,6 +117,17 @@ class EventWriteApi {
 	 *  on the race that result was run at. */
 	static final String THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR =
 			"theDateWouldMoveAResultToAnotherYear";
+
+	/**
+	 * A race counted by a league may not be carried out of that league's year (V19).
+	 *
+	 * <p>The same literal {@link RaceWriteApi#THE_RACE_COUNTS_IN_A_LEAGUE_OF_ITS_SEASON}
+	 * holds, declared again rather than referenced - the same choice this pair of classes
+	 * already made for {@link #THE_ADDRESS_IS_TAKEN} and for the P10b reason above. One
+	 * refusal, one word for it, whichever door the move came through.
+	 */
+	static final String THE_RACE_COUNTS_IN_A_LEAGUE_OF_ITS_SEASON =
+			"theRaceCountsInALeagueOfItsSeason";
 
 	private final JdbcClient db;
 
@@ -292,6 +313,17 @@ class EventWriteApi {
 
 			if (wouldStrandAResultInAnotherYear(db, id, deltaDays)) {
 				return no(HttpStatus.CONFLICT, THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+			}
+
+			/* AND THE SAME QUESTION ABOUT A LEAGUE (V19), asked in the same place and for the
+			   same reason: a refusal that had already moved half the calendar would answer
+			   409 and leave it moved. {@link RaceWriteApi} has asked this since B40 about
+			   one race; until 24.09.2026 this route and the schedule queue moved races by
+			   the armful and asked nothing, so the answer was a 500 off
+			   `league_race_race_fk`. Asked AFTER P10b so that an event carrying both a
+			   result and a league place keeps the answer it had before this line existed. */
+			if (wouldTakeARaceOutOfItsLeaguesSeason(db, id, deltaDays)) {
+				return no(HttpStatus.CONFLICT, THE_RACE_COUNTS_IN_A_LEAGUE_OF_ITS_SEASON);
 			}
 
 			Checked checked = checked(typed);
@@ -497,6 +529,50 @@ class EventWriteApi {
 		return Boolean.TRUE.equals(db.sql(
 						"select exists(select 1 from race ra join result re on re.race_id = ra.id"
 								+ " where ra.event_id = ? and extract(year from ra.date)"
+								+ " <> extract(year from (ra.date + cast(? as int))))")
+				.params(eventId, deltaDays).query(Boolean.class).single());
+	}
+
+	/**
+	 * WHETHER SHIFTING EVERY RACE OF THIS EVENT BY THIS MANY DAYS WOULD CARRY ONE OUT OF
+	 * THE YEAR OF A LEAGUE THAT COUNTS IT (V19).
+	 *
+	 * <p><b>This is {@link RaceWriteApi}'s guard, asked of a whole event instead of one
+	 * race</b>, and the pair of shapes is exactly the pair
+	 * {@link #wouldStrandAResultInAnotherYear} already has for the question next door: one
+	 * overload for an event shifted by a uniform delta, one for a single race moved to an
+	 * explicit day. {@code RaceWriteApi} refuses the single race; this refuses the event and
+	 * the schedule queue that approves a proposed day ({@code VerificationWriteApi}), which
+	 * are the other two doors the same {@code update race set date = date + ...} is written
+	 * behind.
+	 *
+	 * <p><b>Until 24.09.2026 only one of those three doors asked, and the other two answered
+	 * 500.</b> {@code league_race_race_fk} is composite over {@code (race_id, season)} and
+	 * carries {@code on delete cascade} but NOT {@code on update cascade} (V19), so a race
+	 * moved into another year leaves a row referencing a key that no longer exists and
+	 * PostgreSQL refuses the update outright - measured on a real database, not read off the
+	 * file: {@code Key (id, season)=(317, 2028) is still referenced}. The route that has
+	 * asked since B40 turned that into a sentence; the two that did not handed an
+	 * administrator a server fault after he had filled in a form.
+	 *
+	 * <p><b>Asked of {@code league_race.season} and never of a year worked out here</b>, so
+	 * the question is the one the constraint itself asks. {@code race.season} is generated
+	 * off {@code race.date} (V19), so it cannot disagree with the day, and the delta below
+	 * is the same expression the write applies.
+	 *
+	 * <p><b>Every race of the event, not the event's own day.</b> An event may run over more
+	 * than one morning (V7), so one race can cross 1 January while another stays on the near
+	 * side of it - the same reason the result question is asked of each race's own day.
+	 *
+	 * @param deltaDays the same {@code race.date + cast(? as int)} the write applies, asked
+	 *                  here first so the two cannot disagree about how far the races move
+	 */
+	static boolean wouldTakeARaceOutOfItsLeaguesSeason(JdbcClient db, long eventId,
+			long deltaDays) {
+		return Boolean.TRUE.equals(db.sql(
+						"select exists(select 1 from race ra"
+								+ " join league_race lr on lr.race_id = ra.id"
+								+ " where ra.event_id = ? and lr.season"
 								+ " <> extract(year from (ra.date + cast(? as int))))")
 				.params(eventId, deltaDays).query(Boolean.class).single());
 	}

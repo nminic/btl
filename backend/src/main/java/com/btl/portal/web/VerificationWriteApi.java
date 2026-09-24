@@ -202,6 +202,13 @@ class VerificationWriteApi {
 	private static final String THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR =
 			"Događaj ima upisane rezultate koje bi ovaj datum prebacio u drugu godinu.";
 
+	/** V19: a race counted by a league of its own year may not be carried out of that year,
+	 *  because {@code league_race_race_fk} is composite over {@code (race_id, season)} and
+	 *  does not cascade an update. The same refusal {@code EventWriteApi.change} and
+	 *  {@code RaceWriteApi.change} make, said in this queue's own voice. */
+	private static final String THE_DATE_WOULD_TAKE_A_RACE_OUT_OF_ITS_LEAGUE =
+			"Događaj ima trku koja se boduje u ligi te sezone, pa ne može u drugu godinu.";
+
 	/** Who the member hears from, which is the league and never the moderator by name. */
 	private static final String THE_PORTAL = "Verifikacija";
 
@@ -535,6 +542,21 @@ class VerificationWriteApi {
 		if (answer.yes() && move != null
 				&& EventWriteApi.wouldStrandAResultInAnotherYear(db, move.eventId(), move.deltaDays())) {
 			return no(HttpStatus.CONFLICT, THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+		}
+
+		/* AND THE SAME FOR A LEAGUE (V19), settled in the same place and asked of the same
+		   shared question rather than of a copy of it.
+
+		   THIS QUEUE IS THE THIRD DOOR ON ONE `update race set date = date + ...`, and until
+		   24.09.2026 it was one of the two that did not ask. `RaceWriteApi` has refused a
+		   single race since B40; this and `EventWriteApi.change` move races by the armful,
+		   and `league_race_race_fk` - composite over `(race_id, season)` and without
+		   `on update cascade` - answered them with a server fault instead. A moderator
+		   pressing „Prihvati" on a perfectly ordinary proposal met a 500. */
+		if (answer.yes() && move != null
+				&& EventWriteApi.wouldTakeARaceOutOfItsLeaguesSeason(db, move.eventId(),
+						move.deltaDays())) {
+			return no(HttpStatus.CONFLICT, THE_DATE_WOULD_TAKE_A_RACE_OUT_OF_ITS_LEAGUE);
 		}
 
 		String state = answer.yes() ? DecidingOnASubmission.APPROVED : DecidingOnASubmission.REJECTED;

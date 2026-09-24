@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
-import { MAIN_LEAGUE_SLUG } from '../../data/pricing'
 import { useLeagues } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
+import { LeagueRaceModeration } from './LeagueRaceModeration'
 import { LEAGUES, recordsOf, type Editing } from './entityForms'
 import { useOverlay } from './overlay'
 import '../member/Member.css'
@@ -28,17 +28,17 @@ export function AdminLeagues() {
 
       <Resource state={state}>
         {(leagues) => {
-          /* Everything but the league the portal itself is (owner,
-             10.08.2026): "Ona se podrazumeva i ne uređuje se." Every event
-             counts towards it, its standings are the BTL tables, and there is
-             nothing on this form anybody would ever change about it. Offered
-             here it was a fourth row with a delete beside it.
-
-             The same league is left off the public list of competitions, by the
-             same name (pages/Leagues.tsx), so both screens mean one thing. */
-          const rows = recordsOf(LEAGUES, leagues, overlay).filter(
-            (one) => one.slug !== MAIN_LEAGUE_SLUG,
-          )
+          /* EVERY LEAGUE SERVED IS OFFERED, AND NOTHING IS FILTERED OFF THIS
+             SCREEN. Until 24.09.2026 a row at `btl-2027` was taken out here and
+             on the public list, on the reading that the portal's own league was
+             a row of this table like any other. The owner settled the shape on
+             22.09.2026 (PDL P15a): „Balkanska trkacka liga je globalno
+             takmicenje ... Ne kreira se i ne moderira", and „BTL ne treba da se
+             cuva na isti nacin kao ostale lige jer je potpuno drugaciji
+             koncept." So this table is the competitions that run ALONGSIDE,
+             there is no such row, and a filter against one was a guard over an
+             assumption that had already been overturned. */
+          const rows = recordsOf(LEAGUES, leagues, overlay)
 
           if (editing !== null) {
             return (
@@ -73,7 +73,7 @@ export function AdminLeagues() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((league) => (
+                    {rows.flatMap((league) => [
                       <tr key={league.id}>
                         {/* Read, not edited in place. Deliberate, and the
                             owner's own record of it (PENDING, 10.08.2026): a
@@ -107,8 +107,32 @@ export function AdminLeagues() {
                             onOpen={() => setEditing({ mode: 'one', record: league })}
                           />
                         </td>
-                      </tr>
-                    ))}
+                      </tr>,
+                      /* WHICH RACES COUNT TOWARDS THIS ONE, AND THE `+` THAT
+                         PUTS ONE THERE (PDL P15a, P28b point 7).
+
+                         In a row of its own under the league rather than in a
+                         cell beside it, because it is a box that opens and what
+                         it opens is a list of days and distances: inside the
+                         five columns it would either squeeze the table or push
+                         the page sideways, and the portal's rule is no sideways
+                         scrolling from 360px up.
+
+                         **It writes to the SERVER and the rest of this screen
+                         does not**, and that is worth saying rather than
+                         leaving to be noticed. Every entity here is entered and
+                         changed through the session overlay, because the
+                         prototype had no database; the races of a competition
+                         are the first thing on this screen with a route behind
+                         them (`LeagueWriteApi`), so they go to it. Bringing the
+                         other six onto the server is one change for all seven
+                         and not this one. */
+                      <tr key={`${league.id}-races`}>
+                        <td colSpan={5}>
+                          <LeagueRaceModeration league={league} />
+                        </td>
+                      </tr>,
+                    ])}
                   </tbody>
                 </table>
               </div>
