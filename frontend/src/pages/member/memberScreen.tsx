@@ -67,10 +67,40 @@ import { SignedOut } from './SignedOut'
  * {@code MeApi.MyOwnRecord}, and the only `active` in that query counts who he brought in.
  *
  * <p>So this hook opens all eleven screens to a lapsed member and to a standing one alike,
- * and <b>it cannot tell them apart</b>. What that changed for him on 24.09.2026 is that he
- * can reach „Moja clanarina" at all, which is the page he renews on and the one place P8
- * means him to be; until that day it answered him „Ovaj deo je za takmicare" along with
- * the other ten.
+ * and <b>it cannot tell them apart</b>.
+ *
+ * <p><b>THIS SAID HE „CAN NOW REACH Moja clanarina, WHICH IS THE PAGE HE RENEWS ON", AND
+ * THAT WAS FALSE.</b> It was written from reasoning rather than from a measurement - the
+ * hook lets him through, so I wrote that he arrives - and a review caught it. Measured
+ * 25.09.2026 with the answer the real server gives him, on all eleven: five work (his
+ * results, the form that sends one, his messages, one message, his settings); two refuse
+ * him with a reason of their own; and „Moja clanarina" drew a heading with <b>no link and
+ * no button anywhere on it</b>.
+ *
+ * <p><b>And the count of what is WRONG for him is one, not three, which took a second
+ * measurement to say honestly.</b> Three addresses answered him with the front page, and
+ * the first draft of this paragraph called all three damage. Walking the same three as an
+ * ACTIVE member showed otherwise: „novi-tim" answers HIM with the front page too, so that
+ * is the portal's ordinary answer to somebody who may not do the thing rather than
+ * anything about a lapsed fee. What is really his alone is <b>his own profile</b>, which
+ * an active member opens and he is redirected away from - and the redirect cannot be
+ * anything else there, because the profile is his by definition.
+ *
+ * <p><b>Why that page in particular, and it is not a typo anywhere.</b> It looks the
+ * caller up in `/api/competitors`, which ends `where c.active` and therefore does not
+ * carry him - while `/api/me` answers him deliberately, because {@code MeApi} exists for
+ * exactly this person. The dead end is gone as of 25.09.2026 (`Membership.tsx` now draws
+ * the way home), <b>but he still cannot renew</b>, and that is the boundary rather than a
+ * thing this hook can fix: renewal needs his record, and this portal reads records for
+ * that screen off the public list he is not on.
+ *
+ * <p><b>What he had before 24.09.2026 and what he has now, counted rather than
+ * summarised.</b> Before: the same sentence on all eleven, with a way home. Now: five
+ * screens that really work, one that still cannot serve him but no longer strands him,
+ * <b>one that turns him away in silence</b> (his own profile), and four that answer him
+ * the way they answer anybody not entitled to them. This paragraph has been tightened
+ * three times, and each time by a measurement rather than by rereading it - which is the
+ * whole reason the sentence at the top of it was wrong in the first place.
  *
  * <p><b>What it must NOT say is that nobody is signed in</b>, which is what those eleven
  * screens said. Somebody is: the cookie is in the browser, the header knows their number

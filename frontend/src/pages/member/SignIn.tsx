@@ -105,9 +105,19 @@ export function SignIn() {
        of his own answered „Ovaj deo je za takmicare", the line below sent him to the
        first of them, and that is what the owner ran into on 24.09.2026.
 
-       Handed over whole rather than picked apart, which is what stops a third: the
-       answer is one object and `theServerSignedMeIn` takes one, so a field that arrives
-       on `/api/me` tomorrow is a field this call already carries. */
+       Handed over whole rather than picked apart, and <b>that is worth exactly one thing
+       rather than the two this comment used to claim</b>. It said „a field that arrives
+       on `/api/me` tomorrow is a field this call already carries", and a review called
+       that false; measured here 25.09.2026 rather than argued: a fourth REQUIRED field on
+       `WhoTheServerSaysIAm`, filled in by the reader, gives `tsc -b --force` exit code 0
+       and not one complaint. `theServerSignedMeIn` names three fields, so anything else
+       on the object is dropped in silence - which is this very fault's shape, and the
+       reason this comment must not promise the next reader that it is handled.
+
+       What passing the whole object DOES buy is that the three cannot be put in each
+       other's places by counting wrong. It does not make them safe: measured the same
+       day, writing `memberNumber: who.membershipBasis` compiles clean, because
+       `MembershipBasis | null` goes into `string | null` without a word. */
     theServerSignedMeIn(who)
     navigate(`/${locale}/moj-profil`)
   }

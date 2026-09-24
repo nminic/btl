@@ -810,6 +810,19 @@ describe('membership', () => {
     renderAt('/sr/moja-clanarina', 'competitor', 'M9999')
 
     expect(await screen.findByRole('heading', { name: 'Ovog profila nema.' })).toBeVisible()
+
+    /* **AND A WAY OUT, which this screen did not have until 25.09.2026.** Measured that
+       day with the answer the real server gives a member whose fee has lapsed - named by
+       `/api/me`, absent from `/api/competitors` - this page carried the heading above and
+       ZERO links and ZERO buttons. He is the person PDL P8 sends here to renew, and the
+       portal had just stopped drawing him the other ten screens' way home as well.
+
+       Read inside `main` rather than on the page, because the sign of the league in the
+       header is a way to the front page too and would answer this without the screen
+       having changed at all. */
+    const mine = within(screen.getByRole('main'))
+
+    expect(mine.getByRole('link', { name: 'Naslovna strana' })).toHaveAttribute('href', '/sr')
   })
 })
 

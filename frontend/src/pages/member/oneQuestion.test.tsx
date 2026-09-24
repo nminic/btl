@@ -173,8 +173,15 @@ let server: { asked: Asked[]; stop: () => void } | null = null
 /**
  * A server holding a session for somebody with no competitor record of their own.
  *
- * Which is what every real session is today, and what a moderator's and a superadmin's
- * always will be: one account is exactly one member (owner, 14.09.2026, PDL P21) and
+ * **This said „which is what every real session is today", and the function twenty lines
+ * below refuted it in the same commit**: `aSignedInMember` is a real session with a
+ * record, and the portal has read one since 24.09.2026. It was the eighth home of that
+ * sentence and the only one left standing after the sweep that closed the other seven,
+ * which is the whole argument for sweeping a class with more than one tool - the seven
+ * were found by the field name and by the decision's words, and this one by reading.
+ *
+ * What is true of it, and always will be: a moderator's session and a superadmin's are
+ * this, because one account is exactly one member (owner, 14.09.2026, PDL P21) and
  * administration has no member to be.
  */
 function aSignedInAccount(role = 'competitor', account = 107): void {

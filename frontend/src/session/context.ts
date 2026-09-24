@@ -522,9 +522,21 @@ export type SessionValue = {
    * structural instead of written down.** It took two positionally until 24.09.2026, and
    * the member number arriving beside them is what made that shape unsafe rather than
    * merely wordy: `MembershipBasis | null` goes into a `string | null` without a
-   * complaint, so a call that swapped the basis and the number compiled, and a member
-   * would have been signed in under the number „payment". Named fields cannot be
-   * swapped, and a field left out is a call that does not build.
+   * complaint, so a call that got the ORDER wrong compiled, and a member would have been
+   * signed in under the number „payment".
+   *
+   * **This then said „named fields cannot be swapped", and that is half true, which is
+   * the worse half.** Measured 25.09.2026 rather than reasoned: a fully swapped PAIR does
+   * not compile, but `theServerSignedMeIn({ ...who, memberNumber: who.membershipBasis,
+   * membershipBasis: null })` gives `tsc -b --force` exit code 0, because the assignment
+   * is still a widening. So what this shape removed is the POSITIONAL oversight - putting
+   * the right value in the wrong place by counting - and not the hole in the type. A
+   * value written under the wrong NAME is still a value the compiler takes.
+   *
+   * **And it buys nothing at all about a field that is added later**, measured the same
+   * day: a fourth required field on `WhoTheServerSaysIAm` is dropped here in silence,
+   * because this signature names three. A field left out of a CALL does not build; a
+   * field left out of this LIST is never missed.
    */
   theServerSignedMeIn: (who: {
     account: number
