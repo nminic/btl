@@ -107,8 +107,19 @@ import java.util.Optional;
  *
  * <ul>
  * <li><b>The file cannot be written</b> - no room, no permission, no folder - and the
- * exception rolls the row and the queue item back. Nothing is left claiming a picture that
- * is not there.
+ * exception rolls the row and the queue item back, <b>because both mappings say
+ * {@code rollbackFor = IOException.class} and would not otherwise</b>. Spring rolls back on
+ * a {@link RuntimeException} and an {@link Error} and COMMITS on a checked one, and
+ * {@link IOException} is checked: this paragraph claimed the rollback for a round without it
+ * being true, and a security review measured what that cost. With the row committed, a
+ * passing fault of the disk left a queue card pointing at a picture with no file, the member
+ * was answered 500 and then <b>refused for ever</b> by the 409 below, and he could not take it
+ * back himself - {@link #remove} deliberately does not withdraw what a moderator is holding.
+ * The only way out was a moderator approving a picture {@link PhotoApi} could never serve.
+ * <b>The case that holds it cannot live in {@code MePhotoApiTest}</b>, because that class is
+ * {@code @Transactional} and the route then joins the test's transaction, which is exactly why
+ * the fault survived a green file; it is in
+ * {@code ThePictureAndItsFileAreOneThingTest}, which is not.
  * <li><b>The commit itself fails after the file was written</b> and a file is left on the
  * disk that no row points at. That is the one leak, it is bounded by
  * {@link WhatAPictureIs#AT_MOST_BYTES} apiece, and {@link PhotoApi} serves nothing for it -
@@ -251,7 +262,7 @@ class MePhotoApi {
 	 *                could not bind would be a 400 nobody wrote
 	 */
 	@PostMapping(path = "/api/me/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	@Transactional
+	@Transactional(rollbackFor = IOException.class)
 	ResponseEntity<?> send(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@RequestPart(name = "picture", required = false) MultipartFile picture,
 			@RequestParam(name = "cropX", required = false) String cropX,
@@ -338,10 +349,19 @@ class MePhotoApi {
 		   of why climbing out of the folder is not refused here but unsayable: a `long`
 		   carries no separator, no dot and no encoding.
 
-		   CREATE_NEW and not CREATE: a key `bigserial` just handed out cannot name a file
-		   that is already there, so a file that IS there is a fault worth failing on rather
-		   than one worth overwriting - and overwriting would be this route destroying
-		   somebody else's picture on the strength of a number it did not check. */
+		   CREATE_NEW AND NOT CREATE, AND IT IS A BOUNDARY RATHER THAN A GUARD. The reasoning
+		   is that a `bigserial` just handed out cannot name a file that is already there, so a
+		   file that IS there means something is wrong and overwriting it would destroy a
+		   picture this route never looked at.
+
+		   WHAT IT IS NOT IS MEASURED, and a review on 25.09.2026 said so: swapping it for
+		   CREATE leaves the whole of `MePhotoApiTest` green, 34 of 34. No case can reach it,
+		   because reaching it means predicting the key the sequence is about to hand out and
+		   putting a file there first - and a sequence is not transactional, so that number is
+		   not knowable from a test without writing the very race this line is about.
+		   `CLAUDE.md` asks that such a thing be written down as a decision instead of claimed
+		   as a protection, so it is: this is a belt beside the braces, the braces being that
+		   the name comes from the database and from nothing a member sent. */
 		Files.createDirectories(folder);
 		Files.write(folder.resolve(String.valueOf(photo)), bytes, StandardOpenOption.CREATE_NEW,
 				StandardOpenOption.WRITE);
@@ -382,7 +402,7 @@ class MePhotoApi {
 	 * gone, which is the one state {@link PhotoApi} has to log a fault for.
 	 */
 	@DeleteMapping("/api/me/photo")
-	@Transactional
+	@Transactional(rollbackFor = IOException.class)
 	ResponseEntity<?> remove(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 

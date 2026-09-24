@@ -19,9 +19,15 @@ import java.util.List;
  * <p><b>THE THREE TYPES ARE THE SCHEMA'S AND ARE NOT DECIDED HERE.</b> V8:
  * {@code photo_media_type_known check (media_type in ('image/jpeg', 'image/png',
  * 'image/webp'))}. A fourth recognised here could not be written, and one of the three
- * missing here would be a type the column allows and no route could ever produce. The floor
- * that keeps the two lists equal is {@code WhatAPictureIsTest}, which reads the constraint
- * out of {@code information_schema} rather than out of a comment.
+ * missing here would be a type the column allows and no route could ever produce.
+ *
+ * <p><b>TWO FLOORS KEEP THE LISTS EQUAL, AND THEY ARE IN TWO PLACES FOR A MEASURED
+ * REASON.</b> {@code WhatAPictureIsTest} reads the MIGRATION FILE, which costs no container
+ * and fails on the day somebody edits V8 - and a review on 25.09.2026 named what it cannot
+ * see: a LATER migration that alters the constraint, which V8's text would go on describing
+ * as though nothing had happened. So {@code MePhotoApiTest.theTypesTheSchemaReallyHolds}
+ * asks the running database through {@code pg_constraint} instead. The file catches the
+ * cheap mistake early and the catalogue catches the one that matters.
  *
  * <p><b>AND A TYPE IS RECOGNISED BY THE BYTES AT THE FRONT OF THE FILE.</b> Each of the
  * three formats begins with a fixed sequence that is part of the format itself rather than

@@ -124,6 +124,16 @@ class WhatAPictureIsTest {
 	 * is a route that accepts a file and then fails on a constraint; a type the column holds
 	 * that nothing recognises is a value no route could ever write. Either way the build
 	 * stops here and somebody decides, instead of a member finding out.
+	 *
+	 * <p><b>WHAT THIS HALF CANNOT SEE, named rather than left to be found.</b> It reads the
+	 * TEXT of V8, so it is blind in one direction: a LATER migration altering that constraint
+	 * would leave V8 saying three types while the column held two or four. A review on
+	 * 25.09.2026 named it, and the answer is not to widen this into reading every migration's
+	 * text - that is the bottomless question this codebase has refused before - but to ask the
+	 * thing that really knows. {@code MePhotoApiTest.theTypesTheSchemaReallyHolds} puts the
+	 * same question to the running catalogue through {@code pg_constraint}. This half is kept
+	 * because it costs no container and fails on the very commit that edits V8, which is the
+	 * earliest anybody could be told.
 	 */
 	@Test
 	void theTypesItRecognisesAreExactlyTheOnesTheColumnHolds() throws Exception {

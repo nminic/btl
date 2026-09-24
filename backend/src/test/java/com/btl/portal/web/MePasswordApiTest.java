@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.account.SignIn;
 import com.btl.portal.domain.account.StoredPassword;
 import com.btl.portal.domain.token.SecretToken;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
@@ -102,6 +103,18 @@ class MePasswordApiTest {
 	/** An account that holds a session and no password at all, which V18 makes a real state. */
 	private static final String NEVER_SET_A_PASSWORD = "pocasni@primer.rs";
 
+	/**
+	 * An account holding a session whose address nobody has confirmed.
+	 *
+	 * <p><b>The same shape as {@link #NEVER_SET_A_PASSWORD} and for the same reason.</b> The
+	 * portal as it runs cannot make one - {@code SignIn} refuses an unconfirmed address before
+	 * anything else, and signing in is the only thing that mints a session - so what holds one
+	 * is a row written by hand, by a migration or by an import. That is exactly the case
+	 * {@code SignIn.decide} keeps a branch for, and this route inherits it by asking that
+	 * class rather than judging the password itself.
+	 */
+	private static final String ADDRESS_NEVER_CONFIRMED = "nepotvrdjen@primer.rs";
+
 	private static final String MY_OLD_PASSWORD = "moja.stara.lozinka.2026";
 
 	private static final String MY_NEW_PASSWORD = "moja.nova.lozinka.2027";
@@ -140,12 +153,38 @@ class MePasswordApiTest {
 		account(ME, MY_OLD_PASSWORD, 3);
 		account(SOMEBODY_ELSE, SOMEBODY_ELSES_PASSWORD, 2);
 		account(NEVER_SET_A_PASSWORD, null, 1);
+		accountWithNoConfirmedAddress(ADDRESS_NEVER_CONFIRMED);
 	}
 
-	private void account(String email, String password, int howManySessions) {
+	/** The same as {@link #account}, with the one column left empty that the portal fills. */
+	private void accountWithNoConfirmedAddress(String email) {
 		db.sql("insert into account (first_name, last_name, email, role_id, password_hash)"
 						+ " values ('Probni', 'Probic', ?,"
 						+ " (select id from role where code = 'competitor'), ?)")
+				.params(email, new StoredPassword().of(MY_OLD_PASSWORD))
+				.update();
+
+		sessions.put(email, new ArrayList<>());
+		openSession(email);
+	}
+
+	/**
+	 * An account with a confirmed address, and the confirmation is not decoration.
+	 *
+	 * <p><b>It is what a session MEANS.</b> {@code SignIn} refuses an unconfirmed address
+	 * before it asks anything else - „Potvrda mejla je obavezan uslov za aktivaciju naloga"
+	 * (PDL P22) - and {@code SignInApi} is the only thing in this portal that mints a session
+	 * row. So an account holding one has a confirmed address by construction, and a fixture
+	 * that left the column empty was describing a state the portal cannot be in.
+	 *
+	 * <p>It began to matter on 25.09.2026, when this route stopped judging the old password
+	 * itself and started asking {@link SignIn#decide} - which reads that column, as it must.
+	 * Nine cases went red at once and every one of them was the fixture rather than the route.
+	 */
+	private void account(String email, String password, int howManySessions) {
+		db.sql("insert into account (first_name, last_name, email, role_id, password_hash,"
+						+ " email_confirmed_at) values ('Probni', 'Probic', ?,"
+						+ " (select id from role where code = 'competitor'), ?, now())")
 				.params(email, password == null ? null : new StoredPassword().of(password))
 				.update();
 
@@ -370,6 +409,47 @@ class MePasswordApiTest {
 	}
 
 	/**
+	 * AN ADDRESS NOBODY HAS CONFIRMED IS NOT A WAY IN HERE EITHER, AND NO MISS IS COUNTED.
+	 *
+	 * <p>{@code SignIn} refuses it before it asks anything else, quoting PDL: „Potvrda adrese
+	 * elektronske poste je prva, i uslov za sve ostalo." This route inherits that by asking
+	 * that class instead of comparing the password itself, and the case is here because the
+	 * inheritance is the whole point: a second copy of the rule would have had five branches
+	 * to get right and this is one of them.
+	 *
+	 * <p><b>The password used is the RIGHT one</b>, so what is measured is the address and not
+	 * the password - handed a wrong one, „refused because unconfirmed" and „refused because
+	 * wrong" would be one answer and this case would say nothing.
+	 *
+	 * <p><b>AND NOTHING IS COUNTED AGAINST IT</b>, which is {@code SignIn}'s own reason: a
+	 * miss counted at an account nobody can yet sign in to would let a stranger shut it for
+	 * ever, before its owner had once used it.
+	 */
+	@Test
+	void anAddressNobodyHasConfirmedIsNotAWayIn() throws Exception {
+		MockHttpServletResponse answer = asking(
+				sessions.get(ADDRESS_NEVER_CONFIRMED).get(0).secret(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD));
+
+		assertThat(answer.getStatus())
+				.as("an account whose address nobody has confirmed changed its password, so the"
+						+ " first condition of all is not being asked on this door")
+				.isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MePasswordApi.THE_OLD_PASSWORD_IS_WRONG);
+
+		assertThat(new StoredPassword().matches(MY_OLD_PASSWORD,
+				passwordHashOf(ADDRESS_NEVER_CONFIRMED)))
+				.as("the password moved although the request was refused")
+				.isTrue();
+
+		assertThat(((Number) db.sql("select failed_sign_ins from account where email = ?")
+				.param(ADDRESS_NEVER_CONFIRMED).query(Integer.class).single()).intValue())
+				.as("a miss was counted against an account nobody can sign in to, so a stranger"
+						+ " could shut it for ever before its owner ever used it")
+				.isZero();
+	}
+
+	/**
 	 * A FORM THAT IS NOT COMPLETE, in every way it can fail to be.
 	 *
 	 * <p>One answer for all of them, which is {@link PasswordResetApi}'s own arrangement and
@@ -440,18 +520,158 @@ class MePasswordApiTest {
 	}
 
 	/**
-	 * THE LOCK IS LIFTED, and it is reachable rather than tidy.
+	 * GUESSING AT THE OLD PASSWORD IS COUNTED, AND THE TENTH MISS SHUTS THE ACCOUNT.
 	 *
-	 * <p>An account is locked by somebody ELSE guessing at it (V18,
-	 * {@code account_locked_only_after_enough_failures} requires ten failures behind any
-	 * lock), and the member whose laptop is still signed in is the one person who can end
-	 * that by moving the password. Left standing, the portal would tell a member who just
-	 * proved he knows his own password to come back in fifteen minutes.
+	 * <p><b>Owner, ADL A43.1, 11.09.2026: „zakljucavanje | posle 10 neuspelih pokusaja, 15
+	 * minuta".</b> Until a security review on 25.09.2026 this route enforced none of it:
+	 * twenty-five wrong old passwords in a row were twenty-five plain refusals,
+	 * {@code failed_sign_ins} stayed at nought and {@code locked_until} stayed null. That is
+	 * an unlimited oracle behind the very door this route asks for the old password to
+	 * protect - somebody holding a stolen cookie could guess without limit and without a
+	 * trace.
+	 *
+	 * <p><b>Both sides of the boundary, because one side is not a boundary.</b> At nine
+	 * misses the account is counted and still open; the tenth shuts it. The numbers come off
+	 * {@link SignIn#ENOUGH_MISSES_TO_LOCK} rather than being typed here, so the day the owner
+	 * moves his number this case moves with it instead of quietly measuring the old one.
+	 */
+	@Test
+	void guessingAtTheOldPasswordIsCountedAndTheTenthMissShutsTheAccount() throws Exception {
+		for (int miss = 1; miss < SignIn.ENOUGH_MISSES_TO_LOCK; miss++) {
+			assertThat(reasonIn(asking(theSessionIAskFrom(),
+					body("pogresna.lozinka.broj." + miss, MY_NEW_PASSWORD, MY_NEW_PASSWORD))))
+					.isEqualTo(MePasswordApi.THE_OLD_PASSWORD_IS_WRONG);
+		}
+
+		Map<String, Object> afterNine = db.sql("select failed_sign_ins, locked_until from account"
+				+ " where id = ?").param(accountOf(ME)).query().singleRow();
+
+		assertThat(((Number) afterNine.get("failed_sign_ins")).intValue())
+				.as("guesses at the old password are not counted at all, so this address is an"
+						+ " unlimited oracle and ADL A43.1 is enforced on one door only")
+				.isEqualTo(SignIn.ENOUGH_MISSES_TO_LOCK - 1);
+		assertThat(afterNine.get("locked_until"))
+				.as("the account was shut before the owner's tenth miss")
+				.isNull();
+
+		assertThat(reasonIn(asking(theSessionIAskFrom(),
+				body("pogresna.lozinka.deseta", MY_NEW_PASSWORD, MY_NEW_PASSWORD))))
+				.isEqualTo(MePasswordApi.THE_OLD_PASSWORD_IS_WRONG);
+
+		assertThat(db.sql("select locked_until from account where id = ?")
+				.param(accountOf(ME)).query(java.sql.Timestamp.class).optional())
+				.as("the tenth miss did not shut the account, so the lock the owner decided on"
+						+ " never arrives through this door")
+				.isPresent();
+	}
+
+	/**
+	 * AND A LOCKED ACCOUNT IS NOT OPENED BY THE RIGHT PASSWORD EITHER, OR THE LOCK IS A
+	 * SUGGESTION.
+	 *
+	 * <p>{@code SignIn} says it in those words about its own door, and it is the same rule
+	 * here because it is the same rule: the decision names ten attempts and does not name a
+	 * door. Measured before the fix, an account locked BY HAND went on answering as though it
+	 * were open.
+	 *
+	 * <p><b>The answer is the one a wrong password gets</b>, deliberately: told apart, the
+	 * refusal becomes a way of asking what state an account is in.
+	 */
+	@Test
+	void anAccountThatIsShutStaysShutEvenForTheRightOldPassword() throws Exception {
+		db.sql("update account set failed_sign_ins = ?, locked_until = ? where id = ?")
+				.params(SignIn.ENOUGH_MISSES_TO_LOCK,
+						Timestamp.from(Instant.now().plus(SignIn.LOCKED_FOR)), accountOf(ME))
+				.update();
+
+		MockHttpServletResponse answer = asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer))
+				.as("a locked account is told something different from a wrong password, which"
+						+ " turns the refusal into a way of asking what state it is in")
+				.isEqualTo(MePasswordApi.THE_OLD_PASSWORD_IS_WRONG);
+
+		assertThat(new StoredPassword().matches(MY_OLD_PASSWORD, passwordHashOf(ME)))
+				.as("A SHUT ACCOUNT LET ITS PASSWORD BE CHANGED, so the lock is a suggestion")
+				.isTrue();
+		assertThat(howManySessionsOf(ME))
+				.as("a refused request still signed the member out of his other devices")
+				.isEqualTo(3);
+	}
+
+	/**
+	 * A LOCK THAT HAS RUN OUT IS OVER, which is the other side of the same boundary.
+	 *
+	 * <p>Without this, „the lock is respected" and „a locked account is shut for ever" are one
+	 * answer, and the fifteen minutes the owner chose would be a number nothing reads.
+	 */
+	@Test
+	void aLockThatHasRunOutDoesNotStandInTheWay() throws Exception {
+		db.sql("update account set failed_sign_ins = ?, locked_until = ? where id = ?")
+				.params(SignIn.ENOUGH_MISSES_TO_LOCK,
+						Timestamp.from(Instant.now().minus(Duration.ofMinutes(1))), accountOf(ME))
+				.update();
+
+		assertThat(asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus())
+				.as("a lock that ran out a minute ago is still shutting the door, so the fifteen"
+						+ " minutes the owner chose mean nothing")
+				.isEqualTo(204);
+
+		assertThat(new StoredPassword().matches(MY_NEW_PASSWORD, passwordHashOf(ME))).isTrue();
+	}
+
+	/**
+	 * AND A FORM THAT IS NOT COMPLETE IS NOT A GUESS.
+	 *
+	 * <p><b>The mutation this is written against:</b> counting the miss before the form is
+	 * judged. A member who left a box empty has guessed at nothing, and counting it would let
+	 * anybody shut an account by sending ten empty forms - which is exactly the harm
+	 * {@code SignIn} refuses to allow for an address nobody holds.
+	 */
+	@Test
+	void aFormThatIsNotCompleteIsNotCountedAsAGuess() throws Exception {
+		for (int empty = 0; empty < SignIn.ENOUGH_MISSES_TO_LOCK + 2; empty++) {
+			assertThat(asking(theSessionIAskFrom(), body(null, null, null)).getStatus())
+					.isEqualTo(400);
+		}
+
+		Map<String, Object> after = db.sql("select failed_sign_ins, locked_until from account"
+				+ " where id = ?").param(accountOf(ME)).query().singleRow();
+
+		assertThat(((Number) after.get("failed_sign_ins")).intValue())
+				.as("an empty form was counted as a guess, so anybody can shut an account by"
+						+ " sending ten of them")
+				.isZero();
+		assertThat(after.get("locked_until")).isNull();
+	}
+
+	/**
+	 * A SUCCESSFUL CHANGE FORGETS THE MISSES AND THE LOCK THEY LEFT BEHIND.
+	 *
+	 * <p><b>THIS CASE USED TO SAY SOMETHING ELSE, AND WHAT IT SAID WAS WRONG.</b> It set a
+	 * lock fifteen minutes into the future and required the right old password to go through
+	 * anyway, on the reasoning that „the member whose laptop is still signed in is the one
+	 * person who can end that by moving the password". That was written while the route
+	 * ignored the lock entirely, and a security review on 25.09.2026 named it: a lock that the
+	 * right password opens is a suggestion, which is {@code SignIn}'s own sentence about its
+	 * own door. {@code anAccountThatIsShutStaysShutEvenForTheRightOldPassword} now holds the
+	 * opposite, and it is the correct one.
+	 *
+	 * <p><b>What survives from it is the half that was always true:</b> misses count guesses
+	 * at an account, and somebody who has just proved he knows his own password was not
+	 * guessing. So the lock here is one that has already RUN OUT - V18's
+	 * {@code account_locked_only_after_enough_failures} means a lock cannot exist without ten
+	 * misses behind it, so the pair is what a real account looks like a quarter of an hour
+	 * after somebody gave up guessing at it - and after a successful change both are gone.
 	 */
 	@Test
 	void changingThePasswordEndsALockSomebodyElseCaused() throws Exception {
-		db.sql("update account set failed_sign_ins = 10, locked_until = ? where id = ?")
-				.params(Timestamp.from(Instant.now().plus(Duration.ofMinutes(15))), accountOf(ME))
+		db.sql("update account set failed_sign_ins = ?, locked_until = ? where id = ?")
+				.params(SignIn.ENOUGH_MISSES_TO_LOCK,
+						Timestamp.from(Instant.now().minus(Duration.ofMinutes(1))), accountOf(ME))
 				.update();
 
 		assertThat(asking(theSessionIAskFrom(),
@@ -465,7 +685,8 @@ class MePasswordApiTest {
 				.as("the count of failed attempts survived a password the member proved he owns")
 				.isZero();
 		assertThat(after.get("locked_until"))
-				.as("the account is still locked after its owner changed its password")
+				.as("the spent lock was left on the row, so the next miss would start from a"
+						+ " count and a moment that belong to somebody else's guessing")
 				.isNull();
 	}
 

@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.account.BreachedPasswords;
 import com.btl.portal.domain.account.PasswordPolicy;
+import com.btl.portal.domain.account.SignIn;
 import com.btl.portal.domain.account.StoredPassword;
 import com.btl.portal.domain.mail.WhatANoticeSays;
 import com.btl.portal.domain.mail.WhatANoticeSays.Notice;
@@ -20,7 +21,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Optional;
 
 /**
  * A MEMBER CHANGING HIS PASSWORD WHILE HE IS SIGNED IN, WHICH IS TWO THINGS AND NOT ONE.
@@ -250,7 +253,8 @@ class MePasswordApi {
 	 *               returned rather than one counted again afterwards - counted again it would
 	 *               be a second question about a table that has changed in between
 	 */
-	private record Done(ResponseEntity<Refused> refusal, String address, Instant at, int others) {
+	private record Done(ResponseEntity<Refused> refusal, long account, String address, Instant at,
+			int others) {
 	}
 
 	private Done write(long account, String carried, Change typed) {
@@ -278,16 +282,63 @@ class MePasswordApi {
 		   null but no null value expected", and the column it reads is nullable. Here the
 		   result is a `Held`, which the mapper always builds; the nullable thing is a FIELD on
 		   it, and that is what the line below asks about. */
-		Held stored = db.sql("select password_hash, email from account where id = ? for update")
+		Held stored = db.sql("select password_hash, email, failed_sign_ins, locked_until,"
+						+ " email_confirmed_at from account where id = ? for update")
 				.param(account)
-				.query((row, one) -> new Held(row.getString(1), row.getString(2)))
+				.query((row, one) -> new Held(row.getString(1), row.getString(2), row.getInt(3),
+						row.getTimestamp(4) == null ? null : row.getTimestamp(4).toInstant(),
+						row.getTimestamp(5) == null ? null : row.getTimestamp(5).toInstant()))
 				.single();
 
 		/* AN ACCOUNT WITH NO PASSWORD AT ALL, which V18 makes a real state and the head of
 		   this class says how one could be holding a session. `.optional()` answers empty
 		   for a null column as well as for no row, and both are the same sentence here:
 		   there is nothing stored for the old password to be. */
-		if (stored.hash() == null || !keeping.matches(typed.oldPassword(), stored.hash())) {
+		/* THE OLD PASSWORD IS JUDGED BY `SignIn` AND NOT BY A SECOND COPY OF ITS RULE, and
+		   that is the whole of what a security round on 25.09.2026 found missing here.
+
+		   ADL A43.1, owner, 11.09.2026: „zakljucavanje | posle 10 neuspelih pokusaja, 15
+		   minuta". THAT DECISION IS NOT A PROPERTY OF ONE ROUTE. Until this round only
+		   `SignInApi` carried it out, so this address was an unlimited oracle: measured, 25
+		   wrong old passwords in a row were 25 plain refusals, `failed_sign_ins` stayed at
+		   nought, `locked_until` stayed null, and an account locked BY HAND went on answering
+		   as though it were open. It also FORGOT misses on success, so a run of guesses here
+		   wiped the count `SignInApi` was keeping.
+
+		   That is a hole in the very thing this route asks for the old password FOR: „a cookie
+		   somebody else is holding is not by itself enough to take the account away from its
+		   owner" is only true while guessing costs something. Somebody with a stolen cookie
+		   could guess without limit, without a trace and without ever meeting the lock.
+
+		   WHY `SignIn.decide` AND NOT A CONDITION WRITTEN HERE. The rule has five branches -
+		   no account, an unconfirmed address, a lock that has not run out, no password at all,
+		   and a comparison - and every one of them decides whether a MISS IS COUNTED, which is
+		   what keeps a stranger from shutting an account he does not own. A second copy would
+		   be a second home for all five, free to disagree the day one is edited. Reusing it
+		   costs one thing and it is written down: the counter is shared with signing in, so
+		   ten misses HERE shut the front door too. That is the owner's own reading - the
+		   decision names ten attempts and does not name a door.
+
+		   THE THREE ANSWERS ARE ONE ANSWER, deliberately, and it is `SignIn`'s own reason: a
+		   locked account, an account with no password and a wrong password are told apart by
+		   nothing, or the refusal becomes a way of asking what state the account is in. */
+		Instant now = Instant.now();
+		SignIn.Outcome outcome = SignIn.decide(new SignIn.Account(stored.hash(), stored.misses(),
+				stored.lockedUntil(), stored.addressConfirmedAt()), typed.oldPassword(), now);
+
+		if (outcome == SignIn.Outcome.COUNT_THE_MISS) {
+			int misses = SignIn.missesAfter(stored.misses());
+
+			/* WRITTEN FROM INSIDE THE TRANSACTION AND STILL KEPT. `TransactionTemplate`
+			   rolls back on an exception and not on a returned value, so a refusal returned
+			   after this line commits it - which is what a counter is for. */
+			db.sql("update account set failed_sign_ins = ?, locked_until = ? where id = ?")
+					.params(misses, Optional.ofNullable(SignIn.lockedUntilAfter(misses, now))
+							.map(Timestamp::from).orElse(null), account)
+					.update();
+		}
+
+		if (outcome != SignIn.Outcome.WELCOME) {
 			return no(THE_OLD_PASSWORD_IS_WRONG);
 		}
 
@@ -329,11 +380,18 @@ class MePasswordApi {
 				.params(account, SecretToken.hashOf(carried))
 				.update();
 
-		return new Done(null, stored.address(), Instant.now(), others);
+		return new Done(null, account, stored.address(), now, others);
 	}
 
-	/** The two columns the decision needs off the account, read in one statement. */
-	private record Held(String hash, String address) {
+	/**
+	 * What the decision needs off the account, read in one statement.
+	 *
+	 * <p>Three of the five are there for {@link SignIn} rather than for this route: the
+	 * misses, the lock and the moment the address was confirmed are what its rule asks about,
+	 * and reading them here is what lets that rule be called instead of rewritten.
+	 */
+	private record Held(String hash, String address, int misses, Instant lockedUntil,
+			Instant addressConfirmedAt) {
 	}
 
 	/**
@@ -355,8 +413,13 @@ class MePasswordApi {
 					done.address());
 		}
 		catch (MailException theRelayDidNotTakeIt) {
+			/* THE ACCOUNT'S NUMBER AND NEVER ITS ADDRESS, which is what `RegistrationApi`,
+			   `EmailConfirmationApi` and `PasswordResetApi` all put in the same sentence. An
+			   address in a log is a member's own datum written somewhere the privacy policy
+			   does not promise to keep it, and it buys nothing: whoever reads this line has
+			   the database. */
 			LOG.warn("the notice that account {} changed its password did not go out; the"
-					+ " password IS changed and every other session IS ended", done.address(),
+					+ " password IS changed and every other session IS ended", done.account(),
 					theRelayDidNotTakeIt);
 		}
 	}
@@ -378,6 +441,6 @@ class MePasswordApi {
 	}
 
 	private static Done no(String reason) {
-		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), null, null, 0);
+		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, 0);
 	}
 }

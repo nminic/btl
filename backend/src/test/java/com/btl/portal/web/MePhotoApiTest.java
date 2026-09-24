@@ -954,6 +954,53 @@ class MePhotoApiTest {
 				.hasMessageContaining("verification_decided_keeps_no_photo");
 	}
 
+	/**
+	 * THE TYPES THE RUNNING SCHEMA REALLY HOLDS, ASKED OF THE CATALOGUE AND NOT OF A FILE.
+	 *
+	 * <p><b>The other half of a floor that was one half, and a review on 25.09.2026 named
+	 * what the first half could not see.</b> {@code WhatAPictureIsTest} reads the TEXT of V8,
+	 * which is cheap and early and blind in one direction: a LATER migration altering
+	 * {@code photo_media_type_known} would leave V8's text saying three types while the column
+	 * held two or four, and the portal would go on accepting a type the database refuses - a
+	 * member handing over a picture and being answered 500 by a constraint.
+	 *
+	 * <p><b>So this one asks the thing that actually decides.</b> {@code pg_constraint} is the
+	 * running catalogue of the database Flyway has just migrated, so it answers for EVERY
+	 * migration rather than for the one somebody remembered. Widening the file-reading half to
+	 * every migration's text was the alternative and it is the bottomless question this
+	 * codebase has refused before: the number of ways to write one constraint is not finite
+	 * from where a reader of source stands.
+	 *
+	 * <p>Nothing is typed out here either: the names come off
+	 * {@link WhatAPictureIs#THE_TYPES_THE_SCHEMA_ALLOWS} and the rest out of the catalogue.
+	 */
+	@Test
+	void theTypesTheSchemaReallyHolds() {
+		String definition = db.sql("select pg_get_constraintdef(oid) from pg_constraint"
+						+ " where conname = 'photo_media_type_known'")
+				.query(String.class)
+				.single();
+
+		List<String> inTheColumn = new java.util.ArrayList<>();
+		java.util.regex.Matcher each = java.util.regex.Pattern.compile("'([^']+)'")
+				.matcher(definition);
+
+		while (each.find()) {
+			inTheColumn.add(each.group(1));
+		}
+
+		assertThat(inTheColumn)
+				.as("the running database's photo_media_type_known was read as an empty list, so"
+						+ " this compares nothing: %s", definition)
+				.isNotEmpty();
+
+		assertThat(WhatAPictureIs.THE_TYPES_THE_SCHEMA_ALLOWS)
+				.as("the portal recognises a type THE RUNNING DATABASE cannot hold, or the column"
+						+ " holds one no route could ever write into it. A later migration has"
+						+ " moved this constraint and V8's text no longer describes it.")
+				.containsExactlyInAnyOrderElementsOf(inTheColumn);
+	}
+
 	/** And a member with nothing waiting is told exactly that. */
 	@Test
 	void aRemovalWithNothingWaitingSaysSo() throws Exception {
