@@ -19,12 +19,13 @@ type Props = {
  * a token, so the server simply became one more caller of the function the switch was
  * already calling.
  *
- * The development switch is still here and still sets it. **This said it was because the
- * mock is still on (ADL A50), and that „the day that goes off, the switch goes with
- * it". That day was 21.09.2026 and the switch stayed**, so the reason is corrected here
- * rather than left reading as an instruction: what keeps it is that a real session
- * carries no MEMBER NUMBER, and every screen that draws a member is walked through one.
- * `roles/RoleSwitch.tsx` holds that reason in full.
+ * The development switch is still here and still sets it. **This has now named two
+ * reasons for that and both have expired**: first the mock (ADL A50, off on 21.09.2026),
+ * then that a real session carries no MEMBER NUMBER - which stopped being true on
+ * 24.09.2026, when `session/theServer.ts` began reading one off `GET /api/me`. Neither is
+ * deleted, because a reason that quietly disappears leaves the control standing with
+ * nothing said about it at all. `roles/RoleSwitch.tsx` carries what is left, which is a
+ * question for the owner rather than a third reason.
  *
  * The two are set together and never apart. A role and a moderator that could
  * drift out of step would mean a superadmin carrying somebody else's rights, or

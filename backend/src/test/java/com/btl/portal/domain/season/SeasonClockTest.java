@@ -292,4 +292,147 @@ class SeasonClockTest {
 				.as("a pair confirmed from Tokyo was written for a season two years out")
 				.isEqualTo(2028);
 	}
+
+	/**
+	 * THE SEASON BEING RUN IS THE ONE A CHANGE AGREED NOW IS THE END OF, WHICH IS ONE LESS.
+	 *
+	 * <p>It is the number {@code team_membership.season_to} takes when somebody leaves his
+	 * team - V11 calls that column „the last season he is in it" - and it is the other end of
+	 * {@link SeasonClock#transfersTakeEffect}, which is the first season he is out of. The
+	 * owner's decision of 24.09.2026 is what needs both ends: leaving happens inside the
+	 * transfer window and bites on 1 January, so one call says when he goes and the other
+	 * says what he was still part of.
+	 *
+	 * <p><b>Inside the window and outside it, because that is where a version reading
+	 * {@link SeasonClock#seasonBeingPaidFor} would be right by accident.</b> In October the
+	 * two differ by a season - what is on sale is next year while the season being run is
+	 * this one - and in March they are the same number, so a case that only asked in March
+	 * would measure neither.
+	 */
+	@Test
+	void theSeasonBeingRunIsTheOneAChangeAgreedNowIsTheEndOf() {
+		ZonedDateTime october = ZonedDateTime.of(2027, 10, 3, 11, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.seasonBeingRun(october))
+				.as("a member leaving in October was written out of the season that is being run")
+				.isEqualTo(2027);
+
+		assertThat(SeasonClock.seasonBeingPaidFor(october))
+				.as("what is on sale in October is the season being run, so either answer would"
+						+ " do and this case would measure neither")
+				.isEqualTo(2028);
+
+		ZonedDateTime march = ZonedDateTime.of(2027, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.seasonBeingRun(march))
+				.as("outside the window the season being run is still this year")
+				.isEqualTo(2027);
+	}
+
+	/**
+	 * AND IT READS THE LEAGUE'S ZONE, AND NAMES A YEAR THAT IS NOT A SEASON RATHER THAN
+	 * CLAMPING IT AWAY.
+	 *
+	 * <p>The zone half is the same hole every other case here measures: the last hours of 31
+	 * December in Belgrade are already next year in Tokyo, and a membership ended off the
+	 * caller's clock would say he stayed a season longer than he did.
+	 *
+	 * <p>The other half is the boundary written into {@link SeasonClock#seasonBeingRun}
+	 * itself. Through 2026 the answer is 2026, which is no season at all (PDL P2), and that
+	 * is deliberate: clamped to {@link SeasonClock#FIRST_SEASON} it would say the season
+	 * being run in October 2026 is 2027, and a membership ended with that number is a member
+	 * who was in his team for a season that had not started. The callers guard it, and the
+	 * case is here so that a clamp added later fails rather than passes quietly.
+	 */
+	@Test
+	void theSeasonBeingRunIsTheLeaguesYearAndIsNotClampedToTheFirstSeason() {
+		ZonedDateTime newYearsEveHere =
+				ZonedDateTime.of(2027, 12, 31, 23, 30, 0, 0, SeasonClock.ZONE);
+
+		assertThat(newYearsEveHere.withZoneSameInstant(TOKYO).getYear())
+				.as("it is not already next year in Tokyo, so this case measures nothing")
+				.isEqualTo(2028);
+
+		assertThat(SeasonClock.seasonBeingRun(newYearsEveHere.withZoneSameInstant(TOKYO)))
+				.as("a membership ended from Tokyo was written for a season the member never ran")
+				.isEqualTo(2027);
+
+		assertThat(SeasonClock.seasonBeingRun(
+				ZonedDateTime.of(2026, 10, 3, 11, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the season being run through 2026 was clamped to the first season there is,"
+						+ " which would end a membership in a season that has not started")
+				.isEqualTo(2026);
+	}
+
+	/**
+	 * A LEAGUE IS MADE FOR THE YEAR THAT IS RUNNING OR THE ONE AFTER IT, AND FOR NO OTHER
+	 * (PDL P15a, owner 22.09.2026).
+	 *
+	 * <p>Both sides of the pair and both sides of the boundary, because a rule written as
+	 * „not in the past" passes one half and a rule written as „this year only" passes the
+	 * other.
+	 */
+	@Test
+	void aLeagueIsMadeForThisSeasonOrTheNextAndForNoOther() {
+		ZonedDateTime inSeason = ZonedDateTime.of(2028, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2028, inSeason)).isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2029, inSeason)).isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2027, inSeason))
+				.as("a league was made for a season that has already run, which the owner put a"
+						+ " price on rather than left open")
+				.isFalse();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2030, inSeason))
+				.as("a league was prepared two years ahead, which is the very thing the owner was"
+						+ " shown as the cost and took")
+				.isFalse();
+	}
+
+	/**
+	 * AND NEVER BEFORE THE FIRST SEASON THERE IS, which is the same clamp
+	 * {@link SeasonClock#seasonBeingPaidFor} carries and for the owner's same sentence of
+	 * 31.07.2026, „Nigde na portalu nema sezone pre 2027".
+	 *
+	 * <p><b>The clamp is on the RUNNING year and the next is counted off the result</b>, so
+	 * in 2026 the pair is 2027 and 2028 rather than 2027 twice. That is read off the cost the
+	 * owner accepted - the league he named as the one that cannot be prepared yet is 2029 -
+	 * and both halves are asserted, because a clamp applied to each answer separately passes
+	 * the first and fails the second.
+	 */
+	@Test
+	void theSeasonsALeagueMayBeMadeForAreNeverBeforeTheFirstThereIs() {
+		ZonedDateTime beforeTheLeague = ZonedDateTime.of(2026, 9, 24, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2026, beforeTheLeague))
+				.as("a league was offered a season the schema refuses outright")
+				.isFalse();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(SeasonClock.FIRST_SEASON, beforeTheLeague))
+				.isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2028, beforeTheLeague))
+				.as("the clamp was applied to each answer on its own, so the pair collapsed to one"
+						+ " year and the season after the first could not be prepared")
+				.isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2029, beforeTheLeague)).isFalse();
+	}
+
+	/**
+	 * AND A FROZEN SEASON IS NEVER ONE A LEAGUE MAY BE MADE FOR, which is why nothing in
+	 * {@code LeagueWriteApi#add} asks about freezing.
+	 *
+	 * <p>Measured rather than reasoned, at the one instant where it could fail: a season
+	 * freezes at 16:00 on 1 January of the year after it, and the year that is running has
+	 * moved on sixteen hours earlier. Asked a second before the freeze as well, because that
+	 * is the moment a clamp written the other way round would still be offering it.
+	 */
+	@Test
+	void aSeasonThatHasFrozenIsNeverOneALeagueMayBeMadeFor() {
+		ZonedDateTime theMoment = SeasonClock.tablesFreeze(2027);
+
+		assertThat(SeasonClock.isFrozen(2027, theMoment)).isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2027, theMoment)).isFalse();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2027, theMoment.minusSeconds(1)))
+				.as("a league could still be made for 2027 a second after the New Year, which is"
+						+ " sixteen hours before its tables freeze")
+				.isFalse();
+	}
 }

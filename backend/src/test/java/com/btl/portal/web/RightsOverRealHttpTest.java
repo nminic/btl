@@ -679,9 +679,9 @@ class RightsOverRealHttpTest {
 	 *
 	 * <p><b>A third shape of the same thing, and the first that {@link RightsAtTheDoor} does
 	 * not write.</b> {@code /api/verification} carries neither {@link RightIsNeeded} nor
-	 * {@link OnlyTheSuperadmin}, because the verification screen has SIX queues with one right
-	 * apiece (PDL P28a, 24.08.2026, „Verifikacija ima šest redova") and the question it answers is
-	 * „which of the six may he" rather than „may he" - so the refusal is written by the resource
+	 * {@link OnlyTheSuperadmin}, because the verification screen has FIVE queues with one right
+	 * apiece (PDL P28a, 22.09.2026, „Verifikacija ima pet redova") and the question it answers is
+	 * „which of the five may he" rather than „may he" - so the refusal is written by the resource
 	 * itself, and every sentence the long note in {@code RightsAtTheDoor} makes about the SHAPE of a
 	 * refusal has to be true of a second caller of {@code sendError}, measured rather than trusted.
 	 *

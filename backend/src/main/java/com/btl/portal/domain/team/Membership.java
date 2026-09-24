@@ -32,6 +32,26 @@ public record Membership(long teamId, int seasonFrom, Integer seasonTo, String l
 	 */
 	public static final int FIRST_SEASON = SeasonClock.FIRST_SEASON;
 
+	/**
+	 * WHY A MEMBERSHIP ENDED, WHEN WHAT ENDED IT IS THE MEMBER HIMSELF.
+	 *
+	 * <p>{@code team_membership_leaving_says_why} refuses a row that ends without one, so
+	 * this is not decoration but the other half of {@link #ended}. It is Serbian because the
+	 * column holds a reason a person may one day be shown, which is the one thing in this
+	 * codebase that is not English.
+	 *
+	 * <p><b>It lives HERE and not on the route that writes it, and that is a decision with
+	 * two reasons.</b> The vocabulary of this column belongs to the thing that has the
+	 * column: PDL P13, 19.09.2026 already names a second writer of it - the job that runs on
+	 * 1 January and „kad god naidje na clana koji nije azuran, raskine ga sa tim timom" - and
+	 * that job is not this route, so two reasons written in two files would be a vocabulary
+	 * nobody can read whole. <b>And it was measured:</b> declared on {@code TeamWriteApi} it
+	 * sat among that class's refusal codes, where {@code pages/account/refusals.test.ts}
+	 * reads every {@code static final String} as a reason the screen must answer - so a
+	 * column value became a sentence the portal owed a reader, and the frontend gate said so.
+	 */
+	public static final String LEFT_ON_HIS_OWN = "izašao iz tima";
+
 	public Membership {
 		if (seasonFrom < FIRST_SEASON) {
 			throw new IllegalArgumentException("the league has no season " + seasonFrom);

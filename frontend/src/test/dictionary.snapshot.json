@@ -1212,7 +1212,28 @@
     "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu. Podešava se do 1. oktobra, za sezonu koja tada počinje da se obnavlja; od tog dana stoji.",
     "referralSettled": "Iznos preporuke za sezonu {season} se više ne menja. Obnova te sezone je otvorena od 1. oktobra, a iznos se podešava do tog dana.",
     "referralOpen": "Iznos koji sada upišeš važi za sezonu {season}, jer se podešava do 1. oktobra. Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i iznos koji od tog trenutka stoji. Iznos po sezonama dolazi sa bazom.",
-    "referralRunning": "Sezona {season} je već u toku. Njen iznos je zaključan 1. oktobra prethodne godine, a ovaj upis ga ipak menja, jer portal drži jedan iznos."
+    "referralRunning": "Sezona {season} je već u toku. Njen iznos je zaključan 1. oktobra prethodne godine, a ovaj upis ga ipak menja, jer portal drži jedan iznos.",
+    "leagueRaces": "Trke u ligi",
+    "leagueRacesOf": "Trke u ligi {name}",
+    "chooseEvent": "Događaj",
+    "chooseNothing": "Izaberi događaj",
+    "chooseRace": "Trka",
+    "wholeEvent": "Ceo događaj",
+    "addRace": "Dodaj u ligu",
+    "dropRace": "Izbaci",
+    "dropRaceNamed": "Izbaci trku {race} iz lige",
+    "noEventsOfSeason": "U kalendaru nema nijednog događaja iz sezone {season}.",
+    "leagueRaceAdded": "Trka je dodata u ligu.",
+    "leagueRaceDropped": "Trka je izbačena iz lige.",
+    "leagueRefused": {
+      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta, pa se trka više ne dodaje. Izbacivanje i dalje radi.",
+      "theRaceIsNotOfTheLeaguesSeason": "Ta trka nije iz sezone ove lige.",
+      "theEventHoldsNoRaces": "Taj događaj još nema nijednu trku.",
+      "theRaceIsNotKnown": "Portal ne poznaje tu trku.",
+      "theEventIsNotKnown": "Portal ne poznaje taj događaj.",
+      "theRaceIsNotSaidOnce": "Treba izabrati ili ceo događaj ili jednu njegovu trku.",
+      "unknown": "Portal nije prihvatio izmenu. Osveži stranu pa pokušaj ponovo."
+    }
   },
   "ducats": {
     "title": "Dukati",
@@ -1290,8 +1311,7 @@
         "payments": "Uplate",
         "teams": "Novi timovi",
         "profiles": "Trkački profil",
-        "comments": "Komentari",
-        "schedule": "Termini"
+        "comments": "Komentari"
       }
     },
     "action": {
@@ -1308,8 +1328,7 @@
         "payments": "odlučivanje o uplatama",
         "teams": "odlučivanje o novim timovima",
         "profiles": "odlučivanje o trkačkim profilima",
-        "comments": "odlučivanje o komentarima",
-        "schedule": "odlučivanje o prijavama termina"
+        "comments": "odlučivanje o komentarima"
       }
     }
   },
@@ -1317,8 +1336,6 @@
     "title": "Podaci"
   },
   "verification": {
-    "waitingForRaces": "Odluka čeka događaj i njegove trke, da bi se pomerili zajedno.",
-    "racesFailed": "Odluka nije moguća: podaci o događaju i njegovim trkama se ne mogu učitati, a pomeraju se zajedno.",
     "waitingForMembers": "Odluka čeka spisak članova, da bi se znalo da li podnosilac već ima tim.",
     "membersFailed": "Odluka nije moguća: spisak članova se ne može učitati, a bez njega se ne zna da li podnosilac već ima tim.",
     "teamMemberHasTeam": "Podnosilac je već u timu, pa ovaj predlog ne može da se odobri. Član sme da bude samo u jednom timu.",
@@ -1349,8 +1366,6 @@
     "teamChangeAcceptedBody": "Podaci tima „{name}“ su izmenjeni. Moderator sme da ispravi ono što ste poslali pre nego što prihvati, pa pogledajte stranu tima.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
-    "currentDate": "Datum u kalendaru",
-    "proposedDate": "Prijavljen datum",
     "activatePayment": "Evidentiraj uplatu",
     "activateFeeExempt": "Oslobodi članarine",
     "body": {
@@ -1359,21 +1374,18 @@
       "bio": "Tekst biografije",
       "photo": "Datoteka",
       "teamEdit": "Obrazloženje",
-      "comments": "Komentar",
-      "schedule": "Šta je prijavljeno"
+      "comments": "Komentar"
     },
     "results": "Rezultati",
     "payments": "Uplate i aktivacija članova",
     "teams": "Novi timovi",
     "profiles": "Trkački profil",
     "comments": "Komentari",
-    "schedule": "Prijave promene termina",
     "fromResults": "Rezultat ulazi u tabele tek posle odobrenja",
     "fromPayments": "Član postaje punopravan kad se evidentira uplata",
     "fromTeams": "Nov tim odobrava Superadmin ili moderator sa pravom nad ovim redom",
     "fromProfiles": "Član piše tekst o sebi i šalje sliku; oboje se odobrava ili vraća uz razlog koji stiže u poruci",
     "fromComments": "Komentar se prihvata ili briše, odmah i bez obrazloženja",
-    "fromSchedule": "Dve nezavisne prijave ili istekao sat svežine",
     "delete": "Obriši",
     "deleteNamed": "Obriši: {name}",
     "deleteBox": "Brisanje komentara: {name}",
@@ -1385,7 +1397,6 @@
     "paymentReturned": "Prijava je vraćena",
     "teamReturned": "Predlog tima je vraćen",
     "teamChangeReturned": "Izmena tima je vraćena",
-    "scheduleReturned": "Prijava promene termina je vraćena",
     "bioReturned": "Tekst o sebi je vraćen",
     "photoReturned": "Profilna slika je vraćena",
     "noRecipient": "Ova stavka nema člana kome bi odgovor stigao, pa se sa ovog reda ne odbija. Odobri je ili prijavi grešku; poruka bez primaoca išla bi celoj ligi.",

@@ -233,7 +233,7 @@ const FRONT = `/${DEFAULT_LOCALE}`
  * renamed route leaves the row measuring the front page and passing (review, 06.09.2026).
  *
  * **And the list has a floor**: every administration address the route table has, with the one
- * pattern `verifikacija/:queue` opened into the six queues it stands for. Five of those six had
+ * pattern `verifikacija/:queue` opened into the five queues it stands for. Four of those five had
  * never been asked, because the table hides them behind one pattern.
  *
  * **The two member forms are named by hand and that is a boundary**, said rather than left to be
@@ -245,7 +245,7 @@ const FRONT = `/${DEFAULT_LOCALE}`
  * Nothing here draws the state after something is sent, so a way up on a confirmation would slip
  * past. Those six are held for what lies under them (`pages/backAfterSending.test.tsx`).
  */
-/** The one pattern that stands for six screens. Compared whole rather than by its ending:
+/** The one pattern that stands for five screens. Compared whole rather than by its ending:
  *  another address with the same parameter name would be swallowed by it and lose its row
  *  without a sound (review, 06.09.2026). */
 const QUEUE_PATTERN = 'administracija/verifikacija/:queue'
@@ -261,7 +261,6 @@ const BEHIND: [string, Role, string | null, string][] = [
   ['/sr/administracija/verifikacija/timovi', 'superadmin', ADMIN, 'Novi timovi'],
   ['/sr/administracija/verifikacija/trkacki-profil', 'superadmin', ADMIN, 'Trkački profil'],
   ['/sr/administracija/verifikacija/komentari', 'superadmin', ADMIN, 'Komentari'],
-  ['/sr/administracija/verifikacija/termini', 'superadmin', ADMIN, 'Prijave promene termina'],
   ['/sr/administracija/cenovnik', 'superadmin', ADMIN, 'Cenovnik'],
   ['/sr/administracija/clanovi', 'superadmin', ADMIN, 'Članovi'],
   ['/sr/administracija/dogadjaji', 'superadmin', ADMIN, 'Događaji'],
@@ -280,7 +279,7 @@ describe('what administration and the member forms offer', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
       .map((route) => route.path)
       .filter((path) => path.startsWith('administracija'))
-      /* One pattern stands for six screens through three components, and five of them had
+      /* One pattern stands for five screens through three components, and four of them had
          never been opened by anything. */
       .flatMap((path) =>
         path === QUEUE_PATTERN ? QUEUES.map((queue) => queue.path) : [path],
@@ -301,7 +300,7 @@ describe('what administration and the member forms offer', () => {
 
        A count is a weak floor and it is written down as one: it cannot say a row is right, only
        that one went missing. Changing this number is a decision, not a formality. */
-    expect(BEHIND).toHaveLength(18)
+    expect(BEHIND).toHaveLength(17)
   })
 
   it.each(BEHIND)('offers no way of its own up a level on %s', async (

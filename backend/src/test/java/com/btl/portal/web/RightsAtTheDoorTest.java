@@ -107,14 +107,15 @@ class RightsAtTheDoorTest {
 	 *
 	 * <p><b>AND {@code /api/verification} IS THE SIXTH, AND IT IS HERE FOR A REASON
 	 * NEITHER OF THE OTHER TWO HAS: THE PRIVILEGE IS DECIDED BY THE ROW AND NOT BY THE
-	 * ROUTE.</b> {@link RightIsNeeded} names ONE code, and the verification screen has SIX
-	 * queues with one right apiece (PDL P28a, 24.08.2026, „Verifikacija ima šest redova", V5's six
-	 * {@code queue:} rows). The question that resource answers is not „may he" but „which of the six
-	 * may he", because a moderator holding {@code queue:comments} and nothing else must be served
-	 * the comments and must not learn that a payments queue exists (owner, 30.07.2026, PDL P28a,
+	 * ROUTE.</b> {@link RightIsNeeded} names ONE code, and the verification screen has FIVE
+	 * queues with one right apiece (PDL P28a, 22.09.2026, „Verifikacija ima pet redova"; V5
+	 * carried six {@code queue:} rows and V31, PDL P10a, took one away). The question that
+	 * resource answers is not „may he" but „which of the five may he", because a moderator
+	 * holding {@code queue:comments} and nothing else must be served the comments and must not
+	 * learn that a payments queue exists (owner, 30.07.2026, PDL P28a,
 	 * 30.07.2026, „Moderator vidi samo redove i entitete": „Ne skriva se samo ekran nego i saznanje
-	 * da ekran postoji"). One code written on the route could only be one of the six, so it would
-	 * shut the route to five moderators out of six or open all six queues to any one of them.
+	 * da ekran postoji"). One code written on the route could only be one of the five, so it would
+	 * shut the route to four moderators out of five or open all five queues to any one of them.
 	 *
 	 * <p><b>Which means this floor stops asserting anything about that address, and the
 	 * two guards it would have given it are owed elsewhere.</b> Said plainly because a
@@ -357,6 +358,27 @@ class RightsAtTheDoorTest {
 	 * apart from „does he hold any tab at all". {@code VerificationWriteApiTest} holds that
 	 * half, with a moderator who genuinely holds one queue and is answered about a row in
 	 * another.
+	 *
+	 * <p><b>AND B85 ADDS THE TWO WAYS OUT, WHICH NEED NO NEW REASON EITHER - ONLY TWO NEW
+	 * NAMES.</b> {@code DELETE /api/teams/{id}/membership} is a member leaving his own team
+	 * and {@code DELETE /api/pairs/{id}} is a member ending his own racing pair, both by the
+	 * owner's decision of 24.09.2026. Neither is a box a superadmin could tick: leaving a
+	 * team one is in and ending a pair one is half of are consequences of being in them, so
+	 * {@link RightIsNeeded} could only name a privilege that shuts each to the one person it
+	 * is for. <b>What stands in place of a right is the ROW, exactly as it does for
+	 * {@code POST /api/inbox} and {@code PUT /api/pairs/{id}}:</b> the membership names its
+	 * member and the pair names its two halves, so each route is protected by whose row it
+	 * is and a caller who is not on it is answered what an address that is not there answers.
+	 *
+	 * <p>They arrive by two different roads, which is worth reading because one of them is
+	 * the road the floor below was corrected for. {@code DELETE /api/pairs/{id}} comes by the
+	 * road {@code PUT /api/pairs/{id}} came by - a verb added to an address this list already
+	 * names, so under bare paths it would have been excused by a line written about another
+	 * verb. {@code DELETE /api/teams/{id}/membership} comes by a road neither took: it is a
+	 * PATH nothing has named before, under {@code /api/teams}, which IS on
+	 * {@link ApiSecurity#READ_BY_ANYBODY} - and the open list holds whole addresses rather
+	 * than prefixes, so this sub-path was never open to a visitor for any verb and falls
+	 * through to {@code anyRequest().authenticated()} like anything else.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
@@ -366,7 +388,15 @@ class RightsAtTheDoorTest {
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",
-					"POST /api/pairs", "PUT /api/pairs/{id}", "PUT /api/me/notifications",
+					"POST /api/pairs", "PUT /api/pairs/{id}", "DELETE /api/pairs/{id}",
+					"DELETE /api/teams/{id}/membership", "PUT /api/me/notifications",
+					/* A MEMBER'S OWN ACCOUNT AND HIS OWN PORTRAIT, ADDED 24.09.2026 WITH
+					   INCREMENT A. Each of the three is here for the reason `PUT /api/me` is:
+					   no box anybody could tick would let one member change another's
+					   password or another's picture, so there is no right at the door to
+					   read - what decides is the session, inside the handler, and the account
+					   or the member it names. See `MePasswordApi` and `MePhotoApi`. */
+					"PUT /api/me/password", "POST /api/me/photo", "DELETE /api/me/photo",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
 					"ANY /error");

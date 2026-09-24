@@ -143,11 +143,26 @@ function whatMeAnswers(): Response {
   const answered = {
     role: whoTheCookieNames.role,
     account: 1,
-    /* Absent altogether for somebody the file has no record of, which is the state
-       `MeApi` writes out: an account that races for nobody carries no member at all,
-       „rather than an object of nulls". */
+    /* **THE COOKIE NAMING A MEMBER IS THE RECORD EXISTING, and the generated file only
+       fills the rest of it in.** This answered NO RECORD AT ALL for a number the file has
+       no row for until 24.09.2026, and that conflated two things `MeApi` exists to keep
+       apart: „this account races for nobody", which is administration, and „this member
+       is not on the public list", which is a MEMBER WHOSE FEE HAS LAPSED. `CompetitorApi`
+       ends `where c.active` and leaves him off; `/api/me` answers him, deliberately -
+       „the profile and the historical tables of a member whose fee has lapsed need a
+       resource that knows them, and it is not this one."
+
+       Harmless while the portal read no number off this answer, because the session took
+       its member from the prop and never from here. It read past the number for four
+       days and the day it stopped, six files went red at once - a member the list has no
+       row for is a state eight cases are ABOUT, and every one of them was reaching it
+       through a prop the server now overrules. Nothing was wrong with those cases; the
+       harness was answering something no server answers.
+
+       Which is why absence stays absence here and is spelt the one way that means it:
+       the cookie naming nobody, answered 401 above. */
     ...(mine === undefined
-      ? {}
+      ? { member: { memberNumber: whoTheCookieNames.memberNumber } }
       : { member: { referredCount: 0, ...asAnswered(mine, myOwnRecordFromMe) } }),
   }
 

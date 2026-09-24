@@ -464,8 +464,9 @@ describe('the answer the backend gives', () => {
        country and the team a change is about, `competitor` carries the sender's name,
        which sort of thing a row is can be read off the schema twice over, and V30 gave
        the comments and the schedule tabs a row of their own too, so `rating`,
-       `currentDate` and `proposedDate` answer for real off those. Nine of the twelve
-       are answered now.
+       `currentDate` and `proposedDate` briefly answered for real off those. PDL P10a,
+       the same day, removed the schedule tab and the two columns with it; `rating` is
+       the one of the three still standing. Nine of the twelve were answered that day.
 
        The three below still have no home, each for its own reason, and each is in
        `PENDING.md` with the table that lacks it: the address of a registration has no
