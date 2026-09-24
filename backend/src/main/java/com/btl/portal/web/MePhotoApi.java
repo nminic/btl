@@ -107,7 +107,7 @@ import java.util.Optional;
  *
  * <ul>
  * <li><b>The file cannot be written</b> - no room, no permission, no folder - and the
- * exception rolls the row and the queue item back, <b>because both mappings say
+ * exception rolls the row and the queue item back, <b>because this mapping says
  * {@code rollbackFor = IOException.class} and would not otherwise</b>. Spring rolls back on
  * a {@link RuntimeException} and an {@link Error} and COMMITS on a checked one, and
  * {@link IOException} is checked: this paragraph claimed the rollback for a round without it
@@ -120,6 +120,15 @@ import java.util.Optional;
  * {@code @Transactional} and the route then joins the test's transaction, which is exactly why
  * the fault survived a green file; it is in
  * {@code ThePictureAndItsFileAreOneThingTest}, which is not.
+ * <li><b>{@link #remove}'s own mapping does NOT carry {@code rollbackFor}</b>, though a
+ * review on 25.09.2026 found it copied there anyway. There the checked exception is the FILE
+ * refusing to leave the disk after the row and the pointer are already gone, and letting it
+ * commit is the point rather than a lapse: PDL P28b, 3, 24.09.2026 calls a removal immediate
+ * and not moot - „Brisanje slike stupa odmah, bez moderacije... Uklanjanje ne moze da bude
+ * sporno" - and rolling the row back because a file would not go undoes exactly that decision,
+ * on nothing worse than a stray directory on the disk where {@link PhotoApi} already serves
+ * nothing for a picture no row points at. {@code TheRemovalStandsEvenWhenTheFileWontGoTest}
+ * holds this half, outside {@code MePhotoApiTest} for the identical reason the case above is.
  * <li><b>The commit itself fails after the file was written</b> and a file is left on the
  * disk that no row points at. That is the one leak, it is bounded by
  * {@link WhatAPictureIs#AT_MOST_BYTES} apiece, and {@link PhotoApi} serves nothing for it -
@@ -402,7 +411,7 @@ class MePhotoApi {
 	 * gone, which is the one state {@link PhotoApi} has to log a fault for.
 	 */
 	@DeleteMapping("/api/me/photo")
-	@Transactional(rollbackFor = IOException.class)
+	@Transactional
 	ResponseEntity<?> remove(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 

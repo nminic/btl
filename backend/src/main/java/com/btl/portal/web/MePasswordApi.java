@@ -351,13 +351,17 @@ class MePasswordApi {
 			return no(THE_PASSWORD_HAS_LEAKED);
 		}
 
-		/* THE LOCK IS LIFTED HERE TOO, and it is the same choice `PasswordResetApi` makes
-		   with the same reason behind it: somebody who just typed his old password has
-		   proved at least as much as the ten guesses `SignIn.ENOUGH_MISSES_TO_LOCK` exists
-		   to stop, and leaving the lock standing would tell a member who proved exactly that
-		   to come back in fifteen minutes. It is reachable rather than tidy: an account is
-		   locked by somebody ELSE guessing at it, and the member whose laptop is still
-		   signed in is the one person who can end that by moving the password. */
+		/* THE COUNT AND THE LOCK ARE BOTH CLEARED HERE, AND NEITHER LINE OPENS A DOOR THAT
+		   WAS SHUT. A security review on 25.09.2026 found this comment claiming the opposite
+		   - that a member who just typed his old password was let through a STANDING lock -
+		   and the portal never did that: `SignIn.decide` above already answers anything but
+		   `WELCOME` with `THE_OLD_PASSWORD_IS_WRONG` before this line runs, so a lock that
+		   has not yet run out ends the request there and this statement is never reached
+		   (`anAccountThatIsShutStaysShutEvenForTheRightOldPassword`). What IS reached is a
+		   lock that already ran out on its own, left standing on the row together with the
+		   count that put it there; a successful change is what finally clears both, so the
+		   next miss starts from nought rather than from somebody else's guessing
+		   (`changingThePasswordEndsALockSomebodyElseCaused`). */
 		db.sql("update account set password_hash = ?, failed_sign_ins = 0, locked_until = null"
 						+ " where id = ?")
 				.params(keeping.of(typed.password()), account)
