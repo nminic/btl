@@ -294,6 +294,77 @@ class SeasonClockTest {
 	}
 
 	/**
+	 * THE SEASON BEING RUN IS THE ONE A CHANGE AGREED NOW IS THE END OF, WHICH IS ONE LESS.
+	 *
+	 * <p>It is the number {@code team_membership.season_to} takes when somebody leaves his
+	 * team - V11 calls that column „the last season he is in it" - and it is the other end of
+	 * {@link SeasonClock#transfersTakeEffect}, which is the first season he is out of. The
+	 * owner's decision of 24.09.2026 is what needs both ends: leaving happens inside the
+	 * transfer window and bites on 1 January, so one call says when he goes and the other
+	 * says what he was still part of.
+	 *
+	 * <p><b>Inside the window and outside it, because that is where a version reading
+	 * {@link SeasonClock#seasonBeingPaidFor} would be right by accident.</b> In October the
+	 * two differ by a season - what is on sale is next year while the season being run is
+	 * this one - and in March they are the same number, so a case that only asked in March
+	 * would measure neither.
+	 */
+	@Test
+	void theSeasonBeingRunIsTheOneAChangeAgreedNowIsTheEndOf() {
+		ZonedDateTime october = ZonedDateTime.of(2027, 10, 3, 11, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.seasonBeingRun(october))
+				.as("a member leaving in October was written out of the season that is being run")
+				.isEqualTo(2027);
+
+		assertThat(SeasonClock.seasonBeingPaidFor(october))
+				.as("what is on sale in October is the season being run, so either answer would"
+						+ " do and this case would measure neither")
+				.isEqualTo(2028);
+
+		ZonedDateTime march = ZonedDateTime.of(2027, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.seasonBeingRun(march))
+				.as("outside the window the season being run is still this year")
+				.isEqualTo(2027);
+	}
+
+	/**
+	 * AND IT READS THE LEAGUE'S ZONE, AND NAMES A YEAR THAT IS NOT A SEASON RATHER THAN
+	 * CLAMPING IT AWAY.
+	 *
+	 * <p>The zone half is the same hole every other case here measures: the last hours of 31
+	 * December in Belgrade are already next year in Tokyo, and a membership ended off the
+	 * caller's clock would say he stayed a season longer than he did.
+	 *
+	 * <p>The other half is the boundary written into {@link SeasonClock#seasonBeingRun}
+	 * itself. Through 2026 the answer is 2026, which is no season at all (PDL P2), and that
+	 * is deliberate: clamped to {@link SeasonClock#FIRST_SEASON} it would say the season
+	 * being run in October 2026 is 2027, and a membership ended with that number is a member
+	 * who was in his team for a season that had not started. The callers guard it, and the
+	 * case is here so that a clamp added later fails rather than passes quietly.
+	 */
+	@Test
+	void theSeasonBeingRunIsTheLeaguesYearAndIsNotClampedToTheFirstSeason() {
+		ZonedDateTime newYearsEveHere =
+				ZonedDateTime.of(2027, 12, 31, 23, 30, 0, 0, SeasonClock.ZONE);
+
+		assertThat(newYearsEveHere.withZoneSameInstant(TOKYO).getYear())
+				.as("it is not already next year in Tokyo, so this case measures nothing")
+				.isEqualTo(2028);
+
+		assertThat(SeasonClock.seasonBeingRun(newYearsEveHere.withZoneSameInstant(TOKYO)))
+				.as("a membership ended from Tokyo was written for a season the member never ran")
+				.isEqualTo(2027);
+
+		assertThat(SeasonClock.seasonBeingRun(
+				ZonedDateTime.of(2026, 10, 3, 11, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the season being run through 2026 was clamped to the first season there is,"
+						+ " which would end a membership in a season that has not started")
+				.isEqualTo(2026);
+	}
+
+	/**
 	 * A LEAGUE IS MADE FOR THE YEAR THAT IS RUNNING OR THE ONE AFTER IT, AND FOR NO OTHER
 	 * (PDL P15a, owner 22.09.2026).
 	 *

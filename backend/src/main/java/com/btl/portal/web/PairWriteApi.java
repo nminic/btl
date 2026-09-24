@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -26,6 +27,12 @@ import java.util.Optional;
  * question into {@code pair_invite} and nothing else, and {@code PUT} is the only thing on
  * this server that ever writes a row into {@code racing_pair}.
  *
+ * <p><b>AND SINCE 24.09.2026 {@code DELETE} TAKES ONE AWAY</b> ({@link #breakUp}), which is
+ * „Raskini" - PDL P13's button of 07.09.2026, and the owner's decision of 24.09.2026 that
+ * „Par sme da raskine SVAKA STRANA, BILO KAD". It is the one route in this class with no
+ * question in it: nobody is asked and nobody may refuse, so all it does is take the row and
+ * tell the other half.
+ *
  * <p><b>The pair is called a TRKACKI PAR and not a PAR</b> (owner, 03.08.2026, „Par svuda
  * promeniti u Trkacki par"), which this file honours the way the rest of the codebase does:
  * the English word is „racing pair" and the short form is never used on a screen.
@@ -42,50 +49,45 @@ import java.util.Optional;
  * the chain before this class runs. There is no condition in this class about whether
  * anybody is signed in, and there must not be one.
  *
- * <p><b>AND THE MAPPINGS SAY WHAT THEY CONSUME, WHICH IS A DECISION AND NOT A HABIT.</b>
- * Without {@code consumes}, a write arriving with no {@code Content-Type} reaches the
- * argument resolver and is answered 415 - a number that says „this address is here and wants
- * a different type", while an address mapping nothing goes on saying 404. That is the leak
- * {@link NothingIsHereRatherThanAlmost} was written for, arriving through the one door it
- * says it cannot close: a media type refused while a handler is already running is raised
- * far from {@code handleNoMatch}. Declared on the mapping, the same request never matches,
- * the dispatcher raises it FROM {@code handleNoMatch}, and the portal's existing rule turns
- * it into the 404 every unmapped address answers.
+ * <p><b>AND THE MAPPINGS THAT TAKE A BODY SAY WHAT THEY CONSUME, WHICH IS A DECISION AND
+ * NOT A HABIT.</b> Without {@code consumes}, a write arriving with no {@code Content-Type}
+ * reaches the argument resolver and is answered 415 - a number that says „this address is
+ * here and wants a different type", while an address mapping nothing goes on saying 404.
+ * That is the leak {@link NothingIsHereRatherThanAlmost} was written for, arriving through
+ * the one door it says it cannot close: a media type refused while a handler is already
+ * running is raised far from {@code handleNoMatch}. Declared on the mapping, the same
+ * request never matches, the dispatcher raises it FROM {@code handleNoMatch}, and the
+ * portal's existing rule turns it into the 404 every unmapped address answers.
+ *
+ * <p><b>{@link #breakUp} CARRIES NO {@code consumes}, AND THAT IS THE SAME RULE AND NOT AN
+ * EXCEPTION TO IT.</b> It reads no body at all, so there is nothing for a type to describe;
+ * declared anyway, it would refuse the ordinary request - a {@code DELETE} with no body
+ * carries no {@code Content-Type}, which matches no media type - and the address would
+ * answer 404 to the one caller it is for. The rule above is about a handler that takes a
+ * {@code @RequestBody}, and every mapping in this class that takes one declares it. It is
+ * the shape {@code DELETE /api/events/{id}} and {@code DELETE /api/moderators/{id}} are
+ * already written in.
  *
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
- * <li><b>„RASKINI", AND THAT IS THE ONE OMISSION WORTH READING TWICE.</b> PDL P13,
- * 07.09.2026: a member's own profile carries „Raskini" beside every pair that still holds,
- * and pressing it „obavestava drugu polovinu". No {@code DELETE} is mapped here. What IS
- * here is the breaking that ACCEPTING causes, because that one is not a button of its own:
- * it is what „Prihvatanje novog poziva dok vec postoji par raskida stari" asks of this
- * route, and leaving it out would let a member hold two pairs in one season, which the
- * schema refuses outright.
- * <li><b>THE MESSAGE. NOBODY IS TOLD ANYTHING BY THIS CLASS, AND THAT IS A HOLE RATHER THAN
- * A DECISION.</b> Two sentences of the owner's are owed and neither is paid here:
- * <ul>
- *   <li>PDL P13: „Kad promena pogodi treceg clana, on se obavestava ODMAH po nastanku
- *   promene, ne na pocetku sezone", with his own example - „muskarac zatrazi novi par, nova
- *   zena prihvati, dotadasnja zena istog trenutka dobija poruku „Vas trkacki par ce u
- *   narednoj sezoni biti raskinut.""
- *   <li>PDL P13, 07.09.2026: „svaki ostavljeni partner dobija poruku imenom, u svoje
- *   sanduce, nikad ligi", and the invitation itself „stize kao poruka u sanduce, sa dva
- *   dugmeta".
- * </ul>
- * <b>Why it is not written:</b> NOTHING UNDER {@code backend/src/main} WRITES A ROW INTO
- * {@code message} AT ALL. V13 built the table and {@link InboxApi} reads it; the writing is
- * its own item of the September block (PDL, 18.09.2026, „Red unutar septembarskog bloka:
- * trke, pa uloge i prava, pa timovi, pa parovi, pa ostalo"), and inventing a second door
- * into that table here would be a home for the inbox that the increment which really owns it
- * would then have to fight. V13 already holds the shape this route will use when it arrives:
- * {@code message.pair_invite_id}, a question addressed to one person, with
- * {@code message_a_question_has_an_addressee} refusing a question sent to the league.
- * <b>What that costs today, said out loud:</b> the invitation shows on {@code
- * /api/me/applications} („Sopstveni profil nosi i pozive koji cekaju, poslate i primljene",
- * PDL, 07.09.2026) and NOWHERE ELSE, and a member whose pair is broken by somebody else's
- * acceptance is told NOTHING. A sentence here claiming otherwise would be worse than the
- * missing feature.
+ * <li><b>THE MESSAGE SENT WHEN AN ACCEPTANCE BREAKS SOMEBODY ELSE'S PAIR, AND IT IS A HOLE
+ * RATHER THAN A DECISION.</b> PDL P13: „Kad promena pogodi treceg clana, on se obavestava
+ * ODMAH po nastanku promene, ne na pocetku sezone", with the owner's own example - „muskarac
+ * zatrazi novi par, nova zena prihvati, dotadasnja zena istog trenutka dobija poruku „Vas
+ * trkacki par ce u narednoj sezoni biti raskinut."" - and, 07.09.2026, „svaki ostavljeni
+ * partner dobija poruku imenom, u svoje sanduce, nikad ligi". {@link #settle} deletes at
+ * most two pairs and writes to nobody. <b>What that costs, said out loud:</b> a member whose
+ * pair is broken by somebody else's acceptance is told NOTHING, and the invitation itself
+ * still arrives only on {@code /api/me/applications} rather than in an inbox. <b>Why this
+ * half is not paid while {@link #breakUp} pays its own:</b> the two messages are not one
+ * sentence. Breaking is one act with one person on the far side of it, whose name and season
+ * the route already has in hand; an acceptance reaches up to two more people through two
+ * rows it deletes in one statement, and which of them is told what is the same decision as
+ * the invitation's own message - the one V13 built {@code message.pair_invite_id} and
+ * {@code message_a_question_has_an_addressee} for, and the one the increment that puts an
+ * invitation in an inbox will take. Written here out of symmetry it would answer that
+ * question first and leave that increment fighting an answer nobody decided.
  * <li><b>A pair that is over.</b> Nothing here reads or writes a row of a season other than
  * the one being formed, which is PDL P13, 07.09.2026 in one condition: „par iz sezone koja je
  * prosla se NIKAD ne dira (P13, zamrznuti podaci). Oba se citaju za sezonu koja se formira,
@@ -261,6 +263,25 @@ class PairWriteApi {
 	static final String A_PAIR_ALREADY_HOLDS = "aPairAlreadyHolds";
 
 	/**
+	 * WHAT THE OTHER HALF READS IN HIS INBOX WHEN A PAIR IS ENDED.
+	 *
+	 * <p>Not invented here: it is the subject the portal already draws for this exact event
+	 * ({@code i18n/sr.json}, {@code pair.brokenSubject}), so the member who is told by the
+	 * server reads the same sentence the screen has been writing against the mock since
+	 * 07.09.2026. The body beside it is {@code pair.endedBody} with its two values filled in.
+	 */
+	static final String THE_PAIR_IS_BROKEN = "Trkački par je raskinut";
+
+	/**
+	 * WHO THE PORTAL IS WHEN IT WRITES TO A MEMBER ITSELF.
+	 *
+	 * <p>PDL P13, 19.09.2026, the owner choosing between three offered answers: the sender is
+	 * the name of the league. {@link #tell} says where the string is read from and why it is
+	 * not the one {@code VerificationWriteApi} uses.
+	 */
+	static final String THE_LEAGUE = "Balkanska trkačka liga";
+
+	/**
 	 * The letter {@code competitor.gender} carries for a man.
 	 *
 	 * <p>Not a second home for „a pair is mixed": that rule is V12's and is held by two
@@ -346,6 +367,21 @@ class PairWriteApi {
 
 	/** One half of a would-be pair: who he is, and which column he can stand in. */
 	private record Half(long id, String gender) {
+	}
+
+	/**
+	 * A PAIR THAT STILL HOLDS, SEEN FROM THE HALF WHO IS ENDING IT.
+	 *
+	 * <p>Everything the breaking needs, read in ONE statement of ONE moment: who is on the
+	 * far side of it, what this half is called, and which season the pair runs in. Read in
+	 * three, the name written into the message could be a name from after the row was gone.
+	 *
+	 * @param other  the other half, who is the one told about it
+	 * @param myName the leaver's name AS THE MESSAGE NAMES HIM, which is the whole of why it
+	 *               is here: {@code pair.endedBody} is „Trkacki par sa {who} za sezonu
+	 *               {season} je raskinut", and {who} is the one who pressed
+	 */
+	private record Held(long other, String myName, int season) {
 	}
 
 	/** The two of them in the order {@code racing_pair} stores them. */
@@ -578,6 +614,192 @@ class PairWriteApi {
 		closed(question);
 
 		return ResponseEntity.ok(made);
+	}
+
+	/**
+	 * „RASKINI": EITHER HALF ENDS THE PAIR, ON ANY DAY, AND THE OTHER HALF IS TOLD.
+	 *
+	 * <p>Owner, 24.09.2026, choosing between three answers he was offered: „Par sme da
+	 * raskine SVAKA STRANA, BILO KAD", the reason he was given and accepted being that a team
+	 * carries points through a season and a pair does not - so there is no window here, and
+	 * <b>there is no condition in this method about the month, and there must not be one.</b>
+	 * That is the difference from {@code TeamWriteApi.leave} and it is the whole of the
+	 * difference; both sides of it are the same sentence of his, split in two.
+	 *
+	 * <p><b>It is the button PDL P13 named on 07.09.2026 and this class was written without.</b>
+	 * „Sopstveni profil nosi stanje: tekuci trkacki par sa linkom... i dugme „Raskini"", and
+	 * „„Raskini" obavestava drugu polovinu. Isto pravilo kao kod prihvatanja: promena pogadja
+	 * clana koji nista nije pritisnuo, pa se obavestava odmah. Bez toga je portal javljao kroz
+	 * jedna vrata a cutao kroz druga." {@code pages/profile/RacingPairLine.tsx} has drawn it
+	 * against the mock since that day, against {@code racing_pair.id}.
+	 *
+	 * <p><b>EITHER HALF, AND THE CASE THAT PROVES IT IS THE SAME PAIR TWICE.</b> „Svaka
+	 * strana" is one word in the decision and two columns in the schema, and a route written
+	 * off {@code man_id} alone passes every case whose fixture happens to press from the
+	 * man's side. Both columns are in the condition and both directions have a case.
+	 *
+	 * <p><b>THE KEY IS THE PAIR'S, WHICH IS THE ONE THING HERE THAT MEETS A WRITTEN
+	 * BOUNDARY.</b> ADL A55 says that {@code PUT /api/pairs/{id}} carries an INVITATION's key
+	 * while {@code GET /api/pairs} answers with PAIRS', and draws the line at which the shape
+	 * changes rather than being explained: „onog dana kad zatreba {@code GET /api/pairs/{id}},
+	 * ista adresa nosi kljuc para na citanju i kljuc poziva na upisu." <b>This is a third verb
+	 * at that same address and it carries the third meaning of the three:</b> the pair's key,
+	 * which is the key {@code GET /api/pairs} hands out and the one the screen has in its
+	 * hand.
+	 *
+	 * <p>A55's own test is still met and that is why the shape stands: „adresa je
+	 * jednoznacna u SVAKOM POJEDINACNOM POZIVU" - a {@code PUT} means the invitation, a
+	 * {@code DELETE} means the pair, and no request is ambiguous. <b>What it costs, said out
+	 * loud rather than discovered:</b> two verbs at one path template now take two tables'
+	 * keys, so a caller who sends an invitation's key to {@code DELETE} is asking about a
+	 * different row, and the only thing between him and somebody else's pair is that the
+	 * condition below demands he be a half of it. The day {@code GET /api/pairs/{id}} is
+	 * wanted, A55's boundary triggers and this address is one of the things that moves.
+	 *
+	 * <p><b>WHICH PAIRS MAY BE ENDED IS THE SAME QUESTION {@link PairApi} ANSWERS, AND IT IS
+	 * ASKED THE SAME WAY.</b> A pair still holds when both halves are still members - „Ne
+	 * postoji par onda, raskida se" (owner, 11.08.2026) - and a member cannot end a pair the
+	 * portal does not serve him. The boundary in the other direction is P13's frozen data,
+	 * which {@link #settle} already names: „par iz sezone koja je prosla se NIKAD ne dira", so
+	 * the season is compared with {@link SeasonClock#seasonBeingRun} and a pair of a season
+	 * that has ended is answered exactly what a pair that is not his is answered.
+	 *
+	 * <p><b>And BOTH pairs a member may hold are endable, which is the axis a fixture with one
+	 * pair cannot see.</b> PDL P13, 07.09.2026: „Od 1. januara clan sme da drzi dva: onaj u kom
+	 * trci sezonu koja tece, i onaj napravljen za sledecu... Sada stoje svi, najranija sezona
+	 * prva, svaki sa svojim „Raskini"." The condition is {@code >=} rather than {@code =} for
+	 * exactly that, and the case that holds it presses the SECOND of two and reads which row
+	 * went.
+	 *
+	 * <p><b>404 AND NEVER A SENTENCE, for the four callers it covers at once:</b> a pair that
+	 * is not there, a pair that is not his, a pair of a season that is over and a pair whose
+	 * half has lapsed. Told apart, the numbers would answer which pairs exist and who is in
+	 * them to anybody walking the keys - and the last of the four is PDL's rule of 13.09.2026
+	 * arriving here, the same one {@link #halfNumbered} explains at length.
+	 */
+	@DeleteMapping("/api/pairs/{id}")
+	ResponseEntity<?> breakUp(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			@PathVariable long id) {
+
+		Long me = memberOfAccount.competitorId(asking.account());
+
+		if (me == null) {
+			return away();
+		}
+
+		return inOneTransaction.execute(committing -> end(me, id));
+	}
+
+	/**
+	 * THE ENDING, IN ONE TRANSACTION, because the row going and the other half being told are
+	 * one act.
+	 *
+	 * <p>Stopped between the two, a member would read that he is in no pair while the other
+	 * half reads that he still is and was never told otherwise - which is the exact shape of
+	 * the fault PDL's „javljao kroz jedna vrata a cutao kroz druga" describes.
+	 */
+	private ResponseEntity<?> end(long me, long pair) {
+		Optional<Held> his = pairHeIsHalfOf(me, pair);
+
+		if (his.isEmpty()) {
+			return away();
+		}
+
+		/* BY THE KEY ALONE, because the statement above has already said it is his: a
+		   condition repeated here would be the same question asked twice and free to be
+		   answered differently the day one of the two is edited. */
+		db.sql("delete from racing_pair where id = ?").param(pair).update();
+
+		tell(his.get().other(), THE_PAIR_IS_BROKEN,
+				theBrokenPairReads(his.get().myName(), his.get().season()));
+
+		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * WHAT THE OTHER HALF READS, BUILT IN ONE PLACE SO THAT A FLOOR CAN COMPARE IT WITH THE
+	 * PORTAL'S OWN DICTIONARY.
+	 *
+	 * <p>The sentence is {@code pair.endedBody} from {@code frontend/src/i18n/sr.json}, sign
+	 * for sign, with its two values filled in - which is the whole reason it is a method
+	 * rather than a concatenation inside {@link #end}. <b>Two homes for one Serbian sentence
+	 * and nothing tying them together is how the server and the screen drift apart</b>, and
+	 * {@code PairWriteApiTest.theTwoSentencesAreThePortalsOwnWords} is the tie: it reads the
+	 * dictionary, substitutes the same two values into the template, and requires this to
+	 * answer the same string.
+	 *
+	 * <p><b>The substitution is the dictionary's own, not a formatter.</b> The portal writes
+	 * {@code {who}} and {@code {season}} and its own {@code t()} replaces them; a
+	 * {@code MessageFormat} here would be a second convention for one sentence.
+	 *
+	 * @param who    the half who pressed „Raskini", by the name his profile carries
+	 * @param season the season the pair held for, off the row rather than off the clock
+	 */
+	static String theBrokenPairReads(String who, int season) {
+		return "Trkački par sa " + who + " za sezonu " + season + " je raskinut.";
+	}
+
+	/**
+	 * THE PAIR HE MAY END, or nothing - and „nothing" is four different people on purpose.
+	 *
+	 * <p>Read as one statement of one moment: which row, who the other half is, what this
+	 * half is called and which season it runs in. The name is read HERE rather than after the
+	 * delete, because after it there is no row left to read either of them off.
+	 *
+	 * <p><b>{@code man.active and woman.active} IS {@link PairApi}'S CONDITION AND NOT A NEW
+	 * ONE</b>, for the reason {@link #eitherHoldsAPairIn} gives: nothing deletes the row when
+	 * a fee lapses, so the row outlives the pair, and a reader is where the portal turns one
+	 * into the other. A member whose partner stopped paying is not refused anything by this -
+	 * that pair already stands in nobody's way, so he needs no button to be rid of it.
+	 *
+	 * <p><b>{@code p.season >= } the season being run is P13's frozen data</b>, and the number
+	 * comes from {@link SeasonClock} rather than from a year written here, so the portal has
+	 * one answer to „which season is being run" and not two. It is the same condition
+	 * {@code data/derive.ts}'s {@code pairsFrom} draws the screen with - „the pairs that hold
+	 * now" - so the server ends exactly the pairs the profile offers a „Raskini" beside.
+	 */
+	private Optional<Held> pairHeIsHalfOf(long me, long pair) {
+		return db.sql("select case when p.man_id = :me then p.woman_id else p.man_id end,"
+						+ " case when p.man_id = :me then man.first_name else woman.first_name end,"
+						+ " case when p.man_id = :me then man.last_name else woman.last_name end,"
+						+ " p.season"
+						+ " from racing_pair p"
+						+ " join competitor man on man.id = p.man_id"
+						+ " join competitor woman on woman.id = p.woman_id"
+						+ " where p.id = :pair and (p.man_id = :me or p.woman_id = :me)"
+						+ " and man.active and woman.active"
+						+ " and p.season >= :running")
+				.param("me", me)
+				.param("pair", pair)
+				.param("running", SeasonClock.seasonBeingRun(ZonedDateTime.now(clock)))
+				.query((row, one) -> new Held(row.getLong(1),
+						row.getString(2) + " " + row.getString(3), row.getInt(4)))
+				.optional();
+	}
+
+	/**
+	 * THE PORTAL WRITING TO A MEMBER IN ITS OWN NAME.
+	 *
+	 * <p>{@code from_id} is null and {@code from_name} carries the league, which V13 built
+	 * for exactly this - „a message with a name and no pointer" - and which PDL P13,
+	 * 19.09.2026 decided in as many words: „Kad portal sam pise poruku clanu, posiljalac je
+	 * NAZIV LIGE", the owner choosing it over a moderator's name and over no sender at all.
+	 *
+	 * <p><b>The string is not invented here.</b> It is what the portal already signs its mail
+	 * with ({@code mail/sr.properties}) and what the screen calls itself
+	 * ({@code i18n/sr.json}, {@code app.name}), which is the derivation that decision names.
+	 *
+	 * <p><b>AND IT IS NOT THE STRING {@code VerificationWriteApi} USES, which is reported
+	 * rather than copied.</b> That class signs with „Verifikacija", which predates the
+	 * decision above; the two are one fact in two homes and the one here is the one the
+	 * journal holds. Bringing them together is a change to a route this increment does not
+	 * touch.
+	 */
+	private void tell(long member, String subject, String body) {
+		db.sql("insert into message (to_id, from_id, from_name, subject, body)"
+						+ " values (?, null, ?, ?, ?)")
+				.params(member, THE_LEAGUE, subject, body)
+				.update();
 	}
 
 	private void closed(long question) {

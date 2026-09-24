@@ -84,6 +84,31 @@ class MembershipTest {
 				.isInstanceOf(NullPointerException.class).hasMessageContaining("why");
 	}
 
+	/**
+	 * AND THE REASON THE PORTAL ITSELF WRITES IS ONE THIS RECORD WILL TAKE.
+	 *
+	 * <p>{@link Membership#LEFT_ON_HIS_OWN} is the word {@code TeamWriteApi.leave} puts in
+	 * {@code left_reason}, and the constructor above refuses a blank one - „a reason nobody
+	 * wrote is not a reason", which is {@code team_membership_left_reason_not_blank} one
+	 * table along. Emptied, that constant turns every voluntary exit on the portal into an
+	 * exception at the moment a member presses the button.
+	 *
+	 * <p><b>This case is here because a mutation found the hole rather than because it looked
+	 * missing.</b> Blanking the constant left all 35 domain cases green: the route's own test
+	 * caught it and the schema would have caught it, but neither is in this layer, and a
+	 * reason with no home in the layer that owns the column is a reason nobody checks until a
+	 * container is up. It is asked as a BEHAVIOUR - build the ending the portal builds - and
+	 * not as an assertion about the text, which would be a second home for the word itself.
+	 */
+	@Test
+	void theReasonThePortalWritesIsOneAnEndingWillTake() {
+		assertThat(Membership.open(A_TEAM, 2027).ended(2028, Membership.LEFT_ON_HIS_OWN)
+				.leftReason())
+				.as("the reason the portal writes when a member walks out is one the record"
+						+ " refuses, so every voluntary exit would throw")
+				.isEqualTo(Membership.LEFT_ON_HIS_OWN);
+	}
+
 	@Test
 	void nobodyLeftATeamBeforeJoiningIt() {
 		assertThatThrownBy(() -> new Membership(A_TEAM, 2028, 2027, "presao"))
