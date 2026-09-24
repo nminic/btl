@@ -237,11 +237,30 @@ describe('a member freed of the fee, on the answer the server gives', () => {
 
      Both states of the axis, because one of them alone says nothing: a member the
      league has freed is shown no renewal, and a member who pays is shown one. */
-  function meAnswering(membershipBasis: string) {
+  /* **AND THE RECORD NAMES HIM, since 24.09.2026.** It carried the basis alone, which no
+     real answer ever does: `MeApi.MyOwnRecord` sends the number beside it to anybody who
+     has one, and the portal has read it since that day to know whose screens to draw. An
+     answer without it is the server saying „this account races for nobody", and both
+     cases below then met „Ovaj deo je za takmicare" instead of the screen they measure.
+
+     Both fields named rather than positional, because both are strings and a swap of two
+     positional strings is a call that still compiles: signed in under the number
+     „feeExempt" is not a state anything here would have reported. */
+  function meAnswering({
+    memberNumber,
+    membershipBasis,
+  }: {
+    memberNumber: string
+    membershipBasis: string
+  }) {
     return serverThat((path) =>
       path === '/api/me'
         ? new Response(
-            JSON.stringify({ role: 'competitor', account: 1, member: { membershipBasis } }),
+            JSON.stringify({
+              role: 'competitor',
+              account: 1,
+              member: { memberNumber, membershipBasis },
+            }),
             { status: 200, headers: { 'content-type': 'application/json' } },
           )
         : null,
@@ -271,7 +290,7 @@ describe('a member freed of the fee, on the answer the server gives', () => {
     /* A member the generated file calls a PAYER, told by the answer that he is freed. */
     expect(generatedBasis(whoPaysInTheFile)).toBe('payment')
 
-    const { stop } = meAnswering('feeExempt')
+    const { stop } = meAnswering({ memberNumber: whoPaysInTheFile, membershipBasis: 'feeExempt' })
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', whoPaysInTheFile, undefined, '2026-11-01')
@@ -298,7 +317,7 @@ describe('a member freed of the fee, on the answer the server gives', () => {
        asked to pay" would read exactly like „the screen is right". */
     expect(generatedBasis(stillAMember)).toBe('feeExempt')
 
-    const { stop } = meAnswering('payment')
+    const { stop } = meAnswering({ memberNumber: stillAMember, membershipBasis: 'payment' })
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember, undefined, '2026-11-01')
