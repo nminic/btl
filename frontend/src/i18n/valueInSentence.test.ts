@@ -256,12 +256,26 @@ describe('a sentence with a value put into it', () => {
          a name written out here: `refusals[answer.reason]`. Which sentence that is
          cannot be read off the call at all, which is the case this row stands for. */
       '? (ServerSaid.tsx)',
+      /* „Izbaci trku {race} iz lige": the race is named by `raceLabel`, which writes the
+         race's own name and adds what parts it from the races beside it. No case to be
+         wrong in - it stands after „trku" as the thing being named, and a proper name in
+         Serbian keeps its written form there. */
+      'admin.dropRaceNamed',
       'admin.form.deleteNamed',
       'admin.form.deleteSureNamed',
       'admin.form.keepNamed',
       'admin.form.openNamed',
       'admin.form.raceNumber',
       'admin.form.removeRow',
+      /* „Trke u ligi {name}", the accessible name of the box that folds on the list of
+         competitions. The name of a competition stands after „u ligi", which governs the
+         locative - and a competition's name is a proper name the portal never declines
+         anywhere („Poredak takmičenja", „Događaji i trke, {name}"), so this is the same
+         answer `leagues.countingOf` already gives one screen along. */
+      'admin.leagueRacesOf',
+      /* „U kalendaru nema nijednog događaja iz sezone {season}.", and the season is a
+         number: a year written in figures has no case to be wrong in. */
+      'admin.noEventsOfSeason',
       'admin.ofMany',
       'admin.processingFee',
       'admin.racesOf',
