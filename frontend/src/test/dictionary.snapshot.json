@@ -1345,8 +1345,6 @@
     "teamChangeAcceptedBody": "Podaci tima „{name}“ su izmenjeni. Moderator sme da ispravi ono što ste poslali pre nego što prihvati, pa pogledajte stranu tima.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
-    "currentDate": "Datum u kalendaru",
-    "proposedDate": "Prijavljen datum",
     "activatePayment": "Evidentiraj uplatu",
     "activateFeeExempt": "Oslobodi članarine",
     "body": {

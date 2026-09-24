@@ -107,14 +107,15 @@ class RightsAtTheDoorTest {
 	 *
 	 * <p><b>AND {@code /api/verification} IS THE SIXTH, AND IT IS HERE FOR A REASON
 	 * NEITHER OF THE OTHER TWO HAS: THE PRIVILEGE IS DECIDED BY THE ROW AND NOT BY THE
-	 * ROUTE.</b> {@link RightIsNeeded} names ONE code, and the verification screen has SIX
-	 * queues with one right apiece (PDL P28a, 24.08.2026, „Verifikacija ima šest redova", V5's six
-	 * {@code queue:} rows). The question that resource answers is not „may he" but „which of the six
-	 * may he", because a moderator holding {@code queue:comments} and nothing else must be served
-	 * the comments and must not learn that a payments queue exists (owner, 30.07.2026, PDL P28a,
+	 * ROUTE.</b> {@link RightIsNeeded} names ONE code, and the verification screen has FIVE
+	 * queues with one right apiece (PDL P28a, 22.09.2026, „Verifikacija ima pet redova"; V5
+	 * carried six {@code queue:} rows and V31, PDL P10a, took one away). The question that
+	 * resource answers is not „may he" but „which of the five may he", because a moderator
+	 * holding {@code queue:comments} and nothing else must be served the comments and must not
+	 * learn that a payments queue exists (owner, 30.07.2026, PDL P28a,
 	 * 30.07.2026, „Moderator vidi samo redove i entitete": „Ne skriva se samo ekran nego i saznanje
-	 * da ekran postoji"). One code written on the route could only be one of the six, so it would
-	 * shut the route to five moderators out of six or open all six queues to any one of them.
+	 * da ekran postoji"). One code written on the route could only be one of the five, so it would
+	 * shut the route to four moderators out of five or open all five queues to any one of them.
 	 *
 	 * <p><b>Which means this floor stops asserting anything about that address, and the
 	 * two guards it would have given it are owed elsewhere.</b> Said plainly because a

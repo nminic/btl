@@ -20,9 +20,9 @@ import java.util.List;
  * <p><b>„Red za proveru" is not a thing any more; Verifikacija is</b> ({@code
  * PDL P28a, „prestaje da postoji kao zasebna stavka"}): „prestaje da postoji kao zasebna stavka i
  * postaje deo veće celine Verifikacija, jer moderator odobrava mnogo više od rezultata". It has
- * five queues (PDL P28a, 24.08.2026, „Verifikacija ima šest redova", eight then seven then six;
- * PDL P10a, 22.09.2026, „Redova je pet, ne šest" - the schedule tab left rather than a seventh
- * arriving) and they are not written down here - V5 already carries them as the five {@code
+ * five queues (PDL P28a, 22.09.2026, „Verifikacija ima pet redova", eight then seven then six
+ * then five; PDL P10a, 22.09.2026, „Redova je pet, ne šest" - the schedule tab left rather than
+ * a seventh arriving) and they are not written down here - V5 already carries them as the five {@code
  * queue:} rows of the rights matrix, and V9 generates {@code verification.right_code} out of the
  * tab so that a row cannot exist in a tab nobody has the right to moderate. This class reads
  * that matrix and never a list of its own.
@@ -90,7 +90,7 @@ import java.util.List;
  * every right with no tick anywhere (V5's {@code rights_mode = 'all'}), so a query over the
  * ticks alone would serve him nothing and a query over the ticks OR the role would be the
  * whole of {@link com.btl.portal.domain.rights.AdminRights} written a second time in SQL.
- * The rights are read ONCE for the request ({@link WhatHeMayDo#whichOf}), so the six
+ * The rights are read ONCE for the request ({@link WhatHeMayDo#whichOf}), so the five
  * answers cannot disagree with one another.
  *
  * <p><b>THE ANSWER IS A FLAT LIST OF ITEMS, AND UNTIL 22.09.2026 IT WAS GROUPED BY TAB.
@@ -156,7 +156,7 @@ import java.util.List;
  * answers, „sve u vezi sa članarinom" - which Article 74 puts beside the date of birth.
  * There is no such subtraction to make here: nothing in this answer is public, the only
  * reader is the one moderator holding that tab's tick, and the payments tab exists
- * precisely for people whose fee is not recorded (PDL P28a, 24.08.2026, „Verifikacija ima šest
+ * precisely for people whose fee is not recorded (PDL P28a, 22.09.2026, „Verifikacija ima pet
  * redova", „Uplate i aktivacija članova"). Filtering on {@code competitor.active} would empty the
  * tab this queue was built for. This is written down because it is the fifth place the same
  * question has been asked and the first place the answer is the other way round.
@@ -401,10 +401,10 @@ class VerificationApi {
 	}
 
 	/**
-	 * The six tabs, read off the rights matrix rather than written down.
+	 * The five tabs, read off the rights matrix rather than written down.
 	 *
 	 * <p>V5 put them there and V9 pointed a foreign key at them, so „which tabs exist" and
-	 * „which tabs can be moderated" are one list by construction. A seventh tab must first
+	 * „which tabs can be moderated" are one list by construction. A sixth tab must first
 	 * be a right somebody decided to grant, and it reaches this answer on the day it is
 	 * inserted rather than on the day somebody remembers this file.
 	 *

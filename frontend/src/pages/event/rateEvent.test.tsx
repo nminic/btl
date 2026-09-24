@@ -8,9 +8,11 @@ import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
 import { clearResourceCache, loadResource } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
+import { Published } from '../../test/decided'
 import { membersAsServed, refused, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
 import type { BtlEvent, Competitor, EventComment, PendingItem } from '../../data/types'
+import { QUEUE } from '../admin/queues'
 import { overall, rated } from './overall'
 
 /* EVERY CASE HERE HAS A SERVER IN FRONT OF IT FOR `POST /api/comments`, BECAUSE SINCE
@@ -1048,20 +1050,77 @@ describe('a comment a moderator lets out', () => {
   })
 
   /*
-   * „PUBLISHES NOTHING FROM THE QUEUES THAT ARE NOT ABOUT COMMENTS" stood here, and PDL
-   * P10a, 22.09.2026 is why it does not any more rather than standing rewritten to a
-   * weaker shape. It approved the schedule tab's own item on purpose: that queue was the
-   * only one beside comments whose `subjectId` ever named a REAL, navigable event
-   * (`comment_submission.event_id` and `schedule_proposal.event_id` were the two sources
-   * `VerificationApi` ever read `subjectId` off), so a merge widened past `queue.id ===
-   * 'comments'` had somewhere real to be caught reaching - the event the report was
-   * about, checked on its own page. Every other queue's `subjectId` is blank
-   * (`Number('')` is nought) or names a team, neither of which is a page this case could
-   * render and inspect, so the same case written against any of them would pass whether
-   * the guard held or not - the „dva izvora, jedna vrednost" shape a case must never
-   * take. With the schedule tab gone, no queue but comments names an event any more, and
-   * the condition this case existed to catch has nothing left to widen into.
+   * „PUBLISHES NOTHING FROM THE QUEUES THAT ARE NOT ABOUT COMMENTS" stood here and was
+   * DELETED on 24.09.2026, on the wrong reading that no queue's `subjectId` names a real,
+   * navigable event any more once the schedule tab left (PDL P10a). Review of PR 363
+   * measured the opposite: a `teamEdit` item's `subjectId` is a real team id (teams.json,
+   * 1..4) and `events.json` carries ids in the same range, so the very case below is
+   * still writable, and `queue.id === 'comments'` swapped for `true` left the whole
+   * frontend package green, 3030/3030, while it stood deleted - a regression nothing
+   * would have seen. Rewritten rather than restored, against `published` itself
+   * (`session/context.ts`, the same probe `app/header.test.tsx` builds by hand) instead
+   * of the event page: `commentFrom` (data/comment.ts) would file a team edit's approval
+   * under `eventId: Number(item.subjectId)` with an EMPTY body, and a page that renders
+   * comments by body text is the wrong place to look for one that carries none.
    */
+  it('publishes nothing when a team edit is approved, which is not about comments', async () => {
+    const teamEdit: PendingItem = {
+      id: 'ver-team-edit-1',
+      queue: 'teams',
+      kind: 'teamEdit',
+      date: '2026-07-01',
+      // Team 1, „Dunavski trkači", administered by 000001 (teams.json,
+      // competitors.json): the one pair `teamProposal.ts`'s own `refusal`
+      // accepts for a change, so approval is not itself refused first. Team 1
+      // is also `EVENT` above by coincidence of range, not of kind - a team
+      // edit's subjectId lands on a REAL, navigable event either way.
+      memberNumber: '000001',
+      who: 'Vladan Đurišić',
+      subject: 'Dunavski trkači',
+      subjectId: '1',
+      body: '',
+      picture: '',
+      crop: { x: 0.5, y: 0.5, size: 1 },
+      currentDate: '',
+      proposedDate: '',
+      rating: { organisation: 0, value: 0, ambience: 0 },
+      email: '',
+      city: 'Novi Sad',
+      country: 'RS',
+    }
+    const served = globalThis.fetch
+
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/api/verification')
+        ? new Response(JSON.stringify([teamEdit]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : served(input))
+
+    try {
+      const user = setupUser()
+
+      renderAt(
+        `/sr/${QUEUE.teams.path}`,
+        'moderator',
+        null,
+        undefined,
+        null,
+        <Published />,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'Odobri' }))
+
+      /* The decision itself still has to land - a card gone from the queue is
+         the only sign this test would otherwise have that anything happened
+         at all - before the absence beside it means something. */
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Odobri' })).toBeNull())
+      expect(screen.getByRole('list', { name: 'session published' })).toBeEmptyDOMElement()
+    } finally {
+      globalThis.fetch = served
+    }
+  })
 
   it('stays off the portal when it is deleted rather than approved', async () => {
     const user = setupUser()

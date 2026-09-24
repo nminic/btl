@@ -1416,7 +1416,7 @@ class VerificationApiTest {
 	 * reader is the moderator holding that tab's tick - and the queue exists in order to be
 	 * worked: filtering on {@code competitor.active} would hide from a moderator exactly the
 	 * work a lapsed membership creates, and would empty the payments tab, which is about
-	 * people whose fee is not recorded (PDL P28a, 24.08.2026, „Verifikacija ima šest redova",
+	 * people whose fee is not recorded (PDL P28a, 22.09.2026, „Verifikacija ima pet redova",
 	 * „Uplate i aktivacija članova").
 	 *
 	 * <p>Written as a case rather than as a comment, because this is the fifth time the
