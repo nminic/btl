@@ -245,10 +245,19 @@ class ResultWriteApi {
 	 *                   the calendar answers for its own day, and
 	 *                   {@code result_submission_race_fk} over {@code (race_id, race_date)}
 	 *                   would refuse any other one anyway
-	 * @param placeId    the town out of the codebook, or
-	 * @param city       the town typed by hand, and then {@code countryId} with it - the
+	 * @param placeId    the town out of the codebook, BY THE MARK AND NEVER BY THE KEY.
+	 *                   {@link PlaceApi} serves {@code place.geonames_id}, so that is the
+	 *                   number a request can carry; {@code place.id} is a bigserial the
+	 *                   portal has never published and no caller can have. Resolved below
+	 *                   exactly as {@link EventWriteApi} and {@link RegistrationApi} resolve
+	 *                   it, which is the owner's own instruction of 11.08.2026: „Mesto i
+	 *                   drzava na registraciji rade isto kao na formi dogadjaja ... Jedna
+	 *                   kontrola i jedno pravilo za ceo portal, ne dva slicna."
+	 * @param city       the town typed by hand, and then {@code country} with it - the
 	 *                   same three columns {@code competitor} and {@code btl_event} hold a
 	 *                   town in, and V10 copies their constraints word for word
+	 * @param country    its CODE, which is what {@link CountryApi} serves, and not a key
+	 *                   either
 	 * @param distanceKm what the member covered, and it is read only where the race does not
 	 *                   fix it
 	 * @param link       the official results, required unless a photograph stands in for it
@@ -256,7 +265,7 @@ class ResultWriteApi {
 	 * @param comment    his own note, which may be empty
 	 */
 	record Ran(Long raceId, String raceName, LocalDate day, String raceKind, Long placeId,
-			String city, Long countryId, BigDecimal distanceKm, Integer ascentM, Integer descentM,
+			String city, String country, BigDecimal distanceKm, Integer ascentM, Integer descentM,
 			Integer seconds, String link, String comment) {
 	}
 
@@ -403,6 +412,16 @@ class ResultWriteApi {
 		Said said = WhatAResultChangeSays.deleted(standing.get().run());
 
 		inOneTransaction.executeWithoutResult(committing -> {
+			/* WHOSE IT IS IS IN THIS STATEMENT TOO, AND IT IS A SECOND LOCK WITH NO CASE OF
+			   ITS OWN. Measured rather than believed: taking `competitor_id` off this line
+			   and running the whole class leaves it green, because `his` above has already
+			   refused somebody else's result and this statement is never reached with one.
+			   Taking it off `his` IS caught, so the pair is one guard and one belt.
+
+			   It stays, and the boundary is written here rather than left for the next round
+			   to find: a condition that cannot be measured is a condition somebody will
+			   delete as dead, and this one is what stands between a future caller of this
+			   method - one that has not read `his` - and deleting a stranger's result. */
 			db.sql("delete from result where id = ? and competitor_id = ?").params(id, me).update();
 			tell(me, said);
 		});
@@ -422,7 +441,7 @@ class ResultWriteApi {
 	 */
 	private ResponseEntity<?> fromTheCalendar(WhoIsAsking.Member asking, long me, Ran typed) {
 		if (typed.raceName() != null || typed.raceKind() != null || typed.placeId() != null
-				|| typed.city() != null) {
+				|| typed.city() != null || typed.country() != null) {
 			return no(THE_RACE_IS_NAMED_TWICE);
 		}
 
@@ -446,10 +465,17 @@ class ResultWriteApi {
 		boolean ofALength = WhatARaceCarries.OF_A_LENGTH.equals(race.kind());
 		boolean toALimit = WhatARaceCarries.TO_A_LIMIT.equals(race.kind());
 
+		/* THE RACE'S SIDE IS BOXED BY HAND, AND THAT IS NOT STYLE - IT WAS A 500.
+		   Written `ofALength ? race.ascentM() : typed.ascentM()`, with an `int` on one side
+		   and an `Integer` on the other, Java promotes: the conditional UNBOXES the request's
+		   value before anything looks at it, so a form with no climb in it threw a
+		   NullPointerException here, before the guard below could answer 400. Measured on
+		   three of the four figures at once (`everyWayARunOnAFreeRaceCanFailToHoldTogether`);
+		   the length was safe only because both of its sides are already BigDecimal. */
 		BigDecimal distanceKm = ofALength ? race.distanceKm() : typed.distanceKm();
-		Integer ascentM = ofALength ? race.ascentM() : typed.ascentM();
-		Integer descentM = ofALength ? race.descentM() : typed.descentM();
-		Integer seconds = toALimit ? race.limitSeconds() : typed.seconds();
+		Integer ascentM = ofALength ? Integer.valueOf(race.ascentM()) : typed.ascentM();
+		Integer descentM = ofALength ? Integer.valueOf(race.descentM()) : typed.descentM();
+		Integer seconds = toALimit ? Integer.valueOf(race.limitSeconds()) : typed.seconds();
 
 		if (notADistance(distanceKm) || notAClimb(ascentM) || notAClimb(descentM)
 				|| notATime(seconds)) {
@@ -472,53 +498,125 @@ class ResultWriteApi {
 	 * moment somebody knows it - which is V10's own reason for these columns.
 	 */
 	private ResponseEntity<?> described(WhoIsAsking.Member asking, long me, Ran typed) {
-		if (isNothing(typed.raceName()) || typed.day() == null
+		/* THE KIND IS ASKED FOR ITSELF BEFORE THE CODEBOOK IS ASKED ABOUT IT, and that too
+		   was a 500: `WhatARaceCarries.KINDS` is a `Set.of(...)`, and an immutable set THROWS
+		   on `contains(null)` rather than answering false. So a form that never chose a kind
+		   answered a server fault instead of „the form is not complete". */
+		if (isNothing(typed.raceName()) || typed.day() == null || typed.raceKind() == null
 				|| !WhatARaceCarries.KINDS.contains(typed.raceKind())
 				|| notADistance(typed.distanceKm()) || notAClimb(typed.ascentM())
-				|| notAClimb(typed.descentM()) || notATime(typed.seconds())
-				|| !aTownOneWayOrTheOther(typed)) {
+				|| notAClimb(typed.descentM()) || notATime(typed.seconds())) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		ResponseEntity<?> town = whatIsWrongWithTheTown(typed);
+
+		if (town != null) {
+			return town;
 		}
 
 		if (typed.day().isAfter(today())) {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
-		Run run = new Run(typed.raceName().strip(), typed.day(), typed.distanceKm(),
-				typed.ascentM(), typed.descentM(), typed.seconds(),
+		boolean fromTheCodebook = typed.placeId() != null;
+		String named = typed.raceName().strip();
+
+		Run run = new Run(named, typed.day(), typed.distanceKm(), typed.ascentM(),
+				typed.descentM(), typed.seconds(),
 				pointsFor(typed.distanceKm(), typed.ascentM(), typed.descentM(), typed.seconds()));
 
-		return write(asking, me, null, typed.day(), typed.raceName().strip(), typed.raceKind(),
-				typed.placeId(), isNothing(typed.city()) ? null : typed.city().strip(),
-				typed.countryId(), run, typed, typed.raceName().strip());
+		return write(asking, me, null, typed.day(), named, typed.raceKind(),
+				fromTheCodebook ? placeKey(typed.placeId()).orElseThrow() : null,
+				fromTheCodebook ? null : typed.city().strip(),
+				fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
+				run, typed, named);
 	}
 
 	/**
-	 * THE TOWN, EXACTLY ONE WAY, which is {@code result_submission_town_is_from_the_codebook_or_typed}
-	 * and {@code result_submission_typed_town_names_its_country} asked before the row rather
-	 * than after it.
+	 * THE TOWN, EXACTLY ONE WAY AND BY THE NUMBER THE PORTAL REALLY PUBLISHES.
 	 *
-	 * <p>A constraint that fires reaches the member as a server fault; asked here it is an
-	 * answer. This is the same 400-bought-with-a-500 {@link ProofThatTheRunHappened} makes
-	 * about the shape of a link.
+	 * <p><b>This is {@link EventWriteApi#whatIsWrongWithTheTown} word for word, and copying it
+	 * is the instruction rather than the shortcut.</b> The owner, 11.08.2026: „Mesto i drzava
+	 * na registraciji rade isto kao na formi dogadjaja ... Jedna kontrola i jedno pravilo za
+	 * ceo portal, ne dva slicna." The reasons it answers with are that class's own constants
+	 * and not copies of its strings, so the two cannot come to say different words for one
+	 * refusal.
+	 *
+	 * <p><b>Half of this is a constraint asked before the row rather than after it</b>
+	 * ({@code result_submission_town_is_from_the_codebook_or_typed},
+	 * {@code ..._typed_town_names_its_country}): left to the database, each would reach the
+	 * member as a server fault instead of a sentence.
+	 *
+	 * <p><b>THE OTHER HALF IS NOT A CONSTRAINT AT ALL AND IS THE ONE THAT COST THIS ROUTE A
+	 * ROUND.</b> The first draft wrote {@code placeId} straight into {@code place_id}, which
+	 * is a key, while {@link PlaceApi} serves {@code place.geonames_id}, which is a mark.
+	 * Measured over {@code V3__place.sql}: 47,016 towns, so a key runs to 47,016 and a mark
+	 * runs to 13,697,165. For 46,989 of them the member would be refused a town the codebook
+	 * has - as a 500, on the foreign key - and for the other 27 a row WOULD be found, a
+	 * different town's, and written down with nothing said. {@code EventWriteApi} had exactly
+	 * this until 19.09.2026 and its own cases sent the key, so code and cases agreed with each
+	 * other and neither agreed with the portal.
+	 *
+	 * <p><b>What caught it here was not review and not a case of this route's own</b>, but
+	 * {@code EveryRouteFindsATownByItsMarkTest}, which asks the DISPATCHER which handlers take
+	 * a body holding a {@code placeId} and requires a probe for each. It failed on the day this
+	 * route was written, which is the day somebody could still decide what it should do.
+	 *
+	 * @return the refusal, or {@code null} when there is nothing wrong with the town
 	 */
-	private static boolean aTownOneWayOrTheOther(Ran typed) {
+	private ResponseEntity<?> whatIsWrongWithTheTown(Ran typed) {
 		boolean fromTheCodebook = typed.placeId() != null;
 		boolean typedByHand = !isNothing(typed.city());
 
-		return fromTheCodebook != typedByHand && (!typedByHand || typed.countryId() != null);
+		if (fromTheCodebook == typedByHand) {
+			return no(EventWriteApi.THE_TOWN_IS_NOT_SAID_ONCE);
+		}
+
+		if (fromTheCodebook) {
+			/* A country beside a codebook town is refused rather than dropped, which is
+			   EventWriteApi's own reasoning: its country is the codebook's and does not
+			   change, so taking the field and ignoring it would tell the member his choice
+			   was kept. */
+			if (!isNothing(typed.country())) {
+				return no(EventWriteApi.THE_COUNTRY_BELONGS_TO_A_TYPED_TOWN);
+			}
+
+			return placeKey(typed.placeId()).isPresent() ? null
+					: no(EventWriteApi.THE_TOWN_IS_NOT_KNOWN);
+		}
+
+		if (isNothing(typed.country())) {
+			return no(EventWriteApi.A_TYPED_TOWN_NAMES_ITS_COUNTRY);
+		}
+
+		return countryKey(typed.country()).isPresent() ? null
+				: no(EventWriteApi.THE_COUNTRY_IS_NOT_KNOWN);
+	}
+
+	/** The row of the codebook a MARK names, and nothing where the codebook has no such town.
+	 *  {@link EventWriteApi#placeKey} carries the reason at length and this is the same
+	 *  statement rather than a second reading of the same question. */
+	private Optional<Long> placeKey(long mark) {
+		return db.sql("select id from place where geonames_id = ?")
+				.param(mark).query(Long.class).optional();
+	}
+
+	private Optional<Long> countryKey(String code) {
+		return db.sql("select id from country where code = ?").param(code)
+				.query(Long.class).optional();
 	}
 
 	/** The writing, which is one transaction from the submission to the queue row and the
 	 *  line in his inbox, and the message after it has committed. */
 	private ResponseEntity<?> write(WhoIsAsking.Member asking, long me, Long raceId, LocalDate day,
-			String raceName, String raceKind, Long placeId, String city, Long countryId, Run run,
-			Ran typed, String subject) {
+			String raceName, String raceKind, Long theTownsKey, String city, Long theCountrysKey,
+			Run run, Ran typed, String subject) {
 		Said said = WhatAResultChangeSays.entered(run);
 
 		Long made = inOneTransaction.execute(committing -> {
-			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, placeId, city,
-					countryId, run, typed.link(), typed.comment(), null);
+			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, theTownsKey,
+					city, theCountrysKey, run, typed.link(), typed.comment(), null);
 
 			queue(me, submission, subject, typed.comment());
 			tell(me, said);
@@ -538,15 +636,21 @@ class ResultWriteApi {
 	 * as it was typed: that class judges the field AND says how it is stored, precisely so a
 	 * caller cannot decide for itself and get it wrong against
 	 * {@code result_submission_link_shape}.
+	 *
+	 * @param theTownsKey    the ROW of the codebook, deliberately not called {@code placeId} -
+	 *                       {@link EventWriteApi}'s own naming, and for its own measured
+	 *                       reason: the number that ARRIVES under that name is a mark, and a
+	 *                       parameter sharing its name is an invitation to hand one on
+	 * @param theCountrysKey the same, one column along
 	 */
 	private long writeTheSubmission(long me, Long raceId, LocalDate day, String raceName,
-			String raceKind, Long placeId, String city, Long countryId, Run run, String link,
-			String comment, Long amends) {
+			String raceKind, Long theTownsKey, String city, Long theCountrysKey, Run run,
+			String link, String comment, Long amends) {
 		return db.sql("insert into result_submission (competitor_id, race_id, race_date,"
 						+ " race_name, race_kind, place_id, city, country_id, distance_km,"
 						+ " ascent_m, descent_m, seconds, link, comment, amends_result_id)"
 						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
-				.params(me, raceId, day, raceName, raceKind, placeId, city, countryId,
+				.params(me, raceId, day, raceName, raceKind, theTownsKey, city, theCountrysKey,
 						run.distanceKm(), run.ascentM(), run.descentM(), run.seconds(),
 						ProofThatTheRunHappened.linkAsItGoesIn(report(link, comment)),
 						orEmpty(comment), amends)

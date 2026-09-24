@@ -12,6 +12,8 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -402,17 +404,21 @@ class ResultWriteApiTest {
 				.containsEntry("distance_km", new BigDecimal("21.0975"));
 	}
 
-	/** A TOWN TYPED BY HAND NAMES ITS COUNTRY, which is
-	 *  {@code result_submission_typed_town_names_its_country} asked before the row rather
-	 *  than after it. */
+	/**
+	 * A TOWN TYPED BY HAND NAMES ITS COUNTRY, AND THE COUNTRY IS A CODE THAT IS RESOLVED.
+	 *
+	 * <p>{@code result_submission_typed_town_names_its_country} asked before the row rather
+	 * than after it, and {@link CountryApi} serves {@code code} and never {@code id}, so what
+	 * arrives is „RS" and what is written is the row it names.
+	 */
 	@Test
-	void aTownTypedByHandComesWithItsCountry() throws Exception {
+	void aTownTypedByHandComesWithItsCountryAndTheCodeIsResolved() throws Exception {
 		Map<String, Object> described = new HashMap<>(Map.of(
 				"raceName", "Trka na Zlatiboru",
 				"day", "2027-02-02",
 				"raceKind", "free",
 				"city", "Zaselak",
-				"countryId", aCountry(),
+				"country", aCountryCode(),
 				"distanceKm", "15.00",
 				"ascentM", 0,
 				"descentM", 0,
@@ -421,13 +427,70 @@ class ResultWriteApiTest {
 
 		assertThat(theSubmission(idIn(reportedAs(ME, form(described)))))
 				.containsEntry("city", "Zaselak")
-				.containsEntry("place_id", null);
+				.containsEntry("place_id", null)
+				.containsEntry("country_id", theKeyOfTheCountry());
 
-		described.remove("countryId");
+		described.remove("country");
 
 		assertThat(reasonIn(reportedAs(ME, form(described))))
 				.as("a town typed with no country was taken")
-				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+				.isEqualTo(EventWriteApi.A_TYPED_TOWN_NAMES_ITS_COUNTRY);
+
+		described.put("country", "NEMA");
+
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.as("a country the codebook does not hold was taken")
+				.isEqualTo(EventWriteApi.THE_COUNTRY_IS_NOT_KNOWN);
+	}
+
+	/**
+	 * A TOWN OUT OF THE CODEBOOK IS NAMED BY ITS MARK AND WRITTEN DOWN BY ITS KEY.
+	 *
+	 * <p>This route's own half of what {@code EveryRouteFindsATownByItsMarkTest} asks of every
+	 * route that takes a town. Both halves are here on purpose: the mark and the key of the
+	 * town this fixture picks are asserted to DIFFER, so a route that wrote the arriving
+	 * number down unchanged fails on the value and not merely on a foreign key.
+	 */
+	@Test
+	void aTownOutOfTheCodebookArrivesAsAMarkAndIsWrittenDownAsAKey() throws Exception {
+		long mark = aTownFromTheCodebook();
+
+		assertThat(mark)
+				.as("this fixture picked a town whose mark and key are one number, so it cannot"
+						+ " tell a route that resolves from one that does not")
+				.isNotEqualTo(theKeyOf(mark));
+
+		Map<String, Object> described = aDescribedRun();
+
+		assertThat(theSubmission(idIn(reportedAs(ME, form(described)))))
+				.containsEntry("place_id", theKeyOf(mark))
+				.containsEntry("city", null)
+				.containsEntry("country_id", null);
+	}
+
+	/** AND A MARK THE CODEBOOK DOES NOT HOLD IS AN ANSWER RATHER THAN A FOREIGN KEY FAULT. */
+	@Test
+	void aTownTheCodebookDoesNotHoldIsAnAnswerAndNotAServerFault() throws Exception {
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("placeId", 1L + db.sql("select max(geonames_id) from place")
+				.query(Long.class).single());
+
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.isEqualTo(EventWriteApi.THE_TOWN_IS_NOT_KNOWN);
+	}
+
+	/** AND A COUNTRY BESIDE A CODEBOOK TOWN IS REFUSED RATHER THAN DROPPED, which is
+	 *  {@link EventWriteApi}'s own reasoning: the codebook already answers for it, so taking
+	 *  the field and ignoring it would tell the member his choice was kept. */
+	@Test
+	void aCountryBesideACodebookTownIsRefusedRatherThanDropped() throws Exception {
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("country", aCountryCode());
+
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.isEqualTo(EventWriteApi.THE_COUNTRY_BELONGS_TO_A_TYPED_TOWN);
 	}
 
 	/** THE QUEUE ROW IS WHAT CARRIES IT TO A MODERATOR, and it stands in the results tab and
@@ -532,18 +595,199 @@ class ResultWriteApiTest {
 		assertThat(ResultWriteApi.WHY_NOT.values()).doesNotHaveDuplicates();
 	}
 
-	/** A REQUEST THAT BOTH PICKS A RACE AND DESCRIBES ONE IS TWO ANSWERS TO ONE QUESTION, and
-	 *  V10's biconditional means there is no row that could be written from it. */
-	@Test
-	void aRequestThatNamesARaceTwiceIsRefused() throws Exception {
-		assertThat(reasonIn(reportedAs(ME, form(Map.of(
-				"raceId", lengthRace,
-				"raceName", "Ipak druga trka",
-				"seconds", 3600,
-				"link", "https://rezultati.rs/dva-puta")))))
+	/**
+	 * EVERY FIELD THAT DESCRIBES A RACE IS ONE TOO MANY BESIDE A RACE OUT OF THE CALENDAR.
+	 *
+	 * <p>A request that both picks a race and describes one is two answers to one question,
+	 * and V10's biconditional means there is no row that could be written from it.
+	 *
+	 * <p><b>One row per field rather than one case naming the name alone.</b> The
+	 * biconditional is about all five together, and a guard reading only the first of them
+	 * would let through a request that names a race AND a town - which is a row the table
+	 * refuses as a server fault.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@CsvSource(delimiter = '|', value = {
+			"raceName | Ipak druga trka",
+			"raceKind | free",
+			"placeId  | 1",
+			"city     | Zaselak",
+			"country  | RS"})
+	void everyFieldThatDescribesARaceIsRefusedBesideOneFromTheCalendar(String field, String value)
+			throws Exception {
+		Map<String, Object> fields = new HashMap<>();
+
+		fields.put("raceId", lengthRace);
+		fields.put("seconds", 3600);
+		fields.put("link", "https://rezultati.rs/dva-puta");
+		fields.put(field, value);
+
+		assertThat(reasonIn(reportedAs(ME, form(fields))))
+				.as("a run naming a race and describing one by %s was taken", field)
 				.isEqualTo(ResultWriteApi.THE_RACE_IS_NAMED_TWICE);
 
 		assertThat(howManySubmissions()).isZero();
+	}
+
+	/**
+	 * EVERY WAY A DESCRIBED RUN CAN FAIL TO HOLD TOGETHER, ONE ROW PER CONDITION.
+	 *
+	 * <p>Each row takes the one request that works and breaks exactly one thing about it, so
+	 * what is measured is that CONDITION and not the shape of the request: a guard that
+	 * stopped reading the climb would go on passing every other row.
+	 *
+	 * <p><b>Every one of them is a {@code check} the table would fire on</b>, and firing there
+	 * reaches the member as a 500 rather than as an answer, which is why they are asked before
+	 * the row and not left to the database: {@code result_submission_race_name_not_blank},
+	 * {@code ..._described_race_says_its_kind}, {@code ..._race_kind_known},
+	 * {@code ..._distance_positive}, {@code ..._ascent_not_negative},
+	 * {@code ..._descent_not_negative} and {@code ..._seconds_positive}.
+	 *
+	 * <p>{@code <out>} means the field is not in the request at all, which is not the same
+	 * thing as sending it empty and is what a form really does with a box nobody filled in.
+	 */
+	@ParameterizedTest(name = "{0} = {1}")
+	@CsvSource(delimiter = '|', value = {
+			"raceName   | <out>    ",
+			"raceName   | '   '    ",
+			"day        | <out>    ",
+			"raceKind   | <out>    ",
+			"raceKind   | brdska   ",
+			"distanceKm | <out>    ",
+			"distanceKm | 0        ",
+			"distanceKm | 99999.00 ",
+			"distanceKm | 1.00001  ",
+			"ascentM    | <out>    ",
+			"ascentM    | -1       ",
+			"descentM   | <out>    ",
+			"descentM   | -1       ",
+			"seconds    | <out>    ",
+			"seconds    | 0        "})
+	void everyWayADescribedRunCanFailToHoldTogether(String field, String value) throws Exception {
+		Map<String, Object> fields = aDescribedRun();
+
+		if ("<out>".equals(value)) {
+			fields.remove(field);
+		} else {
+			fields.put(field, value);
+		}
+
+		assertThat(reasonIn(reportedAs(ME, form(fields))))
+				.as("a described run with %s = %s was taken", field, value)
+				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/** A TOWN IS THE CODEBOOK OR IT IS TYPED, NEVER BOTH AND NEVER NEITHER, which is
+	 *  {@code result_submission_town_is_from_the_codebook_or_typed} and
+	 *  {@code ..._described_race_names_its_town} in one sentence. */
+	@ParameterizedTest(name = "{0}")
+	@CsvSource(delimiter = '|', value = {"both", "neither"})
+	void aTownIsSaidExactlyOnce(String how) throws Exception {
+		Map<String, Object> fields = aDescribedRun();
+
+		if ("both".equals(how)) {
+			fields.put("city", "Zaselak");
+			fields.put("country", aCountryCode());
+		} else {
+			fields.remove("placeId");
+		}
+
+		assertThat(reasonIn(reportedAs(ME, form(fields))))
+				.as("a run naming its town %s was taken", how)
+				.isEqualTo(EventWriteApi.THE_TOWN_IS_NOT_SAID_ONCE);
+	}
+
+	/**
+	 * AND THE SAME FOUR FIGURES ARE JUDGED ON A RACE THAT FIXES NONE OF THEM.
+	 *
+	 * <p>A free race is the one kind where all four come from the member, so it is the only
+	 * road on which each of the four can be wrong: on a race of a length three of them are the
+	 * race's own and cannot be.
+	 */
+	@ParameterizedTest(name = "{0} = {1}")
+	@CsvSource(delimiter = '|', value = {
+			"distanceKm | <out>    ",
+			"distanceKm | 0        ",
+			"distanceKm | 99999.00 ",
+			"distanceKm | 1.00001  ",
+			"ascentM    | <out>    ",
+			"ascentM    | -1       ",
+			"descentM   | <out>    ",
+			"descentM   | -1       ",
+			"seconds    | <out>    "})
+	void everyWayARunOnAFreeRaceCanFailToHoldTogether(String field, String value) throws Exception {
+		Map<String, Object> fields = new HashMap<>();
+
+		fields.put("raceId", freeRace);
+		fields.put("distanceKm", "8.50");
+		fields.put("ascentM", 60);
+		fields.put("descentM", 70);
+		fields.put("seconds", 2700);
+		fields.put("link", "https://rezultati.rs/slobodna");
+
+		if ("<out>".equals(value)) {
+			fields.remove(field);
+		} else {
+			fields.put(field, value);
+		}
+
+		assertThat(reasonIn(reportedAs(ME, form(fields))))
+				.as("a run on a free race with %s = %s was taken", field, value)
+				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+	}
+
+	/** AND ON A CORRECTION, where all four are the member's by PDL's own words („izmena
+	 *  brojeva i dokaza"), so each of the four is judged there too. */
+	@ParameterizedTest(name = "{0} = {1}")
+	@CsvSource(delimiter = '|', value = {
+			"distanceKm | <out>   ",
+			"distanceKm | 0       ",
+			"distanceKm | 1.00001 ",
+			"ascentM    | <out>   ",
+			"ascentM    | -1      ",
+			"descentM   | -1      ",
+			"seconds    | 0       "})
+	void everyWayACorrectionCanFailToHoldTogether(String field, String value) throws Exception {
+		Map<String, Object> fields = new HashMap<>();
+
+		fields.put("distanceKm", "42.20");
+		fields.put("ascentM", 350);
+		fields.put("descentM", 410);
+		fields.put("seconds", 11400);
+		fields.put("link", "https://rezultati.rs/ispravka");
+
+		if ("<out>".equals(value)) {
+			fields.remove(field);
+		} else {
+			fields.put(field, value);
+		}
+
+		assertThat(reasonIn(correctedAs(ME, myResult, form(fields))))
+				.as("a correction with %s = %s was taken", field, value)
+				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+
+		assertThat(secondsOf(myResult))
+				.as("a refused correction moved the result all the same")
+				.isEqualTo(12000);
+	}
+
+	/** The one described request that works, for a case to break one thing about. */
+	private Map<String, Object> aDescribedRun() {
+		Map<String, Object> fields = new HashMap<>();
+
+		fields.put("raceName", "Opisana trka");
+		fields.put("day", "2027-02-02");
+		fields.put("raceKind", "free");
+		fields.put("placeId", aTownFromTheCodebook());
+		fields.put("distanceKm", "12.00");
+		fields.put("ascentM", 100);
+		fields.put("descentM", 90);
+		fields.put("seconds", 3600);
+		fields.put("link", "https://rezultati.rs/opisana");
+
+		return fields;
 	}
 
 	@Test
@@ -1014,12 +1258,42 @@ class ResultWriteApiTest {
 				.params(member, submission).update();
 	}
 
+	/**
+	 * A TOWN AS IT TRAVELS, WHICH IS THE MARK AND NOT THE ROW KEY, AND ONE WHERE THE TWO
+	 * DIFFER.
+	 *
+	 * <p>{@link PlaceApi} serves {@code place.geonames_id}; {@code place.id} is a bigserial
+	 * the portal has never published. The first draft of this file sent the KEY, and with it
+	 * every case here passed against a route that wrote the arriving number straight into the
+	 * column - code and cases agreeing with each other and neither agreeing with the portal,
+	 * which is the fault {@code EveryRouteFindsATownByItsMarkTest} exists to refuse and the
+	 * one that caught this route.
+	 *
+	 * <p><b>The town is chosen where the mark is the key of no row at all</b>, which is 46,989
+	 * of the codebook's 47,016: so a route reading it as a key finds nothing and the foreign
+	 * key refuses the row, rather than quietly writing a different town.
+	 */
 	private long aTownFromTheCodebook() {
-		return db.sql("select id from place where rank = 1").query(Long.class).single();
+		return db.sql("select geonames_id from place"
+						+ " where geonames_id > (select max(id) from place) and rank > 1"
+						+ " order by rank limit 1")
+				.query(Long.class).single();
 	}
 
-	private long aCountry() {
-		return db.sql("select id from country where code = 'RS'").query(Long.class).single();
+	/** And the row that mark names, which is what has to end up in the column. */
+	private long theKeyOf(long mark) {
+		return db.sql("select id from place where geonames_id = ?")
+				.param(mark).query(Long.class).single();
+	}
+
+	/** A country as it travels, which is the CODE {@link CountryApi} serves. */
+	private static String aCountryCode() {
+		return "RS";
+	}
+
+	private long theKeyOfTheCountry() {
+		return db.sql("select id from country where code = ?")
+				.param(aCountryCode()).query(Long.class).single();
 	}
 
 	private void account(String email, String memberNumber) {
