@@ -137,3 +137,30 @@
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
+
+/* THE `+` THAT PUTS A RACE INTO A COMPETITION (`admin/LeagueRaceModeration.tsx`).
+
+   Two chosen boxes and a press, laid out as a column that is allowed to become a row where
+   there is width for one. Written that way round because the portal is mobile first and
+   360px is the narrowest it must hold: a row of two selects and a button at that width
+   either squeezes the words out of the boxes or pushes the page sideways, and this portal
+   never scrolls sideways.
+
+   `flex-wrap` and not a breakpoint, so the layout answers to the width it is GIVEN rather
+   than to the width of the window. This box sits inside a cell of the table of competitions,
+   whose column is as wide as the table leaves it, and a media query does not know that. */
+.leagues__adding {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+}
+
+/* Each box takes what it needs and gives it back. `min-width: 0` because a select whose
+   longest option is an event's whole name otherwise refuses to shrink below it, and that is
+   the one input here that would push the page sideways. */
+.leagues__adding select {
+  flex: 1 1 12rem;
+  min-width: 0;
+}

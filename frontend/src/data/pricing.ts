@@ -241,6 +241,15 @@ export function seasonBeingRenewed(today: string): number {
   return transfersTakeEffect(today)
 }
 
-/** The league the portal exists for. It is implied everywhere and is never
- *  listed among the competitions that run alongside it. */
-export const MAIN_LEAGUE_SLUG = `btl-${SEASON}`
+/* `MAIN_LEAGUE_SLUG` STOOD HERE AND IS GONE (PDL P15a, owner 22.09.2026).
+ *
+ * It was `btl-${SEASON}`, and its two readers filtered a row at that address off the public
+ * list of competitions and off the administration's. Both were guarding against a state that
+ * cannot occur: the owner settled that the Balkan league „se ne kreira i ne moderira" and
+ * „ne treba da se cuva na isti nacin kao ostale lige", so `league` holds the competitions
+ * that run ALONGSIDE and no row of the portal's own league will ever be written.
+ *
+ * Deleted rather than left unused, because a constant naming the address of a row that does
+ * not exist is an invitation to the next reader to put the filter back - which is the same
+ * fault as a comment that states an overturned decision, and it was found as one.
+ */

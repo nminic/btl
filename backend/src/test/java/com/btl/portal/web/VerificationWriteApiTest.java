@@ -1220,6 +1220,83 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * AND V19: A RACE COUNTED BY A LEAGUE OF ITS OWN YEAR MAY NOT BE CARRIED OUT OF THAT
+	 * YEAR, ON THIS QUEUE EXACTLY AS ON THE ADMINISTRATOR'S OWN TWO ROUTES.
+	 *
+	 * <p><b>This queue was the third door on one {@code update race set date = date + ...}
+	 * and, until 24.09.2026, one of the two that asked nothing.</b> {@code RaceWriteApi} has
+	 * refused a single race since B40; this and {@code EventWriteApi.change} move races by
+	 * the armful, and {@code league_race_race_fk} - composite over {@code (race_id, season)}
+	 * and without {@code on update cascade} (V19) - answered them with a server fault. A
+	 * moderator pressing „Prihvati" on an ordinary proposal met a 500.
+	 *
+	 * <p><b>The event carries no result, which is the axis and not a convenience.</b> The
+	 * case above refuses the same move under PDL P10b, so an event carrying both would be
+	 * refused whichever guard was missing and this case could not say which answered.
+	 *
+	 * <p><b>And the refusal is settled BEFORE the row is claimed</b>, in the same place the
+	 * team's and P10b's are: the proposal is still {@code "waiting"} afterwards.
+	 */
+	@Test
+	void approvingAScheduleChangeIsRefusedWhenItWouldCarryARaceOutOfItsLeaguesYear()
+			throws Exception {
+		long theCountedEvent = event("ligaski-2027", "Ligaški", LocalDate.of(2027, 12, 30));
+		race(theCountedEvent, LocalDate.of(2027, 12, 30));
+		leagueCounting("liga-2027", 2027, theCountedEvent);
+
+		long proposal = scheduleProposalWaitingFor(ANA, theCountedEvent, "Pomeranje ligaškog",
+				LocalDate.of(2027, 12, 30), LocalDate.of(2028, 1, 3));
+
+		MockHttpServletResponse response = decide(THE_SUPERADMIN, proposal, true, null);
+
+		assertThat(response.getStatus())
+				.as("a race counted by a league of 2027 was carried into 2028 and nothing refused"
+						+ " it, which the database answers with a fault rather than a sentence")
+				.isEqualTo(409);
+		assertThat(reasonIn(response))
+				.isEqualTo("Događaj ima trku koja se boduje u ligi te sezone,"
+						+ " pa ne može u drugu godinu.");
+		assertThat(stateOf(proposal))
+				.as("a refused approval claimed the queue row anyway")
+				.isEqualTo("waiting");
+		assertThat(db.sql("select date from race where event_id = ?").param(theCountedEvent)
+						.query((row, one) -> row.getDate(1).toLocalDate()).single())
+				.as("a refused move changed the calendar anyway")
+				.isEqualTo(LocalDate.of(2027, 12, 30));
+		assertThat(db.sql("select count(*) from league_race").query(Long.class).single())
+				.as("the refusal took the race out of its league instead of leaving it alone")
+				.isEqualTo(1);
+	}
+
+	/**
+	 * AND THE SAME PROPOSAL IS APPROVED WHEN IT STAYS INSIDE THE LEAGUE'S OWN YEAR.
+	 *
+	 * <p>The other side of the boundary, and the half that says the guard asks about the
+	 * YEAR rather than about the league at all: the identical event, the identical league
+	 * row, a move of three days that does not cross 1 January, and it goes through. Without
+	 * this, a guard refusing every event any league counts would pass the case above.
+	 */
+	@Test
+	void approvingAScheduleChangeInsideTheLeaguesOwnYearGoesThrough() throws Exception {
+		long theCountedEvent = event("ligaski-2027", "Ligaški", LocalDate.of(2027, 12, 20));
+		race(theCountedEvent, LocalDate.of(2027, 12, 20));
+		leagueCounting("liga-2027", 2027, theCountedEvent);
+
+		long proposal = scheduleProposalWaitingFor(ANA, theCountedEvent, "Pomeranje ligaškog",
+				LocalDate.of(2027, 12, 20), LocalDate.of(2027, 12, 23));
+
+		/* 200 and not 204: this route answers a decision WITH the decision, which is the
+		   shape the rest of this file already reads (line 435). Written as 204 first and
+		   corrected by the measurement rather than the other way round. */
+		assertThat(decide(THE_SUPERADMIN, proposal, true, null).getStatus()).isEqualTo(200);
+		assertThat(db.sql("select date from race where event_id = ?").param(theCountedEvent)
+						.query((row, one) -> row.getDate(1).toLocalDate()).single())
+				.as("the move was allowed and the calendar did not follow it")
+				.isEqualTo(LocalDate.of(2027, 12, 23));
+		assertThat(stateOf(proposal)).isEqualTo("approved");
+	}
+
+	/**
 	 * THE FLOOR UNDER THE LIST OF TABS THIS ROUTE CARRIES OUT.
 	 *
 	 * <p>It asks the DATABASE for every queue there is rather than repeating a list, so a
@@ -1433,6 +1510,24 @@ class VerificationWriteApiTest {
 						+ " returning id")
 				.params(slug, name, date)
 				.query(Long.class).single();
+	}
+
+	/**
+	 * A league of that season counting the one race of that event, in two statements.
+	 *
+	 * <p>The season is written onto {@code league_race} from the LEAGUE, which is what V19
+	 * requires and what {@code LeagueWriteApi} does; taken from the race instead, a fixture
+	 * could build a row the composite key would never have allowed.
+	 */
+	private void leagueCounting(String slug, int season, long eventId) {
+		long league = db.sql("insert into league (slug, name, season, rules, prizes)"
+						+ " values (?, ?, ?, '', '') returning id")
+				.params(slug, "Liga " + slug, season).query(Long.class).single();
+
+		db.sql("insert into league_race (league_id, season, race_id)"
+						+ " select l.id, l.season, r.id from league l, race r"
+						+ " where l.id = ? and r.event_id = ?")
+				.params(league, eventId).update();
 	}
 
 	private void race(long eventId, LocalDate date) {

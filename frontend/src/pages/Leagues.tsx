@@ -2,7 +2,6 @@ import { Link } from 'react-router'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
-import { MAIN_LEAGUE_SLUG } from '../data/pricing'
 import { LEAGUES } from './admin/entityForms'
 import { recordKey } from '../session/context'
 import type { League } from '../data/types'
@@ -171,10 +170,16 @@ export function Leagues() {
       <h1>{t('leagues.title')}</h1>
 
       <Resource state={useLeagues()}>
-        {(all) => {
-          /* The league itself is the portal; it needs no entry in a list of things that run
-             alongside it. */
-          const leagues = all.filter((one) => one.slug !== MAIN_LEAGUE_SLUG)
+        {(leagues) => {
+          /* EVERY LEAGUE SERVED IS LISTED, AND NOTHING IS FILTERED OFF THIS SCREEN.
+             Until 24.09.2026 a row at `btl-2027` was taken out here, on the reading that the
+             portal's own league was a row of that table like any other and had to be hidden.
+             The owner settled the shape on 22.09.2026 (PDL P15a): „Balkanska trkacka liga je
+             globalno takmicenje ... Ne kreira se i ne moderira", and „BTL ne treba da se cuva
+             na isti nacin kao ostale lige". So `league` is the table of the competitions that
+             run ALONGSIDE, there is no such row, and a filter against one was a guard over an
+             assumption that had been overturned - which is worse than useless, because the
+             next reader takes it as evidence that the row exists. */
           /* The seasons competitions are actually held in, newest first, and the control opens on
              the newest of them. Not the seasons anybody has raced in: a competition written for
              next season has nobody in it yet and would be unreachable by the one control that

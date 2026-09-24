@@ -136,6 +136,24 @@ class EventWriteApiTest {
 				.params(event, name).update();
 	}
 
+	/**
+	 * A league of that season counting that race, in one statement.
+	 *
+	 * <p>The season is written onto {@code league_race} from the LEAGUE, which is what V19
+	 * requires and what {@code LeagueWriteApi} does; taken from the race instead, a fixture
+	 * could build a row the composite key would never have allowed and the case would be
+	 * measuring an impossible state.
+	 */
+	private void leagueCounting(String slug, int season, long race) {
+		long league = db.sql("insert into league (slug, name, season, rules, prizes)"
+						+ " values (?, ?, ?, '', '') returning id")
+				.params(slug, "Liga " + slug, season).query(Long.class).single();
+
+		db.sql("insert into league_race (league_id, season, race_id)"
+						+ " select ?, season, ? from league where id = ?")
+				.params(league, race, league).update();
+	}
+
 	private long raceCalled(String name) {
 		return db.sql("select id from race where name = ?").param(name).query(Long.class).single();
 	}
@@ -1033,6 +1051,68 @@ class EventWriteApiTest {
 				.as("an event with no result at all was refused for crossing the year")
 				.isEqualTo(200);
 		assertThat(daysOfRacesOn(freshEvent)).containsExactly("2026-11-20");
+	}
+
+	/**
+	 * AN EVENT WHOSE RACE IS COUNTED BY A LEAGUE MAY NOT BE CARRIED OUT OF THAT LEAGUE'S
+	 * YEAR (V19), AND UNTIL 24.09.2026 THIS ROUTE ANSWERED THAT WITH A 500.
+	 *
+	 * <p><b>Found by review rather than by this file, and the sentence that should have
+	 * stopped it stood in the class under test.</b> {@code EventWriteApi} said „Which
+	 * leagues an event counts for is {@code league_event} (V14), which nothing writes
+	 * today" - a table V20 had dropped, and a claim B86 had just made false by becoming the
+	 * first writer of {@code league_race}. {@code RaceWriteApi} has refused this for one
+	 * race since B40; this route and the schedule queue move races by the armful and asked
+	 * nothing, so {@code league_race_race_fk} refused the update and the administrator met
+	 * {@code Key (id, season)=(…) is still referenced} as a server fault.
+	 *
+	 * <p><b>THE EVENT CARRIES NO RESULT, AND THAT IS THE AXIS RATHER THAN CONVENIENCE.</b>
+	 * PDL P10b refuses the same move for an event with a result written, so a case built on
+	 * {@code acted} would be refused either way and could not say which guard answered. This
+	 * one can only be refused by the league.
+	 */
+	@Test
+	void anEventWhoseRaceCountsInALeagueMayNotBeCarriedIntoAnotherYear() throws Exception {
+		long counted = event("ligaski-2027", "2027-11-20", A_TOWN);
+		race(counted, "Ligaska", "2027-11-20");
+		leagueCounting("liga-2027", 2027, raceCalled("Ligaska"));
+
+		MockHttpServletResponse answer = change(counted, aForm().withPlace(aKnownTown())
+				.withName("Trka ligaski-2027").withDay(LocalDate.parse("2028-11-20")));
+
+		assertThat(answer.getStatus())
+				.as("a race counted by a league of 2027 was carried into 2028 and nothing refused"
+						+ " it, which the database answers with a fault rather than a sentence")
+				.isEqualTo(409);
+		assertThat(reasonIn(answer))
+				.isEqualTo(EventWriteApi.THE_RACE_COUNTS_IN_A_LEAGUE_OF_ITS_SEASON);
+		assertThat(daysOfRacesOn(counted))
+				.as("the move was refused and the calendar changed anyway")
+				.containsExactly("2027-11-20");
+		assertThat(db.sql("select count(*) from league_race").query(Long.class).single())
+				.as("the refusal took the race out of its league instead of leaving it alone")
+				.isEqualTo(1);
+	}
+
+	/**
+	 * AND THE SAME EVENT MOVES FREELY INSIDE THE LEAGUE'S OWN YEAR.
+	 *
+	 * <p>The other side of the boundary, and the half that says the guard asks about the
+	 * YEAR rather than about the league at all: the identical event, the identical league
+	 * row, a move of nine months, and it goes through. Without this, a guard that refused
+	 * every event counted by any league would pass the case above.
+	 */
+	@Test
+	void anEventCountedByALeagueMovesFreelyInsideThatLeaguesYear() throws Exception {
+		long counted = event("ligaski-2027", "2027-11-20", A_TOWN);
+		race(counted, "Ligaska", "2027-11-20");
+		leagueCounting("liga-2027", 2027, raceCalled("Ligaska"));
+
+		MockHttpServletResponse answer = change(counted, aForm().withPlace(aKnownTown())
+				.withName("Trka ligaski-2027").withDay(LocalDate.parse("2027-02-20")));
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(daysOfRacesOn(counted)).containsExactly("2027-02-20");
 	}
 
 	/**

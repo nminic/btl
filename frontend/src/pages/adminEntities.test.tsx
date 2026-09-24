@@ -1,5 +1,5 @@
 import { SLOW } from '../test/slow'
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -10,10 +10,11 @@ import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, first, inputElement, must, selectElement } from '../test/at'
 import { Deleted, Saved } from '../test/saved'
-import { loadResource } from '../data/client'
+import { clearResourceCache, loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
+import { SEASON } from '../data/pricing'
 import { formatShortDate } from '../i18n/format'
-import type { BtlEvent, Race, Result } from '../data/types'
+import type { BtlEvent, League, Race, Result } from '../data/types'
 import { fieldDate, isoDate, shiftDate } from '../forms/dateField'
 import { renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
@@ -1579,76 +1580,109 @@ describe('the races of an event', () => {
  * of its own proves only that the record layer can copy a value.
  */
 /**
- * The league the portal itself is.
+ * EVERY COMPETITION THAT IS SERVED IS OFFERED, AND NOTHING IS HIDDEN FROM EITHER
+ * SCREEN (PDL P15a, owner 22.09.2026).
  *
- * Every event counts towards it, its standings are the BTL tables, and there is
- * nothing anybody would ever change about it (owner, 10.08.2026: „Ona se
- * podrazumeva i ne uređuje se."). The generator stopped writing it on the same
- * day, so what is left is a guard against a league somebody makes by hand at
- * that address, and a guard nothing exercises is a line that can be deleted
- * without a test noticing. Both screens are asked, because both filter and each
- * would fail on its own.
+ * **What stood here until 24.09.2026 was the opposite claim, and it was a guard
+ * over a decision that had been overturned.** Both screens filtered a row at
+ * `btl-${SEASON}` off their lists, on the reading that the portal's own league was
+ * a row of this table like any other and had to be kept out of it. The owner
+ * settled the shape instead: „Balkanska trkačka liga je globalno takmičenje ... Ne
+ * kreira se i ne moderira", and „BTL ne treba da se čuva na isti način kao ostale
+ * lige jer je potpuno drugačiji koncept." So `league` is the table of the
+ * competitions that run ALONGSIDE, no such row exists or will, and a filter against
+ * one is dead logic resting on a wrong assumption.
+ *
+ * **This is what is asked in its place, and its floor is the file rather than a
+ * list.** Every league the portal is served is named on both screens - so a filter
+ * put back, on that address or on any other, takes a row off one of them and fails
+ * here. The names come out of `/api/leagues` and are never written down in this
+ * file: a list typed here would go quietly short the day the data changed, which is
+ * the fault the guard it replaces was made of.
  */
-describe('Balkanska trkačka liga among the leagues', () => {
-  /** The file, answered with the main league and one ordinary one. */
-  function servingBoth() {
-    const real = globalThis.fetch
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/leagues')
-        ? new Response(
-            JSON.stringify([
-              {
-                id: 'league-btl-2027',
-                slug: 'btl-2027',
-                name: 'Balkanska trkačka liga 2027',
-                season: 2027,
-                rules: '',
-                prizes: '',
-                eventIds: [],
-              },
-              {
-                id: 'league-druga-2027',
-                slug: 'druga-2027',
-                name: 'Druga liga 2027',
-                season: 2027,
-                rules: '',
-                prizes: '',
-                eventIds: [],
-              },
-            ]),
-            { status: 200 },
-          )
-        : real(input))
+describe('nothing is filtered off the list of competitions', () => {
+  it('names every league that is served, on the administration screen', async () => {
+    const leagues = await loadResource<League[]>('leagues')
 
-    return () => {
-      globalThis.fetch = real
-    }
-  }
-
-  it('is not offered for editing, and the leagues beside it are', async () => {
-    const stop = servingBoth()
+    expect(leagues.length).toBeGreaterThan(1)
 
     renderAt('/sr/administracija/lige', 'superadmin')
 
     const rows = await table('Lige')
     const words = rows.getAllByRole('row').map((one) => one.textContent ?? '')
 
-    expect(words.some((one) => one.includes('Druga liga 2027'))).toBe(true)
-    expect(words.some((one) => one.includes('Balkanska trkačka liga'))).toBe(false)
+    for (const league of leagues) {
+      expect(words.some((one) => one.includes(league.name))).toBe(true)
+    }
+  }, SLOW)
 
-    stop()
-  })
+  it('and on the public one, season by season', async () => {
+    const leagues = await loadResource<League[]>('leagues')
+    const seasons = [...new Set(leagues.map((one) => one.season))]
 
-  it('is not listed to a visitor either, for the same reason', async () => {
-    const stop = servingBoth()
+    expect(seasons.length).toBeGreaterThan(1)
 
-    renderAt('/sr/lige')
+    for (const season of seasons) {
+      const { unmount } = renderAt(`/sr/lige?sezona=${season}`)
 
-    expect(await screen.findByRole('link', { name: /Druga liga 2027/ })).toBeVisible()
-    expect(screen.queryByRole('link', { name: /Balkanska trkačka liga/ })).toBeNull()
+      for (const league of leagues.filter((one) => one.season === season)) {
+        expect(await screen.findByRole('link', { name: new RegExp(league.name) })).toBeVisible()
+      }
 
-    stop()
-  })
+      unmount()
+    }
+  }, SLOW)
+
+  /**
+   * AND THE ONE CASE THAT CAN ACTUALLY BITE THE FILTER THAT WAS TAKEN OUT.
+   *
+   * **The two cases above are clean and they are not enough, and that was measured rather
+   * than argued (review, 24.09.2026).** They read every league the portal is served and
+   * require each on both screens, which fails for a filter against a league that IS there -
+   * but the filter that was removed was against `btl-${SEASON}`, and no row of the served
+   * data answers at that address. Put back exactly as it stood, it changes nothing and both
+   * cases above stay green. A guard that cannot fail on the thing it was written about is
+   * not guarding it.
+   *
+   * **So the address is served.** PDL P15a settles that no such row will be written -
+   * „Balkanska trkačka liga ... se ne kreira i ne moderira" - and this case is not a claim
+   * that one will be. It is the other half of that decision: `league` is the table of the
+   * competitions that run alongside, the route refuses no address (which is written down as
+   * a boundary in `LeagueWriteApi`), so a row that ends up at that address is an ordinary
+   * row and the portal must not be built to hide it. Hiding it is precisely the assumption
+   * the owner overturned.
+   */
+  it('lists a competition at the address the old filter was written against', async () => {
+    const real = globalThis.fetch
+    const served = [
+      { id: 1, slug: 'druga-2027', name: 'Druga liga 2027', season: 2027, rules: '', prizes: '',
+        eventIds: [], raceIds: [] },
+      { id: 2, slug: `btl-${SEASON}`, name: 'Liga na toj adresi', season: SEASON, rules: '',
+        prizes: '', eventIds: [], raceIds: [] },
+    ]
+
+    clearResourceCache()
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/api/leagues')
+        ? new Response(JSON.stringify(served), { status: 200 })
+        : real(input))
+
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    const rows = await table('Lige')
+
+    expect(rows.getAllByRole('row').map((one) => one.textContent ?? '').join(' '))
+      .toContain('Liga na toj adresi')
+
+    cleanup()
+    clearResourceCache()
+    renderAt(`/sr/lige?sezona=${SEASON}`)
+
+    expect(await screen.findByRole('link', { name: /Liga na toj adresi/ })).toBeVisible()
+
+    globalThis.fetch = real
+    clearResourceCache()
+  }, SLOW)
 })
 
 /**
