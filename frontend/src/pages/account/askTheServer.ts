@@ -218,3 +218,72 @@ export async function askTheServer(path: string, said: object): Promise<Answer> 
 
   return { got: 'wrong', status: answer.status }
 }
+
+/**
+ * THE SAME ERRAND WITH THE VERB WRITTEN OUT, AND WITH 200 READ AS „IT WAS DONE".
+ *
+ * <p><b>Appended rather than folded into {@link askTheServer}, and that is a merge
+ * decision rather than a design one.</b> Another increment is widening the function above
+ * in the same week - the league is giving it `PUT` and `DELETE` - so the two changes are
+ * kept in two hunks that do not touch. The day both have landed these fold into one
+ * function with one `method` parameter; the {@code method} argument here is already that
+ * parameter, so the folding is a deletion rather than a rewrite.
+ *
+ * <p><b>WHY 200 IS HERE AND IS NOT IN THE FUNCTION ABOVE, WHICH IS THE ONLY THING ABOUT
+ * THIS THAT IS NOT MECHANICAL.</b> Every route that one was written for answers 204 or
+ * 201 and carries nothing a screen reads. {@code PUT /api/me} answers <b>200 with the
+ * member's own record as it now stands</b> - {@code MeWriteApi.write} ends
+ * {@code ResponseEntity.ok(whatStandsFor(me))} - and {@code PUT /api/me/password} answers
+ * 204. Sent through the function above, a change that WAS SAVED would have come back
+ * {@code {got:'wrong', status:200}} and the member would have been told it was not, which
+ * is the worst of the four wrong answers: he types it all again over a save that worked.
+ * `myAccount.test.ts` sends exactly a 200 and measures that it reads as done.
+ *
+ * <p><b>The body of that 200 is deliberately not read.</b> What a screen puts back in its
+ * boxes after a save is what the member typed, which it already holds; reading the record
+ * back would make this the portal's second home for the member's own data. The one field
+ * of {@code Changed} nothing else could answer is {@code waiting}, and that belongs to the
+ * biography, which this increment does not send.
+ *
+ * @param path   what is being asked, an address under `/api`
+ * @param said   the body, which is the only place anything given here is written
+ * @param method the verb, written by the caller because these routes are told apart by it
+ */
+export async function tellTheServer(path: string, said: object, method: 'PUT'): Promise<Answer> {
+  let answer: Response
+
+  try {
+    const token = await beHandedTheToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+
+    if (token !== null) {
+      headers[TOKEN_HEADER] = token
+    }
+
+    answer = await fetch(path, { method, headers, body: JSON.stringify(said) })
+  } catch {
+    return { got: 'nothing' }
+  }
+
+  if (answer.status === 200 || answer.status === 204) {
+    return { got: 'done' }
+  }
+
+  if (answer.status === 403) {
+    return { got: 'rejected' }
+  }
+
+  /* 409 BESIDE 400 for the reason the function above gives at length: both carry a reason
+     named in the body, and which number a route chose for which refusal is that route's
+     business. `MeWriteApi` uses both - 409 for a biography already waiting, 400 for the
+     rest - and all of them end in a sentence chosen by name. */
+  if (answer.status === 400 || answer.status === 409) {
+    const reason = await reasonIn(answer)
+
+    return reason === null
+      ? { got: 'wrong', status: answer.status }
+      : { got: 'refused', reason }
+  }
+
+  return { got: 'wrong', status: answer.status }
+}

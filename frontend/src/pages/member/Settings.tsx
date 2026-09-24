@@ -7,6 +7,8 @@ import { NOTIFICATION_KEYS, recordKey } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
+import { ChangePassword } from './ChangePassword'
+import { PersonalData } from './PersonalData'
 import { ProfileBio } from './ProfileBio'
 import { ProfilePicture } from './ProfilePicture'
 import { useMemberScreen } from './memberScreen'
@@ -39,9 +41,16 @@ export function Settings() {
       <h1>{t('settings.title')}</h1>
       <p className="member__note">{t('settings.intro')}</p>
 
-      {/* First, because it is the only thing on this screen other people see.
-          The theme and the notifications are the reader's own business; the
-          picture is what the league sees beside their name. */}
+      {/* First, because this is the part of the screen other people see. The theme
+          and the notifications are the reader's own business; a name, a town and a
+          picture are what the league sees beside each other.
+
+          The order inside it is the order of how much a thing is HIS: his own data
+          first, which he changes himself and which takes effect at once (PDL P28b,
+          1); then the two that go to a moderator before anybody else sees them. The
+          sentence here said „the picture is the only thing other people see" until
+          24.09.2026, which was true while a name could not be edited from this
+          screen and stopped being true in the same commit that let it. */}
       <Resource state={competitors} inline>
         {(competitors) => {
           const me = competitors.find((one) => one.memberNumber === memberNumber)
@@ -54,12 +63,21 @@ export function Settings() {
              each going for review on its own (owner, 15.08.2026). */
           return (
             <>
+              <PersonalData me={me} />
               <ProfilePicture me={me} />
               <ProfileBio me={me} />
             </>
           )
         }}
       </Resource>
+
+      {/* Outside the block above, because it asks nothing of the member record: a
+          password belongs to the ACCOUNT, and an account that races and one that only
+          moderates have one each. It is drawn after the profile and before the
+          preferences for the same reason the personal data is drawn first - this is
+          the part of the screen that is about the account itself rather than about
+          how it likes to be shown. */}
+      <ChangePassword />
 
       <section className="member__panel" aria-labelledby="settings-appearance">
         <h2 className="profile__section" id="settings-appearance">
