@@ -357,6 +357,27 @@ class RightsAtTheDoorTest {
 	 * apart from „does he hold any tab at all". {@code VerificationWriteApiTest} holds that
 	 * half, with a moderator who genuinely holds one queue and is answered about a row in
 	 * another.
+	 *
+	 * <p><b>AND B85 ADDS THE TWO WAYS OUT, WHICH NEED NO NEW REASON EITHER - ONLY TWO NEW
+	 * NAMES.</b> {@code DELETE /api/teams/{id}/membership} is a member leaving his own team
+	 * and {@code DELETE /api/pairs/{id}} is a member ending his own racing pair, both by the
+	 * owner's decision of 24.09.2026. Neither is a box a superadmin could tick: leaving a
+	 * team one is in and ending a pair one is half of are consequences of being in them, so
+	 * {@link RightIsNeeded} could only name a privilege that shuts each to the one person it
+	 * is for. <b>What stands in place of a right is the ROW, exactly as it does for
+	 * {@code POST /api/inbox} and {@code PUT /api/pairs/{id}}:</b> the membership names its
+	 * member and the pair names its two halves, so each route is protected by whose row it
+	 * is and a caller who is not on it is answered what an address that is not there answers.
+	 *
+	 * <p>They arrive by two different roads, which is worth reading because one of them is
+	 * the road the floor below was corrected for. {@code DELETE /api/pairs/{id}} comes by the
+	 * road {@code PUT /api/pairs/{id}} came by - a verb added to an address this list already
+	 * names, so under bare paths it would have been excused by a line written about another
+	 * verb. {@code DELETE /api/teams/{id}/membership} comes by a road neither took: it is a
+	 * PATH nothing has named before, under {@code /api/teams}, which IS on
+	 * {@link ApiSecurity#READ_BY_ANYBODY} - and the open list holds whole addresses rather
+	 * than prefixes, so this sub-path was never open to a visitor for any verb and falls
+	 * through to {@code anyRequest().authenticated()} like anything else.
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
@@ -366,7 +387,8 @@ class RightsAtTheDoorTest {
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",
-					"POST /api/pairs", "PUT /api/pairs/{id}", "PUT /api/me/notifications",
+					"POST /api/pairs", "PUT /api/pairs/{id}", "DELETE /api/pairs/{id}",
+					"DELETE /api/teams/{id}/membership", "PUT /api/me/notifications",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
 					"ANY /error");

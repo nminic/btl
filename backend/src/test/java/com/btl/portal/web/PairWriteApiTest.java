@@ -37,6 +37,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -1407,5 +1408,288 @@ class PairWriteApiTest {
 	private void lapsed(String memberNumber) {
 		db.sql("update competitor set active = false where member_number = ?")
 				.param(memberNumber).update();
+	}
+
+	/**
+	 * „RASKINI", SENT THE WAY A BROWSER SENDS IT: no body and no content type.
+	 *
+	 * <p>Not {@link #sent}, which puts {@code application/json} and a body on every request
+	 * it makes. A {@code DELETE} carries neither, and the difference is measurable rather
+	 * than tidy: a {@code consumes} added to the mapping would match a request with a type
+	 * and refuse this one, so a case that sent JSON would go on passing while the real
+	 * button answered 404.
+	 */
+	private MockHttpServletResponse endAs(String memberNumber, long pair) throws Exception {
+		return http.perform(delete("/api/pairs/" + pair).with(csrf()).cookie(cookieOf(memberNumber)))
+				.andReturn().getResponse();
+	}
+
+	/** Whether that row is still there, asked by its key and by nothing else. */
+	private boolean pairStillThere(long pair) {
+		return db.sql("select count(*) from racing_pair where id = ?").param(pair)
+				.query(Long.class).single() == 1;
+	}
+
+	/**
+	 * EVERY MESSAGE ADDRESSED TO THIS MEMBER, WHOLE, as one string a case can read.
+	 *
+	 * <p>The sender, the subject and the body together, because each of the three is a
+	 * separate way the portal could write the wrong message to the right person: a message
+	 * signed by somebody else, a message about something else, or a message naming the wrong
+	 * partner or the wrong season. {@code to_id} and never a filter over „the last row", so
+	 * a message written to the WRONG member cannot satisfy an assertion about this one.
+	 */
+	private List<String> postFor(String memberNumber) {
+		return db.sql("select from_name || ' | ' || subject || ' | ' || body from message"
+						+ " where to_id = ? order by id")
+				.param(competitorId(memberNumber))
+				.query(String.class).list();
+	}
+
+	private long howManyMessages() {
+		return db.sql("select count(*) from message").query(Long.class).single();
+	}
+
+	/**
+	 * EITHER HALF ENDS THE PAIR, AND THE OTHER HALF IS TOLD BY NAME.
+	 *
+	 * <p>Owner, 24.09.2026: „Par sme da raskine SVAKA STRANA, bilo kad." Two runs and not
+	 * one, because „svaka strana" is one word in the decision and two columns in the schema:
+	 * a route written off {@code man_id} alone passes every case whose fixture happens to
+	 * press from the man's side, and {@code racing_pair} stores the two of them in two
+	 * columns on purpose.
+	 *
+	 * <p><b>THE PAIR PRESSED IS NOT THE ONLY ONE OF ITS KIND IN ANY DIRECTION.</b> It is not
+	 * the first row by key, its season is not the only season in the table, neither of its
+	 * halves is the first member written, and three other pairs stand beside it - one of them
+	 * this same man's, of another season. So „this pair went" and „the table was emptied",
+	 * „his pairs went" and „the season went" are four different databases afterwards.
+	 *
+	 * <p><b>And the message is read as the whole sentence rather than by a field.</b> The
+	 * sender is the league's name (PDL P13, 19.09.2026), the subject is the one the portal
+	 * already draws ({@code pair.brokenSubject}) and the body names the OTHER person and the
+	 * season ({@code pair.endedBody}) - so a message that named the reader himself, or the
+	 * wrong season, or was signed „Verifikacija", fails on the text and not on a null.
+	 *
+	 * @param who  the half who presses
+	 * @param told the half who pressed nothing
+	 */
+	@ParameterizedTest
+	@CsvSource({ "001000,000800", "000800,001000" })
+	void eitherHalfEndsThePairAndTheOtherHalfIsToldByName(String who, String told)
+			throws Exception {
+
+		long pair = pairOf(THE_FOURTH, SHE_ANSWERS, BEING_FORMED);
+		long pairsBefore = howManyPairs();
+
+		assertThat(endAs(who, pair).getStatus())
+				.as("a half of the pair was refused the one button PDL puts on his own profile")
+				.isEqualTo(204);
+
+		assertThat(pairStillThere(pair)).as("the pair is still there").isFalse();
+		assertThat(howManyPairs())
+				.as("exactly one pair went, and not the season and not the table")
+				.isEqualTo(pairsBefore - 1);
+
+		assertThat(postFor(told))
+				.as("the half who pressed nothing was told nothing, which is the fault PDL calls"
+						+ " a portal telling through one door and staying silent through another")
+				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
+						+ " Trkački par sa Probni Probic" + who + " za sezonu " + BEING_FORMED
+						+ " je raskinut.");
+
+		assertThat(postFor(who))
+				.as("the one who pressed the button was told about his own press")
+				.isEmpty();
+
+		assertThat(howManyMessages())
+				.as("one act, one message")
+				.isOne();
+	}
+
+	/**
+	 * THE PAIR THAT GOES IS THE ONE NAMED, AND A MEMBER HOLDING TWO MAY CHOOSE EITHER.
+	 *
+	 * <p>PDL P13, 07.09.2026: „Od 1. januara clan sme da drzi dva: onaj u kom trci sezonu
+	 * koja tece, i onaj napravljen za sledecu... Sada stoje svi, najranija sezona prva, svaki
+	 * sa svojim „Raskini"." {@link #HE_ASKED_HER} holds exactly that pair of pairs, and both
+	 * runs press one and read which row went.
+	 *
+	 * <p><b>This is the axis a fixture with one pair per person cannot see at all.</b> With
+	 * only one, „the pair named" and „his pair" are one row, and a route that ignored the key
+	 * entirely - deleting whatever pair the caller is in - passes every assertion. Pressed on
+	 * the one that is NOT the earlier season, it also tells „the pair named" from „the first
+	 * of his by key" and from „the season being run".
+	 *
+	 * @param season the season of the pair pressed
+	 * @param left   the season of the pair that must still be there afterwards
+	 */
+	@ParameterizedTest
+	@CsvSource({ "2028,2027", "2027,2028" })
+	void thePairThatGoesIsTheOneNamedAndNotWhicheverHeHolds(int season, int left)
+			throws Exception {
+
+		assertThat(seasonsPairedIn(HE_ASKED_HER))
+				.as("the fixture does not give this man two pairs, so this case measures nothing")
+				.containsExactly(STILL_RUNNING, BEING_FORMED);
+
+		long pressed = season == BEING_FORMED
+				? pairOf(HE_ASKED_HER, THE_THIRD, BEING_FORMED)
+				: pairOf(HE_ASKED_HER, RUNNING_WOMAN, STILL_RUNNING);
+
+		assertThat(endAs(HE_ASKED_HER, pressed).getStatus()).isEqualTo(204);
+
+		assertThat(seasonsPairedIn(HE_ASKED_HER))
+				.as("the pair that went is not the one that was named")
+				.containsExactly(left);
+	}
+
+	/**
+	 * A PAIR OF A SEASON THAT IS OVER IS NEVER TOUCHED, AND ONE OF THE SEASON BEING RUN IS.
+	 *
+	 * <p>PDL P13, 07.09.2026: „par iz sezone koja je prosla se NIKAD ne dira (P13, zamrznuti
+	 * podaci)." Both states of that axis in one case, because „a pair of the past" is only
+	 * meaningful beside „a pair of the present" - a route with no season condition at all
+	 * passes the second half on its own, and a route that refused every pair passes the
+	 * first.
+	 *
+	 * <p><b>The clock moves rather than the fixture, and it has to.</b>
+	 * {@code racing_pair_season_not_before_the_league} refuses a season before 2027, so on
+	 * this file's own day in March 2027 there is no past pair that could be written. Moved to
+	 * March 2028, the pair of 2027 IS the past and the pair of 2028 is the present, and
+	 * neither row changed.
+	 */
+	@Test
+	void aPairOfASeasonThatIsOverIsNeverTouchedAndOneOfTheSeasonBeingRunIs() throws Exception {
+		clock.moveTo(Instant.parse("2028-03-15T11:00:00Z"));
+
+		long frozen = pairOf(HE_ASKED_HER, RUNNING_WOMAN, STILL_RUNNING);
+		long running = pairOf(HE_ASKED_HER, THE_THIRD, BEING_FORMED);
+
+		assertThat(endAs(HE_ASKED_HER, frozen).getStatus())
+				.as("a pair of a season that is over was ended, and frozen data is not his to"
+						+ " move")
+				.isEqualTo(404);
+		assertThat(pairStillThere(frozen)).as("the frozen pair is still there").isTrue();
+		assertThat(howManyMessages()).as("somebody was told about a refusal").isZero();
+
+		assertThat(endAs(HE_ASKED_HER, running).getStatus())
+				.as("the pair of the season being run was refused, so this case only measures"
+						+ " that everything is refused")
+				.isEqualTo(204);
+		assertThat(pairStillThere(running)).isFalse();
+	}
+
+	/**
+	 * A PAIR THAT IS NOT HIS ANSWERS WHAT AN ADDRESS THAT IS NOT THERE ANSWERS.
+	 *
+	 * <p>ADL A8: „prijavljen kome pravo nedostaje dobija 404, isti odgovor kao da adresa ne
+	 * postoji." Three callers in one answer - a pair of two other people, a key nobody
+	 * carries, and an INVITATION's key, which is the one ADL A55 names as the price of a
+	 * third verb at this address. All three read the same number and the same empty body, so
+	 * a caller walking the keys learns nothing about who is paired with whom.
+	 */
+	@Test
+	void aPairThatIsNotHisAnswersWhatAnAddressThatIsNotThereAnswers() throws Exception {
+		long theirs = pairOf(UNTOUCHED_MAN, UNTOUCHED_WOMAN, BEING_FORMED);
+		long pairsBefore = howManyPairs();
+		long questionsBefore = howManyQuestions();
+
+		MockHttpServletResponse somebodyElses = endAs(HE_ASKS, theirs);
+
+		assertThat(somebodyElses.getStatus())
+				.as("a member ended a pair he is no half of")
+				.isEqualTo(404);
+		assertThat(somebodyElses.getContentAsString())
+				.as("the refusal said something, and there is nothing here to say")
+				.isEmpty();
+		assertThat(pairStillThere(theirs)).as("somebody else's pair is still there").isTrue();
+
+		assertThat(endAs(HE_ASKS, theirs + 100_000).getStatus())
+				.as("a key nobody carries is told apart from a pair that is not his")
+				.isEqualTo(404);
+
+		assertThat(endAs(HE_ASKED_HER, questionFrom(HE_ASKED_HER, SHE_ANSWERS)).getStatus())
+				.as("an invitation's key reached a pair through this verb, which is the collision"
+						+ " ADL A55 draws the line at")
+				.isEqualTo(404);
+
+		assertThat(howManyPairs()).as("a pair went").isEqualTo(pairsBefore);
+		assertThat(howManyQuestions())
+				.as("a question was closed by a verb that has nothing to do with questions")
+				.isEqualTo(questionsBefore);
+	}
+
+	/**
+	 * A PAIR WHOSE HALF HAS LAPSED IS NOT THERE TO BE ENDED, FROM EITHER SIDE.
+	 *
+	 * <p>„Ne postoji par onda, raskida se" (owner, 11.08.2026), and this route asks that
+	 * question the same way {@link PairApi} does - so a pair the portal refuses to serve is a
+	 * pair this route refuses to find. Both sides, because either of the two can be the one
+	 * who did not renew, and a condition written over one column answers the other wrongly.
+	 *
+	 * <p>The reader is asked in the same case rather than trusted, which is what keeps the two
+	 * conditions from drifting: if one of them starts counting the raw row, the other side of
+	 * this assertion turns red.
+	 *
+	 * @param whoLapsed the half whose fee ran out
+	 * @param whoPresses the half who tries to end it, which is each of the two in turn
+	 */
+	@ParameterizedTest
+	@CsvSource({ "001300,000700", "000700,001300" })
+	void aPairWhoseHalfHasLapsedIsNotThereToBeEnded(String whoLapsed, String whoPresses)
+			throws Exception {
+
+		long pair = pairOf(HE_ASKED_HER, RUNNING_WOMAN, STILL_RUNNING);
+
+		lapsed(whoLapsed);
+
+		assertThat(publicPairs())
+				.as("the reader still serves a pair whose half has lapsed, so this case is"
+						+ " measuring the wrong thing")
+				.doesNotContain(RUNNING_WOMAN);
+
+		assertThat(endAs(whoPresses, pair).getStatus())
+				.as("this route found a pair the reader does not serve")
+				.isEqualTo(404);
+
+		assertThat(pairStillThere(pair)).isTrue();
+		assertThat(howManyMessages()).isZero();
+	}
+
+	/** An account with no member behind it, which V23 calls the ordinary case for a moderator. */
+	@Test
+	void anAccountThatNamesNoMemberEndsNothing() throws Exception {
+		long pair = pairOf(UNTOUCHED_MAN, UNTOUCHED_WOMAN, BEING_FORMED);
+		long pairsBefore = howManyPairs();
+
+		assertThat(http.perform(delete("/api/pairs/" + pair).with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME,
+								sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret())))
+				.andReturn().getResponse().getStatus())
+				.as("an account naming no member ended somebody's pair")
+				.isEqualTo(404);
+
+		assertThat(howManyPairs()).isEqualTo(pairsBefore);
+	}
+
+	/**
+	 * AND A STRANGER IS REFUSED BY THE CHAIN, BEFORE THIS CLASS RUNS.
+	 *
+	 * <p>401 and not 404, which is ADL A8's other half: „neprijavljen dobija 401". The verb
+	 * matters here and the path does not - {@code /api/pairs} is open for reading, and
+	 * {@code ApiSecurity} has opened it BY METHOD since 18.09.2026, so a {@code DELETE} at a
+	 * path under it falls through to {@code anyRequest().authenticated()}.
+	 */
+	@Test
+	void somebodyWhoIsNotSignedInIsAskedToSignIn() throws Exception {
+		long pair = pairOf(UNTOUCHED_MAN, UNTOUCHED_WOMAN, BEING_FORMED);
+
+		assertThat(http.perform(delete("/api/pairs/" + pair).with(csrf()))
+				.andReturn().getResponse().getStatus())
+				.as("a stranger reached a write at an address opened for reading")
+				.isEqualTo(401);
+
+		assertThat(pairStillThere(pair)).isTrue();
 	}
 }

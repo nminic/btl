@@ -42,6 +42,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -988,6 +989,388 @@ class TeamWriteApiTest {
 
 	private long idIn(MockHttpServletResponse answer) throws Exception {
 		return mapper.readTree(answer.getContentAsString()).path("id").asLong();
+	}
+
+	/**
+	 * „IZADJI IZ TIMA", SENT THE WAY A BROWSER SENDS IT: no body and no content type.
+	 *
+	 * <p>Not {@link #sent}, which puts {@code application/json} and a body on every request
+	 * it makes. A {@code DELETE} carries neither, and the difference is measurable rather
+	 * than tidy: a {@code consumes} added to the mapping would match a request carrying a
+	 * type and refuse this one, so a case that sent JSON would go on passing while the real
+	 * button answered 404.
+	 */
+	private MockHttpServletResponse leaveAs(String memberNumber, String teamSlug)
+			throws Exception {
+
+		return http.perform(delete("/api/teams/" + teamId(teamSlug) + "/membership").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse();
+	}
+
+	private long teamId(String slug) {
+		return db.sql("select id from team where slug = ?").param(slug).query(Long.class).single();
+	}
+
+	/**
+	 * EVERY MEMBERSHIP ROW THIS MEMBER HAS, WHOLE AND IN ORDER, as strings a case can read.
+	 *
+	 * <p>All of them and not the open one, which is the difference between the two things
+	 * leaving can write: a membership that has BEGUN is still a row afterwards and one that
+	 * has NOT is no row at all. Asked for „his open membership" instead, both answers would
+	 * be „none" and the two branches would be one assertion.
+	 *
+	 * <p>The team, both seasons and the reason together, because each is a way the write
+	 * could be wrong on its own: the wrong team ended, the wrong season written, or a row
+	 * ended without saying why - which is the pair {@code team_membership_leaving_says_why}
+	 * refuses one table along.
+	 */
+	private List<String> membershipsOf(String memberNumber) {
+		return db.sql("select t.slug || ' ' || m.season_from || '-' || coalesce(m.season_to::text,"
+						+ " 'open') || ' ' || coalesce(m.left_reason, 'still in it')"
+						+ " from team_membership m join team t on t.id = m.team_id"
+						+ " where m.competitor_id = ? order by m.id")
+				.param(competitorId(memberNumber))
+				.query(String.class).list();
+	}
+
+	/** Who is NAMED in the team's seat, which V11 keeps as a column that may be empty. */
+	private String seatOf(String slug) {
+		return db.sql("select coalesce(c.member_number, 'nobody') from team t"
+						+ " left join competitor c on c.id = t.admin_id where t.slug = ?")
+				.param(slug)
+				.query(String.class).single();
+	}
+
+	private void sitsInTheSeatOf(String memberNumber, String slug) {
+		db.sql("update team set admin_id = (select id from competitor where member_number = ?)"
+						+ " where slug = ?")
+				.params(memberNumber, slug).update();
+	}
+
+	/**
+	 * A MEMBERSHIP THAT HAS BEGUN IS ENDED WITH THIS SEASON AND NOT REMOVED.
+	 *
+	 * <p>Owner, 24.09.2026: „Iz tima se izlazi u istom prozoru u kom se i ulazi (1.10-31.12)",
+	 * his reason being that „tim nosi bodove kroz sezonu, pa bi izlazak usred nje znacio da
+	 * tabela u januaru i tabela u junu govore razlicito o istoj sezoni". So the row stays and
+	 * says he was in the team for the whole of 2027, which V11's {@code season_to} spells as
+	 * „the last season he is in it", and he is out of it from 2028.
+	 *
+	 * <p><b>This is the half a route that simply deleted the row would fail, and nothing else
+	 * would notice.</b> A member gone from the table is a member gone from the season he ran
+	 * in, and the table for 2027 would then say two different things in June and in November.
+	 * So the case reads the ROW and not the absence of one.
+	 *
+	 * <p><b>And the team he leaves is not the only team, nor the one whose name is taken, nor
+	 * the one anybody else is in</b> - the fixture keeps three - so „his membership ended" and
+	 * „the table was emptied" are two different databases afterwards.
+	 *
+	 * <p><b>TWO MOMENTS AND NOT ONE, BECAUSE ON THIS FILE'S OWN DAY THE ANSWER HAS TWO
+	 * SOURCES AND THEY ARE THE SAME NUMBER.</b> The fixture's clock reads October 2027 and
+	 * {@link #IN_A_TEAM_NOW}'s membership begins in 2027, so „the season being run" and „the
+	 * season the membership began in" are both 2027: a route writing
+	 * {@code season_to = season_from} passes the first run and has ended every membership in
+	 * the season it started. The second run is the same October a year later, where the two
+	 * are 2028 and 2027, and only one of them is the answer.
+	 *
+	 * @param moment   the October the member presses in
+	 * @param seasonTo the last season he is then in the team
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"2027-10-03T09:00:00Z, 2027, the season the membership also began in",
+			"2028-10-03T09:00:00Z, 2028, a season that is not the one it began in"})
+	void aMembershipThatHasBegunIsEndedWithThisSeasonAndNotRemoved(String moment, int seasonTo,
+			String what) throws Exception {
+
+		clock.moveTo(Instant.parse(moment));
+
+		long rowsBefore = howManyMemberships();
+
+		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus())
+				.as("a member inside the transfer window was refused the way out of his team")
+				.isEqualTo(204);
+
+		assertThat(membershipsOf(IN_A_TEAM_NOW))
+				.as("%s: the row was removed, or ended in the wrong season, or ended without a"
+						+ " reason", what)
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING + "-" + seasonTo
+						+ " " + TeamWriteApi.HE_LEFT_ON_HIS_OWN);
+
+		assertThat(howManyMemberships())
+				.as("somebody else's membership went with his")
+				.isEqualTo(rowsBefore);
+
+		assertThat(membershipsOf(HAS_A_TEAM))
+				.as("the other member's membership was touched")
+				.containsExactly(HIS_TEAM + " " + A_SEASON_STILL_TO_COME + "-open still in it");
+	}
+
+	/**
+	 * A MEMBERSHIP THAT HAS NOT BEGUN IS REMOVED RATHER THAN ENDED.
+	 *
+	 * <p>The ordinary case rather than an edge, and that is the point of it: joining writes
+	 * {@code season_from = }{@link SeasonClock#seasonBeingPaidFor}, which inside the transfer
+	 * window is NEXT year, so a member who joined in October and changed his mind in November
+	 * has a membership that begins in a season nobody has run.
+	 *
+	 * <p>Ended with {@code season_to}, the smallest number the schema would take is
+	 * {@code season_from} itself, and such a row says he WAS in the team for a season he
+	 * never saw. There is no history in it to keep.
+	 *
+	 * <p><b>Both halves of this axis are in the fixture and they differ in nothing but the
+	 * season</b>: {@link #IN_A_TEAM_NOW} began in 2027 and {@link #HAS_A_TEAM} begins in 2029,
+	 * and the two cases read two different databases afterwards. A route that always ended the
+	 * row fails here on the constraint; one that always removed it fails the case above.
+	 */
+	@Test
+	void aMembershipThatHasNotBegunIsRemovedRatherThanEnded() throws Exception {
+		long rowsBefore = howManyMemberships();
+
+		assertThat(leaveAs(HAS_A_TEAM, HIS_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(membershipsOf(HAS_A_TEAM))
+				.as("a membership that never began was kept, saying he was in the team for a"
+						+ " season he never saw")
+				.isEmpty();
+
+		assertThat(howManyMemberships()).isEqualTo(rowsBefore - 1);
+
+		assertThat(membershipsOf(IN_A_TEAM_NOW))
+				.as("the other member's membership went with his")
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
+						+ "-open still in it");
+	}
+
+	/**
+	 * AND WHAT LEAVING BUYS HIM IS THE NEXT SEASON, WHICH IS THE TWO READINGS AGREEING.
+	 *
+	 * <p>„Nema tim" is read off the record (PDL, 05.09.2026), and the record after leaving is
+	 * a membership ENDED in the season being run. {@code Membership.standsInTheWayOfJoiningIn}
+	 * is the one place that turns it back into an answer, and the answer has to be: not for
+	 * this season, yes for the next. That is the whole of what the transfer window is for.
+	 *
+	 * <p><b>It is measured through {@code POST /api/teams} rather than asserted</b>, because
+	 * the two readings live in two places - this route writes {@code season_to} and that one
+	 * reads it - and a case over one of them alone cannot see them drift. Narrow the write to
+	 * „remove the row" and this passes for the wrong reason; widen the read to „has an open
+	 * membership" and it passes while a member founds a second team for a season he is still
+	 * in one for.
+	 */
+	@Test
+	void leavingFreesHimForTheNextSeasonAndTheDatabaseAgrees() throws Exception {
+		assertThat(proposeAs(IN_A_TEAM_NOW, naming("Zimski trkaci")).getStatus())
+				.as("a member who is in a team was allowed to found another")
+				.isEqualTo(404);
+
+		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(proposeAs(IN_A_TEAM_NOW, naming("Zimski trkaci")).getStatus())
+				.as("a member who has left is still held by the team he left")
+				.isEqualTo(201);
+
+		assertThat(db.sql("select count(*) from team_membership where competitor_id = ?"
+						+ " and int4range(season_from, coalesce(season_to + 1, 2147483647))"
+						+ " && int4range(?, 2147483647)")
+				.params(competitorId(IN_A_TEAM_NOW), A_SEASON_ALREADY_RUNNING + 1)
+				.query(Long.class).single())
+				.as("the row he left behind still covers the season he would join for, which is"
+						+ " the range team_membership_one_team_at_a_time refuses")
+				.isZero();
+	}
+
+	/**
+	 * THE ADMINISTRATOR'S SEAT EMPTIES WHEN IT IS HE WHO LEAVES, AND NOBODY ELSE'S DOES.
+	 *
+	 * <p>PDL P13, 11.08.2026: „Kad je administrator tima obrisan na zahtev ili
+	 * diskvalifikovan, biva isto sto i kad ode sam", and PDL „Inkrement 133", 04.09.2026:
+	 * „Administrator tima je onaj ko je tim osnovao, a kad se mesto isprazni preuzima ga clan
+	 * koji je najduze u timu." V11 keeps {@code admin_id} as the record of who was NAMED -
+	 * „It EMPTIES rather than blocking anything" - so leaving nulls it and the query that
+	 * already answers succession takes it from there.
+	 *
+	 * <p><b>THREE SEATS, AND ONE OF THEM IS HIS OWN IN A TEAM HE IS NOT LEAVING.</b> Each is
+	 * a way the condition {@code where id = ? and admin_id = ?} could be written with one
+	 * half missing, and no two of them can be told apart by a fixture with one seat in it:
+	 *
+	 * <ul>
+	 * <li><b>The team he leaves, where he sits</b> - the seat must empty.
+	 * <li><b>Another team where HE sits and which he is not leaving</b> - the seat must
+	 * stay, which is what {@code and id = ?} is for. A seat naming somebody who is not in
+	 * the team is not a broken row: V11 keeps {@code admin_id} as who was NAMED and
+	 * {@link TeamApi} works succession out from the roster, so this is an ordinary state and
+	 * leaving a DIFFERENT team says nothing about it.
+	 * <li><b>A team where somebody else sits</b> - the seat must stay, which is what
+	 * {@code and admin_id = ?} is for.
+	 * </ul>
+	 */
+	@Test
+	void theAdministratorsSeatEmptiesWhenHeLeavesAndNobodyElsesDoes() throws Exception {
+		sitsInTheSeatOf(IN_A_TEAM_NOW, THE_OTHER_TEAM);
+		sitsInTheSeatOf(IN_A_TEAM_NOW, TAKEN_ADDRESS);
+		sitsInTheSeatOf(HAS_A_TEAM, HIS_TEAM);
+
+		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(seatOf(THE_OTHER_TEAM))
+				.as("the seat still names a member who has left the team")
+				.isEqualTo("nobody");
+
+		assertThat(seatOf(TAKEN_ADDRESS))
+				.as("his seat in a team he did NOT leave was emptied, which is leaving one team"
+						+ " costing him another")
+				.isEqualTo(IN_A_TEAM_NOW);
+
+		assertThat(seatOf(HIS_TEAM))
+				.as("another team's seat was emptied by somebody leaving a third one")
+				.isEqualTo(HAS_A_TEAM);
+	}
+
+	/**
+	 * AND A MEMBER WHO IS NOT IN THE SEAT LEAVES IT EXACTLY WHERE IT IS.
+	 *
+	 * <p>The other state of the same axis, and it is the one a route with no condition at all
+	 * would fail: written {@code set admin_id = null where id = ?}, the ordinary member
+	 * walking out takes the administrator's title with him.
+	 */
+	@Test
+	void aMemberWhoIsNotInTheSeatLeavesItWhereItIs() throws Exception {
+		sitsInTheSeatOf(HAS_A_TEAM, THE_OTHER_TEAM);
+
+		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(seatOf(THE_OTHER_TEAM))
+				.as("an ordinary member leaving took the administrator's seat with him")
+				.isEqualTo(HAS_A_TEAM);
+	}
+
+	/**
+	 * LEAVING HAPPENS ONLY INSIDE THE TRANSFER WINDOW, AND THE MEMBERSHIP IS UNTOUCHED
+	 * OUTSIDE IT.
+	 *
+	 * <p>Owner, 24.09.2026: the same window joining is in. The four moments are
+	 * {@code aTeamIsFoundedOnlyInsideTheTransferWindow}'s, to the minute, because it is the
+	 * same window read for the other direction - and they are the minutes on either side of
+	 * midnight in BELGRADE, which is ADL A36 O2 written as two failures rather than as a
+	 * comment: a server reading its own zone accepts the last request before the window and
+	 * refuses the first inside it.
+	 *
+	 * <p><b>And the refusal carries a reason, which the founding one does not.</b> There the
+	 * window is one of two refusals told apart and a member is not to learn which stopped him;
+	 * here the only caller who gets this far is somebody the portal agrees is in this team,
+	 * asking about his own membership, so there is nothing left to hide.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"2027-09-30T21:59:00Z, 409, the last minute of September in Belgrade",
+			"2027-09-30T22:00:00Z, 204, midnight opening 1 October in Belgrade",
+			"2027-12-31T22:59:00Z, 204, the last minute of 31 December in Belgrade",
+			"2027-12-31T23:00:00Z, 409, midnight opening 1 January in Belgrade"})
+	void aMemberLeavesHisTeamOnlyInsideTheTransferWindow(String moment, int expected, String what)
+			throws Exception {
+
+		clock.moveTo(Instant.parse(moment));
+
+		MockHttpServletResponse answer = leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM);
+
+		assertThat(answer.getStatus())
+				.as("%s (%s) was answered wrongly", what, moment)
+				.isEqualTo(expected);
+
+		if (expected == 409) {
+			assertThat(reasonIn(answer))
+					.as("%s: the member was refused without being told what stopped him", what)
+					.isEqualTo(TeamWriteApi.THE_WINDOW_IS_SHUT);
+
+			assertThat(membershipsOf(IN_A_TEAM_NOW))
+					.as("%s: the membership was written to on a day the window is shut", what)
+					.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
+							+ "-open still in it");
+		}
+	}
+
+	/**
+	 * A TEAM HE IS NOT IN ANSWERS WHAT AN ADDRESS THAT IS NOT THERE ANSWERS.
+	 *
+	 * <p>ADL A8: „prijavljen kome pravo nedostaje dobija 404, isti odgovor kao da adresa ne
+	 * postoji." Four callers and one answer - a member in no team at all, a member in a
+	 * DIFFERENT team, a team key nobody carries, and a member whose fee has lapsed - so a
+	 * caller walking the keys learns neither which teams exist nor who is in them.
+	 *
+	 * <p><b>The second of the four is the one that matters</b>: a route that read „his open
+	 * membership" and ignored the team in the address would end the wrong team's membership
+	 * and answer 204, and a fixture with one team in it could not tell the two apart.
+	 */
+	@Test
+	void aTeamHeIsNotInAnswersWhatAnAddressThatIsNotThereAnswers() throws Exception {
+		long rowsBefore = howManyMemberships();
+
+		MockHttpServletResponse noTeamAtAll = leaveAs(ME, THE_OTHER_TEAM);
+
+		assertThat(noTeamAtAll.getStatus()).isEqualTo(404);
+		assertThat(noTeamAtAll.getContentAsString())
+				.as("the refusal said something, and there is nothing here to say")
+				.isEmpty();
+
+		assertThat(leaveAs(IN_A_TEAM_NOW, HIS_TEAM).getStatus())
+				.as("a member ended his membership of a team that was not the one in the address")
+				.isEqualTo(404);
+
+		assertThat(http.perform(delete("/api/teams/" + (teamId(THE_OTHER_TEAM) + 100_000)
+						+ "/membership").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(IN_A_TEAM_NOW))))
+				.andReturn().getResponse().getStatus())
+				.as("a team key nobody carries is told apart from a team he is not in")
+				.isEqualTo(404);
+
+		assertThat(howManyMemberships()).as("a membership went").isEqualTo(rowsBefore);
+		assertThat(membershipsOf(IN_A_TEAM_NOW))
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
+						+ "-open still in it");
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS NOBODY AT THIS ADDRESS.
+	 *
+	 * <p>PDL P13, 19.09.2026: „Clan kome je istekla clanarina dopire samo do strane za obnovu,
+	 * i automatski ispada iz svih timova i parova kad pocne sezona... jer se sve akcije za
+	 * njega brane." Leaving a team is such an action, and he needs no route for it: the same
+	 * decision has him falling out of every team when the season turns.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsNobodyAtThisAddress() throws Exception {
+		db.sql("update competitor set active = false where member_number = ?")
+				.param(IN_A_TEAM_NOW).update();
+
+		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus())
+				.as("a member whose fee has lapsed reached a route that is not the renewal page")
+				.isEqualTo(404);
+
+		assertThat(membershipsOf(IN_A_TEAM_NOW))
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
+						+ "-open still in it");
+	}
+
+	/**
+	 * AND A STRANGER IS REFUSED BY THE CHAIN, BEFORE THIS CLASS RUNS.
+	 *
+	 * <p>401 and not 404, which is ADL A8's other half. The path is worth a word: it sits
+	 * UNDER {@code /api/teams}, which is on {@link ApiSecurity#READ_BY_ANYBODY}, and that list
+	 * holds whole addresses rather than prefixes - so this sub-path was never open to a
+	 * visitor for any verb.
+	 */
+	@Test
+	void somebodyWhoIsNotSignedInIsAskedToLeaveNothing() throws Exception {
+		assertThat(http.perform(delete("/api/teams/" + teamId(THE_OTHER_TEAM) + "/membership")
+						.with(csrf()))
+				.andReturn().getResponse().getStatus())
+				.as("a stranger reached a write under an address opened for reading")
+				.isEqualTo(401);
+
+		assertThat(membershipsOf(IN_A_TEAM_NOW))
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
+						+ "-open still in it");
 	}
 
 	/** The queue row about one proposed name, read back whole. */

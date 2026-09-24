@@ -147,4 +147,41 @@ public final class SeasonClock {
 	public static int transfersTakeEffect(ZonedDateTime at) {
 		return Math.max(at.withZoneSameInstant(ZONE).getYear() + 1, FIRST_SEASON);
 	}
+
+	/**
+	 * THE SEASON BEING RUN AT THIS MOMENT, which is the LAST one a side agreed now is still
+	 * part of.
+	 *
+	 * <p>It exists for leaving rather than for joining, and the owner's decision of
+	 * 24.09.2026 is why: „Iz tima se izlazi u istom prozoru u kom se i ulazi (1.10-31.12)",
+	 * with his reason - „tim nosi bodove kroz sezonu, pa bi izlazak usred nje znacio da
+	 * tabela u januaru i tabela u junu govore razlicito o istoj sezoni." A member who leaves
+	 * inside the window is therefore in his team for the whole of THIS season and out of it
+	 * from the next, and {@code team_membership.season_to} is „the last season he is in it"
+	 * (V11), so this is the number that goes in that column.
+	 *
+	 * <p><b>Written as {@link #transfersTakeEffect} minus one and not as the calendar year,
+	 * and that is the whole point of it.</b> Leaving and joining are two ends of one
+	 * sentence - the season a change takes effect IN, and the season it is the end OF - so
+	 * one of them derived from the other cannot drift from it. Spelt {@code getYear()} here
+	 * it would be a second reading of the same moment, free to disagree the day either the
+	 * zone or the clamp moves, which is exactly the fault {@link #transfersTakeEffect}'s own
+	 * note describes between itself and {@link #seasonBeingPaidFor}.
+	 *
+	 * <p><b>AND IT CAN NAME A YEAR THAT IS NOT A SEASON, which is said here rather than
+	 * clamped away.</b> Through 2026 the answer is 2026, and there is no season 2026 (PDL
+	 * P2). Clamping it to {@link #FIRST_SEASON} would be worse than leaving it: it would say
+	 * that the season being run in October 2026 is 2027, and a membership ended with
+	 * {@code season_to = 2027} is a member who WAS in his team for a season that has not
+	 * started. The callers guard it instead, and they can: every membership the schema
+	 * allows begins at 2027 or later ({@code team_membership_season_from_not_before_the_
+	 * league}), so on any day of 2026 every one of them is a membership that has not BEGUN,
+	 * which {@code TeamWriteApi} answers by removing the row rather than by ending it.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's,
+	 *           which is ADL A36 O2 („sezona se racuna u zoni Europe/Belgrade")
+	 */
+	public static int seasonBeingRun(ZonedDateTime at) {
+		return transfersTakeEffect(at) - 1;
+	}
 }
