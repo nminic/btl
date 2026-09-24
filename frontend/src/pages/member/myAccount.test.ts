@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
@@ -153,25 +153,6 @@ describe('how long each box on the member’s own form is', () => {
 })
 
 describe('the reasons these two routes can name', () => {
-  /**
-   * WHICH OF THE SERVER'S FILES ARE IN THIS BASE AT ALL, AND THIS IS THE FLOOR UNDER A
-   * BOUNDARY RATHER THAN AN EXCUSE FOR ONE.
-   *
-   * <p>The screen above is written against routes that are decided and written but are not in
-   * `main` yet: `PUT /api/me` grows from two fields to nine, and `PUT /api/me/password` does
-   * not exist here at all. A guard wired to a file that is not there is a red gate over
-   * somebody else's merge, and a guard that quietly skips it is no guard.
-   *
-   * <p>So the skipping is ITSELF held: the day either file lands, this list stops being right
-   * and this case goes red, which is the one moment somebody has to wire the table to it. A
-   * boundary that announces its own end rather than waiting to be noticed.
-   */
-  const NOT_IN_THIS_BASE_YET = ['MePasswordApi.java']
-
-  it('is a list that empties itself the day those routes are merged', () => {
-    expect(NOT_IN_THIS_BASE_YET.filter((file) => existsSync(join(WEB, file)))).toEqual([])
-  })
-
   it('are every one of them carried by the screen, for the route that is here', () => {
     const named = reasonsIn('MeWriteApi.java')
 
@@ -182,24 +163,22 @@ describe('the reasons these two routes can name', () => {
   })
 
   /**
-   * AND THE OTHER DIRECTION, WHICH IS WHERE THE BOUNDARY IS WRITTEN DOWN AS A NUMBER.
+   * AND THE OTHER DIRECTION, WHICH USED TO BE WHERE THE BOUNDARY WAS WRITTEN DOWN AS A NUMBER.
    *
    * <p>`pages/account/refusals.test.ts` asks this of its five routes as „the screens claim no
-   * reason their route cannot answer", and the answer there is the empty list. Here it cannot
-   * be, because five of the eight reasons this table carries belong to the widened route.
-   * Naming them makes the claim checkable: the day `MeWriteApi` names them, this list must be
-   * emptied by hand, and until then nothing else can creep in beside them.
+   * reason their route cannot answer", and the answer there is the empty list. Here it could
+   * not be while `PUT /api/me` still answered only two fields' worth of reasons: five of the
+   * eight this table carries belonged to the route as it was written but not yet merged, and
+   * naming them here kept anything else from creeping in beside them.
+   *
+   * <p>Now that `MeWriteApi` names all eight, this converges on the same empty list every
+   * route in `refusals.test.ts` already answers, and for the same reason it gives: a key this
+   * table kept after the server stopped naming it would be a sentence nothing could ever draw.
    */
-  it('claims only what that route answers, beside the five its widening brings', () => {
+  it('claims no reason that route cannot answer', () => {
     const named = new Set(reasonsIn('MeWriteApi.java'))
 
-    expect(Object.keys(WHEN_CHANGING_MY_DATA).filter((reason) => !named.has(reason)).sort()).toEqual([
-      'aFieldIsBlank',
-      'aFieldIsTooLong',
-      'onlyAnAdministratorChangesThese',
-      'theTownIsNotKnown',
-      'theTownIsNotSaidOnce',
-    ])
+    expect(Object.keys(WHEN_CHANGING_MY_DATA).filter((reason) => !named.has(reason))).toEqual([])
   })
 
   /**
