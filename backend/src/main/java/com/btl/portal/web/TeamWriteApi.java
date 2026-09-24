@@ -332,19 +332,13 @@ class TeamWriteApi {
 	 */
 	static final String THE_WINDOW_IS_SHUT = "theWindowIsShut";
 
-	/**
-	 * WHY A MEMBERSHIP ENDED, when what ended it is the member himself.
-	 *
-	 * <p>{@code team_membership_leaving_says_why} (V11) refuses a row that ends without one
-	 * - „Leaving is a season and a reason together" - so this is not decoration but the
-	 * other half of the write. It is Serbian because the column is a reason a person may
-	 * one day be shown, which is the one thing in this codebase that is not English, and it
-	 * is a CONSTANT because the day the portal ends a membership for some other reason (the
-	 * 1 January job PDL P13 describes, 19.09.2026: „kad god naidje na clana koji nije
-	 * azuran, raskine ga sa tim timom") the two have to be told apart by this column and by
-	 * nothing else.
+	/*
+	 * THE REASON A MEMBERSHIP CARRIES WHEN IT ENDS IS NOT DECLARED HERE. It is
+	 * `Membership.LEFT_ON_HIS_OWN`, and the note on it says why the vocabulary of that
+	 * column belongs to the record rather than to one of the routes that write it - and
+	 * what it cost to find out, which was a frontend gate reading every constant in this
+	 * class as a refusal the screen owes a sentence for.
 	 */
-	static final String HE_LEFT_ON_HIS_OWN = "izašao iz tima";
 
 	/**
 	 * WHAT THIS ROUTE TAKES THAT THE MEMBER'S FORM DOES NOT YET ASK FOR, named rather than
@@ -654,7 +648,7 @@ class TeamWriteApi {
 			   `team_membership_did_not_leave_before_joining` holds one table along. Reached
 			   only through `covers`, it can never be asked for an end it would refuse, and
 			   that is the point of asking it here rather than trusting the branch. */
-			Membership left = his.get().ended(running, HE_LEFT_ON_HIS_OWN);
+			Membership left = his.get().ended(running, Membership.LEFT_ON_HIS_OWN);
 
 			/* KEYED ON THE OPEN MEMBERSHIP AND NOT ON A ROW KEY, which the schema makes
 			   exact: `team_membership_one_team_at_a_time` is an exclusion constraint over

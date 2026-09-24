@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.season.SeasonClock;
+import com.btl.portal.domain.team.Membership;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -1096,7 +1097,7 @@ class TeamWriteApiTest {
 				.as("%s: the row was removed, or ended in the wrong season, or ended without a"
 						+ " reason", what)
 				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING + "-" + seasonTo
-						+ " " + TeamWriteApi.HE_LEFT_ON_HIS_OWN);
+						+ " " + Membership.LEFT_ON_HIS_OWN);
 
 		assertThat(howManyMemberships())
 				.as("somebody else's membership went with his")
