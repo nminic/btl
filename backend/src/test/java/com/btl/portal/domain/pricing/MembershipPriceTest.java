@@ -180,6 +180,40 @@ public class MembershipPriceTest {
 				.hasMessageContaining(MembershipPrice.PROCESSING);
 	}
 
+	/**
+	 * AN AMOUNT THE PRICE LIST WOULD KEEP AS IT WAS TYPED, and three ways of not being one.
+	 *
+	 * <p>Each row below is one of the three halves of the rule, said from both sides of its
+	 * boundary, because a rule with three conditions passes on two of them while the third
+	 * is missing. Measured from the outside, that would be a price silently rounded, a
+	 * negative price refused by the database as a 500, or an overflow reaching an
+	 * administrator the same way.
+	 *
+	 * <p><b>{@code 41.10} is the one that reads like a mistake and is not.</b> Its scale is
+	 * two written down and one after {@code stripTrailingZeros}, which is the whole reason
+	 * the rule strips them: a form that sends {@code 41.10} means forty-one euro and ten,
+	 * and a rule reading the scale as it arrived would refuse {@code 41.100} and accept
+	 * {@code 41.10} for no reason anybody could explain. The floor under the number two
+	 * itself is {@code AnAmountMatchesTheSchemaTest}, which reads it off the catalogue.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"0, true",
+			"41, true",
+			"41.1, true",
+			"41.10, true",
+			"41.12, true",
+			"41.125, false",
+			"-0.01, false",
+			"99999999.99, true",
+			"100000000, false"})
+	void anAmountIsKeptExactlyOnlyWhenTheColumnWouldHoldItAsWritten(String written, boolean kept) {
+		assertThat(MembershipPrice.amountIsKeptExactly(new BigDecimal(written)))
+				.as("%s: the price list would %s keep it as it was typed", written,
+						kept ? "" : "not")
+				.isEqualTo(kept);
+	}
+
 	private static MonthDay monthDay(String written) {
 		return MonthDay.of(Integer.parseInt(written.substring(0, 2)), Integer.parseInt(written.substring(3)));
 	}

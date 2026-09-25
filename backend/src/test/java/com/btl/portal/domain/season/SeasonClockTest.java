@@ -122,6 +122,47 @@ class SeasonClockTest {
 	}
 
 	/**
+	 * THE AMOUNT ONE REFERRAL BRINGS IS SET UNTIL 1 OCTOBER AND SETTLED FROM IT.
+	 *
+	 * <p>Owner, 16.08.2026 (PDL P16): „administrator podesava <b>do 1.10. u 00 po CET</b> za
+	 * predstojecu godinu", and „posle 1. oktobra u 00:00 CET iznos za tu godinu stoji".
+	 *
+	 * <p><b>Both sides of the boundary, and the boundary is the instant and not the day.</b>
+	 * A rule written as „not in October" would pass the first two assertions and fail the
+	 * third, and one written as „before the fourth quarter" would pass everything except the
+	 * new year.
+	 *
+	 * <p><b>And it is asked in a zone that is not the league's, like every case in this
+	 * file.</b> Midnight on 1 October in Tokyo is five in the evening of 30 September in
+	 * Belgrade, where the amount may still be set - so a version reading the month off the
+	 * caller's clock would settle the amount for somebody in Tokyo seven hours early.
+	 */
+	@Test
+	void theReferralAmountIsSetUntilOctoberAndSettledFromIt() {
+		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 9, 30, 23, 59, 0, 0, SeasonClock.ZONE)))
+				.as("the amount was already settled before October")
+				.isTrue();
+		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 10, 1, 0, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the amount could still be set at the instant the renewal window opened")
+				.isFalse();
+		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 12, 31, 23, 59, 0, 0, SeasonClock.ZONE)))
+				.isFalse();
+		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2028, 1, 1, 0, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the amount stayed settled into January, where the next season's is set")
+				.isTrue();
+
+		ZonedDateTime septemberInBelgrade = ZonedDateTime.of(2027, 9, 30, 17, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(septemberInBelgrade.withZoneSameInstant(TOKYO).getMonthValue())
+				.as("it is no longer already October in Tokyo, so the case measures nothing")
+				.isEqualTo(10);
+		assertThat(SeasonClock.referralMayBeSet(septemberInBelgrade.withZoneSameInstant(TOKYO)))
+				.as("somebody in Tokyo was told the amount was settled while it was still"
+						+ " September for everybody else")
+				.isTrue();
+	}
+
+	/**
 	 * Which season somebody is paying for, which is next year inside the window and
 	 * this year outside it.
 	 *
