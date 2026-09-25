@@ -569,6 +569,34 @@ class GroupEntryTest {
 				Map.of("row", 1, "reason", "theAddressIsNotShaped", "missing", List.of()));
 	}
 
+	/**
+	 * AND THE OTHER SIDE OF THAT BOUNDARY: NO ADDRESS AT ALL IS A FIELD LEFT OUT.
+	 *
+	 * <p><b>Both directions, because one of them alone cannot hold the line.</b> The
+	 * sentence above is what fails if the shape is judged too late; this one is what fails
+	 * if it is judged too early, and the owner's requirement that the administration be
+	 * told which box to go back and fill in turns on exactly this difference. Measured
+	 * rather than reasoned: written after the loop, the check above was dead code and this
+	 * one passed; written before it without asking whether anything was typed at all, this
+	 * one told somebody his empty box was misshapen.
+	 */
+	@Test
+	void noAddressAtAllIsAFieldLeftOutAndNotAnAddressThatIsWrong() throws Exception {
+		List<Map<String, Object>> group = aGroupOfThree();
+		group.get(1).remove("email");
+
+		assertThat(rowsRefusedIn(enter(group, EVERYTHING))).containsExactly(
+				Map.of("row", 1, "reason", "theFormIsNotComplete", "missing", List.of("email")));
+
+		group.get(1).put("email", "   ");
+
+		assertThat(rowsRefusedIn(enter(group, EVERYTHING)))
+				.as("an address of nothing but spaces is a box he did not fill in, which is"
+						+ " the same answer as a box that is not there")
+				.containsExactly(Map.of("row", 1, "reason", "theFormIsNotComplete",
+						"missing", List.of("email")));
+	}
+
 	/** Every bad row is named, not only the first one the route met. */
 	@Test
 	void twoBadRowsAreBothNamed() throws Exception {
