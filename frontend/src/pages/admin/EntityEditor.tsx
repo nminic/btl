@@ -16,6 +16,22 @@ import {
 } from './entityForms'
 import './Entity.css'
 
+/**
+ * WHAT A SAVE ENDED IN, WHERE A SCREEN DOES ITS OWN SAVING.
+ *
+ * <p>Either the identity of the record that was written, or the words to put on the
+ * screen instead of the confirmation. Two outcomes and not three, because from this
+ * editor's side „the server refused" and „the server wrote it and this screen cannot
+ * show it" are one thing: there is no record here to confirm.
+ *
+ * <p><b>The words are a `ReactNode` and never an answer, a reason or a status.</b> One
+ * editor serves seven entities and must not learn what one route can say; the screen
+ * that owns the route owns its sentences, which is the same division
+ * `pages/account/ServerSaid.tsx` already keeps between a refusal and the table that
+ * names it.
+ */
+export type Saving = { written: string } | { said: ReactNode }
+
 /* One record of one entity, opened whole.
  *
  * Editing in the row covers the correction of a single value spotted while
@@ -43,10 +59,33 @@ export function EntityEditor({
   alsoRefuses,
   steps,
   titleKey,
+  save,
   form: drawn,
 }: {
   entity: EntityDef
   editing: Editing
+  /**
+   * WHO WRITES THE RECORD, WHERE IT IS NOT THE SESSION.
+   *
+   * <p>Six of the seven entities have no route behind them and are still remembered as
+   * an overlay on top of what was served (`session/context.ts`), which is the prototype
+   * saying out loud that it had no database. The competitions have had routes since
+   * B40 and use them from 25.09.2026 (`admin/AdminLeagues.tsx`), so the screen hands in
+   * the sending and this editor stops deciding.
+   *
+   * <p><b>Left out, nothing about the other six moves.</b> That is the condition this
+   * was written under and not a nicety: an editor that changed what a member or an event
+   * does on save would be six screens' worth of change riding on one competition's.
+   *
+   * <p><b>It is given what the session write would have been given</b>, both halves: the
+   * values as the form holds them, and the same values as text with whatever the entity
+   * derives folded in. A screen sending to a route reads the first; a screen that also
+   * wants to draw the new row without asking the server again reads the second, because
+   * that is the shape `recordsOf` merges.
+   *
+   * @returns the identity written, or the words to say instead of a confirmation
+   */
+  save?: (values: FormValues, text: Record<string, string>) => Promise<Saving>
   /**
    * What else a save changes, run with the values it is being saved with.
    *
@@ -137,6 +176,13 @@ export function EntityEditor({
   const { t } = useI18n()
   const { creations, create, editRecord } = useSession()
   const [saved, setSaved] = useState<FormValues | null>(null)
+  /** What the screen's own save said instead of a confirmation, or nothing. */
+  const [said, setSaid] = useState<ReactNode>(null)
+  /* A press that is still out, held in a ref and not in state. Two presses inside one
+     tick would both read a `false` that React has not re-rendered yet, and the second
+     would send the same record again and answer this reader about it. The session path
+     cannot get here: it writes and confirms inside the press. */
+  const asking = useRef(false)
   const done = useRef<HTMLDivElement>(null)
   /* What the screen asked for, or what the entity holds. A copy is drawn without
      the three fields it does not put in question (see `form` above). */
@@ -167,7 +213,7 @@ export function EntityEditor({
    */
   const folded = (values: FormValues): FormValues => alsoFolds?.(values) ?? values
 
-  function handleSubmit(given: FormValues) {
+  async function handleSubmit(given: FormValues) {
     const values = folded(given)
 
     /* What the form asked for, and what is read off it.
@@ -189,7 +235,37 @@ export function EntityEditor({
 
     let written: string
 
-    if (editing.mode === 'new') {
+    /* THE SCREEN'S OWN SAVE FIRST, WHERE THERE IS ONE, and nothing of the session
+       happens in that branch - not the counting out of an identity, not the write.
+       Both are what a portal without a database did; a route hands back the identity
+       the database chose, and a second one counted out here would be a number nothing
+       answers to (`admin/raceIds.ts` counts DOWN from nought, so it was `-1`). */
+    if (save !== undefined) {
+      if (asking.current) {
+        return
+      }
+
+      asking.current = true
+      setSaid(null)
+
+      const outcome = await save(values, text)
+
+      asking.current = false
+
+      /* Nothing is confirmed and the form stays as it was, so whoever pressed still
+         has everything he typed and can press again after reading why. */
+      if ('said' in outcome) {
+        setSaid(outcome.said)
+
+        return
+      }
+
+      written = outcome.written
+
+      if (editing.mode === 'new') {
+        onCreated?.(written)
+      }
+    } else if (editing.mode === 'new') {
       const made = idFor(
         entity,
         values,
@@ -316,8 +392,15 @@ export function EntityEditor({
         beneath={beneath}
         alsoRefuses={alsoRefuses}
         steps={steps}
-        onSubmit={handleSubmit}
+        onSubmit={(values) => void handleSubmit(values)}
       />
+
+      {/* What the screen's own save said instead of a confirmation, beneath the form
+          the reader is still looking at. Its own element rather than the form's own
+          summary, because that one is for what the FIELDS refuse and this is what the
+          server did; the words come from the screen that owns the route, so an editor
+          serving seven entities says nothing of its own here. */}
+      {said}
     </div>
   )
 }
@@ -383,6 +466,7 @@ export function RowActions({
   name,
   onOpen,
   alsoRemove,
+  deleteRecord,
   whyNoRemove,
 }: {
   entity: EntityDef
@@ -390,6 +474,20 @@ export function RowActions({
   /** What the row is called, for both accessible names. */
   name: string
   onOpen: () => void
+  /**
+   * WHO TAKES THE RECORD AWAY, WHERE IT IS NOT THE SESSION.
+   *
+   * <p>The other half of `EntityEditor`'s `save`, and the same division for the same
+   * reason: six entities have no route to delete through and are still remembered as an
+   * overlay, the competitions have `DELETE /api/leagues/{id}` and use it.
+   *
+   * <p><b>It replaces the session write and nothing else.</b> The focus still moves to the
+   * one control that cannot be the row just pressed, before the answer is back, which is
+   * what the six already do and what a reader on a row that is about to vanish needs. A
+   * deletion the server refuses is said in a live region rather than by putting the focus
+   * back somewhere it has already left.
+   */
+  deleteRecord?: () => void
   /**
    * What goes with the record, where something does.
    *
@@ -430,7 +528,14 @@ export function RowActions({
     }
 
     alsoRemove?.()
-    remove(entity.id, id)
+
+    if (deleteRecord === undefined) {
+      remove(entity.id, id)
+
+      return
+    }
+
+    deleteRecord()
   }
 
   return (

@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
-import { LEAGUES } from './admin/entityForms'
-import { recordKey } from '../session/context'
+import { askTheServer, type Answer } from './account/askTheServer'
+import { ServerSaid } from './account/ServerSaid'
+import { WHEN_WRITING_A_LEAGUE, upsertOf, type LeagueWords } from './admin/leagueWrites'
+import { clearResourceCache } from '../data/client'
 import type { League } from '../data/types'
 import {
   dataOr,
@@ -17,7 +20,6 @@ import {
 import { useToday } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import { useMay } from './admin/rights'
-import { useSession } from '../session/useSession'
 import { EditableText } from './league/EditableText'
 import { LeagueEvents } from './league/LeagueEvents'
 import { leagueRaces, racesByEvent } from './league/leagueCounting'
@@ -161,9 +163,101 @@ export function Leagues() {
   const { locale, t } = useI18n()
   const today = useToday()
   const may = useMay()
-  const { edits, edit } = useSession()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
+
+  /**
+   * WHAT A MODERATOR HAS WRITTEN HERE THIS VISIT, AND SINCE 25.09.2026 IT IS WHAT THE
+   * SERVER ACCEPTED RATHER THAN WHAT THE SESSION REMEMBERED.
+   *
+   * **Why this moved in the same increment as the administration form, and not after
+   * it.** The terms and the prizes of a competition are ONE fact with two places to
+   * change it: this list, where they are read, and the form in the administration.
+   * Moving only the form would have left the administration writing to `league` while
+   * this screen wrote to an overlay nobody serves, so a moderator correcting the
+   * propositions where he reads them would watch them appear and never leave the
+   * browser. That is the „two homes of one fact" class, and it would have been created
+   * by the very commit that fixed the other half.
+   *
+   * **Held here rather than re-read**: a screen that is still mounted never asks its
+   * resource again, so there is nothing here to re-read the moment a write comes back.
+   * Only what the route accepted is put in.
+   *
+   * **AND, SINCE 25.09.2026, THE CACHE BEHIND IT DOES NOT OUTLIVE A SUCCESSFUL WRITE
+   * EITHER.** Held only here and never invalidated anywhere, this would have become the
+   * very „two homes" this comment already warns about, one visit later rather than one
+   * screen over: a moderator who wrote the terms here, left, and came back would have
+   * read them served as they stood before he wrote them, and an administrator who
+   * changed them on `AdminLeagues.tsx` would open this list and find the same stale
+   * array. `save` below calls `clearResourceCache('leagues')` once the route confirms
+   * it, so the next mount of either screen asks the server again.
+   */
+  const [written, setWritten] = useState<Record<number, Partial<Record<LeagueWords, string>>>>({})
+
+  /** Which box was last answered and what was said about it, drawn where it was pressed. */
+  const [answer, setAnswer] = useState<{
+    id: number
+    field: LeagueWords
+    answer: Answer
+  } | null>(null)
+
+  /**
+   * ONE BOX CHANGED, SENT AS THE WHOLE RECORD, WHICH IS WHAT THE ROUTE TAKES.
+   *
+   * `LeagueWriteApi.change` writes all five columns in one `update` and refuses a form
+   * that is missing any of the three required ones, so the other four travel unchanged
+   * beside the one that moved (`admin/leagueWrites.ts`, `upsertOf`). That is the
+   * opposite of `PUT /api/me`, which coalesces, and the difference is the route's and
+   * not this screen's to hold an opinion about.
+   */
+  async function save(league: League, field: LeagueWords, text: string): Promise<boolean> {
+    /* Both boxes as they STAND and not as they were served, so a moderator who corrects
+       the terms and then the prizes does not send the first correction back undone with
+       the second. `standing` is the same read the boxes are drawn from, which is what
+       keeps „what is on the screen" and „what is sent" one answer. */
+    const sent = upsertOf(league, {
+      rules: standing(league, 'rules'),
+      prizes: standing(league, 'prizes'),
+      [field]: text,
+    })
+    const said = await askTheServer(`/api/leagues/${league.id}`, sent, 'PUT')
+
+    setAnswer({ id: league.id, field, answer: said })
+
+    if (said.got !== 'done') {
+      return false
+    }
+
+    /* THE NEXT MOUNT READS THE SERVER, HERE AS MUCH AS ON THE ADMINISTRATION SCREEN.
+       Cleared before the local overlay is written, for the same reason `AdminLeagues.tsx`
+       clears it: this state does not survive the screen being unmounted, and a cache that
+       did would let a remounted screen - this one or the other - go on showing what stood
+       before this write (review, 25.09.2026). */
+    clearResourceCache('leagues')
+    setWritten((was) => ({ ...was, [league.id]: { ...was[league.id], [field]: text } }))
+
+    return true
+  }
+
+  /** What the box holds now: what this visit wrote into it, or what was served. */
+  function standing(league: League, field: LeagueWords): string {
+    return written[league.id]?.[field] ?? league[field]
+  }
+
+  /** What was said about the last press on this very box, or nothing. */
+  function saidAbout(league: League, field: LeagueWords) {
+    if (answer === null || answer.id !== league.id || answer.field !== field) {
+      return null
+    }
+
+    return answer.answer.got === 'done' ? (
+      <p className="member__note" role="status">
+        {t('admin.leagueTextSaved')}
+      </p>
+    ) : (
+      <ServerSaid answer={answer.answer} refusals={WHEN_WRITING_A_LEAGUE} />
+    )
+  }
 
   return (
     <div className="rankings rankings--tooled">
@@ -222,21 +316,23 @@ export function Leagues() {
                       </p>
 
                       <EditableText
-                        value={edits[recordKey(LEAGUES.id, league.id)]?.rules ?? league.rules}
+                        value={standing(league, 'rules')}
                         field="rules"
                         headingId={`league-rules-${league.id}`}
                         heading={t('leagues.rules')}
                         canEdit={may('entity:leagues')}
-                        onSave={(text) => edit(recordKey(LEAGUES.id, league.id), 'rules', text)}
+                        onSave={(text) => save(league, 'rules', text)}
+                        said={saidAbout(league, 'rules')}
                       />
 
                       <EditableText
-                        value={edits[recordKey(LEAGUES.id, league.id)]?.prizes ?? league.prizes}
+                        value={standing(league, 'prizes')}
                         field="prizes"
                         headingId={`league-prizes-${league.id}`}
                         heading={t('leagues.prizes')}
                         canEdit={may('entity:leagues')}
-                        onSave={(text) => edit(recordKey(LEAGUES.id, league.id), 'prizes', text)}
+                        onSave={(text) => save(league, 'prizes', text)}
+                        said={saidAbout(league, 'prizes')}
                       />
 
                       {/* And after the prizes, the events and races the competition counts, in a
