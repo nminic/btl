@@ -116,6 +116,21 @@ function answering(rows: Record<string, unknown>[], at: string) {
  * **Every field named rather than positional**, because a swap of two positional strings
  * is a call that still compiles: signed in under the number „feeExempt" is not a state
  * anything here would have reported.
+ *
+ * **AND THE RECORD CARRIES A COUNTRY AND A FIRST SEASON, since 25.09.2026 (PDL P8a).**
+ * The fee screen reads five facts off this answer now and not one, and refuses to draw
+ * itself at all where the country or the season did not arrive - so a record without them
+ * stopped being „a member the league has freed" and became „an answer that named somebody
+ * and said nothing about him". Measured the day it changed: left out, four cases here
+ * waited for a screen that was never going to be drawn, timed out, and took five more
+ * down with them, because a case that times out runs its `finally` inside the NEXT one
+ * and takes that one's server away.
+ *
+ * **A constant and not a value off the seed, said rather than left to be wondered at.**
+ * No case in this file is about either field, and both are sent on every real answer
+ * carrying a number, so there is nothing here for them to disagree with. The cases that
+ * ARE about them hand their own (`pages/memberFlows.test.tsx`, where the axis has a screen
+ * to be read on).
  */
 function meAnswering({
   memberNumber,
@@ -140,6 +155,8 @@ function meAnswering({
             account: 1,
             member: {
               memberNumber,
+              country: 'RS',
+              firstSeason: 2016,
               membershipBasis,
               ...(referralCode === undefined ? {} : { referralCode }),
               ...(referredCount === undefined ? {} : { referredCount }),

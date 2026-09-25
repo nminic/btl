@@ -39,6 +39,14 @@ describe('who the server says I am', () => {
       role: 'superadmin',
       account: 41,
       memberNumber: null,
+      /* AND THE THREE P8a MOVED HERE ON 25.09.2026, null for the same reason: there is no
+         record to read them off. Every one of them is on `/api/competitors` as well, which
+         is what makes them different from the four around them, and none of the three is
+         read off it by the screen that needs them - that list ends `where c.active` and so
+         cannot answer the one member who opens that screen. */
+      country: null,
+      firstSeason: null,
+      teamId: null,
       membershipBasis: null,
       /* AND THE TWO P26a MOVED HERE ON 25.09.2026, null for the same reason the two above
          are: this answer carries no record at all, so nothing was said about any of them.
@@ -112,6 +120,9 @@ describe('who the server says I am', () => {
         role,
         account: 41,
         memberNumber: null,
+        country: null,
+        firstSeason: null,
+        teamId: null,
         membershipBasis: null,
         referralCode: null,
         referredCount: null,
@@ -245,6 +256,89 @@ describe('who the server says I am', () => {
     )
 
     expect((await whoTheServerSaysIAm())?.referredCount).toBe(expected)
+  })
+
+  /* **WHERE THE CALLER LIVES, THE SEVENTH, SINCE 25.09.2026, AND IT IS THE FIRST FIELD
+     ON THIS ANSWER THAT HAS A SECOND HOME.**
+
+     The five above are read here because there is nowhere else to read them. This one is
+     on `/api/competitors` too, on every row, and „Moja članarina" read it off there until
+     today. It is read HERE because that list ends `where c.active`, so it answers
+     everybody except the member whose fee has LAPSED - who is the man that screen exists
+     for, since renewing is what he opens it to do (PDL P8a).
+
+     **What it decides on that screen, which is why no reader here may fall back to
+     anything:** the currency of every figure, whether a payment slip is drawn at all, and
+     which ways of paying he is offered (PDL P8, owner 31.07.2026: „QR kod postoji samo za
+     uplate iz Srbije"). A country guessed here is a member in North Macedonia handed a
+     dinar slip.
+
+     **The state that is NOT here and is named rather than left out: a country of the
+     wrong shape.** Which words name a country is the schema's (V7,
+     `competitor_town_is_from_the_codebook_or_typed`), checked where a town is stored, and
+     the same ground `referralCode` above stands on. */
+  it.each([
+    ['a member who lives in Serbia', { member: { country: 'RS' } }, 'RS'],
+    ['a member who lives abroad', { member: { country: 'MK' } }, 'MK'],
+    /* An account that races for nobody: the record is ABSENT altogether (PDL P21). */
+    ['an account that races for nobody', {}, null],
+    ['a record that carries no country', { member: { memberNumber: '000012' } }, null],
+    /* And a country that is not a string, looked for and never asserted (ADL A14).
+       Believed, `paysInDinars` would answer false for it and the screen would quote euro
+       to somebody who owes dinars. */
+    ['a country that is not one', { member: { country: { code: 'RS' } } }, null],
+  ])('says where the caller lives for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.country).toBe(expected)
+  })
+
+  /* **THE SEASON HE STARTED IN, THE EIGHTH, AND IT IS HERE FOR THE SAME REASON THE
+     COUNTRY IS**: on the public list, and unreachable there by the one member who needs
+     it.
+
+     A WHOLE NUMBER and not merely a number, which is the shape the count above is read
+     with and for the same measurement: a season that arrived as a string would go into
+     „Član od {season}. sezone." as one, and a fraction is not a season. */
+  it.each([
+    ['a member who started in 2016', { member: { firstSeason: 2016 } }, 2016],
+    ['an account that races for nobody', {}, null],
+    ['a record that carries no season', { member: { memberNumber: '000012' } }, null],
+    ['a season that is not a number', { member: { firstSeason: '2016' } }, null],
+    ['a season that is not whole', { member: { firstSeason: 2016.5 } }, null],
+  ])('says which season the caller started in for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.firstSeason).toBe(expected)
+  })
+
+  /* **AND THE TEAM HE IS IN, THE NINTH, WHOSE NULL IS ORDINARY RATHER THAN „I WAS NOT
+     TOLD" - which is what makes it unlike every other field on this answer.**
+
+     `MeApi.MyOwnRecord` leaves the key out altogether for a member with no team
+     (`@JsonInclude(NON_NULL)`), and sixteen of the thirty two members in the data are in
+     none, so ABSENT is the common answer here and not a fault. Which means the two states
+     this reader cannot separate - „no team" and „a team that is not a number" - are two
+     states the screen draws alike anyway: „Trenutno nisi ni u jednom timu." That is a
+     boundary and it is written down on the field itself rather than left to be found. */
+  it.each([
+    ['a member in a team', { member: { teamId: 3 } }, 3],
+    ['an account that races for nobody', {}, null],
+    ['a member in no team at all', { member: { memberNumber: '000012' } }, null],
+    ['a team that is not a number', { member: { teamId: 'dunavski-trkaci' } }, null],
+  ])('says which team the caller is in for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.teamId).toBe(expected)
   })
 
   it('is nobody when the role is not one the portal knows at all', async () => {

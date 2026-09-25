@@ -82,6 +82,60 @@ export type WhoTheServerSaysIAm = {
    */
   memberNumber: string | null
   /**
+   * WHERE THE CALLER LIVES, as his own record has it, and null where the answer did not
+   * say.
+   *
+   * **Here since 25.09.2026, and unlike the four below it this one HAS another door.**
+   * `/api/competitors` carries a country on every row, the caller's among them, and
+   * „Moja članarina" read it off there until today. The owner closed that road for this
+   * screen (PDL P8a): that list ends `where c.active`, so the member whose fee has
+   * LAPSED has no row on it at all - and he is the whole reason the screen exists, since
+   * renewing is what he opens it to do. `/api/me` answers one row, and that row is his
+   * whether or not his fee is standing.
+   *
+   * **Which is a different reason from the one the basis below is here for, and the
+   * difference is worth keeping.** That field has no second home anywhere; this one has,
+   * and is read here anyway because the second home cannot answer the one person who
+   * needs it. So „a field is remembered here when it has no other door" is not the whole
+   * rule any more, and the rule that replaces it is: when the other door cannot answer
+   * the caller, it is not a door.
+   *
+   * Null for a visitor, for an account that races for nobody, and for a value that is
+   * not a string. The shape is not judged beyond that, for the same reason the code
+   * below is not: which words are countries is the schema's (V7,
+   * `competitor_town_is_from_the_codebook_or_typed`), and a portal that re-judged it
+   * here could only refuse to draw a member the server really answered.
+   */
+  country: string | null
+  /**
+   * THE FIRST SEASON THE CALLER RACED, and null where the answer did not say.
+   *
+   * Here for the same reason the country above is, and off the same row.
+   *
+   * **A whole number and never merely „a number"**, which is the shape `referredCount`
+   * below is read with and for the same measurement: a season that arrived as a string
+   * would go into a sentence as one („Član od 2016. sezone"), and a fraction is not a
+   * season. `typeof` narrows and `Number.isInteger` then says which numbers count.
+   */
+  firstSeason: number | null
+  /**
+   * THE TEAM THE CALLER IS IN, and null where he is in none.
+   *
+   * **The one field on this answer whose null is ORDINARY rather than „I was not
+   * told"**, and the two cannot be told apart here. `MeApi.MyOwnRecord` leaves the key
+   * out altogether for a member with no team (`@JsonInclude(NON_NULL)`), which is
+   * sixteen of the thirty two in the data, so absence is the common case and not a
+   * fault.
+   *
+   * **That is a boundary and it is written down rather than papered over**: a server
+   * answering a team that is not a number is read here as „no team", and the screen
+   * then says „Trenutno nisi ni u jednom timu." rather than naming a team it cannot
+   * find. Which is what it would have said anyway - a team id no team on
+   * `/api/teams` carries draws the same sentence - so the two states the portal cannot
+   * separate are the two states it draws alike.
+   */
+  teamId: number | null
+  /**
    * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, and null where the answer did not say.
    *
    * **This is the only door it can come through, and that is measured rather than
@@ -225,19 +279,23 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     return null
   }
 
-  /* READ ONCE AND HANDED TO ALL FOUR, rather than dug out four times. Readers walking to
-     the same record by themselves are that many places that can disagree about where it
-     is, and the fact they are reading - „does this caller race for anybody" - is one
-     fact. */
+  /* READ ONCE AND HANDED TO ALL SEVEN, rather than dug out seven times. Readers walking
+     to the same record by themselves are that many places that can disagree about where
+     it is, and the fact they are reading - „does this caller race for anybody" - is one
+     fact. It said „all four" until 25.09.2026 and the number is the only thing in it
+     that moved. */
   const mine = recordIn(body)
 
   return {
     role,
     account,
     memberNumber: numberIn(mine),
+    country: countryIn(mine),
+    firstSeason: wholeIn(mine, 'firstSeason'),
+    teamId: wholeIn(mine, 'teamId'),
     membershipBasis: basisIn(mine),
     referralCode: codeIn(mine),
-    referredCount: countIn(mine),
+    referredCount: wholeIn(mine, 'referredCount'),
   }
 }
 
@@ -313,25 +371,52 @@ function codeIn(mine: object | null): string | null {
 }
 
 /**
- * How many the caller brought in, out of the answer, or nothing.
+ * Where the caller lives, out of the answer, or nothing.
  *
- * **Looked for and never asserted**, and the type is asked for as well as the presence:
- * a count that arrives as a string would go into an arithmetic and come out as a sum
- * nobody meant. `Number.isInteger` rather than `typeof === 'number'` because the two
- * differ on exactly the values that are not a count - `NaN` and a fraction - and a
- * balance is the one thing on this screen that is money.
- *
- * Both halves of the test, and not `Number.isInteger` alone: that one answers a boolean
- * and narrows nothing, so the value would still have to be asserted into a number, which
- * is the thing ADL A14 refuses. `typeof` narrows and the other half then says which
- * numbers count.
+ * **Looked for and never asserted**, and the shape is not checked beyond „it is a
+ * string", which is the ground `codeIn` above stands on and the same ground: which words
+ * name a country is the SCHEMA's (V7, `competitor_town_is_from_the_codebook_or_typed`),
+ * checked where a town is stored. A portal re-judging it here would be a second opinion
+ * about a rule it does not own, and the only thing it could do with a country it disliked
+ * is refuse to draw a member the server really answered.
  */
-function countIn(mine: object | null): number | null {
+function countryIn(mine: object | null): string | null {
   if (mine === null) {
     return null
   }
 
-  const said: unknown = Reflect.get(mine, 'referredCount')
+  const said: unknown = Reflect.get(mine, 'country')
+
+  return typeof said === 'string' ? said : null
+}
+
+/**
+ * A whole number off the caller's own record, by name, or nothing.
+ *
+ * **One function and not three, which is the correction of 25.09.2026.** It was written
+ * for the count alone; the season and the team arrived beside it needing the same two
+ * questions, and three copies of one rule are three places that can answer it
+ * differently. What it is a rule ABOUT is the only thing named here - „is this a whole
+ * number" - so the three readers differ by a key and by nothing else.
+ *
+ * **Looked for and never asserted**, and the type is asked for as well as the presence: a
+ * value that arrives as a string would go into an arithmetic, or into a sentence, and
+ * come out as something nobody meant. `Number.isInteger` on top of `typeof` rather than
+ * alone, because the two differ on exactly the values that are not one of these - `NaN`
+ * and a fraction - and because `Number.isInteger` answers a boolean and narrows nothing,
+ * so the value would still have to be asserted into a number, which is what ADL A14
+ * refuses. `typeof` narrows and the other half then says which numbers count.
+ *
+ * **What each null MEANS is the caller's to know and is not the same for the three**, so
+ * it is written where each is declared rather than here: no balance was mentioned, no
+ * season was mentioned, and - for the team - no team, which is ordinary.
+ */
+function wholeIn(mine: object | null, name: 'firstSeason' | 'teamId' | 'referredCount'): number | null {
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'number' && Number.isInteger(said) ? said : null
 }

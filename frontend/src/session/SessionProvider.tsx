@@ -47,6 +47,16 @@ export function SessionProvider({
      (`GET /api/me`) and a screen that had one without the other would be reading half
      a session. */
   const [myMembershipBasis, setMyMembershipBasis] = useState<MembershipBasis | null>(null)
+  /* AND THE THREE THE SAME ANSWER CARRIES WHOSE OTHER DOOR CANNOT ANSWER THE CALLER,
+     here since 25.09.2026 (PDL P8a). `/api/competitors` carries a country, a first
+     season and a team on every row, so these three are not like the four around them -
+     they have a second home and are read here all the same, because that home ends
+     `where c.active` and the member whose fee has LAPSED has no row in it. He is the one
+     „Moja članarina" is for. Set in the same breath as the basis, for the reason written
+     above it: they come in one answer and half a session is worse than none. */
+  const [myCountry, setMyCountry] = useState<string | null>(null)
+  const [myFirstSeason, setMyFirstSeason] = useState<number | null>(null)
+  const [myTeamId, setMyTeamId] = useState<number | null>(null)
   /* AND THE OTHER TWO THE SAME ANSWER CARRIES THAT HAVE NO OTHER DOOR, here since
      25.09.2026. P26a took the caller's own referral link and his count of whom he
      brought in off `/api/competitors`, so `GET /api/me` is where both arrive and this is
@@ -511,6 +521,9 @@ export function SessionProvider({
     (who: {
       account: number
       memberNumber: string | null
+      country: string | null
+      firstSeason: number | null
+      teamId: number | null
       membershipBasis: MembershipBasis | null
       referralCode: string | null
       referredCount: number | null
@@ -531,6 +544,15 @@ export function SessionProvider({
          of the rule - an answer that never came writes nothing at all - and it keeps it
          by not calling this at all, which is where that decision belongs. */
       setMemberNumber(who.memberNumber)
+      /* WRITTEN EVEN WHEN NULL, the same as every line around them and for the same
+         road: a second sign in during one visit. A country left standing from the member
+         before would put the person after on his payment slip - his currency, his ways
+         of paying, and in Serbia a QR code for dinars - which is the sharpest form this
+         fault takes anywhere on the portal, because it is the one screen where what is
+         drawn is money. */
+      setMyCountry(who.country)
+      setMyFirstSeason(who.firstSeason)
+      setMyTeamId(who.teamId)
       setMyMembershipBasis(who.membershipBasis)
       /* WRITTEN EVEN WHEN NULL, for the same reason the two above are: the road this
          rule was written for is a second sign in during one visit, and a value kept from
@@ -557,6 +579,9 @@ export function SessionProvider({
       signIn: setMemberNumber,
       account,
       myMembershipBasis,
+      myCountry,
+      myFirstSeason,
+      myTeamId,
       myReferralCode,
       myReferredCount,
       theServerSignedMeIn,
@@ -641,10 +666,13 @@ export function SessionProvider({
          the same, because a dependency list that leaves out what it reads is a list
          somebody has to re-derive by hand the next time it grows. */
       myMembershipBasis,
-      /* And the two P26a moved here on 25.09.2026, named for the same reason: they are
-         set in the same breath as the basis, so the memo would be rebuilt for its sake
-         and they would come along - which is the right screen for the wrong reason, and
-         exactly what this comment was written about. */
+      /* And the five P26a and P8a moved here on 25.09.2026, named for the same reason:
+         they are set in the same breath as the basis, so the memo would be rebuilt for
+         its sake and they would come along - which is the right screen for the wrong
+         reason, and exactly what this comment was written about. */
+      myCountry,
+      myFirstSeason,
+      myTeamId,
       myReferralCode,
       myReferredCount,
       theServerSignedMeIn,
