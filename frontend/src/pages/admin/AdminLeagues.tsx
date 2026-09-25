@@ -1,23 +1,189 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
+import type { League } from '../../data/types'
 import { useLeagues } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { ServerSaid } from '../account/ServerSaid'
+import type { FormValues } from '../../forms/types'
+import { recordKey } from '../../session/context'
+import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { LeagueRaceModeration } from './LeagueRaceModeration'
-import { LEAGUES, recordsOf, type Editing } from './entityForms'
-import { useOverlay } from './overlay'
+import { LEAGUES, recordsOf, type Editing, type Overlay } from './entityForms'
+import { WHEN_WRITING_A_LEAGUE, identityIn, upsertFrom } from './leagueWrites'
 import '../member/Member.css'
 
-/* Leagues, with the number of events each one carries. A league with no events
+/** An overlay holding nothing, which is what this screen starts every visit with. */
+const NOTHING_YET: Overlay = { edits: {}, creations: {}, deletions: {} }
+
+/**
+ * Leagues, with the number of events each one carries. A league with no events
  * is the one to notice: it is announced, it appears in the navigation, and it
- * has nothing to rank. */
+ * has nothing to rank.
+ *
+ * **THIS SCREEN WRITES TO THE SERVER AND SIX OTHERS STILL DO NOT** (PDL P28c point 2,
+ * owner 24.09.2026: „Svi ekrani administracije prestaju da pisu u sesijski sloj i pocinju
+ * da zovu rute", with his reason - „bez toga nijedan entitet unet kroz portal stvarno ne
+ * postoji, pa se ni liga ne moze isprobati iako su joj rute gotove"). The competitions go
+ * first because they are the entity whose routes were already finished and unreachable:
+ * `LeagueWriteApi` has been able to make, change and delete one since B40 while nothing
+ * called it.
+ *
+ * **WHAT THAT COST BEFORE TODAY, AND IT IS A MEASUREMENT RATHER THAN AN ARGUMENT.** A
+ * competition entered here was remembered as an overlay, and an entity filed under `id`
+ * takes its identity from `admin/raceIds.ts`, which counts DOWN from nought so that
+ * nothing it hands out can collide with a `bigserial`. So the first competition entered
+ * during a visit was number `-1`, and the panel of races underneath it - which HAS been
+ * speaking to the server since 24.09.2026 - posted to `/api/leagues/-1/races`. The screen
+ * confirmed a save, drew a row, and every race put into that row went nowhere.
+ *
+ * **NOTHING ABOUT THE OTHER SIX ENTITIES MOVES.** `EntityEditor` and `RowActions` grew one
+ * optional argument each and behave exactly as they did where it is not passed, which is
+ * every other screen. A change to what a member or an event does on save is six screens'
+ * worth of risk riding on one competition's, and this increment is not that.
+ */
 export function AdminLeagues() {
   const { locale, t } = useI18n()
-  const overlay = useOverlay()
   const [editing, setEditing] = useState<Editing | null>(null)
   const state = useLeagues()
+
+  /**
+   * WHAT THIS VISIT HAS WRITTEN, ON TOP OF WHAT THE SERVER ANSWERED WITH.
+   *
+   * **The same three-part overlay the session keeps, over a different store, and merged
+   * by the same `recordsOf`.** Writing a second merge here would be a second answer to
+   * „what does this list show", and the first fault of that shape is always the one the
+   * session's own note names: a record somebody deleted going on standing in a list,
+   * which reads as a screen that has not refreshed.
+   *
+   * **Why anything is held at all, when the server now knows.** `data/client.ts` fetches
+   * a resource once per visit and nothing in the application clears it („nothing in the
+   * application calls this", of `clearResourceCache`), so after a write there is nothing
+   * to re-read. What is held is therefore what the server has just ACCEPTED, never what
+   * this screen hopes it did: every one of the three is written inside the branch that
+   * ran only because an answer said the write went through. That is the arrangement
+   * `LeagueRaceModeration` beside it already uses and gives its reason for.
+   */
+  const [written, setWritten] = useState<Overlay>(NOTHING_YET)
+
+  /** What just happened, for whoever is not watching the list. */
+  const [said, setSaid] = useState('')
+
+  /** Why a deletion did not happen, beside the row it was pressed on. */
+  const [refused, setRefused] = useState<{
+    id: number
+    answer: Exclude<Answer, { got: 'done' }>
+  } | null>(null)
+
+  /** The words for an answer that was not „it was done". */
+  function saying(answer: Exclude<Answer, { got: 'done' }>) {
+    return <ServerSaid answer={answer} refusals={WHEN_WRITING_A_LEAGUE} />
+  }
+
+  /**
+   * MAKING ONE OR CHANGING ONE, AND THE IDENTITY COMES BACK FROM THE DATABASE.
+   *
+   * **`POST` answers 201 with the id it handed out** (`LeagueWriteApi.Written`), and that
+   * id is the whole of what the row, the panel of races under it and both of the other two
+   * routes are addressed by. Read off the answer through `identityIn`, which refuses
+   * anything that is not a whole number above nought - the range a `bigserial` lives in,
+   * and deliberately not the range the session overlay used to hand out.
+   *
+   * **`PUT` answers 200 with the record**, and nothing of it is read: what the screen puts
+   * in the row after a save is what was typed, which it already holds. Reading the record
+   * back would make this a second home for the competition's own data.
+   */
+  async function saveOne(values: FormValues, text: Record<string, string>): Promise<Saving> {
+    const mine = editing !== null && editing.mode === 'one' ? editing.record : null
+    const id = mine === null ? null : Number(mine[LEAGUES.idField])
+    const answer = await askTheServer(
+      id === null ? '/api/leagues' : `/api/leagues/${id}`,
+      upsertFrom(values),
+      id === null ? 'POST' : 'PUT',
+    )
+
+    if (answer.got !== 'done') {
+      return { said: saying(answer) }
+    }
+
+    if (id !== null) {
+      setWritten((was) => ({
+        ...was,
+        edits: { ...was.edits, [recordKey(LEAGUES.id, id)]: text },
+      }))
+
+      return { written: String(id) }
+    }
+
+    /* THE ONE ANSWER THAT IS NEITHER A REFUSAL NOR SOMETHING THIS SCREEN CAN DRAW. The
+       write happened - the route answered 201 - but without the identity there is no
+       address for the row, for the panel under it or for either of the other two routes.
+       Drawing a row anyway is exactly the fault this whole increment closes, one number
+       further along, so nothing is drawn and the reader is told the truth: it is saved,
+       and the screen has to be reloaded to see it. */
+    const made = identityIn(answer.body)
+
+    if (made === null) {
+      return {
+        said: (
+          <p className="field__error" role="alert">
+            {t('admin.leagueSavedUnseen')}
+          </p>
+        ),
+      }
+    }
+
+    setWritten((was) => ({
+      ...was,
+      creations: {
+        ...was.creations,
+        [LEAGUES.id]: [...(was.creations[LEAGUES.id] ?? []), { id: String(made), values: text }],
+      },
+    }))
+
+    return { written: String(made) }
+  }
+
+  /**
+   * AND TAKING ONE AWAY, WHATEVER SEASON IT BELONGS TO AND WHETHER OR NOT IT HAS FROZEN.
+   *
+   * PDL P15c point 1, owner 22.09.2026, choosing between three outcomes: a competition
+   * running alongside is deleted at any moment, frozen season or not. So this draws no
+   * condition of its own and asks the route nothing extra: `LeagueWriteApi.remove` is the
+   * one of its four routes that does not ask whether the season is frozen, and a screen
+   * that refused first would be a second rule over a decision already taken.
+   */
+  async function deleteOne(league: League): Promise<void> {
+    const answer = await askTheServer(`/api/leagues/${league.id}`, {}, 'DELETE')
+
+    if (answer.got !== 'done') {
+      setRefused({ id: league.id, answer })
+
+      return
+    }
+
+    setRefused(null)
+    setSaid(t('admin.leagueGone'))
+    setWritten((was) => ({
+      ...was,
+      /* OUT OF BOTH STORES, because a competition entered during this visit is held as a
+         CREATION and one that was served is filtered out by a DELETION. Written into the
+         second only, the row somebody just made would go on standing and he would press
+         Delete on it again, against a competition the server has already forgotten. */
+      creations: {
+        ...was.creations,
+        [LEAGUES.id]: (was.creations[LEAGUES.id] ?? []).filter(
+          (one) => one.id !== String(league.id),
+        ),
+      },
+      deletions: {
+        ...was.deletions,
+        [LEAGUES.id]: [...(was.deletions[LEAGUES.id] ?? []), String(league.id)],
+      },
+    }))
+  }
 
   return (
     <div className="member">
@@ -38,19 +204,26 @@ export function AdminLeagues() {
              koncept." So this table is the competitions that run ALONGSIDE,
              there is no such row, and a filter against one was a guard over an
              assumption that had already been overturned. */
-          const rows = recordsOf(LEAGUES, leagues, overlay)
+          const rows = recordsOf(LEAGUES, leagues, written)
 
           if (editing !== null) {
             return (
               <EntityEditor
                 entity={LEAGUES}
                 editing={editing}
-                /* The addresses already answered at, so a second league cannot
-                   be saved onto one. A league is filed under an id nobody sees
-                   and answers at an address somebody chose, so the address is a
-                   field like any other and the check is the one written pages
-                   already use (entityForms.ts, `takenAddress`). */
-                taken={rows.map((league) => league.slug)}
+                /* WHO REFUSES AN ADDRESS SOMEBODY ALREADY ANSWERS AT, AND SINCE
+                   25.09.2026 IT IS THE ROUTE ALONE. `taken` used to carry every
+                   address on the screen, and `takenAddress` coloured the field
+                   before anything was sent. That list can only ever be
+                   INCOMPLETE - it is what this browser was served plus what this
+                   visit made, while the table is what every administrator has
+                   entered - so it refused some collisions and let others through
+                   to a route that refuses all of them by name. Two sentences
+                   about one fact, one of which cannot be made right. The route
+                   decides: `add` writes with `on conflict (slug) do nothing` and
+                   `change` with a `not exists` clause inside the statement, both
+                   of which answer `theAddressIsTaken`. */
+                save={saveOne}
                 onDone={() => setEditing(null)}
               />
             )
@@ -105,7 +278,13 @@ export function AdminLeagues() {
                             record={league}
                             name={league.name}
                             onOpen={() => setEditing({ mode: 'one', record: league })}
+                            deleteRecord={() => void deleteOne(league)}
                           />
+                          {/* Why this one did not go, in the row it was pressed in.
+                              The focus has already moved to the control that starts a
+                              new record, as it does on every other list, so the words
+                              carry themselves: `ServerSaid` draws them in an alert. */}
+                          {refused !== null && refused.id === league.id && saying(refused.answer)}
                         </td>
                       </tr>,
                       /* WHICH RACES COUNT TOWARDS THIS ONE, AND THE `+` THAT
@@ -118,15 +297,12 @@ export function AdminLeagues() {
                          the page sideways, and the portal's rule is no sideways
                          scrolling from 360px up.
 
-                         **It writes to the SERVER and the rest of this screen
-                         does not**, and that is worth saying rather than
-                         leaving to be noticed. Every entity here is entered and
-                         changed through the session overlay, because the
-                         prototype had no database; the races of a competition
-                         are the first thing on this screen with a route behind
-                         them (`LeagueWriteApi`), so they go to it. Bringing the
-                         other six onto the server is one change for all seven
-                         and not this one. */
+                         **Since 25.09.2026 it is addressed by an identity the
+                         DATABASE handed out**, for a competition entered during
+                         this visit as much as for one that was served. It was
+                         the first thing on this screen with a route behind it and
+                         the rest of the screen has now followed; what that closes
+                         is a panel that posted to `/api/leagues/-1/races`. */
                       <tr key={`${league.id}-races`}>
                         <td colSpan={5}>
                           <LeagueRaceModeration league={league} />
@@ -136,6 +312,13 @@ export function AdminLeagues() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Said once and politely: the list beside it has already changed, and a
+                  reader who is not looking at it gets the one sentence that says so.
+                  The same shape the panel of races uses. */}
+              <p aria-live="polite" className="visually-hidden">
+                {said}
+              </p>
             </>
           )
         }}

@@ -72,15 +72,29 @@ const A_READ_THAT_HANDS_OUT_THE_TOKEN = '/api/countries'
 export type Answer =
   /**
    * 204, which is what signing in, signing out and registering answer when they did
-   * the thing - or 201, which is what `/api/teams` and `/api/comments` answer instead,
-   * because a proposal and a rating are each a ROW now standing in a queue rather than
-   * a state simply changed. Read as one outcome and not two: both mean the write went
-   * through, and neither screen this file has been widened for since 21.09.2026 reads
-   * anything out of the body a 201 carries beside a 204 - `TeamWriteApi`'s own `Made`
-   * and `CommentWriteApi`'s answer with an id nothing here parses, the same way `done`
-   * has never carried the 204 body either.
+   * the thing - or 201, which is what `/api/teams`, `/api/comments` and `/api/leagues`
+   * answer instead, because each of those is a ROW now standing somewhere rather than
+   * a state simply changed - or 200, which is what a route that CHANGES a record
+   * answers with the record as it now stands (`PUT /api/me`, `PUT /api/leagues/{id}`).
+   * Read as one outcome and not three: all of them mean the write went through, and
+   * which number a route chose is that route's business.
+   *
+   * <p><b>`body` is what the answer carried, and it is `undefined` where it carried
+   * nothing.</b> It said here until 25.09.2026 that no screen reads it, and
+   * `POST /api/leagues` is the first that must: it answers 201 with the id the database
+   * handed out, and that id is the whole of what the administration screen can then
+   * address the new competition by (`admin/AdminLeagues.tsx`). Without it the screen
+   * would have to invent one, which is what the session overlay used to do - counting
+   * down from nought (`admin/raceIds.ts`) - and the panel underneath would have posted
+   * races to `/api/leagues/-1/races`.
+   *
+   * <p><b>It is `unknown` and is never claimed to be anything</b> (ADL A14). What comes
+   * off the wire is narrowed by looking at it, which is the same rule `reasonIn` below
+   * reads a refusal by and `admin/leagueCounted.ts` reads a served field by. A body of
+   * some other shape therefore answers „nothing of the kind is there" rather than being
+   * asserted into a type.
    */
-  | { got: 'done' }
+  | { got: 'done'; body: unknown }
   /**
    * A refusal the route named, whether it numbered it 400 or 409.
    *
@@ -161,6 +175,23 @@ async function reasonIn(answer: Response): Promise<string | null> {
 }
 
 /**
+ * Whatever the answer carried, or nothing at all.
+ *
+ * <p>The same read `reasonIn` makes and for the same reason: 204 carries no body, a 201
+ * may carry one, and `json()` throws on both an empty body and a body that is not JSON.
+ * Caught rather than guarded by a header, because a route that answers 200 with nothing
+ * and a route that answers 200 with a record are the same outcome to every caller but
+ * one, and the one may look.
+ */
+async function bodyIn(answer: Response): Promise<unknown> {
+  try {
+    return await answer.json()
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Sends one thing to one route and says what came back.
  *
  * @param path what is being asked, an address under `/api`
@@ -177,13 +208,25 @@ async function reasonIn(answer: Response): Promise<string | null> {
  *             this file already had: it refuses BY NAME, and a name is a name whichever verb
  *             carried it.
  *
- *             **`PUT` STOOD HERE FOR AN AFTERNOON AND IS GONE, and it is worth the line.**
- *             It was added for `PUT /api/leagues/{id}`, and this sentence named that route
- *             as the reason - a claim about a caller that did not exist, because the league
- *             record is still changed through the session overlay like the other six
- *             entities. A branch of a shared helper that no screen reaches is exactly what
- *             the warning at the top of this file is about, and „it will be needed soon" is
- *             not a measurement. It comes back with its caller.
+ *             **`PUT` STOOD HERE FOR AN AFTERNOON, WENT, AND CAME BACK ON 25.09.2026 WITH
+ *             ITS CALLER, which is what the line it left behind said would happen.** That
+ *             line read „it comes back with its caller", and the caller is
+ *             `PUT /api/leagues/{id}`, now sent by `admin/AdminLeagues.tsx` and by the terms
+ *             and prizes on the public list of competitions (`pages/Leagues.tsx`). The
+ *             branch is therefore reachable from two screens rather than claimed to be
+ *             needed, which is the whole difference from the afternoon it was removed.
+ *
+ *             **`tellTheServer` STOOD BESIDE THIS AND IS GONE IN THE SAME BREATH.** It was
+ *             written on 24.09.2026 as a MERGE decision and said so in its own words - „the
+ *             day both have landed these fold into one function with one `method`
+ *             parameter; the `method` argument here is already that parameter, so the
+ *             folding is a deletion rather than a rewrite". Both landed (PR 361 and PR 362),
+ *             so this is that deletion. What it carried that this did not is the 200 below.
+ *
+ *             **Two entry points would not have been a tidiness question but a second home
+ *             for one fact.** Both would have taken `PUT`, and they read a different set of
+ *             numbers as success, so the day a third route answered 200 the answer would
+ *             have depended on which of the two a screen happened to import.
  *
  *             **What is NOT widened:** nothing here learns anything about a resource. It
  *             takes an address and a body and reports one of five answers, as before.
@@ -191,7 +234,7 @@ async function reasonIn(answer: Response): Promise<string | null> {
 export async function askTheServer(
   path: string,
   said: object,
-  how: 'POST' | 'DELETE' = 'POST',
+  how: 'POST' | 'PUT' | 'DELETE' = 'POST',
 ): Promise<Answer> {
   let answer: Response
 
@@ -216,14 +259,22 @@ export async function askTheServer(
      for 409 beside 400: both numbers say the write happened, and which of the two a
      route answers with is that route's business and not a fact this file keeps twice.
 
-     200 STOOD BESIDE THEM FOR AN AFTERNOON AND IS GONE, with `PUT`, and for the same
-     reason. It was here because a route that CHANGES a record answers with the record
-     rather than with nothing, which is true of `LeagueWriteApi.change` - and nothing on
-     this portal calls that route, so no screen could ever have read the branch. Removing
-     it leaves all 3058 cases green, which is the measurement: a branch whose deletion
-     nothing notices is a branch nothing was measuring. It comes back with its caller. */
-  if (answer.status === 204 || answer.status === 201) {
-    return { got: 'done' }
+     200 IS BACK BESIDE THEM, WITH `PUT`, AND NOW HAS TWO CALLERS. It was removed on
+     24.09.2026 as a branch no screen could reach; it came back the same day in
+     `tellTheServer`, for `PUT /api/me`, and that function has now been folded in here.
+     A route that CHANGES a record answers with the record rather than with nothing -
+     `MeWriteApi.write` ends `ResponseEntity.ok(...)` and so does `LeagueWriteApi.change` -
+     and read without this branch a save that WORKED came back `{got:'wrong', status:200}`,
+     which is the worst of the wrong answers: the reader types it all again over a save
+     that landed.
+
+     THE BODY IS READ HERE AND NOWHERE ELSE, for every one of the three numbers rather
+     than for 201 alone. Asked only of the number that happens to carry one today, this
+     would be a fourth place holding the fact „which route answers with what", and that
+     fact already lives in the routes. `bodyIn` answers `undefined` where there is
+     nothing, which is what a 204 always is. */
+  if (answer.status === 200 || answer.status === 201 || answer.status === 204) {
+    return { got: 'done', body: await bodyIn(answer) }
   }
 
   if (answer.status === 403) {
@@ -241,75 +292,6 @@ export async function askTheServer(
      (`btl-produkt/ADL.md`, 08.09.2026): „Registracija na vec zauzetu adresu kaze da je
      zauzeta." He was shown the price before choosing it - anybody can then test whether
      an address is a member of the league - and took it. */
-  if (answer.status === 400 || answer.status === 409) {
-    const reason = await reasonIn(answer)
-
-    return reason === null
-      ? { got: 'wrong', status: answer.status }
-      : { got: 'refused', reason }
-  }
-
-  return { got: 'wrong', status: answer.status }
-}
-
-/**
- * THE SAME ERRAND WITH THE VERB WRITTEN OUT, AND WITH 200 READ AS „IT WAS DONE".
- *
- * <p><b>Appended rather than folded into {@link askTheServer}, and that is a merge
- * decision rather than a design one.</b> Another increment is widening the function above
- * in the same week - the league is giving it `PUT` and `DELETE` - so the two changes are
- * kept in two hunks that do not touch. The day both have landed these fold into one
- * function with one `method` parameter; the {@code method} argument here is already that
- * parameter, so the folding is a deletion rather than a rewrite.
- *
- * <p><b>WHY 200 IS HERE AND IS NOT IN THE FUNCTION ABOVE, WHICH IS THE ONLY THING ABOUT
- * THIS THAT IS NOT MECHANICAL.</b> Every route that one was written for answers 204 or
- * 201 and carries nothing a screen reads. {@code PUT /api/me} answers <b>200 with the
- * member's own record as it now stands</b> - {@code MeWriteApi.write} ends
- * {@code ResponseEntity.ok(whatStandsFor(me))} - and {@code PUT /api/me/password} answers
- * 204. Sent through the function above, a change that WAS SAVED would have come back
- * {@code {got:'wrong', status:200}} and the member would have been told it was not, which
- * is the worst of the four wrong answers: he types it all again over a save that worked.
- * `myAccount.test.ts` sends exactly a 200 and measures that it reads as done.
- *
- * <p><b>The body of that 200 is deliberately not read.</b> What a screen puts back in its
- * boxes after a save is what the member typed, which it already holds; reading the record
- * back would make this the portal's second home for the member's own data. The one field
- * of {@code Changed} nothing else could answer is {@code waiting}, and that belongs to the
- * biography, which this increment does not send.
- *
- * @param path   what is being asked, an address under `/api`
- * @param said   the body, which is the only place anything given here is written
- * @param method the verb, written by the caller because these routes are told apart by it
- */
-export async function tellTheServer(path: string, said: object, method: 'PUT'): Promise<Answer> {
-  let answer: Response
-
-  try {
-    const token = await beHandedTheToken()
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-
-    if (token !== null) {
-      headers[TOKEN_HEADER] = token
-    }
-
-    answer = await fetch(path, { method, headers, body: JSON.stringify(said) })
-  } catch {
-    return { got: 'nothing' }
-  }
-
-  if (answer.status === 200 || answer.status === 204) {
-    return { got: 'done' }
-  }
-
-  if (answer.status === 403) {
-    return { got: 'rejected' }
-  }
-
-  /* 409 BESIDE 400 for the reason the function above gives at length: both carry a reason
-     named in the body, and which number a route chose for which refusal is that route's
-     business. `MeWriteApi` uses both - 409 for a biography already waiting, 400 for the
-     rest - and all of them end in a sentence chosen by name. */
   if (answer.status === 400 || answer.status === 409) {
     const reason = await reasonIn(answer)
 

@@ -9,6 +9,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { racesByEvent } from '../league/leagueCounting'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { countedRacesOf } from './leagueCounted'
+import { WHEN_MODERATING_LEAGUE_RACES } from './leagueWrites'
 import '../Leagues.css'
 
 /**
@@ -62,16 +63,25 @@ export function LeagueRaceModeration({ league }: { league: League }) {
   /**
    * The sentence for a refusal the route named.
    *
-   * **Asked of the dictionary rather than of a list written here**, which is what keeps this
-   * from being a second list of the route's refusals: a reason the dictionary has is said in
-   * words, and one it has not falls to the sentence that fits any of them. `translate`
-   * answers a missing key with the key itself, which is what that comparison reads.
+   * **It probed the dictionary until 25.09.2026 and now reads a table** (`leagueWrites.ts`,
+   * `WHEN_MODERATING_LEAGUE_RACES`). The words that come out are the same six; what changes
+   * is that there is now something a guard can hold. Probing built the key out of the reason
+   * and read a key coming back unchanged as „no words for this", so a reason the server
+   * added and a key somebody deleted were ONE answer, and neither could ever be reported.
+   * `pages/account/refusals.test.ts` reads the eleven names `LeagueWriteApi` declares and
+   * fails on the day a twelfth is written.
+   *
+   * **The fallback stays exactly as it was**, because it is a real state and not a gap: a
+   * screen one release behind its server must say something rather than nothing, and
+   * `unknown` is that sentence.
    */
   function sentenceFor(reason: string | null): string {
-    const key = `admin.leagueRefused.${reason ?? 'unknown'}`
-    const written = t(key)
+    const known =
+      reason !== null && Object.hasOwn(WHEN_MODERATING_LEAGUE_RACES, reason)
+        ? WHEN_MODERATING_LEAGUE_RACES[reason]
+        : undefined
 
-    return written === key ? t('admin.leagueRefused.unknown') : written
+    return known === undefined ? t('admin.leagueRefused.unknown') : t(known)
   }
 
   async function answered(asking: Promise<Answer>, done: () => void): Promise<void> {

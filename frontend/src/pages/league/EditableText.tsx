@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { liga } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
+import type { LeagueWords } from '../admin/leagueWrites'
 
 /**
  * A piece of what an organiser has written about a competition, read where it is written.
@@ -35,6 +36,7 @@ export function EditableText({
   heading,
   canEdit,
   onSave,
+  said,
 }: {
   value: string
   /**
@@ -46,14 +48,57 @@ export function EditableText({
    * form then told them their own text was too long. That is the very fault `limitOf` exists to
    * prevent, moved one screen along.
    */
-  field: 'rules' | 'prizes'
+  field: LeagueWords
   headingId: string
   heading: string
   canEdit: boolean
-  onSave: (text: string) => void
+  /**
+   * Keeps what was written, and says whether it was kept.
+   *
+   * <p><b>It answered nothing until 25.09.2026, and it could not have.</b> What it did was
+   * write into the session overlay, which always succeeds; from that day it is
+   * `PUT /api/leagues/{id}` (`pages/Leagues.tsx`), which can refuse - a competition whose
+   * season has frozen is not changed at all (PDL P15a point 2) - and can fail to arrive.
+   *
+   * <p><b>The box therefore stays open on anything but a yes, holding what was typed.</b>
+   * Closed regardless, a refusal would put the served text back on the screen and take
+   * four thousand characters of somebody's propositions with it, over a refusal he can do
+   * nothing about by retyping them.
+   */
+  onSave: (text: string) => Promise<boolean>
+  /** What was said about the last press on this box, drawn where it was pressed. */
+  said?: ReactNode
 }) {
   const { t } = useI18n()
   const [editing, setEditing] = useState(false)
+
+  /* NO LOCK ON A SECOND PRESS, AND THAT IS DELIBERATE RATHER THAN MISSING. One stood here
+     for an hour, copied from the forms, where it is right: a second press of Save on a
+     NEW record makes a second row. Here a second write can only happen by focusing the box
+     again and leaving it again, so what it carries is NEWER words - and a lock would drop
+     them in silence while the box closed as though they had been kept. The unchanged
+     check below is what stops the common repeat, which is leaving a box nobody typed in. */
+  async function keep(text: string): Promise<void> {
+    /* NOTHING MOVED, SO NOTHING IS SENT, and that is the portal's own rule rather than
+       thrift. `pages/member/myAccount.ts` sends only what differs from what stands, with
+       its reason: „pressing Save twice sends nothing the second time". Here the box is
+       left by simply clicking elsewhere, so an unchanged blur was the COMMON case, and
+       every one of them would have been a `PUT` of the record onto itself - which the
+       route can refuse (a frozen season) and which would then draw a refusal at somebody
+       who changed nothing. Compared exactly as typed and never trimmed: what is compared
+       has to be what would be sent. */
+    if (text === value) {
+      setEditing(false)
+
+      return
+    }
+
+    const kept = await onSave(text)
+
+    if (kept) {
+      setEditing(false)
+    }
+  }
 
   if (value === '' && !canEdit) {
     return null
@@ -76,10 +121,7 @@ export function EditableText({
              accepts, and the next person to open that form was told their own words were too
              long. The number lives in the definition (`forms/records.ts`). */
           maxLength={limitOf(liga, field)}
-          onBlur={(event) => {
-            onSave(event.target.value)
-            setEditing(false)
-          }}
+          onBlur={(event) => void keep(event.target.value)}
         />
       ) : (
         <p className="profile__text">{value === '' ? t('leagues.notWritten') : value}</p>
@@ -90,6 +132,8 @@ export function EditableText({
           {t('admin.change')}
         </button>
       )}
+
+      {said}
     </section>
   )
 }

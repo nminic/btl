@@ -1,7 +1,10 @@
 import { screen, within } from '@testing-library/react'
+import { loadResource } from '../data/client'
+import type { League } from '../data/types'
 import { liga } from '../forms/definitions'
 import { limitOf } from '../forms/records'
 import { at, must } from '../test/at'
+import { answeredWith, refused, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -127,7 +130,25 @@ describe('the text of a competition', () => {
       ),
     )
 
+  /**
+   * A SERVER IN FRONT OF THE WRITE, WHICH THESE CASES DID NOT NEED UNTIL 25.09.2026.
+   *
+   * <p>What this box changed went into the session overlay, which always succeeds. It now
+   * goes to `PUT /api/leagues/{id}` (PDL P28c point 2), so „it was kept" is an answer and
+   * no longer an assumption, and a case that means to see the words on the screen has to
+   * say that the write went through.
+   *
+   * <p>Everything that is not this write goes on to the disc reader, so the competitions
+   * the cases name are still the portal's own generated ones rather than a fixture.
+   */
+  function serving(toTheWrite: () => Response = () => answeredWith(200)) {
+    return serverThat((path, init) =>
+      init?.method === 'PUT' && path.startsWith('/api/leagues/') ? toTheWrite() : null,
+    )
+  }
+
   it('is written by whoever runs it, and only by them', async () => {
+    const server = serving()
     const user = setupUser()
     renderAt('/sr/lige?sezona=2027', 'superadmin')
 
@@ -144,8 +165,147 @@ describe('the text of a competition', () => {
     )
     await user.tab()
 
-    expect(within(rules).getByText('Boduju se samo trke sa spiska.')).toBeVisible()
-  })
+    expect(await within(rules).findByText('Boduju se samo trke sa spiska.')).toBeVisible()
+
+    server.stop()
+  }, SLOW)
+
+  it('sends the WHOLE record on that one box, because that is what the route takes',
+    async () => {
+      /* `LeagueWriteApi.change` writes all five columns in one statement and refuses a
+         form missing any of the three required ones, so the four nobody is editing travel
+         unchanged beside the one that moved. That is the opposite of `PUT /api/me`, which
+         coalesces a field left out, and the difference is the route's rather than this
+         screen's to hold an opinion about.
+
+         Read off the request the screen really made, and on the competition this case
+         NAMED: the list draws several and an address built off the first of them is a
+         different competition. */
+      const server = serving()
+      const user = setupUser()
+      renderAt('/sr/lige?sezona=2027', 'superadmin')
+
+      const box = await boxOf(/RunTrace liga/)
+      const prizes = must(box.getByRole('heading', { name: 'Nagrade' }).closest('section'), 'sec')
+
+      await user.click(within(prizes).getByRole('button', { name: 'Izmeni' }))
+
+      const typing = within(prizes).getByRole('textbox', { name: 'Nagrade' })
+
+      await user.clear(typing)
+      await user.type(typing, 'Medalja i majica.')
+      await user.tab()
+
+      const sent = must(
+        server.asked.find((one) => one.init?.method === 'PUT'),
+        'the change the screen sent',
+      )
+      const mine = must(
+        (await loadResource<League[]>('leagues')).find((one) => one.slug === 'runtrace-2027'),
+        'the competition this case acts on',
+      )
+
+      expect(sent.path).toBe(`/api/leagues/${mine.id}`)
+      expect(JSON.parse(String(sent.init?.body))).toEqual({
+        name: mine.name,
+        slug: mine.slug,
+        season: mine.season,
+        rules: mine.rules,
+        prizes: 'Medalja i majica.',
+      })
+
+      server.stop()
+    }, SLOW)
+
+  it('carries the box changed first along with the box changed second', async () => {
+    /* THE AXIS A SINGLE EDIT CANNOT SEE. The route takes all five columns at once, so the
+       second save has to send the terms AS THEY NOW STAND and not as they were served -
+       otherwise correcting the prizes after the terms sends the terms back undone, and the
+       screen shows one thing while the table holds another.
+
+       Read off the SECOND request. With one edit, „what stands" and „what was served" are
+       the same string and the case would pass either way. */
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/lige?sezona=2027', 'superadmin')
+
+    const box = await boxOf(/RunTrace liga/)
+
+    for (const [heading, words] of [
+      ['Propozicije', 'Nove propozicije.'],
+      ['Nagrade', 'Nove nagrade.'],
+    ] as const) {
+      const section = must(box.getByRole('heading', { name: heading }).closest('section'), 'sec')
+
+      await user.click(within(section).getByRole('button', { name: 'Izmeni' }))
+
+      const typing = within(section).getByRole('textbox', { name: heading })
+
+      await user.clear(typing)
+      await user.type(typing, words)
+      await user.tab()
+      await within(section).findByRole('status')
+    }
+
+    const sent = server.asked.filter((one) => one.init?.method === 'PUT')
+
+    expect(sent.length).toBe(2)
+    expect(JSON.parse(String(at(sent, 1).init?.body))).toMatchObject({
+      rules: 'Nove propozicije.',
+      prizes: 'Nove nagrade.',
+    })
+
+    server.stop()
+  }, SLOW)
+
+  it('keeps the box open holding what was typed where the route refused it', async () => {
+    /* Closed regardless, a refusal would put the served text back and take four thousand
+       characters of somebody's propositions with it, over something retyping cannot fix -
+       a competition whose season has frozen is not changed at all (PDL P15a point 2). */
+    const server = serving(() => refused('theSeasonIsFrozen', 409))
+    const user = setupUser()
+    renderAt('/sr/lige?sezona=2027', 'superadmin')
+
+    const box = await boxOf(/Planinska liga/)
+    const rules = must(box.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'sec')
+
+    await user.click(within(rules).getByRole('button', { name: 'Izmeni' }))
+    await user.type(
+      within(rules).getByRole('textbox', { name: 'Propozicije' }),
+      'Boduju se samo trke sa spiska.',
+    )
+    await user.tab()
+
+    expect(await within(rules).findByRole('alert')).toHaveTextContent(
+      'Sezona ove lige je zamrznuta, pa se liga više ne menja. Brisanje i dalje radi.',
+    )
+    expect(within(rules).getByRole('textbox', { name: 'Propozicije' })).toHaveValue(
+      'Boduju se samo trke sa spiska.',
+    )
+
+    server.stop()
+  }, SLOW)
+
+  it('says so where the route took it, beside the very box it was typed in', async () => {
+    /* Beside THAT box and not beside the screen: the list draws several competitions with
+       two boxes each, and one sentence somewhere on the page answers none of them. */
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/lige?sezona=2027', 'superadmin')
+
+    const box = await boxOf(/Planinska liga/)
+    const rules = must(box.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'sec')
+    const prizes = must(box.getByRole('heading', { name: 'Nagrade' }).closest('section'), 'sec')
+
+    await user.click(within(rules).getByRole('button', { name: 'Izmeni' }))
+    await user.type(within(rules).getByRole('textbox', { name: 'Propozicije' }), 'Nešto novo.')
+    await user.tab()
+
+    expect(await within(rules).findByRole('status')).toHaveTextContent('Izmena je sačuvana.')
+    expect(within(prizes).queryByRole('status')).toBeNull()
+
+    server.stop()
+  }, SLOW)
 
   it('is not offered to a visitor, and an empty one is not shown at all', async () => {
     renderAt('/sr/lige?sezona=2027')
