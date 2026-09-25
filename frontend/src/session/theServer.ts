@@ -103,6 +103,42 @@ export type WhoTheServerSaysIAm = {
    * the screen may not turn any of them into „you pay".
    */
   membershipBasis: MembershipBasis | null
+  /**
+   * THE CALLER'S OWN REFERRAL LINK, and null where the answer did not say.
+   *
+   * **This is the only door it can come through, and that became true on 25.09.2026
+   * rather than being true all along.** `/api/competitors` answered it on the caller's
+   * own row from 20.09.2026, and the screen read it off there. The owner took it off
+   * that list (PDL P26a): the personal link „se sklanja sa javne liste takmicara" and
+   * stays only on „Moja članarina".
+   *
+   * **What reading it the other way cost, and it is measured rather than argued.** That
+   * list ends `where c.active`, so the member whose fee has LAPSED has no row on it and
+   * was answered no link - while the terms promise him one on exactly the page he opens
+   * to renew (V24, section 6). `/api/me` answers one row and that row is his, standing
+   * fee or not.
+   *
+   * Null for a visitor and for an account that races for nobody, which are the same two
+   * states the basis above is null for, and for a code that is not a string. The screen
+   * draws an address with nothing after the sign in all three, which is a link that
+   * plainly does not work rather than one that looks as if it might.
+   */
+  referralCode: string | null
+  /**
+   * HOW MANY MEMBERS THE CALLER BROUGHT IN WHOSE FEE IS STANDING, and null where the
+   * answer did not say.
+   *
+   * **A COUNT and never the column it is counted from.** `referred_by` holds the KEY of
+   * whoever brought a member (V7) and a key does not leave the server, so the query „nad
+   * svima, ne nad sobom" (PDL, 06.09.2026) happens where the data is.
+   *
+   * **Null and not nought, which is the distinction this field exists to keep.** „I was
+   * not told" and „you brought in nobody" are two different sentences, and a screen that
+   * turned the first into the second would promise a member a balance of zero on an
+   * answer that never mentioned him. The screen decides what to draw for null; this
+   * says only what arrived.
+   */
+  referredCount: number | null
 }
 
 /**
@@ -189,12 +225,20 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     return null
   }
 
-  /* READ ONCE AND HANDED TO BOTH, rather than dug out twice. Two readers walking to the
-     same record by themselves are two places that can disagree about where it is, and
-     the fact they are reading - „does this caller race for anybody" - is one fact. */
+  /* READ ONCE AND HANDED TO ALL FOUR, rather than dug out four times. Readers walking to
+     the same record by themselves are that many places that can disagree about where it
+     is, and the fact they are reading - „does this caller race for anybody" - is one
+     fact. */
   const mine = recordIn(body)
 
-  return { role, account, memberNumber: numberIn(mine), membershipBasis: basisIn(mine) }
+  return {
+    role,
+    account,
+    memberNumber: numberIn(mine),
+    membershipBasis: basisIn(mine),
+    referralCode: codeIn(mine),
+    referredCount: countIn(mine),
+  }
 }
 
 /**
@@ -204,7 +248,7 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
  * than null, and rather than an object of nulls"), which is the state a moderator and a
  * superadmin are permanently in.
  *
- * Written as its own function rather than inline because two fields are read out of it
+ * Written as its own function rather than inline because four fields are read out of it
  * and the reader above is already the longest sentence in this file.
  */
 function recordIn(body: object): object | null {
@@ -246,4 +290,48 @@ function basisIn(mine: object | null): MembershipBasis | null {
   const said: unknown = Reflect.get(mine, 'membershipBasis')
 
   return MEMBERSHIP_BASES.find((one) => one === said) ?? null
+}
+
+/**
+ * The caller's own referral code out of the answer, or nothing.
+ *
+ * **Looked for and never asserted**, for the reason written above. The shape is not
+ * checked beyond „it is a string": `competitor_referral_code_shape` is sixteen
+ * hexadecimal characters and it is the SCHEMA's job to keep that, checked at the moment
+ * the code is stored (`ReferralCode`). A portal that re-judged it here would be a second
+ * opinion about a rule it does not own, and the only thing it could do with a code it
+ * disliked is refuse to show a member the link the server really gave him.
+ */
+function codeIn(mine: object | null): string | null {
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, 'referralCode')
+
+  return typeof said === 'string' ? said : null
+}
+
+/**
+ * How many the caller brought in, out of the answer, or nothing.
+ *
+ * **Looked for and never asserted**, and the type is asked for as well as the presence:
+ * a count that arrives as a string would go into an arithmetic and come out as a sum
+ * nobody meant. `Number.isInteger` rather than `typeof === 'number'` because the two
+ * differ on exactly the values that are not a count - `NaN` and a fraction - and a
+ * balance is the one thing on this screen that is money.
+ *
+ * Both halves of the test, and not `Number.isInteger` alone: that one answers a boolean
+ * and narrows nothing, so the value would still have to be asserted into a number, which
+ * is the thing ADL A14 refuses. `typeof` narrows and the other half then says which
+ * numbers count.
+ */
+function countIn(mine: object | null): number | null {
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, 'referredCount')
+
+  return typeof said === 'number' && Number.isInteger(said) ? said : null
 }

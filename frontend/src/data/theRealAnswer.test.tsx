@@ -97,6 +97,60 @@ function answering(rows: Record<string, unknown>[], at: string) {
   )
 }
 
+/**
+ * WHAT `GET /api/me` SAYS ABOUT THE CALLER, for the cases about a field that leaves the
+ * server through that door and no other.
+ *
+ * **It lived inside one `describe` until 25.09.2026 and is out here now**, because P26a
+ * gave a second subject the same door: the fee screen reads the caller's own basis, and
+ * as of that day it reads his referral link and his count of whom he brought in through
+ * the same answer. Two describes asking the same server two ways would be two places that
+ * can disagree about what a server says.
+ *
+ * **THE RECORD NAMES HIM, since 24.09.2026.** It carried the basis alone, which no real
+ * answer ever does: `MeApi.MyOwnRecord` sends the number beside it to anybody who has one,
+ * and the portal has read it since that day to know whose screens to draw. An answer
+ * without it is the server saying „this account races for nobody", and a case using it
+ * then meets „Ovaj deo je za takmicare" instead of the screen it measures.
+ *
+ * **Every field named rather than positional**, because a swap of two positional strings
+ * is a call that still compiles: signed in under the number „feeExempt" is not a state
+ * anything here would have reported.
+ */
+function meAnswering({
+  memberNumber,
+  membershipBasis,
+  referralCode,
+  referredCount,
+}: {
+  memberNumber: string
+  membershipBasis: string
+  /* Absent where the case is not about them, which is what a `?` means here and not a
+     default: the record is then answered WITHOUT the key, which is a state a real server
+     sends (a person registered who has no number yet) and is the one that used to be
+     drawn as „?preporuka=undefined". */
+  referralCode?: unknown
+  referredCount?: unknown
+}) {
+  return serverThat((path) =>
+    path === '/api/me'
+      ? new Response(
+          JSON.stringify({
+            role: 'competitor',
+            account: 1,
+            member: {
+              memberNumber,
+              membershipBasis,
+              ...(referralCode === undefined ? {} : { referralCode }),
+              ...(referredCount === undefined ? {} : { referredCount }),
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      : null,
+  )
+}
+
 describe('the answer the harness stands in with', () => {
   /* **THE FLOOR UNDER THE THING THAT STANDS IN FOR THE SERVER, and it is here because
      without it the standing-in is not load-bearing.** `test/serverAnswers.ts` is what a
@@ -237,36 +291,6 @@ describe('a member freed of the fee, on the answer the server gives', () => {
 
      Both states of the axis, because one of them alone says nothing: a member the
      league has freed is shown no renewal, and a member who pays is shown one. */
-  /* **AND THE RECORD NAMES HIM, since 24.09.2026.** It carried the basis alone, which no
-     real answer ever does: `MeApi.MyOwnRecord` sends the number beside it to anybody who
-     has one, and the portal has read it since that day to know whose screens to draw. An
-     answer without it is the server saying „this account races for nobody", and both
-     cases below then met „Ovaj deo je za takmicare" instead of the screen they measure.
-
-     Both fields named rather than positional, because both are strings and a swap of two
-     positional strings is a call that still compiles: signed in under the number
-     „feeExempt" is not a state anything here would have reported. */
-  function meAnswering({
-    memberNumber,
-    membershipBasis,
-  }: {
-    memberNumber: string
-    membershipBasis: string
-  }) {
-    return serverThat((path) =>
-      path === '/api/me'
-        ? new Response(
-            JSON.stringify({
-              role: 'competitor',
-              account: 1,
-              member: { memberNumber, membershipBasis },
-            }),
-            { status: 200, headers: { 'content-type': 'application/json' } },
-          )
-        : null,
-    )
-  }
-
   /* **AND THE TWO SOURCES ARE PULLED APART, which is what makes either case able to
      fail.** The generated file carries a basis of its own on every row, and the case
      below puts the OTHER word on the wire, so the screen reading the wrong source draws
@@ -332,27 +356,76 @@ describe('a member freed of the fee, on the answer the server gives', () => {
 
 describe('the referral link, on the answer the server gives', () => {
   it('carries no code where the answer carried none, rather than the word undefined', async () => {
-    /* **The three conditional fields are answered on the CALLER'S OWN ROW and on no
-       other** (`/api/competitors`), so a screen drawing „my own" reads a row that has
-       them. That is true while the portal's idea of who is reading and the server's agree,
-       and the two have one way of parting: the development switch puts a member number in
-       the tab, and the cookie names an account (`pages/member/oneQuestion.test.tsx`). Read
-       as somebody the cookie is not, the row comes back without the code, and the address
-       under the sentence would read „…?preporuka=undefined" - a link a reader would copy
-       and send on.
+    /* **THIS ASKED `/api/competitors` UNTIL 25.09.2026 AND ASKS `/api/me` NOW, which is
+       the whole of what P26a moved.** The link was answered on the caller's OWN row of
+       the public list and this case took it off that row to see what the screen drew.
+
+       The owner took it off that list altogether: it ends `where c.active`, so a member
+       whose fee has LAPSED had no row there and was answered no link - and he is the man
+       V24 section 6 promises it to, on exactly this page, which is the page he opens to
+       renew.
+
+       **The state being measured has not moved with it, and there are still three ways
+       into it:** an account that races for nobody, a person registered who has not been
+       given a number, and a server saying something this portal does not read. In all
+       three the session holds null, and the address under the sentence would read
+       „…?preporuka=undefined" - a link a reader would copy and send on.
 
        What is drawn instead is the address with nothing after the sign, which is a link
        that plainly does not work rather than one that looks as if it might. */
-    const { stop } = answering(
-      membersTheServerAnswers().map(({ referralCode: _mine, ...rest }) => rest),
-      '/api/competitors',
-    )
+    const { stop } = meAnswering({ memberNumber: stillAMember, membershipBasis: 'payment' })
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
 
       expect(await screen.findByText(/registracija\?preporuka=$/)).toBeVisible()
       expect(screen.queryByText(/preporuka=undefined/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
+  it('carries the code the answer gave, and not one off the public list', async () => {
+    /* **THE OTHER HALF OF THE SAME AXIS, and it is the one that says which DOOR the
+       screen is reading.** Without it the case above is satisfied by a screen that draws
+       an empty link always, and by a screen that went on reading the public list - which
+       is where the code lived until 25.09.2026 and where every generated row still
+       carries one.
+
+       So the two sources are pulled apart rather than left to agree: the wire says a code
+       that is in the generated file NOWHERE, and the case asserts that what is drawn is
+       the wire's. A screen reading the old door draws the file's code for this member and
+       fails here; one reading no door at all draws nothing and fails here. */
+    const onTheWire = 'aaaaaaaaaaaaaaaa'
+
+    expect(
+      generated.map((one) => one.referralCode),
+      'the generated file already carries this code, so the wire and the file agree and'
+        + ' this case cannot tell which of the two the screen read',
+    ).not.toContain(onTheWire)
+
+    const { stop } = meAnswering({
+      memberNumber: stillAMember,
+      membershipBasis: 'payment',
+      referralCode: onTheWire,
+      referredCount: 3,
+    })
+
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
+
+      /* Matched as a fragment, because what the page draws is the WHOLE address the
+         origin gives it (`app/head.ts`, `addressOf`), and this case is about the code
+         after the sign rather than about where the portal lives. */
+      expect(
+        await screen.findByText(new RegExp(`registracija\\?preporuka=${onTheWire}$`)),
+      ).toBeVisible()
+      /* AND THE COUNT OFF THE SAME DOOR, separated from its own second source the same
+         way: three is not what this member brought in in the generated file, so a screen
+         that went on counting off the list draws a different sum. Three referrals at six
+         hundred dinars is 1.800, and the figure is the portal's own arithmetic rather
+         than one written here twice. */
+      expect(screen.getByText('1.800 RSD')).toBeVisible()
     } finally {
       stop()
     }

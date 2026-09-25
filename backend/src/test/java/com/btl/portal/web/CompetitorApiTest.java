@@ -37,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,15 +90,18 @@ class CompetitorApiTest {
 	private static final String WHETHER_THE_FEE_IS_STANDING = "active";
 
 	/**
-	 * WHAT {@code referredBy} IS ANSWERED AS, once the resource knows who is asking.
+	 * WHAT {@code referredBy} IS ANSWERED AS - BY {@code MeApi}, AND BY NOTHING HERE.
 	 *
 	 * <p>Not the column: PDL, 06.09.2026, „`referredBy` cita ekran Clanarine da
 	 * prebroji koga je clan doveo, a to je upit nad SVIMA, ne nad sobom". A count is
 	 * that query answered where the data is; the column answered to whoever signs in
 	 * would be every member's referrer beside his name, and the referrer is a code.
 	 *
-	 * <p>It is a name the portal does not serve, so {@code Answers} refuses it unless
-	 * it is named as something answered on purpose.
+	 * <p><b>This resource answered it on the caller's own row between 20.09.2026 and
+	 * 25.09.2026, and P26a moved it to the one door that answers a member whose fee has
+	 * lapsed.</b> The name is kept here for the opposite reason it was added: the cases
+	 * below require it to be absent from every record of every caller, so a resource
+	 * that starts answering it again fails rather than passes.
 	 */
 	private static final String THE_COUNT_SHE_BROUGHT_IN = "referredCount";
 
@@ -190,6 +194,22 @@ class CompetitorApiTest {
 	 */
 	private static final List<String> THE_ADMINISTRATION = List.of(
 			THE_MODERATOR_OVER_THE_MEMBERS, THE_ADMINISTRATOR_ON_THE_LIST, THE_SUPERADMIN);
+
+	/**
+	 * EVERY WAY THERE IS OF ASKING THIS ROUTE, for the claims that hold whoever is asking.
+	 *
+	 * <p><b>Derived from the two lists above and never written out again</b>, which is what
+	 * keeps it complete: {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther}
+	 * requires their union to be every account the fixture has, so a caller added tomorrow
+	 * reaches this list by arriving rather than by being remembered. A third hand-written
+	 * list is exactly the thing that goes one entry short.
+	 *
+	 * <p>The visitor is the {@code null} that {@code NOBODY_WHO_MAY_READ_THE_BASIS} carries,
+	 * so he is here too: it is the same request without the cookie and it is not an account.
+	 */
+	private static final List<String> EVERY_KIND_OF_CALLER =
+			Stream.concat(NOBODY_WHO_MAY_READ_THE_BASIS.stream(), THE_ADMINISTRATION.stream())
+					.toList();
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -546,30 +566,75 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * AND NOTHING IN THE ANSWER IS A REFERRAL CODE, whatever it is called.
+	 * AND NOTHING IN THE ANSWER IS A REFERRAL CODE, whatever it is called AND WHOEVER IS
+	 * ASKING.
 	 *
 	 * <p>Asked of the whole answer as TEXT and not of a field name, for the same reason
 	 * the year of birth is: the review that found this measured that swapping the member
 	 * number for the code under the name `referredBy` passed the whole suite, because the
 	 * omission was guarded by that name alone. A code is sixteen hexadecimal characters
 	 * and every member in the fixture carries a different one.
+	 *
+	 * <p><b>AND ASKED OF EVERY KIND OF CALLER SINCE 25.09.2026, which is the whole of what
+	 * P26a changed here.</b> It asked the VISITOR's answer between 20.09.2026 and that day,
+	 * and it had to: the caller's own row carried his own code on purpose, so „no code
+	 * anywhere" was false of a signed in member by design and a second case held the
+	 * narrower claim instead. The owner took the field off this list altogether - „licni
+	 * link za preporuku se sklanja sa javne liste takmicara" - so the claim is one claim
+	 * again, and it is the strongest one this resource can make.
+	 *
+	 * <p><b>Two questions and not one, because they fail differently.</b> The TEXT refuses a
+	 * code served under any name at all, including one nobody has thought of; the KEY
+	 * refuses the name itself arriving with something harmless in it, which is the shape a
+	 * half-reverted change leaves behind. Neither implies the other.
+	 *
+	 * <p><b>The list of callers is DERIVED from the two the rest of this class already
+	 * keeps</b> rather than written out a third time, and
+	 * {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther} holds that their union
+	 * is every account there is. A caller added to the fixture tomorrow is asked this
+	 * without anybody remembering to add him.
 	 */
 	@Test
 	void noReferralCodeLeavesTheServer() throws Exception {
-		String whole = http.perform(get("/api/competitors")).andReturn().getResponse()
-				.getContentAsString();
-
-		assertThat(whole).as("the answer carries nothing at all, so it says nothing about what it"
-				+ " leaves out").contains("000007", "000012", "000045");
-
 		List<String> codes = db.sql("select referral_code from competitor").query(String.class).list();
 		assertThat(codes).as("no code was read out of the database, so the loop below asserts nothing")
 				.hasSize(5);
 
-		for (String code : codes) {
-			assertThat(whole).as("a referral code (%s) left the server, which Clan 73 does not make"
-					+ " public: it is the member's to hand out, not the portal's to publish", code)
-					.doesNotContain(code);
+		/* AND THE CALLERS ARE EVERY ACCOUNT THERE IS, ASKED OF THE DATABASE AND NOT OF THE
+		   TWO LISTS THE FIELD IS DERIVED FROM.
+
+		   Derived from them, this floor would be a tautology: an empty `EVERY_KIND_OF_CALLER`
+		   makes the loop below run nought times and the case pass by asking nobody, and a
+		   floor built out of the same two lists cannot see that. `account` can. The visitor
+		   is the `null` among them and is not an account, so he is counted apart. */
+		assertThat(EVERY_KIND_OF_CALLER)
+				.as("a caller this fixture has is not asked, so the loop below leaves a door"
+						+ " unmeasured")
+				.containsAll(db.sql("select email from account").query(String.class).list())
+				.containsNull();
+
+		for (String caller : EVERY_KIND_OF_CALLER) {
+			String whole = whole(caller);
+
+			assertThat(whole).as("the answer to %s carries nothing at all, so it says nothing"
+					+ " about what it leaves out", caller)
+					.contains("000007", "000012", "000045");
+
+			for (String code : codes) {
+				assertThat(whole).as("a referral code (%s) left the server to %s, which Clan 73"
+						+ " does not make public: it is the member's to hand out, not the"
+						+ " portal's to publish, and since P26a it leaves through /api/me and"
+						+ " nowhere else", code, caller)
+						.doesNotContain(code);
+			}
+
+			for (JsonNode one : answerFor(caller)) {
+				assertThat(Answers.fieldsOf(one))
+						.as("%s was answered a referral key on the record of %s, whatever value"
+								+ " it holds; a key that is there at all is a key the next"
+								+ " change fills in", caller, one.path("memberNumber").asString())
+						.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN);
+			}
 		}
 	}
 
@@ -827,22 +892,30 @@ class CompetitorApiTest {
 	void theVisitorsAnswerHasNotMoved() throws Exception {
 		for (JsonNode one : answerFor(null)) {
 			assertThat(Answers.fieldsOf(one))
-					.as("a visitor was answered something only a signed in member or the"
-							+ " administration may have, on the record of %s",
-							one.path("memberNumber").asString())
+					.as("a visitor was answered something only the administration may have, on"
+							+ " the record of %s", one.path("memberNumber").asString())
 					.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN,
 							HOW_THE_MEMBERSHIP_IS_HELD);
 		}
 
-		JsonNode hers = recordOf(HER_OWN_ACCOUNT, "000012");
-		String added = ",\"" + THE_REFERRAL_CODE + "\":\"" + hers.path(THE_REFERRAL_CODE).asString()
-				+ "\",\"" + THE_COUNT_SHE_BROUGHT_IN + "\":"
-				+ hers.path(THE_COUNT_SHE_BROUGHT_IN).asInt();
+		/* AND SIGNING IN CHANGES NOTHING AT ALL, WHICH IS A STRONGER SENTENCE THAN THE ONE
+		   THIS CASE CARRIED UNTIL 25.09.2026 AND IS WORTH THE PARAGRAPH.
 
-		assertThat(whole(HER_OWN_ACCOUNT).replace(added, ""))
-				.as("signing in changed something other than the two fields it was allowed to:"
-						+ " the visitor's answer is no longer the member's answer with those two"
-						+ " taken out")
+		   It used to build the two fields the caller's own row carried out of the answer's
+		   own values, cut that substring out, and compare what was left. The cut was honest
+		   and it was also the only thing standing between „signing in adds two named fields"
+		   and „signing in adds whatever it likes": anything else that arrived on his row
+		   would have had to be noticed by a second case.
+
+		   P26a took both fields off this list, so there is nothing to cut and nothing to
+		   build: a member's answer IS a visitor's answer, to the byte. The rule of
+		   14.09.2026 about exceptions in a guard is what this is - the exception did not
+		   need a better wording, it needed the postavka underneath it to change, and when
+		   it did the exception went away by itself rather than being argued down. */
+		assertThat(whole(HER_OWN_ACCOUNT))
+				.as("signing in changed the answer. Nothing on this list is the caller's own"
+						+ " business since P26a, so a member and a visitor read the same bytes"
+						+ " and anything at all arriving on his row fails here")
 				.isEqualTo(whole(null));
 	}
 
@@ -852,115 +925,60 @@ class CompetitorApiTest {
 	 *
 	 * <p>It is the SAME check and not a second one: {@code Answers} is handed the
 	 * caller's own record instead of the first, so what it compares against is the
-	 * file the portal serves rather than a list written here. Three of the four
-	 * omissions are still omissions for him - the age band because it is owed, the
-	 * referrer's code because the count replaces it, the basis because PDL P8 gives it
-	 * to the administration alone and the fee flag because he is on the list at all -
-	 * and the one that is no longer an omission is the one field this increment hands
-	 * back. The count is named as answered on purpose, and {@code Answers} checks that
-	 * the portal really does NOT serve that name, so a name listed here after the
-	 * portal starts serving it cannot quietly excuse anything.
+	 * file the portal serves rather than a list written here.
+	 *
+	 * <p><b>ALL FOUR OMISSIONS ARE OMISSIONS FOR HIM AGAIN SINCE 25.09.2026, which is
+	 * where this case stood before 20.09.2026 and where P26a put it back.</b> The age
+	 * band left the list by being answered; the referrer's code because a key does not
+	 * leave the server; the basis because PDL P8 gives it to the administration alone;
+	 * the fee flag because he is on the list at all; and the referral code because the
+	 * owner took it off this list on 25.09.2026 and left it on {@code /api/me}. The
+	 * count needed naming as „answered on purpose" while it was answered; it is not, so
+	 * the {@code Set} went with it.
+	 *
+	 * <p><b>The floor moved with the claim, and that is not a detail.</b> It used to be
+	 * „his record still carries the code, so I am looking at the right record". That
+	 * sentence is exactly what this case now denies, so it would pass by being wrong.
+	 * What says the right record is being read is the record's own number, read off the
+	 * answer.
 	 */
 	@Test
 	void theMembersOwnRecordCarriesNothingNobodyNamed() throws Exception {
-		assertThat(Answers.fieldsOf(recordOf(HER_OWN_ACCOUNT, "000012")))
-				.as("the caller's own record is no longer the one that differs, so the floor"
-						+ " below would be asked of the wrong record")
-				.contains(THE_REFERRAL_CODE);
+		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path("memberNumber").asString())
+				.as("the record the floor below is asked of is not the caller's own, so it says"
+						+ " nothing about the record that used to be the one that differs")
+				.isEqualTo("000012");
 
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors asked by the member himself",
 				new ObjectMapper().createArrayNode().add(recordOf(HER_OWN_ACCOUNT, "000012")),
-				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
-				WHO_HANDED_OUT_THE_CODE,
+				"competitors.json", THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
 
-	/**
-	 * A MEMBER IS HANDED HIS OWN REFERRAL LINK AND NOBODY ELSE'S.
+	/*
+	 * TWO CASES STOOD HERE BETWEEN 20.09.2026 AND 25.09.2026 AND BOTH WENT WITH THE FIELDS
+	 * THEY WERE ABOUT: `aMemberIsHandedHisOwnCodeAndNobodyElses` and
+	 * `aMemberIsToldHowManyHeBroughtInAndOnlyThoseWhoseFeeStands`. P26a took the referral
+	 * link and the count off this list, so each of them asserted a value on a key that is
+	 * no longer there; neither was loosened to keep it green.
 	 *
-	 * <p>PDL, 06.09.2026: „`referralCode` je clanov sopstveni link". ADL A8 names the
-	 * road it may travel: „kod preporuke ... ide iskljucivo kroz endpoint koji trazi
-	 * prijavu, i nikad u odgovor koji vidi posetilac."
+	 * THE RULE THAT SAYS HOW THEY WENT: a guard is not deleted until its own mutations have
+	 * been run against whatever replaces it. Three were, on 25.09.2026, and the logs are in
+	 * the PR:
 	 *
-	 * <p><b>Three things, and the second is the one a wrong resource passes.</b> The
-	 * value on his record is HIS, read out of the database rather than written here.
-	 * Every OTHER code in the database is absent from the whole answer as text, which
-	 * is the check that refuses a resource answering the list of codes to anybody who
-	 * signs in - the exact shape PDL measured as the reason one public file could not
-	 * go on serving three audiences. And no other record carries the key at all, so a
-	 * code cannot arrive as null beside a name and be filled in by the next change.
+	 * - dropping `and brought.active` from THIS resource's counting clause: caught here and
+	 *   by `MeApiTest.theOtherDoorStillAnswersTheSameTwoFacts` (43 run, 2 failures);
+	 * - the same drop on `MeApi`'s clause: caught by `andHowManyHeBroughtInWhoseFeeStands`
+	 *   and `aMemberWhoseFeeHasLapsedIsStillHandedHisOwnRecord`, independently of the case
+	 *   that compared the doors (43 run, 3 failures);
+	 * - answering the member number in place of `c.referral_code` on `MeApi`: caught by
+	 *   `aMemberIsHandedHisOwnReferralCodeAndNobodyElsesEver` and the same lapsed-member
+	 *   case (43 run, 3 failures).
+	 *
+	 * So the door that remains carries TWO independent cases for each of the two facts, and
+	 * what these two held is now held there and, for the negative half, by
+	 * `noReferralCodeLeavesTheServer` asked of every kind of caller.
 	 */
-	@Test
-	void aMemberIsHandedHisOwnCodeAndNobodyElses() throws Exception {
-		String hers = db.sql("select referral_code from competitor where member_number = '000012'")
-				.query(String.class).single();
-
-		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path(THE_REFERRAL_CODE).asString())
-				.as("the member was not handed her own referral link by a resource that knows"
-						+ " who is asking")
-				.isEqualTo(hers);
-
-		List<String> everybodyElses = db.sql("select referral_code from competitor"
-				+ " where member_number <> '000012'").query(String.class).list();
-		assertThat(everybodyElses).as("no other code was read out of the database, so the loop"
-				+ " below asserts nothing").hasSize(4);
-
-		String whole = whole(HER_OWN_ACCOUNT);
-
-		for (String code : everybodyElses) {
-			assertThat(whole).as("somebody else's referral code (%s) was handed to a member who"
-					+ " merely signed in; Clan 73 does not make it public and signing in is not"
-					+ " what makes it his", code).doesNotContain(code);
-		}
-
-		assertThat(StreamSupport.stream(answerFor(HER_OWN_ACCOUNT).spliterator(), false)
-				.filter(one -> Answers.fieldsOf(one).contains(THE_REFERRAL_CODE))
-				.map(one -> one.path("memberNumber").asString()).toList())
-				.as("a record other than the caller's own carries the referral code key, whatever"
-						+ " value it holds")
-				.containsExactly("000012");
-	}
-
-	/**
-	 * AND HE IS TOLD HOW MANY HE BROUGHT IN, WHICH IS A COUNT AND NEVER THE COLUMN.
-	 *
-	 * <p>PDL, 06.09.2026, measured why this field could not stay in the public file:
-	 * „`referredBy` cita ekran Clanarine da prebroji koga je clan doveo, a to je upit
-	 * nad SVIMA, ne nad sobom." Answered as a count by a resource that knows who is
-	 * asking, the query over everybody happens where the data is and nothing about
-	 * anybody else leaves.
-	 *
-	 * <p><b>The number is one and every wrong way of getting it is a different
-	 * number</b>, which is what the fixture is arranged for: she brought in two
-	 * people and one of them has let his fee lapse, so the answer is ONE while five
-	 * members exist, four are on the list and two have a referrer. And the same
-	 * field asked of a member who brought in nobody is nought, so nothing constant
-	 * answers both.
-	 */
-	@Test
-	void aMemberIsToldHowManyHeBroughtInAndOnlyThoseWhoseFeeStands() throws Exception {
-		assertThat(db.sql("select count(*) from competitor where referred_by ="
-						+ " (select id from competitor where member_number = '000012')")
-				.query(Integer.class).single())
-				.as("nobody in the fixture was brought in by her, so this case asserts nothing")
-				.isEqualTo(2);
-
-		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path(THE_COUNT_SHE_BROUGHT_IN).asInt())
-				.as("the count is not the members she brought in whose fee is standing; counting"
-						+ " everybody she brought gives two and the list itself gives three")
-				.isEqualTo(1);
-
-		assertThat(recordOf(THE_OTHER_MEMBER, "000045").path(THE_COUNT_SHE_BROUGHT_IN).asInt())
-				.as("a member who brought in nobody was told he brought in somebody, so the field"
-						+ " is not his own")
-				.isZero();
-
-		assertThat(StreamSupport.stream(answerFor(HER_OWN_ACCOUNT).spliterator(), false)
-				.filter(one -> Answers.fieldsOf(one).contains(THE_COUNT_SHE_BROUGHT_IN))
-				.map(one -> one.path("memberNumber").asString()).toList())
-				.as("a record other than the caller's own carries the count key")
-				.containsExactly("000012");
-	}
 
 	/**
 	 * AND AN ACCOUNT THAT RACES FOR NOBODY IS ANSWERED WHAT A VISITOR IS, TO THE BYTE.
@@ -1166,22 +1184,20 @@ class CompetitorApiTest {
 	 */
 	@Test
 	void theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded() throws Exception {
-		int ownRecordsCut = 0;
+		/* ONE CUT AND NOT TWO SINCE 25.09.2026, and the one that went was a BRANCH.
 
+		   Until that day this also cut the referral code and the count off whichever
+		   record belonged to the caller, and counted how often it had to, because without
+		   the count „a resource that stopped answering the caller his own two fields would
+		   make this case pass by having less to cut". P26a stopped answering them on
+		   purpose, so there is nothing to cut, no branch to fire and no count to keep: an
+		   administrator's own row is an ordinary row plus the basis, like every other. */
 		for (String administration : THE_ADMINISTRATION) {
 			String whole = whole(administration);
 
 			for (JsonNode one : answerFor(administration)) {
 				whole = whole.replace(",\"" + HOW_THE_MEMBERSHIP_IS_HELD + "\":\""
 						+ one.path(HOW_THE_MEMBERSHIP_IS_HELD).asString() + "\"", "");
-
-				if (Answers.fieldsOf(one).contains(THE_REFERRAL_CODE)) {
-					whole = whole.replace(",\"" + THE_REFERRAL_CODE + "\":\""
-							+ one.path(THE_REFERRAL_CODE).asString() + "\",\""
-							+ THE_COUNT_SHE_BROUGHT_IN + "\":"
-							+ one.path(THE_COUNT_SHE_BROUGHT_IN).asInt(), "");
-					ownRecordsCut++;
-				}
 			}
 
 			assertThat(whole)
@@ -1190,12 +1206,6 @@ class CompetitorApiTest {
 							+ " it", administration)
 					.isEqualTo(whole(null));
 		}
-
-		assertThat(ownRecordsCut)
-				.as("no administration account was answered a record of its own, so this case"
-						+ " never entered the state it was rewritten for and the branch above cut"
-						+ " nothing")
-				.isEqualTo(1);
 	}
 
 	/**
@@ -1206,20 +1216,20 @@ class CompetitorApiTest {
 	 * which is the half that was missing until 21.09.2026.
 	 *
 	 * <ul>
-	 * <li><b>Somebody else's record.</b> Three of the five names are still omissions
-	 * there - the age band because it is owed, the referrer's code because the count
-	 * replaces it, the fee flag because he is on the list at all - and the referral
-	 * code is one too, because this caller is not the member whose row it is. It is
-	 * asked of the FIRST record, which {@code Answers} reads, so the case says out
-	 * loud that the first record is nobody's own.</li>
+	 * <li><b>Somebody else's record.</b> It is asked of the FIRST record, which
+	 * {@code Answers} reads, so the case says out loud that the first record is nobody's
+	 * own.</li>
 	 * <li><b>His OWN record</b>, which exists because one administration account is a
-	 * member whose fee is standing. There the referral code and the count are not
-	 * omissions at all but the two fields his row is entitled to, exactly as
-	 * {@code theMembersOwnRecordCarriesNothingNobodyNamed} holds them, and the basis
-	 * is answered on top. Written the other way round - his own two fields named as
-	 * left out - this case would fail the day the resource started behaving
-	 * correctly.</li>
+	 * member whose fee is standing.</li>
 	 * </ul>
+	 *
+	 * <p><b>AND SINCE 25.09.2026 THE TWO ASK THE SAME THING, which is the point rather
+	 * than a redundancy.</b> Between 20.09.2026 and that day his own record was the one
+	 * that differed: the referral code and the count were „not omissions at all but the
+	 * two fields his row is entitled to", so the second call named them as answered and
+	 * the first named the code as left out. P26a took both off this list, so both records
+	 * withhold the same four - and the two calls staying side by side is what refuses a
+	 * resource that starts telling them apart again.
 	 */
 	@Test
 	void theAdministrationsRecordCarriesNothingNobodyNamed() throws Exception {
@@ -1243,8 +1253,7 @@ class CompetitorApiTest {
 				"/api/competitors asked by a moderator over the members, on his own record",
 				new ObjectMapper().createArrayNode().add(
 						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, hisMemberNumber())),
-				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
-				WHO_HANDED_OUT_THE_CODE,
+				"competitors.json", THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				WHETHER_THE_FEE_IS_STANDING);
 	}
 
@@ -1268,17 +1277,21 @@ class CompetitorApiTest {
 	 * whole list except the one asking - left all 21 cases green. A moderator over the
 	 * members who is himself a member would have seen every row's basis but his own.
 	 *
-	 * <p><b>And his own row is a member's row as well, so it carries the referral code
-	 * and the count too.</b> They are answered on the caller's own row whoever the caller
-	 * is; holding the right adds a field, it does not take two away. Both are compared by
-	 * VALUE against what the database holds for HIM, so a code or a count arriving from
-	 * another row is a different string and a different number.
+	 * <p><b>HIS OWN ROW CARRIED THE REFERRAL CODE AND THE COUNT TOO UNTIL 25.09.2026, and
+	 * P26a takes them off his row like everybody's.</b> This case read both by VALUE
+	 * against what the database holds for him, and it named the reason: „holding the
+	 * right adds a field, it does not take two away". The decision takes them away from
+	 * every caller instead, which keeps that sentence true - the right still adds exactly
+	 * one field and subtracts nothing. What refuses a resource that hands his row
+	 * something extra is {@code noReferralCodeLeavesTheServer}, which asks every kind of
+	 * caller including this one, and
+	 * {@code theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded}, which now compares
+	 * whole answers with only the basis cut.
 	 *
 	 * <p><b>Every value this case reads is separated from a second source it could have
 	 * come from</b>, and each separation is asserted rather than arranged and forgotten:
-	 * his basis against a row that is held on another one, his count against a member who
-	 * brought in a different number, and his record against the first and the last of the
-	 * answer.
+	 * his basis against a row that is held on another one, and his record against the
+	 * first and the last of the answer.
 	 */
 	@Test
 	void theAdministratorsOwnRowCarriesTheBasisLikeEveryOther() throws Exception {
@@ -1302,39 +1315,24 @@ class CompetitorApiTest {
 						+ " row carrying another row's word would read the same", hisBasis)
 				.isGreaterThan(0);
 
-		int hisCount = db.sql("select count(*) from competitor brought where brought.active"
-						+ " and brought.referred_by = (select id from competitor"
-						+ " where member_number = ?)").param(number).query(Integer.class).single();
-		assertThat(db.sql("select count(*) from competitor c where c.active and ? <> (select"
-						+ " count(*) from competitor brought where brought.active"
-						+ " and brought.referred_by = c.id)")
-				.param(hisCount).query(Integer.class).single())
-				.as("every member on the list brought in as many as he did (%s), so his count"
-						+ " arriving from another row would be the same number", hisCount)
-				.isGreaterThan(0);
-
 		JsonNode his = recordOf(THE_ADMINISTRATOR_ON_THE_LIST, number);
 
 		assertThat(his.path(HOW_THE_MEMBERSHIP_IS_HELD).asString())
 				.as("the administration was answered every basis but its own, or its own row was"
 						+ " handed the word standing on another row")
 				.isEqualTo(hisBasis);
-		assertThat(his.path(THE_REFERRAL_CODE).asString())
-				.as("the administration's own row lost the referral link it would have had"
-						+ " without the right, or was handed a link off another row")
-				.isEqualTo(db.sql("select referral_code from competitor where member_number = ?")
-						.param(number).query(String.class).single());
-		assertThat(his.path(THE_COUNT_SHE_BROUGHT_IN).asInt())
-				.as("the administration's own row lost the count it would have had without the"
-						+ " right, or was handed a count off another row")
-				.isEqualTo(hisCount);
 
-		assertThat(StreamSupport.stream(answerFor(THE_ADMINISTRATOR_ON_THE_LIST).spliterator(),
-						false).filter(one -> Answers.fieldsOf(one).contains(THE_REFERRAL_CODE))
-				.map(one -> one.path("memberNumber").asString()).toList())
-				.as("a record other than the administration's own carries the referral code key;"
-						+ " holding the right over the members is not what makes a link his")
-				.containsExactly(number);
+		/* AND HIS OWN ROW IS NOT TOLD APART FROM ANYBODY ELSE'S IN ANY OTHER WAY, which is
+		   the half P26a left behind when the two fields went. Asked of the KEYS of his
+		   record against the keys of a record that is certainly not his: the two sets are
+		   equal, so a resource that starts adding something to whoever is asking fails
+		   here whatever it adds and whatever it calls it. */
+		assertThat(Answers.fieldsOf(his))
+				.as("the administrator's own row carries a key that somebody else's row does"
+						+ " not; holding the right adds the basis to EVERY row and nothing to"
+						+ " his in particular")
+				.isEqualTo(Answers.fieldsOf(
+						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, list.getFirst())));
 	}
 
 	/**

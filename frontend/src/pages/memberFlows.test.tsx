@@ -530,14 +530,30 @@ describe('membership', () => {
     try {
       const credited = 4
 
+      /* **AND THE COOKIE NAMES HIM AND THE SHELL'S OWN QUESTION IS ASKED, both of which
+         this case needs since 25.09.2026.** The count was on the caller's own row of
+         `/api/competitors` until that day and `membersAsServed` put it there; P26a moved
+         it to `GET /api/me`, which nothing asks for outside `Shell`
+         (`session/useTheServersSession.ts`) and which the harness answers off the
+         generated file for whoever the cookie names (`test/setup.ts`). Without either
+         half the session holds null and this screen draws a balance of nought - which is
+         exactly the state the sum below exists to tell apart, so the case would have gone
+         on passing for the wrong reason if the number were smaller. */
+      theCookieNames({ role: 'competitor', memberNumber: '000001' })
+
       render(
         <ClockProvider simulatedDay="2026-11-01">
           <I18nProvider locale="sr">
             <MemoryRouter>
-              <SessionProvider initialMemberNumber="000001">
-                <Deleting memberNumber="000009" />
-                <Membership />
-              </SessionProvider>
+              {/* The answer names a ROLE as well as a member, and the thing that asks for
+                  it writes that role down, so it is drawn inside one. */}
+              <RoleProvider initialRole="competitor">
+                <SessionProvider initialMemberNumber="000001">
+                  <AsksTheServerWhoIAm />
+                  <Deleting memberNumber="000009" />
+                  <Membership />
+                </SessionProvider>
+              </RoleProvider>
             </MemoryRouter>
           </I18nProvider>
         </ClockProvider>,

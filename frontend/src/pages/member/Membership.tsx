@@ -92,19 +92,41 @@ function inTheirCurrency(
  * and `/api/competitors` answers NEITHER of those two fields to anybody:
  * `referred_by` is the KEY of whoever brought a member (V7) and never a code, and
  * a member whose fee has lapsed is not on the list at all (owner, 13.09.2026). So
- * both halves are known in one place, the database, and the answer carries the
+ * both halves are known in one place, the database, and the answer carried the
  * number itself as `referredCount` - on the caller's own row and on no other.
  *
  * **Left as it stood it would have shown nought to everybody, with nothing
  * failing.** Every row would have answered `undefined === <code>` false, which is
  * the same screen a member with no referrals sees, and the tests would have gone
  * on reading a generated file that still carries both fields.
+ *
+ * AND ON 25.09.2026 BOTH LEFT THE PUBLIC LIST ALTOGETHER, WHICH IS THE SAME FAULT
+ * ONE STEP FURTHER ALONG.
+ *
+ * Owner, PDL P26a: „Licni link za preporuku se sklanja sa javne liste takmicara" i
+ * ostaje samo na strani „Moja clanarina". The `where c.active` that had broken the
+ * COUNTING broke the ANSWERING too: a member whose fee has lapsed has no row on that
+ * list, so he reached neither field - and he is the one man V24 section 6 promises
+ * the link to, on exactly this page, which is the page he opens to renew.
+ *
+ * **Both come off `GET /api/me` now, through the session** (`session/theServer.ts`,
+ * `session/context.ts`), which answers ONE row and that row is his whether or not his
+ * fee is standing. It is the road `membershipBasis` already takes, for a reason of
+ * the same shape, and this screen therefore reads all three the same way.
+ *
+ * **What is still read off the public list is his RECORD, and that is a boundary
+ * rather than an oversight.** It is why a lapsed member reaches this page and still
+ * cannot renew on it; `pages/member/memberScreen.tsx` carries the measurement. Moving
+ * the record is a decision nobody has taken and it is not this one.
  */
 
 export function Membership() {
   const { locale, t } = useI18n()
   const who = useMemberScreen()
-  const { myMembershipBasis } = useSession()
+  /* ALL THREE OFF THE ONE ANSWER THAT KNOWS WHO IS ASKING, and the third and fourth
+     joined the first on 25.09.2026 (PDL P26a). None of them is on the public list any
+     more, and none of them could reach a member whose fee has lapsed while it was. */
+  const { myMembershipBasis, myReferralCode, myReferredCount } = useSession()
   /* The referral amount as administration has it, not as the file has it: it is
      a row of the price list and is changed there (AdminPricing).
    *
@@ -564,15 +586,24 @@ export function Membership() {
                   list prints it beside every name, so anybody could assemble
                   somebody else's link, or credit themselves with a member they
                   never brought. The origin comes from the one place that holds
-                  it, so a change of domain does not leave this link behind. */}
-              {/* Nothing where the answer carried no code, which is every row but the
-                  caller's own (`/api/competitors`). This screen is the caller's own row,
-                  so it does not happen; written out because a `${undefined}` in an address
-                  is a link a reader would copy and send, and the empty string is a link
-                  that plainly does not work rather than one that looks as if it might. */}
-              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${me.referralCode ?? ''}`}</p>
+                  it, so a change of domain does not leave this link behind.
+
+                  AND THE CODE ITSELF COMES OFF THE SESSION, never off a list. It
+                  was on the caller's own row of `/api/competitors` until P26a;
+                  the owner took it off that list so that a list anybody may read
+                  carries nobody's link under any condition, and so that the
+                  member whose fee has lapsed - who has no row there at all - is
+                  told what V24 section 6 promises him. */}
+              {/* Nothing where the answer carried no code. Until 25.09.2026 that meant
+                  „every row but the caller's own" on the public list; it now means the
+                  one road there is left, `GET /api/me`, saying nothing - a visitor, an
+                  account that races for nobody, or a value the portal does not read.
+                  Written out because a `${undefined}` in an address is a link a reader
+                  would copy and send on, and the empty string is a link that plainly
+                  does not work rather than one that looks as if it might. */}
+              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`}</p>
               <p className="membership__balance">
-                <strong>{inTheirCurrency(me.country, credited, locale, me.referredCount ?? 0)}</strong>{' '}
+                <strong>{inTheirCurrency(me.country, credited, locale, myReferredCount ?? 0)}</strong>{' '}
                 <span>{t('membership.balance')}</span>
               </p>
               <p className="member__note">{t('membership.balanceNote')}</p>

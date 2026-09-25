@@ -47,6 +47,13 @@ export function SessionProvider({
      (`GET /api/me`) and a screen that had one without the other would be reading half
      a session. */
   const [myMembershipBasis, setMyMembershipBasis] = useState<MembershipBasis | null>(null)
+  /* AND THE OTHER TWO THE SAME ANSWER CARRIES THAT HAVE NO OTHER DOOR, here since
+     25.09.2026. P26a took the caller's own referral link and his count of whom he
+     brought in off `/api/competitors`, so `GET /api/me` is where both arrive and this is
+     where the visit remembers them. Set in the same breath as the basis, for the reason
+     written above it: they come in one answer and half a session is worse than none. */
+  const [myReferralCode, setMyReferralCode] = useState<string | null>(null)
+  const [myReferredCount, setMyReferredCount] = useState<number | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   /* The counted results a moderator has agreed to change during this visit, by the
      identity of the record each one replaces. Read by `useResults`, so the
@@ -505,6 +512,8 @@ export function SessionProvider({
       account: number
       memberNumber: string | null
       membershipBasis: MembershipBasis | null
+      referralCode: string | null
+      referredCount: number | null
     }) => {
       setAccount(who.account)
       /* **WRITTEN EVEN WHEN IT IS NULL, and that is the half that carries a fault if it
@@ -523,6 +532,14 @@ export function SessionProvider({
          by not calling this at all, which is where that decision belongs. */
       setMemberNumber(who.memberNumber)
       setMyMembershipBasis(who.membershipBasis)
+      /* WRITTEN EVEN WHEN NULL, for the same reason the two above are: the road this
+         rule was written for is a second sign in during one visit, and a value kept from
+         the person before is a value shown to the person after. A member's referral link
+         left standing for a moderator signing in behind him would be the plainest form
+         of that, because the link is the one thing on „Moja članarina" that is his to
+         hand out. */
+      setMyReferralCode(who.referralCode)
+      setMyReferredCount(who.referredCount)
     },
     [],
   )
@@ -540,6 +557,8 @@ export function SessionProvider({
       signIn: setMemberNumber,
       account,
       myMembershipBasis,
+      myReferralCode,
+      myReferredCount,
       theServerSignedMeIn,
       /* One question, one answer, worked out here from the only two facts there are.
          The member number wins where both are set, because every screen that draws a
@@ -622,6 +641,12 @@ export function SessionProvider({
          the same, because a dependency list that leaves out what it reads is a list
          somebody has to re-derive by hand the next time it grows. */
       myMembershipBasis,
+      /* And the two P26a moved here on 25.09.2026, named for the same reason: they are
+         set in the same breath as the basis, so the memo would be rebuilt for its sake
+         and they would come along - which is the right screen for the wrong reason, and
+         exactly what this comment was written about. */
+      myReferralCode,
+      myReferredCount,
       theServerSignedMeIn,
       going,
       setGoing,

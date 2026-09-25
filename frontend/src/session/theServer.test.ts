@@ -40,6 +40,12 @@ describe('who the server says I am', () => {
       account: 41,
       memberNumber: null,
       membershipBasis: null,
+      /* AND THE TWO P26a MOVED HERE ON 25.09.2026, null for the same reason the two above
+         are: this answer carries no record at all, so nothing was said about any of them.
+         An answer with no `member` key is an account that races for nobody, and a link for
+         a man who does not run is a sentence nobody can finish. */
+      referralCode: null,
+      referredCount: null,
     })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
   })
@@ -107,6 +113,8 @@ describe('who the server says I am', () => {
         account: 41,
         memberNumber: null,
         membershipBasis: null,
+        referralCode: null,
+        referredCount: null,
       })
     }
 
@@ -172,6 +180,71 @@ describe('who the server says I am', () => {
     )
 
     expect((await whoTheServerSaysIAm())?.memberNumber).toBe(expected)
+  })
+
+  /* **THE CALLER'S OWN REFERRAL LINK, WHICH IS THE FIFTH THING THIS ANSWER CARRIES, SINCE
+     25.09.2026, and the axis has four states rather than two.** It is read here and
+     nowhere else on the portal now: it was answered on the caller's own row of
+     `/api/competitors` from 20.09.2026 and „Moja članarina" read it off there, and the
+     owner took it off that list (PDL P26a) because the list ends `where c.active` - so
+     the member whose fee has LAPSED, the one V24 section 6 promises the link to on
+     exactly that page, was answered nothing at all.
+
+     **The state that is NOT here and is named rather than left out: a code of the wrong
+     SHAPE.** Sixteen hexadecimal characters is `competitor_referral_code_shape`, checked
+     where the code is stored (`ReferralCode`), and re-judging it here would be a second
+     opinion about a rule this portal does not own - whose only possible outcome is
+     refusing a member the link the server really gave him. */
+  it.each([
+    ['a member with a link of his own', { member: { referralCode: '7f07b38ff7ee7543' } },
+      '7f07b38ff7ee7543'],
+    /* An account that races for nobody: the record is ABSENT altogether, so there is no
+       link to answer and nobody to answer it to (PDL P21). */
+    ['an account that races for nobody', {}, null],
+    /* A record with no link in it, which is what a server one release BEHIND sends and
+       what the harness sends for a person who has registered and has no number yet. */
+    ['a record that carries no link', { member: { memberNumber: '000012' } }, null],
+    /* And a link that is not a string, looked for and never asserted (ADL A14). Believed,
+       the page would print `?preporuka=[object Object]`, which is a link a reader would
+       copy and send on - the exact thing the empty string is drawn instead of. */
+    ['a link that is not one', { member: { referralCode: { value: 'abc' } } }, null],
+  ])('says the caller his own referral link for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.referralCode).toBe(expected)
+  })
+
+  /* **AND HOW MANY HE BROUGHT IN WHOSE FEE IS STANDING, THE SIXTH, SINCE THE SAME DAY.**
+     A COUNT and never the column it is counted from: `referred_by` holds the KEY of
+     whoever brought a member (V7) and a key does not leave the server, so the query „nad
+     svima, ne nad sobom" (PDL, 06.09.2026) happens where the data is.
+
+     **NOUGHT IS A STATE OF ITS OWN HERE AND IT IS THE ONE THAT MATTERS.** „You brought in
+     nobody" is an answer and „I was not told" is not, so a reader that turned the second
+     into the first would promise a balance to somebody the answer never mentioned; and
+     one that let nought fall through to null would tell a member with no referrals
+     nothing, on the page that exists to tell him. */
+  it.each([
+    ['a member who brought four in', { member: { referredCount: 4 } }, 4],
+    ['a member who brought nobody in', { member: { referredCount: 0 } }, 0],
+    ['an account that races for nobody', {}, null],
+    ['a record that carries no count', { member: { memberNumber: '000012' } }, null],
+    /* A count that is not a number, and one that is a number and not a count. Both are a
+       server saying something this portal has no screen for, and both would go into an
+       arithmetic: the first multiplies a price by a string, the second by a fraction, and
+       what comes out of either is money printed on a member's own page. */
+    ['a count that is not a number', { member: { referredCount: '4' } }, null],
+    ['a count that is not whole', { member: { referredCount: 2.5 } }, null],
+  ])('says how many the caller brought in for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.referredCount).toBe(expected)
   })
 
   it('is nobody when the role is not one the portal knows at all', async () => {

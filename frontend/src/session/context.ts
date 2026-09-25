@@ -544,6 +544,12 @@ export type SessionValue = {
      *  them, and `pages/member/memberScreen.tsx` carries what the portal draws for each. */
     memberNumber: string | null
     membershipBasis: MembershipBasis | null
+    /** The caller's own link and his count of whom he brought in, which are the two
+     *  facts P26a gave one home (25.09.2026) and that home is `GET /api/me`. Null for
+     *  a visitor, for an account that races for nobody, and for a value the answer
+     *  carries that is not of the sort this portal reads. */
+    referralCode: string | null
+    referredCount: number | null
   }) => void
   /**
    * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, as the server answered it, or null where
@@ -556,13 +562,46 @@ export type SessionValue = {
    * field from a member even on his own row; `/api/me` is where the first half lives
    * (`session/theServer.ts` writes out what reading it the other way cost).
    *
-   * **Only this one of the seven the answer carries**, because only this one has no
-   * other door. The member number, the country, the first season and the team are on
-   * the public list; the referral code and the count are on the caller's own row of it.
-   * A field remembered here with no reader would be a second home for a fact that
-   * already has one.
+   * **ONE OF THREE OF THE SEVEN THE ANSWER CARRIES, and it was the only one until
+   * 25.09.2026.** The rule has not changed: a field is remembered here when it has no
+   * other door, because a field remembered here with a door of its own would be a second
+   * home for a fact that already has one. What changed is how many have no other door.
+   * The member number, the country, the first season and the team are on the public
+   * list. The referral code and the count were on the caller's own row of that list
+   * until P26a took them off it (see the two below).
    */
   myMembershipBasis: MembershipBasis | null
+  /**
+   * THE CALLER'S OWN REFERRAL LINK, as the server answered it, or null where it did not
+   * say.
+   *
+   * **Here since 25.09.2026 and for the same reason the basis above is here: no other
+   * door.** It was answered on the caller's own row of `/api/competitors` from
+   * 20.09.2026 and „Moja članarina" read it off there. The owner took it off that list
+   * (PDL P26a) because the list ends `where c.active`, so the member whose fee has
+   * LAPSED - the one V24 section 6 promises the link to, on the page he opens to renew -
+   * was answered nothing at all.
+   *
+   * **What it is NOT is a credential this portal guards.** It is the member's to hand
+   * out; what makes it his is that the server answers it to him and to nobody else, and
+   * that is kept on the server rather than here.
+   */
+  myReferralCode: string | null
+  /**
+   * HOW MANY THE CALLER BROUGHT IN WHOSE FEE IS STANDING, or null where the answer did
+   * not say.
+   *
+   * **Null and nought are two different sentences and the screen tells them apart.** „I
+   * was not told" is a visitor or an account that races for nobody; „you brought in
+   * nobody" is a member with an empty balance. A field that turned the first into the
+   * second would promise a balance to somebody the answer never mentioned.
+   *
+   * **It arrives counted and is never counted here**, which is a measurement from
+   * 21.09.2026 rather than a preference: the two halves the count needs are whose code
+   * brought whom and whose fee is standing, and `/api/competitors` answers neither to
+   * anybody. Both are known in one place, which is the database.
+   */
+  myReferredCount: number | null
   /**
    * The one question the header asks, answered once here.
    *
