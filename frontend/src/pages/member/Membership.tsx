@@ -232,10 +232,12 @@ export function Membership() {
            reason it was is worth keeping: the credit was counted off it, and counted
            straight off the FILE somebody an administrator had deleted went on earning
            their referrer six hundred dinars (ADL A8, a deleted record is freed from
-           everything and not only from a list). Since 21.09.2026 the count arrives on
-           the caller's own row as `referredCount`, worked out by the one place that
-           still knows both halves of the rule, so there is no list here to lay an
-           overlay over.
+           everything and not only from a list). Since 21.09.2026 the count arrives
+           WORKED OUT by the one place that still knows both halves of the rule, so
+           there is no list here to lay an overlay over. It arrived on the caller's own
+           row of that very list until 25.09.2026, and P26a moved it to `/api/me` with
+           the link beside it; the sentence above is about the LIST and is untouched by
+           that, because the list stopped being counted either way.
 
            **What that costs, said rather than left to be found:** a member an
            administrator deletes during THIS VISIT is still in the server's count until

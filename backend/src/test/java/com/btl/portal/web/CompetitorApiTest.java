@@ -912,6 +912,17 @@ class CompetitorApiTest {
 		   14.09.2026 about exceptions in a guard is what this is - the exception did not
 		   need a better wording, it needed the postavka underneath it to change, and when
 		   it did the exception went away by itself rather than being argued down. */
+		/* AND BOTH ANSWERS CARRY SOMETHING, which the comparison itself cannot say. Two
+		   empty arrays are equal, and so are two error pages: this claim is load-bearing
+		   now that nothing is cut before comparing, so it gets the floor the cut used to
+		   give it for free (the cut named a value off the answer and would have thrown
+		   over an empty one). Asked of the caller's own row by number, because „his row
+		   is there" is the half that makes „and it is no different" mean anything. */
+		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path("memberNumber").asString())
+				.as("the caller has no row in his own answer, so the comparison below is two"
+						+ " empty answers agreeing")
+				.isEqualTo("000012");
+
 		assertThat(whole(HER_OWN_ACCOUNT))
 				.as("signing in changed the answer. Nothing on this list is the caller's own"
 						+ " business since P26a, so a member and a visitor read the same bytes"
