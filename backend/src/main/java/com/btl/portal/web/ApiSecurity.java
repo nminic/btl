@@ -115,6 +115,16 @@ class ApiSecurity {
 	static final List<String> READ_BY_ANYBODY_UNDER_A_NAME = List.of("/api/photos/{name}");
 
 	/**
+	 * WHO THE SETTINGS NAME, ANSWERED ONCE FOR THE WHOLE APPLICATION AND NOT ONLY FOR THIS
+	 * CHAIN.
+	 *
+	 * <p>Until 25.09.2026 this was built inline, right where {@link WhoIsAsking} is the only
+	 * thing that asked it. {@link CompetitorWriteApi} now has to ask the same question of a
+	 * row that is not the one asking - „is the member being deleted the account the settings
+	 * name" - and a second {@code new TheNamedSuperadmin(namedSuperadmins)} built from its own
+	 * copy of the property would be a second home for one fact, the exact shape ADL warns
+	 * against everywhere else. A bean is one instance the container hands to both.
+	 *
 	 * @param namedSuperadmins the addresses {@code deploy/.env} names, taken as an ARRAY so
 	 *                         that the property binder does the splitting - it is the thing
 	 *                         that already decides what a list-valued property looks like,
@@ -134,8 +144,13 @@ class ApiSecurity {
 	 *                         the requirement rests on
 	 */
 	@Bean
-	SecurityFilterChain api(HttpSecurity http, JdbcClient db,
-			@Value("${btl.superadmin.email:}") String[] namedSuperadmins) throws Exception {
+	TheNamedSuperadmin namedSuperadmin(@Value("${btl.superadmin.email:}") String[] namedSuperadmins) {
+		return new TheNamedSuperadmin(namedSuperadmins);
+	}
+
+	@Bean
+	SecurityFilterChain api(HttpSecurity http, JdbcClient db, TheNamedSuperadmin namedSuperadmin)
+			throws Exception {
 		String[] open = READ_BY_ANYBODY.toArray(String[]::new);
 		String[] openUnderAName = READ_BY_ANYBODY_UNDER_A_NAME.toArray(String[]::new);
 
@@ -332,8 +347,7 @@ class ApiSecurity {
 				   member would be answered 401 by a chain that was about to know who he
 				   is. `ApiSecurityTest` measures that a member reaches a route that asks
 				   for him. */
-				.addFilterBefore(new WhoIsAsking(db, new TheNamedSuperadmin(namedSuperadmins)),
-						AuthorizationFilter.class)
+				.addFilterBefore(new WhoIsAsking(db, namedSuperadmin), AuthorizationFilter.class)
 				.exceptionHandling(handling -> handling
 						.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 				.build();

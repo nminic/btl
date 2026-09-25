@@ -102,9 +102,17 @@ class InboxApi {
 	 * One row of the inbox.
 	 *
 	 * @param from             {@code message.from_name}. Never the id: the sender may have
-	 *                         asked to be deleted (PDL P23) and V13 keeps his name on the
-	 *                         message for exactly that reason, „the pointer empties, the
-	 *                         name does not."
+	 *                         asked to be deleted (PDL P23) and the message outlives him, so
+	 *                         there is no row left to read a name off. <b>What the column
+	 *                         holds after that is not his name.</b> V13 kept it as it stood
+	 *                         and said so - „the pointer empties, the name does not" - and
+	 *                         that was reasoning written into a migration rather than
+	 *                         anything the owner chose: PDL P23 says „Ako igde ostane zapis
+	 *                         da je 000127 bio odredjena osoba, nista nije obrisano nego samo
+	 *                         sakriveno". Since V33 the trigger rewrites it to ADL A37's
+	 *                         {@code <Obrisani član>} or {@code <Obrisana članica>} in the
+	 *                         same statement that empties {@code from_id}, so what comes out
+	 *                         of here is a name, the league, or the place a name used to be
 	 * @param date             the day it was sent, in the league's own zone
 	 * @param read             whether the one asking has a row in {@code message_read} for
 	 *                         it - never whether ANYBODY has, which for a broadcast is a

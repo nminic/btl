@@ -53,12 +53,23 @@ import java.util.List;
  * named in this file at all. {@code CommentApiTest} puts rows in that queue that WOULD
  * change the answer if it were read, and measures that none of them does.
  *
- * <p><b>THE NAME IS THE ONE THE COMMENT WENT OUT UNDER, always.</b> {@code who} is V7's
- * tombstone and it is NOT NULL: „Komentar clana koji je napustio ligu ostaje sa imenom
- * pod kojim je objavljen" (PDL P28a, 06.08.2026, „Komentari se prikazuju na dnu strane"). It is
- * not read off the member's row and must not be, because a comment whose author is gone has no
- * row to read one off - the reference is {@code on delete set null} precisely so the comment
- * survives him.
+ * <p><b>THE NAME IS THE ONE THE COMMENT WENT OUT UNDER, for as long as there is a man to
+ * have gone out under it.</b> {@code who} is V7's tombstone and it is NOT NULL: „Komentar
+ * clana koji je napustio ligu ostaje sa imenom pod kojim je objavljen" (PDL P28a,
+ * 06.08.2026, „Komentari se prikazuju na dnu strane"). It is not read off the member's row
+ * and must not be, because a comment whose author is gone has no row to read one off - the
+ * reference is {@code on delete set null} precisely so the comment survives him.
+ *
+ * <p><b>AND THE TWO WAYS OF BEING GONE ARE NOT ONE WAY, which is the correction of
+ * 25.09.2026.</b> The owner's sentence above is about a member who LEFT the league, which is
+ * one of the two outcomes he allows and the one where „bice skriven profil jer nema aktivno
+ * clanstvo" (PDL P23, 11.08.2026). The other is deletion, „obrisan zauvek sa svim svojim
+ * profilom i rezultatima, a na mestima gde se pominje bice ANONIMIZOVAN" - and for that one
+ * the name in this column is no longer his. V33's trigger rewrites it to {@code <Obrisani
+ * član>} or {@code <Obrisana članica>} (ADL A37's text, owner, 06.09.2026) in the same
+ * statement that empties the pointer, so the comment still stands and still says a member
+ * wrote it, without saying which. Nothing in this file changes for that: the column is read
+ * as it stands and the number is already withheld by the join.
  *
  * <p><b>AND THE MEMBER NUMBER IS THERE ONLY WHILE THERE IS A PROFILE TO READ, which is
  * the same question the portal already asks and the answer to the one thing this
@@ -127,7 +138,10 @@ class CommentApi {
 	 * @param memberNumber the author's, while there is a profile to lead to, and missing
 	 *                     where there is not - a member who did not renew, or one who is
 	 *                     gone altogether
-	 * @param who          the name the comment went out under, which stays either way
+	 * @param who          the name the comment went out under while its author merely left
+	 *                     the league, and ADL A37's replacement text once he has been
+	 *                     deleted. Never empty either way: V7 makes the column NOT NULL and
+	 *                     V33 rewrites it rather than clearing it
 	 */
 	record EventComment(long id, long eventId, String memberNumber, String who, LocalDate date,
 			Rating rating, String body) {
@@ -147,10 +161,12 @@ class CommentApi {
 						   null and the CASE answers nothing, which is the same sentence as one
 						   who did not renew, and both are "no visible profile". */
 						+ " case when author.active then author.member_number end,"
-						/* OFF THE COMMENT AND NEVER OFF THE MEMBER. V7's tombstone: the name as it
-						   was on the day, kept for an author who has no row left at all. Read from
-						   `author` this column would be empty for exactly the comments it exists
-						   for. */
+						/* OFF THE COMMENT AND NEVER OFF THE MEMBER. V7's tombstone, and it is
+						   the one thing about the author that is still here when his row is
+						   not: the name as it was on the day while he merely left, and ADL
+						   A37's `<Obrisani član>` once V33's trigger has been through.
+						   Read from `author` this column would be empty for exactly the
+						   comments it exists for. */
 						+ " c.who, c.published_at,"
 						+ " c.rating_organisation, c.rating_value, c.rating_ambience, c.body"
 						+ " from event_comment c"
