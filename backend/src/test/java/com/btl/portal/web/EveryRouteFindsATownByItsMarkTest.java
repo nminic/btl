@@ -101,6 +101,10 @@ class EveryRouteFindsATownByItsMarkTest {
 
 	private static final String MODERATOR = "sifarnik@primer.rs";
 
+	/** A run is filed under whoever ran it, so the third probe needs an account that names a
+	 *  member - unlike the two above, which are a moderator's writes. */
+	private static final String A_MEMBER_WHO_RACES = "trkac@primer.rs";
+
 	/** Twelve characters and not on the shipped list, which is what the policy asks for. */
 	private static final String PASSWORD = "trcim.kroz.sumu.2027";
 
@@ -119,6 +123,10 @@ class EveryRouteFindsATownByItsMarkTest {
 	private RequestMappingHandlerMapping mappings;
 
 	private String session;
+
+	/** The session of {@link #A_MEMBER_WHO_RACES}, opened on first use by
+	 *  {@link #sessionOfSomebodyWhoRaces}. */
+	private String racing;
 
 	@BeforeEach
 	void aModeratorWhoMayWriteTheCalendar() {
@@ -204,6 +212,7 @@ class EveryRouteFindsATownByItsMarkTest {
 		table.put("POST /api/events", this::anEventWritten);
 		table.put("PUT /api/events/{id}", this::anEventEdited);
 		table.put("POST /api/registration", this::aMemberRegistered);
+		table.put("POST /api/results", this::aRunReported);
 
 		return table;
 	}
@@ -299,6 +308,72 @@ class EveryRouteFindsATownByItsMarkTest {
 		form.put("link", "");
 
 		return form;
+	}
+
+	/**
+	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD, which is the third road a town arrives by.
+	 *
+	 * <p>It is the road the member takes when he describes a race himself (PDL: „Clan sme da
+	 * unese trku koje nema u kalendaru"), and it is the only one of the three that needs an
+	 * account with a MEMBER behind it: a run is filed under whoever ran it, and
+	 * {@code ResultWriteApi} answers 404 to an account naming nobody, which V23 calls the
+	 * ordinary case for a moderator who does not race.
+	 */
+	private long aRunReported(Town town) throws Exception {
+		Map<String, Object> form = new LinkedHashMap<>();
+
+		form.put("raceName", "Trka u " + town.name());
+		form.put("day", LocalDate.now(SeasonClock.ZONE).minusDays(1).toString());
+		form.put("raceKind", "free");
+		form.put(THE_TOWN, town.mark());
+		form.put("distanceKm", "12.00");
+		form.put("ascentM", 100);
+		form.put("descentM", 90);
+		form.put("seconds", 3600);
+		form.put("link", "https://rezultati.rs/trka");
+
+		MockHttpServletResponse answer = http.perform(post("/api/results").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(json(form))
+						.cookie(new Cookie(SessionCookie.NAME, sessionOfSomebodyWhoRaces())))
+				.andReturn().getResponse();
+
+		assertThat(answer.getStatus())
+				.as("a run describing a race in %s, named by the mark /api/places serves, was"
+						+ " not taken", town.name())
+				.isEqualTo(201);
+
+		return db.sql("select place_id from result_submission where id = ?")
+				.param(writtenId(answer)).query(Long.class).single();
+	}
+
+	/**
+	 * An account with a member behind it, made on first use rather than in the setup.
+	 *
+	 * <p>It is one probe's need, and made in {@link #aModeratorWhoMayWriteTheCalendar} the
+	 * other two would pay for it on every case of this file.
+	 */
+	private String sessionOfSomebodyWhoRaces() {
+		if (racing == null) {
+			db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+							+ " birth_date, place_id, first_season, first_season_2027, active,"
+							+ " membership_basis, referral_code, bio, profile_hidden,"
+							+ " birthday_shown, father_name, address, shirt_size,"
+							+ " health_statement_at)"
+							+ " values ('000700', 'Trkac', 'Trkacic', 'M', date '1990-01-01',"
+							+ " (select id from place where rank = 1), 2027, false, true,"
+							+ " 'payment', 'aaaabbbbccccdddd', '', false, 'none', 'Otac',"
+							+ " 'Ulica 1', 'M', timestamptz '2026-01-01 10:00:00+00')")
+					.update();
+
+			racing = account(A_MEMBER_WHO_RACES);
+
+			db.sql("update account set competitor_id ="
+							+ " (select id from competitor where member_number = '000700')"
+							+ " where email = ?")
+					.param(A_MEMBER_WHO_RACES).update();
+		}
+
+		return racing;
 	}
 
 	private String json(Map<String, Object> form) {

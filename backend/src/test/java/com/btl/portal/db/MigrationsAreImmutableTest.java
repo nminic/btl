@@ -91,7 +91,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("28", "V28__holding_an_item_while_it_is_read.sql", -1101042005),
 			new Applied("29", "V29__the_event_begins_with_its_first_race.sql", 1719152331),
 			new Applied("30", "V30__comments_and_schedule_get_something_to_point_at.sql", 1321307942),
-			new Applied("31", "V31__the_schedule_queue_and_its_proposal_are_gone.sql", -35821361));
+			new Applied("31", "V31__the_schedule_queue_and_its_proposal_are_gone.sql", -35821361),
+			new Applied("32", "V32__a_member_writes_his_own_result.sql", 1492171060));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
