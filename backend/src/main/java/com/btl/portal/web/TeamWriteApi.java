@@ -400,14 +400,27 @@ class TeamWriteApi {
 	 */
 	private final ATeamGoesWithItsLastMember emptyTeams;
 
+	/**
+	 * WHETHER WHOEVER IS ASKING HOLDS {@link TeamApi#OVER_THE_TEAMS}, WHICH ONLY
+	 * {@link #remove} ASKS AND WHICH NO ANNOTATION ON THAT ROUTE COULD ASK FOR IT.
+	 *
+	 * <p>PDL P13b, 25.09.2026: the administration presses the same button as the team's own
+	 * administrator. {@link RightIsNeeded} on the route would shut it to exactly the person
+	 * it is chiefly for, so the right is one of two ways in and is asked INSIDE, which is
+	 * the shape {@link TeamApi} already uses on a route open to everybody.
+	 */
+	private final WhatHeMayDo mayHe;
+
 	TeamWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock,
-			TransactionTemplate inOneTransaction, ATeamGoesWithItsLastMember emptyTeams) {
+			TransactionTemplate inOneTransaction, ATeamGoesWithItsLastMember emptyTeams,
+			WhatHeMayDo mayHe) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.emptyTeams = emptyTeams;
+		this.mayHe = mayHe;
 	}
 
 	/**
@@ -700,6 +713,148 @@ class TeamWriteApi {
 		emptyTeams.goIfEmpty(List.of(team));
 
 		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * „OBRISI": THE TEAM ITSELF GOES, AND THE SAME BUTTON IS THE ADMINISTRATION'S.
+	 *
+	 * <p>Owner, 04.09.2026 (`PDL.md:6396`): „„Obrisi" trazi potvrdu („Da li ste sigurni?")
+	 * pa brise tim i bodove tog tima iz tabele za tu sezonu", and „Na strani tima,
+	 * administrator tog tima ima „Izmeni" i „Obrisi". Nijedan drugi clan ih ne vidi."
+	 * <b>PDL P13b, 25.09.2026</b> adds the other caller in as many words: „Superadmin i
+	 * moderator sa pravom nad timovima imaju isto dugme i iste posledice kao administrator
+	 * tog tima", and names what it refused - „da administracija tim samo uredjuje. Tada tim
+	 * ciji je administrator otisao, a u kom nema nikoga, ne bi mogao niko da obrise."
+	 *
+	 * <p><b>ONE ADDRESS AND NOT TWO, WHICH IS THE DECISION AND NOT A CONVENIENCE.</b> „Ista
+	 * radnja" is the decision's own word. Two addresses would be two routes free to answer
+	 * differently the day one is edited, and the one that drifted would be the
+	 * administration's - the road nobody walks until a team is already stuck.
+	 *
+	 * <p><b>WHICH IS WHY IT CARRIES NO {@link RightIsNeeded}, AND THAT IS A REFUSAL RATHER
+	 * THAN AN OMISSION.</b> That annotation is read at the door, before the handler, and
+	 * {@code entity:teams} is a box the superadmin ticks for a moderator - so written on this
+	 * route it would shut the team's own administrator out of his own team. The right is
+	 * therefore ONE OF TWO WAYS IN and is asked inside, the shape {@link TeamApi} already
+	 * uses. {@code RightsAtTheDoorTest} names this route in {@code ANSWERS_WITHOUT_A_RIGHT}
+	 * with that reason beside it, so the floor asks for a decision once rather than passing
+	 * quietly.
+	 *
+	 * <p><b>THE TWO WAYS IN ARE ASKED AS TWO DIFFERENT QUESTIONS ABOUT TWO DIFFERENT
+	 * THINGS.</b> The administration's is about the CALLER and is answered off the session;
+	 * the administrator's is about the TEAM, and is the derived rule
+	 * {@link TeamApi#WHO_ADMINISTERS_IT} holds - the founder while he is still standing in
+	 * it, otherwise whoever has been in it longest, the tie broken by the smaller member
+	 * number. It is asked of that constant and never written out here, because the portal
+	 * already answers it to the team's own page as {@code administeredByMe} and the two
+	 * answering differently is the fault the journal names „dva doma jedne cinjenice".
+	 *
+	 * <p><b>404 AND NEVER A SENTENCE, for the four callers it covers at once</b> (ADL A8,
+	 * 13.09.2026): a team that is not there, a team he is in but does not administer, a team
+	 * he has nothing to do with, and an account naming no member at all. Told apart, the
+	 * numbers would say which teams exist and who runs them to anybody walking the keys.
+	 * Somebody not signed in is answered 401 by {@code ApiSecurity}, whose
+	 * {@code anyRequest().authenticated()} this route never reaches: {@code READ_BY_ANYBODY}
+	 * holds whole addresses and opens {@code /api/teams} for reading alone.
+	 *
+	 * <p><b>WHAT GOING MEANS IS NOT DECIDED HERE.</b> The row, its mark's row and its mark's
+	 * file are {@link ATeamGoesWithItsLastMember}'s, which already held that act for the two
+	 * roads a team can empty by; this is the third caller of one home. What the SCHEMA then
+	 * does is the rest of the owner's sentence and is measured rather than restated: the
+	 * memberships cascade (V11), so the team's total for the season being run goes with them
+	 * because it is derived from them and is materialised nowhere; the frozen season does not
+	 * (V17 {@code season_team} is {@code on delete set null} and carries its own
+	 * {@code name}, {@code points} and {@code members}), which is „Prethodne sezone su
+	 * zamrznute i ne diraju se"; and the members' own results are not touched at all, because
+	 * {@code result} carries no team (V7: „No team on a member").
+	 *
+	 * <p><b>AND A RACING PAIR IS NOT A TEAM, WHICH IS TWO THRESHOLDS AND NOT ONE.</b> The
+	 * owner's sentence puts them side by side - „I tim (ako nema vise ni jednog clana) i par
+	 * (ako nema bar jednog clana) nestaju sa spiska" - and they are different numbers: V12
+	 * gives {@code racing_pair} two {@code not null} halves, both {@code on delete cascade},
+	 * so a pair cannot stand with one and never needs asking about. Nothing here touches
+	 * {@code racing_pair}, and a case holds that two members of a deleted team are still a
+	 * pair afterwards.
+	 */
+	@DeleteMapping("/api/teams/{id}")
+	ResponseEntity<?> remove(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			@PathVariable long id) {
+
+		/* NULL FOR AN ACCOUNT NAMING NO MEMBER, which V23 calls the ordinary case for a
+		   moderator. Not a refusal on its own: such an account is exactly who P13b's second
+		   way in is for, so it is carried down and the two ways are weighed together. */
+		Long me = memberOfAccount.competitorId(asking.account());
+
+		boolean administration = mayHe.may(asking, TeamApi.OVER_THE_TEAMS);
+
+		return inOneTransaction.execute(committing -> removing(me, administration, id));
+	}
+
+	/**
+	 * THE REMOVING, IN ONE TRANSACTION, because the team's row and its mark's row are two
+	 * statements saying one thing.
+	 *
+	 * <p>Stopped between them, a mark would be left standing that nothing in the schema
+	 * points at any more, which is the leak the review of PR 367 measured on the other road
+	 * onto this same act.
+	 *
+	 * <p><b>The two ways in ask two different questions and neither subsumes the other.</b>
+	 * The administration is told whether the team EXISTS, because without that a key nobody
+	 * has would be answered 204 and the answer would be a lie about something that happened.
+	 * A member is asked whether he administers it, which is false for a team that is not
+	 * there as well, so the existence question is already inside his.
+	 */
+	private ResponseEntity<?> removing(Long me, boolean administration, long team) {
+		if (!(administration ? thereIsSuchATeam(team) : heAdministersIt(me, team))) {
+			return away();
+		}
+
+		emptyTeams.takeAway(team);
+
+		return ResponseEntity.noContent().build();
+	}
+
+	private boolean thereIsSuchATeam(long team) {
+		return db.sql("select exists (select 1 from team where id = ?)")
+				.param(team)
+				.query(Boolean.class)
+				.single();
+	}
+
+	/**
+	 * WHETHER THIS MEMBER IS THE ONE WHO ADMINISTERS THIS TEAM, ASKED OF THE PORTAL'S ONE
+	 * ANSWER TO THAT QUESTION.
+	 *
+	 * <p>{@link TeamApi#WHO_STANDS_IN_A_TEAM} and {@link TeamApi#WHO_ADMINISTERS_IT} are the
+	 * same two fragments {@code GET /api/teams} builds {@code administeredByMe} out of, so
+	 * there is one rule and two readers rather than two rules. What that buys is measured
+	 * rather than claimed: {@code theDeleteRouteAndTheListAgreeOnWhoAdministersEachTeam}
+	 * asks both over one fixture.
+	 *
+	 * <p><b>The {@code coalesce} is the team nobody administers at all</b> - an empty seat
+	 * over a team with no standing member - which is FALSE here and never null, the same
+	 * value the list answers a signed in member. That team is P13b's own case and the
+	 * administration is the only way it can go.
+	 *
+	 * <p><b>An empty answer is a team that is not there</b>, which is the same 404 and is
+	 * why this method and not a second existence check stands in a member's way.
+	 *
+	 * @param me the member asking, or null for an account naming none - which administers
+	 *           nothing, and is asked before the statement so that null never reaches a
+	 *           comparison the database would answer null to
+	 */
+	private boolean heAdministersIt(Long me, long team) {
+		if (me == null) {
+			return false;
+		}
+
+		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+						+ " select coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)"
+						+ " from team t where t.id = ?")
+				.params(me, team)
+				.query(Boolean.class)
+				.optional()
+				.orElse(false);
 	}
 
 	/**

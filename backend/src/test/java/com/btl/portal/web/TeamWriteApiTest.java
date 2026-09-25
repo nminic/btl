@@ -164,6 +164,78 @@ class TeamWriteApiTest {
 
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
+	/**
+	 * THE ADMINISTRATION'S WAY INTO {@code DELETE /api/teams/&#123;id&#125;}, WHICH IS PDL
+	 * P13b'S SECOND CALLER.
+	 *
+	 * <p>He holds {@code entity:teams} and nothing else, and he names no member at all -
+	 * which is V23's ordinary moderator and is on purpose: it separates „the administration
+	 * may" from „somebody who happens to be in the team may", because he could not be in it
+	 * if he tried.
+	 */
+	private static final String MODERATOR_OVER_TEAMS = "timovi@primer.rs";
+
+	/**
+	 * AND A MODERATOR WHO HOLDS A BOX THAT IS NOT THIS ONE, which is the axis a fixture made
+	 * of somebody holding NOTHING cannot separate at all.
+	 *
+	 * <p>With only {@link #MODERATOR_WHO_DOES_NOT_RACE} beside the one above, „he holds
+	 * {@code entity:teams}" and „he holds any box whatever" answer the same on every case,
+	 * so a route asking {@code mayDoAnything()} instead of {@code may(OVER_THE_TEAMS)} would
+	 * pass green while every moderator in the portal could delete any team there is.
+	 */
+	private static final String MODERATOR_OVER_SOMETHING_ELSE = "dogadjaji@primer.rs";
+
+	/** The right that moderator holds, which is deliberately not the one the route asks for. */
+	private static final String SOME_OTHER_BOX = "entity:events";
+
+	/**
+	 * The superadmin, who holds every right there is without a single tick - PDL P13b names
+	 * him and the moderator side by side, and {@code role.rights_mode = 'all'} is what makes
+	 * the two arrive here by different roads.
+	 */
+	private static final String THE_SUPERADMIN = "superadmin@primer.rs";
+
+	/**
+	 * THE MEMBER WHO SITS IN {@link #A_TEAM_WITH_TWO}'S SEAT, and he is the one who joined
+	 * LATER of the two in it.
+	 *
+	 * <p>That is the whole point of him. PDL „Inkrement 133", 04.09.2026 makes the
+	 * administrator the founder while he is still standing in the team, and only otherwise
+	 * whoever has been in it longest. With the seat held by the longest-serving member the
+	 * two arms of that rule give the same answer and neither is measured; here they give
+	 * opposite answers and {@link #THE_LONGEST} is refused.
+	 */
+	private static final String THE_SEAT = "000800";
+
+	/** In the same team since a season that HAS begun, and he administers nothing. */
+	private static final String THE_LONGEST = "000900";
+
+	/** The woman {@link #THE_SEAT} races with, and a member of the same team. */
+	private static final String HIS_PARTNER = "001000";
+
+	/**
+	 * AND THE OTHER HALF OF A SECOND PAIR, WHO IS IN NO TEAM AT ALL.
+	 *
+	 * <p>With one pair in the fixture, „this pair still stands" and „some pair still stands"
+	 * are the same number, so a route sweeping the deleted team's members' pairs would pass.
+	 * This one has nothing to do with that team, so the two numbers part.
+	 */
+	private static final String A_WOMAN_WITH_NO_TEAM = "001100";
+
+	/** A fourth team, the one every case about deleting a team deletes. */
+	private static final String A_TEAM_WITH_TWO = "tim-sa-dva-clana";
+
+	/** Its name, read back off the frozen row after the team itself is gone. */
+	private static final String THE_NAME_THE_FROZEN_ROW_KEEPS = "Tim sa dva člana";
+
+	/**
+	 * The season the frozen rows below stand in, which is the one being run on this file's
+	 * clock - the harder half, because „the season that is over" would be frozen by
+	 * definition and would say nothing about the one the owner's sentence is about.
+	 */
+	private static final int THE_FROZEN_SEASON = 2027;
+
 	/** The team whose name is taken, which is NOT the team anybody is in. */
 	private static final String TAKEN_NAME = "Dunavski trkači";
 
@@ -1720,6 +1792,652 @@ class TeamWriteApiTest {
 		assertThat(membershipsOf(IN_A_TEAM_NOW))
 				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING
 						+ "-open still in it");
+	}
+
+	/**
+	 * „OBRISI": THE TEAM'S OWN ADMINISTRATOR TAKES IT AWAY, AND HE IS THE ONE IN THE SEAT
+	 * RATHER THAN THE ONE WHO HAS BEEN IN IT LONGEST.
+	 *
+	 * <p>Owner, 04.09.2026: „Na strani tima, administrator tog tima ima „Izmeni" i „Obrisi".
+	 * Nijedan drugi clan ih ne vidi", and „„Obrisi" trazi potvrdu pa brise tim i bodove tog
+	 * tima iz tabele za tu sezonu."
+	 *
+	 * <p><b>{@link #THE_SEAT} joined LATER than {@link #THE_LONGEST}</b>, so this is not the
+	 * arm of the rule a fixture gets right by accident: read as „whoever has been in it
+	 * longest" with no regard for the seat, this case answers 404 and the next one 204, which
+	 * is both of them the wrong way round.
+	 *
+	 * <p><b>Three teams stand afterwards and they are named</b>, so „a team went" cannot be
+	 * satisfied by a statement that lost its key and emptied the table.
+	 */
+	@Test
+	void theTeamsOwnAdministratorTakesItAway() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(deleteTheTeamAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO)).getStatus())
+				.as("the member sitting in the team's seat could not delete his own team")
+				.isEqualTo(204);
+
+		assertThat(teamsThatExist())
+				.as("the wrong team went, or every team did")
+				.containsExactlyInAnyOrder(TAKEN_ADDRESS, HIS_TEAM, THE_OTHER_TEAM);
+	}
+
+	/**
+	 * AND A MEMBER WHO IS IN THAT TEAM AND DOES NOT ADMINISTER IT IS TOLD THERE IS NOTHING
+	 * THERE.
+	 *
+	 * <p>„Nijedan drugi clan ih ne vidi" (owner, 04.09.2026), answered 404 rather than 403 by
+	 * ADL A8, 13.09.2026: „prijavljen kome pravo nedostaje dobija 404, isti odgovor kao da
+	 * adresa ne postoji."
+	 *
+	 * <p><b>He is genuinely IN the team, which is what makes this a case at all.</b> A
+	 * stranger to the team would be refused by any reading of the rule, including a wrong one
+	 * that asks „is he a member of it" instead of „does he administer it". This member
+	 * satisfies the first and not the second.
+	 */
+	@Test
+	void aMemberOfTheTeamWhoDoesNotAdministerItIsToldNothingIsThere() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		MockHttpServletResponse answer =
+				deleteTheTeamAs("najduze-u-timu@primer.rs", teamId(A_TEAM_WITH_TWO));
+
+		assertThat(answer.getStatus())
+				.as("a member who does not administer the team deleted it anyway")
+				.isEqualTo(404);
+
+		assertThat(answer.getContentAsString())
+				.as("the refusal said which teams exist and who runs them")
+				.isEmpty();
+
+		assertThat(teamsThatExist())
+				.contains(A_TEAM_WITH_TWO);
+	}
+
+	/**
+	 * AND THE ADMINISTRATION PRESSES THE SAME BUTTON, BY BOTH OF THE TWO ROADS IT HAS.
+	 *
+	 * <p>PDL P13b, owner, 25.09.2026: „Superadmin i moderator sa pravom nad timovima imaju
+	 * isto dugme i iste posledice kao administrator tog tima." The two arrive differently -
+	 * one holds {@code entity:teams} as a ticked box, the other holds every right there is
+	 * because {@code role.rights_mode} is {@code all} - and a route asking the wrong one of
+	 * those two questions passes for one and fails for the other.
+	 *
+	 * <p><b>Neither of them names a member at all</b>, which is V23's ordinary moderator, so
+	 * this cannot be satisfied by a rule that quietly reads the roster.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {MODERATOR_OVER_TEAMS, THE_SUPERADMIN})
+	void theAdministrationPressesTheSameButton(String who) throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(deleteTheTeamAs(who, teamId(A_TEAM_WITH_TWO)).getStatus())
+				.as("%s could not delete a team", who)
+				.isEqualTo(204);
+
+		assertThat(teamsThatExist())
+				.containsExactlyInAnyOrder(TAKEN_ADDRESS, HIS_TEAM, THE_OTHER_TEAM);
+	}
+
+	/**
+	 * AND A MODERATOR WHO HOLDS A BOX THAT IS NOT THIS ONE IS TOLD NOTHING IS THERE, WHICH IS
+	 * THE AXIS AN EMPTY-HANDED MODERATOR CANNOT SEPARATE.
+	 *
+	 * <p>He holds {@link #SOME_OTHER_BOX} and is refused; the one above holds
+	 * {@code entity:teams} and is not. Without this case a route asking
+	 * {@code mayDoAnything()} - „is he a moderator at all" - would pass every case in this
+	 * file while every moderator in the portal could delete any team there is.
+	 */
+	@Test
+	void aModeratorHoldingSomeOtherBoxIsToldNothingIsThere() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_SOMETHING_ELSE, teamId(A_TEAM_WITH_TWO))
+				.getStatus())
+				.as("a moderator trusted with events deleted a team")
+				.isEqualTo(404);
+
+		assertThat(teamsThatExist()).contains(A_TEAM_WITH_TWO);
+	}
+
+	/**
+	 * AND AN ACCOUNT THAT NAMES NO MEMBER AND HOLDS NO BOX DELETES NOTHING, which is the
+	 * branch where both ways in are shut at once.
+	 *
+	 * <p>{@link #MODERATOR_WHO_DOES_NOT_RACE} is a moderator with not one tick, so
+	 * {@code entity:teams} is false; and he names no member, so there is nobody for the
+	 * team's own rule to be asked about. Written without the null check that second half is
+	 * a comparison the database answers null to, and null is not false.
+	 */
+	@Test
+	void anAccountThatNamesNoMemberAndHoldsNoBoxDeletesNothing() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(deleteTheTeamAs(MODERATOR_WHO_DOES_NOT_RACE, teamId(A_TEAM_WITH_TWO))
+				.getStatus())
+				.as("an account naming nobody and holding nothing deleted a team")
+				.isEqualTo(404);
+
+		assertThat(teamsThatExist()).contains(A_TEAM_WITH_TWO);
+	}
+
+	/**
+	 * A TEAM NOBODY IS IN GOES ONLY BY THE ADMINISTRATION'S HAND, AND THAT IS THE CASE PDL
+	 * P13b WAS WRITTEN FOR.
+	 *
+	 * <p>The decision names what it refused in as many words: „Odbijeno: da administracija tim
+	 * samo uredjuje. Tada tim ciji je administrator otisao, a u kom nema nikoga, ne bi mogao
+	 * niko da obrise." {@link #TAKEN_ADDRESS} is exactly that team - it has stood in this
+	 * fixture since the file was written with nobody in it - so the derived rule answers
+	 * „nobody administers it" and there is no member on earth this route could accept.
+	 *
+	 * <p><b>Both halves in one case on purpose.</b> The member's 404 and the moderator's 204
+	 * are the two sides of one sentence, and split apart the first would pass over a route
+	 * that refuses everybody.
+	 */
+	@Test
+	void aTeamNobodyIsInGoesOnlyByTheAdministrationsHand() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(deleteTheTeamAs("sedi-u-sedistu@primer.rs", teamId(TAKEN_ADDRESS)).getStatus())
+				.as("a member deleted a team he has nothing to do with")
+				.isEqualTo(404);
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(TAKEN_ADDRESS)).getStatus())
+				.as("the team nobody is in could not be deleted by anybody at all, which is"
+						+ " what PDL P13b refused")
+				.isEqualTo(204);
+
+		assertThat(teamsThatExist())
+				.containsExactlyInAnyOrder(HIS_TEAM, THE_OTHER_TEAM, A_TEAM_WITH_TWO);
+	}
+
+	/**
+	 * A TEAM THAT IS NOT THERE IS ANSWERED THE SAME TO BOTH WAYS IN.
+	 *
+	 * <p>For the administration this is the only thing standing between „a key nobody has"
+	 * and a 204 about something that never happened; for a member the same answer falls out
+	 * of the rule about the team, because nobody administers a team that does not exist.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {MODERATOR_OVER_TEAMS, "sedi-u-sedistu@primer.rs"})
+	void aTeamThatIsNotThereIsAnsweredTheSameToBoth(String who) throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		long teamsBefore = howManyTeams();
+
+		assertThat(deleteTheTeamAs(who, teamId(A_TEAM_WITH_TWO) + 10_000).getStatus())
+				.as("%s was told something other than 404 about a team that is not there", who)
+				.isEqualTo(404);
+
+		assertThat(howManyTeams())
+				.as("a team went on a key nobody has")
+				.isEqualTo(teamsBefore);
+	}
+
+	/**
+	 * AND A STRANGER IS REFUSED BY THE CHAIN, BEFORE THIS CLASS RUNS.
+	 *
+	 * <p>401 and not 404 (ADL A8). {@code /api/teams} is on
+	 * {@link ApiSecurity#READ_BY_ANYBODY}, which grants {@code GET}, {@code HEAD} and
+	 * {@code OPTIONS} and nothing else, so a {@code DELETE} at that same address falls
+	 * through to {@code anyRequest().authenticated()}.
+	 */
+	@Test
+	void somebodyWhoIsNotSignedInDeletesNoTeam() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(http.perform(delete("/api/teams/" + teamId(A_TEAM_WITH_TWO)).with(csrf()))
+				.andReturn().getResponse().getStatus())
+				.as("a stranger reached a write under an address opened for reading")
+				.isEqualTo(401);
+
+		assertThat(teamsThatExist()).contains(A_TEAM_WITH_TWO);
+	}
+
+	/**
+	 * THE FROZEN SEASON KEEPS ITS ROW WHOLE, WHICH IS THE OTHER HALF OF THE OWNER'S OWN
+	 * SENTENCE.
+	 *
+	 * <p>Owner, 25.09.2026: „Prethodne sezone su zamrznute i ne diraju se", and 04.09.2026:
+	 * „Tim se brise i kad je sezona zamrznuta, ali zamrznuta tabela ostaje." V17 is what
+	 * carries it: {@code season_team} holds its own {@code name}, {@code points} and
+	 * {@code members}, and its pointer is {@code on delete set null} „so that the row can
+	 * still be read".
+	 *
+	 * <p><b>Two rows and not one.</b> With only the deleted team's row here, „the frozen
+	 * table survived" would be satisfied by a table nothing ever pointed into; the second row
+	 * still points at a team afterwards, so the two states of the pointer are both in the
+	 * answer.
+	 *
+	 * <p><b>The points and the name are read back, not just the row count.</b> A statement
+	 * that emptied the row instead of its pointer would leave the count alone.
+	 */
+	@Test
+	void theFrozenSeasonKeepsItsRowWhenTheTeamGoes() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		frozenStanding(1, A_TEAM_WITH_TWO, THE_NAME_THE_FROZEN_ROW_KEEPS, "4820.10", 2);
+		frozenStanding(2, THE_OTHER_TEAM, "Timocki tim", "1000.00", 1);
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(A_TEAM_WITH_TWO)).getStatus())
+				.isEqualTo(204);
+
+		assertThat(theFrozenTable())
+				.as("the frozen season was touched by a team being deleted")
+				.containsExactly(
+						"1 no pointer " + THE_NAME_THE_FROZEN_ROW_KEEPS + " 4820.10 2",
+						"2 points at a team Timocki tim 1000.00 1");
+	}
+
+	/**
+	 * AND THE MEMBERS' OWN RESULTS ARE STILL SERVED AFTERWARDS, WHICH IS THE HALF OF THE
+	 * DECISION THAT SAYS WHAT DOES NOT HAPPEN.
+	 *
+	 * <p>Owner, 25.09.2026, choosing between the two outcomes he was offered: what goes is
+	 * „ZBIR tima i para za tu sezonu", and „licni rezultati clanova ostaju netaknuti". The
+	 * outcome he refused was that they go too, with the cost he was shown: „covek koji nije
+	 * uradio nista izgubi svoju sezonu zato sto je neko drugi izasao iz tima."
+	 *
+	 * <p><b>Read back through the resource that serves them and not out of the table.</b> A
+	 * member whose row survived but who had been made invisible - his fee cleared, his member
+	 * number emptied - would satisfy a count over {@code result} and fail here, and that is
+	 * the difference this case is for.
+	 *
+	 * <p><b>The other run belongs to somebody with no team at all</b>, so „a run is served"
+	 * cannot be satisfied by the wrong row.
+	 */
+	@Test
+	void theMembersOwnResultsAreStillServedAfterHisTeamIsDeleted() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		aRaceThatHappened("prvi-krug", "Prvi krug", "2027-05-01");
+		aRunBy(THE_SEAT, "Prvi krug", "2027-05-01", "123.45");
+		aRunBy(FIRST_WRITTEN, "Prvi krug", "2027-05-01", "99.99");
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(A_TEAM_WITH_TWO)).getStatus())
+				.isEqualTo(204);
+
+		assertThat(theRunsThePortalServes())
+				.as("a member lost his own season because his team was deleted")
+				.containsExactlyInAnyOrder(THE_SEAT + " 123.45", FIRST_WRITTEN + " 99.99");
+	}
+
+	/**
+	 * AND A RACING PAIR OF TWO MEMBERS OF THE DELETED TEAM STANDS, BECAUSE A PAIR AND A TEAM
+	 * ARE TWO DIFFERENT THRESHOLDS.
+	 *
+	 * <p>The owner put them in one sentence on 25.09.2026 - „I tim (ako nema vise ni jednog
+	 * clana) i par (ako nema bar jednog clana) nestaju sa spiska" - and the two numbers are
+	 * not the same: a pair goes on losing ONE half and a team on losing ALL of them. V12
+	 * makes the pair's threshold the schema's own, with two {@code not null} halves both
+	 * {@code on delete cascade}, so a pair never stands with one and this route has no
+	 * business asking about it.
+	 *
+	 * <p><b>Both halves are in the deleted team</b>, which is what makes this a case: a rule
+	 * that swept „everything belonging to the members of this team" would take the pair, and
+	 * a pair with one half outside would survive such a rule by accident.
+	 */
+	@Test
+	void aRacingPairOfTwoMembersOfTheDeletedTeamStands() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		pairedFor(THE_SEAT, HIS_PARTNER);
+
+		/* A SECOND PAIR, OF TWO PEOPLE WHO ARE NOT IN THE DELETED TEAM, and it is what makes
+		   the assertion below read a row rather than a table. With one pair in the fixture,
+		   „this pair stands" and „some pair stands" are the same number, so a route that
+		   swept the deleted team's members' pairs and left everybody else's would pass. */
+		woman(A_WOMAN_WITH_NO_TEAM);
+		account("bez-tima-ona@primer.rs", A_WOMAN_WITH_NO_TEAM);
+		pairedFor(IN_A_TEAM_NOW, A_WOMAN_WITH_NO_TEAM);
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(A_TEAM_WITH_TWO)).getStatus())
+				.isEqualTo(204);
+
+		assertThat(thePairsThatStand())
+				.as("deleting a team broke a racing pair, which is a different threshold")
+				.containsExactlyInAnyOrder(THE_SEAT + " and " + HIS_PARTNER,
+						IN_A_TEAM_NOW + " and " + A_WOMAN_WITH_NO_TEAM);
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED ADMINISTERS NOTHING, AND BOTH RESOURCES SAY SO OUT OF ONE
+	 * SENTENCE.
+	 *
+	 * <p>PDL P13, 19.09.2026: „Clan kome je istekla clanarina dopire samo do strane za obnovu
+	 * ... jer se sve akcije za njega brane." Deleting a team is such an action, and the title
+	 * passes on the same way it does when an administrator leaves (PDL P13, „Isto kao kad je
+	 * otisao").
+	 *
+	 * <p><b>It is here rather than as a ninth row of the table above because it needs its own
+	 * arrangement</b>, and it is the row that holds {@code c.active} inside
+	 * {@link TeamApi#WHO_STANDS_IN_A_TEAM}: take that condition out and BOTH answers below
+	 * move to true together, which is the one home doing its job and this case noticing.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedAdministersNothingAndBothResourcesAgree() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		db.sql("update competitor set active = false where member_number = ?")
+				.param(THE_SEAT).update();
+
+		assertThat(theListTells(THE_SEAT, A_TEAM_WITH_TWO))
+				.as("/api/teams still names a lapsed member as the one who administers his team")
+				.isFalse();
+
+		assertThat(deleteTheTeamAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO))
+				.getStatus())
+				.as("a member whose fee has lapsed deleted a team")
+				.isEqualTo(404);
+
+		assertThat(teamsThatExist()).contains(A_TEAM_WITH_TWO);
+	}
+
+	/**
+	 * AND AN EDIT OF THAT TEAM STILL WAITING IN THE QUEUE GOES WITH IT, ROW AND QUEUE ROW.
+	 *
+	 * <p>Nothing decides this in the route: V11 makes {@code team_proposal_team_fk}
+	 * {@code on delete cascade} with its reason written beside it, „An edit of a team that is
+	 * gone is an edit of nothing", and V9 makes {@code verification_team_proposal_fk} cascade
+	 * in turn. <b>It is measured rather than trusted</b> because the two cascades are a chain
+	 * and a chain is exactly the shape that breaks silently: a moderator left holding a card
+	 * about a team that no longer exists is a queue row nothing can decide.
+	 *
+	 * <p><b>Somebody else's proposal is waiting the whole time</b> - the shared fixture puts
+	 * it there - so „the queue is empty afterwards" cannot pass for „this one went".
+	 */
+	@Test
+	void anEditOfThatTeamWaitingInTheQueueGoesWithIt() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		long proposal = db.sql("insert into team_proposal (competitor_id, team_id, name, bio,"
+						+ " link, place_id) values"
+						+ " ((select id from competitor where member_number = ?),"
+						+ " (select id from team where slug = ?), ?, '', '',"
+						+ " (select id from place where rank = 1)) returning id")
+				.params(THE_SEAT, A_TEAM_WITH_TWO, "Tim sa novim imenom")
+				.query(Long.class).single();
+
+		db.sql("insert into verification (queue, competitor_id, subject, body, team_proposal_id)"
+						+ " values ('teams', (select id from competitor where member_number = ?),"
+						+ " 'Tim sa novim imenom', '', ?)")
+				.params(THE_SEAT, proposal).update();
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(A_TEAM_WITH_TWO)).getStatus())
+				.isEqualTo(204);
+
+		assertThat(db.sql("select count(*) from verification where team_proposal_id = ?")
+				.param(proposal).query(Long.class).single())
+				.as("a card about a team that no longer exists was left in the queue")
+				.isZero();
+
+		assertThat(howManyProposals())
+				.as("the other member's proposal went with a team it has nothing to do with")
+				.isEqualTo(1);
+	}
+
+	/**
+	 * AND THE TEAM'S LOGO GOES WITH IT, ROW AND FILE, THROUGH THE THIRD CALLER OF THE ONE
+	 * PLACE THAT HOLDS THAT ACT.
+	 *
+	 * <p>{@code ATeamGoesWithItsLastMember} is reached by three roads now - a member deleted,
+	 * a member who walks out, and a team deleted on purpose - and its class note names the
+	 * fault a second home for „the row and the mark go together" would be. The other two
+	 * roads have their cases; this is the third, and it is the one where the team still HAS
+	 * members when it goes.
+	 *
+	 * <p>This is that class's own reasoning rather than a decision: nothing in either journal
+	 * names a team's logo when the team itself disappears.
+	 */
+	@Test
+	void theTeamsLogoGoesWithItWhenTheTeamIsDeletedOnPurpose() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		long logo = photo();
+		db.sql("update team set logo_id = ? where slug = ?").params(logo, A_TEAM_WITH_TWO).update();
+
+		Files.createDirectories(Path.of(folder));
+		Path file = Path.of(folder).resolve(String.valueOf(logo));
+		Files.write(file, "bajtovi znaka tima".getBytes());
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(A_TEAM_WITH_TWO)).getStatus())
+				.isEqualTo(204);
+
+		assertThat(photoRowExists(logo))
+				.as("the deleted team's logo row survived the team it belonged to")
+				.isFalse();
+		assertThat(Files.exists(file))
+				.as("the deleted team's logo file survived the team it belonged to")
+				.isFalse();
+	}
+
+	/**
+	 * AND THE TWO RESOURCES AGREE ON WHO ADMINISTERS EACH TEAM, WHICH IS THE FLOOR UNDER THE
+	 * ONE HOME.
+	 *
+	 * <p>{@code GET /api/teams} answers {@code administeredByMe} and this route acts on the
+	 * same question. They are built out of {@link TeamApi#WHO_STANDS_IN_A_TEAM} and
+	 * {@link TeamApi#WHO_ADMINISTERS_IT} so that there is one rule with two readers; this is
+	 * what makes that a measurement rather than a claim.
+	 *
+	 * <p><b>It is a row per pair and not a loop, and that is a fault this case had before it
+	 * worked.</b> Written as one method walking every pair, the first 204 took the team away
+	 * and every later row of the walk asked about a team that was no longer there - so the
+	 * comparison agreed with itself on „false" and measured nothing. One invocation per pair
+	 * gets one transaction per pair, and each is rolled back before the next.
+	 *
+	 * <p><b>The expected column is what stops the table being uniformly false.</b> Without
+	 * it the two resources could agree on „nobody administers anything" and this would pass;
+	 * with it, the fixture has to separate the seat from the longest-serving member, a member
+	 * of another team, and a team nobody is in. The names are written out rather than taken
+	 * from the constants because an annotation takes literals, and what holds the spelling is
+	 * that {@code teamId} and {@code cookieOf} both throw on anything the fixture does not
+	 * have.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"000800, tim-sa-dva-clana, true,  the seat, held by the one who joined later",
+			"000900, tim-sa-dva-clana, false, in the team the longest and not in the seat",
+			"001000, tim-sa-dva-clana, false, in the team, neither seat nor longest",
+			"000800, dunavski-trkaci,  false, a team nobody at all is in",
+			"000800, timocki-tim,      false, somebody else's team",
+			"000500, timocki-tim,      true,  an empty seat falling to the only member",
+			"000500, tim-sa-dva-clana, false, a member of another team",
+			"000200, sava-runners,     true,  an empty seat and a membership written ahead"})
+	void theDeleteRouteAndTheListAgreeOnWhoAdministersEachTeam(String who, String teamSlug,
+			boolean expected, String what) throws Exception {
+
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(theListTells(who, teamSlug))
+				.as("/api/teams answered wrongly about %s (%s)", what, teamSlug)
+				.isEqualTo(expected);
+
+		assertThat(deleteTheTeamAs(emailOf(who), teamId(teamSlug)).getStatus() == 204)
+				.as("the delete route and /api/teams disagree about %s (%s), which is one fact"
+						+ " with two homes", what, teamSlug)
+				.isEqualTo(expected);
+	}
+
+	/** What {@code GET /api/teams} tells this member about that team. */
+	private boolean theListTells(String memberNumber, String teamSlug) throws Exception {
+		JsonNode served = mapper.readTree(http.perform(
+						org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+								.get("/api/teams")
+								.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse().getContentAsString());
+
+		for (JsonNode one : served) {
+			if (teamSlug.equals(one.path("slug").asString())) {
+				return one.path("administeredByMe").asBoolean();
+			}
+		}
+
+		throw new IllegalStateException("no team " + teamSlug + " in what /api/teams served");
+	}
+
+	private String emailOf(String memberNumber) {
+		return db.sql("select a.email from account a join competitor c on c.id = a.competitor_id"
+						+ " where c.member_number = ?")
+				.param(memberNumber).query(String.class).single();
+	}
+
+	/**
+	 * THE FIXTURE EVERY CASE ABOUT {@code DELETE /api/teams/&#123;id&#125;} STANDS ON, built
+	 * here rather than in {@link #fourMembersOfWhomOneIsInATeam} for the reason
+	 * {@link #alsoInTheTeam} is: the three teams of the shared fixture are counted by name in
+	 * assertions that have nothing to do with this route, and a fourth added there would move
+	 * them all.
+	 *
+	 * <p><b>What it arranges, and every piece of it is an axis rather than scenery:</b>
+	 *
+	 * <ul>
+	 * <li><b>A team with TWO members whose seat is held by the one who joined LATER.</b> So
+	 * „the seat" and „whoever has been in it longest" are different people and the rule of
+	 * 04.09.2026 is measured on both arms.
+	 * <li><b>Three ways into the administration and one that looks like one.</b> A moderator
+	 * with {@code entity:teams}, the superadmin who holds everything without a tick, a
+	 * moderator holding a DIFFERENT box, and an account that names no member and holds none.
+	 * <li><b>Two frozen rows, not one</b>, so „the frozen table survived" cannot be satisfied
+	 * by a table that was never touched in the first place, and the untouched row's pointer
+	 * is read back beside the emptied one.
+	 * <li><b>Two results, one of them somebody else's</b>, so „a result is still served"
+	 * cannot be satisfied by the wrong row.
+	 * <li><b>A racing pair of two members OF THIS TEAM</b>, which is the axis the owner's own
+	 * sentence puts beside the team and which has a different threshold.
+	 * </ul>
+	 */
+	private void aTeamWithTwoMembersAndEverythingHangingOffIt() {
+		team(A_TEAM_WITH_TWO, THE_NAME_THE_FROZEN_ROW_KEEPS);
+
+		competitor(THE_SEAT);
+		competitor(THE_LONGEST);
+		woman(HIS_PARTNER);
+
+		account("sedi-u-sedistu@primer.rs", THE_SEAT);
+		account("najduze-u-timu@primer.rs", THE_LONGEST);
+		account("partnerka@primer.rs", HIS_PARTNER);
+
+		inATeam(THE_LONGEST, A_TEAM_WITH_TWO, A_SEASON_ALREADY_RUNNING);
+		inATeam(THE_SEAT, A_TEAM_WITH_TWO, A_SEASON_STILL_TO_COME);
+		inATeam(HIS_PARTNER, A_TEAM_WITH_TWO, A_SEASON_STILL_TO_COME);
+
+		db.sql("update team set admin_id = (select id from competitor where member_number = ?)"
+						+ " where slug = ?")
+				.params(THE_SEAT, A_TEAM_WITH_TWO).update();
+
+		moderatorWithNoCompetitor(MODERATOR_OVER_TEAMS);
+		ticked(MODERATOR_OVER_TEAMS, TeamApi.OVER_THE_TEAMS);
+
+		moderatorWithNoCompetitor(MODERATOR_OVER_SOMETHING_ELSE);
+		ticked(MODERATOR_OVER_SOMETHING_ELSE, SOME_OTHER_BOX);
+
+		superadminWithNoCompetitor(THE_SUPERADMIN);
+	}
+
+	/** A member of the other gender, which is the half {@code racing_pair} refuses without. */
+	private void woman(String number) {
+		competitor(number);
+		db.sql("update competitor set gender = 'F' where member_number = ?").param(number).update();
+	}
+
+	private void pairedFor(String man, String woman) {
+		db.sql("insert into racing_pair (season, man_id, woman_id) values (?,"
+						+ " (select id from competitor where member_number = ?),"
+						+ " (select id from competitor where member_number = ?))")
+				.params(A_SEASON_ALREADY_RUNNING, man, woman).update();
+	}
+
+	/** Every racing pair there is, named by both of its halves. */
+	private List<String> thePairsThatStand() {
+		return db.sql("select m.member_number, w.member_number from racing_pair p"
+						+ " join competitor m on m.id = p.man_id"
+						+ " join competitor w on w.id = p.woman_id"
+						+ " order by m.member_number")
+				.query((row, one) -> row.getString(1) + " and " + row.getString(2))
+				.list();
+	}
+
+	private void ticked(String email, String right) {
+		db.sql("insert into account_admin_right (account_id, right_code)"
+						+ " values ((select id from account where email = ?), ?)")
+				.params(email, right).update();
+	}
+
+	private void superadminWithNoCompetitor(String email) {
+		db.sql("insert into account (first_name, last_name, email, role_id) values"
+						+ " ('Vrhovni', 'Bezimeni', ?, (select id from role where code ="
+						+ " 'superadmin'))")
+				.param(email).update();
+
+		openSession(email);
+	}
+
+	/** One frozen standing, written straight into the season's materialised table (V17). */
+	private void frozenStanding(int position, String teamSlug, String name, String points,
+			int members) {
+
+		db.sql("insert into season_team (season, position, team_id, name, points, members)"
+						+ " values (?, ?, (select id from team where slug = ?), ?,"
+						+ " cast(? as numeric), ?)")
+				.params(THE_FROZEN_SEASON, position, teamSlug, name, points, members).update();
+	}
+
+	/** Every frozen row there is, as „position, pointer or none, name, points, members". */
+	private List<String> theFrozenTable() {
+		return db.sql("select position, team_id, name, points, members from season_team"
+						+ " order by position")
+				.query((row, one) -> row.getInt(1) + " "
+						+ (row.getObject(2) == null ? "no pointer" : "points at a team") + " "
+						+ row.getString(3) + " " + row.getBigDecimal(4) + " " + row.getInt(5))
+				.list();
+	}
+
+	/** One race a member can have run, with an event over it, since a result needs both. */
+	private void aRaceThatHappened(String eventSlug, String raceName, String day) {
+		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
+						+ " featured, description, link)"
+						+ " values (?, ?, cast(? as date), (select id from place where rank = 1),"
+						+ " null, null, 'race', false, '', '')")
+				.params(eventSlug, "Trka " + eventSlug, day).update();
+
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m)"
+						+ " values ((select id from btl_event where slug = ?), ?, false,"
+						+ " cast(? as date), 'length', 0, 10.00, 0, 0)")
+				.params(eventSlug, raceName, day).update();
+	}
+
+	private void aRunBy(String memberNumber, String raceName, String day, String points) {
+		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m,"
+						+ " descent_m, seconds, points)"
+						+ " values ((select id from competitor where member_number = ?),"
+						+ " (select id from race where name = ?), cast(? as date), 10.00, 0, 0,"
+						+ " 3600, cast(? as numeric))")
+				.params(memberNumber, raceName, day, points).update();
+	}
+
+	/** Whose runs the portal serves right now, by member number, in the order it serves them. */
+	private List<String> theRunsThePortalServes() throws Exception {
+		JsonNode served = mapper.readTree(
+				http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.get("/api/results")).andReturn().getResponse().getContentAsString());
+
+		List<String> runs = new ArrayList<>();
+
+		for (JsonNode one : served) {
+			runs.add(one.get("memberNumber").asString() + " " + one.get("points").asString());
+		}
+
+		return runs;
+	}
+
+	private MockHttpServletResponse deleteTheTeamAs(String email, long team) throws Exception {
+		return http.perform(delete("/api/teams/" + team).with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse();
 	}
 
 	/** The queue row about one proposed name, read back whole. */
