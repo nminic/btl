@@ -39,9 +39,10 @@ import java.util.Optional;
  * <p><b>WHO MAY: the tick, and the refusal is 404.</b> „Cenovnik" is one of the seven
  * entities of the administration (PDL P28a, owner 06.08.2026, confirmed 11.08.2026), so the
  * box is {@code entity:pricing} - the code {@code admin_right} generates for the row V5
- * writes. A moderator without it, a competitor and a league of people who are not signed in
- * are all answered exactly what a price row that does not exist is answered (ADL A8, owner
- * 13.09.2026: neprijavljen 401, prijavljen bez prava <b>404</b>, nikad 403).
+ * writes. A moderator without it and a competitor are both answered exactly what a price row
+ * that does not exist is answered; somebody who is not signed in is asked to sign in, which
+ * is the one place that answer is not 404 (ADL A8, owner 13.09.2026: neprijavljen 401,
+ * prijavljen bez prava <b>404</b>, nikad 403).
  *
  * <p><b>A PRICE CHANGED HERE CANNOT MOVE A PAYMENT, AND THAT IS THE SCHEMA'S SENTENCE RATHER
  * THAN A STATEMENT WRITTEN BELOW.</b> Owner, 25.09.2026 (PDL P12a): izmena reda cenovnika
@@ -177,9 +178,19 @@ class PricingWriteApi {
 	 * <p><b>THE ORDER OF THE REFUSALS IS CHOSEN.</b> What is wrong with the ROW comes before
 	 * what is wrong with the FORM, because the two send an administrator to different places:
 	 * a form he can correct, and a row this route will not write however he fills it in.
-	 * Answering „the form is not complete" for the fee would send him to fix the one thing
-	 * that is not the problem. The same order {@link LeagueWriteApi#change} uses for a frozen
-	 * season.
+	 * Answering „the form is not complete" for the referral in October would send him to fix
+	 * the one thing that is not the problem. The same order {@link LeagueWriteApi#change} uses
+	 * for a frozen season.
+	 *
+	 * <p><b>AND THE ORDER WITHIN THE FORM CARRIES A 500, which was measured rather than
+	 * reasoned.</b> Whether an amount is THERE is asked before whether the column would KEEP
+	 * it, because {@link MembershipPrice#amountIsKeptExactly} takes a number and not the
+	 * absence of one. Run the two the other way round and a form with no dinar price on it
+	 * comes back as {@code NullPointerException: Cannot invoke "BigDecimal.signum()" because
+	 * "amount" is null} - a 500 on an administrator who has simply left a field empty. That is
+	 * the mutation {@code aFormMissingEitherAmountIsRefusedAndNothingIsWritten} catches, and
+	 * it is written down because an order that carries a fault reads like an order that
+	 * carries nothing.
 	 *
 	 * <p><b>ALL SEVEN ROWS ARE WRITTEN HERE, INCLUDING THE FEE (owner, 25.09.2026).</b> He
 	 * chose that the processing fee gets a button of its own with the dinar price left out,
