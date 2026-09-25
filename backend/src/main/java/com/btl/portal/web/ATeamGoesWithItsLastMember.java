@@ -1,10 +1,17 @@
 package com.btl.portal.web;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A TEAM THAT HAS LOST ITS LAST MEMBER GOES, AND IT GOES BY ITSELF.
@@ -57,14 +64,36 @@ import java.util.List;
  * ({@code season_team}), and that is {@code on delete set null} (V17) and stays exactly as
  * it was - which is the other half of his sentence, „Prethodne sezone su zamrznute i ne
  * diraju se".
+ *
+ * <p><b>AND THE TEAM'S LOGO GOES WITH IT, ROW AND FILE, WHICH IS MINE TO REASON ABOUT RATHER
+ * THAN THE OWNER'S TO HAVE DECIDED.</b> Nothing in either journal names a team's logo when the
+ * team itself disappears - the closest is PDL P21 on a MEMBER'S own picture, „jedina
+ * fotografija clana je njegova profilna, koja odlazi sa profilom" - so this is this class's own
+ * reasoning and not a decision, and it is said out loud as one rather than left to look like a
+ * quote. The reasoning: a logo left standing would be a {@code photo} row and a file that
+ * nothing in the schema points at any more the moment {@code team.logo_id} goes with the row it
+ * was on, and nothing scans for such a thing (the class note above already measures that no
+ * sweep of any kind exists in this package). {@link MePhotoApi#remove} is the portal's own
+ * precedent for taking a picture down at all, and its shape is copied together with its guard:
+ * „THE ROW AND THE FILE BOTH GO, and the order is the row first".
  */
 @Component
 class ATeamGoesWithItsLastMember {
 
+	private static final Logger LOG = LoggerFactory.getLogger(ATeamGoesWithItsLastMember.class);
+
 	private final JdbcClient db;
 
-	ATeamGoesWithItsLastMember(JdbcClient db) {
+	private final Path folder;
+
+	/**
+	 * @param folder the same setting {@link MePhotoApi} and {@link PhotoApi} read, and it must
+	 *               be: a second copy of the property would be a second home for the one folder
+	 *               a logo's file actually lives in.
+	 */
+	ATeamGoesWithItsLastMember(JdbcClient db, @Value("${btl.photos.folder}") String folder) {
 		this.db = db;
+		this.folder = Path.of(folder);
 	}
 
 	/**
@@ -109,7 +138,14 @@ class ATeamGoesWithItsLastMember {
 	 */
 	void goIfEmpty(Collection<Long> teams) {
 		for (Long team : teams) {
-			db.sql("delete from team where id = ?"
+			/* READ BEFORE THE DELETE AND NEVER AFTER, {@link CompetitorWriteApi}'s own reason:
+			   once the team's row is gone there is nothing left to read its logo_id off. */
+			Optional<Long> logo = db.sql("select logo_id from team where id = ?")
+					.param(team)
+					.query(Long.class)
+					.optional();
+
+			int gone = db.sql("delete from team where id = ?"
 							/* NOT „no OPEN membership". See the class note: a member who left
 							   in October keeps a row until the season turns, and this asks
 							   whether the team has any row at all. */
@@ -117,6 +153,39 @@ class ATeamGoesWithItsLastMember {
 							+ " where m.team_id = team.id)")
 					.param(team)
 					.update();
+
+			/* ONLY WHEN THE TEAM ACTUALLY WENT. A team named here that still has somebody in it
+			   is untouched by the statement above, and its logo is not this method's to take
+			   away - {@code goIfEmpty} means „empty the ones that are empty", not „every team
+			   this member ever touched". */
+			if (gone > 0) {
+				logo.ifPresent(this::takeAwayThePhoto);
+			}
+		}
+	}
+
+	/**
+	 * A LOGO'S ROW AND ITS FILE, BOTH GONE, THE SAME SHAPE {@link MePhotoApi#remove} KEEPS FOR
+	 * A MEMBER'S OWN PICTURE.
+	 *
+	 * <p>The row first, then the file: the pointer that named this row is already gone with the
+	 * team's own row by the time this runs, so nothing more is emptied here. A fault in the
+	 * file's removal is logged and swallowed rather than thrown, for the same reason
+	 * {@link CompetitorWriteApi} swallows it - the team going is the act the owner decided
+	 * (PDL P13a, 25.09.2026), and a stray file nobody will ever serve again is the one leak
+	 * {@link PhotoApi} already answers nothing for, not a reason to leave the team standing.
+	 */
+	private void takeAwayThePhoto(long photo) {
+		db.sql("delete from photo where id = ?").param(photo).update();
+
+		try {
+			if (!Files.deleteIfExists(folder.resolve(String.valueOf(photo)))) {
+				LOG.warn("the file of photo {} was already gone when its team was deleted", photo);
+			}
+		}
+		catch (IOException notRemoved) {
+			LOG.warn("the file of photo {} could not be removed from disk when its team was"
+					+ " deleted", photo, notRemoved);
 		}
 	}
 }

@@ -1,5 +1,9 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.rights.TheNamedSuperadmin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -9,6 +13,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,7 +38,7 @@ import java.util.Optional;
  * going. V23 wrote that sorting down at length and this class is what finally pulls the
  * lever.
  *
- * <p><b>THREE THINGS THE CASCADE CANNOT DO, AND THEY ARE THE WHOLE OF THIS CLASS.</b>
+ * <p><b>FOUR THINGS THE CASCADE CANNOT DO, AND THEY ARE THE WHOLE OF THIS CLASS.</b>
  *
  * <ul>
  * <li><b>The account has to be decided first.</b> {@code account_competitor_fk} is
@@ -51,6 +58,18 @@ import java.util.Optional;
  * same act.
  * <li><b>A team he was the last of has to go with him</b>, which is
  * {@link ATeamGoesWithItsLastMember} and the owner's decision of 25.09.2026.
+ * <li><b>His own picture has to go with him, row and file, which the schema cannot reach
+ * either.</b> {@code competitor_photo_fk} (V8) is a key on the WRONG side for a cascade to help
+ * here: it says what happens to {@code competitor.photo_id} when a {@code photo} ROW is
+ * deleted, and says nothing about the other direction. Deleting the competitor therefore left
+ * his {@code photo} row, and the file beside it, standing for ever with nothing pointing at
+ * them any more - measured 25.09.2026 by a probe that deleted a member with a portrait and read
+ * {@code select count(*) from photo} back at one. PDL P21 (11.08.2026 and 24.09.2026 together):
+ * a deletion „obrisan zauvek sa svim svojim profilom", and „jedina fotografija clana je njegova
+ * profilna, koja odlazi sa profilom" - a survivor is exactly the „sakriveno, ne obrisano" P23
+ * refuses. {@link MePhotoApi#remove} is the portal's own precedent for taking a picture down at
+ * all and its shape is copied here together with its guard: the row goes first and the file
+ * after it.
  * </ul>
  *
  * <p><b>AND ONE THING THE CASCADE DOES BADLY, WHICH V33 FIXES RATHER THAN THIS CLASS.</b>
@@ -162,18 +181,32 @@ class CompetitorWriteApi {
 	/** The letter {@code competitor.gender} carries for a man ({@code competitor_gender_known}). */
 	private static final String A_MAN = "M";
 
+	private static final Logger LOG = LoggerFactory.getLogger(CompetitorWriteApi.class);
+
 	private final JdbcClient db;
 
 	private final ATeamGoesWithItsLastMember emptyTeams;
 
 	private final TransactionTemplate inOneTransaction;
 
+	private final TheNamedSuperadmin namedSuperadmin;
+
+	private final Path folder;
+
+	/**
+	 * @param folder the same setting {@link MePhotoApi} and {@link PhotoApi} read, for his own
+	 *               picture's file, so that this class and theirs never carry two folders the
+	 *               day somebody sets one of them.
+	 */
 	CompetitorWriteApi(JdbcClient db, ATeamGoesWithItsLastMember emptyTeams,
-			TransactionTemplate inOneTransaction) {
+			TransactionTemplate inOneTransaction, TheNamedSuperadmin namedSuperadmin,
+			@Value("${btl.photos.folder}") String folder) {
 
 		this.db = db;
 		this.emptyTeams = emptyTeams;
 		this.inOneTransaction = inOneTransaction;
+		this.namedSuperadmin = namedSuperadmin;
+		this.folder = Path.of(folder);
 	}
 
 	record Refused(String reason) {
@@ -243,12 +276,14 @@ class CompetitorWriteApi {
 			return no(HttpStatus.CONFLICT, THE_ACCOUNT_ADMINISTERS);
 		}
 
-		/* READ BEFORE THE DELETE AND NEVER AFTER, both of them, and for one reason:
-		   `racing_pair` and `team_membership` are `on delete cascade` (V12, V11), so the
-		   moment the member goes there is nothing left to read either off. The same
-		   sentence `PairWriteApi.end` writes beside its own reading. */
+		/* READ BEFORE THE DELETE AND NEVER AFTER, all three, and for one reason:
+		   `racing_pair` and `team_membership` are `on delete cascade` (V12, V11) and
+		   `competitor.photo_id` is a column ON THE ROW ITSELF, so the moment the member goes
+		   there is nothing left to read any of them off. The same sentence `PairWriteApi.end`
+		   writes beside its own reading. */
 		List<Partner> partners = partnersOf(gone);
 		List<Long> teams = emptyTeams.teamsOf(gone);
+		Optional<Long> photo = photoOf(gone);
 
 		/* TOLD BESIDE THE READING THAT FOUND THEM, which is `PairWriteApi.end`'s own
 		   arrangement, and it does not matter whether it happens before or after the
@@ -272,8 +307,54 @@ class CompetitorWriteApi {
 		db.sql("delete from competitor where id = ?").param(gone).update();
 
 		emptyTeams.goIfEmpty(teams);
+		photo.ifPresent(this::takeAwayThePhoto);
 
 		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * The picture standing on his profile, read before he goes so that there is still a row to
+	 * read it off.
+	 *
+	 * <p>Answered as an id and not joined against {@code photo} here, for
+	 * {@link #memberNumbered}'s own reason: what {@link #takeAwayThePhoto} needs next is the
+	 * key, and reading it back off a row that may already be gone would be the wrong table to
+	 * ask twice.
+	 */
+	private Optional<Long> photoOf(long member) {
+		return db.sql("select photo_id from competitor where id = ?")
+				.param(member)
+				.query(Long.class)
+				.optional();
+	}
+
+	/**
+	 * HIS PICTURE'S ROW AND ITS FILE, BOTH GONE, THE SAME SHAPE {@link MePhotoApi#remove} KEEPS.
+	 *
+	 * <p>The row first, then the file, matching that route's own order: „THE ROW AND THE FILE
+	 * BOTH GO, and the order is the row first". Nothing here empties {@code competitor.photo_id}
+	 * the way that route empties it explicitly, because the row it stood on is already gone by
+	 * the time this runs - there is no column left to leave pointing at anything.
+	 *
+	 * <p><b>A fault taking the file off the disk is logged and swallowed, not thrown.</b> The
+	 * member's deletion is the act PDL P23 calls immediate and final, and a stray file
+	 * {@link PhotoApi} will never serve again - because nothing in {@code photo} points at it
+	 * once its row is gone below - is the one leak that class already answers nothing for, not
+	 * a reason to leave a deleted member's account and pairs standing while an administrator is
+	 * told a disk fault instead of a completed deletion.
+	 */
+	private void takeAwayThePhoto(long photo) {
+		db.sql("delete from photo where id = ?").param(photo).update();
+
+		try {
+			if (!Files.deleteIfExists(folder.resolve(String.valueOf(photo)))) {
+				LOG.warn("the file of photo {} was already gone when its member was deleted", photo);
+			}
+		}
+		catch (IOException notRemoved) {
+			LOG.warn("the file of photo {} could not be removed from disk when its member was"
+					+ " deleted", photo, notRemoved);
+		}
 	}
 
 	/**
@@ -304,10 +385,28 @@ class CompetitorWriteApi {
 	 * meant to write - both are refused, and a condition over one of the two would let the
 	 * other through.
 	 *
-	 * <p><b>The superadmin is inside the first half and needs no name of his own.</b> His
-	 * role is not {@code competitor}, which is the whole of what this asks; comparing
-	 * against the word {@code superadmin} would be a second home for
-	 * {@link com.btl.portal.domain.rights.TheNamedSuperadmin}'s fact.
+	 * <p><b>THE SUPERADMIN IS NOT INSIDE THE FIRST HALF, AND HE NEEDS A THIRD CONDITION OF HIS
+	 * OWN.</b> This javadoc said otherwise until 25.09.2026 - „his role is not
+	 * {@code competitor}" - and that sentence was read out of what the row would be if the
+	 * role were written, not out of what {@link RegistrationApi} actually does. It never
+	 * writes it: „no row anywhere - this one included - ever carries the superadmin's role...
+	 * What this statement writes stays {@code competitor} for him too" (that class's own
+	 * comment, beside the insert). PDL P21, 14.09.2026: the role „ne stoji kao zapis koji se
+	 * dodeljuje, nego se izvodi iz podesavanja", and ADL says the row-level consequence in as
+	 * many words - „nema radnje kroz portal koja bi superadmina obrisala ili razvlastila. Ta
+	 * provera se ne pise nikad" - and this route was exactly such an action, undetected,
+	 * until a review sent a named-and-confirmed account through it and read back a 204. So
+	 * the row this asks about carries {@code competitor} and zero ticks for him precisely in
+	 * the case that matters most, and the first two conditions answer him "no" every time. The
+	 * third asks {@link TheNamedSuperadmin} directly, which is the one source the portal
+	 * already derives this fact from ({@link WhoIsAsking}), rather than a second comparison
+	 * against the word {@code superadmin} that could disagree with it.
+	 *
+	 * <p><b>Asked of the ROW BEING DELETED, not of whoever is asking.</b> A superadmin who
+	 * targets himself reaches this method too - the door lets him through because
+	 * {@link WhoIsAsking} hands him every right there is, and only the read below, over the
+	 * account named by the number in the address, can still say no. A check written the other
+	 * way round, over the caller's own session, would refuse nothing when he deletes himself.
 	 *
 	 * <p><b>An account is not required to exist at all.</b> Nothing says a member has one -
 	 * {@code account.competitor_id} is nullable and unique, so a member hangs off at most one
@@ -315,15 +414,15 @@ class CompetitorWriteApi {
 	 * delete below removes no row.
 	 */
 	private boolean hisAccountAdministers(long member) {
-		return Boolean.TRUE.equals(db.sql("select exists(select 1 from account a"
-						+ " join role r on r.id = a.role_id"
-						+ " where a.competitor_id = ?"
-						+ " and (r.code <> 'competitor'"
-						+ "   or exists(select 1 from account_admin_right x"
-						+ "      where x.account_id = a.id)))")
+		return db.sql("select r.code, a.email, a.email_confirmed_at,"
+						+ " exists(select 1 from account_admin_right x where x.account_id = a.id)"
+						+ " from account a join role r on r.id = a.role_id"
+						+ " where a.competitor_id = ?")
 				.param(member)
-				.query(Boolean.class)
-				.single());
+				.query((row, one) -> !"competitor".equals(row.getString(1)) || row.getBoolean(4)
+						|| namedSuperadmin.covers(row.getString(2), row.getTimestamp(3) != null))
+				.optional()
+				.orElse(false);
 	}
 
 	/**

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
@@ -19,6 +20,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -63,12 +66,56 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li><b>Somebody else wrote a message and a comment too</b>, and both must come out of the
  * deletion untouched, which is what an {@code update} that lost its {@code where} cannot do.
  * </ul>
+ *
+ * <p><b>AND A SUPERADMIN'S ADDRESS IS NAMED IN THE SETTINGS, WHICH IS WHAT MAKES THIS ONE OF
+ * THE FEW CLASSES THAT NEEDS ITS OWN {@code btl.superadmin.email}.</b> A round on 25.09.2026
+ * probed a named-and-confirmed account through this route and read back 204 where PDL P21
+ * requires a refusal - „nema radnje kroz portal koja bi superadmina obrisala ili razvlastila".
+ * {@link #SUPERADMIN_EMAIL} is made up for exactly {@link SuperadminIsNamedByAnAddressTest}'s
+ * own reason: what these cases need is that ONE address is named and every other is not.
+ *
+ * <p><b>A PHOTOS FOLDER OF THIS RUN'S OWN, for the same reason {@code MePhotoApiTest} keeps
+ * one.</b> The setting's default is shared by every run on the machine, and a file here is
+ * named by a {@code bigserial} that starts again at one in every fresh Testcontainers
+ * database - so two runs sharing the default would meet each other's files under the same
+ * name.
  */
-@SpringBootTest
+@SpringBootTest(properties = "btl.superadmin.email=" + CompetitorWriteApiTest.SUPERADMIN_EMAIL)
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class CompetitorWriteApiTest {
+
+	/**
+	 * Named in the settings, made up for the same reason
+	 * {@link SuperadminIsNamedByAnAddressTest#NAMED} is: it is not a secret, and what these
+	 * cases need is only that some address is named.
+	 */
+	static final String SUPERADMIN_EMAIL = "superadmin-brise@primer.rs";
+
+	/**
+	 * A FOLDER OF THIS RUN'S OWN. See {@code MePhotoApiTest.PHOTOS} for the fault this avoids:
+	 * a shared default directory meeting a same-named file from another run or another
+	 * worktree, which is the fixed-resource class of fault {@code CLAUDE.md} records for a
+	 * port on 18.09.2026.
+	 */
+	private static final Path PHOTOS = aFolderOfThisRunsOwn();
+
+	private static Path aFolderOfThisRunsOwn() {
+		try {
+			return Files.createTempDirectory("btl-photos-competitor-write-");
+		}
+		catch (java.io.IOException noFolder) {
+			throw new IllegalStateException("no temporary folder to keep pictures in", noFolder);
+		}
+	}
+
+	@org.springframework.test.context.DynamicPropertySource
+	static void thePortalKeepsItsPicturesHere(
+			org.springframework.test.context.DynamicPropertyRegistry registry) {
+
+		registry.add("btl.photos.folder", PHOTOS::toString);
+	}
 
 	/** Written first, asked about by nothing, and the one who receives his message. */
 	private static final String FIRST_WRITTEN = "000100";
@@ -172,6 +219,9 @@ class CompetitorWriteApiTest {
 
 	@Autowired
 	private ObjectMapper mapper;
+
+	@Value("${btl.photos.folder}")
+	private String folder;
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -488,6 +538,100 @@ class CompetitorWriteApiTest {
 	}
 
 	/**
+	 * HIS PROFILE PICTURE GOES WITH HIM, ROW AND FILE, WHETHER OR NOT ITS FILE IS STILL ON DISK.
+	 *
+	 * <p>Measured 25.09.2026: {@code competitor.photo_id} points AT {@code photo}, not the
+	 * other way round, so nothing in the schema's own cascades ever touches the row or the file
+	 * a deleted member's portrait leaves behind - a probe found the row still there,
+	 * {@code select count(*) from photo} answering one where it should answer zero. PDL P21:
+	 * „jedina fotografija clana je njegova profilna, koja odlazi sa profilom."
+	 *
+	 * <p><b>Three members and three photos: a file actually on disk, no file at all, and a file
+	 * that cannot be removed</b>, because {@code takeAwayThePhoto} has three ways through it -
+	 * the ordinary one where the file is there and goes, the one where it is already gone and
+	 * only a warning is logged, and the one where removing it throws and is caught and logged
+	 * instead of stopping the deletion. A fixture missing any one of the three leaves that line
+	 * looking covered by one of the others passing.
+	 *
+	 * <p><b>THE THIRD IS FORCED THE WAY {@code TheRemovalStandsEvenWhenTheFileWontGoTest} forces
+	 * it for {@code MePhotoApi}</b>: a non-empty directory where the file should be.
+	 * {@code Files.deleteIfExists} refuses a directory that still holds something, which is a
+	 * real filesystem property and not a mock standing in for one.
+	 */
+	@Test
+	void hisProfilePictureGoesWithHimWhetherOrNotItsFileIsStillOnDisk() throws Exception {
+		long withFile = photo();
+		long withoutFile = photo();
+		long withBlockedFile = photo();
+
+		db.sql("update competitor set photo_id = ? where member_number = ?")
+				.params(withFile, THE_TARGET).update();
+		db.sql("update competitor set photo_id = ? where member_number = ?")
+				.params(withoutFile, NO_ACCOUNT_AT_ALL).update();
+		db.sql("update competitor set photo_id = ? where member_number = ?")
+				.params(withBlockedFile, A_LAPSED_MEMBER).update();
+
+		Files.createDirectories(Path.of(folder));
+		Path file = Path.of(folder).resolve(String.valueOf(withFile));
+		Files.write(file, "bajtovi slike koja stoji".getBytes());
+
+		Path blocked = Path.of(folder).resolve(String.valueOf(withBlockedFile));
+		Files.createDirectory(blocked);
+		Files.writeString(blocked.resolve("nemoguce-obrisati.txt"), "x");
+
+		assertThat(deleteAs(THE_DELETER, THE_TARGET, "delete").getStatus()).isEqualTo(204);
+		assertThat(deleteAs(THE_DELETER, NO_ACCOUNT_AT_ALL, "delete").getStatus()).isEqualTo(204);
+		assertThat(deleteAs(THE_DELETER, A_LAPSED_MEMBER, "delete").getStatus())
+				.as("a fault removing his picture's file stopped a deletion the owner calls final")
+				.isEqualTo(204);
+
+		assertThat(photoRowExists(withFile))
+				.as("his profile picture's row survived the member it belonged to")
+				.isFalse();
+		assertThat(Files.exists(file))
+				.as("his profile picture's file survived the member it belonged to")
+				.isFalse();
+		assertThat(photoRowExists(withoutFile))
+				.as("a photo row survived even though its file was already gone from disk")
+				.isFalse();
+		assertThat(photoRowExists(withBlockedFile))
+				.as("a photo row survived even though its file could not be removed from disk")
+				.isFalse();
+	}
+
+	/**
+	 * THE EMPTIED TEAM'S LOGO GOES WITH IT, ROW AND FILE, AND THE TEAM THAT STAYS KEEPS ITS OWN.
+	 *
+	 * <p>This is {@link ATeamGoesWithItsLastMember}'s own reasoning rather than a decision - no
+	 * entry in either journal names a team's logo - and it is measured here through the same
+	 * door {@link #theTeamHeWasTheLastOfGoesAndTheOthersStay} already proves empties
+	 * {@link #TEAM_THAT_EMPTIES} and keeps {@link #TEAM_KEPT_BY_AN_OPEN_ROW} standing.
+	 *
+	 * <p><b>Two teams and two logos</b>, so „the logo that went" is never „the only logo" and a
+	 * statement that swept every row in {@code photo} could not pass this and fail the
+	 * assertion below it.
+	 */
+	@Test
+	void theEmptiedTeamsLogoGoesWithItAndTheKeptTeamsLogoStays() throws Exception {
+		long goneLogo = photo();
+		long keptLogo = photo();
+
+		db.sql("update team set logo_id = ? where slug = ?").params(goneLogo, TEAM_THAT_EMPTIES)
+				.update();
+		db.sql("update team set logo_id = ? where slug = ?")
+				.params(keptLogo, TEAM_KEPT_BY_AN_OPEN_ROW).update();
+
+		assertThat(deleteAs(THE_DELETER, THE_TARGET, "delete").getStatus()).isEqualTo(204);
+
+		assertThat(photoRowExists(goneLogo))
+				.as("the emptied team's logo survived the team it belonged to")
+				.isFalse();
+		assertThat(photoRowExists(keptLogo))
+				.as("a team that is still standing lost the logo of the team that went")
+				.isTrue();
+	}
+
+	/**
 	 * EVERY HALF HE LEAVES BEHIND IS TOLD, AND NOBODY ELSE IS.
 	 *
 	 * <p>PDL P13, 07.09.2026: „„Raskini" obavestava drugu polovinu... promena pogadja clana
@@ -618,6 +762,91 @@ class CompetitorWriteApiTest {
 		assertThat(membersThatExist())
 				.as("%s: he was refused and deleted anyway", how)
 				.contains(who);
+	}
+
+	/**
+	 * THE SUPERADMIN ADMINISTERS TOO, AND NEITHER HALF OF THE EXISTING CONDITION CAN SEE HIM.
+	 *
+	 * <p>Measured 25.09.2026: his row carries {@code competitor} and zero ticks, precisely the
+	 * shape {@link #aMemberWhoseAccountAdministersIsRefused} already proves is let through by
+	 * design when nobody administers - so a role check and a ticked-box check both answer him
+	 * "no", and only a third source, {@link com.btl.portal.domain.rights.TheNamedSuperadmin},
+	 * can refuse him. PDL P21, 14.09.2026: „nema radnje kroz portal koja bi superadmina obrisala
+	 * ili razvlastila."
+	 *
+	 * <p><b>Deleted by SOMEBODY ELSE</b>, so this is not a case about a caller acting on
+	 * himself - {@link #theSuperadminCannotDeleteHimselfEither} is that one.
+	 */
+	@Test
+	void theSuperadminCannotBeDeletedByAnotherModerator() throws Exception {
+		man("001300", "Super", "Adminovic");
+		account(SUPERADMIN_EMAIL, "001300", "competitor", "Super", "Adminovic");
+		confirm(SUPERADMIN_EMAIL);
+
+		MockHttpServletResponse answer = deleteAs(THE_DELETER, "001300", "delete");
+
+		assertThat(answer.getStatus())
+				.as("the named and confirmed superadmin was deleted by another moderator")
+				.isEqualTo(409);
+
+		assertThat(reasonIn(answer))
+				.as("he was refused without being told what stopped it")
+				.isEqualTo(CompetitorWriteApi.THE_ACCOUNT_ADMINISTERS);
+
+		assertThat(membersThatExist())
+				.as("he was refused and deleted anyway")
+				.contains("001300");
+	}
+
+	/**
+	 * AND HE CANNOT DELETE HIMSELF EITHER, WHICH THE DOOR ALONE COULD NOT REFUSE.
+	 *
+	 * <p>{@link WhoIsAsking} hands the superadmin every right there is, so the gate in front of
+	 * this route lets him through to ask about his own number exactly as it would for anybody
+	 * else he may delete - the only thing standing between him and a 204 is the read inside
+	 * {@code hisAccountAdministers}, over the very row the request names. A check written the
+	 * other way round, over the caller's own session rather than the row being deleted, would
+	 * refuse nothing here.
+	 */
+	@Test
+	void theSuperadminCannotDeleteHimselfEither() throws Exception {
+		man("001300", "Super", "Adminovic");
+		account(SUPERADMIN_EMAIL, "001300", "competitor", "Super", "Adminovic");
+		confirm(SUPERADMIN_EMAIL);
+
+		MockHttpServletResponse answer = deleteAs(SUPERADMIN_EMAIL, "001300", "delete");
+
+		assertThat(answer.getStatus())
+				.as("the superadmin deleted his own member row")
+				.isEqualTo(409);
+
+		assertThat(membersThatExist())
+				.as("he deleted himself despite the refusal")
+				.contains("001300");
+	}
+
+	/**
+	 * AN ADDRESS THE SETTINGS NAME BUT NOBODY HAS CONFIRMED IS NOT THE SUPERADMIN, AND IS
+	 * DELETED JUST THE SAME.
+	 *
+	 * <p>The mutation this is written against: a check that reads the address alone and drops
+	 * the confirmation half of {@code TheNamedSuperadmin.covers}. „Nalog sa tom adresom, KAD JE
+	 * ADRESA POTVRDJENA, nosi ulogu superadmina" (PDL P21) is two conditions and not one; a
+	 * registration that merely claims the address must not be able to make itself
+	 * undeletable.
+	 */
+	@Test
+	void anAddressNamedButNotConfirmedIsNotTheSuperadminAndIsDeletedJustTheSame() throws Exception {
+		man("001300", "Super", "Adminovic");
+		account(SUPERADMIN_EMAIL, "001300", "competitor", "Super", "Adminovic");
+
+		assertThat(deleteAs(THE_DELETER, "001300", "delete").getStatus())
+				.as("an unconfirmed claim on the named address was treated as the superadmin")
+				.isEqualTo(204);
+
+		assertThat(membersThatExist())
+				.as("he was answered 204 and kept his row anyway")
+				.doesNotContain("001300");
 	}
 
 	/**
@@ -910,6 +1139,26 @@ class CompetitorWriteApiTest {
 		db.sql("insert into account_admin_right (account_id, right_code)"
 						+ " values ((select id from account where email = ?), ?)")
 				.params(email, right).update();
+	}
+
+	/** Marks the address confirmed, which is the second half of PDL P21's sentence. */
+	private void confirm(String email) {
+		db.sql("update account set email_confirmed_at = ? where email = ?")
+				.params(Timestamp.from(Instant.now()), email).update();
+	}
+
+	/** A fresh, valid picture row, standing for nobody until a case points something at it. */
+	private long photo() {
+		return db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
+						+ " crop_diameter) values ('image/jpeg', 100, ?, 0.5, 0.5, 1) returning id")
+				.param("a".repeat(64))
+				.query(Long.class)
+				.single();
+	}
+
+	private boolean photoRowExists(long photo) {
+		return db.sql("select exists(select 1 from photo where id = ?)").param(photo)
+				.query(Boolean.class).single();
 	}
 
 	private void openSession(String email) {

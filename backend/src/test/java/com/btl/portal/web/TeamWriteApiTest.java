@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -86,12 +87,38 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * {@code RightsAtTheDoorTest} has nothing to sweep. What IS measured here is the one thing
  * that sweep could not see either way: that a stranger is refused before the handler runs,
  * which is {@code ApiSecurity} opening {@code /api/teams} for reading and not for writing.
+ *
+ * <p><b>A PHOTOS FOLDER OF THIS RUN'S OWN</b>, for the reason {@code MePhotoApiTest} keeps one:
+ * the setting's default is shared by every run on the machine, and a file here is named by a
+ * {@code bigserial} that starts again at one in every fresh Testcontainers database, so two
+ * runs sharing the default would meet each other's files under the same name.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class TeamWriteApiTest {
+
+	/**
+	 * A folder of this run's own. See {@code MePhotoApiTest.PHOTOS} for the fault this avoids.
+	 */
+	private static final Path PHOTOS = aFolderOfThisRunsOwn();
+
+	private static Path aFolderOfThisRunsOwn() {
+		try {
+			return Files.createTempDirectory("btl-photos-team-write-");
+		}
+		catch (java.io.IOException noFolder) {
+			throw new IllegalStateException("no temporary folder to keep pictures in", noFolder);
+		}
+	}
+
+	@org.springframework.test.context.DynamicPropertySource
+	static void thePortalKeepsItsPicturesHere(
+			org.springframework.test.context.DynamicPropertyRegistry registry) {
+
+		registry.add("btl.photos.folder", PHOTOS::toString);
+	}
 
 	/** 11:00 in Belgrade on 3 October 2027, well inside the transfer window. */
 	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-10-03T09:00:00Z");
@@ -227,6 +254,9 @@ class TeamWriteApiTest {
 	@Autowired
 	private AClockTheCaseMoves clock;
 
+	@Value("${btl.photos.folder}")
+	private String folder;
+
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	private int issued;
@@ -334,6 +364,20 @@ class TeamWriteApiTest {
 						+ " values (?, ?, '', '', (select id from place where rank = 1), null, null,"
 						+ " null, ?, null)")
 				.params(slug, name, A_SEASON_NO_CASE_COMPUTES).update();
+	}
+
+	/** A fresh, valid picture row, standing for nobody until a case points something at it. */
+	private long photo() {
+		return db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
+						+ " crop_diameter) values ('image/jpeg', 100, ?, 0.5, 0.5, 1) returning id")
+				.param("a".repeat(64))
+				.query(Long.class)
+				.single();
+	}
+
+	private boolean photoRowExists(long photo) {
+		return db.sql("select exists(select 1 from photo where id = ?)").param(photo)
+				.query(Boolean.class).single();
 	}
 
 	/** An open membership, which is what an approval writes ({@code Membership.open}). */
@@ -1239,6 +1283,80 @@ class TeamWriteApiTest {
 				.as("the team he was the last of is still on the list, or a team that had"
 						+ " nothing to do with him went instead")
 				.containsExactlyInAnyOrder(TAKEN_ADDRESS, THE_OTHER_TEAM);
+	}
+
+	/**
+	 * AND ITS LOGO GOES WITH IT, ROW AND FILE, THROUGH THE OTHER OF THE TWO ROADS A TEAM CAN
+	 * EMPTY BY.
+	 *
+	 * <p>{@link ATeamGoesWithItsLastMember} is one method reached by two callers - a member
+	 * deleted ({@code CompetitorWriteApi}) or a member who walks out (this route) - and its own
+	 * class note names the fault of two homes for one fact. {@code CompetitorWriteApiTest}
+	 * already measures the logo going by the first road; this measures the same method through
+	 * the second, with a real file on disk, which is the branch that road alone exercises.
+	 *
+	 * <p>This is {@code ATeamGoesWithItsLastMember}'s own reasoning rather than a decision - no
+	 * entry in either journal names a team's logo when the team disappears.
+	 */
+	@Test
+	void theTeamsLogoGoesWithItWhenTheLastMembershipIsRemoved() throws Exception {
+		long logo = photo();
+		db.sql("update team set logo_id = ? where slug = ?").params(logo, HIS_TEAM).update();
+
+		Files.createDirectories(Path.of(folder));
+		Path file = Path.of(folder).resolve(String.valueOf(logo));
+		Files.write(file, "bajtovi znaka tima".getBytes());
+
+		assertThat(leaveAs(HAS_A_TEAM, HIS_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(photoRowExists(logo))
+				.as("the emptied team's logo row survived the team it belonged to")
+				.isFalse();
+		assertThat(Files.exists(file))
+				.as("the emptied team's logo file survived the team it belonged to")
+				.isFalse();
+	}
+
+	/**
+	 * AND THE LOGO'S ROW IS STILL REMOVED WHEN ITS FILE WILL NOT LEAVE THE DISK, THE THIRD WAY
+	 * {@code takeAwayThePhoto} CAN GO.
+	 *
+	 * <p>A member and a team of his own, self-contained rather than reusing {@link #HIS_TEAM} -
+	 * that team is spent by {@link #theTeamsLogoGoesWithItWhenTheLastMembershipIsRemoved}
+	 * proving the ordinary success, and a second fault forced on the same team in the same run
+	 * would not be a second case.
+	 *
+	 * <p><b>Forced the same way {@code TheRemovalStandsEvenWhenTheFileWontGoTest} forces it for
+	 * {@code MePhotoApi}</b>: a non-empty directory where the file should be, which
+	 * {@code Files.deleteIfExists} refuses to remove. The fault is logged and swallowed rather
+	 * than thrown, so the leave itself still answers 204.
+	 */
+	@Test
+	void theTeamsLogoIsRemovedEvenWhenItsFileCannotLeaveTheDisk() throws Exception {
+		String member = "000700";
+		String teamSlug = "tim-cija-slika-ne-moze-da-ode";
+
+		competitor(member);
+		team(teamSlug, "Tim cija slika ne moze da ode");
+		inATeam(member, teamSlug, A_SEASON_STILL_TO_COME);
+		account("nemoguc-fajl@primer.rs", member);
+
+		long logo = photo();
+		db.sql("update team set logo_id = ? where slug = ?").params(logo, teamSlug).update();
+
+		Files.createDirectories(Path.of(folder));
+		Path blocked = Path.of(folder).resolve(String.valueOf(logo));
+		Files.createDirectory(blocked);
+		Files.writeString(blocked.resolve("nemoguce-obrisati.txt"), "x");
+
+		assertThat(leaveAs(member, teamSlug).getStatus())
+				.as("a fault removing the team's logo file stopped a leave the schema allows")
+				.isEqualTo(204);
+
+		assertThat(photoRowExists(logo))
+				.as("the team's logo row survived even though its file could not be removed"
+						+ " from disk")
+				.isFalse();
 	}
 
 	/**
