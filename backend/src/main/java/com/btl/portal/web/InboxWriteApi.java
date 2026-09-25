@@ -123,11 +123,15 @@ import java.util.Optional;
  * <li><b>What the answer carries about the sender is a NAME and nothing else.</b>
  * {@link InboxApi.Item} serves {@code from}, which is {@code message.from_name}; there is no
  * field for his number and {@code from_id} never leaves, exactly as {@code to_id} never does.
- * <li><b>And the name is one that by decision must stay</b>, in V13's own words and in the
- * same breath as the comment the rule cites: „A message outlives its sender for the same
+ * <li><b>And the MESSAGE is one that by decision must stay</b>, in V13's own words and in
+ * the same breath as the comment the rule cites: „A message outlives its sender for the same
  * reason a decision outlives the moderator who made it (V9) and a comment outlives its author
- * (V7): the member may ask to be deleted (PDL P23) and what he wrote does not go with him.
- * The pointer empties, the name does not."
+ * (V7): the member may ask to be deleted (PDL P23) and what he wrote does not go with him."
+ * <b>Its last sentence, „The pointer empties, the name does not", no longer holds</b> and is
+ * corrected in V33: PDL P23 wants the opposite („Ako igde ostane zapis da je 000127 bio
+ * odredjena osoba, nista nije obrisano nego samo sakriveno"), so a deleted sender's name is
+ * rewritten to ADL A37's replacement text by a trigger. Nothing in this class changes for
+ * that - what it writes is the name of a member who is here.
  * <li><b>So the form is satisfied by the SCHEMA and not by a condition in this class.</b>
  * {@link CommentApi} needs {@code case when author.active then author.member_number end}
  * because {@code event_comment} serves a number; {@code message} has no such column at all,
@@ -284,7 +288,9 @@ import java.util.Optional;
  *
  * <p><b>THE SENDER'S NAME IS READ OFF HIS ROW AND NEVER TAKEN FROM THE REQUEST.</b> V13
  * keeps {@code from_name} because „the member may ask to be deleted (PDL P23) and what he
- * wrote does not go with him. The pointer empties, the name does not." Taken off the request
+ * wrote does not go with him" - the message stays and has no row to read a sender off, which
+ * is why the column exists at all. (What it holds AFTER such a deletion is V33's business
+ * and not this class's: the name is rewritten rather than kept.) Taken off the request
  * it would be a name anybody could choose; taken off the ACCOUNT it would be the name on the
  * mailbox rather than the name the league knows him by, and those are two columns in two
  * tables that need not agree. It is {@code competitor.first_name} and

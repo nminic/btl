@@ -393,13 +393,21 @@ class TeamWriteApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
+	/**
+	 * The owner's decision of 25.09.2026 that a team goes with its last member, asked of the
+	 * one place that holds it rather than written out here. {@link CompetitorWriteApi} is the
+	 * other road onto the same act and asks the same object.
+	 */
+	private final ATeamGoesWithItsLastMember emptyTeams;
+
 	TeamWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock,
-			TransactionTemplate inOneTransaction) {
+			TransactionTemplate inOneTransaction, ATeamGoesWithItsLastMember emptyTeams) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
+		this.emptyTeams = emptyTeams;
 	}
 
 	/**
@@ -576,28 +584,29 @@ class TeamWriteApi {
 	 * stays in {@code standing} and goes on administering the team he has left. They are two
 	 * columns and one fact, and a case holds each of them.
 	 *
-	 * <p><b>A TEAM LEFT WITH NOBODY IS NOT DELETED HERE, AND THIS PARAGRAPH SAID SOMETHING
-	 * UNTRUE UNTIL A REVIEW MEASURED IT.</b> PDL P13 says „ako u timu nema nikog, tim se brise
-	 * i svi njegovi clanovi prelaze u stanje „nijedan tim"". What stood here was „it does not
-	 * arise from this route", with two reasons - an ended membership still covers the season
-	 * being run, and a removed one was never counted. <b>The first reason holds and the second
-	 * does not.</b> A probe inside {@code aMembershipThatHasNotBegunIsRemovedRatherThanEnded}
-	 * read the database after the removal: „0 memberships and 1 team rows". A team founded
-	 * BEFORE its one member joined has nobody the moment he leaves, and my own argument
-	 * against deleting - that it would take the record of everybody who was ever in the team -
-	 * does not apply on that branch, because there is no such record to take.
+	 * <p><b>AND A TEAM LEFT WITH NOBODY GOES, WHICH THIS PARAGRAPH REFUSED TO DECIDE UNTIL
+	 * THE OWNER DECIDED IT.</b> What stood here was a boundary: a probe inside
+	 * {@code aMembershipThatHasNotBegunIsRemovedRatherThanEnded} had read the database after
+	 * a removal - „0 memberships and 1 team rows" - and this route took neither of the two
+	 * defensible answers, leaving the empty team standing for the owner. He answered on
+	 * 25.09.2026 (PDL P13a), in his own words: „I tim (ako nema više ni jednog člana) i par
+	 * (ako nema bar jednog člana) nestaju sa spiska", and chose, out of three offered, that
+	 * the team goes OF ITS OWN ACCORD rather than waiting for an administrator or for the job
+	 * of 1 January.
 	 *
-	 * <p><b>So it is a boundary and not a rule, and it is written rather than decided.</b>
-	 * Deleting a team is its own act with its own owner (PDL „Inkrement 133", 04.09.2026: the
-	 * administrator's „Obrisi" behind a „Da li ste sigurni?"), the sentence PDL P13 carries
-	 * sits inside the rule about the administrator's seat, and the moment a team really has
-	 * nobody is the one PDL P13, 19.09.2026 already gives to a job that does not exist yet
-	 * („BE prodje u 1.1.2028. u 16h kroz sve timove i sve parove"). Two answers are defensible
-	 * from what is written down, so this route takes neither on its own: the empty team stands
-	 * and the owner decides. On the OTHER branch nothing changes either way - a membership
-	 * ended here covers the season being run, so through 31 December that team still has him,
-	 * and deleting it would take {@code team_membership} with it ({@code on delete cascade},
-	 * V11) for a season that is still being run.
+	 * <p><b>It is asked of {@link ATeamGoesWithItsLastMember} and asked after BOTH branches,
+	 * which is why there is no third branch here.</b> „Empty" is no row at all, and only the
+	 * removal branch can produce that: a membership ENDED here still has its row, carrying
+	 * the season being run, so that team still has him through 31 December and the question
+	 * answers itself. Written as an {@code if} on the branch, the same sentence would be a
+	 * rule about which branch rather than about the team, and the day a third road empties a
+	 * team it would not be asked at all.
+	 *
+	 * <p><b>What the wait costs is named in {@link ATeamGoesWithItsLastMember} rather than
+	 * here</b>, because it is a fact about the rule and not about this route: between October
+	 * and the turn of the year a team whose only member has ended his membership stands with
+	 * nobody visible in it, and what closes that gap is the job of 1 January at 16:00 CET
+	 * that PDL P13, 19.09.2026 already decided and nothing has written yet.
 	 *
 	 * <p><b>NOBODY IS TOLD, AND THAT IS THE ABSENCE OF A SENTENCE RATHER THAN A CHOICE.</b>
 	 * PDL says in as many words who is written to when a racing pair ends („svaki ostavljeni
@@ -682,6 +691,13 @@ class TeamWriteApi {
 		db.sql("update team set admin_id = null where id = ? and admin_id = ?")
 				.params(team, me)
 				.update();
+
+		/* AND THE TEAM ITSELF, IF HE WAS THE LAST OF IT. Asked of the object that holds the
+		   owner's rule and asked LAST: the two statements above are about the row he leaves
+		   behind, and this is about whether anything is left at all. Above the seat, it
+		   would be asking whether the team is empty while a column of it is still being
+		   written. */
+		emptyTeams.goIfEmpty(List.of(team));
 
 		return ResponseEntity.noContent().build();
 	}

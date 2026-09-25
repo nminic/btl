@@ -302,23 +302,35 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 
 	/**
 	 * Deleting a member takes his results and his intentions, and leaves the
-	 * comment he published with his name on it.
+	 * comment he published WITH HIS NAME TAKEN OUT OF IT.
 	 *
 	 * The owner, 11.08.2026, and two outcomes with no third: either the profile is
 	 * hidden because the membership is not active, and everything is untouched; or
-	 * the member goes for good, with his profile and his results, and wherever his
-	 * name stood there is an anonymised record. So the results go, the stated
-	 * intention goes with them because an intention of a member who no longer
-	 * exists is nothing, and the comment stays with {@code who} as the tombstone
-	 * and no author.
+	 * the member goes for good, „obrisan zauvek sa svim svojim profilom i
+	 * rezultatima, a na mestima gde se pominje bice ANONIMIZOVAN". So the results
+	 * go, the stated intention goes with them because an intention of a member who
+	 * no longer exists is nothing, and the comment STAYS - with neither his author
+	 * nor his name.
+	 *
+	 * <b>The last clause is the correction of 25.09.2026 and it reverses what this
+	 * case used to measure.</b> Until V33 the column kept the name it was published
+	 * under, which is the sentence V7 wrote for a member who LEFT the league and
+	 * which V13 copied for a message. Read across to a member who was DELETED it is
+	 * the second half of the owner's own sentence going unkept, and PDL P23 says
+	 * what that is worth: „Ako igde ostane zapis da je 000127 bio odredjena osoba,
+	 * nista nije obrisano nego samo sakriveno." The replacement text is ADL A37's,
+	 * chosen by the owner on 06.09.2026 with the brackets that tell a reader it is
+	 * not a name.
 	 *
 	 * The member who stays is what makes each half a half: a cascade that took
 	 * every result, or one that took none, would pass a case with one member in
-	 * it. The member he brought is the third: the credit is already paid, and what
-	 * must not remain is the pointer at a deleted person.
+	 * it. And his comment is read back beside the other, so a trigger that emptied
+	 * every author cannot pass either. The member he brought is the third: the
+	 * credit is already paid, and what must not remain is the pointer at a deleted
+	 * person.
 	 */
 	@Test
-	void deletingAMemberTakesHisResultsAndLeavesTheCommentHePublished() {
+	void deletingAMemberTakesHisResultsAndAnonymisesTheCommentHePublished() {
 		long event = event("brisanje-2027", A_TOWN_IN_SERBIA + ", null, null");
 		long race = race(event, "Trka", "10.00");
 
@@ -341,12 +353,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 		assertThat(lastNamesOf("select c.first_name from attending a join competitor c on c.id = a.competitor_id"))
 				.containsExactly("Ostaje");
 
-		/* The comment outlives its author, and what is left of him is the name as
-		   it was published. Both comments are read back, so a rule that took every
-		   comment or emptied every author cannot pass. */
+		/* The comment outlives its author and what is left of him is not his name.
+		   Both comments are read back, so a rule that took every comment, emptied
+		   every author or rewrote every name cannot pass. The man's word, because
+		   every member this fixture writes is one. */
 		assertThat(db.sql("select who || ' ' || case when competitor_id is null then 'bez profila' else 'sa profilom'"
 				+ " end from event_comment order by who").query(String.class).list())
-				.containsExactly("Odlazi Trkac bez profila", "Ostaje Trkac sa profilom");
+				.containsExactly("<Obrisani član> bez profila", "Ostaje Trkac sa profilom");
 
 		assertThat(referrerOf(broughtByTheOneWhoGoes)).isEqualTo("bez onoga ko ga je doveo");
 		assertThat(referrerOf(broughtByTheOneWhoStays)).isEqualTo("Ostaje");
