@@ -1087,15 +1087,6 @@ class CompetitorWriteApi {
 			return notComplete(typed, List.copyOf(missing));
 		}
 
-		/* AND AN ADDRESS THAT IS NOT ONE IS ITS OWN SENTENCE, which is
-		   `ModeratorWriteApi.THE_ADDRESS_IS_NOT_SHAPED`'s reason: a field somebody forgot is
-		   one he goes back and fills in, and a field he has already typed and got wrong is
-		   one he has to look at. It is asked AFTER the loop because the loop's own entry for
-		   `email` is what catches an absent one, and the two would otherwise both speak. */
-		if (!WhatAnAddressLooksLike.itDoes(address)) {
-			return new Reading(typed, born, town, address, THE_ADDRESS_IS_NOT_SHAPED, List.of());
-		}
-
 		return new Reading(typed, born, town, address, null, List.of());
 	}
 
