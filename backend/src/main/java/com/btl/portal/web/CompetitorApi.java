@@ -377,7 +377,7 @@ class CompetitorApi {
 						+ " coalesce(town.name, c.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
 						+ " c.first_season_2027, c.first_season,"
-						+ " c.referral_code as bio, m.team_id, m.season_from as team_since,"
+						+ " c.bio, m.team_id, m.season_from as team_since,"
 						+ " c.profile_hidden, c.birthday_shown,"
 						/* THE CALLER'S OWN REFERRAL LINK AND HIS COUNT OF WHOM HE BROUGHT IN
 						   STOOD HERE UNTIL 25.09.2026, each as `case when c.id = :me then ...`.
