@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
 import { answeredWith, forgetEveryCookie, refused, serverThat } from '../../test/serverAnswers'
-import { tellTheServer } from '../account/askTheServer'
+import { askTheServer } from '../account/askTheServer'
 import {
   AS_LONG_AS_THE_FORM_ALLOWS,
   WHAT_THIS_SCREEN_SENDS,
@@ -251,33 +251,36 @@ describe('telling the server to change something', () => {
   })
 
   /**
-   * THE CASE THIS FUNCTION EXISTS FOR, AND IT IS A REPLACEMENT OF THE SOURCE RATHER THAN A
-   * DELETION.
+   * THE CASE THE 200 BRANCH EXISTS FOR, AND IT IS THE ONE NUMBER THE FOLD OF 25.09.2026 HAD
+   * TO CARRY OVER.
    *
-   * <p>`PUT /api/me` answers <b>200</b> with the member's record as it now stands, and
-   * `askTheServer` - the function this one stands beside - reads only 204 and 201 as done.
-   * Sent that way, a change that WAS SAVED came back `{got:'wrong', status:200}` and the
-   * member was told it was not kept.
+   * <p>`PUT /api/me` answers <b>200</b> with the member's record as it now stands. Until
+   * 24.09.2026 these cases went through `tellTheServer`, a second entry point written as a
+   * merge decision; on 25.09.2026 the two were folded into one, which is what that
+   * function's own note said would happen. What the fold had to keep is exactly this: read
+   * without the 200, a change that WAS SAVED comes back `{got:'wrong', status:200}` and the
+   * member is told it was not kept, so he types it all again over a save that landed.
    *
-   * <p>The mutation that proves it is not „take the 200 branch out" (which fails loudly) but
-   * „send this through `askTheServer` instead", which is the wrong that was there to be made.
+   * <p>The mutation that proves it is „take 200 out of the list of numbers read as done",
+   * which is now the only spelling of that wrong there is - the other entry point it could
+   * have been sent through no longer exists.
    */
   it('reads the 200 that carries the saved record as done', async () => {
     ;({ stop } = serverThat((path) => (path === '/api/me' ? answeredWith(200) : null)))
 
-    expect(await tellTheServer('/api/me', { phone: '065' }, 'PUT')).toEqual({ got: 'done' })
+    expect(await askTheServer('/api/me', { phone: '065' }, 'PUT')).toEqual({ got: 'done' })
   })
 
   it('reads the 204 the password route answers as done', async () => {
     ;({ stop } = serverThat((path) => (path === '/api/me/password' ? answeredWith(204) : null)))
 
-    expect(await tellTheServer('/api/me/password', {}, 'PUT')).toEqual({ got: 'done' })
+    expect(await askTheServer('/api/me/password', {}, 'PUT')).toEqual({ got: 'done' })
   })
 
   it('carries the reason a 400 named', async () => {
     ;({ stop } = serverThat((path) => (path === '/api/me' ? refused('aFieldIsBlank') : null)))
 
-    expect(await tellTheServer('/api/me', {}, 'PUT')).toEqual({
+    expect(await askTheServer('/api/me', {}, 'PUT')).toEqual({
       got: 'refused',
       reason: 'aFieldIsBlank',
     })
@@ -289,7 +292,7 @@ describe('telling the server to change something', () => {
       path === '/api/me' ? refused('aTextAlreadyWaits', 409) : null,
     ))
 
-    expect(await tellTheServer('/api/me', {}, 'PUT')).toEqual({
+    expect(await askTheServer('/api/me', {}, 'PUT')).toEqual({
       got: 'refused',
       reason: 'aTextAlreadyWaits',
     })
@@ -298,19 +301,19 @@ describe('telling the server to change something', () => {
   it('says a refusal carrying no reason by its number instead', async () => {
     ;({ stop } = serverThat((path) => (path === '/api/me' ? answeredWith(400) : null)))
 
-    expect(await tellTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'wrong', status: 400 })
+    expect(await askTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'wrong', status: 400 })
   })
 
   it('tells a token that did not match apart from everything else', async () => {
     ;({ stop } = serverThat((path) => (path === '/api/me' ? answeredWith(403) : null)))
 
-    expect(await tellTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'rejected' })
+    expect(await askTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'rejected' })
   })
 
   it('says the number of any other answer rather than guessing at it', async () => {
     ;({ stop } = serverThat((path) => (path === '/api/me' ? answeredWith(404) : null)))
 
-    expect(await tellTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'wrong', status: 404 })
+    expect(await askTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'wrong', status: 404 })
   })
 
   it('says so plainly when there was no answer at all', async () => {
@@ -318,7 +321,7 @@ describe('telling the server to change something', () => {
       throw new Error('no connection')
     }))
 
-    expect(await tellTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'nothing' })
+    expect(await askTheServer('/api/me', {}, 'PUT')).toEqual({ got: 'nothing' })
   })
 
   /**
@@ -331,7 +334,7 @@ describe('telling the server to change something', () => {
     let asked: { path: string; init: RequestInit | undefined }[] = []
     ;({ stop, asked } = serverThat((path) => (path === '/api/me' ? answeredWith(200) : null)))
 
-    await tellTheServer('/api/me', { firstName: 'Strahinje' }, 'PUT')
+    await askTheServer('/api/me', { firstName: 'Strahinje' }, 'PUT')
 
     const sent = asked.find((one) => one.path === '/api/me')
 
@@ -359,7 +362,7 @@ describe('telling the server to change something', () => {
       return path === '/api/me' ? answeredWith(200) : null
     }))
 
-    await tellTheServer('/api/me', {}, 'PUT')
+    await askTheServer('/api/me', {}, 'PUT')
 
     expect(asked.map((one) => one.path)).toEqual(['/api/countries', '/api/me'])
 
