@@ -1218,6 +1218,69 @@ class TeamWriteApiTest {
 	}
 
 	/**
+	 * AND WHEN THE REMOVED MEMBERSHIP WAS THE LAST ONE, THE TEAM GOES WITH IT.
+	 *
+	 * <p>Owner, PDL P13a, 25.09.2026: „I tim (ako nema više ni jednog člana) i par (ako nema
+	 * bar jednog člana) nestaju sa spiska", choosing out of three offered answers that the
+	 * team goes of its own accord rather than waiting for an administrator or for the job of
+	 * 1 January. This is the branch that can reach it from here: the case above is the same
+	 * request with a team-mate beside him, and it measures that the team STAYS.
+	 *
+	 * <p><b>Three teams are read and not one</b>, which is what makes the assertion about
+	 * this team rather than about deleting teams: {@link #THE_OTHER_TEAM} has a member whose
+	 * membership has begun, {@link #TAKEN_ADDRESS} has never had a member at all, and neither
+	 * may move because of a request about a third.
+	 */
+	@Test
+	void aTeamGoesWhenTheMembershipRemovedFromItWasTheLastOne() throws Exception {
+		assertThat(leaveAs(HAS_A_TEAM, HIS_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(teamsThatExist())
+				.as("the team he was the last of is still on the list, or a team that had"
+						+ " nothing to do with him went instead")
+				.containsExactlyInAnyOrder(TAKEN_ADDRESS, THE_OTHER_TEAM);
+	}
+
+	/**
+	 * A TEAM WHOSE LAST MEMBERSHIP WAS MERELY ENDED STAYS, AND IT STAYS UNTIL THE SEASON
+	 * TURNS.
+	 *
+	 * <p><b>This is the boundary of the rule above and the one case that separates the two
+	 * readings of „empty".</b> Three resources already answer which team a member is in as
+	 * {@code m.season_to is null} ({@code CompetitorApi}, {@code MeApi}, {@code TeamApi}'s
+	 * {@code standing}), and asked that way here the team below would go TODAY - in October,
+	 * while V11's row still says he is in it, because {@code season_to} is „the last season
+	 * he is in it" and that season is the one being run.
+	 *
+	 * <p><b>{@link #IN_A_TEAM_NOW} is alone in {@link #THE_OTHER_TEAM} on purpose.</b> With a
+	 * team-mate the team would survive for a reason that has nothing to do with the
+	 * condition, and the mutation that swaps „any row" for „any OPEN row" would pass.
+	 *
+	 * <p>What the wait costs is written down in {@code ATeamGoesWithItsLastMember}: between
+	 * October and 1 January that team is drawn with nobody in it, and what ends the gap is
+	 * the job of 1 January at 16:00 CET that PDL P13, 19.09.2026 decided and nothing has
+	 * written.
+	 */
+	@Test
+	void aTeamWhoseLastMembershipWasEndedRatherThanRemovedStays() throws Exception {
+		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(membershipsOf(IN_A_TEAM_NOW))
+				.as("the row this case rests on is not the row it thinks it is")
+				.containsExactly(THE_OTHER_TEAM + " " + A_SEASON_ALREADY_RUNNING + "-"
+						+ A_SEASON_ALREADY_RUNNING + " " + THE_REASON_A_MEMBER_LEAVING_WRITES);
+
+		assertThat(teamsThatExist())
+				.as("a team he is in until 31 December was taken away from him in October")
+				.containsExactlyInAnyOrder(TAKEN_ADDRESS, HIS_TEAM, THE_OTHER_TEAM);
+	}
+
+	/** Every team there is, by address, in an order that is total. */
+	private List<String> teamsThatExist() {
+		return db.sql("select slug from team order by slug").query(String.class).list();
+	}
+
+	/**
 	 * AND WHAT LEAVING BUYS HIM IS THE NEXT SEASON, WHICH IS THE TWO READINGS AGREEING.
 	 *
 	 * <p>„Nema tim" is read off the record (PDL, 05.09.2026), and the record after leaving is
