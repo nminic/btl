@@ -181,10 +181,41 @@ describe('the reasons these two routes can name', () => {
     expect(Object.keys(WHEN_CHANGING_MY_DATA).filter((reason) => !named.has(reason))).toEqual([])
   })
 
+  it('are every one of them carried by the screen, for the password route too', () => {
+    const named = reasonsIn('MePasswordApi.java')
+
+    expect(
+      named.length,
+      'MePasswordApi names no reason at all, so this measures nothing',
+    ).toBeGreaterThan(0)
+    expect(named.filter((reason) => !Object.hasOwn(WHEN_CHANGING_MY_PASSWORD, reason))).toEqual([])
+  })
+
   /**
-   * The password route is not in this base, so what CAN be held about it is held: that every
-   * sentence it points at is really in the dictionary. A key that is not there reaches a reader
-   * as the key itself, printed.
+   * AND THE PASSWORD ROUTE'S OWN OTHER DIRECTION, WHICH THIS FILE COULD NOT ASK BEFORE TODAY.
+   *
+   * <p>`MePasswordApi.java` was not on `main` when the check below was written, so this
+   * describe block could hold the password route to nothing more than „every sentence it
+   * points at really exists" (still true, and still asked below). Now that the route has
+   * landed (#361), it gets the same two-way guard `MeWriteApi` has above: `reasonsIn` reads
+   * its three reason constants and `WHEN_CHANGING_MY_PASSWORD` names exactly those three, so
+   * this converges on the empty list from the day it is written rather than after a gap is
+   * found and closed, which is how `MeWriteApi`'s pair above got there.
+   */
+  it('claims no reason the password route cannot answer', () => {
+    const named = new Set(reasonsIn('MePasswordApi.java'))
+
+    expect(Object.keys(WHEN_CHANGING_MY_PASSWORD).filter((reason) => !named.has(reason))).toEqual([])
+  })
+
+  /**
+   * NEITHER TWO-WAY GUARD ABOVE OPENS `sr.json`, AND THIS IS THE ONE CHECK THAT DOES.
+   *
+   * <p>What `reasonsIn` holds a route to is its OWN reason strings against this screen's keys
+   * for them; it never looks at the dictionary path behind a key. A key kept after its
+   * sentence was renamed, or pointed at a section that does not exist, would pass every guard
+   * above and still hand a member the key itself, printed. That is true for both tables now
+   * that the password one has its own two-way guard as well, so both are read here together.
    */
   it('each point at a sentence the dictionary really has', () => {
     const words: Record<string, unknown> = sr
