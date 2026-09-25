@@ -57,6 +57,34 @@ import java.util.Optional;
  * that is changed and record another on the same row afterwards, and require the two to
  * disagree.
  *
+ * <p><b>BOUNDARY, AND IT IS THE ONE THAT DECIDES WHETHER THIS MAY BE RELEASED: A PRICE SET
+ * HERE CHANGES WHAT IS CHARGED AND NOT WHAT IS SHOWN.</b> The amount has <b>four</b> homes
+ * today, and only one of them is this table:
+ *
+ * <ol>
+ * <li>{@code price_row} (V4), which is what {@code PaymentApi} books from
+ * ({@code PaymentApi.priceRows}) and the only home this route can reach;
+ * <li>{@code frontend/src/data/pricing.ts} ({@code PRICES}, {@code JUNIOR},
+ * {@code REFERRAL}, {@code PROCESSING_FEE_EUR}), which is what {@code PriceTable} draws,
+ * what {@code Membership} quotes, and - through {@code data/paymentQr.ts} - <b>what the IPS
+ * QR code a member scans carries</b>;
+ * <li>{@code backend/tools/generate_reference_migrations.py} ({@code PRICE_ROWS}), copied
+ * by hand, which the file itself says out loud because {@code pricing.ts} is TypeScript and
+ * not data;
+ * <li>{@code PriceListRowsTest}, a fourth written list, deliberately read from the decision
+ * rather than from the generator.
+ * </ol>
+ *
+ * <p><b>So until a screen reads {@code GET /api/pricing} instead of the bundled constant, an
+ * administrator who raises a price here raises what the next member is CHARGED while the
+ * page he reads and the code he scans still say the old number.</b> That is a gap in the
+ * product and not a fault in this class, and it is written here because it is the reason
+ * this route is ready before the screen rather than after it (owner, 25.09.2026, PDL P12b:
+ * the pricing screen is its own increment). {@code ThePriceListHasOneHomeTest} holds homes
+ * 1 and 2 to each other as the repository stands, so the two cannot part company in the
+ * SOURCE; <b>nothing on this side can see them part at RUN TIME</b>, because every test
+ * starts from a database V4 has just written. Naming it is all this side can do.
+ *
  * <p><b>WHAT THIS ROUTE DELIBERATELY DOES NOT WRITE, each named rather than discovered.</b>
  *
  * <ul>
@@ -93,6 +121,16 @@ class PricingWriteApi {
 
 	/** Negative, or with more para than the column keeps, or past what it can hold. */
 	static final String THE_AMOUNT_IS_NOT_KEPT_EXACTLY = "theAmountIsNotKeptExactly";
+
+	/**
+	 * Above 1.000 EUR or 200.000 RSD, which is PDL P12c said as a sentence.
+	 *
+	 * <p><b>Its own sentence and not {@link #THE_AMOUNT_IS_NOT_KEPT_EXACTLY}</b>, because
+	 * the two send an administrator to two different places: one says „that number does not
+	 * fit in this column, take a para off it" and this says „that is more than a membership
+	 * may cost". 1.500 EUR is a perfectly good {@code numeric(10,2)}.
+	 */
+	static final String THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST = "theAmountIsMoreThanARowMayCost";
 
 	/** V4's {@code price_row_only_fee_has_no_rsd}, said as a sentence. See {@link #change}. */
 	static final String THE_FEE_HAS_NO_DINAR_PRICE = "theFeeHasNoDinarPrice";
@@ -192,6 +230,18 @@ class PricingWriteApi {
 	 * it is written down because an order that carries a fault reads like an order that
 	 * carries nothing.
 	 *
+	 * <p><b>AND THE AMOUNT HAS A CEILING, WHICH THIS ROUTE ENFORCES AND THE FORM ONLY
+	 * REPEATS.</b> Owner, 25.09.2026 (PDL P12c): 1.000 EUR and 200.000 RSD. <b>The reason it
+	 * is here is a contradiction inside this very class, found by review:</b> the deadline
+	 * two paragraphs down was deliberately moved onto the route on the strength of ADL A8
+	 * („prava se sprovode na ruti, ne po ekranu"), while the amounts were just as
+	 * deliberately left to {@code admin-cena.form.json} - so the same class enforced one
+	 * screen's guard and trusted another. It is not theoretical: an amount written past the
+	 * screen goes onto the price table a visitor READS and into every payment after it,
+	 * which P12a then makes permanent. The two numbers are {@link MembershipPrice}'s, each
+	 * currency against its own, and {@code WhatAPriceMayCostTest} reads the form off the
+	 * working tree so the two homes the owner accepted cannot drift apart in silence.
+	 *
 	 * <p><b>ALL SEVEN ROWS ARE WRITTEN HERE, INCLUDING THE FEE (owner, 25.09.2026).</b> He
 	 * chose that the processing fee gets a button of its own with the dinar price left out,
 	 * rather than being refused; the screen and the form that go with it are a later
@@ -284,6 +334,30 @@ class PricingWriteApi {
 		if (!MembershipPrice.amountIsKeptExactly(typed.eur())
 				|| (!theFee && !MembershipPrice.amountIsKeptExactly(typed.rsd()))) {
 			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
+		}
+
+		/* AND WHAT A MEMBERSHIP MAY PLAUSIBLY COST, WHICH THE OWNER DECIDED ON 25.09.2026
+		   AND THE COLUMN KNOWS NOTHING ABOUT. PDL P12c: the route refuses above 1.000 EUR
+		   and 200.000 RSD. Until that decision this route took a membership fee of ninety
+		   nine million, and the journal says why that was not theoretical: an amount written
+		   past the screen goes onto the PUBLIC price table and into every payment after it,
+		   where P12a makes it permanent.
+
+		   EACH CURRENCY AGAINST ITS OWN CEILING, never one against the other's. The euro
+		   ceiling applied to dinars refuses `late`, a price the list has carried since V4;
+		   the dinar ceiling applied to euro lets 1.500 EUR through. Two named questions
+		   rather than one taking a limit, so the pair cannot be handed over the wrong way
+		   round - see `MembershipPrice` for the whole of that reasoning.
+
+		   AFTER the question above and not before it, which is chosen. An amount is asked
+		   whether the column KEEPS it before it is asked whether it is too much, so a
+		   negative price and 41.125 keep the sentence they already had and 100.000.000 -
+		   which fails both - keeps it too. The alternative would have moved an existing
+		   answer while adding a new one, and a change that quietly restates old cases is a
+		   change nobody measured. */
+		if (!MembershipPrice.euroIsWithinWhatARowMayCost(typed.eur())
+				|| (!theFee && !MembershipPrice.dinarsAreWithinWhatARowMayCost(typed.rsd()))) {
+			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST);
 		}
 
 		/* `single()` AND NOT `optional()`, WHICH IS A STATEMENT ABOUT WHAT CAN HAPPEN HERE.

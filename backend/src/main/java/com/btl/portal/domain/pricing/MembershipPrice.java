@@ -74,6 +74,44 @@ public final class MembershipPrice {
 	private static final java.math.BigDecimal MOST_AN_AMOUNT_CAN_BE =
 			new java.math.BigDecimal("99999999.99");
 
+	/**
+	 * THE MOST A ROW OF THE PRICE LIST MAY COST, WHICH IS A DECISION AND NOT A COLUMN.
+	 *
+	 * <p><b>Owner, 25.09.2026 (PDL P12c):</b> the route refuses an amount above <b>1.000
+	 * EUR</b> and <b>200.000 RSD</b>, „dakle iznad granice koju forma vec nosi". He chose it
+	 * between the outcomes he was offered, and the cost he was shown and took is written
+	 * into the journal in as many words: „ako jednog dana zatreba veci iznos, menja se na
+	 * <b>dva mesta</b>, i u ruti i u formi."
+	 *
+	 * <p><b>Which is why the two numbers are not left as a promise.</b> The other place is
+	 * {@code frontend/src/forms/definitions/admin-cena.form.json}, and
+	 * {@code WhatAPriceMayCostTest} READS that file off the working tree and requires its
+	 * {@code max} on each field to be the number below. Two homes the owner accepted, and a
+	 * floor that fails the day only one of them moves - the shape
+	 * {@code WhatRegistrationAsksForTest} and {@code MeWriteApiTest} already use for the
+	 * registration's form.
+	 *
+	 * <p><b>THESE ARE TWO NUMBERS AND NEITHER IS THE OTHER CONVERTED.</b> Owner, 25.09.2026
+	 * (PDL P12d), refusing the opposite: the rate of 1 EUR = 120 RSD in {@code PDL.md:833}
+	 * „je bio <b>nacin da se cene prvi put izracunaju</b>, ne odnos koji portal cuva", and
+	 * euros and dinars are typed „slobodno i nezavisno". The pair below says so by itself
+	 * rather than only in this paragraph: 1.000 at that rate would be 120.000, and the
+	 * ceiling he chose is <b>200.000</b>. Anything here that worked one out of the other
+	 * would be the rule he refused, and it would be wrong by eighty thousand dinars.
+	 *
+	 * <p><b>And they are asked by two methods rather than by one taking a limit.</b> A
+	 * single method would let a caller hand the euro ceiling to a dinar price, which refuses
+	 * every dinar row the list has - {@code late} is 6.000 - and hand the dinar ceiling to a
+	 * euro price, which lets 1.500 EUR through. Two names cannot be passed the wrong way
+	 * round by accident, and swapping them at the call site is a mutation the cases catch.
+	 */
+	private static final java.math.BigDecimal MOST_A_ROW_MAY_COST_IN_EURO =
+			new java.math.BigDecimal("1000");
+
+	/** The dinar half of the pair above, and never the euro one converted. */
+	private static final java.math.BigDecimal MOST_A_ROW_MAY_COST_IN_DINARS =
+			new java.math.BigDecimal("200000");
+
 	private MembershipPrice() {
 	}
 
@@ -97,10 +135,20 @@ public final class MembershipPrice {
 	 * allows it, and a price list in which something is free is a decision rather than a
 	 * fault; whether any particular row may be nought is nobody's rule today.
 	 *
-	 * <p><b>And the ceiling is not the form's.</b> {@code admin-cena.form.json} stops at 1000
-	 * EUR and 200000 RSD, which are a screen's guard against a typo. What is asked here is
-	 * what the COLUMN keeps, which is the question {@code LeagueWriteApi} asks of an address
-	 * and the only one this side can answer without inventing a rule nobody decided.
+	 * <p><b>THE CEILING THIS ASKS ABOUT IS THE COLUMN'S AND NOT THE PRICE LIST'S, and until
+	 * 25.09.2026 this paragraph said there was no other.</b> It read: „the ceiling is not the
+	 * form's ... what is asked here is what the COLUMN keeps, ... the only one this side can
+	 * answer without inventing a rule nobody decided." That was true when it was written and
+	 * is <b>not true now</b>: the owner decided the other ceiling that same day (PDL P12c),
+	 * and it lives beside this one in {@link #euroIsWithinWhatARowMayCost}. The sentence is
+	 * rewritten rather than left standing, because a sentence claiming a decision does not
+	 * exist is an instruction to the next reader to undo it.
+	 *
+	 * <p><b>The two are separate questions and both are asked.</b> This one is about the
+	 * column: 41.125 is rounded, a negative price is refused by a constraint, and
+	 * 100.000.000 does not fit. That one is about what a membership may plausibly cost. An
+	 * amount can fail either without failing the other, which is why the route gives them
+	 * two different sentences.
 	 */
 	public static boolean amountIsKeptExactly(java.math.BigDecimal amount) {
 		return amount.signum() >= 0
@@ -116,6 +164,42 @@ public final class MembershipPrice {
 	/** The ceiling itself, for the same floor. */
 	public static java.math.BigDecimal mostAnAmountCanBe() {
 		return MOST_AN_AMOUNT_CAN_BE;
+	}
+
+	/**
+	 * WHETHER A EURO PRICE IS WITHIN WHAT A ROW OF THE LIST MAY COST (PDL P12c).
+	 *
+	 * <p>Inclusive: 1.000 is a price the owner may set and 1.000,01 is not. The form says
+	 * the same by writing {@code max}, which HTML and every form renderer read as „at
+	 * most", so the two homes agree about the edge as well as about the number.
+	 *
+	 * <p><b>Nothing here judges a small amount</b>, and that is deliberate: nought is a
+	 * real answer ({@code price_row_eur_not_negative} allows it) and a free row is a
+	 * decision rather than a fault. This is a ceiling and not a range.
+	 */
+	public static boolean euroIsWithinWhatARowMayCost(java.math.BigDecimal amount) {
+		return amount.compareTo(MOST_A_ROW_MAY_COST_IN_EURO) <= 0;
+	}
+
+	/**
+	 * The same question of a dinar price, and it is a SEPARATE question.
+	 *
+	 * <p>See the pair of constants above for why this is not the euro answer multiplied by
+	 * anything: the owner refused a rate the portal enforces (PDL P12d), and the two
+	 * ceilings he chose are not at the league's own rate in any case.
+	 */
+	public static boolean dinarsAreWithinWhatARowMayCost(java.math.BigDecimal amount) {
+		return amount.compareTo(MOST_A_ROW_MAY_COST_IN_DINARS) <= 0;
+	}
+
+	/** The euro ceiling itself, for the floor that reads the form and compares. */
+	public static java.math.BigDecimal mostARowMayCostInEuro() {
+		return MOST_A_ROW_MAY_COST_IN_EURO;
+	}
+
+	/** The dinar ceiling itself, for the same floor. */
+	public static java.math.BigDecimal mostARowMayCostInDinars() {
+		return MOST_A_ROW_MAY_COST_IN_DINARS;
 	}
 
 	/**

@@ -117,8 +117,37 @@ public final class SeasonClock {
 	 * change rather than by remembering the old value. An amount per season is a table and
 	 * arrives with its own increment.
 	 *
-	 * <p><b>And the hour.</b> The decision names 00:00 CET. This reads the instant in
-	 * {@link #ZONE}, so the day turns over exactly there, which is the same moment.
+	 * <p><b>AND THE HOUR, WHICH IS NOT WHAT THIS PARAGRAPH USED TO SAY.</b> It read: „The
+	 * decision names 00:00 CET. This reads the instant in {@link #ZONE}, so the day turns
+	 * over exactly there, <b>which is the same moment</b>." <b>The last four words are
+	 * false</b>, and a review found it by working both instants out instead of reading the
+	 * sentence.
+	 *
+	 * <p><b>Measured on Java 21, for the only day the rule is about.</b> Belgrade is still
+	 * on summer time on 1 October - it does not leave it until the last Sunday of the month
+	 * - so midnight there is at {@code +02:00}:
+	 *
+	 * <pre>
+	 * 1 Oct 2027  midnight in Belgrade = 2027-09-30T22:00:00Z   (offset +02:00, CEST)
+	 *             midnight at CET, +01:00 = 2027-09-30T23:00:00Z
+	 * </pre>
+	 *
+	 * <b>One hour apart, and the same hour in 2028, 2029 and 2030.</b> It is not a rounding
+	 * difference either: in the hour between them the two answers to „may the amount still
+	 * be set" are opposite.
+	 *
+	 * <p><b>What the owner decided, once the hour was shown to him (25.09.2026, PDL P16a):
+	 * midnight in BELGRADE, as the clock on the wall there reads it, summer or winter.</b>
+	 * So {@link #ZONE} is the answer and „CET" in the decision of 16.08.2026 is how he named
+	 * the league's own time rather than a fixed offset. The portal's front end has carried it
+	 * honestly all along ({@code data/season.ts}, where the hour is „written down rather than
+	 * pretended away"); this side had it right in the code and wrong in the sentence.
+	 *
+	 * <p><b>Which is measured and not asserted.</b> {@code SeasonClockTest} stands on the
+	 * diverging instant, and so does {@code PricingWriteApiTest} - the route was green under
+	 * both replacements until 25.09.2026, when its October moment was moved onto the edge.
+	 * The mutation that proves it is a replacement of the ZONE and never a deleted assertion:
+	 * put {@code UTC} or {@code ZoneOffset.ofHours(1)} in the line below and both files fail.
 	 *
 	 * @param at the moment being asked about, in any zone: it is read in the league's
 	 */

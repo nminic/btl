@@ -110,8 +110,45 @@ class PricingWriteApiTest {
 	/** Noon in Belgrade on 15 March 2028. See the head of this class for every word of it. */
 	private static final Instant IN_MARCH = Instant.parse("2028-03-15T11:00:00Z");
 
-	/** Inside the {@code regular} period, 6 October to 30 November, and past 1 October. */
+	/**
+	 * Inside the {@code regular} period, 6 October to 30 November, and past 1 October.
+	 *
+	 * <p><b>Kept for the payment case and NOT reused for the deadline</b>, which is „nikad
+	 * jedna konstanta za dve uloge": the day a payment is PRICED on and the day the referral
+	 * window OPENS are two questions, and the two instants below are five days earlier - in
+	 * the {@code early} period rather than in {@code regular} - so one constant serving both
+	 * would have quietly renamed the row that case is about.
+	 */
 	private static final Instant IN_OCTOBER = Instant.parse("2028-10-20T10:00:00Z");
+
+	/**
+	 * MIDNIGHT IN BELGRADE ON 1 OCTOBER, WRITTEN AS THE INSTANT IT ACTUALLY IS.
+	 *
+	 * <p><b>This is the whole of PDL P16a in one number and it is measured, not read.</b>
+	 * Belgrade is still on summer time on 1 October ({@code +02:00}; it leaves on the last
+	 * Sunday of the month), so midnight there is 22:00 UTC of the day before. Read in UTC
+	 * this instant is <b>30 September</b>, and read at a literal CET of {@code +01:00} it is
+	 * <b>23:00 on 30 September</b> - in both of them the window has not opened and the
+	 * referral could still be set.
+	 *
+	 * <p><b>Which is exactly why the old moment measured nothing.</b> Until 25.09.2026 this
+	 * case stood on 20 October, where all three zones agree, and a series of mutations
+	 * proved it: replacing {@code Europe/Belgrade} with {@code UTC} and with
+	 * {@code ZoneOffset.ofHours(1)} left all 22 cases of this file GREEN, while
+	 * {@code SeasonClockTest} failed twice each time. The route's own claim about the zone
+	 * was carried by nothing.
+	 */
+	private static final Instant AS_THE_WINDOW_OPENS = Instant.parse("2028-09-30T22:00:00Z");
+
+	/**
+	 * One second earlier, when it is still 30 September in Belgrade.
+	 *
+	 * <p>The other half of the edge, and without it the case says „October" rather than
+	 * „from this instant". A guard moved a month early - {@code getMonthValue() >= 9} - would
+	 * satisfy every assertion about October and fail only here.
+	 */
+	private static final Instant A_SECOND_BEFORE_THE_WINDOW_OPENS =
+			Instant.parse("2028-09-30T21:59:59Z");
 
 	/** The row every case writes. See the head of this class for why it is this one. */
 	private static final String ACTED = "regular";
@@ -563,9 +600,20 @@ class PricingWriteApiTest {
 	 * <p><b>And the deadline is the referral's alone</b>, which the last half measures: a
 	 * period is written at the same October moment and goes through. A guard that shut the
 	 * whole price list in October would pass everything above.
+	 *
+	 * <p><b>THE MOMENT IS MIDNIGHT IN BELGRADE AND NOT A DAY IN OCTOBER, which is PDL P16a
+	 * (owner, 25.09.2026) and the only reason this case says anything about the ZONE.</b>
+	 * See {@link #AS_THE_WINDOW_OPENS}: it is 30 September both in UTC and at a literal CET,
+	 * so a route reading the month in either of those answers „you may still set it" where
+	 * this requires a refusal. Stood on 20 October, as it did until that day, the case was
+	 * green under both of those replacements - measured, not supposed.
+	 *
+	 * <p><b>And one second earlier it is still allowed</b>, which is what makes this an edge
+	 * rather than a month. Without it a deadline moved to 1 September would satisfy
+	 * everything else here.
 	 */
 	@Test
-	void theReferralIsSetUntilOctoberAndSettledFromIt() throws Exception {
+	void theReferralIsSetUntilMidnightInBelgradeAndSettledFromIt() throws Exception {
 		List<String> before = keysInOrder();
 
 		MockHttpServletResponse inMarch = change(PricingWriteApi.A_REFERRAL,
@@ -577,7 +625,17 @@ class PricingWriteApiTest {
 				.isEqualTo(200);
 		assertThat(euroOf(PricingWriteApi.A_REFERRAL)).isEqualByComparingTo(new BigDecimal("6.00"));
 
-		clock.moveTo(IN_OCTOBER);
+		/* STILL 30 SEPTEMBER IN BELGRADE, BY ONE SECOND. */
+		clock.moveTo(A_SECOND_BEFORE_THE_WINDOW_OPENS);
+
+		assertThat(change(PricingWriteApi.A_REFERRAL,
+						new BigDecimal("6.50"), new BigDecimal("780.00"), mayCookie).getStatus())
+				.as("the amount was already settled a second before midnight in Belgrade, so the"
+						+ " deadline this route keeps is earlier than the one the owner set")
+				.isEqualTo(200);
+		assertThat(euroOf(PricingWriteApi.A_REFERRAL)).isEqualByComparingTo(new BigDecimal("6.50"));
+
+		clock.moveTo(AS_THE_WINDOW_OPENS);
 		Map<String, Object> was = rowOf(PricingWriteApi.A_REFERRAL);
 
 		MockHttpServletResponse inOctober = change(PricingWriteApi.A_REFERRAL,
@@ -590,13 +648,13 @@ class PricingWriteApiTest {
 		assertThat(inOctober.getContentAsString())
 				.contains(PricingWriteApi.THE_REFERRAL_IS_SETTLED_FOR_THE_COMING_SEASON);
 		assertThat(rowOf(PricingWriteApi.A_REFERRAL))
-				.as("the referral was refused in October and written anyway")
+				.as("the referral was refused at midnight in Belgrade and written anyway")
 				.isEqualTo(was);
 
 		/* AND THE DEADLINE IS THE REFERRAL'S AND NOT THE WHOLE LIST'S. */
 		assertThat(change(ACTED, NEW_EUR, NEW_RSD, mayCookie).getStatus())
-				.as("a period could not be changed in October either, so what was refused above"
-						+ " was the month and not the referral")
+				.as("a period could not be changed at that same instant either, so what was"
+						+ " refused above was the moment and not the referral")
 				.isEqualTo(200);
 
 		assertThat(keysInOrder()).isEqualTo(before);
@@ -747,6 +805,110 @@ class PricingWriteApiTest {
 				.as("an amount the price list cannot keep was refused and stored anyway, rounded"
 						+ " or otherwise")
 				.isEqualTo(was);
+		assertThat(keysInOrder()).isEqualTo(before);
+	}
+
+	/**
+	 * AN AMOUNT ABOVE WHAT A ROW MAY COST IS REFUSED, AND EACH CURRENCY AGAINST ITS OWN.
+	 *
+	 * <p><b>Owner, 25.09.2026 (PDL P12c):</b> the route refuses above <b>1.000 EUR</b> and
+	 * <b>200.000 RSD</b>. Before this the route took a membership fee of 99.999.999,99,
+	 * because the ceiling lived only in {@code admin-cena.form.json} and a request sent past
+	 * the screen never met it - the same hole ADL A8 describes and the same one the referral
+	 * deadline was moved onto the route to close.
+	 *
+	 * <p><b>THE THIRD ROW IS THE ONE THAT MEASURES WHICH CEILING IS WHICH.</b> 1.500 EUR is
+	 * far under the DINAR ceiling, so a route that asked the dinar question of a euro price
+	 * would write it. Every other row here would pass such a route unchanged. The other
+	 * direction is measured by every case in this file that succeeds: they all write 4.900
+	 * RSD, which the euro ceiling would refuse, as it would refuse {@code late} - a price the
+	 * list has carried since V4.
+	 *
+	 * <p><b>And the fee is asked too</b>, because it is the one row that reaches the euro
+	 * question with no dinar price beside it, and a ceiling written inside the branch for the
+	 * six other rows would leave the seventh unbounded.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"1000.01, 4900.00",
+			"41.00, 200000.01",
+			"1500.00, 4900.00",
+			"1000.01, 200000.01"})
+	void anAmountAboveWhatARowMayCostIsRefusedAndNothingIsWritten(String eur, String rsd)
+			throws Exception {
+		List<String> before = keysInOrder();
+		Map<String, Object> was = rowOf(ACTED);
+
+		MockHttpServletResponse answer = change(ACTED, new BigDecimal(eur), new BigDecimal(rsd), mayCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.as("an amount over the ceiling was refused for some other reason, so the sentence"
+						+ " an administrator reads does not tell him what to change")
+				.contains(PricingWriteApi.THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST);
+		assertThat(rowOf(ACTED))
+				.as("an amount above what a row may cost was refused and written anyway")
+				.isEqualTo(was);
+		assertThat(keysInOrder()).isEqualTo(before);
+	}
+
+	/**
+	 * THE FEE'S EURO PRICE IS BOUNDED BY THE SAME CEILING, WHICH ITS OWN BRANCH COULD HAVE
+	 * LOST.
+	 *
+	 * <p>The fee is the one row that carries no dinar price, so it travels through a
+	 * different arm of every question this route asks. A ceiling applied inside the arm that
+	 * handles the other six leaves the processing fee free to be set to any number at all -
+	 * and the fee is shown to everybody (owner, 04.08.2026: „Taksa se prikazuje svima").
+	 */
+	@Test
+	void theFeesEuroPriceIsBoundedByTheSameCeiling() throws Exception {
+		Map<String, Object> was = rowOf(MembershipPrice.PROCESSING);
+
+		MockHttpServletResponse answer =
+				change(MembershipPrice.PROCESSING, new BigDecimal("1000.01"), null, mayCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.contains(PricingWriteApi.THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST);
+		assertThat(rowOf(MembershipPrice.PROCESSING))
+				.as("the processing fee was set above the ceiling every other row is held to")
+				.isEqualTo(was);
+	}
+
+	/**
+	 * THE CEILING ITSELF IS A PRICE THAT MAY BE SET, AND SO IS NOUGHT.
+	 *
+	 * <p><b>Both edges, because a ceiling is two answers and not one.</b> Written with
+	 * {@code <} instead of {@code <=} the route would refuse exactly 1.000 EUR - the number
+	 * the owner named as allowed and the number {@code admin-cena.form.json} writes as
+	 * {@code max}, which every form renderer reads as „at most". The case above holds the
+	 * other side by one para.
+	 *
+	 * <p><b>And nought is asked in the same breath</b> because it is the edge a ceiling
+	 * invites somebody to close by accident: {@code price_row_eur_not_negative} allows it,
+	 * {@code MembershipPrice} says in as many words that a free row is a decision rather
+	 * than a fault, and a range written where a ceiling was asked for would refuse it.
+	 */
+	@Test
+	void theCeilingItselfIsWrittenAndSoIsNought() throws Exception {
+		List<String> before = keysInOrder();
+
+		assertThat(change(ACTED, MembershipPrice.mostARowMayCostInEuro(),
+						MembershipPrice.mostARowMayCostInDinars(), mayCookie).getStatus())
+				.as("the ceiling the owner named as allowed was refused, so the route stops one"
+						+ " para below the number in the form")
+				.isEqualTo(200);
+		assertThat(amountsOf(ACTED))
+				.containsExactly(new BigDecimal("1000.00"), new BigDecimal("200000.00"));
+
+		assertThat(change(ACTED, BigDecimal.ZERO, BigDecimal.ZERO, mayCookie).getStatus())
+				.as("a free row was refused, although nothing in the journals says a row may not"
+						+ " be nought and the schema allows it")
+				.isEqualTo(200);
+		assertThat(amountsOf(ACTED))
+				.containsExactly(new BigDecimal("0.00"), new BigDecimal("0.00"));
+
 		assertThat(keysInOrder()).isEqualTo(before);
 	}
 
