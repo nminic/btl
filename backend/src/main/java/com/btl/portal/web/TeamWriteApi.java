@@ -803,10 +803,40 @@ class TeamWriteApi {
 	 * has would be answered 204 and the answer would be a lie about something that happened.
 	 * A member is asked whether he administers it, which is false for a team that is not
 	 * there as well, so the existence question is already inside his.
+	 *
+	 * <p><b>THE ORDER OF THE TWO REFUSALS IS NOT INTERCHANGEABLE, AND IT IS
+	 * {@link #leaving}'S OWN REASON.</b> Who may is answered BEFORE the window, „because a
+	 * caller this address is not for must be told the same thing on every day of the year:
+	 * told „the window is shut" in June, an address he has no business at would have answered
+	 * a question about somebody else's team." Swapped, the 409 would be an oracle for which
+	 * teams exist, which is exactly what ADL A8's 404 is there to stop.
+	 *
+	 * <p><b>And that order is what makes the reason safe to carry.</b>
+	 * {@link #THE_WINDOW_IS_SHUT}'s own note draws the line: a refusal carries a reason when
+	 * „the only caller who reaches this line is somebody the portal has already agreed" has
+	 * business here, and the one fact it gives away - that the window is shut today - the
+	 * portal says out loud on the membership page to anybody who opens it. Both are true at
+	 * this line and neither would be one statement earlier.
+	 *
+	 * <p><b>ONE WINDOW FOR BOTH CALLERS, WHICH IS THE DECISION AND NOT A SIMPLIFICATION.</b>
+	 * Owner, 25.09.2026, choosing between three offered outcomes: the window applies, and it
+	 * applies to the administration too, because PDL P13b calls this ONE action - „isto dugme
+	 * i iste posledice". The third outcome he was offered was a window for the member alone,
+	 * and it was refused for that reason. The cost he was shown and accepted: a team left
+	 * without a purpose in March stands until October, and what stops it being stuck is that
+	 * the administration deletes it as soon as the window opens.
 	 */
 	private ResponseEntity<?> removing(Long me, boolean administration, long team) {
 		if (!(administration ? thereIsSuchATeam(team) : heAdministersIt(me, team))) {
 			return away();
+		}
+
+		/* AND THE WINDOW, ASKED OF THE ONE PLACE THAT HAS IT AND ASKED OF BOTH CALLERS.
+		   `SeasonClock.transferWindowOpen` is where 1 October lives and `leaving` reads the
+		   same method for the same reason; a month written out here would be that window
+		   with a second home. */
+		if (!SeasonClock.transferWindowOpen(ZonedDateTime.now(clock))) {
+			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
 		}
 
 		emptyTeams.takeAway(team);

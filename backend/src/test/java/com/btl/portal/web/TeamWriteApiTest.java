@@ -2103,6 +2103,93 @@ class TeamWriteApiTest {
 	}
 
 	/**
+	 * A TEAM IS DELETED ONLY INSIDE THE TRANSFER WINDOW, AND THE SAME WINDOW BINDS THE
+	 * ADMINISTRATION.
+	 *
+	 * <p>Owner, 25.09.2026, choosing between three offered outcomes: the window applies, the
+	 * same one {@code DELETE /api/teams/&#123;id&#125;/membership} reads, and it applies to
+	 * both callers because PDL P13b calls this one action - „isto dugme i iste posledice".
+	 * The outcome he refused was a window for the member alone.
+	 *
+	 * <p><b>THE FOUR MOMENTS ARE THE ONES
+	 * {@link #aTeamIsFoundedOnlyInsideTheTransferWindow} ALREADY USES</b>, and they are the
+	 * edges rather than days near them. That is not tidiness: the window is read in Belgrade
+	 * (`SeasonClock.ZONE`) while this file's clock reports UTC, and the two zones agree on
+	 * every day of the year EXCEPT between {@code 2027-09-30T22:00:00Z} and midnight UTC -
+	 * so a case standing twenty days from the edge cannot tell the league's own time from the
+	 * server's, and the mutation that swaps one for the other passes it in silence.
+	 *
+	 * <p><b>TWO CALLERS AND TWO TEAMS IN ONE CASE, WHICH IS WHAT P13b ASKS FOR AND WHAT WOULD
+	 * BE LOST FIRST.</b> The team's own administrator presses on {@link #A_TEAM_WITH_TWO} and
+	 * the administration on {@link #TAKEN_ADDRESS} - two rows, because the first 204 would
+	 * otherwise take the team out from under the second question and turn its answer into a
+	 * 404 that looks like agreement.
+	 *
+	 * <p><b>And the teams left standing are counted, not just the status read.</b> A refusal
+	 * that deleted anyway would answer 409 and still be wrong, which is a shape no reading of
+	 * the status alone can see.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"2027-09-30T21:59:00Z, 409, the last minute of September in Belgrade",
+			"2027-09-30T22:00:00Z, 204, midnight opening 1 October in Belgrade",
+			"2027-12-31T22:59:00Z, 204, the last minute of 31 December in Belgrade",
+			"2027-12-31T23:00:00Z, 409, midnight opening 1 January in Belgrade"})
+	void aTeamIsDeletedOnlyInsideTheTransferWindow(String moment, int expected, String what)
+			throws Exception {
+
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		clock.moveTo(Instant.parse(moment));
+
+		assertThat(deleteTheTeamAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO))
+				.getStatus())
+				.as("the team's own administrator, %s (%s)", what, moment)
+				.isEqualTo(expected);
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(TAKEN_ADDRESS)).getStatus())
+				.as("the administration, %s (%s): PDL P13b says this is the same action, so it"
+						+ " is the same window", what, moment)
+				.isEqualTo(expected);
+
+		assertThat(teamsThatExist())
+				.as("%s: the teams standing afterwards do not match the answer given", what)
+				.hasSize(expected == 204 ? 2 : 4);
+	}
+
+	/**
+	 * AND A CALLER THIS ADDRESS IS NOT FOR IS TOLD THE SAME THING ON EVERY DAY OF THE YEAR,
+	 * WHICH IS WHY THE TWO REFUSALS CANNOT SWAP PLACES.
+	 *
+	 * <p>{@code TeamWriteApi.leaving} wrote this reason first: „told „the window is shut" in
+	 * June, an address he has no business at would have answered a question about somebody
+	 * else's team." The 409 carries a reason and the 404 carries none, so the order of the
+	 * two decides whether a stranger walking the keys can tell a team that exists from one
+	 * that does not.
+	 *
+	 * <p><b>It is measured at a moment OUTSIDE the window</b>, because inside it the two
+	 * orders answer identically and the case would hold nothing.
+	 */
+	@Test
+	void aStrangerToTheTeamIsToldTheSameThingOnEveryDayOfTheYear() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		clock.moveTo(Instant.parse("2027-06-15T10:00:00Z"));
+
+		MockHttpServletResponse answer =
+				deleteTheTeamAs("najduze-u-timu@primer.rs", teamId(A_TEAM_WITH_TWO));
+
+		assertThat(answer.getStatus())
+				.as("a member who does not administer the team was told which teams exist, by"
+						+ " being answered about the window instead of about the address")
+				.isEqualTo(404);
+
+		assertThat(answer.getContentAsString())
+				.as("the refusal explained itself to somebody this address is not for")
+				.isEmpty();
+	}
+
+	/**
 	 * A MEMBER WHOSE FEE HAS LAPSED ADMINISTERS NOTHING, AND BOTH RESOURCES SAY SO OUT OF ONE
 	 * SENTENCE.
 	 *
