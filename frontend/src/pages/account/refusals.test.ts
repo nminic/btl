@@ -9,6 +9,10 @@ import {
   WHEN_REGISTERING,
   WHEN_SETTING_A_PASSWORD,
 } from './refusals'
+import {
+  WHEN_MODERATING_LEAGUE_RACES,
+  WHEN_WRITING_A_LEAGUE,
+} from '../admin/leagueWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -39,11 +43,25 @@ const WEB = join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', '
  *
  * A `static final String` and nothing else, so `LOG` and every other constant these
  * classes hold stay out of it without being named.
+ *
+ * <p><b>The whitespace is `\s*` and not a space, and that is a measurement of 25.09.2026
+ * rather than caution.</b> It read ` = ` exactly, so a declaration whose name is long
+ * enough to push the value onto the NEXT LINE was invisible to it. `LeagueWriteApi` has
+ * one - `THE_SEASON_CANNOT_MOVE_WHILE_RACES_COUNT` wraps at the hundred-column mark - and
+ * this gate found it the moment that file was added: it counted ten where the class
+ * declares eleven, and reported the eleventh as a reason the screen claimed but no route
+ * could answer. Exactly backwards, which is what a guard that reads LINES says about a
+ * language that is written in BLOCKS.
+ *
+ * <p>Left as it was, the guard would have gone on passing for the five files it already
+ * read while being blind to any future constant that happened to be named a few letters
+ * longer. Nothing about those five moves: their counts are the same three, one, three,
+ * six and three, which this file states out loud and would fail on.
  */
 function reasonsIn(file: string): string[] {
   const java = readFileSync(join(WEB, file), 'utf-8')
 
-  return [...java.matchAll(/static final String \w+ = "([^"]+)";/g)].map((one) => one[1] ?? '')
+  return [...java.matchAll(/static final String \w+\s*=\s*"([^"]+)";/g)].map((one) => one[1] ?? '')
 }
 
 /**
@@ -85,6 +103,23 @@ describe('the reasons the server can name', () => {
        answered, and the note on it says why it is not a line in the dictionary above. */
     ['TeamWriteApi.java', [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM], 6],
     ['CommentWriteApi.java', [WHEN_RATING_AN_EVENT], 3],
+    /* THE SIXTH, ADDED 25.09.2026, AND IT IS THE FIRST THAT WAS OWED RATHER THAN NEW.
+       `LeagueWriteApi` has named eleven reasons since B40 and six of them have been drawn
+       on the screen since 24.09.2026 - with no floor under the list, so the panel that
+       draws them could have gone a release behind its server and nothing would have said
+       so. What made this owed rather than optional is the rule `CLAUDE.md` states: a list
+       inside a guard is written by hand and the floor under it is a query over the source
+       of truth, in the same commit. The other half of the eleven arrived in this very
+       commit, which is the commit that has to carry the floor for all of them.
+
+       TWO SCREENS AND ELEVEN NAMES, WHICH IS THE SHAPE `TeamWriteApi` ALREADY HAS. Four
+       routes of one class fall into two acts that no screen meets both of: making,
+       changing and deleting the record (`admin/AdminLeagues.tsx`, and the terms and
+       prizes on `pages/Leagues.tsx`), and putting races into it or taking them out
+       (`admin/LeagueRaceModeration.tsx`). `theSeasonIsFrozen` is in both tables under two
+       different dictionary keys, because what the reader has to do about it differs, and
+       the union is what this gate counts. */
+    ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 11],
   ]
 
   it.each(routes)('are all answered on the screen that meets %s', (file, screens, howMany) => {

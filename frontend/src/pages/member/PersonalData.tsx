@@ -3,7 +3,7 @@ import { categoryCodeFor, categoryLabel } from '../../data/categories'
 import type { Competitor } from '../../data/types'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
-import { tellTheServer, type Answer } from '../account/askTheServer'
+import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import {
   AS_LONG_AS_THE_FORM_ALLOWS,
@@ -96,7 +96,7 @@ export function PersonalData({ me }: { me: Competitor }) {
   async function send(): Promise<void> {
     setAsking(true)
 
-    const answered = await tellTheServer('/api/me', changed, 'PUT')
+    const answered = await askTheServer('/api/me', changed, 'PUT')
 
     /* WHAT WAS SENT BECOMES WHAT STANDS, and only what was sent. A field left out of the
        request is a field the route did not touch (ADL A54), so folding everything typed in
