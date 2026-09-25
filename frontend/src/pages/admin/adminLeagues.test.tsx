@@ -567,6 +567,209 @@ describe('a competition made, changed and taken away', () => {
     server.stop()
   }, SLOW)
 
+  describe('what this visit wrote, once the screen is left and returned to', () => {
+    /**
+     * A REVIEW MEASURED THIS ON PR 368, 25.09.2026, BY PROBING `origin/main` AND THIS
+     * BRANCH WITH THE SAME THREE STEPS: A COMPETITION MADE OR RENAMED HERE STOOD ON
+     * `main` AND VANISHED HERE THE MOMENT THE SCREEN WAS LEFT AND RETURNED TO, because
+     * `written` had moved from the session's own provider - which lives as long as the
+     * visit - to this component's state, which the router throws away the moment it
+     * unmounts the screen, while the cache behind it was never cleared either.
+     *
+     * `serving` above answers every GET with the same four rows it was handed, forever,
+     * which is right for every case above it - none of them reads `leagues` a second
+     * time - and wrong for this one, because a fixture that never remembers a write
+     * cannot tell a screen reading the server again apart from one that never does.
+     * This one keeps its own copy and answers a write by changing it, the way
+     * `LeagueWriteApi` really does.
+     */
+    function servingWithMemory() {
+      clearResourceCache()
+
+      const remembered = LEAGUES.map((one) => ({ ...one }))
+
+      return serverThat((path, init) => {
+        const how = init?.method ?? 'GET'
+        const changed = /^\/api\/leagues\/(\d+)$/.exec(path)
+        const sent: Record<string, unknown> =
+          typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+
+        if (path === '/api/leagues' && how === 'GET') {
+          return new Response(JSON.stringify(remembered), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+
+        if (path === '/api/leagues' && how === 'POST') {
+          const id = 4212
+
+          remembered.push({
+            id,
+            slug: String(sent.slug),
+            name: String(sent.name),
+            season: Number(sent.season),
+            rules: String(sent.rules ?? ''),
+            prizes: String(sent.prizes ?? ''),
+            eventIds: [],
+            raceIds: [],
+          })
+
+          return new Response(JSON.stringify({ id, slug: sent.slug }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+
+        if (changed !== null && how === 'PUT') {
+          const pos = remembered.findIndex((one) => one.id === Number(changed[1]))
+
+          /* `at()` and not `remembered[pos]` directly: under `noUncheckedIndexedAccess`
+             the second is `(typeof remembered)[number] | undefined`, and spreading that
+             turns every field the object literal below does not name - `id`, `eventIds`,
+             `raceIds` - optional in the result, which no longer matches what `remembered`
+             holds. `pos !== -1` already says the row is there; `at` is what tells the
+             compiler the same thing. */
+          if (pos !== -1) {
+            remembered[pos] = {
+              ...at(remembered, pos),
+              name: String(sent.name),
+              slug: String(sent.slug),
+              season: Number(sent.season),
+              rules: String(sent.rules ?? ''),
+              prizes: String(sent.prizes ?? ''),
+            }
+          }
+
+          return did()
+        }
+
+        if (changed !== null && how === 'DELETE') {
+          const pos = remembered.findIndex((one) => one.id === Number(changed[1]))
+
+          if (pos !== -1) {
+            remembered.splice(pos, 1)
+          }
+
+          return did()
+        }
+
+        return how === 'GET' ? null : did()
+      })
+    }
+
+    it('keeps a competition made this visit after the screen is left and returned to',
+      async () => {
+        const server = servingWithMemory()
+        const user = setupUser()
+        const { router } = renderAt('/sr/administracija/lige', 'superadmin')
+
+        await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+        await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
+        await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
+        await user.type(screen.getByLabelText(/^Sezona/), '2027')
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+        await screen.findByRole('status', { name: 'Sačuvano' })
+        await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+        /* THE ROUTER UNMOUNTS THIS SCREEN AND MOUNTS ANOTHER, exactly what the review's
+           own probe did against a real browser. `/sr/administracija/timovi` is the very
+           address it used, and coming back is the second half of the same probe. */
+        await router.navigate('/sr/administracija/timovi')
+        await router.navigate('/sr/administracija/lige')
+
+        const listed = within(await screen.findByRole('table', { name: 'Lige' }))
+
+        expect(listed.getByText('Vojvođanska liga 2027')).toBeVisible()
+
+        server.stop()
+      }, SLOW)
+
+    it('keeps a rename after the screen is left and returned to', async () => {
+      const server = servingWithMemory()
+      const user = setupUser()
+      const { router } = renderAt('/sr/administracija/lige', 'superadmin')
+
+      await openIt(user)
+
+      const name = await screen.findByLabelText(/^Naziv lige/)
+
+      await user.clear(name)
+      await user.type(name, 'Druga liga 2027 i prijatelji')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+      await router.navigate('/sr/administracija/timovi')
+      await router.navigate('/sr/administracija/lige')
+
+      const listed = within(await screen.findByRole('table', { name: 'Lige' }))
+
+      expect(listed.getByText('Druga liga 2027 i prijatelji')).toBeVisible()
+      expect(listed.queryByText(ITS_NAME)).toBeNull()
+
+      server.stop()
+    }, SLOW)
+
+    it('does not bring a deleted competition back after the screen is left and returned to',
+      async () => {
+        const server = servingWithMemory()
+        const user = setupUser()
+        const { router } = renderAt('/sr/administracija/lige', 'superadmin')
+
+        await deleteNamed(user, ITS_NAME)
+
+        await router.navigate('/sr/administracija/timovi')
+        await router.navigate('/sr/administracija/lige')
+
+        const listed = within(await screen.findByRole('table', { name: 'Lige' }))
+
+        expect(listed.queryByText(ITS_NAME)).toBeNull()
+        expect(listed.getByText('Prva liga 2027')).toBeVisible()
+
+        server.stop()
+      }, SLOW)
+
+    it('shows a proposition changed in the administration on the public list, opened fresh',
+      async () => {
+        /* THE THIRD ROW OF THE REVIEW'S OWN TABLE: not this screen read twice, but a
+           DIFFERENT one, `pages/Leagues.tsx`, mounted for the first time in this visit
+           after the write. It has never read `leagues` before this point, so the only
+           way it can show the old text is if the cache this screen fetched at its OWN
+           mount is still what answers the public screen's first read. */
+        const server = servingWithMemory()
+        const user = setupUser()
+        const { router } = renderAt('/sr/administracija/lige', 'superadmin')
+
+        await openIt(user)
+
+        /* NOT AN EXACT MATCH: the field is not one of the three required ones
+           (`admin-liga.form.json`), and the form appends „ (neobavezno)" to the label of
+           every field that is not - `LABEL:Propozicije (neobavezno)`, measured off this
+           very screen. `entityForms.test.tsx` reads the dictionary key alone and never
+           sees that suffix, which is why the bare word is not what a reader is offered. */
+        const rules = await screen.findByLabelText(/^Propozicije/)
+
+        await user.clear(rules)
+        await user.type(rules, 'Nove propozicije sa administracije.')
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+        await screen.findByRole('status', { name: 'Sačuvano' })
+
+        await router.navigate('/sr/lige?sezona=2027')
+
+        const box = must(
+          (await screen.findByRole('heading', { level: 2, name: new RegExp(ITS_NAME) })).closest(
+            'li',
+          ),
+          'the box of the competition just changed',
+        )
+
+        expect(within(box).getByText('Nove propozicije sa administracije.')).toBeVisible()
+
+        server.stop()
+      }, SLOW)
+  })
+
   it('is open to a moderator holding the right over competitions, and shut to one without it',
     async () => {
       const server = serving()

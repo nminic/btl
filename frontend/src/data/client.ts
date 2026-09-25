@@ -214,8 +214,26 @@ export function arrivedResource<T>(name: ResourceName): T | undefined {
   return known === undefined ? undefined : (known as T)
 }
 
-/** Tests start from an empty cache; nothing in the application calls this. */
-export function clearResourceCache(): void {
-  inFlight.clear()
-  arrived.clear()
+/**
+ * Tests start from an empty cache when this is called with nothing, which is what every
+ * `serving()` in the suite still does.
+ *
+ * **A name narrows the clearing to one resource, since 25.09.2026.** Two screens now call
+ * it after their own write goes through - `AdminLeagues.tsx` and `Leagues.tsx`, both on
+ * `'leagues'` - so the NEXT mount of either one asks the server again rather than reading
+ * what this visit fetched before that write. Before that day nothing in the application
+ * called this at all; both screens held what they wrote in the session's own provider
+ * instead, which is what let them survive being unmounted without asking again, and this
+ * cache staying full for the whole visit was never the fault while that was true.
+ */
+export function clearResourceCache(name?: ResourceName): void {
+  if (name === undefined) {
+    inFlight.clear()
+    arrived.clear()
+
+    return
+  }
+
+  inFlight.delete(name)
+  arrived.delete(name)
 }

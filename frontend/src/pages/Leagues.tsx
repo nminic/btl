@@ -6,6 +6,7 @@ import { offeredSeason, useSeason } from '../components/season'
 import { askTheServer, type Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
 import { WHEN_WRITING_A_LEAGUE, upsertOf, type LeagueWords } from './admin/leagueWrites'
+import { clearResourceCache } from '../data/client'
 import type { League } from '../data/types'
 import {
   dataOr,
@@ -178,9 +179,18 @@ export function Leagues() {
    * browser. That is the „two homes of one fact" class, and it would have been created
    * by the very commit that fixed the other half.
    *
-   * **Held here rather than re-read**, for the reason `data/client.ts` gives: a
-   * resource is fetched once per visit and nothing clears it, so there is nothing to
-   * re-read after a write. Only what the route accepted is put in.
+   * **Held here rather than re-read**: a screen that is still mounted never asks its
+   * resource again, so there is nothing here to re-read the moment a write comes back.
+   * Only what the route accepted is put in.
+   *
+   * **AND, SINCE 25.09.2026, THE CACHE BEHIND IT DOES NOT OUTLIVE A SUCCESSFUL WRITE
+   * EITHER.** Held only here and never invalidated anywhere, this would have become the
+   * very „two homes" this comment already warns about, one visit later rather than one
+   * screen over: a moderator who wrote the terms here, left, and came back would have
+   * read them served as they stood before he wrote them, and an administrator who
+   * changed them on `AdminLeagues.tsx` would open this list and find the same stale
+   * array. `save` below calls `clearResourceCache('leagues')` once the route confirms
+   * it, so the next mount of either screen asks the server again.
    */
   const [written, setWritten] = useState<Record<number, Partial<Record<LeagueWords, string>>>>({})
 
@@ -218,6 +228,12 @@ export function Leagues() {
       return false
     }
 
+    /* THE NEXT MOUNT READS THE SERVER, HERE AS MUCH AS ON THE ADMINISTRATION SCREEN.
+       Cleared before the local overlay is written, for the same reason `AdminLeagues.tsx`
+       clears it: this state does not survive the screen being unmounted, and a cache that
+       did would let a remounted screen - this one or the other - go on showing what stood
+       before this write (review, 25.09.2026). */
+    clearResourceCache('leagues')
     setWritten((was) => ({ ...was, [league.id]: { ...was[league.id], [field]: text } }))
 
     return true

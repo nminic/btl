@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
+import { clearResourceCache } from '../../data/client'
 import type { League } from '../../data/types'
 import { useLeagues } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
@@ -58,13 +59,24 @@ export function AdminLeagues() {
    * session's own note names: a record somebody deleted going on standing in a list,
    * which reads as a screen that has not refreshed.
    *
-   * **Why anything is held at all, when the server now knows.** `data/client.ts` fetches
-   * a resource once per visit and nothing in the application clears it („nothing in the
-   * application calls this", of `clearResourceCache`), so after a write there is nothing
-   * to re-read. What is held is therefore what the server has just ACCEPTED, never what
-   * this screen hopes it did: every one of the three is written inside the branch that
-   * ran only because an answer said the write went through. That is the arrangement
-   * `LeagueRaceModeration` beside it already uses and gives its reason for.
+   * **Why anything is held at all, when the server now knows.** A screen that is still
+   * mounted never asks its resource again - `useResource`'s effect runs once, on the
+   * name, which does not change while this stands - so there is nothing here to re-read
+   * the moment a write comes back. What is held is therefore what the server has just
+   * ACCEPTED, never what this screen hopes it did: every one of the three is written
+   * inside the branch that ran only because an answer said the write went through. That
+   * is the arrangement `LeagueRaceModeration` beside it already uses and gives its
+   * reason for.
+   *
+   * **AND, SINCE 25.09.2026, THE CACHE BEHIND ALL OF THIS DOES NOT OUTLIVE A SUCCESSFUL
+   * WRITE EITHER.** A review measured what holding this locally cost the moment it
+   * stopped being the session's: the session survives a screen unmounting and this does
+   * not, so a competition made or renamed here was gone the instant the router carried a
+   * reader to another screen and back - the row was never lost, only what this component
+   * remembered was. `saveOne` and `deleteOne` below call `clearResourceCache('leagues')`
+   * once the route confirms the write, so the NEXT mount - of this screen or of the
+   * public list - asks the server again rather than reading the array this visit fetched
+   * before anything was saved.
    */
   const [written, setWritten] = useState<Overlay>(NOTHING_YET)
 
@@ -107,6 +119,13 @@ export function AdminLeagues() {
     if (answer.got !== 'done') {
       return { said: saying(answer) }
     }
+
+    /* THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER. Cleared here
+       rather than left to the two branches below, because both of them count as the
+       write this screen exists to close: a made competition and a renamed one are
+       equally gone from a remounted screen if only the local overlay is fixed and the
+       cache is not (review, 25.09.2026). */
+    clearResourceCache('leagues')
 
     if (id !== null) {
       setWritten((was) => ({
@@ -164,6 +183,11 @@ export function AdminLeagues() {
       return
     }
 
+    /* Cleared for the same reason `saveOne` clears it: a deletion this visit made is
+       held below as an overlay over what the cache still carries, and a remounted
+       screen reading that same stale array would draw the row back as though the
+       delete had never happened, which is worse than a row that merely vanished. */
+    clearResourceCache('leagues')
     setRefused(null)
     setSaid(t('admin.leagueGone'))
     setWritten((was) => ({

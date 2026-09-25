@@ -1,4 +1,6 @@
 import { screen, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { loadResource } from '../data/client'
 import type { League } from '../data/types'
 import { liga } from '../forms/definitions'
@@ -354,6 +356,76 @@ describe('the text of a competition', () => {
     expect(box.getByRole('heading', { name: 'Propozicije' })).toBeVisible()
     expect(box.getByRole('heading', { name: 'Nagrade' })).toBeVisible()
   })
+
+  /**
+   * A server that remembers a write to the terms or the prizes, for the one case below
+   * that leaves this screen and comes back to it. `serving` above answers a GET off the
+   * disc, which never learns what a PUT just accepted, because no other case here asks
+   * twice; this one does, so it keeps its own copy and answers a write by changing it.
+   */
+  function servingWithMemory() {
+    const remembered: Record<string, unknown>[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'public/mock/leagues.json'), 'utf-8'),
+    )
+
+    return serverThat((path, init) => {
+      if (path === '/api/leagues' && (init?.method ?? 'GET') === 'GET') {
+        return new Response(JSON.stringify(remembered), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      const changed = /^\/api\/leagues\/(\d+)$/.exec(path)
+
+      if (changed !== null && init?.method === 'PUT') {
+        const at = remembered.findIndex((one) => one.id === Number(changed[1]))
+        const sent: Record<string, unknown> =
+          typeof init.body === 'string' ? JSON.parse(init.body) : {}
+
+        if (at !== -1) {
+          remembered[at] = { ...remembered[at], ...sent }
+        }
+
+        return answeredWith(200)
+      }
+
+      return null
+    })
+  }
+
+  it('keeps what was typed here after the screen is left and returned to', async () => {
+    /* THE SAME CLASS OF FAULT A REVIEW MEASURED ON `AdminLeagues.tsx` (PR 368,
+       25.09.2026), on this screen's OWN write: `written` is this component's state and
+       the router throws it away the moment it unmounts the screen, so what keeps the
+       box from reverting to what was served is the cache behind `useLeagues` being
+       cleared once the write is done - the next mount then reads the server again
+       rather than replaying what this visit had before the write. */
+    const server = servingWithMemory()
+    const user = setupUser()
+    const { router } = renderAt('/sr/lige?sezona=2027', 'superadmin')
+
+    const box = await boxOf(/RunTrace liga/)
+    const rules = must(box.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'sec')
+
+    await user.click(within(rules).getByRole('button', { name: 'Izmeni' }))
+    await user.clear(within(rules).getByRole('textbox', { name: 'Propozicije' }))
+    await user.type(
+      within(rules).getByRole('textbox', { name: 'Propozicije' }),
+      'Ostaje i posle povratka.',
+    )
+    await user.tab()
+    await within(rules).findByRole('status')
+
+    await router.navigate('/sr/politika-privatnosti')
+    await router.navigate('/sr/lige?sezona=2027')
+
+    const reopened = await boxOf(/RunTrace liga/)
+
+    expect(reopened.getByText('Ostaje i posle povratka.')).toBeVisible()
+
+    server.stop()
+  }, SLOW)
 })
 
 describe('the last few branches these screens have', () => {
