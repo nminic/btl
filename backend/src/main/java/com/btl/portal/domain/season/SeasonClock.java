@@ -88,6 +88,45 @@ public final class SeasonClock {
 	}
 
 	/**
+	 * WHETHER THE AMOUNT ONE REFERRAL BRINGS MAY STILL BE SET.
+	 *
+	 * <p><b>Owner, 16.08.2026 (PDL P16):</b> „Bice i ostaje da ce biti obracun od 5 eur /
+	 * 600 din za svaku preporuku, i da to isto administrator <b>podesava do 1.10. u 00 po
+	 * CET za predstojecu godinu</b>", and the sentence the journal draws out of it in the
+	 * same entry: „posle 1. oktobra u 00:00 CET iznos za tu godinu stoji, i administrator
+	 * ga menja samo za sledecu".
+	 *
+	 * <p><b>It is NOT a second date, and that is the whole reason it delegates.</b> The
+	 * instant the owner named is the instant the renewal window opens, which is the one
+	 * {@link #transferWindowOpen} already answers - so the amount is settled before anybody
+	 * can begin earning it. The portal's own front end reads it exactly this way:
+	 * {@code data/season.ts} has {@code referralMayBeSet(today) = !inYearlyWindow(today)}
+	 * and builds the transfer window out of that same predicate, off one pair of constants.
+	 * A second {@code getMonthValue() >= 10} written here would be a second home for a
+	 * boundary, and the day one of them moved nothing would say which was right.
+	 *
+	 * <p><b>Which also names what would break it, before anybody has to find it.</b> If the
+	 * two windows are ever parted - renewals opening on a day transfers do not - this stops
+	 * delegating and gets a window of its own, and this sentence is where that is decided
+	 * rather than in whichever of the two somebody edited first.
+	 *
+	 * <p><b>Two things it deliberately does NOT do.</b> It does not say which season the
+	 * amount belongs to; that is {@link #transfersTakeEffect}, and it is the season the
+	 * screen names. And it does not keep what an amount WAS: the price list is one row with
+	 * one number and no history, so „it stands for that season" is held by refusing the
+	 * change rather than by remembering the old value. An amount per season is a table and
+	 * arrives with its own increment.
+	 *
+	 * <p><b>And the hour.</b> The decision names 00:00 CET. This reads the instant in
+	 * {@link #ZONE}, so the day turns over exactly there, which is the same moment.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's
+	 */
+	public static boolean referralMayBeSet(ZonedDateTime at) {
+		return !transferWindowOpen(at);
+	}
+
+	/**
 	 * Which season somebody is joining or renewing for, at a given moment.
 	 *
 	 * <p>Inside the transfer window it is the next year; outside it, it is the year

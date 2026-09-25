@@ -57,7 +57,65 @@ public final class MembershipPrice {
 	 */
 	public static final int OLDEST_JUNIOR_IN_A_SEASON = 15;
 
+	/**
+	 * How much of an amount the price list keeps, which is {@code numeric(10,2)} (V4).
+	 *
+	 * <p>Held here rather than written into whoever is asking, and held against the
+	 * catalogue rather than believed: {@code AnAmountMatchesTheSchemaTest} reads the
+	 * precision and the scale of EVERY numeric column of {@code price_row} out of
+	 * {@code information_schema} and rebuilds both numbers below from them, so a migration
+	 * that widens a price fails there instead of leaving this class refusing something the
+	 * table would have kept. The precedent is {@code WhatARaceCarries}, which was moved by
+	 * exactly such a migration (V25) in the same commit that widened the column.
+	 */
+	private static final int DIGITS_KEPT_AFTER_THE_POINT = 2;
+
+	/** Eight digits before the point and two after it, which is what {@code numeric(10,2)} holds. */
+	private static final java.math.BigDecimal MOST_AN_AMOUNT_CAN_BE =
+			new java.math.BigDecimal("99999999.99");
+
 	private MembershipPrice() {
+	}
+
+	/**
+	 * WHETHER THE PRICE LIST WOULD KEEP THIS AMOUNT AS IT WAS TYPED.
+	 *
+	 * <p><b>The half a constraint cannot say.</b> {@code price_row_eur_not_negative} refuses
+	 * a negative price and PostgreSQL refuses a number too big for the column, but an amount
+	 * with more para than the column keeps is refused by nothing at all - it is silently
+	 * ROUNDED. 41.125 entered would be stored as 41.13, and the portal would have changed a
+	 * price by a para that nobody typed, on the one number that is a promise to a member.
+	 * The same question {@code WhatARaceCarries.distanceIsKeptExactly} asks for a distance,
+	 * and for the same reason.
+	 *
+	 * <p>All three halves are here rather than two of them being left to the database,
+	 * because the answer to each is otherwise a 500 landing on an administrator who has just
+	 * filled in a form - which is the sentence {@code EventWriteApi} has carried since it was
+	 * written.
+	 *
+	 * <p><b>Zero is a real answer and is not judged.</b> {@code price_row_eur_not_negative}
+	 * allows it, and a price list in which something is free is a decision rather than a
+	 * fault; whether any particular row may be nought is nobody's rule today.
+	 *
+	 * <p><b>And the ceiling is not the form's.</b> {@code admin-cena.form.json} stops at 1000
+	 * EUR and 200000 RSD, which are a screen's guard against a typo. What is asked here is
+	 * what the COLUMN keeps, which is the question {@code LeagueWriteApi} asks of an address
+	 * and the only one this side can answer without inventing a rule nobody decided.
+	 */
+	public static boolean amountIsKeptExactly(java.math.BigDecimal amount) {
+		return amount.signum() >= 0
+				&& amount.stripTrailingZeros().scale() <= DIGITS_KEPT_AFTER_THE_POINT
+				&& amount.compareTo(MOST_AN_AMOUNT_CAN_BE) <= 0;
+	}
+
+	/** The scale itself, for the floor that rebuilds it out of the catalogue. */
+	public static int digitsKeptAfterThePoint() {
+		return DIGITS_KEPT_AFTER_THE_POINT;
+	}
+
+	/** The ceiling itself, for the same floor. */
+	public static java.math.BigDecimal mostAnAmountCanBe() {
+		return MOST_AN_AMOUNT_CAN_BE;
 	}
 
 	/**
