@@ -99,6 +99,16 @@ public final class MembershipPrice {
 	 * ceiling he chose is <b>200.000</b>. Anything here that worked one out of the other
 	 * would be the rule he refused, and it would be wrong by eighty thousand dinars.
 	 *
+	 * <p><b>AND ADL A12 DOES NOT FORBID THESE TWO, WHICH IS WORTH WRITING DOWN BECAUSE IT
+	 * READS AS THOUGH IT MIGHT.</b> „Iznosi se cuvaju u {@code NUMERIC}, nikad u
+	 * {@code double}, i <b>nikad kao broj upisan u kodu</b>" ({@code ADL.md:1003}) is about
+	 * the amount a member is CHARGED, and the reason it gives is its own scope: „da se
+	 * cenovnik i ono sto portal objavljuje ne raziđu". Not one price is written here - they
+	 * are all in {@code price_row}, which is exactly what this class refuses to repeat. A
+	 * ceiling on what may be TYPED is not a price; nobody is ever charged it, it appears on
+	 * no screen a member reads, and the owner put these two numbers on the route himself
+	 * (PDL P12c). The day it moves, it moves here and in the form, and the floor says so.
+	 *
 	 * <p><b>And they are asked by two methods rather than by one taking a limit.</b> A
 	 * single method would let a caller hand the euro ceiling to a dinar price, which refuses
 	 * every dinar row the list has - {@code late} is 6.000 - and hand the dinar ceiling to a
