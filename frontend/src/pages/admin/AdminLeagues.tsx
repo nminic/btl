@@ -12,6 +12,7 @@ import type { FormValues } from '../../forms/types'
 import { recordKey } from '../../session/context'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { LeagueRaceModeration } from './LeagueRaceModeration'
+import { countedRacesOf } from './leagueCounted'
 import { LEAGUES, recordsOf, type Editing, type Overlay } from './entityForms'
 import { WHEN_WRITING_A_LEAGUE, identityIn, upsertFrom } from './leagueWrites'
 import '../member/Member.css'
@@ -326,10 +327,27 @@ export function AdminLeagues() {
                          this visit as much as for one that was served. It was
                          the first thing on this screen with a route behind it and
                          the rest of the screen has now followed; what that closes
-                         is a panel that posted to `/api/leagues/-1/races`. */
+                         is a panel that posted to `/api/leagues/-1/races`.
+
+                         **AND WHAT IT COUNTS IS HANDED DOWN FROM HERE, out of the
+                         answer THIS screen was served, rather than fetched again
+                         out of the cache that answer arrived in.** The panel read
+                         `arrivedResource('leagues')` at every mount until
+                         25.09.2026, and `saveOne` and `deleteOne` above now EMPTY
+                         that entry the moment a write goes through. Closing the
+                         editor swaps this whole subtree, so each panel mounted
+                         again and found nothing where its races had been - while
+                         `state` up here still holds the served answer in full,
+                         which is what `leagues` is. One home, reached one way.
+
+                         A competition entered during this visit is in neither of
+                         those, so it counts nothing, which is what it does count. */
                       <tr key={`${league.id}-races`}>
                         <td colSpan={5}>
-                          <LeagueRaceModeration league={league} />
+                          <LeagueRaceModeration
+                            league={league}
+                            counted={countedRacesOf(leagues, league.id)}
+                          />
                         </td>
                       </tr>,
                     ])}

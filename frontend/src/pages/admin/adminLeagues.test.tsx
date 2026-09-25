@@ -658,6 +658,27 @@ describe('a competition made, changed and taken away', () => {
       })
     }
 
+    /**
+     * AWAY TO ANOTHER SCREEN AND BACK, WITH THE OTHER SCREEN REALLY DRAWN IN BETWEEN.
+     *
+     * **The wait in the middle is the whole of it, and it was missing until 25.09.2026.**
+     * Two `router.navigate` calls one after the other do not unmount anything: a probe put
+     * between them found `screen.queryByRole('table', { name: 'Lige' })` still in the
+     * document, so the screen never left and never mounted a second time, and three of the
+     * four cases below passed with the production fix taken back out. Measured by returning
+     * the call in `AdminLeagues.saveOne`, then in `deleteOne`, and watching nothing fail.
+     *
+     * Waiting for something only the OTHER screen has is what this project already writes
+     * down for a walk through screens (`CLAUDE.md`, 07.09.2026), and the table of teams is
+     * that thing: this screen has no table by that name and that screen has nothing else.
+     * What follows the second navigation is each case's own wait for the competitions.
+     */
+    async function awayAndBack(router: ReturnType<typeof renderAt>['router']) {
+      await router.navigate('/sr/administracija/timovi')
+      await screen.findByRole('table', { name: 'Timovi' })
+      await router.navigate('/sr/administracija/lige')
+    }
+
     it('keeps a competition made this visit after the screen is left and returned to',
       async () => {
         const server = servingWithMemory()
@@ -675,8 +696,7 @@ describe('a competition made, changed and taken away', () => {
         /* THE ROUTER UNMOUNTS THIS SCREEN AND MOUNTS ANOTHER, exactly what the review's
            own probe did against a real browser. `/sr/administracija/timovi` is the very
            address it used, and coming back is the second half of the same probe. */
-        await router.navigate('/sr/administracija/timovi')
-        await router.navigate('/sr/administracija/lige')
+        await awayAndBack(router)
 
         const listed = within(await screen.findByRole('table', { name: 'Lige' }))
 
@@ -700,8 +720,7 @@ describe('a competition made, changed and taken away', () => {
       await screen.findByRole('status', { name: 'Sačuvano' })
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-      await router.navigate('/sr/administracija/timovi')
-      await router.navigate('/sr/administracija/lige')
+      await awayAndBack(router)
 
       const listed = within(await screen.findByRole('table', { name: 'Lige' }))
 
@@ -719,8 +738,7 @@ describe('a competition made, changed and taken away', () => {
 
         await deleteNamed(user, ITS_NAME)
 
-        await router.navigate('/sr/administracija/timovi')
-        await router.navigate('/sr/administracija/lige')
+        await awayAndBack(router)
 
         const listed = within(await screen.findByRole('table', { name: 'Lige' }))
 
@@ -769,6 +787,92 @@ describe('a competition made, changed and taken away', () => {
         server.stop()
       }, SLOW)
   })
+
+  /**
+   * AND THE PANEL OF RACES UNDER EVERY ROW STILL COUNTS WHAT IT COUNTED, AFTER A SAVE HERE.
+   *
+   * **What this measures is what the fix above CREATED, and it was measured in a browser
+   * before it was written down (review, PR 368, 25.09.2026).** `clearResourceCache('leagues')`
+   * empties the one entry `LeagueRaceModeration` used to seed itself from, and closing the
+   * editor swaps this screen's whole subtree, so every panel mounted again against an empty
+   * cache: the competition that counts a race read „no race has been given to this
+   * competition yet", and the control that takes one out was gone with it - a moderator could
+   * not drop a race for the rest of the visit, and could add one that was already in.
+   *
+   * **The competition SAVED is not the competition LOOKED AT**, because the fault was never
+   * about the row being edited: it took every panel on the screen. Read the other way round,
+   * a fix that only carried the edited row's own races through would pass.
+   */
+  it('leaves a competition counting its races after a DIFFERENT one is renamed here',
+    async () => {
+      /** What tells race 125 from everything else drawn here, and it is never the name.
+       *  Both races of Beogradski maraton carry the event's name (`data/raceLabel.ts`); the
+       *  distance is what parts them, and only this one is counted. */
+      const ITS_RACE = '2,5 km'
+
+      /* The controls that take a race out of a competition, one per race it really counts.
+         Counted rather than read out of the text, for the reason `leagueRaceModeration.test.tsx`
+         gives: the races of a chosen day are drawn as OPTIONS of the second box, so a distance
+         can be on the screen without being counted. Nothing is chosen here, and this is still
+         the claim that survives somebody choosing one. */
+      const dropsIn = (id: number) =>
+        within(
+          must(document.getElementById(`league-moderation-${id}`), 'the panel of races'),
+        ).queryAllByRole('button', { name: /^Izbaci trku/ })
+
+      const openTheBoxOf = async (user: ReturnType<typeof setupUser>, name: string) =>
+        user.click(await screen.findByRole('button', { name: `Trke u ligi ${name}` }))
+
+      const server = serving()
+      const user = setupUser()
+
+      renderAt('/sr/administracija/lige', 'superadmin')
+
+      await openTheBoxOf(user, ITS_NAME)
+
+      expect(dropsIn(ACTED).map((one) => one.getAttribute('aria-label') ?? '')).toEqual([
+        `Izbaci trku Beogradski maraton 2027. (${ITS_RACE}) iz lige`,
+      ])
+
+      /* THE OTHER COMPETITION IS OPENED, RENAMED AND SAVED, and then the list is come back
+         to - which is what unmounts and remounts every panel on this screen. */
+      const rows = within(await screen.findByRole('table', { name: 'Lige' }))
+      const other = must(
+        rows.getAllByRole('row').find((one) => one.textContent?.includes('Prva liga 2027')),
+        'the row of the competition that counts nothing',
+      )
+
+      await user.click(within(other).getByRole('button', { name: 'Otvori: Prva liga 2027' }))
+
+      const name = await screen.findByLabelText(/^Naziv lige/)
+
+      await user.clear(name)
+      await user.type(name, 'Prva liga 2027 preimenovana')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+      await screen.findByRole('table', { name: 'Lige' })
+      await openTheBoxOf(user, ITS_NAME)
+
+      /* The same one control, with the same race on it. `Druga liga 2027` was not written
+         to, nothing was asked of the server about its races, and the only thing between the
+         two readings is the write to the competition above it. */
+      expect(dropsIn(ACTED).map((one) => one.getAttribute('aria-label') ?? '')).toEqual([
+        `Izbaci trku Beogradski maraton 2027. (${ITS_RACE}) iz lige`,
+      ])
+
+      /* And the sentence for a competition that counts nothing is NOT what it says, which is
+         the exact face the fault wore. */
+      expect(
+        must(
+          document.getElementById(`league-moderation-${ACTED}`),
+          'the panel of races',
+        ).textContent ?? '',
+      ).not.toContain('Ovoj ligi još nije dodeljena nijedna trka')
+
+      server.stop()
+    }, SLOW)
 
   it('is open to a moderator holding the right over competitions, and shut to one without it',
     async () => {

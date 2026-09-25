@@ -417,7 +417,15 @@ describe('the text of a competition', () => {
     await user.tab()
     await within(rules).findByRole('status')
 
+    /* AND THE OTHER SCREEN IS WAITED FOR, which is the whole of the walk. Two
+       `router.navigate` calls one after the other unmount nothing: with only those two this
+       case passed with `Leagues.save`'s `clearResourceCache('leagues')` taken back out,
+       because this screen never left and never mounted again (measured 25.09.2026). The
+       heading of the privacy policy is something only that screen has, which is what
+       `CLAUDE.md` asks a walk to wait for (07.09.2026); `boxOf` below is the same wait on
+       the way back. */
     await router.navigate('/sr/politika-privatnosti')
+    await screen.findByRole('heading', { level: 1, name: 'Politika privatnosti' })
     await router.navigate('/sr/lige?sezona=2027')
 
     const reopened = await boxOf(/RunTrace liga/)
