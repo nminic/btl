@@ -260,7 +260,34 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 								+ " 10.00, 100, 100, 3600, 'rezultati.rs/trka/1', ''")),
 				Violation.notNull("result_submission_comment_not_null", "comment",
 						row(A_MEMBER + ", " + A_RACE + ", " + RACE_DAY + ", null, null, null, null, null,"
-								+ " 10.00, 100, 100, 3600, '', null")));
+								+ " 10.00, 100, 100, 3600, '', null")),
+
+				/* WHICH RESULT A CORRECTION CORRECTS (V32), and the two rows are the two
+				   halves of it.
+
+				   The first names a result that is not there. The second is the check, and
+				   it is reached with the SAME absent result on purpose: PostgreSQL evaluates
+				   a CHECK before it fires a foreign key, which is a trigger, so the row
+				   cannot be mistaken for the one above - and writing it against a real
+				   result would mean building an event, a race and a result in a fixture
+				   about a table that needs none of them.
+
+				   PDL, owner, 27.08.2026: „Menja se sve osim trke." A correction inherits
+				   the race of the result it corrects and every result has one, so a row
+				   that names a result AND describes a race claims both at once. */
+				Violation.of("result_submission_amends_fk",
+						correcting("999999", A_RACE + ", " + RACE_DAY + ", null, null, null, null, null")),
+				Violation.of("result_submission_a_correction_keeps_the_race_it_corrects",
+						correcting("999999", "null, " + ANOTHER_DAY + ", 'Trka kroz sumu', 'free', "
+								+ A_TOWN + ", null, null")));
+	}
+
+	/** A row that names the result it corrects, which {@link #COLUMNS} does not carry. */
+	private static String correcting(String amends, String race) {
+		return "insert into result_submission (competitor_id, amends_result_id, race_id, race_date,"
+				+ " race_name, race_kind, place_id, city, country_id, distance_km, ascent_m,"
+				+ " descent_m, seconds, link, comment) values (" + A_MEMBER + ", " + amends + ", "
+				+ race + ", 10.00, 100, 100, 3600, '', '')";
 	}
 
 	@ParameterizedTest

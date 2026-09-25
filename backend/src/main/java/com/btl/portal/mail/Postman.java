@@ -109,8 +109,38 @@ public class Postman {
 		this.from = from;
 	}
 
-	/** Sends what was said to one address. */
+	/** Sends what was said to one address, with nobody copied in. */
 	public void send(Said said, String to) {
+		send(said, to, null);
+	}
+
+	/**
+	 * SENDS WHAT WAS SAID TO ONE ADDRESS, WITH A SECOND ONE COPIED IN BLIND.
+	 *
+	 * <p><b>The blind copy is a product decision and not a convenience.</b> PDL P22,
+	 * the owner: „Skrivena kopija svakog takvog obavestenja ide na administrativnu
+	 * adresu lige, i ista poruka ide u portalski inboks." The messages it is about are
+	 * the ones the same decision calls the league's record - „Posto se istorija izmena
+	 * ne cuva ni dnevnik administrativnih akcija, obavestenje mora da sadrzi staru
+	 * vrednost, jer ona nigde drugde ne prezivljava." A copy the league does not hold is
+	 * a record that lives in one member's mailbox alone.
+	 *
+	 * <p><b>Blind and not an ordinary copy, and the difference is the member's.</b>
+	 * Written into {@code Cc}, every such message would tell the member that the league
+	 * reads his post, and would put the league's address in the headers of a letter he
+	 * may forward to anybody. What the decision asks for is a copy the league keeps, not
+	 * a sentence in the member's letter.
+	 *
+	 * <p><b>It is one method with a nullable second address rather than two methods</b>,
+	 * because there is one thing being done here - putting an address on a message and
+	 * handing it to the relay - and a second method would be the same five lines with one
+	 * of them missing. {@link #send(Said, String)} is that case, said once.
+	 *
+	 * @param to        whose message it is
+	 * @param blindCopy the address that gets a copy nobody else can see, or {@code null}
+	 *                  where the message is nobody's business but the addressee's
+	 */
+	public void send(Said said, String to, String blindCopy) {
 		Objects.requireNonNull(said, "said");
 		Objects.requireNonNull(to, "to");
 
@@ -118,6 +148,16 @@ public class Postman {
 
 		message.setFrom(from);
 		message.setTo(to);
+
+		/* NOT `setBcc(null)`, and that is measured rather than defensive:
+		   `SimpleMailMessage.setBcc(String)` wraps whatever it is given in a one element
+		   array, so a null would travel as an array holding a null, and Spring's own
+		   conversion into a MimeMessage then fails on it. An address that is not there is
+		   said by not setting the field. */
+		if (blindCopy != null) {
+			message.setBcc(blindCopy);
+		}
+
 		message.setSubject(said.subject());
 		message.setText(said.body());
 

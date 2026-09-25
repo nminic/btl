@@ -537,6 +537,12 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   does: it goes with its member (PDL P21) and it goes with its race. The two
 				   codebooks RESTRICT exactly as they do from `competitor` and `btl_event`, which is
 				   what stops a delta dropping a town a waiting run names. */
+				/* V32, and it is the same sentence V10 wrote for `verification`: a correction of a
+				   result that is gone is a correction of nothing. Reachable on purpose - PDL,
+				   owner, 27.08.2026, lets the member delete the very result he is correcting - and
+				   the cascade carries on through `verification_result_submission_fk`, so no queue
+				   item is left pointing at a run nobody can see. */
+				"result_submission.result_submission_amends_fk cascade",
 				"result_submission.result_submission_competitor_fk cascade",
 				"result_submission.result_submission_country_fk restrict",
 				"result_submission.result_submission_place_fk restrict",
