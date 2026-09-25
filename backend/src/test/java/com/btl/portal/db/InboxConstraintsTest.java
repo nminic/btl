@@ -279,22 +279,35 @@ class InboxConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * A message outlives the member who sent it, and keeps his name.
+	 * A message outlives the member who sent it, and FORGETS his name.
 	 *
-	 * <p>The same shape V7 gave a comment and V9 gave a decision: the pointer
-	 * empties, the name stays, and the message is still readable by whoever it was
-	 * sent to. Without it, asking to be deleted (PDL P23) would quietly rewrite
-	 * other people's inboxes.
+	 * <p><b>The second half of that sentence is the correction of 25.09.2026 and it
+	 * reverses what this case measured before.</b> V13 kept the name and said why -
+	 * „The pointer empties, the name does not" - and that was reasoning written
+	 * into a migration rather than anything the owner chose. PDL P23 asks for the
+	 * opposite in as many words: „Ako igde ostane zapis da je 000127 bio odredjena
+	 * osoba, nista nije obrisano nego samo sakriveno, a to je i dalje licni
+	 * podatak." So V33 rewrites the column in the same statement that empties the
+	 * pointer.
+	 *
+	 * <p><b>What has NOT changed, and is still the whole reason the column
+	 * exists:</b> the message stays, and it is still readable by whoever it was
+	 * sent to. Taking it away would quietly rewrite other people's inboxes.
+	 *
+	 * <p><b>The word is the woman's</b>, because {@code 000971} is one: ADL A37,
+	 * owner, 06.09.2026, „Zamenski tekst je <Obrisani clan>, odnosno <Obrisana
+	 * clanica>, sa uglastim zagradama." A trigger that always wrote the man's word
+	 * would pass a case with a man in it.
 	 */
 	@Test
-	void theSenderMayGoAndTheMessageKeepsHisName() {
+	void theSenderMayGoAndTheMessageForgetsHisName() {
 		assertThat(db.sql("delete from competitor where member_number = '000971'").update()).isOne();
 
 		assertThat(db.sql("select from_name || ' | ' || coalesce(from_id::text, 'bez naloga') from message")
 				.query(String.class)
 				.single())
-				.as("the message went with its sender, or kept pointing at somebody who is gone")
-				.isEqualTo("Druga Clanica | bez naloga");
+				.as("the message went with its sender, kept her name, or kept pointing at somebody who is gone")
+				.isEqualTo("<Obrisana članica> | bez naloga");
 	}
 
 	/**
