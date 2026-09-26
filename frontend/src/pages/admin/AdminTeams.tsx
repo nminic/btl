@@ -127,27 +127,48 @@ export function AdminTeams() {
   } | null>(null)
 
   /**
-   * TAKING A TEAM AWAY, WHICH IS THE ADMINISTRATION PRESSING THE TEAM'S OWN BUTTON.
+   * TAKING A TEAM AWAY THROUGH THE ROUTE, WHICH IS ONLY HALF OF THE ACT PDL P13b CALLS
+   * THE SAME.
    *
    * <p>PDL P13b, owner 25.09.2026: brisanje tima iz administracije je <b>ista radnja</b> kao
-   * brisanje od strane njegovog administratora, pa je i adresa ista. What follows from the
-   * deletion is the server's and is not restated here: PDL P13a, owner 25.09.2026 - „I tim
-   * (ako nema više ni jednog člana) i par (ako nema bar jednog člana) nestaju sa spiska i
-   * brišu se svi rezultati te sezone. <b>Prethodne sezone su zamrznute i ne diraju se.</b>"
-   * The season's total for the team goes because it is derived from memberships that cascade
-   * (V11), the frozen season stays (V17), and the members' own results are not touched at all
-   * (V7 carries no team on a result), which is the other half of the same decision: nestaje
-   * zbir tima za tu sezonu, a licni rezultati clanova ostaju netaknuti.
+   * brisanje od strane njegovog administratora, pa je i adresa ista - this function calls
+   * `DELETE /api/teams/{id}` rather than an address of its own. <b>Measured on 26.09.2026,
+   * the other half of that pair has not moved here yet.</b> `TeamDetail.tsx`'s own „Obriši"
+   * button, the one the team's administrator presses, still only calls `editRecord` and
+   * `remove` on the session: `askTheServer` has exactly thirteen call sites in this portal,
+   * this function's among them, and `TeamDetail.tsx` is not a fourteenth. So the decision
+   * names one act; the code today has two, and the two differences that follow from that
+   * are named here rather than left for the next reader to take the title above at its word.
+   *
+   * <ul>
+   * <li><b>Permanence.</b> This function's deletion is the server's and outlives the tab.
+   * `TeamDetail.tsx`'s is the session's alone, so nothing tells the server; a refresh reads
+   * the team back off it.</li>
+   * <li><b>The window.</b> The refusal below is `SeasonClock.transferWindowOpen` answering
+   * 409 outside 1.10-31.12, and PDL P13b names that rule „i to i administratoru tima i
+   * administraciji" - the same rule for both. `TeamDetail.tsx` asks the route nothing, so
+   * the window binds this function alone: the team's own administrator can delete in June
+   * exactly as freely as in November, which is the half of that sentence the code does not
+   * yet keep.</li>
+   * </ul>
+   *
+   * <p>What follows from a deletion THAT REACHES THE ROUTE is the server's and is not
+   * restated here: PDL P13a, owner 25.09.2026 - „I tim (ako nema više ni jednog člana) i par
+   * (ako nema bar jednog člana) nestaju sa spiska i brišu se svi rezultati te sezone.
+   * <b>Prethodne sezone su zamrznute i ne diraju se.</b>" The season's total for the team
+   * goes because it is derived from memberships that cascade (V11), the frozen season stays
+   * (V17), and the members' own results are not touched at all (V7 carries no team on a
+   * result), which is the other half of the same decision: nestaje zbir tima za tu sezonu, a
+   * licni rezultati clanova ostaju netaknuti.
    *
    * <p><b>THIS SCREEN DRAWS NO CONDITION OF ITS OWN ABOUT THE WINDOW, and that is the point
    * of the refusal below rather than an omission.</b> The route asks
-   * `SeasonClock.transferWindowOpen` and answers 409 `theWindowIsShut` outside 1.10-31.12, for
-   * the administration as much as for the team's administrator (PDL P13b). A screen that
-   * refused first would be a second home for 1 October, and the two would be free to disagree
-   * on the day either was edited. So the reason the reader is given comes off the ANSWER, and
-   * `adminTeams.test.tsx` holds that from both sides: the sentence appears on a 409 received
-   * on a day this screen would have called open, and the row goes on a 204 received on a day
-   * it would have called shut.
+   * `SeasonClock.transferWindowOpen` and answers 409 `theWindowIsShut` outside 1.10-31.12. A
+   * screen that refused first would be a second home for 1 October, and the two would be
+   * free to disagree on the day either was edited. So the reason the reader is given comes
+   * off the ANSWER, and `adminTeams.test.tsx` holds that from both sides: the sentence
+   * appears on a 409 received on a day this screen would have called open, and the row goes
+   * on a 204 received on a day it would have called shut.
    *
    * <p><b>AND NOTHING GOES WITH THE TEAM FROM THIS FUNCTION, WHICH IS A REMOVAL AND NOT A
    * GAP.</b> The row used to hand `RowActions` an `alsoRemove` that blanked `teamId` on every
