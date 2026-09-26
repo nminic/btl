@@ -96,6 +96,16 @@
     "season",
     "since"
   ],
+  "pricing.json": [
+    "eur",
+    "from",
+    "key",
+    "kind",
+    "label",
+    "ranking",
+    "rsd",
+    "to"
+  ],
   "races.json": [
     "ascentM",
     "category",

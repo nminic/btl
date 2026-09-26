@@ -211,8 +211,11 @@ describe('which fields the portal serves', () => {
   it('is a snapshot of something, so the case above is comparing two full sets', () => {
     /* Without this the comparison passes when both sides are empty, which is what a
        broken read gives. Thirteen files and a hundred and fifty three paths on
-       13.09.2026, of which twenty three are nested. */
-    expect(Object.keys(served)).toHaveLength(13)
+       13.09.2026, of which twenty three are nested. Fourteen since 26.09.2026, when the
+       price list became a resource the portal reads: seven more paths, none of them
+       nested, and not one of them about a person - a price row belongs to nobody, which
+       is why `PricingApi` is public and says so at length. */
+    expect(Object.keys(served)).toHaveLength(14)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,

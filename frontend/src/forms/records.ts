@@ -114,12 +114,19 @@ export function textFrom(form: FormDef, values: FormValues): Record<string, stri
  * „1", the six readers that compare it with `team.id` found no match, and the
  * member was in the club on their own record and in no club on every screen.
  *
- * The four of them are every field the overlay writes whose record keeps a number:
+ * The five of them are every field the overlay writes whose record keeps a number:
  * the club somebody is in, the season they joined it, the event a copy came out
- * of, and the event a race belongs to. Held to the served files in
- * `records.test.ts`, so a fifth cannot arrive unnoticed.
+ * of, the event a race belongs to, and the dinar price of a row of the price list.
+ * Held to the served files in `records.test.ts`, so a sixth cannot arrive unnoticed.
+ *
+ * <p><b>`rsd`, added with the processing fee's own button (PDL P12b, 2).</b> It is
+ * `null` on exactly the one row with no dinar side (`price_row_only_fee_has_no_rsd`),
+ * the same shape a member with no team leaves `teamId` in, and without this entry an
+ * administrator who opened the fee's row and saved it with the dinar box left empty -
+ * which the form allows now - would have written the empty string over the null, not
+ * nothing over nothing.
  */
-export const KEPT_AS_A_NUMBER = ['copiedFrom', 'eventId', 'teamId', 'teamSince']
+export const KEPT_AS_A_NUMBER = ['copiedFrom', 'eventId', 'rsd', 'teamId', 'teamSince']
 
 /** One value out of the overlay, put back into the shape the record keeps it in,
  *  so a screen that formats a number keeps being handed a number. */

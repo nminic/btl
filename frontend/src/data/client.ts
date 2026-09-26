@@ -94,6 +94,15 @@ export const RESOURCE_NAMES = [
      an import: it is asked for when somebody starts typing a place, and on no
      other screen. */
   'places',
+  /* What membership costs, and when each price is the one in force (owner, 04.08.2026:
+     „cene su javne u Clanu 14 Pravilnika"). The fifteenth, since 26.09.2026, and the one
+     resource that was already answered while nothing read it: `/api/pricing` has served
+     `price_row` since the codebooks went in, and the three screens that quote a price read
+     a constant compiled into the bundle instead. What that cost is the boundary
+     `PricingWriteApi` names in its own heading - an administrator raised a price through
+     the route and the page a member reads, together with the QR code he scans, went on
+     carrying the old number. */
+  'pricing',
   'races',
   'results',
   'teams',

@@ -12,7 +12,7 @@ import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the fourteen names the backend has to answer for', () => {
+  it('is the fifteen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -31,7 +31,16 @@ describe('the list of resources', () => {
 
        Thirteen since 11.08.2026, when a member could say they are going to a
        race: who is going is written by members and read by members, and an
-       event is written by administration, so it is not a list on the event. */
+       event is written by administration, so it is not a list on the event.
+
+       Fifteen since 26.09.2026, when the price list became something the portal READS
+       rather than something it ships. It is the one name here that was ANSWERED before it
+       was ever asked for: `/api/pricing` has served `price_row` since the codebooks went
+       in, and all three screens that quote a price read a constant compiled into the
+       bundle instead. So an administrator who changed a price through
+       `PUT /api/pricing/{key}` changed what the next member was CHARGED and none of what
+       he was SHOWN - the public table under Član 14, his own „Moja članarina", and the IPS
+       QR code he scans to pay. */
     expect([...RESOURCE_NAMES]).toEqual([
       'attendance',
       'ducats',
@@ -43,6 +52,7 @@ describe('the list of resources', () => {
       'pages',
       'pairs',
       'places',
+      'pricing',
       'races',
       'results',
       'teams',
