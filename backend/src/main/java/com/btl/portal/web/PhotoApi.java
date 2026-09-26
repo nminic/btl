@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,8 +48,16 @@ import java.util.regex.Pattern;
  * visitor walking 1, 2, 3 learns how many pictures the portal holds and, the day a hidden
  * member has one, that his exists. Sixty four hexadecimal characters are not walked.
  * <b>It is not a substitute for a rule about WHICH pictures are public</b>, and the
- * paragraph below is that rule; what it is still not a substitute for is a rule about who
- * is asking, and nothing here asks.
+ * paragraph below is that rule.
+ *
+ * <p><b>AND SINCE 26.09.2026 THIS ROUTE DOES ASK WHO IS CALLING, which is this paragraph
+ * reversed rather than extended.</b> What stood here said „what it is still not a substitute
+ * for is a rule about who is asking, and nothing here asks", and that was true of the portal
+ * while no resource published a PORTRAIT'S digest. {@link CompetitorApi} publishes one from
+ * 26.09.2026, so the sentence stopped being true of the portal the same day and is rewritten
+ * in the same commit; left standing it would read as an instruction to take the condition
+ * back out. What the route asks is one question and it decides one thing: whether a member
+ * who hides his profile has his portrait answered. See the paragraph on the holders below.
  *
  * <p><b>AND ONLY A PICTURE A PUBLIC THING HOLDS IS ANSWERED AT ALL.</b> ADL A36 P-javno,
  * owner, 13.09.2026: „javno je ono sto Clan 73 nabraja, i nista vise. Sve ostalo ceka
@@ -58,7 +67,9 @@ import java.util.regex.Pattern;
  * portal publishes.
  *
  * <ul>
- * <li>{@code competitor.photo_id} - a member's portrait, drawn on his card and on his page.
+ * <li>{@code competitor.photo_id} - a member's portrait, drawn on his card and on his page,
+ * <b>and since 26.09.2026 only while the member is not hiding his profile from the caller</b>
+ * (see the paragraph after this list).
  * <li>{@code team.logo_id} - a team's mark, drawn before its name in the table of teams
  * (PDL, owner, 12.08.2026).
  * <li>{@code verification.photo_id} - a picture WAITING for a moderator. PDL, „Profilnu
@@ -77,6 +88,41 @@ import java.util.regex.Pattern;
  * told apart, the refusal would say „this digest names a picture somebody is having moderated", which is
  * the very thing being withheld. {@code PhotoApiTest} keeps one case per holder, because
  * this is a fact with four states and not two.
+ *
+ * <p><b>AND A PORTRAIT IS PUBLIC ONLY WHILE ITS MEMBER IS NOT HIDING HIS PROFILE FROM THE
+ * CALLER. [ODLUKA 26.09.2026, owner]</b>, chosen between three offered. ADL A60 left this
+ * open in as many words - „`competitor.photo_id` se tretira kao javan bez obzira na
+ * `profile_hidden`" - and named what would close it: „Prvi resurs koji ga objavi mora u istom
+ * potezu da donese pravilo o skrivenom profilu, inace granica pada tog dana."
+ * {@link CompetitorApi} is that resource and this is the other half of one decision. <b>Why
+ * the half in that resource was not enough, and it is a measurement rather than an
+ * argument:</b> the digest IS the whole permission, because until this paragraph nothing here
+ * asked who was calling - so a member shown the address could pass it on and any visitor
+ * would get the bytes. Withheld in one place and served in the other, the rule would have
+ * hidden a capability instead of refusing access.
+ *
+ * <p><b>Hidden from a caller who is NOT SIGNED IN, and from nobody else</b>, which is the
+ * owner's own sentence: „Takmicar od ulogovanih kolega ne moze da sakrije profil" (PDL,
+ * 06.09.2026), with the reason in the published policy - „ali ne i od ostalih clanova, jer bi
+ * time nestao smisao zajednickog rangiranja". So the question is asked of the SESSION and of
+ * nothing finer: not whose portrait it is, and not what the caller may do. A caller with a
+ * session is answered exactly what was answered before this paragraph existed.
+ *
+ * <p><b>The refusal is INSIDE the lookup and not a branch after it, and that is what keeps
+ * the guarantee this class is built on.</b> A hidden member's portrait fails the same
+ * {@code exists} a picture nothing public holds fails, so it leaves through the same
+ * {@link #nothingIsHere} and is byte for byte what a digest nobody wrote is answered -
+ * measured by {@code aHiddenMembersPortraitIsAnsweredExactlyAsADigestNobodyWrote}, in the
+ * shape the two comparisons beside it already use. Written as a check after the row came
+ * back it would be a second road out, and a status set rather than sent is a different answer
+ * on the wire (measured 13.09.2026). It also opens no new branch, so it adds nothing to the
+ * timing difference this class records further down.
+ *
+ * <p><b>THE FEE IS NOT PART OF THIS RULE, said here rather than left to be found.</b> A
+ * member whose fee has lapsed still has his portrait answered to anybody holding the digest.
+ * The digest cannot be got from {@link CompetitorApi} - such a member is not on that list at
+ * all (PDL P11, owner 13.09.2026) - so nothing hands it out; and no decision covers the case,
+ * so no condition is invented for it. It is a boundary and not a protection.
  *
  * <p><b>The whole picture and never the crop.</b> PDL P11, „Odseceni deo se ne baca.
  * Slika ostaje cela, a isecak se pamti pored nje." The three fractions are answered beside
@@ -235,10 +281,26 @@ class PhotoApi {
 	 * it.</b> Nothing stops a member's portrait from also being a team's mark - the digest
 	 * is the content and V8 puts no unique constraint anywhere near it - and a join would
 	 * answer that picture twice, which {@code .optional()} turns into a 500.
+	 *
+	 * <p><b>AND THE MEMBER MUST NOT BE HIDING HIS PROFILE FROM THIS CALLER</b>, which is the
+	 * decision of 26.09.2026 and is written INSIDE the first {@code exists} rather than
+	 * beside it. There it is the same sentence the rest of this string already says - „is
+	 * this picture held by something this caller may see" - so a hidden member's portrait
+	 * comes back as no row at all and takes the one road out that every other refusal takes.
+	 * A condition after the lookup would be a second road, and the whole point of this class
+	 * is that there is one.
+	 *
+	 * <p><b>It is on the member's {@code exists} and never on the team's</b>, and that is
+	 * measurable rather than tidy: a team has no profile to hide and
+	 * {@code profile_hidden} is not a column of {@code team}, so a rule written over the
+	 * whole {@code or} would refuse a team's mark to every visitor the day one member hid
+	 * himself. {@code whatHoldsAPictureDecidesWhetherItIsAnswered} walks the team's mark as
+	 * a visitor and is what falls.
 	 */
 	private static final String THE_PICTURE_A_DIGEST_NAMES =
 			"select p.id, p.media_type from photo p where p.digest = :digest"
-			+ " and (exists (select 1 from competitor his where his.photo_id = p.id)"
+			+ " and (exists (select 1 from competitor his where his.photo_id = p.id"
+			+ "  and (cast(:signedIn as boolean) or not his.profile_hidden))"
 			+ " or exists (select 1 from team its where its.logo_id = p.id))"
 			+ " order by p.id limit 1";
 
@@ -265,12 +327,22 @@ class PhotoApi {
 
 	/**
 	 * @param name     the digest of the content, which is an address and never a path
+	 * @param member   who the chain worked out is asking, or NULL when nobody is: this route
+	 *                 is on {@link ApiSecurity#READ_BY_ANYBODY_UNDER_A_NAME}, so an anonymous
+	 *                 GET reaches this method rather than being answered 401, and Spring's
+	 *                 resolver hands a parameter of this type nothing when the principal is
+	 *                 the anonymous token - the same arrangement {@link CompetitorApi} writes
+	 *                 out. <b>It is read for one thing only</b>: whether a member who hides
+	 *                 his profile has his portrait answered. Nothing here asks whose portrait
+	 *                 it is or what the caller may do, because the rule is about a reader who
+	 *                 is not signed in and about nothing finer
 	 * @param response asked for so that every refusal goes down the same road an address
 	 *                 that is not there takes, exactly as {@link InboxApi#inbox} and
 	 *                 {@link VerificationApi#verification} do
 	 */
 	@GetMapping("/api/photos/{name}")
-	ResponseEntity<byte[]> photo(@PathVariable String name, HttpServletResponse response)
+	ResponseEntity<byte[]> photo(@PathVariable String name,
+			@AuthenticationPrincipal WhoIsAsking.Member member, HttpServletResponse response)
 			throws IOException {
 
 		if (!A_DIGEST.matcher(name).matches()) {
@@ -280,6 +352,13 @@ class PhotoApi {
 		Optional<Kept> kept = db
 				.sql(THE_PICTURE_A_DIGEST_NAMES)
 				.param("digest", name)
+				/* WHETHER ANYBODY IS ASKING AT ALL, and it is the ACCOUNT that is asked about
+				   rather than the member behind it. An account that does not race has no member
+				   (V23, owner 14.09.2026), so `memberOfAccount` would answer nothing for a
+				   signed in moderator and a hidden member's portrait would be refused to a
+				   caller the rule was never about. This route does not know that class and does
+				   not need to: „is there a session" is the whole question. */
+				.param("signedIn", member != null)
 				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
 				.optional();
 

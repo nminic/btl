@@ -298,10 +298,13 @@ import java.util.Optional;
  * all</b>, so what it publishes is said out loud: a team's mark and nothing else.
  * ADL A60 makes exactly two holders public, {@code competitor.photo_id} and
  * {@code team.logo_id}, and only the second is a fact this resource holds. The one
- * boundary A60 leaves open - a member's portrait counts as public whatever
- * {@code profile_hidden} says - rests today on nobody publishing a portrait's
- * digest, and nothing here does. {@code noPartOfAnybodysProfilePictureLeavesWithATeam}
- * holds that over the whole text rather than over a field name.
+ * boundary A60 left open - a member's portrait counts as public whatever
+ * {@code profile_hidden} says - is shut since 26.09.2026, and no longer by nobody
+ * publishing a portrait's digest: {@link CompetitorApi} does, and a condition on
+ * ITS OWN join is what shuts it for a caller who is not signed in. What
+ * {@code noPartOfAnybodysProfilePictureLeavesWithATeam} holds, unmoved, is narrower
+ * and still true here: no part of that picture leaks through THIS resource's join,
+ * over the whole text rather than over a field name.
  *
  * <p><b>The mark and its square are two halves of one fact and leave together.</b>
  * The square is three exact fractions on the picture's row and it is what the team
