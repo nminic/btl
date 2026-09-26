@@ -62,6 +62,24 @@ import org.springframework.web.bind.annotation.RestController;
  * V36 gives {@code membership} a {@code balance_entry_id} and
  * {@code membership_basis_says_whether_a_book_entry_is_named} refuses a {@code balance} membership
  * that names none, so the order is not a preference.
+ *
+ * <p><b>WHAT IS DELIBERATELY NOT GUARDED HERE, named rather than discovered</b>, the same way
+ * {@link PaymentApi} names its own:
+ *
+ * <ul>
+ * <li><b>Two requests activating the identical season at the same instant</b>, both reading no
+ * membership before either writes. The second loses to {@code membership_pk} (V22) and answers 500
+ * rather than the 409 {@link Outcome#ALREADY_A_MEMBER} would give it. Nothing is written twice and
+ * no balance is spent twice - the losing transaction rolls its entry back with it, which is what
+ * the one transaction around all of this is for - so the cost is an ugly answer to a second click,
+ * not money. Folding that race back into the refusal is real work with its own guard and nothing
+ * in this brief asks for it. What IS spent for good is the member number the loser drew, for the
+ * reason {@link MemberNumbers} gives about sequences.
+ * <li><b>A code minted for one season and a code for another, both standing, and the balance gone
+ * by the time the second is paid.</b> That is the boundary PDL leaves open, and it belongs to the
+ * payments route rather than to this one: {@link Balance#honouring} is where it is answered, by
+ * taking what is there rather than going negative.
+ * </ul>
  */
 @RestController
 class MyMembershipWriteApi {

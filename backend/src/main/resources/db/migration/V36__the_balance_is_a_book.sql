@@ -353,15 +353,21 @@ execute function a_reward_says_who_earned_it();
  * iz balansa, a visak ostaje za sledecu godinu." That is a THIRD way to become a member, and
  * V22 knew two.
  *
- * WHAT THIS CHANGES IN A DECISION THAT WAS ALREADY WRITTEN, said out loud because the sentence
- * is still in ADL as this migration is applied. ADL, `Osnov članstva, ne samo status`, read:
- * "Član se aktivira na dva načina ... aktivacija nosi polje osnova i vezu ka uplati koja sme
- * biti prazna samo kad je osnov počasni. Bez toga se u knjigovodstvu i u izveštaju o naplati
- * pojavljuje 31 član bez uplate i nema načina da se objasni." The FEAR in that sentence is a
- * member with no trace, not a member with no payment - and a member activated from his balance
- * has a trace, in the book, naming the amount and the day and the person. So the third basis
- * arrives with its evidence column beside it, and the shape of the old rule is kept exactly:
- * every basis names the thing it stands on, and only the honorary one names nothing.
+ * AND ADL SAYS SO SINCE 26.09.2026, WHICH IS WHY THERE IS NO CONFLICT TO ARGUE WITH HERE.
+ * `Osnov clanstva, ne samo status` read "Clan se aktivira na dva nacina" until that day and now
+ * reads, in the owner's own entry: "Clan se aktivira na TRI nacina: evidentirana uplata,
+ * oslobodjenje od clanarine odlukom Upravnog odbora (`feeExempt`) ... i balans". The purpose it
+ * was written for is unchanged and is the measure of this migration: "svaka aktivacija mora da
+ * nosi DOKAZ ... Od 26.09.2026 dokaz je uplata ILI STAVKA KNJIGE BALANSA, a prazan sme da bude
+ * samo kod oslobodjenog."
+ *
+ * So the column below is that sentence, and the shape of the old rule is kept exactly: every
+ * basis names the thing it stands on, and only the honorary one names nothing.
+ *
+ * AND THE CHEAPER SHAPE WAS REFUSED, in the same entry and for the reason it gives: a row in
+ * `payment` would say that MONEY ARRIVED, and money did not arrive - an obligation of the
+ * association was discharged. "To je laz u knjigama, dakle tacno ono na sta ova odluka
+ * upozorava." Which is also why nothing here touches `payment_method_known`.
  */
 
 alter table membership

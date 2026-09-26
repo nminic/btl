@@ -13,6 +13,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -29,7 +30,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * GET /api/me/membership: WHAT A MEMBER OWES ONCE HIS BALANCE HAS BEEN COUNTED, and the note the
@@ -80,6 +83,9 @@ class MyMembershipApiTest {
 
 	private static final String A_MODERATOR_WHO_DOES_NOT_RACE = "mod@primer.rs";
 
+	/** And one who may say the money arrived, for the single case that walks the whole road. */
+	private static final String THE_PAYMENTS_QUEUE = "blagajnik@primer.rs";
+
 	@Autowired
 	private MockMvc http;
 
@@ -113,6 +119,11 @@ class MyMembershipApiTest {
 		});
 
 		account(A_MODERATOR_WHO_DOES_NOT_RACE, "moderator");
+
+		account(THE_PAYMENTS_QUEUE, "moderator");
+		db.sql("insert into account_admin_right (account_id, right_code) values"
+						+ " ((select id from account where email = ?), 'queue:payments')")
+				.param(THE_PAYMENTS_QUEUE).update();
 
 		brought(BROUGHT_IN_EIGHT, 8);
 		brought(BROUGHT_IN_SIX, 6);
@@ -431,6 +442,62 @@ class MyMembershipApiTest {
 		assertThat(invoiceOf(BROUGHT_IN_SIX).path("alreadyAMember").asBoolean())
 				.as("a membership of another season answered for the one on sale")
 				.isFalse();
+	}
+
+	/**
+	 * THE WHOLE ROAD, THROUGH BOTH DOORS: HE READS HIS INVOICE, THE MONEY LANDS, AND WHAT COMES OFF
+	 * THE BOOK IS WHAT THE INVOICE SAID.
+	 *
+	 * <p><b>Why this case exists and why it is here rather than in either of the two files that own
+	 * one half.</b> {@code MyMembershipApiTest} proves the promise is written down;
+	 * {@code PaymentApiTest} proves a promise that is already there is honoured. Neither of them
+	 * proves the two JOIN UP - and that was measured rather than suspected: a mutation that stopped
+	 * this route recording anything at all SURVIVED the whole of {@code PaymentApiTest}, because that
+	 * file writes its own promises straight into the table. The seam between the two doors had no
+	 * case over it, so a portal that promised a discount and then charged in full would have been
+	 * green.
+	 *
+	 * <p>Nothing here is arranged by hand: the number asserted is read off the ANSWER the member was
+	 * served, and the number compared with it is read off the book after a moderator recognised the
+	 * money. If they are ever two numbers, this is what says so.
+	 */
+	@Test
+	void whatTheInvoiceSaidIsWhatComesOffTheBookWhenTheMoneyLands() throws Exception {
+		JsonNode owed = invoiceOf(BROUGHT_IN_SIX);
+
+		java.math.BigDecimal offTheBalance = owed.path("fromTheBalance").path("rsd").decimalValue();
+		java.math.BigDecimal toTransfer = owed.path("toTransfer").path("rsd").decimalValue();
+
+		assertThat(offTheBalance.signum())
+				.as("he was offered nothing off his invoice, so this case cannot tell a discount"
+						+ " from none")
+				.isPositive();
+		assertThat(toTransfer.signum())
+				.as("his balance covers the whole fee, so there is no code to pay and this road is"
+						+ " not the one he takes")
+				.isPositive();
+
+		long id = db.sql("select id from competitor where member_number = ?").param(BROUGHT_IN_SIX)
+				.query(Long.class).single();
+
+		assertThat(http.perform(post("/api/payments").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(THE_PAYMENTS_QUEUE).secret()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"competitorId\":" + id + ",\"currency\":\"RSD\",\"method\":\"slip\"}"))
+				.andReturn().getResponse().getStatus())
+				.isEqualTo(201);
+
+		/* Compared with the number the MEMBER WAS SERVED, never with one written in this file: that
+		   is what makes this a case about the seam rather than about arithmetic either side of it. */
+		assertThat(db.sql("select -rsd from balance_entry where competitor_id = ? and reason ="
+						+ " 'membership'").param(id).query(java.math.BigDecimal.class).single())
+				.as("what came off the book is not what the member was told his balance would cover")
+				.isEqualByComparingTo(offTheBalance);
+
+		assertThat(db.sql("select coalesce(sum(rsd), 0) from balance_entry where competitor_id = ?")
+						.param(id).query(java.math.BigDecimal.class).single())
+				.as("more came off than he was promised, or less")
+				.isEqualByComparingTo("0.00");
 	}
 
 	/**
