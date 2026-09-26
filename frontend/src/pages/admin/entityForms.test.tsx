@@ -138,15 +138,32 @@ describe('every entity has a form for a record that does not exist yet', () => {
 
 describe('every entity can be opened and changed whole', () => {
   /**
+   * SIX OF THE SEVEN, LESS THE ONE WHOSE EXISTING ROW HAS NOTHING LEFT TO OPEN.
+   *
+   * <p>A moderator's name and address have no route to write to yet - `ModeratorWriteApi`
+   * says so in its own words, quoted in full in `AdminModerators.tsx`'s class comment:
+   * „{@link #add} WRITES a name and an address, once; {@link #change} carries the row of
+   * boxes and nothing else... a request naming them is refused by the shape of {@link
+   * Ticks}, which has no field for either." And his rights are not on this form at all -
+   * they are the matrix below the list, ticked one box at a time. So the existing row has
+   * no „Otvori" to press and this one test of the four below is narrowed to the six that
+   * still have one; the other three `it.each(SCREENS)` blocks in this file are all about
+   * the NEW-record form, which a moderator still has in full (three fields, same as ever).
+   */
+  const SCREENS_WITH_AN_EXISTING_ROW_TO_OPEN: Screen[] = SCREENS.filter(
+    ({ entity }) => entity !== MODERATORS,
+  )
+
+  /**
    * A SERVER IN FRONT OF THE ONE ENTITY THAT HAS ROUTES, and in front of nothing else.
    *
-   * <p>Five of the six still keep a change as an overlay on the session, which happens
-   * inside the press. The competitions call `PUT /api/leagues/{id}` since 25.09.2026 (PDL
-   * P28c point 2), so for that one row of this table „it was saved" is an ANSWER, and the
-   * case has to wait for it rather than read the screen in the same tick.
+   * <p>Four of the five left now still keep a change as an overlay on the session, which
+   * happens inside the press. The competitions call `PUT /api/leagues/{id}` since
+   * 25.09.2026 (PDL P28c point 2), so for that one row of this table „it was saved" is an
+   * ANSWER, and the case has to wait for it rather than read the screen in the same tick.
    *
    * <p><b>Narrowed to that one address on purpose.</b> A blanket answer to every write
-   * would be this file quietly standing in for `test/setup.ts` for five entities that send
+   * would be this file quietly standing in for `test/setup.ts` for four entities that send
    * nothing, and the day one of them starts sending, its first request would be answered
    * „done" by a fixture nobody wrote for it.
    */
@@ -164,38 +181,41 @@ describe('every entity can be opened and changed whole', () => {
     stop()
   })
 
-  it.each(SCREENS)('$path keeps the change after the way back', async ({ entity, path, list }) => {
-    const user = setupUser()
-    const changed = 'Provera unosa'
-    const title = t(`admin.form.edit.${entity.id}`)
-    renderAt(`/sr/${path}`, 'superadmin')
+  it.each(SCREENS_WITH_AN_EXISTING_ROW_TO_OPEN)(
+    '$path keeps the change after the way back',
+    async ({ entity, path, list }) => {
+      const user = setupUser()
+      const changed = 'Provera unosa'
+      const title = t(`admin.form.edit.${entity.id}`)
+      renderAt(`/sr/${path}`, 'superadmin')
 
-    const table = await screen.findByRole('table', { name: list })
-    await user.click(first(within(table).getAllByRole('button', { name: /^Otvori:/ })))
+      const table = await screen.findByRole('table', { name: list })
+      await user.click(first(within(table).getAllByRole('button', { name: /^Otvori:/ })))
 
-    expect(screen.getByRole('heading', { level: 2, name: title })).toBeVisible()
+      expect(screen.getByRole('heading', { level: 2, name: title })).toBeVisible()
 
-    const field = writable(entity)
-    await user.clear(control(field, title))
-    await user.type(control(field, title), changed)
-    await user.click(open(title).getByRole('button', { name: t('form.submit') }))
+      const field = writable(entity)
+      await user.clear(control(field, title))
+      await user.type(control(field, title), changed)
+      await user.click(open(title).getByRole('button', { name: t('form.submit') }))
 
-    // What was saved is read back, field by field, rather than announced as
-    // "saved" and left to be trusted. Awaited, because for one of the six the
-    // confirmation is the server's answer and not the press (see the server above).
-    const saved = await screen.findByRole('status', { name: t('admin.form.saved') })
-    expect(within(saved).getByText(changed)).toBeVisible()
+      // What was saved is read back, field by field, rather than announced as
+      // "saved" and left to be trusted. Awaited, because for one of the six the
+      // confirmation is the server's answer and not the press (see the server above).
+      const saved = await screen.findByRole('status', { name: t('admin.form.saved') })
+      expect(within(saved).getByText(changed)).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+      await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    // The list names the record by what it is called now, which is how the
-    // change shows without every screen having a column for every field.
-    await user.click(
-      screen.getByRole('button', { name: labelled(`${t('admin.form.open')}: ${changed}`) }),
-    )
+      // The list names the record by what it is called now, which is how the
+      // change shows without every screen having a column for every field.
+      await user.click(
+        screen.getByRole('button', { name: labelled(`${t('admin.form.open')}: ${changed}`) }),
+      )
 
-    expect(control(field, title)).toHaveValue(changed)
-  })
+      expect(control(field, title)).toHaveValue(changed)
+    },
+  )
 })
 
 describe('the confirmation that a record was saved', () => {
@@ -875,51 +895,66 @@ describe('a field changed in the row rather than on the form', () => {
    * does not, and it tells a wrong FAMILY apart as well - a cell handed the
    * wrong one writes and reads a key of its own just as happily.
    *
+   * **A written page since B106, not a moderator.** This measured a moderator's
+   * first name until then, and the cell and the row's own name were the same
+   * field there by coincidence - editing it moved BOTH the cell's own text and
+   * the „Otvori" button beside it, which happened to make one case prove both
+   * halves at once. Moderators no longer have a cell to write with at all
+   * (`AdminModerators.tsx`'s class comment names why), so this moved to the one
+   * remaining screen whose cell IS the row's own name: a written page's title
+   * (`AdminPages.tsx`). Teams and members also keep a cell, but theirs is a town
+   * beside a name the cell does not touch, which cannot show the „Otvori" button
+   * moving with it.
+   *
    * **The third row on purpose.** A reader that always takes the first row would
    * pass on the first, and the screen carries four.
    *
-   * The sweep over the other five cells is the compiler's: the family is a
-   * required prop, so a cell that does not take one does not build, and the
-   * build is in the gate. What it cannot answer is whether the family handed in
-   * is the right one, which is what this measures. That cells exist at all is
-   * held where they are drawn (the town of a team, below; the title of a page,
-   * `presidentAddress.test.tsx`). */
+   * The sweep over the other cells is the compiler's: the family is a required
+   * prop, so a cell that does not take one does not build, and the build is in
+   * the gate. What it cannot answer is whether the family handed in is the right
+   * one, which is what this measures. That the other cells exist at all is held
+   * where they are drawn (the town of a team and of a member, `AdminTeams.tsx`
+   * and `AdminMembers.tsx`; a member's town again, `presidentAddress.test.tsx`). */
   it('reaches the record every other reader of it sees', async () => {
     const user = setupUser()
-    const title = t('admin.form.edit.moderators')
-    renderAt('/sr/administracija/moderatori', 'superadmin')
+    const title = t('admin.form.edit.pages')
+    renderAt('/sr/administracija/strane', 'superadmin')
 
-    const table = await screen.findByRole('table', { name: 'Moderatori' })
+    const table = await screen.findByRole('table', { name: 'Statične strane' })
     const row = at(within(table).getAllByRole('row'), 3)
 
     await user.click(
-      within(row).getByRole('button', { name: `Ime: Milena. ${t('admin.change')}` }),
+      within(row).getByRole('button', {
+        name: `${t('admin.pageTitle')}: Reč predsednika. ${t('admin.change')}`,
+      }),
     )
-    await user.clear(within(row).getByRole('textbox', { name: t('admin.field.firstName') }))
+    await user.clear(within(row).getByRole('textbox', { name: t('admin.pageTitle') }))
     await user.type(
-      within(row).getByRole('textbox', { name: t('admin.field.firstName') }),
-      'Promenjena',
+      within(row).getByRole('textbox', { name: t('admin.pageTitle') }),
+      'Reč nove predsednice',
     )
     await user.tab()
 
     /* The half that must go on working, first: without it the case below passes
        on a screen that has stopped drawing cells altogether. */
     expect(
-      within(row).getByRole('button', { name: `Ime: Promenjena. ${t('admin.change')}` }),
+      within(row).getByRole('button', {
+        name: `${t('admin.pageTitle')}: Reč nove predsednice. ${t('admin.change')}`,
+      }),
     ).toBeVisible()
 
     /* And the half that was broken. The name on this button is built out of the
        record the list holds, not out of the cell. */
     expect(
-      within(row).getByRole('button', { name: 'Otvori: Promenjena Šarić' }),
+      within(row).getByRole('button', { name: 'Otvori: Reč nove predsednice' }),
     ).toBeVisible()
 
     /* And the form behind it opens on the same record, which is what the next
-       person to correct that moderator would see. */
-    await user.click(within(row).getByRole('button', { name: 'Otvori: Promenjena Šarić' }))
+       person to correct that page would see. */
+    await user.click(within(row).getByRole('button', { name: 'Otvori: Reč nove predsednice' }))
 
-    expect(open(title).getByLabelText(labelled(t('admin.field.firstName')))).toHaveValue(
-      'Promenjena',
+    expect(open(title).getByLabelText(labelled(t('admin.field.pageTitle')))).toHaveValue(
+      'Reč nove predsednice',
     )
   })
 })

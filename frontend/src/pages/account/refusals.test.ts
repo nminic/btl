@@ -15,6 +15,7 @@ import {
 } from '../admin/leagueWrites'
 import { WHEN_WRITING_A_PRICE } from '../admin/priceWrites'
 import { must } from '../../test/at'
+import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 
 /**
@@ -183,6 +184,10 @@ describe('the reasons the server can name', () => {
        route decides (PDL P12c), so a request that goes round the screen meets the route
        with nothing in between. */
     ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 8],
+    /* THE SEVENTH, ADDED WITH B106: making a moderator, ticking his boxes and taking his
+       moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
+       one dictionary covers all four reasons the class declares. */
+    ['ModeratorWriteApi.java', [WHEN_WRITING_A_MODERATOR], 4],
   ]
 
   /** What a file declares that really is a refusal, which is every constant bar the ones

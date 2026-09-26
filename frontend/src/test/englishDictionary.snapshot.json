@@ -1261,7 +1261,16 @@
       "theAmountIsMoreThanARowMayCost": "The price is larger than the largest allowed: 1,000 EUR and 200,000 RSD.",
       "theFeeHasNoDinarPrice": "The payment processing charge has no dinar price, because it is not paid to the intermediary in dinars.",
       "theReferralIsSettled": "The referral amount has been fixed since 1 October for the season being renewed, and changes only for the next season."
-    }
+    },
+    "moderatorSaveRefused": {
+      "theFormIsNotComplete": "A first name, a last name or an email address is missing.",
+      "theAddressIsNotShaped": "That email address is not valid.",
+      "theAddressIsTaken": "An account already exists at that address.",
+      "aRightTheMatrixDoesNotHold": "The portal does not know that right. Refresh the page."
+    },
+    "moderatorGone": "The moderator has been deleted.",
+    "moderatorSavedUnseen": "The moderator has been saved, but the portal cannot show them in this list. Refresh the page.",
+    "moderatorRightsSavedUnseen": "The right has been saved, but the portal cannot show the new state. Refresh the page."
   },
   "ducats": {
     "title": "Ducats",

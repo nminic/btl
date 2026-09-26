@@ -1258,6 +1258,15 @@
       "theFeeHasNoDinarPrice": "Taksa za obradu plaćanja nema dinarsku cenu, jer se u dinarima ne plaća posredniku.",
       "theReferralIsSettled": "Iznos za preporuku je od 1. oktobra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
     },
+    "moderatorSaveRefused": {
+      "theFormIsNotComplete": "Nedostaje ime, prezime ili adresa elektronske pošte.",
+      "theAddressIsNotShaped": "Adresa elektronske pošte nije ispravna.",
+      "theAddressIsTaken": "Na toj adresi već postoji nalog.",
+      "aRightTheMatrixDoesNotHold": "Portal ne poznaje to pravo. Osveži stranu."
+    },
+    "moderatorGone": "Moderator je obrisan.",
+    "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
+    "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
     "teamDeleteRefused": {
       "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
     },
