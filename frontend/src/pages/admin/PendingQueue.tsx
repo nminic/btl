@@ -598,9 +598,38 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     /* The first of them, on the card it is about, or nothing where every press went
        through - which is also what takes a sentence about the last press off the
        screen. */
-    setSaid(refusals[0] ?? null)
+    sayIt(refusals[0] ?? null)
 
     return done
+  }
+
+  /**
+   * THE SENTENCE, AND THE CARD IT IS ABOUT OPENED SO THAT IT CAN BE READ.
+   *
+   * <p><b>The opening is not a nicety and it was measured against the stylesheet.</b>
+   * Below 51.25em a card is a fold - `Verification.css` gives `.pending__card`
+   * `display: none` and only `--open` brings it back - and the sentence is drawn
+   * inside that card. From one card that is harmless, because the buttons are inside
+   * the fold too, so a moderator on a telephone has already opened the card to press
+   * anything. <b>The sweep is the one that breaks it:</b> „Odobri sve" sits in the bar
+   * outside every card, so a refusal met during a sweep would land inside a card still
+   * folded, and the moderator would see the count drop with nothing anywhere saying
+   * why.
+   *
+   * <p>That is the same shape as the fault `admin/verificationStyle.test.ts` was
+   * written for - „the line saying what a star means was drawn by the renderer over a
+   * screen whose every star the stylesheet had folded away" - so it is answered the
+   * same way round: the card the route refused is the one thing the moderator now has
+   * to look at, so it opens.
+   *
+   * <p>Above that width nothing is folded and this changes nothing anybody can see.
+   */
+  const sayIt = (refusal: ServerRefusal | null): void => {
+    setSaid(refusal)
+
+    if (refusal !== null) {
+      setShown(refusal.id)
+    }
   }
 
   /**
@@ -637,7 +666,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     const answer = await askTheServer(decisionPath(one.id), aRefusal(reason))
 
     if (answer.got !== 'done') {
-      setSaid({ id: one.id, answer })
+      sayIt({ id: one.id, answer })
 
       return
     }
@@ -646,7 +675,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
        the overlay has patched is one a remounted screen must read from the server
        (`admin/AdminLeagues.tsx`, review 25.09.2026). */
     clearResourceCache('verification')
-    setSaid(null)
+    sayIt(null)
 
     settle(one.id, {
       status: 'rejected',

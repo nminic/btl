@@ -396,6 +396,60 @@ describe('a decision on a queue served by the pending screen', () => {
     }
   })
 
+  it('opens the card the route refused, because on a telephone it is folded shut', async () => {
+    /* THE ONE PLACE THE SENTENCE COULD HAVE BEEN DRAWN AND STILL NOT BEEN READABLE.
+     *
+       `Verification.css` gives `.pending__card` `display: none` below 51.25em and
+       only `--open` brings it back, and the sentence is inside that card. From a
+       single card that is harmless: the buttons are inside the fold too, so the
+       moderator has already opened it. „Odobri sve" is NOT - it sits in the bar
+       outside every card - so a refusal met during a sweep would land in a card still
+       folded, and the count would drop with nothing anywhere saying why. That is the
+       same fault `admin/verificationStyle.test.ts` exists for, one line further on.
+     *
+       Measured through `aria-expanded` rather than through the class, because that is
+       what a moderator reading the screen is told and jsdom applies no stylesheet
+       anyway. ONE card open and not „at least one": the fix is that the refused card
+       opens, and a screen that opened all four would satisfy a weaker claim while
+       being the scrolling the fold was written to end. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const server = serverThat((path, init) =>
+      init?.method !== 'POST' || !path.includes('/decision')
+        ? null
+        : path.includes('ver-kom-2')
+          ? refused('Stavku trenutno drži drugi moderator.', 409)
+          : new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+    )
+
+    try {
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      await cardsIn()
+
+      /* Nothing is open before the press, which is what makes the assertion below
+         about the refusal rather than about how the screen happens to start. */
+      expect(screen.queryAllByRole('button', { expanded: true })).toEqual([])
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Stavku trenutno drži drugi moderator.',
+      )
+
+      const open = screen.getAllByRole('button', { expanded: true })
+
+      expect(open).toHaveLength(1)
+      expect(open[0]).toHaveAccessibleName(/Srebrno jezero polumaraton/)
+    } finally {
+      server.stop()
+      confirm.mockRestore()
+    }
+  })
+
   it('asks the server again after a decision, rather than reading what this visit fetched', async () => {
     /* AXIS 6, and the fault is one a review of PR 368 already found once on the
        competitions: a decision recorded on the server and patched only into the local
