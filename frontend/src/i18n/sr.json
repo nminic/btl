@@ -1257,7 +1257,11 @@
       "theAmountIsMoreThanARowMayCost": "Cena je veća od najveće dozvoljene: 1.000 EUR i 200.000 RSD.",
       "theFeeHasNoDinarPrice": "Taksa za obradu plaćanja nema dinarsku cenu, jer se u dinarima ne plaća posredniku.",
       "theReferralIsSettled": "Iznos za preporuku je od 1. oktobra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
-    }
+    },
+    "teamDeleteRefused": {
+      "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
+    },
+    "teamGone": "Tim je obrisan."
   },
   "ducats": {
     "title": "Dukati",

@@ -11,7 +11,7 @@ import { PageMetaContext } from '../app/pageMetaContext'
 import { ClockProvider } from '../clock/ClockProvider'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import servedPrices from '../../public/mock/pricing.json'
-import { refused, serverThat } from '../test/serverAnswers'
+import { did, refused, serverThat } from '../test/serverAnswers'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/translate'
 import { RoleProvider } from '../roles/RoleProvider'
@@ -4415,6 +4415,14 @@ describe('the section of entities', () => {
     /* Owner, 30.07.2026: every row can be deleted. Twice, because nothing brings
        it back and the control stands in a row of twenty beside the one that
        merely opens the record. */
+
+    /* A SERVER THAT CONFIRMS IT, WHICH THIS CASE NEEDS SINCE 26.09.2026. The row acted on is
+       a SERVED team, and `admin/AdminTeams.tsx` now sends `DELETE /api/teams/{id}` for one of
+       those. The disc reader behind these cases answers by resource name and its pattern does
+       not match an address carrying an id (`test/setup.ts`), so the request came back 404 and
+       the row stayed. Its own answer rather than a branch in `test/setup.ts`, which every case
+       in the suite reads. */
+    const server = serverThat((_, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
     const user = setupUser()
     renderAt('/sr/administracija/timovi', 'superadmin')
 
@@ -4429,9 +4437,15 @@ describe('the section of entities', () => {
 
     await user.click(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
 
-    expect(table().queryAllByRole('button', { name: /^Obriši:/ })).toHaveLength(before - 1)
+    /* AWAITED, BECAUSE THE ROW LEAVES ON THE ANSWER AND NOT ON THE PRESS. Read as it was, this
+       measured the moment between the two and would fail on a screen that was working. */
+    await waitFor(() => {
+      expect(table().queryAllByRole('button', { name: /^Obriši:/ })).toHaveLength(before - 1)
+    })
     expect(table().queryByText(name)).not.toBeInTheDocument()
-  })
+
+    server.stop()
+  }, SLOW)
 
   it('puts the question away again on second thoughts', async () => {
     const user = setupUser()
