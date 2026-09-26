@@ -169,8 +169,17 @@ const SERBIAN_ONLY = /[čćšžđČĆŠŽĐ]/
  *
  * Named one by one rather than caught by a pattern, the way `data/contract.test.ts`
  * names the three files allowed the retired word, and for the same reason: a pattern
- * would let the next sentence that stays Serbian in past it. Each one is held to
- * really needing the exception, so the list cannot be padded to silence a key.
+ * would let the next sentence that stays Serbian in past it.
+ *
+ * **Naming a key here is not, on its own, the exception.** The case right below reads
+ * the *Serbian* sentence at the named key, and almost every Serbian sentence has a
+ * letter to give it: measured, 575 of 1200. A key added here for a sentence that keeps
+ * none of the league's name would still pass that case, and an untranslated copy of it
+ * sitting in English would pass `says nothing in Serbian, letter by letter` too, since
+ * that case skips whatever is named here by construction. What actually stops the list
+ * from being padded to leave a key untranslated is `carries the league's name and
+ * nothing else in Serbian`, in the English dictionary's own describe block below: it
+ * reads the *English* sentence and asks for the league's own name inside it.
  */
 const KEEPS_THE_NAME = ['app.name', 'seo.home.title']
 
@@ -338,6 +347,39 @@ if (english === null) {
         .filter(([, text]) => SERBIAN_ONLY.test(text))
 
       expect(left.map(([name]) => name), 'left in Serbian').toEqual([])
+    })
+
+    it('carries the league name and nothing else in Serbian, for every exception', () => {
+      /* The case above skips `KEEPS_THE_NAME` entirely, and the Serbian-side case in
+         `the Serbian dictionary` block does not read English at all, so neither holds
+         what is actually exempted: the league's own name, and nothing beside it
+         (decision 1 above). This asks the *English* sentence directly, for every name
+         the list holds.
+
+         Proven against the two mutations a review found the rest of this file green
+         on: a key added to the list with its Serbian sentence copied verbatim into
+         English carries no trace of the league's name, so it fails the first half; and
+         `en.json`'s `review.waiting` set back to its own Serbian text and added to the
+         list fails the same way. Neither can be satisfied by padding the list, because
+         padding does not, by itself, put the league's name in the sentence. */
+      const leagueName = new Map(sentences(sr)).get('app.name')
+
+      if (leagueName === undefined) {
+        throw new Error('app.name is missing from the Serbian dictionary')
+      }
+
+      const there = new Map(sentences(book))
+      const failing = KEEPS_THE_NAME.filter((name) => {
+        const text = there.get(name)
+
+        return (
+          text === undefined ||
+          !text.includes(leagueName) ||
+          SERBIAN_ONLY.test(text.replaceAll(leagueName, ''))
+        )
+      })
+
+      expect(failing, 'missing the league name, or carrying more Serbian than it').toEqual([])
     })
 
     it('is a second dictionary and not the Serbian one under another name', () => {

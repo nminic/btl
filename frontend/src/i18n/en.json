@@ -999,6 +999,8 @@
   },
   "membership": {
     "title": "My fee",
+    "noRecordTitle": "Your membership data has not arrived",
+    "noRecord": "The portal cannot read your membership record, so renewing the fee is not possible right now. Refresh the page and try again.",
     "status": "State",
     "active": "A member since the {season} season.",
     "feeExempt": "You are exempt from paying the fee for season {season}, by a decision of the Board.",
