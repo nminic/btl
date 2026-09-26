@@ -408,6 +408,24 @@ class RightsAtTheDoorTest {
 					"PUT /api/me/password", "POST /api/me/photo", "DELETE /api/me/photo",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
+					/* DELETING A TEAM, AND THIS ONE IS HERE FOR A REASON NO OTHER LINE ON THIS
+					   LIST CARRIES: it has TWO ways in and `RightIsNeeded` can only express
+					   one of them. PDL P13b, owner, 25.09.2026: „Superadmin i moderator sa
+					   pravom nad timovima imaju isto dugme i iste posledice kao administrator
+					   tog tima", where the administrator is an ordinary member holding no box
+					   at all. Written `@RightIsNeeded("entity:teams")` the door would shut on
+					   exactly the person the button is chiefly for, so `entity:teams` is asked
+					   INSIDE the handler as one of two ways in - the shape `TeamApi` uses - and
+					   the other way is the team's own derived administrator.
+
+					   SO THIS FLOOR ASSERTS LESS ABOUT THIS ROUTE THAN A NAME HERE SUGGESTS,
+					   and it is said plainly for the same reason the three verification writes
+					   above say it. „Every signed in account may call it" is FALSE: a member
+					   who is in the team but does not administer it is refused 404, and so is a
+					   moderator who holds some other box. `TeamWriteApiTest` holds that half,
+					   with a team-mate who is genuinely in the team and a moderator who
+					   genuinely holds a right that is not this one. */
+					"DELETE /api/teams/{id}",
 					"ANY /error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";

@@ -1233,7 +1233,18 @@
       "theEventIsNotKnown": "Portal ne poznaje taj događaj.",
       "theRaceIsNotSaidOnce": "Treba izabrati ili ceo događaj ili jednu njegovu trku.",
       "unknown": "Portal nije prihvatio izmenu. Osveži stranu pa pokušaj ponovo."
-    }
+    },
+    "leagueSaveRefused": {
+      "theFormIsNotComplete": "Nedostaje naziv, adresa ili sezona.",
+      "theAddressIsNotShaped": "Adresa sme da ima samo mala slova i cifre, sa po jednom crticom između njih. Ne sme da počne ni da se završi crticom.",
+      "theAddressIsTaken": "Na toj adresi već stoji jedna liga.",
+      "theSeasonIsNotThisOneOrTheNext": "Liga se pravi samo za tekuću ili narednu sezonu.",
+      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta, pa se liga više ne menja. Brisanje i dalje radi.",
+      "theSeasonCannotMoveWhileRacesCount": "Sezona se ne može pomeriti dok liga broji makar jednu trku. Prvo izbaci trke, pa promeni sezonu."
+    },
+    "leagueGone": "Liga je obrisana.",
+    "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
+    "leagueTextSaved": "Izmena je sačuvana."
   },
   "ducats": {
     "title": "Dukati",
