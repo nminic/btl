@@ -419,6 +419,7 @@
     "categoryFirstSeason": "Početnička",
     "categoryByAge": "Starosna",
     "healthStatementLink": "pravilnikom",
+    "serbianBinds": "U slučaju neslaganja između srpske i engleske verzije ove izjave, važi srpski tekst.",
     "parentRelation": "Srodstvo",
     "mother": "Majka",
     "father": "Otac",
@@ -1246,7 +1247,11 @@
     },
     "leagueGone": "Liga je obrisana.",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
-    "leagueTextSaved": "Izmena je sačuvana."
+    "leagueTextSaved": "Izmena je sačuvana.",
+    "teamDeleteRefused": {
+      "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
+    },
+    "teamGone": "Tim je obrisan."
   },
   "ducats": {
     "title": "Dukati",
