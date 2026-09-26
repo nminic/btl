@@ -152,6 +152,43 @@ class PriceListRowsTest extends DatabaseTest {
 	}
 
 	/**
+	 * EVERY ROW OF THE PRICE LIST CARRIES A NAME, AND AFTER V34 THERE IS NO SECOND
+	 * STATE.
+	 *
+	 * <p>Owner, 25.09.2026 (PDL P12b, 1): the name of a period becomes a column he
+	 * edits from the administration. Before V34 there were two kinds of row - six
+	 * that a reader saw named, out of {@code frontend/src/i18n/sr.json}, and the
+	 * processing fee, which had no name anywhere a screen could reach. That second
+	 * kind is what this says is gone.
+	 *
+	 * <p><b>A property and not a list, which is the point.</b> The seven names are
+	 * DATA now: an administrator changes them through {@code PUT /api/pricing/{key}},
+	 * so writing them out here would be a fourth home for a value the owner decided
+	 * should have one, and every rename would fail a test rather than a screen. What
+	 * cannot move is that there IS one on every row, and that is what is asked.
+	 * {@code TheRowNameHasOneHomeTest} is where the words themselves are held, and it
+	 * reads them out of the dictionary instead of writing them again.
+	 *
+	 * <p><b>The count is asserted, because a query that came back empty satisfies
+	 * „none of them is blank" perfectly.</b> Seven, the same seven every other case
+	 * here counts.
+	 */
+	@Test
+	void everyRowOfThePriceListCarriesAName() {
+		List<String> names = db.sql("select label from price_row order by sort_order")
+				.query(String.class)
+				.list();
+
+		assertThat(names)
+				.as("the price list is seven rows, and a different number of them answered with a name")
+				.hasSize(7);
+		assertThat(names)
+				.as("a row of the price list with no name is the state V34 was written to end:"
+						+ " the table a visitor reads under Clan 14 would draw an empty first column")
+				.allSatisfy(name -> assertThat(name).isNotNull().isNotBlank());
+	}
+
+	/**
 	 * Only a period answers the ranking question, and the other three leave it
 	 * empty.
 	 *
