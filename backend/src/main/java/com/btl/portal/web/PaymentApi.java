@@ -99,17 +99,46 @@ import java.util.regex.Pattern;
  * unconfirmed account - because confirming a payment is a MODERATOR's action
  * against a bank statement; the paying member is never signed in to do it.
  *
+ * <p><b>A SEASON SOMEBODY IS ALREADY A MEMBER OF IS REFUSED AND NOT WRITTEN OVER,
+ * WHICH IS THE ONE THING THIS CLASS DECIDES THAT IS NOT ABOUT MONEY.</b> The
+ * paragraph here used to say that a {@code membership} row on any basis but
+ * {@code payment} „has no code path to reach today", so confirming a payment for such
+ * a person „would collide with {@code membership_pk} rather than be decided by this
+ * class", and that the day a screen granted one was the day the decision belonged
+ * here. The mechanism of that collision was stated correctly and is worth keeping:
+ * {@code write} reads {@code payment} and never {@code membership}, so a season held
+ * on any other ground looks to it exactly like a season held by nobody, and
+ * {@code recordIt} then meets the key and answers 500.
+ *
+ * <p><b>What changed is that the row is now legal AND about to have two writers,
+ * which is why the guard is here before either of them.</b> {@code V22} allows
+ * {@code feeExempt} with no payment named, so the state is one the schema invites
+ * rather than one nothing can produce; a branch in flight adds {@code 'balance'} as a
+ * third basis; and freeing a member of the fee is the increment this guard was
+ * written alongside. Whichever of the three lands first, the 500 arrives with it.
+ *
+ * <p><b>It asks whether the KEY is taken and never what the basis IS, and both
+ * reasons for that are measured rather than tidy.</b> First, the set of bases is
+ * growing, so a guard written as „refuse when the basis is {@code feeExempt}" would
+ * hand the same 500 back on the day {@code 'balance'} arrived - the instance closed
+ * and the class left open. Second, {@code queue:payments} is not
+ * {@code entity:members}, and PDL 28.07.2026 („Osnov clanstva se nikad ne prikazuje
+ * javno... Vide ga samo Superadmin i moderatori sa pravom nad clanovima", PDL
+ * 20.09.2026 adding the member himself) means the moderator working this queue may
+ * not be told HOW a membership is held. So the refusal names that the season is
+ * already held and nothing more, which is both the safe answer and the complete one.
+ *
+ * <p><b>Refused rather than written over, and that is a decision with a named
+ * loser.</b> An {@code on conflict do update} here would let a recorded payment
+ * silently replace a membership the board granted, and nothing would be left saying
+ * the exemption had ever been there. This class already refuses to undo a reversal
+ * quietly for the same reason - „a reversal is turned back by a person, not by an
+ * import" - and an exemption overturned by a fee is the same shape of fact.
+ *
  * <p><b>WHAT IS DELIBERATELY NOT GUARDED HERE, EACH ONE NAMED RATHER THAN
  * DISCOVERED:</b>
  *
  * <ul>
- * <li>A competitor already holding a {@code membership} row for this season on
- * {@code feeExempt} has no code path to reach today - the honorary screen PDL,
- * 13.08.2026 grants „za svaku sezonu posebno" is not built (V22's own migration
- * says as much) - so confirming a payment for him would collide with
- * {@code membership_pk} rather than be decided by this class. Building a decision
- * for a state nothing can produce is exactly the guard {@code CLAUDE.md} asks not
- * to be written; the day that screen exists, this is where the decision belongs.
  * <li>Two requests confirming the identical (competitor, season) at the same
  * instant, both reading no existing row before either writes, both draw two
  * DIFFERENT numbers - the sequence guarantees that much and is what the case in
@@ -144,6 +173,17 @@ class PaymentApi {
 	static final String THE_REFERENCE_IS_TAKEN = "theReferenceIsTaken";
 
 	static final String THE_PAYMENT_WAS_REVERSED = "thePaymentWasReversed";
+
+	/**
+	 * THE SEASON IS ALREADY SOMEBODY'S, AND THE REASON SAYS NO MORE THAN THAT.
+	 *
+	 * <p>It deliberately does not say on what basis it is held. The tick that opens
+	 * this route is {@code queue:payments} and the basis is read under
+	 * {@code entity:members} ({@link CompetitorApi#OVER_THE_MEMBERS}, PDL
+	 * 28.07.2026), so a reason naming the basis would be this route handing over a
+	 * fact its own caller has no right to read.
+	 */
+	static final String THE_MEMBERSHIP_IS_ALREADY_HELD = "theMembershipIsAlreadyHeld";
 
 	/** {@code payment_currency_known}, V16. */
 	private static final Set<String> CURRENCIES = Set.of("EUR", "RSD");
@@ -289,10 +329,35 @@ class PaymentApi {
 				if (reference != null && referenceIsTaken(reference)) {
 					yield no(HttpStatus.CONFLICT, THE_REFERENCE_IS_TAKEN);
 				}
+
+				/* AND THE SEASON ITSELF, ASKED HERE FOR THE SAME REASON THE REFERENCE
+				   IS: this is the only branch that inserts a `membership` row, so it
+				   is the only branch the key can be taken under. `ALREADY_RECORDED`
+				   cannot reach it - a payment in that state was written by this class
+				   in one transaction with its own membership row, so the key it would
+				   find is the very row it is about to answer with. */
+				if (theSeasonIsAlreadyHeld(competitor.get().id(), season)) {
+					yield no(HttpStatus.CONFLICT, THE_MEMBERSHIP_IS_ALREADY_HELD);
+				}
 				yield recordIt(typed, season, reference, competitor.get(), asking,
 						outcome == Outcome.RECORD_IT_AND_NUMBER_HIM);
 			}
 		};
+	}
+
+	/**
+	 * WHETHER THIS (COMPETITOR, SEASON) IS ALREADY A MEMBERSHIP, WHOEVER DECIDED IT
+	 * AND ON WHATEVER GROUND.
+	 *
+	 * <p>The question is the KEY and not the basis, which is what makes it complete by
+	 * construction: {@code membership_pk} is {@code (competitor_id, season)}, so a row
+	 * this returns true for is a row the {@code insert} below cannot add, whatever
+	 * value its {@code basis} column happens to carry today or gains tomorrow.
+	 */
+	private boolean theSeasonIsAlreadyHeld(long competitorId, int season) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from membership"
+						+ " where competitor_id = ? and season = ?)")
+				.params(competitorId, season).query(Boolean.class).single());
 	}
 
 	private boolean referenceIsTaken(String reference) {
