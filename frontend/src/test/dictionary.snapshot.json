@@ -1246,7 +1246,16 @@
     },
     "leagueGone": "Liga je obrisana.",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
-    "leagueTextSaved": "Izmena je sačuvana."
+    "leagueTextSaved": "Izmena je sačuvana.",
+    "moderatorSaveRefused": {
+      "theFormIsNotComplete": "Nedostaje ime, prezime ili adresa elektronske pošte.",
+      "theAddressIsNotShaped": "Adresa elektronske pošte nije ispravna.",
+      "theAddressIsTaken": "Na toj adresi već postoji nalog.",
+      "aRightTheMatrixDoesNotHold": "Portal ne poznaje to pravo. Osveži stranu."
+    },
+    "moderatorGone": "Moderator je obrisan.",
+    "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
+    "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu."
   },
   "ducats": {
     "title": "Dukati",

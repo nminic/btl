@@ -1,12 +1,45 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { first, must } from '../../test/at'
 import { expectFrontPage, renderAt } from '../../test/render'
+import { serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { ENTITY_FORMS } from './entityForms'
 import { QUEUES } from './queues'
 import { GROUP_STARTS, RIGHT_GROUPS, RIGHTS } from './rights'
+
+/**
+ * A SERVER FOR THE ONE ADDRESS THIS FILE WRITES TO, since B106.
+ *
+ * <p>`PUT /api/moderators/{id}` and `POST /api/moderators` both echo back what they were
+ * sent - `ModeratorWriteApi` really reads back rather than trusting the request, but what
+ * this file measures is the SCREEN, which `AdminModerators.test.tsx` and
+ * `moderatorWrites.test.ts` already hold the route itself to.
+ */
+function servingModerators() {
+  return serverThat((path, init) => {
+    const changed = /^\/api\/moderators\/(\d+)$/.exec(path)
+    const sent: Record<string, unknown> =
+      typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+
+    if (changed !== null && init?.method === 'PUT') {
+      return new Response(JSON.stringify({ id: Number(changed[1]), rights: sent.rights ?? [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    if (path === '/api/moderators' && init?.method === 'POST') {
+      return new Response(JSON.stringify({ id: 501, email: String(sent.email ?? '') }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    return null
+  })
+}
 
 /* The matrix that says what each moderator may do (PDL P28a, 30.07.2026).
  *
@@ -66,26 +99,44 @@ describe('every box in the matrix', () => {
   })
 
   it('remembers being ticked, and being unticked, after the screen is left', async () => {
+    /* SINCE B106 A TICK IS NOT REMEMBERED UNTIL `PUT /api/moderators/{id}` CONFIRMS IT
+       (`AdminModerators.tsx`), so this needs a server, and each press is awaited before
+       the next one is pressed: two presses inside one tick would both compute their next
+       set off the same not-yet-confirmed row. */
+    const server = servingModerators()
     const user = setupUser()
     renderAt('/sr/administracija/moderatori', 'superadmin')
 
     const given = 'Milena Šarić, uređivanje timova'
     const taken = 'Jelena Radulović, odlučivanje o rezultatima'
 
-    await user.click((await matrix()).getByRole('checkbox', { name: given }))
-    await user.click((await matrix()).getByRole('checkbox', { name: taken }))
+    const givenBox = (await matrix()).getByRole('checkbox', { name: given })
 
-    /* Away and back, so what is read is the session rather than the state of a
-       checkbox that never went anywhere. Unticking has to survive the trip as
-       well as ticking: a right somebody arrived holding and had taken away is
-       not the same as one they never had, and a store of what is switched on
-       could not tell those apart. */
-    await user.click(first(screen.getAllByRole('button', { name: /^Otvori:/ })))
+    await user.click(givenBox)
+    await waitFor(() => expect(givenBox).toBeChecked())
+
+    const takenBox = (await matrix()).getByRole('checkbox', { name: taken })
+
+    await user.click(takenBox)
+    await waitFor(() => expect(takenBox).not.toBeChecked())
+
+    /* Away and back, so what is read is the overlay this screen keeps rather than the
+       state of a checkbox that never went anywhere. Unticking has to survive the trip as
+       well as ticking: a right somebody arrived holding and had taken away is not the
+       same as one they never had, and a store of what is switched on could not tell
+       those apart.
+       There is no existing row to open any more - moderators keep no route to write a
+       name or an address to (`AdminModerators.tsx`'s class comment) - so the trip is
+       made through the one form still behind a button on this screen: a new moderator
+       opened and left again without being saved. */
+    await user.click(screen.getByRole('button', { name: t('admin.form.new.moderators') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     const back = await matrix()
     expect(back.getByRole('checkbox', { name: given })).toBeChecked()
     expect(back.getByRole('checkbox', { name: taken })).not.toBeChecked()
+
+    server.stop()
   })
 })
 
@@ -110,16 +161,21 @@ describe('a moderator with no right at all', () => {
   })
 
   it('is counted the same way once a right is given to him', async () => {
+    const server = servingModerators()
     const user = setupUser()
     renderAt('/sr/administracija/moderatori', 'superadmin')
 
-    await user.click(
-      (await matrix()).getByRole('checkbox', { name: 'Milena Šarić, uređivanje timova' }),
-    )
+    const box = (await matrix()).getByRole('checkbox', { name: 'Milena Šarić, uređivanje timova' })
+
+    await user.click(box)
+    /* Not counted until the route confirms it (`AdminModerators.tsx`). */
+    await waitFor(() => expect(box).toBeChecked())
 
     const row = within((await matrix()).getByRole('rowheader', { name: /Milena Šarić/ }))
     expect(row.queryByText(t('rights.none'))).not.toBeInTheDocument()
     expect(row.getByText(t('rights.granted', { count: 1 }))).toBeVisible()
+
+    server.stop()
   })
 })
 
@@ -285,7 +341,10 @@ describe('the screen behind the matrix', () => {
     const list = within(await screen.findByRole('table', { name: t('admin.moderators') }))
 
     expect(list.getByText('jelena.radulovic@primer.rs')).toBeVisible()
-    expect(list.getByRole('button', { name: 'Otvori: Milena Šarić' })).toBeVisible()
+    /* Read, not opened: a moderator's name has no route to write a change to any
+       more, so the row's own control is the one thing left that acts on him
+       (`AdminModerators.tsx`'s class comment names why). */
+    expect(list.getByRole('button', { name: 'Obriši: Milena Šarić' })).toBeVisible()
     // All sixteen there are. Making moderators is not among them and cannot
     // be: it is the one thing the superadmin keeps to himself (PDL P21).
     expect(list.getByText(t('rights.granted', { count: RIGHTS.length }))).toBeVisible()
@@ -293,6 +352,9 @@ describe('the screen behind the matrix', () => {
   })
 
   it('asks a new moderator for three things and never for his rights', async () => {
+    /* `POST /api/moderators` since B106 (`AdminModerators.tsx`); the shape of the
+       answer is `ModeratorWriteApi.Made`, held to by `moderatorWrites.test.ts`. */
+    const server = servingModerators()
     const user = setupUser()
     const title = t('admin.form.new.moderators')
     renderAt('/sr/administracija/moderatori', 'superadmin')
@@ -310,6 +372,7 @@ describe('the screen behind the matrix', () => {
     await user.type(form.getByLabelText(/^Prezime/), 'Petrović')
     await user.type(form.getByLabelText(/^Adresa elektronske pošte/), 'radoslav@primer.rs')
     await user.click(form.getByRole('button', { name: t('form.submit') }))
+    await screen.findByRole('status', { name: t('admin.form.saved') })
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     /* He joins the matrix holding nothing, which is what a moderator who has
@@ -321,5 +384,7 @@ describe('the screen behind the matrix', () => {
     expect(
       table.getByRole('checkbox', { name: 'Radoslav Petrović, uređivanje članova' }),
     ).not.toBeChecked()
+
+    server.stop()
   })
 })

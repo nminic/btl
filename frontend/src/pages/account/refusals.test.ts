@@ -13,6 +13,7 @@ import {
   WHEN_MODERATING_LEAGUE_RACES,
   WHEN_WRITING_A_LEAGUE,
 } from '../admin/leagueWrites'
+import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -120,6 +121,10 @@ describe('the reasons the server can name', () => {
        different dictionary keys, because what the reader has to do about it differs, and
        the union is what this gate counts. */
     ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 11],
+    /* THE SEVENTH, ADDED WITH B106: making a moderator, ticking his boxes and taking his
+       moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
+       one dictionary covers all four reasons the class declares. */
+    ['ModeratorWriteApi.java', [WHEN_WRITING_A_MODERATOR], 4],
   ]
 
   it.each(routes)('are all answered on the screen that meets %s', (file, screens, howMany) => {

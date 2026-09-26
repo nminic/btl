@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { ROUTES } from '../../app/routes'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
+import { serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { needFor, NEEDS } from './needs'
 import { QUEUES } from './queues'
@@ -204,6 +205,30 @@ describe('the role switch', () => {
   })
 
   it('carries a tick taken away in the matrix through to the screen behind it', async () => {
+    /* SINCE B106 THE BOX WRITES TO `PUT /api/moderators/{id}` AND NOT TO THE SESSION
+       DIRECTLY, so this case needs a server that answers it - the default disc reader
+       has no file for a write. What it hands back only has to echo the set this screen
+       asked for (`ModeratorWriteApi.Ticked` does the same, read back rather than
+       trusted), because what this case measures is not the route - `AdminModerators.test.tsx`
+       measures that - but that a CONFIRMED tick reaches `useMay()` through `session.rights`
+       (`AdminModerators.tsx`'s own class comment says why: the switch below reads its own
+       moderators once and never again, so nothing but that session write lets it see the
+       change in this same visit). */
+    const server = serverThat((path, init) => {
+      const changed = /^\/api\/moderators\/(\d+)$/.exec(path)
+
+      if (changed === null || init?.method !== 'PUT') {
+        return null
+      }
+
+      const sent: { rights?: unknown } =
+        typeof init.body === 'string' ? JSON.parse(init.body) : {}
+
+      return new Response(JSON.stringify({ id: Number(changed[1]), rights: sent.rights ?? [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
     const user = setupUser()
     renderAt('/sr/administracija/moderatori', 'superadmin')
 
@@ -211,9 +236,13 @@ describe('the role switch', () => {
        moderator, and finds the screen shut. Before, the box was remembered and
        read by nothing at all. */
     const matrix = within(await screen.findByRole('table', { name: t('rights.title') }))
-    await user.click(
-      matrix.getByRole('checkbox', { name: 'Jelena Radulović, uređivanje cenovnika' }),
-    )
+    const box = matrix.getByRole('checkbox', { name: 'Jelena Radulović, uređivanje cenovnika' })
+
+    await user.click(box)
+    /* The tick is not this screen's confirmation to draw until the route answers,
+       so the switch below must wait for the same thing a reader watching the box
+       would: it unticking. */
+    await waitFor(() => expect(box).not.toBeChecked())
 
     await user.selectOptions(screen.getByLabelText(t('role.label')), 'moderator:1')
 
@@ -230,5 +259,7 @@ describe('the role switch', () => {
 
     expect(nav.queryByRole('link', { name: t('admin.pricing') })).not.toBeInTheDocument()
     expect(nav.getByRole('link', { name: t('admin.members') })).toBeVisible()
+
+    server.stop()
   })
 })
