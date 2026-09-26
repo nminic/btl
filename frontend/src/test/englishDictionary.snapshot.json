@@ -1119,6 +1119,7 @@
     "address": "Address",
     "noAddress": "Stands inside other pages",
     "sections": "Section",
+    "pagesNotEditable": "The content of these pages is not edited through the portal.",
     "form": {
       "record": "Record",
       "open": "Open",

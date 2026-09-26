@@ -166,10 +166,18 @@ describe('the address of the president', () => {
     renderAt('/sr/administracija/strane', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Statične strane' })
+    /* The row named by the note below, which is unique - unlike "Reč
+       predsednika", which this page also carries as the heading of its own
+       first section, one column over. */
+    const row = htmlElement(
+      within(table).getByText('Stoji unutar drugih strana').closest('tr'),
+    )
 
-    expect(
-      within(table).getByRole('button', { name: 'Naslov: Reč predsednika. Izmeni' }),
-    ).toBeVisible()
+    /* Read, not a button: since 27.09.2026 the screen only lists what the server
+       serves (ADL.md, resolved 18.09.2026, a written page is never edited
+       through the portal), so a title is a cell rather than a control. The
+       title is the row's first column. */
+    expect(first(within(row).getAllByRole('cell'))).toHaveTextContent('Reč predsednika')
     /* And it says so instead of offering an address. Nothing takes the record in
        through `includes` any more, since "O ligi" was deleted; what says it has
        no address of its own is the screen that draws it (src/data/pages.ts), and

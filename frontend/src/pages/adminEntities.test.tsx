@@ -2126,18 +2126,18 @@ describe('the written pages', () => {
     expect(rows.getByRole('link', { name: '/pravilnik' })).toBeVisible()
   })
 
-  it('changes a title in place', async () => {
-    const user = setupUser()
+  it('says the content is not edited through the portal, instead of a control that wrote nowhere', async () => {
+    /* Replaces "changes a title in place" (removed 27.09.2026): the cell that
+       test typed into is gone along with every other control that wrote,
+       because none of them ever reached a route and never will (ADL.md,
+       resolved 18.09.2026). What is measured instead is the sentence that took
+       their place (`AdminPricing.tsx`'s `admin.pricingFixed` is the same shape,
+       for the same reason). */
     renderAt('/sr/administracija/strane', 'superadmin')
 
-    const rows = await table('Statične strane')
-    await user.click(rows.getByRole('button', { name: /^Naslov: Opšti pravilnik/ }))
-    const field = rows.getByRole('textbox', { name: 'Naslov' })
-    await user.clear(field)
-    await user.type(field, 'Pravilnik 2027')
-    await user.tab()
+    await screen.findByRole('table', { name: 'Statične strane' })
 
-    expect(rows.getByRole('button', { name: /^Naslov: Pravilnik 2027/ })).toBeVisible()
+    expect(screen.getByText('Sadržaj ovih strana se ne uređuje kroz portal.')).toBeVisible()
   })
 
   it('is closed to a competitor', async () => {
