@@ -362,8 +362,15 @@ describe('one decision for a whole queue', () => {
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
       /* One, two and five are three different sentences in Serbian, so what is
-         matched is the shape rather than one of the three. */
-      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
+         matched is the shape rather than one of the three.
+       *
+         AWAITED since 26.09.2026, and it is the only assertion in this file that
+         had to be: the sweep now asks the route about each card before it settles
+         any (`admin/PendingQueue.tsx`, `approveAll`), so the number on this line
+         is set a turn later than the press. The other thirteen cases here read
+         things the overlay puts on screen and pass unchanged; this one reads the
+         line the count itself creates, and read straight away it found nothing. */
+      const said = await screen.findByText(new RegExp(`^Rešen.* ${before} stavk`))
 
       expect(said).toBeVisible()
       expect(said).toHaveFocus()
