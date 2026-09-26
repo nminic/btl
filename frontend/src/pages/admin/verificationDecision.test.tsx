@@ -2,9 +2,10 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
-import { Decided } from '../../test/decided'
+import { Decided, Inbox } from '../../test/decided'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { QUEUE } from './queues'
+import sr from '../../i18n/sr.json'
 
 /**
  * THE MODERATOR'S DECISION REACHES THE SERVER, AND THE SCREEN CHANGES ONLY WHEN IT DID.
@@ -114,9 +115,45 @@ describe('a decision on a queue served by the pending screen', () => {
       const sent = decisionsIn(server.asked)
 
       expect(sent).toHaveLength(1)
+      /* The same address as the approval above and for the same reason: a screen
+         that posted a fixed address, or the subject's id in place of the queue
+         item's own - `subjectId` is the empty string on a biography
+         (`public/mock/verification.json`, `ver-bio-1`) - would send this exact
+         request whichever card was open. */
+      expect(sent[0]?.path).toBe('/api/verification/ver-bio-1/decision')
       /* Two acts and never one with a flag (`verificationWrites.ts`): what parts them
          on the wire is `approved`, and the reason travels only with the no. */
       expect(bodyOf(sent[0])).toEqual({ approved: false, reason: 'Tekst je prekratak.' })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('refuses a comment even with an empty note, the one queue that may leave it blank', async () => {
+    /* `SendBack` marks the reason optional on exactly one queue (owner,
+       06.08.2026): a comment is deleted rather than handed back, and the note is
+       a trace left for the next moderator rather than a reason owed to anybody
+       (`queues.ts`, `outcomeFor`). `aRefusal` still has to answer `approved:
+       false` for that empty reason, because `approved` and not the reason is
+       what the route tells a no from a yes - an empty string sent as a yes
+       would ask `VerificationWriteApi` to PUBLISH the very comment the
+       moderator pressed to delete. */
+    const user = setupUser()
+    const server = serverThatRecords()
+
+    try {
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const waiting = within(await cardsIn())
+      const first = within(waiting.getAllByRole('listitem')[0] ?? document.createElement('li'))
+
+      await user.click(first.getByRole('button', { name: /^Obriši:/ }))
+      await user.click(await screen.findByRole('button', { name: 'Obriši komentar' }))
+
+      const sent = decisionsIn(server.asked)
+
+      expect(sent).toHaveLength(1)
+      expect(bodyOf(sent[0])).toEqual({ approved: false, reason: '' })
     } finally {
       server.stop()
     }
@@ -332,7 +369,17 @@ describe('a decision on a queue served by the pending screen', () => {
     const server = serverThatRefuses(() => refused('Uz odbijanje je razlog obavezan.'))
 
     try {
-      renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin', '000010', undefined, null, <Decided />)
+      renderAt(
+        `/sr/${QUEUE.profiles.path}`,
+        'superadmin',
+        '000010',
+        undefined,
+        null,
+        <>
+          <Decided />
+          <Inbox />
+        </>,
+      )
 
       const waiting = within(await cardsIn())
       const first = within(waiting.getAllByRole('listitem')[0] ?? document.createElement('li'))
@@ -349,6 +396,20 @@ describe('a decision on a queue served by the pending screen', () => {
          presses again instead of typing it a second time. */
       expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Nejasno.')
       expect(decidedIn().queryAllByRole('listitem')).toEqual([])
+      /* Signed in as the member `ver-bio-1` itself names (`memberNumber` "000010"
+         in `public/mock/verification.json`), so a message that reached them
+         would show up here. Matched by the heading a bio refusal is sent under
+         and not by an empty list - the seed already writes 000010 other mail -
+         the same way `adminFlows.test.tsx` reads this list for the payments
+         queue. `decisions` above says nothing was RECORDED; this says the ONE
+         message a recorded refusal would carry was not WRITTEN either - the
+         mistake this guards against is `handBack` notifying on the branch that
+         returns early instead of the one that settles. */
+      expect(
+        within(screen.getByRole('list', { name: 'session inbox' })).queryByText(
+          new RegExp(sr.verification.bioReturned),
+        ),
+      ).toBeNull()
     } finally {
       server.stop()
     }
