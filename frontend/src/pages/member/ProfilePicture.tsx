@@ -33,12 +33,15 @@ import { pictureToSend, THE_PICTURE_GOES_TO, WHEN_SENDING_A_PICTURE } from './ph
  * the very same drawing (components/CropWindow.tsx).
  *
  * **THE PICTURE GOES TO THE SERVER SINCE 26.09.2026, AND UNTIL THEN IT WENT
- * NOWHERE AT ALL.** `send` wrote into the session overlay and stopped there:
- * measured on the QA database the day this branch was opened, `photo` held nought
- * rows and the verification queue nought, after the owner had chosen a photograph
- * of his own and approved it. `POST /api/me/photo` had existed the whole time and
- * `grep -rn "me/photo" frontend/src` answered with nothing. This is the first of
- * the four links in that chain and the only one that had no code at all.
+ * NOWHERE AT ALL.** `send` wrote into the session overlay and stopped there, and
+ * `POST /api/me/photo` had existed the whole time: measured on this side the day
+ * the branch was opened, `grep -rn "me/photo" frontend/src` answered with nothing,
+ * tests included. **Reported alongside it, and it is somebody else's measurement
+ * rather than one made here:** the QA database held nought rows in `photo` and
+ * nought in the verification queue, after the owner had chosen a photograph of his
+ * own and approved it. Whose measurement each half is matters, because a sentence
+ * in a comment is read as a fact by everybody after it. This is the first of the
+ * four links in that chain and the only one that had no code at all.
  *
  * **The session is still written, and ONLY inside the branch an answer authorised.**
  * The moderator's queue is still drawn out of the portal's own overlay, so the card
