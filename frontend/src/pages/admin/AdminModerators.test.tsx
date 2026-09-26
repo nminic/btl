@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import type { Moderator } from '../../data/types'
-import { renderAt } from '../../test/render'
+import { expectFrontPage, renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
@@ -266,31 +266,43 @@ describe('the moderators screen', () => {
       server.stop()
     }, SLOW)
 
-  it('sends a deletion to DELETE on its own address and takes that row away', async () => {
-    const server = serving()
-    const user = setupUser()
+  it('sends a deletion to DELETE on its own address, takes that row away, and tells the switch to stop offering him',
+    async () => {
+      const server = serving()
+      const user = setupUser()
 
-    renderAt('/sr/administracija/moderatori', 'superadmin')
+      renderAt('/sr/administracija/moderatori', 'superadmin')
 
-    await deleteNamed(user, 'Zoran Vuković')
+      await deleteNamed(user, 'Zoran Vuković')
 
-    expect(writes(server.asked)).toEqual([
-      { path: `/api/moderators/${TWO_RIGHTS}`, how: 'DELETE', body: {} },
-    ])
+      expect(writes(server.asked)).toEqual([
+        { path: `/api/moderators/${TWO_RIGHTS}`, how: 'DELETE', body: {} },
+      ])
 
-    const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
+      const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
 
-    expect(listed.queryByText('Zoran')).toBeNull()
-    /* And nobody else went with it. Deleting by the wrong key takes a neighbour. */
-    expect(listed.getByText('Ana')).toBeVisible()
-    expect(listed.getByText('Marko')).toBeVisible()
+      expect(listed.queryByText('Zoran')).toBeNull()
+      /* And nobody else went with it. Deleting by the wrong key takes a neighbour. */
+      expect(listed.getByText('Ana')).toBeVisible()
+      expect(listed.getByText('Marko')).toBeVisible()
 
-    /* Said once and politely, for whoever is not watching the list - the focus has
-       already moved to „Nov moderator". */
-    expect(await screen.findByText('Moderator je obrisan.')).toBeInTheDocument()
+      /* Said once and politely, for whoever is not watching the list - the focus has
+         already moved to „Nov moderator". */
+      expect(await screen.findByText('Moderator je obrisan.')).toBeInTheDocument()
 
-    server.stop()
-  }, SLOW)
+      /* SEE THE CLASS COMMENT: the switch stops offering him only because of THIS
+         confirmed DELETE, never because the row above left the table - `written`
+         (this screen's own overlay) and `deletions` (the session's) are two
+         different overlays, and only the session is what `RoleSwitch.tsx` reads.
+         A `deleteOne` that dropped the row above and never called `remove` would
+         pass every assertion above it and still leave the switch offering
+         somebody the database no longer has. */
+      const chooser = await screen.findByLabelText('Uloga')
+
+      expect(within(chooser).queryByRole('option', { name: 'Z. V.' })).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
 
   it('keeps the row and says why where the route refused the deletion', async () => {
     const server = serving(() => answeredWith(404))
@@ -482,6 +494,119 @@ describe('the moderators screen', () => {
 
       settle()
       await waitFor(() => expect(eventsBox).not.toBeDisabled())
+
+      server.stop()
+    }, SLOW)
+
+  it('leaves the switch exactly as it was after a refused tick and a refused delete alike',
+    async () => {
+      /* THE CLASS COMMENT NAMES TWO PROMISES WITH NO CASE BEHIND EITHER: a tick is
+         written to the session „only inside the branch that ran because an answer
+         said the write went through, never on the strength of a click alone", and
+         a removal is written „once the server has confirmed it, never before and
+         never instead of the real DELETE". Both routes below refuse, so neither
+         write must reach the session - and the only place a wrongly-early write
+         would show through is the role switch, because `useMay` is the one thing
+         standing between `session.rights`/`session.deletions` and a screen a
+         moderator can or cannot open. The table this screen draws for the
+         superadmin proves nothing here: it is read off `rightsOverlay` and
+         `written`, two overlays of this screen's own state, never off the session
+         the switch reads. */
+      const server = serving((_path, init) => {
+        if (init?.method === 'PUT') {
+          return refused('aRightTheMatrixDoesNotHold')
+        }
+
+        if (init?.method === 'DELETE') {
+          return answeredWith(404)
+        }
+
+        return did()
+      })
+      const user = setupUser()
+
+      renderAt('/sr/administracija/moderatori', 'superadmin')
+
+      const matrix = await openMatrix()
+      const teamsBox = matrix.getByRole('checkbox', { name: 'Zoran Vuković, uređivanje timova' })
+
+      await user.click(teamsBox)
+      expect(await matrix.findByRole('alert')).toHaveTextContent('Portal ne poznaje to pravo.')
+      expect(teamsBox).not.toBeChecked()
+
+      const row = await deleteNamed(user, 'Zoran Vuković')
+
+      expect(await within(row).findByRole('alert')).toHaveTextContent('404')
+
+      const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
+
+      expect(listed.getByText('Zoran')).toBeVisible()
+
+      const chooser = await screen.findByLabelText('Uloga')
+
+      /* Still offered - a refused DELETE is not the real one, and only the real
+         one may take him off this list. */
+      expect(within(chooser).getByRole('option', { name: 'Z. V.' })).toBeInTheDocument()
+
+      await user.selectOptions(chooser, `moderator:${TWO_RIGHTS}`)
+      await expectFrontPage()
+      await user.click(screen.getByRole('link', { name: /^Administracija/ }))
+
+      const dataNav = within(await screen.findByRole('navigation', { name: 'Odeljak Podaci' }))
+
+      /* Not granted - the tick above was refused, so a click on it alone must not
+         have reached the session. */
+      expect(dataNav.queryByRole('link', { name: 'Timovi' })).not.toBeInTheDocument()
+      /* And his own right from before this visit is exactly as it was. */
+      expect(dataNav.getByRole('link', { name: 'Događaji' })).toBeVisible()
+
+      server.stop()
+    }, SLOW)
+
+  it('resyncs the switch off every right the answer confirmed, not only the one that was pressed',
+    async () => {
+      /* Zoran already holds `entity:events` - the fixture at the top of this
+         file. Ticking `entity:teams` does not have to touch it, so a resync that
+         copied only the pressed box into the session would still happen to look
+         right about it: its value is never written, and what `useMay` falls back
+         to is the STALE record `become()` was handed, which is this test's own
+         fixture and never moves (AdminModerators.tsx's class comment: „the record
+         it hands `become()` is not refreshed by a `PUT` here"). The one thing a
+         resync narrowed to the pressed box can never see is the answer taking a
+         right away that nobody touched - so this one does exactly that, and only
+         reading the WHOLE answer can notice it. */
+      const server = serving((_path, init) =>
+        init?.method === 'PUT'
+          ? new Response(
+              JSON.stringify({ id: TWO_RIGHTS, rights: rightsOf('queue:payments', 'entity:teams') }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            )
+          : did(),
+      )
+      const user = setupUser()
+
+      renderAt('/sr/administracija/moderatori', 'superadmin')
+
+      const matrix = await openMatrix()
+      const teamsBox = matrix.getByRole('checkbox', { name: 'Zoran Vuković, uređivanje timova' })
+
+      await user.click(teamsBox)
+      await waitFor(() => expect(teamsBox).toBeChecked())
+
+      const chooser = await screen.findByLabelText('Uloga')
+
+      await user.selectOptions(chooser, `moderator:${TWO_RIGHTS}`)
+      await expectFrontPage()
+      await user.click(screen.getByRole('link', { name: /^Administracija/ }))
+
+      const dataNav = within(await screen.findByRole('navigation', { name: 'Odeljak Podaci' }))
+
+      /* The box just pressed - his the moment the switch resyncs at all. */
+      expect(dataNav.getByRole('link', { name: 'Timovi' })).toBeVisible()
+      /* Taken away by the ANSWER, without this click ever having asked for that -
+         the one right a resync narrowed to the pressed box has no way to see,
+         because it was never the box that was pressed. */
+      expect(dataNav.queryByRole('link', { name: 'Događaji' })).not.toBeInTheDocument()
 
       server.stop()
     }, SLOW)
