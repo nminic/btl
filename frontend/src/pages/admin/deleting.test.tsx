@@ -243,7 +243,7 @@ describe('one decision for a whole queue', () => {
 
       expect(asked).toHaveLength(1)
       expect(first(asked)).toContain(String(before))
-      expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+      expect(await screen.findByText('Nema nijedne stavke na čekanju.')).toBeVisible()
       /* Every one of them decided, read off the session rather than off a table
          of settled items: a queue shows what is waiting and nothing else since
          06.08.2026. */
@@ -393,8 +393,15 @@ describe('one decision for a whole queue', () => {
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
       /* One, two and five are three different sentences in Serbian, so what is
-         matched is the shape rather than one of the three. */
-      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
+         matched is the shape rather than one of the three.
+       *
+         AWAITED since 26.09.2026, and it is the only assertion in this file that
+         had to be: the sweep now asks the route about each card before it settles
+         any (`admin/PendingQueue.tsx`, `approveAll`), so the number on this line
+         is set a turn later than the press. The other thirteen cases here read
+         things the overlay puts on screen and pass unchanged; this one reads the
+         line the count itself creates, and read straight away it found nothing. */
+      const said = await screen.findByText(new RegExp(`^Rešen.* ${before} stavk`))
 
       expect(said).toBeVisible()
       expect(said).toHaveFocus()

@@ -16,6 +16,9 @@ import { overall, rated } from '../event/overall'
 import countries from '../../data/countries.json'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { clearResourceCache } from '../../data/client'
+import { aRefusal, anApproval, decisionPath } from './verificationWrites'
 import { usePending, WAITING, waitingIn } from './pending'
 import { recordKey } from '../../session/context'
 import type { PendingItem, Team } from '../../data/types'
@@ -99,6 +102,67 @@ function Refused({ why, id }: { why: string | null; id: string }) {
     </p>
   )
 }
+
+/**
+ * WHAT THE SERVER SAID WHEN IT WOULD NOT RECORD THE DECISION.
+ *
+ * <p><b>A refusal is drawn WORD FOR WORD as it came back, and never looked up.</b>
+ * `VerificationWriteApi` refuses with a Serbian sentence rather than with a code: its
+ * `no(HttpStatus, String)` puts the constant into the body, and those constants are „O
+ * stavci je već odlučeno.", „Stavku trenutno drži drugi moderator.", „Odluka o ovom redu
+ * još nije uvedena." and four more. There is nothing to map, so nothing is mapped; the
+ * reason is the answer (`admin/verificationWrites.ts` says the whole of why, and why
+ * `pages/account/ServerSaid.tsx` is neither reused nor touched for it).
+ *
+ * <p><b>The other three shapes have no words of their own on the wire, so they take the
+ * portal's.</b> Those sentences are not copied here: `server.rejected`, `server.wrong` and
+ * `server.nothing` are the same three keys every other screen that speaks to the server
+ * draws, so the dictionary stays the one home for them. `server.wrong` is what carries 401
+ * and 404 - a moderator who is not signed in any more, and one whose local table of rights
+ * says he may decide this queue while the route says the address is not there (ADL A8:
+ * „neprijavljen dobija 401, a prijavljen kome pravo nedostaje dobija 404", never 403).
+ *
+ * <p>`role="alert"` rather than the `role="status"` of {@link Refused} beside it, and the
+ * difference is the difference between the two: that line explains a button before it is
+ * pressed and changes while a name is typed, this one answers a press that has already
+ * happened. An answer nobody is told about is a moderator watching a card stay where it
+ * was with no idea why (WCAG 2.2 SC 4.1.3).
+ */
+function WhatTheServerSaid({ answer }: { answer: Exclude<Answer, { got: 'done' }> }) {
+  const { t } = useI18n()
+
+  const said = (): string => {
+    if (answer.got === 'refused') {
+      return answer.reason
+    }
+
+    if (answer.got === 'rejected') {
+      return t('server.rejected')
+    }
+
+    if (answer.got === 'wrong') {
+      return t('server.wrong', { status: answer.status })
+    }
+
+    return t('server.nothing')
+  }
+
+  return (
+    <p className="field__error" role="alert">
+      {said()}
+    </p>
+  )
+}
+
+/**
+ * A card the route would not settle, and what it said about it.
+ *
+ * <p>Carried with the item's identity rather than on its own, because the sentence
+ * belongs on the card it is about: the sweep asks about forty and the one that was
+ * refused is still among them, so a sentence drawn anywhere else would be a reason
+ * beside the wrong picture.
+ */
+type ServerRefusal = { id: string; answer: Exclude<Answer, { got: 'done' }> }
 
 /** The three marks a comment carries, as they are read everywhere else: not a
  *  control, and each one says its number in words for anybody who cannot see the
@@ -237,6 +301,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const [closed, setClosed] = useState<string | null>(null)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
+  /**
+   * The one card the route last refused, and what it said.
+   *
+   * One rather than a list, and that is a boundary written down rather than an
+   * oversight. A sweep of forty can meet forty refusals; what it reports is the
+   * number it settled, which is the contract that line already had for a proposal
+   * whose name was taken. The sentence is shown for the first of them, on the card
+   * it is about, and the other refused cards are still in the queue to be pressed
+   * one at a time - which is how the moderator reads the rest of the reasons.
+   */
+  const [said, setSaid] = useState<ServerRefusal | null>(null)
   /** Which card is open, on the width where they are folded. One at a time: two
    *  open cards on a telephone are the scrolling this was meant to end. */
   const [shown, setShown] = useState<string | null>(null)
@@ -294,8 +369,21 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * was asked to settle: a proposal whose name is taken is left standing, so the
    * line under the button has to say the smaller number or it says one the queue
    * disagrees with.
+   *
+   * <p><b>It also leaves the sentence the route refused with on screen, and clears
+   * it when a press succeeds.</b> Written here rather than returned for the two
+   * callers to set, because both would set it identically and the one that forgot
+   * would leave a moderator reading a refusal about a card he has since settled.
+   *
+   * <p><b>The walk is sequential and the `await` inside it is deliberate.</b> Every
+   * reason this is a walk rather than a call per item is a reason the calls cannot
+   * overlap: the identities, the addresses and who is in a team are carried forward
+   * from one turn to the next, so a turn that started before the one before it
+   * finished would be handed a list that is out of date. Fired off together they
+   * would also reach the route together, and two approvals of one member's two
+   * proposals are exactly what the carrying exists to stop.
    */
-  const approveAll = (items: PendingItem[], teams: Team[]): number => {
+  const approveAll = async (items: PendingItem[], teams: Team[]): Promise<number> => {
     /* Everything already spoken for, growing as the walk hands more out. */
     const identities = (creations[TEAMS.id] ?? []).map((row) => row.id)
     const addresses = addressesIn(teams)
@@ -304,6 +392,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
        addresses are: the session does not change while a loop runs, so two proposals
        from one member approved in one press would both go through. */
     const inATeam = organisers(allMembers, teams)
+    const refusals: ServerRefusal[] = []
     let done = 0
 
     for (const one of items) {
@@ -314,6 +403,30 @@ export function PendingQueue({ queue }: { queue: Queue }) {
         refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams, allMembers) !==
           null
       ) {
+        continue
+      }
+
+      /* THE SERVER DECIDES, AND NOTHING LOCAL HAPPENS BEFORE IT ANSWERS.
+       *
+       * This is the whole of why this increment exists. Until 26.09.2026 the
+       * walk began at the `settle` below, so a moderator who approved a
+       * photograph watched the card leave the queue while `competitor.photo_id`
+       * was never written: the decision lived in the browser and F5 undid it.
+       * The owner met it himself on QA (PDL P28f) - „po odobravanju slike ona tog
+       * trenutka pocinje da se vidi na svim avatar mestima" - and the route that
+       * does the work, `VerificationWriteApi.decide`, had been there all along
+       * with nothing calling it.
+       *
+       * So the order is the order: ask, and write locally only in the branch that
+       * ran because the answer said it did. `settle` and everything under it -
+       * the team, the membership, the message, the published comment - are
+       * consequences of a decision that has been RECORDED, and a consequence of
+       * something that did not happen is the fault this replaces. */
+      const answer = await askTheServer(decisionPath(one.id), anApproval())
+
+      if (answer.got !== 'done') {
+        refusals.push({ id: one.id, answer })
+
         continue
       }
 
@@ -468,7 +581,143 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       }
     }
 
+    /* THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER, which is the
+       shape `admin/AdminLeagues.tsx` already has and the fault its own review found on
+       25.09.2026: a decision recorded on the server and fixed only in the local overlay
+       is a decision a remounted screen has never heard of, so the card comes back and a
+       moderator decides it a second time. `usePending` reads the `verification` resource
+       (`admin/pending.ts`), so that is the one cleared.
+
+       Asked of what was SETTLED rather than of what was asked: a sweep the route refused
+       outright wrote nothing, and clearing the cache over nothing is a screen throwing
+       away an answer it still has every reason to trust. */
+    if (done > 0) {
+      clearResourceCache('verification')
+    }
+
+    /* The first of them, on the card it is about, or nothing where every press went
+       through - which is also what takes a sentence about the last press off the
+       screen. */
+    sayIt(refusals[0] ?? null)
+
     return done
+  }
+
+  /**
+   * THE SENTENCE, AND THE CARD IT IS ABOUT OPENED SO THAT IT CAN BE READ.
+   *
+   * <p><b>The opening is not a nicety and it was measured against the stylesheet.</b>
+   * Below 51.25em a card is a fold - `Verification.css` gives `.pending__card`
+   * `display: none` and only `--open` brings it back - and the sentence is drawn
+   * inside that card. From one card that is harmless, because the buttons are inside
+   * the fold too, so a moderator on a telephone has already opened the card to press
+   * anything. <b>The sweep is the one that breaks it:</b> „Odobri sve" sits in the bar
+   * outside every card, so a refusal met during a sweep would land inside a card still
+   * folded, and the moderator would see the count drop with nothing anywhere saying
+   * why.
+   *
+   * <p>That is the same shape as the fault `admin/verificationStyle.test.ts` was
+   * written for - „the line saying what a star means was drawn by the renderer over a
+   * screen whose every star the stylesheet had folded away" - so it is answered the
+   * same way round: the card the route refused is the one thing the moderator now has
+   * to look at, so it opens.
+   *
+   * <p>Above that width nothing is folded and this changes nothing anybody can see.
+   */
+  const sayIt = (refusal: ServerRefusal | null): void => {
+    setSaid(refusal)
+
+    if (refusal !== null) {
+      setShown(refusal.id)
+    }
+  }
+
+  /**
+   * The sweep, which is the same press over everything waiting.
+   *
+   * <p>Its own function only because the count has to be set from a value that has
+   * not come back yet. `onClick` takes `void sweep(...)`, the shape
+   * `admin/AdminLeagues.tsx` and `admin/LeagueRaceModeration.tsx` already use for a
+   * press that speaks to the server.
+   */
+  const sweep = async (items: PendingItem[], teams: Team[]): Promise<void> => {
+    setSwept(await approveAll(items, teams))
+  }
+
+  /**
+   * HANDING ONE BACK, or deleting it where that is what the queue does to an item
+   * it will not take (`queues.ts`, `outcomeFor`).
+   *
+   * <p>The same order as the approval above and for the same reason: the route
+   * records the decision, and only then does anything local happen. A refusal
+   * written in the browser alone is the same fault one way round as the other -
+   * the card leaves the queue, the member is told his picture was sent back, and
+   * `verification.state` still says `waiting`, so the next moderator to open the
+   * queue is asked the same question and the member hears twice.
+   *
+   * <p><b>What the route can refuse this with that an approval cannot:</b> „Uz
+   * odbijanje je razlog obavezan." (`A_REFUSAL_NEEDS_A_REASON`). The box already
+   * asks for one on every queue but the comments (`SendBack`, `optional`), so a
+   * moderator normally never reaches the server to hear it; it is answered all the
+   * same, because the box is the floor and the route decides - the same division
+   * `leagueWrites.ts` names for the address of a competition.
+   */
+  const handBack = async (one: PendingItem, reason: string): Promise<void> => {
+    const answer = await askTheServer(decisionPath(one.id), aRefusal(reason))
+
+    if (answer.got !== 'done') {
+      sayIt({ id: one.id, answer })
+
+      return
+    }
+
+    /* For the reason the approval clears it: a decision the server has recorded and
+       the overlay has patched is one a remounted screen must read from the server
+       (`admin/AdminLeagues.tsx`, review 25.09.2026). */
+    clearResourceCache('verification')
+    sayIt(null)
+
+    settle(one.id, {
+      status: 'rejected',
+      note: reason,
+      basis: '',
+      memberNumber: '',
+    })
+
+    /* A reason the member never reads is a reason to nobody, and on this queue the
+       member is expected to act on it. The portal already has an inbox, so it goes
+       there in the words the moderator wrote (PDL P22, P28a).
+     *
+       Both sorts, since 15.08.2026. It used to be the picture alone, because a
+       biography was published rather than refused and had nothing to send; when the
+       owner withdrew that (PDL P22, 06.08.2026) the refusal arrived without the
+       message, so the empty box went on promising „Član dobija tvoj razlog" and the
+       member's inbox stayed exactly as it was. A review measured it: two messages
+       before, two after.
+     *
+       Each under its own heading. Handed the picture's, a refused biography would
+       reach the member as „Profilna slika je vraćena", which is a message about a
+       thing they did not send. */
+    /* Bound once and narrowed, rather than asked twice and coerced. Written as
+       `t(String(returned(...)))`, the guard below it could be deleted without the
+       compiler saying a word: a review replaced it with `if (true)` and all 1902
+       tests passed, while a refusal on any of the other four queues then wrote
+       „null" to whoever `memberNumber` named, which where that is empty is the whole
+       league. `String()` is not on the list ADL A14 bans, and it lies in exactly the
+       way that list exists to stop. */
+    const heading = returned(queue, one)
+
+    if (heading !== null) {
+      notify({
+        from: t('app.name'),
+        to: one.memberNumber,
+        subject: t(heading),
+        body: reason,
+        date: today,
+      })
+    }
+
+    setOpen(null)
   }
 
   /** What the text on the card is called: the comment, the reason given, the
@@ -586,10 +835,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
                       /* What it settled, not what it was asked to settle. A
                          proposal whose name is already in the league is left
-                         standing, so the count has to be the ones that went
-                         through or the line under the button would say a number
-                         the queue disagrees with. */
-                      setSwept(approveAll(waiting, teams))
+                         standing, and so is one the route refused, so the count
+                         has to be the ones that went through or the line under
+                         the button would say a number the queue disagrees with. */
+                      void sweep(waiting, teams)
 
                       /* And whatever card had its reason open goes with them:
                          the sweep may settle the very card that box belongs to,
@@ -766,6 +1015,22 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           />
                         )}
 
+                        {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,
+                            on the card it is about and above both the box and the
+                            buttons rather than inside either.
+
+                            Above them because it has to be readable in both states:
+                            a refusal met while handing work back leaves the box open
+                            with the typed reason still in it, so the moderator reads
+                            why and presses again instead of typing it a second time.
+                            Put inside the box it would have gone when the box went,
+                            and put among the buttons it would not exist while the box
+                            was open - which is exactly when a refusal about a reason
+                            („Uz odbijanje je razlog obavezan.") arrives. */}
+                        {said !== null && said.id === one.id && (
+                          <WhatTheServerSaid answer={said.answer} />
+                        )}
+
                         {open === one.id ? (
                           <SendBack
                             /* Same box, same words, on every queue that hands work
@@ -823,58 +1088,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.confirmDelete'
                                 : 'review.confirmSendBack'
                             }
-                            onConfirm={(reason) => {
-                              settle(one.id, {
-                                status: 'rejected',
-                                note: reason,
-                                basis: '',
-                                memberNumber: '',
-                              })
-
-                              /* A reason the member never reads is a reason to
-                                 nobody, and on this queue the member is expected to
-                                 act on it. The portal already has an inbox, so it
-                                 goes there in the words the moderator wrote (PDL
-                                 P22, P28a).
-                               *
-                                 Both sorts, since 15.08.2026. It used to be the
-                                 picture alone, because a biography was published
-                                 rather than refused and had nothing to send; when
-                                 the owner withdrew that (PDL P22, 06.08.2026) the
-                                 refusal arrived without the message, so the empty
-                                 box went on promising „Član dobija tvoj razlog" and
-                                 the member`s inbox stayed exactly as it was. A
-                                 review measured it: two messages before, two after.
-                               *
-                                 Each under its own heading. Handed the picture`s,
-                                 a refused biography would reach the member as
-                                 „Profilna slika je vraćena", which is a message
-                                 about a thing they did not send. */
-                              /* Bound once and narrowed, rather than asked
-                                 twice and coerced. Written as
-                                 `t(String(returned(...)))`, the guard above it
-                                 could be deleted without the compiler saying a
-                                 word: a review replaced it with `if (true)` and
-                                 all 1902 tests passed, while a refusal on any
-                                 of the other four queues then wrote „null" to
-                                 whoever `memberNumber` named, which where that
-                                 is empty is the whole league. `String()` is not
-                                 on the list ADL A14 bans, and it lies in
-                                 exactly the way that list exists to stop. */
-                              const heading = returned(queue, one)
-
-                              if (heading !== null) {
-                                notify({
-                                  from: t('app.name'),
-                                  to: one.memberNumber,
-                                  subject: t(heading),
-                                  body: reason,
-                                  date: today,
-                                })
-                              }
-
-                              setOpen(null)
-                            }}
+                            /* The whole of it is `handBack`, above, because it now
+                               waits for the route before it changes anything, and
+                               what it does after that answer is eleven lines of
+                               consequence. `void` is the shape the portal already
+                               uses for a press that speaks to the server
+                               (`admin/AdminLeagues.tsx`,
+                               `admin/LeagueRaceModeration.tsx`). */
+                            onConfirm={(reason) => void handBack(one, reason)}
                             onCancel={() => {
                               setOpen(null)
                               setClosed(one.id)
@@ -903,7 +1124,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    already has one, so until they are here there
                                    is nothing safe to decide (whyNoDecision). */
                                 if (!decisionUnknown) {
-                                  approveAll([one], teams)
+                                  void approveAll([one], teams)
                                 }
                               }}
                             >
