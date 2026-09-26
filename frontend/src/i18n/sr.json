@@ -1256,7 +1256,11 @@
     },
     "moderatorGone": "Moderator je obrisan.",
     "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
-    "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu."
+    "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
+    "teamDeleteRefused": {
+      "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
+    },
+    "teamGone": "Tim je obrisan."
   },
   "ducats": {
     "title": "Dukati",

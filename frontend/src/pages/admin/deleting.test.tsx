@@ -1,7 +1,7 @@
 import { SLOW } from '../../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { livePage } from '../../data/pages'
 import { I18nProvider } from '../../i18n/I18nProvider'
@@ -10,6 +10,7 @@ import { SessionProvider } from '../../session/SessionProvider'
 import { first, must } from '../../test/at'
 import { Decided } from '../../test/decided'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
+import { did, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { Entities } from './Entities'
 import { TEAMS } from './entityForms'
@@ -98,6 +99,27 @@ describe('a record entered during this visit and then deleted', () => {
 
 describe('the focus after a row is deleted', () => {
   it('goes to the one control on the screen that cannot be the row just deleted', async () => {
+    /**
+     * A SERVER THAT CONFIRMS THE DELETION, WHICH THIS CASE NEEDS SINCE 26.09.2026 AND
+     * WOULD HAVE BEEN GREEN WITHOUT.
+     *
+     * The row acted on here is the FIRST SERVED team, so its delete goes to
+     * `DELETE /api/teams/{id}` (`admin/AdminTeams.tsx`). The disc reader behind these
+     * cases answers by resource name and its pattern is `^\/api\/([a-z]+)$`
+     * (`test/setup.ts`), which an address carrying an id does not match - so the request
+     * came back 404 and the row STAYED, with a refusal drawn beside it.
+     *
+     * **And the assertion below would not have noticed.** `RowActions.deleteRow` moves the
+     * focus before it asks anybody, so the focus lands on „Novi tim" whatever the server
+     * says. The case would have gone on passing while measuring a refused deletion, which
+     * is worse than a red one: the thing it is named after would be the only thing still
+     * true about it.
+     *
+     * **Its own server rather than a branch in `test/setup.ts`**, deliberately: that file
+     * is read by every case in the suite, and three other branches are writing to it this
+     * week. What this case needs is one answer, so it holds one answer.
+     */
+    const server = serverThat((_, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
     const user = setupUser()
     renderAt('/sr/administracija/timovi', 'superadmin')
 
@@ -114,7 +136,16 @@ describe('the focus after a row is deleted', () => {
        the next Tab starts from the top; the move is also the only word a screen
        reader gets that anything happened. */
     expect(screen.getByRole('button', { name: 'Novi tim' })).toHaveFocus()
-  })
+
+    /* AND THE ROW REALLY WENT, which is what makes the sentence above about a row that is
+       „no longer on the page" true rather than aspirational. Awaited, because the row
+       leaves on the answer and the focus moved before it. */
+    await waitFor(() => {
+      expect(table().queryByText(name)).not.toBeInTheDocument()
+    })
+
+    server.stop()
+  }, SLOW)
 
   it('does not go looking for it where there is none', async () => {
     /* RowActions drawn on its own, without the strip that carries the control.

@@ -14,6 +14,7 @@ import {
   WHEN_WRITING_A_LEAGUE,
 } from '../admin/leagueWrites'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
+import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -101,8 +102,29 @@ describe('the reasons the server can name', () => {
     /* And the sixth reason of the fourth, added 24.09.2026 with DELETE
        /api/teams/{id}/membership: one class, two acts, two screens. The count is the
        file's and went from five to six; `WHEN_LEAVING_A_TEAM` is where the sixth is
-       answered, and the note on it says why it is not a line in the dictionary above. */
-    ['TeamWriteApi.java', [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM], 6],
+       answered, and the note on it says why it is not a line in the dictionary above.
+
+       A THIRD SCREEN ON THE SAME FILE SINCE 26.09.2026, AND THE COUNT DID NOT MOVE. The
+       administration's screen of teams now sends `DELETE /api/teams/{id}`, whose one named
+       refusal is `theWindowIsShut` - the reason `WHEN_LEAVING_A_TEAM` already carries,
+       under a different key, because what the reader has to do about it differs (the note
+       on `WHEN_DELETING_A_TEAM` says which and why). So this file declares the same six it
+       did yesterday, which is the measurement that matters: the union widened where a
+       reason may be ANSWERED and the floor under it did not soften. Three acts of one
+       class now, the shape `LeagueWriteApi` has at two.
+
+       AND THE BOUNDARY OF THAT REGISTRATION, MEASURED RATHER THAN ASSUMED, because it is
+       not what a reader would guess. Taking `WHEN_DELETING_A_TEAM` back out of this line
+       fails NOTHING today: its only reason is `theWindowIsShut`, which
+       `WHEN_LEAVING_A_TEAM` also claims, so the first case above is satisfied by the
+       sibling whether the third dictionary is named here or not. What the registration
+       does buy is the OTHER direction, and that was measured too: a reason added to
+       `WHEN_DELETING_A_TEAM` that no route can answer fails the second case, and would
+       pass unnoticed if the dictionary were not on this list. So it is registered for the
+       direction that has teeth, and the direction that has none is written down here
+       instead of being left to look like cover it does not give. */
+    ['TeamWriteApi.java',
+      [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM, WHEN_DELETING_A_TEAM], 6],
     ['CommentWriteApi.java', [WHEN_RATING_AN_EVENT], 3],
     /* THE SIXTH, ADDED 25.09.2026, AND IT IS THE FIRST THAT WAS OWED RATHER THAN NEW.
        `LeagueWriteApi` has named eleven reasons since B40 and six of them have been drawn
