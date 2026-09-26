@@ -197,37 +197,29 @@ export type Competitor = {
    * (`pages/admin/AdminMembers.tsx`) is behind the same door the field is.
    */
   membershipBasis?: MembershipBasis
-  /**
-   * The code this member's own referral link carries, AND ONLY ON THE CALLER'S OWN
-   * ROW.
+  /*
+   * TWO FIELDS STOOD HERE BETWEEN 21.09.2026 AND 25.09.2026 AND BOTH ARE GONE:
+   * `referralCode` and `referredCount`, each optional because `/api/competitors`
+   * answered it on the caller's OWN row and on no other.
    *
-   * Not the member number, which is what the link used to carry: that number is
-   * public and consecutive, since it is the address of a profile and the sign in
-   * list prints it beside every name. Anybody could have assembled somebody
-   * else's link, or credited themselves with a member they never brought.
+   * **They did not move because the portal stopped reading them.** „Moja članarina"
+   * draws both and the terms of use promise both. What moved is the DOOR: the owner
+   * decided on 25.09.2026 (PDL P26a) that the personal referral link „se sklanja sa
+   * javne liste takmicara" and stays only on that page.
    *
-   * **Absent from every other row**, which is the shape `/api/competitors` answers
-   * (`case when c.id = :me then c.referral_code end`) and the reason for the `?`:
-   * a code is what somebody else's link would be assembled out of, so nobody is
-   * given anybody's but their own.
+   * **The reason is a measurement rather than tidiness.** `CompetitorApi` ends
+   * `where c.active`, so a member whose fee has lapsed has no row on that list at
+   * all and never reached the condition that filled the two fields in - and he is
+   * exactly the man V24 section 6 promises the link to, on exactly the page he opens
+   * to renew. Both now arrive through `GET /api/me`, which answers ONE row and that
+   * row is his whether or not his fee is standing: `session/theServer.ts` reads
+   * them, `SessionProvider` remembers them, and `useSession` hands them over. It is
+   * the same road `membershipBasis` takes and for the same kind of reason.
+   *
+   * A type is a home too, so they are named here rather than simply deleted: a
+   * reader who goes looking for them on a competitor should find out where they went
+   * instead of adding them back.
    */
-  referralCode?: string
-  /**
-   * How many members this one brought in whose fee is standing, AND ONLY ON THE
-   * CALLER'S OWN ROW.
-   *
-   * **This replaced `referredBy` on 21.09.2026, and the reason is that the portal
-   * cannot work the count out any more.** It used to be counted here, over the
-   * whole list: „everybody whose `referredBy` is my code, and whose fee is
-   * standing". Neither half of that survives the switch to `/api`. A member whose
-   * fee has lapsed is not on the list at all (13.09.2026), and `referredBy` is not
-   * answered for anybody: it is the KEY of whoever brought a member (V7), and a
-   * key is not a thing the portal may be handed. So the count is worked out where
-   * both halves are known, which is the database, and arrives as one number.
-   *
-   * Absent from every other row, for the same reason the code above is.
-   */
-  referredCount?: number
   /**
    * Whether this member has hidden their profile from readers who are not signed in.
    *

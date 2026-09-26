@@ -39,6 +39,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,15 +92,18 @@ class CompetitorApiTest {
 	private static final String WHETHER_THE_FEE_IS_STANDING = "active";
 
 	/**
-	 * WHAT {@code referredBy} IS ANSWERED AS, once the resource knows who is asking.
+	 * WHAT {@code referredBy} IS ANSWERED AS - BY {@code MeApi}, AND BY NOTHING HERE.
 	 *
 	 * <p>Not the column: PDL, 06.09.2026, „`referredBy` cita ekran Clanarine da
 	 * prebroji koga je clan doveo, a to je upit nad SVIMA, ne nad sobom". A count is
 	 * that query answered where the data is; the column answered to whoever signs in
 	 * would be every member's referrer beside his name, and the referrer is a code.
 	 *
-	 * <p>It is a name the portal does not serve, so {@code Answers} refuses it unless
-	 * it is named as something answered on purpose.
+	 * <p><b>This resource answered it on the caller's own row between 20.09.2026 and
+	 * 25.09.2026, and P26a moved it to the one door that answers a member whose fee has
+	 * lapsed.</b> The name is kept here for the opposite reason it was added: the cases
+	 * below require it to be absent from every record of every caller, so a resource
+	 * that starts answering it again fails rather than passes.
 	 */
 	private static final String THE_COUNT_SHE_BROUGHT_IN = "referredCount";
 
@@ -116,7 +120,7 @@ class CompetitorApiTest {
 	 * <p>Taken from the constant, a rename would rename both and every case below would go on
 	 * passing while the portal asked for an address nothing answers - one value in two roles,
 	 * which is the shape that makes right and wrong read alike. What proves the two equal is
-	 * {@code thePortraitIsTheAddressOfThatMembersOwnPicture}, which hands the address to the
+	 * {@link #thePortraitIsTheAddressOfThatMembersOwnPicture}, which hands the address to the
 	 * dispatcher instead of comparing spellings.
 	 */
 	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
@@ -128,9 +132,9 @@ class CompetitorApiTest {
 	 * {@code photo_digest_shape}), so one carrying digits may spell a four digit year by
 	 * accident - and {@link #noYearOfBirthLeavesTheServer} reads the WHOLE answer as text and
 	 * asks it for every year of birth in the database. A digest holding {@code 1991} would
-	 * fail that case for a reason that has nothing to do with a date of birth, and whoever
-	 * met the failure would be looking for a leak that was not there. Letters cannot spell a
-	 * year, so the two cases cannot collide.
+	 * fail that case for a reason that has nothing to do with a date of birth, and whoever met
+	 * the failure would be looking for a leak that was not there. Letters cannot spell a year,
+	 * so the two cases cannot collide.
 	 *
 	 * <p>Each pair is a different pair, so no two pictures here share a digest and „this
 	 * member's portrait" is never satisfied by another member's.
@@ -153,9 +157,9 @@ class CompetitorApiTest {
 	 * already has.
 	 *
 	 * <p>It is the second source of the value {@code photo} answers: a query joining
-	 * {@code verification.photo_id} rather than {@code competitor.photo_id} answers THIS
-	 * where her portrait belongs, and no case could tell the two apart if she had only one
-	 * picture in the fixture.
+	 * {@code verification.photo_id} rather than {@code competitor.photo_id} answers THIS where
+	 * her portrait belongs, and no case could tell the two apart if she had only one picture in
+	 * the fixture.
 	 */
 	private static final String THE_PICTURE_SHE_IS_HAVING_MODERATED = aDigestOf("ba");
 
@@ -163,10 +167,9 @@ class CompetitorApiTest {
 	 * AND A PICTURE SENT BY SOMEBODY WHO HAS NO PORTRAIT AT ALL, which is the half the case
 	 * above cannot measure.
 	 *
-	 * <p>With her alone, {@code coalesce(c.photo_id, v.photo_id)} answers her own portrait
-	 * and passes. This member has nothing to fall back on, so the same {@code coalesce}
-	 * hands out a picture waiting for a moderator - which is what ADL A60 refuses in as many
-	 * words.
+	 * <p>With her alone, {@code coalesce(c.photo_id, v.photo_id)} answers her own portrait and
+	 * passes. This member has nothing to fall back on, so the same {@code coalesce} hands out a
+	 * picture waiting for a moderator - which is what ADL A60 refuses in as many words.
 	 */
 	private static final String THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED = aDigestOf("dc");
 
@@ -174,9 +177,9 @@ class CompetitorApiTest {
 	 * AND THE MARKS OF THE TWO TEAMS, so that {@code photo} holds pictures that are not
 	 * portraits.
 	 *
-	 * <p>{@code TeamApi} keeps the mirror of this ({@code
-	 * noPartOfAnybodysProfilePictureLeavesWithATeam}); without a mark in the table at all,
-	 * „no team's mark leaves with a member" would be a sentence about an empty set.
+	 * <p>{@code TeamApiTest} keeps the mirror of this
+	 * ({@code noPartOfAnybodysProfilePictureLeavesWithATeam}); without a mark in the table at
+	 * all, „no team's mark leaves with a member" would be a sentence about an empty set.
 	 */
 	private static final String THE_MARK_OF_ONE_TEAM = aDigestOf("fa");
 
@@ -271,6 +274,22 @@ class CompetitorApiTest {
 	 */
 	private static final List<String> THE_ADMINISTRATION = List.of(
 			THE_MODERATOR_OVER_THE_MEMBERS, THE_ADMINISTRATOR_ON_THE_LIST, THE_SUPERADMIN);
+
+	/**
+	 * EVERY WAY THERE IS OF ASKING THIS ROUTE, for the claims that hold whoever is asking.
+	 *
+	 * <p><b>Derived from the two lists above and never written out again</b>, which is what
+	 * keeps it complete: {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther}
+	 * requires their union to be every account the fixture has, so a caller added tomorrow
+	 * reaches this list by arriving rather than by being remembered. A third hand-written
+	 * list is exactly the thing that goes one entry short.
+	 *
+	 * <p>The visitor is the {@code null} that {@code NOBODY_WHO_MAY_READ_THE_BASIS} carries,
+	 * so he is here too: it is the same request without the cookie and it is not an account.
+	 */
+	private static final List<String> EVERY_KIND_OF_CALLER =
+			Stream.concat(NOBODY_WHO_MAY_READ_THE_BASIS.stream(), THE_ADMINISTRATION.stream())
+					.toList();
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -436,21 +455,21 @@ class CompetitorApiTest {
 				false, "none");
 
 		/* AND SEVEN PICTURES, of which THREE are portraits, TWO are waiting for a moderator
-		   and TWO are teams' marks. Written before they are given to anybody, because a
-		   picture is a row of its own (V8) and `competitor.photo_id` points at one.
+		   and TWO are teams' marks. Written before they are given to anybody, because a picture
+		   is a row of its own (V8) and `competitor.photo_id` points at one.
 
 		   WHY SEVEN AND NOT TWO. Every axis this file measures about a portrait is an axis
 		   about which ROW was read, and a fixture with one portrait in it answers „the only
 		   picture there is" to every wrong query there is. Three portraits means no member is
 		   the only one of his kind; two waiting pictures mean „approved" and „waiting" are
-		   separated on a member who has both AND on a member who has only the second; two
-		   marks mean `photo` holds pictures that are not portraits at all.
+		   separated on a member who has both AND on a member who has only the second; two marks
+		   mean `photo` holds pictures that are not portraits at all.
 
 		   THE FRACTIONS ARE DIFFERENT ON EVERY ROW, so a square read off the wrong picture is
-		   visible, and so `noFieldOfTheAnswerIsTheSameInEveryRecord` measures the square
-		   rather than a constant. Nothing here writes them into a case: a case that wants a
-		   square reads it back out of `photo` by digest, which is the same discipline
-		   `PhotoApiTest` keeps about a media type. */
+		   visible, and so `noFieldOfTheAnswerIsTheSameInEveryRecord` measures the square rather
+		   than a constant. Nothing here writes them into a case: a case that wants a square
+		   reads it back out of `photo` by digest, which is the same discipline `PhotoApiTest`
+		   keeps about a media type. */
 		aPicture(HER_PORTRAIT, "0.25", "0.75", "0.40");
 		aPicture(THE_PORTRAIT_OF_THE_ONE_WHO_HIDES, "0.10", "0.20", "0.30");
 		aPicture(THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID, "0.60", "0.15", "0.55");
@@ -623,11 +642,11 @@ class CompetitorApiTest {
 	 * AND A PICTURE HE HAS SENT THAT NOBODY HAS DECIDED ON, which is the column this resource
 	 * must never read.
 	 *
-	 * <p>{@code state} is written out rather than defaulted because it is the half that
-	 * carries the meaning: V9's {@code verification_decided_keeps_no_photo} refuses a decided
-	 * row that still holds a photograph, so {@code waiting} is the only state such a picture
-	 * could be in. The queue is {@code profiles} and the subject is the member's own name,
-	 * which is what {@code MePhotoApi} writes when a member really sends one.
+	 * <p>{@code state} is written out rather than defaulted because it is the half that carries
+	 * the meaning: V9's {@code verification_decided_keeps_no_photo} refuses a decided row that
+	 * still holds a photograph, so {@code waiting} is the only state such a picture could be
+	 * in. The queue is {@code profiles} and the subject is the member's own name, which is what
+	 * {@code MePhotoApi} writes when a member really sends one.
 	 */
 	private void isHavingModerated(String memberNumber, String digest) {
 		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id, state)"
@@ -699,22 +718,6 @@ class CompetitorApiTest {
 	 * <p>`Answers` checks each name against the file the portal serves, so a name left
 	 * here after the portal stopped serving it cannot quietly excuse a field that went
 	 * missing for another reason, and it checks the answer really does leave them out.
-	 *
-	 * <p><b>AND TWO NAMES GO THE OTHER WAY, which is the half added on 13.09.2026:</b> the
-	 * portrait and its square are answered although {@code competitors.json} carries neither,
-	 * because the portal's own type has no field for a picture yet (PDL P28c, 26.09.2026, the
-	 * second of the four pieces of work it names; the type is the third and is somebody
-	 * else's increment). Named here rather than left silent, for the reason `Answers` writes
-	 * out: a field added on purpose and a field that leaked look alike from here. The floor
-	 * cuts both ways, so the day the served file grows a {@code photo} this line fails and has
-	 * to be taken out.
-	 *
-	 * <p><b>They are read off the FIRST record, which is 000007 - the member who hides his
-	 * profile.</b> That is what makes the shape matter rather than the value: both keys are
-	 * answered with JSON null to a visitor and the names are still there, which is exactly the
-	 * sentence {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor} is about. Answered as
-	 * ABSENT keys instead, this case would fail - and a reader would be told a field was
-	 * missing when what is missing is a picture.
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
@@ -725,30 +728,75 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * AND NOTHING IN THE ANSWER IS A REFERRAL CODE, whatever it is called.
+	 * AND NOTHING IN THE ANSWER IS A REFERRAL CODE, whatever it is called AND WHOEVER IS
+	 * ASKING.
 	 *
 	 * <p>Asked of the whole answer as TEXT and not of a field name, for the same reason
 	 * the year of birth is: the review that found this measured that swapping the member
 	 * number for the code under the name `referredBy` passed the whole suite, because the
 	 * omission was guarded by that name alone. A code is sixteen hexadecimal characters
 	 * and every member in the fixture carries a different one.
+	 *
+	 * <p><b>AND ASKED OF EVERY KIND OF CALLER SINCE 25.09.2026, which is the whole of what
+	 * P26a changed here.</b> It asked the VISITOR's answer between 20.09.2026 and that day,
+	 * and it had to: the caller's own row carried his own code on purpose, so „no code
+	 * anywhere" was false of a signed in member by design and a second case held the
+	 * narrower claim instead. The owner took the field off this list altogether - „licni
+	 * link za preporuku se sklanja sa javne liste takmicara" - so the claim is one claim
+	 * again, and it is the strongest one this resource can make.
+	 *
+	 * <p><b>Two questions and not one, because they fail differently.</b> The TEXT refuses a
+	 * code served under any name at all, including one nobody has thought of; the KEY
+	 * refuses the name itself arriving with something harmless in it, which is the shape a
+	 * half-reverted change leaves behind. Neither implies the other.
+	 *
+	 * <p><b>The list of callers is DERIVED from the two the rest of this class already
+	 * keeps</b> rather than written out a third time, and
+	 * {@code everyAccountInTheFixtureIsOnOneSideOfTheLineOrTheOther} holds that their union
+	 * is every account there is. A caller added to the fixture tomorrow is asked this
+	 * without anybody remembering to add him.
 	 */
 	@Test
 	void noReferralCodeLeavesTheServer() throws Exception {
-		String whole = http.perform(get("/api/competitors")).andReturn().getResponse()
-				.getContentAsString();
-
-		assertThat(whole).as("the answer carries nothing at all, so it says nothing about what it"
-				+ " leaves out").contains("000007", "000012", "000045");
-
 		List<String> codes = db.sql("select referral_code from competitor").query(String.class).list();
 		assertThat(codes).as("no code was read out of the database, so the loop below asserts nothing")
 				.hasSize(5);
 
-		for (String code : codes) {
-			assertThat(whole).as("a referral code (%s) left the server, which Clan 73 does not make"
-					+ " public: it is the member's to hand out, not the portal's to publish", code)
-					.doesNotContain(code);
+		/* AND THE CALLERS ARE EVERY ACCOUNT THERE IS, ASKED OF THE DATABASE AND NOT OF THE
+		   TWO LISTS THE FIELD IS DERIVED FROM.
+
+		   Derived from them, this floor would be a tautology: an empty `EVERY_KIND_OF_CALLER`
+		   makes the loop below run nought times and the case pass by asking nobody, and a
+		   floor built out of the same two lists cannot see that. `account` can. The visitor
+		   is the `null` among them and is not an account, so he is counted apart. */
+		assertThat(EVERY_KIND_OF_CALLER)
+				.as("a caller this fixture has is not asked, so the loop below leaves a door"
+						+ " unmeasured")
+				.containsAll(db.sql("select email from account").query(String.class).list())
+				.containsNull();
+
+		for (String caller : EVERY_KIND_OF_CALLER) {
+			String whole = whole(caller);
+
+			assertThat(whole).as("the answer to %s carries nothing at all, so it says nothing"
+					+ " about what it leaves out", caller)
+					.contains("000007", "000012", "000045");
+
+			for (String code : codes) {
+				assertThat(whole).as("a referral code (%s) left the server to %s, which Clan 73"
+						+ " does not make public: it is the member's to hand out, not the"
+						+ " portal's to publish, and since P26a it leaves through /api/me and"
+						+ " nowhere else", code, caller)
+						.doesNotContain(code);
+			}
+
+			for (JsonNode one : answerFor(caller)) {
+				assertThat(Answers.fieldsOf(one))
+						.as("%s was answered a referral key on the record of %s, whatever value"
+								+ " it holds; a key that is there at all is a key the next"
+								+ " change fills in", caller, one.path("memberNumber").asString())
+						.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN);
+			}
 		}
 	}
 
@@ -945,65 +993,16 @@ class CompetitorApiTest {
 	 * <p><b>Compared by VALUE and not by scale</b>, which is a decision rather than a
 	 * looseness: V21 chose {@code numeric(9, 8)} because the rule is about the exact
 	 * boundaries 0 and 1, and it is the value that must survive the journey.
-	 * {@code BigDecimal.equals} answers false for {@code 0.25} beside {@code 0.25000000}, so
-	 * an equality here would be measuring how many zeroes a column happens to carry and would
-	 * fail the day the column's scale changed while every fraction stayed exactly what it was.
+	 * {@code BigDecimal.equals} answers false for {@code 0.25} beside {@code 0.25000000}, so an
+	 * equality here would be measuring how many zeroes a column happens to carry and would fail
+	 * the day the column's scale changed while every fraction stayed exactly what it was.
 	 */
 	private void theSquareIsThatPicturesOwn(JsonNode one, String digest, String who) {
 		assertThat(theSquareIn(one))
-				.as("the square answered to %s is not the one on that picture's row, so some"
-						+ " other picture's crop was read", who)
+				.as("the square answered to %s is not the one on that picture's row, so some other"
+						+ " picture's crop was read", who)
 				.usingElementComparator(BigDecimal::compareTo)
 				.containsExactlyElementsOf(theSquareOf(digest));
-	}
-
-	/**
-	 * A PORTRAIT AND ITS SQUARE AS THE ANSWER SPELLS THEM, in either of their two shapes.
-	 *
-	 * <p>The two names are always side by side and always both there, which is what lets one
-	 * pattern cover both states: an address with an object beside it, and null beside null.
-	 */
-	private static final Pattern A_PORTRAIT_AND_ITS_SQUARE = Pattern.compile(
-			"\"" + THE_PORTRAIT + "\":(?:null|\"[^\"]*\"),\"" + THE_SQUARE_OF_IT
-					+ "\":(?:null|\\{[^}]*})");
-
-	private static final String BLANKED = "\"portraitBlankedByTheCase\":true";
-
-	/**
-	 * THE ANSWER WITH EVERY PORTRAIT BLANKED, so that what is left may be compared across
-	 * callers byte for byte.
-	 *
-	 * <p><b>Why the three cases below need it from 26.09.2026.</b> Each of them says „signing
-	 * in changes exactly these fields and nothing else", and until today that was two fields.
-	 * A hidden member's portrait is the third thing a session changes ([ODLUKA 26.09.2026,
-	 * owner]), so left unblanked those cases would fail on a resource that is behaving exactly
-	 * as decided - and loosening them into „mostly the same" would throw away the half that
-	 * makes them worth having: the number of records, their order, and every other value.
-	 *
-	 * <p><b>What that costs, and where it is paid back.</b> Blanked here, these cases no longer
-	 * say anything about a portrait at all - including that a member who does NOT hide is
-	 * answered his to a visitor. That sentence is asserted where it belongs, in
-	 * {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor}, which reads both members.
-	 *
-	 * <p><b>On the TEXT and never through a parser</b>, which is the reason
-	 * {@code TeamApiTest} writes out for the same surgery: the square is
-	 * {@code numeric(9, 8)} and comes out as {@code 0.10000000}, which survives being parsed
-	 * and not being written back, so a comparison of two serialisations would measure the
-	 * writer.
-	 *
-	 * <p><b>And it counts what it blanked</b>, because a pattern that matched nothing would
-	 * leave every one of those cases passing for the wrong reason - which is exactly how a
-	 * normalisation stops measuring and starts hiding.
-	 */
-	private static String withoutAnyPortrait(String whole, int records, String who) {
-		String left = A_PORTRAIT_AND_ITS_SQUARE.matcher(whole).replaceAll(BLANKED);
-
-		assertThat(left.split(Pattern.quote(BLANKED), -1).length - 1)
-				.as("the answer given to %s does not carry one portrait and one square per"
-						+ " record, so blanking them hid a difference rather than a picture", who)
-				.isEqualTo(records);
-
-		return left;
 	}
 
 	/** Every value {@code photo} carries in this answer, records with none included. */
@@ -1041,16 +1040,15 @@ class CompetitorApiTest {
 	/**
 	 * AND THE ADDRESS IT BUILDS REALLY REACHES THE ROUTE THAT SERVES A PICTURE.
 	 *
-	 * <p>{@link TeamApi}'s own arrangement for the same string, and the reason is written
+	 * <p>{@code TeamApiTest}'s own arrangement for the same string, and the reason is written
 	 * there: a constant copied is only ever as good as what proves it equal. This hands the
 	 * address back to the DISPATCHER, so a rename of {@code /api/photos/{name}} that left
 	 * either copy behind is caught by the route rather than by a comparison of two spellings.
 	 *
-	 * <p><b>The HANDLER is asked for and not the status</b>, which is the shape
-	 * {@code TeamApiTest} uses for the same question and the reason is that no file stands
-	 * behind the row on this machine: the status would be a 404 either way, and a 404 says
-	 * „no mapping" and „no file" in one number. The handler says which class the dispatcher
-	 * would have run, and only one answer to that is right.
+	 * <p><b>The HANDLER is asked for and not the status</b>, because no file stands behind the
+	 * row on this machine: the status would be a 404 either way, and a 404 says „no mapping"
+	 * and „no file" in one number. The handler says which class the dispatcher would have run,
+	 * and only one answer to that is right.
 	 */
 	@Test
 	void thePortraitIsTheAddressOfThatMembersOwnPicture() throws Exception {
@@ -1061,8 +1059,8 @@ class CompetitorApiTest {
 				.isNotEmpty();
 
 		assertThat(http.perform(get(address)).andReturn().getHandler())
-				.as("the address answered (%s) is not one the portal maps to a picture, so it is"
-						+ " a circle that will never draw", address)
+				.as("the address answered (%s) is not one the portal maps to a picture, so it is a"
+						+ " circle that will never draw", address)
 				.isInstanceOfSatisfying(HandlerMethod.class,
 						one -> assertThat(one.getBeanType()).isEqualTo(PhotoApi.class));
 	}
@@ -1071,13 +1069,16 @@ class CompetitorApiTest {
 	 * A MEMBER WITH NO PICTURE ANSWERS NULL, AND NEVER THE EMPTY PATH.
 	 *
 	 * <p>{@code frontend/src/data/types.ts} refuses the empty path about a team in as many
-	 * words - „a team that has none is not a team whose logo is the empty path" - and the
-	 * reason is the same for a member: an empty path is an address a browser would ask for.
+	 * words - „a team that has none is not a team whose logo is the empty path" - and the reason
+	 * is the same for a member: an empty path is an address a browser would ask for.
 	 *
 	 * <p><b>Both halves go, or neither does.</b> Every column of {@code photo} is NOT NULL
-	 * (V8), so a record carrying a square with no picture to cut is a square of nothing. This
-	 * is asked of EVERY record rather than of the two members who have no portrait, so the day
-	 * a fifth member arrives it is measured without anybody remembering to add him.
+	 * (V8), so a record carrying a square with no picture to cut is a square of nothing. This is
+	 * asked of EVERY record rather than of the two members who have no portrait, so the day a
+	 * fifth member arrives it is measured without anybody remembering to add him.
+	 *
+	 * <p><b>And the property is pinned before it is asserted</b>, because it is vacuous over an
+	 * answer where everybody has a portrait and equally vacuous over one where nobody has.
 	 */
 	@Test
 	void aPortraitAndItsSquareLeaveTogetherOrNeitherDoes() throws Exception {
@@ -1094,15 +1095,15 @@ class CompetitorApiTest {
 
 			if (!one.path(THE_PORTRAIT).isNull()) {
 				assertThat(one.path(THE_PORTRAIT).asString())
-						.as("%s answers the empty path, which is an address a browser would ask"
-								+ " for rather than the null that says there is no picture", who)
+						.as("%s answers the empty path, which is an address a browser would ask for"
+								+ " rather than the null that says there is no picture", who)
 						.isNotEmpty();
 			}
 		}
 
 		assertThat(everyPortraitIn(answerFor(HER_OWN_ACCOUNT)))
-				.as("either nobody or everybody in this answer has a portrait, so the two states"
-						+ " of the first axis are not both in the fixture")
+				.as("either nobody or everybody in this answer has a portrait, so the two states of"
+						+ " the first axis are not both in the fixture")
 				.contains((String) null)
 				.contains(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
 	}
@@ -1110,20 +1111,20 @@ class CompetitorApiTest {
 	/**
 	 * A PICTURE WAITING FOR A MODERATOR IS NOBODY'S PORTRAIT, WHOEVER ASKS.
 	 *
-	 * <p>ADL A60, owner, 20.09.2026: a picture held only by something that waits for a
-	 * moderator „nije javna... Takva slika odgovara tacno isto kao slika koje nema", and PDL
-	 * P28a says why - „Profilnu sliku administrator odobrava pre objave".
+	 * <p>ADL A60, owner, 20.09.2026: a picture held only by something that waits for a moderator
+	 * „nije javna... Takva slika odgovara tacno isto kao slika koje nema", and PDL P28a says why
+	 * - „Profilnu sliku administrator odobrava pre objave".
 	 *
-	 * <p><b>It is the DIGEST that must not leave and not only the bytes.</b>
-	 * {@link PhotoApi} already refuses bytes no public holder points at, so this is not about
-	 * a picture being served; it is about a visitor learning that this member has one in
-	 * moderation, and about whoever holds the file learning that it is that one.
+	 * <p><b>It is the DIGEST that must not leave and not only the bytes.</b> {@code PhotoApi}
+	 * already refuses bytes no public holder points at, so this is not about a picture being
+	 * served; it is about a visitor learning that this member has one in moderation, and about
+	 * whoever holds the file learning that it is that one.
 	 *
 	 * <p><b>Read as TEXT and over every kind of caller</b>, the shape
-	 * {@link #noYearOfBirthLeavesTheServer} uses: a digest folded into another field, or a
-	 * field renamed, would walk past a check that reads names. Six callers, because the
-	 * answer depends on who asks and a rule held for the visitor alone would be held for the
-	 * one caller who was never the risk.
+	 * {@link #noYearOfBirthLeavesTheServer} uses: a digest folded into another field, or a field
+	 * renamed, would walk past a check that reads names. Every kind of caller, because the
+	 * answer depends on who asks and a rule held for the visitor alone would be held for the one
+	 * caller who was never the risk.
 	 */
 	@Test
 	void aPictureWaitingForAModeratorIsNobodysPortrait() throws Exception {
@@ -1132,16 +1133,14 @@ class CompetitorApiTest {
 						.params(THE_PICTURE_SHE_IS_HAVING_MODERATED,
 								THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED)
 						.query(Long.class).single())
-				.as("no picture in this fixture is waiting for a moderator, so the case below"
-						+ " asks the answer for something that is not there anyway")
+				.as("no picture in this fixture is waiting for a moderator, so the case below asks"
+						+ " the answer for something that is not there anyway")
 				.isEqualTo(2L);
 
-		for (String asking : Arrays.asList(null, HER_OWN_ACCOUNT, THE_OTHER_MEMBER,
-				RACES_FOR_NOBODY, THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN)) {
-
+		for (String asking : EVERY_KIND_OF_CALLER) {
 			assertThat(whole(asking))
-					.as("the answer given to %s carries the digest of a picture a moderator has"
-							+ " not decided on, so the portal published it instead of him",
+					.as("the answer given to %s carries the digest of a picture a moderator has not"
+							+ " decided on, so the portal published it instead of him",
 							asking == null ? "a visitor" : asking)
 					.doesNotContain(THE_PICTURE_SHE_IS_HAVING_MODERATED)
 					.doesNotContain(THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED);
@@ -1162,8 +1161,8 @@ class CompetitorApiTest {
 	void aMemberWhoseOnlyPictureIsWaitingCarriesNoPortrait() throws Exception {
 		assertThat(db.sql("select photo_id from competitor where member_number = '000023'")
 						.query(Long.class).optional())
-				.as("000023 has a portrait of her own in this fixture, so falling back on the"
-						+ " queue would be invisible here")
+				.as("000023 has a portrait of her own in this fixture, so falling back on the queue"
+						+ " would be invisible here")
 				.isEmpty();
 
 		assertThat(recordOf(HER_OWN_ACCOUNT, "000023").path(THE_PORTRAIT).isNull())
@@ -1181,15 +1180,17 @@ class CompetitorApiTest {
 	 * skrivenom profilu". This resource is that one. PDL, 06.09.2026 puts the photograph among
 	 * what hiding hides.
 	 *
-	 * <p><b>Withheld as NULL and not as an absent key, which is the whole shape of the
-	 * rule.</b> PDL, 06.09.2026: „Oba slucaja dobijaju isti ishod." A member who hides must
-	 * read exactly like a member who has no picture, or the absence itself says „this one is
-	 * hiding" - which is the fact being withheld. So the case asserts the null AND that the
-	 * two are indistinguishable: 000007's record and 000045's are compared on both names.
+	 * <p><b>Withheld as NULL and not as an absent key, which is the whole shape of the rule.</b>
+	 * PDL, 06.09.2026: „Oba slucaja dobijaju isti ishod." A member who hides must read exactly
+	 * like a member who has no picture, or the absence itself says „this one is hiding" - which
+	 * is the fact being withheld. So the case asserts the null AND that the two are
+	 * indistinguishable: 000007's record and 000045's are compared on both names.
 	 *
-	 * <p><b>And the floors say the 404 is about hiding and nothing else:</b> he really is
-	 * hidden, and his row really does hold that picture. Without them a query that dropped the
-	 * join altogether would pass.
+	 * <p><b>And the floors say the withholding is about hiding and nothing else:</b> he really is
+	 * hidden, his row really does hold that picture, and the member who does NOT hide is
+	 * answered hers to the same visitor. Without that last line a resource answering no portrait
+	 * at all to a visitor would pass everything here, and what is being measured would be the
+	 * session rather than the hiding.
 	 */
 	@Test
 	void aHiddenProfilesPortraitDoesNotLeaveToAVisitor() throws Exception {
@@ -1210,45 +1211,43 @@ class CompetitorApiTest {
 				.as("a visitor was answered the portrait of a member who hides his profile")
 				.isTrue();
 		assertThat(whole(null))
-				.as("the digest of a hidden member's portrait is somewhere in the visitor's"
-						+ " answer, under some other name")
+				.as("the digest of a hidden member's portrait is somewhere in the visitor's answer,"
+						+ " under some other name")
 				.doesNotContain(THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
-
-		/* AND THE OTHER MEMBER'S PORTRAIT DOES REACH THE SAME VISITOR, which is what makes
-		   HIDING the condition rather than the session. Without this line a resource that
-		   answered no portrait at all to a visitor would pass everything above, and it is here
-		   rather than anywhere else because the three cases that compare a visitor's answer
-		   with a member's blank the portraits on both sides and therefore say nothing about
-		   this. 000012 does not hide and holds a portrait of her own. */
-		assertThat(recordOf(null, "000012").path(THE_PORTRAIT).asString())
-				.as("a visitor was answered no portrait for a member who does NOT hide her"
-						+ " profile, so what is being withheld is the session and not the hiding")
-				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
 
 		assertThat(List.of(his.has(THE_PORTRAIT), his.path(THE_PORTRAIT).isNull(),
 						his.has(THE_SQUARE_OF_IT), his.path(THE_SQUARE_OF_IT).isNull()))
-				.as("a member who hides his profile does not read like a member who has no"
-						+ " picture, so the shape of the answer says which members are hiding")
+				.as("a member who hides his profile does not read like a member who has no picture,"
+						+ " so the shape of the answer says which members are hiding")
 				.isEqualTo(List.of(somebodyWithNoPicture.has(THE_PORTRAIT),
 						somebodyWithNoPicture.path(THE_PORTRAIT).isNull(),
 						somebodyWithNoPicture.has(THE_SQUARE_OF_IT),
 						somebodyWithNoPicture.path(THE_SQUARE_OF_IT).isNull()));
+
+		/* AND THE OTHER MEMBER'S PORTRAIT DOES REACH THE SAME VISITOR, which is what makes
+		   HIDING the condition rather than the session. It is here rather than anywhere else
+		   because the three cases that compare a visitor's answer with a signed in caller's
+		   blank the portraits on both sides and therefore say nothing about this. 000012 does
+		   not hide and holds a portrait of her own. */
+		assertThat(recordOf(null, "000012").path(THE_PORTRAIT).asString())
+				.as("a visitor was answered no portrait for a member who does NOT hide her"
+						+ " profile, so what is being withheld is the session and not the hiding")
+				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
 	}
 
 	/**
 	 * AND IT DOES LEAVE TO EVERYBODY WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION.
 	 *
 	 * <p>The owner's own limit on the rule: „Takmicar od ulogovanih kolega ne moze da sakrije
-	 * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od
-	 * ostalih clanova, jer bi time nestao smisao zajednickog rangiranja". A rule written in
-	 * one direction only would pass on a resource that answered nobody a portrait at all.
+	 * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od ostalih
+	 * clanova, jer bi time nestao smisao zajednickog rangiranja". A rule written in one
+	 * direction only would pass on a resource that answered nobody a portrait at all.
 	 *
-	 * <p><b>{@code RACES_FOR_NOBODY} is in this list and he is the reason it is a list.</b>
-	 * V23 leaves {@code account.competitor_id} empty for an account that does not race, so
-	 * {@code memberOfAccount} answers nothing for him: a condition written against the
-	 * caller's MEMBER rather than against his account refuses him, and he is signed in, so
-	 * that would be the rule applied to a reader it was never about. The superadmin is the
-	 * same shape and is here for the same reason.
+	 * <p><b>{@code RACES_FOR_NOBODY} is in this list and he is the reason it is a list.</b> V23
+	 * leaves {@code account.competitor_id} empty for an account that does not race, so a
+	 * condition written against the caller's MEMBER rather than against his account refuses him,
+	 * and he is signed in - so that would be the rule applied to a reader it was never about.
+	 * The superadmin is the same shape and is here for the same reason.
 	 */
 	@Test
 	void aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn() throws Exception {
@@ -1259,8 +1258,8 @@ class CompetitorApiTest {
 
 			assertThat(his.path(THE_PORTRAIT).asString())
 					.as("%s is signed in and was not answered the portrait of a member who hides"
-							+ " his profile; hiding is from a reader who is not signed in and"
-							+ " from nobody else", asking)
+							+ " his profile; hiding is from a reader who is not signed in and from"
+							+ " nobody else", asking)
 					.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
 			theSquareIsThatPicturesOwn(his, THE_PORTRAIT_OF_THE_ONE_WHO_HIDES, asking);
 		}
@@ -1269,13 +1268,13 @@ class CompetitorApiTest {
 	/**
 	 * AND NOTHING OF A LAPSED MEMBER'S PORTRAIT LEAVES, BECAUSE HE IS ON NO ANSWER AT ALL.
 	 *
-	 * <p>{@link #aMemberWhoseFeeHasLapsedIsNotOnTheList} says his ROW is absent; this says
-	 * that nothing of his is anywhere in the text, which is a different claim and the one that
-	 * matters for a picture. PDL P11, owner 13.09.2026: „ko nije platio, ne vidi se nigde osim
-	 * u istorijskim godinama", and the shape that carries it here is {@code where c.active}.
+	 * <p>{@link #aMemberWhoseFeeHasLapsedIsNotOnTheList} says his ROW is absent; this says that
+	 * nothing of his is anywhere in the text, which is a different claim and the one that
+	 * matters for a picture. PDL P11, owner 13.09.2026: „ko nije platio, ne vidi se nigde osim u
+	 * istorijskim godinama", and the shape that carries it here is {@code where c.active}.
 	 *
 	 * <p><b>Not a decision of this increment and deliberately unchanged</b>: the note on
-	 * {@link CompetitorApi} says what follows from it for the header of such a member, which
+	 * {@code CompetitorApi} says what follows from it for the header of such a member, which
 	 * draws no monogram today either.
 	 */
 	@Test
@@ -1285,9 +1284,7 @@ class CompetitorApiTest {
 				.as("000031 holds no picture, so this case is about nothing")
 				.contains(THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID);
 
-		for (String asking : Arrays.asList(null, HER_OWN_ACCOUNT, THE_MODERATOR_OVER_THE_MEMBERS,
-				THE_SUPERADMIN)) {
-
+		for (String asking : EVERY_KIND_OF_CALLER) {
 			assertThat(whole(asking))
 					.as("the answer given to %s carries the portrait of a member whose fee has"
 							+ " lapsed", asking == null ? "a visitor" : asking)
@@ -1298,8 +1295,8 @@ class CompetitorApiTest {
 	/**
 	 * AND NO TEAM'S MARK LEAVES AS A MEMBER'S FACE.
 	 *
-	 * <p>The mirror of {@code TeamApiTest.noPartOfAnybodysProfilePictureLeavesWithATeam}, and
-	 * it is worth its lines because both facts are rows of one table: {@code photo} holds a
+	 * <p>The mirror of {@code TeamApiTest.noPartOfAnybodysProfilePictureLeavesWithATeam}, and it
+	 * is worth its lines because both facts are rows of one table: {@code photo} holds a
 	 * portrait and a mark side by side and the only thing telling them apart is which column
 	 * points at them. A join written {@code on mine.id = t.logo_id} would answer a club badge
 	 * where a face belongs, and every case above about „her own portrait" would still pass for
@@ -1318,8 +1315,8 @@ class CompetitorApiTest {
 				.isEqualTo(2L);
 
 		assertThat(whole(HER_OWN_ACCOUNT))
-				.as("a team's mark came back in the list of members, so some picture other than"
-						+ " a member's own portrait was read")
+				.as("a team's mark came back in the list of members, so some picture other than a"
+						+ " member's own portrait was read")
 				.doesNotContain(THE_MARK_OF_ONE_TEAM)
 				.doesNotContain(THE_MARK_OF_THE_OTHER_TEAM);
 	}
@@ -1329,17 +1326,17 @@ class CompetitorApiTest {
 	 * HERE.
 	 *
 	 * <p>{@code Answers.servedFields} reads the names of a record and cannot see inside one of
-	 * them, which it says of itself: a nested object is a place a field can be added or
-	 * renamed without the floor above noticing. Three names written into this case would be a
-	 * list, and a list is what has failed on this portal six times.
+	 * them, which it says of itself: a nested object is a place a field can be added or renamed
+	 * without the floor above noticing. Three names written into this case would be a list, and
+	 * a list is what has failed on this portal six times.
 	 *
-	 * <p><b>So the floor is the portal's own served record of a TEAM</b>, which is the one
-	 * thing the portal ships that already carries a square ({@code teams.json}). It is the
-	 * same fact about a different thing and one piece of arithmetic reads both
+	 * <p><b>So the floor is the portal's own served record of a TEAM</b>, which is the one thing
+	 * the portal ships that already carries a square ({@code teams.json}). It is the same fact
+	 * about a different thing and one piece of arithmetic reads both
 	 * ({@code frontend/src/components/crop.ts}), so the day either side renames a fraction the
 	 * two stop agreeing and this falls. {@code size} is the name that matters most:
-	 * {@code cropIn} asks for it and quietly returns the whole picture for a record without
-	 * it, so answering {@code diameter} would lose every crop on the portal without one error
+	 * {@code cropIn} asks for it and quietly returns the whole picture for a record without it,
+	 * so answering {@code diameter} would lose every crop on the portal without one error
 	 * anywhere.
 	 */
 	@Test
@@ -1348,12 +1345,11 @@ class CompetitorApiTest {
 				Answers.servedRecord("teams.json").path(THE_SQUARE_OF_IT));
 
 		assertThat(onATeam)
-				.as("the served team carries no square at all, so this floor is comparing an"
-						+ " empty set and would pass whatever a member answered")
+				.as("the served team carries no square at all, so this floor is comparing an empty"
+						+ " set and would pass whatever a member answered")
 				.isNotEmpty();
 
-		assertThat(Answers.fieldsOf(
-						recordOf(HER_OWN_ACCOUNT, "000012").path(THE_SQUARE_OF_IT)))
+		assertThat(Answers.fieldsOf(recordOf(HER_OWN_ACCOUNT, "000012").path(THE_SQUARE_OF_IT)))
 				.as("a member's square and a team's square are the same fact under different"
 						+ " names, and one piece of arithmetic reads both")
 				.containsExactlyInAnyOrderElementsOf(onATeam);
@@ -1423,14 +1419,6 @@ class CompetitorApiTest {
 	 * the number of records, their order, and every value in them, so a condition
 	 * written as a join - the one shape that can give a member two rows or drop one -
 	 * fails here even though every name is still right.</li>
-	 * <li><b>AND SINCE 26.09.2026 THE PORTRAITS ARE BLANKED ON BOTH SIDES BEFORE THAT
-	 * COMPARISON, because a session now changes a third thing.</b> A member who hides his
-	 * profile is answered his portrait to anybody signed in and null to a visitor ([ODLUKA
-	 * 26.09.2026, owner]), which is a difference this case would otherwise report as a
-	 * fault. It is blanked rather than the comparison loosened, and the case first asserts
-	 * that the two answers really DO differ before the blanking - so the normalisation
-	 * cannot quietly become the thing that makes this pass. {@link #withoutAnyPortrait}
-	 * counts what it blanked for the same reason.</li>
 	 * </ul>
 	 *
 	 * <p><b>Why a golden file was measured and then not committed.</b> The answer was
@@ -1446,39 +1434,110 @@ class CompetitorApiTest {
 	 * built out of the values the answer itself carries, so nothing in this case is a
 	 * number somebody remembered.
 	 */
+	/**
+	 * A PORTRAIT AND ITS SQUARE AS THE ANSWER SPELLS THEM, in either of their two shapes.
+	 *
+	 * <p>The two names are always side by side and always both there, which is what lets one
+	 * pattern cover both states: an address with an object beside it, and null beside null.
+	 */
+	private static final Pattern A_PORTRAIT_AND_ITS_SQUARE = Pattern.compile(
+			"\"" + THE_PORTRAIT + "\":(?:null|\"[^\"]*\"),\"" + THE_SQUARE_OF_IT
+					+ "\":(?:null|[{][^}]*})");
+
+	private static final String BLANKED = "\"portraitBlankedByTheCase\":true";
+
+	/**
+	 * THE ANSWER WITH EVERY PORTRAIT BLANKED, so that what is left may be compared across
+	 * callers byte for byte.
+	 *
+	 * <p><b>Why the three cases below need it from 26.09.2026.</b> Each of them says „signing in
+	 * changes nothing at all", which is the stronger sentence P26a made available on 25.09.2026
+	 * by taking two fields off this list. A hidden member's portrait is the one thing a session
+	 * changes again ([ODLUKA 26.09.2026, owner]), so left unblanked those cases would fail on a
+	 * resource that is behaving exactly as decided - and loosening them into „mostly the same"
+	 * would throw away the half that makes them worth having: the number of records, their
+	 * order, and every other value.
+	 *
+	 * <p><b>What that costs, and where it is paid back.</b> Blanked here, these cases no longer
+	 * say anything about a portrait at all - including that a member who does NOT hide is
+	 * answered his to a visitor. That sentence is asserted where it belongs, in
+	 * {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor}, which reads both members.
+	 *
+	 * <p><b>On the TEXT and never through a parser</b>, which is the reason {@code TeamApiTest}
+	 * writes out for the same surgery: the square is {@code numeric(9, 8)} and comes out as
+	 * {@code 0.10000000}, which survives being parsed and not being written back, so a
+	 * comparison of two serialisations would measure the writer.
+	 *
+	 * <p><b>And it counts what it blanked</b>, because a pattern that matched nothing would leave
+	 * every one of those cases passing for the wrong reason - which is exactly how a
+	 * normalisation stops measuring and starts hiding. This is the rule of 14.09.2026 about an
+	 * exception in a guard, applied to the exception this increment brings back: the exception is
+	 * real, so it is named, counted, and paid for by a case of its own.
+	 */
+	private static String withoutAnyPortrait(String whole, int records, String who) {
+		String left = A_PORTRAIT_AND_ITS_SQUARE.matcher(whole).replaceAll(BLANKED);
+
+		assertThat(left.split(Pattern.quote(BLANKED), -1).length - 1)
+				.as("the answer given to %s does not carry one portrait and one square per record,"
+						+ " so blanking them hid a difference rather than a picture", who)
+				.isEqualTo(records);
+
+		return left;
+	}
+
 	@Test
 	void theVisitorsAnswerHasNotMoved() throws Exception {
 		for (JsonNode one : answerFor(null)) {
 			assertThat(Answers.fieldsOf(one))
-					.as("a visitor was answered something only a signed in member or the"
-							+ " administration may have, on the record of %s",
-							one.path("memberNumber").asString())
+					.as("a visitor was answered something only the administration may have, on"
+							+ " the record of %s", one.path("memberNumber").asString())
 					.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN,
 							HOW_THE_MEMBERSHIP_IS_HELD);
 		}
 
-		JsonNode hers = recordOf(HER_OWN_ACCOUNT, "000012");
-		String added = ",\"" + THE_REFERRAL_CODE + "\":\"" + hers.path(THE_REFERRAL_CODE).asString()
-				+ "\",\"" + THE_COUNT_SHE_BROUGHT_IN + "\":"
-				+ hers.path(THE_COUNT_SHE_BROUGHT_IN).asInt();
+		/* AND SIGNING IN CHANGES NOTHING AT ALL, WHICH IS A STRONGER SENTENCE THAN THE ONE
+		   THIS CASE CARRIED UNTIL 25.09.2026 AND IS WORTH THE PARAGRAPH.
 
+		   It used to build the two fields the caller's own row carried out of the answer's
+		   own values, cut that substring out, and compare what was left. The cut was honest
+		   and it was also the only thing standing between „signing in adds two named fields"
+		   and „signing in adds whatever it likes": anything else that arrived on his row
+		   would have had to be noticed by a second case.
+
+		   P26a took both fields off this list, so there is nothing to cut and nothing to
+		   build: a member's answer IS a visitor's answer, to the byte. The rule of
+		   14.09.2026 about exceptions in a guard is what this is - the exception did not
+		   need a better wording, it needed the postavka underneath it to change, and when
+		   it did the exception went away by itself rather than being argued down. */
+		/* AND BOTH ANSWERS CARRY SOMETHING, which the comparison itself cannot say. Two
+		   empty arrays are equal, and so are two error pages: this claim is load-bearing
+		   now that nothing is cut before comparing, so it gets the floor the cut used to
+		   give it for free (the cut named a value off the answer and would have thrown
+		   over an empty one). Asked of the caller's own row by number, because „his row
+		   is there" is the half that makes „and it is no different" mean anything. */
+		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path("memberNumber").asString())
+				.as("the caller has no row in his own answer, so the comparison below is two"
+						+ " empty answers agreeing")
+				.isEqualTo("000012");
+
+		/* AND ONE THING DOES CHANGE SINCE 26.09.2026, SO IT IS BLANKED ON BOTH SIDES RATHER
+		   THAN THE COMPARISON LOOSENED. A member who hides his profile is answered his portrait
+		   to anybody with a session and null to a visitor, which is [ODLUKA 26.09.2026, owner].
+		   The line below would fail without the blanking and the resource would be behaving
+		   exactly as decided. */
 		int records = answerFor(null).size();
 
-		/* AND THE THIRD THING A SESSION CHANGES IS BLANKED ON BOTH SIDES, NOT IGNORED. The
-		   line below would fail without this and the resource would be behaving exactly as
-		   decided, so what is said out loud is that the two answers differ in the portrait as
-		   well - and then that they differ in NOTHING ELSE. */
-		assertThat(whole(HER_OWN_ACCOUNT).replace(added, ""))
-				.as("the member's answer and the visitor's are already the same once the two"
-						+ " fields are cut, so blanking the portrait below measures nothing and a"
-						+ " hidden member's picture is reaching a visitor")
+		assertThat(whole(HER_OWN_ACCOUNT))
+				.as("the member's answer and the visitor's are already identical, so blanking the"
+						+ " portrait below measures nothing and a hidden member's picture is reaching"
+						+ " a visitor")
 				.isNotEqualTo(whole(null));
 
-		assertThat(withoutAnyPortrait(whole(HER_OWN_ACCOUNT).replace(added, ""), records,
-						HER_OWN_ACCOUNT))
-				.as("signing in changed something other than the three things it was allowed to:"
-						+ " the visitor's answer is no longer the member's answer with the two"
-						+ " fields taken out and the portraits blanked")
+		assertThat(withoutAnyPortrait(whole(HER_OWN_ACCOUNT), records, HER_OWN_ACCOUNT))
+				.as("signing in changed something other than the one thing it may: nothing on this"
+						+ " list is the caller's own business since P26a, so with the portraits"
+						+ " blanked a member and a visitor read the same bytes and anything at all"
+						+ " arriving on his row fails here")
 				.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
 	}
 
@@ -1488,116 +1547,61 @@ class CompetitorApiTest {
 	 *
 	 * <p>It is the SAME check and not a second one: {@code Answers} is handed the
 	 * caller's own record instead of the first, so what it compares against is the
-	 * file the portal serves rather than a list written here. Three of the four
-	 * omissions are still omissions for him - the age band because it is owed, the
-	 * referrer's code because the count replaces it, the basis because PDL P8 gives it
-	 * to the administration alone and the fee flag because he is on the list at all -
-	 * and the one that is no longer an omission is the one field this increment hands
-	 * back. The count is named as answered on purpose, and {@code Answers} checks that
-	 * the portal really does NOT serve that name, so a name listed here after the
-	 * portal starts serving it cannot quietly excuse anything.
+	 * file the portal serves rather than a list written here.
+	 *
+	 * <p><b>ALL FOUR OMISSIONS ARE OMISSIONS FOR HIM AGAIN SINCE 25.09.2026, which is
+	 * where this case stood before 20.09.2026 and where P26a put it back.</b> The age
+	 * band left the list by being answered; the referrer's code because a key does not
+	 * leave the server; the basis because PDL P8 gives it to the administration alone;
+	 * the fee flag because he is on the list at all; and the referral code because the
+	 * owner took it off this list on 25.09.2026 and left it on {@code /api/me}. The
+	 * count needed naming as „answered on purpose" while it was answered; it is not, so
+	 * the {@code Set} went with it.
+	 *
+	 * <p><b>The floor moved with the claim, and that is not a detail.</b> It used to be
+	 * „his record still carries the code, so I am looking at the right record". That
+	 * sentence is exactly what this case now denies, so it would pass by being wrong.
+	 * What says the right record is being read is the record's own number, read off the
+	 * answer.
 	 */
 	@Test
 	void theMembersOwnRecordCarriesNothingNobodyNamed() throws Exception {
-		assertThat(Answers.fieldsOf(recordOf(HER_OWN_ACCOUNT, "000012")))
-				.as("the caller's own record is no longer the one that differs, so the floor"
-						+ " below would be asked of the wrong record")
-				.contains(THE_REFERRAL_CODE);
+		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path("memberNumber").asString())
+				.as("the record the floor below is asked of is not the caller's own, so it says"
+						+ " nothing about the record that used to be the one that differs")
+				.isEqualTo("000012");
 
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors asked by the member himself",
 				new ObjectMapper().createArrayNode().add(recordOf(HER_OWN_ACCOUNT, "000012")),
-				"competitors.json",
-				Set.of(THE_COUNT_SHE_BROUGHT_IN, THE_PORTRAIT, THE_SQUARE_OF_IT),
-				WHO_HANDED_OUT_THE_CODE,
+				"competitors.json", Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
+				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
 
-	/**
-	 * A MEMBER IS HANDED HIS OWN REFERRAL LINK AND NOBODY ELSE'S.
+	/*
+	 * TWO CASES STOOD HERE BETWEEN 20.09.2026 AND 25.09.2026 AND BOTH WENT WITH THE FIELDS
+	 * THEY WERE ABOUT: `aMemberIsHandedHisOwnCodeAndNobodyElses` and
+	 * `aMemberIsToldHowManyHeBroughtInAndOnlyThoseWhoseFeeStands`. P26a took the referral
+	 * link and the count off this list, so each of them asserted a value on a key that is
+	 * no longer there; neither was loosened to keep it green.
 	 *
-	 * <p>PDL, 06.09.2026: „`referralCode` je clanov sopstveni link". ADL A8 names the
-	 * road it may travel: „kod preporuke ... ide iskljucivo kroz endpoint koji trazi
-	 * prijavu, i nikad u odgovor koji vidi posetilac."
+	 * THE RULE THAT SAYS HOW THEY WENT: a guard is not deleted until its own mutations have
+	 * been run against whatever replaces it. Three were, on 25.09.2026, and the logs are in
+	 * the PR:
 	 *
-	 * <p><b>Three things, and the second is the one a wrong resource passes.</b> The
-	 * value on his record is HIS, read out of the database rather than written here.
-	 * Every OTHER code in the database is absent from the whole answer as text, which
-	 * is the check that refuses a resource answering the list of codes to anybody who
-	 * signs in - the exact shape PDL measured as the reason one public file could not
-	 * go on serving three audiences. And no other record carries the key at all, so a
-	 * code cannot arrive as null beside a name and be filled in by the next change.
+	 * - dropping `and brought.active` from THIS resource's counting clause: caught here and
+	 *   by `MeApiTest.theOtherDoorStillAnswersTheSameTwoFacts` (43 run, 2 failures);
+	 * - the same drop on `MeApi`'s clause: caught by `andHowManyHeBroughtInWhoseFeeStands`
+	 *   and `aMemberWhoseFeeHasLapsedIsStillHandedHisOwnRecord`, independently of the case
+	 *   that compared the doors (43 run, 3 failures);
+	 * - answering the member number in place of `c.referral_code` on `MeApi`: caught by
+	 *   `aMemberIsHandedHisOwnReferralCodeAndNobodyElsesEver` and the same lapsed-member
+	 *   case (43 run, 3 failures).
+	 *
+	 * So the door that remains carries TWO independent cases for each of the two facts, and
+	 * what these two held is now held there and, for the negative half, by
+	 * `noReferralCodeLeavesTheServer` asked of every kind of caller.
 	 */
-	@Test
-	void aMemberIsHandedHisOwnCodeAndNobodyElses() throws Exception {
-		String hers = db.sql("select referral_code from competitor where member_number = '000012'")
-				.query(String.class).single();
-
-		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path(THE_REFERRAL_CODE).asString())
-				.as("the member was not handed her own referral link by a resource that knows"
-						+ " who is asking")
-				.isEqualTo(hers);
-
-		List<String> everybodyElses = db.sql("select referral_code from competitor"
-				+ " where member_number <> '000012'").query(String.class).list();
-		assertThat(everybodyElses).as("no other code was read out of the database, so the loop"
-				+ " below asserts nothing").hasSize(4);
-
-		String whole = whole(HER_OWN_ACCOUNT);
-
-		for (String code : everybodyElses) {
-			assertThat(whole).as("somebody else's referral code (%s) was handed to a member who"
-					+ " merely signed in; Clan 73 does not make it public and signing in is not"
-					+ " what makes it his", code).doesNotContain(code);
-		}
-
-		assertThat(StreamSupport.stream(answerFor(HER_OWN_ACCOUNT).spliterator(), false)
-				.filter(one -> Answers.fieldsOf(one).contains(THE_REFERRAL_CODE))
-				.map(one -> one.path("memberNumber").asString()).toList())
-				.as("a record other than the caller's own carries the referral code key, whatever"
-						+ " value it holds")
-				.containsExactly("000012");
-	}
-
-	/**
-	 * AND HE IS TOLD HOW MANY HE BROUGHT IN, WHICH IS A COUNT AND NEVER THE COLUMN.
-	 *
-	 * <p>PDL, 06.09.2026, measured why this field could not stay in the public file:
-	 * „`referredBy` cita ekran Clanarine da prebroji koga je clan doveo, a to je upit
-	 * nad SVIMA, ne nad sobom." Answered as a count by a resource that knows who is
-	 * asking, the query over everybody happens where the data is and nothing about
-	 * anybody else leaves.
-	 *
-	 * <p><b>The number is one and every wrong way of getting it is a different
-	 * number</b>, which is what the fixture is arranged for: she brought in two
-	 * people and one of them has let his fee lapse, so the answer is ONE while five
-	 * members exist, four are on the list and two have a referrer. And the same
-	 * field asked of a member who brought in nobody is nought, so nothing constant
-	 * answers both.
-	 */
-	@Test
-	void aMemberIsToldHowManyHeBroughtInAndOnlyThoseWhoseFeeStands() throws Exception {
-		assertThat(db.sql("select count(*) from competitor where referred_by ="
-						+ " (select id from competitor where member_number = '000012')")
-				.query(Integer.class).single())
-				.as("nobody in the fixture was brought in by her, so this case asserts nothing")
-				.isEqualTo(2);
-
-		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path(THE_COUNT_SHE_BROUGHT_IN).asInt())
-				.as("the count is not the members she brought in whose fee is standing; counting"
-						+ " everybody she brought gives two and the list itself gives three")
-				.isEqualTo(1);
-
-		assertThat(recordOf(THE_OTHER_MEMBER, "000045").path(THE_COUNT_SHE_BROUGHT_IN).asInt())
-				.as("a member who brought in nobody was told he brought in somebody, so the field"
-						+ " is not his own")
-				.isZero();
-
-		assertThat(StreamSupport.stream(answerFor(HER_OWN_ACCOUNT).spliterator(), false)
-				.filter(one -> Answers.fieldsOf(one).contains(THE_COUNT_SHE_BROUGHT_IN))
-				.map(one -> one.path("memberNumber").asString()).toList())
-				.as("a record other than the caller's own carries the count key")
-				.containsExactly("000012");
-	}
 
 	/**
 	 * AND AN ACCOUNT THAT RACES FOR NOBODY IS ANSWERED WHAT A VISITOR IS, TO THE BYTE.
@@ -1636,15 +1640,15 @@ class CompetitorApiTest {
 
 		/* AND THE PORTRAITS ARE BLANKED, WHICH IS THE ONE THING HE IS ANSWERED MORE THAN A
 		   VISITOR SINCE 26.09.2026 - and it is the point rather than an exception. He has no
-		   member at all, so a rule written against the caller's MEMBER would refuse him a
-		   hidden member's portrait although he is signed in, and the rule is about a reader
-		   with no session. `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` walks him
-		   by name for exactly that reason; here what is measured is that NOTHING ELSE moved. */
+		   member at all, so a rule written against the caller's MEMBER would refuse him a hidden
+		   member's portrait although he is signed in, and the rule is about a reader with no
+		   session. `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` walks him by name for
+		   exactly that reason; here what is measured is that NOTHING ELSE moved. */
 		int records = answerFor(null).size();
 
 		assertThat(withoutAnyPortrait(whole(RACES_FOR_NOBODY), records, RACES_FOR_NOBODY))
-				.as("an account with no member behind it was answered more than a visitor is,"
-						+ " beyond the portrait his session entitles him to")
+				.as("an account with no member behind it was answered more than a visitor is, beyond"
+						+ " the portrait his session entitles him to")
 				.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
 	}
 
@@ -1812,41 +1816,33 @@ class CompetitorApiTest {
 	 */
 	@Test
 	void theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded() throws Exception {
-		int ownRecordsCut = 0;
+		/* ONE CUT AND NOT TWO SINCE 25.09.2026, and the one that went was a BRANCH.
 
+		   Until that day this also cut the referral code and the count off whichever
+		   record belonged to the caller, and counted how often it had to, because without
+		   the count „a resource that stopped answering the caller his own two fields would
+		   make this case pass by having less to cut". P26a stopped answering them on
+		   purpose, so there is nothing to cut, no branch to fire and no count to keep: an
+		   administrator's own row is an ordinary row plus the basis, like every other. */
 		for (String administration : THE_ADMINISTRATION) {
 			String whole = whole(administration);
 
 			for (JsonNode one : answerFor(administration)) {
 				whole = whole.replace(",\"" + HOW_THE_MEMBERSHIP_IS_HELD + "\":\""
 						+ one.path(HOW_THE_MEMBERSHIP_IS_HELD).asString() + "\"", "");
-
-				if (Answers.fieldsOf(one).contains(THE_REFERRAL_CODE)) {
-					whole = whole.replace(",\"" + THE_REFERRAL_CODE + "\":\""
-							+ one.path(THE_REFERRAL_CODE).asString() + "\",\""
-							+ THE_COUNT_SHE_BROUGHT_IN + "\":"
-							+ one.path(THE_COUNT_SHE_BROUGHT_IN).asInt(), "");
-					ownRecordsCut++;
-				}
 			}
 
-			/* AND THE PORTRAITS ARE BLANKED ON BOTH SIDES, because the administration is
-			   signed in and a hidden member's portrait therefore reaches it (26.09.2026).
-			   Blanked and not ignored: `withoutAnyPortrait` counts one per record. */
+			/* AND THE PORTRAITS ARE BLANKED ON BOTH SIDES, because the administration is signed
+			   in and a hidden member's portrait therefore reaches it ([ODLUKA 26.09.2026,
+			   owner]). Blanked and not ignored: `withoutAnyPortrait` counts one per record. */
 			int records = answerFor(null).size();
 
 			assertThat(withoutAnyPortrait(whole, records, administration))
 					.as("%s was answered something other than the visitor's answer with the basis"
-							+ " added: the list itself moved, or a key nobody named arrived with"
-							+ " it", administration)
+							+ " added and the portraits blanked: the list itself moved, or a key"
+							+ " nobody named arrived with it", administration)
 					.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
 		}
-
-		assertThat(ownRecordsCut)
-				.as("no administration account was answered a record of its own, so this case"
-						+ " never entered the state it was rewritten for and the branch above cut"
-						+ " nothing")
-				.isEqualTo(1);
 	}
 
 	/**
@@ -1857,20 +1853,20 @@ class CompetitorApiTest {
 	 * which is the half that was missing until 21.09.2026.
 	 *
 	 * <ul>
-	 * <li><b>Somebody else's record.</b> Three of the five names are still omissions
-	 * there - the age band because it is owed, the referrer's code because the count
-	 * replaces it, the fee flag because he is on the list at all - and the referral
-	 * code is one too, because this caller is not the member whose row it is. It is
-	 * asked of the FIRST record, which {@code Answers} reads, so the case says out
-	 * loud that the first record is nobody's own.</li>
+	 * <li><b>Somebody else's record.</b> It is asked of the FIRST record, which
+	 * {@code Answers} reads, so the case says out loud that the first record is nobody's
+	 * own.</li>
 	 * <li><b>His OWN record</b>, which exists because one administration account is a
-	 * member whose fee is standing. There the referral code and the count are not
-	 * omissions at all but the two fields his row is entitled to, exactly as
-	 * {@code theMembersOwnRecordCarriesNothingNobodyNamed} holds them, and the basis
-	 * is answered on top. Written the other way round - his own two fields named as
-	 * left out - this case would fail the day the resource started behaving
-	 * correctly.</li>
+	 * member whose fee is standing.</li>
 	 * </ul>
+	 *
+	 * <p><b>AND SINCE 25.09.2026 THE TWO ASK THE SAME THING, which is the point rather
+	 * than a redundancy.</b> Between 20.09.2026 and that day his own record was the one
+	 * that differed: the referral code and the count were „not omissions at all but the
+	 * two fields his row is entitled to", so the second call named them as answered and
+	 * the first named the code as left out. P26a took both off this list, so both records
+	 * withhold the same four - and the two calls staying side by side is what refuses a
+	 * resource that starts telling them apart again.
 	 */
 	@Test
 	void theAdministrationsRecordCarriesNothingNobodyNamed() throws Exception {
@@ -1895,9 +1891,8 @@ class CompetitorApiTest {
 				"/api/competitors asked by a moderator over the members, on his own record",
 				new ObjectMapper().createArrayNode().add(
 						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, hisMemberNumber())),
-				"competitors.json",
-				Set.of(THE_COUNT_SHE_BROUGHT_IN, THE_PORTRAIT, THE_SQUARE_OF_IT),
-				WHO_HANDED_OUT_THE_CODE,
+				"competitors.json", Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
+				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				WHETHER_THE_FEE_IS_STANDING);
 	}
 
@@ -1921,17 +1916,21 @@ class CompetitorApiTest {
 	 * whole list except the one asking - left all 21 cases green. A moderator over the
 	 * members who is himself a member would have seen every row's basis but his own.
 	 *
-	 * <p><b>And his own row is a member's row as well, so it carries the referral code
-	 * and the count too.</b> They are answered on the caller's own row whoever the caller
-	 * is; holding the right adds a field, it does not take two away. Both are compared by
-	 * VALUE against what the database holds for HIM, so a code or a count arriving from
-	 * another row is a different string and a different number.
+	 * <p><b>HIS OWN ROW CARRIED THE REFERRAL CODE AND THE COUNT TOO UNTIL 25.09.2026, and
+	 * P26a takes them off his row like everybody's.</b> This case read both by VALUE
+	 * against what the database holds for him, and it named the reason: „holding the
+	 * right adds a field, it does not take two away". The decision takes them away from
+	 * every caller instead, which keeps that sentence true - the right still adds exactly
+	 * one field and subtracts nothing. What refuses a resource that hands his row
+	 * something extra is {@code noReferralCodeLeavesTheServer}, which asks every kind of
+	 * caller including this one, and
+	 * {@code theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded}, which now compares
+	 * whole answers with only the basis cut.
 	 *
 	 * <p><b>Every value this case reads is separated from a second source it could have
 	 * come from</b>, and each separation is asserted rather than arranged and forgotten:
-	 * his basis against a row that is held on another one, his count against a member who
-	 * brought in a different number, and his record against the first and the last of the
-	 * answer.
+	 * his basis against a row that is held on another one, and his record against the
+	 * first and the last of the answer.
 	 */
 	@Test
 	void theAdministratorsOwnRowCarriesTheBasisLikeEveryOther() throws Exception {
@@ -1955,39 +1954,24 @@ class CompetitorApiTest {
 						+ " row carrying another row's word would read the same", hisBasis)
 				.isGreaterThan(0);
 
-		int hisCount = db.sql("select count(*) from competitor brought where brought.active"
-						+ " and brought.referred_by = (select id from competitor"
-						+ " where member_number = ?)").param(number).query(Integer.class).single();
-		assertThat(db.sql("select count(*) from competitor c where c.active and ? <> (select"
-						+ " count(*) from competitor brought where brought.active"
-						+ " and brought.referred_by = c.id)")
-				.param(hisCount).query(Integer.class).single())
-				.as("every member on the list brought in as many as he did (%s), so his count"
-						+ " arriving from another row would be the same number", hisCount)
-				.isGreaterThan(0);
-
 		JsonNode his = recordOf(THE_ADMINISTRATOR_ON_THE_LIST, number);
 
 		assertThat(his.path(HOW_THE_MEMBERSHIP_IS_HELD).asString())
 				.as("the administration was answered every basis but its own, or its own row was"
 						+ " handed the word standing on another row")
 				.isEqualTo(hisBasis);
-		assertThat(his.path(THE_REFERRAL_CODE).asString())
-				.as("the administration's own row lost the referral link it would have had"
-						+ " without the right, or was handed a link off another row")
-				.isEqualTo(db.sql("select referral_code from competitor where member_number = ?")
-						.param(number).query(String.class).single());
-		assertThat(his.path(THE_COUNT_SHE_BROUGHT_IN).asInt())
-				.as("the administration's own row lost the count it would have had without the"
-						+ " right, or was handed a count off another row")
-				.isEqualTo(hisCount);
 
-		assertThat(StreamSupport.stream(answerFor(THE_ADMINISTRATOR_ON_THE_LIST).spliterator(),
-						false).filter(one -> Answers.fieldsOf(one).contains(THE_REFERRAL_CODE))
-				.map(one -> one.path("memberNumber").asString()).toList())
-				.as("a record other than the administration's own carries the referral code key;"
-						+ " holding the right over the members is not what makes a link his")
-				.containsExactly(number);
+		/* AND HIS OWN ROW IS NOT TOLD APART FROM ANYBODY ELSE'S IN ANY OTHER WAY, which is
+		   the half P26a left behind when the two fields went. Asked of the KEYS of his
+		   record against the keys of a record that is certainly not his: the two sets are
+		   equal, so a resource that starts adding something to whoever is asking fails
+		   here whatever it adds and whatever it calls it. */
+		assertThat(Answers.fieldsOf(his))
+				.as("the administrator's own row carries a key that somebody else's row does"
+						+ " not; holding the right adds the basis to EVERY row and nothing to"
+						+ " his in particular")
+				.isEqualTo(Answers.fieldsOf(
+						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, list.getFirst())));
 	}
 
 	/**

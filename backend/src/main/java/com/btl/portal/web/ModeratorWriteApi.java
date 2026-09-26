@@ -449,10 +449,23 @@ class ModeratorWriteApi {
 						+ " (first_name, last_name, email, role_id)"
 						/* THE ROLE IS WRITTEN HERE AND NEVER TAKEN OFF THE REQUEST - see
 						   `Invited`. And it is `moderator` rather than anything else because
-						   that is the one role this screen makes: „Pozivnica vazi samo za
-						   moderatore" (ADL A53), and the superadmin „se i dalje ne pravi kroz
-						   portal nego se imenuje adresom u podesavanjima servera" (owner,
-						   14.09.2026, PDL P21). */
+						   that is the one role THIS screen makes; the superadmin „se i dalje
+						   ne pravi kroz portal nego se imenuje adresom u podesavanjima
+						   servera" (owner, 14.09.2026, PDL P21).
+
+						   WHAT STOOD HERE UNTIL 25.09.2026 AND IS NOW WRONG: „Pozivnica vazi
+						   samo za moderatore" (ADL A53, 18.09.2026). That sentence is struck
+						   out in ADL A53 and in PDL P28a, and PDL P8b of 25.09.2026 is what
+						   struck it: the administration enters members in a group and that
+						   entry sends invitations too. It is corrected rather than deleted
+						   because a sentence asserting an overturned decision is an
+						   instruction to the next reader to put it back.
+
+						   WHAT DID NOT CHANGE WITH IT, and the same day says so: the
+						   MECHANISM is still not doubled. `CompetitorWriteApi#enter` mints a
+						   `password_reset_token` exactly as this does, „jedan povod vise, ne
+						   druga tabela i drugi razred" (ADL A53). What was narrowed was the
+						   claim about who may be invited, never the road. */
 						/* AND `email_confirmed_at` IS NOT IN THAT LIST EITHER, which is the
 						   owner's decision of 19.09.2026 and replaces what this route did for
 						   one round. V6 gives the column no default so that an account is born

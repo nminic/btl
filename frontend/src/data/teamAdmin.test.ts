@@ -44,7 +44,6 @@ const member = (
   firstSeason2027: false,
   firstSeason: 2019,
   membershipBasis: 'payment',
-  referralCode: '',
   teamId,
   teamSince,
   profileHidden: false,

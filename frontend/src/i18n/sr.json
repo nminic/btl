@@ -998,6 +998,8 @@
   },
   "membership": {
     "title": "Moja članarina",
+    "noRecordTitle": "Tvoji podaci o članstvu nisu stigli",
+    "noRecord": "Portal ne može da pročita tvoj članski zapis, pa obnova članarine sada nije moguća. Osveži stranicu i pokušaj ponovo.",
     "status": "Stanje",
     "active": "Član od {season}. sezone.",
     "feeExempt": "Oslobođen si plaćanja članarine za sezonu {season}, odlukom Upravnog odbora.",

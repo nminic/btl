@@ -215,7 +215,32 @@ public final class WhatTheMessageSays {
 		 * give would be a message promising what the table does not do, which is the
 		 * one thing {@code HowLongALinkLastsMatchesTheSchemaTest} exists to refuse.
 		 */
-		INVITED_AS_A_MODERATOR("invitedAsAModerator", "/nova-lozinka", Duration.ofHours(1));
+		INVITED_AS_A_MODERATOR("invitedAsAModerator", "/nova-lozinka", Duration.ofHours(1)),
+
+		/**
+		 * The administration has entered somebody into the league on a paper consent and
+		 * the portal is handing him the account he will set a password on.
+		 *
+		 * <p>The owner, PDL P8b, 25.09.2026: the button that enters a member into the
+		 * administration is „grupni unos koji salje pozivnice", which carries out what
+		 * PDL of 31.07.2026 already decided - „Grupni unos stvara pozivnice, ne naloge.
+		 * Svakom unetom stize poruka sa vezom na kojoj sam postavlja lozinku i time
+		 * preuzima nalog."
+		 *
+		 * <p><b>One hour, and the same row as the other two, which is the owner's choice
+		 * of 25.09.2026 between exactly those two outcomes.</b> He refused a longer
+		 * invitation with its price named: it would need either a table of its own, which
+		 * ADL A53 forbids by name („ne kao druga tabela i drugi razred"), or a move of the
+		 * default this column shares - and that would carry EVERY forgotten password from
+		 * one hour to seven days, which is the number he chose on 11.09.2026.
+		 *
+		 * <p><b>What makes an hour survivable for a group entered at once is not this
+		 * message but a road that already exists</b>, and it is measured rather than
+		 * hoped: {@code POST /api/password-reset/request} asks nothing about a role, a
+		 * password or a confirmed address, so somebody who opens his post that evening
+		 * gets himself another link from the sign-in screen. The words below say so.
+		 */
+		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofHours(1));
 
 		private final String key;
 
