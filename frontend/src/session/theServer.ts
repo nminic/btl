@@ -82,6 +82,60 @@ export type WhoTheServerSaysIAm = {
    */
   memberNumber: string | null
   /**
+   * WHERE THE CALLER LIVES, as his own record has it, and null where the answer did not
+   * say.
+   *
+   * **Here since 25.09.2026, and unlike the four below it this one HAS another door.**
+   * `/api/competitors` carries a country on every row, the caller's among them, and
+   * „Moja članarina" read it off there until today. The owner closed that road for this
+   * screen (PDL P8a): that list ends `where c.active`, so the member whose fee has
+   * LAPSED has no row on it at all - and he is the whole reason the screen exists, since
+   * renewing is what he opens it to do. `/api/me` answers one row, and that row is his
+   * whether or not his fee is standing.
+   *
+   * **Which is a different reason from the one the basis below is here for, and the
+   * difference is worth keeping.** That field has no second home anywhere; this one has,
+   * and is read here anyway because the second home cannot answer the one person who
+   * needs it. So „a field is remembered here when it has no other door" is not the whole
+   * rule any more, and the rule that replaces it is: when the other door cannot answer
+   * the caller, it is not a door.
+   *
+   * Null for a visitor, for an account that races for nobody, and for a value that is
+   * not a string. The shape is not judged beyond that, for the same reason the code
+   * below is not: which words are countries is the schema's (V7,
+   * `competitor_town_is_from_the_codebook_or_typed`), and a portal that re-judged it
+   * here could only refuse to draw a member the server really answered.
+   */
+  country: string | null
+  /**
+   * THE FIRST SEASON THE CALLER RACED, and null where the answer did not say.
+   *
+   * Here for the same reason the country above is, and off the same row.
+   *
+   * **A whole number and never merely „a number"**, which is the shape `referredCount`
+   * below is read with and for the same measurement: a season that arrived as a string
+   * would go into a sentence as one („Član od 2016. sezone"), and a fraction is not a
+   * season. `typeof` narrows and `Number.isInteger` then says which numbers count.
+   */
+  firstSeason: number | null
+  /**
+   * THE TEAM THE CALLER IS IN, and null where he is in none.
+   *
+   * **The one field on this answer whose null is ORDINARY rather than „I was not
+   * told"**, and the two cannot be told apart here. `MeApi.MyOwnRecord` leaves the key
+   * out altogether for a member with no team (`@JsonInclude(NON_NULL)`), which is
+   * sixteen of the thirty two in the data, so absence is the common case and not a
+   * fault.
+   *
+   * **That is a boundary and it is written down rather than papered over**: a server
+   * answering a team that is not a number is read here as „no team", and the screen
+   * then says „Trenutno nisi ni u jednom timu." rather than naming a team it cannot
+   * find. Which is what it would have said anyway - a team id no team on
+   * `/api/teams` carries draws the same sentence - so the two states the portal cannot
+   * separate are the two states it draws alike.
+   */
+  teamId: number | null
+  /**
    * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, and null where the answer did not say.
    *
    * **This is the only door it can come through, and that is measured rather than
@@ -103,6 +157,42 @@ export type WhoTheServerSaysIAm = {
    * the screen may not turn any of them into „you pay".
    */
   membershipBasis: MembershipBasis | null
+  /**
+   * THE CALLER'S OWN REFERRAL LINK, and null where the answer did not say.
+   *
+   * **This is the only door it can come through, and that became true on 25.09.2026
+   * rather than being true all along.** `/api/competitors` answered it on the caller's
+   * own row from 20.09.2026, and the screen read it off there. The owner took it off
+   * that list (PDL P26a): the personal link „se sklanja sa javne liste takmicara" and
+   * stays only on „Moja članarina".
+   *
+   * **What reading it the other way cost, and it is measured rather than argued.** That
+   * list ends `where c.active`, so the member whose fee has LAPSED has no row on it and
+   * was answered no link - while the terms promise him one on exactly the page he opens
+   * to renew (V24, section 6). `/api/me` answers one row and that row is his, standing
+   * fee or not.
+   *
+   * Null for a visitor and for an account that races for nobody, which are the same two
+   * states the basis above is null for, and for a code that is not a string. The screen
+   * draws an address with nothing after the sign in all three, which is a link that
+   * plainly does not work rather than one that looks as if it might.
+   */
+  referralCode: string | null
+  /**
+   * HOW MANY MEMBERS THE CALLER BROUGHT IN WHOSE FEE IS STANDING, and null where the
+   * answer did not say.
+   *
+   * **A COUNT and never the column it is counted from.** `referred_by` holds the KEY of
+   * whoever brought a member (V7) and a key does not leave the server, so the query „nad
+   * svima, ne nad sobom" (PDL, 06.09.2026) happens where the data is.
+   *
+   * **Null and not nought, which is the distinction this field exists to keep.** „I was
+   * not told" and „you brought in nobody" are two different sentences, and a screen that
+   * turned the first into the second would promise a member a balance of zero on an
+   * answer that never mentioned him. The screen decides what to draw for null; this
+   * says only what arrived.
+   */
+  referredCount: number | null
 }
 
 /**
@@ -189,12 +279,24 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     return null
   }
 
-  /* READ ONCE AND HANDED TO BOTH, rather than dug out twice. Two readers walking to the
-     same record by themselves are two places that can disagree about where it is, and
-     the fact they are reading - „does this caller race for anybody" - is one fact. */
+  /* READ ONCE AND HANDED TO ALL SEVEN, rather than dug out seven times. Readers walking
+     to the same record by themselves are that many places that can disagree about where
+     it is, and the fact they are reading - „does this caller race for anybody" - is one
+     fact. It said „all four" until 25.09.2026 and the number is the only thing in it
+     that moved. */
   const mine = recordIn(body)
 
-  return { role, account, memberNumber: numberIn(mine), membershipBasis: basisIn(mine) }
+  return {
+    role,
+    account,
+    memberNumber: numberIn(mine),
+    country: countryIn(mine),
+    firstSeason: wholeIn(mine, 'firstSeason'),
+    teamId: wholeIn(mine, 'teamId'),
+    membershipBasis: basisIn(mine),
+    referralCode: codeIn(mine),
+    referredCount: wholeIn(mine, 'referredCount'),
+  }
 }
 
 /**
@@ -204,7 +306,7 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
  * than null, and rather than an object of nulls"), which is the state a moderator and a
  * superadmin are permanently in.
  *
- * Written as its own function rather than inline because two fields are read out of it
+ * Written as its own function rather than inline because four fields are read out of it
  * and the reader above is already the longest sentence in this file.
  */
 function recordIn(body: object): object | null {
@@ -246,4 +348,75 @@ function basisIn(mine: object | null): MembershipBasis | null {
   const said: unknown = Reflect.get(mine, 'membershipBasis')
 
   return MEMBERSHIP_BASES.find((one) => one === said) ?? null
+}
+
+/**
+ * The caller's own referral code out of the answer, or nothing.
+ *
+ * **Looked for and never asserted**, for the reason written above. The shape is not
+ * checked beyond „it is a string": `competitor_referral_code_shape` is sixteen
+ * hexadecimal characters and it is the SCHEMA's job to keep that, checked at the moment
+ * the code is stored (`ReferralCode`). A portal that re-judged it here would be a second
+ * opinion about a rule it does not own, and the only thing it could do with a code it
+ * disliked is refuse to show a member the link the server really gave him.
+ */
+function codeIn(mine: object | null): string | null {
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, 'referralCode')
+
+  return typeof said === 'string' ? said : null
+}
+
+/**
+ * Where the caller lives, out of the answer, or nothing.
+ *
+ * **Looked for and never asserted**, and the shape is not checked beyond „it is a
+ * string", which is the ground `codeIn` above stands on and the same ground: which words
+ * name a country is the SCHEMA's (V7, `competitor_town_is_from_the_codebook_or_typed`),
+ * checked where a town is stored. A portal re-judging it here would be a second opinion
+ * about a rule it does not own, and the only thing it could do with a country it disliked
+ * is refuse to draw a member the server really answered.
+ */
+function countryIn(mine: object | null): string | null {
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, 'country')
+
+  return typeof said === 'string' ? said : null
+}
+
+/**
+ * A whole number off the caller's own record, by name, or nothing.
+ *
+ * **One function and not three, which is the correction of 25.09.2026.** It was written
+ * for the count alone; the season and the team arrived beside it needing the same two
+ * questions, and three copies of one rule are three places that can answer it
+ * differently. What it is a rule ABOUT is the only thing named here - „is this a whole
+ * number" - so the three readers differ by a key and by nothing else.
+ *
+ * **Looked for and never asserted**, and the type is asked for as well as the presence: a
+ * value that arrives as a string would go into an arithmetic, or into a sentence, and
+ * come out as something nobody meant. `Number.isInteger` on top of `typeof` rather than
+ * alone, because the two differ on exactly the values that are not one of these - `NaN`
+ * and a fraction - and because `Number.isInteger` answers a boolean and narrows nothing,
+ * so the value would still have to be asserted into a number, which is what ADL A14
+ * refuses. `typeof` narrows and the other half then says which numbers count.
+ *
+ * **What each null MEANS is the caller's to know and is not the same for the three**, so
+ * it is written where each is declared rather than here: no balance was mentioned, no
+ * season was mentioned, and - for the team - no team, which is ordinary.
+ */
+function wholeIn(mine: object | null, name: 'firstSeason' | 'teamId' | 'referredCount'): number | null {
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, name)
+
+  return typeof said === 'number' && Number.isInteger(said) ? said : null
 }

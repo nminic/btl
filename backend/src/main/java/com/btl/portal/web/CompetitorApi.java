@@ -90,37 +90,34 @@ import java.util.List;
  * secret beside a name. Counting who a member brought in is a question about
  * that member, and it belongs to the resource that knows who is asking.
  *
- * <p><b>AND SINCE 20.09.2026 THIS IS THAT RESOURCE, for the member's OWN two of
- * them and for nobody else's.</b> P-javno (ADL, 13.09.2026) put everything Article
- * 73 does not list „iza resursa koji zna ko pita"; this route now knows, so the two
- * of those fields that are the member's own about HIMSELF come back to him:
+ * <p><b>TWO OF THEM CAME BACK HERE ON 20.09.2026 AND LEFT AGAIN ON 25.09.2026, and
+ * the round trip is worth keeping because of what the second half measured.</b>
+ * P-javno (ADL, 13.09.2026) put everything Article 73 does not list „iza resursa
+ * koji zna ko pita"; this route knows, so his own referral link
+ * ({@code referralCode}) and his count of whom he brought in ({@code referredCount})
+ * were answered here on the caller's own row and on nobody else's.
  *
- * <ul>
- * <li><b>His own referral link</b> ({@code referralCode}). PDL, 06.09.2026,
- * measured: „`referralCode` je clanov sopstveni link, a poredi se sa tudjim
- * `referredBy`", and the terms of use say where it is drawn - „Svaki clan ima licni
- * link za preporuku... koji vam stoji ispisan na vasoj strani „Moja clanarina""
- * (V24, section 6). ADL A8 named the road it may travel in as many words: „kod
- * preporuke i godina rodjenja idu iskljucivo kroz endpoint koji trazi prijavu, i
- * nikad u odgovor koji vidi posetilac."</li>
- * <li><b>How many he brought in</b> ({@code referredCount}), which is the number
- * {@code pages/member/Membership.tsx} draws and the money the terms promise him:
- * „Iznos leze na vas balans u trenutku aktivacije." It is answered as a COUNT and
- * never as the column it is counted from, and that is the whole difference this
- * resource makes: the screen works it out today with a query „nad svima, ne nad
- * sobom" (PDL, 06.09.2026), which on a list anybody may read is every member's
- * referrer published beside his name - and, because {@code referredBy} IS a code,
- * every member's code published under another name.</li>
- * </ul>
+ * <p><b>That shape was right about who may read them and wrong about WHICH member it
+ * could reach.</b> This query ends {@code where c.active}, so the member whose fee
+ * has LAPSED has no row here and never reached the condition at all - and he is
+ * exactly the man V24 section 6 promises the link to: „Svaki clan ima licni link za
+ * preporuku... koji vam stoji ispisan na vasoj strani „Moja clanarina"", which is the
+ * page he opens to renew. Signed in with his own cookie he was answered neither
+ * field, while a member whose fee stood was answered both.
  *
- * <p><b>Whose row carries them is the point, so it is the row and not the
- * list.</b> Both are answered on the ONE record whose member is the caller, and
- * are ABSENT - not null - from every other record and from every record of an
- * answer nobody signed in asked for. A field that is null for a stranger and null
- * for a visitor says the same thing twice and tells the two apart nowhere;
- * a field that is not there at all leaves the visitor's answer byte for byte what
- * it was before this increment, which is what {@code /mock} is being aligned
- * against while this is written.
+ * <p><b>OWNER, 25.09.2026 (PDL P26a): the link „se sklanja sa javne liste takmicara"
+ * and stays only on „Moja clanarina".</b> Both fields are the caller's OWN business
+ * rather than anything Article 73 makes public, so the answer everybody may read is
+ * not where they belong under any condition. They are answered by {@link MeApi},
+ * which reads ONE row and that row is his, whether or not his fee is standing - and
+ * that class had already named the two homes as a boundary waiting for this word.
+ * ADL A8 is kept either way: „kod preporuke i godina rodjenja idu iskljucivo kroz
+ * endpoint koji trazi prijavu, i nikad u odgovor koji vidi posetilac."
+ *
+ * <p><b>What that buys, and it is a claim this resource could not make while they
+ * were here:</b> a signed in member is answered what a visitor is, to the byte.
+ * {@code theVisitorsAnswerHasNotMoved} used to cut two fields out before comparing;
+ * it now compares whole answers, and the cut is gone rather than adjusted.
  *
  * <p><b>AND SINCE 21.09.2026 THE ADMINISTRATION IS ANSWERED THE ONE FIELD THAT IS
  * ITS OWN, on every record and nobody else's.</b> PDL P8, 28.07.2026: „Osnov
@@ -171,16 +168,19 @@ import java.util.List;
  * <p><b>What is NOT answered here, and why each one is a decision rather than an
  * oversight.</b> {@code referredBy} itself - the code of whoever brought the CALLER
  * in - is answered by nothing, because no screen in the portal reads it about
- * oneself; what every reader of it wanted is the count above.
+ * oneself; what every reader of it wanted is a COUNT, and since 25.09.2026 the one
+ * place that answers it is {@link MeApi}.
  *
  * <p>All of these omissions are the reason this resource exists. PDL, 06.09.2026,
  * measured and named exactly these fields as the ones that cannot leave the
  * public file „dok portal nema bekend", because one file was serving the public
  * side, the member's own screens and the administration at once. This is that
- * backend, and it must not repeat the file it replaces. <b>The three audiences are
- * now three different answers out of one resource rather than one file read by
- * three</b>: the public side is the answer below, the member's own screens are the
- * two fields above, and the administration is the field this paragraph is about.
+ * backend, and it must not repeat the file it replaces. <b>TWO audiences out of one
+ * resource since 25.09.2026 and not three</b>: the public side is the answer below,
+ * the administration is the field this paragraph is about, and the member's own
+ * screens are {@link MeApi}, whole. The member's two fields stood here between
+ * 20.09.2026 and 25.09.2026 and P26a sent them to the door that answers him whether
+ * or not his fee is standing.
  *
  * <p><b>There were five of these names until 21.09.2026 and there are four, because
  * the age band was never one of them.</b> It stood in that list as a DEBT rather
@@ -191,13 +191,13 @@ import java.util.List;
  * <p>All four names are named at the call site in {@code CompetitorApiTest},
  * with the reason, and each one is checked to be one the portal really serves. A
  * field that went missing by accident and one left out on purpose look the same
- * from a test; this is what tells them apart. Two of the four are no longer
- * omissions from EVERY answer but from the answers of everybody they are not
- * about, and the cases say which is which: {@code noReferralCodeLeavesTheServer}
- * asks the visitor's answer for every code in the database,
- * {@code aMemberIsHandedHisOwnCodeAndNobodyElses} asks the member's for the other
- * three, and {@code theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld} asks
- * the answers of all five kinds of caller for the basis.
+ * from a test; this is what tells them apart. <b>Three of the four are omissions
+ * from EVERY answer again, which they had stopped being for four days</b>, and the
+ * cases say which is which: {@code noReferralCodeLeavesTheServer} asks EVERY kind of
+ * caller's answer for every code in the database, and
+ * {@code theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld} asks the answers of
+ * all five kinds of caller for the basis, which is the one that still depends on who
+ * is asking.
  *
  * <p><b>A hidden profile is still in this list.</b> Hiding a profile is about the
  * profile PAGE (PDL P23); the member number and the name stay public (Article
@@ -235,15 +235,20 @@ class CompetitorApi {
 
 	private final JdbcClient db;
 
-	private final MemberOfAccount memberOfAccount;
-
 	private final WhatHeMayDo mayHe;
 
 	private final Clock clock;
 
-	CompetitorApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe, Clock clock) {
+	/**
+	 * <b>{@code MemberOfAccount} was the fourth of these until 25.09.2026 and is gone with
+	 * the question it answered.</b> This route asked WHICH MEMBER the caller is, for the
+	 * two fields his own row carried; P26a took both off the answer, so the only thing
+	 * left to ask about the caller is whether he is the administration - and that is a
+	 * question about the ACCOUNT. A resource that no longer needs to know who anybody is
+	 * should not be holding the thing that tells it.
+	 */
+	CompetitorApi(JdbcClient db, WhatHeMayDo mayHe, Clock clock) {
 		this.db = db;
-		this.memberOfAccount = memberOfAccount;
 		this.mayHe = mayHe;
 		this.clock = clock;
 	}
@@ -302,29 +307,25 @@ class CompetitorApi {
 	 *                       one thing about a date of birth that IS public, and it does
 	 *                       not depend on {@code birthdayShown} - that choice hides the
 	 *                       date, not the category it produces (PDL, 06.09.2026)
-	 * @param referralCode   the caller's OWN link, and absent from every other record
-	 *                       and from every answer nobody signed in asked for. Absent
-	 *                       rather than null: see the note on this class for why the
-	 *                       difference is the whole point
-	 * @param referredCount  how many members the caller brought in whose fee is
-	 *                       standing, on the caller's own record and nowhere else.
-	 *                       The COUNT and never the column it is counted from
 	 * @param membershipBasis on what basis the membership on THIS record is held, on
 	 *                       every record of an answer the administration asked for and
 	 *                       ABSENT from every record of anybody else's - a visitor's, a
 	 *                       member's own included, and a signed in moderator who does
 	 *                       not hold {@link #OVER_THE_MEMBERS}. Absent rather than null
-	 *                       or empty, for the reason written on {@code referralCode}:
-	 *                       „I am not telling you" and „he pays nothing" must not be the
-	 *                       same shape, and a key carrying null is a key the next change
-	 *                       fills in
+	 *                       or empty: „I am not telling you" and „he pays nothing" must
+	 *                       not be the same shape, and a key carrying null is a key the
+	 *                       next change fills in.
+	 *                       <p>IT IS THE LAST OF THREE SUCH COMPONENTS AND WAS THE ODD
+	 *                       ONE OUT OF THEM. {@code referralCode} and
+	 *                       {@code referredCount} stood beside it until 25.09.2026 and
+	 *                       left together (PDL P26a); they were the CALLER'S OWN facts
+	 *                       answered back to him on a public list, while this is a fact
+	 *                       about everybody answered to the few who may read it
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, String ageBand, boolean firstSeason2027, int firstSeason,
 			String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown,
-			@JsonInclude(JsonInclude.Include.NON_NULL) String referralCode,
-			@JsonInclude(JsonInclude.Include.NON_NULL) Integer referredCount,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis) {
 	}
 
@@ -335,31 +336,29 @@ class CompetitorApi {
 	 *               Spring's resolver hands a parameter of this type nothing when the
 	 *               principal is the anonymous token. Measured rather than assumed, by
 	 *               {@code theVisitorsAnswerHasNotMoved}: the visitor's answer carries
-	 *               none of the three conditional fields below at all, asked by KEY over
-	 *               every record. It named all three before 21.09.2026 while the case
-	 *               asked about two, and a resource handing the basis to everybody walked
-	 *               past it
+	 *               the one remaining conditional field nowhere, asked by KEY over every
+	 *               record. It named all three before 21.09.2026 while the case asked
+	 *               about two, and a resource handing the basis to everybody walked past
+	 *               it.
+	 *               <p><b>AND SINCE 25.09.2026 THAT CASE ASKS SOMETHING STRONGER, because
+	 *               the two fields that made the answers differ are gone</b> (PDL P26a):
+	 *               a signed in MEMBER is now answered what a visitor is, to the byte,
+	 *               with nothing cut out of either. That claim was not available while
+	 *               those two existed
 	 */
 	@GetMapping("/api/competitors")
 	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
-		/* The caller AS A MEMBER, which is a second question and may answer nothing:
-		   an account that does not race has no member behind it at all (V23, owner
-		   14.09.2026), so nothing on the two fields below is added for him.
+		/* WHO IS ASKING IS ONE QUESTION HERE AND IT WAS TWO UNTIL 25.09.2026.
 
-		   THAT USED TO READ „so a signed in moderator gets exactly the visitor's
-		   answer", AND SINCE THE LINE BELOW IT IS NO LONGER TRUE OF EVERY MODERATOR.
-		   It is still true of one who does not hold the right over the members, which
-		   is what `anAccountThatRacesForNobodyIsAnsweredWhatAVisitorIs` holds - and
-		   that case now says out loud which of the two it is measuring.
+		   „Which member is the caller" used to be asked as well, for the two fields his
+		   own row carried. P26a took both off this answer, so the only thing left to ask
+		   is whether he is the administration - and this route no longer needs to know
+		   which member anybody is. `MemberOfAccount` left the constructor with the
+		   question.
 
-		   Read here rather than off `WhoIsAsking.Member`, which is the shape that
-		   record's own javadoc invites and `InboxApi` already follows. */
-		Long me = member == null ? null : memberOfAccount.competitorId(member.account());
-
-		/* AND WHETHER HE IS THE ADMINISTRATION, which is a third question and none of
-		   the two above. It is asked of the ACCOUNT and never of the member: a
-		   moderator who does not race has no member at all (V23), so reading it off
-		   `me` would refuse the ordinary case outright.
+		   IT IS ASKED OF THE ACCOUNT AND NEVER OF THE MEMBER: a moderator who does not
+		   race has no member at all (V23), so reading it off a member would refuse the
+		   ordinary case outright.
 
 		   `member != null` is not a nicety here. This is the first route to ask „may
 		   he" while standing on `ApiSecurity.READ_BY_ANYBODY`, so the principal of a
@@ -380,35 +379,33 @@ class CompetitorApi {
 						+ " c.first_season_2027, c.first_season,"
 						+ " c.bio, m.team_id, m.season_from as team_since,"
 						+ " c.profile_hidden, c.birthday_shown,"
-						/* AND THE CALLER'S OWN TWO, ON THE CALLER'S OWN ROW. Written as a
-						   condition on the row rather than as a second query against one
-						   member, so the answer keeps its one row per member: a join here
-						   would be the one shape that can change what everybody else sees.
+						/* THE CALLER'S OWN REFERRAL LINK AND HIS COUNT OF WHOM HE BROUGHT IN
+						   STOOD HERE UNTIL 25.09.2026, each as `case when c.id = :me then ...`.
+						   Both are gone and neither moved: {@link MeApi} already answered both,
+						   word for word, and that class named the two homes as a boundary
+						   waiting for the owner's word.
 
-						   `c.id = :me` IS NULL, NOT FALSE, WHEN NOBODY IS ASKING, and that
-						   is what carries the whole rule: a null `case` answers null, a null
-						   is left out by `@JsonInclude`, and the visitor's answer therefore
-						   has nothing added to it - no key, no null, no byte. */
-						+ " case when c.id = :me then c.referral_code end as referral_code,"
-						/* THE COUNT, AND ONLY OF THE MEMBERS WHOSE FEE IS STANDING, which is
-						   the same set `pages/member/Membership.tsx` counts today
-						   (`one.referredBy === me.referralCode && one.active`). `referred_by`
-						   is the KEY of the member who brought this one in and not his code
-						   (V7), so this counts on the key; the portal's word for the same
-						   fact is the code, and the two meet here rather than in a screen.
+						   OWNER, 25.09.2026 (PDL P26a): the personal referral link „se sklanja
+						   sa javne liste takmicara" and stays only on „Moja clanarina". The
+						   reason is not tidiness but a measurement: this query ends
+						   `where c.active`, so the member whose fee has LAPSED never reached
+						   the `case` at all - and he is exactly the man V24 section 6 promises
+						   the link to, on exactly the page he opens to renew.
 
-						   Cast, because `count(*)` is a bigint and what comes back is read as
-						   a whole number that fits the portal's own type. */
-						+ " case when c.id = :me then cast((select count(*) from competitor brought"
-						+ "  where brought.referred_by = c.id and brought.active) as integer)"
-						+ " end as referred_count,"
-						/* AND THE BASIS, ON EVERY ROW OR ON NONE. The condition is the CALLER
-						   and never the row, which is the whole difference between this field
-						   and the two above: those are the caller's own fact and this is a fact
-						   about everybody, answered to the few who may read it. Written as
-						   `c.id = :me` it would hand the administration its own basis and
-						   nothing else, which is the shape a copy of the line above produces
-						   and `aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld` refuses.
+						   ONE FACT, ONE HOME, AND THE HOME IS THE ONE THAT ANSWERS HIM. Both
+						   facts are a caller's own business rather than anything Article 73
+						   makes public, so a list anybody may read is not where they belong at
+						   any condition. What is left of the caller below is the basis, and its
+						   condition is the CALLER rather than the row - which is the difference
+						   that outlived the two that are gone.
+
+						   AND THE BASIS, ON EVERY ROW OR ON NONE. The condition is the CALLER
+						   and never the row, and that is why it is the one that stayed: it is a
+						   fact about everybody, answered to the few who may read it, rather
+						   than a caller's own fact answered back to him on a public list.
+						   Written as `c.id = :me` it would hand the administration its own
+						   basis and nothing else, and
+						   `aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld` refuses that.
 
 						   EVERY ROW MEANS THE CALLER'S OWN ROW AS WELL, and that is measured
 						   since 21.09.2026 rather than read off this sentence. `... and c.id is
@@ -420,7 +417,7 @@ class CompetitorApi {
 
 						   FALSE ANSWERS NULL AND NOT AN EMPTY STRING, so `@JsonInclude` leaves
 						   the key out and the answer of everybody else is what it was to the
-						   byte - the same rule the two fields above stand on.
+						   byte.
 
 						   CAST, for the reason `TeamApi` writes out beside its own: a parameter
 						   standing alone in a `case` has no neighbour to take a type from and
@@ -462,7 +459,6 @@ class CompetitorApi {
 						   lapsed is not on this list at all. */
 						+ " where c.active"
 						+ " order by c.member_number")
-				.param("me", me)
 				.param("administration", administration)
 				.query((row, one) -> new Competitor(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
@@ -471,13 +467,12 @@ class CompetitorApi {
 						   January rather than on the birthday is written down (PDL P7, changed
 						   from the 2017 rulebook). A second copy of that arithmetic in a
 						   mapper is a second place to fix when a band moves. */
-						Category.ageBandFor(row.getInt(17), season).code(),
+						Category.ageBandFor(row.getInt(15), season).code(),
 						row.getBoolean(7), row.getInt(8), row.getString(9),
 						row.getObject(10) == null ? null : row.getLong(10),
 						row.getObject(11) == null ? null : row.getInt(11),
 						row.getBoolean(12), row.getString(13),
-						row.getString(14), row.getObject(15, Integer.class),
-						row.getString(16)))
+						row.getString(14)))
 				.list();
 	}
 }
