@@ -110,8 +110,9 @@ export function ProfilePicture({ me }: { me: Competitor }) {
      Neither half of PDL.md:7582 holds for him then: he is not shown his own
      picture under its waiting mark, and the reason that decision gives for
      itself - „da zna da je slanje uspelo i da je ne šalje tri puta" - is exactly
-     what fails, since he is led to send a third time by the very screen meant to
-     stop him. It is the shape PDL P11 already rejected once, a screen that in
+     what fails: nothing here stops him from sending again, which is the very
+     thing that sentence exists to prevent. It is the shape PDL P11 already
+     rejected once, a screen that in
      one breath told a member nothing was there and in the next that something
      already was (PDL.md:1659, over the withdrawn „Ukloni sliku"); this is that
      shape again, by a different road. Written down rather than left to be
