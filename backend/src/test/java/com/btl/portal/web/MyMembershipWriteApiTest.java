@@ -81,11 +81,23 @@ class MyMembershipWriteApiTest {
 
 	private static final String THE_MAN_WHO_BROUGHT_HIM_IN = "007005";
 
+	/**
+	 * AND ONE WHOSE BALANCE IS EXACTLY THE FEE, which is the boundary itself and had no member
+	 * standing on it until a mutation said so.
+	 *
+	 * <p>V4 prices the early period at 4.200 dinars and a referral at 600, so SEVEN members brought
+	 * in is one membership to the dinar. Everybody else here holds eight, and with eight alone
+	 * „greater or equal" and „greater" answer the same thing at this route: the mutation that
+	 * narrowed the owner's boundary to „greater" passed all twelve cases of this file.
+	 */
+	private static final String EXACTLY_ENOUGH = "007006";
+
 	private static final Map<String, String> EMAIL = Map.of(
 			ALREADY_IN_FOR_THIS_SEASON, "vec-clan@primer.rs",
 			FREED_OF_THE_FEE, "oslobodjen@primer.rs",
 			COMING_BACK, "vraca-se@primer.rs",
 			SHORT_BY_SIX_HUNDRED, "nedostaje@primer.rs",
+			EXACTLY_ENOUGH, "tacno@primer.rs",
 			THE_MAN_WHO_BROUGHT_HIM_IN, "preporucilac@primer.rs");
 
 	private static final String FIRST_TIMER = "prvi-put@primer.rs";
@@ -121,6 +133,7 @@ class MyMembershipWriteApiTest {
 		competitor(THE_MAN_WHO_BROUGHT_HIM_IN, "payment");
 		competitor(COMING_BACK, "payment");
 		competitor(SHORT_BY_SIX_HUNDRED, "payment");
+		competitor(EXACTLY_ENOUGH, "payment");
 
 		/* THE ONE WITH NO NUMBER, and he is the one the referral cases are about: he was brought in
 		   by somebody, so activating him has to pay that somebody. Written last, so no case about
@@ -150,6 +163,10 @@ class MyMembershipWriteApiTest {
 		brought(idOf(ALREADY_IN_FOR_THIS_SEASON), 8);
 		brought(idOf(FREED_OF_THE_FEE), 8);
 		brought(idOf(SHORT_BY_SIX_HUNDRED), 6);
+
+		/* SEVEN, which is the fee to the dinar and the only fixture in this file that stands on
+		   the boundary rather than to one side of it. */
+		brought(idOf(EXACTLY_ENOUGH), 7);
 
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, ?,"
 						+ " 'feeExempt', null)")
@@ -374,6 +391,39 @@ class MyMembershipWriteApiTest {
 				.as("an exempt member was charged for a season he was going to get free")
 				.isEqualByComparingTo(before);
 		assertThat(membershipOf(idOf(FREED_OF_THE_FEE))).isEqualTo("not a member");
+	}
+
+	/**
+	 * A BALANCE THAT IS EXACTLY THE FEE LETS HIM IN, WHICH IS THE BOUNDARY THE OWNER DREW.
+	 *
+	 * <p><b>Owner, 26.09.2026:</b> „Balans <b>veci ili jednak</b> clanarini: QR koda nema, clanstvo
+	 * se aktivira iz balansa." Seven members brought in is 4.200 dinars and the early period costs
+	 * 4.200, so this member owes exactly nothing - and asking him to transfer nothing is the shape
+	 * the owner refused when he refused the symbolic code.
+	 *
+	 * <p><b>This case exists because a mutation found it missing.</b> Narrowing „greater or equal" to
+	 * „greater" passed every other case in this file, because everybody else here holds EIGHT
+	 * referrals and at eight the two readings agree. The boundary was measured in the domain and
+	 * nowhere at the route that acts on it, which is the one place a member is let in without paying.
+	 *
+	 * <p>And his book ends at nothing, not below it: what the membership takes is the fee, and the
+	 * fee is all he had.
+	 */
+	@Test
+	void abalanceThatIsExactlyTheFeeLetsHimIn() throws Exception {
+		MockHttpServletResponse answer = activate(EMAIL.get(EXACTLY_ENOUGH));
+
+		assertThat(answer.getStatus())
+				.as("a balance equal to the fee was treated as short, so the boundary moved")
+				.isEqualTo(201);
+
+		assertThat(bodyOf(answer).path("fromTheBalance").path("rsd").asDouble()).isEqualTo(4200.0);
+
+		assertThat(membershipOf(idOf(EXACTLY_ENOUGH))).startsWith("balance ");
+
+		assertThat(bookOf(idOf(EXACTLY_ENOUGH)))
+				.as("the book is not empty, so either less was taken than he owed or more")
+				.isEqualByComparingTo("0.00");
 	}
 
 	/** And a short balance is sent to the invoice, with nothing written. */
