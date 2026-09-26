@@ -98,9 +98,24 @@ export function ProfilePicture({ me }: { me: Competitor }) {
      comments nobody has approved. Reading it here downloads all of that into a
      member`s browser, which a standing guard refuses by name
      (pages/publicData.test.tsx). Privacy beats the nicety: with a database this
-     is one question about one member, and until then a member who sends a
-     second picture across two visits gives the moderator two cards. Written
-     down rather than left to be discovered (PENDING, and PDL P22).
+     is one question about one member, and until then the cost is the member's
+     own, on a second visit, and not the moderator's as this paragraph claimed
+     until a review of PR 381 (27.09.2026) measured it.
+
+     `proposals` lives in `useState` (session/SessionProvider.tsx), so it is gone
+     the moment the tab is reloaded while the row this screen cannot see is still
+     open on the server. A member who comes back to a picture still waiting is
+     met by `picture.none` - „Portal još nema fotografije" - exactly as if he had
+     sent nothing, sends again, and is refused `aPictureAlreadyWaits`, 409.
+     Neither half of PDL.md:7582 holds for him then: he is not shown his own
+     picture under its waiting mark, and the reason that decision gives for
+     itself - „da zna da je slanje uspelo i da je ne šalje tri puta" - is exactly
+     what fails, since he is led to send a third time by the very screen meant to
+     stop him. It is the shape PDL P11 already rejected once, a screen that in
+     one breath told a member nothing was there and in the next that something
+     already was (PDL.md:1659, over the withdrawn „Ukloni sliku"); this is that
+     shape again, by a different road. Written down rather than left to be
+     discovered (PENDING, and PDL P22).
    *
      Decisions are read all the same, so approving a picture during this visit
      hands the control straight back rather than leaving somebody told to wait

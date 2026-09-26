@@ -137,6 +137,17 @@ describe('the picture on a profile, changed later', () => {
          than dropped on the body with nothing announced. */
       expect(told).toHaveFocus()
 
+      /* THE PICTURE ITSELF, SHOWN BACK AT HIM WHILE HE WAITS (PDL.md:7582, owner
+         24.09.2026: „Dok slika čeka odobrenje, član vidi svoju novu sliku sa oznakom da
+         čeka"). Read by the alt `CropWindow` gives it, `picture.sentAlt`, which only the
+         waiting branch of this screen ever sets - the chooser above it uses `chosenAlt`
+         instead, and the two never stand together. Without this a review measured that
+         three mutations over the block that draws it - a dead `&& false &&`, the
+         proposal's `picture` field replaced by `''`, and the whole conditional deleted
+         outright - all passed with nothing here to catch them, because coverage of a
+         branch that no longer exists is not coverage of anything. */
+      expect(panel.getByRole('img', { name: sr.picture.sentAlt })).toBeVisible()
+
       /* ONE SEND, AT THAT ADDRESS, WITH THAT VERB. Asked this narrowly because the token
          read goes through this same server: a case that counted requests would have been
          satisfied by `/api/countries`. */
@@ -186,9 +197,14 @@ describe('the picture on a profile, changed later', () => {
        here would download all of that into a member`s browser.
      *
        So the panel knows about this visit, and with a database it will ask one
-       question about one member. Until then somebody who sends a second picture
-       across two visits gives the moderator two cards, which is written down
-       rather than left to be found (PENDING, and PDL P22). */
+       question about one member. Until then the cost is not the moderator's - a
+       review of PR 381 (27.09.2026) measured that `proposals` lives in `useState`
+       (`SessionProvider.tsx`), so this very overlay is gone the moment the tab is
+       reloaded while the row it cannot see stays open on the server: the member
+       who sent it meets `picture.none` on the next visit as though he had sent
+       nothing, sends again, and is refused `aPictureAlreadyWaits`. No card is
+       what is missing then, not a second one, which is written down rather than
+       left to be found (PENDING, and PDL P22). */
     const asked: string[] = []
     const real = globalThis.fetch
 
