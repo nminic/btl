@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import type { Moderator } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
+import type { Rights } from '../../session/context'
 import { allowed, grantedCount, GROUP_STARTS, RIGHT_GROUPS, RIGHTS } from './rights'
 import './Rights.css'
 
@@ -11,6 +12,14 @@ import './Rights.css'
  * and deciding in a queue. The superadmin is not a row. He may everything,
  * always, so a row for him would be sixteen boxes that cannot be unticked and
  * a lie about where the limit is (PDL P21).
+ *
+ * **SINCE B106 THIS COMPONENT WRITES NOTHING ITSELF.** It used to read and write
+ * `useSession()` directly - the one home for a tick before there was a server for one.
+ * `AdminModerators.tsx` now owns the write, `PUT /api/moderators/{id}`, so this stays
+ * what it draws: `rights` is the confirmed overlay the screen hands in (the same shape
+ * the session used to keep, now sourced from a server answer rather than from a click),
+ * `busy` says which rows have a request still out, and `onToggle` is asked rather than
+ * told.
  *
  * Two things are worth knowing before changing any of this.
  *
@@ -49,9 +58,40 @@ import './Rights.css'
  * threshold and under the width the table wants, and the box is what stands
  * between them and a page that scrolls sideways.
  */
-export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
+export function RightsMatrix({
+  moderators,
+  rights,
+  busy,
+  onToggle,
+  refusal,
+}: {
+  moderators: Moderator[]
+  /**
+   * What this visit has had CONFIRMED by the server, on top of what each moderator's
+   * own record already carries - the same shape and the same `allowed()`/
+   * `grantedCount()` the session used to feed, just no longer sourced from a click.
+   */
+  rights: Rights
+  /**
+   * Which moderators have a `PUT` still out, by id.
+   *
+   * Every box of that row is disabled while its own request is in flight, because
+   * there is no save button here: a second box pressed before the first answer comes
+   * back would compute its own next set off the same not-yet-confirmed row, and
+   * whichever answer lands last would silently undo the other (there is no diff on
+   * this side, only on the route's).
+   */
+  busy: ReadonlySet<number>
+  onToggle: (moderator: Moderator, right: string, granted: boolean) => void
+  /**
+   * Why one moderator's last tick did not save, beside his own row, or `null`
+   * where nothing is refused. Required rather than defaulted: this component
+   * has one caller, which always has one of the two to hand, and a default
+   * value is a branch nothing here would ever take.
+   */
+  refusal: { id: number; node: ReactNode } | null
+}) {
   const { t } = useI18n()
-  const { rights, setRight } = useSession()
 
   return (
     <div className="rights-wrap table-scroll">
@@ -85,6 +125,7 @@ export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
           {moderators.map((one) => {
             const who = `${one.firstName} ${one.lastName}`
             const granted = grantedCount(one, rights)
+            const isBusy = busy.has(one.id)
 
             return (
               <tr key={one.id} className="rights__row">
@@ -97,6 +138,7 @@ export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
                   <span className="rights__count">
                     {granted === 0 ? t('rights.none') : t('rights.granted', { count: granted })}
                   </span>
+                  {refusal !== null && refusal.id === one.id && refusal.node}
                 </th>
 
                 {RIGHTS.map((right) => (
@@ -111,8 +153,9 @@ export function RightsMatrix({ moderators }: { moderators: Moderator[] }) {
                         type="checkbox"
                         className="rights__input"
                         checked={allowed(one, right.key, rights)}
+                        disabled={isBusy}
                         aria-label={t('rights.box', { who, action: t(right.actionKey) })}
-                        onChange={(event) => setRight(String(one.id), right.key, event.target.checked)}
+                        onChange={(event) => onToggle(one, right.key, event.target.checked)}
                       />
                       {/* The words a telephone shows beside the box, where there
                           is no column heading over it. Hidden from a screen

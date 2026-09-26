@@ -1251,7 +1251,16 @@
       "theWindowIsShut": "The transfer window is closed. It opens on 1 October and lasts until 31 December. Until then a team is not deleted, not even from the administration."
     },
     "leagueSavedUnseen": "The competition has been saved, but the portal cannot show it in this list. Refresh the page.",
-    "leagueTextSaved": "The change has been saved."
+    "leagueTextSaved": "The change has been saved.",
+    "moderatorSaveRefused": {
+      "theFormIsNotComplete": "A first name, a last name or an email address is missing.",
+      "theAddressIsNotShaped": "That email address is not valid.",
+      "theAddressIsTaken": "An account already exists at that address.",
+      "aRightTheMatrixDoesNotHold": "The portal does not know that right. Refresh the page."
+    },
+    "moderatorGone": "The moderator has been deleted.",
+    "moderatorSavedUnseen": "The moderator has been saved, but the portal cannot show them in this list. Refresh the page.",
+    "moderatorRightsSavedUnseen": "The right has been saved, but the portal cannot show the new state. Refresh the page."
   },
   "ducats": {
     "title": "Ducats",
