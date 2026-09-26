@@ -311,6 +311,69 @@ describe('a change waiting on the queue of teams', () => {
     expect(screen.queryByRole('link', { name: /predlog tima/i })).toBeNull()
   }, SLOW)
 
+  it('is decided locally and never asks the route, unlike a served proposal waiting beside it', async () => {
+    /* VISOK 2, review of PR 380. This card exists because `EditTeam.tsx` calls
+       `propose` (`session/SessionProvider.tsx`), which mints `prop-1` for a row
+       nothing has served - there is no route yet to carry a changed town to the
+       server. Approved through the same door as everything else on this queue,
+       the id went to `POST /api/verification/prop-1/decision`, whose
+       `@PathVariable long id` (`VerificationWriteApi.decide`) cannot even carry
+       that shape: not refused, never delivered.
+     *
+       THE SOURCE SWAP THE REVIEW ASKED FOR: `ver-tim-1`, served off
+       `public/mock/verification.json`, waits on the SAME queue as `prop-1` in this
+       same render. A case holding only the second could not tell "the code reads
+       which row this is" from "the code never asks the route at all" - both would
+       show nothing sent. Held together, one is asked and the other is not. */
+    const user = setupUser()
+    const server = serverThat((path, init) =>
+      init?.method === 'POST' && path.includes('/decision')
+        ? new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+      await user.clear(await screen.findByLabelText(/^Mesto/))
+      await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+      await router.navigate('/sr/administracija/verifikacija/timovi')
+
+      const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+      const ours = within(
+        must(oursHeading.closest('li'), 'the card of the change this visit just made'),
+      )
+
+      await user.click(ours.getByRole('button', { name: 'Odobri' }))
+
+      /* Queried only now, after the card above is gone: a reference taken before
+         that press is still a live DOM node either way (React removes only the
+         `<li>` that left), but this is how every other case in this file reaches
+         for a card, and there is no reason for this one to read differently. */
+      const servedHeading = screen.getByRole('heading', { name: 'Timočka trkačka družina' })
+      const served = within(
+        must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'),
+      )
+
+      await user.click(served.getByRole('button', { name: 'Odobri' }))
+
+      const sent = server.asked.filter((one) => one.path.includes('/decision'))
+
+      expect(sent).toHaveLength(1)
+      /* The served row's own address, and not `prop-1`'s: one request, and this is
+         the one it has to be. */
+      expect(sent[0]?.path).toBe('/api/verification/ver-tim-1/decision')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('cannot be approved once the team it names has been deleted', async () => {
     /* Approved anyway it wrote into an identity nothing answers to, settled the item,
        and told the member their team had been changed (review, 05.09.2026). The card

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -450,6 +450,64 @@ describe('a decision on a queue served by the pending screen', () => {
       expect(decidedIn().getAllByRole('listitem')).toHaveLength(1)
       /* And every one of the four was asked about, so the walk did not stop at the
          first refusal. */
+      expect(decisionsIn(server.asked)).toHaveLength(4)
+    } finally {
+      server.stop()
+      confirm.mockRestore()
+    }
+  })
+
+  it('a second press before the first has answered settles nothing twice, on the sweep or on a card', async () => {
+    /* VISOK 1, review of PR 380. Neither button carried a guard while a walk was
+       still out, so two presses before the first answer landed walked the same four
+       waiting items twice - eight requests for four rows - and the line under the
+       button ended up reporting whichever walk's `setSwept` happened to land last,
+       which measured „Rešeno je 0 stavki." while all four had in fact been decided
+       (the sweep's own comment above `approveAll`: "the count has to be the ones
+       that went through or the line under the button would say a number the queue
+       disagrees with").
+     *
+       Fired with `fireEvent` and not through `user`: `user.click` awaits its own
+       click through to completion, so two of those could never be out at the same
+       time, and the fault only shows with more than one walk in flight at once -
+       which is what a real double press, or a card pressed while the sweep is
+       still working through it, both are. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const answeredTimes: Record<string, number> = {}
+    const server = serverThat((path, init) => {
+      if (init?.method !== 'POST' || !path.includes('/decision')) {
+        return null
+      }
+
+      answeredTimes[path] = (answeredTimes[path] ?? 0) + 1
+
+      return answeredTimes[path] === 1
+        ? new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : refused('O stavci je već odlučeno.', 409)
+    })
+
+    try {
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const waiting = within(await cardsIn())
+      const sweep = screen.getByRole('button', { name: 'Odobri sve' })
+      const firstCard = waiting.getAllByRole('listitem')[0] ?? document.createElement('li')
+      const firstApprove = within(firstCard).getByRole('button', { name: 'Odobri' })
+
+      /* Three presses before any of them has been let to answer: the sweep twice,
+         the way the review measured it, and a single card's own button once more -
+         the other door this screen guards with the same flag. */
+      fireEvent.click(sweep)
+      fireEvent.click(sweep)
+      fireEvent.click(firstApprove)
+
+      expect(await screen.findByText(/^Rešen.* 4 stavk/)).toBeVisible()
+      expect(decidedIn().getAllByRole('listitem')).toHaveLength(4)
+      /* Four rows, four requests - not eight from the two sweeps, and not a fifth
+         for the row the card pressed a second time. */
       expect(decisionsIn(server.asked)).toHaveLength(4)
     } finally {
       server.stop()

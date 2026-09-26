@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { tim } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
@@ -65,6 +65,33 @@ import './Verification.css'
  * comparison down a column of thirty; here it is reading one thing at a time, and
  * a biography of three and a half thousand characters has no column it fits in.
  */
+
+/**
+ * Whether this item lives only in this visit's session and has no row on the
+ * server at all, unlike everything else this screen decides on.
+ *
+ * Its id says so on its own construction: `session/SessionProvider.tsx`'s
+ * `propose` mints `prop-${n}` for a row nothing has served, which is how
+ * `EditTeam.tsx`, `ProfileBio.tsx` and `ProfilePicture.tsx` all put a card here
+ * before a route exists to carry what they collect (crop, free text, a changed
+ * town) to the server. `pending.ts` merges those straight into the same list
+ * `usePending` serves everything else through, so a card drawn from `prop-1`
+ * and a card drawn from `ver-tim-1` are, by the time this screen sees them,
+ * the same shape asking the same buttons for a decision.
+ *
+ * **Why a decision on one of these cannot be sent to the route that decides
+ * everything else.** `POST /api/verification/{id}/decision` reads the address
+ * as `@PathVariable long id` (`VerificationWriteApi.decide`), so `prop-1` is
+ * not a request the route refuses, it is one the address cannot even carry -
+ * the framework never reaches the method body. Until a route exists to receive
+ * what one of these three screens collects, a proposal is decided the way this
+ * whole screen decided everything before server-recorded decisions existed:
+ * locally, and at once (`approveAll`, `handBack` below both read this before
+ * asking the server anything).
+ */
+function isProposal(id: string): boolean {
+  return id.startsWith('prop-')
+}
 
 /** Whether a queue has a second decision that hands the work back to its
  *  author. Four of the five, and both sorts on the racing profile: a text is
@@ -315,6 +342,30 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   /** Which card is open, on the width where they are folded. One at a time: two
    *  open cards on a telephone are the scrolling this was meant to end. */
   const [shown, setShown] = useState<string | null>(null)
+  /**
+   * Whether a walk is out with the route, so a second press before the first
+   * has answered cannot start another one over the same items.
+   *
+   * A ref rather than the state beside it, exactly the way `ProposeTeam.tsx`
+   * guards its own send against a second press before the first has answered:
+   * state set inside the walk is not yet visible to a second click fired
+   * before the render it would cause, and two clicks fired without waiting
+   * are exactly what a double press or an impatient second try both are.
+   * Checked by both doors that can start a walk - the sweep and a single
+   * card's own button - so a press on either while the other is still out is
+   * caught the same way; neither knows or needs to know which one is running.
+   */
+  const outstanding = useRef(false)
+  /**
+   * The same fact as a render can see, so the two buttons that start a walk
+   * can say they are inert while one is out - the way this screen already
+   * says a button cannot act (`aria-disabled`, beside `decisionUnknown` and
+   * `why` below). No sentence of its own the way `ProposeTeam.tsx`'s
+   * `sending` has one: the dictionaries this screen reads are held by other
+   * branches this round, and this file already has a way to say a control
+   * cannot act without asking either for a new line.
+   */
+  const [deciding, setDeciding] = useState(false)
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
@@ -384,223 +435,255 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * proposals are exactly what the carrying exists to stop.
    */
   const approveAll = async (items: PendingItem[], teams: Team[]): Promise<number> => {
-    /* Everything already spoken for, growing as the walk hands more out. */
-    const identities = (creations[TEAMS.id] ?? []).map((row) => row.id)
-    const addresses = addressesIn(teams)
-    /* Who is in a team already, growing as the walk puts people into the ones it
-       makes. Read once and carried, for the same reason the identities and the
-       addresses are: the session does not change while a loop runs, so two proposals
-       from one member approved in one press would both go through. */
-    const inATeam = organisers(allMembers, teams)
-    const refusals: ServerRefusal[] = []
-    let done = 0
+    /* NEITHER DOOR THAT CALLS THIS MAY OPEN A SECOND ONE WHILE THIS WALK IS OUT.
+       Set before anything below awaits anything, so a second press - the sweep
+       again, or a single card, whichever door it comes through - reads this as
+       true before it can carry a second copy of `identities`, `addresses` and
+       `inATeam` past the point where the first walk's own copies stop being the
+       whole truth. Reset in `finally` rather than after `return`, so a route
+       that rejects outright still lets the next press in. */
+    outstanding.current = true
+    setDeciding(true)
 
-    for (const one of items) {
-      const made = queue.id === 'teams' ? teamFrom(one, edits) : null
+    try {
+      /* Everything already spoken for, growing as the walk hands more out. */
+      const identities = (creations[TEAMS.id] ?? []).map((row) => row.id)
+      const addresses = addressesIn(teams)
+      /* Who is in a team already, growing as the walk puts people into the ones it
+         makes. Read once and carried, for the same reason the identities and the
+         addresses are: the session does not change while a loop runs, so two proposals
+         from one member approved in one press would both go through. */
+      const inATeam = organisers(allMembers, teams)
+      const refusals: ServerRefusal[] = []
+      let done = 0
 
-      if (
-        made !== null &&
-        refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams, allMembers) !==
-          null
-      ) {
-        continue
-      }
+      for (const one of items) {
+        const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
-      /* THE SERVER DECIDES, AND NOTHING LOCAL HAPPENS BEFORE IT ANSWERS.
-       *
-       * This is the whole of why this increment exists. Until 26.09.2026 the
-       * walk began at the `settle` below, so a moderator who approved a
-       * photograph watched the card leave the queue while `competitor.photo_id`
-       * was never written: the decision lived in the browser and F5 undid it.
-       * The owner met it himself on QA (PDL P28f) - „po odobravanju slike ona tog
-       * trenutka pocinje da se vidi na svim avatar mestima" - and the route that
-       * does the work, `VerificationWriteApi.decide`, had been there all along
-       * with nothing calling it.
-       *
-       * So the order is the order: ask, and write locally only in the branch that
-       * ran because the answer said it did. `settle` and everything under it -
-       * the team, the membership, the message, the published comment - are
-       * consequences of a decision that has been RECORDED, and a consequence of
-       * something that did not happen is the fault this replaces. */
-      const answer = await askTheServer(decisionPath(one.id), anApproval())
+        if (
+          made !== null &&
+          refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams, allMembers) !==
+            null
+        ) {
+          continue
+        }
 
-      if (answer.got !== 'done') {
-        refusals.push({ id: one.id, answer })
+        /* THE SERVER DECIDES, AND NOTHING LOCAL HAPPENS BEFORE IT ANSWERS -
+         * EXCEPT FOR A ROW THIS VISIT MADE UP ITSELF, WHICH HAS NO SERVER TO ASK
+         * (`isProposal` above).
+         *
+         * This is the whole of why this increment exists. Until 26.09.2026 the
+         * walk began at the `settle` below, so a moderator who approved a
+         * photograph watched the card leave the queue while `competitor.photo_id`
+         * was never written: the decision lived in the browser and F5 undid it.
+         * The owner met it himself on QA (PDL P28f) - „po odobravanju slike ona tog
+         * trenutka pocinje da se vidi na svim avatar mestima" - and the route that
+         * does the work, `VerificationWriteApi.decide`, had been there all along
+         * with nothing calling it.
+         *
+         * So the order is the order: ask, and write locally only in the branch that
+         * ran because the answer said it did. `settle` and everything under it -
+         * the team, the membership, the message, the published comment - are
+         * consequences of a decision that has been RECORDED, and a consequence of
+         * something that did not happen is the fault this replaces.
+         *
+         * A proposal is the one exception, and it is a boundary rather than an
+         * oversight: `decisionPath` addresses `POST /api/verification/{id}/decision`,
+         * which reads the id as `@PathVariable long id`
+         * (`VerificationWriteApi.decide`), so `prop-1` cannot reach that method body
+         * at all. Until a route exists to carry what `EditTeam.tsx`, `ProfileBio.tsx`
+         * and `ProfilePicture.tsx` collect, one of their cards is decided the way
+         * this whole screen decided everything before this increment: locally, and
+         * at once. */
+        if (!isProposal(one.id)) {
+          const answer = await askTheServer(decisionPath(one.id), anApproval())
 
-        continue
-      }
+          if (answer.got !== 'done') {
+            refusals.push({ id: one.id, answer })
 
-      settle(one.id, {
-        status: 'approved',
-        /* Nothing to write down. This was what a published biography went out
-           as, back when a moderator adjusted the text and published what they
-           left; since 06.08.2026 a biography is approved as the member wrote it
-           or refused with a reason (PDL P22), so an approval publishes exactly
-           what the card showed and there is nothing an approval could record
-           that the item does not already say. */
-        note: '',
-        basis: '',
-        memberNumber: '',
-      })
+            continue
+          }
+        }
 
-      done += 1
+        settle(one.id, {
+          status: 'approved',
+          /* Nothing to write down. This was what a published biography went out
+             as, back when a moderator adjusted the text and published what they
+             left; since 06.08.2026 a biography is approved as the member wrote it
+             or refused with a reason (PDL P22), so an approval publishes exactly
+             what the card showed and there is nothing an approval could record
+             that the item does not already say. */
+          note: '',
+          basis: '',
+          memberNumber: '',
+        })
 
-      /* What an approval on this queue actually does: the comment goes onto the
-         event. Written down at the moment it is let out, because the event page
-         is public and must never read this queue to find out (session/context,
-         `published`). */
-      if (queue.id === 'comments') {
-        publish(one.id, commentFrom(one))
-      }
+        done += 1
 
-      /* The queue of dates used to move the event here on approval, in the same
-         overlay the administration writes an edited event into (owner,
-         06.08.2026). PDL P10a, 22.09.2026 removed the queue rather than leaving
-         a second road to the one thing `EventWriteApi` already does from the
-         event's own screen: „Redova je pet, ne šest." */
+        /* What an approval on this queue actually does: the comment goes onto the
+           event. Written down at the moment it is let out, because the event page
+           is public and must never read this queue to find out (session/context,
+           `published`). */
+        if (queue.id === 'comments') {
+          publish(one.id, commentFrom(one))
+        }
 
-      if (made === null) {
-        continue
-      }
+        /* The queue of dates used to move the event here on approval, in the same
+           overlay the administration writes an edited event into (owner,
+           06.08.2026). PDL P10a, 22.09.2026 removed the queue rather than leaving
+           a second road to the one thing `EventWriteApi` already does from the
+           event's own screen: „Redova je pet, ne šest." */
 
-      /* A change writes into the team it is about; only a proposal makes one
-         (owner, 04.09.2026). The address goes with the name, because that is what
-         the team entity itself derives it from (`entityForms.ts`, TEAMS), so a
-         team renamed here answers where the administration's own form would leave
-         it rather than at the address of its old name.
+        if (made === null) {
+          continue
+        }
 
-         What is not written is who administers it: that is worked out from the
-         roster (`data/teamAdmin.ts`), and a change is the administrator's own act
-         so there is nothing to move. */
-      if (isChange(one)) {
+        /* A change writes into the team it is about; only a proposal makes one
+           (owner, 04.09.2026). The address goes with the name, because that is what
+           the team entity itself derives it from (`entityForms.ts`, TEAMS), so a
+           team renamed here answers where the administration's own form would leave
+           it rather than at the address of its old name.
+
+           What is not written is who administers it: that is worked out from the
+           roster (`data/teamAdmin.ts`), and a change is the administrator's own act
+           so there is nothing to move. */
+        if (isChange(one)) {
+          addresses.push(addressOf(made.name))
+          editRecord(recordKey(TEAMS.id, one.subjectId), { ...made, slug: addressOf(made.name) })
+
+          notify({
+            from: t('app.name'),
+            to: one.memberNumber,
+            subject: t('verification.teamChangeAccepted', { name: made.name }),
+            body: t('verification.teamChangeAcceptedBody', { name: made.name }),
+            date: today,
+          })
+
+          continue
+        }
+
+        const id = idFor(TEAMS, {}, identities, [])
+
+        identities.push(id)
         addresses.push(addressOf(made.name))
-        editRecord(recordKey(TEAMS.id, one.subjectId), { ...made, slug: addressOf(made.name) })
+
+        create(TEAMS.id, id, {
+          ...made,
+          organizerMemberNumber: one.memberNumber,
+          /* **The picture does not survive the approval, and that is a limit
+             rather than a decision.** What stands in for a database until F5 is an
+             overlay of text (session/context.ts): a crop is three numbers and
+             cannot go into it without being written a second way, and nothing
+             anywhere reads a created team's logo back. No public screen reads the
+             overlay at all (entityForms.ts) and the administration draws no mark,
+             so a line carrying the picture here is a line no test can reach and
+             no reader can see. A review measured exactly that: with the line in
+             place, deleting it left all 1888 tests passing.
+           *
+             So nothing about the picture crosses this point until F5, said once
+             rather than half done. The moderator still judges the square the
+             member chose, on the card above, which is what the owner asked for
+             (12.08.2026). Written down in PENDING. */
+        })
+
+        /* **And the member who asked for it is in it.** Owner, 05.09.2026: „Odmah
+           ulazi u tim... on ce biti prvi i jedini clan u tom trenutku." Until then an
+           approval wrote the organiser onto the team and nothing onto the member, so
+           the founder was in no team at all and could found a second one the same
+           minute; that was a high finding of the review of PR 186.
+
+           **From the next season**, because a team founded during the transfer window
+           scores nothing until 1 January (owner, same day). `teamSince` is what every
+           reader of „was this member in the team that season" asks (`data/derive.ts`,
+           `inTeamIn`), so writing next season is what keeps the new team out of this
+           season's standing without a second rule to remember.
+
+           Written as text, like everything else in the overlay that stands in for a
+           database (session/context.ts). A record read back through the overlay
+           carries the season as the digits rather than as a number, which every
+           comparison in the portal reads the same way and the database will type
+           properly; written down rather than papered over. */
+        inATeam.push(one.memberNumber)
+        editRecord(recordKey(MEMBERS.id, one.memberNumber), {
+          teamId: id,
+          teamSince: String(transfersTakeEffect(today)),
+        })
 
         notify({
           from: t('app.name'),
           to: one.memberNumber,
-          subject: t('verification.teamChangeAccepted', { name: made.name }),
-          body: t('verification.teamChangeAcceptedBody', { name: made.name }),
+          subject: t('verification.teamAccepted', { name: made.name }),
+          body: t('verification.teamAcceptedBody', { name: made.name }),
           date: today,
         })
 
-        continue
-      }
-
-      const id = idFor(TEAMS, {}, identities, [])
-
-      identities.push(id)
-      addresses.push(addressOf(made.name))
-
-      create(TEAMS.id, id, {
-        ...made,
-        organizerMemberNumber: one.memberNumber,
-        /* **The picture does not survive the approval, and that is a limit
-           rather than a decision.** What stands in for a database until F5 is an
-           overlay of text (session/context.ts): a crop is three numbers and
-           cannot go into it without being written a second way, and nothing
-           anywhere reads a created team's logo back. No public screen reads the
-           overlay at all (entityForms.ts) and the administration draws no mark,
-           so a line carrying the picture here is a line no test can reach and
-           no reader can see. A review measured exactly that: with the line in
-           place, deleting it left all 1888 tests passing.
-         *
-           So nothing about the picture crosses this point until F5, said once
-           rather than half done. The moderator still judges the square the
-           member chose, on the card above, which is what the owner asked for
-           (12.08.2026). Written down in PENDING. */
-      })
-
-      /* **And the member who asked for it is in it.** Owner, 05.09.2026: „Odmah
-         ulazi u tim... on ce biti prvi i jedini clan u tom trenutku." Until then an
-         approval wrote the organiser onto the team and nothing onto the member, so
-         the founder was in no team at all and could found a second one the same
-         minute; that was a high finding of the review of PR 186.
-
-         **From the next season**, because a team founded during the transfer window
-         scores nothing until 1 January (owner, same day). `teamSince` is what every
-         reader of „was this member in the team that season" asks (`data/derive.ts`,
-         `inTeamIn`), so writing next season is what keeps the new team out of this
-         season's standing without a second rule to remember.
-
-         Written as text, like everything else in the overlay that stands in for a
-         database (session/context.ts). A record read back through the overlay
-         carries the season as the digits rather than as a number, which every
-         comparison in the portal reads the same way and the database will type
-         properly; written down rather than papered over. */
-      inATeam.push(one.memberNumber)
-      editRecord(recordKey(MEMBERS.id, one.memberNumber), {
-        teamId: id,
-        teamSince: String(transfersTakeEffect(today)),
-      })
-
-      notify({
-        from: t('app.name'),
-        to: one.memberNumber,
-        subject: t('verification.teamAccepted', { name: made.name }),
-        body: t('verification.teamAcceptedBody', { name: made.name }),
-        date: today,
-      })
-
-      /* And the third door into a club owes what the other two owe: every team that
-         had invited this member stops waiting on a question that can no longer be
-         answered, and is told so. The owner's sentence names the road as „ko god da
-         je poslao poziv" (PDL, 06.09.2026), and a founder who was invited elsewhere
-         last week is exactly the case it describes. Nothing is kept, because nobody
-         accepted an invitation here. */
-      const after = afterJoining({
-        member: one.memberNumber,
-        joined: Number(id),
-        keep: undefined,
-        invitations,
-        teams,
-        competitors: allMembers,
-      })
-
-      for (const gone of after.close) {
-        close(gone)
-      }
-
-      for (const to of after.tell) {
-        notify({
-          from: t('app.name'),
-          to,
-          subject: t('teams.inviteMissedSubject'),
-          body: t('teams.inviteMissedBody', {
-            /* Off the member's own record and not off the queue item, which carries the
-               proposal and not the person. Joined rather than taken out of the list, so a
-               member the portal no longer has needs no question of its own. */
-            name: allMembers
-              .filter((each) => each.memberNumber === one.memberNumber)
-              .map((each) => `${each.firstName} ${each.lastName}`)
-              .join(''),
-            team: made.name,
-          }),
-          date: today,
+        /* And the third door into a club owes what the other two owe: every team that
+           had invited this member stops waiting on a question that can no longer be
+           answered, and is told so. The owner's sentence names the road as „ko god da
+           je poslao poziv" (PDL, 06.09.2026), and a founder who was invited elsewhere
+           last week is exactly the case it describes. Nothing is kept, because nobody
+           accepted an invitation here. */
+        const after = afterJoining({
+          member: one.memberNumber,
+          joined: Number(id),
+          keep: undefined,
+          invitations,
+          teams,
+          competitors: allMembers,
         })
+
+        for (const gone of after.close) {
+          close(gone)
+        }
+
+        for (const to of after.tell) {
+          notify({
+            from: t('app.name'),
+            to,
+            subject: t('teams.inviteMissedSubject'),
+            body: t('teams.inviteMissedBody', {
+              /* Off the member's own record and not off the queue item, which carries the
+                 proposal and not the person. Joined rather than taken out of the list, so a
+                 member the portal no longer has needs no question of its own. */
+              name: allMembers
+                .filter((each) => each.memberNumber === one.memberNumber)
+                .map((each) => `${each.firstName} ${each.lastName}`)
+                .join(''),
+              team: made.name,
+            }),
+            date: today,
+          })
+        }
       }
+
+      /* THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER, which is the
+         shape `admin/AdminLeagues.tsx` already has and the fault its own review found on
+         25.09.2026: a decision recorded on the server and fixed only in the local overlay
+         is a decision a remounted screen has never heard of, so the card comes back and a
+         moderator decides it a second time. `usePending` reads the `verification` resource
+         (`admin/pending.ts`), so that is the one cleared.
+
+         Asked of what was SETTLED rather than of what was asked: a sweep the route refused
+         outright wrote nothing, and clearing the cache over nothing is a screen throwing
+         away an answer it still has every reason to trust. */
+      if (done > 0) {
+        clearResourceCache('verification')
+      }
+
+      /* The first of them, on the card it is about, or nothing where every press went
+         through - which is also what takes a sentence about the last press off the
+         screen. */
+      sayIt(refusals[0] ?? null)
+
+      return done
+    } finally {
+      /* Read by both doors before they start a walk (above and at the two
+         presses below), so the next press - on the sweep or on a single card -
+         is let through the moment this one has actually finished, whether it
+         returned a number or the route rejected it outright. */
+      outstanding.current = false
+      setDeciding(false)
     }
-
-    /* THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER, which is the
-       shape `admin/AdminLeagues.tsx` already has and the fault its own review found on
-       25.09.2026: a decision recorded on the server and fixed only in the local overlay
-       is a decision a remounted screen has never heard of, so the card comes back and a
-       moderator decides it a second time. `usePending` reads the `verification` resource
-       (`admin/pending.ts`), so that is the one cleared.
-
-       Asked of what was SETTLED rather than of what was asked: a sweep the route refused
-       outright wrote nothing, and clearing the cache over nothing is a screen throwing
-       away an answer it still has every reason to trust. */
-    if (done > 0) {
-      clearResourceCache('verification')
-    }
-
-    /* The first of them, on the card it is about, or nothing where every press went
-       through - which is also what takes a sentence about the last press off the
-       screen. */
-    sayIt(refusals[0] ?? null)
-
-    return done
   }
 
   /**
@@ -663,18 +746,28 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * `leagueWrites.ts` names for the address of a competition.
    */
   const handBack = async (one: PendingItem, reason: string): Promise<void> => {
-    const answer = await askTheServer(decisionPath(one.id), aRefusal(reason))
+    /* THE SAME EXCEPTION `approveAll` MAKES, FOR THE SAME REASON: a row this visit
+       made up itself (`isProposal`, above `handsBack`) has no server row to ask
+       `POST /api/verification/{id}/decision` about, and the address cannot even
+       carry an id of this shape (`@PathVariable long id`). Handed back locally,
+       exactly as every queue was decided before server-recorded decisions existed. */
+    if (!isProposal(one.id)) {
+      const answer = await askTheServer(decisionPath(one.id), aRefusal(reason))
 
-    if (answer.got !== 'done') {
-      sayIt({ id: one.id, answer })
+      if (answer.got !== 'done') {
+        sayIt({ id: one.id, answer })
 
-      return
+        return
+      }
+
+      /* For the reason the approval clears it: a decision the server has recorded and
+         the overlay has patched is one a remounted screen must read from the server
+         (`admin/AdminLeagues.tsx`, review 25.09.2026). Skipped for a proposal along
+         with the request above: nothing server-side changed for the cache to be
+         wrong about. */
+      clearResourceCache('verification')
     }
 
-    /* For the reason the approval clears it: a decision the server has recorded and
-       the overlay has patched is one a remounted screen must read from the server
-       (`admin/AdminLeagues.tsx`, review 25.09.2026). */
-    clearResourceCache('verification')
     sayIt(null)
 
     settle(one.id, {
@@ -816,11 +909,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     /* Held back for the same reason one card is: the sweep is
                        the same decision taken forty times, and taken without the
                        members it is forty guesses at whether each one already
-                       has a team. */
-                    aria-disabled={decisionUnknown}
+                       has a team. And held back while a walk is already out
+                       (`outstanding`, `deciding` above), the same as a single
+                       card's own button just below: two presses on this one
+                       button before the first has answered is the shape that
+                       was measured, and a press on this one while a single
+                       card's walk is still out is the same race the other way
+                       round. */
+                    aria-disabled={decisionUnknown || deciding}
                     aria-describedby={decisionUnknown ? `${waitingId}-blocked` : undefined}
                     onClick={() => {
-                      if (decisionUnknown) {
+                      if (decisionUnknown || outstanding.current) {
                         return
                       }
 
@@ -1110,7 +1209,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                  takes the keyboard with it, and this one is meant
                                  to be reachable so its reason can be read. It says
                                  it cannot act and points at why. */
-                              aria-disabled={why !== null || decisionUnknown}
+                              aria-disabled={why !== null || decisionUnknown || deciding}
                               aria-describedby={
                                 why !== null
                                   ? `${one.id}-blocked`
@@ -1122,8 +1221,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 /* Approving a proposed team without the members
                                    would risk a second team for somebody who
                                    already has one, so until they are here there
-                                   is nothing safe to decide (whyNoDecision). */
-                                if (!decisionUnknown) {
+                                   is nothing safe to decide (whyNoDecision). And
+                                   held back while a walk is already out
+                                   (`outstanding` above) - the sweep's own or
+                                   another card's - which is the same guard the
+                                   sweep button carries, checked here so a press on
+                                   one door while the other is out cannot start a
+                                   second walk over an identity or address the
+                                   first has already carried past this point. */
+                                if (!decisionUnknown && !outstanding.current) {
                                   void approveAll([one], teams)
                                 }
                               }}
