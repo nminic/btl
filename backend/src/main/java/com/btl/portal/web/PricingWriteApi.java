@@ -506,10 +506,11 @@ class PricingWriteApi {
 	/**
 	 * Nothing at all, whether that is no field or a field of spaces.
 	 *
-	 * <p>{@code LeagueWriteApi.isNothing} word for word, and it is copied rather than shared for
-	 * the reason that file's own neighbours are: one class per resource, and a helper of three
-	 * words pulled into a common place would tie two routes together so that a change to either
-	 * one has to be reasoned about for both.
+	 * <p><b>The portal's third copy of these three words, word for word</b>
+	 * ({@code LeagueWriteApi} and {@code PaymentApi} carry the other two), and copied rather than
+	 * shared for the reason those two already stand apart: one class per resource, and a helper
+	 * of three words pulled into a common place would tie three routes together so that a change
+	 * to any one of them has to be reasoned about for all three.
 	 */
 	private static boolean isNothing(String value) {
 		return value == null || value.isBlank();
