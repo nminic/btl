@@ -19,9 +19,11 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.method.HandlerMethod;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -100,6 +102,85 @@ class CompetitorApiTest {
 	 * it is named as something answered on purpose.
 	 */
 	private static final String THE_COUNT_SHE_BROUGHT_IN = "referredCount";
+
+	/** Where a member's portrait is asked for, which the served file does not carry yet. */
+	private static final String THE_PORTRAIT = "photo";
+
+	/** And which circle of it is drawn, the other half of the same fact. */
+	private static final String THE_SQUARE_OF_IT = "crop";
+
+	/**
+	 * WHERE A PICTURE IS ASKED FOR, written out here rather than taken from
+	 * {@link CompetitorApi}.
+	 *
+	 * <p>Taken from the constant, a rename would rename both and every case below would go on
+	 * passing while the portal asked for an address nothing answers - one value in two roles,
+	 * which is the shape that makes right and wrong read alike. What proves the two equal is
+	 * {@code thePortraitIsTheAddressOfThatMembersOwnPicture}, which hands the address to the
+	 * dispatcher instead of comparing spellings.
+	 */
+	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
+
+	/**
+	 * THE DIGESTS IN THIS FIXTURE ARE SPELT IN LETTERS ALONE, AND THAT IS A MEASUREMENT.
+	 *
+	 * <p>A digest is sixty four characters of {@code [0-9a-f]} (V8,
+	 * {@code photo_digest_shape}), so one carrying digits may spell a four digit year by
+	 * accident - and {@link #noYearOfBirthLeavesTheServer} reads the WHOLE answer as text and
+	 * asks it for every year of birth in the database. A digest holding {@code 1991} would
+	 * fail that case for a reason that has nothing to do with a date of birth, and whoever
+	 * met the failure would be looking for a leak that was not there. Letters cannot spell a
+	 * year, so the two cases cannot collide.
+	 *
+	 * <p>Each pair is a different pair, so no two pictures here share a digest and „this
+	 * member's portrait" is never satisfied by another member's.
+	 */
+	private static String aDigestOf(String pair) {
+		return pair.repeat(32);
+	}
+
+	/** Her portrait, on a member who is NOT hiding her profile. */
+	private static final String HER_PORTRAIT = aDigestOf("ab");
+
+	/** And the portrait of the one member in this fixture who DOES hide his profile. */
+	private static final String THE_PORTRAIT_OF_THE_ONE_WHO_HIDES = aDigestOf("cd");
+
+	/** And of the one whose fee has lapsed, who is on no answer this resource gives. */
+	private static final String THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID = aDigestOf("ef");
+
+	/**
+	 * A PICTURE SHE HAS SENT AND NOBODY HAS DECIDED ON, standing beside the portrait she
+	 * already has.
+	 *
+	 * <p>It is the second source of the value {@code photo} answers: a query joining
+	 * {@code verification.photo_id} rather than {@code competitor.photo_id} answers THIS
+	 * where her portrait belongs, and no case could tell the two apart if she had only one
+	 * picture in the fixture.
+	 */
+	private static final String THE_PICTURE_SHE_IS_HAVING_MODERATED = aDigestOf("ba");
+
+	/**
+	 * AND A PICTURE SENT BY SOMEBODY WHO HAS NO PORTRAIT AT ALL, which is the half the case
+	 * above cannot measure.
+	 *
+	 * <p>With her alone, {@code coalesce(c.photo_id, v.photo_id)} answers her own portrait
+	 * and passes. This member has nothing to fall back on, so the same {@code coalesce}
+	 * hands out a picture waiting for a moderator - which is what ADL A60 refuses in as many
+	 * words.
+	 */
+	private static final String THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED = aDigestOf("dc");
+
+	/**
+	 * AND THE MARKS OF THE TWO TEAMS, so that {@code photo} holds pictures that are not
+	 * portraits.
+	 *
+	 * <p>{@code TeamApi} keeps the mirror of this ({@code
+	 * noPartOfAnybodysProfilePictureLeavesWithATeam}); without a mark in the table at all,
+	 * „no team's mark leaves with a member" would be a sentence about an empty set.
+	 */
+	private static final String THE_MARK_OF_ONE_TEAM = aDigestOf("fa");
+
+	private static final String THE_MARK_OF_THE_OTHER_TEAM = aDigestOf("af");
 
 	/** The one asking, and on purpose NOT the first record of the answer. */
 	private static final String HER_OWN_ACCOUNT = "milica@primer.rs";
@@ -354,8 +435,48 @@ class CompetitorApiTest {
 				"(select id from competitor where member_number = '000012')",
 				false, "none");
 
-		team("probni-tim", "Probni tim", "000012");
-		team("drugi-tim", "Drugi tim", "000045");
+		/* AND SEVEN PICTURES, of which THREE are portraits, TWO are waiting for a moderator
+		   and TWO are teams' marks. Written before they are given to anybody, because a
+		   picture is a row of its own (V8) and `competitor.photo_id` points at one.
+
+		   WHY SEVEN AND NOT TWO. Every axis this file measures about a portrait is an axis
+		   about which ROW was read, and a fixture with one portrait in it answers „the only
+		   picture there is" to every wrong query there is. Three portraits means no member is
+		   the only one of his kind; two waiting pictures mean „approved" and „waiting" are
+		   separated on a member who has both AND on a member who has only the second; two
+		   marks mean `photo` holds pictures that are not portraits at all.
+
+		   THE FRACTIONS ARE DIFFERENT ON EVERY ROW, so a square read off the wrong picture is
+		   visible, and so `noFieldOfTheAnswerIsTheSameInEveryRecord` measures the square
+		   rather than a constant. Nothing here writes them into a case: a case that wants a
+		   square reads it back out of `photo` by digest, which is the same discipline
+		   `PhotoApiTest` keeps about a media type. */
+		aPicture(HER_PORTRAIT, "0.25", "0.75", "0.40");
+		aPicture(THE_PORTRAIT_OF_THE_ONE_WHO_HIDES, "0.10", "0.20", "0.30");
+		aPicture(THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID, "0.60", "0.15", "0.55");
+		aPicture(THE_PICTURE_SHE_IS_HAVING_MODERATED, "0.05", "0.95", "0.85");
+		aPicture(THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED, "0.45", "0.35", "0.65");
+		aPicture(THE_MARK_OF_ONE_TEAM, "0.50", "0.50", "1.00");
+		aPicture(THE_MARK_OF_THE_OTHER_TEAM, "0.33", "0.66", "0.99");
+
+		/* AND THE THREE PORTRAITS GO TO THREE MEMBERS WHO DIFFER IN THE ONE THING BEING
+		   MEASURED: 000012 is on the list and does not hide, 000007 is on the list and DOES
+		   hide, 000031 is off the list because his fee has lapsed. 000023 and 000045 have no
+		   portrait at all, which is the other half of the first axis.
+
+		   000012 IS NOT THE FIRST RECORD, which the list order makes so (000007, 000012,
+		   000023, 000045): „her portrait" and „the first portrait" are two different places. */
+		hisPortraitIs("000012", HER_PORTRAIT);
+		hisPortraitIs("000007", THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
+		hisPortraitIs("000031", THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID);
+
+		/* AND TWO PICTURES ARE WAITING: one beside a portrait that already stands, one with
+		   nothing behind it. The note on each digest says which query each of them catches. */
+		isHavingModerated("000012", THE_PICTURE_SHE_IS_HAVING_MODERATED);
+		isHavingModerated("000023", THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED);
+
+		team("probni-tim", "Probni tim", "000012", THE_MARK_OF_ONE_TEAM);
+		team("drugi-tim", "Drugi tim", "000045", THE_MARK_OF_THE_OTHER_TEAM);
 
 		membership("000012", "drugi-tim", 2027, "2027", "'Presao u drugi tim'");
 		membership("000012", "probni-tim", 2028, "null", "null");
@@ -466,12 +587,53 @@ class CompetitorApiTest {
 	}
 
 	/** Both teams start in 2027, so the season a membership starts in is never the team's. */
-	private void team(String slug, String name, String adminNumber) {
+	private void team(String slug, String name, String adminNumber, String mark) {
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, first_season,"
-						+ " admin_id) values (?, ?, '', '',"
+						+ " admin_id, logo_id) values (?, ?, '', '',"
 						+ " (select id from place where rank = 1), null, null, 2027,"
-						+ " (select id from competitor where member_number = ?))")
-				.params(slug, name, adminNumber).update();
+						+ " (select id from competitor where member_number = ?), ?)")
+				.params(slug, name, adminNumber, pictures.get(mark)).update();
+	}
+
+	/** The key the sequence handed each picture, which is what a holder points at. */
+	private final Map<String, Long> pictures = new HashMap<>();
+
+	/**
+	 * ONE ROW IN {@code photo}, held by nobody until somebody is given it.
+	 *
+	 * <p>The fractions arrive as text and become {@code BigDecimal}, never a double: V21 made
+	 * the three columns {@code numeric(9, 8)} because the rule is about the exact boundaries 0
+	 * and 1, and a binary fraction cannot be trusted at one.
+	 */
+	private void aPicture(String digest, String x, String y, String size) {
+		pictures.put(digest, db
+				.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
+						+ " crop_diameter) values ('image/png', 1024, ?, ?, ?, ?) returning id")
+				.params(digest, new BigDecimal(x), new BigDecimal(y), new BigDecimal(size))
+				.query(Long.class).single());
+	}
+
+	/** The picture a moderator has APPROVED, which is the column this resource reads. */
+	private void hisPortraitIs(String memberNumber, String digest) {
+		db.sql("update competitor set photo_id = ? where member_number = ?")
+				.params(pictures.get(digest), memberNumber).update();
+	}
+
+	/**
+	 * AND A PICTURE HE HAS SENT THAT NOBODY HAS DECIDED ON, which is the column this resource
+	 * must never read.
+	 *
+	 * <p>{@code state} is written out rather than defaulted because it is the half that
+	 * carries the meaning: V9's {@code verification_decided_keeps_no_photo} refuses a decided
+	 * row that still holds a photograph, so {@code waiting} is the only state such a picture
+	 * could be in. The queue is {@code profiles} and the subject is the member's own name,
+	 * which is what {@code MePhotoApi} writes when a member really sends one.
+	 */
+	private void isHavingModerated(String memberNumber, String digest) {
+		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id, state)"
+						+ " select 'profiles', c.id, c.first_name || ' ' || c.last_name, '', ?,"
+						+ " 'waiting' from competitor c where c.member_number = ?")
+				.params(pictures.get(digest), memberNumber).update();
 	}
 
 	private void membership(String number, String slug, int from, String to, String leftReason) {
@@ -537,10 +699,27 @@ class CompetitorApiTest {
 	 * <p>`Answers` checks each name against the file the portal serves, so a name left
 	 * here after the portal stopped serving it cannot quietly excuse a field that went
 	 * missing for another reason, and it checks the answer really does leave them out.
+	 *
+	 * <p><b>AND TWO NAMES GO THE OTHER WAY, which is the half added on 13.09.2026:</b> the
+	 * portrait and its square are answered although {@code competitors.json} carries neither,
+	 * because the portal's own type has no field for a picture yet (PDL P28c, 26.09.2026, the
+	 * second of the four pieces of work it names; the type is the third and is somebody
+	 * else's increment). Named here rather than left silent, for the reason `Answers` writes
+	 * out: a field added on purpose and a field that leaked look alike from here. The floor
+	 * cuts both ways, so the day the served file grows a {@code photo} this line fails and has
+	 * to be taken out.
+	 *
+	 * <p><b>They are read off the FIRST record, which is 000007 - the member who hides his
+	 * profile.</b> That is what makes the shape matter rather than the value: both keys are
+	 * answered with JSON null to a visitor and the names are still there, which is exactly the
+	 * sentence {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor} is about. Answered as
+	 * ABSENT keys instead, this case would fail - and a reader would be told a field was
+	 * missing when what is missing is a picture.
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors", answer(), "competitors.json",
+				Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
 				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
@@ -744,6 +923,442 @@ class CompetitorApiTest {
 				.containsExactly("000007");
 	}
 
+	/** The square a picture's own row carries, read back rather than written into a case. */
+	private List<BigDecimal> theSquareOf(String digest) {
+		return db.sql("select crop_x, crop_y, crop_diameter from photo where digest = ?")
+				.param(digest)
+				.query((row, one) -> List.of(row.getBigDecimal(1), row.getBigDecimal(2),
+						row.getBigDecimal(3)))
+				.single();
+	}
+
+	/** The three fractions of one record's square, in the order the answer carries them. */
+	private static List<BigDecimal> theSquareIn(JsonNode one) {
+		return List.of(one.path(THE_SQUARE_OF_IT).path("x").decimalValue(),
+				one.path(THE_SQUARE_OF_IT).path("y").decimalValue(),
+				one.path(THE_SQUARE_OF_IT).path("size").decimalValue());
+	}
+
+	/**
+	 * THIS RECORD'S SQUARE IS THE ONE ON THAT PICTURE'S OWN ROW.
+	 *
+	 * <p><b>Compared by VALUE and not by scale</b>, which is a decision rather than a
+	 * looseness: V21 chose {@code numeric(9, 8)} because the rule is about the exact
+	 * boundaries 0 and 1, and it is the value that must survive the journey.
+	 * {@code BigDecimal.equals} answers false for {@code 0.25} beside {@code 0.25000000}, so
+	 * an equality here would be measuring how many zeroes a column happens to carry and would
+	 * fail the day the column's scale changed while every fraction stayed exactly what it was.
+	 */
+	private void theSquareIsThatPicturesOwn(JsonNode one, String digest, String who) {
+		assertThat(theSquareIn(one))
+				.as("the square answered to %s is not the one on that picture's row, so some"
+						+ " other picture's crop was read", who)
+				.usingElementComparator(BigDecimal::compareTo)
+				.containsExactlyElementsOf(theSquareOf(digest));
+	}
+
+	/**
+	 * A PORTRAIT AND ITS SQUARE AS THE ANSWER SPELLS THEM, in either of their two shapes.
+	 *
+	 * <p>The two names are always side by side and always both there, which is what lets one
+	 * pattern cover both states: an address with an object beside it, and null beside null.
+	 */
+	private static final Pattern A_PORTRAIT_AND_ITS_SQUARE = Pattern.compile(
+			"\"" + THE_PORTRAIT + "\":(?:null|\"[^\"]*\"),\"" + THE_SQUARE_OF_IT
+					+ "\":(?:null|\\{[^}]*})");
+
+	private static final String BLANKED = "\"portraitBlankedByTheCase\":true";
+
+	/**
+	 * THE ANSWER WITH EVERY PORTRAIT BLANKED, so that what is left may be compared across
+	 * callers byte for byte.
+	 *
+	 * <p><b>Why the three cases below need it from 26.09.2026.</b> Each of them says „signing
+	 * in changes exactly these fields and nothing else", and until today that was two fields.
+	 * A hidden member's portrait is the third thing a session changes ([ODLUKA 26.09.2026,
+	 * owner]), so left unblanked those cases would fail on a resource that is behaving exactly
+	 * as decided - and loosening them into „mostly the same" would throw away the half that
+	 * makes them worth having: the number of records, their order, and every other value.
+	 *
+	 * <p><b>What that costs, and where it is paid back.</b> Blanked here, these cases no longer
+	 * say anything about a portrait at all - including that a member who does NOT hide is
+	 * answered his to a visitor. That sentence is asserted where it belongs, in
+	 * {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor}, which reads both members.
+	 *
+	 * <p><b>On the TEXT and never through a parser</b>, which is the reason
+	 * {@code TeamApiTest} writes out for the same surgery: the square is
+	 * {@code numeric(9, 8)} and comes out as {@code 0.10000000}, which survives being parsed
+	 * and not being written back, so a comparison of two serialisations would measure the
+	 * writer.
+	 *
+	 * <p><b>And it counts what it blanked</b>, because a pattern that matched nothing would
+	 * leave every one of those cases passing for the wrong reason - which is exactly how a
+	 * normalisation stops measuring and starts hiding.
+	 */
+	private static String withoutAnyPortrait(String whole, int records, String who) {
+		String left = A_PORTRAIT_AND_ITS_SQUARE.matcher(whole).replaceAll(BLANKED);
+
+		assertThat(left.split(Pattern.quote(BLANKED), -1).length - 1)
+				.as("the answer given to %s does not carry one portrait and one square per"
+						+ " record, so blanking them hid a difference rather than a picture", who)
+				.isEqualTo(records);
+
+		return left;
+	}
+
+	/** Every value {@code photo} carries in this answer, records with none included. */
+	private List<String> everyPortraitIn(JsonNode answered) {
+		return StreamSupport.stream(answered.spliterator(), false)
+				.map(one -> one.path(THE_PORTRAIT).isNull() ? null
+						: one.path(THE_PORTRAIT).asString())
+				.toList();
+	}
+
+	/**
+	 * A MEMBER'S PORTRAIT IS THE ADDRESS OF HIS OWN PICTURE, AND THE SQUARE IS HIS OWN TOO.
+	 *
+	 * <p>PDL P28c, owner, 26.09.2026: „po odobravanju slike ona tog trenutka pocinje da se vidi
+	 * na svim avatar mestima". Nothing can draw one until this route answers it, which is the
+	 * second of the four pieces of work that decision names.
+	 *
+	 * <p><b>Both halves are read out of the DATABASE by digest and not out of a constant
+	 * standing beside them.</b> Written as literals, a query that answered any fixed square
+	 * would pass; read off the row, it is wrong for every member. And 000012 is not the first
+	 * record of the answer - the list comes back 000007, 000012, 000023, 000045 - so „her
+	 * portrait" and „the first portrait" are two different places and a query joining without
+	 * naming the row would be caught.
+	 */
+	@Test
+	void aMemberCarriesTheAddressOfHisOwnPortraitAndItsOwnSquare() throws Exception {
+		JsonNode hers = recordOf(HER_OWN_ACCOUNT, "000012");
+
+		assertThat(hers.path(THE_PORTRAIT).asString())
+				.as("the portrait answered is not the address of the picture her own row holds")
+				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
+		theSquareIsThatPicturesOwn(hers, HER_PORTRAIT, "000012");
+	}
+
+	/**
+	 * AND THE ADDRESS IT BUILDS REALLY REACHES THE ROUTE THAT SERVES A PICTURE.
+	 *
+	 * <p>{@link TeamApi}'s own arrangement for the same string, and the reason is written
+	 * there: a constant copied is only ever as good as what proves it equal. This hands the
+	 * address back to the DISPATCHER, so a rename of {@code /api/photos/{name}} that left
+	 * either copy behind is caught by the route rather than by a comparison of two spellings.
+	 *
+	 * <p><b>The HANDLER is asked for and not the status</b>, which is the shape
+	 * {@code TeamApiTest} uses for the same question and the reason is that no file stands
+	 * behind the row on this machine: the status would be a 404 either way, and a 404 says
+	 * „no mapping" and „no file" in one number. The handler says which class the dispatcher
+	 * would have run, and only one answer to that is right.
+	 */
+	@Test
+	void thePortraitIsTheAddressOfThatMembersOwnPicture() throws Exception {
+		String address = recordOf(HER_OWN_ACCOUNT, "000012").path(THE_PORTRAIT).asString();
+
+		assertThat(address)
+				.as("the answer carries no portrait at all, so there is no address to walk")
+				.isNotEmpty();
+
+		assertThat(http.perform(get(address)).andReturn().getHandler())
+				.as("the address answered (%s) is not one the portal maps to a picture, so it is"
+						+ " a circle that will never draw", address)
+				.isInstanceOfSatisfying(HandlerMethod.class,
+						one -> assertThat(one.getBeanType()).isEqualTo(PhotoApi.class));
+	}
+
+	/**
+	 * A MEMBER WITH NO PICTURE ANSWERS NULL, AND NEVER THE EMPTY PATH.
+	 *
+	 * <p>{@code frontend/src/data/types.ts} refuses the empty path about a team in as many
+	 * words - „a team that has none is not a team whose logo is the empty path" - and the
+	 * reason is the same for a member: an empty path is an address a browser would ask for.
+	 *
+	 * <p><b>Both halves go, or neither does.</b> Every column of {@code photo} is NOT NULL
+	 * (V8), so a record carrying a square with no picture to cut is a square of nothing. This
+	 * is asked of EVERY record rather than of the two members who have no portrait, so the day
+	 * a fifth member arrives it is measured without anybody remembering to add him.
+	 */
+	@Test
+	void aPortraitAndItsSquareLeaveTogetherOrNeitherDoes() throws Exception {
+		for (JsonNode one : answerFor(HER_OWN_ACCOUNT)) {
+			String who = one.path("memberNumber").asString();
+
+			assertThat(one.has(THE_PORTRAIT) && one.has(THE_SQUARE_OF_IT))
+					.as("%s carries one of the two names and not the other; the portrait and its"
+							+ " square are one fact", who)
+					.isTrue();
+			assertThat(one.path(THE_PORTRAIT).isNull())
+					.as("%s answers a square and no picture, or a picture and no square", who)
+					.isEqualTo(one.path(THE_SQUARE_OF_IT).isNull());
+
+			if (!one.path(THE_PORTRAIT).isNull()) {
+				assertThat(one.path(THE_PORTRAIT).asString())
+						.as("%s answers the empty path, which is an address a browser would ask"
+								+ " for rather than the null that says there is no picture", who)
+						.isNotEmpty();
+			}
+		}
+
+		assertThat(everyPortraitIn(answerFor(HER_OWN_ACCOUNT)))
+				.as("either nobody or everybody in this answer has a portrait, so the two states"
+						+ " of the first axis are not both in the fixture")
+				.contains((String) null)
+				.contains(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
+	}
+
+	/**
+	 * A PICTURE WAITING FOR A MODERATOR IS NOBODY'S PORTRAIT, WHOEVER ASKS.
+	 *
+	 * <p>ADL A60, owner, 20.09.2026: a picture held only by something that waits for a
+	 * moderator „nije javna... Takva slika odgovara tacno isto kao slika koje nema", and PDL
+	 * P28a says why - „Profilnu sliku administrator odobrava pre objave".
+	 *
+	 * <p><b>It is the DIGEST that must not leave and not only the bytes.</b>
+	 * {@link PhotoApi} already refuses bytes no public holder points at, so this is not about
+	 * a picture being served; it is about a visitor learning that this member has one in
+	 * moderation, and about whoever holds the file learning that it is that one.
+	 *
+	 * <p><b>Read as TEXT and over every kind of caller</b>, the shape
+	 * {@link #noYearOfBirthLeavesTheServer} uses: a digest folded into another field, or a
+	 * field renamed, would walk past a check that reads names. Six callers, because the
+	 * answer depends on who asks and a rule held for the visitor alone would be held for the
+	 * one caller who was never the risk.
+	 */
+	@Test
+	void aPictureWaitingForAModeratorIsNobodysPortrait() throws Exception {
+		assertThat(db.sql("select count(*) from verification v join photo p on p.id = v.photo_id"
+						+ " where v.state = 'waiting' and p.digest in (?, ?)")
+						.params(THE_PICTURE_SHE_IS_HAVING_MODERATED,
+								THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED)
+						.query(Long.class).single())
+				.as("no picture in this fixture is waiting for a moderator, so the case below"
+						+ " asks the answer for something that is not there anyway")
+				.isEqualTo(2L);
+
+		for (String asking : Arrays.asList(null, HER_OWN_ACCOUNT, THE_OTHER_MEMBER,
+				RACES_FOR_NOBODY, THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN)) {
+
+			assertThat(whole(asking))
+					.as("the answer given to %s carries the digest of a picture a moderator has"
+							+ " not decided on, so the portal published it instead of him",
+							asking == null ? "a visitor" : asking)
+					.doesNotContain(THE_PICTURE_SHE_IS_HAVING_MODERATED)
+					.doesNotContain(THE_PICTURE_THE_OTHER_IS_HAVING_MODERATED);
+		}
+	}
+
+	/**
+	 * AND A MEMBER WHOSE ONLY PICTURE IS WAITING CARRIES NO PORTRAIT AT ALL.
+	 *
+	 * <p><b>This is the half the case above cannot measure, and it is the reason there are two
+	 * waiting pictures in the fixture rather than one.</b> 000012 has a portrait standing as
+	 * well, so {@code coalesce(c.photo_id, v.photo_id)} answers her own picture and every
+	 * assertion above passes. 000023 has nothing to fall back on, so the same expression hands
+	 * out a picture nobody has decided on - which is what makes „two sources of one value" a
+	 * measurement here and not a worry.
+	 */
+	@Test
+	void aMemberWhoseOnlyPictureIsWaitingCarriesNoPortrait() throws Exception {
+		assertThat(db.sql("select photo_id from competitor where member_number = '000023'")
+						.query(Long.class).optional())
+				.as("000023 has a portrait of her own in this fixture, so falling back on the"
+						+ " queue would be invisible here")
+				.isEmpty();
+
+		assertThat(recordOf(HER_OWN_ACCOUNT, "000023").path(THE_PORTRAIT).isNull())
+				.as("a member whose only picture is waiting for a moderator was answered a"
+						+ " portrait, so the queue was read where the profile should have been")
+				.isTrue();
+	}
+
+	/**
+	 * A HIDDEN PROFILE'S PORTRAIT DOES NOT LEAVE TO A CALLER WHO IS NOT SIGNED IN.
+	 *
+	 * <p><b>[ODLUKA 26.09.2026, owner]</b>, chosen between three offered. ADL A60 held this
+	 * boundary open with one sentence - „otisak PORTRETA ne objavljuje nijedan resurs" - and
+	 * required that „Prvi resurs koji ga objavi mora u istom potezu da donese pravilo o
+	 * skrivenom profilu". This resource is that one. PDL, 06.09.2026 puts the photograph among
+	 * what hiding hides.
+	 *
+	 * <p><b>Withheld as NULL and not as an absent key, which is the whole shape of the
+	 * rule.</b> PDL, 06.09.2026: „Oba slucaja dobijaju isti ishod." A member who hides must
+	 * read exactly like a member who has no picture, or the absence itself says „this one is
+	 * hiding" - which is the fact being withheld. So the case asserts the null AND that the
+	 * two are indistinguishable: 000007's record and 000045's are compared on both names.
+	 *
+	 * <p><b>And the floors say the 404 is about hiding and nothing else:</b> he really is
+	 * hidden, and his row really does hold that picture. Without them a query that dropped the
+	 * join altogether would pass.
+	 */
+	@Test
+	void aHiddenProfilesPortraitDoesNotLeaveToAVisitor() throws Exception {
+		assertThat(db.sql("select profile_hidden from competitor where member_number = '000007'")
+						.query(Boolean.class).single())
+				.as("000007 is not hiding his profile in this fixture, so the null below would be"
+						+ " the answer of a member with no picture")
+				.isTrue();
+		assertThat(db.sql("select p.digest from competitor c join photo p on p.id = c.photo_id"
+						+ " where c.member_number = '000007'").query(String.class).optional())
+				.as("000007 holds no picture at all, so withholding it withholds nothing")
+				.contains(THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
+
+		JsonNode his = recordOf(null, "000007");
+		JsonNode somebodyWithNoPicture = recordOf(null, "000045");
+
+		assertThat(his.path(THE_PORTRAIT).isNull())
+				.as("a visitor was answered the portrait of a member who hides his profile")
+				.isTrue();
+		assertThat(whole(null))
+				.as("the digest of a hidden member's portrait is somewhere in the visitor's"
+						+ " answer, under some other name")
+				.doesNotContain(THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
+
+		/* AND THE OTHER MEMBER'S PORTRAIT DOES REACH THE SAME VISITOR, which is what makes
+		   HIDING the condition rather than the session. Without this line a resource that
+		   answered no portrait at all to a visitor would pass everything above, and it is here
+		   rather than anywhere else because the three cases that compare a visitor's answer
+		   with a member's blank the portraits on both sides and therefore say nothing about
+		   this. 000012 does not hide and holds a portrait of her own. */
+		assertThat(recordOf(null, "000012").path(THE_PORTRAIT).asString())
+				.as("a visitor was answered no portrait for a member who does NOT hide her"
+						+ " profile, so what is being withheld is the session and not the hiding")
+				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
+
+		assertThat(List.of(his.has(THE_PORTRAIT), his.path(THE_PORTRAIT).isNull(),
+						his.has(THE_SQUARE_OF_IT), his.path(THE_SQUARE_OF_IT).isNull()))
+				.as("a member who hides his profile does not read like a member who has no"
+						+ " picture, so the shape of the answer says which members are hiding")
+				.isEqualTo(List.of(somebodyWithNoPicture.has(THE_PORTRAIT),
+						somebodyWithNoPicture.path(THE_PORTRAIT).isNull(),
+						somebodyWithNoPicture.has(THE_SQUARE_OF_IT),
+						somebodyWithNoPicture.path(THE_SQUARE_OF_IT).isNull()));
+	}
+
+	/**
+	 * AND IT DOES LEAVE TO EVERYBODY WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION.
+	 *
+	 * <p>The owner's own limit on the rule: „Takmicar od ulogovanih kolega ne moze da sakrije
+	 * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od
+	 * ostalih clanova, jer bi time nestao smisao zajednickog rangiranja". A rule written in
+	 * one direction only would pass on a resource that answered nobody a portrait at all.
+	 *
+	 * <p><b>{@code RACES_FOR_NOBODY} is in this list and he is the reason it is a list.</b>
+	 * V23 leaves {@code account.competitor_id} empty for an account that does not race, so
+	 * {@code memberOfAccount} answers nothing for him: a condition written against the
+	 * caller's MEMBER rather than against his account refuses him, and he is signed in, so
+	 * that would be the rule applied to a reader it was never about. The superadmin is the
+	 * same shape and is here for the same reason.
+	 */
+	@Test
+	void aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn() throws Exception {
+		for (String asking : List.of(HER_OWN_ACCOUNT, THE_OTHER_MEMBER, RACES_FOR_NOBODY,
+				THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN)) {
+
+			JsonNode his = recordOf(asking, "000007");
+
+			assertThat(his.path(THE_PORTRAIT).asString())
+					.as("%s is signed in and was not answered the portrait of a member who hides"
+							+ " his profile; hiding is from a reader who is not signed in and"
+							+ " from nobody else", asking)
+					.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
+			theSquareIsThatPicturesOwn(his, THE_PORTRAIT_OF_THE_ONE_WHO_HIDES, asking);
+		}
+	}
+
+	/**
+	 * AND NOTHING OF A LAPSED MEMBER'S PORTRAIT LEAVES, BECAUSE HE IS ON NO ANSWER AT ALL.
+	 *
+	 * <p>{@link #aMemberWhoseFeeHasLapsedIsNotOnTheList} says his ROW is absent; this says
+	 * that nothing of his is anywhere in the text, which is a different claim and the one that
+	 * matters for a picture. PDL P11, owner 13.09.2026: „ko nije platio, ne vidi se nigde osim
+	 * u istorijskim godinama", and the shape that carries it here is {@code where c.active}.
+	 *
+	 * <p><b>Not a decision of this increment and deliberately unchanged</b>: the note on
+	 * {@link CompetitorApi} says what follows from it for the header of such a member, which
+	 * draws no monogram today either.
+	 */
+	@Test
+	void nothingOfALapsedMembersPortraitLeaves() throws Exception {
+		assertThat(db.sql("select p.digest from competitor c join photo p on p.id = c.photo_id"
+						+ " where c.member_number = '000031'").query(String.class).optional())
+				.as("000031 holds no picture, so this case is about nothing")
+				.contains(THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID);
+
+		for (String asking : Arrays.asList(null, HER_OWN_ACCOUNT, THE_MODERATOR_OVER_THE_MEMBERS,
+				THE_SUPERADMIN)) {
+
+			assertThat(whole(asking))
+					.as("the answer given to %s carries the portrait of a member whose fee has"
+							+ " lapsed", asking == null ? "a visitor" : asking)
+					.doesNotContain(THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID);
+		}
+	}
+
+	/**
+	 * AND NO TEAM'S MARK LEAVES AS A MEMBER'S FACE.
+	 *
+	 * <p>The mirror of {@code TeamApiTest.noPartOfAnybodysProfilePictureLeavesWithATeam}, and
+	 * it is worth its lines because both facts are rows of one table: {@code photo} holds a
+	 * portrait and a mark side by side and the only thing telling them apart is which column
+	 * points at them. A join written {@code on mine.id = t.logo_id} would answer a club badge
+	 * where a face belongs, and every case above about „her own portrait" would still pass for
+	 * the members who have one.
+	 *
+	 * <p>Asked of the whole text, so a mark folded into any field is caught, and asked of the
+	 * member's answer rather than the visitor's, which is the one that carries the most.
+	 */
+	@Test
+	void noTeamsMarkLeavesAsAMembersFace() throws Exception {
+		assertThat(db.sql("select count(*) from team t join photo p on p.id = t.logo_id"
+						+ " where p.digest in (?, ?)")
+						.params(THE_MARK_OF_ONE_TEAM, THE_MARK_OF_THE_OTHER_TEAM)
+						.query(Long.class).single())
+				.as("no team in this fixture has a mark, so this case compares nothing")
+				.isEqualTo(2L);
+
+		assertThat(whole(HER_OWN_ACCOUNT))
+				.as("a team's mark came back in the list of members, so some picture other than"
+						+ " a member's own portrait was read")
+				.doesNotContain(THE_MARK_OF_ONE_TEAM)
+				.doesNotContain(THE_MARK_OF_THE_OTHER_TEAM);
+	}
+
+	/**
+	 * THE SQUARE CARRIES THE THREE NAMES THE PORTAL ALREADY READS, AND THE LIST IS NOT WRITTEN
+	 * HERE.
+	 *
+	 * <p>{@code Answers.servedFields} reads the names of a record and cannot see inside one of
+	 * them, which it says of itself: a nested object is a place a field can be added or
+	 * renamed without the floor above noticing. Three names written into this case would be a
+	 * list, and a list is what has failed on this portal six times.
+	 *
+	 * <p><b>So the floor is the portal's own served record of a TEAM</b>, which is the one
+	 * thing the portal ships that already carries a square ({@code teams.json}). It is the
+	 * same fact about a different thing and one piece of arithmetic reads both
+	 * ({@code frontend/src/components/crop.ts}), so the day either side renames a fraction the
+	 * two stop agreeing and this falls. {@code size} is the name that matters most:
+	 * {@code cropIn} asks for it and quietly returns the whole picture for a record without
+	 * it, so answering {@code diameter} would lose every crop on the portal without one error
+	 * anywhere.
+	 */
+	@Test
+	void theSquareCarriesTheThreeNamesTheServedTeamCarries() throws Exception {
+		Set<String> onATeam = Answers.fieldsOf(
+				Answers.servedRecord("teams.json").path(THE_SQUARE_OF_IT));
+
+		assertThat(onATeam)
+				.as("the served team carries no square at all, so this floor is comparing an"
+						+ " empty set and would pass whatever a member answered")
+				.isNotEmpty();
+
+		assertThat(Answers.fieldsOf(
+						recordOf(HER_OWN_ACCOUNT, "000012").path(THE_SQUARE_OF_IT)))
+				.as("a member's square and a team's square are the same fact under different"
+						+ " names, and one piece of arithmetic reads both")
+				.containsExactlyInAnyOrderElementsOf(onATeam);
+	}
+
 	/**
 	 * AND THE TEAM COMES OFF THE MEMBERSHIP THAT HAS NOT ENDED.
 	 *
@@ -808,6 +1423,14 @@ class CompetitorApiTest {
 	 * the number of records, their order, and every value in them, so a condition
 	 * written as a join - the one shape that can give a member two rows or drop one -
 	 * fails here even though every name is still right.</li>
+	 * <li><b>AND SINCE 26.09.2026 THE PORTRAITS ARE BLANKED ON BOTH SIDES BEFORE THAT
+	 * COMPARISON, because a session now changes a third thing.</b> A member who hides his
+	 * profile is answered his portrait to anybody signed in and null to a visitor ([ODLUKA
+	 * 26.09.2026, owner]), which is a difference this case would otherwise report as a
+	 * fault. It is blanked rather than the comparison loosened, and the case first asserts
+	 * that the two answers really DO differ before the blanking - so the normalisation
+	 * cannot quietly become the thing that makes this pass. {@link #withoutAnyPortrait}
+	 * counts what it blanked for the same reason.</li>
 	 * </ul>
 	 *
 	 * <p><b>Why a golden file was measured and then not committed.</b> The answer was
@@ -839,11 +1462,24 @@ class CompetitorApiTest {
 				+ "\",\"" + THE_COUNT_SHE_BROUGHT_IN + "\":"
 				+ hers.path(THE_COUNT_SHE_BROUGHT_IN).asInt();
 
+		int records = answerFor(null).size();
+
+		/* AND THE THIRD THING A SESSION CHANGES IS BLANKED ON BOTH SIDES, NOT IGNORED. The
+		   line below would fail without this and the resource would be behaving exactly as
+		   decided, so what is said out loud is that the two answers differ in the portrait as
+		   well - and then that they differ in NOTHING ELSE. */
 		assertThat(whole(HER_OWN_ACCOUNT).replace(added, ""))
-				.as("signing in changed something other than the two fields it was allowed to:"
-						+ " the visitor's answer is no longer the member's answer with those two"
-						+ " taken out")
-				.isEqualTo(whole(null));
+				.as("the member's answer and the visitor's are already the same once the two"
+						+ " fields are cut, so blanking the portrait below measures nothing and a"
+						+ " hidden member's picture is reaching a visitor")
+				.isNotEqualTo(whole(null));
+
+		assertThat(withoutAnyPortrait(whole(HER_OWN_ACCOUNT).replace(added, ""), records,
+						HER_OWN_ACCOUNT))
+				.as("signing in changed something other than the three things it was allowed to:"
+						+ " the visitor's answer is no longer the member's answer with the two"
+						+ " fields taken out and the portraits blanked")
+				.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
 	}
 
 	/**
@@ -870,7 +1506,8 @@ class CompetitorApiTest {
 
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors asked by the member himself",
 				new ObjectMapper().createArrayNode().add(recordOf(HER_OWN_ACCOUNT, "000012")),
-				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
+				"competitors.json",
+				Set.of(THE_COUNT_SHE_BROUGHT_IN, THE_PORTRAIT, THE_SQUARE_OF_IT),
 				WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
@@ -997,9 +1634,18 @@ class CompetitorApiTest {
 						+ " racing for nobody")
 				.isZero();
 
-		assertThat(whole(RACES_FOR_NOBODY))
-				.as("an account with no member behind it was answered more than a visitor is")
-				.isEqualTo(whole(null));
+		/* AND THE PORTRAITS ARE BLANKED, WHICH IS THE ONE THING HE IS ANSWERED MORE THAN A
+		   VISITOR SINCE 26.09.2026 - and it is the point rather than an exception. He has no
+		   member at all, so a rule written against the caller's MEMBER would refuse him a
+		   hidden member's portrait although he is signed in, and the rule is about a reader
+		   with no session. `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` walks him
+		   by name for exactly that reason; here what is measured is that NOTHING ELSE moved. */
+		int records = answerFor(null).size();
+
+		assertThat(withoutAnyPortrait(whole(RACES_FOR_NOBODY), records, RACES_FOR_NOBODY))
+				.as("an account with no member behind it was answered more than a visitor is,"
+						+ " beyond the portrait his session entitles him to")
+				.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
 	}
 
 	/**
@@ -1184,11 +1830,16 @@ class CompetitorApiTest {
 				}
 			}
 
-			assertThat(whole)
+			/* AND THE PORTRAITS ARE BLANKED ON BOTH SIDES, because the administration is
+			   signed in and a hidden member's portrait therefore reaches it (26.09.2026).
+			   Blanked and not ignored: `withoutAnyPortrait` counts one per record. */
+			int records = answerFor(null).size();
+
+			assertThat(withoutAnyPortrait(whole, records, administration))
 					.as("%s was answered something other than the visitor's answer with the basis"
 							+ " added: the list itself moved, or a key nobody named arrived with"
 							+ " it", administration)
-					.isEqualTo(whole(null));
+					.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
 		}
 
 		assertThat(ownRecordsCut)
@@ -1236,6 +1887,7 @@ class CompetitorApiTest {
 		Answers.everyFieldThePortalReadsIsAnswered(
 				"/api/competitors asked by a moderator over the members",
 				answerFor(THE_MODERATOR_OVER_THE_MEMBERS), "competitors.json",
+				Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
 				THE_REFERRAL_CODE,
 				WHO_HANDED_OUT_THE_CODE, WHETHER_THE_FEE_IS_STANDING);
 
@@ -1243,7 +1895,8 @@ class CompetitorApiTest {
 				"/api/competitors asked by a moderator over the members, on his own record",
 				new ObjectMapper().createArrayNode().add(
 						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, hisMemberNumber())),
-				"competitors.json", java.util.Set.of(THE_COUNT_SHE_BROUGHT_IN),
+				"competitors.json",
+				Set.of(THE_COUNT_SHE_BROUGHT_IN, THE_PORTRAIT, THE_SQUARE_OF_IT),
 				WHO_HANDED_OUT_THE_CODE,
 				WHETHER_THE_FEE_IS_STANDING);
 	}
