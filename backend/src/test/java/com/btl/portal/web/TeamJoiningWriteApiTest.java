@@ -1168,6 +1168,29 @@ class TeamJoiningWriteApiTest {
 		assertThat(howManyInvitations()).isEqualTo(2);
 	}
 
+	/**
+	 * AN ACCOUNT NAMING NO MEMBER ASKS NOBODY IN EITHER, which is the sixth door of one rule
+	 * and the only one this suite had left out.
+	 *
+	 * <p>V23 lets {@code account.competitor_id} be null for „a moderator who does not race,
+	 * which is the ordinary case and not a fault", and such an account stands in no team, so
+	 * there is no team for it to invite anybody into. <b>Found by the coverage threshold rather
+	 * than by reading:</b> the full gate came back at 0.99 with all 3107 cases green, and the
+	 * one line nothing reached was this route's own {@code away()}. Every other route here had
+	 * the case; a mutation could not have found it, because a mutation measures whether
+	 * something that runs has a guard and not whether something runs at all.
+	 */
+	@Test
+	void anAccountNamingNoMemberAsksNobodyIn() throws Exception {
+		assertThat(http.perform(post("/api/teams/{id}/invitations", keyOf(THE_TEAM)).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(asking(ME))
+						.cookie(new Cookie(SessionCookie.NAME,
+								sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret())))
+				.andReturn().getResponse().getStatus())
+				.isEqualTo(404);
+		assertThat(howManyInvitations()).isZero();
+	}
+
 	@Test
 	void nobodySignedInAsksAnybodyIn() throws Exception {
 		assertThat(send(post("/api/teams/{id}/invitations", keyOf(THE_TEAM))
