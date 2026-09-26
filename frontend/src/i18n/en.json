@@ -1246,6 +1246,10 @@
       "theSeasonCannotMoveWhileRacesCount": "The season cannot be moved while the competition counts even one race. Drop the races first, then change the season."
     },
     "leagueGone": "The competition has been deleted.",
+    "teamGone": "The team has been deleted.",
+    "teamDeleteRefused": {
+      "theWindowIsShut": "The transfer window is closed. It opens on 1 October and lasts until 31 December. Until then a team is not deleted, not even from the administration."
+    },
     "leagueSavedUnseen": "The competition has been saved, but the portal cannot show it in this list. Refresh the page.",
     "leagueTextSaved": "The change has been saved."
   },
