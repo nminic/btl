@@ -110,7 +110,18 @@ describe('the reasons the server can name', () => {
        on `WHEN_DELETING_A_TEAM` says which and why). So this file declares the same six it
        did yesterday, which is the measurement that matters: the union widened where a
        reason may be ANSWERED and the floor under it did not soften. Three acts of one
-       class now, the shape `LeagueWriteApi` has at two. */
+       class now, the shape `LeagueWriteApi` has at two.
+
+       AND THE BOUNDARY OF THAT REGISTRATION, MEASURED RATHER THAN ASSUMED, because it is
+       not what a reader would guess. Taking `WHEN_DELETING_A_TEAM` back out of this line
+       fails NOTHING today: its only reason is `theWindowIsShut`, which
+       `WHEN_LEAVING_A_TEAM` also claims, so the first case above is satisfied by the
+       sibling whether the third dictionary is named here or not. What the registration
+       does buy is the OTHER direction, and that was measured too: a reason added to
+       `WHEN_DELETING_A_TEAM` that no route can answer fails the second case, and would
+       pass unnoticed if the dictionary were not on this list. So it is registered for the
+       direction that has teeth, and the direction that has none is written down here
+       instead of being left to look like cover it does not give. */
     ['TeamWriteApi.java',
       [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM, WHEN_DELETING_A_TEAM], 6],
     ['CommentWriteApi.java', [WHEN_RATING_AN_EVENT], 3],
