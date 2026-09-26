@@ -22,6 +22,7 @@ import { AsksTheServerWhoIAm, expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { theCookieNames } from '../test/setup'
+import { myOwnRecordFromMe } from '../test/theAnswer'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
 
@@ -1022,10 +1023,47 @@ describe('membership', () => {
 
      **Both halves of the condition and not one**, because they are two facts and either can
      be the one that did not arrive. The country decides the currency and whether there is a
-     slip at all; the season is a sentence of its own. */
+     slip at all; the season is a sentence of its own.
+
+     **AND EACH ROW USED TO DROP FIVE KEYS TO NAME ONE, which measured neither.** `member: {
+     memberNumber, <the one field named> }` was short `membershipBasis`, `teamId`,
+     `referralCode` and `referredCount` as well, on both rows, alongside whichever of
+     `country` and `firstSeason` the row was supposedly about. A review proved that by two
+     swaps, both green over the whole package: the crafted 200 below replaced with a bare
+     `new Response(null, { status: 401 })`, and the guard on `Membership.tsx:221` widened to
+     `myMembershipBasis === null || myCountry === null || myFirstSeason === undefined`.
+     Neither swap could fail, because nothing below read a fact that only a named member's
+     record can carry - the heading is drawn off `initialMemberNumber` (a prop, not the
+     answer) and off two fields a visit starts at `null` anyway, which a refusal the server
+     never sent reaches exactly the way a refusal it did send does.
+
+     **So every row now carries the whole record and drops the one key it names**
+     (`test/theAnswer.ts`'s `myOwnRecordFromMe`, the same seven the contract test holds
+     against the backend), and the case reads back a fact the session has no door to but
+     this answer - the basis and the link, which this screen draws nowhere on this branch -
+     so satisfying it by silence is no longer available. */
+  function memberMissingOneFact(key: 'country' | 'firstSeason'): Record<string, unknown> {
+    const whole = { ...myOwnRecordFromMe, memberNumber: '000032' }
+
+    return Object.fromEntries(Object.entries(whole).filter(([name]) => name !== key))
+  }
+
+  /** Read off the session rather than off `Membership`, which draws neither field on this
+   *  branch: they have no door here but `GET /api/me`, so finding them proves the answer
+   *  named him rather than a 401, or the visit's own starting state, having done it. */
+  function CarriedOnlyByTheAnswer() {
+    const { myMembershipBasis, myReferralCode } = useSession()
+
+    return (
+      <p>
+        basis {myMembershipBasis ?? 'none'} link {myReferralCode ?? 'none'}
+      </p>
+    )
+  }
+
   it.each([
-    ['no country', { memberNumber: '000032', firstSeason: 2016 }],
-    ['no first season', { memberNumber: '000032', country: 'RS' }],
+    ['no country', memberMissingOneFact('country')],
+    ['no first season', memberMissingOneFact('firstSeason')],
   ])('says so when the answer names a member and carries %s', async (_what, member) => {
     const { stop } = serverThat((path) =>
       path === '/api/me'
@@ -1037,7 +1075,7 @@ describe('membership', () => {
     )
 
     try {
-      renderMembershipOn('2026-11-01', '000032')
+      renderMembershipOn('2026-11-01', '000032', <CarriedOnlyByTheAnswer />)
 
       expect(
         await screen.findByRole('heading', { name: 'Tvoji podaci o članstvu nisu stigli' }),
@@ -1048,6 +1086,16 @@ describe('membership', () => {
          not a screen missing one sentence. */
       expect(screen.queryByRole('heading', { name: /Obnova članarine/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+
+      /* **AND THE REST OF THE RECORD REALLY ARRIVED**, which a 401 cannot satisfy and the
+         two lines above cannot tell apart from one: `myMembershipBasis` and `myReferralCode`
+         have no other door than this answer, so finding the real fixture values here is
+         finding proof the answer was read rather than merely awaited. */
+      expect(
+        screen.getByText(
+          `basis ${myOwnRecordFromMe.membershipBasis} link ${myOwnRecordFromMe.referralCode}`,
+        ),
+      ).toBeVisible()
 
       /* **AND A WAY OUT, which this branch has carried since 25.09.2026.** Measured that
          day on the answer the real server gives: the page carried zero links and zero

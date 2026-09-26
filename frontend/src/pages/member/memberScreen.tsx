@@ -89,18 +89,22 @@ import { SignedOut } from './SignedOut'
  * <p><b>Why that page in particular, and it is not a typo anywhere.</b> It looks the
  * caller up in `/api/competitors`, which ends `where c.active` and therefore does not
  * carry him - while `/api/me` answers him deliberately, because {@code MeApi} exists for
- * exactly this person. The dead end is gone as of 25.09.2026 (`Membership.tsx` now draws
- * the way home), <b>but he still cannot renew</b>, and that is the boundary rather than a
- * thing this hook can fix: renewal needs his record, and this portal reads records for
- * that screen off the public list he is not on.
+ * exactly this person. „Moja članarina" beside it is a fact about a DIFFERENT screen and
+ * not an argument against this one: it went the same way in two fixes rather than one, a
+ * way home first and then <b>the renewal itself</b> - PDL P8a moved that screen's own
+ * record onto `/api/me` too, the same day, so the boundary this paragraph used to name
+ * here is closed and he can renew (`Membership.tsx`; measured on `memberFlows.test.tsx`'s
+ * „draws the whole renewal for the member the public list does not carry"). His own
+ * profile is the one left turning him away.
  *
  * <p><b>What he had before 24.09.2026 and what he has now, counted rather than
- * summarised.</b> Before: the same sentence on all eleven, with a way home. Now: five
- * screens that really work, one that still cannot serve him but no longer strands him,
- * <b>one that turns him away in silence</b> (his own profile), and four that answer him
- * the way they answer anybody not entitled to them. This paragraph has been tightened
- * three times, and each time by a measurement rather than by rereading it - which is the
- * whole reason the sentence at the top of it was wrong in the first place.
+ * summarised.</b> Before: the same sentence on all eleven, with a way home. Now, since
+ * „Moja članarina" closed the gap named above (25.09.2026, PDL P8a): <b>six</b> screens
+ * that really work and <b>none</b> left that merely fail to strand him, one that turns him
+ * away in silence (his own profile), and four that answer him the way they answer anybody
+ * not entitled to them. This paragraph has been tightened four times now, and each time by
+ * a measurement rather than by rereading it - which is the whole reason the sentence at the
+ * top of it was wrong in the first place.
  *
  * <p><b>What it must NOT say is that nobody is signed in</b>, which is what those eleven
  * screens said. Somebody is: the cookie is in the browser, the header knows their number
