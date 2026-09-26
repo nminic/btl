@@ -18,6 +18,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.lang.reflect.RecordComponent;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -309,6 +310,36 @@ class MeApiTest {
 		account(THE_SECOND_RECRUITS_ACCOUNT, "competitor");
 		belongsTo(THE_SECOND_RECRUITS_ACCOUNT, THE_SECOND_BROUGHT_BY_ME);
 		account(RACES_FOR_NOBODY, "moderator");
+
+		/* AND THE CALLER'S BOOK OF BALANCE, WITH ONE LINE FOR EACH OF THE THREE HE BROUGHT IN -
+		   the lapsed one included, and that is the whole point of these three rows rather than
+		   two.
+
+		   His `referredCount` is 2, because that clause asks whose fee STANDS. His BALANCE is 3
+		   rewards, because PDL 11.08.2026 says „Balans ne propada nikad i prenosi se iz sezone u
+		   sezonu": he brought in three people who were all activated, and one of them letting his
+		   membership lapse does not take back what was earned. So the two numbers are 1.800 and
+		   1.200 and they DISAGREE, which is what makes the case about the balance say anything -
+		   a fixture where the count times the reward happened to equal the book could not tell
+		   the old screen's multiplication from the book.
+
+		   Nobody else here has a line, so the caller's balance is also his own value in the sweep
+		   that compares every field of his record with everybody else's. */
+		rewardFor(ME, LAPSED);
+		rewardFor(ME, ALSO_BROUGHT_BY_ME);
+		rewardFor(ME, THE_SECOND_BROUGHT_BY_ME);
+	}
+
+	/** One line in the book: what V4's referral row is worth, for one member brought in. */
+	private void rewardFor(String referrer, String broughtIn) {
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,"
+						+ " occurred_at, recorded_by, recorded_by_name)"
+						+ " select ?, reward.eur, reward.rsd, 'referral', ?,"
+						+ " timestamptz '2027-01-15 10:00:00+00',"
+						+ " (select id from account where email = ?), 'Blagajnik Probni'"
+						+ " from (select eur, rsd from price_row where key = 'referral') reward")
+				.params(competitorIdOf(referrer), competitorIdOf(broughtIn), RACES_FOR_NOBODY)
+				.update();
 	}
 
 	/**
@@ -551,6 +582,62 @@ class MeApiTest {
 						+ " lapsed recruit too would answer 3, counting everybody anybody brought"
 						+ " in would answer 3, counting every active member would answer 5, and"
 						+ " counting himself would answer 1").isEqualTo(2);
+	}
+
+	/**
+	 * AND HIS BALANCE IS THE BOOK, WHICH IS NOT THE COUNT TIMES THE REWARD.
+	 *
+	 * <p><b>Why this case exists, measured on 27.09.2026 rather than argued.</b> Until that day no
+	 * balance left this route at all and the screen worked one out itself, by multiplying
+	 * {@code referredCount} by the referral row of the price list. Both halves of that were wrong.
+	 * The count asks whose fee STANDS, while PDL 11.08.2026 says „Balans ne propada nikad i prenosi
+	 * se iz sezone u sezonu" - so a recruit who lets his membership lapse would take back a reward
+	 * that was earned; and a product of a count can say nothing about what has been SPENT, which
+	 * since 26.09.2026 is a thing that happens.
+	 *
+	 * <p><b>THE TWO NUMBERS ARE DELIBERATELY DIFFERENT IN THIS FIXTURE.</b> He brought in three
+	 * people and all three were activated, so his book holds three rewards, 1.800 dinars; his
+	 * count is 2, because one of them has lapsed, and two rewards would be 1.200. An answer that
+	 * multiplied the count would be 1.200 and fails here. Were the fixture built with three
+	 * standing recruits the two arithmetics would agree and this case would measure nothing.
+	 *
+	 * <p><b>And the amounts are read off the price list rather than written here</b>, in both
+	 * currencies, so a case that would have to be edited the day the owner changes what a referral
+	 * is worth does not exist.
+	 */
+	@Test
+	void hisBalanceIsWhatTheBookAddsUpToAndNotTheCountTimesTheReward() throws Exception {
+		JsonNode reward = new ObjectMapper().readTree(db.sql(
+						"select json_build_object('eur', eur, 'rsd', rsd)::text from price_row"
+								+ " where key = 'referral'").query(String.class).single());
+
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(mine.path("balance").path("rsd").decimalValue())
+				.as("the balance answered is the count of standing recruits times the reward, which"
+						+ " is a number the book does not hold")
+				.isEqualByComparingTo(reward.path("rsd").decimalValue().multiply(new BigDecimal(3)));
+
+		assertThat(mine.path("balance").path("eur").decimalValue())
+				.as("the dinar half was right and the euro half was worked out from it, or from"
+						+ " nothing")
+				.isEqualByComparingTo(reward.path("eur").decimalValue().multiply(new BigDecimal(3)));
+
+		assertThat(mine.path("balance").path("rsd").decimalValue())
+				.as("the count times the reward and the book agree in this fixture, so the case"
+						+ " cannot tell them apart and the fixture is what is broken")
+				.isNotEqualByComparingTo(reward.path("rsd").decimalValue()
+						.multiply(new BigDecimal(mine.path("referredCount").asInt())));
+	}
+
+	/** And a member who has brought in nobody has an empty book rather than no field. */
+	@Test
+	void amemberWhoHasBroughtInNobodyIsAnsweredAnEmptyBook() throws Exception {
+		JsonNode hers = answerFor(HER_ACCOUNT).path("member");
+
+		assertThat(hers.path("referredCount").asInt()).isZero();
+		assertThat(hers.path("balance").path("eur").decimalValue()).isEqualByComparingTo(BigDecimal.ZERO);
+		assertThat(hers.path("balance").path("rsd").decimalValue()).isEqualByComparingTo(BigDecimal.ZERO);
 	}
 
 	/**

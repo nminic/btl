@@ -385,6 +385,18 @@ class RightsAtTheDoorTest {
 					"GET /api/comments", "GET /api/attendance", "GET /api/verification",
 					"POST /api/registration", "GET /api/inbox", "POST /api/inbox",
 					"GET /api/me/notifications",
+					/* HIS OWN MEMBERSHIP, READ AND BOUGHT. Neither is a moderator's action and there
+					   is no box anybody could tick for either: paying your own fee is what every
+					   member does, and spending one member's balance on another's membership is not a
+					   privilege the superadmin withholds but a thing PDL forbids outright („Balans se
+					   ne može preneti drugom članu"). Both routes name no member at all - no id in
+					   the path, none in a parameter, no body - so „his own" is the only thing they
+					   can express rather than a check that could be forgotten. A visitor is refused
+					   401 by the chain, because neither is on `READ_BY_ANYBODY`, and an account with
+					   no member behind it is refused 404 by the controllers themselves, the identical
+					   shape `/api/inbox` and `/api/me/notifications` have.
+					   `MyMembershipApiTest` and `MyMembershipWriteApiTest` hold both halves. */
+					"GET /api/me/membership", "POST /api/me/membership",
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",

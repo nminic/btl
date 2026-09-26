@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.balance.Balance;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -128,9 +129,12 @@ class MeApi {
 
 	private final MemberOfAccount memberOfAccount;
 
-	MeApi(JdbcClient db, MemberOfAccount memberOfAccount) {
+	private final BalanceBook book;
+
+	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, BalanceBook book) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.book = book;
 	}
 
 	/**
@@ -210,12 +214,29 @@ class MeApi {
 	 *                     the second home away, so there is nothing left for it to agree
 	 *                     with, and what holds it is the pair of cases named on this class
 	 *                     rather than a twin. Never absent: a {@code count} answers a
-	 *                     number even when nobody was brought in
+	 *                     number even when nobody was brought in.
+	 *
+	 *                     <p><b>AND IT IS NOT HIS BALANCE, WHICH IS WHY {@code balance} ARRIVED
+	 *                     BESIDE IT ON 27.09.2026.</b> Until then the screen multiplied this
+	 *                     count by the referral row of the price list and called the product a
+	 *                     balance, and that was measured to be wrong in two ways at once. It
+	 *                     counts members whose fee is standing NOW, while PDL 11.08.2026 says
+	 *                     „Balans ne propada nikad i prenosi se iz sezone u sezonu" - so a
+	 *                     referral that lapses would take a reward back that was earned; and it
+	 *                     knows nothing of what has been SPENT, which since 26.09.2026 is a thing
+	 *                     that happens. The count keeps its own meaning, which is worth showing
+	 *                     („you have brought in six people"), and the money is answered by the
+	 *                     book
+	 * @param balance      WHAT THE BOOK ADDS UP TO, both currencies, as {@code BalanceBook}
+	 *                     derives it and nothing stores it (ADL, virtuelni balans: „saldo koji se
+	 *                     uvek izvodi iz knjige, nikad ne upisuje direktno"). <b>This is the only
+	 *                     number on this portal that is his balance</b>, and it is served from
+	 *                     here so that no screen has to work one out of anything else
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Long teamId,
-			String membershipBasis, String referralCode, int referredCount) {
+			String membershipBasis, String referralCode, int referredCount, Balance.Money balance) {
 	}
 
 	/**
@@ -241,6 +262,11 @@ class MeApi {
 	 * case here for none.
 	 */
 	private MyOwnRecord recordOf(long me) {
+		/* Asked BEFORE the query below and never inside its row mapper: a second statement run
+		   while the first one's results are still being walked is a nested read on the same
+		   connection, and it has no business being one. */
+		Balance.Money balance = book.of(me);
+
 		return db.sql("select c.member_number,"
 						/* The town's country when the town came out of the codebook, and the
 						   typed one otherwise, which is the same coalesce `CompetitorApi`
@@ -285,7 +311,7 @@ class MeApi {
 				.param("me", me)
 				.query((row, one) -> new MyOwnRecord(row.getString(1), row.getString(2),
 						row.getInt(3), row.getObject(4) == null ? null : row.getLong(4),
-						row.getString(5), row.getString(6), row.getInt(7)))
+						row.getString(5), row.getString(6), row.getInt(7), balance))
 				.single();
 	}
 }

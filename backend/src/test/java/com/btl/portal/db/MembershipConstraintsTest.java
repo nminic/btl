@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -84,8 +85,19 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	private static final String COLUMNS = "competitor_id, season, basis, payment_id";
 
+	/** V36's fifth column, used only by the rows that are about it. */
+	private static final String COLUMNS_WITH_THE_BOOK = COLUMNS + ", balance_entry_id";
+
+	/** A line in the book of balance that really is his, for a season he is not yet a member of. */
+	private static final String HIS_BOOK_ENTRY =
+			"(select id from balance_entry where competitor_id = " + A_MEMBER + " and season = 2030)";
+
 	private static String membership(String values) {
 		return "insert into membership (" + COLUMNS + ") values (" + values + ")";
+	}
+
+	private static String membershipNaming(String values) {
+		return "insert into membership (" + COLUMNS_WITH_THE_BOOK + ") values (" + values + ")";
 	}
 
 	/** His own receipt, for the year it was paid for. */
@@ -129,6 +141,14 @@ class MembershipConstraintsTest extends DatabaseTest {
 		payment("001001", 2027, "20271001");
 
 		db.sql(membership(A_MEMBER + ", 2029, 'payment', " + HIS_2029)).update();
+
+		/* ONE LINE IN THE BOOK OF BALANCE, HIS, naming a season he holds no membership for. The
+		   season matters: a row that named 2029 would let the legitimate case below be satisfied by
+		   the membership already standing there instead of by the one it inserts. */
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season, occurred_at,"
+						+ " recorded_by, recorded_by_name) values (" + A_MEMBER + ", -5, -600, 'membership',"
+						+ " 2030, " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni')")
+				.update();
 	}
 
 	private void competitor(String number, String first, String last, String code, String basis) {
@@ -194,7 +214,26 @@ class MembershipConstraintsTest extends DatabaseTest {
 				Violation.of("membership_payment_fk",
 						membership(A_MEMBER + ", 2027, 'payment', " + ANOTHER_MEMBERS_2027)),
 				Violation.of("membership_payment_fk",
-						membership(A_MEMBER + ", 2027, 'payment', " + HIS_2029)));
+						membership(A_MEMBER + ", 2027, 'payment', " + HIS_2029)),
+
+				/* AND BOTH HALVES OF THE SAME SENTENCE ABOUT THE BOOK (V36), which arrived with the
+				   third basis. Held on the balance and naming no line is the member let in with nothing
+				   anywhere to say what paid for him, which is what ADL's „aktivacija nosi dokaz" refuses;
+				   held on something else and naming a line is a withdrawal counted against a season it
+				   did not buy.
+
+				   NEITHER ROW BREAKS V22'S OWN CONSTRAINT AS WELL, and that is what makes each of them
+				   measure one thing: for 'balance' with no receipt, (basis = 'payment') and
+				   (payment_id is not null) are both false and agree; for 'feeExempt' naming a line the
+				   same two are both false again. */
+				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, null")),
+				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
+						membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, " + HIS_BOOK_ENTRY)),
+
+				/* And the line it names has to be there. */
+				Violation.of("membership_balance_entry_fk",
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, 999999")));
 	}
 
 	@ParameterizedTest
@@ -226,8 +265,18 @@ class MembershipConstraintsTest extends DatabaseTest {
 		assertThat(covered).containsExactlyInAnyOrderElementsOf(declared);
 	}
 
+	/**
+	 * Let in on his own balance, naming the line that paid for it (V36, owner 26.09.2026).
+	 *
+	 * <p>A season of its own, and no receipt: this is the shape that had no way to be written down
+	 * before V36, because every membership had to name a payment or be a gift.
+	 */
+	private static final String GOOD_OUT_OF_THE_BOOK =
+			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY);
+
 	static List<String> legitimateRows() {
-		return List.of(GOOD_ON_HIS_OWN_RECEIPT, GOOD_LET_IN_FREE, GOOD_ANOTHER_MEMBER);
+		return List.of(GOOD_ON_HIS_OWN_RECEIPT, GOOD_LET_IN_FREE, GOOD_ANOTHER_MEMBER,
+				GOOD_OUT_OF_THE_BOOK);
 	}
 
 	@ParameterizedTest
@@ -290,15 +339,76 @@ class MembershipConstraintsTest extends DatabaseTest {
 		}
 	}
 
-	/** And the other direction, which is the one a rule widened here alone gets wrong. */
+	/**
+	 * THE WORDS THE TWO COLUMNS DO NOT SHARE, and there is exactly one.
+	 *
+	 * <p><b>This list is the narrowing of 27.09.2026 and it has a floor under it rather than a
+	 * promise</b>, which is {@link #theOnlyWordTheTwoColumnsDoNotShareIsThePerSeasonOne}: the
+	 * difference between the two rules is read out of the catalogue and compared with this, so a
+	 * FOURTH word added to one column alone turns that case red and asks for a decision instead of
+	 * being waved through by this one.
+	 */
+	private static final Set<String> ONLY_A_SEASON_CAN_STAND_ON = Set.of("balance");
+
+	/**
+	 * And the other direction, which is the one a rule widened here alone gets wrong - <b>less the
+	 * one word that belongs to a SEASON and not to a PERSON.</b>
+	 *
+	 * <p><b>Why this direction stopped being total, and it is a decision rather than a workaround.</b>
+	 * The owner, 26.09.2026: „Balans veci ili jednak clanarini: clanstvo se aktivira iz balansa." So
+	 * a season can stand on a balance. {@code competitor.membership_basis} is not that fact: PDL
+	 * 06.09.2026 says it „nosi oslobodjenje od clanarine", and the owner on 20.09.2026 gave the
+	 * reason a member is shown his own - „inace ne razume zasto mu portal ne trazi uplatu". It
+	 * answers <b>does this person pay or is he let in free</b>, which is a standing property, and a
+	 * man who settles a season out of his balance is <b>paying</b>; he is not exempt from anything.
+	 *
+	 * <p><b>And the alternative was measured to be worse.</b> Widening V7 to take 'balance' would
+	 * put a word in the schema that NOTHING EVER WRITES - the registration writes 'payment' and the
+	 * honorary screen writes 'feeExempt' - which V36's own migration refuses in as many words („a
+	 * reason nothing can produce is a reason no constraint should name"). It would also turn two
+	 * other floors red for a reason that is not theirs:
+	 * {@code MeApiTest.aMemberIsHandedHisOwnBasisAndTheOtherWordIsNotIt} asserts V7 names exactly
+	 * two words so that a third demands a third caller, and {@link #bothRulesAboutABasisAreStillThere}
+	 * counts them.
+	 *
+	 * <p><b>What holds the half of this case that is still live</b> is
+	 * {@link #everyBasisTheCompetitorNamesTheMembershipTakes} in the other direction, the floor
+	 * under it, and - for the sentence this narrowing rests on - the behaviour itself:
+	 * {@code MyMembershipWriteApiTest.beingLetInOnTheBalanceLeavesTheStandingBasisAlone} activates a
+	 * membership out of the book and demands that {@code competitor.membership_basis} still says
+	 * 'payment' afterwards. If that word ever does have to reach the person, that case turns red
+	 * first.
+	 */
 	@Test
 	void everyBasisTheMembershipNamesTheCompetitorTakes() {
 		for (String basis : basesNamedIn("membership_basis_known")) {
+			if (ONLY_A_SEASON_CAN_STAND_ON.contains(basis)) {
+				continue;
+			}
 			assertThat(ruleTakes("competitor_membership_basis_known", "membership_basis", basis))
 					.as("this table takes the basis '%s' and V7 refuses it, so the same fact has"
 							+ " two vocabularies", basis)
 					.isTrue();
 		}
+	}
+
+	/**
+	 * THE FLOOR UNDER THE EXEMPTION ABOVE, and it is the catalogue that answers rather than a
+	 * sentence.
+	 *
+	 * <p>Whatever {@code membership_basis_known} names and {@code competitor_membership_basis_known}
+	 * does not must be exactly the one word a decision was made about. A fourth basis added to the
+	 * season alone lands here, red, on the day it is added.
+	 */
+	@Test
+	void theOnlyWordTheTwoColumnsDoNotShareIsThePerSeasonOne() {
+		Set<String> theSeasonAlone = new HashSet<>(basesNamedIn("membership_basis_known"));
+		theSeasonAlone.removeAll(basesNamedIn("competitor_membership_basis_known"));
+
+		assertThat(theSeasonAlone)
+				.as("a basis a season can stand on that a person cannot, which is either a decision"
+						+ " or a mistake and has to be one of them on purpose")
+				.containsExactlyInAnyOrderElementsOf(ONLY_A_SEASON_CAN_STAND_ON);
 	}
 
 	/**
