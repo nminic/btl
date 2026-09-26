@@ -156,12 +156,14 @@ describe('the address of a page', () => {
     expect(href('alternate', 'sr')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
     expect(href('alternate', 'x-default')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
 
-    /* No alternative for English while /en serves the Serbian words letter for
-       letter (src/i18n/config.ts). Announcing it hands a search engine the same
-       text under two sets of addresses, and hands an English reader a page they
-       cannot read either way. To be undone with the English dictionary, together
-       with the canonical below. */
-    expect(href('alternate', 'en')).toBeNull()
+    /* And English, since 26.09.2026: it has a dictionary of its own, so /en is a page
+       of its own and is announced as one. Until that day it was not, and announcing it
+       then would have handed a search engine the same Serbian text under two sets of
+       addresses and an English reader a page they could not read either way. What
+       decides is not the list of locales but whether the words differ
+       (`head.ts`, `dictionaryLocale`), which is why this test could be left to say the
+       opposite of what it says today without either half being rewritten. */
+    expect(href('alternate', 'en')).toBe(`${SITE_ORIGIN}/en/kalendar`)
   })
 
   it('moves a profile opened by number alone to the one address, and names it', async () => {
@@ -256,19 +258,23 @@ describe('the address of a page', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(sr.nav.calendar)
   })
 
-  it('canonicalises the English branch onto the Serbian one', async () => {
+  it('lets the English branch be its own page, now that it has its own words', async () => {
     renderAt('/en/kalendar')
 
-    // The address of the language the text is written in, not the address being
-    // read: two addresses over one text is one page competing with itself.
-    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/kalendar`))
+    /* Still the address of the language the text is written in rather than the address
+       being read, and since 26.09.2026 those are the same thing here: English has a
+       dictionary, so /en is not one page competing with itself but a second page. The
+       rule in `head.ts` did not change; its answer did. */
+    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/en/kalendar`))
     expect(href('alternate', 'sr')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
-    expect(href('alternate', 'en')).toBeNull()
-    // A link shared off /en gathers its shares on the same one address.
-    expect(content('property', 'og:url')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
-    // /en still shows Serbian words until an English dictionary exists (ADL A2),
-    // so what the text is written in has not changed.
-    expect(content('property', 'og:locale')).toBe('sr_RS')
+    expect(href('alternate', 'en')).toBe(`${SITE_ORIGIN}/en/kalendar`)
+    // A link shared off /en gathers its shares on the English address, not the Serbian.
+    expect(content('property', 'og:url')).toBe(`${SITE_ORIGIN}/en/kalendar`)
+    // And what the text is written in, which is the whole reason the two parted.
+    expect(content('property', 'og:locale')).toBe('en_GB')
+    /* The Serbian branch is untouched by that, and this is here so that a change which
+       simply made every page answer „en" could not pass. */
+    expect(href('alternate', 'x-default')).toBe(`${SITE_ORIGIN}/sr/kalendar`)
   })
 
   it('follows the language switch', async () => {
@@ -280,15 +286,17 @@ describe('the address of a page', () => {
     await user.click(screen.getByRole('button', { name: sr.language.label }))
     await user.click(screen.getByRole('option', { name: 'English' }))
 
-    /* The address changed and the canonical did not, which is the point: the
-       English address is the Serbian page until there are English words. */
+    /* The canonical follows the switch, because there are English words now. Before
+       26.09.2026 it deliberately did not, the English address being the Serbian page;
+       what makes this move is `head.ts` reading whether the words differ, not the
+       address. */
     await waitFor(() =>
       expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute(
         'aria-selected',
         'true',
       ),
     )
-    expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/top-liste`)
+    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/en/top-liste`))
   })
 
   it('leaves the home page without a path of its own', async () => {

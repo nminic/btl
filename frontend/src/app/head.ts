@@ -39,13 +39,16 @@ export type PageHead = {
   /** The path below the language, with no query and no fragment. */
   path: string
   /**
-   * The language the text is written in, which is not always the language in the
-   * address: /en serves the Serbian words until an English dictionary exists.
+   * The language the text is actually written in, which is not always the language
+   * in the address: `dictionaryLocale` (`i18n/config.ts`) can point a locale at
+   * another one's words while its own dictionary is not ready yet. `sr` and `en`
+   * both have one today, so the two agree for both of them; a locale entered ahead
+   * of its translation (PDL P18) is the case this field exists for.
    *
-   * The language in the address is deliberately not here. Nothing in the head
-   * follows it while one text answers on two addresses, and a field nobody reads
-   * is a field that goes stale. It comes back with the translations, together
-   * with the canonical address in applyHead.
+   * The language in the address is deliberately not here, for the same reason:
+   * `applyHead` reads this field, not `path`'s own locale, for the canonical
+   * address and for which alternates to offer, and following the address instead
+   * would point both at words that are not really there yet.
    */
   textLocale: Locale
 }
@@ -143,25 +146,30 @@ export function applyHead(head: PageHead): void {
   /* Which address counts as this page's own.
    *
    * Not the address being read, but the address of the language the text is
-   * actually written in. There is no English dictionary yet, so /en serves the
-   * Serbian words letter for letter (src/i18n/config.ts). Two addresses over one
-   * text is one page competing with itself, and a search engine keeps whichever
-   * of the two it likes.
+   * actually written in, named by `dictionaryLocale` (src/i18n/config.ts) rather
+   * than by `head.path`'s own locale. Two addresses over one text is one page
+   * competing with itself, and a search engine keeps whichever of the two it
+   * likes - the state /en was in before 26.09.2026, when it served the Serbian
+   * words under its own address while `dictionaryLocale('en')` still answered
+   * `sr`.
    *
-   * TO BE UNDONE WHEN THE ENGLISH DICTIONARY ARRIVES: the canonical address
-   * becomes the address being read again, and the line below starts offering
-   * every language rather than only the one that exists. Both follow
-   * dictionaryLocale, so neither can be forgotten while the other is changed.
+   * `sr` and `en` both answer their own name today, so the canonical address is
+   * the address being read, for both of them. That follows from the table behind
+   * `dictionaryLocale` and is not written here as a fact of its own: a third
+   * locale entered ahead of its dictionary (PDL P18) falls into the state /en
+   * used to be in, and this line does not change for that to keep holding.
    *
    * The query and the fragment are left out on purpose: a filtered table is the
    * same page as the unfiltered one, and a profile with ?sezona=2027 is the same
    * profile. */
   linkTag('canonical', canonical)
 
-  /* One alternative per language that has words of its own. Offering /en while it
-   * shows Serbian text is an invitation to index the same text twice, under two
-   * sets of addresses, and to serve an English reader a page they cannot read
-   * either way. */
+  /* One alternative per language that has words of its own - `dictionaryLocale(one)
+   * === one` is exactly that condition, not an /en special case. Offering a locale
+   * whose dictionary is not ready yet is an invitation to index the same text
+   * twice, under two sets of addresses, and to serve a reader a page in a language
+   * they did not ask for; that was /en's own state before 26.09.2026, and is the
+   * state a locale entered ahead of its dictionary will be in the same way. */
   for (const locale of LOCALES.filter((one) => dictionaryLocale(one) === one)) {
     linkTag('alternate', addressOf(locale, head.path), locale)
   }

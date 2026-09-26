@@ -1,0 +1,1531 @@
+{
+  "app": {
+    "name": "Balkanska trkačka liga",
+    "short": "BTL",
+    "slogan": "Every race counts"
+  },
+  "seo": {
+    "home": {
+      "title": "Balkanska trkačka liga - every race counts!",
+      "description": "Every race counts. The race calendar, the season table, the Top boards and the competitor profiles of BTL."
+    },
+    "notFound": {
+      "title": "No such page",
+      "description": "The address does not exist or the page has been removed. The home page leads to everything else."
+    },
+    "rulebook": {
+      "title": "The BTL rulebook",
+      "description": "The official rules of the competition: what scores, how the points are worked out, and how results are reported and checked."
+    },
+    "competitors": {
+      "title": "BTL competitors",
+      "description": "Every member of the League with a category, a number of races and the points won, and a link to each profile."
+    },
+    "teams": {
+      "title": "BTL teams",
+      "description": "The teams competing in the League, with a town, a number of members and the points they won together."
+    },
+    "table": {
+      "title": "BTL tables",
+      "description": "The official table of the season by BTL points, with a choice of season, gender and category."
+    },
+    "topBoards": {
+      "title": "BTL top boards",
+      "description": "The ten boards from the Rulebook: kilometres, time on course, best race, best progress, racing pairs and races by length."
+    },
+    "leagues": {
+      "title": "BTL competitions",
+      "description": "Every competition running alongside the main League, with its terms, its prizes and its number of entrants."
+    },
+    "calendar": {
+      "title": "The BTL calendar",
+      "description": "Everything in the season calendar month by month, with a date, a town and a length."
+    },
+    "calendarDay": {
+      "title": "One day in the calendar",
+      "description": "Every race on one day of the BTL calendar.",
+      "recordTitle": "Races, {date}",
+      "recordDescription": "{date}: every race of that day, from the BTL calendar."
+    },
+    "myProfile": {
+      "title": "My BTL profile",
+      "description": "A member's profile as the whole portal sees it, with the actions only the owner of the account can take."
+    },
+    "myResults": {
+      "title": "My racing results",
+      "description": "The results reported, the stage of checking each is at, and the points they brought."
+    },
+    "membership": {
+      "title": "My BTL membership fee",
+      "description": "The state of the membership, paying the fee, and the payment slip with a QR code."
+    },
+    "messages": {
+      "title": "Messages",
+      "description": "The portal's own inbox: notices from the League and messages received on the account."
+    },
+    "settings": {
+      "title": "Account settings",
+      "description": "Notices, the display theme and the other settings that hold for the account on every device."
+    },
+    "privacy": {
+      "title": "Privacy policy",
+      "description": "What the portal keeps, why it keeps it, for how long, and how a member exercises their rights."
+    },
+    "terms": {
+      "title": "Terms of use",
+      "description": "The rules for using the portal: the account, the fee, members' obligations and the association's liability."
+    },
+    "register": {
+      "title": "Joining BTL",
+      "description": "Opening an account and joining the League. For competitors under sixteen a parent confirms the application."
+    },
+    "signIn": {
+      "title": "Signing in to a BTL account",
+      "description": "Signing in to a member's account on the BTL portal."
+    },
+    "newPassword": {
+      "title": "A new password",
+      "description": "Setting a new password through the link the portal sent to the email address."
+    },
+    "confirmAddress": {
+      "title": "Confirming the address",
+      "description": "Confirming the email address through the link in the message the portal sends after registration."
+    },
+    "admin": {
+      "title": "Administration",
+      "description": "The way into the administrative part of the portal, with the queues and every record of the League."
+    },
+    "adminEntities": {
+      "title": "Records (administration)",
+      "description": "Members, events, teams, competitions, written pages and the price list in one place, to enter and to correct."
+    },
+    "adminVerification": {
+      "title": "Verification (administration)",
+      "description": "The queues: reported results, new members and everything else that asks a moderator to decide."
+    },
+    "adminMembers": {
+      "title": "Members (administration)",
+      "description": "Member accounts: the details, the state of the membership and the basis the account was activated on."
+    },
+    "adminEvents": {
+      "title": "Events (administration)",
+      "description": "Entering and correcting the events of the calendar, with a date, a town and an organiser."
+    },
+    "adminTeams": {
+      "title": "Teams (administration)",
+      "description": "Founding teams and correcting their details and their line-ups."
+    },
+    "adminLeagues": {
+      "title": "Competitions (administration)",
+      "description": "Which events go into which competition, and under what terms."
+    },
+    "adminPricing": {
+      "title": "Price list (administration)",
+      "description": "The rows of the membership price list, each with a period of validity, an amount and a currency."
+    },
+    "adminPages": {
+      "title": "Written pages (administration)",
+      "description": "The written pages of the portal: the rulebook, the terms of use and the privacy policy."
+    },
+    "adminModerators": {
+      "title": "Moderators (administration)",
+      "description": "Who moderates the portal and what the Superadmin has granted them, by record and by queue."
+    },
+    "editTeam": {
+      "title": "Changing a team",
+      "description": "The name, the town and the country of a team, for a change that goes to be checked."
+    },
+    "newResult": {
+      "title": "A new race result",
+      "description": "The time, the length, the ascent and the proof from a race, for a result that goes to be checked."
+    },
+    "verificationQueue": {
+      "title": "A queue (administration)",
+      "description": "One queue in verification, with everything a moderator needs in order to decide.",
+      "queueTitle": "{name} (administration)",
+      "queueDescription": "{name}: {source}. One queue in verification."
+    },
+    "competitor": {
+      "title": "A competitor's profile",
+      "description": "The races, the points and the statistics of one BTL competitor.",
+      "recordTitle": "{name}, {city}",
+      "recordDescription": "{name}: every race, the points and the statistics in BTL.",
+      "awardsTitle": "{name}, awards",
+      "awardsDescription": "{name}: the trophies and the ducats won in BTL."
+    },
+    "event": {
+      "title": "An event from the calendar",
+      "description": "Every race of one event from the League calendar, with its length, its ascent and its descent.",
+      "recordTitle": "{name}, {date}",
+      "recordDescription": "{name}, {city}: every race at this event, with its length, ascent, descent and category."
+    },
+    "team": {
+      "title": "A team in the League",
+      "description": "The members of one team and the points they won together in the League.",
+      "recordTitle": "{name}, {city}",
+      "recordDescription": "{name}: the line-up of the team and the points its members won in BTL."
+    },
+    "league": {
+      "title": "A competition standing",
+      "description": "The standing of one competition running alongside the main League, by gender, with the points from every event.",
+      "recordTitle": "{name}",
+      "recordDescription": "{name}: the standing in season {season}, by gender, with the points from every event."
+    },
+    "message": {
+      "title": "A message",
+      "description": "One message from the portal's own inbox at BTL."
+    },
+    "competitorAwards": {
+      "title": "A competitor's awards",
+      "description": "The trophies and the ducats one competitor has won in BTL."
+    },
+    "proposeTeam": {
+      "title": "Proposing a team",
+      "description": "Propose a team to BTL. A moderator decides on every proposal before the team enters the League."
+    },
+    "reportResult": {
+      "title": "Reporting a result",
+      "description": "Report your result from a BTL race. A moderator checks every report before it enters the table."
+    },
+    "rateEvent": {
+      "title": "Rating an event",
+      "description": "Rate the organisation, the value for money and the atmosphere, and leave a comment for other members. A moderator approves every rating."
+    }
+  },
+  "shell": {
+    "waiting": "{count} waiting",
+    "skipToContent": "Skip to content",
+    "openMenu": "Open the menu",
+    "closeMenu": "Close the menu",
+    "mainNavigation": "Main navigation",
+    "footerNavigation": "Terms and rules",
+    "messages": "Messages",
+    "openMessages": "Open the messages",
+    "closeMessages": "Close the messages",
+    "unread": {
+      "one": "{count} unread",
+      "few": "{count} unread",
+      "other": "{count} unread"
+    },
+    "noMessages": "No messages.",
+    "allMessages": "All messages",
+    "account": "Account",
+    "accountNumber": "Account {number}",
+    "settings": "Settings",
+    "signIn": "Sign in",
+    "contact": "Contact",
+    "home": "Home page",
+    "join": "Join",
+    "openAccount": "Open an account"
+  },
+  "nav": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "topBoards": "Top boards",
+    "competitors": "Competitors",
+    "teams": "Teams",
+    "leagues": "Competitions",
+    "rules": "Rulebook",
+    "contact": "Contact",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use",
+    "login": "Sign in",
+    "register": "Register",
+    "newPassword": "New password",
+    "confirmAddress": "Address confirmation",
+    "myProfile": "My profile",
+    "myResults": "My results",
+    "membership": "My fee",
+    "messages": "Messages",
+    "admin": "Administration",
+    "entities": "Records",
+    "verification": "Verification",
+    "settings": "Settings",
+    "table": "BTL tables"
+  },
+  "language": {
+    "label": "Language",
+    "sr": "Srpski",
+    "en": "English"
+  },
+  "role": {
+    "label": "Role",
+    "visitor": "Visitor",
+    "competitor": "Competitor",
+    "moderator": "Moderator",
+    "superadmin": "Superadmin"
+  },
+  "notFound": {
+    "title": "No such page"
+  },
+  "clock": {
+    "label": "Today's date",
+    "reset": "Back to the real date"
+  },
+  "placeholder": {
+    "title": "{name}",
+    "text": "This screen comes in the next phase. The structure and the navigation are already here, so the flow can be checked."
+  },
+  "home": {
+    "results": "Results reported",
+    "season": "Season {season}.",
+    "seasonSample": "Season {season}, sample data",
+    "kilometers": "Kilometres",
+    "ascent": "Ascent",
+    "descent": "Descent",
+    "onCourse": "On course",
+    "points": "BTL points",
+    "readySetGo": "Ready, steady, GO!",
+    "moreRuns": {
+      "one": "and {count} more date",
+      "few": "and {count} more dates",
+      "other": "and {count} more dates"
+    },
+    "seeCalendar": "The whole calendar",
+    "topMen": "Top 10 men",
+    "topWomen": "Top 10 women",
+    "place": "{place}.",
+    "wholeStanding": "The whole table",
+    "byCategory": "Races by length",
+    "calculator": "The BTL calculator",
+    "calcLength": "Length (km)",
+    "calcAscent": "Ascent (m)",
+    "calcDescent": "Descent (m)",
+    "calcTime": "Finishing time",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "seconds": "Seconds",
+    "calcWaiting": "Enter a length and a time.",
+    "calcReset": "Reset",
+    "news": "News",
+    "sponsorOfTheDay": "Sponsor of the day",
+    "partners": "Sponsors and partners",
+    "noneYet": "No race of this length has been run this season yet.",
+    "turning": "Most races by length",
+    "pauseTurning": "Stop the turning",
+    "resumeTurning": "Resume the turning",
+    "mostOf": {
+      "short": "Most short races",
+      "long": "Most long races",
+      "half": "Most half marathons",
+      "marathon": "Most marathons",
+      "ultra": "Most ultramarathons"
+    },
+    "pointsUnit": " BTL points",
+    "ascentUnit": " m+",
+    "descentUnit": " m-",
+    "members": "League members",
+    "calcResult": "BTL points:"
+  },
+  "data": {
+    "loading": "Loading",
+    "loadingPart": "Loading: {part}",
+    "error": "The data cannot be loaded.",
+    "empty": "There is nothing here yet."
+  },
+  "form": {
+    "required": "Required field",
+    "optional": "optional",
+    "dateShape": "dd/mm/yyyy",
+    "submit": "Save",
+    "errors": {
+      "required": "This field is required.",
+      "minLength": "At least {min} characters.",
+      "maxLength": "At most {max} characters.",
+      "pattern": "The value is not in the expected shape.",
+      "min": "The smallest value allowed is {min}.",
+      "max": "The largest value allowed is {max}.",
+      "email": "Enter a valid email address.",
+      "number": "Enter a number.",
+      "date": "Enter a date as dd/mm/yyyy.",
+      "matches": "Does not match the field above.",
+      "taken": "This value is already taken. Every record must have its own.",
+      "countryMissing": "Choose a country for the town."
+    },
+    "choose": "Choose",
+    "errorSummary": "The form was not sent. Correct these fields:",
+    "region": "Region",
+    "restOfWorld": "Rest of the world",
+    "openCalendar": "Open the calendar",
+    "pasteCut": {
+      "one": "The pasted text was {count} character longer than fits, so that surplus was not taken.",
+      "few": "The pasted text was {count} characters longer than fits, so that surplus was not taken.",
+      "other": "The pasted text was {count} characters longer than fits, so that surplus was not taken."
+    },
+    "places": "Suggested towns",
+    "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "countryFromPlace": "The town comes from the codebook, so it brings its country with it.",
+    "explain": "Explanation",
+    "country": "Country",
+    "explainMark": "i",
+    "requiredNote": "The fields with a star are required.",
+    "clearPhoto": "Remove",
+    "suggested": {
+      "one": "{count} race from the calendar matches",
+      "few": "{count} races from the calendar match",
+      "other": "{count} races from the calendar match"
+    }
+  },
+  "registration": {
+    "title": "Registration",
+    "submit": "Send the application",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email address",
+    "birthDate": "Date of birth",
+    "gender": "Gender",
+    "genderMale": "Male",
+    "genderFemale": "Female",
+    "address": "Postal address",
+    "city": "Town",
+    "bioLeft": {
+      "one": "{count} character left",
+      "few": "{count} characters left",
+      "other": "{count} characters left"
+    },
+    "bioFull": {
+      "one": "That is enough, the limit is {count} character.",
+      "few": "That is enough, the limit is {count} characters.",
+      "other": "That is enough, the limit is {count} characters."
+    },
+    "bioHint": "A few sentences about yourself, at most 360 characters.",
+    "photo": "Profile picture",
+    "shirtSize": "Shirt size",
+    "healthStatement": "I confirm that I have read {link} and that I am medically fit for recreational sport.",
+    "doneTitle": "The application is recorded",
+    "checkSpam": "If the message does not arrive within a few minutes, look in the junk mail as well.",
+    "resend": "Send the confirmation again",
+    "resent": "The confirmation has been sent again. If it still does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net.",
+    "doneText": "We have sent a message to {email}. Open it and confirm the address, because the account is activated only then.",
+    "sending": "Sending the application...",
+    "formIsNotComplete": "The server did not accept the application, because an answer is incomplete or unrecognised. Check the answers, the town and the country above all, then send again.",
+    "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another.",
+    "addressIsTaken": "That email address is already a member of the League. Sign in with the existing password, or register from another address.",
+    "password": "Password",
+    "passwordRepeat": "Repeat the password",
+    "parentConsent": "The parent's or guardian's full name",
+    "parentConsentHint": "The competitor is under sixteen, so the account is kept by a parent or a guardian. By entering your name you confirm that you support your child's application with the details given. For anybody under fourteen it is at the same time the consent to membership.",
+    "closed": "Registration is not open yet",
+    "closedText": "From 15 to 30 September the portal is open for looking around only. The calendar and the boards work, but no membership is sold then.",
+    "opensOn": "It opens on {date}.",
+    "opensIn": {
+      "one": "Joining opens on {date}, in {count} day.",
+      "few": "Joining opens on {date}, in {count} days.",
+      "other": "Joining opens on {date}, in {count} days."
+    },
+    "category": "Category",
+    "categoryFirstSeason": "Rookie",
+    "categoryByAge": "By age",
+    "healthStatementLink": "the rulebook",
+    "serbianBinds": "If the Serbian and the English version of this statement differ, the Serbian text is the one that binds.",
+    "parentRelation": "Relation",
+    "mother": "Mother",
+    "father": "Father",
+    "guardian": "Guardian",
+    "doneReferral": "The application is recorded as a referral. The member who invited you is credited once your fee is activated.",
+    "fatherName": "Father's name",
+    "fatherNameHint": "Needed to join the association under the law.",
+    "idNumber": "Identity document number",
+    "idNumberHint": "Needed to join the association under the law.",
+    "phone": "Telephone"
+  },
+  "shirt": {
+    "XS": "XS",
+    "S": "S",
+    "M": "M",
+    "L": "L",
+    "XL": "XL",
+    "XXL": "XXL",
+    "XXXL": "XXXL"
+  },
+  "units": {
+    "kilometers": "{value} km",
+    "meters": "{value} m",
+    "btlPoints": "{value} BTL points",
+    "raceCount": {
+      "one": "{count} race",
+      "few": "{count} races",
+      "other": "{count} races"
+    },
+    "memberCount": {
+      "one": "{count} member",
+      "few": "{count} members",
+      "other": "{count} members"
+    },
+    "resultCount": {
+      "one": "{count} result",
+      "few": "{count} results",
+      "other": "{count} results"
+    }
+  },
+  "rankings": {
+    "title": "BTL tables",
+    "men": "Men",
+    "women": "Women",
+    "season": "Season",
+    "myRow": "your row",
+    "categoryFilter": "Category",
+    "allCategories": "All",
+    "empty": "There is no result in this season and category.",
+    "columns": {
+      "position": "#",
+      "member": "Member",
+      "category": "Cat.",
+      "races": "Races",
+      "distance": "d (km)",
+      "ascent": "+ (m)",
+      "descent": "− (m)",
+      "time": "Time",
+      "points": "Points"
+    },
+    "rowCount": {
+      "one": "{count} competitor",
+      "few": "{count} competitors",
+      "other": "{count} competitors"
+    },
+    "rowCountWomen": {
+      "one": "{count} competitor",
+      "few": "{count} competitors",
+      "other": "{count} competitors"
+    }
+  },
+  "pair": {
+    "invite": "Invite into a racing pair",
+    "asked": "The invitation into a racing pair has been sent and is waiting for an answer.",
+    "inviteSubject": "An invitation into a racing pair",
+    "inviteBody": "{who} invites you into a racing pair. The pair comes into being only once you confirm, and it holds for the season beginning after 31 December.",
+    "accept": "Accept",
+    "refuse": "Decline",
+    "inviteClosed": "This invitation is no longer open.",
+    "brokenSubject": "The racing pair has been broken up",
+    "brokenBody": "{who} is in another racing pair from season {season}, so yours has been broken up.",
+    "sent": "Invitation sent: {who}.",
+    "received": "Invitation received: {who}.",
+    "endedBody": "The racing pair with {who} for season {season} has been broken up.",
+    "mine": "Racing pair",
+    "none": "Not in a racing pair.",
+    "breakUp": "Break up the racing pair",
+    "forSeason": "For season {season}."
+  },
+  "topBoards": {
+    "title": "Top boards",
+    "byLength": {
+      "short": "Most short races",
+      "long": "Most long races",
+      "half": "Most half marathons",
+      "marathon": "Most marathons",
+      "ultra": "Most ultramarathons"
+    },
+    "pairs": "Best racing pairs",
+    "pairsNone": "No racing pair has a race in common this season. A pair is made by confirmation on both sides, by 31 December at the latest, to hold in the season that follows, and it reaches this board once the two of them run the same race.",
+    "sharedRaces": {
+      "one": "{count} race in common",
+      "few": "{count} races in common",
+      "other": "{count} races in common"
+    },
+    "progress": "Best progress",
+    "progressEmpty": "On this board is whoever ran the season before as well and bettered its total, because what is measured is the gain against it. There is nobody like that this season.",
+    "bestRaces": "Best single results",
+    "kilometers": "Most kilometres",
+    "onCourse": "Longest on course",
+    "columns": {
+      "position": "#",
+      "member": "Member",
+      "race": "Race",
+      "points": "Points",
+      "gain": "Gain",
+      "previousSeason": "Previous season",
+      "distance": "d (km)",
+      "time": "Time on course"
+    },
+    "empty": "There is no result at all in this season.",
+    "place": "{position}. place"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "today": "Today",
+    "legend": "Legend:",
+    "dayTitle": "Races, {date}",
+    "dayEmpty": "There is no event at all on that day.",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "empty": "There is no event at all in this month.",
+    "more": "{count} more",
+    "weekdays": {
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat",
+      "7": "Sun"
+    },
+    "weekend": "Weekend",
+    "addOnDay": "New event on {date}",
+    "spanDays": "from {from} to {to}"
+  },
+  "race": {
+    "kind": {
+      "length": "By length",
+      "time": "By time",
+      "free": "Free"
+    }
+  },
+  "event": {
+    "raceDay": "Day",
+    "place": "Town",
+    "addComment": "Add a comment",
+    "commentTitle": "Rating and comment",
+    "commentIntro": "Ratings and comments are published once a moderator approves them.",
+    "rating": {
+      "organisation": "Organisation",
+      "value": "Value for money",
+      "ambience": "Atmosphere",
+      "overall": "Overall rating",
+      "stars": "{count} of {of}",
+      "unrated": "Not rated"
+    },
+    "commentText": "Comment",
+    "commentNeedsMarks": "Give all three ratings so that you can send.",
+    "commentSend": "Send",
+    "commentSending": "Sending",
+    "commentCancel": "Cancel",
+    "commentSent": "The rating has been sent for approval.",
+    "comments": "Comments",
+    "noComments": "There is no approved comment for this event yet.",
+    "organiserPage": "The organiser's page",
+    "races": "Races",
+    "competitor": "Competitor",
+    "distance": "Length",
+    "measure": "Measure",
+    "raceKind": "Kind",
+    "raceLimit": "Limit (h)",
+    "ascent": "Ascent",
+    "descent": "Descent",
+    "category": "Category",
+    "raceName": "Race",
+    "raceCategory": "Race category",
+    "options": "Options",
+    "enterResult": "Enter a result",
+    "enterResultNamed": "Enter a result: {race}",
+    "results": "Members' results",
+    "noResults": "No result has been entered from this event.",
+    "notFound": "There is no such event.",
+    "notRunYet": "This event has not been held yet",
+    "notRunYetWhy": "A result and a rating are entered only once the race has been run.",
+    "commentEventUnknown": "This event no longer exists.",
+    "copy": "Copying",
+    "delete": "Deleting",
+    "deleteAsk": {
+      "one": "Delete the event „{name}\" and {count} race of it? This cannot be undone.",
+      "few": "Delete the event „{name}\" and {count} races of it? This cannot be undone.",
+      "other": "Delete the event „{name}\" and {count} races of it? This cannot be undone."
+    },
+    "kind": {
+      "race": "Race",
+      "training": "Training",
+      "gathering": "Gathering"
+    },
+    "moreComments": "Load more comments",
+    "showingComments": "Showing {shown} of {total}",
+    "allComments": {
+      "one": "That is everything, {count} comment",
+      "few": "That is everything, {count} comments",
+      "other": "That is everything, {count} comments"
+    },
+    "ratedBy": {
+      "one": "out of {count} rating",
+      "few": "out of {count} ratings",
+      "other": "out of {count} ratings"
+    },
+    "fromEdition": "The {year} edition.",
+    "notRanIt": "This event is rated by those who ran it",
+    "notRanItWhy": "A rating is the experience of a race rather than an opinion of it, so it is given alongside a result entered at this event. Enter a result from the row of that race; once a moderator approves it, the rating opens.",
+    "going": "Who is going",
+    "goingOn": "I am going to this event",
+    "goingNobody": "Nobody has said so yet.",
+    "writeTo": "Write to {name}",
+    "writeSubject": "Arrangements for {event}",
+    "writeSend": "Send the message",
+    "written": "The message has been sent to {name}, into Messages on the portal.",
+    "someMember": "A League member",
+    "commentsForMembers": "Comments are seen by members who are signed in.",
+    "writeNeedsWords": "Write a message so that you can send it."
+  },
+  "category": {
+    "rookieMale": "Rookies",
+    "rookieFemale": "Rookies",
+    "short": "Short race",
+    "long": "Long race",
+    "half": "Half marathon",
+    "marathon": "Marathon",
+    "ultra": "Ultramarathon",
+    "unmeasured": "No set length"
+  },
+  "competitors": {
+    "title": "Competitors",
+    "search": "Search",
+    "searchPlaceholder": "A first name, a last name or a member number",
+    "empty": "There is no competitor matching the search.",
+    "columns": {
+      "member": "Member",
+      "category": "Cat.",
+      "city": "Town",
+      "races": "Races",
+      "points": "Points"
+    },
+    "count": {
+      "one": "{count} competitor",
+      "few": "{count} competitors",
+      "other": "{count} competitors"
+    }
+  },
+  "profile": {
+    "memberSince": "In the League since {season}.",
+    "inClub": "At {team} since {season}.",
+    "feeExempt": "Exempt from the fee",
+    "noTeam": "No team",
+    "allTime": "All",
+    "totals": "Totals",
+    "races": "Races",
+    "kilometers": "Kilometres",
+    "ascent": "Ascent",
+    "descent": "Descent",
+    "time": "Time on course",
+    "points": "Points",
+    "results": "Results",
+    "noResults": "There is no result on this profile yet.",
+    "columns": {
+      "date": "Date",
+      "event": "Event",
+      "race": "Race",
+      "distance": "d (km)",
+      "time": "Time",
+      "points": "Points",
+      "length": "Length"
+    },
+    "notFound": "There is no such profile.",
+    "byCategory": "Races by length",
+    "noneInFilter": "There is no result for the chosen season and length.",
+    "racesWord": {
+      "one": "race",
+      "few": "races",
+      "other": "races"
+    },
+    "categoryWord": {
+      "short": {
+        "one": "short race",
+        "few": "short races",
+        "other": "short races"
+      },
+      "long": {
+        "one": "long race",
+        "few": "long races",
+        "other": "long races"
+      },
+      "half": {
+        "one": "half marathon",
+        "few": "half marathons",
+        "other": "half marathons"
+      },
+      "marathon": {
+        "one": "marathon",
+        "few": "marathons",
+        "other": "marathons"
+      },
+      "ultra": {
+        "one": "ultramarathon",
+        "few": "ultramarathons",
+        "other": "ultramarathons"
+      }
+    },
+    "stats": "Summary statistics",
+    "bio": "In their own words",
+    "bioEmpty": "This competitor has not written anything about themselves yet.",
+    "length": "Length",
+    "allLengths": "All lengths",
+    "lengthsShort": {
+      "all": "All",
+      "short": "Short",
+      "long": "Long",
+      "half": "21.1 km",
+      "marathon": "42.2 km",
+      "ultra": "Ultra"
+    },
+    "noneInSeason": "There is no result at all in season {season}.",
+    "noneInLength": "There is no result of the chosen length.",
+    "clearFilters": "Clear the filters",
+    "parts": {
+      "label": "Parts of the profile",
+      "overview": "Overview",
+      "awards": "Awards and prizes"
+    },
+    "moreDucats": "Load more ducats",
+    "showingDucats": "Showing {shown} of {total}",
+    "allDucats": {
+      "one": "That is all, {count} ducat",
+      "few": "That is all, {count} ducats",
+      "other": "That is all, {count} ducats"
+    },
+    "bioEmptyFemale": "This competitor has not written anything about themselves yet.",
+    "moreResults": "Load more results",
+    "showingResults": "Showing {shown} of {total}",
+    "allResults": {
+      "one": "That is all, {count} result",
+      "few": "That is all, {count} results",
+      "other": "That is all, {count} results"
+    },
+    "memberNumberLabel": "Member number {number}"
+  },
+  "teams": {
+    "myTeam": "your team",
+    "title": "Teams",
+    "columns": {
+      "team": "Team",
+      "city": "Town",
+      "members": "Members",
+      "points": "Points"
+    },
+    "empty": "There are no teams.",
+    "about": "About the team",
+    "aboutEmpty": "This team has not written anything about itself yet.",
+    "members": "Members",
+    "noMembers": "This team has no members yet.",
+    "noMembersThatSeason": "This team had no members that season.",
+    "notFound": "There is no such team.",
+    "name": "Team",
+    "propose": "Propose a team",
+    "proposeTitle": "A team proposal",
+    "proposeSubmit": "Send the proposal",
+    "proposeSending": "Sending",
+    "proposeNote": "Why this team",
+    "proposeNote2": "The team exists only once a moderator approves it. Until then it is not visible anywhere on the portal.",
+    "proposeBody": "{city}, {country}. {note}",
+    "proposeDoneTitle": "The proposal has been sent",
+    "proposeDone": "The team „{name}\" is waiting for a moderator's decision. While it waits, it is not visible anywhere on the portal.",
+    "proposeShut": "A team is founded during the transfer window, from 1 October to 31 December.",
+    "edit": "Change",
+    "editTitle": "Changing the team",
+    "editSubmit": "Send the change",
+    "editNote": "The change goes through verification again. While it waits for a moderator's decision, the team's existing details stand on the portal.",
+    "editDoneTitle": "The change has been sent",
+    "editDone": "The change to the team „{name}“ is waiting for a moderator's decision. While it waits, the existing details stand on the portal.",
+    "proposeTaken": "A team under this name already exists in the League. Capital letters, diacritics and punctuation do not count as a difference, and Cyrillic and Latin are the same script. Choose another name.",
+    "proposeNoAddress": "No page address can be made from this name. Add at least one letter of our alphabet or of Cyrillic, or a digit.",
+    "proposeFormIncomplete": "The name, the town and the country must all be filled in.",
+    "proposeCountryUnknown": "The country chosen is not recognised.",
+    "proposeLinkNotShaped": "The link given is not valid.",
+    "join": "Apply to the team",
+    "joinTaken": "Take into the team",
+    "joinTakenNamed": "Take into the team: {name}",
+    "joinRefused": "Decline",
+    "joinRefusedNamed": "Decline: {name}",
+    "joinDoneSubject": "You have been taken into the team „{team}\"",
+    "joinDoneBody": "From the next season you run for the team „{team}\".",
+    "joinNoSubject": "The application to the team „{team}\" was not accepted",
+    "joinNoBody": "The team „{team}\" did not accept your application.",
+    "joinWithdraw": "Withdraw the application",
+    "joinWaiting": "Applications waiting",
+    "invite": "Invite into the team",
+    "invited": "The invitation into the team „{team}\" has been sent.",
+    "inviteSubject": "An invitation into the team „{team}\"",
+    "inviteBody": "The team „{team}\" invites you to run for them from the next season.",
+    "inviteAccept": "Accept",
+    "inviteRefuse": "Decline",
+    "inviteSent": "Invitations sent",
+    "inviteAccepted": "You have accepted this invitation and from the next season you run for the team „{team}\".",
+    "inviteOvertaken": "You have joined the team „{team}\" in the meantime, so this invitation no longer stands.",
+    "inviteClosed": "This invitation no longer stands.",
+    "inviteGone": "The team that invited you no longer exists.",
+    "inviteWaits": "The invitation waits: a team is joined during the transfer window only, from 1 October to 31 December.",
+    "inviteMissedSubject": "An invitation into the team went unanswered",
+    "inviteMissedBody": "{name} has joined the team „{team}\" in the meantime, so your invitation no longer stands."
+  },
+  "leagues": {
+    "title": "Competitions",
+    "season": "Season {season}.",
+    "events": "Events",
+    "entrants": "Entrants",
+    "notFound": "There is no such competition.",
+    "rules": "Terms",
+    "prizes": "Prizes",
+    "counting": "Events and races",
+    "countingOf": "Events and races, {name}",
+    "noCounting": "No race has been assigned to this competition yet.",
+    "none": "There is no further competition at the moment.",
+    "standing": "Competition standing",
+    "noResults": "There is no result at all in this competition yet.",
+    "noneOfThese": "There is no result in this competition in the division chosen.",
+    "unknown": "unknown",
+    "notWritten": "Not written yet.",
+    "name": "Competition"
+  },
+  "pricing": {
+    "rows": {
+      "early": "1 to 5 October",
+      "regular": "6 October to 30 November",
+      "late": "1 to 31 December",
+      "season": "1 January to 30 September",
+      "junior": "Aged fourteen and under",
+      "referral": "Referral of a new member"
+    },
+    "title": "Membership price list",
+    "periodName": "Period",
+    "period": "Holds",
+    "ranking": "The right to be ranked",
+    "rankingByPeriod": "By the period of payment",
+    "everyPayment": "Every payment",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "error": {
+    "title": "Something broke",
+    "text": "This part of the page did not load properly. Refresh the page, and if it happens again, let us know."
+  },
+  "signIn": {
+    "title": "Sign in",
+    "email": "Email address",
+    "password": "Password",
+    "submit": "Sign in",
+    "sending": "Signing in",
+    "needed": "This needs a sign-in",
+    "neededText": "This part of the portal is seen by members only.",
+    "noRecord": "This part is for competitors",
+    "noRecordText": "You are signed in, but there is no competitor record on this account, so there is nothing to show here.",
+    "needsBoth": "Enter an address and a password so that you can sign in.",
+    "refused": "The sign-in did not succeed. The address or the password is wrong, or the account is locked for a while after too many failed attempts.",
+    "noWho": "The sign-in went through, but the portal did not manage to learn who you are. Refresh the page, and if it happens again, let us know."
+  },
+  "newPassword": {
+    "title": "A new password",
+    "intro": "Enter a new password for your account and repeat it.",
+    "password": "New password",
+    "passwordRepeat": "Repeat the new password",
+    "passwordHint": "At least {count} characters. There is no other condition, but the password must not be one that has already appeared in publicly published breaches.",
+    "submit": "Set the password",
+    "sending": "Sending",
+    "done": "The password is set. You can sign in now.",
+    "noToken": "This address carries no link from a message, so there is nothing to set. Open the link in the message the portal sent you.",
+    "linkIsNotValid": "The link has expired or has already been used. Ask for a new one from the sign-in page.",
+    "formIsNotComplete": "Both passwords must be filled in, the same, and at least {count} characters long.",
+    "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another."
+  },
+  "confirmAddress": {
+    "title": "Address confirmation",
+    "working": "We are confirming the address, just a moment.",
+    "done": "The address is confirmed. You can sign in now.",
+    "noToken": "This address carries no link from a message, so there is nothing to confirm. Open the link in the message the portal sent you.",
+    "linkIsNotValid": "The link has expired or has already been used. Ask for a new one from the sign-in page."
+  },
+  "server": {
+    "signIn": "Sign-in",
+    "refused": "The server refused the request with the reason {reason}, which this screen does not recognise.",
+    "rejected": "The portal did not manage to prove to the server that the request comes from this page. Refresh the page and try again.",
+    "wrong": "The server answered with the number {status} and nothing was changed. Try again in a few minutes.",
+    "nothing": "The portal did not manage to reach the server. Check the connection and try again.",
+    "named": "from the server"
+  },
+  "myProfile": {
+    "signOut": "Sign out",
+    "notifications": "Notices",
+    "notificationsNote": "Six obligatory emails cannot be switched off: the account confirmation, a password change, a result entered and a result changed, a further request to check something, and a major change on the portal. Everything else is below.",
+    "notify": {
+      "resultApproved": "When a result of mine is approved",
+      "resultChanged": "When somebody changes a result of mine",
+      "newsletter": "Occasional news from the League"
+    }
+  },
+  "myResults": {
+    "title": "My results",
+    "add": "Enter a result",
+    "sentIn": "Sent to be checked",
+    "sendAgain": "Correct and send again",
+    "sendAgainNamed": "Correct and send again: {name}",
+    "change": "Change",
+    "changeNamed": "Change the result: {name}",
+    "own": "Mine",
+    "noneSent": "No result has been sent to be checked yet.",
+    "counted": "Counted"
+  },
+  "newResult": {
+    "title": "Entering a result",
+    "submit": "Send to be checked",
+    "note": "The result enters the boards only once an administrator approves it. While it waits, only you see it.",
+    "again": "You are correcting a result that was refused. The reason was: {reason}",
+    "changing": "You are changing a result that is still waiting to be checked. Once you send it, it goes back to the end of the queue.",
+    "fixingCounted": "You are changing a result that is already counted. Until the change is approved, it leaves the standing, and new proof has to go with it.",
+    "needsProof": "A change to a counted result must carry a link to the official results or a picture as proof.",
+    "needsTime": "A time must be entered. Hours, minutes and seconds cannot all be zero.",
+    "pointsNotFinal": "The reckoning is not final. The League confirms it at verification, and the number can change.",
+    "againDone": "The result has been sent to be checked again.",
+    "raceName": "Race name",
+    "raceKind": "The kind of race",
+    "raceKindHint": "A race by length has a set length, a race by time a set duration, and a free race has no specification.",
+    "city": "Town",
+    "date": "Race date",
+    "distanceKm": "Length (km)",
+    "ascentM": "Ascent (m)",
+    "descentM": "Descent (m)",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "seconds": "Seconds",
+    "link": "A link to the official results",
+    "linkHint": "Required, unless you attach pictures of the results or of an app as proof.",
+    "photo": "A picture as proof",
+    "doneTitle": "The result has been sent",
+    "donePoints": "This race brings you {points} BTL points.",
+    "doneWaiting": "A moderator is checking it. Once it is confirmed, it enters the boards and your profile.",
+    "toMine": "My results",
+    "another": "Enter another one",
+    "photoHint": "A shot from a watch, a certificate or something else. A comment becomes required, and the link to the results becomes optional.",
+    "comment": "Comment"
+  },
+  "status": {
+    "pending": "Waiting to be checked",
+    "approved": "Approved",
+    "rejected": "Refused"
+  },
+  "messages": {
+    "title": "Messages",
+    "unread": {
+      "one": "{count} unread",
+      "few": "{count} unread",
+      "other": "{count} unread"
+    },
+    "empty": "You have no messages.",
+    "markRead": "Mark as read"
+  },
+  "membership": {
+    "title": "My fee",
+    "noRecordTitle": "Your membership data has not arrived",
+    "noRecord": "The portal cannot read your membership record, so renewing the fee is not possible right now. Refresh the page and try again.",
+    "status": "State",
+    "active": "A member since the {season} season.",
+    "feeExempt": "You are exempt from paying the fee for season {season}, by a decision of the Board.",
+    "notYetSold": "The fee is not on sale yet. Collection starts on 1 October.",
+    "junior": "Anybody who is fourteen or younger on at least one day of the season pays {eur} EUR, and {rsd} RSD from Serbia, whatever the date of payment.",
+    "byCountry": "The ways of paying depend on the country on your profile ({country}).",
+    "ips": "A payment slip with a QR code",
+    "ipsNote": "Scan the code in your bank's app. The amount, the payee and the reference number are already filled in.",
+    "card": "Card",
+    "cardNote": "Card payment goes through a provider, on the provider's page. Card details never pass through the portal. A provider has not been chosen yet.",
+    "paypal": "PayPal",
+    "paypalNote": "The account is a business one, in the name of the BTL sports association. PayPal is not offered to members from Serbia, because paying with it between residents of Serbia is not allowed.",
+    "ipsQrLabel": "The IPS QR code for the payment slip",
+    "showPayload": "Show the contents of the code",
+    "renewal": "Renewing the fee for {season}.",
+    "renewalOpen": "Renewal is open. You do not register again: the member number, the profile and the history stay yours.",
+    "renewalShut": "Renewal opens on 1 October and lasts until 31 December.",
+    "chooseCategory": "Which category you compete in for {season}.",
+    "ageBand": "In my age category",
+    "firstSeasonBand": "In the rookie category",
+    "firstSeasonOpen": "The rookie category is still open to you, because you have not finished any official season with {points} points or more.",
+    "firstSeasonClosed": "The rookie category is closed to you, because you finished an official season with {points} points or more. Leaving it cannot be undone.",
+    "renew": "Renew for {season}.",
+    "transferWindow": "Transfer window",
+    "noTeam": "You are not in any team at the moment.",
+    "inTeam": "You are in the team {team} at the moment.",
+    "transferOpen": "The transfer window is open until 31 December at 23.59. The change takes effect on 1 January {season}.",
+    "transferShut": "The transfer window is closed. It opens on 1 October and lasts until 31 December. If nothing is agreed by then, you stay where you are.",
+    "askToJoin": "Send a request to the team",
+    "payNow": "Payment slip",
+    "details": "The payment details",
+    "toWhom": "Payee",
+    "account": "Account",
+    "reference": "Reference number",
+    "purposeLabel": "Purpose of payment",
+    "referenceNote": "The reference number is what a payment is recognised by. Without it the fee arrives, but there is no telling whose it is.",
+    "priceNow": "Today the fee costs {eur} EUR, and {rsd} RSD from Serbia.",
+    "costs": "A payment in euros also carries a payment processing charge of {fee} EUR, which is not part of the fee but the cost of processing at the payment intermediary, and the exchange difference and your bank's charge remain yours. A payment in dinars carries neither a charge nor an exchange difference.",
+    "referral": "The referral programme",
+    "referralNote": "Everybody who joins through your link and activates a fee brings you {amount} onto your balance. Not at the moment of the application but once the fee is activated.",
+    "balance": "on the balance",
+    "balanceNote": "The balance pays for future fees. It is not paid out in money and is not transferred to another member.",
+    "feeExemptNoRenewal": "You are exempt from paying the fee, so there is nothing to pay.",
+    "amountLabel": "Amount"
+  },
+  "review": {
+    "title": "The queue for checking results",
+    "waiting": "Waiting to be checked",
+    "empty": "There is no result waiting at all.",
+    "approve": "Approve",
+    "sendBack": "Refuse",
+    "newRace": "NEW",
+    "newRaceTitle": "This race is not in the calendar. Approving it creates the event and the race.",
+    "sweptLeft": {
+      "one": "{count} report is left from races that are not in the calendar. Such a report is approved on its own, because doing so creates the event and the race.",
+      "few": "{count} reports are left from races that are not in the calendar. Each is approved on its own, because doing so creates the event and the race.",
+      "other": "{count} reports are left from races that are not in the calendar. Each is approved on its own, because doing so creates the event and the race."
+    },
+    "amend": "Correct",
+    "amendTitle": "Correction before deciding",
+    "amendEvent": "Event name",
+    "amendSave": "Save the correction",
+    "amendCancel": "Cancel",
+    "amendNote": "You are changing what the competitor reported, before you decide. The kind he chose is only a hint. On a race by time the time is the duration of the race, the same for everybody who finished.",
+    "sendBackNamed": "Refusing: {name}",
+    "reason": "Reason for refusing",
+    "reasonPlaceholder": "Nothing is refused without a reason. The member receives your reason in a message.",
+    "reasonKeptPlaceholder": "Nothing is refused without a reason. No message goes out, because there is nobody to send it to.",
+    "instructionPlaceholder": "Write exactly what has to change in the picture for it to be accepted.",
+    "proof": "Attachment: {file}",
+    "unusableLink": "The member sent an address the portal does not open.",
+    "decision": "Decision",
+    "confirmSendBack": "Refuse with this reason",
+    "cancel": "Cancel",
+    "statement": {
+      "title": "A bank statement",
+      "choose": "Choose a statement PDF",
+      "taken": "The statement {name} has been taken. Reconciling by reference number will be the server's work; until then you confirm payments by hand.",
+      "wrongKind": "A statement must be a PDF. This file is not, so it was not taken."
+    },
+    "reasonNeeded": "Enter a reason so that you can send."
+  },
+  "admin": {
+    "title": "Administration",
+    "sectionNav": "The {name} section",
+    "members": "Members",
+    "events": "Events",
+    "basis": "Membership basis",
+    "basisValue": {
+      "payment": "Payment",
+      "feeExempt": "Exempt from the fee"
+    },
+    "pricing": "Price list",
+    "ranking": "The right to be ranked",
+    "rankingByPeriod": "By the period of payment",
+    "yes": "Yes",
+    "no": "No",
+    "eventTaken": "An event with that name already exists in that year. Change the name or the year: the address is made from the name and the year.",
+    "racesOf": "The races at the event {event}",
+    "noRaces": "This event has no race yet.",
+    "searchEvents": "A name or a town",
+    "showing": "Showing: {count}",
+    "waitingForResults": "Deleting is waiting for the results",
+    "resultsFailed": "Deleting is not possible: the results cannot be loaded",
+    "ofMany": "of {count} in all. Narrow the search to see the others.",
+    "change": "Change",
+    "races": "Races",
+    "teams": "Teams",
+    "leagues": "Competitions",
+    "pages": "Written pages",
+    "organizer": "Organiser",
+    "noOrganizer": "No organiser",
+    "noEvents": "No events",
+    "moderators": "Moderators",
+    "pageTitle": "Title",
+    "address": "Address",
+    "noAddress": "Stands inside other pages",
+    "sections": "Section",
+    "form": {
+      "record": "Record",
+      "open": "Open",
+      "openNamed": "Open: {name}",
+      "back": "Back to the list",
+      "saved": "Saved",
+      "savedNote": "This has been kept. Check the values; if something is not right, go back to the list and open the record again.",
+      "new": {
+        "members": "A new member",
+        "events": "A new event",
+        "races": "A new race",
+        "teams": "A new team",
+        "leagues": "A new competition",
+        "pages": "A new page",
+        "moderators": "A new moderator"
+      },
+      "copying": "Copying an event",
+      "edit": {
+        "members": "Changing a member",
+        "events": "Changing an event",
+        "races": "Changing a race",
+        "teams": "Changing a team",
+        "leagues": "Changing a competition",
+        "pricing": "Changing a price list row",
+        "pages": "Changing a page",
+        "moderators": "Changing a moderator"
+      },
+      "delete": "Delete",
+      "removeRow": "Delete race {which}",
+      "raceNumber": "Race {which}",
+      "nextSeason": "The same place in the calendar next year",
+      "nextWeek": "Exactly seven days after the event copied",
+      "racesRefused": "Every race must have a name and a day; the fields marked show what is still missing. The ascent and the descent may stay empty; they are then read as 0.",
+      "deleteNamed": "Delete: {name}",
+      "deleteSure": "Are you sure?",
+      "deleteSureNamed": "Confirm the deletion: {name}",
+      "keep": "Cancel",
+      "keepNamed": "Cancel the deletion: {name}"
+    },
+    "field": {
+      "memberNumber": "Member number",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "gender": "Gender",
+      "ageBand": "Age category",
+      "city": "Town",
+      "firstSeason": "In the League since season",
+      "firstSeason2027": "Rookie category",
+      "eventName": "Event name",
+      "date": "Date",
+      "event": "Event",
+      "raceDate": "Date",
+      "raceName": "Race",
+      "distanceKm": "Length (km)",
+      "limitHours": "Limit (h)",
+      "ascentM": "Ascent (m)",
+      "descentM": "Descent (m)",
+      "category": "Category",
+      "categoryFromDistance": "It will be set once a length is entered",
+      "teamName": "Team name",
+      "teamOrganizer": "Team organiser",
+      "leagueName": "Competition name",
+      "priceLabel": "Period name",
+      "eur": "The amount in euros",
+      "rsd": "The amount in dinars",
+      "pageTitle": "Page title",
+      "sectionHeading": "First section heading",
+      "sectionBody": "First section text",
+      "email": "Email address",
+      "eventSlug": "Event address",
+      "teamSlug": "Team address",
+      "kind": "The kind of event",
+      "country": "Country",
+      "featured": "Featured",
+      "eventDescription": "Event description",
+      "eventLink": "Link to the organiser’s page",
+      "rowLabel": "Name"
+    },
+    "value": {
+      "genderM": "Male",
+      "genderF": "Female",
+      "ageBand24": "24 and under",
+      "ageBand2539": "25 to 39",
+      "ageBand4054": "40 to 54",
+      "ageBand55": "55 and over"
+    },
+    "pricingFixed": "The periods are fixed and repeat every year, so rows are neither added nor deleted. What changes is the prices and the names of the periods.",
+    "period": "Period in the year",
+    "everyPayment": "Every payment",
+    "processingFee": "A payment in euros is larger on the statement by a payment processing charge of {fee} EUR. The charge is not part of the fee and is not entered in the price list.",
+    "raceTaken": "This event already has a race of that length on that day. Nobody can tell apart two races that differ in nothing at all.",
+    "referral": "Referral",
+    "corrected": "Corrected",
+    "referralNote": "The amount put onto the referrer's balance once a new member's fee is activated. The price list is the source of that amount: the members' page and the terms of use speak of it. It is set up to 1 October, for the season that then begins to be renewed; from that day it stands.",
+    "referralSettled": "The referral amount for season {season} does not change any more. The renewal of that season has been open since 1 October, and the amount is set up to that day.",
+    "referralOpen": "The amount you enter now holds for season {season}, because it is set up to 1 October. The portal remembers one amount and does not remember the earlier ones, so the same entry also changes the amount that stands from this moment on. An amount per season comes with the database.",
+    "referralRunning": "Season {season} is already under way. Its amount was locked on 1 October of the year before, and this entry changes it all the same, because the portal holds one amount.",
+    "leagueRaces": "Competition races",
+    "leagueRacesOf": "Competition races, {name}",
+    "chooseEvent": "Event",
+    "chooseNothing": "Choose an event",
+    "chooseRace": "Race",
+    "wholeEvent": "The whole event",
+    "addRace": "Add to competition",
+    "dropRace": "Drop",
+    "dropRaceNamed": "Drop the race {race} from the competition",
+    "noEventsOfSeason": "There is no event from season {season} in the calendar.",
+    "leagueRaceAdded": "The race has been added to the competition.",
+    "leagueRaceDropped": "The race has been dropped from the competition.",
+    "leagueRefused": {
+      "theSeasonIsFrozen": "The season of this competition is frozen, so a race is no longer added. Dropping still works.",
+      "theRaceIsNotOfTheLeaguesSeason": "That race is not from the season of this competition.",
+      "theEventHoldsNoRaces": "That event has no race yet.",
+      "theRaceIsNotKnown": "The portal does not know that race.",
+      "theEventIsNotKnown": "The portal does not know that event.",
+      "theRaceIsNotSaidOnce": "Either the whole event or one race of it has to be chosen.",
+      "unknown": "The portal did not accept the change. Refresh the page and try again."
+    },
+    "leagueSaveRefused": {
+      "theFormIsNotComplete": "A name, an address or a season is missing.",
+      "theAddressIsNotShaped": "An address may have only lower-case letters and digits, with a single hyphen between them. It must neither begin nor end with a hyphen.",
+      "theAddressIsTaken": "There is already a competition at that address.",
+      "theSeasonIsNotThisOneOrTheNext": "A competition is made for the current or the next season only.",
+      "theSeasonIsFrozen": "The season of this competition is frozen, so the competition is no longer changed. Deleting still works.",
+      "theSeasonCannotMoveWhileRacesCount": "The season cannot be moved while the competition counts even one race. Drop the races first, then change the season."
+    },
+    "leagueGone": "The competition has been deleted.",
+    "leagueSavedUnseen": "The competition has been saved, but the portal cannot show it in this list. Refresh the page.",
+    "leagueTextSaved": "The change has been saved."
+  },
+  "ducats": {
+    "title": "Ducats",
+    "empty": "The League has not brought in a single ducat yet.",
+    "sentence": "A ducat is awarded once {kind} is at least {value}",
+    "ever": ", reckoned across every season.",
+    "everyMonth": ", reckoned for each month, starting from January {season}.",
+    "everySeason": ", reckoned for each season, starting from season {season}.",
+    "again": " It repeats every {step} {counted}, up to {last}.",
+    "stepUp": " From {upFrom} {counted} it is worth one tier more.",
+    "tier": {
+      "1": "Worth 1 of 5, a bronze ducat.",
+      "2": "Worth 2 of 5, a silver ducat.",
+      "3": "Worth 3 of 5, a gold ducat.",
+      "4": "Worth 4 of 5, a gold ducat with a full rim.",
+      "5": "Worth 5 of 5, a ducat with a golden face."
+    },
+    "kind": {
+      "raceCount": "the number of races",
+      "marathonCount": "the number of marathons",
+      "halfCount": "the number of half marathons",
+      "longCount": "the number of long races",
+      "shortCount": "the number of short races",
+      "ultraCount": "the number of ultramarathons",
+      "totalKm": "the total number of kilometres",
+      "totalAscent": "the total ascent in metres",
+      "totalDescent": "the total descent in metres",
+      "totalTime": "the total number of hours on course",
+      "points": "the number of points",
+      "countryCount": "the number of countries",
+      "seasonCount": "the number of seasons",
+      "bestRacePoints": "the most points in a single race",
+      "bestRaceKm": "the most kilometres in a single race",
+      "bestRaceAscent": "the most ascent in a single race"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "intro": "The settings hold for your account on every device.",
+    "appearance": "Appearance",
+    "privacy": "Privacy",
+    "hideProfile": "Hide my profile from visitors who are not signed in",
+    "hideProfileNote": "The name stays in the tables and on the boards, because without it ranking everybody together would lose its point. What is hidden is only your profile page, and only from those who are not signed in.",
+    "themeLabel": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "notifications": "Notices"
+  },
+  "rights": {
+    "title": "Moderators' rights",
+    "intro": "A row is a moderator, a column is a right. A box is remembered the moment it is pressed, there is no button to save. The rights are in two groups because they are two different actions: editing changes a record, while deciding lets somebody else's work through or sends it back.",
+    "superadminNote": "The Superadmin is not in this table. He may do everything, always, so there is nothing to grant him or take from him.",
+    "moderator": "Moderator",
+    "given": "Rights",
+    "none": "Without a single right",
+    "granted": {
+      "one": "{count} right",
+      "few": "{count} rights",
+      "other": "{count} rights"
+    },
+    "box": "{who}, {action}",
+    "groupEntities": "Editing records",
+    "groupQueues": "Deciding in the verification queues",
+    "column": {
+      "entity": {
+        "members": "Members",
+        "events": "Events",
+        "teams": "Teams",
+        "leagues": "Competitions",
+        "pricing": "Price list",
+        "pages": "Pages"
+      },
+      "queue": {
+        "results": "Results",
+        "payments": "Payments",
+        "teams": "New teams",
+        "profiles": "Racing profile",
+        "comments": "Comments"
+      }
+    },
+    "action": {
+      "entity": {
+        "members": "editing members",
+        "events": "editing events",
+        "teams": "editing teams",
+        "leagues": "editing competitions",
+        "pricing": "editing the price list",
+        "pages": "editing the written pages"
+      },
+      "queue": {
+        "results": "deciding on results",
+        "payments": "deciding on payments",
+        "teams": "deciding on new teams",
+        "profiles": "deciding on racing profiles",
+        "comments": "deciding on comments"
+      }
+    }
+  },
+  "entities": {
+    "title": "Records"
+  },
+  "verification": {
+    "waitingForMembers": "The decision is waiting for the list of members, so that it is known whether the applicant already has a team.",
+    "membersFailed": "A decision is not possible: the list of members cannot be loaded, and without it there is no telling whether the applicant already has a team.",
+    "teamMemberHasTeam": "The applicant is already in a team, so this proposal cannot be approved. A member may be in one team only.",
+    "teamGone": "The team this change applies to has been deleted in the meantime, so there is nothing to change. Refuse the change with an explanation.",
+    "teamNotYours": "This change was sent by a member who no longer administers that team, so it cannot be approved. Refuse the change with an explanation.",
+    "openCard": "Show",
+    "openCardNamed": "Show: {name}",
+    "foldCard": "Hide",
+    "foldCardNamed": "Hide: {name}",
+    "title": "Verification",
+    "shortCount": "One source of data is unavailable, so some numbers may be smaller than the real ones. Refresh the page; if it happens again, report the fault.",
+    "empty": "There is no item waiting at all.",
+    "approveAll": "Approve all",
+    "approveAllAsk": {
+      "one": "Approve {count} item? This cannot be undone.",
+      "few": "Approve {count} items? This cannot be undone.",
+      "other": "Approve {count} items? This cannot be undone."
+    },
+    "approveAllAskTeams": {
+      "one": "{count} item is waiting in the queue. Approve everything that can be approved? This cannot be undone.",
+      "few": "{count} items are waiting in the queue. Approve everything that can be approved? This cannot be undone.",
+      "other": "{count} items are waiting in the queue. Approve everything that can be approved? This cannot be undone."
+    },
+    "subject": "Subject",
+    "teamChange": "A change to an existing team",
+    "teamChangeOf": "A change to the team „{name}“",
+    "teamChangeAccepted": "The change to the team „{name}“ has been accepted",
+    "teamChangeAcceptedBody": "The details of the team „{name}“ have been changed. A moderator may correct what you sent before accepting it, so have a look at the team's page.",
+    "sentBy": "Sent by {who}, member {memberNumber}",
+    "sentByAnonymous": "Reported by a visitor without an account",
+    "activatePayment": "Record the payment",
+    "activateFeeExempt": "Exempt from the fee",
+    "body": {
+      "leagues": "Competition description",
+      "teams": "The reasoning",
+      "bio": "Biography text",
+      "photo": "File",
+      "teamEdit": "The reasoning",
+      "comments": "Comment"
+    },
+    "results": "Results",
+    "payments": "Payments and activating members",
+    "teams": "New teams",
+    "profiles": "Racing profile",
+    "comments": "Comments",
+    "fromResults": "A result enters the tables only after approval",
+    "fromPayments": "A member becomes a full one once a payment is recorded",
+    "fromTeams": "A new team is approved by the Superadmin or by a moderator with the right over this queue",
+    "fromProfiles": "A member writes a text about themselves and sends a picture; both are approved or sent back with a reason that arrives in a message",
+    "fromComments": "A comment is accepted or deleted, at once and without an explanation",
+    "delete": "Delete",
+    "deleteNamed": "Delete: {name}",
+    "deleteBox": "Deleting a comment: {name}",
+    "deleteNote": "A note about the deletion",
+    "deleteNotePlaceholder": "Why it was taken down, for the moderators. It may stay empty.",
+    "confirmDelete": "Delete the comment",
+    "pictureAlt": "The picture sent by {who}, with the part that will be seen framed",
+    "resultReturned": "The result has been sent back",
+    "paymentReturned": "The application has been sent back",
+    "teamReturned": "The team proposal has been sent back",
+    "teamChangeReturned": "The change to the team has been sent back",
+    "bioReturned": "The text about yourself has been sent back",
+    "photoReturned": "The profile picture has been sent back",
+    "noRecipient": "This item has no member for an answer to reach, so it is not refused from this queue. Approve it or report the fault; a message without a recipient would go to the whole League.",
+    "numbersGiven": "The member numbers given",
+    "noNumbersYet": "No number has been given on this screen yet.",
+    "activateAllPayment": "Activate all on the basis of payment",
+    "activateAllAsk": {
+      "one": "Activate {count} membership on the basis of payment? Each one gets a member number and this cannot be undone.",
+      "few": "Activate {count} memberships on the basis of payment? Each one gets a member number and this cannot be undone.",
+      "other": "Activate {count} memberships on the basis of payment? Each one gets a member number and this cannot be undone."
+    },
+    "approveAllDone": {
+      "one": "{count} item has been settled.",
+      "few": "{count} items have been settled.",
+      "other": "{count} items have been settled."
+    },
+    "teamAccepted": "The team „{name}\" has been accepted",
+    "teamAcceptedBody": "Your proposal for the team „{name}\" has been accepted. You are its organiser.",
+    "teamTaken": "A team under this name, or under a name that gives the same address, already exists in the League. Correct the name or refuse the proposal.",
+    "teamNoAddress": "No page address can be made from this name. Correct the name so that it has at least one letter of our alphabet or of Cyrillic, or a digit, or refuse the proposal.",
+    "teamIncomplete": "The name, the town and the country must all be filled in for the team to come into being.",
+    "teamNoMember": "This proposal has no member who sent it, so there is nobody to be the organiser of the team and nobody to receive an answer."
+  },
+  "rulebook": {
+    "onThisPage": "On this page",
+    "openSections": "Rulebook sections"
+  },
+  "awards": {
+    "trophies": "Trophies",
+    "ducats": "Ducats",
+    "board": "Board",
+    "place": "Place",
+    "overall": "Overall placing",
+    "category": "Category {category}",
+    "position": "{position}. place",
+    "empty": "This competitor has no trophy yet.",
+    "noneInSeason": "No trophy was won in the season chosen.",
+    "noDucats": "No ducat yet."
+  },
+  "report": {
+    "title": "Reporting a result",
+    "submit": "Send the result",
+    "note": "You are reporting a result from the race {race}. The portal already knows the length, the ascent and the descent from the race itself.",
+    "noteTime": "You are reporting a result from the race {race}. The portal already knows the time from the race itself and it is the same for everybody who finished; enter how far you got.",
+    "noteFree": "You are reporting a result from the race {race}. This race sets neither a length nor a time, so enter both.",
+    "noRaces": "This event has no race yet, so there is nothing to report.",
+    "noRace": "A result is entered from the row of a race, on the event's page."
+  },
+  "pager": {
+    "showing": "Showing {first} to {last} of {rows}",
+    "page": "Page {page} of {pages}",
+    "previous": "Previous",
+    "next": "Next",
+    "leagueStanding": "The pages of the competition standing"
+  },
+  "crop": {
+    "choosing": "Cropping the picture",
+    "framed": "The part of the picture inside the circle is what will be seen. The rest is darkened, but still shows through.",
+    "tooSmall": "The picture is too small. Its shortest side has to be at least {least} pixels, so that the circle stays sharp everywhere it is shown.",
+    "unreadable": "This picture cannot be opened. Choose another one, in JPG or PNG form for instance.",
+    "x": "Move left and right",
+    "y": "Move up and down",
+    "size": "The size of the crop",
+    "share": "{share}%"
+  },
+  "bio": {
+    "title": "About yourself",
+    "standing": "This is what stands on your profile now. A change goes to a moderator for approval, and while it waits, the old text stays on the profile.",
+    "none": "You have not written anything about yourself yet. Once you send it, a moderator looks the text over before it appears on the profile.",
+    "send": "Send for approval",
+    "writeFirst": "Write something so that you can send it.",
+    "changeFirst": "Change the text so that you have something to send.",
+    "waitingNote": "Your text is waiting for approval. If a moderator sends it back, the message says what you have to change."
+  },
+  "picture": {
+    "title": "Profile picture",
+    "none": "The portal has no photograph yet, so the circle beside your name holds your initials. Send a picture and a moderator will look it over.",
+    "waitingNote": "Your picture is waiting for approval. If a moderator sends it back, the message says what you have to change.",
+    "choose": "Choose a new picture",
+    "send": "Send for approval",
+    "chooseFirst": "Choose a picture so that you can send it.",
+    "chosenAlt": "The picture you chose, with the part that will be seen framed",
+    "sentAlt": "The picture you sent for approval, with the part that will be seen framed"
+  },
+  "account": {
+    "personalTitle": "Personal details",
+    "personalNote": "A change here takes effect at once, without approval. The picture and the text about yourself go to a moderator to be looked over, and there are separate sections for them below.",
+    "notShown": "The portal is not showing you what is entered here at the moment. If you leave it empty, nothing changes; what you enter becomes the new value.",
+    "save": "Save",
+    "changeFirst": "Change something so that you have something to save.",
+    "saved": "Saved.",
+    "lockedTitle": "Details that are not changed here",
+    "category": "Category",
+    "lockedNote": "Gender and the date of birth are changed by the administration only, because the category and the age group are worked out from them. If a member changed them himself, he would be choosing which category he runs in and changing a standing already run, backwards.",
+    "birthDateNote": "The date of birth is not shown here: the portal does not keep it with your public record, and the Statute asks that it not be shown either in full or in short. Public is only the category that follows from it.",
+    "cityNote": "A town is chosen from the codebook of settlements, so for now it is changed through the administration. A town chooser on this screen does not exist yet.",
+    "emailNote": "You change the email address yourself, but you have to confirm the new one, because it is also your sign-in to the portal. The confirmation has not been built yet, so the field is locked.",
+    "nothingToSave": "The server found no change at all in the request. Refresh the page and try again.",
+    "fieldIsBlank": "One of the required fields was left empty. Fill it in and save again.",
+    "fieldIsTooLong": "One field is longer than the portal takes. Shorten it and save again.",
+    "notYoursToChange": "Gender and the date of birth are changed by the administration only, so the server does not take that change.",
+    "townNotSaidOnce": "A town has to be given exactly once: either from the codebook, or as a name entered together with a country.",
+    "townNotKnown": "The server does not recognise the town or the country given. Choose a town from the codebook.",
+    "textIsTooLong": "The text about yourself is longer than the portal takes. Shorten it and send again.",
+    "textAlreadyWaits": "Your text is already waiting for approval, so a new one cannot be sent until it has been decided on.",
+    "passwordTitle": "Password",
+    "oldPassword": "The current password",
+    "newPassword": "New password",
+    "repeatPassword": "Repeat the new password",
+    "passwordSignsOthersOut": "When you change the password, you will be signed out on every other device. This one stays signed in.",
+    "passwordSubmit": "Change the password",
+    "passwordFillFirst": "Fill in all three fields so that you can change the password.",
+    "passwordDone": "The password has been changed. The other devices have been signed out.",
+    "passwordFormIsNotComplete": "All three fields must be filled in, and the two new ones the same and at least {count} characters long.",
+    "oldPasswordIsWrong": "The current password is not right. Try again.",
+    "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another."
+  }
+}
