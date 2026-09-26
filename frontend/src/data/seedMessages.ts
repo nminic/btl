@@ -30,6 +30,26 @@ import { priceOn, REGISTRATION_OPENS, SEASON } from './pricing'
    season is read the same way: it was the one fact here still written out, and moving the
    league's first year would have left every member greeted with a season that had passed
    (review, same day). */
+/* **BOUNDARY, AND IT IS THE ONE PLACE LEFT THAT QUOTES A PRICE OUT OF THE BUNDLE
+   (26.09.2026).** On that day the three SCREENS that quote a price moved to
+   `GET /api/pricing`, and this did not. Two reasons, and both are about what this is rather
+   than about effort:
+
+   - **It is a seeded RECORD and not a screen** - see `FIRST_MESSAGES` below, which says so
+     in its own words: „they stand in for rows a database will hold, exactly as
+     `public/mock/*.json` does for everything else". The day the inbox is served, this whole
+     file goes, and the message goes with it. A price fetched to build a fixture is a
+     request nothing needs.
+   - **It is a constant evaluated when the module loads**, which is before any component
+     exists to hold a resource. Reading a route here would mean turning a seeded record into
+     something asynchronous, for a message dated 20.07.2026.
+
+   **What that costs, said plainly rather than left to be found:** if an administrator
+   changes the first period's fee, this one seeded message goes on naming the figure this
+   build shipped. It is the letter every member is greeted with, so it is not nothing; it is
+   also the only thing on the portal still in that state, and every screen a member acts on
+   - the public table, „Moja članarina", and the QR code he pays with - now says what the
+   server says. */
 const FEE = priceOn(REGISTRATION_OPENS).eur
 const OPENS = formatDayInSentence(REGISTRATION_OPENS, DEFAULT_LOCALE)
 

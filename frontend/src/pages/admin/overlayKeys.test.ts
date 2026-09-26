@@ -99,10 +99,17 @@ const SERVED_AS: [EntityDef, ResourceName | null][] = [
   [LEAGUES, 'leagues'],
   [PAGES, 'pages'],
   [MODERATORS, 'moderators'],
-  /* The price list is the one entity nothing serves: its rows are the four windows
-     of the year and they live in `data/pricing.ts`. `fixed` says the same thing
-     from the other side - nothing is added to it and nothing removed. */
-  [PRICING, null],
+  /* THE PRICE LIST WAS THE ONE ENTITY NOTHING SERVED, AND SINCE 26.09.2026 IT IS SERVED
+     LIKE THE OTHER SEVEN. What stood here said „its rows are the four windows of the year
+     and they live in `data/pricing.ts`", which was true and was the fault: `/api/pricing`
+     had answered `price_row` since the codebooks went in while the screens read a constant
+     compiled into the bundle, so a price the administration set reached what a member was
+     CHARGED and nothing he was SHOWN.
+
+     `fixed` still says what it always said and is a different question: nothing is added to
+     this entity and nothing removed, which is why `PricingWriteApi` has one verb. Being
+     served and being fixed are not the same fact, and this line used to carry both. */
+  [PRICING, 'pricing'],
 ]
 
 describe('the entities whose records are numbered', () => {

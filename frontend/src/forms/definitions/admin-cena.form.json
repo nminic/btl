@@ -22,7 +22,6 @@
       "name": "rsd",
       "type": "number",
       "labelKey": "admin.field.rsd",
-      "required": true,
       "min": 0,
       "max": 200000
     }
