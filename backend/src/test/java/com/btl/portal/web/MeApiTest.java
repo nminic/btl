@@ -554,35 +554,54 @@ class MeApiTest {
 	}
 
 	/**
-	 * AND THE OTHER DOOR STILL ANSWERS THE SAME TWO FACTS, WHICH IS THE PRICE OF TWO HOMES.
+	 * AND THE OTHER DOOR ANSWERS NEITHER OF THEM, TO HIM OR TO ANYBODY.
 	 *
-	 * <p>{@link CompetitorApi} has handed the caller his own {@code referralCode} and
-	 * {@code referredCount} since 20.09.2026, on his own row and nobody else's, and this
-	 * route now hands him both as well - because that one ends {@code where c.active} and
-	 * therefore cannot hand them to the member whose fee has lapsed, who is exactly the
-	 * member who needs his link. <b>Two homes for one fact is the shape that lets two
-	 * answers disagree</b>, and until the owner decides which door keeps it, this is what
-	 * stops them: the same member, both doors, one request apart.
+	 * <p><b>This case held the opposite claim between 21.09.2026 and 25.09.2026 and is
+	 * REPLACED rather than deleted, because the thing it was about has changed sides.</b>
+	 * It read: „the two doors hand the same member two different links, and the one nobody
+	 * remembers to change is always the second". {@link CompetitorApi} answered both facts
+	 * on the caller's own row, this route answered them on his record, and two homes for
+	 * one fact is the shape that lets two answers disagree - so the case compared them, one
+	 * request apart, until the owner said which door keeps the fact.
 	 *
-	 * <p>Asked of a member whose fee IS standing, because he is the only kind of member both
-	 * doors can answer at all.
+	 * <p><b>He said it on 25.09.2026 (PDL P26a): the link „se sklanja sa javne liste
+	 * takmicara" and stays only on „Moja clanarina".</b> There is no second answer left to
+	 * agree with, so the only thing worth asking of the other door is that it really has
+	 * stopped - and asked of the CALLER'S OWN ROW, which is the row that carried them.
+	 *
+	 * <p><b>Why the old case did not simply go.</b> The rule is that a guard is not deleted
+	 * until its own mutations have been run against what replaces it. Three were, on
+	 * 25.09.2026: dropping {@code and brought.active} from either door's counting clause,
+	 * and answering the member number in place of {@code c.referral_code} here. Each was
+	 * caught by TWO cases of this class that are nothing to do with the other door
+	 * ({@code andHowManyHeBroughtInWhoseFeeStands},
+	 * {@code aMemberIsHandedHisOwnReferralCodeAndNobodyElsesEver},
+	 * {@code aMemberWhoseFeeHasLapsedIsStillHandedHisOwnRecord}), so what this case held
+	 * that is still true is held twice over without it.
+	 *
+	 * <p>Asked of a member whose fee IS standing, because he is the only kind of member the
+	 * other door has a row for at all - which is the whole reason the field could not stay
+	 * there.
 	 */
 	@Test
-	void theOtherDoorStillAnswersTheSameTwoFacts() throws Exception {
+	void theOtherDoorAnswersNeitherOfThemAnyMore() throws Exception {
 		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
 		JsonNode onTheList = rowOnThePublicList(MY_ACCOUNT, ME);
 
+		assertThat(onTheList.path("memberNumber").asString())
+				.as("the public list has no row for the caller at all, so the two assertions"
+						+ " below are asked of nothing and would pass whatever it answered")
+				.isEqualTo(ME);
 		assertThat(mine.path("referralCode").asString())
-				.as("this door answered no code at all, so the comparison below is empty against"
-						+ " empty").isEqualTo(referralCodeOf(ME));
-		assertThat(onTheList.path("referralCode").asString())
-				.as("the two doors hand the same member two different links, and the one nobody"
-						+ " remembers to change is always the second")
-				.isEqualTo(mine.path("referralCode").asString());
-		assertThat(onTheList.path("referredCount").asInt())
-				.as("the two doors hand the same member two different counts of whom he brought"
-						+ " in, so one of the two counting clauses has moved")
-				.isEqualTo(mine.path("referredCount").asInt());
+				.as("this door stopped answering the code, so the comparison below no longer"
+						+ " says the fact moved rather than vanished")
+				.isEqualTo(referralCodeOf(ME));
+
+		assertThat(Answers.fieldsOf(onTheList))
+				.as("the public list still hands the caller his own link or his own count on his"
+						+ " own row; P26a gives both facts ONE home and it is this route, which"
+						+ " is the only one that answers the member whose fee has lapsed")
+				.doesNotContain("referralCode", "referredCount");
 	}
 
 	/**

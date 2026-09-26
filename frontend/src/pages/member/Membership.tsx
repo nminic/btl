@@ -28,7 +28,7 @@ import {
   registrationOpen,
   seasonBeingRenewed,
 } from '../../data/pricing'
-import { combineResources, useCompetitors, useTeams } from '../../data/useResource'
+import { combinePair, useTeams } from '../../data/useResource'
 import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { applyChanges } from '../../forms/records'
@@ -92,19 +92,71 @@ function inTheirCurrency(
  * and `/api/competitors` answers NEITHER of those two fields to anybody:
  * `referred_by` is the KEY of whoever brought a member (V7) and never a code, and
  * a member whose fee has lapsed is not on the list at all (owner, 13.09.2026). So
- * both halves are known in one place, the database, and the answer carries the
+ * both halves are known in one place, the database, and the answer carried the
  * number itself as `referredCount` - on the caller's own row and on no other.
  *
  * **Left as it stood it would have shown nought to everybody, with nothing
  * failing.** Every row would have answered `undefined === <code>` false, which is
  * the same screen a member with no referrals sees, and the tests would have gone
  * on reading a generated file that still carries both fields.
+ *
+ * AND ON 25.09.2026 BOTH LEFT THE PUBLIC LIST ALTOGETHER, WHICH IS THE SAME FAULT
+ * ONE STEP FURTHER ALONG.
+ *
+ * Owner, PDL P26a: „Licni link za preporuku se sklanja sa javne liste takmicara" i
+ * ostaje samo na strani „Moja clanarina". The `where c.active` that had broken the
+ * COUNTING broke the ANSWERING too: a member whose fee has lapsed has no row on that
+ * list, so he reached neither field - and he is the one man V24 section 6 promises
+ * the link to, on exactly this page, which is the page he opens to renew.
+ *
+ * **Both come off `GET /api/me` now, through the session** (`session/theServer.ts`,
+ * `session/context.ts`), which answers ONE row and that row is his whether or not his
+ * fee is standing. It is the road `membershipBasis` already takes, for a reason of
+ * the same shape, and this screen therefore reads all three the same way.
+ *
+ * **AND THE RECORD ITSELF FOLLOWED THEM THE SAME DAY, WHICH IS THE DECISION THIS
+ * PARAGRAPH USED TO SAY NOBODY HAD TAKEN.**
+ *
+ * It said: „What is still read off the public list is his RECORD, and that is a boundary
+ * rather than an oversight... Moving the record is a decision nobody has taken and it is
+ * not this one." The owner took it on 25.09.2026 (PDL P8a, „Strana za obnovu cita svoj
+ * zapis sa `/api/me`"), choosing it over writing the boundary down and over leaving it
+ * for another day. The old sentence is corrected here rather than deleted, because a
+ * sentence saying „this is a boundary" is an instruction to the next reader to leave it
+ * alone.
+ *
+ * **What it was costing, measured before the decision rather than after:** this screen
+ * looked the caller up in `/api/competitors`, that query ends `where c.active`, so the
+ * member whose fee had LAPSED found no row, and the screen he opens **in order to renew**
+ * answered him „Ovog profila nema." He is not an edge of this page; he is what it is for.
+ *
+ * **So the five facts it needs about him all come off `GET /api/me` now** - his number,
+ * his country, his first season, his team and how his membership is held - and all five
+ * are components `MeApi.MyOwnRecord` already declared, so nothing was added to the server
+ * for this. The public list is not read here at all any more, which is why the only two
+ * resources below are the results and the teams.
  */
 
 export function Membership() {
   const { locale, t } = useI18n()
   const who = useMemberScreen()
-  const { myMembershipBasis } = useSession()
+  /* ALL SIX OFF THE ONE ANSWER THAT KNOWS WHO IS ASKING, and it was three until
+     25.09.2026 and one until the day before that.
+
+     **The six are here for two different reasons and the difference is worth keeping.**
+     The basis, the link and the count are here because they have NO OTHER DOOR: P26a
+     took the last two off the public list outright, and the basis was never on it for a
+     member. The country, the season and the team DO have another door, and are read here
+     anyway because that door answers `where c.active` - which is to say it answers
+     everybody except the one man this screen exists for (P8a). */
+  const {
+    myMembershipBasis,
+    myCountry,
+    myFirstSeason,
+    myTeamId,
+    myReferralCode,
+    myReferredCount,
+  } = useSession()
   /* The referral amount as administration has it, not as the file has it: it is
      a row of the price list and is changed there (AdminPricing).
    *
@@ -116,7 +168,11 @@ export function Membership() {
   const overlay = useOverlay()
   const { edits } = overlay
   const credited = applyChanges(REFERRAL_ROW, edits[recordKey(PRICING.id, REFERRAL.key)])
-  const state = combineResources(useCompetitors(), useResults(), useTeams())
+  /* TWO RESOURCES AND NOT THREE SINCE 25.09.2026: the list of members was the third and
+     was read for one thing only, finding the caller's own row in it, which `GET /api/me`
+     now answers directly (P8a). `combinePair` already existed for screens that read two
+     (`data/useResource.ts`), so nothing was written for this. */
+  const state = combinePair(useResults(), useTeams())
   /* Renewal only opens inside its window and the price changes three times
      inside it, so this screen is the one that changes most with the date. It
      reads the same clock as everything else (src/clock). */
@@ -128,44 +184,70 @@ export function Membership() {
 
   const { memberNumber } = who
 
+  /**
+   * THE ANSWER NAMED A MEMBER AND DID NOT CARRY HIS RECORD, which after 25.09.2026 is
+   * the only way to be standing here.
+   *
+   * **Who this used to be, and it is the whole reason P8a exists.** It read
+   * `competitors.find(...)` over `/api/competitors`, that query ends `where c.active`,
+   * so the man it turned away was the member WHOSE FEE HAD LAPSED - on the one page he
+   * opens in order to pay it. First he met a bare `h1`; from 25.09.2026 a heading with a
+   * way home; and neither is what he wanted, which was to renew. He does not reach this
+   * branch at all any more: `GET /api/me` answers one row and that row is his, standing
+   * fee or not.
+   *
+   * **Who reaches it now, said exactly, because the sentence on the screen had to be
+   * rewritten for him.** Somebody the answer gave a member number but no country or no
+   * first season: a server one release ahead, a proxy answering something else, an
+   * address that is not ours. It cannot happen against this backend - {@code MeApi}
+   * writes „never absent" against both, and the schema behind each one is why (V7) - and
+   * that is exactly the reason it is drawn rather than asserted (ADL A14). „Ovog profila
+   * nema." was the old sentence and it would be a lie here: his profile is fine, and the
+   * portal is the one that cannot read it.
+   *
+   * **Both fields and not one**, because they are two facts and either can be the one
+   * missing. The country decides the currency of every figure on the page and whether
+   * there is a payment slip at all, so a fallback would put a member abroad on a dinar
+   * slip; the season is the sentence „Član od {season}. sezone."
+   *
+   * **The team is deliberately NOT in this condition.** Null there means „in no team",
+   * which is sixteen of the thirty two members in the data and is drawn in as many words
+   * further down. Putting it here would have turned the commonest ordinary state on this
+   * screen into an error.
+   *
+   * Asked before the resources rather than inside them: nothing below can be drawn
+   * without these two, so there is no reason to wait for a fetch first.
+   */
+  if (myCountry === null || myFirstSeason === null) {
+    return (
+      <div className="member">
+        {/* **A HEADING OF ITS OWN AND NOT „Moja članarina", WHICH IS A MEASUREMENT AND
+            NOT A PREFERENCE.** It was the page's own name for one draft. Every screen
+            in this portal is mounted before `GET /api/me` has answered - the question
+            is asked in an effect (`session/useTheServersSession.ts`) - so for one tick
+            the session holds no record and this branch is what is on screen. Sharing
+            the heading made „the answer did not carry my record" and „the answer is
+            still on its way" the same screen, and it was measured the hard way: four
+            cases resolved `findByRole('heading', { name: 'Moja članarina' })` against
+            THIS h1 and then failed, because React had replaced the node underneath them
+            by the time the assertion ran.
+
+            So the two states say two different things, which is what they are. */}
+        <h1>{t('membership.noRecordTitle')}</h1>
+        <p className="member__note">{t('membership.noRecord')}</p>
+        {/* The way out, in the portal's own words (`shell.home`), which is the shape
+            `SignedOut` and `NotRacing` already use for a screen somebody cannot be
+            given. */}
+        <Link className="button button--primary" to={`/${locale}`}>
+          {t('shell.home')}
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <Resource state={state}>
-      {([competitors, results, teams]) => {
-        const me = competitors.find((one) => one.memberNumber === memberNumber)
-
-        if (me === undefined) {
-          /**
-           * A HEADING WITH A WAY OUT, and until 25.09.2026 it was a heading alone.
-           *
-           * **Who is really standing here, measured rather than assumed.** Not a mistyped
-           * number: a member WHOSE FEE HAS LAPSED. `CompetitorApi` ends `where c.active`
-           * so he is not in the list this screen searches, while `GET /api/me` answers him
-           * with his number on purpose - that is half of why {@code MeApi} exists beside
-           * it, in its own words: „the profile and the historical tables of a member whose
-           * fee has lapsed need a resource that knows them, and it is not this one."
-           *
-           * **So he met a bare `h1` on the one page PDL P8 means him to reach**, with no
-           * link anywhere on it, and the portal had just stopped telling him anything else.
-           * Measured 25.09.2026 on the answer the real server gives: the page carried zero
-           * links and zero buttons.
-           *
-           * The way out is the front page and the words are the portal's own
-           * (`shell.home`), which is the shape `SignedOut` and `NotRacing` already use for
-           * a screen somebody may not draw. **Nothing is invented here**: what he should be
-           * TOLD, and whether this page should read his record off `/api/me` so that he can
-           * actually renew, are two decisions that are not this screen's to take and are
-           * recorded as owed.
-           */
-          return (
-            <div className="member">
-              <h1>{t('profile.notFound')}</h1>
-              <Link className="button button--primary" to={`/${locale}`}>
-                {t('shell.home')}
-              </Link>
-            </div>
-          )
-        }
-
+      {([results, teams]) => {
         /* What the beginners' category is decided by, and it is not what this
            member has taken altogether.
 
@@ -176,13 +258,13 @@ export function Membership() {
            (11.08.2026) closes it to nobody until an official season has been
            finished with twelve points. Both halves of the rule live in
            `bestOfficialSeason`. */
-        const points = bestOfficialSeason(results, me.memberNumber)
+        const points = bestOfficialSeason(results, memberNumber)
         /* The season the renewal is for, which is never the one already
            running: in August 2027 the renewal that opens in October is for
            2028, and the heading said 2027. */
         const nextSeason = seasonBeingRenewed(today)
         const windowOpen = inYearlyWindow(today)
-        const team = teams.find((one) => one.id === me.teamId)
+        const team = teams.find((one) => one.id === myTeamId)
         /* The prices as administration has them, not as the file has them.
            The referral row was already read through the price list while the fee
            itself was read off a constant, so an administrator could put 22,50 on
@@ -210,10 +292,12 @@ export function Membership() {
            reason it was is worth keeping: the credit was counted off it, and counted
            straight off the FILE somebody an administrator had deleted went on earning
            their referrer six hundred dinars (ADL A8, a deleted record is freed from
-           everything and not only from a list). Since 21.09.2026 the count arrives on
-           the caller's own row as `referredCount`, worked out by the one place that
-           still knows both halves of the rule, so there is no list here to lay an
-           overlay over.
+           everything and not only from a list). Since 21.09.2026 the count arrives
+           WORKED OUT by the one place that still knows both halves of the rule, so
+           there is no list here to lay an overlay over. It arrived on the caller's own
+           row of that very list until 25.09.2026, and P26a moved it to `/api/me` with
+           the link beside it; the sentence above is about the LIST and is untouched by
+           that, because the list stopped being counted either way.
 
            **What that costs, said rather than left to be found:** a member an
            administrator deletes during THIS VISIT is still in the server's count until
@@ -252,7 +336,7 @@ export function Membership() {
            already. It takes two numbers and not a record, so it asks nobody to put
            a year of birth back where one may not be. */
         const due = price
-        const methods = methodsFor(me.country)
+        const methods = methodsFor(myCountry)
         /* What the member scans and what the association books. It named the
            first season for ever, so from October 2027 the heading would have
            said 2028 while the reference said 2027.
@@ -261,7 +345,7 @@ export function Membership() {
            is, which is the split a bank statement is reconciled by (owner,
            31.07.2026). */
         const purpose = paymentPurpose(nextSeason)
-        const reference = paymentReference(nextSeason, me.memberNumber)
+        const reference = paymentReference(nextSeason, memberNumber)
 
         return (
           <div className="member">
@@ -285,7 +369,7 @@ export function Membership() {
                        used to carry a typed 2027 and was right. Read from the clock either way,
                        never from the constant (ADL, 31.07.2026). */
                     t('membership.feeExempt', { season: seasonRunning(today) ?? nextSeason })
-                  : t('membership.active', { season: me.firstSeason })}
+                  : t('membership.active', { season: myFirstSeason })}
               </p>
               {/* Both amounts, side by side, and no choice between them (PDL
                   P8, owner 31.07.2026): the price follows from where a member
@@ -407,7 +491,7 @@ export function Membership() {
                       sees no slip at all and still needs to know that PayPal and
                       a card are what their country gets. */}
                   <p className="member__note">
-                    {t('membership.byCountry', { country: countryName(me.country) })}
+                    {t('membership.byCountry', { country: countryName(myCountry) })}
                   </p>
 
                   {/* The slip itself, and only where it can be paid. PDL P8,
@@ -450,7 +534,7 @@ export function Membership() {
                         reaches. */}
                     <dt>{t('membership.amountLabel')}</dt>
                     <dd>
-                      <strong>{inTheirCurrency(me.country, due, locale)}</strong>
+                      <strong>{inTheirCurrency(myCountry, due, locale)}</strong>
                     </dd>
                   </dl>
 
@@ -557,22 +641,31 @@ export function Membership() {
                 {t('membership.referral')}
               </h2>
               <p className="member__note">
-                {t('membership.referralNote', { amount: inTheirCurrency(me.country, credited, locale) })}
+                {t('membership.referralNote', { amount: inTheirCurrency(myCountry, credited, locale) })}
               </p>
               {/* The code and not the member number. That number is public and
                   consecutive: it is the address of a profile and the sign in
                   list prints it beside every name, so anybody could assemble
                   somebody else's link, or credit themselves with a member they
                   never brought. The origin comes from the one place that holds
-                  it, so a change of domain does not leave this link behind. */}
-              {/* Nothing where the answer carried no code, which is every row but the
-                  caller's own (`/api/competitors`). This screen is the caller's own row,
-                  so it does not happen; written out because a `${undefined}` in an address
-                  is a link a reader would copy and send, and the empty string is a link
-                  that plainly does not work rather than one that looks as if it might. */}
-              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${me.referralCode ?? ''}`}</p>
+                  it, so a change of domain does not leave this link behind.
+
+                  AND THE CODE ITSELF COMES OFF THE SESSION, never off a list. It
+                  was on the caller's own row of `/api/competitors` until P26a;
+                  the owner took it off that list so that a list anybody may read
+                  carries nobody's link under any condition, and so that the
+                  member whose fee has lapsed - who has no row there at all - is
+                  told what V24 section 6 promises him. */}
+              {/* Nothing where the answer carried no code. Until 25.09.2026 that meant
+                  „every row but the caller's own" on the public list; it now means the
+                  one road there is left, `GET /api/me`, saying nothing - a visitor, an
+                  account that races for nobody, or a value the portal does not read.
+                  Written out because a `${undefined}` in an address is a link a reader
+                  would copy and send on, and the empty string is a link that plainly
+                  does not work rather than one that looks as if it might. */}
+              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`}</p>
               <p className="membership__balance">
-                <strong>{inTheirCurrency(me.country, credited, locale, me.referredCount ?? 0)}</strong>{' '}
+                <strong>{inTheirCurrency(myCountry, credited, locale, myReferredCount ?? 0)}</strong>{' '}
                 <span>{t('membership.balance')}</span>
               </p>
               <p className="member__note">{t('membership.balanceNote')}</p>

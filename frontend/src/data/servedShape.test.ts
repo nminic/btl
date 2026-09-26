@@ -72,14 +72,23 @@ import type { Place } from './places'
  *
  * - `ageBand` is answered, worked out for the season rather than stored (PR 334);
  * - `membershipBasis` is answered to the administration and to nobody else (PR 332);
- * - `referralCode` is answered on the caller's own row and on no other (PR 330);
- * - `referredBy` is GONE and `referredCount` stands where it stood: the column holds
- *   a KEY and never a code (V7), so the count is worked out on the far side and the
- *   portal is handed the number;
+ * - `referralCode` was answered on the caller's own row and on no other (PR 330) and is
+ *   GONE since 25.09.2026, answered to nobody at all;
+ * - `referredBy` is GONE, and `referredCount` stood where it stood until the same day
+ *   and is gone with it;
  * - `active` is GONE with nothing in its place, because the owner made the absence of
  *   the ROW carry it (13.09.2026).
  *
- * The three that are conditional are optional on the type, which is the same sentence
+ * **WHY THE LAST TWO WENT, AND IT IS THE SAME MEASUREMENT TWICE.** `referredBy` could
+ * not leave because it holds a KEY and never a code (V7), so the count was worked out on
+ * the far side and the portal handed the number. That answer was still on a list ending
+ * `where c.active`, so the member whose fee has LAPSED reached neither the link nor the
+ * count - and he is the one V24 section 6 promises them to. Owner, 25.09.2026 (PDL
+ * P26a): the link „se sklanja sa javne liste takmicara" and stays only on „Moja
+ * članarina". Both now come off `GET /api/me`, which answers one row and that row is his
+ * whether or not his fee is standing.
+ *
+ * The one that is conditional is optional on the type, which is the same sentence
  * said in TypeScript: a row that is not the caller's own, or an answer that is not the
  * administration's, has not got them.
  *
@@ -394,12 +403,15 @@ describe('the answer the backend gives', () => {
     expect(readAsModerator.id).toBe(4)
     /* The four that had never been seen until 21.09.2026, and for each of them the
        state that is the whole reason it is written down twice or not at all. */
-    /* The three conditional fields, each in the state its own condition puts it in:
-       nothing for a visitor, the caller's own two on his own row, and the basis only
-       where the CALLER is the administration - which is a different condition from the
-       other two and is what a screen was wrong about until 21.09.2026. */
+    /* THE ONE CONDITIONAL FIELD LEFT, in each of the states its condition puts it in:
+       nothing for a visitor, nothing for a member on HIS OWN ROW - which is the thing a
+       screen was wrong about until 21.09.2026, because the condition is the CALLER and
+       never the row - and the word itself where the caller is the administration.
+
+       There were three until 25.09.2026. The caller's own two went to `/api/me` whole
+       (PDL P26a), so the member's own row and a visitor's row are now the same fourteen
+       names, and the line below that read his count off his row went with them. */
     expect(readAsVisitorsMember.membershipBasis).toBeUndefined()
-    expect(readAsMyOwnRow.referredCount).toBe(4)
     expect(readAsMyOwnRow.membershipBasis).toBeUndefined()
     expect(readAsAdministrationsRow.membershipBasis).toBe('payment')
     expect(readAsTeam.organizerMemberNumber).toBe('000001')
@@ -495,7 +507,11 @@ describe('the answer the backend gives', () => {
          (owner, 13.09.2026), so the flag has nothing left to say;
        - `referredBy`, because the column holds the KEY of whoever brought a member (V7)
          and a key does not leave the server; what the screen wanted it for arrives
-         counted, as `referredCount`;
+         counted, and since 25.09.2026 it arrives through `/api/me`;
+       - `referralCode`, which was answered on the caller's own row until 25.09.2026 and
+         is on this list from that day, because the owner took it off the public list
+         altogether (PDL P26a) - the list ends `where c.active`, so the member whose fee
+         has lapsed, whom V24 section 6 promises it to, was answered nothing;
        - `membershipBasis`, which a member is not given even on his own row - the
          condition is the CALLER and never the row - and which reaches him through
          `/api/me` instead (owner, 20.09.2026, „Clan vidi SVOJ osnov clanstva");
@@ -514,6 +530,7 @@ describe('the answer the backend gives', () => {
     expect(held).toEqual([
       'competitors.active',
       'competitors.membershipBasis',
+      'competitors.referralCode',
       'competitors.referredBy',
       'pairs.since',
     ])
@@ -527,14 +544,21 @@ describe('the answer the backend gives', () => {
 
     expect(
       Object.keys(servedRow('competitors')).filter((one) => !(one in asTheServerWould)).sort(),
-    ).toEqual(['active', 'membershipBasis', 'referredBy'])
+    ).toEqual(['active', 'membershipBasis', 'referralCode', 'referredBy'])
 
     /* **AND THE SAME QUESTION ASKED OF THE OTHER TWO READERS, which is what makes the
-       list above a statement about the CALLER rather than about the field.** A visitor
-       is given neither the basis nor the code; the administration is given the basis on
-       every row and the code on none but its own. Only `active` and `referredBy` are
-       missing whoever asks, and those two are the fields the server has no answer for
-       at all. */
+       list above a statement about the CALLER rather than about the field.**
+
+       UNTIL 25.09.2026 THE THREE ANSWERS DIFFERED AND THAT WAS THE POINT: a visitor was
+       given neither the basis nor the code, the administration the basis on every row
+       and the code on none but its own, and the caller his own code on his own row. Only
+       `active` and `referredBy` were missing whoever asked.
+
+       SINCE P26a THE CODE IS MISSING WHOEVER ASKS TOO, so the caller's own row and a
+       visitor's row hold the same names and the only one left that turns on who is
+       asking is the basis. The three comparisons stay side by side rather than
+       collapsing into one: what they say now is that the three answers agree, and a
+       resource that starts telling any of them apart again fails here. */
     expect(missing(aCompetitor, servedRow('competitors'))).toEqual([
       'active',
       'membershipBasis',

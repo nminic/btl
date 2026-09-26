@@ -69,7 +69,6 @@ const MEMBERS: Competitor[] = [
     firstSeason2027: false,
     firstSeason: 2019,
     membershipBasis: 'payment',
-    referralCode: '',
     teamId: 1,
     teamSince: 2019,
     profileHidden: false,
