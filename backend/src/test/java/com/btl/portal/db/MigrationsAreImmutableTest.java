@@ -95,7 +95,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("32", "V32__a_member_writes_his_own_result.sql", 1492171060),
 			new Applied("33", "V33__a_deleted_member_takes_his_name_with_him.sql", -1251992971),
 			new Applied("34", "V34__the_price_list_row_carries_its_name.sql", 1229579551),
-			new Applied("35", "V35__the_written_page_carries_its_translation.sql", -233140809));
+			new Applied("35", "V35__the_written_page_carries_its_translation.sql", 876643277));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

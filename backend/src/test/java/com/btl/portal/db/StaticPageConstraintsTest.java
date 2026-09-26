@@ -252,15 +252,14 @@ class StaticPageConstraintsTest extends DatabaseTest {
 				Violation.of("static_page_translation_language_shape",
 						"insert into static_page_translation (page_id, language, title) "
 								+ "select id, 'EN', 'Proba' from static_page where slug = 'pravilnik'"),
-				/* A SECOND ROW FOR THE SAME CONSTRAINT, and it is here because it is the one that
-				   measures the COLLATE "C" in V35 rather than the regular expression around it.
-				   Capitals above are refused by `[a-z]` under any collation, because case is a
-				   different axis from the range. These two letters are not: a range inside a
-				   bracket expression is resolved by the collation, and under a tailored one they
-				   can fall inside `[a-z]`. Without that clause this row is the one that would go
-				   in, and the check would be accepting a tag it says it refuses. The floor above
-				   takes constraint names as a SET, so naming one constraint twice is allowed and
-				   is what lets a check with two ways of being wrong have a row for each. */
+				/* A SECOND ROW FOR THE SAME CONSTRAINT, because the check has two ways of being
+				   wrong and capitals only reach one of them. `[a-z]` is a range, and a range
+				   inside a bracket expression CAN be resolved by the collation, so the two
+				   letters below are the ones that would slip in if it were. Measured rather than
+				   left as a worry: under sr_latn, the tailoring V1 installs, they do not match
+				   this expression either, which is why V35 carries no COLLATE clause and says so.
+				   This row is what keeps that answer from changing quietly. The floor above takes
+				   constraint names as a SET, so naming one constraint twice is allowed. */
 				Violation.of("static_page_translation_language_shape",
 						"insert into static_page_translation (page_id, language, title) "
 								+ "select id, 'šč', 'Proba' from static_page where slug = 'pravilnik'"),

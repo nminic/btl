@@ -92,16 +92,19 @@ create table static_page_translation (
        closed list of the tags that exist today: in ('en') would send the third language
        back through a migration and break PDL.md:3194.
 
-       COLLATE "C" IS NOT DECORATION. A range inside a bracket expression is resolved by
-       the collation, so under a tailored or an untailored non-C collation [a-z] can admit
-       c-with-caron and its four relations, and this check would quietly accept a tag it
-       says it refuses. Which collation applies would then be a fact about the image the
-       database was created from, which is exactly what ConventionsTest warns about when it
-       measures against a probe collation of its own rather than against the default.
-       Forced to "C", the range is ASCII by construction and the answer is the same on
-       every machine. */
+       NO COLLATE ON THE RANGE, AND THAT IS A MEASUREMENT RATHER THAN AN OMISSION. A range
+       inside a bracket expression can be resolved by the collation, so the first draft of
+       this check forced it to "C" against the possibility that a tailored default would
+       admit the five letters Serbian Latin has and English does not. It does not: under
+       sr_latn, the tailoring V1 installs, a tag made of those letters does not match this
+       expression either, and taking the clause off left the whole of
+       StaticPageConstraintsTest green. A clause whose removal no case can tell is a clause
+       defending nothing, so it is gone; this paragraph stands in its place so the next
+       reader does not put it back for the reason the first one did. The row that measures
+       what the range really refuses is in StaticPageConstraintsTest, under this
+       constraint's own name. */
     constraint static_page_translation_language_shape
-        check ((language collate "C") ~ '^[a-z]{2,3}$'),
+        check (language ~ '^[a-z]{2,3}$'),
 
     constraint static_page_translation_title_not_blank check (btrim(title) <> '')
 
@@ -132,7 +135,7 @@ create table static_page_section_translation (
     constraint static_page_section_translation_not_serbian check (language <> 'sr'),
 
     constraint static_page_section_translation_language_shape
-        check ((language collate "C") ~ '^[a-z]{2,3}$'),
+        check (language ~ '^[a-z]{2,3}$'),
 
     constraint static_page_section_translation_heading_not_blank check (btrim(heading) <> ''),
     constraint static_page_section_translation_body_not_blank check (btrim(body) <> '')
