@@ -141,6 +141,25 @@ class PhotoApiTest {
 	private static final Written PROPOSED = new Written("18".repeat(32), "image/webp",
 			new byte[] {'p', 'r', 'o', 'p', 'o', 's', 'e', 'd', 'R', 'I', 'F', 'F'});
 
+	/**
+	 * THE PORTRAIT OF A MEMBER WHO HIDES HIS PROFILE, which is the fifth state of a holder
+	 * and the only one that depends on WHO IS ASKING.
+	 *
+	 * <p><b>[ODLUKA 26.09.2026, owner]</b>, chosen between three offered. ADL A60 recorded
+	 * the boundary and what would close it: „Prvi resurs koji ga objavi mora u istom potezu
+	 * da donese pravilo o skrivenom profilu, inace granica pada tog dana."
+	 * {@link CompetitorApi} publishes such a digest from that day and this is the other half
+	 * of the one decision, because the digest IS the whole permission - withheld there and
+	 * served here, the rule would hide a capability rather than refuse access.
+	 *
+	 * <p>Like the two pictures that wait for a moderator, everything else about it is in
+	 * order: the row is there, the file is on disk, the digest is the shape V8 gives one, and
+	 * the holder is the one holder the portal calls public. The only thing that refuses it is
+	 * the member's own choice, and only for a caller with no session.
+	 */
+	private static final Written A_HIDDEN_MEMBERS = new Written("29".repeat(32), "image/jpeg",
+			new byte[] {'h', 'i', 'd', 'd', 'e', 'n', (byte) 0xD8, (byte) 0xFF});
+
 	/** The shape of a digest, belonging to no row at all. */
 	private static final String NOBODY_WROTE = "f6".repeat(32);
 
@@ -191,18 +210,24 @@ class PhotoApiTest {
 	 * two holders that wait for a moderator, and they carry a row, a file and a digest of the
 	 * right shape so that the only thing wrong with them is whose they are.
 	 *
-	 * <p><b>Four competitors and one team rather than one of each</b>, so that „the member
+	 * <p><b>Five competitors and one team rather than one of each</b>, so that „the member
 	 * who holds this picture" is never „the only member there is" and a lookup that forgot to
 	 * name the row would be answering by accident.
+	 *
+	 * <p><b>AND A SIXTH COMPETITOR SINCE 26.09.2026, who hides his profile</b> - the state
+	 * that decides whether the holder is public for THIS caller. He is written last, so the
+	 * only picture whose answer depends on a session is neither the first row nor the only one
+	 * its holder has.
 	 */
 	@BeforeEach
-	void eightPicturesAndOneNameThatNamesNone() {
+	void ninePicturesAndOneNameThatNamesNone() {
 		write(PNG, true);
 		write(WITH_NO_FILE, false);
 		write(WEBP, true);
 		write(JPEG, true);
 		write(WAITING, true);
 		write(PROPOSED, true);
+		write(A_HIDDEN_MEMBERS, true);
 
 		/* The same digest twice: the elder carries the file, the younger does not. Written
 		   in this order so that „the newest row" answers 404 and „the oldest" answers the
@@ -227,11 +252,18 @@ class PhotoApiTest {
 		db.sql("update photo set crop_x = 0.33 where id = ?")
 				.param(ids.get(TWICE_OVER.digest())).update();
 
-		competitorHolding("000901", PNG);
-		competitorHolding("000902", WITH_NO_FILE);
-		competitorHolding("000903", JPEG);
-		competitorHolding("000904", ids.get(TWICE_OVER.digest()));
-		competitorHolding("000905", theYoungerOfTheTwo);
+		competitorHolding("000901", PNG, IN_THE_OPEN);
+		competitorHolding("000902", WITH_NO_FILE, IN_THE_OPEN);
+		competitorHolding("000903", JPEG, IN_THE_OPEN);
+		competitorHolding("000904", ids.get(TWICE_OVER.digest()), IN_THE_OPEN);
+		competitorHolding("000905", theYoungerOfTheTwo, IN_THE_OPEN);
+
+		/* AND THE ONE MEMBER WHO HIDES HIS PROFILE. He is a member of his own rather than a
+		   flag moved onto one of the five above, because every one of those five is the
+		   subject of a case that expects the answer hiding would change: sharing a member
+		   would make this axis and those cases one fixture, and „right" and „wrong" would
+		   read alike on both. */
+		competitorHolding("000906", A_HIDDEN_MEMBERS, HIDING);
 		teamHolding(WEBP);
 		waitingOn(WAITING);
 		proposalHolding(PROPOSED);
@@ -289,23 +321,34 @@ class PhotoApiTest {
 	 * thing the route asks about and a member who exists only as a name in an update is not a
 	 * holder of anything.
 	 */
-	private void competitorHolding(String number, Written picture) {
-		competitorHolding(number, ids.get(picture.digest()));
+	private void competitorHolding(String number, Written picture, boolean hiding) {
+		competitorHolding(number, ids.get(picture.digest()), hiding);
 	}
 
-	/** The same, by the key of ONE row, for the digest that stands on two of them. */
-	private void competitorHolding(String number, long photo) {
+	/**
+	 * The same, by the key of ONE row, for the digest that stands on two of them.
+	 *
+	 * <p><b>{@code hiding} is written out at every call site rather than defaulted</b>, which
+	 * is what makes the axis visible where a reader meets it: PDL P23 gives a member two
+	 * states and a fixture that names only one of them measures half a rule.
+	 */
+	private void competitorHolding(String number, long photo, boolean hiding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, first_season_2027, active, membership_basis,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at, photo_id)"
 						+ " values (?, 'Ime', 'Prezime', 'F', date '1990-01-01',"
 						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
-						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00', ?)")
-				.params(number, String.format("%016x", ++issued), photo)
+				.params(number, String.format("%016x", ++issued), hiding, photo)
 				.update();
 	}
+
+	/** What {@code profile_hidden} says, named so the call sites read as sentences. */
+	private static final boolean HIDING = true;
+
+	private static final boolean IN_THE_OPEN = false;
 
 	/** A team whose mark this is, which is the other holder the portal publishes. */
 	private void teamHolding(Written picture) {
@@ -729,6 +772,17 @@ class PhotoApiTest {
 	 * rows. The two together are what keep this from being four labels: the schema says
 	 * these four columns are all there are, and the rows say that the picture in each entry
 	 * is held by the column the entry names and by no other.
+	 *
+	 * <p><b>SINCE 26.09.2026 THE FIRST ENTRY IS TRUE OF A MEMBER WHO IS NOT HIDING, and this
+	 * list is read as the answer a VISITOR gets.</b> A portrait is public while its member
+	 * keeps his profile open and is refused to a caller with no session otherwise ([ODLUKA
+	 * 26.09.2026, owner]; see {@link PhotoApi}). {@code JPEG}'s holder is written
+	 * {@code IN_THE_OPEN} for exactly that reason, so the 200 here is the ordinary case and
+	 * not an accident. The other state is its own picture and its own pair of cases, because a
+	 * fifth entry here would make the floor over {@code pg_constraint} compare five names
+	 * against four columns - the condition is a state of the HOLDER and not a holder of its
+	 * own. {@link #aSessionChangesNothingForAnyHolderButAHiddenMembersOwn} walks all four of
+	 * these with a session and requires the same answers.
 	 */
 	private static Stream<Held> everyHolderThereIs() {
 		return Stream.of(
@@ -860,6 +914,143 @@ class PhotoApiTest {
 				.as("one refusal carries a header the other does not, which is the difference"
 						+ " that says a picture is waiting to be looked at")
 				.containsExactlyInAnyOrderElementsOf(nobodyWroteIt.getHeaderNames());
+	}
+
+	/**
+	 * THE PORTRAIT OF A MEMBER WHO HIDES HIS PROFILE IS ANSWERED EXACTLY WHAT A DIGEST NOBODY
+	 * WROTE IS.
+	 *
+	 * <p><b>[ODLUKA 26.09.2026, owner]</b>, chosen between three offered. ADL A60 held the
+	 * boundary open with one sentence - „otisak PORTRETA ne objavljuje nijedan resurs" - and
+	 * required that the first resource to publish one bring the rule with it;
+	 * {@link CompetitorApi} publishes one from that day. The half in that resource is not
+	 * enough on its own, and the reason is a measurement: the digest IS the whole permission,
+	 * because this route asked nobody who was calling, so a member shown the address could
+	 * pass it on and any visitor would have the bytes.
+	 *
+	 * <p><b>Compared whole, the shape the two comparisons above use and for the same
+	 * reason.</b> PDL, 06.09.2026, „Oba slucaja dobijaju isti ishod": told apart by a status,
+	 * a type or the name of one header, the refusal would say „this digest names the portrait
+	 * of a member who is hiding", which is the very sentence being withheld - and at an
+	 * address nobody hands out, whoever holds a digest at all is exactly the caller this is
+	 * about.
+	 *
+	 * <p><b>The two names are held in variables and the floor is over those very strings</b>,
+	 * so that swapping one for {@link #NOBODY_WROTE} does not leave this comparing one answer
+	 * with itself. And the floors below say the 404 is about hiding and about nothing else:
+	 * the row is there, the file is on disk, the holder is the public one, and the member
+	 * really is hiding. Take any of those away and the refusal would be true for a reason that
+	 * has its own case already.
+	 */
+	@Test
+	void aHiddenMembersPortraitIsAnsweredExactlyAsADigestNobodyWrote() throws Exception {
+		String hidingName = A_HIDDEN_MEMBERS.digest();
+		String nobodyWroteName = NOBODY_WROTE;
+
+		assertThat(hidingName)
+				.as("the two names in this comparison are one name, so everything below is"
+						+ " satisfied by an answer being equal to itself")
+				.isNotEqualTo(nobodyWroteName);
+
+		long picture = ids.get(hidingName);
+
+		assertThat(FOLDER.resolve(String.valueOf(picture)))
+				.as("this picture's file is not on disk, so the refusal below would be the answer"
+						+ " to a row whose file has gone")
+				.exists();
+		assertThat(whatHolds(picture))
+				.as("this picture is not held by a member alone, so the refusal below would be"
+						+ " about a holder that waits for a moderator")
+				.containsExactly("competitor.photo_id");
+		assertThat(db.sql("select profile_hidden from competitor where photo_id = ?")
+						.param(picture).query(Boolean.class).single())
+				.as("the member holding this picture is not hiding his profile, so there is"
+						+ " nothing for this case to be about")
+				.isTrue();
+
+		MockHttpServletResponse hiding = answerFor(hidingName);
+		MockHttpServletResponse nobodyWroteIt = answerFor(nobodyWroteName);
+
+		assertThat(hiding.getStatus())
+				.as("a visitor was answered the portrait of a member who hides his profile")
+				.isEqualTo(404);
+		assertThat(nobodyWroteIt.getStatus())
+				.as("a digest belonging to no row was answered something other than 404")
+				.isEqualTo(404);
+
+		assertThat(hiding.getContentAsByteArray())
+				.as("the two refusals do not carry the same body")
+				.isEqualTo(nobodyWroteIt.getContentAsByteArray());
+		assertThat(hiding.getContentType())
+				.as("the two refusals do not carry the same type")
+				.isEqualTo(nobodyWroteIt.getContentType());
+		assertThat(hiding.getHeaderNames())
+				.as("one refusal carries a header the other does not, which is the difference"
+						+ " that says a member is hiding")
+				.containsExactlyInAnyOrderElementsOf(nobodyWroteIt.getHeaderNames());
+	}
+
+	/**
+	 * AND IT IS SERVED WHOLE TO A CALLER WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION.
+	 *
+	 * <p>The owner's own limit on the rule: „Takmicar od ulogovanih kolega ne moze da sakrije
+	 * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od
+	 * ostalih clanova, jer bi time nestao smisao zajednickog rangiranja". Written in one
+	 * direction only, the rule would pass on a route that refused this portrait to everybody,
+	 * which is a picture the portal could never draw.
+	 *
+	 * <p><b>The bytes are compared and not only the status</b>, because the decoy is in the
+	 * folder: a 200 alone would be satisfied by a server that resolved the address as a path.
+	 *
+	 * <p><b>The session is the whole of what changes between this case and the one above</b>,
+	 * and nothing else about the request moves - which is what makes the pair a measurement of
+	 * the condition rather than of two different requests.
+	 */
+	@Test
+	void aHiddenMembersPortraitIsServedToACallerWhoIsSignedIn() throws Exception {
+		MockHttpServletResponse answer = http
+				.perform(asking(A_HIDDEN_MEMBERS.digest(), A_MEMBER)).andReturn().getResponse();
+
+		assertThat(answer.getStatus())
+				.as("a caller with a session was refused the portrait of a member who hides his"
+						+ " profile; hiding is from a reader who is not signed in and from"
+						+ " nobody else")
+				.isEqualTo(200);
+		assertThat(answer.getContentType())
+				.as("the type answered is not the one this picture's row carries")
+				.isEqualTo(A_HIDDEN_MEMBERS.mediaType());
+		assertThat(answer.getContentAsByteArray())
+				.as("the bytes answered are not the ones in this picture's own file; the decoy"
+						+ " named after the digest holds the same bytes turned round")
+				.isEqualTo(A_HIDDEN_MEMBERS.bytes());
+	}
+
+	/**
+	 * AND A SESSION CHANGES NOTHING FOR ANY OTHER HOLDER, which is what keeps the condition
+	 * on the member's own {@code exists} rather than over the whole rule.
+	 *
+	 * <p>Written over the whole {@code or}, the condition would refuse a TEAM's mark to every
+	 * visitor - a team has no profile to hide and {@code profile_hidden} is not a column of
+	 * {@code team} - and it would also let a waiting picture out to anybody with a session.
+	 * Both are caught here: the four holders are walked as a MEMBER, and each must answer
+	 * exactly what it answers to a visitor, which
+	 * {@link #whatHoldsAPictureDecidesWhetherItIsAnswered} has already pinned.
+	 *
+	 * <p><b>Why it is its own case and not a second parameter on that one.</b> That case is
+	 * about which HOLDER decides and it reads the rows to prove each entry; this is about the
+	 * one holder whose answer depends on the caller, said as „and the other four do not". Two
+	 * questions, and the second is the one this increment could break.
+	 */
+	@ParameterizedTest
+	@MethodSource("everyHolderThereIs")
+	void aSessionChangesNothingForAnyHolderButAHiddenMembersOwn(Held held) throws Exception {
+		assertThat(http.perform(asking(held.picture().digest(), A_MEMBER))
+						.andReturn().getResponse().getStatus())
+				.as("%s answered a caller with a session something other than what it answers a"
+						+ " visitor. Only a member hiding his profile may read differently, and a"
+						+ " condition written over the whole rule rather than over the member's"
+						+ " own holder is what does this", held)
+				.isEqualTo(held.answered());
 	}
 
 	/**

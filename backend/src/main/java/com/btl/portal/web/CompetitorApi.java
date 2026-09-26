@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -199,12 +200,80 @@ import java.util.List;
  * all five kinds of caller for the basis, which is the one that still depends on who
  * is asking.
  *
- * <p><b>A hidden profile is still in this list.</b> Hiding a profile is about the
+ * <p><b>AND SINCE 26.09.2026 THE PORTRAIT LEAVES HERE, which is the one home of what a
+ * member looks like.</b> PDL P28f, owner: „po odobravanju slike ona tog trenutka pocinje da
+ * se vidi na svim avatar mestima (u rang listama, profilnoj sekciji, gornjem desnom
+ * zaglavlju ulogovanog korisnika itd.)" Every circle in the portal is drawn by
+ * {@code frontend/src/components/Portrait.tsx}, which takes a whole {@code Competitor}, and
+ * the header of the signed in member finds its own record in this very answer
+ * ({@code frontend/src/app/AccountMenu.tsx}). So there is one route to teach and not nine,
+ * and P28f says so in as many words: „Krug dobija JEDAN dom."
+ *
+ * <p><b>The address is the DIGEST and never {@code photo.id}</b>, and it is
+ * {@link PhotoApi}'s arrangement arriving at its second publisher rather than a choice made
+ * again here (ADL A60, 20.09.2026). A key is countable, so an address built on one would let
+ * anybody walk 1, 2, 3 and learn which rows the portal holds; sixty four hexadecimal
+ * characters are not walked. {@link TeamApi} publishes a team's mark the same way and for
+ * the same reason, and {@code CompetitorApiTest} hands the address this builds back to the
+ * dispatcher rather than comparing two spellings, so a rename is caught by the route.
+ *
+ * <p><b>The portrait and its square are two halves of one fact and leave together</b>, the
+ * same rule {@link TeamApi} keeps for a mark. Here they leave together BY CONSTRUCTION
+ * rather than by two conditions agreeing: all four columns come off one joined row, so there
+ * is no arrangement of the data in which one of them is there and the others are not. Null
+ * and never the empty path for a member who has none, which
+ * {@code frontend/src/data/types.ts} refuses in as many words about a team - „a team that
+ * has none is not a team whose logo is the empty path" - and an empty path is an address a
+ * browser would ask for. Null is also what the portal already reads as „the whole picture"
+ * ({@code frontend/src/components/crop.ts}).
+ *
+ * <p><b>AND THE PICTURE THAT IS WAITING IS NOT THE PICTURE THAT IS ON THE PROFILE.</b>
+ * {@code competitor.photo_id} is what a moderator has approved and
+ * {@code verification.photo_id} is what he has not yet looked at; ADL A60 makes the first
+ * public and the second not, and PDL P28a says why - „Profilnu sliku administrator odobrava
+ * pre objave". So this reads the column ON THE MEMBER and never the queue, and it is the
+ * DIGEST that must not leave rather than only the bytes: {@link PhotoApi} already refuses
+ * bytes no public holder points at, but a digest answered here would tell a visitor that
+ * this member has a picture in moderation, and tell whoever holds the file that it is that
+ * one. {@code aPictureWaitingForAModeratorIsNobodysPortrait} reads the whole answer as text
+ * for every kind of caller, and
+ * {@code aMemberWhoseOnlyPictureIsWaitingCarriesNoPortrait} is the half a {@code coalesce}
+ * of the two columns would otherwise pass.
+ *
+ * <p><b>A hidden profile is still in this list, and since 26.09.2026 its PORTRAIT is the one
+ * thing on the list that hiding takes away.</b> Hiding a profile is about the
  * profile PAGE (PDL P23); the member number and the name stay public (Article
  * 73), and the portal needs the flag in order to know what to draw. Deleting a
  * member is the other door and it takes the row with it. A lapsed fee is a third
  * door and it is the one above: it takes the member off the list without taking
  * anything away from them.
+ *
+ * <p><b>Why the portrait is the exception, and it is a decision rather than a reading of
+ * mine.</b> ADL A60 left one boundary open in as many words - „`competitor.photo_id` se
+ * tretira kao javan bez obzira na `profile_hidden`" - and named what would close it: „Prvi
+ * resurs koji ga objavi mora u istom potezu da donese pravilo o skrivenom profilu, inace
+ * granica pada tog dana." This is that resource. <b>[ODLUKA 26.09.2026, owner]</b>, chosen
+ * between three offered: the digest is withheld from a caller who is not signed in, AND
+ * {@link PhotoApi} refuses such a portrait to the same caller. The two offers refused were
+ * to call the digest public outright, and to withhold it here alone - the second on the
+ * measurement that the digest IS the whole permission, because {@link PhotoApi} asked nobody
+ * who was calling, so a member could pass the address on and any visitor would get the
+ * bytes. PDL, 06.09.2026 already puts the photograph among what hiding hides.
+ *
+ * <p><b>Hidden from a caller who is NOT SIGNED IN, and from nobody else</b>, which is the
+ * owner's own limit: „Takmicar od ulogovanih kolega ne moze da sakrije profil" (PDL,
+ * 06.09.2026), with the reason in the published policy - „ali ne i od ostalih clanova, jer bi
+ * time nestao smisao zajednickog rangiranja". {@code frontend/src/profile/visible.ts} is the
+ * one home of the same sentence on the other side.
+ *
+ * <p><b>What that does NOT cover, named rather than left to be found.</b> The fee is not part
+ * of this rule: {@link PhotoApi} goes on answering the portrait of a member whose fee has
+ * lapsed to anybody holding the digest. It cannot be got from here - such a member is not on
+ * this list at all - and no decision covers it, so nothing is invented for it. The biography
+ * is the other one: PDL, 06.09.2026 names it beside the photograph among what hiding hides,
+ * and this resource answers it to everybody. <b>[ODLUKA 26.09.2026, owner]</b> the same rule
+ * applies to it, and it is its own increment so that this one does not grow past the change
+ * it is measuring.
  *
  * <p><b>In member number order</b>, which is the one order the portal speaks of
  * them in: it is printed on the card and it never changes.
@@ -232,6 +301,20 @@ class CompetitorApi {
 	 * asks {@code admin_right} itself, in the same commit as this line.
 	 */
 	static final String OVER_THE_MEMBERS = "entity:members";
+
+	/**
+	 * WHERE A PICTURE IS ASKED FOR, and the name that follows is its digest.
+	 *
+	 * <p>The same text {@link PhotoApi} maps and {@link ApiSecurity} opens, and
+	 * {@link TeamApi} already keeps a literal of its own for a team's mark. Kept as a literal
+	 * here too rather than reached for through any of the three, for the reason that one
+	 * writes out: a constant copied is only ever as good as what proves it equal, and what
+	 * proves it is {@code thePortraitIsTheAddressOfThatMembersOwnPicture}, which hands the
+	 * address this builds back to the dispatcher and requires it to arrive at
+	 * {@link PhotoApi}. A rename that left this behind is caught by the route and not by a
+	 * comparison of two strings.
+	 */
+	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
 
 	private final JdbcClient db;
 
@@ -299,6 +382,33 @@ class CompetitorApi {
 	}
 
 	/**
+	 * Which circle of the portrait is drawn, as three fractions between 0 and 1.
+	 *
+	 * <p>The same three numbers and the same names {@link TeamApi.Crop} answers for a team's
+	 * mark, because it is the same fact about a different thing, and the portal reads both
+	 * through one piece of arithmetic ({@code frontend/src/components/crop.ts}).
+	 *
+	 * @param size the diameter, as a fraction of the picture's shorter edge. The column is
+	 *             {@code crop_diameter} since V21 and the portal's word is {@code size};
+	 *             {@link TeamApi} writes out why the answer carries the portal's, and it
+	 *             matters which way round: {@code cropIn} asks for {@code size} and quietly
+	 *             returns the whole picture for a record without it, so answering
+	 *             {@code diameter} would lose every crop without one error anywhere
+	 */
+	record Crop(BigDecimal x, BigDecimal y, BigDecimal size) {
+	}
+
+	/**
+	 * @param photo          where this member's portrait is asked for, or NULL for a member
+	 *                       who has none - and for a member who hides his profile when
+	 *                       nobody is signed in, which is the same shape on purpose. PDL,
+	 *                       06.09.2026 requires that „Oba slucaja dobijaju isti ishod": told
+	 *                       apart, the absence would say „this member has a picture and I am
+	 *                       not showing it to you", which names him as one of the members who
+	 *                       hide. Null and never the empty path: see the note on this class
+	 * @param crop           the square of the portrait, or null for a member who has no
+	 *                       portrait in this answer. The other half of {@code photo} and
+	 *                       never answered without it
 	 * @param birthdayShown  what the member chose about their birthday, which the
 	 *                       portal needs in order to draw the card at all
 	 * @param ageBand        the band alone and never the finished code, so the sex is
@@ -325,7 +435,7 @@ class CompetitorApi {
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, String ageBand, boolean firstSeason2027, int firstSeason,
 			String bio, Long teamId, Integer teamSince, boolean profileHidden,
-			String birthdayShown,
+			String birthdayShown, String photo, Crop crop,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis) {
 	}
 
@@ -344,7 +454,15 @@ class CompetitorApi {
 	 *               the two fields that made the answers differ are gone</b> (PDL P26a):
 	 *               a signed in MEMBER is now answered what a visitor is, to the byte,
 	 *               with nothing cut out of either. That claim was not available while
-	 *               those two existed
+	 *               those two existed.
+	 *               <p><b>AND SINCE 26.09.2026 IT HOLDS OF EVERY FIELD BUT ONE, which is
+	 *               said here rather than left for the case to carry alone.</b> A session
+	 *               now decides one thing: whether a member who hides his profile has his
+	 *               portrait answered ([ODLUKA 26.09.2026, owner]; see the note on this
+	 *               class). So the two answers are equal with the PORTRAITS BLANKED on both
+	 *               sides and with nothing else cut, and the case says so out loud - it
+	 *               first requires that the two really DO differ before the blanking, so
+	 *               the normalisation cannot become the thing that makes it pass
 	 */
 	@GetMapping("/api/competitors")
 	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
@@ -365,6 +483,24 @@ class CompetitorApi {
 		   visitor is Spring's anonymous token; the overload takes the caller rather
 		   than reaching for the context, and its own note says what that is for. */
 		boolean administration = member != null && mayHe.may(member, OVER_THE_MEMBERS);
+
+		/* AND WHETHER ANYBODY IS ASKING AT ALL, which is a second question and not the one
+		   above. It decides one thing only: whether a hidden member's portrait leaves (PDL
+		   P23 and the decision of 26.09.2026, see the note on this class).
+
+		   IT IS READ OFF THE ACCOUNT, and that is the same trap the line above avoids rather
+		   than a repetition of it. An account that does not race has no member at all (V23,
+		   owner 14.09.2026), so a condition asked of the caller's MEMBER would hide a hidden
+		   member's portrait from a signed in caller - and the rule is about a reader who is
+		   NOT signed in, which he is. This route stopped asking which member anybody is on
+		   25.09.2026 (P26a) and it does not start again: „is there a session" is the whole
+		   question, and `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` walks an
+		   account with no member of its own for exactly that reason.
+
+		   IT IS NOT `!administration` EITHER: the portal's word is „ne i od ostalih clanova,
+		   jer bi time nestao smisao zajednickog rangiranja", so every member sees it and not
+		   only the administration. */
+		boolean signedIn = member != null;
 
 		/* AND THE SEASON THE BANDS BELOW ARE WORKED OUT FOR, read ONCE for the whole
 		   answer rather than per row. Two members with the same year of birth must come
@@ -441,6 +577,22 @@ class CompetitorApi {
 						   rather than by field name, so it refuses the year however it is
 						   spelt and whatever it is called - which is what makes reading it
 						   here safe to do rather than merely intended to be. */
+						/* AND THE PORTRAIT AND ITS SQUARE, WHICH ARE ONE FACT AND ARE ASKED FOR
+						   IN ONE BREATH, exactly as `TeamApi` asks for a team's mark. The digest
+						   is what the picture is asked for BY (PhotoApi, ADL A60) and never
+						   `mine.id`, which is countable. `crop_diameter` and not `crop_side`: V21
+						   renamed it when the three became fractions.
+
+						   ALL FOUR COME OFF THE SAME JOINED ROW, so „the portrait and its square
+						   leave together or neither does" is the shape of the answer rather than
+						   four conditions that have to agree - and the rule about a hidden
+						   profile is therefore written ONCE, on the join below, rather than four
+						   times here. A `case` per column is the shape that can drift; this one
+						   cannot.
+
+						   THEY STAND BEFORE THE YEAR rather than after it, so that the sentence
+						   below stays true: the year is still the LAST column read. */
+						+ " mine.digest, mine.crop_x, mine.crop_y, mine.crop_diameter,"
 						+ " c.birth_year"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
@@ -451,6 +603,34 @@ class CompetitorApi {
 						   club's name. */
 						+ " left join team_membership m on m.competitor_id = c.id"
 						+ "  and m.season_to is null"
+						/* THE PORTRAIT THE MODERATOR HAS APPROVED, AND THE ONE RULE ABOUT A
+						   HIDDEN PROFILE, IN ONE PLACE.
+
+						   `c.photo_id` AND NEVER `verification.photo_id`: the first is what has
+						   been approved and the second is what nobody has looked at yet, and ADL
+						   A60 makes only the first public. Nothing in this FROM clause reaches
+						   the queue at all, which is why a waiting picture cannot arrive here by
+						   any arrangement of the data rather than by a condition somebody has to
+						   remember.
+
+						   LEFT, because a member with no portrait is an ordinary member and not
+						   a member missing from the list. `photo.id` is the primary key, so this
+						   joins at most one row and a member still comes back once.
+
+						   AND THE CONDITION IS ON THE JOIN, WHICH IS WHAT MAKES IT ONE RULE. For
+						   a member who hides his profile and a caller who is not signed in the
+						   row simply does not join, so the digest is never read, the square is
+						   never read, and the answer is byte for byte the answer of a member who
+						   has no portrait at all - which is what PDL, 06.09.2026 requires („Oba
+						   slucaja dobijaju isti ishod"). Written as a `case` over the digest it
+						   would be four cases, and a fifth column tomorrow would be a fifth.
+
+						   THE PARAMETER IS CAST because it stands alone as an operand of `or`
+						   with nothing beside it to take a type from, which is the same refusal
+						   `TeamApi` writes out beside its own („could not determine data type of
+						   parameter") and the same shape `:administration` takes above. */
+						+ " left join photo mine on mine.id = c.photo_id"
+						+ "  and (cast(:signedIn as boolean) or not c.profile_hidden)"
 						/* AND ONLY THE MEMBERS WHOSE FEE IS STANDING, which is the whole of what
 						   this resource is allowed to say about a fee. PDL P11: „Status clanarine
 						   se ne prikazuje na profilu... ko nije platio, ne vidi se nigde osim u
@@ -460,19 +640,41 @@ class CompetitorApi {
 						+ " where c.active"
 						+ " order by c.member_number")
 				.param("administration", administration)
-				.query((row, one) -> new Competitor(row.getString(1), row.getString(2),
+				.param("signedIn", signedIn)
+				.query((row, one) -> {
+					/* Exact decimal all the way out, never a double, which is `TeamApi`'s own
+					   sentence about the same three numbers: V21 chose `numeric(9, 8)` because
+					   the rule is about the exact boundaries 0 and 1, and a binary fraction
+					   cannot be trusted at one.
+
+					   EVERY COLUMN OF `photo` IS NOT NULL (V8), so each of these two is null
+					   exactly when no row joined - which is a member with no portrait, or a
+					   member hiding his profile from a caller who is not signed in. They are
+					   read side by side rather than one from the other so that the answer says
+					   what the row says. */
+					String portrait = row.getString(15);
+					BigDecimal across = row.getBigDecimal(16);
+
+					return new Competitor(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
 						/* THE RULE IS ASKED FOR, NEVER REPEATED HERE. `Category` is where the
 						   league's bands live and where the decision that age is settled on 1
 						   January rather than on the birthday is written down (PDL P7, changed
 						   from the 2017 rulebook). A second copy of that arithmetic in a
 						   mapper is a second place to fix when a band moves. */
-						Category.ageBandFor(row.getInt(15), season).code(),
+						Category.ageBandFor(row.getInt(19), season).code(),
 						row.getBoolean(7), row.getInt(8), row.getString(9),
 						row.getObject(10) == null ? null : row.getLong(10),
 						row.getObject(11) == null ? null : row.getInt(11),
 						row.getBoolean(12), row.getString(13),
-						row.getString(14)))
+						/* The digest and never the key, and never the empty path for a member
+						   who has no portrait: an empty path is an address a browser would ask
+						   for. */
+						portrait == null ? null : A_PICTURE_IS_ASKED_FOR_AT + portrait,
+						across == null ? null
+								: new Crop(across, row.getBigDecimal(17), row.getBigDecimal(18)),
+						row.getString(14));
+				})
 				.list();
 	}
 }

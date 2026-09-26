@@ -883,12 +883,15 @@ class TeamApiTest {
 	 *
 	 * <p><b>The digest half was added on 21.09.2026 with the address</b>, and it is the
 	 * more serious of the two: a crop off the wrong row draws a picture badly, while a
-	 * digest off the wrong row IS that picture, asked for by anybody. ADL A60 leaves one
-	 * boundary open - {@code competitor.photo_id} counts as public whatever
-	 * {@code profile_hidden} says - and what keeps it shut today is that no resource
-	 * publishes a portrait's digest. This is the case that says so, and it is asked over
-	 * the whole TEXT rather than over a field name, because an omission guarded by a name
-	 * lasts until somebody answers the same fact under another one.
+	 * digest off the wrong row IS that picture, asked for by anybody. ADL A60 left one
+	 * boundary open until 26.09.2026 - {@code competitor.photo_id} counts as public
+	 * whatever {@code profile_hidden} says. What shuts it now is not the absence of a
+	 * publisher: {@link CompetitorApi} publishes a portrait's digest since that day,
+	 * and a condition on ITS OWN join is the boundary. This case still holds its own,
+	 * narrower claim - that no such digest, nor a mark's, crosses from the wrong row
+	 * of {@code photo} into a TEAM's answer - over the whole TEXT rather than over a
+	 * field name, because an omission guarded by a name lasts until somebody answers
+	 * the same fact under another one.
 	 *
 	 * <p><b>The values are read off the database and not written here</b>, in the
 	 * spelling the column itself gives them, and the marks are looked FOR before the
