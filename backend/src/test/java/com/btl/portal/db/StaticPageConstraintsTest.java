@@ -252,6 +252,18 @@ class StaticPageConstraintsTest extends DatabaseTest {
 				Violation.of("static_page_translation_language_shape",
 						"insert into static_page_translation (page_id, language, title) "
 								+ "select id, 'EN', 'Proba' from static_page where slug = 'pravilnik'"),
+				/* A SECOND ROW FOR THE SAME CONSTRAINT, and it is here because it is the one that
+				   measures the COLLATE "C" in V35 rather than the regular expression around it.
+				   Capitals above are refused by `[a-z]` under any collation, because case is a
+				   different axis from the range. These two letters are not: a range inside a
+				   bracket expression is resolved by the collation, and under a tailored one they
+				   can fall inside `[a-z]`. Without that clause this row is the one that would go
+				   in, and the check would be accepting a tag it says it refuses. The floor above
+				   takes constraint names as a SET, so naming one constraint twice is allowed and
+				   is what lets a check with two ways of being wrong have a row for each. */
+				Violation.of("static_page_translation_language_shape",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "select id, 'šč', 'Proba' from static_page where slug = 'pravilnik'"),
 				Violation.of("static_page_translation_title_not_blank",
 						"insert into static_page_translation (page_id, language, title) "
 								+ "select id, 'en', '   ' from static_page where slug = 'pravilnik'"),
