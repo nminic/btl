@@ -171,6 +171,37 @@ radno stablo uopšte, pa zatečena mutacija ne može da postane osnova.
 **Provera posle serije:** `git status --porcelain` mora da bude **prazan**. To je jedina provera
 koja hvata i sadržaj i prelom reda, jer `git diff` o prelomu reda ćuti.
 
+### 3. `Nothing to compile` daje ZELEN prolaz nad kodom koji nikad nije preveden (25.09.2026)
+
+Nadjeno na recenziji PR-a 370, i to je **treci oblik** iste klase: merenje koje izgleda uredno a nije
+merilo ono sto tvrdi. Za razliku od prva dva, ovaj kvari **zeleni** ishod, ne crveni.
+
+**Sta se desilo.** Mutacija je upisana u Java fajl, prolaz je pusten, i u izlazu je stajalo
+`[INFO] Nothing to compile - all classes are up to date`. Paket je bio **zelen o kodu koji nikad
+nije preveden**, sto se sa strane ne razlikuje od mutacije koju nijedan slucaj ne hvata. Ista
+mutacija (evro granica 1000 → 1001), posle brisanja `target/classes` i `target/test-classes`, daje
+**cetiri pada**.
+
+**I drugi oblik istog uzroka:** `git status --porcelain` pusten **odmah** posle `git checkout -- <put>`
+odgovorio je **cisto dok je mutacija jos bila na disku** — dokazano `git diff`-om koji je pokazao
+izmenjen red — a drugi put je prijavio prljavim fajl koji to nije bio.
+
+**Najverovatniji uzrok je OneDrive sinhronizacija nad radnim folderom**, koja pomera vreme izmene
+fajla, pa Maven misli da je prevod svez a git da je stablo cisto. Nije dokazano do kraja i zato stoji
+kao najverovatniji uzrok a ne kao cinjenica.
+
+**Sta se radi:**
+- **Pre svakog prolaza u seriji mutacija brisu se `target/classes` i `target/test-classes`.** Bez
+  toga zelen ishod ne znaci nista.
+- **Vracanje se proverava sa `git diff`, ne samo `git status`**, i **dva cista citanja razmaknuta
+  dve sekunde**. Jedno citanje odmah posle vracanja moze da slaze u oba smera.
+- **Zeleni ishod u seriji mutacija je sumnjiv dok se ne pokaze da je prevod stvarno tekao.** Trazi se
+  red koji imenuje broj prevedenih razreda; `Nothing to compile` nije merenje.
+
+**Sta ovo NE obara:** seriju u kojoj **svaka** mutacija pada. Pad dokazuje da je prolaz stvarno
+merio. Ugrozen je samo zeleni ishod, dakle bas onaj na osnovu kog se zakljucuje „ovu rupu niko ne
+cuva".
+
 ### I dalje važi, i nalazi se ovde da se ne traži na dva mesta
 
 - Vraćanje ide u `finally`, da pad skripte ne ostavi mutaciju za sobom.
