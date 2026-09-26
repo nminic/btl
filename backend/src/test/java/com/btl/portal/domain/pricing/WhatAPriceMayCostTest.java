@@ -89,8 +89,9 @@ class WhatAPriceMayCostTest {
 	 * in the form fails here and asks for a decision once, instead of being enforced by a
 	 * screen and by nothing else - which is the state P12c was written to end.
 	 *
-	 * <p>The names are the form's own field names, which are the two columns of
-	 * {@code price_row} and the two fields of {@code PricingWriteApi.Amounts}.
+	 * <p>The names are the form's own field names, which are the two amount columns of
+	 * {@code price_row} and two of the three fields of {@code PricingWriteApi.TheForm} - the
+	 * third being the name, whose own cap is held by {@code WhatARowIsCalledTest}.
 	 */
 	@Test
 	void theFormAndTheRouteStopAtTheSameAmounts() throws IOException {

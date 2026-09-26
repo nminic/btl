@@ -61,6 +61,28 @@ class PricingApi {
 	 * One row of the price list: what it is called, what kind of row it is, when it
 	 * applies, and what it costs on each of the two price lists.
 	 *
+	 * <p><b>{@code label} IS WHAT A READER CALLS THE ROW AND {@code key} IS WHAT THE PORTAL
+	 * CALLS IT, and they are two fields because they are two facts.</b> The key is
+	 * {@code early} and is a name in code that no screen prints; the label is
+	 * „1. do 5. oktobra" and is the first column of the table a visitor reads under Clan 14
+	 * of the rulebook. Owner, 25.09.2026 (PDL P12b, 1): „Naziv perioda postaje kolona u bazi
+	 * koju administrator menja sam iz administracije", which completes his own sentence of
+	 * 30.07.2026 (PDL:827) that a price list changes „cene <b>i nazivi perioda</b>". Until
+	 * V34 the six names a reader saw stood in {@code frontend/src/i18n/sr.json} and the
+	 * seventh - the processing fee - had none at all, which is how the gap was found.
+	 *
+	 * <p><b>Served although no screen reads it yet, which is the arrangement {@code kind} is
+	 * already in rather than a field served on the chance it will be wanted.</b> The name is
+	 * the one thing a screen cannot work out for itself: a key is not a word anybody prints,
+	 * and the dictionary the screen reads today has no entry for the fee at all.
+	 * <b>BOUNDARY, named rather than left to be found:</b> for as long as
+	 * {@code PriceTable} reads {@code pricing.rows.*} out of the bundle, a name changed
+	 * through {@code PUT /api/pricing/{key}} moves this column and does not move what the
+	 * visitor reads. {@code TheRowNameHasOneHomeTest} holds the two equal in the repository;
+	 * nothing on this side can see them part at run time. It closes when the pricing screen
+	 * reads this resource, and that is the screen's own increment (owner, 26.09.2026, who
+	 * settled that the column comes first and the screen follows).
+	 *
 	 * <p><b>{@code from} and {@code to} and not {@code dayFrom} and {@code dayTo},
 	 * which is the name the portal reads by</b> ({@code PriceRow} in
 	 * {@code data/pricing.ts}). {@code DucatApi} is the precedent and made the same
@@ -104,6 +126,7 @@ class PricingApi {
 	 * is „the question does not apply".
 	 *
 	 * @param key     the name the row is known by, unique across the list
+	 * @param label   what the row is called in the words a reader sees, on every row
 	 * @param kind    one of {@code period}, {@code level}, {@code fee},
 	 *                {@code referral}
 	 * @param from    the day of the year the period opens, null on every other kind
@@ -113,7 +136,7 @@ class PricingApi {
 	 * @param ranking whether what this buys carries a place in the standing, null on
 	 *                every kind but a period
 	 */
-	record Price(String key, String kind, String from, String to,
+	record Price(String key, String label, String kind, String from, String to,
 			BigDecimal eur, BigDecimal rsd, Boolean ranking) {
 	}
 
@@ -125,7 +148,7 @@ class PricingApi {
 		   that way, and a price is the one number on this portal that must not change
 		   shape on the way to the person paying it. ADL A12: an amount is numeric and
 		   never a float. */
-		return db.sql("select key, kind, day_from, day_to, eur, rsd, ranking"
+		return db.sql("select key, label, kind, day_from, day_to, eur, rsd, ranking"
 						/* AND IN THE ORDER SOMEBODY DECIDED. Ordered by the key the list would
 						   come out alphabetically, which puts the junior level between `early`
 						   and `late`; ordered by the amount it would open with the processing
@@ -139,9 +162,9 @@ class PricingApi {
 						   the suite green. */
 						+ " from price_row order by sort_order")
 				.query((row, one) -> new Price(row.getString(1), row.getString(2),
-						row.getString(3), row.getString(4),
-						row.getBigDecimal(5), row.getBigDecimal(6),
-						row.getObject(7, Boolean.class)))
+						row.getString(3), row.getString(4), row.getString(5),
+						row.getBigDecimal(6), row.getBigDecimal(7),
+						row.getObject(8, Boolean.class)))
 				.list();
 	}
 }

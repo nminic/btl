@@ -15,7 +15,7 @@ import java.time.Clock;
 import java.util.Optional;
 
 /**
- * CHANGING WHAT A ROW OF THE PRICE LIST COSTS, AND NOTHING ELSE ABOUT IT.
+ * CHANGING WHAT A ROW OF THE PRICE LIST IS CALLED AND WHAT IT COSTS, AND NOTHING ELSE ABOUT IT.
  *
  * <p>The writing half of {@link PricingApi}, which has answered {@code price_row} since the
  * codebooks went in while nothing at all wrote it. Until this increment the administration's
@@ -85,25 +85,34 @@ import java.util.Optional;
  * SOURCE; <b>nothing on this side can see them part at RUN TIME</b>, because every test
  * starts from a database V4 has just written. Naming it is all this side can do.
  *
+ * <p><b>AND THE NAME HAS THE SAME SHAPE OF GAP, WITH TWO HOMES INSTEAD OF FOUR, AND IT IS THE
+ * COST THE OWNER WAS SHOWN BEFORE HE CHOSE THIS ORDER.</b> PDL:8122 said what it would be in
+ * as many words: „dodavanje kolone pre ekrana daje nazivu <b>dva doma</b> dok ekran jos cita
+ * recnik." The two are {@code price_row.label} (V34), which this route writes and
+ * {@code GET /api/pricing} serves, and {@code frontend/src/i18n/sr.json} under
+ * {@code pricing.rows.*}, which {@code PriceTable} and {@code AdminPricing} read out of the
+ * bundle. On 26.09.2026 the owner settled that the column comes first and the screen follows,
+ * because without the column the screen can change the amounts of six named rows and
+ * <b>cannot give the processing fee a button at all</b> - the dictionary has no name for it -
+ * so the second half of P12b could not be carried out either way round.
+ * {@code TheRowNameHasOneHomeTest} holds the two equal in the repository and fails the day one
+ * of them is edited alone. It cannot see them part at run time, for the reason above.
+ *
  * <p><b>WHAT THIS ROUTE DELIBERATELY DOES NOT WRITE, each named rather than discovered.</b>
  *
  * <ul>
- * <li><b>The period.</b> {@code day_from} and {@code day_to} are the year itself, and the
- * four of them tile it with no gap and no overlap ({@code PriceListRowsTest}). „Menjaju se
- * samo cene i nazivi perioda" does not include the window, and a window moved through a form
- * is a stretch of the year with two prices or none.
+ * <li><b>The period, which is the one half of the owner's sentence that is NOT written here and
+ * is easiest to lose now that the other half is.</b> „Menjaju se samo cene i <b>nazivi
+ * perioda</b>" names the price and the NAME; it does not name the days. {@code day_from} and
+ * {@code day_to} are the year itself, and the four of them tile it with no gap and no overlap
+ * ({@code PriceListRowsTest}), so a window moved through a form is a stretch of the year with
+ * two prices or none. Renaming „1. do 5. oktobra" to something else is therefore allowed here
+ * and moving the fifth of October is not, and those are two different facts wearing one word.
  * <li><b>The kind, the right to be ranked, the key and the order.</b> None of them is a
- * price. The order in particular is a decision somebody took (see {@link PricingApi}), and
- * the statement below cannot reach it.
- * <li><b>The NAME of the period, which is the other half of the owner's own sentence and is
- * PLANNED rather than missing.</b> {@code price_row} has no column for it today: the six
- * names a reader sees stand in {@code frontend/src/i18n/sr.json} under
- * {@code pricing.rows.*}, and the form ({@code admin-cena.form.json}) asks for one as
- * {@code label}. <b>Owner, 25.09.2026: the name becomes a COLUMN, which he edits from the
- * administration - and it arrives together with the pricing screen and not before.</b> So
- * this route gains a third field on that day; it does not have one now because a column
- * written before the screen stopped reading the dictionary would be two homes for one name,
- * and the screen is another branch's.
+ * price and none of them is a name. The key in particular is what a row is IDENTIFIED by and
+ * the label is what it is CALLED - {@code PUT} takes the first in the address and writes the
+ * second in the body, and they are never the same field. The order is a decision somebody took
+ * (see {@link PricingApi}), and the statement below cannot reach it.
  * <li><b>Telling anybody.</b> Nothing here writes a row into {@code message}. <b>That is my
  * reading of the precedent and not a decision anybody recorded:</b> {@link LeagueWriteApi}
  * and {@link EventWriteApi} both say in as many words that they notify nobody, and no entry
@@ -135,6 +144,16 @@ class PricingWriteApi {
 	/** V4's {@code price_row_only_fee_has_no_rsd}, said as a sentence. See {@link #change}. */
 	static final String THE_FEE_HAS_NO_DINAR_PRICE = "theFeeHasNoDinarPrice";
 
+	/**
+	 * More characters in the name than the box an administrator types it into will hold.
+	 *
+	 * <p><b>Its own sentence and not {@link #THE_FORM_IS_NOT_COMPLETE}</b>, for the reason the
+	 * ceiling above is its own sentence: the two send an administrator to two different places.
+	 * „Fill this in" and „shorten this" are not the same instruction, and a name of a hundred
+	 * characters is a form he did fill in.
+	 */
+	static final String THE_NAME_IS_LONGER_THAN_THE_FORM_ALLOWS = "theNameIsLongerThanTheFormAllows";
+
 	/** PDL P16, owner 16.08.2026: „posle 1. oktobra u 00:00 CET iznos za tu godinu stoji". */
 	static final String THE_REFERRAL_IS_SETTLED_FOR_THE_COMING_SEASON =
 			"theReferralIsSettledForTheComingSeason";
@@ -157,6 +176,45 @@ class PricingWriteApi {
 
 	static final String A_REFERRAL = "referral";
 
+	/**
+	 * AS MANY CHARACTERS IN THE NAME AS THE FORM'S OWN BOX HOLDS, AND THE NUMBER IS <b>MINE</b>
+	 * RATHER THAN THE OWNER'S.
+	 *
+	 * <p><b>Said first and plainly, because the paragraph beside it could be read the other
+	 * way.</b> PDL P12c (25.09.2026) records that the owner accepted the two {@code max} figures
+	 * of {@code admin-cena.form.json} - „Brojevi nisu novi nego oni koje je vlasnik vec prihvatio
+	 * u formi (admin-cena.form.json, max 1000 i 200000)". It names {@code max}. It does
+	 * <b>not</b> name {@code maxLength}, and no entry of PDL or ADL speaks to how long the name
+	 * of a price row may be. Eighty is the number that file already carries on the {@code label}
+	 * field; <b>applying P12c's reasoning to it is my reading and not his decision</b>, and it is
+	 * marked here so the next reader does not cite it as one.
+	 *
+	 * <p><b>The precedent in this portal points both ways, so both are named.</b>
+	 * {@link MeWriteApi#AS_LONG_AS_THE_FORM_ALLOWS} enforces a length on the route and can,
+	 * because its figure is the owner's (PDL P11, 31.07.2026, 360 characters with the arithmetic
+	 * beside it). {@link TeamWriteApi} deliberately left one out and wrote why: „the schema names
+	 * no length at all ... Left out here rather than invented, so that the day it is enforced it
+	 * is enforced in one place with a number somebody decided." What tips it here rather than
+	 * there is where the text lands: a team's name is drawn on the team's own page, and this one
+	 * is the first column of the price table published under Clan 14 of the rulebook, which
+	 * {@code PricingApi} serves to a visitor who is not signed in. {@code text} in PostgreSQL has
+	 * no length of its own (nothing in this schema does), so with no refusal here an
+	 * administrator past the screen puts a paragraph in a table cell a visitor reads.
+	 *
+	 * <p><b>Written here and measured against the file, which is the floor under it.</b>
+	 * {@code WhatARowIsCalledTest} walks {@code admin-cena.form.json} for every field carrying a
+	 * {@code maxLength} and requires the answer to be exactly this one number on exactly this
+	 * field - the arrangement {@code WhatAPriceMayCostTest} has for {@code max}. The day the box
+	 * moves, the build stops until this moves with it.
+	 *
+	 * <p><b>Counted in the units the box counts in</b>, which is {@link String#length()}: HTML's
+	 * {@code maxlength} is a code-unit length, so the server and the box agree about a text
+	 * rather than nearly agreeing about it. <b>And measured over what is STORED</b>, after the
+	 * name is stripped, so a full box ending in a space is not refused for a character that is
+	 * thrown away before the row is written.
+	 */
+	static final int AS_LONG_AS_THE_FORM_ALLOWS = 80;
+
 	private final JdbcClient db;
 
 	/**
@@ -172,20 +230,34 @@ class PricingWriteApi {
 	}
 
 	/**
-	 * WHAT THE FORM SENDS: two amounts, and there is nothing else on it that this route may
-	 * write.
+	 * WHAT THE FORM SENDS: a name and two amounts, and there is nothing else on it that this
+	 * route may write.
 	 *
-	 * <p>{@code admin-cena.form.json} asks for three fields - {@code label}, {@code eur} and
-	 * {@code rsd} - and the first has nowhere to go yet; see the boundary at the head of this
-	 * class. The euro price is required here as it is there, and the dinar price is required
-	 * on every row that HAS one, which is six of the seven: see {@link #change}.
+	 * <p>{@code admin-cena.form.json} asks for exactly these three - {@code label},
+	 * {@code eur} and {@code rsd} - and spells them as they are spelt here, because what
+	 * arrives is a body that form builds. <b>All three are required here, as all three are
+	 * required there</b>, with one exception that belongs to the ROW and not to the form: the
+	 * dinar price is required on the six rows that HAVE one and forbidden on the seventh. See
+	 * {@link #change}.
+	 *
+	 * <p><b>The name became a field of this record on the day it became a column</b> (V34,
+	 * owner 25.09.2026, PDL P12b, 1). Until then the form drew a box with nowhere to send
+	 * what was typed into it, and this record said so.
+	 *
+	 * <p><b>A name is NOT absent-means-leave-it-alone, which is the one thing worth saying
+	 * about it.</b> {@link MeWriteApi} reads a missing field as „do not touch this" because
+	 * ADL A54 asks it to, and this route does the opposite: a {@code PUT} of a price row
+	 * states the whole row, the euro price has always been required whether or not it changed,
+	 * and a name is no different. <b>My reasoning, marked as such:</b> nothing in the journals
+	 * speaks to it, and the form sends all three fields on every save, so the choice costs an
+	 * administrator nothing and keeps one shape for the body instead of two.
 	 *
 	 * <p><b>Two amounts and never one with a rate on it.</b> Owner (PDL:833): „Dinarski
 	 * cenovnik je fiksiran za sezonu, po kursu 1 EUR = 120 RSD. <b>Ne preracunava se po kursu
 	 * na dan.</b>" So the dinar price is entered, not worked out, and nothing here multiplies
 	 * anything by anything.
 	 */
-	record Amounts(BigDecimal eur, BigDecimal rsd) {
+	record TheForm(String label, BigDecimal eur, BigDecimal rsd) {
 	}
 
 	/** Why something could not be written. */
@@ -198,12 +270,17 @@ class PricingWriteApi {
 	 * <p>Not the numbers that arrived: {@code returning} answers what {@code numeric(10,2)}
 	 * holds, so an amount that lost something on the way in says so in the answer rather than
 	 * in a member's invoice a month later.
+	 *
+	 * <p><b>And the name for the same reason, which on the name is not hypothetical.</b> The
+	 * text is stripped before it is written, so „  Rano  " goes in as „Rano" and the answer
+	 * says „Rano". Read back out of {@code returning} rather than echoed from the request, so
+	 * the screen redraws what the table now holds instead of what somebody typed.
 	 */
-	record Written(String key, BigDecimal eur, BigDecimal rsd) {
+	record Written(String key, String label, BigDecimal eur, BigDecimal rsd) {
 	}
 
 	/**
-	 * CHANGING ONE ROW'S TWO AMOUNTS.
+	 * CHANGING ONE ROW'S NAME AND ITS TWO AMOUNTS.
 	 *
 	 * <p><b>The row is named by its KEY and not by a number</b>, which is where this parts
 	 * from {@link LeagueWriteApi} and follows {@code DucatApi} instead. {@code GET
@@ -242,6 +319,19 @@ class PricingWriteApi {
 	 * currency against its own, and {@code WhatAPriceMayCostTest} reads the form off the
 	 * working tree so the two homes the owner accepted cannot drift apart in silence.
 	 *
+	 * <p><b>AND A NAME THAT IS BLANK IS THE SAME FAULT AS A NAME THAT IS MISSING, WHICH IS ONE
+	 * SENTENCE AND NOT TWO.</b> {@code LeagueWriteApi} settled this shape for a name a form
+	 * requires - {@code isNothing}, which is {@code null || isBlank()}, answered with
+	 * {@link #THE_FORM_IS_NOT_COMPLETE} - and the reason it is one sentence is that both send an
+	 * administrator to the same box: a required field with nothing in it. „   " is not a name,
+	 * and {@code price_row_label_not_blank} (V34) would otherwise answer it with a 500.
+	 *
+	 * <p><b>SPACES AROUND A NAME ARE NOT A BLANK NAME, AND THAT IS THE STATE THAT IS EASY TO
+	 * LOSE.</b> „  Rano  " is a name and is written as „Rano", the same {@code strip()}
+	 * {@code LeagueWriteApi} applies to a league's. Three states rather than two, and each has
+	 * its own case, because a route that treated the third as the second would refuse a name for
+	 * a space nobody can see.
+	 *
 	 * <p><b>ALL SEVEN ROWS ARE WRITTEN HERE, INCLUDING THE FEE (owner, 25.09.2026).</b> He
 	 * chose that the processing fee gets a button of its own with the dinar price left out,
 	 * rather than being refused; the screen and the form that go with it are a later
@@ -279,6 +369,18 @@ class PricingWriteApi {
 	 * and he took it, deciding that an amount per season is its own later increment. A
 	 * reviewer need not spend a round on it: it is open because it was decided to be.
 	 *
+	 * <p><b>AND THE DEADLINE SHUTS THE WHOLE REQUEST AND NOT ONLY THE AMOUNT, WHICH IS A
+	 * QUESTION ABOUT MEANING AND THEREFORE DECIDED HERE RATHER THAN MEASURED.</b> PDL:8149
+	 * speaks of the AMOUNT - „posle 1. oktobra iznos za tu godinu <b>stoji</b>" - and says
+	 * nothing about the referral row's NAME, so both readings run green through the whole suite:
+	 * that is the mark of a concept, and the rule of 28.08.2026 says a concept is settled before
+	 * the code. <b>My reasoning, marked as such:</b> this address takes one {@code PUT} carrying
+	 * one body, so letting the name through while refusing the amount would accept HALF a form,
+	 * and there is no answer in any journal for what the screen should then redraw. <b>The cost
+	 * it carries, said out loud:</b> from midnight in Belgrade on 1 October the referral row
+	 * cannot be renamed either, until the window opens again. If that is ever wrong it is one
+	 * condition on one line, and the case that holds it is written in both directions.
+	 *
 	 * <p><b>Two statements and no transaction, which is a decision.</b> The kind is read, then
 	 * the row is written. Nothing on this portal ever writes {@code price_row.kind} - this
 	 * route is the only thing that writes the table at all, and it cannot reach that column -
@@ -288,7 +390,7 @@ class PricingWriteApi {
 	 */
 	@PutMapping("/api/pricing/{key}")
 	@RightIsNeeded("entity:pricing")
-	ResponseEntity<?> change(@PathVariable String key, @RequestBody Amounts typed) {
+	ResponseEntity<?> change(@PathVariable String key, @RequestBody TheForm typed) {
 		Optional<String> kind = db.sql("select kind from price_row where key = ?")
 				.param(key).query(String.class).optional();
 
@@ -306,8 +408,13 @@ class PricingWriteApi {
 		}
 
 		/* THE EURO PRICE IS ON EVERY ROW AND THE DINAR PRICE IS ON SIX OF THE SEVEN, so an
-		   absent dinar price is a form that is not finished everywhere except on the fee. */
-		if (typed.eur() == null || (typed.rsd() == null && !theFee)) {
+		   absent dinar price is a form that is not finished everywhere except on the fee.
+
+		   AND THE NAME IS ON EVERY ROW TOO, absent or blank alike: `isNothing` is
+		   `LeagueWriteApi`'s, and both states are the same instruction to the administrator.
+		   Asked HERE and not after the amounts, so that this one condition answers every way
+		   the form can be unfinished with the one sentence that names it. */
+		if (typed.eur() == null || isNothing(typed.label()) || (typed.rsd() == null && !theFee)) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -360,6 +467,21 @@ class PricingWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST);
 		}
 
+		/* AND HOW LONG THE NAME MAY BE, WHICH IS `AS_LONG_AS_THE_FORM_ALLOWS` AND MY READING
+		   RATHER THAN THE OWNER'S DECISION - see that constant for the whole of why.
+
+		   LAST, AND THAT POSITION IS CHOSEN FOR THE REASON THE CEILING ABOVE GIVES FOR ITS OWN:
+		   appended rather than inserted, so not one request that already had an answer gets a
+		   different one. A form with no dinar price and a hundred-character name still answers
+		   `theFormIsNotComplete`, exactly as it did yesterday, and a change that quietly
+		   restates old cases is a change nobody measured.
+
+		   MEASURED OVER WHAT WOULD BE STORED, hence after `strip()`: a name filling the box and
+		   ending in a space is not refused for a character the statement below throws away. */
+		if (typed.label().strip().length() > AS_LONG_AS_THE_FORM_ALLOWS) {
+			return no(HttpStatus.BAD_REQUEST, THE_NAME_IS_LONGER_THAN_THE_FORM_ALLOWS);
+		}
+
 		/* `single()` AND NOT `optional()`, WHICH IS A STATEMENT ABOUT WHAT CAN HAPPEN HERE.
 		   The row was found one statement ago and nothing on this portal deletes from this
 		   table - there is no route that does, and V16's `payment_price_row_fk` is
@@ -373,12 +495,24 @@ class PricingWriteApi {
 		   two refusals above have already settled, and the day the two disagreed the schema
 		   would win silently. The cast is what tells PostgreSQL which kind of null it is being
 		   handed, since a parameter carries no type of its own. */
-		return db.sql("update price_row set eur = ?, rsd = cast(? as numeric)"
-						+ " where key = ? returning eur, rsd")
-				.params(typed.eur(), typed.rsd(), key)
-				.query((row, one) -> ResponseEntity
-						.ok(new Written(key, row.getBigDecimal(1), row.getBigDecimal(2))))
+		return db.sql("update price_row set label = ?, eur = ?, rsd = cast(? as numeric)"
+						+ " where key = ? returning label, eur, rsd")
+				.params(typed.label().strip(), typed.eur(), typed.rsd(), key)
+				.query((row, one) -> ResponseEntity.ok(new Written(key, row.getString(1),
+						row.getBigDecimal(2), row.getBigDecimal(3))))
 				.single();
+	}
+
+	/**
+	 * Nothing at all, whether that is no field or a field of spaces.
+	 *
+	 * <p>{@code LeagueWriteApi.isNothing} word for word, and it is copied rather than shared for
+	 * the reason that file's own neighbours are: one class per resource, and a helper of three
+	 * words pulled into a common place would tie two routes together so that a change to either
+	 * one has to be reasoned about for both.
+	 */
+	private static boolean isNothing(String value) {
+		return value == null || value.isBlank();
 	}
 
 	/**
