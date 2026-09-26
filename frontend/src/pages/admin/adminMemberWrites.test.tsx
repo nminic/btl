@@ -431,7 +431,7 @@ describe('the members screen', () => {
   }, SLOW)
 
   /**
-   * A NUMBER A DELETION FREES MUST NOT BE HANDED OUT TO SOMEBODY WHO INHERITS THE OLD ROW.
+   * A MEMBER TAKEN AWAY HERE STAYS AWAY WHEN A NUMBER IS HANDED OUT TWO SCREENS ALONG.
    *
    * <p><b>This case came from `deleting.test.tsx` on 26.09.2026 and changed BOTH of its ends
    * on the way.</b> It used to delete a member and then enter one on the member form, which
@@ -441,11 +441,16 @@ describe('the members screen', () => {
    * membership is activated (`admin/memberNumbers.ts:121`, ADL A4d).
    *
    * <p><b>The fault it exists for.</b> Deletions were one flat list of identities and the list
-   * of records was filtered by it AFTER this visit's own entries had been merged in. So a
-   * member who arrived on a number a deletion had just freed saved, confirmed, and was then
-   * not in the list at all - and because the overlay of changes is keyed by the identity, a
-   * record that did survive would have been wearing the town and the name of the member who
-   * was deleted.
+   * of records was filtered by it AFTER this visit's own entries had been merged in, so a
+   * record arriving during the same visit could be filtered out by a deletion that had nothing
+   * to do with it - and because the overlay of changes is keyed by the identity, one that did
+   * survive would wear the town and the name of whoever had been deleted under that key.
+   *
+   * <p><b>A deletion does NOT free the number, and saying so would be the easy mistake here.</b>
+   * `admin/memberNumbers.ts:64-71` puts the deleted back among the taken on purpose: deleting
+   * unties the number from the person and the number stays spent, because it stands in old
+   * results, old tables and a printed card (PDL P8, 31.07.2026). So what this case walks is a
+   * deletion and a hand-out in one visit, not a number changing hands.
    *
    * <p><b>Why the two ends have to be different screens for this to say anything.</b> Both
    * halves used to be on one screen, so „the number came back" and „the row came back" could
@@ -453,7 +458,7 @@ describe('the members screen', () => {
    * visit, the number is freed by an answer from the server and taken by a different flow
    * entirely, which is the shape the portal really has now.
    */
-  it('hands a number a deletion freed to an activation, without the old row coming with it',
+  it('activates a membership after a deletion, without the deleted row coming back with it',
     async () => {
       const remembered = [...MEMBERS]
       const server = serverThat((path, init) => {

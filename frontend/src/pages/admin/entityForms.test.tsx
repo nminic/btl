@@ -8,6 +8,7 @@ import { emptyValues } from '../../forms/validate'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { answeredWith, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
+import { SLOW } from '../../test/slow'
 import { categoryOf } from '../../data/raceCategory'
 import {
   ENTITY_FORMS,
@@ -515,6 +516,59 @@ describe('the identity of a record', () => {
   })
 
   /**
+   * TWO RECORDS ENTERED IN ONE VISIT, WHICH IS A DIFFERENT QUESTION FROM ONE.
+   *
+   * <p><b>Why it is here, and it is a measurement of 26.09.2026 rather than thoroughness.</b>
+   * When a new record is saved, `EntityEditor` works out its identity against what this
+   * visit has ALREADY made as well as against what is taken - and that first list is read by
+   * walking `creations[entity.id]`. Walked when it is empty, the walk does nothing, so the
+   * whole of that reading is exercised only by a SECOND record in one visit.
+   *
+   * <p>Until today that second record was a member: „is the next free number for each member
+   * entered in turn" entered two in a row. The member form is gone (PDL P8b), and the moment
+   * it went, every test stayed green and every mutation stayed caught while that reading
+   * stopped being executed at all - the coverage threshold is what said so, which is exactly
+   * the division `CLAUDE.md` draws between the two tools.
+   *
+   * <p><b>Asked of written pages, which name themselves.</b> A page is filed under the
+   * address that was typed, so this says nothing about counters; what it says is that
+   * entering a second record does not lose or overwrite the first, which is the half a
+   * single-record case cannot reach.
+   */
+  it('keeps the first when a second is entered in the same visit', async () => {
+    const user = setupUser()
+    const title = t('admin.form.new.pages')
+    renderAt('/sr/administracija/strane', 'superadmin')
+
+    const before = within(await screen.findByRole('table', { name: 'Statične strane' }))
+    const rows = before.getAllByRole('row').length
+
+    for (const [slug, name] of [
+      ['prva-nova', 'Prva nova'],
+      ['druga-nova', 'Druga nova'],
+    ] as const) {
+      await user.click(screen.getByRole('button', { name: title }))
+
+      const form = open(title)
+
+      await user.type(form.getByLabelText(labelled(t('admin.address'))), slug)
+      await user.type(form.getByLabelText(labelled(t('admin.field.pageTitle'))), name)
+      await user.type(form.getByLabelText(labelled(t('admin.field.sectionHeading'))), 'Uvod')
+      await user.type(form.getByLabelText(labelled(t('admin.field.sectionBody'))), 'Tekst.')
+      await user.click(form.getByRole('button', { name: t('form.submit') }))
+      await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+    }
+
+    const list = within(await screen.findByRole('table', { name: 'Statične strane' }))
+
+    /* Both, and the first named as well as the second: a second entry that overwrote the
+       first would leave the row count right and one of the two names missing. */
+    expect(list.getByRole('button', { name: 'Otvori: Prva nova' })).toBeVisible()
+    expect(list.getByRole('button', { name: 'Otvori: Druga nova' })).toBeVisible()
+    expect(list.getAllByRole('row')).toHaveLength(rows + 2)
+  }, SLOW)
+
+  /**
    * „DOES NOT STAND IN THE WAY OF THE RECORD IT BELONGS TO" WAS HERE, OVER A MEMBER, AND IT
    * WENT WITH „OTVORI" ON 26.09.2026.
    *
@@ -808,6 +862,39 @@ describe('the identity a new record is handed', () => {
     /* Two made, the first deleted, so the list holds one. Counted by length that
        is „-2" again, which is the identity the survivor answers to. */
     expect(idFor(TEAMS, {}, ['-2'], [])).toBe('-3')
+  })
+
+  /**
+   * AND FOR THE ONE ENTITY THAT HANDS ITS OWN OUT, WHICH SINCE 26.09.2026 IS ASKED HERE AND
+   * NOWHERE ELSE.
+   *
+   * <p>`MEMBERS` is the only entity carrying `handsOutIdentity` (`entityForms.ts:125`), and
+   * the only thing that ever reached that branch was the member form. The form is gone (PDL
+   * P8b), so the branch went from „covered by two screen cases" to unreachable in the same
+   * commit - and nothing said so: every test stayed green and the whole list of mutations
+   * stayed caught, because a mutation can only ask whether something that RUNS has a guard.
+   * The 100 per cent threshold is what reported it, which is the division `CLAUDE.md` states.
+   *
+   * <p><b>Asked directly rather than through a screen on purpose.</b> Handing a number out is
+   * arithmetic over what is taken; it belongs beside the three cases above it, and the flow
+   * that still uses it in production - activating a membership (`admin/memberNumbers.ts:121`)
+   * - is measured on its own screen in `adminFlows.test.tsx`.
+   *
+   * <p><b>And it reads `taken` rather than `made`</b>, which is the whole difference between
+   * this entity and the three cases above: a member number is decided by what has ever been
+   * spoken for, so what this visit happens to have entered is not a separate list to count.
+   */
+  it('counts up from the highest spoken for, for the one entity that hands its own out', () => {
+    expect(idFor(MEMBERS, {}, [], ['000001', '000002'])).toBe('000003')
+    /* A GAP IS STEPPED OVER RATHER THAN FILLED, and that is the decision rather than an
+       implementation detail: a number only ever counts up (PDL P8, 31.07.2026), because
+       deleting a member unties the number from the person while the number itself stays
+       spent - it stands in old results, old tables and a printed card. Reading this the
+       other way round handed the highest number straight back to the next member to join,
+       which is the one thing the rule exists to prevent. */
+    expect(idFor(MEMBERS, {}, [], ['000001', '000003'])).toBe('000004')
+    /* And what this visit made is not what decides it: only what is taken. */
+    expect(idFor(MEMBERS, {}, ['000009'], ['000001'])).toBe('000002')
   })
 
   it('steps over anything not of that shape', () => {

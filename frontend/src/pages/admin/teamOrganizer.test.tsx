@@ -34,6 +34,15 @@ async function openDunav(user: ReturnType<typeof setupUser>) {
 describe('the organiser a team form offers', () => {
   it('holds whoever the record names, even after that member is deleted', async () => {
     const user = setupUser()
+    /* A SERVER IN FRONT OF THE DELETION, since 26.09.2026, and WITHOUT ONE THIS CASE WENT
+       ON PASSING WHILE MEASURING NOTHING. Taking a member away is
+       `DELETE /api/competitors/{memberNumber}` now; unanswered, the deletion is refused, so
+       000001 never leaves and the chooser shows him because he is still on the list rather
+       than because the record names him. Both readings say „toHaveValue('000001')", which
+       is why no assertion here could tell them apart - the coverage threshold did, by
+       reporting the one branch of `organizerOptions` that puts a held member BACK as
+       unreached. */
+    const server = serverThat((_path, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
     const { router } = renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const members = within(await screen.findByRole('table', { name: 'Članovi' }))
@@ -45,6 +54,11 @@ describe('the organiser a team form offers', () => {
     await user.click(within(row).getByRole('button', { name: /^Obriši: Vladan Đurišić/ }))
     await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Vladan Đurišić/ }))
 
+    /* Waited on the sentence the screen says rather than on the row going away; the note on
+       the case below sets out the two drafts of this wait that passed while measuring
+       nothing. */
+    expect(await screen.findByText('Član je obrisan.')).toBeInTheDocument()
+
     await router.navigate('/sr/administracija/timovi')
     await openDunav(user)
 
@@ -52,6 +66,8 @@ describe('the organiser a team form offers', () => {
        form promising a change nobody asked for: written with the list alone, it showed
        the first member on it and saved the old one. */
     expect(await chooser()).toHaveValue('000001')
+
+    server.stop()
   }, SLOW)
 
   it('offers nobody who is gone, except the one being held', async () => {
