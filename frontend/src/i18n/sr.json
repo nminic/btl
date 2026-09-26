@@ -1208,7 +1208,8 @@
     "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
     "period": "Period u godini",
     "everyPayment": "Svaka uplata",
-    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja od {fee} EUR. Taksa nije članarina i ne unosi se u cenovnik.",
+    "processingFeeHeading": "Taksa za obradu",
+    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja. Taksa nije članarina i ne broji se u nju.",
     "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
     "referral": "Preporuka",
     "corrected": "Ispravljeno",
@@ -1248,6 +1249,15 @@
     "leagueGone": "Liga je obrisana.",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
     "leagueTextSaved": "Izmena je sačuvana.",
+    "priceSaved": "Cena je sačuvana.",
+    "priceRefused": {
+      "theFormIsNotComplete": "Nedostaje naziv, cena u evrima ili cena u dinarima.",
+      "theNameIsLongerThanTheFormAllows": "Naziv sme da ima najviše 80 karaktera.",
+      "theAmountIsNotKeptExactly": "Cena sme da ima najviše dve decimale i ne sme da bude negativna.",
+      "theAmountIsMoreThanARowMayCost": "Cena je veća od najveće dozvoljene: 1.000 EUR i 200.000 RSD.",
+      "theFeeHasNoDinarPrice": "Taksa za obradu plaćanja nema dinarsku cenu, jer se u dinarima ne plaća posredniku.",
+      "theReferralIsSettled": "Iznos za preporuku je od 1. oktobra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
+    },
     "moderatorSaveRefused": {
       "theFormIsNotComplete": "Nedostaje ime, prezime ili adresa elektronske pošte.",
       "theAddressIsNotShaped": "Adresa elektronske pošte nije ispravna.",

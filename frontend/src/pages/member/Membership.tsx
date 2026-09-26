@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
 import { countryName } from '../../data/countryName'
@@ -19,22 +20,18 @@ import {
   RECIPIENT_ADDRESS,
   RECIPIENT_NAME,
 } from '../../data/paymentQr'
+import { registrationOpen, seasonBeingRenewed } from '../../data/pricing'
 import {
-  JUNIOR,
-  PROCESSING_FEE_EUR,
-  REFERRAL,
-  REFERRAL_ROW,
-  priceOn,
-  registrationOpen,
-  seasonBeingRenewed,
-} from '../../data/pricing'
-import { combinePair, useTeams } from '../../data/useResource'
+  A_FEE,
+  A_LEVEL,
+  A_REFERRAL,
+  inForceOn,
+  ofKind,
+  pricedInBoth,
+} from '../../data/priceList'
+import { combineResources, usePricing, useTeams } from '../../data/useResource'
 import { money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { applyChanges } from '../../forms/records'
-import { PRICING } from '../admin/entityForms'
-import { recordKey } from '../../session/context'
-import { useOverlay } from '../admin/overlay'
 import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
@@ -133,8 +130,8 @@ function inTheirCurrency(
  * **So the five facts it needs about him all come off `GET /api/me` now** - his number,
  * his country, his first season, his team and how his membership is held - and all five
  * are components `MeApi.MyOwnRecord` already declared, so nothing was added to the server
- * for this. The public list is not read here at all any more, which is why the only two
- * resources below are the results and the teams.
+ * for this. The public list is not read here at all any more: the resources below are
+ * the results, the teams and the price list, and none of them is the list of members.
  */
 
 export function Membership() {
@@ -157,22 +154,24 @@ export function Membership() {
     myReferralCode,
     myReferredCount,
   } = useSession()
-  /* The referral amount as administration has it, not as the file has it: it is
-     a row of the price list and is changed there (AdminPricing).
+  /* THE PRICE LIST AS THE SERVER HAS IT, SINCE 26.09.2026, AND UNTIL THAT DAY AS THE
+     BUNDLE HAD IT.
    *
-     The changes laid over the row directly rather than the row read out of a
-     list of one. The price list is fixed: nothing is added to it and nothing is
-     taken away (owner, 30.07.2026), so of the three things administration can do
-     to a record only one can happen here, and asking for the other two left a
-     list that could be empty and a default that could never be reached. */
-  const overlay = useOverlay()
-  const { edits } = overlay
-  const credited = applyChanges(REFERRAL_ROW, edits[recordKey(PRICING.id, REFERRAL.key)])
-  /* TWO RESOURCES AND NOT THREE SINCE 25.09.2026: the list of members was the third and
-     was read for one thing only, finding the caller's own row in it, which `GET /api/me`
-     now answers directly (P8a). `combinePair` already existed for screens that read two
-     (`data/useResource.ts`), so nothing was written for this. */
-  const state = combinePair(useResults(), useTeams())
+     Every amount on this screen was read off `data/pricing.ts` with the session's overlay
+     laid over it, and that overlay never reached a server: a price the administration
+     changed lasted exactly as long as one visit in one browser. What that cost once
+     `PUT /api/pricing/{key}` existed is named in `PricingWriteApi`'s own heading, and this
+     screen is the sharpest end of it - the amount here goes into the IPS QR CODE A MEMBER
+     SCANS, so an administrator who raised the fee raised what the next payment was booked
+     at while the code still asked for the old figure.
+   *
+     THREE RESOURCES AND NOT FOUR: the list of members was the fourth and is gone since
+     25.09.2026 (P8a) - the caller's own row comes off `GET /api/me` through the session
+     above, and it answers him whether or not his fee is standing, which `/api/competitors`
+     (`where c.active`) never did. `combineResources` is the same three-argument combiner
+     this screen read the members list through until today, now pointed at the price list
+     instead (`data/useResource.ts`). */
+  const state = combineResources(useResults(), useTeams(), usePricing())
   /* Renewal only opens inside its window and the price changes three times
      inside it, so this screen is the one that changes most with the date. It
      reads the same clock as everything else (src/clock). */
@@ -247,7 +246,7 @@ export function Membership() {
 
   return (
     <Resource state={state}>
-      {([results, teams]) => {
+      {([results, teams, prices]) => {
         /* What the beginners' category is decided by, and it is not what this
            member has taken altogether.
 
@@ -265,14 +264,31 @@ export function Membership() {
         const nextSeason = seasonBeingRenewed(today)
         const windowOpen = inYearlyWindow(today)
         const team = teams.find((one) => one.id === myTeamId)
-        /* The prices as administration has them, not as the file has them.
-           The referral row was already read through the price list while the fee
-           itself was read off a constant, so an administrator could put 22,50 on
-           the price list, see the table show it, and a member would still read 20
-           and scan a code for the old figure. One screen sets these; one screen
-           has to be enough. */
-        const price = applyChanges(priceOn(today), edits[recordKey(PRICING.id, priceOn(today).key)])
-        const junior = applyChanges(JUNIOR, edits[recordKey(PRICING.id, JUNIOR.key)])
+        /* THE FOUR AMOUNTS THIS SCREEN QUOTES, EACH AS A LIST OF NONE OR ONE.
+         *
+           A list even where exactly one row is expected, which is the portal's own idiom
+           for a row that might not be there (`admin/AdminPricing.tsx`, on the referral):
+           „Walked as a list, the case where it is missing is the empty list and needs no
+           guard at all." Read off a constant, all four were always there and none of them
+           could be absent; read off an answer, what arrives is whatever the table holds.
+         *
+           **Which is a boundary rather than a fear, and it is named where it is drawn.**
+           The four periods tile the year with no gap and no overlap, and the side that can
+           hold them to it does (`PriceListRowsTest` on the server). This side cannot, so a
+           sentence with no amount to put in it is not drawn at all rather than drawn around
+           a figure nobody sent. */
+        const inBoth = pricedInBoth(prices)
+        const due = inForceOn(inBoth, today)
+        const junior = ofKind(inBoth, A_LEVEL)
+        /* What a member is credited for everyone they bring in. Nobody pays it, so it is
+           not a price of membership at all, and it is set on the price list because the
+           owner asked for it there (12.08.2026: „ovo admin treba da konfiguriše na strani
+           cenovnika takođe"). */
+        const credited = ofKind(inBoth, A_REFERRAL)
+        /* And what a payment from abroad costs to process, which is the one row with no
+           dinar side - there is no intermediary there to pay (PDL, owner 04.08.2026) - so
+           it is read off the whole answer and never off `inBoth`. */
+        const processing = ofKind(prices, A_FEE)
         /* A member freed of the fee owes nothing at all (Pravilnik član 15, PDL P16),
            and twenty nine of the thirty two members in the data are freed of the fee. */
         /* **OFF THE ANSWER THAT CARRIES IT TO HIM, AND NOT OFF THE PUBLIC LIST**
@@ -335,7 +351,6 @@ export function Membership() {
            signature (PDL P23) — a distinction the owner corrected by hand once
            already. It takes two numbers and not a record, so it asks nobody to put
            a year of birth back where one may not be. */
-        const due = price
         const methods = methodsFor(myCountry)
         /* What the member scans and what the association books. It named the
            first season for ever, so from October 2027 the heading would have
@@ -383,14 +398,22 @@ export function Membership() {
                   pay nothing. */}
               {!feeExempt && (
               <>
-              <p className="member__note">
-                {registrationOpen(today)
-                  ? t('membership.priceNow', {
-                      eur: money(due.eur, locale),
-                      rsd: money(due.rsd, locale),
-                    })
-                  : t('membership.notYetSold')}
-              </p>
+              {registrationOpen(today) ? (
+                /* One walk of the list of none or one. The sentence carries two amounts
+                   and there is no honest sentence with only one of them, so where the
+                   answer holds no period in force this says nothing rather than quoting
+                   a figure nobody sent. */
+                due.map((row) => (
+                  <p className="member__note" key={row.key}>
+                    {t('membership.priceNow', {
+                      eur: money(row.eur, locale),
+                      rsd: money(row.rsd, locale),
+                    })}
+                  </p>
+                ))
+              ) : (
+                <p className="member__note">{t('membership.notYetSold')}</p>
+              )}
               {/* What a payment carries besides the fee, said to everybody and
                   not only to whoever pays it (owner, 04.08.2026): the fee is
                   something a member should be able to look up, the same way
@@ -402,15 +425,20 @@ export function Membership() {
                   the nine months a season is running the price is quoted and
                   the window is shut, and the sentence was missing exactly
                   then. */}
-              {registrationOpen(today) && (
-                <p className="member__note">{t('membership.costs', { fee: PROCESSING_FEE_EUR })}</p>
-              )}
-              <p className="member__note">
-                {t('membership.junior', {
-                  eur: money(junior.eur, locale),
-                  rsd: money(junior.rsd, locale),
-                })}
-              </p>
+              {registrationOpen(today) &&
+                processing.map((fee) => (
+                  <p className="member__note" key={fee.key}>
+                    {t('membership.costs', { fee: money(fee.eur, locale) })}
+                  </p>
+                ))}
+              {junior.map((row) => (
+                <p className="member__note" key={row.key}>
+                  {t('membership.junior', {
+                    eur: money(row.eur, locale),
+                    rsd: money(row.rsd, locale),
+                  })}
+                </p>
+              ))}
               </>
               )}
             </section>
@@ -502,8 +530,17 @@ export function Membership() {
                       and an amount, which is the whole of the slip and the very
                       route that decision removed. The terms say the same in
                       writing: outside Serbia it is PayPal or a card. */}
-                  {methods.includes('ips') && (
-                    <>
+                  {/* AND ONLY WHERE THERE IS AN AMOUNT TO PUT ON IT, which is the walk
+                      of the list of none or one. A slip is four facts and a sum, and the
+                      one thing a bank cannot do without is the sum, so an answer holding
+                      no period in force draws no slip rather than a slip with a hole in
+                      it. Nested inside the question about the country rather than folded
+                      into it: „a member abroad sees no slip" and „there is no price to
+                      put on one" are two different reasons, and one condition covering
+                      both would let a case pass for the wrong one. */}
+                  {methods.includes('ips') &&
+                    due.map((row) => (
+                    <Fragment key={row.key}>
                   <h3 className="profile__section">{t('membership.payNow')}</h3>
 
                   {/* The same four facts the code carries, in writing, because a
@@ -534,20 +571,27 @@ export function Membership() {
                         reaches. */}
                     <dt>{t('membership.amountLabel')}</dt>
                     <dd>
-                      <strong>{inTheirCurrency(myCountry, due, locale)}</strong>
+                      <strong>{inTheirCurrency(myCountry, row, locale)}</strong>
                     </dd>
                   </dl>
 
                   <p className="member__note">{t('membership.referenceNote')}</p>
-                    </>
-                  )}
+                    </Fragment>
+                    ))}
 
                   {/* Every way of paying is one way of doing what the slip
                       above is for, so they sit under it rather than beside
                       it. As third level headings they read as four more
                       sections of the renewal, which they are not. */}
-                  {methods.includes('ips') && (
-                    <div className="pay">
+                  {/* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is
+                      the sharpest end of the whole increment. `PricingWriteApi` names it
+                      in its own heading: while this read the bundled constant, an
+                      administrator who raised the fee raised what the next payment was
+                      BOOKED at and left the code asking for the old figure - so a member
+                      scanned a request for one sum and was recorded as owing another. */}
+                  {methods.includes('ips') &&
+                    due.map((row) => (
+                    <div className="pay" key={row.key}>
                       <h4>{t('membership.ips')}</h4>
                       <p className="member__note">{t('membership.ipsNote')}</p>
                       <div className="pay__code">
@@ -555,7 +599,7 @@ export function Membership() {
                           text={ipsPayload({
                             account: RECIPIENT_ACCOUNT,
                             recipient: RECIPIENT,
-                            amountRsd: due.rsd,
+                            amountRsd: row.rsd,
                             purpose,
                             reference,
                           })}
@@ -567,7 +611,7 @@ export function Membership() {
                             {ipsPayload({
                               account: RECIPIENT_ACCOUNT,
                               recipient: RECIPIENT,
-                              amountRsd: due.rsd,
+                              amountRsd: row.rsd,
                               purpose,
                               reference,
                             })}
@@ -575,7 +619,7 @@ export function Membership() {
                         </details>
                       </div>
                     </div>
-                  )}
+                    ))}
 
                   {methods.includes('card') && (
                     <div className="pay">
@@ -627,11 +671,12 @@ export function Membership() {
                 balance underneath used to be „0 EUR" for everybody, under a
                 sentence promising dinars.
 
-                Read through the price list rather than off the constant, because
-                that is where an administrator sets it (owner, 12.08.2026) and
-                what is typed there has to be what is promised here. The same
-                read as every entity on the portal: the generated record with
-                whatever administration has changed laid over it.
+                Read off `GET /api/pricing` since 26.09.2026, because that is where an
+                administrator sets it (owner, 12.08.2026) and what is typed there has to
+                be what is promised here. It used to be the bundled row with the
+                session's overlay on top, which meant the promise a member read was
+                whatever THIS build shipped: a figure the administration had raised
+                reached the price table in his own browser and nowhere else.
 
                 It says when the credit lands, and that is not a detail: it lands
                 when the new member's fee is activated, never at registration, so
@@ -640,9 +685,17 @@ export function Membership() {
               <h2 className="profile__section" id="membership-referral">
                 {t('membership.referral')}
               </h2>
-              <p className="member__note">
-                {t('membership.referralNote', { amount: inTheirCurrency(myCountry, credited, locale) })}
+              {/* The list of none or one again. Walked twice rather than once around the
+                  whole section, which is measured rather than tidy: the LINK between the
+                  two is this member's own and has nothing to do with what a referral is
+                  worth, so an answer that carried no referral row would have taken his
+                  personal link off the screen with it - and the link is the one thing on
+                  this section he is meant to copy and send. */}
+              {credited.map((row) => (
+              <p className="member__note" key={row.key}>
+                {t('membership.referralNote', { amount: inTheirCurrency(myCountry, row, locale) })}
               </p>
+              ))}
               {/* The code and not the member number. That number is public and
                   consecutive: it is the address of a profile and the sign in
                   list prints it beside every name, so anybody could assemble
@@ -664,10 +717,14 @@ export function Membership() {
                   would copy and send on, and the empty string is a link that plainly
                   does not work rather than one that looks as if it might. */}
               <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`}</p>
-              <p className="membership__balance">
-                <strong>{inTheirCurrency(myCountry, credited, locale, myReferredCount ?? 0)}</strong>{' '}
-                <span>{t('membership.balance')}</span>
-              </p>
+              {credited.map((row) => (
+                <p className="membership__balance" key={row.key}>
+                  <strong>
+                    {inTheirCurrency(myCountry, row, locale, myReferredCount ?? 0)}
+                  </strong>{' '}
+                  <span>{t('membership.balance')}</span>
+                </p>
+              ))}
               <p className="member__note">{t('membership.balanceNote')}</p>
             </section>
           </div>

@@ -4,13 +4,20 @@ import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { THEME_STORAGE_KEY } from '../app/themeContext'
-import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
+/* `PRICES` is still read, for the one case that has to name the amount the BUNDLE ships
+   so that the served one can be shown to differ from it. `JUNIOR` is not: the junior row is
+   read off the answer now, like every other. */
+import { PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import registration from '../forms/definitions/registracija.form.json'
 import newResult from '../forms/definitions/unos-rezultata.form.json'
 import fromEvent from '../forms/definitions/prijava-sa-trke.form.json'
 import written from '../../public/mock/pages.json'
+/* The served price list, read from the very file `test/setup.ts` answers `/api/pricing`
+   with, so what this holds the table to is what the portal was really handed. */
+import servedPrices from '../../public/mock/pricing.json'
+import { serverThat } from '../test/serverAnswers'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
@@ -260,10 +267,16 @@ describe('the fee schedule in the rulebook', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
    * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
-  /** The price table, one string per row of cells. The rulebook draws it out of
-   *  `pricing.ts` through `src/components/PriceTable.tsx` rather than writing it
-   *  as Markdown, so this reads the rows a screen reader would. The header row
-   *  has no cells, only column headers, so it falls out by itself. */
+  /** The price table, one string per row of cells. The rulebook draws it through
+   *  `src/components/PriceTable.tsx` rather than writing it as Markdown, so this reads
+   *  the rows a screen reader would. The header row has no cells, only column headers, so
+   *  it falls out by itself.
+   *
+   *  **`findByRole` and no longer `getByRole`, since 26.09.2026.** The table used to be
+   *  drawn from a constant compiled into the bundle and was therefore in the document on
+   *  the first paint; it reads `GET /api/pricing` now, so there is a moment when the
+   *  heading is there and the table is not. Read synchronously it failed with „Unable to
+   *  find role=table", which points at the rulebook rather than at the wait. */
   async function priceTableRows() {
     const heading = await screen.findByRole('heading', { name: /^\d+\. Članarina$/ })
     const section = heading.closest('section')
@@ -272,7 +285,7 @@ describe('the fee schedule in the rulebook', () => {
       throw new Error('the fee heading stands outside a section')
     }
 
-    return within(within(section).getByRole('table'))
+    return within(await within(section).findByRole('table'))
       .getAllByRole('row')
       .map((row) =>
         within(row)
@@ -292,7 +305,7 @@ describe('the fee schedule in the rulebook', () => {
       throw new Error('the fee heading stands outside a section')
     }
 
-    return within(section).getByRole('table')
+    return within(section).findByRole('table')
   }
 
   /** What the band holds in the column with that header. The currency is printed
@@ -319,6 +332,16 @@ describe('the fee schedule in the rulebook', () => {
     return within(row).getAllByRole('cell')[column]?.textContent
   }
 
+  /**
+   * The bands the answer carries, which is what the table draws.
+   *
+   * <p>Periods only: the level answers the ranking column with a word of its own and has a
+   * case to itself, the referral is credited rather than paid, and the processing fee has no
+   * dinar side at all so it is quoted as its own line. The last two were left out of this
+   * table by being absent from a constant until 26.09.2026 and are left out by KIND now.
+   */
+  const BANDS = servedPrices.filter((row) => row.kind === 'period')
+
   it('holds the price bands in the order the table prints them', () => {
     /* Looking a band up by name is what makes the test above readable, and it is
        also what stopped it noticing a reordering: before the lookup, the rows
@@ -328,11 +351,21 @@ describe('the fee schedule in the rulebook', () => {
     expect(PRICES.map((price) => price.key)).toEqual(['early', 'regular', 'late', 'season'])
   })
 
-  it('quotes every price band that pricing.ts holds, by its own name', async () => {
+  it('quotes every price band the server answers with, by its own name', async () => {
+    /* **READ OFF THE SERVED LIST AND NO LONGER OFF `PRICES`, since 26.09.2026.** This
+       table came out of `data/pricing.ts` until that day and the assertion came out of the
+       same constant, so it could only ever say „the screen agrees with the file it was
+       compiled from". It reads `GET /api/pricing` now, and this reads the same answer.
+
+       **That is not yet proof of which door the figures came through**, because the served
+       file and the constant hold the same seven amounts today - and `ThePriceListHasOneHomeTest`
+       on the server requires exactly that of the repository. The case below serves figures
+       the constant has NOT got, which is the one that can tell them apart. This one is
+       about names and columns, over every band the answer carries. */
     renderAt('/sr/pravilnik')
     const rows = await priceTableRows()
 
-    for (const price of PRICES) {
+    for (const price of BANDS) {
       /* Found by the name of the band and then checked for both amounts, rather
          than found by an amount. Two of the four cost 40 EUR and 4.800 RSD, so
          looking a row up by its price returned the regular band for the season
@@ -351,19 +384,80 @@ describe('the fee schedule in the rulebook', () => {
          found. Two of the four bands cost 40 EUR, which is the very confusion
          this guard exists for. */
       expect(await cellUnder(price, 'EUR')).toBe(money(price.eur, 'sr'))
-      expect(await cellUnder(price, 'RSD')).toBe(money(price.rsd, 'sr'))
+      /* `must` and not `!`: the served `rsd` is `number | null` because the answer really
+         carries a null on one of the seven rows, and a period that arrived without a dinar
+         price would have to fail here saying so rather than be claimed to have one. */
+      expect(await cellUnder(price, 'RSD')).toBe(money(must(price.rsd, 'its dinar price'), 'sr'))
     }
   })
 
-  it('quotes the junior price', async () => {
+  /**
+   * THE ONE CASE THAT SAYS WHICH DOOR THE FIGURES CAME THROUGH, and the whole increment
+   * turns on it.
+   *
+   * <p><b>Every other case on this table would pass over a screen that still read the
+   * bundled constant</b>, because the served file and `data/pricing.ts` carry the same
+   * seven amounts - and they have to: `ThePriceListHasOneHomeTest` on the server holds the
+   * repository's two halves to each other row by row. So „the table says 35" is satisfied
+   * by both doors, and that is exactly the shape `CLAUDE.md` names: „Imenuj drugi izvor
+   * iste vrednosti ... ako se drugi izvor moze imenovati, postavka mora da ih RAZDVOJI".
+   *
+   * <p><b>The second source is named and the amounts are moved away from it.</b> 37 EUR
+   * and 4.440 RSD are in no row of `PRICES`, in no row of the served file, and are not 120
+   * times each other either - PDL P12d, owner 25.09.2026: the rate „je bio nacin da se cene
+   * prvi put izracunaju, ne odnos koji portal cuva", so nothing may work one out from the
+   * other.
+   *
+   * <p><b>And it is asserted in both directions</b>, because „shows 37" alone would pass on
+   * a screen drawing both: the cell holds the served figure and does NOT hold the bundled
+   * one.
+   */
+  it('shows what the server answers and not what the bundle shipped', async () => {
+    const moved = servedPrices.map((row) =>
+      row.key === 'early' ? { ...row, eur: 37, rsd: 4440 } : row,
+    )
+    const { stop } = serverThat((path) =>
+      path === '/api/pricing'
+        ? new Response(JSON.stringify(moved), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      const early = must(
+        PRICES.find((one) => one.key === 'early'),
+        'the early band of the bundled list',
+      )
+
+      expect(early.eur, 'the bundled figure has to differ, or this measures nothing').not.toBe(37)
+
+      renderAt('/sr/pravilnik')
+      await priceTableRows()
+
+      expect(await cellUnder(early, 'EUR')).toBe(money(37, 'sr'))
+      expect(await cellUnder(early, 'RSD')).toBe(money(4440, 'sr'))
+      expect(await cellUnder(early, 'EUR')).not.toBe(money(early.eur, 'sr'))
+      expect(await cellUnder(early, 'RSD')).not.toBe(money(early.rsd, 'sr'))
+    } finally {
+      stop()
+    }
+  })
+
+  it('quotes the junior price the server answers with', async () => {
     renderAt('/sr/pravilnik')
     const rows = await priceTableRows()
-    const name = translate(dictionary, 'sr', `pricing.rows.${JUNIOR.key}`)
+    const junior = must(
+      servedPrices.find((one) => one.kind === 'level'),
+      'the level row of the served price list',
+    )
+    const name = translate(dictionary, 'sr', `pricing.rows.${junior.key}`)
     const row = rows.find((line) => line.includes(name))
 
     expect(row, `no row of the table is the junior band`).toBeDefined()
-    expect(await cellUnder(JUNIOR, 'EUR')).toBe(money(JUNIOR.eur, 'sr'))
-    expect(await cellUnder(JUNIOR, 'RSD')).toBe(money(JUNIOR.rsd, 'sr'))
+    expect(await cellUnder(junior, 'EUR')).toBe(money(junior.eur, 'sr'))
+    expect(await cellUnder(junior, 'RSD')).toBe(money(must(junior.rsd, 'its dinar price'), 'sr'))
   })
 
   it('promises a junior no place in the standing the rulebook refuses them', async () => {
@@ -376,7 +470,20 @@ describe('the fee schedule in the rulebook', () => {
     renderAt('/sr/pravilnik')
 
     const column = translate(dictionary, 'sr', 'pricing.ranking')
-    const said = await cellUnder(JUNIOR, column)
+    const junior = must(
+      servedPrices.find((one) => one.kind === 'level'),
+      'the level row of the served price list',
+    )
+
+    /* AND THE ANSWER SAYS NOTHING ABOUT RANKING FOR IT, which is what the cell has to be
+       read from since 26.09.2026. `PricingApi` answers `ranking: null` for a level - „the
+       question does not apply" - and `data/priceList.ts` asks about that null instead of
+       asking whether the key is `junior`. Written down here so that a served row carrying
+       `false` in its place, which is what `data/pricing.ts` spells, is a red case rather
+       than a cell quietly reading „Ne". */
+    expect(junior.ranking).toBeNull()
+
+    const said = await cellUnder(junior, column)
 
     expect(said).toBe(translate(dictionary, 'sr', 'pricing.rankingByPeriod'))
     expect(said, 'the junior band answers the ranking column with a word of its own').not.toBe(
@@ -555,6 +662,12 @@ describe('a drawing a written section names', () => {
 
     const heading = await screen.findByRole('heading', { name: /^4. Članarina$/ })
     const section = must(heading.closest('section'), 'the section around that heading')
+    /* The table arrives on a request of its own since 26.09.2026, so it is waited for
+       before the order is read. Read at once, the order came back as four headings and no
+       table - which is the very arrangement this case exists to refuse, reported as though
+       the owner's change of 21.08.2026 had been undone. */
+    await within(section).findByRole('table')
+
     const order = [...section.querySelectorAll('h3, table')].map((part) =>
       part.tagName === 'TABLE' ? 'the price table' : (part.textContent ?? ''),
     )
@@ -602,7 +715,9 @@ describe('a drawing a written section names', () => {
     const fee = await screen.findByRole('heading', { name: /^4. Članarina$/ })
     const section = must(fee.closest('section'), 'the section around that heading')
 
-    expect(within(section).getByRole('table').closest('.markdown')).toBeNull()
+    /* The price table arrives on a request of its own too, since 26.09.2026, so it is
+       waited for exactly as the wall of coins below it always was. */
+    expect((await within(section).findByRole('table')).closest('.markdown')).toBeNull()
 
     /* The coins arrive on a request of their own, so the wall is waited for
        rather than looked for once. */

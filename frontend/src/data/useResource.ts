@@ -9,6 +9,7 @@ import type {
   EventComment,
   League,
   Moderator,
+  Price,
   Race,
   RacingPair,
   Result,
@@ -292,6 +293,19 @@ export const useAttendance = () => useResource<Attending[]>('attendance')
 export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
 export const usePages = () => useResource<StaticPage[]>('pages')
+/**
+ * The price list, in the order the server gave it.
+ *
+ * **Read through no `useLive` and through no session overlay, which is what tells it
+ * from the other fourteen.** Nothing on this portal deletes a row of the price list -
+ * „Periodi su stalni: redovi se ne dodaju i ne brisu" (owner, 30.07.2026, PDL:827), and
+ * `PricingWriteApi` has no `POST` and no `DELETE` to answer with - so there is no
+ * deletion to read past. What an administrator CHANGES is held by the screen that changed
+ * it and cleared out of the cache in the same breath (`admin/AdminPricing.tsx`,
+ * `clearResourceCache('pricing')`), rather than laid over this as an overlay; the overlay
+ * was how the price list worked until 26.09.2026, and it never reached the server at all.
+ */
+export const usePricing = () => useResource<Price[]>('pricing')
 export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id')
 /** What a deletion of results is filed under. Named here, where the results
  *  are read, rather than spelled out at the screen that deletes them. */

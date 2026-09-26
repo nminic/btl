@@ -1,11 +1,45 @@
 import { FIRST_SEASON, transfersTakeEffect } from './season'
-/* The price list as data with periods of validity, not as numbers written into
- * a screen (ADL A12). The front page reads it to say what membership costs
- * today and when that changes; the membership page and the price list read the
- * same rows.
+/* THE SELLING YEAR AND THE RULES OF WHO PAYS WHAT. **NO SCREEN DRAWS AN AMOUNT OUT OF THIS
+ * FILE ANY MORE, and that is the whole of what changed on 26.09.2026.**
  *
- * Two currencies are two price lists, not one with a conversion. The dinar
- * price is fixed for the season and does not follow the exchange rate.
+ * This was the price list: the front page, the public table under Član 14 of the rulebook
+ * and „Moja članarina" all read their figures here, with whatever the administration had
+ * changed laid over them out of the session. That overlay never reached a server, so „the
+ * price the administration set" lasted exactly as long as one visit in one browser - and
+ * once `PUT /api/pricing/{key}` existed it became worse than useless: an administrator
+ * raised a price, the next member was CHARGED the new one, and all three screens went on
+ * publishing the old, the IPS QR code he scans included. All three read
+ * `GET /api/pricing` now (`data/priceList.ts`).
+ *
+ * **WHAT THIS FILE IS FOR NOW, in two halves.**
+ *
+ * The first half is still read by eighteen files and has nothing to do with an amount: the
+ * season the portal was built for (`SEASON`), the day registration opens
+ * (`REGISTRATION_OPENS`), which season a renewal is for (`seasonBeingRenewed`), who pays the
+ * junior fee (`juniorInSeason`), the shape of a referral code (`REFERRAL_CODE`),
+ * `daysBetween`, `registrationOpen`. Those are the calendar and the rules, and they are not
+ * served by anything.
+ *
+ * **The second half is the AMOUNTS, and they are here because a test on the other side of
+ * the repository requires them to be.** `PRICES`, `IN_SEASON`, `JUNIOR`, `REFERRAL` and
+ * `PROCESSING_FEE_EUR` are what the repository SHIPS, and
+ * `backend/src/test/java/com/btl/portal/db/ThePriceListHasOneHomeTest.java` sweeps this very
+ * file and requires all seven keys and both amounts of each to equal what `price_row` holds.
+ * So they are not a price list a screen may read; they are one half of a pair the gate keeps
+ * equal, and the only other things that read them are the cases that name a shipped figure
+ * in order to prove the SERVED one differs from it.
+ *
+ * **Which means: adding a reader here that draws an amount is undoing this increment.** The
+ * question „what does membership cost" is answered by the route, and by nothing in this
+ * file. The one exception is named and is not a screen: `data/seedMessages.ts` quotes the
+ * fee in a seeded inbox message, through `priceOn`, and it is a record standing in for a row
+ * a database will hold rather than a price anybody is quoted - see the boundary written
+ * there.
+ *
+ * Two currencies are two price lists, not one with a conversion, and since PDL P12d (owner,
+ * 25.09.2026) that is a decision and not merely a description: the rate of 120 dinars to the
+ * euro „je bio nacin da se cene prvi put izracunaju, ne odnos koji portal cuva", so nothing
+ * anywhere may work one out from the other.
  */
 
 export type PriceRow = {
@@ -94,28 +128,21 @@ export const REFERRAL_CODE = /^[0-9a-f]{16}$/
 
 export const JUNIOR = { key: 'junior', eur: 20, rsd: 2400 }
 
-/**
- * The junior price as a row of the price list: a level and not a period.
+/* `JUNIOR_ROW` AND `ranksByPeriod` STOOD HERE AND ARE GONE (26.09.2026).
  *
- * It holds whenever it is paid, so it carries no dates, and `ranking` is false here and
- * never read: see `ranksByPeriod`. Written once and read by both tables, because the
- * screen that sets prices and the page that publishes them saying different things is
- * the fault this file exists to prevent.
- */
-export const JUNIOR_ROW: PriceRow = { ...JUNIOR, from: '', to: '', ranking: false }
-
-/**
- * Whether a row has no answer of its own to the ranking column.
+ * Both existed so that the two tables could draw the junior level out of this file: a
+ * `PriceRow` shape for it, and a predicate answering „this row has no say in the ranking
+ * column". Both screens read `GET /api/pricing` now, so the shape is the answer's
+ * (`data/types.ts`, `Price`) and the predicate asks the answer's own null
+ * (`data/priceList.ts`, `ranksByPeriod`) rather than comparing a key.
  *
- * Whether a season is ranked follows the day the fee is paid (Član 11 of the rulebook),
- * for a junior exactly as for anybody else, so the junior row points at the periods
- * rather than answering. Both tables said `Da` outright: the public one until 20.08.2026
- * and the administrator's one after it, which is worse, because that is the screen where
- * somebody decides.
+ * **Deleted rather than left standing, and that is a rule of this repository rather than
+ * tidiness.** A moved piece of logic whose old copy stays behind is the one fault a list of
+ * mutations cannot see: a mutation that breaks the new copy falls back on the old one, the
+ * case fails, and the mutation is recorded as caught while a dead branch sits underneath
+ * (`CLAUDE.md`, 25.09.2026). The 100 per cent threshold is what finds those, and it is the
+ * only thing that does.
  */
-export function ranksByPeriod(row: PriceRow): boolean {
-  return row.key === JUNIOR.key
-}
 
 /**
  * Whether a member pays the junior fee for a season.
@@ -163,21 +190,20 @@ export function juniorInSeason(season: number, birthYear: number): boolean {
  * (PDL P16). Nobody is paid for an account that was opened and left. */
 export const REFERRAL = { key: 'referral', eur: 5, rsd: 600 }
 
-/**
- * The same, as a row of the price list, which is what it is entered as.
+/* `REFERRAL_ROW` STOOD HERE AND IS GONE (26.09.2026), for the same reason `JUNIOR_ROW` did.
  *
- * Here and not on the screen that draws it, because two screens read it: the one
- * an administrator sets it on and the one a member is promised it on, and a
- * shape written twice is a shape that drifts. No period of its own in the year and
- * no bearing on the right to be ranked, which is what tells it from a price.
+ * It was the referral in the shape of a price row, because two screens read it - the one an
+ * administrator sets it on and the one a member is promised it on - and a shape written
+ * twice is a shape that drifts. Both read the answer now.
  *
- * That it has no period of its own is not the same as being changeable whenever:
- * since 16.08.2026 it may be set only until the renewal window opens, and it is
- * settled for that season from then (data/season.ts, `referralMayBeSet`). The
- * empty `from` and `to` say it is not sold in a period, not that nothing governs
- * when it is written.
+ * What it carried that is still true is written where the rule lives and not here: the
+ * referral has no period of its own in the year, which is what tells it from a price, and
+ * that is not the same as being changeable whenever - since 16.08.2026 it may be set only
+ * until the renewal window opens, and `SeasonClock.referralMayBeSet` is what the ROUTE
+ * enforces it with (`PricingWriteApi`, `theReferralIsSettledForTheComingSeason`). The empty
+ * `from` and `to` this used to carry were the portal's spelling of „no period"; the answer
+ * spells it `null`, and `data/priceList.ts` reads it that way.
  */
-export const REFERRAL_ROW: PriceRow = { ...REFERRAL, from: '', to: '', ranking: false }
 
 /**
  * What a payment from abroad costs to process, in euro, on top of the fee.

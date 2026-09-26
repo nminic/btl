@@ -277,7 +277,6 @@ describe('a sentence with a value put into it', () => {
          number: a year written in figures has no case to be wrong in. */
       'admin.noEventsOfSeason',
       'admin.ofMany',
-      'admin.processingFee',
       'admin.racesOf',
       'admin.referralOpen',
       'admin.referralRunning',
@@ -330,7 +329,10 @@ describe('a sentence with a value put into it', () => {
       'membership.active',
       'membership.byCountry',
       'membership.chooseCategory',
-      'membership.costs',
+      /* The same fee said to the member, and the same move on the same day: it was
+         `PROCESSING_FEE_EUR` written straight into the sentence and it is the served row
+         now, so it is formatted like the two amounts either side of it. */
+      'membership.costs <- money',
       'membership.feeExempt',
       'membership.firstSeasonClosed',
       'membership.firstSeasonOpen',
