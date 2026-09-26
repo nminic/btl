@@ -26,8 +26,16 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * SOMEBODY SAYING THE MONEY ARRIVED, WHICH IS THE ONLY THING THAT EVER ACTIVATES A
+ * SOMEBODY SAYING THE MONEY ARRIVED, WHICH IS ONE OF THE TWO THINGS THAT ACTIVATE A
  * MEMBERSHIP ON THIS PORTAL.
+ *
+ * <p><b>It was the only one until 27.09.2026 and this heading said so.</b> The other is
+ * {@link MembershipWriteApi}: the association freeing somebody of the fee, which PDL:760
+ * names in the same breath as this one („evidentirana uplata ILI [oslobodjenje]") and which
+ * nothing could do until that day. The sentence below is unchanged and is still about this
+ * route - there is no favourable PRICE - but „the only thing that ever activates a
+ * membership" was the half that stopped being true, and it is worth saying which half: a
+ * fee is still the only thing that activates one HERE.
  *
  * <p><b>Owner, on the one question this whole class exists to answer</b> (PDL,
  * 28.07.2026): „Povlascena cena ne postoji. Ako vlasnik nekome odobri povoljnije
@@ -50,10 +58,10 @@ import java.util.regex.Pattern;
  *
  * <ul>
  * <li>{@link Outcome#RECORD_IT_AND_NUMBER_HIM} - a number is drawn from
- * {@code member_number_seq} (never computed, for the reason V16 gives: a query
- * reads what is there, and what is there is missing exactly the people who left),
- * the payment is written {@code recorded}, and a {@code membership} row is written
- * beside it naming the receipt (ADL A12).
+ * {@link MemberNumbers} (a sequence and never a query, for the reason V16 gives: a
+ * query reads what is there, and what is there is missing exactly the people who
+ * left), the payment is written {@code recorded}, and a {@code membership} row is
+ * written beside it naming the receipt (ADL A12).
  * <li>{@link Outcome#RECORD_IT} - the same two rows, and the number already on the
  * competitor is kept exactly as it is (PDL, 11.08.2026: „Clanski broj ostaje zauvek
  * vezan za tu osobu... Ako se nekad ponovo aktivira postace mu i profil ponovo
@@ -199,6 +207,19 @@ class PaymentApi {
 	private final Clock clock;
 
 	/**
+	 * WHERE A NUMBER COMES FROM, and since 27.09.2026 it is not this class.
+	 *
+	 * <p>It used to be, and the comment that stood on the method here called itself „the
+	 * one place a number is ever drawn" - true for as long as a recorded fee was the only
+	 * thing that activated a membership. {@link MembershipWriteApi} activates one too, and
+	 * PDL:760 and PDL:808 attach the number to the ACTIVATION rather than to the fee, so
+	 * two routes hand numbers out. {@link MemberNumbers} carries the whole of the reason it
+	 * is a sequence and never a query, and {@code PaymentNumberConcurrencyTest} measures it
+	 * through this route exactly as before.
+	 */
+	private final MemberNumbers numbers;
+
+	/**
 	 * Written by hand rather than left on the method, the same choice
 	 * {@link RegistrationApi} made and for the same reason: what happens to the
 	 * competitor, the payment and the membership is one thing that must all happen or
@@ -207,9 +228,10 @@ class PaymentApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	PaymentApi(JdbcClient db, Clock clock, TransactionTemplate inOneTransaction) {
+	PaymentApi(JdbcClient db, Clock clock, MemberNumbers numbers, TransactionTemplate inOneTransaction) {
 		this.db = db;
 		this.clock = clock;
+		this.numbers = numbers;
 		this.inOneTransaction = inOneTransaction;
 	}
 
@@ -399,7 +421,7 @@ class PaymentApi {
 
 		Timestamp now = Timestamp.from(clock.instant());
 
-		String memberNumber = numbering ? drawANumber() : competitor.memberNumber();
+		String memberNumber = numbering ? numbers.draw().written() : competitor.memberNumber();
 
 		if (numbering) {
 			db.sql("update competitor set member_number = ?, active = true where id = ?")
@@ -422,22 +444,6 @@ class PaymentApi {
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Confirmed(paymentId, memberNumber, price.amount(), price.fee(), typed.currency()));
-	}
-
-	/**
-	 * THE ONE PLACE A NUMBER IS EVER DRAWN, and it is a sequence and never a query.
-	 *
-	 * <p>{@code member_number_seq} (V16) is what makes two simultaneous approvals of
-	 * two different people safe without a lock anywhere in this class: PostgreSQL
-	 * hands out each value from it exactly once, whichever of two concurrent
-	 * transactions asks first, and never the same value to both. {@code max(...) + 1}
-	 * would read what is there, which a concurrent second reader could read
-	 * identically before either has written anything back - the exact race this
-	 * method must not have.
-	 */
-	private String drawANumber() {
-		long value = db.sql("select nextval('member_number_seq')").query(Long.class).single();
-		return MemberNumber.of((int) value).written();
 	}
 
 	/** The seven rows of the price list, in the shape {@link MembershipPrice} reads them in. */

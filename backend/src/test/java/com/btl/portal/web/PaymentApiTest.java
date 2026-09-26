@@ -157,11 +157,19 @@ class PaymentApiTest {
 	 * {@code membership_basis_says_whether_a_payment_is_named} requires the receipt to
 	 * be absent exactly when the basis is not a payment. So this is not a contrived
 	 * row: it is the only shape the table will take for somebody who does not pay.
+	 *
+	 * <p><b>And it carries WHO and WHEN, because since {@code V35} it has to.</b>
+	 * {@code membership_free_of_the_fee_says_who} and its pair make an exemption with
+	 * no trail illegal (owner, 27.09.2026), so a helper that wrote one would be
+	 * writing a row the schema refuses rather than the row this route will meet.
 	 */
 	private void freeOfTheFee(long competitorId, int season) {
-		db.sql("insert into membership (competitor_id, season, basis, payment_id)"
-						+ " values (?, ?, 'feeExempt', null)")
-				.params(competitorId, season).update();
+		db.sql("insert into membership (competitor_id, season, basis, payment_id,"
+						+ " decided_by, decided_by_name, decided_at)"
+						+ " values (?, ?, 'feeExempt', null,"
+						+ " (select id from account where email = ?), 'Blagajnik Probni', ?)")
+				.params(competitorId, season, MODERATOR, Timestamp.from(NOW))
+				.update();
 	}
 
 	/**
