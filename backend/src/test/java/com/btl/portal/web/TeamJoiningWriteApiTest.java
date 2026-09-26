@@ -130,7 +130,7 @@ class TeamJoiningWriteApiTest {
 	/**
 	 * A TEAM WITH NOBODY STANDING IN IT, which is a state V11 allows and PDL names twice.
 	 *
-	 * <p>{@code PDL.md:6790}: „Tim koji nema nijednog člana ne dobija poruku, jer nema kome.
+	 * <p>{@code PDL.md:6783}: „Tim koji nema nijednog člana ne dobija poruku, jer nema kome.
 	 * Isti razlog iz kog se takvom timu ne nudi ni prijava." It is deliberately NOT the first
 	 * team either, so „empty" and „lowest key" are two different rows.
 	 */
@@ -627,7 +627,7 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * A TEAM NOBODY STANDS IN IS NOT OFFERED AN APPLICATION, {@code PDL.md:6790}, and the
+	 * A TEAM NOBODY STANDS IN IS NOT OFFERED AN APPLICATION, {@code PDL.md:6783}, and the
 	 * fault it prevents is the one the owner's entry of 06.09.2026 describes: „prijava koju
 	 * niko ne može da odgovori čekala je zauvek i držala člana van svih timova."
 	 */
@@ -685,7 +685,7 @@ class TeamJoiningWriteApiTest {
 	 *
 	 * <p>The membership begins in 2028, the question is gone, the applicant reads the portal's
 	 * own two sentences in his own inbox, and the two OTHER teams that had asked him are told -
-	 * while the team he joined is not ({@code PDL.md:6790}) and the team nobody stands in is
+	 * while the team he joined is not ({@code PDL.md:6785}) and the team nobody stands in is
 	 * not either. Nothing reaches the league as a whole.
 	 */
 	@Test
@@ -694,6 +694,14 @@ class TeamJoiningWriteApiTest {
 		long fromTheOther = invitationTo(ME, THE_OTHER_TEAM, 2028);
 		long fromTheThird = invitationTo(ME, A_THIRD_TEAM, 2028);
 		invitationTo(ME, AN_EMPTY_TEAM, 2028);
+
+		/* AND THE TEAM HE IS JOINING HAS ALSO ASKED HIM, which is what makes „not the team he
+		   joined" a condition rather than a sentence. A mutation found this: with no invitation
+		   from THE_TEAM in the fixture there was nothing for that condition to exclude, so
+		   dropping it changed no answer and this case passed over it. It is the ordinary case
+		   too - the owner's „(ko god da je poslao poziv)" is about exactly this man, asked by
+		   one team and taken in by it through the other door. */
+		invitationTo(ME, THE_TEAM, 2028);
 
 		assertThat(decide(THE_TEAM, application, answered(true), LEADER).getStatus()).isEqualTo(204);
 
@@ -921,7 +929,7 @@ class TeamJoiningWriteApiTest {
 
 	/**
 	 * AND IT IS HIS TO TAKE BACK IN BOTH THE CASES THAT HIDE IT FROM THE TEAM
-	 * ({@code PDL.md:6857}: „Prijava u oba slučaja ostaje njegova da je povuče"), and on a day
+	 * ({@code PDL.md:6854}: „Prijava u oba slučaja ostaje njegova da je povuče"), and on a day
 	 * the window is shut.
 	 */
 	@Test

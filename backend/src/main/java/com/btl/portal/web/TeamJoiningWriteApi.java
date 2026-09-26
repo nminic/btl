@@ -138,7 +138,7 @@ import java.util.Optional;
  * prihvati ni da se oslobodi pitanja do sledećeg oktobra." So asking, inviting and accepting
  * are inside 1 October to 31 December and refusing is not. <b>Taking a question back is not
  * bound either, and that is read off the same sentence</b>: it writes nothing about a squad
- * and it is the asker's own end to his own question, which {@code PDL.md:6857} names for the
+ * and it is the asker's own end to his own question, which {@code PDL.md:6854} names for the
  * application in as many words - „Prijava u oba slučaja ostaje njegova da je povuče, pa i
  * dalje ima kraj koji ne zavisi ni od koga drugog." <b>That last step is my reasoning over
  * his sentence and is marked as such</b>, because a constraint reasoned out and written in
@@ -237,7 +237,7 @@ import java.util.Optional;
  * idu u moderatorski red za verifikaciju.**" Nothing here writes {@code verification}.
  * <li><b>A migration.</b> {@code team_application} and {@code team_invitation} are V12's and
  * carry every column this class writes. That {@code team_invitation} does not record WHO
- * sent it is right rather than missing: {@code PDL.md:6782} sends the outcome to „onome ko
+ * sent it is right rather than missing: {@code PDL.md:6778} sends the outcome to „onome ko
  * vodi tim u trenutku odgovora... ne onome ko je poziv poslao", because „poziv je mogao
  * poslati bilo koji član tima", so a {@code sent_by} column would be a field nothing reads.
  * <li><b>Any length for anything.</b> Nothing in either request is free text.
@@ -441,7 +441,7 @@ class TeamJoiningWriteApi {
 	 * A member whose fee has lapsed is in the same bucket, by the decision of 19.09.2026.
 	 *
 	 * <p><b>A team with nobody to answer for it is in that bucket too, and it is the one
-	 * refusal here that is about the team rather than the caller.</b> {@code PDL.md:6790}:
+	 * refusal here that is about the team rather than the caller.</b> {@code PDL.md:6783}:
 	 * „**[IZVEDENO] Tim koji nema nijednog člana ne dobija poruku, jer nema kome. Isti razlog
 	 * iz kog se takvom timu ne nudi ni prijava.**" Left in, the application would stand for
 	 * ever with nobody able to decide it, which is exactly the fault the owner's entry of
@@ -520,7 +520,7 @@ class TeamJoiningWriteApi {
 	 * administracija obrisala.**" So an applicant who has since got a team, or whose fee has
 	 * since lapsed, is not visible to this route at all - <b>for refusing as much as for
 	 * accepting</b>, which is what „se timu ne prikazuje" says and is the safe direction: the
-	 * row simply waits for him, and {@code PDL.md:6857} keeps that end in his hands - „Prijava
+	 * row simply waits for him, and {@code PDL.md:6854} keeps that end in his hands - „Prijava
 	 * u oba slučaja ostaje njegova da je povuče."
 	 */
 	@PutMapping(path = "/api/teams/{id}/applications/{application}",
@@ -586,7 +586,7 @@ class TeamJoiningWriteApi {
 	/**
 	 * A MEMBER TAKING HIS OWN APPLICATION BACK, WHICH DEPENDS ON NOBODY.
 	 *
-	 * <p>{@code PDL.md:6857}: „**[IZVEDENO] Prijava u oba slučaja ostaje njegova da je
+	 * <p>{@code PDL.md:6854}: „**[IZVEDENO] Prijava u oba slučaja ostaje njegova da je
 	 * povuče**, pa i dalje ima kraj koji ne zavisi ni od koga drugog." „Oba slučaja" are the
 	 * two the decision above it names - an applicant who has since got a team and one the
 	 * administration has deleted - so this is the one road that is open when the team's own is
@@ -794,7 +794,7 @@ class TeamJoiningWriteApi {
 	 *
 	 * <p><b>Any member of the team and not only whoever sent it, and that is read off the
 	 * schema rather than out of symmetry.</b> {@code team_invitation} carries no sender at
-	 * all, deliberately - {@code PDL.md:6782} sends the outcome „onome ko vodi tim u trenutku
+	 * all, deliberately - {@code PDL.md:6778} sends the outcome „onome ko vodi tim u trenutku
 	 * odgovora... ne onome ko je poziv poslao", because „poziv je mogao poslati bilo koji član
 	 * tima" - so there is no column a condition about the sender could read. Whoever may ask
 	 * may take it back. <b>This last step is my reasoning over that decision rather than a
@@ -909,9 +909,9 @@ class TeamJoiningWriteApi {
 	 *
 	 * <ul>
 	 * <li><b>To whoever leads the team, not to whoever sent the invitation</b>
-	 * ({@code PDL.md:6782}), „računato iz rostera tada", which is
+	 * ({@code PDL.md:6778}), „računato iz rostera tada", which is
 	 * {@link TeamApi#WHO_ADMINISTERS_IT} asked now.
-	 * <li><b>Not to the team he joined</b> ({@code PDL.md:6790}): „Taj je sam doneo odluku ili
+	 * <li><b>Not to the team he joined</b> ({@code PDL.md:6785}): „Taj je sam doneo odluku ili
 	 * je njegov poziv prihvaćen, pa mu se ne javlja ono što već zna."
 	 * <li><b>Not to a team with nobody in it</b>, „jer nema kome" - which is a null leader
 	 * here, and the row is left out rather than written to nobody. V13 makes a message with
@@ -1048,11 +1048,21 @@ class TeamJoiningWriteApi {
 		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
 						+ " select a.id, a.competitor_id, c.first_name || ' ' || c.last_name, t.name"
 						+ " from team_application a"
-						+ " join team t on t.id = a.team_id"
+						/* THE TEAM IS JOINED FROM THE PATH AND THE ROW MUST NAME IT, which is
+						   the other way round from how this was first written - and a mutation
+						   found the difference before any review did. Joined on `a.team_id`, the
+						   right below is asked about whoever leads the team the ROW names, so
+						   dropping the agreement between the two changed no answer at all: the
+						   caller simply failed the right instead, and the case that exists for
+						   this axis went on passing for the wrong reason. Anchored here, the
+						   right is the PATH team's and the agreement is the only thing keeping
+						   an application to somebody else's team from being accepted into
+						   this one - which is what `takeHimIn` would write. */
+						+ " join team t on t.id = ?"
 						+ " join competitor c on c.id = a.competitor_id"
-						+ " where a.id = ? and a.team_id = ? and c.active"
+						+ " where a.id = ? and a.team_id = t.id and c.active"
 						+ " and coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)")
-				.params(application, team, me)
+				.params(team, application, me)
 				.query((row, one) -> new TheApplication(row.getLong(1), row.getLong(2),
 						row.getString(3), row.getString(4)))
 				.optional();
