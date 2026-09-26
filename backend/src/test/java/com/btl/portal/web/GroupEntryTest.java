@@ -756,13 +756,26 @@ class GroupEntryTest {
 		assertThat(howManyDocumentsOf(folded(SECOND_TYPED))).isEqualTo(1);
 	}
 
-	/** A document number that is not one is refused at every age, and before the INSERT. */
+	/**
+	 * A document number that is not one is refused at every age, and before the INSERT.
+	 *
+	 * <p>Row 0 is a child, for whom {@code idNumber} is not among the fields
+	 * {@link WhatRegistrationAsksFor} asks - so this measures the shape check on its own,
+	 * never the obligation one. Row 1 is a grown-up, for whom the number is required, kept
+	 * here so the two ages are measured side by side on one group.
+	 */
 	@Test
 	void aDocumentNumberThatIsNotOneIsRefused() throws Exception {
 		List<Map<String, Object>> group = aGroupOfThree();
+		group.get(0).put("birthDate", A_CHILD);
+		group.get(0).put("parentConsent", "Jovana Roditeljka");
+		group.get(0).put("parentRelation", "mother");
+		group.get(0).put("idNumber", "ovo nije broj!");
 		group.get(1).put("idNumber", "ovo nije broj!");
 
 		assertThat(rowsRefusedIn(enter(group, EVERYTHING))).containsExactly(
+				Map.of("row", 0, "reason", "theFormIsNotComplete",
+						"missing", List.of("idNumber")),
 				Map.of("row", 1, "reason", "theFormIsNotComplete",
 						"missing", List.of("idNumber")));
 	}

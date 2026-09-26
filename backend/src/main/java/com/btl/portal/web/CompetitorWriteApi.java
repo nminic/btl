@@ -1087,6 +1087,19 @@ class CompetitorWriteApi {
 			return notComplete(typed, List.copyOf(missing));
 		}
 
+		/* A DOCUMENT NUMBER THAT IS NOT ONE IS REFUSED AT EVERY AGE, which the loop above
+		   cannot say: `WhatRegistrationAsksFor` stops asking a child under sixteen for one,
+		   so for him the name is not in `asked` and nothing above looks at it. Sent one
+		   anyway, and it would reach `memberFor` unlooked at, where `if (document != null)`
+		   drops it rather than refusing the row - the row would be entered with the broken
+		   number simply gone. Asked here, both ages get the same refusal, same as
+		   `RegistrationApi#register`. */
+		if (!WhatAFieldMeans.isNothing(typed.idNumber())
+				&& WhatAFieldMeans.theDocument(typed.idNumber()) == null) {
+
+			return notComplete(typed, List.of("idNumber"));
+		}
+
 		return new Reading(typed, born, town, address, null, List.of());
 	}
 
